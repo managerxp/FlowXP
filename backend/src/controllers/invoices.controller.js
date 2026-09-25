@@ -39,6 +39,7 @@ export const create = async (req, res) => {
       notes: body.notes,
       payment: body.payment,
       couponCode: body.coupon_code,
+      redeemPoints: body.redeem_points,
       invoiceDate: body.invoice_date
     });
 

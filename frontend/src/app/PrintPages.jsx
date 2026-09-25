@@ -121,6 +121,7 @@ export const ReceiptPage = () => {
         {handDiscount > 0 && <Row left="Discount" right={`-${handDiscount.toFixed(2)}`} />}
         {invoice.coupon_discount > 0 && <Row left={`Coupon ${invoice.coupon_code}`} right={`-${invoice.coupon_discount.toFixed(2)}`} />}
         {invoice.loyalty_discount > 0 && <Row left="Loyalty reward" right={`-${invoice.loyalty_discount.toFixed(2)}`} />}
+        {invoice.points_discount > 0 && <Row left={`Points used (${invoice.points_redeemed})`} right={`-${invoice.points_discount.toFixed(2)}`} />}
         {invoice.round_off !== 0 && <Row left="Round off" right={`${invoice.round_off > 0 ? '+' : '-'}${Math.abs(invoice.round_off).toFixed(2)}`} />}
         <Rule />
         <div className="text-sm"><Row left="TOTAL" right={formatCurrency(invoice.total)} bold /></div>

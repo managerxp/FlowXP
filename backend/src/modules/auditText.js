@@ -55,6 +55,8 @@ const SENTENCES = {
   'messaging.bill_sent': (m, t) => join('Sent', t || 'a bill', 'to the customer', m.status && `(${String(m.status).toLowerCase()})`),
   'messaging.campaign_sent': (m) => join('Sent an offer to', m.recipients, m.recipients === 1 ? 'customer' : 'customers'),
   'customer.marketing_opt_out': (m, t) => join(m.opt_out ? 'Stopped offers to' : 'Resumed offers to', t || 'a customer'),
+  'points.program_updated': (m) => join(m.enabled ? 'Updated' : 'Switched off', 'the loyalty points scheme'),
+  'points.adjusted': (m, t) => join(m.points > 0 ? 'Gave' : 'Took', Math.abs(m.points), 'loyalty points', m.points > 0 ? 'to' : 'from', t || 'a customer', m.note && `(${m.note})`),
   'table.updated': (m, t) => join('Changed', t || 'a table'),
   'inventory.adjusted': (m, t) => join('Adjusted stock of', t || 'an item', m.quantity != null && `by ${m.quantity}`, m.reason && `(${m.reason})`),
   'inventory.wastage': (m, t) => join('Logged wastage of', m.quantity, 'of', t || 'an item', m.reason_code && `(${String(m.reason_code).toLowerCase()})`),

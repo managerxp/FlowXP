@@ -563,6 +563,7 @@ export const bill = async (req, res) => {
       })),
       discount: body.discount,
       couponCode: body.coupon_code,
+      redeemPoints: body.redeem_points,
       notes: body.notes || order.notes,
       payment: body.payment
     });

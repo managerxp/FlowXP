@@ -199,6 +199,7 @@ const InvoiceDetail = () => {
           {invoice.igst > 0 && <div className="flex justify-between text-ink-500"><span>IGST</span><span>{formatCurrency(invoice.igst)}</span></div>}
           {invoice.discount - invoice.coupon_discount > 0 && <div className="flex justify-between text-ink-500"><span>Discount</span><span>−{formatCurrency(invoice.discount - invoice.coupon_discount)}</span></div>}
           {invoice.coupon_discount > 0 && <div className="flex justify-between text-ink-500"><span>Coupon {invoice.coupon_code}</span><span>−{formatCurrency(invoice.coupon_discount)}</span></div>}
+          {invoice.points_discount > 0 && <div className="flex justify-between text-success"><span>Points used ({invoice.points_redeemed})</span><span>−{formatCurrency(invoice.points_discount)}</span></div>}
           {invoice.loyalty_discount > 0 && <div className="flex justify-between text-success"><span>Loyalty reward (free item)</span><span>−{formatCurrency(invoice.loyalty_discount)}</span></div>}
           {invoice.round_off !== 0 && <div className="flex justify-between text-ink-500"><span>Round off</span><span>{invoice.round_off > 0 ? '+' : '−'}{formatCurrency(Math.abs(invoice.round_off))}</span></div>}
           <div className="flex justify-between text-base font-bold text-ink-900"><span>Total</span><span>{formatCurrency(invoice.total)}</span></div>

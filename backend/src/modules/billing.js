@@ -25,6 +25,7 @@ import { CouponError, validateCoupon } from './coupons.js';
 import { consumptionPerUnit, loadRecipes } from './recipes.js';
 import { comboBlocker, comboConsumption, loadCombos } from './combos.js';
 import { afterBill } from './messaging/index.js';
+import { PointsError, addEntry, earnFor, getPoints, redemption, standing, tierFor } from './points.js';
 
 export class BillingError extends Error {
   constructor(status, message) {
@@ -73,6 +74,9 @@ export const asInvoice = (row) => ({
   coupon_code: row.coupon_code || null,
   coupon_discount: toRupees(row.coupon_discount_paise || 0),
   loyalty_discount: toRupees(row.loyalty_discount_paise || 0),
+  points_discount: toRupees(row.points_discount_paise || 0),
+  points_earned: row.points_earned || 0,
+  points_redeemed: row.points_redeemed || 0,
   round_off: toRupees(row.round_off_paise || 0),
   credited: toRupees(row.credited_paise || 0),
   payment_status: row.payment_status,
@@ -118,9 +122,11 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   /* Loyalty: a known customer on a live program. Locking the customer serialises two tills billing
      the same person at once, so a reward can't be given twice. */
   const program = customer ? await getProgram(client, tenant.businessId) : null;
+  const pts = customer ? await getPoints(client, tenant.businessId) : null;
+  if (customer && (isLive(program) || pts)) await client.query(`SELECT 1 FROM customers WHERE customer_id = $1 FOR UPDATE`, [customer.customer_id]);
+  const pointsState = pts ? await standing(client, tenant.businessId, customer.customer_id, pts) : null;
   let loyalty = null;
   if (customer && isLive(program)) {
-    await client.query(`SELECT 1 FROM customers WHERE customer_id = $1 FOR UPDATE`, [customer.customer_id]);
     loyalty = { program, progress: await progressFor(client, tenant.businessId, customer.customer_id, program, today), applied: null };
   }
 
@@ -253,6 +259,19 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     }
     invoiceDiscountPaise += coupon.discountPaise;
   }
+  let pointsDiscountPaise = 0; let pointsRedeemed = 0;
+  if (input.redeemPoints) {
+    if (!customer) throw new BillingError(400, 'Choose a customer to use their points');
+    if (!pts) throw new BillingError(400, 'Loyalty points are not switched on');
+    try {
+      pointsRedeemed = Number(input.redeemPoints);
+      pointsDiscountPaise = redemption(pts, pointsState, pointsRedeemed, Math.max(0, totals.total_paise - invoiceDiscountPaise));
+    } catch (error) {
+      if (error instanceof PointsError) throw new BillingError(error.status, error.message);
+      throw error;
+    }
+    invoiceDiscountPaise += pointsDiscountPaise;
+  }
   let finalTotalPaise = Math.max(0, totals.total_paise - invoiceDiscountPaise);
   // Cash round-off: the bill is rounded to the nearest rupee; the difference is kept on the invoice (never taxed).
   let roundOffPaise = 0;
@@ -260,6 +279,8 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     roundOffPaise = Math.round(finalTotalPaise / 100) * 100 - finalTotalPaise;
     finalTotalPaise += roundOffPaise;
   }
+
+  const pointsEarned = pts ? earnFor(pts, pointsState, finalTotalPaise) : 0;
 
   let paidPaise = 0;
   if (input.payment?.amount != null) {
@@ -326,6 +347,18 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     );
   }
 
+  if (pts) {
+    if (pointsRedeemed > 0) {
+      await addEntry(client, { businessId: tenant.businessId, customerId: customer.customer_id, invoiceId: invoice.invoice_id, kind: 'REDEEM', points: -pointsRedeemed, amountPaise: pointsDiscountPaise, createdBy: userId });
+    }
+    if (pointsEarned > 0) {
+      await addEntry(client, { businessId: tenant.businessId, customerId: customer.customer_id, invoiceId: invoice.invoice_id, kind: 'EARN', points: pointsEarned, amountPaise: finalTotalPaise, createdBy: userId });
+    }
+    await client.query('UPDATE invoices SET points_discount_paise = $2, points_earned = $3, points_redeemed = $4 WHERE invoice_id = $1',
+      [invoice.invoice_id, pointsDiscountPaise, pointsEarned, pointsRedeemed]);
+    invoice.points_discount_paise = pointsDiscountPaise; invoice.points_earned = pointsEarned; invoice.points_redeemed = pointsRedeemed;
+  }
+
   if (coupon) {
     await client.query(
       `INSERT INTO coupon_redemptions (coupon_id, business_id, invoice_id, customer_id, amount_paise) VALUES ($1,$2,$3,$4,$5)`,
@@ -355,6 +388,10 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
 
   return {
     ...asInvoice({ ...invoice, customer_name: customer?.name || null }), currency: business.currency,
+    loyalty_points: pts ? {
+      earned: pointsEarned, redeemed: pointsRedeemed, balance: pointsState.balance - pointsRedeemed + pointsEarned,
+      tier: (tierFor(pts.tiers, pointsState.lifetime + pointsEarned).current || {}).name ?? null
+    } : null,
     loyalty_reward: loyalty?.applied ? { item: loyalty.applied.item, amount: toRupees(loyalty.applied.amountPaise) } : null
   };
 };

@@ -14,7 +14,7 @@ import { useIdempotencyKey } from '../../lib/idempotency.js';
 import ModifierPicker, { needsChoices, useModifierGroups } from '../../components/ModifierPicker.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Alert, Button, Card, Input, Select } from '../../components/ui.jsx';
-import { LoyaltyCard, MobileLookup } from '../../components/LoyaltyCard.jsx';
+import { LoyaltyCard, MobileLookup, PointsPanel } from '../../components/LoyaltyCard.jsx';
 import { getDevicePrefs, openPrint } from '../../lib/printing.js';
 
 const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CREDIT', 'OTHER'];
@@ -33,6 +33,8 @@ const BillingPage = () => {
   const [customerId, setCustomerId] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
   const [card, setCard] = useState(null);            // the chosen customer's loyalty card
+  const [pointsInfo, setPointsInfo] = useState(null);   // the chosen customer's points
+  const [redeem, setRedeem] = useState('');
   const [couponCode, setCouponCode] = useState('');
   const [couponInfo, setCouponInfo] = useState(null); // { code, discount } once checked
   const [couponError, setCouponError] = useState('');
@@ -51,7 +53,7 @@ const BillingPage = () => {
   // Whoever is chosen, show where their visit card stands.
   useEffect(() => {
     if (!customerId) { setCard(null); return; }
-    api(`/loyalty/customers/${customerId}`).then((d) => setCard(d.loyalty)).catch(() => setCard(null));
+    api(`/loyalty/customers/${customerId}`).then((d) => { setCard(d.loyalty); setPointsInfo(d.points); }).catch(() => { setCard(null); setPointsInfo(null); });
   }, [customerId]);
 
   /* Debounced product search — a fetch per keystroke is fine for a shop's
@@ -105,8 +107,9 @@ const BillingPage = () => {
     const discount = Number(invoiceDiscount || 0);
     const before = Math.max(0, subtotal + tax - discount);
     const coupon = couponInfo ? Math.min(couponInfo.discount, before) : 0;   // a preview; billing works out the real figure
-    return { subtotal, tax, discount, coupon, before, total: Math.max(0, before - coupon), gstEnabled };
-  }, [cart, invoiceDiscount, couponInfo, business?.gst_enabled]);
+    const pointsOff = pointsInfo ? Math.min((Number(redeem) || 0) * pointsInfo.point_value, Math.max(0, before - coupon)) : 0;
+    return { subtotal, tax, discount, coupon, pointsOff, before, total: Math.max(0, before - coupon - pointsOff), gstEnabled };
+  }, [cart, invoiceDiscount, couponInfo, pointsInfo, redeem, business?.gst_enabled]);
 
   // A checked coupon was checked against a particular bill; changing the bill means checking again.
   useEffect(() => { setCouponInfo(null); setCouponError(''); }, [cart, invoiceDiscount, customerId]);
@@ -124,7 +127,7 @@ const BillingPage = () => {
     : customers;
 
   const resetSale = () => {
-    setCart([]); setCustomerId(''); setCustomerSearch(''); setInvoiceDiscount('0'); setCouponCode(''); setCouponInfo(null); setCouponError(''); setCard(null);
+    setCart([]); setCustomerId(''); setCustomerSearch(''); setInvoiceDiscount('0'); setCouponCode(''); setCouponInfo(null); setCouponError(''); setCard(null); setPointsInfo(null); setRedeem('');
     setPaidNow(''); setNotes(''); setConfirmation(null); setError('');
   };
 
@@ -150,6 +153,7 @@ const BillingPage = () => {
           items,
           discount: Number(invoiceDiscount) || undefined,
           coupon_code: couponCode.trim() || undefined,
+          redeem_points: Number(redeem) > 0 ? Number(redeem) : undefined,
           notes: notes || undefined,
           payment: paidNow ? { method: paymentMethod, amount: Number(paidNow) } : undefined
         }
@@ -173,6 +177,7 @@ const BillingPage = () => {
           <h1 className="mt-2 text-2xl font-bold text-ink-900">{confirmation.invoice_number}</h1>
           <p className="mt-1 text-3xl font-extrabold text-ink-900">{formatCurrency(confirmation.total)}</p>
           {confirmation.loyalty_reward && <p className="mt-2 rounded-lg bg-success/10 px-3 py-2 text-sm font-semibold text-success">Loyalty reward: {confirmation.loyalty_reward.item} free ({formatCurrency(confirmation.loyalty_reward.amount)} off)</p>}
+          {confirmation.loyalty_points && <p className="mt-2 text-sm text-ink-500">{confirmation.loyalty_points.redeemed > 0 && `${confirmation.loyalty_points.redeemed} points used (${formatCurrency(confirmation.points_discount)} off). `}Earned {confirmation.loyalty_points.earned} points · balance {confirmation.loyalty_points.balance}{confirmation.loyalty_points.tier ? ` · ${confirmation.loyalty_points.tier}` : ''}</p>}
           {confirmation.coupon_code && <p className="mt-2 text-sm text-ink-500">Coupon {confirmation.coupon_code}: {formatCurrency(confirmation.coupon_discount)} off</p>}
           <p className="mt-2 text-sm text-ink-500">
             {confirmation.payment_status === 'PAID' ? 'Paid in full.'
@@ -290,7 +295,7 @@ const BillingPage = () => {
             <label className="mb-1 block text-sm font-medium text-ink-700">Customer</label>
             {!customerId && (
               <div className="mb-2">
-                <MobileLookup onPick={(c, loyalty) => { setCustomerId(c.customer_id); setCustomerSearch(c.name); setCard(loyalty); setCustomers((list) => (list.some((x) => x.customer_id === c.customer_id) ? list : [...list, c])); }} />
+                <MobileLookup onPick={(c, loyalty, points) => { setCustomerId(c.customer_id); setCustomerSearch(c.name); setCard(loyalty); setPointsInfo(points); setRedeem(''); setCustomers((list) => (list.some((x) => x.customer_id === c.customer_id) ? list : [...list, c])); }} />
               </div>
             )}
             <Input placeholder="Or search by name, or leave blank for walk-in" value={customerSearch}
@@ -310,6 +315,7 @@ const BillingPage = () => {
           </div>
 
           {customerId && card && <LoyaltyCard card={card} compact />}
+          {customerId && pointsInfo && <PointsPanel points={pointsInfo} total={Math.max(0, totals.before - totals.coupon)} value={redeem} onChange={setRedeem} />}
 
           <div>
             <label className="mb-1 block text-sm font-medium text-ink-700">Coupon code</label>
@@ -331,6 +337,7 @@ const BillingPage = () => {
             {totals.gstEnabled && <div className="flex justify-between text-ink-500"><span>GST (est.)</span><span>{formatCurrency(totals.tax)}</span></div>}
             {totals.discount > 0 && <div className="flex justify-between text-ink-500"><span>Discount</span><span>−{formatCurrency(totals.discount)}</span></div>}
             {totals.coupon > 0 && <div className="flex justify-between text-success"><span>Coupon {couponInfo.code}</span><span>−{formatCurrency(totals.coupon)}</span></div>}
+            {totals.pointsOff > 0 && <div className="flex justify-between text-success"><span>Points ({redeem})</span><span>−{formatCurrency(totals.pointsOff)}</span></div>}
             {card?.reward_ready && <div className="flex justify-between text-success"><span>Free {card.reward_item}</span><span>applied if on the bill</span></div>}
             <div className="flex justify-between text-base font-bold text-ink-900"><span>Total</span><span>{formatCurrency(totals.total)}</span></div>
           </div>

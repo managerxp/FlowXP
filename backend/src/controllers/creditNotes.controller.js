@@ -13,6 +13,7 @@
  * a plain refund on its own only moves money.
  */
 import pool from '../config/database.js';
+import { reverseForCredit } from '../modules/points.js';
 import { recordAudit } from '../modules/events.js';
 import { moveStock } from '../modules/stock.js';
 import { branchFilter } from '../utils/scope.js';
@@ -149,6 +150,9 @@ export const create = async (req, res) => {
        WHERE invoice_id = $1`,
       [invoice.invoice_id, total, newBalance, refund, fromBalance]
     );
+
+    // the customer gives back a share of the points that bill earned
+    await reverseForCredit(client, { businessId: req.tenant.businessId, invoiceId: invoice.invoice_id, creditedTotalPaise: Number(invoice.credited_paise) + total, createdBy: req.auth.userId });
 
     await client.query('COMMIT');
     recordAudit(req, { action: 'credit_note.issued', resource_type: 'credit_note', resource_id: note.cn_id, metadata: { total: toRupees(total), invoice_id: invoice.invoice_id, refunded: toRupees(refund), restocked: Boolean(body.restock) } });

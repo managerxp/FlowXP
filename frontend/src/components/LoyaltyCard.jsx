@@ -5,6 +5,7 @@
  */
 import { useState } from 'react';
 import { api } from '../lib/api.js';
+import { formatCurrency } from '../lib/api.js';
 import { Button, Input } from './ui.jsx';
 
 /** Stamp dots and the message. `card` is what /loyalty/... returns. */
@@ -22,6 +23,37 @@ export const LoyaltyCard = ({ card, compact = false }) => {
         <span className={`flex h-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${card.reward_ready ? 'bg-success text-white' : 'border border-dashed border-line-strong text-ink-400'}`}>FREE</span>
       </div>
       <p className={`mt-2 text-sm ${card.reward_ready ? 'font-semibold text-success' : 'text-ink-700'}`}>{card.message}</p>
+    </div>
+  );
+};
+
+/**
+ * A customer's points at the till: balance, tier, and a box to spend some on this bill.
+ * `points` is what /loyalty/... returns (null when the scheme is off); `total` is what is left to pay
+ * in rupees (used only to suggest a sensible maximum, the server enforces the real one).
+ */
+export const PointsPanel = ({ points, total = 0, value, onChange }) => {
+  if (!points) return null;
+  const spendable = points.balance >= points.min_redeem_points;
+  const cap = Math.floor((total * points.max_redeem_pct) / 100 / points.point_value);
+  const most = Math.max(0, Math.min(points.balance, cap));
+  const n = Number(value) || 0;
+  return (
+    <div className="rounded-lg border border-line bg-surface-2 p-3 text-sm">
+      <p className="text-ink-700">
+        <strong className="text-ink-900">{points.balance} points</strong> ({formatCurrency(points.balance_value)})
+        {points.tier && <> · <span className="font-semibold text-brand-600">{points.tier.name}</span> earns {points.earn_per_100} per {formatCurrency(100)}</>}
+      </p>
+      {points.next_tier && <p className="text-xs text-ink-500">{points.next_tier.points_needed} more points to {points.next_tier.name}.</p>}
+      {spendable ? (
+        <div className="mt-2 flex items-center gap-2">
+          <Input type="number" min="0" step="1" className="!w-28" placeholder="Use points" value={value} onChange={(e) => onChange(e.target.value)} aria-label="Points to use" />
+          <button type="button" className="text-xs font-semibold text-brand-600 disabled:opacity-40" disabled={most < points.min_redeem_points} onClick={() => onChange(String(most))}>Use max ({most})</button>
+          {n > 0 && <span className="text-xs font-medium text-success">−{formatCurrency(n * points.point_value)}</span>}
+        </div>
+      ) : (
+        <p className="mt-1 text-xs text-ink-500">Needs {points.min_redeem_points} points to spend.</p>
+      )}
     </div>
   );
 };
@@ -45,7 +77,7 @@ export const MobileLookup = ({ onPick, placeholder = 'Customer mobile number' })
     try {
       const result = await api(`/loyalty/lookup?phone=${encodeURIComponent(phone)}`);
       setFound(result);
-      if (result.customer) onPick(result.customer, result.loyalty);
+      if (result.customer) onPick(result.customer, result.loyalty, result.points);
     } catch (caught) { setError(caught.message); }
     finally { setBusy(false); }
   };
@@ -54,9 +86,9 @@ export const MobileLookup = ({ onPick, placeholder = 'Customer mobile number' })
     setError(''); setBusy(true);
     try {
       const created = await api('/customers', { method: 'POST', body: { name: name.trim() || `Guest ${digits.slice(-4)}`, phone: digits.slice(-10) } });
-      const card = await api(`/loyalty/customers/${created.customer_id}`).then((d) => d.loyalty).catch(() => null);
-      setFound({ customer: created, loyalty: card });
-      onPick(created, card);
+      const both = await api(`/loyalty/customers/${created.customer_id}`).catch(() => ({}));
+      setFound({ customer: created, loyalty: both.loyalty ?? null });
+      onPick(created, both.loyalty ?? null, both.points ?? null);
     } catch (caught) { setError(caught.message); }
     finally { setBusy(false); }
   };

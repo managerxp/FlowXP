@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, formatCurrency } from '../lib/api.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
-import { LoyaltyCard, MobileLookup } from '../components/LoyaltyCard.jsx';
+import { LoyaltyCard, MobileLookup, PointsPanel } from '../components/LoyaltyCard.jsx';
 import { getDevicePrefs, openPrint, setDevicePref } from '../lib/printing.js';
 import ModifierPicker, { needsChoices, useModifierGroups } from '../components/ModifierPicker.jsx';
 import {
@@ -277,6 +277,8 @@ const OrderDetail = ({ orderId, onClose, onChanged }) => {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [couponCode, setCouponCode] = useState('');
+  const [pointsInfo, setPointsInfo] = useState(null);
+  const [redeem, setRedeem] = useState('');
   const [changingCustomer, setChangingCustomer] = useState(false);
   const [card, setCard] = useState(null);
   const [waiters, setWaiters] = useState([]);
@@ -292,8 +294,8 @@ const OrderDetail = ({ orderId, onClose, onChanged }) => {
 
   // Where the tab's customer stands on their visit card.
   useEffect(() => {
-    if (!order?.customer_id) { setCard(null); return; }
-    api(`/loyalty/customers/${order.customer_id}`).then((d) => setCard(d.loyalty)).catch(() => setCard(null));
+    if (!order?.customer_id) { setCard(null); setPointsInfo(null); return; }
+    api(`/loyalty/customers/${order.customer_id}`).then((d) => { setCard(d.loyalty); setPointsInfo(d.points); }).catch(() => { setCard(null); setPointsInfo(null); });
   }, [order?.customer_id]);
 
   const attachCustomer = async (customer) => {
@@ -332,7 +334,7 @@ const OrderDetail = ({ orderId, onClose, onChanged }) => {
   const billOrder = async () => {
     setBusy(true); setError('');
     try {
-      const invoice = await api(`/orders/${orderId}/bill`, { method: 'POST', idempotencyKey: billKey.get(), body: couponCode.trim() ? { coupon_code: couponCode.trim() } : undefined });
+      const invoice = await api(`/orders/${orderId}/bill`, { method: 'POST', idempotencyKey: billKey.get(), body: (couponCode.trim() || Number(redeem) > 0) ? { coupon_code: couponCode.trim() || undefined, redeem_points: Number(redeem) > 0 ? Number(redeem) : undefined } : undefined });
       billKey.settle();
       if (getDevicePrefs().autoPrintReceipt) openPrint('receipt', invoice.invoice_id);
       onChanged();
@@ -418,6 +420,7 @@ const OrderDetail = ({ orderId, onClose, onChanged }) => {
               <div className="space-y-2">
                 <p className="text-sm text-ink-900">{order.customer_name} <button type="button" onClick={() => setChangingCustomer(true)} className="ml-2 text-xs font-semibold text-brand-600">Change</button></p>
                 <LoyaltyCard card={card} compact />
+                <PointsPanel points={pointsInfo} total={(order.items || []).filter((i) => !i.billed && i.status !== 'CANCELLED').reduce((n, i) => n + i.line_total, 0)} value={redeem} onChange={setRedeem} />
               </div>
             ) : (
               <MobileLookup onPick={(customer) => attachCustomer(customer)} placeholder="Mobile number — for loyalty and coupons" />

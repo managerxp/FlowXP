@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from 'react';
 import { api, formatCurrency } from '../lib/api.js';
+import PointsTab from './PointsTab.jsx';
 import { Alert, Badge, Button, Card, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Th, Thead, Tr, useToast } from '../components/ui.jsx';
 
 const Program = () => {
@@ -211,12 +212,12 @@ const LoyaltyPage = () => {
     <div>
       <PageHeader title="Loyalty & coupons" lead="Reward regulars with a free item, and hand out offer codes." />
       <div className="mb-6 flex gap-2" role="tablist">
-        {[['program', 'Visit card'], ['coupons', 'Coupons']].map(([id, label]) => (
+        {[['program', 'Visit card'], ['points', 'Points & tiers'], ['coupons', 'Coupons']].map(([id, label]) => (
           <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
                   className={`rounded-lg px-3.5 py-1.5 text-sm font-medium ${tab === id ? 'bg-brand-50 text-brand-600' : 'text-ink-600 hover:bg-surface-2'}`}>{label}</button>
         ))}
       </div>
-      {tab === 'program' ? <Program /> : <Coupons />}
+      {tab === 'program' ? <Program /> : tab === 'points' ? <PointsTab /> : <Coupons />}
     </div>
   );
 };

@@ -12,6 +12,7 @@ import { recordAudit } from '../modules/events.js';
 import { CouponError, validateCoupon } from '../modules/coupons.js';
 import { describe, findCustomerByPhone, getProgram, isLive, normalisePhone, progressFor } from '../modules/loyalty.js';
 import { businessToday } from '../utils/dates.js';
+import { pointsCard } from './points.controller.js';
 import { toPaise, toRupees } from '../utils/money.js';
 
 const bad = (res, message, status = 400) => res.status(status).json({ success: false, message });
@@ -69,14 +70,14 @@ const cardFor = async (businessId, customerId) => {
 export const lookup = async (req, res) => {
   if (!normalisePhone(req.query.phone)) return bad(res, 'Enter a 10-digit mobile number');
   const customer = await findCustomerByPhone(pool, req.tenant.businessId, req.query.phone);
-  res.json({ success: true, data: { customer, loyalty: customer ? await cardFor(req.tenant.businessId, customer.customer_id) : null } });
+  res.json({ success: true, data: { customer, loyalty: customer ? await cardFor(req.tenant.businessId, customer.customer_id) : null, points: customer ? await pointsCard(pool, req.tenant.businessId, customer.customer_id) : null } });
 };
 
 /* GET /api/loyalty/customers/:id */
 export const customerCard = async (req, res) => {
   const own = await pool.query(`SELECT 1 FROM customers WHERE customer_id = $1 AND business_id = $2`, [req.params.id, req.tenant.businessId]);
   if (!own.rows.length) return bad(res, 'Not found', 404);
-  res.json({ success: true, data: { loyalty: await cardFor(req.tenant.businessId, Number(req.params.id)) } });
+  res.json({ success: true, data: { loyalty: await cardFor(req.tenant.businessId, Number(req.params.id)), points: await pointsCard(pool, req.tenant.businessId, Number(req.params.id)) } });
 };
 
 /* GET /api/loyalty/summary — how the program is doing */
