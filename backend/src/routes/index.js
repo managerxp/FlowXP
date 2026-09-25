@@ -40,6 +40,7 @@ import aiRoutes from './ai.routes.js';
 import auditRoutes from './audit.routes.js';
 import menuImportRoutes from './menuImport.routes.js';
 import creditNoteRoutes from './creditNotes.routes.js';
+import reservationRoutes from './reservations.routes.js';
 import publicOrderingRoutes from './publicOrdering.routes.js';
 
 const router = Router();
@@ -119,6 +120,7 @@ router.get('/dashboard', requireAuth, withBusiness(), dashboard.getDashboard);
 
 router.use('/', productsRoutes);           // /categories, /products
 router.use('/', creditNoteRoutes);         // /invoices/:id/credit-notes, /credit-notes
+router.use('/', reservationRoutes);        // /reservations, /waitlist
 router.use('/', loyaltyRoutes);            // /loyalty, /coupons
 router.use('/', outletsRoutes);            // /outlets, /staff
 router.use('/', menuRoutes);               // /modifier-groups, /products/:id/recipe

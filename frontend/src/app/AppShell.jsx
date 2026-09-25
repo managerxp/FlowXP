@@ -35,7 +35,8 @@ const NAV_GROUPS = [
       { to: '/app/billing', label: 'Billing' },
       { to: '/app/orders',  label: 'Orders', types: RESTAURANT_TYPES },
       { to: '/app/kitchen', label: 'Kitchen', types: RESTAURANT_TYPES },
-      { to: '/app/tables',  label: 'Tables', types: RESTAURANT_TYPES }
+      { to: '/app/tables',  label: 'Tables', types: RESTAURANT_TYPES },
+      { to: '/app/reservations', label: 'Reservations', types: RESTAURANT_TYPES }
     ]
   },
   {

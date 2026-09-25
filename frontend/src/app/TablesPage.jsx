@@ -112,6 +112,7 @@ const TablesPage = () => {
               <Badge tone={t.open_order_id ? 'brand' : STATUS_TONE[t.status]}>{t.open_order_id ? 'Occupied' : t.status}</Badge>
             </div>
             {t.seats && <p className="mt-2 text-xs text-ink-500">{t.seats} seats</p>}
+            {t.next_reservation && !t.open_order_id && <p className="mt-1 text-xs font-medium text-amber-600">Booked {new Date(t.next_reservation.reserved_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · {t.next_reservation.guest_name} ({t.next_reservation.party_size})</p>}
             <div className="mt-4 flex gap-2">
               {t.open_order_id ? (
                 <Button size="sm" variant="secondary" className="flex-1" onClick={() => navigate('/app/orders')}>

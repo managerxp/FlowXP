@@ -72,6 +72,7 @@ const KitchenPerformancePage = lazy(() => import('./app/KitchenPerformancePage.j
 const TablesPage = lazy(() => import('./app/TablesPage.jsx'));
 const IntegrationsPage = lazy(() => import('./app/IntegrationsPage.jsx'));
 const OutletsPage = lazy(() => import('./app/OutletsPage.jsx'));
+const ReservationsPage = lazy(() => import('./app/ReservationsPage.jsx'));
 const LoyaltyPage = lazy(() => import('./app/LoyaltyPage.jsx'));
 const AIManagerPage = lazy(() => import('./app/AIManagerPage.jsx'));
 const ActivityPage = lazy(() => import('./app/ActivityPage.jsx'));
@@ -160,6 +161,7 @@ const App = () => (
       <Route path="kitchen" element={<KitchenDisplay />} />
       <Route path="kitchen/performance" element={<KitchenPerformancePage />} />
       <Route path="tables" element={<TablesPage />} />
+      <Route path="reservations" element={<ReservationsPage />} />
       <Route path="integrations" element={<IntegrationsPage />} />
       <Route path="outlets" element={<OutletsPage />} />
       <Route path="loyalty" element={<LoyaltyPage />} />

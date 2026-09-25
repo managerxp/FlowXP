@@ -21,7 +21,9 @@ const asTable = (row) => ({
   // billing.
   open_order_id: row.open_order_id,
   open_order_number: row.open_order_number,
-  qr_token: row.qr_token
+  qr_token: row.qr_token,
+  // the next booking on this table within the hour, so the floor can hold it back
+  next_reservation: row.next_res_at ? { reserved_at: row.next_res_at, guest_name: row.next_res_guest, party_size: row.next_res_party } : null
 });
 
 /* ==========================================================================
@@ -31,8 +33,15 @@ export const list = async (req, res) => {
   const values = [req.tenant.businessId];
   const scope = branchFilter(req.tenant, 't.branch_id', values);
   const { rows } = await pool.query(
-    `SELECT t.*, o.order_id AS open_order_id, o.order_number AS open_order_number
+    `SELECT t.*, o.order_id AS open_order_id, o.order_number AS open_order_number,
+            nr.reserved_at AS next_res_at, nr.guest_name AS next_res_guest, nr.party_size AS next_res_party
      FROM dining_tables t
+     LEFT JOIN LATERAL (
+       SELECT r.reserved_at, r.guest_name, r.party_size FROM reservations r
+       WHERE r.table_id = t.table_id AND r.status = 'BOOKED'
+         AND r.reserved_at < CURRENT_TIMESTAMP + INTERVAL '60 minutes'
+         AND r.reserved_at + make_interval(mins => r.duration_min) > CURRENT_TIMESTAMP
+       ORDER BY r.reserved_at LIMIT 1) nr ON TRUE
      LEFT JOIN orders o ON o.table_id = t.table_id AND o.status NOT IN ('BILLED','CANCELLED','MERGED')
      WHERE t.business_id = $1 AND t.status <> 'CLOSED'${scope}
      ORDER BY t.zone NULLS FIRST, t.name`,
