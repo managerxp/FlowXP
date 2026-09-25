@@ -35,6 +35,7 @@ const asProduct = (row) => ({
   supplier_id: row.supplier_id,
   name: row.name,
   kind: row.kind,
+  is_combo: Boolean(row.is_combo),
   lead_time_days: row.lead_time_days,
   modifier_group_ids: row.modifier_group_ids || [],
   sku: row.sku,

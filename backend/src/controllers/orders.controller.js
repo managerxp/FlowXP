@@ -21,6 +21,8 @@ import { hasPermission } from '../middleware/auth.js';
 import { TabError, takeItems, unbilledCount } from '../modules/tabs.js';
 import { ModifierError, outletSettingsFor, resolveModifiers } from '../modules/menu.js';
 import { branchFilter } from '../utils/scope.js';
+import { comboBlocker, loadCombos } from '../modules/combos.js';
+import { isEligibleWaiter } from '../modules/waiters.js';
 
 const OPEN_STATUSES = ['OPEN', 'PREPARING', 'READY', 'SERVED'];
 
@@ -70,6 +72,11 @@ export const insertOrderItems = async (client, businessId, orderId, rawItems) =>
       if (product.status !== 'ACTIVE') throw new OrderItemsError(`${product.name} is archived`);
       const here = outletSettings.get(product.product_id);
       if (here && here.is_available === false) throw new OrderItemsError(`${product.name} is not available at this outlet`);
+      const parts = (await loadCombos(client, businessId, [product.product_id])).get(product.product_id);
+      if (parts) {
+        const blocked = await comboBlocker(client, orderBranch, product.name, parts);
+        if (blocked) throw new OrderItemsError(blocked);
+      }
       productId = product.product_id;
       stationId = product.station_id;
       expectedMinutes = product.prep_minutes ?? defaultMinutes;
@@ -149,8 +156,8 @@ export const getOrCreateOpenOrderForTable = async (client, { businessId, branchI
 
   const orderNumber = await nextNumber(client, businessId, 'order_prefix', 'order_next_number');
   return (await client.query(
-    `INSERT INTO orders (business_id, branch_id, order_number, order_type, table_id, customer_id, notes, created_by)
-     VALUES ($1,$2,$3,'DINE_IN',$4,$5,$6,$7) RETURNING *`,
+    `INSERT INTO orders (business_id, branch_id, order_number, order_type, table_id, customer_id, notes, created_by, waiter_user_id)
+     VALUES ($1,$2,$3,'DINE_IN',$4,$5,$6,$7,(SELECT waiter_user_id FROM dining_tables WHERE table_id = $4)) RETURNING *`,
     [businessId, branchId, orderNumber, tableId, customerId, notes, createdBy]
   )).rows[0];
 };
@@ -181,6 +188,8 @@ const asOrder = (row) => ({
   platform: row.platform,
   external_order_id: row.external_order_id,
   external_order_number: row.external_order_number,
+  waiter_user_id: row.waiter_user_id ?? null,
+  waiter_name: row.waiter_name ?? null,
   status: row.status,
   notes: row.notes,
   invoice_id: row.invoice_id,
@@ -202,17 +211,25 @@ export const create = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Choose a table for a dine-in order' });
   }
 
+  let tableWaiter = null;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
     if (body.table_id) {
       const table = (await client.query(
-        `SELECT table_id, status FROM dining_tables WHERE table_id = $1 AND business_id = $2 AND branch_id = $3`,
+        `SELECT table_id, status, waiter_user_id FROM dining_tables WHERE table_id = $1 AND business_id = $2 AND branch_id = $3`,
         [body.table_id, req.tenant.businessId, req.tenant.branchId]
       )).rows[0];
       if (!table) { await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: 'Table not found' }); }
       if (table.status !== 'FREE') { await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: `Table is ${table.status.toLowerCase()}` }); }
+      tableWaiter = table.waiter_user_id;
+    }
+
+    // Who serves it: the one picked, else the table's regular waiter, else the waiter who opened it.
+    let waiterId = body.waiter_user_id ? Number(body.waiter_user_id) : (tableWaiter ?? (req.tenant.role === 'WAITER' ? req.auth.userId : null));
+    if (body.waiter_user_id && !(await isEligibleWaiter(client, req.tenant.businessId, req.tenant.branchId, waiterId))) {
+      await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: 'Choose a waiter who works at this outlet' });
     }
 
     const orderNumber = await nextNumber(client, req.tenant.businessId, 'order_prefix', 'order_next_number');
@@ -220,10 +237,10 @@ export const create = async (req, res) => {
     let order;
     try {
       order = (await client.query(
-        `INSERT INTO orders (business_id, branch_id, order_number, order_type, table_id, customer_id, notes, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+        `INSERT INTO orders (business_id, branch_id, order_number, order_type, table_id, customer_id, notes, created_by, waiter_user_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
         [req.tenant.businessId, req.tenant.branchId, orderNumber, orderType, body.table_id || null,
-         body.customer_id || null, body.notes || null, req.auth.userId]
+         body.customer_id || null, body.notes || null, req.auth.userId, waiterId]
       )).rows[0];
     } catch (dbError) {
       // 23505 on uq_orders_open_table: someone else opened this table a moment ago.
@@ -247,7 +264,7 @@ export const create = async (req, res) => {
    GET /api/orders
    ========================================================================== */
 export const list = async (req, res) => {
-  const { status, table_id, order_type, open_only } = req.query;
+  const { status, table_id, order_type, open_only, waiter } = req.query;
   const clauses = [];
   const values = [req.tenant.businessId];
 
@@ -255,11 +272,13 @@ export const list = async (req, res) => {
   else if (open_only === 'true') { values.push(OPEN_STATUSES); clauses.push(`o.status = ANY($${values.length}::text[])`); }
   if (table_id) { values.push(table_id); clauses.push(`o.table_id = $${values.length}`); }
   if (order_type) { values.push(order_type); clauses.push(`o.order_type = $${values.length}`); }
+  if (waiter) { values.push(waiter === 'me' ? req.auth.userId : Number(waiter) || 0); clauses.push(`o.waiter_user_id = $${values.length}`); }
   const scope = branchFilter(req.tenant, 'o.branch_id', values);
 
   const { rows } = await pool.query(
-    `SELECT o.*, t.name AS table_name, c.name AS customer_name
+    `SELECT o.*, t.name AS table_name, c.name AS customer_name, w.name AS waiter_name
      FROM orders o
+     LEFT JOIN users w ON w.user_id = o.waiter_user_id
      LEFT JOIN dining_tables t ON t.table_id = o.table_id
      LEFT JOIN customers c ON c.customer_id = o.customer_id
      WHERE o.business_id = $1 ${clauses.map((c) => `AND ${c}`).join(' ')}${scope}
@@ -276,8 +295,9 @@ export const get = async (req, res) => {
   const scopeValues = [req.tenant.businessId, req.params.id];
   const scope = branchFilter(req.tenant, 'o.branch_id', scopeValues);
   const { rows } = await pool.query(
-    `SELECT o.*, t.name AS table_name, c.name AS customer_name
+    `SELECT o.*, t.name AS table_name, c.name AS customer_name, w.name AS waiter_name
      FROM orders o
+     LEFT JOIN users w ON w.user_id = o.waiter_user_id
      LEFT JOIN dining_tables t ON t.table_id = o.table_id
      LEFT JOIN customers c ON c.customer_id = o.customer_id
      WHERE o.business_id = $1 AND o.order_id = $2${scope}`,
@@ -591,4 +611,23 @@ export const setCustomer = async (req, res) => {
   );
   if (!rows.length) return res.status(404).json({ success: false, message: 'Not found, or already closed' });
   res.json({ success: true });
+};
+
+/* ==========================================================================
+   PATCH /api/orders/:id/waiter  { waiter_user_id | null } — hand a table to another waiter
+   ========================================================================== */
+export const setWaiter = async (req, res) => {
+  const waiterId = req.body?.waiter_user_id ? Number(req.body.waiter_user_id) : null;
+  const scope = [req.params.id, req.tenant.businessId];
+  const order = (await pool.query(
+    `SELECT order_id, branch_id, status FROM orders WHERE order_id = $1 AND business_id = $2${branchFilter(req.tenant, 'branch_id', scope)}`, scope
+  )).rows[0];
+  if (!order) return res.status(404).json({ success: false, message: 'Not found' });
+  if (['BILLED', 'CANCELLED', 'MERGED'].includes(order.status)) return res.status(409).json({ success: false, message: 'This order is closed' });
+  if (waiterId && !(await isEligibleWaiter(pool, req.tenant.businessId, order.branch_id, waiterId))) {
+    return res.status(400).json({ success: false, message: 'Choose a waiter who works at this outlet' });
+  }
+  await pool.query(`UPDATE orders SET waiter_user_id = $1, updated_at = CURRENT_TIMESTAMP WHERE order_id = $2`, [waiterId, order.order_id]);
+  recordAudit(req, { action: 'order.waiter_set', resource_type: 'order', resource_id: order.order_id, metadata: { waiter_user_id: waiterId } });
+  return get({ ...req, params: { id: order.order_id } }, res);
 };

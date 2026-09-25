@@ -23,6 +23,7 @@ import { moveStock, stockAt } from './stock.js';
 import { getProgram, isLive, progressFor, recordEvent as recordLoyalty } from './loyalty.js';
 import { CouponError, validateCoupon } from './coupons.js';
 import { consumptionPerUnit, loadRecipes } from './recipes.js';
+import { comboBlocker, comboConsumption, loadCombos } from './combos.js';
 
 export class BillingError extends Error {
   constructor(status, message) {
@@ -140,7 +141,10 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   const outletStock = await stockAt(client, tenant.branchId, productIds);
   const outletSettings = await outletSettingsFor(client, tenant.branchId, productIds);
 
-  const recipes = await loadRecipes(client, tenant.businessId, productIds);
+  // Combos sell as one line but use up their components (stock and recipes).
+  const combos = await loadCombos(client, tenant.businessId, productIds);
+  const componentIds = [...new Set([...combos.values()].flat().map((c) => c.component_id))];
+  const recipes = await loadRecipes(client, tenant.businessId, [...new Set([...productIds, ...componentIds])]);
 
   const lines = [];
   for (const raw of items) {
@@ -176,6 +180,14 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       }
       if (modifiers.length) description = `${description} (${modifierLabel(modifiers)})`;
       consumption = consumptionPerUnit(recipes.get(product.product_id), modifiers);
+      const parts = combos.get(product.product_id);
+      if (parts) {
+        const blocked = await comboBlocker(client, tenant.branchId, product.name, parts, quantity);
+        if (blocked) throw new BillingError(409, blocked);
+        const merged = new Map(consumption.map((c) => [c.ingredient_id, c.qty_per_unit]));
+        for (const c of comboConsumption(parts, recipes)) merged.set(c.ingredient_id, (merged.get(c.ingredient_id) || 0) + c.qty_per_unit);
+        consumption = [...merged].map(([ingredient_id, qty_per_unit]) => ({ ingredient_id, qty_per_unit }));
+      }
     } else {
       if (!raw.description || raw.unit_price == null) {
         throw new BillingError(400, 'A custom line needs a description and a price');

@@ -279,6 +279,13 @@ const OrderDetail = ({ orderId, onClose, onChanged }) => {
   const [couponCode, setCouponCode] = useState('');
   const [changingCustomer, setChangingCustomer] = useState(false);
   const [card, setCard] = useState(null);
+  const [waiters, setWaiters] = useState([]);
+  useEffect(() => { api('/tables/waiters').then(setWaiters).catch(() => {}); }, []);
+  const setWaiter = async (id) => {
+    setError('');
+    try { await api(`/orders/${orderId}/waiter`, { method: 'PATCH', body: { waiter_user_id: id ? Number(id) : null } }); load(); onChanged(); }
+    catch (caught) { setError(caught.message); }
+  };
 
   const load = () => api(`/orders/${orderId}`).then(setOrder).catch((e) => setError(e.message));
   useEffect(() => { load(); }, [orderId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -396,6 +403,15 @@ const OrderDetail = ({ orderId, onClose, onChanged }) => {
         </div>
 
         <div className="space-y-3 border-t border-line pt-4">
+          {order.order_type === 'DINE_IN' && !['BILLED', 'CANCELLED', 'MERGED'].includes(order.status) && (
+            <div className="flex items-center gap-3">
+              <p className="text-sm font-medium text-ink-700">Waiter</p>
+              <Select aria-label="Waiter" className="!w-auto !py-1.5 text-sm" value={order.waiter_user_id || ''} onChange={(e) => setWaiter(e.target.value)}>
+                <option value="">Not assigned</option>
+                {waiters.map((w) => <option key={w.user_id} value={w.user_id}>{w.name}</option>)}
+              </Select>
+            </div>
+          )}
           <div>
             <p className="mb-1 text-sm font-medium text-ink-700">Customer</p>
             {order.customer_id && !changingCustomer ? (
@@ -472,6 +488,7 @@ const OrdersPage = () => {
                   </div>
                   <p className="mt-1 text-sm text-ink-500">
                     {o.table_name || (o.platform ? `${o.platform} · ${o.external_order_number || ''}` : 'Walk-in')}
+                    {o.waiter_name && <span className="text-ink-400"> · {o.waiter_name}</span>}
                   </p>
                 </Card>
               ))}

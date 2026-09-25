@@ -389,6 +389,85 @@ const RecipeEditor = ({ dish, onClose }) => {
   );
 };
 
+/* A combo is a menu item made of other items: one price and one tax rate on the bill, but selling it
+   uses up its parts' stock and recipes, so cost and stock stay honest. */
+const ComboEditor = ({ dish, onClose }) => {
+  const toast = useToast();
+  const [items, setItems] = useState(null);
+  const [rows, setRows] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    Promise.all([api('/products?kind=DISH'), api(`/products/${dish.product_id}/combo`)])
+      .then(([dishes, combo]) => {
+        setItems(dishes.filter((p) => p.product_id !== dish.product_id && !p.is_combo));
+        setRows(combo.components.length ? combo.components.map((c) => ({ product_id: String(c.product_id), quantity: String(c.quantity) })) : [{ product_id: '', quantity: '1' }, { product_id: '', quantity: '1' }]);
+      })
+      .catch((e) => setError(e.message));
+  }, [dish.product_id]);
+
+  const price = (id) => items?.find((p) => String(p.product_id) === String(id))?.selling_price || 0;
+  const separate = (rows || []).reduce((sum, r) => sum + (Number(r.quantity) || 0) * price(r.product_id), 0);
+  const saving = separate - dish.selling_price;
+  const setRow = (i, field, value) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, [field]: value } : r)));
+
+  const save = async () => {
+    setBusy(true); setError('');
+    try {
+      await api(`/products/${dish.product_id}/combo`, { method: 'PUT', body: { components: rows.filter((r) => r.product_id).map((r) => ({ product_id: Number(r.product_id), quantity: Number(r.quantity) || 1 })) } });
+      toast.success('Combo saved');
+      onClose();
+    } catch (caught) { setError(caught.message); }
+    finally { setBusy(false); }
+  };
+  const remove = async () => {
+    setBusy(true); setError('');
+    try { await api(`/products/${dish.product_id}/combo`, { method: 'DELETE' }); toast.success('Back to a single item'); onClose(); }
+    catch (caught) { setError(caught.message); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Modal title={`Combo — ${dish.name}`} onClose={onClose} wide>
+      <div className="space-y-4">
+        <Alert>{error}</Alert>
+        {!rows && !error && <p className="text-sm text-ink-400">Loading…</p>}
+        {rows && (
+          <>
+            <p className="text-xs text-ink-500">Choose what is in the combo. It sells at its own price ({formatCurrency(dish.selling_price)}); each part's stock and recipe is used up when it is sold, and the kitchen sees what is inside.</p>
+            <div className="space-y-2">
+              {rows.map((r, i) => (
+                <div key={i} className="grid gap-2 sm:grid-cols-[1fr_6rem_6rem_auto]">
+                  <Select aria-label="Item" value={r.product_id} onChange={(e) => setRow(i, 'product_id', e.target.value)}>
+                    <option value="">Choose item…</option>
+                    {items?.map((p) => <option key={p.product_id} value={p.product_id}>{p.name}</option>)}
+                  </Select>
+                  <Input aria-label="Quantity" type="number" min="0" step="0.5" value={r.quantity} onChange={(e) => setRow(i, 'quantity', e.target.value)} />
+                  <span className="self-center text-right text-xs text-ink-500">{formatCurrency((Number(r.quantity) || 0) * price(r.product_id))}</span>
+                  <button type="button" onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))} className="text-xs font-semibold text-ink-400 hover:text-danger">Remove</button>
+                </div>
+              ))}
+            </div>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setRows((rs) => [...rs, { product_id: '', quantity: '1' }])}>Add item</Button>
+          </>
+        )}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+          <p className="text-sm text-ink-700">
+            Bought separately <strong className="text-ink-900">{formatCurrency(separate)}</strong>
+            {separate > 0 && <> · customer saves <strong className={saving > 0 ? 'text-success' : 'text-warning'}>{formatCurrency(Math.max(saving, 0))}</strong>{saving <= 0 && ' (the combo costs more than the parts)'}</>}
+          </p>
+          <div className="flex gap-2">
+            {dish.is_combo && <Button type="button" variant="ghost" disabled={busy} onClick={remove}>Remove combo</Button>}
+            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button type="button" disabled={busy || !rows} onClick={save}>{busy ? 'Saving…' : 'Save combo'}</Button>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
 const ProductsPage = () => {
   const [products, setProducts] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -397,6 +476,7 @@ const ProductsPage = () => {
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);   // null closed, {} for new, row for edit
   const [recipeFor, setRecipeFor] = useState(null);
+  const [comboFor, setComboFor] = useState(null);
   const [groups, setGroups] = useState([]);
   const [kindFilter, setKindFilter] = useState('');
   const [pricesFor, setPricesFor] = useState(null);
@@ -512,6 +592,7 @@ const ProductsPage = () => {
                   <div className="flex justify-end gap-3">
                     {outlets.length > 1 && p.kind === 'DISH' && <button onClick={() => setPricesFor(p)} className="text-xs font-semibold text-brand-600">Outlet prices</button>}
                     {isRestaurant && p.kind === 'DISH' && <button onClick={() => setRecipeFor(p)} className="text-xs font-semibold text-brand-600">Recipe</button>}
+                    {isRestaurant && p.kind === 'DISH' && <button onClick={() => setComboFor(p)} className="text-xs font-semibold text-brand-600">{p.is_combo ? 'Edit combo' : 'Combo'}</button>}
                     <button onClick={() => setEditing(p)} className="text-xs font-semibold text-brand-600">Edit</button>
                     {p.status === 'ACTIVE' && (
                       <button onClick={() => archive(p)} className="text-xs font-semibold text-ink-400 hover:text-danger">Archive</button>
@@ -542,6 +623,7 @@ const ProductsPage = () => {
 
       {importing && <MenuImportModal onClose={() => setImporting(false)} onDone={load} />}
       {pricesFor && <OutletPrices dish={pricesFor} onClose={() => { setPricesFor(null); load(); }} />}
+      {comboFor && <ComboEditor dish={comboFor} onClose={() => { setComboFor(null); load(); }} />}
       {recipeFor && <RecipeEditor dish={recipeFor} onClose={() => { setRecipeFor(null); load(); }} />}
     </div>
   );

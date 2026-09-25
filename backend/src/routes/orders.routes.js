@@ -20,6 +20,7 @@ router.patch('/:id/items/:itemId', ...kitchenWrite, orders.updateItem);
 router.post('/:id/kot', ...write, orders.sendKot);
 router.patch('/:id/status', ...kitchenWrite, orders.updateStatus);
 router.patch('/:id/customer', ...write, orders.setCustomer);
+router.patch('/:id/waiter', ...write, orders.setWaiter);
 router.post('/:id/cancel', ...write, orders.cancelOrder);
 router.post('/:id/bill', ...write, idempotent(), orders.bill);
 router.post('/:id/transfer', ...write, idempotent(), tabs.transfer);

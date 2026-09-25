@@ -12,6 +12,7 @@ const router = Router();
 const authed = [requireAuth, withBusiness(), requirePermission('reports')];
 
 router.get('/sales', ...authed, reports.sales);
+router.get('/waiters', ...authed, reports.waiters);
 router.get('/purchases', ...authed, reports.purchases);
 router.get('/expenses', ...authed, reports.expenses);
 router.get('/outstanding', ...authed, reports.outstanding);

@@ -7,6 +7,7 @@ const authed = [requireAuth, withBusiness(), requirePermission('billing')];
 const write = [requireAuth, withBusiness({ requireActive: true }), requirePermission('billing')];
 
 router.get('/', ...authed, tables.list);
+router.get('/waiters', ...authed, tables.waiters);
 router.post('/', ...write, requireOutlet, tables.create);
 router.patch('/:id', ...write, tables.update);
 

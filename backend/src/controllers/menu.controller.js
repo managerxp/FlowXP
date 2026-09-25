@@ -8,8 +8,9 @@ import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
 import { toPaise, toRupees } from '../utils/money.js';
 import { loadRecipes, recipeCostPaise, recipeMargin } from '../modules/recipes.js';
+import { loadCombos } from '../modules/combos.js';
 
-const bad = (res, message) => res.status(400).json({ success: false, message });
+const bad = (res, message, status = 400) => res.status(status).json({ success: false, message });
 
 const asGroup = (g, modifiers) => ({
   group_id: g.group_id,
@@ -272,4 +273,85 @@ export const setRecipe = async (req, res) => {
   } finally {
     client.release();
   }
+};
+
+/* ── Combos ────────────────────────────────────────────────────────────── */
+
+const comboResponse = async (db, businessId, productId) => {
+  const product = (await db.query(`SELECT product_id, name, selling_price_paise, is_combo FROM products WHERE product_id = $1 AND business_id = $2`, [productId, businessId])).rows[0];
+  if (!product) return null;
+  const parts = (await loadCombos(db, businessId, [Number(productId)])).get(Number(productId)) || [];
+  const value = parts.reduce((sum, c) => sum + Math.round(c.quantity * c.price_paise), 0);
+  return {
+    product_id: product.product_id, name: product.name, is_combo: product.is_combo,
+    price: toRupees(product.selling_price_paise),
+    // what the same items cost bought separately (list prices, before tax) and what the customer saves
+    separate_value: toRupees(value), saving: toRupees(value - Number(product.selling_price_paise)),
+    components: parts.map((c) => ({ product_id: c.component_id, name: c.name, quantity: c.quantity, price: toRupees(c.price_paise) }))
+  };
+};
+
+/* GET /api/products/:id/combo */
+export const getCombo = async (req, res) => {
+  const data = await comboResponse(pool, req.tenant.businessId, req.params.id);
+  if (!data) return res.status(404).json({ success: false, message: 'Not found' });
+  res.json({ success: true, data });
+};
+
+/* PUT /api/products/:id/combo  { components: [{ product_id, quantity }] } — make this item a combo of those items */
+export const setCombo = async (req, res) => {
+  const items = Array.isArray(req.body?.components) ? req.body.components : null;
+  if (!items || items.length < 2) return bad(res, 'A combo needs at least two items');
+  if (items.length > 20) return bad(res, 'A combo can have up to 20 items');
+  const id = Number(req.params.id);
+  const seen = new Set();
+  for (const item of items) {
+    const quantity = Number(item.quantity ?? 1);
+    if (!item.product_id || !(quantity > 0) || quantity > 100) return bad(res, 'Each item needs a quantity above zero');
+    if (Number(item.product_id) === id) return bad(res, 'A combo cannot contain itself');
+    if (seen.has(Number(item.product_id))) return bad(res, 'An item is listed twice');
+    seen.add(Number(item.product_id));
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const target = (await client.query(`SELECT kind, status FROM products WHERE product_id = $1 AND business_id = $2 FOR UPDATE`, [id, req.tenant.businessId])).rows[0];
+    if (!target) { await client.query('ROLLBACK'); return res.status(404).json({ success: false, message: 'Not found' }); }
+    if (target.kind !== 'DISH') { await client.query('ROLLBACK'); return bad(res, 'Only menu items can be combos'); }
+    const inside = (await client.query(`SELECT 1 FROM combo_items WHERE component_product_id = $1 LIMIT 1`, [id])).rows.length;
+    if (inside) { await client.query('ROLLBACK'); return bad(res, 'This item is part of another combo, so it cannot be a combo itself', 409); }
+
+    const found = (await client.query(
+      `SELECT product_id, is_combo, status FROM products WHERE business_id = $1 AND product_id = ANY($2::int[])`,
+      [req.tenant.businessId, [...seen]]
+    )).rows;
+    if (found.length !== seen.size) { await client.query('ROLLBACK'); return res.status(404).json({ success: false, message: 'One of the items was not found' }); }
+    if (found.some((p) => p.is_combo)) { await client.query('ROLLBACK'); return bad(res, 'A combo cannot contain another combo'); }
+    if (found.some((p) => p.status !== 'ACTIVE')) { await client.query('ROLLBACK'); return bad(res, 'An archived item cannot be in a combo'); }
+
+    await client.query(`DELETE FROM combo_items WHERE combo_product_id = $1`, [id]);
+    for (const item of items) {
+      await client.query(`INSERT INTO combo_items (business_id, combo_product_id, component_product_id, quantity) VALUES ($1,$2,$3,$4)`, [req.tenant.businessId, id, item.product_id, Number(item.quantity ?? 1)]);
+    }
+    await client.query(`UPDATE products SET is_combo = TRUE WHERE product_id = $1`, [id]);
+    const data = await comboResponse(client, req.tenant.businessId, id);
+    await client.query('COMMIT');
+    recordAudit(req, { action: 'combo.set', resource_type: 'product', resource_id: id, metadata: { items: items.length } });
+    res.json({ success: true, data });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+/* DELETE /api/products/:id/combo — turn it back into a plain item */
+export const clearCombo = async (req, res) => {
+  const { rowCount } = await pool.query(`UPDATE products SET is_combo = FALSE WHERE product_id = $1 AND business_id = $2`, [req.params.id, req.tenant.businessId]);
+  if (!rowCount) return res.status(404).json({ success: false, message: 'Not found' });
+  await pool.query(`DELETE FROM combo_items WHERE combo_product_id = $1 AND business_id = $2`, [req.params.id, req.tenant.businessId]);
+  recordAudit(req, { action: 'combo.cleared', resource_type: 'product', resource_id: req.params.id });
+  res.json({ success: true, data: await comboResponse(pool, req.tenant.businessId, req.params.id) });
 };

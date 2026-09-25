@@ -186,6 +186,7 @@ export const KotPage = () => {
               {slip.items.map((i, n) => (
                 <li key={n}>
                   <p className="text-base font-bold leading-tight">{i.quantity} × {i.description}</p>
+                  {i.combo?.length > 0 && <p className="pl-4 text-[12px]">{i.combo.join(', ')}</p>}
                   {i.modifiers.length > 0 && <p className="pl-4 text-[12px]">+ {i.modifiers.join(', ')}</p>}
                   {i.kitchen_notes && <p className="ml-4 mt-0.5 inline-block border border-black px-1 text-[12px] font-bold">NOTE: {i.kitchen_notes}</p>}
                 </li>

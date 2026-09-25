@@ -10,6 +10,7 @@ import { Alert, Button, Card, Input, ListState, Table, Td, Th, Thead, Tr } from 
 
 const TABS = [
   { key: 'sales', label: 'Sales' },
+  { key: 'waiters', label: 'Waiters' },
   { key: 'purchases', label: 'Purchases' },
   { key: 'expenses', label: 'Expenses' },
   { key: 'outstanding', label: 'Outstanding' },
@@ -17,7 +18,7 @@ const TABS = [
   { key: 'customers', label: 'Customers' },
   { key: 'gst', label: 'GST' }
 ];
-const DATED_TABS = new Set(['sales', 'purchases', 'expenses', 'customers', 'gst']);
+const DATED_TABS = new Set(['sales', 'waiters', 'purchases', 'expenses', 'customers', 'gst']);
 
 const Stat = ({ label, value }) => (
   <div className="glass rounded-[--radius-card] p-4">
@@ -131,7 +132,20 @@ const Gst = ({ d }) => (
   </div>
 );
 
-const RENDERERS = { sales: Sales, purchases: Purchases, expenses: Expenses, outstanding: Outstanding, inventory: InventoryReport, customers: Customers, gst: Gst };
+const Waiters = ({ d }) => (
+  d.waiters.length === 0 ? <p className="text-sm text-ink-400">No table sales in this period.</p> : (
+    <div className="space-y-4">
+      <Table><Thead><Th>Waiter</Th><Th className="text-right">Bills</Th><Th className="text-right">Avg bill</Th><Th className="text-right">Discounts</Th><Th className="text-right">Sales</Th></Thead>
+        <tbody>{d.waiters.map((w) => (
+          <Tr key={w.waiter_user_id ?? 'none'}><Td className="font-medium">{w.name}</Td><Td className="text-right">{w.bills}</Td><Td className="text-right">{formatCurrency(w.average_bill)}</Td><Td className="text-right">{formatCurrency(w.discounts)}</Td><Td className="text-right">{formatCurrency(w.revenue)}</Td></Tr>
+        ))}</tbody>
+      </Table>
+      <p className="text-xs text-ink-400">Sales from billed orders, net of credit notes, by the waiter who served the table. Total {formatCurrency(d.total)}.</p>
+    </div>
+  )
+);
+
+const RENDERERS = { sales: Sales, waiters: Waiters, purchases: Purchases, expenses: Expenses, outstanding: Outstanding, inventory: InventoryReport, customers: Customers, gst: Gst };
 
 const ReportsPage = () => {
   const [tab, setTab] = useState('sales');

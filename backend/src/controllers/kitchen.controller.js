@@ -6,6 +6,7 @@
  * station on the client so a single poll serves every screen in the kitchen.
  */
 import pool from '../config/database.js';
+import { componentLabels, loadCombos } from '../modules/combos.js';
 import { recordAudit } from '../modules/events.js';
 import { minutesSince, performance, urgency } from '../modules/kitchen.js';
 import { addDaysISO, businessToday } from '../utils/dates.js';
@@ -21,7 +22,7 @@ export const tickets = async (req, res) => {
   const scope = branchFilter(req.tenant, 'o.branch_id', values);
   const [rows, stations] = await Promise.all([
     pool.query(
-      `SELECT oi.order_item_id, oi.order_id, oi.description, oi.quantity, oi.kitchen_notes, oi.modifiers, oi.status, oi.station_id,
+      `SELECT oi.order_item_id, oi.order_id, oi.product_id, oi.description, oi.quantity, oi.kitchen_notes, oi.modifiers, oi.status, oi.station_id,
               oi.expected_minutes, oi.sent_at, oi.ready_at, oi.served_at, oi.cancelled_at,
               o.order_number, o.order_type, o.platform, t.name AS table_name, k.priority, k.kot_number
        FROM order_items oi
@@ -39,6 +40,7 @@ export const tickets = async (req, res) => {
     pool.query(`SELECT station_id, name FROM kitchen_stations WHERE business_id = $1 AND is_active ORDER BY sort_order, station_id`, [id])
   ]);
 
+  const combos = await loadCombos(pool, id, [...new Set(rows.rows.map((r) => r.product_id).filter(Boolean))]);
   const byOrder = new Map();
   for (const r of rows.rows) {
     if (!byOrder.has(r.order_id)) {
@@ -47,7 +49,7 @@ export const tickets = async (req, res) => {
     const making = r.status === 'PREPARING';
     const elapsed = making ? minutesSince(r.sent_at) : null;
     byOrder.get(r.order_id).items.push({
-      order_item_id: r.order_item_id, description: r.description, quantity: Number(r.quantity), modifiers: r.modifiers || [], kitchen_notes: r.kitchen_notes,
+      order_item_id: r.order_item_id, description: r.description, combo: componentLabels(combos.get(r.product_id)), quantity: Number(r.quantity), modifiers: r.modifiers || [], kitchen_notes: r.kitchen_notes,
       status: r.status, station_id: r.station_id, expected_minutes: r.expected_minutes, sent_at: r.sent_at,
       elapsed_minutes: elapsed, urgency: making ? urgency(elapsed, r.expected_minutes) : null,
       prep_minutes: r.ready_at ? Math.round((new Date(r.ready_at) - new Date(r.sent_at)) / 60000) : null,
@@ -88,16 +90,17 @@ export const printableKot = async (req, res) => {
   if (!kot) return bad(res, 'Not found', 404);
 
   const items = (await pool.query(
-    `SELECT oi.description, oi.quantity, oi.modifiers, oi.kitchen_notes, oi.station_id, COALESCE(s.name, 'Kitchen') AS station_name, COALESCE(s.sort_order, 999) AS sort
+    `SELECT oi.product_id, oi.description, oi.quantity, oi.modifiers, oi.kitchen_notes, oi.station_id, COALESCE(s.name, 'Kitchen') AS station_name, COALESCE(s.sort_order, 999) AS sort
      FROM order_items oi LEFT JOIN kitchen_stations s ON s.station_id = oi.station_id
      WHERE oi.kot_id = $1 AND oi.status <> 'CANCELLED' ORDER BY COALESCE(s.sort_order, 999), oi.order_item_id`, [kot.kot_id]
   )).rows;
 
+  const combos = await loadCombos(pool, req.tenant.businessId, [...new Set(items.map((i) => i.product_id).filter(Boolean))]);
   const stations = [];
   for (const i of items) {
     let group = stations.find((s) => s.station_id === (i.station_id ?? null));
     if (!group) { group = { station_id: i.station_id ?? null, name: i.station_name, items: [] }; stations.push(group); }
-    group.items.push({ description: i.description, quantity: Number(i.quantity), modifiers: (i.modifiers || []).map((m) => m.name), kitchen_notes: i.kitchen_notes });
+    group.items.push({ description: i.description, combo: componentLabels(combos.get(i.product_id)), quantity: Number(i.quantity), modifiers: (i.modifiers || []).map((m) => m.name), kitchen_notes: i.kitchen_notes });
   }
   res.json({
     success: true,

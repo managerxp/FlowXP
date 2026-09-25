@@ -12,7 +12,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { api } from '../lib/api.js';
-import { PageHeader, Card, Badge, Button, Modal, Field, Input, Alert, ListState, SkeletonCards } from '../components/ui.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
+import { PageHeader, Card, Badge, Button, Modal, Field, Input, Alert, ListState, SkeletonCards, Select } from '../components/ui.jsx';
 
 const STATUS_TONE = { FREE: 'success', RESERVED: 'warning', CLEANING: 'neutral' };
 
@@ -85,13 +86,29 @@ const TablesPage = () => {
   const [error, setError] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [qrTable, setQrTable] = useState(null);
+  const { user, outletId } = useAuth();
+  const me = user?.user_id ?? user?.id;
+  const [waiters, setWaiters] = useState([]);
+  const [mineOnly, setMineOnly] = useState(false);
 
   const load = () => api('/tables').then(setTables).catch((e) => setError(e.message));
   useEffect(() => { load(); }, []);
+  useEffect(() => { api('/tables/waiters').then(setWaiters).catch(() => setWaiters([])); }, [outletId]);
+
+  const assign = async (table, waiterId) => {
+    setError('');
+    try { await api(`/tables/${table.table_id}`, { method: 'PATCH', body: { waiter_user_id: waiterId ? Number(waiterId) : null } }); load(); }
+    catch (caught) { setError(caught.message); }
+  };
+  const shown = mineOnly ? tables?.filter((t) => t.waiter_user_id === me) : tables;
 
   return (
     <div>
       <PageHeader title="Tables" lead="Your floor, and the QR code each table's customers order from." action={<Button onClick={() => setShowAdd(true)}>Add table</Button>} />
+
+      {tables?.some((t) => t.waiter_user_id) && (
+        <label className="mb-4 flex items-center gap-2 text-sm text-ink-600"><input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} /> Show only my tables</label>
+      )}
 
       <ListState
         loading={!tables && !error}
@@ -102,7 +119,7 @@ const TablesPage = () => {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {tables?.map((t) => (
+        {shown?.map((t) => (
           <Card key={t.table_id}>
             <div className="flex items-start justify-between">
               <div>
@@ -113,6 +130,10 @@ const TablesPage = () => {
             </div>
             {t.seats && <p className="mt-2 text-xs text-ink-500">{t.seats} seats</p>}
             {t.next_reservation && !t.open_order_id && <p className="mt-1 text-xs font-medium text-amber-600">Booked {new Date(t.next_reservation.reserved_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · {t.next_reservation.guest_name} ({t.next_reservation.party_size})</p>}
+            <Select aria-label={`Waiter for ${t.name}`} className="mt-2 !py-1.5 text-xs" value={t.waiter_user_id || ''} onChange={(e) => assign(t, e.target.value)}>
+              <option value="">No regular waiter</option>
+              {waiters.map((w) => <option key={w.user_id} value={w.user_id}>{w.name}</option>)}
+            </Select>
             <div className="mt-4 flex gap-2">
               {t.open_order_id ? (
                 <Button size="sm" variant="secondary" className="flex-1" onClick={() => navigate('/app/orders')}>

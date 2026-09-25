@@ -54,6 +54,7 @@ const Ticket = ({ ticket, tab, now, onAdvance, onRush }) => {
             <li key={item.order_item_id} className={`flex items-start justify-between gap-3 ${item.cancelled ? 'rounded-md bg-danger/10 px-2 py-1' : ''}`}>
               <span className={item.cancelled ? 'text-danger line-through' : 'text-ink-900'}>
                 <span className="font-semibold">{item.quantity} ×</span> {item.description}
+                {item.combo?.length > 0 && <span className="block text-xs font-medium text-ink-500">{item.combo.join(' · ')}</span>}
                 {item.modifiers?.length > 0 && <span className="block text-xs font-medium text-brand-600">{item.modifiers.map((m) => m.name).join(' · ')}</span>}
                 {item.kitchen_notes && <span className="block text-xs text-ink-500">“{item.kitchen_notes}”</span>}
                 {item.cancelled && <span className="block text-xs font-bold no-underline">Cancelled — don't make</span>}

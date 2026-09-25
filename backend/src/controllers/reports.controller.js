@@ -333,3 +333,31 @@ export const gstRegister = async (req, res) => {
     }
   });
 };
+
+/* ==========================================================================
+   GET /api/reports/waiters — sales by the waiter who served the order
+   ========================================================================== */
+export const waiters = async (req, res) => {
+  const { from, to } = await dateRange(req.query, req.tenant.businessId);
+  const inv = outlet(req, 'i.branch_id');
+  const { rows } = await pool.query(
+    `SELECT o.waiter_user_id, u.name,
+            COUNT(DISTINCT o.order_id)::int AS orders,
+            COUNT(DISTINCT i.invoice_id)::int AS bills,
+            COALESCE(SUM(i.total_paise - i.credited_paise), 0) AS revenue_paise,
+            COALESCE(SUM(i.discount_paise), 0) AS discount_paise
+     FROM invoices i
+     JOIN orders o ON o.order_id = i.order_id
+     LEFT JOIN users u ON u.user_id = o.waiter_user_id
+     WHERE i.business_id = $1 AND i.status = 'ISSUED' AND i.invoice_date BETWEEN $2 AND $3${inv.sql}
+     GROUP BY o.waiter_user_id, u.name ORDER BY revenue_paise DESC`,
+    [req.tenant.businessId, from, to, ...inv.args]
+  );
+  const data = rows.map((r) => ({
+    waiter_user_id: r.waiter_user_id, name: r.name || 'Not assigned', orders: r.orders, bills: r.bills,
+    revenue: toRupees(r.revenue_paise),
+    average_bill: r.bills ? toRupees(Math.round(Number(r.revenue_paise) / r.bills)) : 0,
+    discounts: toRupees(r.discount_paise)
+  }));
+  res.json({ success: true, data: { range: { from, to }, waiters: data, total: toRupees(rows.reduce((n, r) => n + Number(r.revenue_paise), 0)) } });
+};

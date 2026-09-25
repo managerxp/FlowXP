@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
 import { branchFilter } from '../utils/scope.js';
+import { eligibleWaiters, isEligibleWaiter } from '../modules/waiters.js';
 
 const asTable = (row) => ({
   table_id: row.table_id,
@@ -22,6 +23,8 @@ const asTable = (row) => ({
   open_order_id: row.open_order_id,
   open_order_number: row.open_order_number,
   qr_token: row.qr_token,
+  waiter_user_id: row.waiter_user_id ?? null,
+  waiter_name: row.waiter_name ?? null,
   // the next booking on this table within the hour, so the floor can hold it back
   next_reservation: row.next_res_at ? { reserved_at: row.next_res_at, guest_name: row.next_res_guest, party_size: row.next_res_party } : null
 });
@@ -34,8 +37,9 @@ export const list = async (req, res) => {
   const scope = branchFilter(req.tenant, 't.branch_id', values);
   const { rows } = await pool.query(
     `SELECT t.*, o.order_id AS open_order_id, o.order_number AS open_order_number,
-            nr.reserved_at AS next_res_at, nr.guest_name AS next_res_guest, nr.party_size AS next_res_party
+            w.name AS waiter_name, nr.reserved_at AS next_res_at, nr.guest_name AS next_res_guest, nr.party_size AS next_res_party
      FROM dining_tables t
+     LEFT JOIN users w ON w.user_id = t.waiter_user_id
      LEFT JOIN LATERAL (
        SELECT r.reserved_at, r.guest_name, r.party_size FROM reservations r
        WHERE r.table_id = t.table_id AND r.status = 'BOOKED'
@@ -81,6 +85,14 @@ export const update = async (req, res) => {
     }
     values.push(body.status); fields.push(`status = $${values.length}`);
   }
+  if (body.waiter_user_id !== undefined) {
+    const waiterId = body.waiter_user_id ? Number(body.waiter_user_id) : null;
+    const own = (await pool.query(`SELECT branch_id FROM dining_tables WHERE table_id = $1 AND business_id = $2`, [req.params.id, req.tenant.businessId])).rows[0];
+    if (waiterId && own && !(await isEligibleWaiter(pool, req.tenant.businessId, own.branch_id, waiterId))) {
+      return res.status(400).json({ success: false, message: 'Choose a waiter who works at this outlet' });
+    }
+    values.push(waiterId); fields.push(`waiter_user_id = $${values.length}`);
+  }
   if (!fields.length) return res.status(400).json({ success: false, message: 'Nothing to update' });
 
   values.push(req.params.id, req.tenant.businessId);
@@ -91,5 +103,11 @@ export const update = async (req, res) => {
   );
   if (!rows.length) return res.status(404).json({ success: false, message: 'Not found' });
   recordAudit(req, { action: 'table.updated', resource_type: 'table', resource_id: req.params.id, metadata: body });
+  if (rows[0].waiter_user_id) rows[0].waiter_name = (await pool.query(`SELECT name FROM users WHERE user_id = $1`, [rows[0].waiter_user_id])).rows[0]?.name;
   res.json({ success: true, data: asTable(rows[0]) });
+};
+
+/* GET /api/tables/waiters — the team members a table can be assigned to at the active outlet */
+export const waiters = async (req, res) => {
+  res.json({ success: true, data: await eligibleWaiters(pool, req.tenant.businessId, req.tenant.branchId) });
 };
