@@ -1,0 +1,232 @@
+@import "tailwindcss";
+
+/*
+ * FlowXP brand tokens — taken from the logo.
+ *
+ * A white product on the logo's blue / cyan / violet, with the mark's own dark
+ * navy as the text colour. Every colour used anywhere is declared here; a hex
+ * code written inline in a component is how a design system stops being one.
+ *
+ * Token names are roles, not shades, so a later dark mode is a second block of
+ * values rather than a rename across every file:
+ *
+ *   surface / surface-2 / surface-3   grounds, lightest first
+ *   line                              borders and rules
+ *   ink-900 / -700 / -500 / -400      text, strongest first
+ *   brand-*                           the logo blue — interactive default
+ *   cyan-* / violet-*                 the arrow and the "XP"
+ */
+@theme {
+  /* Grounds. Not pure white everywhere: a page of #fff with #fff cards has no
+     depth, so sections alternate against the two tints below. */
+  --color-surface: #ffffff;
+  --color-surface-2: #f6f8fc;
+  --color-surface-3: #eef3fa;
+  --color-line: #e3e9f3;
+  --color-line-strong: #cfd8e8;
+
+  /* Text — the navy of the "Flow" wordmark, lightened down to a muted grey.
+     ink-500 on white is 5.1:1, ink-400 is 3.4:1 and is therefore only ever
+     used at 18px+ or for decoration, never for body copy. */
+  --color-ink-900: #0f1b34;
+  --color-ink-700: #24334f;
+  --color-ink-500: #5a6b87;
+  --color-ink-400: #8494ad;
+
+  /* Primary — the logo blue. -600 is the smallest size that clears 4.5:1
+     against white, so link text and small labels use it, not -500. */
+  --color-brand-400: #4d9bff;
+  --color-brand-500: #1d7af3;
+  --color-brand-600: #1560cc;
+  --color-brand-700: #0f4699;
+  --color-brand-50: #eaf3ff;
+
+  /* Accents, straight off the mark: the arrow's cyan, the "XP" violet, and the
+     dots in the BILLING · PAYMENTS · INVENTORY · GST · AI rule. */
+  --color-cyan-400: #38e0f0;
+  --color-cyan-500: #12c6dd;
+  --color-cyan-600: #0a9db0;
+  --color-violet-400: #b95cff;
+  --color-violet-500: #a21cf0;
+  --color-violet-600: #8410c9;
+  --color-teal-500: #14d0c0;
+  --color-amber-500: #f26b21;
+
+  --color-success: #0f9d6b;
+  --color-warning: #c25610;
+  --color-danger: #d6273f;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --radius-card: 14px;
+
+  /* Shadows, tokenised for the same reason the colours above are: a
+     shadow value written inline (`shadow-[0_10px_26px_-12px]`, duplicated
+     wherever the same lift was wanted) is how a design system stops being
+     one. Tailwind v4 turns a `--shadow-*` theme value into a `shadow-*`
+     utility automatically. */
+  --shadow-sm: 0 1px 2px rgb(15 27 52 / 0.04);
+  --shadow-md: 0 12px 32px -16px rgb(15 27 52 / 0.16);
+  /* Matches the brand-500/80 opacity the inline arbitrary value used before
+     — a named theme token can't be paired with a separate shadow-color
+     utility the way Tailwind's own built-in shadow scale can, so the
+     opacity is baked into the token itself via color-mix, same as every
+     other translucency in this file. */
+  --shadow-glow: 0 10px 26px -12px color-mix(in oklab, var(--color-brand-500) 80%, transparent);
+}
+
+:root {
+  color-scheme: light;
+  /* The mark's own gradient, declared once, so .text-gradient and
+     .bg-gradient-brand can never drift apart. */
+  --gradient-brand: linear-gradient(
+    100deg,
+    var(--color-brand-500) 0%,
+    var(--color-cyan-500) 45%,
+    var(--color-violet-500) 100%
+  );
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-surface);
+  color: var(--color-ink-900);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+
+/*
+ * The ambient backdrop every glass panel on the site blurs.
+ *
+ * Real frosted glass needs something underneath it worth blurring — a flat
+ * white page behind a translucent white panel is still just a white panel.
+ * This is the site's "wallpaper": soft, fixed colour washes in the logo's own
+ * blue/cyan/violet. `fixed` (not `absolute`) so it stays put as the page
+ * scrolls — every glass element sees the same backdrop no matter where it
+ * sits, the way an iOS control sees the wallpaper behind it rather than
+ * whatever app content happens to be scrolled underneath.
+ *
+ * Three wide, overlapping ellipses across the top (not corner blobs) so the
+ * floating nav has colour under its *entire* width, not just its two ends —
+ * and every one fades to transparent via its own gradient stop rather than
+ * being cropped to a fixed box, so there is no hard edge where the colour
+ * just stops. (An earlier version sized one gradient to a flat 220px band —
+ * that cropped instead of faded, and read as a garish rectangle, not glass.)
+ */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(65% 34% at 18% -8%, color-mix(in oklab, var(--color-brand-500) 13%, transparent) 0%, transparent 75%),
+    radial-gradient(65% 34% at 82% -8%, color-mix(in oklab, var(--color-violet-500) 12%, transparent) 0%, transparent 75%),
+    radial-gradient(55% 30% at 50% 2%, color-mix(in oklab, var(--color-cyan-500) 10%, transparent) 0%, transparent 75%),
+    radial-gradient(40% 30% at 45% 100%, color-mix(in oklab, var(--color-cyan-500) 8%, transparent) 0%, transparent 70%),
+    var(--color-surface);
+  pointer-events: none;
+}
+
+/* The logo's gradient as text — the "XP", one headline accent, nothing else.
+   Overused it stops reading as a brand cue and starts reading as a theme. */
+.text-gradient {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.bg-gradient-brand {
+  background: var(--gradient-brand);
+}
+
+/*
+ * The wash behind a hero, as one utility rather than a gradient pasted into
+ * every section. Sits behind content; never on it. Kept faint — on a light
+ * ground a strong tint reads as a rendering artefact rather than a brand cue.
+ */
+.glow-brand {
+  position: relative;
+  isolation: isolate;
+  /* The ::before below bleeds 10% past each side to soften its edges, which
+     without this makes the whole page scroll sideways. Clipped here rather
+     than by an overflow-hidden wrapper at each call site — one of those will
+     always be forgotten. */
+  overflow: hidden;
+}
+.glow-brand::before {
+  content: "";
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 560px;
+  z-index: -1;
+  background:
+    radial-gradient(46% 60% at 28% 0%,
+      color-mix(in oklab, var(--color-brand-500) 14%, transparent) 0%, transparent 68%),
+    radial-gradient(42% 55% at 74% 6%,
+      color-mix(in oklab, var(--color-violet-500) 11%, transparent) 0%, transparent 68%);
+  pointer-events: none;
+  /* The hero's first beat — "background subtly fades in" — done in CSS, not
+     GSAP: a ::before has no DOM node, so there is nothing here for GSAP to
+     select. The reduced-motion rule further down zeroes this duration too. */
+  animation: glow-fade-in 1.4s ease-out both;
+}
+
+@keyframes glow-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/*
+ * True frosted glass — the iOS control-centre look: translucent, blurred,
+ * a touch more saturated than what's behind it, with a hairline border that
+ * catches light on its top edge the way a physical pane of glass would.
+ *
+ * `saturate(160%)` is what stops this reading as "smudged" — blur alone
+ * dulls colour, and Apple's own material compensates by boosting it back up
+ * so whatever is showing through still looks vivid, not washed out.
+ * `-webkit-backdrop-filter` is required for Safari; without it iOS renders
+ * this as a plain translucent panel with no blur at all.
+ */
+.glass {
+  background: color-mix(in oklab, var(--color-surface) 58%, transparent);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid color-mix(in oklab, white 50%, var(--color-line-strong));
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.5),
+    0 1px 2px rgb(15 27 52 / 0.04),
+    0 12px 32px -16px rgb(15 27 52 / 0.16);
+}
+
+/* Glass over a dark or saturated ground (the gradient CTA banners) needs the
+   opposite mix — a light panel would disappear into it, so this lightens
+   toward white instead of toward the page's own background. */
+.glass-on-dark {
+  background: color-mix(in oklab, white 22%, transparent);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid color-mix(in oklab, white 35%, transparent);
+  box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.35);
+}
+
+/* Focus is never removed, only restyled. Keyboard users need to see where they
+   are, and this is the one accessibility default that gets deleted for looking
+   untidy. */
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
