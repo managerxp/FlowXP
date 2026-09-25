@@ -107,12 +107,21 @@ const InvoiceDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { business } = useAuth();
+  const toast = useToast();
   const [invoice, setInvoice] = useState(null);
   const [error, setError] = useState('');
   const [paying, setPaying] = useState(false);
   const [refunding, setRefunding] = useState(false);
   const [crediting, setCrediting] = useState(false);
 
+  const sendBill = async () => {
+    const phone = invoice.customer_phone || window.prompt('Customer mobile number to send the bill to:');
+    if (!phone) return;
+    try {
+      const m = await api('/messaging/send-bill', { method: 'POST', body: { invoice_id: Number(id), phone } });
+      toast.success(m.status === 'SENT' ? 'Bill sent' : m.status === 'SKIPPED' ? 'Not sent: no messaging service is connected yet' : `Could not send: ${m.error}`);
+    } catch (caught) { setError(caught.message); }
+  };
   const load = () => { api(`/invoices/${id}`).then(setInvoice).catch((caught) => setError(caught.message)); };
   useEffect(() => { load(); }, [id]);
 
@@ -138,6 +147,7 @@ const InvoiceDetail = () => {
             <Button variant="secondary" onClick={() => setRefunding(true)}>Refund</Button>
           )}
           <Button variant="secondary" onClick={() => openPrint('receipt', id)}>Print receipt</Button>
+          {invoice.status === 'ISSUED' && <Button variant="secondary" onClick={sendBill}>Send bill</Button>}
           <Button variant="secondary" onClick={() => window.print()}>Print invoice / PDF</Button>
           {invoice.status === 'ISSUED' && <Button variant="ghost" onClick={cancel}>Cancel invoice</Button>}
         </div>

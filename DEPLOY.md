@@ -59,6 +59,15 @@ S3_PUBLIC_URL=https://files.example.com                    # where browsers read
 The bucket must allow public reads of its objects (or sit behind a CDN that does); the API only needs permission to
 write and delete. Photos already stored on disk keep working after you switch; new uploads go to the bucket.
 
+## 2b. Messaging (WhatsApp / SMS)
+
+Off until you set a provider. With `MESSAGING_PROVIDER=log` (the default) nothing is sent and the Message log shows every message as *skipped*.
+
+- **WhatsApp (Meta Cloud API):** `MESSAGING_PROVIDER=whatsapp_cloud`, `WHATSAPP_TOKEN` (a permanent system-user token) and `WHATSAPP_PHONE_ID`. Create the seven templates listed in the app (Messaging, Settings, "Show the WhatsApp templates") in Meta Business Manager and wait for approval; until a template is approved its messages fail with Meta's reason, visible in the log.
+- **SMS (Twilio):** `MESSAGING_PROVIDER=twilio`, `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_FROM`. In India, SMS also needs DLT registration of the sender and templates with your operator; Twilio's own docs cover it.
+- Set `APP_ORIGIN` to the public https address: the bill link customers receive is built from it.
+- Each business then turns a channel on under Messaging. Test with one bill to your own number first.
+
 ## 3. Backups (do this before real customers)
 
 ```bash

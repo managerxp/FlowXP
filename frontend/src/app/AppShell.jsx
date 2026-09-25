@@ -54,6 +54,7 @@ const NAV_GROUPS = [
       { to: '/app/purchases',    label: 'Purchases' },
       { to: '/app/customers',    label: 'Customers' },
       { to: '/app/loyalty',      label: 'Loyalty & coupons', roles: ['OWNER', 'ADMIN'] },
+      { to: '/app/messaging',    label: 'Messaging', roles: ['OWNER', 'ADMIN'] },
       { to: '/app/suppliers',    label: 'Suppliers' },
       { to: '/app/payments',     label: 'Payments' },
       { to: '/app/expenses',     label: 'Expenses' },

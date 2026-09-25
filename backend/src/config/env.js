@@ -26,6 +26,10 @@ if (process.env.NODE_ENV === 'production') {
   if ((process.env.STORAGE_DRIVER || 'local').toLowerCase() === 's3') {
     for (const key of ['S3_ENDPOINT', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY']) if (!process.env[key]) problems.push(`${key} is required when STORAGE_DRIVER=s3`);
   }
+  const messaging = (process.env.MESSAGING_PROVIDER || 'log').toLowerCase();
+  if (!['log', 'whatsapp_cloud', 'twilio'].includes(messaging)) problems.push('MESSAGING_PROVIDER must be log, whatsapp_cloud or twilio');
+  if (messaging === 'whatsapp_cloud') for (const key of ['WHATSAPP_TOKEN', 'WHATSAPP_PHONE_ID']) if (!process.env[key]) problems.push(`${key} is required when MESSAGING_PROVIDER=whatsapp_cloud`);
+  if (messaging === 'twilio') for (const key of ['TWILIO_SID', 'TWILIO_TOKEN', 'TWILIO_FROM']) if (!process.env[key]) problems.push(`${key} is required when MESSAGING_PROVIDER=twilio`);
   if (problems.length) {
     console.error(['[config] refusing to start in production:', ...problems.map((p) => ` - ${p}`)].join('\n'));
     process.exit(1);
@@ -61,6 +65,19 @@ export const config = {
     accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
     secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
     publicUrl: process.env.S3_PUBLIC_URL || ''
+  },
+  /* Customer messages (bill, booking, offers). 'log' sends nothing: messages are only recorded as skipped.
+     whatsapp_cloud = Meta WhatsApp Cloud API (approved templates); twilio = SMS (or WhatsApp) by Twilio. */
+  messaging: {
+    provider: (process.env.MESSAGING_PROVIDER || 'log').toLowerCase(),
+    whatsappToken: process.env.WHATSAPP_TOKEN || '',
+    whatsappPhoneId: process.env.WHATSAPP_PHONE_ID || '',
+    whatsappLanguage: process.env.WHATSAPP_TEMPLATE_LANG || 'en',
+    twilioSid: process.env.TWILIO_SID || '',
+    twilioToken: process.env.TWILIO_TOKEN || '',
+    twilioFrom: process.env.TWILIO_FROM || '',
+    twilioWhatsappFrom: process.env.TWILIO_WHATSAPP_FROM || '',
+    countryCode: process.env.MESSAGING_COUNTRY_CODE || '91'
   },
   // Extra browser origins allowed to call the API (comma separated), on top of APP_ORIGIN.
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),

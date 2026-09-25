@@ -84,6 +84,8 @@ const StaffPage = lazy(() => import('./app/StaffPage.jsx'));
    no login, no nav, not inside SiteLayout or AppShell at all. See
    public/CustomerMenu.jsx's header comment. */
 const CustomerMenu = lazy(() => import('./public/CustomerMenu.jsx'));
+const BillPage = lazy(() => import('./public/BillPage.jsx'));
+const MessagingPage = lazy(() => import('./app/MessagingPage.jsx'));
 
 /* Screens still to come (none right now: every app page has a real screen). */
 const PENDING = [];
@@ -165,6 +167,7 @@ const App = () => (
       <Route path="integrations" element={<IntegrationsPage />} />
       <Route path="outlets" element={<OutletsPage />} />
       <Route path="loyalty" element={<LoyaltyPage />} />
+      <Route path="messaging" element={<MessagingPage />} />
       <Route path="ai" element={<AIManagerPage />} />
       <Route path="print/receipt/:id" element={<ReceiptPage />} />
       <Route path="print/kot/:id" element={<KotPage />} />
@@ -179,6 +182,7 @@ const App = () => (
     {/* A customer's own phone — no login, no nav, no SiteLayout/AppShell
         chrome at all. The first bare page in this app; see
         public/CustomerMenu.jsx. */}
+    <Route path="bill/:token" element={<Suspense fallback={<p className="p-8 text-sm text-ink-400">Loading…</p>}><BillPage /></Suspense>} />
     <Route
       path="order/:token"
       element={

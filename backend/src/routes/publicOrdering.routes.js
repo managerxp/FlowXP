@@ -8,9 +8,14 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import * as publicOrdering from '../controllers/publicOrdering.controller.js';
+import * as publicBill from '../controllers/publicBill.controller.js';
 import { idempotent } from '../middleware/idempotency.js';
 
 const router = Router();
+
+/* The bill link in a customer's message. The token is 128 random bits; the limit is only there to blunt guessing. */
+const billLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { success: false, message: 'Too many requests. Try again shortly.' } });
+router.get('/bill/:token', billLimiter, publicBill.bill);
 
 /* The one unauthenticated write in this whole API. Generous relative to the
    login limiter — a real table can place several rounds over a meal — but

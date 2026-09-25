@@ -10,6 +10,7 @@ import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
 import { findCustomerByPhone, normalisePhone } from '../modules/loyalty.js';
 import { businessToday } from '../utils/dates.js';
+import { afterReservation, afterWaitlist } from '../modules/messaging/index.js';
 import { branchFilter } from '../utils/scope.js';
 
 const bad = (res, message, status = 400) => res.status(status).json({ success: false, message });
@@ -115,6 +116,7 @@ export const create = async (req, res) => {
     [req.tenant.businessId, req.tenant.branchId, table.id, g.customerId, g.name, g.phone, g.party, at.toISOString(), minutes,
       body.notes ? String(body.notes).slice(0, 300) : null, req.auth.userId]);
   recordAudit(req, { action: 'reservation.created', resource_type: 'reservation', resource_id: rows[0].reservation_id, metadata: { guest: g.name, party: g.party, at: at.toISOString() }, branch_id: req.tenant.branchId });
+  afterReservation(rows[0], 'created');
   res.status(201).json({ success: true, data: rows[0] });
 };
 
@@ -156,6 +158,7 @@ export const setStatus = async (req, res) => {
   if (!allowed.includes(next)) return bad(res, `A ${words(cur.status)} reservation can't be marked ${words(next)}`, 409);
   const { rows } = await pool.query(`UPDATE reservations SET status = $1 WHERE reservation_id = $2 RETURNING *`, [next, cur.reservation_id]);
   recordAudit(req, { action: `reservation.${next.toLowerCase()}`, resource_type: 'reservation', resource_id: cur.reservation_id, metadata: { guest: cur.guest_name }, branch_id: cur.branch_id });
+  if (next === 'CANCELLED') afterReservation(rows[0], 'cancelled');
   res.json({ success: true, data: rows[0] });
 };
 
@@ -204,6 +207,7 @@ export const waitlistAdd = async (req, res) => {
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
     [req.tenant.businessId, req.tenant.branchId, g.customerId, g.name, g.phone, g.party, quoted, req.auth.userId]);
   recordAudit(req, { action: 'waitlist.added', resource_type: 'waitlist', resource_id: rows[0].entry_id, metadata: { guest: g.name, party: g.party }, branch_id: req.tenant.branchId });
+  afterWaitlist(rows[0], 'added');
   res.status(201).json({ success: true, data: rows[0] });
 };
 
@@ -222,6 +226,7 @@ export const waitlistNotify = async (req, res) => {
   const cur = await waiting(req, res);
   if (!cur) return;
   const { rows } = await pool.query(`UPDATE waitlist_entries SET status = 'NOTIFIED', notified_at = CURRENT_TIMESTAMP WHERE entry_id = $1 RETURNING *`, [cur.entry_id]);
+  afterWaitlist(rows[0], 'ready');
   res.json({ success: true, data: rows[0] });
 };
 

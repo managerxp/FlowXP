@@ -24,6 +24,7 @@ import { getProgram, isLive, progressFor, recordEvent as recordLoyalty } from '.
 import { CouponError, validateCoupon } from './coupons.js';
 import { consumptionPerUnit, loadRecipes } from './recipes.js';
 import { comboBlocker, comboConsumption, loadCombos } from './combos.js';
+import { afterBill } from './messaging/index.js';
 
 export class BillingError extends Error {
   constructor(status, message) {
@@ -363,4 +364,5 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
 export const recordInvoiceCreated = (req, invoice) => {
   recordAudit(req, { action: 'invoice.created', resource_type: 'invoice', resource_id: invoice.invoice_id, metadata: { total: invoice.total } });
   recordEvent('invoice_created', { userId: req.auth.userId, businessId: req.tenant.businessId, properties: { total: invoice.total } });
+  afterBill(req.tenant.businessId, invoice.invoice_id);   // the customer's copy and loyalty nudge, when messaging is on
 };
