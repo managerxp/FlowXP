@@ -9,7 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api, formatCurrency } from '../../lib/api.js';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { openPrint } from '../../lib/printing.js';
+import { getDevicePrefs, openDrawer, openPrint, printReceipt } from '../../lib/printing.js';
 import CreditNoteModal from '../../components/CreditNoteModal.jsx';
 import { Alert, Button, Card, Field, Input, Modal, Select, StatusBadge, Table, Td, Th, Thead, Tr, useToast } from '../../components/ui.jsx';
 
@@ -32,6 +32,7 @@ const PayForm = ({ invoiceId, balanceDue, onSaved, onClose }) => {
     try {
       await api(`/invoices/${invoiceId}/payments`, { method: 'POST', idempotencyKey: idem.get(), body: { amount: Number(amount), method } });
       idem.settle();
+      if (method === 'CASH' && getDevicePrefs().openDrawer) openDrawer();
       onSaved();
     } catch (caught) { idem.settle(caught); setError(caught.message); }
     finally { setBusy(false); }
@@ -146,7 +147,7 @@ const InvoiceDetail = () => {
           {invoice.amount_paid - invoice.refunded > 0 && (
             <Button variant="secondary" onClick={() => setRefunding(true)}>Refund</Button>
           )}
-          <Button variant="secondary" onClick={() => openPrint('receipt', id)}>Print receipt</Button>
+          <Button variant="secondary" onClick={() => printReceipt(id)}>Print receipt</Button>
           {invoice.status === 'ISSUED' && <Button variant="secondary" onClick={sendBill}>Send bill</Button>}
           <Button variant="secondary" onClick={() => window.print()}>Print invoice / PDF</Button>
           {invoice.status === 'ISSUED' && <Button variant="ghost" onClick={cancel}>Cancel invoice</Button>}

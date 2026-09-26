@@ -26,3 +26,10 @@ export const uploadMenuPhotos = multer({
   fileFilter,
   limits: { fileSize: 8 * 1024 * 1024, files: 5 }
 }).array('images', 5);
+
+/* A business logo for receipts: one small image. */
+export const uploadLogo = multer({
+  storage: multer.memoryStorage(),
+  fileFilter,
+  limits: { fileSize: 2 * 1024 * 1024 }
+}).single('logo');

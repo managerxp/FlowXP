@@ -42,6 +42,8 @@ import menuImportRoutes from './menuImport.routes.js';
 import creditNoteRoutes from './creditNotes.routes.js';
 import reservationRoutes from './reservations.routes.js';
 import messagingRoutes from './messaging.routes.js';
+import printRoutes from './print.routes.js';
+import { uploadLogo } from '../middleware/upload.js';
 import publicOrderingRoutes from './publicOrdering.routes.js';
 
 const router = Router();
@@ -112,6 +114,8 @@ router.post('/auth/logout', requireAuth, (_req, res) =>
 
 router.get('/businesses/current', requireAuth, withBusiness(), business.getCurrent);
 router.patch('/businesses/current', requireAuth, withBusiness({ requireActive: true }), requireOwner, business.updateCurrent);
+router.post('/businesses/current/logo', requireAuth, withBusiness({ requireActive: true }), requireOwner, uploadLogo, business.uploadLogo);
+router.delete('/businesses/current/logo', requireAuth, withBusiness({ requireActive: true }), requireOwner, business.removeLogo);
 router.get('/businesses/current/subscription', requireAuth, withBusiness(), business.getSubscription);
 
 /* Readable after the trial ends, on purpose — see withBusiness(). */
@@ -121,6 +125,7 @@ router.get('/dashboard', requireAuth, withBusiness(), dashboard.getDashboard);
 
 router.use('/', productsRoutes);           // /categories, /products
 router.use('/', creditNoteRoutes);         // /invoices/:id/credit-notes, /credit-notes
+router.use('/', printRoutes);              // /invoices/:id/escpos, /kitchen/kots/:id/escpos, /print/*
 router.use('/', messagingRoutes);          // /messaging, /customers/:id/marketing
 router.use('/', reservationRoutes);        // /reservations, /waitlist
 router.use('/', loyaltyRoutes);            // /loyalty, /coupons

@@ -5,10 +5,11 @@
  * in?" is answered once here rather than in every screen — a check repeated
  * per-page is a check that eventually gets missed on one.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Avatar, Button, Logo } from '../components/ui.jsx';
+import { Avatar, Button, Logo, useToast } from '../components/ui.jsx';
+import { setPrintErrorHandler } from '../lib/printing.js';
 import { ErrorBoundary } from '../components/ErrorBoundary.jsx';
 import NotificationBell from '../components/NotificationBell.jsx';
 import { RESTAURANT_TYPES } from '../lib/business.js';
@@ -103,6 +104,8 @@ const SubscriptionBanner = ({ subscription }) => {
 const AppShell = () => {
   const { user, business, businesses, businessId, switchBusiness, signOut, loading, outlets, outletId, canViewAll, switchOutlet } = useAuth();
   const location = useLocation();
+  const toast = useToast();
+  useEffect(() => { setPrintErrorHandler((message) => toast.error(message)); return () => setPrintErrorHandler(null); }, [toast]);
   const [navOpen, setNavOpen] = useState(false);
 
   /* Wait for /auth/me before deciding. Without this, a page refresh bounces a

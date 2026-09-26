@@ -8,6 +8,7 @@
  * level — the wizard asks for them, it does not withhold the product.
  */
 import pool from '../config/database.js';
+import { EXT_BY_MIME, putFile, removeFile } from '../modules/storage.js';
 import { subscriptionSummary, newTrialWindow } from '../modules/subscription.js';
 import { recordAudit, recordEvent } from '../modules/events.js';
 import {
@@ -179,7 +180,7 @@ const EDITABLE = {
 };
 
 /* Receipt printing preferences: every key checked, unknown keys dropped. */
-export const RECEIPT_DEFAULTS = { paper_width: 80, footer: 'Thank you! Visit again.', show_gstin: true, show_upi_qr: true, show_loyalty: true };
+export const RECEIPT_DEFAULTS = { paper_width: 80, footer: 'Thank you! Visit again.', show_gstin: true, show_upi_qr: true, show_loyalty: true, show_logo: true, logo_url: null };
 export const cleanReceiptSettings = (input) => {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: 'Receipt settings must be an object' };
   const out = {};
@@ -192,7 +193,7 @@ export const cleanReceiptSettings = (input) => {
     if (footer.length > 200) return { error: 'The footer is too long (200 characters at most)' };
     out.footer = footer;
   }
-  for (const key of ['show_gstin', 'show_upi_qr', 'show_loyalty']) if (key in input) out[key] = input[key] === true;
+  for (const key of ['show_gstin', 'show_upi_qr', 'show_loyalty', 'show_logo']) if (key in input) out[key] = input[key] === true;
   return { settings: out };
 };
 
@@ -308,4 +309,29 @@ export const getSubscription = async (req, res) => {
     console.error('[business] subscription read failed:', error.message);
     res.status(500).json({ success: false, message: 'Could not load your subscription' });
   }
+};
+
+/* POST /api/businesses/current/logo — the picture printed at the top of browser receipts */
+export const uploadLogo = async (req, res) => {
+  if (!req.file) return res.status(400).json({ success: false, message: 'Choose an image to upload' });
+  const old = (await pool.query('SELECT receipt_settings FROM businesses WHERE business_id = $1', [req.tenant.businessId])).rows[0]?.receipt_settings?.logo_url;
+  let url;
+  try {
+    url = await putFile({ key: `logos/${req.tenant.businessId}/logo-${Date.now()}${EXT_BY_MIME[req.file.mimetype]}`, buffer: req.file.buffer, contentType: req.file.mimetype });
+  } catch (error) {
+    console.error('[business] logo upload failed:', error.message);
+    return res.status(502).json({ success: false, message: 'Could not save the logo. Try again in a moment.' });
+  }
+  await pool.query('UPDATE businesses SET receipt_settings = receipt_settings || $1::jsonb, updated_at = CURRENT_TIMESTAMP WHERE business_id = $2', [JSON.stringify({ logo_url: url }), req.tenant.businessId]);
+  if (old) removeFile(old);
+  recordAudit(req, { action: 'business.logo_uploaded', resource_type: 'business', resource_id: req.tenant.businessId });
+  res.json({ success: true, data: { logo_url: url } });
+};
+
+/* DELETE /api/businesses/current/logo */
+export const removeLogo = async (req, res) => {
+  const old = (await pool.query('SELECT receipt_settings FROM businesses WHERE business_id = $1', [req.tenant.businessId])).rows[0]?.receipt_settings?.logo_url;
+  await pool.query("UPDATE businesses SET receipt_settings = receipt_settings - 'logo_url', updated_at = CURRENT_TIMESTAMP WHERE business_id = $1", [req.tenant.businessId]);
+  if (old) removeFile(old);
+  res.json({ success: true, data: { logo_url: null } });
 };

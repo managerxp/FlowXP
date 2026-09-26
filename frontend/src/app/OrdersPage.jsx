@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { api, formatCurrency } from '../lib/api.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
 import { LoyaltyCard, MobileLookup, PointsPanel } from '../components/LoyaltyCard.jsx';
-import { getDevicePrefs, openPrint, setDevicePref } from '../lib/printing.js';
+import { getDevicePrefs, printKot as printKotSlip, printReceipt, setDevicePref } from '../lib/printing.js';
 import ModifierPicker, { needsChoices, useModifierGroups } from '../components/ModifierPicker.jsx';
 import {
   PageHeader, Button, Card, Badge, StatusBadge, Modal, Field, Input, Select,
@@ -325,7 +325,7 @@ const OrderDetail = ({ orderId, onClose, onChanged }) => {
     try {
       const kot = await api(`/orders/${orderId}/kot`, { method: 'POST', body: { priority: rush ? 'RUSH' : 'NORMAL' } });
       setRush(false); load(); onChanged();
-      if (printKot) openPrint('kot', kot.kot_id);
+      if (printKot) printKotSlip(kot.kot_id);
     }
     catch (caught) { setError(caught.message); }
     finally { setBusy(false); }
@@ -336,7 +336,7 @@ const OrderDetail = ({ orderId, onClose, onChanged }) => {
     try {
       const invoice = await api(`/orders/${orderId}/bill`, { method: 'POST', idempotencyKey: billKey.get(), body: (couponCode.trim() || Number(redeem) > 0) ? { coupon_code: couponCode.trim() || undefined, redeem_points: Number(redeem) > 0 ? Number(redeem) : undefined } : undefined });
       billKey.settle();
-      if (getDevicePrefs().autoPrintReceipt) openPrint('receipt', invoice.invoice_id);
+      if (getDevicePrefs().autoPrintReceipt) printReceipt(invoice.invoice_id);
       onChanged();
       navigate(`/app/billing/invoices/${invoice.invoice_id}`);
     } catch (caught) { billKey.settle(caught); setError(caught.message); setBusy(false); }
@@ -432,7 +432,7 @@ const OrderDetail = ({ orderId, onClose, onChanged }) => {
         {order.kots?.length > 0 && (
           <p className="flex flex-wrap items-center gap-2 border-t border-line pt-3 text-xs text-ink-500">
             Sent to the kitchen:
-            {order.kots.map((k) => <button key={k.kot_id} type="button" onClick={() => openPrint('kot', k.kot_id)} className="rounded-full border border-line-strong px-2.5 py-1 font-semibold text-brand-600 hover:bg-surface-2">{k.kot_number} · Reprint</button>)}
+            {order.kots.map((k) => <button key={k.kot_id} type="button" onClick={() => printKotSlip(k.kot_id)} className="rounded-full border border-line-strong px-2.5 py-1 font-semibold text-brand-600 hover:bg-surface-2">{k.kot_number} · Reprint</button>)}
           </p>
         )}
 

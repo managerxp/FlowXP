@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { PageHeader, Card, Field, Input, Select, Button, Alert, useToast } from '../components/ui.jsx';
-import { getDevicePrefs, setDevicePref } from '../lib/printing.js';
+import { getDevicePrefs, setDevicePref, testPrint } from '../lib/printing.js';
 
 const FIELDS = [
   ['name', 'Business name'],
@@ -25,6 +25,90 @@ const FIELDS = [
   ['gstin', 'GSTIN', 'Optional — only needed if you charge GST'],
   ['upi_vpa', 'UPI ID for QR payments', 'e.g. shopname@okhdfcbank — shown to customers ordering by QR']
 ];
+
+/* The picture printed at the top of browser receipts. */
+const LogoSetting = ({ logoUrl, onChange }) => {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const upload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusy(true); setError('');
+    try {
+      const body = new FormData(); body.append('logo', file);
+      const r = await api('/businesses/current/logo', { method: 'POST', body });
+      onChange(r.logo_url); toast.success('Logo saved');
+    } catch (caught) { setError(caught.message); }
+    finally { setBusy(false); e.target.value = ''; }
+  };
+  const remove = async () => {
+    setBusy(true); setError('');
+    try { await api('/businesses/current/logo', { method: 'DELETE' }); onChange(null); }
+    catch (caught) { setError(caught.message); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div>
+      <p className="mb-1 text-sm font-medium text-ink-700">Logo</p>
+      <Alert>{error}</Alert>
+      <div className="flex items-center gap-4">
+        {logoUrl ? <img src={logoUrl} alt="Your logo" className="h-14 max-w-[8rem] rounded border border-line bg-white object-contain p-1" /> : <span className="text-xs text-ink-400">No logo yet</span>}
+        <label className="cursor-pointer text-sm font-semibold text-brand-600">
+          {busy ? 'Working…' : logoUrl ? 'Replace' : 'Upload'}
+          <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={upload} disabled={busy} />
+        </label>
+        {logoUrl && <button type="button" className="text-sm font-semibold text-danger" onClick={remove} disabled={busy}>Remove</button>}
+      </div>
+      <p className="mt-1 text-xs text-ink-500">PNG, JPEG or WebP up to 2 MB. A simple black-and-white logo prints best; it appears on receipts printed from the browser (silent thermal printing shows the business name in large text).</p>
+    </div>
+  );
+};
+
+/* Silent printing: this computer's print agent, printers and cash drawer. Remembered in this browser only. */
+const SilentPrinting = () => {
+  const [p, setP] = useState(getDevicePrefs);
+  const [result, setResult] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const set = (key, value) => { setDevicePref(key, value); setP((x) => ({ ...x, [key]: value })); };
+  const text = (key, label, hint, placeholder) => (
+    <Field id={`sp-${key}`} label={label} hint={hint}><Input id={`sp-${key}`} value={p[key]} placeholder={placeholder} onChange={(e) => set(key, e.target.value.trim())} autoComplete="off" /></Field>
+  );
+  const run = async (drawer) => {
+    setBusy(true); setResult(null);
+    try { await testPrint(p, { drawer }); setResult({ ok: true, message: drawer ? 'Sent. The page should print and the drawer open.' : 'Sent. A test page should be printing.' }); }
+    catch (caught) { setResult({ ok: false, message: caught.message }); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="mt-6 border-t border-line pt-4">
+      <p className="text-sm font-semibold text-ink-900">Silent printing and cash drawer (this computer)</p>
+      <p className="mb-3 text-xs text-ink-500">Prints straight to the receipt printer with no print dialog, and opens the cash drawer. Needs the small FlowXP print agent running on this computer (see print-agent/README.md). Without it, receipts print from the browser as before.</p>
+      <Field id="sp-mode" label="Printing">
+        <Select id="sp-mode" value={p.printMode} onChange={(e) => set('printMode', e.target.value)}>
+          <option value="browser">From the browser (print dialog)</option>
+          <option value="agent">Silent, through the print agent</option>
+        </Select>
+      </Field>
+      {p.printMode === 'agent' && (
+        <div className="mt-3 space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {text('agentUrl', 'Print agent address', 'Where the agent listens on this computer.', 'http://127.0.0.1:9101')}
+            {text('agentToken', 'Agent token', 'The secret the agent was started with.', '')}
+            {text('receiptTarget', 'Receipt printer', 'tcp://192.168.1.50:9100, share://PC-NAME/PrinterName, lp://PrinterName', 'tcp://192.168.1.50:9100')}
+            {text('kotTarget', 'Kitchen printer (optional)', 'Leave empty to use the receipt printer.', '')}
+          </div>
+          <label className="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={p.openDrawer} onChange={(e) => set('openDrawer', e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> Open the cash drawer when a cash payment is taken</label>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="secondary" size="sm" disabled={busy || !p.agentToken || !p.receiptTarget} onClick={() => run(false)}>Print a test page</Button>
+            <Button type="button" variant="secondary" size="sm" disabled={busy || !p.agentToken || !p.receiptTarget} onClick={() => run(true)}>Test the cash drawer</Button>
+          </div>
+          {result && <p className={`text-sm ${result.ok ? 'text-success' : 'text-danger'}`} role="status">{result.message}</p>}
+        </div>
+      )}
+    </div>
+  );
+};
 
 /* What every receipt and kitchen slip looks like (business-wide), and what THIS device does automatically. */
 const ReceiptSettings = ({ initial }) => {
@@ -56,9 +140,11 @@ const ReceiptSettings = ({ initial }) => {
         <Alert>{error}</Alert>
         <Field id="paper" label="Paper width"><Select id="paper" value={s.paper_width} onChange={(e) => setS((x) => ({ ...x, paper_width: Number(e.target.value) }))}><option value={80}>80 mm (standard)</option><option value={58}>58 mm (narrow)</option></Select></Field>
         <Field id="footer" label="Footer message" hint="Printed at the bottom of every receipt."><Input id="footer" value={s.footer} onChange={(e) => setS((x) => ({ ...x, footer: e.target.value }))} maxLength={200} /></Field>
-        <div className="space-y-2">{flag('show_gstin', 'Show the GSTIN on receipts')}{flag('show_upi_qr', 'Show a UPI QR for any unpaid balance')}{flag('show_loyalty', 'Show the customer’s loyalty card line')}</div>
+        <LogoSetting logoUrl={s.logo_url} onChange={(url) => setS((x) => ({ ...x, logo_url: url }))} />
+        <div className="space-y-2">{flag('show_logo', 'Print the logo at the top of receipts')}{flag('show_gstin', 'Show the GSTIN on receipts')}{flag('show_upi_qr', 'Show a UPI QR for any unpaid balance')}{flag('show_loyalty', 'Show the customer’s loyalty card line')}</div>
         <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save receipt settings'}</Button>
       </form>
+      <SilentPrinting />
       <div className="mt-6 border-t border-line pt-4">
         <p className="text-sm font-semibold text-ink-900">This device</p>
         <p className="mb-2 text-xs text-ink-500">Remembered in this browser only, so the counter and the kitchen can behave differently.</p>

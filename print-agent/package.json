@@ -1,0 +1,10 @@
+{
+  "name": "flowxp-print-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Silent receipt/KOT printing and cash-drawer pulse for FlowXP. Runs on the till computer.",
+  "bin": { "flowxp-print-agent": "agent.js" },
+  "scripts": { "start": "node agent.js" },
+  "engines": { "node": ">=18" }
+}

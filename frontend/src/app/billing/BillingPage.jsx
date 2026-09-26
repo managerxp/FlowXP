@@ -15,7 +15,7 @@ import ModifierPicker, { needsChoices, useModifierGroups } from '../../component
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Alert, Button, Card, Input, Select } from '../../components/ui.jsx';
 import { LoyaltyCard, MobileLookup, PointsPanel } from '../../components/LoyaltyCard.jsx';
-import { getDevicePrefs, openPrint } from '../../lib/printing.js';
+import { getDevicePrefs, openDrawer, printReceipt } from '../../lib/printing.js';
 
 const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CREDIT', 'OTHER'];
 
@@ -160,7 +160,9 @@ const BillingPage = () => {
       });
       idem.settle();
       setConfirmation(invoice);
-      if (getDevicePrefs().autoPrintReceipt) openPrint('receipt', invoice.invoice_id);
+      const cash = paymentMethod === 'CASH' && Number(paidNow) > 0;
+      if (getDevicePrefs().autoPrintReceipt) printReceipt(invoice.invoice_id, { cash });
+      else if (cash && getDevicePrefs().openDrawer) openDrawer();
     } catch (caught) {
       idem.settle(caught);
       setError(caught.message);
@@ -185,7 +187,7 @@ const BillingPage = () => {
               : 'Nothing collected yet.'}
           </p>
           <div className="mt-6 flex flex-col gap-2">
-            <Button onClick={() => openPrint('receipt', confirmation.invoice_id)}>Print receipt</Button>
+            <Button onClick={() => printReceipt(confirmation.invoice_id)}>Print receipt</Button>
             <Button variant="secondary" onClick={() => navigate(`/app/billing/invoices/${confirmation.invoice_id}`)}>View invoice</Button>
             <Button variant="secondary" onClick={resetSale}>Start new sale</Button>
           </div>

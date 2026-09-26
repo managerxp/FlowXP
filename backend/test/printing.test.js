@@ -111,7 +111,7 @@ test('saving one receipt option keeps the others, and the defaults fill the gaps
   assert.equal((await patch({ footer: 'Thanks!' })).code, 200);
   assert.equal((await patch({ paper_width: 99 })).code, 400);
   const shown = (await call(business.getCurrent)).body.data.receipt_settings;
-  assert.deepEqual(shown, { paper_width: 58, footer: 'Thanks!', show_gstin: true, show_upi_qr: true, show_loyalty: true });
+  assert.deepEqual(shown, { paper_width: 58, footer: 'Thanks!', show_gstin: true, show_upi_qr: true, show_loyalty: true, show_logo: true, logo_url: null });
   assert.equal((await patch({ show_upi_qr: false })).code, 200);
   assert.equal((await call(business.getCurrent)).body.data.receipt_settings.show_upi_qr, false);
   assert.equal((await call(business.getCurrent)).body.data.receipt_settings.paper_width, 58, 'still 58 mm');

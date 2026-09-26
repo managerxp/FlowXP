@@ -95,6 +95,7 @@ export const ReceiptPage = () => {
       <Toolbar back={`/app/billing/invoices/${id}`} width={width} setWidth={setWidth} />
       <div className={`paper mx-auto rounded-lg border border-line bg-white p-3 font-mono text-[11px] leading-snug text-black shadow-sm ${PAPER[width]}`}>
         <div className="text-center">
+          {s.show_logo !== false && s.logo_url && <img src={s.logo_url} alt={biz.name} className="mx-auto mb-1 max-h-16 max-w-[70%] object-contain grayscale contrast-150" />}
           <p className="text-sm font-bold uppercase">{biz.name}</p>
           {outlet && <p className="font-semibold">{outlet.name}</p>}
           {address && <p>{address}</p>}
