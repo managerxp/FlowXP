@@ -13,10 +13,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
-  ArrowLeftRight, Boxes, CalendarClock, ChartColumn, ChartLine, ChefHat, ChevronDown, ClipboardList, FileText, Gift,
+  ArrowLeftRight, BadgePercent, Boxes, CalendarClock, CalendarDays, ChartColumn, ChartLine, ChefHat, ChevronDown, ClipboardList, FileText, Gift,
   History, Landmark, LayoutDashboard, LayoutGrid, Lock, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
-  TrendingUp, Truck, UserRound, Users, Wallet, X
+  Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Avatar, Button, EmptyState, Logo, PageLoader, useToast } from '../components/ui.jsx';
@@ -41,6 +41,8 @@ import { RESTAURANT_TYPES } from '../lib/business.js';
    Integrations which every restaurant-family type (including it) still does. */
 const DINE_IN_TYPES = RESTAURANT_TYPES.filter((t) => t !== 'CLOUD_KITCHEN');
 
+const SALON = ['SALON'];
+
 const NAV_GROUPS = [
   {
     label: null,
@@ -49,10 +51,22 @@ const NAV_GROUPS = [
   {
     label: 'Sell',
     items: [
-      { to: '/app/billing', label: 'Billing', icon: ReceiptText, end: true, permission: 'billing' },
+      { to: '/app/billing', label: 'Billing', icon: ReceiptText, end: true, permission: 'billing', notTypes: SALON },
       { to: '/app/billing/invoices', label: 'Invoices', icon: FileText, permission: 'billing' },
       { to: '/app/orders', label: 'Orders', icon: ClipboardList, types: RESTAURANT_TYPES, anyPermission: ['billing', 'kitchen'] },
       { to: '/app/payments', label: 'Payments', icon: Wallet, permission: 'payments' }
+    ]
+  },
+  {
+    label: 'Salon',
+    items: [
+      { to: '/app/salon/appointments', label: 'Appointments', icon: CalendarDays, types: SALON, permission: 'appointments', feature: 'salon_appointments' },
+      { to: '/app/salon/pos', label: 'Billing', icon: ReceiptText, types: SALON, permission: 'billing' },
+      { to: '/app/salon/clients', label: 'Clients', icon: UserRound, types: SALON, anyPermission: ['customers', 'billing', 'appointments'] },
+      { to: '/app/salon/services', label: 'Services', icon: Scissors, types: SALON, permission: 'products' },
+      { to: '/app/salon/memberships', label: 'Memberships & offers', icon: BadgePercent, types: SALON, permission: 'products' },
+      { to: '/app/salon/team', label: 'Team & commission', icon: Users, types: SALON, anyPermission: ['staff_commission', 'appointments'] },
+      { to: '/app/salon/stock', label: 'Stock & alerts', icon: Boxes, types: SALON, anyPermission: ['inventory', 'reports'] }
     ]
   },
   {
@@ -80,7 +94,7 @@ const NAV_GROUPS = [
       // every signed-in team member may look a customer up (billing/loyalty need this) — reading
       // customers has no permission gate server-side. Editing needs 'customers' and is rejected
       // there if not; CustomersPage does not yet hide its own Edit/Add buttons for a role without it.
-      { to: '/app/customers', label: 'Customers', icon: UserRound },
+      { to: '/app/customers', label: 'Customers', icon: UserRound, notTypes: SALON },
       { to: '/app/loyalty', label: 'Loyalty & coupons', icon: Gift, roles: ['OWNER', 'ADMIN'], feature: 'loyalty' },
       { to: '/app/messaging', label: 'Messaging', icon: MessageSquare, roles: ['OWNER', 'ADMIN'], feature: 'messaging' },
       { to: '/app/reviews', label: 'Reviews', icon: Star, roles: ['OWNER', 'ADMIN'], permission: 'settings', feature: 'reviews' }
@@ -89,7 +103,8 @@ const NAV_GROUPS = [
   {
     label: 'Business',
     items: [
-      { to: '/app/reports', label: 'Reports', icon: ChartColumn, permission: 'reports' },
+      { to: '/app/reports', label: 'Reports', icon: ChartColumn, permission: 'reports', notTypes: SALON },
+      { to: '/app/salon/reports', label: 'Reports', icon: ChartColumn, types: SALON, permission: 'reports' },
       { to: '/app/profitability', label: 'Profitability', icon: TrendingUp, types: RESTAURANT_TYPES, permission: 'reports', feature: 'advanced_reports' },
       { to: '/app/forecast', label: 'Forecast', icon: ChartLine, types: RESTAURANT_TYPES, permission: 'reports', feature: 'advanced_reports' },
       { to: '/app/leakage', label: 'Leakage', icon: ShieldAlert, types: RESTAURANT_TYPES, permission: 'settings', feature: 'advanced_reports' },
@@ -119,6 +134,7 @@ const SYSTEM_ITEMS = [
   { to: '/app/security', label: 'Security', icon: Shield },
   // the business's own identity/GSTIN/logo can only be SAVED by the owner (see business.routes.js),
   // so showing it to anyone else is a form they can look at but never use
+  { to: '/app/salon/settings', label: 'Salon settings', icon: SlidersHorizontal, types: SALON, permission: 'settings' },
   { to: '/app/settings', label: 'Settings', icon: Settings, roles: ['OWNER'] }
 ];
 
@@ -277,6 +293,7 @@ const AppShell = () => {
   if (!business) return <Navigate to="/app/onboarding" replace />;
 
   const allowed = (item) => (!item.types || item.types.includes(business.business_type))
+    && (!item.notTypes || !item.notTypes.includes(business.business_type))
     && (!item.roles || item.roles.includes(business.role))
     && (!item.multiOutlet || outlets.length > 1)
     && (!item.permission || can(item.permission))

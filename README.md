@@ -132,6 +132,13 @@ one — so it bills at 0% GST. A catalogue item's rate always comes from the
 product and is unaffected. Add a `tax_rate` column to `order_items` if a
 business needs GST on ad hoc order lines.
 
+## Salon module
+
+A native module for `SALON` businesses — appointments, salon POS, CRM, memberships, packages, gift cards, commission,
+batch-aware stock, reports and reminders. See [SALON.md](SALON.md).
+
+---
+
 ## What is not built
 
 Per the architecture doc's own feature list, checked against what's actually

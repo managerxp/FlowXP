@@ -105,6 +105,8 @@ export const list = async (req, res) => {
 
   if (status !== 'all') { values.push(status); clauses.push(`p.status = $${values.length}`); }
   if (kind) { values.push(String(kind).toUpperCase()); clauses.push(`p.kind = $${values.length}`); }
+  // a salon's services have their own screens (/api/salon/services); they are not stock to buy, count or sell as products
+  else clauses.push(`p.kind <> 'SERVICE'`);
   if (category_id) { values.push(Number(category_id)); clauses.push(`p.category_id = $${values.length}`); }
   if (brand_id) { values.push(Number(brand_id)); clauses.push(`p.brand_id = $${values.length}`); }
   if (search) {

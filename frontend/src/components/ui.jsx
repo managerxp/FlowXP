@@ -321,7 +321,7 @@ export const Avatar = ({ name, size = 'md', className = '' }) => (
 /* A wide table must scroll inside its own box, never the page — the one rule
    that keeps a ten-column invoice list from breaking mobile layout. */
 export const Table = ({ children }) => (
-  <div className="overflow-x-auto rounded-(--radius-card) border border-line bg-surface">
+  <div className="relative overflow-x-auto rounded-(--radius-card) border border-line bg-surface">
     <table className="w-full min-w-max text-sm">{children}</table>
   </div>
 );

@@ -48,7 +48,7 @@ export class NetworkError extends TypeError {
   constructor() { super("You're offline, or the server can't be reached. Check the connection and try again."); this.name = 'NetworkError'; }
 }
 
-export const api = async (path, { method = 'GET', body, businessId, idempotencyKey } = {}) => {
+export const api = async (path, { method = 'GET', body, businessId, idempotencyKey, withMeta = false } = {}) => {
   // A file upload (product photos) passes a FormData body — it must never be
   // JSON.stringify'd, and the Content-Type header must be left for the
   // browser to set itself (multipart/form-data with the boundary it chose),
@@ -100,6 +100,8 @@ export const api = async (path, { method = 'GET', body, businessId, idempotencyK
     );
   }
 
+  // withMeta: paged lists also send { meta: { total, limit, offset } }, which `data` alone would lose
+  if (withMeta) return { data: payload.data, meta: payload.meta };
   return payload.data ?? payload;
 };
 

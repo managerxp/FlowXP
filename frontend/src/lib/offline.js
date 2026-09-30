@@ -35,9 +35,9 @@ export const useQueuedSales = () => useSyncExternalStore(subscribe, () => snapsh
 const onlineSubscribe = (l) => { window.addEventListener('online', l); window.addEventListener('offline', l); return () => { window.removeEventListener('online', l); window.removeEventListener('offline', l); }; };
 export const useOnline = () => useSyncExternalStore(onlineSubscribe, () => navigator.onLine, () => true);
 
-/** Keep a sale for later. Remembers which business and outlet it was rung up at. */
-export const queueSale = ({ label, body, idempotencyKey }) =>
-  queue.add({ label, path: '/invoices', body, idempotencyKey, scope: { businessId: getBusinessId(), branchId: getBranchId() } });
+/** Keep a sale for later. Remembers which business and outlet it was rung up at. A salon sale goes to its own till (`path`). */
+export const queueSale = ({ label, body, idempotencyKey, path = '/invoices' }) =>
+  queue.add({ label, path, body, idempotencyKey, scope: { businessId: getBusinessId(), branchId: getBranchId() } });
 
 /**
  * Send whatever is waiting: now, whenever the browser says it is back online, and every 20 seconds while

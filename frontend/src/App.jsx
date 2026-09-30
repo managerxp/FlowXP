@@ -97,6 +97,18 @@ const ReceiptPage = lazy(() => import('./app/PrintPages.jsx').then((m) => ({ def
 const KotPage = lazy(() => import('./app/PrintPages.jsx').then((m) => ({ default: m.KotPage })));
 const StaffPage = lazy(() => import('./app/StaffPage.jsx'));
 
+/* The salon module (business type SALON). Its screens live in app/salon/ and load only for a salon. */
+const SalonDashboard = lazy(() => import('./app/salon/SalonDashboard.jsx'));
+const SalonPos = lazy(() => import('./app/salon/SalonPos.jsx'));
+const SalonAppointments = lazy(() => import('./app/salon/SalonAppointments.jsx'));
+const SalonClients = lazy(() => import('./app/salon/SalonClients.jsx'));
+const SalonServices = lazy(() => import('./app/salon/SalonServices.jsx'));
+const SalonMemberships = lazy(() => import('./app/salon/SalonMemberships.jsx'));
+const SalonTeam = lazy(() => import('./app/salon/SalonTeam.jsx'));
+const SalonStock = lazy(() => import('./app/salon/SalonStock.jsx'));
+const SalonReports = lazy(() => import('./app/salon/SalonReports.jsx'));
+const SalonSettings = lazy(() => import('./app/salon/SalonSettings.jsx'));
+
 /* The page a customer's own phone opens after scanning a table's QR code —
    no login, no nav, not inside SiteLayout or AppShell at all. See
    public/CustomerMenu.jsx's header comment. */
@@ -117,6 +129,12 @@ const RequireAuth = ({ children }) => {
   if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
   return children;
+};
+
+/* The front page of the app is the salon's own dashboard for a salon, the general one otherwise. */
+const HomeRoute = () => {
+  const { business } = useAuth();
+  return business?.business_type === 'SALON' ? <SalonDashboard /> : <Dashboard />;
 };
 
 const App = () => (
@@ -151,7 +169,7 @@ const App = () => (
         </Suspense>
       }
     >
-      <Route index element={<Dashboard />} />
+      <Route index element={<HomeRoute />} />
       <Route path="settings/subscription" element={<Subscription />} />
       <Route path="settings/business" element={<BusinessSettings />} />
       <Route path="settings" element={<Navigate to="/app/settings/business" replace />} />
@@ -194,6 +212,16 @@ const App = () => (
       <Route path="print/receipt/:id" element={<ReceiptPage />} />
       <Route path="print/kot/:id" element={<KotPage />} />
       <Route path="staff" element={<StaffPage />} />
+
+      <Route path="salon/pos" element={<SalonPos />} />
+      <Route path="salon/appointments" element={<SalonAppointments />} />
+      <Route path="salon/clients" element={<SalonClients />} />
+      <Route path="salon/services" element={<SalonServices />} />
+      <Route path="salon/memberships" element={<SalonMemberships />} />
+      <Route path="salon/team" element={<SalonTeam />} />
+      <Route path="salon/stock" element={<SalonStock />} />
+      <Route path="salon/reports" element={<SalonReports />} />
+      <Route path="salon/settings" element={<SalonSettings />} />
       <Route path="activity" element={<ActivityPage />} />
 
     </Route>

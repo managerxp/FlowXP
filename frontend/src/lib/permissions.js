@@ -9,14 +9,19 @@
 export const ROLE_PERMISSIONS = {
   OWNER: ['*'],
   ADMIN: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
-    'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds'],
+    'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds', 'appointments', 'staff_commission'],
   MANAGER: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
-    'payments', 'expenses', 'reports', 'ai', 'refunds'],
+    'payments', 'expenses', 'reports', 'ai', 'refunds', 'appointments', 'staff_commission'],
   CASHIER: ['billing', 'customers', 'payments'],
   STAFF: ['billing'],
   WAITER: ['billing'],
   KITCHEN: ['kitchen'],
-  INVENTORY_MANAGER: ['inventory', 'purchases', 'suppliers']
+  INVENTORY_MANAGER: ['inventory', 'purchases', 'suppliers'],
+  DELIVERY: ['billing'],
+  // Salon floor roles (see backend/src/middleware/auth.js)
+  RECEPTIONIST: ['billing', 'customers', 'payments', 'appointments'],
+  STYLIST: ['appointments'],
+  ACCOUNTANT: ['billing', 'payments', 'expenses', 'gst', 'reports', 'export', 'refunds']
 };
 
 export const hasPermission = (business, permission) => {

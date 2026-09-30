@@ -54,7 +54,7 @@ const dashboard = async (req, res) => {
                    COALESCE(SUM(total_paise - credited_paise) FILTER (WHERE invoice_date BETWEEN $4::date AND $2::date), 0) AS month,
                    COUNT(*) FILTER (WHERE invoice_date = $2::date) AS bills_today
             FROM invoices i WHERE business_id = $1 AND status = 'ISSUED' AND invoice_date >= $4::date /*BRANCH*/`, [businessId, today, weekStart, monthStart], 'i.branch_id'),
-    scoped(`SELECT COALESCE(SUM(amount_paise), 0) AS n FROM payments p WHERE business_id = $1 AND payment_date = $2::date AND invoice_id IS NOT NULL /*BRANCH*/`, [businessId, today], 'p.branch_id'),
+    scoped(`SELECT COALESCE(SUM(p.amount_paise), 0) AS n FROM payments p WHERE p.business_id = $1 AND (p.created_at AT TIME ZONE COALESCE((SELECT timezone FROM businesses b WHERE b.business_id = p.business_id), 'Asia/Kolkata'))::date = $2::date AND p.invoice_id IS NOT NULL /*BRANCH*/`, [businessId, today], 'p.branch_id'),
     scoped(`SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'COMPLETED') AS completed, COUNT(*) FILTER (WHERE status = 'CANCELLED') AS cancelled,
                    COUNT(*) FILTER (WHERE status = 'NO_SHOW') AS no_show, COUNT(*) FILTER (WHERE status IN ('BOOKED','CONFIRMED','CHECKED_IN','IN_SERVICE')) AS upcoming
             FROM salon_appointments a WHERE business_id = $1 AND (start_at AT TIME ZONE COALESCE((SELECT timezone FROM businesses WHERE business_id = $1), 'Asia/Kolkata'))::date = $2::date /*BRANCH*/`, [businessId, today], 'a.branch_id'),
@@ -431,7 +431,7 @@ const REPORTS = {
       const v = [c.businessId, c.from, c.to];
       const { rows } = await pool.query(
         `SELECT payment_method AS method, COUNT(*) AS payments, COALESCE(SUM(amount_paise), 0) AS amount FROM payments p
-         WHERE business_id = $1 AND payment_date BETWEEN $2::date AND $3::date AND invoice_id IS NOT NULL${bf(c, 'p.branch_id', v)} GROUP BY payment_method ORDER BY amount DESC`, v);
+         WHERE p.business_id = $1 AND (p.created_at AT TIME ZONE COALESCE((SELECT timezone FROM businesses b WHERE b.business_id = p.business_id), 'Asia/Kolkata'))::date BETWEEN $2::date AND $3::date AND p.invoice_id IS NOT NULL${bf(c, 'p.branch_id', v)} GROUP BY payment_method ORDER BY amount DESC`, v);
       const out = rows.map((r) => ({ method: r.method.replace('_', ' ').toLowerCase().replace(/^./, (x) => x.toUpperCase()), payments: Number(r.payments), amount: money(r.amount) }));
       return { columns: [col('method', 'Method'), col('payments', 'Payments', 'number'), col('amount', 'Amount', 'money')], rows: out, totals: sum(out, ['payments', 'amount']) };
     }
@@ -478,7 +478,7 @@ const sum = (rows, keys) => Object.fromEntries(keys.map((k) => [k, Math.round(ro
 /* GET /api/salon/reports — the catalogue, grouped */
 const catalog = async (req, res) => {
   const out = {};
-  for (const [key, r] of Object.entries(REPORTS)) (out[r.group] ||= []).push({ key, title: r.title });
+  for (const [key, r] of Object.entries(REPORTS)) (out[r.group] ||= []).push({ key, title: r.title, advanced: ADVANCED.has(key) });
   ok(res, out);
 };
 

@@ -11,15 +11,22 @@ import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Selec
 
 const ROLES = {
   OWNER: 'Owner', ADMIN: 'Admin', MANAGER: 'Manager', CASHIER: 'Cashier', WAITER: 'Waiter',
-  KITCHEN: 'Kitchen', INVENTORY_MANAGER: 'Stock manager', STAFF: 'Staff', DELIVERY: 'Delivery rider'
+  KITCHEN: 'Kitchen', INVENTORY_MANAGER: 'Stock manager', STAFF: 'Staff', DELIVERY: 'Delivery rider',
+  RECEPTIONIST: 'Receptionist', STYLIST: 'Stylist', ACCOUNTANT: 'Accountant'
 };
+/* Roles that only make sense for one kind of business: a salon has no kitchen, a restaurant has no stylists. */
+const SALON_ONLY = ['RECEPTIONIST', 'STYLIST', 'ACCOUNTANT'];
+const NOT_FOR_SALON = ['WAITER', 'KITCHEN', 'DELIVERY'];
 const GROUP_ROLES = ['OWNER', 'ADMIN'];
-const FLOOR_ROLES = ['CASHIER', 'WAITER', 'KITCHEN', 'STAFF', 'DELIVERY'];
+const FLOOR_ROLES = ['CASHIER', 'WAITER', 'KITCHEN', 'STAFF', 'DELIVERY', 'RECEPTIONIST', 'STYLIST', 'ACCOUNTANT'];
 const ROLE_HELP = {
   OWNER: 'Everything, including billing and staff.', ADMIN: 'Runs the business day to day; can’t manage owners.',
   MANAGER: 'Reports, stock, buying and refunds.', CASHIER: 'Bills sales and takes payments.', WAITER: 'Takes and bills orders.',
   KITCHEN: 'Sees and advances kitchen tickets only.', INVENTORY_MANAGER: 'Stock, purchasing and suppliers.', STAFF: 'Billing only.',
-  DELIVERY: 'Gets assigned to delivery orders and updates pickup/delivered status.'
+  DELIVERY: 'Gets assigned to delivery orders and updates pickup/delivered status.',
+  RECEPTIONIST: 'Books appointments, bills clients and looks after the client book.',
+  STYLIST: 'Sees their own appointments and moves clients through the service. No billing or money.',
+  ACCOUNTANT: 'Billing records, payments, expenses, GST and reports. Cannot change the catalogue or the team.'
 };
 
 /* What this person may do: the role's default, with an allow or deny for anything the owner wants different. */
@@ -158,7 +165,8 @@ const StaffPage = () => {
 
   const isOwner = business?.role === 'OWNER';
   // An admin can't hand out or change the top roles.
-  const roles = Object.keys(ROLES).filter((r) => isOwner || !GROUP_ROLES.includes(r));
+  const salon = business?.business_type === 'SALON';
+  const roles = Object.keys(ROLES).filter((r) => (isOwner || !GROUP_ROLES.includes(r)) && (salon ? !NOT_FOR_SALON.includes(r) : !SALON_ONLY.includes(r)));
 
   const load = () => api('/staff').then(setPeople).catch((e) => setError(e.status === 403 ? 'Managing staff is for owners and admins.' : e.message));
   useEffect(() => { load(); }, []);
