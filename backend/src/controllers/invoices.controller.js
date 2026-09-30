@@ -10,6 +10,7 @@
  * for a sale where the stock update failed, or lose stock for an invoice that
  * was never actually created.
  */
+import { onInvoiceCancelled } from '../modules/salon/hooks.js';
 import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
 import { toPaise, toRupees } from '../utils/money.js';
@@ -347,6 +348,8 @@ export const cancel = async (req, res) => {
     }
 
     await voidForInvoice(client, req.tenant.businessId, req.params.id);   // the loyalty stamp and coupon use come back
+    // a salon bill also hands back package visits and gift card money, and withdraws what it sold (or refuses if that was used)
+    if (req.tenant.businessType === 'SALON') await onInvoiceCancelled(client, { businessId: req.tenant.businessId, invoiceId: Number(req.params.id), userId: req.auth.userId });
     await client.query(`UPDATE invoices SET status = 'CANCELLED' WHERE invoice_id = $1`, [req.params.id]);
     await client.query('COMMIT');
 
@@ -354,6 +357,7 @@ export const cancel = async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
+    if (error.name === 'SalonError') return res.status(error.status).json({ success: false, message: error.message });
     console.error('[invoices] cancel failed:', error.message);
     res.status(500).json({ success: false, message: 'Could not cancel the invoice' });
   } finally {

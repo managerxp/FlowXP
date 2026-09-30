@@ -297,6 +297,17 @@ export const receive = async (req, res) => {
              VALUES ($1,$2,$3,'PURCHASE',$4,'purchase_order',$5,$6)`,
             [req.tenant.businessId, po.branch_id, r.line.product_id, r.now, po.po_id, req.auth.userId]
           );
+          // a delivery line may carry its batch number and expiry date (salon stock, cosmetics, anything that expires)
+          const extra = given.get(r.line.item_id);
+          if (extra && (extra.batch_no || extra.expiry_date)) {
+            const expiry = extra.expiry_date ? String(extra.expiry_date).slice(0, 10) : null;
+            if (expiry && !/^\d{4}-\d{2}-\d{2}$/.test(expiry)) throw new OrderError(400, 'Expiry date must be a date (YYYY-MM-DD)');
+            await client.query(
+              `INSERT INTO salon_stock_batches (business_id, branch_id, product_id, batch_no, expiry_date, qty_received, unit_cost_paise, source, reference_id, created_by)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,'PURCHASE',$8,$9)`,
+              [req.tenant.businessId, po.branch_id, r.line.product_id, extra.batch_no ? String(extra.batch_no).slice(0, 40) : null, expiry, r.now, r.cost, po.po_id, req.auth.userId]
+            );
+          }
         }
       }
     }

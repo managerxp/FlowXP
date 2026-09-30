@@ -34,9 +34,10 @@ import { hasPlanFeature, effectiveFeatureFlags } from '../modules/planFeatures.j
 export const ROLE_PERMISSIONS = {
   OWNER:   ['*'],
   ADMIN:   ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
-            'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds'],
+            'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds',
+            'appointments', 'staff_commission'],
   MANAGER: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
-            'payments', 'expenses', 'reports', 'ai', 'refunds'],
+            'payments', 'expenses', 'reports', 'ai', 'refunds', 'appointments', 'staff_commission'],
   CASHIER: ['billing', 'customers', 'payments'],
   STAFF:   ['billing'],
   // Restaurant floor roles. WAITER can take and bill orders like STAFF; KITCHEN
@@ -47,7 +48,14 @@ export const ROLE_PERMISSIONS = {
   // A rider sees and updates the delivery orders assigned to them — same
   // narrow scope as WAITER, since orders.controller.js already gates all of
   // this behind the 'billing' permission Orders itself uses.
-  DELIVERY: ['billing']
+  DELIVERY: ['billing'],
+  // Salon floor roles. A receptionist books, bills and looks after clients; a stylist sees their own
+  // appointments (the appointments screens narrow a STYLIST to the salon_staff row linked to their login);
+  // an accountant works the money side — billing records, payments, expenses, reports and GST — and cannot
+  // change the catalogue or the team.
+  RECEPTIONIST: ['billing', 'customers', 'payments', 'appointments'],
+  STYLIST: ['appointments'],
+  ACCOUNTANT: ['billing', 'payments', 'expenses', 'gst', 'reports', 'export', 'refunds']
 };
 
 export const hasPermission = (tenant, permission) => {

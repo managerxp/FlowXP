@@ -28,9 +28,13 @@ const roundPaise = (value) => Math.round(value);
  * @param interState      true splits the tax into IGST; false splits it into
  *                        CGST + SGST. Meaningless, and ignored, when
  *                        gstEnabled is false.
+ * @param inclusive       the quoted price already contains the tax (a salon's
+ *                        "₹500 all inclusive"): the tax is taken OUT of what the
+ *                        customer pays instead of added on top, so the line total
+ *                        is exactly price x quantity less the discount.
  */
 export const computeLineTax = ({
-  quantity, unitPricePaise, discountPaise = 0, taxRatePercent = 0, gstEnabled, interState
+  quantity, unitPricePaise, discountPaise = 0, taxRatePercent = 0, gstEnabled, interState, inclusive = false
 }) => {
   const grossPaise = roundPaise(quantity * unitPricePaise);
   const taxablePaise = Math.max(0, grossPaise - discountPaise);
@@ -43,13 +47,16 @@ export const computeLineTax = ({
     };
   }
 
-  const taxPaise = roundPaise(taxablePaise * (taxRatePercent / 100));
+  // exclusive: tax on top of the taxable value; inclusive: the value is the total and tax is carved out of it
+  const netPaise = inclusive ? roundPaise(taxablePaise / (1 + taxRatePercent / 100)) : taxablePaise;
+  const taxPaise = inclusive ? taxablePaise - netPaise : roundPaise(taxablePaise * (taxRatePercent / 100));
+  const totalPaise = inclusive ? taxablePaise : taxablePaise + taxPaise;
 
   if (interState) {
     return {
-      taxable_paise: taxablePaise, tax_paise: taxPaise,
+      taxable_paise: netPaise, tax_paise: taxPaise,
       cgst_paise: 0, sgst_paise: 0, igst_paise: taxPaise,
-      line_total_paise: taxablePaise + taxPaise
+      line_total_paise: totalPaise
     };
   }
 
@@ -60,9 +67,9 @@ export const computeLineTax = ({
   const sgstPaise = taxPaise - cgstPaise;
 
   return {
-    taxable_paise: taxablePaise, tax_paise: taxPaise,
+    taxable_paise: netPaise, tax_paise: taxPaise,
     cgst_paise: cgstPaise, sgst_paise: sgstPaise, igst_paise: 0,
-    line_total_paise: taxablePaise + taxPaise
+    line_total_paise: totalPaise
   };
 };
 

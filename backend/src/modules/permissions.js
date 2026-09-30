@@ -24,6 +24,8 @@ export const PERMISSION_INFO = {
   reports:   { label: 'Reports and profit', description: 'Sales, profitability, forecasts and kitchen performance.' },
   gst:       { label: 'GST reports', description: 'GST summaries and HSN breakdowns.' },
   export:    { label: 'Export data', description: 'Download the activity log as a file.' },
+  appointments:     { label: 'Appointments', description: 'Book, move and cancel appointments and see who is free (a stylist sees only their own).' },
+  staff_commission: { label: 'Salon team and commission', description: 'Salon staff profiles, attendance, commission and payouts.' },
   ai:        { label: 'Flow AI', description: 'Ask the AI assistant about the business.' },
   settings:  { label: 'Settings and team', description: 'Business settings, outlets, staff, loyalty, coupons, leakage checks and the activity log.' }
 };

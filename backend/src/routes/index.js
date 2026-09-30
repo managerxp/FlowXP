@@ -54,6 +54,7 @@ import heldBillsRoutes from './heldBills.routes.js';
 import locationsRoutes from './locations.routes.js';
 import { uploadLogo } from '../middleware/upload.js';
 import publicOrderingRoutes from './publicOrdering.routes.js';
+import salonRoutes from './salon.routes.js';
 
 const router = Router();
 
@@ -183,6 +184,7 @@ router.use('/integrations', integrationsRoutes);
 router.use('/ai', aiRoutes);
 router.use('/audit', auditRoutes);
 router.use('/menu-import', menuImportRoutes);
+router.use('/salon', salonRoutes);          // the salon module (salon businesses only)
 
 /* ── Platform administration — not a tenant, sits outside the business
    model entirely; see admin.routes.js for its own auth gate. ──────────── */

@@ -24,7 +24,15 @@ export const PLAN_FEATURES = [
   ['qr_ordering', 'QR table ordering', 'Customers order from their phone by scanning a table QR code'],
   ['reviews', 'Customer feedback & reviews', 'Post-bill star ratings, private feedback, AI reply drafts and a Google review prompt'],
   ['multi_brand', 'Multiple brands', 'Run several virtual brands from one kitchen — a brand tag on menu items and orders'],
-  ['delivery_fleet', 'Delivery riders', 'Assign your own delivery staff to orders and track pickup, out-for-delivery and delivered']
+  ['delivery_fleet', 'Delivery riders', 'Assign your own delivery staff to orders and track pickup, out-for-delivery and delivered'],
+  // Salon module. Each is its own switch so a plan (or a paid add-on) can include, say, appointments
+  // without memberships. Missing key = on, like every feature above.
+  ['salon_appointments', 'Appointments', 'Calendar, staff availability, walk-ins and double-booking protection'],
+  ['salon_memberships', 'Memberships', 'Membership plans with discounts and free services, renewals and expiry reminders'],
+  ['salon_packages', 'Service packages', 'Bundles of services sold at one price and used visit by visit'],
+  ['salon_gift_cards', 'Gift cards', 'Sell and redeem stored-value gift cards'],
+  ['salon_commission', 'Staff commission', 'Commission rules, approval and payouts for stylists and therapists'],
+  ['salon_automation', 'Salon reminders', 'Appointment, birthday, membership, points and revisit reminders']
 ];
 
 export const PLAN_FEATURE_KEYS = PLAN_FEATURES.map(([key]) => key);

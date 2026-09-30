@@ -12,6 +12,7 @@
  * Revenue and GST follow the credit note (reports and profitability read it);
  * a plain refund on its own only moves money.
  */
+import { onCreditNote } from '../modules/salon/hooks.js';
 import pool from '../config/database.js';
 import { reverseForCredit } from '../modules/points.js';
 import { recordAudit } from '../modules/events.js';
@@ -153,13 +154,15 @@ export const create = async (req, res) => {
 
     // the customer gives back a share of the points that bill earned
     await reverseForCredit(client, { businessId: req.tenant.businessId, invoiceId: invoice.invoice_id, creditedTotalPaise: Number(invoice.credited_paise) + total, createdBy: req.auth.userId });
+    // a salon bill: commission shrinks with the credited share; a package / membership / gift card credited in full is withdrawn
+    if (req.tenant.businessType === 'SALON') await onCreditNote(client, { businessId: req.tenant.businessId, invoiceId: invoice.invoice_id, userId: req.auth.userId });
 
     await client.query('COMMIT');
     recordAudit(req, { action: 'credit_note.issued', resource_type: 'credit_note', resource_id: note.cn_id, metadata: { total: toRupees(total), invoice_id: invoice.invoice_id, refunded: toRupees(refund), restocked: Boolean(body.restock) } });
     res.status(201).json({ success: true, data: { ...asCreditNote({ ...note, invoice_number: invoice.invoice_number }), unrefunded: toRupees(leftover - refund) } });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
-    if (error instanceof NoteError) return bad(res, error.message, error.status);
+    if (error instanceof NoteError || error.name === 'SalonError') return bad(res, error.message, error.status);
     if (error.message?.includes('positive number') || error.message?.includes('must be a number')) return bad(res, error.message);
     throw error;
   } finally {

@@ -106,7 +106,7 @@ export const asInvoice = (row) => ({
  *   payments: [{ amount, method, reference_number }]     or several (split); one of them may be
  *             'REST' (whatever the others leave), and together they may not exceed the bill
  */
-const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CREDIT', 'OTHER'];
+const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CREDIT', 'OTHER', 'WALLET', 'GIFT_CARD'];
 const MAX_SPLIT = 6;
 
 /*
@@ -205,6 +205,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   const recipes = await loadRecipes(client, tenant.businessId, [...new Set([...productIds, ...componentIds])], tenant.branchId);
 
   const lines = [];
+  const overrideIds = new Set();   // ingredients a line named by hand (consumption_actual) — must all exist
   for (const raw of items) {
     const quantity = toQuantity(raw.quantity);
     let description, unitPricePaise, taxRate, product = null, modifiers = [], consumption = [];
@@ -238,6 +239,19 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       }
       if (modifiers.length) description = `${description} (${modifierLabel(modifiers)})`;
       consumption = consumptionPerUnit(recipes.get(product.product_id), modifiers);
+      /* The amount actually used can differ from the recipe (hair colour: 50 ml by default, 60 ml today). The till sends
+         the TOTAL used for this line, per ingredient; anything it lists replaces the recipe's figure, and an ingredient
+         that is not in the recipe can be added. Ids are checked against the business below, where ingredients are loaded. */
+      if (Array.isArray(raw.consumption_actual)) {
+        const byId = new Map(consumption.map((c) => [c.ingredient_id, c.qty_per_unit]));
+        for (const a of raw.consumption_actual) {
+          const id = Number(a.ingredient_id); const used = Number(a.quantity);
+          if (!Number.isInteger(id) || !Number.isFinite(used) || used < 0) throw new BillingError(400, 'Each consumable needs a quantity of zero or more');
+          byId.set(id, used / quantity);
+          overrideIds.add(id);
+        }
+        consumption = [...byId].map(([ingredient_id, qty_per_unit]) => ({ ingredient_id, qty_per_unit }));
+      }
       const parts = combos.get(product.product_id);
       if (parts) {
         const blocked = await comboBlocker(client, tenant.branchId, product.name, parts, quantity);
@@ -265,7 +279,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     }
     const tax = computeLineTax({
       quantity, unitPricePaise, discountPaise, taxRatePercent: taxRate,
-      gstEnabled: business.gst_enabled, interState
+      gstEnabled: business.gst_enabled, interState, inclusive: input.taxInclusive === true
     });
 
     lines.push({
@@ -287,6 +301,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     );
     for (const r of rows) ingredients.set(r.product_id, r);
   }
+  for (const id of overrideIds) if (!ingredients.has(id)) throw new BillingError(400, 'One of the consumables is not in your stock list');
   for (const line of lines) {
     line.unitCostPaise = line.consumption.length
       ? Math.round(line.consumption.reduce((sum, c) => sum + c.qty_per_unit * Number(ingredients.get(c.ingredient_id)?.purchase_price_paise || 0), 0))
@@ -331,7 +346,11 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     finalTotalPaise += roundOffPaise;
   }
 
-  const pointsEarned = pts ? earnFor(pts, pointsState, finalTotalPaise) : 0;
+  /* A caller with its own earning rules (the salon: a different rate for services, products, packages) supplies them;
+     everyone else earns the program's single rate on the bill. */
+  const pointsEarned = pts
+    ? (typeof input.earnPoints === 'function' ? Math.max(0, Math.floor(input.earnPoints({ lines, finalTotalPaise, state: pointsState, cfg: pts }))) : earnFor(pts, pointsState, finalTotalPaise))
+    : 0;
 
   const takenPayments = plannedPayments(input, finalTotalPaise);
   const paidPaise = takenPayments.reduce((s, p) => s + p.amountPaise, 0);
