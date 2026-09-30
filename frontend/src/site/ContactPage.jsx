@@ -8,7 +8,7 @@ import Reveal from '../components/Reveal.jsx';
 import { FAQ } from './content.js';
 import { PageHero, TextLink } from './parts.jsx';
 
-const EMAIL = 'support@managerxp.com';
+const EMAIL = 'support@flowxp.managerxp.com';
 
 const WAYS = [
   { title: 'Questions before you sign up', body: 'Pricing, moving from your current software, or whether FlowXP fits how you work.', action: 'Email us', href: `mailto:${EMAIL}?subject=${encodeURIComponent('Question about FlowXP')}` },

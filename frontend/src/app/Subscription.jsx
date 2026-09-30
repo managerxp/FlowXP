@@ -115,7 +115,7 @@ const Subscription = () => {
         </div>
 
         <p className="mt-5 text-xs text-ink-400">
-          Pricing is agreed with our team, not self-serve. Contact support@managerxp.com
+          Pricing is agreed with our team, not self-serve. Contact support@flowxp.managerxp.com
           and we'll send a secure payment link for your plan.
         </p>
       </div>
