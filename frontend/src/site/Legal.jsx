@@ -681,7 +681,7 @@ The latest version will show its effective date.`],
   ['Contact', `End of FlowXP Privacy Policy
 ManagerXP Private Limited
 Product: FlowXP
-Email: support@flowxp.managerxp.com
+Email: flowxp.manager@gmail.com
 Address: Hiline Complex, 8-2, 644/1/205 F205, Road No. 12, Hyderabad, Telangana 500034
 Phone: 096795 49136`]
 ];
@@ -1229,7 +1229,7 @@ Nothing prevents either party from seeking urgent legal relief where legally per
 
   ['49. Contact', `ManagerXP Private Limited
 Product: FlowXP
-Email: support@flowxp.managerxp.com
+Email: flowxp.manager@gmail.com
 Address: Hiline Complex, 8-2, 644/1/205 F205, Road No. 12, Hyderabad, Telangana 500034
 Phone: 096795 49136`],
 
