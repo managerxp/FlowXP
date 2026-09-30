@@ -14,12 +14,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
   ArrowLeftRight, Boxes, CalendarClock, ChartColumn, ChartLine, ChefHat, ChevronDown, ClipboardList, FileText, Gift,
-  History, Landmark, LayoutDashboard, LayoutGrid, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
+  History, Landmark, LayoutDashboard, LayoutGrid, Lock, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
   TrendingUp, Truck, UserRound, Users, Wallet, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Avatar, Button, Logo, useToast } from '../components/ui.jsx';
+import { Avatar, Button, EmptyState, Logo, PageLoader, useToast } from '../components/ui.jsx';
 import { setPrintErrorHandler } from '../lib/printing.js';
 import { ErrorBoundary } from '../components/ErrorBoundary.jsx';
 import NotificationBell from '../components/NotificationBell.jsx';
@@ -262,7 +262,7 @@ const AppShell = () => {
   if (loading) {
     return (
       <div className="flex min-h-full items-center justify-center bg-page">
-        <p className="text-small text-ink-500">Loading FlowXP…</p>
+        <PageLoader label="Loading FlowXP…" />
       </div>
     );
   }
@@ -343,6 +343,11 @@ const AppShell = () => {
                 </div>
               </div>
             ))}
+            {/* A soft edge where the list runs under the pinned items, so a
+                half-visible group label reads as "more below", not as a
+                clipped layout. Sticky: once scrolled to the end it sits in
+                the padding under the last link and covers nothing. */}
+            <div aria-hidden="true" className="pointer-events-none sticky -bottom-3 -mx-2.5 -mb-3 h-8 bg-linear-to-t from-surface to-transparent" />
           </nav>
 
           <div className="shrink-0 space-y-0.5 border-t border-line px-2.5 py-3">
@@ -404,11 +409,13 @@ const AppShell = () => {
               does not follow you to the next. */}
           <main className="flex-1 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 lg:p-8">
             {blocked ? (
-              <div className="mx-auto mt-16 max-w-sm text-center">
-                <p className="text-body font-semibold text-ink-900">You don't have access to this</p>
-                <p className="mt-1 text-small text-ink-500">Ask an owner or admin if you need it.</p>
-                <Link to="/app" className="mt-4 inline-block text-small font-medium text-brand-600 hover:underline">Back to Dashboard</Link>
-              </div>
+              <EmptyState
+                icon={Lock}
+                className="mx-auto mt-10 max-w-md"
+                title="You don't have access to this"
+                body="Ask an owner or admin if you need it."
+                action={<Button to="/app" variant="secondary" size="sm">Back to Dashboard</Button>}
+              />
             ) : (
               <ErrorBoundary key={`${location.pathname}:${outletId ?? ''}`}><Outlet /></ErrorBoundary>
             )}

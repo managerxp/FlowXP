@@ -3,9 +3,10 @@
  * in full or in parts. Needs a business with more than one outlet.
  */
 import { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Alert, Badge, Button, Card, Field, Input, ListState, Modal, PageHeader, Select, useToast } from '../components/ui.jsx';
+import { Alert, Badge, Button, Card, Field, Input, ListState, Modal, PageHeader, Select, useToast, useDialog } from '../components/ui.jsx';
 
 const TONE = { PENDING: 'brand', PARTIAL: 'warning', FULFILLED: 'success', REJECTED: 'danger', CANCELLED: 'neutral', CLOSED: 'neutral' };
 const when = (iso) => new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short' });
@@ -42,7 +43,7 @@ const NewRequest = ({ outlets, outletId, onDone, onClose }) => {
                 <option value="">Choose item…</option>{products.map((p) => <option key={p.product_id} value={p.product_id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
               </Select>
               <Input className="col-span-4" type="number" min="0" step="0.001" placeholder="How much" value={r.quantity} onChange={(e) => setRow(i, 'quantity', e.target.value)} aria-label="Quantity" />
-              <button type="button" className="col-span-1 text-ink-400 hover:text-danger" onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))} aria-label="Remove">✕</button>
+              <button type="button" className="col-span-1 flex h-9 items-center justify-center rounded-md text-ink-400 hover:bg-danger/10 hover:text-danger" onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))} aria-label="Remove"><X aria-hidden="true" className="h-4 w-4" /></button>
             </div>
           ))}
           <Button type="button" variant="secondary" size="sm" onClick={() => setRows((rs) => [...rs, { product_id: '', quantity: '' }])}>Add item</Button>
@@ -55,6 +56,7 @@ const NewRequest = ({ outlets, outletId, onDone, onClose }) => {
 };
 
 const RequestCard = ({ r, mine, onChanged }) => {
+  const dialog = useDialog();
   const toast = useToast();
   const [sending, setSending] = useState(false);
   const [qty, setQty] = useState({});
@@ -68,8 +70,8 @@ const RequestCard = ({ r, mine, onChanged }) => {
     await api(`/transfer-requests/${r.request_id}/fulfil`, { method: 'POST', body: { items } });
     toast.success('Stock sent'); setSending(false);
   });
-  const reject = () => { const reason = window.prompt('Why can’t you send it? The other outlet will see this.'); if (reason) act(() => api(`/transfer-requests/${r.request_id}/reject`, { method: 'POST', body: { reason } })); };
-  const cancel = () => { if (window.confirm('Call off what has not been sent yet?')) act(() => api(`/transfer-requests/${r.request_id}/cancel`, { method: 'POST' })); };
+  const reject = async () => { const reason = await dialog.prompt({ title: 'Turn down this request', label: 'Why can’t you send it?', body: 'The other outlet will see this.', multiline: true, confirmLabel: 'Turn down', danger: true }); if (reason) act(() => api(`/transfer-requests/${r.request_id}/reject`, { method: 'POST', body: { reason } })); };
+  const cancel = async () => { if (await dialog.confirm({ title: 'Call off this request?', body: 'Anything not sent yet is cancelled.', confirmLabel: 'Call off', danger: true })) act(() => api(`/transfer-requests/${r.request_id}/cancel`, { method: 'POST' })); };
 
   return (
     <Card className="p-4">
@@ -82,7 +84,7 @@ const RequestCard = ({ r, mine, onChanged }) => {
       <ul className="mt-3 space-y-1 text-sm">
         {r.items.map((i) => (
           <li key={i.item_id} className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-ink-800">{i.name}</span>
+            <span className="text-ink-900">{i.name}</span>
             <span className="flex items-center gap-2 text-ink-500">
               {i.sent}/{i.requested}{i.unit ? ` ${i.unit}` : ''}
               {sending && asked && i.remaining > 0 && <Input className="!w-24 !py-1" type="number" min="0" max={i.remaining} step="0.001" value={qty[i.item_id] ?? i.remaining} onChange={(e) => setQty((q) => ({ ...q, [i.item_id]: e.target.value }))} aria-label={`Send ${i.name}`} />}
@@ -121,7 +123,7 @@ const StockRequestsPage = () => {
       {viewingAll && <p className="mb-4 text-sm text-ink-500">Pick one outlet at the top to ask for stock. Showing every request below.</p>}
       <div className="mb-5 flex gap-2" role="tablist">
         {[['incoming', 'Asked of this outlet'], ['outgoing', 'Asked by this outlet']].map(([id, label]) => (
-          <button key={id} role="tab" aria-selected={box === id} onClick={() => setBox(id)} className={`rounded-lg px-3.5 py-1.5 text-sm font-medium ${box === id ? 'bg-brand-50 text-brand-600' : 'text-ink-600 hover:bg-surface-2'}`}>{label}</button>
+          <button key={id} role="tab" aria-selected={box === id} onClick={() => setBox(id)} className={`rounded-lg px-3.5 py-1.5 text-sm font-medium ${box === id ? 'bg-brand-50 text-brand-600' : 'text-ink-700 hover:bg-surface-2'}`}>{label}</button>
         ))}
       </div>
       <ListState loading={!rows && !error} error={error} empty={rows?.length === 0} emptyLabel={box === 'incoming' ? 'No other outlet is asking you for stock.' : 'You have not asked any outlet for stock.'} />

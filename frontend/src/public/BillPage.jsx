@@ -13,7 +13,7 @@ import { useParams } from 'react-router-dom';
 import { api, formatCurrency } from '../lib/api.js';
 
 const Row = ({ label, value, strong }) => (
-  <div className={`flex justify-between py-1 text-sm ${strong ? 'border-t border-line pt-2 text-base font-semibold text-ink-900' : 'text-ink-600'}`}><span>{label}</span><span>{value}</span></div>
+  <div className={`flex justify-between py-1 text-sm ${strong ? 'border-t border-line pt-2 text-base font-semibold text-ink-900' : 'text-ink-700'}`}><span>{label}</span><span>{value}</span></div>
 );
 
 const StarPicker = ({ value, onChange }) => (
@@ -52,7 +52,7 @@ const FeedbackBox = ({ token, initial }) => {
 
   if (submitted) {
     return (
-      <div className="mt-4 rounded-2xl border border-line bg-surface p-5 text-center shadow-sm">
+      <div className="mt-4 rounded-(--radius-panel) border border-line bg-surface p-5 text-center shadow-sm">
         <p className="text-2xl" aria-hidden="true">{'★'.repeat(submitted.rating)}{'☆'.repeat(5 - submitted.rating)}</p>
         {outcome?.happy && outcome.google_review_link ? (
           <>
@@ -60,14 +60,14 @@ const FeedbackBox = ({ token, initial }) => {
             <a href={outcome.google_review_link} target="_blank" rel="noreferrer" className="mt-3 inline-block rounded-full bg-brand-500 px-5 py-2 text-sm font-semibold text-white">Post a Google review</a>
           </>
         ) : (
-          <p className="mt-2 text-sm text-ink-600">Thanks for letting us know — we've noted it.</p>
+          <p className="mt-2 text-sm text-ink-700">Thanks for letting us know — we've noted it.</p>
         )}
       </div>
     );
   }
 
   return (
-    <div className="mt-4 rounded-2xl border border-line bg-surface p-5 shadow-sm">
+    <div className="mt-4 rounded-(--radius-panel) border border-line bg-surface p-5 shadow-sm">
       <p className="text-center text-sm font-semibold text-ink-900">How was your visit?</p>
       <div className="mt-3"><StarPicker value={rating} onChange={setRating} /></div>
       {rating > 0 && (
@@ -99,11 +99,11 @@ const BillPage = () => {
 
   return (
     <main className="mx-auto max-w-md p-5">
-      <div className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
+      <div className="rounded-(--radius-panel) border border-line bg-surface p-5 shadow-sm">
         <h1 className="text-lg font-semibold text-ink-900">{bill.business}</h1>
         {bill.outlet && bill.outlet !== 'Main' && <p className="text-sm text-ink-500">{bill.outlet}</p>}
         {bill.gstin && <p className="text-xs text-ink-400">GSTIN {bill.gstin}</p>}
-        <p className="mt-3 text-sm text-ink-600">Bill {bill.invoice_number} · {new Date(bill.date).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+        <p className="mt-3 text-sm text-ink-700">Bill {bill.invoice_number} · {new Date(bill.date).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}</p>
         {bill.status === 'CANCELLED' && <p className="mt-2 rounded bg-danger/10 p-2 text-sm font-semibold text-danger">This bill was cancelled.</p>}
 
         <ul className="my-4 divide-y divide-line">

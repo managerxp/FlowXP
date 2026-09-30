@@ -50,7 +50,7 @@ const CreditNoteModal = ({ invoice, onClose, onIssued }) => {
         <Alert>{error}</Alert>
         {!options ? <p className="text-sm text-ink-400">Loading…</p> : (
           <>
-            <p className="text-sm text-ink-600">Choose what is being returned or corrected. GST on those items is reversed, and the credit note gets its own number.</p>
+            <p className="text-sm text-ink-700">Choose what is being returned or corrected. GST on those items is reversed, and the credit note gets its own number.</p>
             <div className="space-y-2">
               {options.items.map((i) => (
                 <div key={i.item_id} className="grid grid-cols-[1fr_7rem] items-center gap-3 rounded-lg border border-line p-3">

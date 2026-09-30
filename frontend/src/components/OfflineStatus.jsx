@@ -6,13 +6,14 @@
 import { useEffect, useState } from 'react';
 import { queue, startAutoSync, useOnline, useQueuedSales } from '../lib/offline.js';
 import { useInstall } from '../lib/pwa.js';
-import { Button, Modal, useToast } from './ui.jsx';
+import { Button, Modal, useToast, useDialog } from './ui.jsx';
 
 const when = (ms) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
 const Review = ({ items, onClose }) => {
+  const dialog = useDialog();
   const [busy, setBusy] = useState(false);
-  const discard = (item) => { if (window.confirm(`Discard this sale (${item.label})? It will never be billed.`)) queue.remove(item.id); };
+  const discard = async (item) => { if (await dialog.confirm({ title: `Discard this sale (${item.label})?`, body: 'It will never be billed.', confirmLabel: 'Discard sale', danger: true })) queue.remove(item.id); };
   return (
     <Modal title="Sales waiting to sync" onClose={onClose}>
       <div className="space-y-3">
@@ -24,7 +25,7 @@ const Review = ({ items, onClose }) => {
                 <p className="font-semibold text-ink-900">{item.label}</p>
                 <p className="text-xs text-ink-500">Taken at {when(item.createdAt)}</p>
               </div>
-              <span className={`text-xs font-semibold ${item.state === 'failed' ? 'text-danger' : 'text-amber-600'}`}>{item.state === 'failed' ? 'Refused' : 'Waiting'}</span>
+              <span className={`text-xs font-semibold ${item.state === 'failed' ? 'text-danger' : 'text-warning'}`}>{item.state === 'failed' ? 'Refused' : 'Waiting'}</span>
             </div>
             {item.error && <p className="mt-2 text-xs text-danger">{item.error}</p>}
             <div className="mt-2 flex gap-3">
@@ -57,7 +58,7 @@ export const OfflineStatus = () => {
   }), [toast]);
 
   if (online && !waiting && !refused) return null;
-  const tone = !online ? 'bg-amber-500/15 text-amber-900 dark:text-amber-200' : refused ? 'bg-danger/10 text-danger' : 'bg-brand-50 text-brand-700';
+  const tone = !online ? 'bg-amber-500/15 text-warning' : refused ? 'bg-danger/10 text-danger' : 'bg-brand-50 text-brand-700';
   return (
     <>
       <div role="status" className={`flex flex-wrap items-center justify-between gap-2 px-5 py-2 text-sm print:hidden ${tone}`}>

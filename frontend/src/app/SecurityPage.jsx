@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { api, setToken } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Alert, Badge, Button, Card, Field, Input, ListState, Table, Td, Th, Thead, Tr, useToast } from '../components/ui.jsx';
+import { Alert, Badge, Button, Card, Field, Input, ListState, Table, Td, Th, Thead, Tr, useToast, useDialog } from '../components/ui.jsx';
 
 const when = (iso) => new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 const OUTCOME = { SUCCESS: ['Signed in', 'success'], BAD_PASSWORD: ['Wrong password', 'danger'], UNKNOWN_USER: ['Unknown address', 'danger'], LOCKED: ['Locked out', 'danger'], TWO_FACTOR_FAILED: ['Wrong code', 'danger'] };
@@ -27,8 +27,8 @@ const Events = ({ rows, showWho }) => (
           <Tr key={e.event_id}>
             <Td className="whitespace-nowrap text-xs text-ink-500">{when(e.at)}</Td>
             {showWho && <Td className="text-sm">{e.name || e.email}</Td>}
-            <Td><Badge tone={tone}>{label}</Badge>{e.method === 'RECOVERY' && <span className="ml-1 text-xs text-amber-600">recovery code</span>}{e.new_device && <span className="ml-1 text-xs font-semibold text-amber-600">new device</span>}</Td>
-            <Td className="text-xs text-ink-600">{deviceName(e.device)}</Td>
+            <Td><Badge tone={tone}>{label}</Badge>{e.method === 'RECOVERY' && <span className="ml-1 text-xs text-warning">recovery code</span>}{e.new_device && <span className="ml-1 text-xs font-semibold text-warning">new device</span>}</Td>
+            <Td className="text-xs text-ink-700">{deviceName(e.device)}</Td>
             <Td className="text-xs text-ink-500">{e.ip || '—'}</Td>
           </Tr>
         );
@@ -40,7 +40,7 @@ const Events = ({ rows, showWho }) => (
 const RecoveryCodes = ({ codes, onDone }) => (
   <div className="space-y-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
     <p className="text-sm font-semibold text-ink-900">Save these recovery codes now</p>
-    <p className="text-xs text-ink-600">Each works once if you lose your phone. They are shown only this time. Keep them somewhere safe, not on the same phone.</p>
+    <p className="text-xs text-ink-700">Each works once if you lose your phone. They are shown only this time. Keep them somewhere safe, not on the same phone.</p>
     <div className="grid grid-cols-2 gap-x-6 gap-y-1 font-mono text-sm text-ink-900 sm:grid-cols-5">{codes.map((c) => <span key={c}>{c}</span>)}</div>
     <div className="flex gap-2">
       <Button size="sm" variant="secondary" onClick={() => navigator.clipboard?.writeText(codes.join('\n'))}>Copy</Button>
@@ -50,6 +50,7 @@ const RecoveryCodes = ({ codes, onDone }) => (
 );
 
 const TwoFactor = () => {
+  const dialog = useDialog();
   const toast = useToast();
   const { refresh } = useAuth();
   const [status, setStatus] = useState(null);
@@ -73,7 +74,7 @@ const TwoFactor = () => {
     const r = await api('/auth/2fa/enable', { method: 'POST', body: { code } });
     setToken(r.token); setSetup(null); setCode(''); setCodes(r.recovery_codes); load(); refresh();
   });
-  const newCodes = () => { const pw = window.prompt('Enter your password to get new recovery codes. The old ones stop working.'); if (pw) run(async () => { setCodes((await api('/auth/2fa/recovery-codes', { method: 'POST', body: { password: pw } })).recovery_codes); load(); }); };
+  const newCodes = async () => { const pw = await dialog.prompt({ title: 'New recovery codes', body: 'The old codes stop working as soon as new ones are made.', label: 'Your password', type: 'password', autoComplete: 'current-password', confirmLabel: 'Make new codes' }); if (pw) run(async () => { setCodes((await api('/auth/2fa/recovery-codes', { method: 'POST', body: { password: pw } })).recovery_codes); load(); }); };
   const turnOff = () => run(async () => {
     const isRecovery = code.includes('-');
     const r = await api('/auth/2fa/disable', { method: 'POST', body: { password, ...(isRecovery ? { recovery_code: code } : { code }) } });
@@ -108,7 +109,7 @@ const TwoFactor = () => {
 
       {status.enabled && !codes && (
         <div className="mt-4 space-y-3">
-          <p className="text-sm text-ink-600">{status.recovery_codes_left} recovery code{status.recovery_codes_left === 1 ? '' : 's'} left{status.recovery_codes_left <= 2 && <span className="text-amber-600"> · get new ones soon</span>}.</p>
+          <p className="text-sm text-ink-700">{status.recovery_codes_left} recovery code{status.recovery_codes_left === 1 ? '' : 's'} left{status.recovery_codes_left <= 2 && <span className="text-warning"> · get new ones soon</span>}.</p>
           <div className="flex flex-wrap gap-2"><Button variant="secondary" size="sm" onClick={newCodes}>New recovery codes</Button>{!status.required && <Button variant="ghost" size="sm" onClick={() => setOff((v) => !v)}>Turn off…</Button>}</div>
           {off && (
             <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
@@ -124,6 +125,7 @@ const TwoFactor = () => {
 };
 
 const Password = () => {
+  const dialog = useDialog();
   const toast = useToast();
   const [form, setForm] = useState({ current_password: '', new_password: '' });
   const [error, setError] = useState('');
@@ -134,7 +136,7 @@ const Password = () => {
     catch (caught) { setError(caught.message); } finally { setBusy(false); }
   };
   const out = async () => {
-    if (!window.confirm('Sign out of every device, including this one\'s other tabs? You stay signed in here.')) return;
+    if (!(await dialog.confirm({ title: 'Sign out everywhere else?', body: 'Every other device and tab is signed out. You stay signed in here.', confirmLabel: 'Sign out others' }))) return;
     try { const r = await api('/auth/sign-out-everywhere', { method: 'POST' }); setToken(r.token); toast.success('Every other device was signed out'); } catch (caught) { setError(caught.message); }
   };
   return (
@@ -147,7 +149,7 @@ const Password = () => {
       </form>
       <Alert>{error}</Alert>
       <div className="mt-4 border-t border-line pt-4">
-        <p className="text-sm text-ink-600">Lost a phone, or used a shared computer? End every other session at once.</p>
+        <p className="text-sm text-ink-700">Lost a phone, or used a shared computer? End every other session at once.</p>
         <Button variant="secondary" size="sm" className="mt-2" onClick={out}>Sign out everywhere else</Button>
       </div>
     </Card>

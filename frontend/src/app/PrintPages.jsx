@@ -43,7 +43,7 @@ const Toolbar = ({ back, width, setWidth, children }) => (
     <Link to={back} className="text-sm font-semibold text-brand-600">← Back</Link>
     <div className="ml-auto flex flex-wrap items-center gap-2">
       {children}
-      <label className="flex items-center gap-1.5 text-sm text-ink-600">Paper
+      <label className="flex items-center gap-1.5 text-sm text-ink-700">Paper
         <select value={width} onChange={(e) => setWidth(Number(e.target.value))} className="rounded-lg border border-line-strong bg-surface px-2 py-1 text-sm">
           <option value={80}>80 mm</option><option value={58}>58 mm</option>
         </select>
@@ -169,7 +169,7 @@ export const KotPage = () => {
       <PrintStyles width={width} />
       <Toolbar back="/app/orders" width={width} setWidth={setWidth}>
         {kot.stations.length > 1 && (
-          <label className="flex items-center gap-1.5 text-sm text-ink-600">Print
+          <label className="flex items-center gap-1.5 text-sm text-ink-700">Print
             <select value={only} onChange={(e) => setOnly(e.target.value)} className="rounded-lg border border-line-strong bg-surface px-2 py-1 text-sm">
               <option value="all">All {kot.stations.length} slips</option>
               {kot.stations.map((s) => <option key={s.station_id ?? 'none'} value={String(s.station_id ?? 'none')}>{s.name} only</option>)}

@@ -10,6 +10,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Button, Field, Input, Logo } from '../components/ui.jsx';
+import { Check, Shot } from '../site/parts.jsx';
 
 /* Mirrors the list the API validates against. A mismatch here is a 400 the
    user cannot fix, so the two lists must be changed together. */
@@ -29,11 +30,13 @@ const ASIDES = {
     src: '/product/pos-main.webp',
     alt: 'The FlowXP billing screen with items, GST and a Charge button.'
   },
+  /* Invoices, not a restaurant-only screen like the kitchen display: every
+     business type signs in here, and every one of them raises bills. */
   login: {
     title: 'Your bills, stock and insights are waiting.',
     points: ['Keeps billing when the internet drops', 'Two-step login keeps your account safe', 'Staff see only what their role allows'],
-    src: '/product/kitchen-main.webp',
-    alt: 'The FlowXP kitchen display with open orders by table.'
+    src: '/product/invoices-main.webp',
+    alt: 'The FlowXP invoices list: bill numbers, customers, totals and payment status.'
   }
 };
 
@@ -42,51 +45,53 @@ const ASIDES = {
  * reassurances on the right (wide screens only; on a phone the form is all
  * there is). The form rises in once; nothing else moves. A sign-in form is
  * a task, not a page to be impressed by.
+ *
+ * Spacing: on a phone the form sits a fixed distance under the header and
+ * the legal line follows it, rather than being pinned to the bottom with an
+ * empty screen in between. On a desktop the form's heading and the side
+ * panel's heading start on the same line (the panel's top padding is the
+ * header's 4rem plus the same 12vh), so the two columns read as one layout;
+ * a long form like signup simply runs on below. The screenshot is shown
+ * whole — a cropped screen looks like a layout bug, not a design.
  */
 const AuthLayout = ({ title, lead, children, footer, aside = 'login', top }) => {
   const side = ASIDES[aside];
   return (
     <div className="grid min-h-full bg-surface lg:grid-cols-2">
-      <div className="flex flex-col px-5 py-6 sm:px-10">
-        <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col px-5 py-5 sm:px-10 sm:py-6">
+        <div className="flex min-h-10 flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <Link to="/" aria-label="FlowXP home"><Logo /></Link>
           {top && <p className="text-small text-ink-500">{top}</p>}
         </div>
 
-        <main className="flex flex-1 justify-center py-12 lg:items-center">
-          <div className="rise w-full max-w-[420px]">
+        <main className="flex justify-center pb-12 pt-10 sm:pt-16 lg:flex-1 lg:pt-[12vh]">
+          <div className="rise w-full max-w-[400px]">
             <h1 className="text-h2 font-semibold text-ink-900">{title}</h1>
-            {lead && <p className="mt-3 text-body text-ink-500">{lead}</p>}
+            {lead && <p className="mt-2 text-body text-ink-500">{lead}</p>}
             <div className="mt-8">{children}</div>
-            {footer && <p className="mt-8 text-body text-ink-500">{footer}</p>}
+            {footer && <p className="mt-6 text-small text-ink-500">{footer}</p>}
           </div>
         </main>
 
-        <p className="text-caption text-ink-500">
+        <p className="border-t border-line pt-5 text-caption text-ink-500 lg:mt-auto lg:border-0 lg:pt-0">
           © {new Date().getFullYear()} ManagerXP ·{' '}
           <Link to="/privacy" className="hover:text-ink-900">Privacy</Link> ·{' '}
           <Link to="/terms" className="hover:text-ink-900">Terms</Link>
         </p>
       </div>
 
-      <aside aria-label="About FlowXP" className="relative hidden overflow-hidden border-l border-line bg-brand-50 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:justify-center lg:self-start lg:px-14 lg:py-16">
-        <div className="rise max-w-lg" style={{ '--d': '160ms' }}>
-          <p className="text-h3 font-semibold text-ink-900">{side.title}</p>
-          <ul className="mt-5 space-y-2.5">
-            {side.points.map((p) => (
-              <li key={p} className="flex gap-2.5 text-body text-ink-700">
-                <svg aria-hidden="true" viewBox="0 0 16 16" className="mt-1 h-4 w-4 shrink-0 text-brand-500"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3.5 8.5l3 3 6-7" /></svg>
-                {p}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <figure className="rise mt-10 -mr-40 overflow-hidden rounded-(--radius-card) border border-line bg-surface shadow-lg" style={{ '--d': '320ms' }}>
-          <div aria-hidden="true" className="flex h-7 items-center gap-1.5 border-b border-line bg-surface-2 px-3">
-            <span className="h-2 w-2 rounded-full bg-line-strong" /><span className="h-2 w-2 rounded-full bg-line-strong" /><span className="h-2 w-2 rounded-full bg-line-strong" />
+      <aside aria-label="About FlowXP" className="hidden border-l border-line bg-brand-50 lg:sticky lg:top-0 lg:block lg:h-screen lg:self-start lg:overflow-hidden lg:px-12 lg:pb-12 lg:pt-[calc(4rem+12vh)] xl:px-16">
+        <div className="w-full max-w-xl">
+          <div className="rise" style={{ '--d': '160ms' }}>
+            <p className="text-h3 font-semibold text-ink-900">{side.title}</p>
+            <ul className="mt-5 space-y-2.5">
+              {side.points.map((p) => (
+                <li key={p} className="flex gap-2.5 text-body text-ink-700"><Check />{p}</li>
+              ))}
+            </ul>
           </div>
-          <img src={side.src} alt={side.alt} width="1200" height="750" className="block h-auto w-full" />
-        </figure>
+          <Shot src={side.src} alt={side.alt} eager className="rise mt-10" style={{ '--d': '320ms' }} />
+        </div>
       </aside>
     </div>
   );

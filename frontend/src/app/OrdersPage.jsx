@@ -22,7 +22,7 @@ import FoodMark from '../components/FoodMark.jsx';
 import { LoyaltyCard, MobileLookup, PointsPanel, RewardHint } from '../components/LoyaltyCard.jsx';
 import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, setDevicePref } from '../lib/printing.js';
 import ModifierPicker, { needsChoices, useModifierGroups } from '../components/ModifierPicker.jsx';
-import { Alert, Badge, Button, Field, Input, Modal, Select, humanize, useToast } from '../components/ui.jsx';
+import { Alert, Badge, Button, Field, Input, Modal, Select, humanize, useToast, useDialog, StatCard } from '../components/ui.jsx';
 import { platformName } from '../lib/business.js';
 
 const TYPE_LABEL = { DINE_IN: 'Dine-in', TAKEAWAY: 'Takeaway', DELIVERY: 'Delivery' };
@@ -365,6 +365,7 @@ const MenuPicker = ({ products, counts, onAdd, onClose, title }) => {
 /* ── The chosen order ──────────────────────────────────────────────────── */
 
 const OrderPanel = ({ orderId, onChanged, onBack }) => {
+  const dialog = useDialog();
   const billKey = useIdempotencyKey();
   const { business, hasFeature } = useAuth();
   const multiBrand = hasFeature('multi_brand');
@@ -426,8 +427,8 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
   });
   const choose = (p) => { const full = withGroups(p); if (needsChoices(full)) { setQuery(''); setPicking(full); } else addItem(p); };
   const setQty = (item, quantity) => run(() => api(`/orders/${orderId}/items/${item.order_item_id}`, { method: 'PATCH', body: { quantity } }));
-  const cancelItem = (item) => {
-    if (item.status !== 'PENDING' && !window.confirm(`Cancel ${item.description}? The kitchen will see it as cancelled.`)) return;
+  const cancelItem = async (item) => {
+    if (item.status !== 'PENDING' && !(await dialog.confirm({ title: `Cancel ${item.description}?`, body: 'The kitchen will see it as cancelled.', confirmLabel: 'Cancel item', cancelLabel: 'Keep item', danger: true }))) return;
     run(() => api(`/orders/${orderId}/items/${item.order_item_id}`, { method: 'PATCH', body: { status: 'CANCELLED' } }));
   };
   const setWaiter = (id) => run(() => api(`/orders/${orderId}/waiter`, { method: 'PATCH', body: { waiter_user_id: id ? Number(id) : null } }));
@@ -435,8 +436,8 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
   const setRider = (id) => run(() => api(`/orders/${orderId}/rider`, { method: 'PATCH', body: { rider_user_id: id ? Number(id) : null } }));
   const setDeliveryStatus = (status) => run(() => api(`/orders/${orderId}/delivery-status`, { method: 'POST', body: { status } }));
   const attachCustomer = (customer) => run(async () => { await api(`/orders/${orderId}/customer`, { method: 'PATCH', body: { customer_id: customer?.customer_id ?? null } }); setChangingCustomer(false); });
-  const cancelOrder = () => {
-    if (!window.confirm('Cancel this whole order? Items not yet billed are cancelled and the kitchen is told.')) return;
+  const cancelOrder = async () => {
+    if (!(await dialog.confirm({ title: 'Cancel this whole order?', body: 'Items not yet billed are cancelled and the kitchen is told.', confirmLabel: 'Cancel order', cancelLabel: 'Keep order', danger: true }))) return;
     run(async () => { await api(`/orders/${orderId}/cancel`, { method: 'POST' }); toast.success('Order cancelled'); onBack(); });
   };
 
@@ -534,8 +535,8 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
       const res = await api(`/orders/${orderId}/accept`, { method: 'POST' });
       toast.success(`Sent to the kitchen · ${res.kot_number}`);
     });
-    const rejectDelivery = () => {
-      const reason = window.prompt(`Why turn down this ${platformName(order.platform)} order? The platform sees this.`);
+    const rejectDelivery = async () => {
+      const reason = await dialog.prompt({ title: `Turn down this ${platformName(order.platform)} order`, label: 'Reason', body: 'The platform sees this.', required: false, confirmLabel: 'Turn down', danger: true });
       if (reason == null) return;
       run(async () => { await api(`/orders/${orderId}/reject`, { method: 'POST', body: { reason } }); toast.success('Order turned down'); onBack(); });
     };
@@ -819,17 +820,7 @@ const OrderCard = ({ order, active, onOpen }) => {
   );
 };
 
-const Stat = ({ label, value, note, tone = 'text-ink-900', onClick, active }) => {
-  const Tag = onClick ? 'button' : 'div';
-  return (
-    <Tag {...(onClick ? { type: 'button', onClick, 'aria-pressed': active } : {})}
-         className={`rounded-(--radius-card) border bg-surface px-4 py-3 text-left ${active ? 'border-brand-500 ring-1 ring-brand-500' : 'border-line'} ${onClick ? 'hover:border-line-strong' : ''}`}>
-      <p className="text-caption font-medium text-ink-500">{label}</p>
-      <p className={`tabular mt-1 text-[22px] font-bold leading-none ${tone}`}>{value}</p>
-      {note && <p className="mt-1 truncate text-caption text-ink-500">{note}</p>}
-    </Tag>
-  );
-};
+const Stat = (props) => <StatCard size="lg" {...props} />;
 
 const OrdersPage = () => {
   const [params, setParams] = useSearchParams();

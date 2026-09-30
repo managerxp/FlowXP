@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 
-export const SEVERITY_DOT = { critical: 'bg-danger', warning: 'bg-warning', positive: 'bg-success', informational: 'bg-ink-300' };
+export const SEVERITY_DOT = { critical: 'bg-danger', warning: 'bg-warning', positive: 'bg-success', informational: 'bg-line-strong' };
 
 export const timeAgo = (iso) => {
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
@@ -56,7 +56,7 @@ const NotificationBell = () => {
       <button
         type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="true"
         aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
-        className="relative flex h-9 w-9 items-center justify-center rounded-full text-ink-600 hover:bg-surface-2"
+        className="relative flex h-9 w-9 items-center justify-center rounded-full text-ink-700 hover:bg-surface-2"
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M6 9a6 6 0 1 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9Z" /><path d="M10 19a2 2 0 0 0 4 0" />
@@ -65,7 +65,7 @@ const NotificationBell = () => {
       </button>
 
       {open && (
-        <div role="menu" className="fixed inset-x-3 top-16 z-50 overflow-hidden rounded-xl border border-line bg-surface shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80">
+        <div role="menu" className="fixed inset-x-3 top-16 z-50 overflow-hidden rounded-(--radius-card) border border-line bg-surface shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80">
           <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
             <p className="text-sm font-semibold text-ink-900">Notifications</p>
             <Link to="/app/notifications" onClick={() => setOpen(false)} className="text-xs font-semibold text-brand-600">See all</Link>

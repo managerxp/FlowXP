@@ -240,7 +240,7 @@ const OnboardingAssistant = ({ form, onFields }) => {
             )}
             {messages.map((m, i) => (
               <div key={i} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-                <div className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${m.role === 'user' ? 'bg-brand-500 text-white' : 'border border-line bg-surface text-ink-800'}`}>
+                <div className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${m.role === 'user' ? 'bg-brand-500 text-white' : 'border border-line bg-surface text-ink-900'}`}>
                   {m.content}
                 </div>
               </div>

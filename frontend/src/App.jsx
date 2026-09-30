@@ -18,9 +18,13 @@ import AboutPage from './site/AboutPage.jsx';
 import ContactPage from './site/ContactPage.jsx';
 import AIPage from './site/AIPage.jsx';
 import Pricing from './site/Pricing.jsx';
-import { Privacy, Terms } from './site/Legal.jsx';
 import { ForgotPassword, Login, ResetPassword, Signup } from './auth/AuthPages.jsx';
-import ComingSoon from './app/ComingSoon.jsx';
+import { PageLoader } from './components/ui.jsx';
+
+/* The legal pages are long text almost nobody opens on their first visit;
+   keeping them out of the entry bundle keeps the landing page fast. */
+const Privacy = lazy(() => import('./site/Legal.jsx').then((m) => ({ default: m.Privacy })));
+const Terms = lazy(() => import('./site/Legal.jsx').then((m) => ({ default: m.Terms })));
 
 /* The super admin console — a separate concern from the product, so it stays
    out of every bundle except its own until someone actually visits it. */
@@ -39,7 +43,7 @@ const AdminSettings = lazy(() => import('./admin/AdminSettings.jsx'));
    the login route would be invisible to the shell it navigates to next. */
 const AdminRoot = () => (
   <AdminAuthProvider>
-    <Suspense fallback={<p className="p-8 text-sm text-ink-400">Loading…</p>}>
+    <Suspense fallback={<PageLoader />}>
       <Outlet />
     </Suspense>
   </AdminAuthProvider>
@@ -101,9 +105,6 @@ const BillPage = lazy(() => import('./public/BillPage.jsx'));
 const MessagingPage = lazy(() => import('./app/MessagingPage.jsx'));
 const ReviewsPage = lazy(() => import('./app/ReviewsPage.jsx'));
 
-/* Screens still to come (none right now: every app page has a real screen). */
-const PENDING = [];
-
 /*
  * The gate for signed-in pages that render outside AppShell.
  *
@@ -113,7 +114,7 @@ const PENDING = [];
  */
 const RequireAuth = ({ children }) => {
   const { user, loading } = useAuth();
-  if (loading) return <p className="p-8 text-sm text-ink-400">Loading…</p>;
+  if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 };
@@ -130,8 +131,8 @@ const App = () => (
       <Route path="about" element={<AboutPage />} />
       <Route path="contact" element={<ContactPage />} />
       <Route path="pricing" element={<Pricing />} />
-      <Route path="privacy" element={<Privacy />} />
-      <Route path="terms" element={<Terms />} />
+      <Route path="privacy" element={<Suspense fallback={<PageLoader />}><Privacy /></Suspense>} />
+      <Route path="terms" element={<Suspense fallback={<PageLoader />}><Terms /></Suspense>} />
     </Route>
 
     {/* Auth — outside SiteLayout: a signup form does not need a nav bar
@@ -145,7 +146,7 @@ const App = () => (
     <Route
       path="app"
       element={
-        <Suspense fallback={<p className="p-8 text-sm text-ink-400">Loading FlowXP…</p>}>
+        <Suspense fallback={<PageLoader label="Loading FlowXP…" />}>
           <AppShell />
         </Suspense>
       }
@@ -195,19 +196,16 @@ const App = () => (
       <Route path="staff" element={<StaffPage />} />
       <Route path="activity" element={<ActivityPage />} />
 
-      {PENDING.map(([path, title, priority, body]) => (
-        <Route key={path} path={path} element={<ComingSoon title={title} priority={priority} body={body} />} />
-      ))}
     </Route>
 
     {/* A customer's own phone — no login, no nav, no SiteLayout/AppShell
         chrome at all. The first bare page in this app; see
         public/CustomerMenu.jsx. */}
-    <Route path="bill/:token" element={<Suspense fallback={<p className="p-8 text-sm text-ink-400">Loading…</p>}><BillPage /></Suspense>} />
+    <Route path="bill/:token" element={<Suspense fallback={<PageLoader />}><BillPage /></Suspense>} />
     <Route
       path="order/:token"
       element={
-        <Suspense fallback={<p className="p-8 text-sm text-ink-400">Loading menu…</p>}>
+        <Suspense fallback={<PageLoader label="Loading menu…" />}>
           <CustomerMenu />
         </Suspense>
       }
@@ -220,7 +218,7 @@ const App = () => (
       path="app/onboarding"
       element={
         <RequireAuth>
-          <Suspense fallback={<p className="p-8 text-sm text-ink-400">Loading…</p>}>
+          <Suspense fallback={<PageLoader />}>
             <div className="min-h-full bg-surface-2 px-5 py-12 sm:py-16">
               <Onboarding />
             </div>

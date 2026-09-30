@@ -14,7 +14,7 @@ import { api, downloadFile, formatCurrency } from '../lib/api.js';
 import { localISO } from '../lib/dates.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { RESTAURANT_TYPES, platformName } from '../lib/business.js';
-import { Alert, Button, Input } from '../components/ui.jsx';
+import { Alert, Button, Input, StatCard } from '../components/ui.jsx';
 
 /* ── Periods ───────────────────────────────────────────────────────────── */
 
@@ -51,14 +51,7 @@ const CsvButton = ({ name, head, rows }) => (
   </button>
 );
 
-const Tile = ({ label, value, note, change }) => (
-  <div className="rounded-(--radius-card) border border-line bg-surface p-4">
-    <p className="text-caption text-ink-500">{label}</p>
-    <p className="tabular mt-1 text-title font-semibold text-ink-900">{value}</p>
-    {change}
-    {note && <p className="mt-0.5 text-caption text-ink-500">{note}</p>}
-  </div>
-);
+const Tile = ({ change, ...props }) => <StatCard {...props}>{change}</StatCard>;
 
 /* "12% up on the 7 days before": spending more is the thing to notice on costs, earning more on sales. */
 const Change = ({ now, before, vs, goodWhenUp = true }) => {

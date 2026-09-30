@@ -10,13 +10,13 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Camera, ChefHat, Layers, Plus, Search, Sparkles } from 'lucide-react';
+import { ArrowLeft, Camera, ChefHat, Layers, Plus, Search, Sparkles, Package } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { RESTAURANT_TYPES } from '../lib/business.js';
 import MenuImportModal from '../components/MenuImportModal.jsx';
 import FoodMark, { FOOD_TYPES } from '../components/FoodMark.jsx';
-import { Alert, Button, Field, Input, Modal, Select, Textarea, useToast } from '../components/ui.jsx';
+import { Alert, Button, Field, Input, Modal, Select, Textarea, useToast, useDialog, EmptyState } from '../components/ui.jsx';
 
 const KIND_LABELS = { DISH: 'Sold item', INGREDIENT: 'Ingredient', PACKAGING: 'Packaging' };
 const UNITS = ['pc', 'plate', 'kg', 'g', 'litre', 'ml', 'box', 'pack', 'dozen', 'hour', 'service'];
@@ -315,6 +315,7 @@ const OutletPrices = ({ dish, onClose }) => {
    out and the dish shows its real cost. Cost here follows the ingredients'
    purchase prices as you type; the server recomputes it on save. */
 const RecipeEditor = ({ dish, onClose }) => {
+  const dialog = useDialog();
   const toast = useToast();
   const { outlets } = useAuth();
   const [scope, setScope] = useState('default');          // 'default' or an outlet id
@@ -352,7 +353,7 @@ const RecipeEditor = ({ dish, onClose }) => {
     finally { setBusy(false); }
   };
   const removeOutletRecipe = async () => {
-    if (!window.confirm('Remove this outlet\'s own recipe? It will use the default recipe again.')) return;
+    if (!(await dialog.confirm({ title: "Remove this outlet's recipe?", body: 'It will use the default recipe again.', confirmLabel: 'Remove', danger: true }))) return;
     setBusy(true); setError('');
     try { await api(`/products/${dish.product_id}/recipe?branch_id=${scope}`, { method: 'DELETE' }); toast.success('Back to the default recipe'); onClose(); }
     catch (caught) { setError(caught.message); }
@@ -649,6 +650,7 @@ const ProductRow = ({ p, active, isRestaurant, onOpen }) => {
 };
 
 const ProductsPage = () => {
+  const dialog = useDialog();
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const selectedId = params.get('p') ? Number(params.get('p')) : null;
@@ -716,7 +718,7 @@ const ProductsPage = () => {
     return created;
   };
   const archive = async (p) => {
-    if (!window.confirm(`Archive ${p.name}? It stops showing on billing and the QR menu. Its past sales stay, and you can bring it back.`)) return;
+    if (!(await dialog.confirm({ title: `Archive ${p.name}?`, body: 'It stops showing on billing and the QR menu. Its past sales stay, and you can bring it back.', confirmLabel: 'Archive' }))) return;
     try { await api(`/products/${p.product_id}/archive`, { method: 'POST' }); toast.success(`${p.name} archived`); changed(); }
     catch (caught) { setError(caught.message); }
   };
@@ -814,9 +816,7 @@ const ProductsPage = () => {
         ) : selectedId && products ? (
           <div className="p-8 text-center text-small text-ink-500">That product isn't here. <button type="button" onClick={() => open(null)} className="font-medium text-brand-700">Back to all</button></div>
         ) : (
-          <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-            <p className="text-small font-medium text-ink-700">Pick a product to see its price, what it costs you, its recipe and stock</p>
-          </div>
+          <EmptyState compact icon={Package} className="h-full justify-center" title="Pick a product" body="See its price, what it costs you, its recipe and stock." />
         )}
       </section>
 

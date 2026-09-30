@@ -14,7 +14,7 @@ import { getDevicePrefs, openDrawer, openPrint, printReceipt } from '../../lib/p
 import CreditNoteModal from '../../components/CreditNoteModal.jsx';
 import EWayBillModal from '../../components/EWayBillModal.jsx';
 import UpiCollect from '../../components/UpiCollect.jsx';
-import { Alert, Button, Field, Input, Modal, Select, useToast } from '../../components/ui.jsx';
+import { Alert, Button, Field, Input, Modal, Select, useToast, useDialog } from '../../components/ui.jsx';
 
 const METHODS = [['CASH', 'Cash'], ['UPI', 'UPI'], ['CARD', 'Card'], ['BANK_TRANSFER', 'Bank'], ['CREDIT', 'Credit'], ['OTHER', 'Other']];
 const METHOD_LABEL = Object.fromEntries(METHODS);
@@ -150,6 +150,7 @@ const MoreMenu = ({ items }) => {
 };
 
 const InvoiceDetail = () => {
+  const dialog = useDialog();
   const { id } = useParams();
   const { business } = useAuth();
   const toast = useToast();
@@ -163,7 +164,7 @@ const InvoiceDetail = () => {
 
   const sendBill = async () => {
     setActionError('');
-    const phone = invoice.customer_phone || window.prompt('Customer mobile number to send the bill to:');
+    const phone = invoice.customer_phone || await dialog.prompt({ title: 'Send the bill', label: 'Customer mobile number', type: 'tel', inputMode: 'tel', autoComplete: 'tel', confirmLabel: 'Send' });
     if (!phone) return;
     try {
       const m = await api('/messaging/send-bill', { method: 'POST', body: { invoice_id: Number(id), phone } });
@@ -172,7 +173,7 @@ const InvoiceDetail = () => {
   };
   const cancel = async () => {
     const paidNote = invoice.amount_paid - invoice.refunded > 0 ? ` ${formatCurrency(invoice.amount_paid - invoice.refunded)} was paid on it and is not refunded automatically; record a refund if you give it back.` : '';
-    if (!window.confirm(`Cancel ${invoice.invoice_number}? Stock comes back and it stops counting as a sale.${paidNote}`)) return;
+    if (!(await dialog.confirm({ title: `Cancel ${invoice.invoice_number}?`, body: `Stock comes back and it stops counting as a sale.${paidNote}`, confirmLabel: 'Cancel invoice', cancelLabel: 'Keep invoice', danger: true }))) return;
     setActionError('');
     try { await api(`/invoices/${id}/cancel`, { method: 'POST' }); toast.success(`${invoice.invoice_number} cancelled`); load(); }
     catch (caught) { setActionError(caught.message); }

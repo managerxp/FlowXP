@@ -37,11 +37,7 @@ export default defineConfig({
            Splitting them out means a copy deploy does not invalidate the
            largest chunk in every returning user's cache. */
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          // GSAP changes even less often than React does, and every page in
-          // the app pulls it in — its own chunk means a copy edit anywhere
-          // doesn't re-download 70kb of animation engine.
-          gsap: ['gsap', '@gsap/react']
+          vendor: ['react', 'react-dom', 'react-router-dom']
         }
       }
     }

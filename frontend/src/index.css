@@ -27,12 +27,14 @@
   --color-line: #e3e8ef;
   --color-line-strong: #cdd5e0;
 
-  /* Text: the navy of the "Flow" wordmark. ink-500 on white is 5.3:1;
-     ink-400 is for 18px+ or decoration only. */
+  /* Text: the navy of the "Flow" wordmark. ink-500 on white is 5.4:1.
+     ink-400 is the quietest text colour and still 4.7:1 on white: it is used
+     for hundreds of small hints, timestamps and placeholders, so it has to
+     pass AA on its own rather than rely on "large text only" discipline. */
   --color-ink-900: #011531;
   --color-ink-700: #22324d;
   --color-ink-500: #5a6b87;
-  --color-ink-400: #8494ad;
+  --color-ink-400: #65758e;
 
   /* The logo blue, sampled from logo.png (#0054FA), solid. 500 on white is 6.2:1,
      so it is safe for text and small labels as well as buttons. */
@@ -116,24 +118,6 @@ body {
 @media print { body { background: #fff; } }
 
 /*
- * Retired helpers from the old gradient/glass look. Kept as names so any
- * screen not yet redesigned still renders cleanly, but they now mean
- * "brand text", "dark panel" and "plain bordered surface".
- */
-.text-gradient { color: var(--color-brand-500); }
-.bg-gradient-brand { background: var(--color-ink-900); }
-.glow-brand { position: relative; }
-
-.glass {
-  background: var(--color-surface);
-  border: 1px solid var(--color-line);
-}
-.glass-on-dark {
-  background: rgb(255 255 255 / 0.08);
-  border: 1px solid rgb(255 255 255 / 0.16);
-}
-
-/*
  * Entrances. .rise plays once on load (the hero); .reveal plays once when it
  * scrolls into view (components/Reveal.jsx sets data-shown). Both stagger by
  * --i. Only opacity and transform move, so they never cause layout.
@@ -174,6 +158,15 @@ body {
 @keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .fade-in { animation: fade-in var(--duration-moderate) var(--ease-decelerate) both; }
 
+/* Dialogs and toasts arrive rather than blink in: the backdrop fades, the
+   panel settles from slightly below. Exits are instant — a closing dialog
+   should never hold up the next thing someone does. */
+@keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes panel-in { from { opacity: 0; transform: translateY(8px) scale(0.985); } to { opacity: 1; transform: none; } }
+.modal-backdrop { animation: backdrop-in var(--duration-normal) var(--ease-standard) both; }
+.modal-panel { animation: panel-in var(--duration-moderate) var(--ease-decelerate) both; }
+.toast { animation: panel-in var(--duration-normal) var(--ease-decelerate) both; }
+
 /* Numbers in tables and totals line up. */
 .tabular { font-variant-numeric: tabular-nums; }
 
@@ -186,7 +179,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .reveal, .draw { opacity: 1; transform: none; transition: none; }
-  .rise, .fade-in { animation: none; }
+  .rise, .fade-in, .modal-backdrop, .modal-panel, .toast { animation: none; }
   .lift:hover { transform: none; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

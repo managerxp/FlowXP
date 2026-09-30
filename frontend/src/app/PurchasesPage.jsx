@@ -10,13 +10,13 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Check, PackageCheck, Plus, Search, Sparkles, Trash2, Truck, Wallet } from 'lucide-react';
+import { ArrowLeft, Check, PackageCheck, Plus, Search, Sparkles, Trash2, Truck, Wallet, ShoppingCart } from 'lucide-react';
 import PurchaseOrderModal from '../components/PurchaseOrderModal.jsx';
 import DebitNoteModal from '../components/DebitNoteModal.jsx';
 import { api, formatCurrency } from '../lib/api.js';
 import { localISO } from '../lib/dates.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
-import { Alert, Button, Field, Input, Modal, Select, useToast } from '../components/ui.jsx';
+import { Alert, Button, Field, Input, Modal, Select, useToast, useDialog, EmptyState } from '../components/ui.jsx';
 
 const METHODS = [['CASH', 'Cash'], ['UPI', 'UPI'], ['BANK_TRANSFER', 'Bank'], ['CARD', 'Card'], ['OTHER', 'Other']];
 const METHOD_LABEL = { ...Object.fromEntries(METHODS), CREDIT: 'Credit' };
@@ -220,6 +220,7 @@ const Money = ({ label, value, strong, tone }) => (
 );
 
 const OrderPanel = ({ poId, refreshKey, onAction, onChanged, onBack }) => {
+  const dialog = useDialog();
   const toast = useToast();
   const [po, setPo] = useState(null);
   const [error, setError] = useState('');
@@ -227,7 +228,7 @@ const OrderPanel = ({ poId, refreshKey, onAction, onChanged, onBack }) => {
   useEffect(() => { setPo(null); setError(''); load(); }, [poId, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const act = async (confirmText, path, done) => {
-    if (!window.confirm(confirmText)) return;
+    if (!(await dialog.confirm({ title: confirmText, confirmLabel: 'Continue' }))) return;
     setError('');
     try { await api(`/purchases/${poId}/${path}`, { method: 'POST' }); toast.success(done); onChanged(); load(); }
     catch (caught) { setError(caught.message); }
@@ -471,9 +472,7 @@ const PurchasesPage = () => {
           <OrderPanel key={selectedId} poId={selectedId} refreshKey={refreshKey} onChanged={load} onBack={() => open(null)}
                       onAction={(kind, po) => setModal(kind === 'edit' ? { kind: 'order', id: selectedId } : kind === 'receive' ? { kind: 'receive', id: selectedId } : { kind, po })} />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-            <p className="text-small font-medium text-ink-700">Pick an order to see what's on it, receive it, or pay for it</p>
-          </div>
+          <EmptyState compact icon={ShoppingCart} className="h-full justify-center" title="Pick an order" body="See what's on it, receive it, or pay for it." />
         )}
       </section>
 

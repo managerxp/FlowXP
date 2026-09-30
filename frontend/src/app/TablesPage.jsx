@@ -18,7 +18,7 @@ import QRCode from 'qrcode';
 import { CalendarClock, Clock, Printer, QrCode, Settings2, Sparkles, Users } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Alert, Button, Field, Input, Modal, Select, useToast } from '../components/ui.jsx';
+import { Alert, Button, Field, Input, Modal, Select, useToast, useDialog, StatCard } from '../components/ui.jsx';
 
 const POLL_MS = 20000;
 const LONG_MIN = 90;
@@ -108,6 +108,7 @@ const AddTableModal = ({ zones, onClose, onCreated }) => {
 
 /* A table's settings: details, regular waiter, QR code, cleaning, removal. */
 const TableSettings = ({ table, zones, waiters, businessName, onClose, onSaved }) => {
+  const dialog = useDialog();
   const toast = useToast();
   const [dataUrl, setDataUrl] = useState('');
   const [copied, setCopied] = useState(false);
@@ -125,7 +126,7 @@ const TableSettings = ({ table, zones, waiters, businessName, onClose, onSaved }
   };
   const copy = async () => { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); };
   const remove = async () => {
-    if (!window.confirm(`Remove ${table.name}? It leaves the floor and its QR code stops working. Past bills keep their table name.`)) return;
+    if (!(await dialog.confirm({ title: `Remove ${table.name}?`, body: 'It leaves the floor and its QR code stops working. Past bills keep their table name.', confirmLabel: 'Remove table', danger: true }))) return;
     if (await patch({ status: 'CLOSED' }, `${table.name} removed`)) onClose();
   };
 
@@ -256,15 +257,10 @@ const TableTile = ({ table, onOpen, onSettings, onClean, starting }) => {
   );
 };
 
-const Stat = ({ label, value, note, tone = 'text-ink-900', className = '' }) => (
-  <div className={`rounded-(--radius-card) border border-line bg-surface px-4 py-3 ${className}`}>
-    <p className="text-caption font-medium text-ink-500">{label}</p>
-    <p className={`tabular mt-1 text-[24px] font-bold leading-none ${tone}`}>{value}</p>
-    {note && <p className="mt-1 truncate text-caption text-ink-500">{note}</p>}
-  </div>
-);
+const Stat = (props) => <StatCard size="lg" {...props} />;
 
 const TablesPage = () => {
+  const dialog = useDialog();
   const navigate = useNavigate();
   const toast = useToast();
   const [tables, setTables] = useState(null);
@@ -290,8 +286,8 @@ const TablesPage = () => {
 
   const openTable = async (t) => {
     if (t.open_order_id) { navigate(`/app/orders?order=${t.open_order_id}`); return; }
-    if (t.next_reservation && !window.confirm(`${t.name} is booked for ${t.next_reservation.guest_name} at ${clock(t.next_reservation.reserved_at)}. Seat other guests anyway?`)) return;
-    if (t.status === 'CLEANING' && !window.confirm(`${t.name} is being cleaned. Seat guests now?`)) return;
+    if (t.next_reservation && !(await dialog.confirm({ title: `${t.name} is booked`, body: `Reserved for ${t.next_reservation.guest_name} at ${clock(t.next_reservation.reserved_at)}. Seat other guests anyway?`, confirmLabel: 'Seat anyway' }))) return;
+    if (t.status === 'CLEANING' && !(await dialog.confirm({ title: `${t.name} is being cleaned`, body: 'Seat guests now?', confirmLabel: 'Seat now' }))) return;
     setStarting(t.table_id);
     try {
       if (t.status === 'CLEANING') await api(`/tables/${t.table_id}`, { method: 'PATCH', body: { status: 'FREE' } });

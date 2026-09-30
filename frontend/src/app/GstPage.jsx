@@ -5,15 +5,15 @@
  */
 import { useEffect, useState } from 'react';
 import { api, downloadFile, formatCurrency } from '../lib/api.js';
-import { Alert, Badge, Button, Card, Field, Input, ListState, PageHeader, Select, Table, Td, Th, Thead, Tr, useToast } from '../components/ui.jsx';
+import { Alert, Badge, Button, Card, Field, Input, ListState, PageHeader, Select, Table, Td, Th, Thead, Tr, useToast, StatCard } from '../components/ui.jsx';
 
 const monthNow = () => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };   // last month: what is usually being filed
 
-const Stat = ({ label, value, sub }) => <Card className="p-4"><p className="text-xs text-ink-500">{label}</p><p className="mt-1 text-lg font-semibold text-ink-900">{value}</p>{sub && <p className="text-xs text-ink-400">{sub}</p>}</Card>;
+const Stat = StatCard;
 
 const Warnings = ({ warnings }) => warnings?.length ? (
   <div className="space-y-2">
-    {warnings.map((w, i) => <p key={i} className="rounded-lg bg-amber-500/10 p-3 text-sm text-ink-800"><strong className="mr-1 text-amber-700">Check:</strong>{w.message}</p>)}
+    {warnings.map((w, i) => <p key={i} className="rounded-lg bg-amber-500/10 p-3 text-sm text-ink-900"><strong className="mr-1 text-warning">Check:</strong>{w.message}</p>)}
   </div>
 ) : <p className="rounded-lg bg-success/10 p-3 text-sm text-success">Nothing to fix. The file is ready to upload.</p>;
 
@@ -63,7 +63,7 @@ const Gstr3b = ({ period, gstin }) => {
           <Row strong label="Tax to pay in cash (after credit)" igst={d.tax_payable_in_cash.igst} cgst={d.tax_payable_in_cash.cgst} sgst={d.tax_payable_in_cash.sgst} />
         </tbody>
       </Table>
-      <p className="text-sm text-ink-600">Purchases from suppliers without a GSTIN carry {formatCurrency(d.itc.ineligible)} of tax that is not claimable.</p>
+      <p className="text-sm text-ink-700">Purchases from suppliers without a GSTIN carry {formatCurrency(d.itc.ineligible)} of tax that is not claimable.</p>
       <ul className="list-disc space-y-1 pl-5 text-xs text-ink-500">{d.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
     </div>
   );
@@ -86,7 +86,7 @@ const EInvoice = ({ period, gstin }) => {
   const ready = d.invoices.filter((i) => i.ready && !i.irn);
   return (
     <div className="space-y-4">
-      <p className="text-sm text-ink-600">E-invoicing applies to businesses above a turnover limit and only for sales to customers with a GSTIN. If it does not apply to you, ignore this tab. {d.applies ? '' : 'It is switched off for your business.'}</p>
+      <p className="text-sm text-ink-700">E-invoicing applies to businesses above a turnover limit and only for sales to customers with a GSTIN. If it does not apply to you, ignore this tab. {d.applies ? '' : 'It is switched off for your business.'}</p>
       <Alert>{error}</Alert>
       <ListState empty={d.invoices.length === 0} emptyLabel="No sales to GST-registered customers in this month." />
       {d.invoices.length > 0 && (
@@ -157,13 +157,13 @@ const GstPage = () => {
         {options.length === 1 && <p className="pb-2 text-sm text-ink-500">GSTIN {gstin}</p>}
       </div>
       <Alert>{error}</Alert>
-      {filings && !filings.gst_enabled && <p className="rounded-lg bg-surface-2 p-4 text-sm text-ink-600">GST is not switched on for this business. Turn it on in Business settings to prepare returns.</p>}
-      {filings && filings.gst_enabled && !gstin && <p className="rounded-lg bg-surface-2 p-4 text-sm text-ink-600">Add your GSTIN in Business settings first.</p>}
+      {filings && !filings.gst_enabled && <p className="rounded-lg bg-surface-2 p-4 text-sm text-ink-700">GST is not switched on for this business. Turn it on in Business settings to prepare returns.</p>}
+      {filings && filings.gst_enabled && !gstin && <p className="rounded-lg bg-surface-2 p-4 text-sm text-ink-700">Add your GSTIN in Business settings first.</p>}
       {usable && (
         <>
           <div className="mb-5 flex gap-2" role="tablist">
             {[['gstr1', 'GSTR-1'], ['gstr3b', 'GSTR-3B'], ['einvoice', 'E-invoice']].map(([id, label]) => (
-              <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`rounded-lg px-3.5 py-1.5 text-sm font-medium ${tab === id ? 'bg-brand-50 text-brand-600' : 'text-ink-600 hover:bg-surface-2'}`}>{label}</button>
+              <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`rounded-lg px-3.5 py-1.5 text-sm font-medium ${tab === id ? 'bg-brand-50 text-brand-600' : 'text-ink-700 hover:bg-surface-2'}`}>{label}</button>
             ))}
           </div>
           {tab === 'gstr1' && <Gstr1 period={period} gstin={gstin} />}

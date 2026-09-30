@@ -44,7 +44,10 @@ const AttentionPanel = ({ className = '', style }) => (
         <li key={text} className="rise border-t border-line pt-3 first:border-0 first:pt-0" style={{ '--d': '700ms', '--i': i * 2 }}>
           <span className={`inline-flex rounded-full px-2 py-0.5 text-caption font-medium ${KIND[kind][1]}`}>{KIND[kind][0]}</span>
           <p className="mt-1.5 text-small leading-snug text-ink-900">{text}</p>
-          <span className="mt-2 inline-flex rounded-md border border-line px-2 py-1 text-caption font-medium text-ink-700">{action}</span>
+          {/* The action chips make the panel taller than the screenshot it
+              floats over; where it overlays (sm and up) the sentence already
+              says what to do, so they are left out there. */}
+          <span className="mt-2 inline-flex rounded-md border border-line px-2 py-1 text-caption font-medium text-ink-700 sm:hidden">{action}</span>
         </li>
       ))}
     </ul>
@@ -88,7 +91,7 @@ const Hero = () => (
         </div>
         <AttentionPanel
           style={{ '--d': '480ms' }}
-          className="rise relative z-10 mx-auto -mt-10 w-[92%] max-w-[300px] sm:absolute sm:-bottom-20 sm:-left-8 sm:mt-0 sm:w-[270px] lg:-left-4"
+          className="rise relative z-10 mx-auto -mt-10 w-[92%] max-w-[300px] sm:absolute sm:-bottom-14 sm:-left-8 sm:mt-0 sm:w-[260px] lg:-left-6"
         />
       </div>
     </Container>

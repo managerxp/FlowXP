@@ -79,7 +79,7 @@ const NotificationsPage = () => {
   return (
     <div>
       <PageHeader title="Notifications" lead="What needs your attention, so you don't have to go looking." action={<Button variant="secondary" onClick={readAll} disabled={!unread}>Mark all read</Button>} />
-      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div>
           <label className="mb-3 flex items-center gap-2 text-sm text-ink-700">
             <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> Unread only

@@ -143,7 +143,7 @@ const AdminPlans = () => {
       <PageHeader title="Plans" lead="Pricing that ships without a deploy — an UPDATE, not a code change." />
       {error && <Alert>{error}</Alert>}
       {plans && hiddenCount > 0 && (
-        <label className="mb-4 flex items-center gap-2 text-sm text-ink-600">
+        <label className="mb-4 flex items-center gap-2 text-sm text-ink-700">
           <input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} />
           Show hidden plans too ({hiddenCount}: Trial and anything retired)
         </label>

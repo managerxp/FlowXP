@@ -20,7 +20,7 @@ import { api, formatCurrency } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getDevicePrefs, ringAlarm, setDevicePref } from '../lib/printing.js';
 import { platformName } from '../lib/business.js';
-import { Button, useToast } from './ui.jsx';
+import { Button, useToast, useDialog } from './ui.jsx';
 
 const POLL_MS = 5000;
 const RING_EVERY_MS = 3500;
@@ -77,6 +77,7 @@ const OrderPopup = ({ order, busy, onAccept, onReject }) => {
 };
 
 const IncomingDeliveryAlert = () => {
+  const dialog = useDialog();
   const { business, can } = useAuth();
   const toast = useToast();
   const [orders, setOrders] = useState([]);
@@ -115,7 +116,7 @@ const IncomingDeliveryAlert = () => {
     finally { setBusy(null); }
   };
   const reject = async (order) => {
-    const reason = window.prompt(`Why turn down this ${platformName(order.platform)} order? The platform sees this.`);
+    const reason = await dialog.prompt({ title: `Turn down this ${platformName(order.platform)} order`, label: 'Reason', body: 'The platform sees this.', required: false, confirmLabel: 'Turn down', danger: true });
     if (reason == null) return;
     setBusy(order.order_id);
     try {

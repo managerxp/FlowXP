@@ -10,13 +10,13 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowDownLeft, ArrowLeft, ArrowRightLeft, ArrowUpRight, ClipboardCheck, PackagePlus, Search, Trash2 } from 'lucide-react';
+import { ArrowDownLeft, ArrowLeft, ArrowRightLeft, ArrowUpRight, ClipboardCheck, PackagePlus, Search, Trash2, Boxes } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
 import { daysAgoISO } from '../lib/dates.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { RESTAURANT_TYPES } from '../lib/business.js';
-import { Alert, Button, Field, Input, Modal, Select, useToast } from '../components/ui.jsx';
+import { Alert, Button, Field, Input, Modal, Select, useToast, StatCard, EmptyState } from '../components/ui.jsx';
 
 const qty = (n) => Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 3 });
 const when = (iso) => {
@@ -475,17 +475,7 @@ const ItemPanel = ({ item, refreshKey, canWrite, multiOutlet, allView, onAction,
 
 /* ── The screen ───────────────────────────────────────────────────────── */
 
-const Tile = ({ label, value, note, tone, onClick, pressed }) => {
-  const Tag = onClick ? 'button' : 'div';
-  return (
-    <Tag type={onClick ? 'button' : undefined} onClick={onClick} aria-pressed={onClick && pressed != null ? pressed : undefined}
-         className={`rounded-(--radius-card) border bg-surface p-4 text-left ${pressed ? 'border-brand-500 ring-1 ring-brand-500' : 'border-line'} ${onClick ? 'transition-colors duration-(--duration-fast) hover:border-ink-400' : ''}`}>
-      <p className="text-caption text-ink-500">{label}</p>
-      <p className={`tabular mt-1 text-title font-semibold ${tone === 'danger' ? 'text-danger' : tone === 'warning' ? 'text-warning' : 'text-ink-900'}`}>{value}</p>
-      {note && <p className="mt-0.5 text-caption text-ink-500">{note}</p>}
-    </Tag>
-  );
-};
+const Tile = StatCard;
 
 const ItemRow = ({ item, active, onOpen }) => (
   <li>
@@ -614,9 +604,7 @@ const InventoryPage = () => {
         ) : selectedId && items ? (
           <div className="p-8 text-center text-small text-ink-500">That item isn't tracked here. <button type="button" onClick={() => open(null)} className="font-medium text-brand-700">Back to all</button></div>
         ) : (
-          <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-            <p className="text-small font-medium text-ink-700">Pick an item to count it, log wastage, or see every movement behind its number</p>
-          </div>
+          <EmptyState compact icon={Boxes} className="h-full justify-center" title="Pick an item" body="Count it, log wastage, or see every movement behind its number." />
         )}
       </section>
 

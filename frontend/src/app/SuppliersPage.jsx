@@ -9,10 +9,10 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Mail, MessageCircle, Phone, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, Mail, MessageCircle, Phone, Plus, Search, Trash2, Truck } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { localISO } from '../lib/dates.js';
-import { Alert, Button, Field, Input, Modal, Select, useToast } from '../components/ui.jsx';
+import { Alert, Button, Field, Input, Modal, Select, useToast, useDialog, StatCard, EmptyState } from '../components/ui.jsx';
 
 const day = (d) => (d ? new Date(`${String(d).slice(0, 10)}T00:00`).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : null);
 const daysSince = (d) => (d ? Math.round((new Date(`${localISO()}T00:00`) - new Date(`${String(d).slice(0, 10)}T00:00`)) / 86400000) : null);
@@ -98,6 +98,7 @@ const SupplierForm = ({ initial, onSaved, onClose }) => {
 /* What this supplier charges for each product: fills the price on new orders
    and flags a delivery billed above it (see PurchaseOrderModal / receive). */
 const PriceList = ({ supplier }) => {
+  const dialog = useDialog();
   const toast = useToast();
   const [rows, setRows] = useState(null);
   const [products, setProducts] = useState([]);
@@ -118,7 +119,7 @@ const PriceList = ({ supplier }) => {
   };
   const edit = (r) => { setDraft({ product_id: String(r.product_id), price: String(r.price), min_qty: String(r.min_qty ?? ''), lead_time_days: r.lead_time_days != null ? String(r.lead_time_days) : '' }); setLocked(true); setAdding(true); };
   const remove = async (r) => {
-    if (!window.confirm(`Remove ${r.name} from ${supplier.name}'s price list?`)) return;
+    if (!(await dialog.confirm({ title: `Remove ${r.name}?`, body: `It comes off ${supplier.name}'s price list.`, confirmLabel: 'Remove', danger: true }))) return;
     try { await api(`/suppliers/${supplier.supplier_id}/prices/${r.product_id}`, { method: 'DELETE' }); load(); } catch (caught) { setError(caught.message); }
   };
   const listed = new Set((rows || []).map((r) => String(r.product_id)));
@@ -182,13 +183,7 @@ const PriceList = ({ supplier }) => {
 
 /* ── One supplier ─────────────────────────────────────────────────────── */
 
-const Stat = ({ label, value, note, tone }) => (
-  <div className="rounded-(--radius-card) border border-line bg-surface p-3.5">
-    <p className="text-caption text-ink-500">{label}</p>
-    <p className={`tabular mt-1 text-title font-semibold ${tone || 'text-ink-900'}`}>{value}</p>
-    {note && <p className="mt-0.5 text-caption text-ink-500">{note}</p>}
-  </div>
-);
+const Stat = StatCard;
 
 const OrderRow = ({ po }) => {
   const [label, cls] = poChip(po);
@@ -399,9 +394,7 @@ const SuppliersPage = () => {
         ) : selectedId && suppliers ? (
           <div className="p-8 text-center text-small text-ink-500">That supplier isn't in this list. <button type="button" onClick={() => open(null)} className="font-medium text-brand-700">Back to all</button></div>
         ) : (
-          <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-            <p className="text-small font-medium text-ink-700">Pick a supplier to see what you owe them, their prices and every order</p>
-          </div>
+          <EmptyState compact icon={Truck} className="h-full justify-center" title="Pick a supplier" body="See what you owe them, their prices and every order." />
         )}
       </section>
 

@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { daysAgoISO } from '../lib/dates.js';
-import { Alert, Card, DataTable, PageHeader } from '../components/ui.jsx';
+import { Alert, Card, DataTable, PageHeader, StatCard } from '../components/ui.jsx';
 
 const RANGES = [{ days: 7, label: '7 days' }, { days: 14, label: '14 days' }, { days: 30, label: '30 days' }];
 const hourLabel = (h) => `${h % 12 === 0 ? 12 : h % 12}${h < 12 ? 'am' : 'pm'}`;
@@ -19,13 +19,7 @@ const Change = ({ value }) => {
   return <span className={value > 0 ? 'font-semibold text-danger' : 'font-semibold text-success'}>{value > 0 ? '▲' : '▼'} {Math.abs(value)} min</span>;
 };
 
-const Stat = ({ label, value, sub }) => (
-  <div className="border border-line bg-surface rounded-(--radius-card) p-4">
-    <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">{label}</p>
-    <p className="mt-1 text-xl font-bold text-ink-900">{value}</p>
-    <p className="text-xs text-ink-400">{sub}</p>
-  </div>
-);
+const Stat = StatCard;
 
 const KitchenPerformancePage = () => {
   const [days, setDays] = useState(14);
@@ -81,7 +75,7 @@ const KitchenPerformancePage = () => {
             </Card>
           )}
 
-          <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div>
               <h2 className="mb-2 text-sm font-semibold text-ink-900">By station</h2>
               <DataTable keyField="name" rows={data.stations} emptyLabel="—" columns={[
@@ -97,9 +91,9 @@ const KitchenPerformancePage = () => {
               <div className="mt-4 flex h-32 items-end gap-1.5" role="img" aria-label="Average preparation minutes by hour">
                 {data.hours.map((h) => (
                   <div key={h.hour} className="flex h-full flex-1 flex-col items-center justify-end gap-1" title={`${hourLabel(h.hour)}: ${h.avg_minutes} min over ${h.lines} items`}>
-                    <span className="text-[10px] text-ink-500">{Math.round(h.avg_minutes)}</span>
+                    <span className="text-[11px] text-ink-500">{Math.round(h.avg_minutes)}</span>
                     <div className={`w-full rounded-t-sm ${h.avg_minutes >= peak * 0.9 ? 'bg-warning' : 'bg-brand-500/50'}`} style={{ height: `${(h.avg_minutes / peak) * 100}%` }} />
-                    <span className="text-[10px] text-ink-400">{hourLabel(h.hour)}</span>
+                    <span className="text-[11px] text-ink-500">{hourLabel(h.hour)}</span>
                   </div>
                 ))}
               </div>

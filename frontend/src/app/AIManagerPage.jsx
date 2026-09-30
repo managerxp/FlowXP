@@ -25,7 +25,7 @@ const RichText = ({ text }) => {
   });
   flush();
   return (
-    <div className="space-y-2 text-sm leading-relaxed text-ink-800">
+    <div className="space-y-2 text-sm leading-relaxed text-ink-900">
       {blocks.map((b) => b.kind === 'p'
         ? <p key={b.key}>{inline(b.text)}</p>
         : b.kind === 'ul'
@@ -122,7 +122,7 @@ const AIManagerPage = () => {
       )}
       {status.remaining === 0 && <div className="mb-4"><Alert>You have used all {status.limit} AI questions on your plan this month. They reset next month.</Alert></div>}
 
-      <div className="grid gap-6 lg:grid-cols-[14rem_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
         <aside className="order-2 lg:order-1">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-400">Earlier</p>
           {conversations.length === 0 ? <p className="text-sm text-ink-400">Nothing yet.</p> : (

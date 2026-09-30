@@ -14,11 +14,11 @@
  * A mis-tap can be undone for a few seconds. Full screen for a kitchen TV.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Bell, BellOff, Check, ChefHat, Flame, Maximize2, Minimize2, Undo2 } from 'lucide-react';
+import { Bell, BellOff, Check, ChefHat, Flame, Maximize2, Minimize2, Undo2, X } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { beep, getDevicePrefs, setDevicePref } from '../lib/printing.js';
-import { Alert, Button, Field, Input, Modal, SkeletonRows, humanize, useToast } from '../components/ui.jsx';
+import { Alert, Button, Field, Input, Modal, SkeletonRows, humanize, useToast, useDialog, StatCard } from '../components/ui.jsx';
 
 const POLL_MS = 8000;
 const UNDO_MS = 7000;
@@ -210,19 +210,11 @@ const CookNow = ({ rows, focusKey, onFocus, compact }) => {
   );
 };
 
-const Stat = ({ label, value, note, tone = 'text-ink-900', onClick }) => {
-  const Tag = onClick ? 'button' : 'div';
-  return (
-    <Tag {...(onClick ? { type: 'button', onClick } : {})} className={`rounded-(--radius-card) border border-line bg-surface px-4 py-3 text-left ${onClick ? 'hover:border-line-strong' : ''}`}>
-      <p className="text-caption font-medium text-ink-500">{label}</p>
-      <p className={`tabular mt-1 text-[26px] font-bold leading-none ${tone}`}>{value}</p>
-      {note && <p className="mt-1 truncate text-caption text-ink-500">{note}</p>}
-    </Tag>
-  );
-};
+const Stat = (props) => <StatCard size="lg" {...props} />;
 
 /* Stations, which dishes each cooks, and how long a dish should take. */
 const SetupModal = ({ onClose, onSaved }) => {
+  const dialog = useDialog();
   const toast = useToast();
   const [stations, setStations] = useState([]);
   const [routing, setRouting] = useState(null);
@@ -243,7 +235,7 @@ const SetupModal = ({ onClose, onSaved }) => {
     try { await api('/kitchen/stations', { method: 'POST', body: { name, outlet_only: canScope && outletOnly } }); setName(''); load(); } catch (caught) { setError(caught.message); }
   };
   const removeStation = async (s) => {
-    if (!confirm(`Remove ${s.name}? Its dishes become unassigned.`)) return;
+    if (!(await dialog.confirm({ title: `Remove ${s.name}?`, body: 'Its dishes become unassigned.', confirmLabel: 'Remove station', danger: true }))) return;
     await api(`/kitchen/stations/${s.station_id}`, { method: 'PUT', body: { is_active: false } }); load();
   };
   const setDish = (id, field, value) => setRouting((r) => ({ ...r, dishes: r.dishes.map((d) => (d.product_id === id ? { ...d, [field]: value } : d)) }));
@@ -271,13 +263,13 @@ const SetupModal = ({ onClose, onSaved }) => {
             {stations.map((s) => (
               <span key={s.station_id} className="inline-flex items-center gap-2 rounded-lg border border-line-strong px-3 py-1 text-sm text-ink-900">
                 {s.name} <span className="text-xs text-ink-400">{s.outlet_name ? `${s.outlet_name} only · ` : ''}{s.dishes} dishes</span>
-                <button type="button" aria-label={`Remove ${s.name}`} onClick={() => removeStation(s)} className="text-ink-400 hover:text-danger">✕</button>
+                <button type="button" aria-label={`Remove ${s.name}`} onClick={() => removeStation(s)} className="rounded-md p-1 text-ink-400 hover:bg-danger/10 hover:text-danger"><X aria-hidden="true" className="h-4 w-4" /></button>
               </span>
             ))}
             {stations.length === 0 && <span className="text-sm text-ink-500">No stations yet — one screen shows everything. Add stations like Tandoor, Curry or Cold to split the work.</span>}
           </div>
           <form onSubmit={addStation} className="mt-3 flex max-w-sm gap-2"><Input placeholder="New station, e.g. Tandoor" value={name} onChange={(e) => setName(e.target.value)} /><Button type="submit" size="sm" variant="secondary">Add</Button></form>
-          {canScope && <label className="mt-2 flex items-center gap-2 text-xs text-ink-600"><input type="checkbox" checked={outletOnly} onChange={(e) => setOutletOnly(e.target.checked)} /> Only for this outlet (otherwise every outlet has it). A dish sent to "Grill" is cooked at the Grill of the outlet it was ordered at.</label>}
+          {canScope && <label className="mt-2 flex items-center gap-2 text-xs text-ink-700"><input type="checkbox" checked={outletOnly} onChange={(e) => setOutletOnly(e.target.checked)} /> Only for this outlet (otherwise every outlet has it). A dish sent to "Grill" is cooked at the Grill of the outlet it was ordered at.</label>}
         </div>
 
         {routing && (

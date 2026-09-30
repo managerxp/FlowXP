@@ -13,7 +13,7 @@ import { Link } from 'react-router-dom';
 import { ArrowDownRight, ArrowUpRight, Boxes, ChevronRight, ClipboardList, Plus, Sparkles, Wallet } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Button, Card, Skeleton, StatusBadge } from '../components/ui.jsx';
+import { Button, Card, Skeleton, StatCard, StatusBadge } from '../components/ui.jsx';
 
 const greeting = () => {
   const h = new Date().getHours();
@@ -36,25 +36,16 @@ const Change = ({ now, before, money = true }) => {
     <>
       <span className={`flex items-center gap-1 font-medium ${up ? 'text-success' : 'text-danger'}`}>
         <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-        {up ? 'Up' : 'Down'} {Math.abs(pct).toFixed(1)}% on yesterday
+        {up ? 'Up' : 'Down'} {Math.abs(pct).toFixed(1)}%<span className="hidden sm:inline">&nbsp;on yesterday</span>
       </span>
       <span className="tabular block text-caption text-ink-500">Yesterday: {money ? formatCurrency(before) : before}</span>
     </>
   );
 };
 
-const Kpi = ({ label, value, children, to }) => {
-  const body = (
-    <>
-      <p className="text-caption font-semibold uppercase tracking-[0.1em] text-ink-500">{label}</p>
-      <p className="tabular mt-2 text-[28px] font-semibold leading-none tracking-tight text-ink-900">{value}</p>
-      <div className="mt-2.5 text-small">{children}</div>
-    </>
-  );
-  return to
-    ? <Link to={to} className="block rounded-(--radius-card) border border-line bg-surface p-5 transition-colors duration-(--duration-fast) hover:border-line-strong">{body}</Link>
-    : <div className="rounded-(--radius-card) border border-line bg-surface p-5">{body}</div>;
-};
+const Kpi = ({ children, ...props }) => (
+  <StatCard size="lg" {...props}>{children && <div className="mt-2.5 text-small">{children}</div>}</StatCard>
+);
 
 /*
  * Fourteen days of sales as bars (one series, the brand blue, validated
@@ -233,7 +224,7 @@ const Setup = ({ setup }) => (
 const Loading = () => (
   <div className="mx-auto max-w-6xl space-y-6">
     <div className="space-y-2"><Skeleton className="h-8 w-72" /><Skeleton className="h-4 w-56" /></div>
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28" />)}</div>
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28" />)}</div>
     <div className="grid gap-4 lg:grid-cols-3"><Skeleton className="h-72 lg:col-span-2" /><Skeleton className="h-72" /></div>
   </div>
 );
@@ -278,7 +269,7 @@ const Dashboard = () => {
 
       {!setup.complete && <div className="rise" style={{ '--i': 1 }}><Setup setup={setup} /></div>}
 
-      <section aria-label="Today" className="rise grid gap-4 sm:grid-cols-2 lg:grid-cols-4" style={{ '--i': 1 }}>
+      <section aria-label="Today" className="rise grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" style={{ '--i': 1 }}>
         <Kpi label="Today's sales" value={formatCurrency(m.today_sales)}><Change now={m.today_sales} before={m.yesterday_sales} /></Kpi>
         <Kpi label="Bills today" value={m.today_invoice_count}><Change now={m.today_invoice_count} before={m.yesterday_invoice_count} money={false} /></Kpi>
         <Kpi label="Average bill" value={formatCurrency(avg)}><Change now={avg} before={avgBefore} /></Kpi>

@@ -28,7 +28,7 @@ import { api, formatCurrency, NetworkError } from '../../lib/api.js';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
 import ModifierPicker, { needsChoices, useModifierGroups } from '../../components/ModifierPicker.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { Alert, Button, Input, Modal, Select, humanize, useToast } from '../../components/ui.jsx';
+import { Alert, Button, Input, Modal, Select, humanize, useToast, useDialog } from '../../components/ui.jsx';
 import { LoyaltyCard, MobileLookup, PointsPanel, RewardHint } from '../../components/LoyaltyCard.jsx';
 import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, setDevicePref } from '../../lib/printing.js';
 import { queueSale } from '../../lib/offline.js';
@@ -284,6 +284,7 @@ const OrderBillLine = ({ line, onQty }) => {
 /* ── The screen ────────────────────────────────────────────────────────── */
 
 const BillingPage = () => {
+  const dialog = useDialog();
   const { business } = useAuth();
   const navigate = useNavigate();
   const searchRef = useRef(null);
@@ -593,7 +594,7 @@ const BillingPage = () => {
   /* Bill an open order here: the current sale goes on hold first, as when resuming a held bill. */
   const openOrder = async (o) => {
     if (!orderMode && cart.length) {
-      if (!window.confirm('Put the current bill on hold, and bill this order?')) return;
+      if (!(await dialog.confirm({ title: 'Hold the current bill?', body: 'It goes on hold so you can bill this order. You can resume it any time.', confirmLabel: 'Hold and continue' }))) return;
       if (!(await holdBill('Held while billing an order'))) return;
     }
     resetSale(); setOrdersOpen(false); setOrderId(o.order_id);
@@ -602,7 +603,7 @@ const BillingPage = () => {
   const resume = async (h) => {
     if (orderMode) resetSale();
     else if (cart.length) {
-      if (!window.confirm('Put the current bill on hold, and open this one?')) return;
+      if (!(await dialog.confirm({ title: 'Hold the current bill?', body: 'It goes on hold so you can open this one. You can resume it any time.', confirmLabel: 'Hold and continue' }))) return;
       if (!(await holdBill('Held while resuming another'))) return;
     }
     try {
@@ -617,7 +618,7 @@ const BillingPage = () => {
     } catch (caught) { toast.error(caught.message); loadHeld(); }
   };
   const discard = async (h) => {
-    if (!window.confirm(`Discard ${h.label || 'this held bill'}? It cannot be brought back.`)) return;
+    if (!(await dialog.confirm({ title: `Discard ${h.label || 'this held bill'}?`, body: 'It cannot be brought back.', confirmLabel: 'Discard', danger: true }))) return;
     try { await api(`/held-bills/${h.hold_id}`, { method: 'DELETE' }); } catch (caught) { toast.error(caught.message); }
     loadHeld();
   };
@@ -746,7 +747,7 @@ const BillingPage = () => {
                 <button type="button" onClick={() => setHoldOpen((v) => !v)} aria-expanded={holdOpen} className="flex items-center gap-1 rounded-md px-2 py-1 text-small font-medium text-ink-700 hover:bg-surface-2">
                   <Pause aria-hidden="true" className="h-3.5 w-3.5" />Hold
                 </button>
-                <button type="button" onClick={() => { if (window.confirm('Clear this bill?')) resetSale(); }} className="rounded-md px-2 py-1 text-small font-medium text-ink-500 hover:text-danger">Clear</button>
+                <button type="button" onClick={async () => { if (await dialog.confirm({ title: 'Clear this bill?', body: 'Every item on it is removed.', confirmLabel: 'Clear bill', danger: true })) resetSale(); }} className="rounded-md px-2 py-1 text-small font-medium text-ink-500 hover:text-danger">Clear</button>
               </>
             )}
           </div>

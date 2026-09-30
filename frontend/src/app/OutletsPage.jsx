@@ -189,7 +189,7 @@ const OutletsPage = () => {
       <div className="mb-6 flex gap-2" role="tablist">
         {[['outlets', 'Outlets'], ['compare', 'Compare']].map(([id, label]) => (
           <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
-                  className={`rounded-lg px-3.5 py-1.5 text-sm font-medium ${tab === id ? 'bg-brand-50 text-brand-600' : 'text-ink-600 hover:bg-surface-2'}`}>{label}</button>
+                  className={`rounded-lg px-3.5 py-1.5 text-sm font-medium ${tab === id ? 'bg-brand-50 text-brand-600' : 'text-ink-700 hover:bg-surface-2'}`}>{label}</button>
         ))}
       </div>
       {tab === 'outlets' ? <OutletList /> : <Compare />}

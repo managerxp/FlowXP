@@ -13,7 +13,7 @@ import { Plus } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { localISO } from '../lib/dates.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Alert, Button, Field, Input, Modal, Select, useToast } from '../components/ui.jsx';
+import { Alert, Button, Field, Input, Modal, Select, useToast, useDialog } from '../components/ui.jsx';
 
 const DEFAULT_CATEGORIES = ['Rent', 'Salary', 'Electricity', 'Gas', 'Water', 'Internet & phone', 'Transport', 'Repairs', 'Marketing', 'Cleaning', 'Other'];
 const METHODS = [['CASH', 'Cash'], ['UPI', 'UPI'], ['BANK_TRANSFER', 'Bank'], ['CARD', 'Card'], ['OTHER', 'Other']];
@@ -60,6 +60,7 @@ const dayLabel = (iso) => {
 /* ── Add / edit ───────────────────────────────────────────────────────── */
 
 const ExpenseForm = ({ expense, known, onSaved, onDeleted, onClose }) => {
+  const dialog = useDialog();
   const toast = useToast();
   const isEdit = Boolean(expense?.expense_id);
   const blank = { category: '', amount: '', payment_method: 'CASH', expense_date: localISO(), description: '' };
@@ -91,7 +92,7 @@ const ExpenseForm = ({ expense, known, onSaved, onDeleted, onClose }) => {
     finally { setBusy(false); }
   };
   const remove = async () => {
-    if (!window.confirm(`Delete this ${expense.category} expense of ${formatCurrency(expense.amount)}? This can't be undone.`)) return;
+    if (!(await dialog.confirm({ title: 'Delete this expense?', body: `${expense.category} · ${formatCurrency(expense.amount)}. This can't be undone.`, confirmLabel: 'Delete', danger: true }))) return;
     setBusy(true); setError('');
     try { await api(`/expenses/${expense.expense_id}`, { method: 'DELETE' }); onDeleted(); }
     catch (caught) { setError(caught.message); setBusy(false); }

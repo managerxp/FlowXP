@@ -65,7 +65,7 @@ const PermissionsModal = ({ person, onClose, onSaved }) => {
               <div className="flex overflow-hidden rounded-lg border border-line-strong text-xs font-semibold" role="group" aria-label={p.label}>
                 {[['default', `Role default (${p.role_default ? 'can' : 'can’t'})`], ['allow', 'Allow'], ['deny', 'Deny']].map(([value, label]) => (
                   <button key={value} type="button" aria-pressed={choice[p.key] === value} onClick={() => setChoice((c) => ({ ...c, [p.key]: value }))}
-                          className={`px-2.5 py-1.5 ${choice[p.key] === value ? (value === 'deny' ? 'bg-danger text-white' : value === 'allow' ? 'bg-success text-white' : 'bg-ink-900 text-white') : 'bg-surface text-ink-600 hover:bg-surface-2'}`}>{label}</button>
+                          className={`px-2.5 py-1.5 ${choice[p.key] === value ? (value === 'deny' ? 'bg-danger text-white' : value === 'allow' ? 'bg-success text-white' : 'bg-ink-900 text-white') : 'bg-surface text-ink-700 hover:bg-surface-2'}`}>{label}</button>
                 ))}
               </div>
             </div>
@@ -120,7 +120,7 @@ const PersonForm = ({ person, roles, outlets, onSaved, onClose }) => {
           </Select>
         </Field>
         {groupRole ? (
-          <p className="rounded-lg bg-surface-2 p-3 text-sm text-ink-600">{ROLES[form.role]}s can see every outlet.</p>
+          <p className="rounded-lg bg-surface-2 p-3 text-sm text-ink-700">{ROLES[form.role]}s can see every outlet.</p>
         ) : (
           outlets.length > 1 && (
             <Field id="s-outlet" label="Outlet" hint={needsOutlet ? 'They can only see and work in this outlet.' : 'Leave on “Every outlet” for a group-level manager.'}>
