@@ -66,10 +66,15 @@ export const ReceiptPage = () => {
   const [error, setError] = useState('');
   const [width, setWidth] = useState(null);
   const [qr, setQr] = useState('');
+  const [salon, setSalon] = useState(null);
 
   useEffect(() => {
     Promise.all([api(`/invoices/${id}`), api('/businesses/current')])
-      .then(([i, b]) => { setInvoice(i); setBiz(b); setWidth((w) => w ?? b.receipt_settings.paper_width); })
+      .then(([i, b]) => {
+        setInvoice(i); setBiz(b); setWidth((w) => w ?? b.receipt_settings.paper_width);
+        // a salon's receipt also says who did each service and shows any gift card sold
+        if (b.business_type === 'SALON') api(`/salon/invoices/${id}/lines`).then(setSalon).catch(() => {});
+      })
       .catch((e) => setError(e.message));
   }, [id]);
 
@@ -114,9 +119,11 @@ export const ReceiptPage = () => {
         {invoice.items.map((i) => (
           <div key={i.item_id} className="mt-1">
             <p>{i.description}</p>
+            {salon?.lines.find((l) => l.item_id === i.item_id)?.staff_name && <p className="text-[0.9em]">{`  by ${salon.lines.find((l) => l.item_id === i.item_id).staff_name}`}</p>}
             <Row left={`  ${i.quantity} × ${i.unit_price.toFixed(2)}`} right={i.line_total.toFixed(2)} />
           </div>
         ))}
+        {salon?.gift_cards.map((g) => <p key={g.code} className="mt-1 font-bold">Gift card {g.code} · {g.amount.toFixed(2)}</p>)}
         <Rule />
         <Row left="Subtotal" right={invoice.subtotal.toFixed(2)} />
         {taxRows.map(([label, v]) => <Row key={label} left={label} right={v.toFixed(2)} />)}
