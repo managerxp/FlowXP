@@ -1,426 +1,531 @@
 /*
  * The landing page.
  *
- * Hand-built rather than driven from content.js, because it is the only page
- * with a hero, a pricing table and an FAQ. The rest of the marketing site
- * shares MarketingPage.jsx.
+ * Written for a business owner who has never heard of FlowXP and may not be
+ * technical. The hero says what it is (billing software), who it is for (any
+ * business that sells) and why it is different (it reads your numbers and
+ * tells you what needs doing). Every section after it answers one question an
+ * owner would ask. The pictures are real FlowXP screens captured from the demo
+ * business (public/product/*.webp): `pos.webp` is the whole app window, the
+ * `*-main.webp` files are the main area of a screen, shown uncropped.
+ *
+ * Motion (index.css): the hero rises in once on load, sections reveal once as
+ * they scroll into view, cards lift slightly on hover. Nothing loops.
  */
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { useGSAP } from '@gsap/react';
-import { gsap, prefersReducedMotion } from '../animations/gsap.js';
-import { fadeUp, staggerReveal } from '../animations/reveal.js';
-import { revealOnScroll } from '../animations/scroll.js';
-import { Button, Container, Section } from '../components/ui.jsx';
-import { GlowCard } from '../components/BorderGlow.jsx';
-import { CORE_FEATURES, DIFFERENTIATORS, FAQ } from './content.js';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Button, Container, Eyebrow, Section } from '../components/ui.jsx';
+import Reveal from '../components/Reveal.jsx';
+import { FAQ } from './content.js';
 import PricingTable from './PricingTable.jsx';
-import { HeroMockup, DashboardShowcase } from './ProductVisuals.jsx';
-import OneFlow from './OneFlow.jsx';
-import AISection from './AISection.jsx';
-import IndustrySelector from './IndustrySelector.jsx';
-import DigitalBilling from './DigitalBilling.jsx';
-import MultiBusiness from './MultiBusiness.jsx';
+import { Check, Cross, FULL, H2, KIND, MAIN, Shot, TextLink } from './parts.jsx';
 
 /*
- * three.js is the single heaviest dependency in this app (its chunk alone is
- * ~240kb gzipped) and nothing else here touches WebGL, so it is never part of
- * the main bundle — this import only resolves once the browser actually asks
- * for it, which Hero delays past the page's critical first paint (see the
- * requestIdleCallback below), not at module-evaluation time.
+ * The "what needs your attention" panel: the kind of thing FlowXP tells an
+ * owner, with figures from the demo business, each line labelled as what it
+ * is (something that happened, something to check, a suggestion). It is an
+ * example, and says so.
  */
-const Antigravity = lazy(() => import('../components/Antigravity.jsx'));
-
-/* The five words under the logo, as the logo sets them. */
-const PILLARS = [
-  { label: 'Billing',   color: 'bg-brand-500' },
-  { label: 'Payments',  color: 'bg-cyan-500' },
-  { label: 'Inventory', color: 'bg-teal-500' },
-  { label: 'GST',       color: 'bg-amber-500' },
-  { label: 'AI',        color: 'bg-violet-500' }
+const ATTENTION = [
+  ['happened', 'Sales are up 16.6% on the previous 30 days.', 'From recorded bills'],
+  ['check', 'One cashier\'s discounts are 2.9% of sales. Everyone else gives 0.2%.', 'See the 41 bills'],
+  ['suggest', '10 items are at their reorder point. Reorder before the weekend.', 'Create purchase order']
 ];
 
-/*
- * The hero's load sequence, exactly as the brief lays it out: badge, then
- * headline line by line, then supporting text, then CTAs staggered, then the
- * pillars, then the dashboard mockup. (The "background fades in" step is a
- * plain CSS animation on .glow-brand::before in index.css — a pseudo-element
- * has no DOM node, so GSAP has nothing there to target; fine, since the ease
- * that matters is on the content, not the ambient wash behind it.)
- *
- * One timeline built from refs, not string selectors: a selector is searched
- * for among the scope's DESCENDANTS only, so it can never find the scope
- * root itself, and a compound one silently matching zero elements fails
- * quietly rather than with an error — exactly the bug this replaced. Refs
- * name the element directly and fail loudly (undefined) if one is ever wrong.
- */
-const Hero = () => {
-  const scope = useRef(null);
-  const badgeRef = useRef(null);
-  const lineRefs = useRef([]);
-  const subRef = useRef(null);
-  const ctaRefs = useRef([]);
-  const noteRef = useRef(null);
-  const pillarsRef = useRef(null);
-  const mockupRef = useRef(null);
-  const [showAntigravity, setShowAntigravity] = useState(false);
+const AttentionPanel = ({ className = '', style }) => (
+  <aside aria-label="Example: what FlowXP tells an owner" style={style}
+         className={`rounded-(--radius-card) border border-line bg-surface p-4 shadow-lg ${className}`}>
+    <p className="flex items-center gap-2 text-small font-semibold text-ink-900">
+      <span aria-hidden="true" className="h-2 w-2 rounded-full bg-brand-500" />
+      Needs your attention today
+    </p>
+    <ul className="mt-3 space-y-3">
+      {ATTENTION.map(([kind, text, action], i) => (
+        <li key={text} className="rise border-t border-line pt-3 first:border-0 first:pt-0" style={{ '--d': '700ms', '--i': i * 2 }}>
+          <span className={`inline-flex rounded-full px-2 py-0.5 text-caption font-medium ${KIND[kind][1]}`}>{KIND[kind][0]}</span>
+          <p className="mt-1.5 text-small leading-snug text-ink-900">{text}</p>
+          <span className="mt-2 inline-flex rounded-md border border-line px-2 py-1 text-caption font-medium text-ink-700">{action}</span>
+        </li>
+      ))}
+    </ul>
+    <p className="mt-3 border-t border-line pt-2 text-caption text-ink-500">Example from the FlowXP demo business</p>
+  </aside>
+);
 
-  /* Deferred past the critical entrance timeline, not gated behind scroll —
-     the hero is visible the instant the page loads, so "wait until it scrolls
-     into view" (the pattern used elsewhere on this page for offscreen
-     content) doesn't apply here. requestIdleCallback still keeps its 894kb
-     chunk from competing with the headline/CTA paint that actually matters
-     for first impression; the fallback covers Safari, which has never
-     implemented it. */
-  useEffect(() => {
-    if (prefersReducedMotion()) return;
-    const ric = window.requestIdleCallback || ((cb) => setTimeout(cb, 300));
-    const cic = window.cancelIdleCallback || clearTimeout;
-    const id = ric(() => setShowAntigravity(true));
-    return () => cic(id);
-  }, []);
+/* ── 1. Hero ──────────────────────────────────────────────────────────── */
 
-  useGSAP(() => {
-    if (prefersReducedMotion()) return;
-
-    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-    tl.from(badgeRef.current, { opacity: 0, y: 12, duration: 0.5 })
-      .from(lineRefs.current, { opacity: 0, yPercent: 100, duration: 0.7, stagger: 0.12 }, '-=0.25')
-      .from(subRef.current, { opacity: 0, y: 16, duration: 0.6 }, '-=0.35')
-      .from(ctaRefs.current, { opacity: 0, y: 12, duration: 0.5, stagger: 0.1 }, '-=0.3')
-      .from(noteRef.current, { opacity: 0, duration: 0.4 }, '-=0.2')
-      .from([...pillarsRef.current.children], { opacity: 0, y: 8, duration: 0.4, stagger: 0.05 }, '-=0.2')
-      .from(mockupRef.current, { opacity: 0, y: 32, scale: 0.96, duration: 0.9 }, '-=0.3');
-  }, { scope });
-
-  return (
-    <div ref={scope} className="glow-brand overflow-hidden">
-      {/* relative + isolate here (not on the whole hero) scopes the
-          background to exactly this block's own height — badge through
-          pillars — so it sits behind that text without also spreading behind
-          the dashboard mockup below, which is a separate sibling. */}
-      <div className="relative isolate">
-        {/* opacity-70: brighter than the first pass (opacity-50, flat blue)
-            per feedback that it read as dull — the capsule shape + brand
-            gradient below carries texture without turning into noise, so it
-            can sit closer to full strength than a flat colour could. */}
-        <div className="pointer-events-none absolute inset-0 -z-10 opacity-70">
-          {showAntigravity && (
-            <Suspense fallback={null}>
-              <Antigravity
-                count={120}
-                magnetRadius={9}
-                ringRadius={7}
-                waveSpeed={0.4}
-                waveAmplitude={0.8}
-                particleSize={1.8}
-                lerpSpeed={0.16}
-                colors={['#1d7af3', '#12c6dd', '#a21cf0']}
-                autoAnimate
-                particleVariance={0.7}
-                particleShape="capsule"
-              />
-            </Suspense>
-          )}
-        </div>
-
-        <Container className="pt-14 pb-10 text-center sm:pt-20 sm:pb-14">
-        <p ref={badgeRef} className="mb-6 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-medium text-ink-500">
-          <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
-          7-day free trial · no credit card required
-        </p>
-
-        <h1 className="mx-auto max-w-4xl text-4xl font-extrabold leading-[1.08] tracking-tight text-ink-900 sm:text-6xl">
-          <span className="block overflow-hidden">
-            <span ref={(el) => { lineRefs.current[0] = el; }} className="block">The smart flow</span>
-          </span>
-          <span className="block overflow-hidden">
-            <span ref={(el) => { lineRefs.current[1] = el; }} className="block">
-              for <span className="text-gradient">every business</span>.
-            </span>
-          </span>
+const Hero = () => (
+  <section className="overflow-hidden border-b border-line">
+    <Container className="grid items-center gap-12 pb-16 pt-12 sm:pb-28 sm:pt-16 lg:grid-cols-12 lg:gap-10 lg:pb-32 lg:pt-20">
+      <div className="lg:col-span-5">
+        <Eyebrow className="rise">AI-powered billing for Indian businesses</Eyebrow>
+        <h1 className="rise mt-4 text-display font-semibold text-ink-900" style={{ '--i': 1 }}>
+          Billing software that tells you what to do next.
         </h1>
-
-        <p ref={subRef} className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-ink-500 sm:text-lg">
-          AI-powered billing, payments, inventory, GST and business intelligence —
-          running in the browser you already have open.
+        <p className="rise mt-6 max-w-md text-lead text-ink-500" style={{ '--i': 2 }}>
+          FlowXP does your billing, payments, stock and GST in one place. Then it reads your
+          numbers every day and tells you, in plain words, what is selling, what is running out
+          and where money is leaking.
         </p>
-
-        <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <span ref={(el) => { ctaRefs.current[0] = el; }}><Button to="/signup" size="lg">Start 7-day free trial</Button></span>
-          <span ref={(el) => { ctaRefs.current[1] = el; }}><Button to="/features" variant="secondary" size="lg">Watch demo</Button></span>
+        <p className="rise mt-3 max-w-md text-body text-ink-500" style={{ '--i': 3 }}>
+          For shops, restaurants, salons, wholesalers and service businesses.
+        </p>
+        <div className="rise mt-8 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ '--i': 4 }}>
+          <Button to="/signup" size="lg">Start 7-day free trial</Button>
+          <TextLink href="#how-it-works">See how it works</TextLink>
         </div>
-
-        <p ref={noteRef} className="mt-5 text-xs text-ink-400">No credit card required. Built by ManagerXP.</p>
-
-        <ul ref={pillarsRef} className="mt-14 flex flex-wrap items-center justify-center gap-x-7 gap-y-3">
-          {PILLARS.map((pillar) => (
-            <li key={pillar.label} className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-ink-500">
-              <span className={`h-2 w-2 rounded-full ${pillar.color}`} />
-              {pillar.label}
-            </li>
+        <ul className="rise mt-8 flex flex-wrap gap-x-5 gap-y-2 text-small text-ink-500" style={{ '--i': 5 }}>
+          {['No credit card', 'No software to install', 'Works on laptop, tablet or phone'].map((t) => (
+            <li key={t} className="flex items-center gap-1.5"><Check />{t}</li>
           ))}
         </ul>
-        </Container>
       </div>
 
-      <Container className="pb-16 sm:pb-20">
-        <div ref={mockupRef} className="mx-auto max-w-3xl">
-          <HeroMockup />
+      <div className="relative lg:col-span-7">
+        <div className="rise rounded-(--radius-panel) bg-brand-50 p-3 sm:p-6" style={{ '--d': '180ms' }}>
+          <Shot src="/product/pos.webp" size={FULL} eager
+                alt="The FlowXP billing screen with six items on a ₹1,315 bill, GST worked out, and a Charge button." />
         </div>
-      </Container>
-    </div>
-  );
-};
+        <AttentionPanel
+          style={{ '--d': '480ms' }}
+          className="rise relative z-10 mx-auto -mt-10 w-[92%] max-w-[300px] sm:absolute sm:-bottom-20 sm:-left-8 sm:mt-0 sm:w-[270px] lg:-left-4"
+        />
+      </div>
+    </Container>
+  </section>
+);
 
-const WhatIsFlowXP = () => {
-  const scope = useRef(null);
+/* ── 2. Capability strip ──────────────────────────────────────────────── */
 
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => {
-      fadeUp(scope.current.querySelector('[data-copy]'));
-      staggerReveal(scope.current.querySelectorAll('[data-step]'), { each: 0.1, x: -12, y: 0 });
-    });
-  }, { scope });
+const CAPABILITIES = [
+  ['Billing', 'GST bills in seconds, on any device'],
+  ['Payments', 'Cash, UPI, card, credit, split'],
+  ['Stock', 'Updates itself with every sale'],
+  ['GST', 'Returns ready for your accountant'],
+  ['Customers', 'Dues, history, loyalty, WhatsApp'],
+  ['AI insights', 'What to check and what to do next']
+];
 
-  return (
-    <Section className="border-y border-line">
-      <Container>
-        <div ref={scope} className="grid items-center gap-12 lg:grid-cols-2">
-          <div data-copy>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">
-              What is FlowXP
-            </p>
-            <h2 className="text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">
-              One place for the whole counter.
-            </h2>
-            <p className="mt-5 text-base leading-relaxed text-ink-500">
-              Most shops run on three or four things that do not talk to each other — a
-              billing machine, a stock notebook, a WhatsApp thread with the accountant,
-              and a spreadsheet nobody trusts.
-            </p>
-            <p className="mt-4 text-base leading-relaxed text-ink-500">
-              FlowXP is the one system underneath all of it. You bill from it, so the stock
-              moves, the GST is worked out, the customer's balance updates and the day's
-              report writes itself. Ask it a question and it answers from the same records.
-            </p>
-            <div className="mt-8">
-              <Button to="/signup">Start free trial</Button>
-            </div>
-          </div>
-
-          <ol className="space-y-3">
-            {[
-              ['Sign up', 'Name, email, password, business. About forty seconds.'],
-              ['Add a product', 'Or a handful. You can add the rest as you go.'],
-              ['Take a payment', 'Cash, UPI, card or split. The invoice writes itself.'],
-              ['Send it', 'WhatsApp, email or a link. A printer is optional.'],
-              ['See where you stand', 'Sales, stock and outstanding, from the first bill.']
-            ].map(([title, body], index) => (
-              <li key={title} data-step>
-                <GlowCard className="flex items-start gap-4">
-                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-600">
-                    {index + 1}
-                  </span>
-                  <span>
-                    <span className="block font-semibold text-ink-900">{title}</span>
-                    <span className="mt-1 block text-sm text-ink-500">{body}</span>
-                  </span>
-                </GlowCard>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </Container>
-    </Section>
-  );
-};
-
-const Features = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => staggerReveal(scope.current.querySelectorAll('[data-card]'), { each: 0.08 }));
-  }, { scope });
-
-  return (
-    <Section
-      id="features"
-      eyebrow="Core features"
-      title="Everything the day needs"
-      lead="Billing to GST to the report you look at on the way home — one product, one set of numbers."
-    >
-      <div ref={scope} className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {CORE_FEATURES.map((feature) => (
-          <GlowCard key={feature.title} data-card>
-            <h3 className="text-base font-semibold text-ink-900">{feature.title}</h3>
-            <p className="mt-2.5 text-sm leading-relaxed text-ink-500">{feature.body}</p>
-          </GlowCard>
+const CapabilityStrip = () => (
+  <section aria-label="What FlowXP covers" className="border-b border-line bg-surface">
+    <Container>
+      <ul className="grid grid-cols-2 gap-x-6 sm:grid-cols-3 lg:grid-cols-6 lg:gap-x-0 lg:divide-x lg:divide-line">
+        {CAPABILITIES.map(([title, body], i) => (
+          <Reveal as="li" key={title} index={i} className="py-6 lg:px-5 lg:first:pl-0">
+            <p className="text-small font-semibold text-ink-900">{title}</p>
+            <p className="mt-1 text-small text-ink-500">{body}</p>
+          </Reveal>
         ))}
-      </div>
-    </Section>
-  );
-};
+      </ul>
+    </Container>
+  </section>
+);
 
-const ShowcaseSection = () => {
-  const scope = useRef(null);
-  return (
-    <Section
-      className="border-y border-line"
-      eyebrow="See it in action"
-      title="This is the actual product."
-      lead="Not a mockup made to look impressive — the same dashboard, the same numbers, that a business sees the morning after their first sale."
-    >
-      <div ref={scope} className="mx-auto max-w-4xl">
-        <DashboardShowcase />
-      </div>
-    </Section>
-  );
-};
+/* ── 3. One bill does the rest (diagram) ──────────────────────────────── */
 
-const IndustriesSection = () => (
+const Node = ({ title, body, strong = false }) => (
+  <div className={`rounded-(--radius-card) border px-5 py-4 ${strong ? 'border-brand-500 bg-brand-500 shadow-md' : 'border-line bg-surface'}`}>
+    <p className={`text-body font-semibold ${strong ? 'text-white' : 'text-ink-900'}`}>{title}</p>
+    <p className={`mt-1 text-small ${strong ? 'text-white/85' : 'text-ink-500'}`}>{body}</p>
+  </div>
+);
+
+const Connector = () => (
+  <div aria-hidden="true" className="flex items-center justify-center py-2 lg:px-2 lg:py-0">
+    <span className="draw block h-8 w-px bg-brand-500/40 lg:h-px lg:w-10" />
+  </div>
+);
+
+const OneBill = () => (
   <Section
-    className="border-y border-line"
-    eyebrow="Industries"
-    title="Built for the business you actually run"
-    lead="FlowXP shows a pharmacy different modules from a gaming café, rather than the same screen with buttons nobody presses. Try one."
+    eyebrow="How it fits together"
+    title="Make the bill once. FlowXP does the rest."
+    lead="However you sell, the sale goes into one system. Your stock, your customer's account, your GST and your reports all move with it, so nothing is written down twice."
   >
-    <IndustrySelector />
+    <Reveal as="figure">
+      <div className="grid items-center lg:grid-cols-[1fr_auto_1fr_auto_1fr]">
+        <div className="space-y-3">
+          <Node title="At the counter" body="Scan a barcode or search, and bill in seconds." />
+          <Node title="On the phone or WhatsApp" body="Take the order and send the bill as a link." />
+          <Node title="At the table or by QR" body="For restaurants and cafés, orders go straight to the kitchen." />
+        </div>
+        <Connector />
+        <Node strong title="One GST bill in FlowXP" body="The same products, prices and stock for every branch you run." />
+        <Connector />
+        <div className="space-y-3">
+          <Node title="Stock and purchases" body="Stock goes down, low items show up, reordering is one click." />
+          <Node title="Money and GST" body="Payments, customer dues and GST returns are updated." />
+          <Node title="Insights" body="FlowXP spots what changed and tells you what to do." />
+        </div>
+      </div>
+      <figcaption className="sr-only">
+        Sales from the counter, the phone and the table all become one GST bill in FlowXP, which updates stock and purchases, money and GST, and the insights.
+      </figcaption>
+    </Reveal>
   </Section>
 );
 
-const Differentiators = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => staggerReveal(scope.current.querySelectorAll('[data-card]'), { each: 0.1 }));
-  }, { scope });
+/* ── 4. Built for your kind of business ───────────────────────────────── */
 
+const BUSINESSES = [
+  {
+    key: 'retail', label: 'Shops and retail',
+    title: 'For shops, supermarkets and pharmacies',
+    body: 'Scan barcodes, bill fast at the counter, and always know what is on the shelf and what to reorder.',
+    points: ['Barcode billing with GST on every line', 'Stock that updates with every sale and purchase', 'Low-stock alerts and purchase orders to suppliers', 'Customer credit and dues, with reminders', 'Returns and credit notes that fix stock and GST'],
+    src: '/product/inventory-main.webp', alt: 'FlowXP inventory screen with stock value, items below their reorder point, wastage and a list of products.'
+  },
+  {
+    key: 'food', label: 'Restaurants and cafés',
+    title: 'For restaurants, cafés and cloud kitchens',
+    body: 'Take orders at the table, by QR or at the counter. The kitchen sees them at once and the bill is always right.',
+    points: ['Tables, waiters and table QR ordering', 'Kitchen screen or kitchen printer, by station', 'Recipes, so each dish uses up its ingredients', 'Split bills, service types and multiple outlets', 'Profit by dish, not just sales'],
+    src: '/product/kitchen-main.webp', alt: 'FlowXP kitchen display with six open orders by table, the dishes, and minutes since each was sent.'
+  },
+  {
+    key: 'services', label: 'Salons and services',
+    title: 'For salons, clinics and service businesses',
+    body: 'Bill services and products on one GST invoice, remember your regulars, and bring them back with offers.',
+    points: ['Services and products on the same bill', 'Customer history and visit counts', 'Loyalty points, coupons and WhatsApp offers', 'Staff logins with the right permissions', 'Appointments and staff scheduling: coming soon'],
+    src: '/product/pos-main.webp', alt: 'FlowXP billing screen with items, quantities, GST and a Charge button.'
+  },
+  {
+    key: 'wholesale', label: 'Wholesale and distribution',
+    title: 'For wholesalers and distributors',
+    body: 'Buy from suppliers, sell on credit, and keep track of who owes you and whom you owe.',
+    points: ['Purchase orders, partial deliveries and back-orders', 'Supplier price lists and debit notes', 'Customer credit, dues and outstanding reports', 'Stock transfers between branches or godowns', 'E-way bill and e-invoice files'],
+    src: '/product/profit-main.webp', alt: 'FlowXP profitability report with revenue, costs, margin and daily revenue.'
+  }
+];
+
+const ForYourBusiness = () => {
+  const [active, setActive] = useState(BUSINESSES[0].key);
+  const b = BUSINESSES.find((x) => x.key === active);
   return (
-    <Section eyebrow="Why FlowXP" title="Digital-first, and yours">
-      <div ref={scope} className="grid gap-5 lg:grid-cols-3">
-        {DIFFERENTIATORS.map((item) => (
-          <GlowCard key={item.title} data-card>
-            <h3 className="text-base font-semibold text-ink-900">{item.title}</h3>
-            <p className="mt-2.5 text-sm leading-relaxed text-ink-500">{item.body}</p>
-          </GlowCard>
-        ))}
-      </div>
-    </Section>
-  );
-};
-
-const Ecosystem = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => fadeUp(scope.current.querySelector('[data-copy]')));
-  }, { scope });
-
-  return (
-    <Section className="border-y border-line">
-      <Container>
-        <div ref={scope}>
-          <GlowCard data-copy outerClassName="mx-auto max-w-3xl" className="text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">
-              The ManagerXP ecosystem
-            </p>
-            <h2 className="mt-3 text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">
-              FlowXP is a product of ManagerXP
-            </h2>
-            <p className="mt-4 text-sm leading-relaxed text-ink-500">
-              ManagerXP already runs the counters, floors and back offices of businesses
-              across India. FlowXP takes the billing, stock and reporting engine from that
-              work and makes it available to any business, on any device, without the setup.
-            </p>
-          </GlowCard>
+    <Section
+      id="industries"
+      className="border-y border-line bg-surface"
+      eyebrow="Who it is for"
+      title="Built for the business you run."
+      lead="The billing, stock, GST and insights are the same for everyone. On top of that, FlowXP shows each kind of business the tools it needs."
+    >
+      <Reveal>
+        <div role="tablist" aria-label="Kind of business" className="flex gap-1 overflow-x-auto border-b border-line">
+          {BUSINESSES.map((x) => (
+            <button
+              key={x.key}
+              role="tab"
+              type="button"
+              id={`tab-${x.key}`}
+              aria-selected={x.key === active}
+              aria-controls="business-panel"
+              onClick={() => setActive(x.key)}
+              className={`-mb-px shrink-0 border-b-2 px-4 py-3 text-body font-medium transition-colors duration-(--duration-normal) ${x.key === active ? 'border-brand-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'}`}
+            >
+              {x.label}
+            </button>
+          ))}
         </div>
-      </Container>
-    </Section>
-  );
-};
-
-const Faq = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => fadeUp(scope.current));
-  }, { scope });
-
-  return (
-    <Section id="faq" eyebrow="FAQ" title="Questions worth asking first">
-      <div ref={scope} className="mx-auto max-w-3xl divide-y divide-line rounded-[--radius-card] border border-line bg-surface">
-        {FAQ.map((item) => (
-          /* <details> rather than a state-driven accordion: it is keyboard
-             accessible, findable by browser search, and needs no JavaScript. */
-          <details key={item.q} className="group px-6 py-5">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-ink-900">
-              {item.q}
-              <span className="shrink-0 text-lg leading-none text-ink-400 transition-transform group-open:rotate-45">
-                +
-              </span>
-            </summary>
-            <p className="mt-3 text-sm leading-relaxed text-ink-500">{item.a}</p>
-          </details>
-        ))}
-      </div>
-    </Section>
-  );
-};
-
-const FinalCta = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => fadeUp(scope.current.querySelector('[data-copy]'), { distance: 20 }));
-  }, { scope });
-
-  return (
-    <Section>
-      <Container>
-        <div ref={scope}>
-          <div data-copy className="bg-gradient-brand rounded-[--radius-card] px-8 py-12 text-center sm:px-14">
-            <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-              Start billing this afternoon.
-            </h2>
-            <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-white/85">
-              Seven days free, on the laptop or phone you already own. No card, no install,
-              no sales call.
-            </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Button to="/signup" variant="secondary" size="lg">Start 7-day free trial</Button>
-              <Button to="/contact" variant="ghost" size="lg" className="text-white hover:bg-white/10 hover:text-white">
-                Talk to us
-              </Button>
-            </div>
+        <div key={b.key} id="business-panel" role="tabpanel" aria-labelledby={`tab-${b.key}`} className="fade-in grid items-center gap-10 pt-10 lg:grid-cols-12">
+          <div className="lg:col-span-5">
+            <h3 className="text-h3 font-semibold text-ink-900">{b.title}</h3>
+            <p className="mt-3 text-lead text-ink-500">{b.body}</p>
+            <ul className="mt-6 space-y-3">
+              {b.points.map((p) => <li key={p} className="flex gap-3 text-body text-ink-700"><Check />{p}</li>)}
+            </ul>
+          </div>
+          <div className="lg:col-span-7">
+            <Shot src={b.src} alt={b.alt} />
           </div>
         </div>
-      </Container>
+      </Reveal>
     </Section>
   );
 };
 
-const PricingSection = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => staggerReveal(scope.current.querySelectorAll('[data-price-card]'), { each: 0.08 }));
-  }, { scope });
+/* ── 5. The AI part: insights and decisions ───────────────────────────── */
 
-  return (
-    <Section id="pricing" eyebrow="Pricing" title="Simple plans, no surprises"
-             lead="Start on the free trial. Move to a paid plan when FlowXP has earned it.">
-      <div ref={scope}><PricingTable /></div>
-    </Section>
-  );
-};
+const DECISIONS = [
+  {
+    kind: 'happened', q: 'How did we do?',
+    body: 'Sales, profit and payments compared with last week and last month, per branch, in words anyone can read.',
+    eg: '“Sales are up 16.6% on the previous 30 days.”'
+  },
+  {
+    kind: 'check', q: 'What should I look at?',
+    body: 'Unusual discounts, cancelled bills and refunds are flagged with the bills behind them, so you can check before money walks out.',
+    eg: '“30 cancelled bills still show money collected.”'
+  },
+  {
+    kind: 'suggest', q: 'What should I do next?',
+    body: 'What to reorder and how much, which items earn you the most, and which ones cost more than they bring in.',
+    eg: '“10 items are at their reorder point. Order before the weekend.”'
+  }
+];
+
+const Insights = () => (
+  <Section id="ai">
+    <div className="grid gap-12 lg:grid-cols-12">
+      <Reveal className="lg:col-span-5">
+        <Eyebrow>Insights and decisions</Eyebrow>
+        <H2>It does not just record your business. It helps you run it.</H2>
+        <p className="mt-4 text-lead text-ink-500">
+          Most billing software stops at the bill. FlowXP keeps reading your sales, stock and expenses,
+          and tells you what changed, what looks wrong and what to do about it. You can also ask it a
+          question in plain English, like “what should I order tomorrow?”
+        </p>
+        <p className="mt-4 text-small text-ink-500">
+          Every answer comes from your own records and says whether it is a fact, an estimate or a suggestion.
+        </p>
+        <div className="mt-8"><TextLink to="/ai">How the AI Manager works</TextLink></div>
+      </Reveal>
+      <div className="lg:col-span-7">
+        <ul className="grid gap-4">
+          {DECISIONS.map((d, i) => (
+            <Reveal as="li" key={d.q} index={i} className="lift rounded-(--radius-card) border border-line bg-surface p-5 sm:p-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className={`inline-flex rounded-full px-2.5 py-0.5 text-caption font-medium ${KIND[d.kind][1]}`}>{KIND[d.kind][0]}</span>
+                <h3 className="text-title font-semibold text-ink-900">{d.q}</h3>
+              </div>
+              <p className="mt-2 text-body text-ink-500">{d.body}</p>
+              <p className="mt-3 text-body font-medium text-ink-900">{d.eg}</p>
+            </Reveal>
+          ))}
+        </ul>
+        <Reveal className="mt-6">
+          <Shot src="/product/leakage-main.webp"
+                alt="FlowXP leakage report: ₹28,290 of cancellations, discounts and refunds that differ from normal, with a suggested next step." />
+        </Reveal>
+      </div>
+    </div>
+  </Section>
+);
+
+/* ── 6. How it works ──────────────────────────────────────────────────── */
+
+const STEPS = [
+  ['Set up', 'Add your business, GST number and products. Import a list or add them as you go.'],
+  ['Bill', 'Scan or search, take cash, UPI or card, and print or WhatsApp the GST bill.'],
+  ['Stock moves', 'Every sale and purchase updates stock. Low items show up before they run out.'],
+  ['GST is ready', 'At month end, download the GSTR-1 file and GSTR-3B figures for your accountant.'],
+  ['Decide', 'Each day, FlowXP shows what changed and what needs doing. You make the call.']
+];
+
+const HowItWorks = () => (
+  <Section
+    id="how-it-works"
+    className="scroll-mt-16 border-y border-line bg-surface"
+    eyebrow="How it works"
+    title="Start billing today. Get smarter every day after."
+    lead="There is nothing to install and no machine to buy. Most businesses make their first bill within an hour."
+  >
+    <ol className="grid gap-px overflow-hidden rounded-(--radius-panel) border border-line bg-line sm:grid-cols-2 lg:grid-cols-5">
+      {STEPS.map(([title, body], i) => (
+        <Reveal as="li" key={title} index={i} className="bg-surface p-6">
+          <p className="tabular text-small font-semibold text-brand-600">{String(i + 1).padStart(2, '0')}</p>
+          <p className="mt-3 text-title font-semibold text-ink-900">{title}</p>
+          <p className="mt-2 text-body text-ink-500">{body}</p>
+        </Reveal>
+      ))}
+    </ol>
+  </Section>
+);
+
+/* ── 7. Real screens ──────────────────────────────────────────────────── */
+
+const FeatureCard = ({ title, body, src, alt, index }) => (
+  <Reveal as="article" index={index} className="lift group flex flex-col overflow-hidden rounded-(--radius-panel) border border-line bg-surface">
+    <div className="overflow-hidden bg-surface-2 px-5 pt-5 sm:px-7 sm:pt-7">
+      <img src={src} alt={alt} width={MAIN.width} height={MAIN.height} loading="lazy" decoding="async"
+           className="block h-auto w-full rounded-t-lg border border-b-0 border-line shadow-md transition-transform duration-(--duration-slow) ease-(--ease-standard) group-hover:-translate-y-1" />
+    </div>
+    <div className="border-t border-line p-5 sm:p-6">
+      <h3 className="text-title font-semibold text-ink-900">{title}</h3>
+      <p className="mt-1.5 text-body text-ink-500">{body}</p>
+    </div>
+  </Reveal>
+);
+
+const Screens = () => (
+  <Section
+    id="features"
+    eyebrow="The product"
+    title="Simple enough for the counter. Detailed enough for the owner."
+    lead="These are real FlowXP screens. Your staff bill on the first one; you check the rest when you want to know how things are going."
+  >
+    <div className="grid gap-5 lg:grid-cols-2">
+      <FeatureCard index={0} title="Bill in seconds."
+        body="Search or scan, change quantity, add a discount, and take one or several payments. GST is worked out on every line."
+        src="/product/pos-main.webp" alt="FlowXP billing screen with six items on the bill and the total with GST." />
+      <FeatureCard index={1} title="Know what you really earn."
+        body="Sales minus the cost of what you sold, fees, commission and expenses, by day, product and branch."
+        src="/product/profit-main.webp" alt="FlowXP profitability report: net revenue, cost share, margin and daily revenue." />
+      <FeatureCard index={0} title="Never run out of the things that sell."
+        body="Current stock, what it is worth, what is running low and what was wasted, for every branch."
+        src="/product/inventory-main.webp" alt="FlowXP inventory screen with stock value, low-stock count, wastage and product list." />
+      <FeatureCard index={1} title="Restaurant tools when you need them."
+        body="Tables, table QR ordering, a kitchen display and recipes are switched on for restaurants and cafés."
+        src="/product/tables-main.webp" alt="FlowXP tables screen showing which tables are free and which are occupied." />
+    </div>
+  </Section>
+);
+
+/* ── 8. Before and after ──────────────────────────────────────────────── */
+
+const BEFORE = [
+  'A billing machine that knows nothing about stock',
+  'Stock counted in a notebook, usually after it has run out',
+  'Bills re-typed into a spreadsheet for the accountant',
+  'Guessing which products actually make money',
+  'Discounts and cancellations nobody checks'
+];
+const AFTER = [
+  'One bill updates stock, customer dues and GST together',
+  'Low-stock alerts and purchase orders from the same screen',
+  'GST returns prepared from the bills you already made',
+  'Profit per product, per branch and per day',
+  'Unusual discounts, cancellations and refunds flagged for you'
+];
+
+const BeforeAfter = () => (
+  <Section className="border-y border-line bg-surface" eyebrow="Why switch" title="Less paperwork. Fewer surprises at month end.">
+    <div className="grid gap-5 md:grid-cols-2">
+      <Reveal className="rounded-(--radius-panel) border border-line bg-page p-6 sm:p-8">
+        <h3 className="text-body font-semibold text-ink-500">Without FlowXP</h3>
+        <ul className="mt-5 space-y-3.5">
+          {BEFORE.map((t) => <li key={t} className="flex gap-3 text-body text-ink-500"><Cross />{t}</li>)}
+        </ul>
+      </Reveal>
+      <Reveal index={1} className="rounded-(--radius-panel) border border-brand-100 bg-brand-50 p-6 sm:p-8">
+        <h3 className="text-body font-semibold text-ink-900">With FlowXP</h3>
+        <ul className="mt-5 space-y-3.5">
+          {AFTER.map((t) => <li key={t} className="flex gap-3 text-body text-ink-900"><Check />{t}</li>)}
+        </ul>
+      </Reveal>
+    </div>
+  </Section>
+);
+
+/* ── 9. Works with ────────────────────────────────────────────────────── */
+
+const WORKS_WITH = [
+  ['Receipt printers', '58 and 80 mm thermal printers'],
+  ['Barcode scanners', 'Any USB or Bluetooth scanner'],
+  ['UPI, cards and cash', 'Split one bill across several payments'],
+  ['WhatsApp and SMS', 'Send bills, reminders and offers'],
+  ['GST portal', 'GSTR-1, e-invoice and e-way bill files'],
+  ['Works offline', 'Keep billing when the internet drops'],
+  ['Phone app', 'Install on Android or iPhone from the browser'],
+  ['Zomato and Swiggy', 'Online orders straight into FlowXP', true]
+];
+
+const WorksWith = () => (
+  <Section
+    eyebrow="Works with"
+    title="Fits the counter you already have."
+    lead="Use the laptop, tablet or phone you own. Add a printer, scanner or cash drawer when you want one."
+  >
+    <ul className="grid gap-px overflow-hidden rounded-(--radius-panel) border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
+      {WORKS_WITH.map(([title, body, soon], i) => (
+        <Reveal as="li" key={title} index={i % 4} className="bg-surface p-5 transition-colors duration-(--duration-normal) hover:bg-brand-50">
+          <p className="flex flex-wrap items-center gap-2 text-body font-semibold text-ink-900">
+            {title}
+            {soon && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-medium text-ink-500">Coming soon</span>}
+          </p>
+          <p className="mt-1 text-small text-ink-500">{body}</p>
+        </Reveal>
+      ))}
+    </ul>
+  </Section>
+);
+
+/* ── 10. Built so nothing gets lost ───────────────────────────────────── */
+
+const TRUST = [
+  ['Bills are never quietly deleted.', 'A cancelled bill or a return leaves a numbered credit note and a reason.'],
+  ['Every change has a name on it.', 'Prices, discounts, stock changes and refunds are recorded with who did it and when.'],
+  ['Each branch sees its own data.', 'Staff see only what their role allows. Owners can turn on two-step login.'],
+  ['Your data stays yours.', 'Kept separate from every other business, and still readable if you stop paying.']
+];
+
+const Trust = () => (
+  <Section className="border-y border-line bg-surface" eyebrow="Built to be trusted" title="Built so nothing gets lost.">
+    <div className="grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
+      {TRUST.map(([title, body], i) => (
+        <Reveal key={title} index={i} className="border-t-2 border-ink-900 pt-5">
+          <h3 className="text-body font-semibold text-ink-900">{title}</h3>
+          <p className="mt-2 text-body text-ink-500">{body}</p>
+        </Reveal>
+      ))}
+    </div>
+  </Section>
+);
+
+/* ── 11. Pricing, FAQ, final call ─────────────────────────────────────── */
+
+const PricingSection = () => (
+  <Section id="pricing" center eyebrow="Pricing" title="Simple plans. Start free."
+           lead="Every plan starts with the same 7-day free trial. Move to a paid plan when FlowXP has earned it.">
+    <Reveal><PricingTable /></Reveal>
+  </Section>
+);
+
+const Faq = () => (
+  <Section id="faq" className="border-t border-line bg-surface">
+    <div className="grid gap-10 lg:grid-cols-12">
+      <Reveal className="lg:col-span-4">
+        <Eyebrow>FAQ</Eyebrow>
+        <h2 className="mt-3 text-h2 font-semibold text-ink-900">Questions owners ask first</h2>
+        <p className="mt-4 text-body text-ink-500">
+          Something else? <Link to="/contact" className="font-medium text-brand-600 hover:text-brand-700">Talk to us</Link>.
+        </p>
+      </Reveal>
+      <Reveal index={1} className="divide-y divide-line border-y border-line lg:col-span-8">
+        {FAQ.map((item) => (
+          <details key={item.q} className="group py-5">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-body font-medium text-ink-900">
+              {item.q}
+              <span aria-hidden="true" className="shrink-0 text-xl leading-none text-ink-400 transition-transform duration-(--duration-normal) group-open:rotate-45">+</span>
+            </summary>
+            <p className="mt-3 text-body text-ink-500">{item.a}</p>
+          </details>
+        ))}
+      </Reveal>
+    </div>
+  </Section>
+);
+
+const FinalCta = () => (
+  <section className="bg-ink-900">
+    <Container>
+      <Reveal className="grid items-center gap-8 py-16 sm:py-20 lg:grid-cols-12">
+        <div className="lg:col-span-8">
+          <h2 className="text-h2 font-semibold text-white">Make your first bill on FlowXP today.</h2>
+          <p className="mt-4 max-w-xl text-lead text-white/70">
+            Add your products, print a test bill and see your first report. Seven days free, no card, no sales call.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3 lg:col-span-4 lg:justify-end">
+          <Button to="/signup" size="lg">Start free trial</Button>
+          <Button to="/contact" size="lg" variant="ghost" className="text-white hover:bg-white/10 hover:text-white">Talk to us</Button>
+        </div>
+      </Reveal>
+    </Container>
+  </section>
+);
 
 const Home = () => (
   <>
     <Hero />
-    <WhatIsFlowXP />
-    <OneFlow />
-    <Features />
-    <ShowcaseSection />
-    <IndustriesSection />
-    <AISection />
-    <DigitalBilling />
-    <MultiBusiness />
-    <Differentiators />
-    <Ecosystem />
+    <CapabilityStrip />
+    <OneBill />
+    <ForYourBusiness />
+    <Insights />
+    <HowItWorks />
+    <Screens />
+    <BeforeAfter />
+    <WorksWith />
+    <Trust />
     <PricingSection />
     <Faq />
     <FinalCta />

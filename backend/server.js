@@ -63,7 +63,23 @@ app.use(cors({
 /* An explicit ceiling. The largest legitimate body here is an invoice with a
    long line-item list; 1mb is generous for that and refuses a body sent only
    to exhaust memory. */
-app.use(express.json({ limit: '1mb' }));
+/* Headers every response should carry. The API only returns JSON, so nothing here should ever be framed, sniffed
+   or cached by a shared proxy (answers are per person). */
+app.use((req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer',
+    'Cross-Origin-Resource-Policy': 'same-site'
+  });
+  if (config.isProduction) res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  if (req.path.startsWith('/api/')) res.set('Cache-Control', 'no-store');
+  next();
+});
+
+/* verify stashes the raw bytes for webhook signature checks (Cashfree signs
+   the raw body; the re-serialised JSON is not guaranteed to match it byte for byte). */
+app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 /* /health: the process is up (a container restarts if this fails).
@@ -78,7 +94,7 @@ app.get('/ready', async (_req, res) => {
   }
 });
 /* Local-disk uploads only; with STORAGE_DRIVER=s3 photos are served straight from the bucket. */
-if (config.storage.driver === 'local') app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), { maxAge: '7d', immutable: true }));
+if (config.storage.driver === 'local') app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), { maxAge: '7d', immutable: true, setHeaders: (res) => res.set('Content-Security-Policy', "default-src 'none'; sandbox") }));
 app.use('/api', routes);
 
 app.use((_req, res) => res.status(404).json({ success: false, message: 'Not found' }));
@@ -87,6 +103,11 @@ app.use((_req, res) => res.status(404).json({ success: false, message: 'Not foun
    full and the client is told nothing — stack traces in a response body are a
    map of the codebase. */
 app.use((error, _req, res, _next) => {
+  // a browser from an origin that is not allowed: refuse it plainly rather than as a crash
+  if (error?.message === 'Not allowed by CORS') return res.status(403).json({ success: false, message: 'This website is not allowed to use the API' });
+  // a body that isn't valid JSON, or is too large, is the caller's mistake
+  if (error?.type === 'entity.parse.failed') return res.status(400).json({ success: false, message: 'That request was not valid JSON' });
+  if (error?.type === 'entity.too.large') return res.status(413).json({ success: false, message: 'That request is too large' });
   console.error('[server] unhandled:', error);
   res.status(500).json({ success: false, message: 'Something went wrong' });
 });

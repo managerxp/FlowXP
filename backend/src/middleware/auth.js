@@ -17,6 +17,7 @@ import jwt from 'jsonwebtoken';
 import pool from '../config/database.js';
 import config from '../config/env.js';
 import { effectiveStatus, persistExpiryIfNeeded, subscriptionSummary } from '../modules/subscription.js';
+import { hasPlanFeature, effectiveFeatureFlags } from '../modules/planFeatures.js';
 
 /* ==========================================================================
    ROLES AND PERMISSIONS
@@ -42,7 +43,11 @@ export const ROLE_PERMISSIONS = {
   // sees and advances tickets only; INVENTORY_MANAGER runs stock and buying.
   WAITER:  ['billing'],
   KITCHEN: ['kitchen'],
-  INVENTORY_MANAGER: ['inventory', 'purchases', 'suppliers']
+  INVENTORY_MANAGER: ['inventory', 'purchases', 'suppliers'],
+  // A rider sees and updates the delivery orders assigned to them — same
+  // narrow scope as WAITER, since orders.controller.js already gates all of
+  // this behind the 'billing' permission Orders itself uses.
+  DELIVERY: ['billing']
 };
 
 export const hasPermission = (tenant, permission) => {
@@ -60,18 +65,32 @@ export const hasPermission = (tenant, permission) => {
    TOKENS
    ========================================================================== */
 
+/* `tv` is the user's session version: raising it (sign out everywhere, a password change or reset) ends every token
+   issued before, without a denylist. Tokens from before this existed have no `tv` and count as version 0. */
 export const signToken = (user) =>
   jwt.sign(
-    { sub: user.user_id, email: user.email },
+    { sub: user.user_id, email: user.email, tv: user.token_version ?? 0 },
     config.jwtSecret,
-    { expiresIn: config.jwtExpiresIn }
+    { expiresIn: config.jwtExpiresIn, algorithm: 'HS256' }
   );
+
+/** A short-lived token that proves the password was right and only the second step is left. It is not a session. */
+export const signChallenge = (user) =>
+  jwt.sign({ sub: user.user_id, purpose: '2fa', tv: user.token_version ?? 0 }, config.jwtSecret, { expiresIn: '5m', algorithm: 'HS256' });
+
+export const readChallenge = (token) => {
+  try {
+    const p = jwt.verify(String(token ?? ''), config.jwtSecret, { algorithms: ['HS256'] });
+    return p.purpose === '2fa' ? p : null;
+  } catch { return null; }
+};
 
 const readToken = (req) => {
   const header = req.headers.authorization || '';
   if (!header.startsWith('Bearer ')) return null;
   try {
-    return jwt.verify(header.slice(7).trim(), config.jwtSecret);
+    const payload = jwt.verify(header.slice(7).trim(), config.jwtSecret, { algorithms: ['HS256'] });
+    return payload.purpose ? null : payload;      // a half-finished sign-in (2FA challenge) is not a session
   } catch {
     // Expired, forged or malformed all mean the same thing here: no session.
     return null;
@@ -96,11 +115,12 @@ export const requireAuth = async (req, res, next) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT u.user_id, u.name, u.email, u.phone, u.email_verified, u.is_super_admin
+      `SELECT u.user_id, u.name, u.email, u.phone, u.email_verified, u.is_super_admin, u.token_version, u.totp_enabled
        FROM users u WHERE u.user_id = $1`,
       [payload.sub]
     );
-    if (!rows.length) {
+    // gone, or the sessions were ended (sign out everywhere, password change or reset)
+    if (!rows.length || (payload.tv ?? 0) !== rows[0].token_version) {
       return res.status(401).json({ success: false, message: 'Sign in to continue' });
     }
 
@@ -115,9 +135,21 @@ export const requireAuth = async (req, res, next) => {
               b.name, b.business_type, b.status AS business_status,
               b.subscription_status, b.plan_code, b.billing_cycle,
               b.trial_started_at, b.trial_ends_at, b.next_billing_date,
-              b.currency, b.onboarding_step, b.gst_enabled
+              b.currency, b.onboarding_step, b.gst_enabled, b.require_2fa_admins, b.upi_vpa,
+              -- feature_flags come from the business's PINNED plan version, not the plan's current
+              -- (possibly since-changed) values — see modules/planFeatures.js and migration 0038.
+              COALESCE(pv.feature_flags, p.feature_flags, '{}'::jsonb) AS feature_flags,
+              COALESCE(btf.feature_flags, '{}'::jsonb) AS business_type_feature_flags,
+              COALESCE(bfo.overrides, '{}'::jsonb) AS feature_overrides
        FROM business_users bu
        JOIN businesses b ON b.business_id = bu.business_id
+       LEFT JOIN plans p ON p.plan_code = b.plan_code
+       LEFT JOIN plan_versions pv ON pv.plan_version_id = b.plan_version_id
+       LEFT JOIN business_type_features btf ON btf.business_type = b.business_type AND btf.plan_code = b.plan_code
+       LEFT JOIN LATERAL (
+         SELECT jsonb_object_agg(feature_key, enabled) AS overrides FROM business_feature_overrides
+         WHERE business_id = b.business_id AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+       ) bfo ON true
        WHERE bu.user_id = $1 AND bu.status = 'ACTIVE' AND b.status <> 'CLOSED'
        ORDER BY bu.business_id`,
       [rows[0].user_id]
@@ -182,6 +214,12 @@ export const withBusiness = (options = {}) => async (req, res, next) => {
     });
   }
 
+  /* The owner can require two-step verification for owners and admins. Until they set it up, everything except the
+     account/security screens (which don't come through here) is closed to them. */
+  if (membership.require_2fa_admins && ['OWNER', 'ADMIN'].includes(membership.role) && !req.auth.user.totp_enabled) {
+    return res.status(403).json({ success: false, code: 'TWO_FACTOR_REQUIRED', message: 'Set up two-step verification to continue. Your business requires it for owners and admins.' });
+  }
+
   const status = effectiveStatus(membership);
   persistExpiryIfNeeded({ ...membership }, status);
 
@@ -232,7 +270,10 @@ export const withBusiness = (options = {}) => async (req, res, next) => {
     viewAll,
     pinned,
     multiOutlet: outlets.length > 1,
-    subscription: subscriptionSummary(membership)
+    subscription: subscriptionSummary(membership),
+    // whole-business feature gates — the plan AND the business type combined (either can turn
+    // a feature off), checked by requirePlanFeature() below; separate from `permissions`, which is per-user
+    planFeatures: effectiveFeatureFlags([membership.feature_flags, membership.business_type_feature_flags], membership.feature_overrides)
   };
 
   /*
@@ -262,6 +303,24 @@ export const requirePermission = (permission) => (req, res, next) => {
     return res.status(403).json({
       success: false,
       message: 'You do not have access to this'
+    });
+  }
+  next();
+};
+
+/**
+ * Gate a route on a whole-business feature (unlike requirePermission, which is per-user).
+ * `req.tenant.planFeatures` is already the plan AND business-type flags combined — see
+ * effectiveFeatureFlags() — so this one check covers "not on this plan" and "not for this
+ * kind of business" alike; the message stays generic since either can be the real reason.
+ */
+export const requirePlanFeature = (feature) => (req, res, next) => {
+  if (!hasPlanFeature(req.tenant, feature)) {
+    return res.status(402).json({
+      success: false,
+      code: 'FEATURE_NOT_IN_PLAN',
+      message: 'This feature is not available for your business. Contact FlowXP support if you think this is wrong.',
+      data: { feature }
     });
   }
   next();

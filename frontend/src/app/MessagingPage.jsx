@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
-import { Alert, Badge, Button, Card, Field, ListState, PageHeader, Select, Table, Td, Textarea, Th, Thead, Tr, useToast } from '../components/ui.jsx';
+import { Alert, Badge, Button, Card, Field, ListState, PageHeader, Select, Table, Td, Textarea, Th, Thead, Tr, useToast, humanize } from '../components/ui.jsx';
 
 const TONE = { SENT: 'success', FAILED: 'danger', SKIPPED: 'warning', QUEUED: 'neutral' };
 const when = (iso) => new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -40,7 +40,7 @@ const Settings = () => {
         </p>
       )}
       <Card className="p-5">
-        <Field id="ch" label="Send messages by" hint={provider.connected ? `Connected: ${provider.name.replace('_', ' ')}` : undefined}>
+        <Field id="ch" label="Send messages by" hint={provider.connected ? `Connected: ${humanize(provider.name)}` : undefined}>
           <Select id="ch" value={settings.channel} onChange={(e) => save({ channel: e.target.value })}>
             <option value="OFF">Off: send nothing</option>
             <option value="WHATSAPP">WhatsApp</option>

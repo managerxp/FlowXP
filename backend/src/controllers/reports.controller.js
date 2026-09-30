@@ -33,7 +33,8 @@ export const sales = async (req, res) => {
   const businessId = req.tenant.businessId;
   const inv = outlet(req, 'branch_id'); const invI = outlet(req, 'i.branch_id'); const pay = outlet(req, 'branch_id');
 
-  const [totals, byDay, topProducts, byMethod] = await Promise.all([
+  const tz = `COALESCE((SELECT timezone FROM businesses WHERE business_id = $1), 'Asia/Kolkata')`;
+  const [totals, byDay, topProducts, byMethod, byHour, byChannel, byCategory] = await Promise.all([
     pool.query(
       `SELECT COUNT(*)::int AS invoice_count,
               COALESCE(SUM(total_paise),0) AS total_paise,
@@ -57,11 +58,35 @@ export const sales = async (req, res) => {
        GROUP BY p.product_id, p.name ORDER BY revenue_paise DESC LIMIT 10`,
       [businessId, from, to, ...invI.args]
     ),
+    // money taken from customers only: a payment with po_id is money paid to a supplier
     pool.query(
       `SELECT payment_method, COALESCE(SUM(amount_paise),0) AS amount_paise
-       FROM payments WHERE business_id = $1 AND payment_date BETWEEN $2 AND $3${pay.sql}
+       FROM payments WHERE business_id = $1 AND po_id IS NULL AND payment_date BETWEEN $2 AND $3${pay.sql}
        GROUP BY payment_method ORDER BY amount_paise DESC`,
       [businessId, from, to, ...pay.args]
+    ),
+    // when in the day the bills are raised, on the business's own clock
+    pool.query(
+      `SELECT EXTRACT(HOUR FROM created_at AT TIME ZONE ${tz})::int AS hour, COUNT(*)::int AS invoice_count, SUM(total_paise) AS total_paise
+       FROM invoices WHERE business_id = $1 AND status = 'ISSUED' AND invoice_date BETWEEN $2 AND $3${inv.sql}
+       GROUP BY 1 ORDER BY 1`,
+      [businessId, from, to, ...inv.args]
+    ),
+    // where the sale came from: the counter, or an order and its type (and platform)
+    pool.query(
+      `SELECT COALESCE(o.order_type, 'COUNTER') AS channel, o.platform, COUNT(*)::int AS invoice_count, SUM(i.total_paise) AS total_paise
+       FROM invoices i LEFT JOIN orders o ON o.order_id = i.order_id
+       WHERE i.business_id = $1 AND i.status = 'ISSUED' AND i.invoice_date BETWEEN $2 AND $3${invI.sql}
+       GROUP BY 1, 2 ORDER BY total_paise DESC`,
+      [businessId, from, to, ...invI.args]
+    ),
+    pool.query(
+      `SELECT COALESCE(c.name, 'No category') AS category, SUM(ii.quantity) AS quantity, SUM(ii.line_total_paise) AS revenue_paise
+       FROM invoice_items ii JOIN invoices i ON i.invoice_id = ii.invoice_id
+       LEFT JOIN products p ON p.product_id = ii.product_id LEFT JOIN categories c ON c.category_id = p.category_id
+       WHERE i.business_id = $1 AND i.status = 'ISSUED' AND i.invoice_date BETWEEN $2 AND $3${invI.sql}
+       GROUP BY 1 ORDER BY revenue_paise DESC`,
+      [businessId, from, to, ...invI.args]
     )
   ]);
 
@@ -75,7 +100,10 @@ export const sales = async (req, res) => {
       outstanding: toRupees(totals.rows[0].outstanding_paise),
       by_day: byDay.rows.map((r) => ({ date: r.invoice_date, invoice_count: r.invoice_count, total: toRupees(r.total_paise) })),
       top_products: topProducts.rows.map((r) => ({ product_id: r.product_id, name: r.name || 'Unnamed item', quantity: Number(r.quantity), revenue: toRupees(r.revenue_paise) })),
-      by_payment_method: byMethod.rows.map((r) => ({ method: r.payment_method, amount: toRupees(r.amount_paise) }))
+      by_payment_method: byMethod.rows.map((r) => ({ method: r.payment_method, amount: toRupees(r.amount_paise) })),
+      by_hour: byHour.rows.map((r) => ({ hour: r.hour, invoice_count: r.invoice_count, total: toRupees(r.total_paise) })),
+      by_channel: byChannel.rows.map((r) => ({ channel: r.channel, platform: r.platform || null, invoice_count: r.invoice_count, total: toRupees(r.total_paise) })),
+      by_category: byCategory.rows.map((r) => ({ category: r.category, quantity: Number(r.quantity), revenue: toRupees(r.revenue_paise) }))
     }
   });
 };
@@ -87,14 +115,14 @@ export const purchases = async (req, res) => {
   const { from, to } = await dateRange(req.query, req.tenant.businessId);
   const po = outlet(req, 'branch_id'); const poP = outlet(req, 'po.branch_id');
   const { rows } = await pool.query(
-    `SELECT COUNT(*)::int AS po_count, COALESCE(SUM(total_paise),0) AS total_paise, COALESCE(SUM(balance_due_paise),0) AS payable_paise
-     FROM purchase_orders WHERE business_id = $1 AND status = 'RECEIVED' AND po_date BETWEEN $2 AND $3${po.sql}`,
+    `SELECT COUNT(*)::int AS po_count, COALESCE(SUM(total_paise - debited_paise),0) AS total_paise, COALESCE(SUM(balance_due_paise),0) AS payable_paise
+     FROM purchase_orders WHERE business_id = $1 AND status IN ('RECEIVED','PARTIAL') AND po_date BETWEEN $2 AND $3${po.sql}`,
     [req.tenant.businessId, from, to, ...po.args]
   );
   const bySupplier = await pool.query(
-    `SELECT s.supplier_id, s.name, SUM(po.total_paise) AS total_paise
+    `SELECT s.supplier_id, s.name, SUM(po.total_paise - po.debited_paise) AS total_paise
      FROM purchase_orders po LEFT JOIN suppliers s ON s.supplier_id = po.supplier_id
-     WHERE po.business_id = $1 AND po.status = 'RECEIVED' AND po.po_date BETWEEN $2 AND $3${poP.sql}
+     WHERE po.business_id = $1 AND po.status IN ('RECEIVED','PARTIAL') AND po.po_date BETWEEN $2 AND $3${poP.sql}
      GROUP BY s.supplier_id, s.name ORDER BY total_paise DESC LIMIT 10`,
     [req.tenant.businessId, from, to, ...poP.args]
   );

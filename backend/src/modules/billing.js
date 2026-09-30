@@ -45,7 +45,14 @@ export const paymentStatus = (totalPaise, paidPaise) => {
  * the business row for the rest of the transaction, so two invoices billed in
  * the same instant cannot both read "next number 47".
  */
-const nextInvoiceNumber = async (client, businessId) => {
+const nextInvoiceNumber = async (client, businessId, branchId) => {
+  // an outlet with its own series numbers from its own counter. NO KEY UPDATE: a plain FOR UPDATE would clash with the
+  // foreign-key checks other inserts make on this branch row (the audit log, an order) and could deadlock with them.
+  const own = branchId ? (await client.query(`SELECT invoice_prefix, invoice_next_number FROM branches WHERE branch_id = $1 AND business_id = $2 FOR NO KEY UPDATE`, [branchId, businessId])).rows[0] : null;
+  if (own?.invoice_prefix) {
+    await client.query(`UPDATE branches SET invoice_next_number = invoice_next_number + 1 WHERE branch_id = $1`, [branchId]);
+    return `${own.invoice_prefix}-${String(own.invoice_next_number).padStart(4, '0')}`;
+  }
   const { rows } = await client.query(
     `SELECT invoice_prefix, invoice_next_number FROM businesses WHERE business_id = $1 FOR UPDATE`,
     [businessId]
@@ -95,8 +102,52 @@ export const asInvoice = (row) => ({
  * @param userId       who is billing this
  * @param input        { customerId, items, discount, notes, payment, invoiceDate }
  *   items: [{ product_id?, description?, unit_price?, quantity, discount?, tax_rate? }]
- *   payment: { amount, method, reference_number }
+ *   payment: { amount, method, reference_number }       one payment ('FULL' = the whole bill)
+ *   payments: [{ amount, method, reference_number }]     or several (split); one of them may be
+ *             'REST' (whatever the others leave), and together they may not exceed the bill
  */
+const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CREDIT', 'OTHER'];
+const MAX_SPLIT = 6;
+
+/*
+ * The payments taken with a bill, as rows to insert. A single `payment` keeps
+ * its old meaning (any amount, 'FULL' for the whole bill). A `payments` list is
+ * a split: every part needs a positive amount except at most one 'REST', which
+ * takes whatever the others leave, and the parts may not add up to more than
+ * the bill. 'REST' exists because only the server knows the exact final total
+ * (tax rounding, round-off, loyalty rewards), so the till cannot fill the last
+ * part in to the paisa.
+ */
+const plannedPayments = (input, totalPaise) => {
+  if (Array.isArray(input.payments)) {
+    const list = input.payments.filter((p) => p && (p.amount != null && p.amount !== ''));
+    if (list.length > MAX_SPLIT) throw new BillingError(400, `A bill can be split into at most ${MAX_SPLIT} payments`);
+    if (list.filter((p) => p.amount === 'REST' || p.amount === 'FULL').length > 1) throw new BillingError(400, 'Only one part of a split payment can be "the rest"');
+    const rows = list.map((p) => {
+      const method = String(p.method || 'CASH').toUpperCase();
+      if (!PAYMENT_METHODS.includes(method)) throw new BillingError(400, `Unknown payment method: ${p.method}`);
+      if (p.amount === 'REST' || p.amount === 'FULL') return { method, rest: true, reference: p.reference_number || null };
+      const amountPaise = toPaise(p.amount);
+      if (amountPaise <= 0) throw new BillingError(400, 'Each part of a split payment needs an amount above zero');
+      return { method, amountPaise, reference: p.reference_number || null };
+    });
+    const fixed = rows.reduce((s, r) => s + (r.rest ? 0 : r.amountPaise), 0);
+    if (fixed > totalPaise) throw new BillingError(400, `The payments add up to ₹${toRupees(fixed)}, more than the bill of ₹${toRupees(totalPaise)}`);
+    return rows
+      .map((r) => (r.rest ? { ...r, amountPaise: totalPaise - fixed } : r))
+      .filter((r) => r.amountPaise > 0);
+  }
+  if (input.payment?.amount != null) {
+    // 'FULL' = collect exactly what the bill comes to (the caller cannot know it before tax is worked out).
+    // More than the bill (cash handed over) records the bill; the difference is change, not a payment.
+    const asked = input.payment.amount === 'FULL' ? totalPaise : toPaise(input.payment.amount);
+    if (asked < 0) throw new BillingError(400, 'Payment amount cannot be negative');
+    const amountPaise = Math.min(asked, totalPaise);
+    return amountPaise > 0 ? [{ method: input.payment.method || 'CASH', amountPaise, reference: input.payment.reference_number || null }] : [];
+  }
+  return [];
+};
+
 export const createInvoiceInTransaction = async (client, tenant, userId, input) => {
   const items = Array.isArray(input.items) ? input.items : [];
   if (!items.length) throw new BillingError(400, 'Add at least one item');
@@ -151,7 +202,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   // Combos sell as one line but use up their components (stock and recipes).
   const combos = await loadCombos(client, tenant.businessId, productIds);
   const componentIds = [...new Set([...combos.values()].flat().map((c) => c.component_id))];
-  const recipes = await loadRecipes(client, tenant.businessId, [...new Set([...productIds, ...componentIds])]);
+  const recipes = await loadRecipes(client, tenant.businessId, [...new Set([...productIds, ...componentIds])], tenant.branchId);
 
   const lines = [];
   for (const raw of items) {
@@ -282,15 +333,11 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
 
   const pointsEarned = pts ? earnFor(pts, pointsState, finalTotalPaise) : 0;
 
-  let paidPaise = 0;
-  if (input.payment?.amount != null) {
-    // 'FULL' = collect exactly what the bill comes to (the caller cannot know it before tax is worked out).
-    paidPaise = input.payment.amount === 'FULL' ? finalTotalPaise : toPaise(input.payment.amount);
-    if (paidPaise < 0) throw new BillingError(400, 'Payment amount cannot be negative');
-  }
+  const takenPayments = plannedPayments(input, finalTotalPaise);
+  const paidPaise = takenPayments.reduce((s, p) => s + p.amountPaise, 0);
   const balancePaise = finalTotalPaise - paidPaise;
 
-  const invoiceNumber = await nextInvoiceNumber(client, tenant.businessId);
+  const invoiceNumber = await nextInvoiceNumber(client, tenant.businessId, tenant.branchId);
 
   const invoice = (await client.query(
     `INSERT INTO invoices
@@ -375,14 +422,11 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     }
   }
 
-  if (paidPaise > 0) {
+  for (const p of takenPayments) {
     await client.query(
       `INSERT INTO payments (business_id, branch_id, invoice_id, customer_id, payment_method, amount_paise, reference_number, notes, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [
-        tenant.businessId, tenant.branchId, invoice.invoice_id, customer?.customer_id || null,
-        input.payment?.method || 'CASH', paidPaise, input.payment?.reference_number || null, null, userId
-      ]
+      [tenant.businessId, tenant.branchId, invoice.invoice_id, customer?.customer_id || null, p.method, p.amountPaise, p.reference, null, userId]
     );
   }
 
@@ -392,7 +436,8 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       earned: pointsEarned, redeemed: pointsRedeemed, balance: pointsState.balance - pointsRedeemed + pointsEarned,
       tier: (tierFor(pts.tiers, pointsState.lifetime + pointsEarned).current || {}).name ?? null
     } : null,
-    loyalty_reward: loyalty?.applied ? { item: loyalty.applied.item, amount: toRupees(loyalty.applied.amountPaise) } : null
+    loyalty_reward: loyalty?.applied ? { item: loyalty.applied.item, amount: toRupees(loyalty.applied.amountPaise) } : null,
+    payments_taken: takenPayments.map((p) => ({ method: p.method, amount: toRupees(p.amountPaise) }))
   };
 };
 

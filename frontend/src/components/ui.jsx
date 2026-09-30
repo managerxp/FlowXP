@@ -7,35 +7,24 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Reveal from './Reveal.jsx';
 
 /* ── Logo ────────────────────────────────────────────────────────────────
-   The uploaded mark (frontend/public/logo.png) already IS "FlowXP" — the F
-   icon and the wordmark are one image, not two things to compose. Setting
-   "FlowXP" as text next to it duplicated what the image already says, which
-   is the redundancy this used to have. This renders the image alone, at its
-   own aspect ratio (never squashed into a square), and falls back to a text
-   wordmark only if the file is ever missing — via React state, not by
-   reaching into the DOM from an onError handler. */
+   The uploaded mark (frontend/public/logo.png) already is "FlowXP", icon and
+   wordmark in one image, so it renders alone at its own aspect ratio. A text
+   wordmark is the fallback only if the file is ever missing. */
 export const Logo = ({ className = '', showTagline = false }) => {
   const [broken, setBroken] = useState(false);
-  // The tagline only ever appears somewhere the logo stands alone (the
-  // footer, an auth screen) — those spots read better with a slightly
-  // larger mark than the one sitting inline in a nav bar.
-  const height = showTagline ? 'h-12' : 'h-9';
-
+  const height = showTagline ? 'h-11' : 'h-9';
   return (
     <span className={`inline-flex flex-col ${className}`}>
       {broken ? (
-        <span className="text-xl font-extrabold tracking-tight text-ink-900">
-          Flow<span className="text-gradient">XP</span>
-        </span>
+        <span className="text-xl font-bold tracking-tight text-ink-900">Flow<span className="text-brand-500">XP</span></span>
       ) : (
-        <img src="/logo.png" alt="FlowXP" className={`${height} w-auto object-contain`} onError={() => setBroken(true)} />
+        <img src="/logo.png" alt="FlowXP" className={`${height} w-auto object-contain object-left`} onError={() => setBroken(true)} />
       )}
       {showTagline && (
-        <span className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-400">
-          The smart flow for every business
-        </span>
+        <span className="mt-2 text-xs text-ink-500">AI billing, stock and GST for every business</span>
       )}
     </span>
   );
@@ -47,29 +36,28 @@ export const Logo = ({ className = '', showTagline = false }) => {
    announced as a link by a screen reader. */
 const VARIANTS = {
   primary:
-    'bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700 shadow-glow',
+    'bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700 shadow-sm',
   secondary:
-    'bg-surface text-ink-900 border border-line-strong hover:bg-surface-2',
+    'bg-surface text-ink-900 border border-line-strong hover:bg-surface-2 shadow-sm',
   ghost:
-    'text-ink-700 hover:text-ink-900 hover:bg-surface-2'
+    'text-ink-700 hover:text-ink-900 hover:bg-surface-2',
+  dark:
+    'bg-ink-900 text-white hover:bg-ink-700'
 };
 
 const SIZES = {
-  sm: 'px-3.5 py-2 text-sm',
-  md: 'px-5 py-2.5 text-sm',
-  lg: 'px-7 py-3.5 text-base'
+  sm: 'h-8 px-3 text-sm',
+  md: 'h-10 px-4 text-sm',
+  lg: 'h-11 px-5 text-[15px]'
 };
 
 export const Button = ({
   as, to, href, variant = 'primary', size = 'md', className = '', children, ...rest
 }) => {
   const classes =
-    `inline-flex items-center justify-center gap-2 rounded-full font-semibold ` +
-    /* transform-gpu + will-change scope the scale to its own compositor
-       layer, so the press feedback costs a transform, not a layout pass. */
-    `transition-[color,background-color,border-color,box-shadow,transform] duration-150 ` +
-    `will-change-transform hover:scale-[1.015] active:scale-[0.97] ` +
-    `disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 ` +
+    `inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium ` +
+    `transition-colors duration-150 ` +
+    `disabled:cursor-not-allowed disabled:opacity-50 ` +
     `${VARIANTS[variant]} ${SIZES[size]} ${className}`;
 
   if (to) return <Link to={to} className={classes} {...rest}>{children}</Link>;
@@ -84,21 +72,23 @@ export const Container = ({ className = '', children }) => (
   <div className={`mx-auto w-full max-w-6xl px-5 sm:px-8 ${className}`}>{children}</div>
 );
 
-export const Section = ({ id, eyebrow, title, lead, className = '', children }) => (
-  <section id={id} className={`py-14 sm:py-20 ${className}`}>
+export const Eyebrow = ({ children, className = '' }) => (
+  <p className={`text-xs font-semibold uppercase tracking-[0.14em] text-brand-600 ${className}`}>{children}</p>
+);
+
+/* Section headings are left-aligned by default: business readers scan down
+   the left edge. `center` is for the odd section that stands alone. */
+export const Section = ({ id, eyebrow, title, lead, className = '', center = false, children }) => (
+  <section id={id} className={`py-16 sm:py-24 ${className}`}>
     <Container>
       {(eyebrow || title || lead) && (
-        <div className="mx-auto mb-10 max-w-2xl text-center">
-          {eyebrow && (
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">
-              {eyebrow}
-            </p>
-          )}
+        <Reveal className={`mb-10 max-w-2xl sm:mb-12 ${center ? 'mx-auto text-center' : ''}`}>
+          {eyebrow && <Eyebrow className="mb-3">{eyebrow}</Eyebrow>}
           {title && (
-            <h2 className="text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">{title}</h2>
+            <h2 className="text-h2 font-semibold text-ink-900">{title}</h2>
           )}
-          {lead && <p className="mt-4 text-base leading-relaxed text-ink-500">{lead}</p>}
-        </div>
+          {lead && <p className="mt-4 text-lead text-ink-500">{lead}</p>}
+        </Reveal>
       )}
       {children}
     </Container>
@@ -114,7 +104,7 @@ export const Section = ({ id, eyebrow, title, lead, className = '', children }) 
  * that never plays.
  */
 export const Card = ({ className = '', children, ...rest }) => (
-  <div className={`glass rounded-[--radius-card] p-6 ${className}`} {...rest}>{children}</div>
+  <div className={`rounded-(--radius-card) border border-line bg-surface p-6 ${className}`} {...rest}>{children}</div>
 );
 
 /* ── Form field ──────────────────────────────────────────────────────────
@@ -209,7 +199,7 @@ const BADGE_TONES = {
 };
 
 export const Badge = ({ tone = 'neutral', children }) => (
-  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${BADGE_TONES[tone]}`}>
+  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${BADGE_TONES[tone]}`}>
     {children}
   </span>
 );
@@ -220,7 +210,14 @@ const STATUS_TONES = {
   PAID: 'success', ACTIVE: 'success', ISSUED: 'brand', RECEIVED: 'brand',
   PARTIAL: 'warning', UNPAID: 'danger', CANCELLED: 'neutral', ARCHIVED: 'neutral'
 };
-export const StatusBadge = ({ status }) => <Badge tone={STATUS_TONES[status] || 'neutral'}>{status}</Badge>;
+/* Words people read, not database codes. Unknown codes are shown tidied up. */
+const STATUS_LABELS = { PAID: 'Paid', PARTIAL: 'Part paid', UNPAID: 'Unpaid', ISSUED: 'Issued', CANCELLED: 'Cancelled', ACTIVE: 'Active', ARCHIVED: 'Archived', RECEIVED: 'Received' };
+const KEEP_CAPS = new Set(['upi', 'gst', 'gstin', 'hsn', 'kot', 'qr', 'sms', 'pos', 'ai']);
+export const humanize = (code) => String(code ?? '').toLowerCase().replace(/_/g, ' ')
+  .split(' ').map((w) => (KEEP_CAPS.has(w) ? w.toUpperCase() : w)).join(' ')
+  .replace(/^./, (c) => c.toUpperCase());
+const statusLabel = (status) => STATUS_LABELS[status] || humanize(status);
+export const StatusBadge = ({ status }) => <Badge tone={STATUS_TONES[status] || 'neutral'}>{statusLabel(status)}</Badge>;
 
 /* ── Avatar ─────────────────────────────────────────────────────────────── */
 const AVATAR_COLORS = ['bg-brand-500', 'bg-cyan-500', 'bg-violet-500', 'bg-teal-500', 'bg-amber-500'];
@@ -257,7 +254,7 @@ export const Avatar = ({ name, size = 'md', className = '' }) => (
 /* A wide table must scroll inside its own box, never the page — the one rule
    that keeps a ten-column invoice list from breaking mobile layout. */
 export const Table = ({ children }) => (
-  <div className="overflow-x-auto rounded-[--radius-card] border border-line bg-surface">
+  <div className="overflow-x-auto rounded-(--radius-card) border border-line bg-surface">
     <table className="w-full min-w-max text-sm">{children}</table>
   </div>
 );
@@ -356,7 +353,7 @@ export const Skeleton = ({ className = '' }) => (
 );
 
 export const SkeletonRows = ({ rows = 5, columns = 4 }) => (
-  <div className="overflow-hidden rounded-[--radius-card] border border-line bg-surface">
+  <div className="overflow-hidden rounded-(--radius-card) border border-line bg-surface">
     <div className="border-b border-line bg-surface-2 px-4 py-3">
       <Skeleton className="h-3 w-24" />
     </div>
@@ -375,7 +372,7 @@ export const SkeletonRows = ({ rows = 5, columns = 4 }) => (
 export const SkeletonCards = ({ count = 4 }) => (
   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
     {Array.from({ length: count }).map((_, i) => (
-      <div key={i} className="glass space-y-3 rounded-[--radius-card] p-5">
+      <div key={i} className="space-y-3 rounded-(--radius-card) border border-line bg-surface p-5">
         <Skeleton className="h-3 w-20" />
         <Skeleton className="h-6 w-24" />
       </div>
@@ -412,10 +409,10 @@ export const Modal = ({ title, onClose, children, wide = false }) => {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`glass w-full rounded-[--radius-card] p-6 ${wide ? 'max-w-2xl' : 'max-w-md'}`}
+        className={`w-full rounded-(--radius-panel) border border-line bg-surface p-6 shadow-lg ${wide ? 'max-w-2xl' : 'max-w-md'}`}
       >
         <div className="mb-5 flex items-center justify-between gap-4">
-          <h2 className="text-lg font-bold tracking-tight text-ink-900">{title}</h2>
+          <h2 className="text-lg font-semibold tracking-tight text-ink-900">{title}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -436,7 +433,7 @@ export const Modal = ({ title, onClose, children, wide = false }) => {
 export const PageHeader = ({ title, lead, action }) => (
   <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
     <div>
-      <h1 className="text-2xl font-bold tracking-tight text-ink-900">{title}</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{title}</h1>
       {lead && <p className="mt-1 text-sm text-ink-500">{lead}</p>}
     </div>
     {action}
@@ -480,7 +477,7 @@ export const ToastProvider = ({ children }) => {
             key={t.id}
             role="status"
             onClick={() => remove(t.id)}
-            className={`glass pointer-events-auto max-w-sm cursor-pointer rounded-full px-4 py-2.5 text-sm font-medium shadow-md ${TOAST_TONE_TEXT[t.tone]}`}
+            className={`pointer-events-auto max-w-sm cursor-pointer rounded-lg border border-line bg-surface px-4 py-2.5 text-sm font-medium shadow-md ${TOAST_TONE_TEXT[t.tone]}`}
           >
             {t.message}
           </div>

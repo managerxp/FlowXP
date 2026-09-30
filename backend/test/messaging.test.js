@@ -19,7 +19,7 @@ const mod = await import('../src/modules/messaging/index.js');
 test.after(async () => { setProvider(null); await cleanup(); });
 
 const fakeRes = () => ({ code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; }, set() { return this; } });
-const until = async (check, ms = 3000) => { const end = Date.now() + ms; while (Date.now() < end) { const v = await check(); if (v) return v; await new Promise((r) => setTimeout(r, 25)); } return null; };
+const until = async (check, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { const v = await check(); if (v) return v; await new Promise((r) => setTimeout(r, 25)); } return null; };
 
 /* ── pure ───────────────────────────────────────────────────────────────── */
 

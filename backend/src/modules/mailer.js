@@ -8,33 +8,45 @@
  */
 import nodemailer from 'nodemailer';
 import config from '../config/env.js';
+import { getPlatformSetting } from './platformSettings.js';
 
-const transport = config.mail.host
-  ? nodemailer.createTransport({
-      host: config.mail.host,
-      port: config.mail.port,
-      secure: config.mail.port === 465,
-      auth: config.mail.user ? { user: config.mail.user, pass: config.mail.pass } : undefined
-    })
-  : null;
+/* The admin's Settings → Email screen wins when it has been filled in; otherwise the
+   .env values, so an install with nothing saved there behaves exactly as before.
+   Resolved fresh per send (not cached) so a saved change takes effect immediately,
+   and built into a transport per send since sending mail is not a hot path. */
+const buildTransport = async () => {
+  const saved = await getPlatformSetting('email').catch(() => null);
+  const db = saved?.value;
+  const host = db?.smtpHost || config.mail.host;
+  if (!host) return null;
+  const port = Number(db?.smtpPort || config.mail.port);
+  const user = db?.smtpUser || config.mail.user;
+  const pass = db?.smtpPass || config.mail.pass;
+  return {
+    from: db?.mailFrom || config.mail.from,
+    transport: nodemailer.createTransport({ host, port, secure: port === 465, auth: user ? { user, pass } : undefined })
+  };
+};
 
 /* Throws on failure, so a queued job can retry. sendMail below swallows errors
    because the request that triggered it must not fail; a job has no such request. */
 export const deliverMail = async ({ to, subject, text, html }) => {
-  if (!transport) {
+  const built = await buildTransport();
+  if (!built) {
     console.log(`\n[mail:dev] to=${to}\n[mail:dev] subject=${subject}\n${text}\n`);
     return;
   }
-  await transport.sendMail({ from: config.mail.from, to, subject, text, html });
+  await built.transport.sendMail({ from: built.from, to, subject, text, html });
 };
 
 export const sendMail = async ({ to, subject, text, html }) => {
-  if (!transport) {
+  const built = await buildTransport();
+  if (!built) {
     console.log(`\n[mail:dev] to=${to}\n[mail:dev] subject=${subject}\n${text}\n`);
     return;
   }
   try {
-    await transport.sendMail({ from: config.mail.from, to, subject, text, html });
+    await built.transport.sendMail({ from: built.from, to, subject, text, html });
   } catch (error) {
     /* Never fail the request that triggered the email. A signup that 500s
        because the SMTP server hiccuped loses a customer over a retryable

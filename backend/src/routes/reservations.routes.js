@@ -1,10 +1,11 @@
 import { Router } from 'express';
-import { requireAuth, withBusiness, requirePermission, requireOutlet } from '../middleware/auth.js';
+import { requireAuth, withBusiness, requirePermission, requirePlanFeature, requireOutlet } from '../middleware/auth.js';
 import * as r from '../controllers/reservations.controller.js';
 
 const router = Router();
-const read = [requireAuth, withBusiness(), requirePermission('billing')];
-const write = [requireAuth, withBusiness({ requireActive: true }), requirePermission('billing')];
+const feature = requirePlanFeature('reservations');
+const read = [requireAuth, withBusiness(), feature, requirePermission('billing')];
+const write = [requireAuth, withBusiness({ requireActive: true }), feature, requirePermission('billing')];
 
 router.get('/reservations', ...read, r.list);
 router.get('/reservations/availability', ...read, r.availability);

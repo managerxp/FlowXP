@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { api, formatCurrency } from '../lib/api.js';
-import { Alert, Button } from '../components/ui.jsx';
+import { Alert, Button, humanize } from '../components/ui.jsx';
 
 const PAPER = { 58: 'w-[58mm]', 80: 'w-[80mm]' };
 
@@ -105,6 +105,7 @@ export const ReceiptPage = () => {
         <Rule />
         <Row left={`Bill ${invoice.invoice_number}`} right={invoice.invoice_date} />
         <Row left={invoice.created_at ? stamp(invoice.created_at) : ''} right={invoice.table_name ? `Table ${invoice.table_name}` : ''} />
+        {invoice.platform_order_number && <Row left={`${humanize(invoice.platform)} order`} right={invoice.platform_order_number} />}
         {invoice.cashier && <p>Served by {invoice.cashier}</p>}
         {invoice.customer_name && <p>Guest: {invoice.customer_name}{invoice.customer_phone ? ` (${invoice.customer_phone})` : ''}</p>}
         {invoice.status === 'CANCELLED' && <p className="mt-1 text-center text-sm font-bold">*** CANCELLED ***</p>}
@@ -126,7 +127,7 @@ export const ReceiptPage = () => {
         {invoice.round_off !== 0 && <Row left="Round off" right={`${invoice.round_off > 0 ? '+' : '-'}${Math.abs(invoice.round_off).toFixed(2)}`} />}
         <Rule />
         <div className="text-sm"><Row left="TOTAL" right={formatCurrency(invoice.total)} bold /></div>
-        {invoice.payments.map((p) => <Row key={p.payment_id} left={`Paid (${p.method.replace('_', ' ')})`} right={p.amount.toFixed(2)} />)}
+        {invoice.payments.map((p) => <Row key={p.payment_id} left={`Paid (${humanize(p.method)})`} right={p.amount.toFixed(2)} />)}
         {invoice.refunded > 0 && <Row left="Refunded" right={`-${invoice.refunded.toFixed(2)}`} />}
         {unpaid && <Row left="BALANCE DUE" right={invoice.balance_due.toFixed(2)} bold />}
         {qr && (
@@ -182,7 +183,8 @@ export const KotPage = () => {
             {kot.priority === 'RUSH' && <p className="mb-1 bg-black py-0.5 text-center text-sm font-bold tracking-widest text-white">*** RUSH ***</p>}
             <div className="flex items-baseline justify-between"><p className="text-base font-bold">{kot.kot_number}</p><p className="text-[11px]">{stamp(kot.created_at)}</p></div>
             <p className="text-xl font-extrabold leading-tight">{where}</p>
-            <p className="text-[11px]">{kot.order_number}{kot.outlet ? ` · ${kot.outlet}` : ''}</p>
+            <p className="text-[11px]">{kot.order_number}{kot.platform_order_number ? ` · ${kot.platform} ${kot.platform_order_number}` : ''}{kot.outlet ? ` · ${kot.outlet}` : ''}</p>
+            {kot.customer && <p className="text-[11px]">{kot.customer}</p>}
             <p className="mt-1 border-y border-black py-0.5 text-center text-sm font-bold uppercase tracking-wide">{slip.name}</p>
             <ul className="mt-2 space-y-2">
               {slip.items.map((i, n) => (

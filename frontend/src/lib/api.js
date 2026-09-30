@@ -6,6 +6,8 @@
  * for itself in convenience we already have.
  */
 
+import { clearOfflineCaches } from './pwa.js';
+
 const TOKEN_KEY = 'flowxp.token';
 const BUSINESS_KEY = 'flowxp.business';
 const BRANCH_KEY = 'flowxp.branch';
@@ -16,6 +18,7 @@ export const clearToken = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(BUSINESS_KEY);
   localStorage.removeItem(BRANCH_KEY);
+  clearOfflineCaches();   // the menu and floor cached for offline use belong to whoever just signed out
 };
 
 export const getBusinessId = () => localStorage.getItem(BUSINESS_KEY) || null;
@@ -39,6 +42,12 @@ export class ApiError extends Error {
   }
 }
 
+/** The request never got an answer: no connection, or the server is unreachable. A TypeError on purpose, so
+    retry logic that keeps an idempotency key across a dropped connection (lib/idempotency.js) still works. */
+export class NetworkError extends TypeError {
+  constructor() { super("You're offline, or the server can't be reached. Check the connection and try again."); this.name = 'NetworkError'; }
+}
+
 export const api = async (path, { method = 'GET', body, businessId, idempotencyKey } = {}) => {
   // A file upload (product photos) passes a FormData body — it must never be
   // JSON.stringify'd, and the Content-Type header must be left for the
@@ -60,11 +69,16 @@ export const api = async (path, { method = 'GET', body, businessId, idempotencyK
   const outlet = getBranchId();
   if (outlet) headers['X-Branch-Id'] = outlet;
 
-  const response = await fetch(`/api${path}`, {
-    method,
-    headers,
-    body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body)
-  });
+  let response;
+  try {
+    response = await fetch(`/api${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body)
+    });
+  } catch {
+    throw new NetworkError();
+  }
 
   /* A 502 from a proxy is HTML, not JSON. Parsing defensively means a failed
      deploy shows "Something went wrong" instead of a JSON syntax error. */
@@ -76,6 +90,8 @@ export const api = async (path, { method = 'GET', body, businessId, idempotencyK
        localStorage puts the app in a loop of 401s. 402 is the trial ending,
        which is not a session problem. */
     if (response.status === 401) clearToken();
+    // the business requires two-step verification and this person has not set it up: send them to do that
+    if (payload.code === 'TWO_FACTOR_REQUIRED' && !location.pathname.startsWith('/app/security')) location.assign('/app/security');
     throw new ApiError(
       payload.message || 'Something went wrong',
       response.status,

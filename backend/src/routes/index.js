@@ -11,12 +11,16 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import pool from '../config/database.js';
-import { requireAuth, withBusiness, requireOwner } from '../middleware/auth.js';
+import { requireAuth, withBusiness, requireOwner, requirePermission } from '../middleware/auth.js';
 import * as auth from '../controllers/auth.controller.js';
+import * as security from '../controllers/security.controller.js';
 import * as business from '../controllers/business.controller.js';
 import * as dashboard from '../controllers/dashboard.controller.js';
+import * as webhooks from '../controllers/webhooks.controller.js';
 import productsRoutes from './products.routes.js';
 import menuRoutes from './menu.routes.js';
+import brandsRoutes from './brands.routes.js';
+import settlementsRoutes from './settlements.routes.js';
 import profitabilityRoutes from './profitability.routes.js';
 import leakageRoutes from './leakage.routes.js';
 import forecastRoutes from './forecast.routes.js';
@@ -42,7 +46,12 @@ import menuImportRoutes from './menuImport.routes.js';
 import creditNoteRoutes from './creditNotes.routes.js';
 import reservationRoutes from './reservations.routes.js';
 import messagingRoutes from './messaging.routes.js';
+import reviewsRoutes from './reviews.routes.js';
 import printRoutes from './print.routes.js';
+import buyingRoutes from './buying.routes.js';
+import gstRoutes from './gst.routes.js';
+import heldBillsRoutes from './heldBills.routes.js';
+import locationsRoutes from './locations.routes.js';
 import { uploadLogo } from '../middleware/upload.js';
 import publicOrderingRoutes from './publicOrdering.routes.js';
 
@@ -72,6 +81,7 @@ const resetLimiter = limiter(5, 60, 'Too many reset requests. Try again later.')
 
 router.post('/auth/signup', signupLimiter, auth.signup);
 router.post('/auth/login', loginLimiter, auth.login);
+router.post('/auth/login/2fa', loginLimiter, auth.loginTwoFactor);
 router.post('/auth/forgot-password', resetLimiter, auth.forgotPassword);
 router.post('/auth/reset-password', resetLimiter, auth.resetPassword);
 
@@ -95,9 +105,25 @@ router.get('/plans', async (_req, res) => {
    table's qr_token in the URL. See publicOrdering.routes.js. */
 router.use('/public', publicOrderingRoutes);
 
+/* Cashfree calling us back, not a person — verified by signature, not a token. */
+router.post('/webhooks/cashfree', webhooks.cashfree);
+
 /* ── Signed in, no business needed ──────────────────────────────────────── */
 
 router.get('/auth/me', requireAuth, auth.me);
+
+/* Account security. These only need a signed-in person (not a business), so an owner whose business requires
+   two-step verification can still reach them to set it up. Password and code checks share the login limiter. */
+router.get('/auth/2fa', requireAuth, security.status);
+router.post('/auth/2fa/setup', requireAuth, security.setup);
+router.post('/auth/2fa/enable', requireAuth, loginLimiter, security.enable);
+router.post('/auth/2fa/disable', requireAuth, loginLimiter, security.disable);
+router.post('/auth/2fa/recovery-codes', requireAuth, loginLimiter, security.newCodes);
+router.post('/auth/change-password', requireAuth, loginLimiter, security.changePassword);
+router.post('/auth/sign-out-everywhere', requireAuth, security.signOutEverywhere);
+router.get('/auth/login-history', requireAuth, security.loginHistory);
+router.get('/security/team', requireAuth, withBusiness(), requirePermission('settings'), security.team);
+router.put('/security/policy', requireAuth, withBusiness({ requireActive: true }), requireOwner, security.setPolicy);
 router.post('/businesses', requireAuth, business.createBusiness);
 
 /*
@@ -125,12 +151,18 @@ router.get('/dashboard', requireAuth, withBusiness(), dashboard.getDashboard);
 
 router.use('/', productsRoutes);           // /categories, /products
 router.use('/', creditNoteRoutes);         // /invoices/:id/credit-notes, /credit-notes
+router.use('/', gstRoutes);                // /gst/* (GSTR-1, GSTR-3B, e-invoice, e-way bill)
+router.use('/', heldBillsRoutes);          // /held-bills (bills parked at the till)
+router.use('/', buyingRoutes);             // /suppliers/:id/prices, /debit-notes, /transfer-requests
 router.use('/', printRoutes);              // /invoices/:id/escpos, /kitchen/kots/:id/escpos, /print/*
 router.use('/', messagingRoutes);          // /messaging, /customers/:id/marketing
+router.use('/', reviewsRoutes);            // /reviews (post-bill feedback, AI reply drafts)
 router.use('/', reservationRoutes);        // /reservations, /waitlist
 router.use('/', loyaltyRoutes);            // /loyalty, /coupons
 router.use('/', outletsRoutes);            // /outlets, /staff
 router.use('/', menuRoutes);               // /modifier-groups, /products/:id/recipe
+router.use('/', brandsRoutes);             // /brands
+router.use('/', settlementsRoutes);        // /settlements (aggregator statement import + reconciliation)
 router.use('/customers', customersRoutes);
 router.use('/suppliers', suppliersRoutes);
 router.use('/invoices', invoicesRoutes);
@@ -144,6 +176,7 @@ router.use('/leakage', leakageRoutes);
 router.use('/forecast', forecastRoutes);
 router.use('/notifications', notificationsRoutes);
 router.use('/kitchen', kitchenRoutes);
+router.use('/locations', locationsRoutes);
 router.use('/orders', ordersRoutes);
 router.use('/tables', tablesRoutes);
 router.use('/integrations', integrationsRoutes);

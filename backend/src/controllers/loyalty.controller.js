@@ -100,6 +100,25 @@ export const summary = async (req, res) => {
     const progress = isLive(program) ? await progressFor(pool, id, r.customer_id, program, today) : null;
     regulars.push({ ...r, stamps: progress?.stamps ?? null, reward_ready: progress?.reward_ready ?? false });
   }
+
+  /* Every member once: how often they come, when they last did, and where their card stands
+     (stamps since their last free item; a card with visits_required - 1 stamps has the reward due). */
+  const members_ = (await pool.query(
+    `WITH ev AS (SELECT customer_id, kind, visit_date FROM loyalty_events WHERE business_id = $1 AND voided_at IS NULL),
+          redeemed AS (SELECT customer_id, MAX(visit_date) AS d FROM ev WHERE kind = 'REDEEM' GROUP BY customer_id)
+     SELECT e.customer_id, c.name, c.phone,
+            COUNT(*) FILTER (WHERE e.kind = 'VISIT')::int AS visits,
+            (MIN(e.visit_date))::text AS first_visit, (MAX(e.visit_date))::text AS last_visit,
+            COUNT(*) FILTER (WHERE e.kind = 'VISIT' AND (r.d IS NULL OR e.visit_date > r.d))::int AS stamps
+     FROM ev e JOIN customers c ON c.customer_id = e.customer_id LEFT JOIN redeemed r ON r.customer_id = e.customer_id
+     GROUP BY e.customer_id, c.name, c.phone`, [id])).rows;
+  const need = program ? program.visits_required - 1 : null;
+  const daysAgo = (d) => Math.round((new Date(`${today}T00:00:00Z`) - new Date(`${d}T00:00:00Z`)) / 86400000);
+  const brief = (m) => ({ customer_id: m.customer_id, name: m.name, phone: m.phone, visits: m.visits, stamps: m.stamps, last_visit: m.last_visit });
+  const byVisits = [['Once', (v) => v === 1], ['2–3 times', (v) => v >= 2 && v <= 3], ['4–6 times', (v) => v >= 4 && v <= 6], ['7 or more', (v) => v >= 7]]
+    .map(([label, test]) => ({ label, count: members_.filter((m) => test(m.visits)).length }));
+  const due = need ? members_.filter((m) => m.stamps >= need) : [];
+  const oneAway = need ? members_.filter((m) => m.stamps === need - 1) : [];
   res.json({
     success: true,
     data: {
@@ -107,7 +126,13 @@ export const summary = async (req, res) => {
       rewards_redeemed: redeemed.rows[0].n, rewards_redeemed_30d: redeemed.rows[0].n30, rewards_value: toRupees(redeemed.rows[0].value_paise),
       visits_30d: stamps30.rows[0].n,
       coupon_uses_30d: coupon30.rows[0].n, coupon_discount_30d: toRupees(coupon30.rows[0].paise),
-      regulars
+      regulars,
+      new_30d: members_.filter((m) => daysAgo(m.first_visit) <= 30).length,
+      active_30d: members_.filter((m) => daysAgo(m.last_visit) <= 30).length,
+      lapsed_60d: members_.filter((m) => daysAgo(m.last_visit) > 60).length,
+      by_visits: byVisits,
+      reward_due: { count: due.length, members: due.sort((a, b) => b.visits - a.visits).slice(0, 20).map(brief) },
+      one_visit_away: { count: oneAway.length, members: oneAway.sort((a, b) => b.visits - a.visits).slice(0, 20).map(brief) }
     }
   });
 };

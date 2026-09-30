@@ -17,10 +17,11 @@
 import crypto from 'node:crypto';
 import pool from '../config/database.js';
 import { recordAudit, recordEvent } from '../modules/events.js';
-import { toPaise } from '../utils/money.js';
 import { getAdapter, PLATFORMS } from '../modules/delivery/registry.js';
 import { notify } from '../modules/notifications.js';
 import { integrationAlert } from '../modules/scans.js';
+import { insertOrderItems, nextNumber } from './orders.controller.js';
+import { hasPlanFeature } from '../modules/planFeatures.js';
 
 const asIntegration = (row) => ({
   platform: row.platform,
@@ -102,40 +103,25 @@ export const syncMenu = async (req, res) => {
 
 /*
  * The shared path a delivery order arrives through, whether from a real
- * webhook or the simulate-order test helper below. Creates the order and its
- * items and sends the KOT immediately — a delivery order goes straight to
- * the kitchen, there is no waiter to press "send" for it.
+ * webhook or the simulate-order test helper below. Creates the order as
+ * PENDING_ACCEPT with its items unsent — nothing reaches the kitchen, and
+ * no KOT exists, until someone at the counter accepts it (orders.controller.js
+ * acceptDelivery()). A platform order used to skip straight to the kitchen;
+ * that let the kitchen start cooking something the business might want to
+ * reject (closing, out of stock, too busy) and gave nobody a moment to say no.
  */
 const ingestOrder = async (client, businessId, branchId, platform, normalized) => {
   // A platform webhook names no outlet, so its orders go to the main outlet (per-outlet integrations: not built yet).
   branchId ??= (await client.query(`SELECT branch_id FROM branches WHERE business_id = $1 AND status = 'ACTIVE' ORDER BY is_primary DESC, branch_id LIMIT 1`, [businessId])).rows[0]?.branch_id ?? null;
-  const orderNumRow = (await client.query(
-    `SELECT order_prefix, order_next_number FROM businesses WHERE business_id = $1 FOR UPDATE`, [businessId]
-  )).rows[0];
-  await client.query(`UPDATE businesses SET order_next_number = order_next_number + 1 WHERE business_id = $1`, [businessId]);
-  const orderNumber = `${orderNumRow.order_prefix}-${String(orderNumRow.order_next_number).padStart(4, '0')}`;
+  const orderNumber = await nextNumber(client, businessId, 'order_prefix', 'order_next_number');
 
   const order = (await client.query(
-    `INSERT INTO orders (business_id, branch_id, order_number, order_type, platform, external_order_id, external_order_number, notes, status)
-     VALUES ($1,$2,$3,'DELIVERY',$4,$5,$6,$7,'PREPARING') RETURNING *`,
-    [businessId, branchId, orderNumber, platform, normalized.external_order_id, normalized.external_order_number, normalized.notes]
+    `INSERT INTO orders (business_id, branch_id, order_number, order_type, platform, external_order_id, external_order_number, notes, guest_name, guest_phone, status)
+     VALUES ($1,$2,$3,'DELIVERY',$4,$5,$6,$7,$8,$9,'PENDING_ACCEPT') RETURNING *`,
+    [businessId, branchId, orderNumber, platform, normalized.external_order_id, normalized.external_order_number, normalized.notes, normalized.customer_name || null, normalized.customer_phone || null]
   )).rows[0];
 
-  const kotNumRow = (await client.query(`SELECT kot_next_number FROM businesses WHERE business_id = $1 FOR UPDATE`, [businessId])).rows[0];
-  await client.query(`UPDATE businesses SET kot_next_number = kot_next_number + 1 WHERE business_id = $1`, [businessId]);
-  const kot = (await client.query(
-    `INSERT INTO kot_tickets (business_id, order_id, kot_number) VALUES ($1,$2,$3) RETURNING *`,
-    [businessId, order.order_id, `KOT-${String(kotNumRow.kot_next_number).padStart(4, '0')}`]
-  )).rows[0];
-
-  for (const item of normalized.items) {
-    await client.query(
-      `INSERT INTO order_items (order_id, description, quantity, unit_price_paise, kot_id, status, sent_at, expected_minutes)
-       VALUES ($1,$2,$3,$4,$5,'PREPARING',CURRENT_TIMESTAMP,(SELECT kitchen_default_prep_minutes FROM businesses WHERE business_id = $6))`,
-      [order.order_id, item.description, item.quantity, toPaise(item.unit_price), kot.kot_id, businessId]
-    );
-  }
-
+  await insertOrderItems(client, businessId, order.order_id, normalized.items.map((i) => ({ description: i.description, unit_price: i.unit_price, quantity: i.quantity })));
   return order;
 };
 
@@ -153,7 +139,11 @@ export const webhook = async (req, res) => {
   if (!PLATFORMS.includes(platform)) return res.status(404).json({ success: false, message: 'Unknown platform' });
 
   const integration = (await pool.query(
-    `SELECT * FROM delivery_integrations WHERE webhook_token = $1 AND platform = $2`,
+    `SELECT di.*, COALESCE(p.feature_flags, '{}'::jsonb) AS feature_flags
+     FROM delivery_integrations di
+     JOIN businesses b ON b.business_id = di.business_id
+     LEFT JOIN plans p ON p.plan_code = b.plan_code
+     WHERE di.webhook_token = $1 AND di.platform = $2`,
     [req.params.token, platform]
   )).rows[0];
   if (!integration) return res.status(404).json({ success: false, message: 'Not found' });
@@ -168,6 +158,10 @@ export const webhook = async (req, res) => {
   };
 
   if (!integration.is_enabled) { await logResult('REJECTED', 'Integration disabled'); return res.status(403).json({ success: false }); }
+  if (!hasPlanFeature({ planFeatures: integration.feature_flags }, 'integrations')) {
+    await logResult('REJECTED', 'Not included in plan');
+    return res.status(403).json({ success: false });
+  }
 
   const adapter = getAdapter(platform);
   if (!adapter.verifySignature(req, integration.credentials)) {
@@ -224,8 +218,9 @@ export const webhook = async (req, res) => {
 
    Generates a realistic fake incoming order via the adapter and runs it
    through the identical ingest path a real webhook uses, so the whole
-   pipeline — order, KOT, kitchen display — can be exercised with no partner
-   account. Gated behind `settings` like the rest of this controller.
+   pipeline — order awaiting acceptance, accept, KOT, kitchen display — can be
+   exercised with no partner account. Gated behind `settings` like the rest of
+   this controller.
    ========================================================================== */
 export const simulateOrder = async (req, res) => {
   const platform = req.params.platform.toUpperCase();

@@ -13,6 +13,8 @@ import { toPaise, toRupees, toQuantity } from '../utils/money.js';
 import { moveStock } from '../modules/stock.js';
 import { branchFilter } from '../utils/scope.js';
 
+const SUPPLIER_PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER'];
+
 export const paymentStatus = (totalPaise, paidPaise) => {
   if (paidPaise <= 0) return 'UNPAID';
   return paidPaise >= totalPaise ? 'PAID' : 'PARTIAL';
@@ -29,12 +31,14 @@ export const asPO = (row) => ({
   total: toRupees(row.total_paise),
   amount_paid: toRupees(row.amount_paid_paise),
   balance_due: toRupees(row.balance_due_paise),
+  debited: toRupees(row.debited_paise || 0),
   payment_status: row.payment_status,
   status: row.status,
   source: row.source,
   expected_date: row.expected_date ? String(row.expected_date).slice(0, 10) : null,
   ordered_at: row.ordered_at,
   received_at: row.received_at,
+  created_at: row.created_at,
   notes: row.notes
 });
 
@@ -217,13 +221,23 @@ export const get = async (req, res) => {
     [req.params.id]
   )).rows;
 
+  const payments = (await pool.query(
+    `SELECT payment_id, payment_method, amount_paise, reference_number, payment_date, created_at
+     FROM payments WHERE po_id = $1 ORDER BY payment_id`,
+    [req.params.id]
+  )).rows;
+
   res.json({
     success: true,
     data: {
       ...asPO(rows[0]),
+      payments: payments.map((p) => ({
+        payment_id: p.payment_id, method: p.payment_method, amount: toRupees(p.amount_paise),
+        reference_number: p.reference_number, payment_date: p.payment_date, created_at: p.created_at
+      })),
       items: items.map((i) => ({
         item_id: i.item_id, product_id: i.product_id, description: i.description,
-        quantity: Number(i.quantity), received_quantity: i.received_quantity == null ? null : Number(i.received_quantity), unit_cost: toRupees(i.unit_cost_paise),
+        quantity: Number(i.quantity), received_quantity: i.received_quantity == null ? null : Number(i.received_quantity), outstanding: Math.max(0, Math.round((Number(i.quantity) - Number(i.received_quantity ?? 0)) * 1000) / 1000), unit_cost: toRupees(i.unit_cost_paise),
         tax_rate: Number(i.tax_rate), tax_amount: toRupees(i.tax_amount_paise), line_total: toRupees(i.line_total_paise)
       }))
     }
@@ -238,31 +252,38 @@ export const addPayment = async (req, res) => {
   let amountPaise;
   try { amountPaise = toPaise(body.amount); } catch { return res.status(400).json({ success: false, message: 'Enter a payment amount' }); }
   if (amountPaise <= 0) return res.status(400).json({ success: false, message: 'Payment amount must be greater than zero' });
+  const method = String(body.method || 'CASH').toUpperCase();
+  if (!SUPPLIER_PAYMENT_METHODS.includes(method)) return res.status(400).json({ success: false, message: `Unknown payment method: ${body.method}` });
 
   const payScope = [req.tenant.businessId, req.params.id];
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const { rows } = await client.query(
-      `SELECT po_id, branch_id, supplier_id, total_paise, amount_paid_paise, status FROM purchase_orders
+      `SELECT po_id, branch_id, supplier_id, total_paise, amount_paid_paise, debited_paise, status FROM purchase_orders
        WHERE business_id = $1 AND po_id = $2${branchFilter(req.tenant, 'branch_id', payScope)} FOR UPDATE`,
       payScope
     );
     if (!rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ success: false, message: 'Not found' }); }
     const po = rows[0];
-    if (po.status !== 'RECEIVED') { await client.query('ROLLBACK'); return res.status(409).json({ success: false, message: 'Receive the order before paying for it' }); }
+    if (!['RECEIVED', 'PARTIAL'].includes(po.status)) { await client.query('ROLLBACK'); return res.status(409).json({ success: false, message: 'Receive the order before paying for it' }); }
 
+    const owedPaise = Math.max(0, Number(po.total_paise) - Number(po.debited_paise) - Number(po.amount_paid_paise));
+    if (amountPaise > owedPaise) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: owedPaise ? `That is more than the ₹${(owedPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} still owed` : 'Nothing is owed on this order' });
+    }
     const newPaid = Number(po.amount_paid_paise) + amountPaise;
-    const newBalance = Math.max(0, Number(po.total_paise) - newPaid);
+    const newBalance = Math.max(0, Number(po.total_paise) - Number(po.debited_paise) - newPaid);
 
     await client.query(
       `INSERT INTO payments (business_id, branch_id, po_id, supplier_id, payment_method, amount_paise, reference_number, notes, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [req.tenant.businessId, po.branch_id, po.po_id, po.supplier_id, body.method || 'CASH', amountPaise, body.reference_number || null, body.notes || null, req.auth.userId]
+      [req.tenant.businessId, po.branch_id, po.po_id, po.supplier_id, method, amountPaise, body.reference_number || null, body.notes || null, req.auth.userId]
     );
     await client.query(
       `UPDATE purchase_orders SET amount_paid_paise = $1, balance_due_paise = $2, payment_status = $3 WHERE po_id = $4`,
-      [newPaid, newBalance, paymentStatus(Number(po.total_paise), newPaid), po.po_id]
+      [newPaid, newBalance, paymentStatus(Number(po.total_paise) - Number(po.debited_paise), newPaid), po.po_id]
     );
 
     await client.query('COMMIT');

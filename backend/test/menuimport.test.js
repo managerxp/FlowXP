@@ -18,7 +18,8 @@ test.after(() => { setProvider(null); return cleanup(); });
 const fakeRes = () => ({ code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; }, set() { return this; } });
 const recorded = (items, notes = null) => ({ content: [{ type: 'tool_use', id: 't1', name: 'record_menu', input: { items, notes } }], stopReason: 'tool_use', usage: { input_tokens: 1500, output_tokens: 300 } });
 const scripted = (reply) => { const seen = []; const p = async (req) => { seen.push(JSON.parse(JSON.stringify(req))); if (reply instanceof Error) throw reply; return reply; }; p.seen = seen; return p; };
-const photo = (type = 'image/jpeg', size = 2000) => ({ mimetype: type, buffer: Buffer.alloc(size, 7), size, originalname: 'menu.jpg' });
+const MAGIC = { 'image/jpeg': [0xff, 0xd8, 0xff, 0xe0], 'image/png': [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 'image/webp': [0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50] };
+const photo = (type = 'image/jpeg', size = 2000) => { const buffer = Buffer.alloc(size, 7); Buffer.from(MAGIC[type] ?? [0]).copy(buffer); return { mimetype: type, buffer, size, originalname: 'menu.jpg' }; };
 
 /* ── pure ───────────────────────────────────────────────────────────────── */
 
@@ -87,7 +88,7 @@ test('the photos and the request reach the AI service in the right shape', { ski
   const blocks = req.messages[0].content;
   assert.deepEqual(blocks.filter((b) => b.type === 'image').map((b) => b.source.media_type), ['image/jpeg', 'image/png']);
   assert.equal(blocks.find((b) => b.type === 'image').source.type, 'base64');
-  assert.equal(blocks.find((b) => b.type === 'image').source.data, Buffer.alloc(2000, 7).toString('base64'));
+  assert.equal(blocks.find((b) => b.type === 'image').source.data, photo().buffer.toString('base64'));
   assert.match(blocks.at(-1).text, /2 photos are pages of one menu/);
   assert.deepEqual(req.toolChoice, { type: 'tool', name: 'record_menu' }, 'must answer with the tool, not prose');
   assert.equal(req.tools[0].name, 'record_menu');

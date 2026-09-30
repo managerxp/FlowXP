@@ -1,462 +1,307 @@
 /*
- * /ai — FlowXP positioned as decision intelligence, not a bigger dashboard.
+ * /ai — Flow AI, the AI Manager inside FlowXP.
  *
- * Hand-built rather than driven from content.js (like Home.jsx and
- * Pricing.jsx) because every section here is its own mockup layout, not a
- * title/lead/card-grid the shared MarketingPage template already covers.
- * Every number below (₹84,500, 82/100, "31% increase"...) is illustrative
- * product-UI copy, the same convention AISection.jsx already uses for its
- * chat bubbles — it explains what a screen looks like, not a real business's
- * results, so it stays honest under this site's own "no fabricated stats"
- * rule without needing a disclaimer on every card.
+ * Same system as the home page (design.md): left-aligned headings, real
+ * screens from the demo business, one question per section, motion from
+ * index.css. Only features that exist are described: the demand forecast,
+ * reorder suggestions that open draft purchase orders, the leakage check,
+ * profitability, the Flow AI chat (read-only, answers through the tools in
+ * backend/src/modules/ai/tools.js) and reading a menu from a photo. Nothing
+ * here is an invented AI answer: where there is no real screen (the chat
+ * needs an AI key on the server), the page shows the real suggested
+ * questions and what the assistant can read instead of a made-up reply.
  */
-import { useRef } from 'react';
-import { useGSAP } from '@gsap/react';
-import { fadeUp, staggerReveal } from '../animations/reveal.js';
-import { revealOnScroll } from '../animations/scroll.js';
-import { Badge, Button, Container, Section } from '../components/ui.jsx';
-import { GlowCard } from '../components/BorderGlow.jsx';
+import { Button, Container, Eyebrow, Section } from '../components/ui.jsx';
+import Reveal from '../components/Reveal.jsx';
+import { Check, Connector, FeatureRow, FinalCta, H2, Node, Shot, Tag, TextLink } from './parts.jsx';
 
-/* ── Hero ─────────────────────────────────────────────────────────────── */
-const HERO_TILES = [
-  { label: 'Business health', value: '82', sub: '/ 100' },
-  { label: 'Revenue', value: '₹8.4L', sub: '↑ 12%' },
-  { label: 'Demand forecast', value: '+16%', sub: 'tomorrow' },
-  { label: 'Revenue leakage', value: '₹18,450', sub: 'potential' },
-  { label: 'Inventory risk', value: '4', sub: 'products low' },
-  { label: 'Recommendations', value: '3', sub: 'open' }
-];
+/* ── 1. Hero ──────────────────────────────────────────────────────────── */
 
-const Hero = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => {
-      fadeUp(scope.current.querySelector('[data-copy]'));
-      staggerReveal(scope.current.querySelectorAll('[data-tile]'), { each: 0.06 });
-    });
-  }, { scope });
-
-  return (
-    <div ref={scope} className="glow-brand border-b border-line">
-      <Container className="py-16 sm:py-20">
-        <div data-copy className="mx-auto max-w-3xl text-center">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">FlowXP AI</p>
-          <h1 className="text-4xl font-extrabold tracking-tight text-ink-900 sm:text-5xl">
-            Run your business by
-            <br />
-            <span className="text-gradient">decisions, not dashboards.</span>
-          </h1>
-          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-ink-500">
-            FlowXP analyzes your sales, inventory, customers, payments and operations to predict
-            what's coming, explain what's happening, detect what's going wrong, and tell you what
-            to do next.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button to="/signup" size="lg">Start free trial</Button>
-            <Button href="#how" size="lg" variant="secondary">See how AI works</Button>
-          </div>
+const Hero = () => (
+  <section className="overflow-hidden border-b border-line">
+    <Container className="grid items-center gap-12 pb-16 pt-12 sm:pb-28 sm:pt-16 lg:grid-cols-12 lg:gap-10 lg:pb-32 lg:pt-20">
+      <div className="lg:col-span-5">
+        <Eyebrow className="rise">Flow AI · the AI Manager inside FlowXP</Eyebrow>
+        <h1 className="rise mt-4 text-display font-semibold text-ink-900" style={{ '--i': 1 }}>
+          An AI manager that reads your numbers.
+        </h1>
+        <p className="rise mt-6 max-w-md text-lead text-ink-500" style={{ '--i': 2 }}>
+          Every day, Flow AI goes through your bills, stock, purchases and expenses, and tells you in plain
+          words what is coming, what looks wrong and what to do next. You decide; it never
+          changes anything on its own.
+        </p>
+        <div className="rise mt-8 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ '--i': 3 }}>
+          <Button to="/signup" size="lg">Start 7-day free trial</Button>
+          <TextLink href="#questions">See what it answers</TextLink>
         </div>
-
-        <div className="glass mx-auto mt-14 grid max-w-3xl grid-cols-2 gap-3 rounded-2xl p-5 sm:grid-cols-3 sm:p-6">
-          {HERO_TILES.map((tile) => (
-            <div key={tile.label} data-tile className="rounded-xl bg-surface/70 p-4">
-              <p className="text-xs font-medium text-ink-400">{tile.label}</p>
-              <p className="mt-1.5 text-xl font-bold text-ink-900">{tile.value}</p>
-              <p className="text-xs text-ink-500">{tile.sub}</p>
-            </div>
+        <ul className="rise mt-8 space-y-2 text-small text-ink-500" style={{ '--i': 4 }}>
+          {['Answers only from your own records', 'Every figure labelled: fact, estimate, prediction or suggestion', 'Customer names and phone numbers are never sent to the AI'].map((t) => (
+            <li key={t} className="flex items-start gap-1.5"><Check />{t}</li>
           ))}
+        </ul>
+      </div>
+
+      <div className="relative lg:col-span-7">
+        <div className="rise rounded-(--radius-panel) bg-brand-50 p-3 sm:p-6" style={{ '--d': '180ms' }}>
+          <Shot src="/product/forecast-main.webp" eager
+                alt="FlowXP forecast: expected orders and sales for each of the next seven days, an hour-by-hour chart for Sunday, and a note on how accurate the forecast was over the last 14 days." />
         </div>
-      </Container>
+        <Shot
+          src="/product/reorder-main.webp"
+          alt="FlowXP reorder suggestions: one item to order now, three soon, ₹4,675 of suggested purchases grouped by supplier, each with a button to review it as an order."
+          style={{ '--d': '480ms' }}
+          className="rise relative z-10 mx-auto -mt-10 w-[88%] sm:absolute sm:-bottom-20 sm:-left-8 sm:mt-0 sm:w-[52%] lg:-left-4"
+        />
+      </div>
+    </Container>
+  </section>
+);
+
+/* ── 2. The four labels ───────────────────────────────────────────────── */
+
+const LABELS = [
+  ['fact', 'Taken straight from your bills, stock and payments.'],
+  ['estimate', 'Worked out from what you recorded, such as profit after costs.'],
+  ['prediction', 'What is likely next, with how accurate it has been for you.'],
+  ['suggest', 'Something you could do. Nothing happens until you say so.']
+];
+
+const LabelStrip = () => (
+  <section aria-label="How Flow AI labels what it tells you" className="border-b border-line bg-surface">
+    <Container>
+      <ul className="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-x-0 lg:divide-x lg:divide-line">
+        {LABELS.map(([kind, body], i) => (
+          <Reveal as="li" key={kind} index={i} className="py-6 lg:px-5 lg:first:pl-0">
+            <Tag kind={kind} />
+            <p className="mt-2 text-small text-ink-500">{body}</p>
+          </Reveal>
+        ))}
+      </ul>
+    </Container>
+  </section>
+);
+
+/* ── 3. From records to a decision (diagram) ──────────────────────────── */
+
+const HowItThinks = () => (
+  <Section
+    eyebrow="How it works"
+    title="From your bills to a decision, in plain words."
+    lead="Flow AI does not guess from the internet. It looks only at what your business recorded, compares it with your own normal, and hands you the result with a button to act on it."
+  >
+    <Reveal as="figure">
+      <div className="grid items-center lg:grid-cols-[1fr_auto_1fr_auto_1fr]">
+        <div className="space-y-3">
+          <Node title="What you record" body="Bills, payments, stock, purchases, expenses and who did what." />
+          <Node title="Your own history" body="Weeks of your sales by day and hour, and what each item uses." />
+        </div>
+        <Connector />
+        <Node strong title="Flow AI checks it" body="Trends, anything unusual against your own normal, and what the next days look like." />
+        <Connector />
+        <div className="space-y-3">
+          <Node title="A clear note" body="“Sunday will be busy after 8pm.” “Chicken will run out before Friday.”" />
+          <Node title="A button to act" body="Review a purchase order, open the bills behind a finding, or dismiss it." />
+        </div>
+      </div>
+      <figcaption className="sr-only">
+        Your recorded business data and your own history go into Flow AI, which checks trends, unusual activity and the days ahead, and gives you a plain-language note and a button to act on it.
+      </figcaption>
+    </Reveal>
+  </Section>
+);
+
+/* ── 4. Four questions, four real screens ─────────────────────────────── */
+
+const FEATURES = [
+  {
+    kind: 'prediction',
+    q: 'How busy will we be?',
+    body: 'Orders and sales for each of the next seven days, hour by hour, and how many of each item to prepare. It also shows how far off it was over the last two weeks, so you know how much to trust it.',
+    points: ['Next 7 days, by day and by hour', 'Expected quantity of each item', 'Festivals and events you add are taken into account'],
+    src: '/product/forecast-main.webp',
+    alt: 'FlowXP forecast with seven days of expected orders, an hour-by-hour chart and expected portions per dish.'
+  },
+  {
+    kind: 'suggest',
+    q: 'What should I order, and from whom?',
+    body: 'Based on how much of each item you actually use, FlowXP tells you what will run short before a delivery can arrive, how much to buy, and from which supplier at your latest price.',
+    points: ['“Order now” and “order soon” lists', 'Grouped by supplier, with the cost', 'Opens a draft purchase order; nothing is sent until you send it'],
+    src: '/product/reorder-main.webp',
+    alt: 'FlowXP reorder suggestions grouped by supplier, each with quantity, cost and a Review as an order button.'
+  },
+  {
+    kind: 'check',
+    q: 'Is money leaking anywhere?',
+    body: 'Cancelled bills that still show money collected, discounts far above normal, unusual refunds and wastage are flagged with the bills behind them and a suggested next step.',
+    points: ['Compared with your own normal, not a fixed rule', 'Each finding shows the bills behind it', 'Investigate, mark reviewed or dismiss'],
+    src: '/product/leakage-main.webp',
+    alt: 'FlowXP leakage report with ₹28,290 of potential leakage split into cancellations, discounts, refunds and wastage.'
+  },
+  {
+    kind: 'estimate',
+    q: 'What am I really earning?',
+    body: 'Sales are not profit. FlowXP takes off the cost of what you sold, payment fees, delivery commission, packaging and expenses, and shows what is left by day, item and branch.',
+    points: ['Where each rupee of sales goes', 'Profit by item, branch and sales channel', 'Clearly marked as an estimate, not your accounts'],
+    src: '/product/profit-main.webp',
+    alt: 'FlowXP profitability report with net revenue, food cost, margin and where each rupee of revenue goes.'
+  }
+];
+
+const Features = () => (
+  <Section
+    id="features"
+    className="border-y border-line bg-surface"
+    eyebrow="What it tells you"
+    title="Four questions every owner asks. Answered from your own data."
+  >
+    <div className="space-y-20 lg:space-y-28">
+      {FEATURES.map((f, i) => <FeatureRow key={f.q} tag={f.kind} title={f.q} body={f.body} points={f.points} src={f.src} alt={f.alt} flip={i % 2 === 1} />)}
     </div>
-  );
-};
+  </Section>
+);
 
-/* ── Data → decision flow ─────────────────────────────────────────────── */
-const FLOW_STEPS = [
-  { title: 'Your business data', body: 'Sales, inventory, customers, payments, expenses, operations.' },
-  { title: 'FlowXP intelligence', body: 'Patterns, trends, anomalies and forecasts, computed from your own records.' },
-  { title: 'Business insight', body: '"Weekend demand is expected to increase 16%."' },
-  { title: 'Recommended action', body: '"Increase stock for 4 high-demand products before Friday."' }
+/* ── 5. Ask Flow AI ───────────────────────────────────────────────────── */
+
+/* The questions the app itself suggests (AIManagerPage), and the records the
+   assistant is allowed to read (the tools in backend/src/modules/ai/tools.js). */
+const QUESTIONS = [
+  'How did we do last week compared with the week before?',
+  'Which items make us the most money, and which the least?',
+  'What should I order tomorrow?',
+  'What do you expect this weekend?',
+  'Is there anything unusual I should look at?',
+  'Is anything running slow in the kitchen?'
 ];
+const READS = ['Sales', 'Daily trend', 'Item performance', 'Stock forecast', 'Demand forecast', 'Kitchen timing', 'Wastage', 'Expenses', 'Leakage check', 'Branch comparison', 'Loyalty and coupons'];
 
-const DataToDecision = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => staggerReveal(scope.current.querySelectorAll('[data-step]'), { each: 0.1 }));
-  }, { scope });
-
-  return (
-    <Section
-      id="how"
-      className="border-b border-line"
-      eyebrow="From data to decision"
-      title="Not another dashboard."
-      lead="Traditional software shows you numbers. FlowXP explains what happened, why, what's likely next, and what to do about it."
-    >
-      <div ref={scope} className="grid gap-4 lg:grid-cols-4">
-        {FLOW_STEPS.map((step, index) => (
-          <div key={step.title} data-step className="relative rounded-xl border border-line bg-surface p-5">
-            <span className="text-xs font-bold uppercase tracking-[0.14em] text-brand-600">Step {index + 1}</span>
-            <h3 className="mt-2 text-sm font-semibold text-ink-900">{step.title}</h3>
-            <p className="mt-1.5 text-sm leading-relaxed text-ink-500">{step.body}</p>
-            {index < FLOW_STEPS.length - 1 && (
-              <span aria-hidden="true" className="absolute -right-2 top-1/2 hidden -translate-y-1/2 text-lg text-ink-300 lg:block">→</span>
-            )}
-          </div>
-        ))}
-      </div>
-    </Section>
-  );
-};
-
-/* ── Four core promises ───────────────────────────────────────────────── */
-const PROMISES = [
-  { title: 'Predict', body: "What's likely to happen.", example: 'Saturday demand is expected to be 18% higher than average.' },
-  { title: 'Understand', body: "What's happening, and why.", example: 'Revenue increased 9%, but estimated gross profit fell 3.2% — higher-margin products were a smaller share of sales.' },
-  { title: 'Detect', body: 'Problems you might not notice.', example: 'Discounts at Location 2 increased 31% this week, mostly from 3 products.' },
-  { title: 'Recommend', body: 'What to do about it.', example: 'Order 24 units of Product A before Friday.' }
-];
-
-const CorePromises = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => staggerReveal(scope.current.querySelectorAll('[data-card]'), { each: 0.08 }));
-  }, { scope });
-
-  return (
-    <Section className="border-b border-line" eyebrow="Four core promises" title="Predict. Understand. Detect. Recommend.">
-      <div ref={scope} className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {PROMISES.map((item) => (
-          <GlowCard key={item.title} data-card>
-            <h3 className="text-base font-semibold text-ink-900">{item.title}</h3>
-            <p className="mt-1.5 text-sm text-ink-500">{item.body}</p>
-            <p className="mt-3 rounded-lg bg-surface-2 p-3 text-xs leading-relaxed text-ink-700">“{item.example}”</p>
-          </GlowCard>
-        ))}
-      </div>
-    </Section>
-  );
-};
-
-/* ── Profitability ────────────────────────────────────────────────────── */
-const Profitability = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => fadeUp(scope.current.querySelectorAll('[data-copy]')));
-  }, { scope });
-
-  return (
-    <Section className="border-b border-line">
-      <Container>
-        <div ref={scope} className="grid items-center gap-12 lg:grid-cols-2">
-          <div data-copy>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">True profitability</p>
-            <h2 className="text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">Know what you're actually making.</h2>
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-ink-500">
-              Revenue isn't profit. FlowXP weighs product cost, discounts, tax, expenses and refunds
-              against every sale, and shows the number that's left — clearly marked as an estimate
-              whenever full accounting data isn't available.
-            </p>
-          </div>
-
-          <div data-copy className="glass rounded-2xl p-6">
-            <dl className="space-y-3 text-sm">
-              {[['Revenue', '₹4,82,000'], ['Product costs', '−₹2,61,000'], ['Discounts & tax', '−₹58,000'], ['Operating expenses', '−₹94,000']].map(([k, v]) => (
-                <div key={k} className="flex items-center justify-between border-b border-line pb-3">
-                  <dt className="text-ink-500">{k}</dt>
-                  <dd className="font-medium text-ink-900">{v}</dd>
-                </div>
-              ))}
-              <div className="flex items-center justify-between pt-1">
-                <dt className="font-semibold text-ink-900">Estimated profit</dt>
-                <dd className="text-lg font-bold text-brand-600">₹69,000</dd>
-              </div>
-            </dl>
-            <p className="mt-4 rounded-lg bg-surface-2 p-3 text-xs leading-relaxed text-ink-700">
-              “Sales are up 14%, but estimated profit is only up 2.8% — mainly from higher product cost and increased discounting.”
-            </p>
-          </div>
-        </div>
-      </Container>
-    </Section>
-  );
-};
-
-/* ── Revenue leakage ──────────────────────────────────────────────────── */
-const LEAKAGE_ITEMS = [
-  { label: 'Unusual discounts', amount: '₹7,200' },
-  { label: 'Stock discrepancy', amount: '₹5,400' },
-  { label: 'Refunds above normal', amount: '₹3,850' },
-  { label: 'Payment mismatch', amount: '₹2,000' }
-];
-
-const Leakage = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => fadeUp(scope.current.querySelector('[data-copy]')));
-  }, { scope });
-
-  return (
-    <Section className="border-b border-line" eyebrow="Revenue leakage" title="Find the money slipping through the cracks.">
-      <div ref={scope} data-copy className="mx-auto max-w-lg">
-        <div className="glass rounded-2xl p-6">
-          <p className="text-xs font-medium text-ink-400">Potential leakage detected</p>
-          <p className="mt-1 text-3xl font-bold text-ink-900">₹18,450</p>
-          <ul className="mt-5 space-y-2.5">
-            {LEAKAGE_ITEMS.map((item) => (
-              <li key={item.label} className="flex items-center justify-between text-sm">
-                <span className="text-ink-600">{item.label}</span>
-                <span className="font-medium text-ink-900">{item.amount}</span>
+const Ask = () => (
+  <Section id="questions" className="scroll-mt-16">
+    <div className="grid gap-12 lg:grid-cols-12">
+      <Reveal className="lg:col-span-5">
+        <Eyebrow>Ask Flow AI</Eyebrow>
+        <H2>Ask your business a question. In plain English.</H2>
+        <p className="mt-4 text-lead text-ink-500">
+          Type a question the way you would ask your manager. Flow AI looks up the answer in your
+          records and replies with the numbers, where they came from, and what you might do.
+        </p>
+        <ul className="mt-6 space-y-3 text-body text-ink-700">
+          <li className="flex gap-3"><Check />It can only read. It cannot change a price, a bill or your stock.</li>
+          <li className="flex gap-3"><Check />Staff see answers only about what their role allows.</li>
+          <li className="flex gap-3"><Check />Summarised figures go to the AI service; customer names and phone numbers never do.</li>
+        </ul>
+      </Reveal>
+      <div className="lg:col-span-7">
+        <Reveal className="rounded-(--radius-panel) border border-line bg-surface p-5 shadow-md sm:p-7">
+          <p className="text-small font-semibold text-ink-900">Try asking</p>
+          <ul className="mt-4 flex flex-wrap gap-2">
+            {QUESTIONS.map((q) => (
+              <li key={q} className="rounded-full border border-line-strong bg-surface px-3.5 py-2 text-small text-ink-700 transition-colors duration-(--duration-normal) hover:border-brand-500 hover:text-brand-600">
+                {q}
               </li>
             ))}
           </ul>
-          <p className="mt-5 text-xs leading-relaxed text-ink-500">
-            These are flagged as <em>potential</em> and <em>unusual</em> — differences from your
-            normal pattern that are worth a look, never an accusation.
-          </p>
-          <Badge tone="brand">Investigate</Badge>
-        </div>
-      </div>
-    </Section>
-  );
-};
-
-/* ── Action center ────────────────────────────────────────────────────── */
-const ActionCenter = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => fadeUp(scope.current.querySelector('[data-copy]')));
-  }, { scope });
-
-  return (
-    <Section className="border-b border-line" eyebrow="Action center" title="Not just what happened. What to do about it.">
-      <div ref={scope} data-copy className="mx-auto max-w-xl">
-        <div className="rounded-xl border border-line bg-surface p-6">
-          <div className="flex items-center justify-between">
-            <Badge tone="warning">High priority</Badge>
-            <span className="text-xs text-ink-400">Potential revenue recovery</span>
+          <div className="mt-6 border-t border-line pt-5">
+            <p className="text-small font-semibold text-ink-900">What it looks at to answer</p>
+            <ul className="mt-3 flex flex-wrap gap-1.5">
+              {READS.map((r) => <li key={r} className="rounded-md bg-surface-2 px-2.5 py-1 text-caption font-medium text-ink-700">{r}</li>)}
+            </ul>
           </div>
-          <p className="mt-3 text-sm text-ink-900"><strong className="font-semibold">Revenue is down 8%.</strong></p>
-          <dl className="mt-4 space-y-3 text-sm">
-            <div>
-              <dt className="text-xs font-bold uppercase tracking-wide text-ink-400">Why</dt>
-              <dd className="mt-0.5 text-ink-600">Lower evening traffic and reduced sales of high-margin products.</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-bold uppercase tracking-wide text-ink-400">What to do</dt>
-              <dd className="mt-0.5 text-ink-600">Promote Product A this weekend.</dd>
-            </div>
-          </dl>
-          <div className="mt-5 flex flex-wrap gap-2">
-            {['Review', 'Approve', 'Dismiss', 'View data'].map((label) => <Badge key={label}>{label}</Badge>)}
-          </div>
-        </div>
-        <p className="mt-4 text-center text-xs text-ink-400">
-          FlowXP surfaces the recommendation — you decide whether to act on it.
-        </p>
+        </Reveal>
       </div>
-    </Section>
-  );
-};
-
-/* ── Ask FlowXP ───────────────────────────────────────────────────────── */
-const Bubble = ({ role, children }) => (
-  <div className={`flex ${role === 'user' ? 'justify-end' : 'justify-start'}`}>
-    <div
-      className={
-        `max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed sm:max-w-[75%] ` +
-        (role === 'user'
-          ? 'rounded-br-sm bg-surface-3 text-ink-900'
-          : 'bg-gradient-brand rounded-bl-sm text-white shadow-[0_10px_24px_-14px] shadow-brand-500/70')
-      }
-    >
-      {children}
     </div>
-  </div>
+  </Section>
 );
 
-const AskFlowXP = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => staggerReveal(scope.current.querySelectorAll('[data-bubble]'), { each: 0.14 }));
-  }, { scope });
+/* ── 6. Less typing ───────────────────────────────────────────────────── */
 
-  return (
-    <Section className="border-b border-line" eyebrow="Ask FlowXP" title="Ask your business anything.">
-      <div ref={scope} className="glass mx-auto max-w-xl rounded-2xl p-5 sm:p-6">
-        <div className="space-y-3">
-          <div data-bubble><Bubble role="user">Why did profit drop this week?</Bubble></div>
-          <div data-bubble>
-            <Bubble role="ai">
-              Estimated profit decreased 6.4% — mainly 4.1% higher product costs, increased
-              discounting, and lower sales of high-margin products.
-              <br /><br />
-              Recommended: review purchasing costs for 3 products and reduce discounting on Product A.
-            </Bubble>
-          </div>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-4">
-          {['View profitability', 'View products', 'Show recommendations'].map((label) => <Badge key={label}>{label}</Badge>)}
-        </div>
-      </div>
-    </Section>
-  );
-};
+const Extras = () => (
+  <Section className="border-y border-line bg-surface" eyebrow="Less typing" title="AI that saves you setup time too.">
+    <div className="grid gap-5 md:grid-cols-2">
+      <Reveal className="lift rounded-(--radius-panel) border border-line bg-surface p-6 sm:p-8">
+        <Tag kind="suggest" />
+        <h3 className="mt-3 text-title font-semibold text-ink-900">Your menu or price list, from a photo.</h3>
+        <p className="mt-2 text-body text-ink-500">
+          Take a photo of a printed menu or rate card. FlowXP reads the items, prices and sections and
+          fills them in for you to check. Nothing is saved until you confirm it.
+        </p>
+      </Reveal>
+      <Reveal index={1} className="lift rounded-(--radius-panel) border border-line bg-surface p-6 sm:p-8">
+        <Tag kind="check" />
+        <h3 className="mt-3 text-title font-semibold text-ink-900">Alerts before things go wrong.</h3>
+        <p className="mt-2 text-body text-ink-500">
+          Items about to run out, purchase orders that are late, kitchen orders running behind, and
+          leakage findings arrive as notifications to the right person, at the right branch.
+        </p>
+      </Reveal>
+    </div>
+  </Section>
+);
 
-/* ── Business health score ────────────────────────────────────────────── */
-const HEALTH_CATEGORIES = [
-  { label: 'Revenue', score: 88, note: 'Trending up over the last 30 days.' },
-  { label: 'Profitability', score: 76, note: 'Margin softened slightly this month.' },
-  { label: 'Inventory', score: 74, note: '4 products are approaching low-stock thresholds.' },
-  { label: 'Customers', score: 81, note: '14 customers have gone quiet for 60+ days.' },
-  { label: 'Payments', score: 90, note: 'Collections are on schedule.' },
-  { label: 'Operations', score: 85, note: 'No unusual activity detected.' }
+/* ── 7. For every kind of business ────────────────────────────────────── */
+
+const EVERY = [
+  ['Shops and retail', 'Which products sell fastest, which earn the least, and what to reorder before the shelf is empty.'],
+  ['Restaurants and cafés', 'How busy each hour will be, how much of each dish to prepare, food cost and kitchen timing.'],
+  ['Salons and services', 'Which services and offers bring customers back, and how coupons and loyalty are doing.'],
+  ['Wholesale and distribution', 'Stock across branches or godowns, what to reorder and when, and which items earn the least.']
 ];
 
-const HealthScore = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => {
-      fadeUp(scope.current.querySelector('[data-copy]'));
-      staggerReveal(scope.current.querySelectorAll('[data-card]'), { each: 0.06 });
-    });
-  }, { scope });
+const EveryBusiness = () => (
+  <Section eyebrow="Every business" title="The same manager, in your business's language.">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {EVERY.map(([title, body], i) => (
+        <Reveal key={title} index={i} className="lift rounded-(--radius-card) border border-line bg-surface p-5">
+          <h3 className="text-body font-semibold text-ink-900">{title}</h3>
+          <p className="mt-2 text-small text-ink-500">{body}</p>
+        </Reveal>
+      ))}
+    </div>
+  </Section>
+);
 
-  return (
-    <Section className="border-b border-line" eyebrow="Business health" title="One score, fully explained.">
-      <div ref={scope}>
-        <div data-copy className="mx-auto mb-10 flex max-w-xs flex-col items-center text-center">
-          <p className="text-5xl font-extrabold text-ink-900">82<span className="text-xl font-medium text-ink-400">/100</span></p>
-          <p className="mt-2 text-sm text-ink-500">Never an arbitrary number — every score below explains itself.</p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {HEALTH_CATEGORIES.map((cat) => (
-            <div key={cat.label} data-card className="rounded-xl border border-line bg-surface p-5">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-ink-900">{cat.label}</h3>
-                <span className="text-lg font-bold text-brand-600">{cat.score}</span>
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-ink-500">{cat.note}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </Section>
-  );
-};
+/* ── 8. Honest by design ──────────────────────────────────────────────── */
 
-/* ── AI for every business ────────────────────────────────────────────── */
-const BUSINESS_TYPES = [
-  { label: 'Restaurants', example: 'Friday dinner demand is expected to increase 21%. Increase prep for the top 5 menu items.' },
-  { label: 'Retail', example: 'Product A has high revenue but declining margin. Review its purchase cost.' },
-  { label: 'Grocery', example: 'Milk demand is expected to increase tomorrow. Current inventory may not cover it.' },
-  { label: 'Salon / spa', example: 'Saturday appointments are filling faster than usual. Consider opening one more slot.' },
-  { label: 'Gaming / entertainment', example: 'Weekend utilization is expected to reach 88%. Adjust staffing for 6–10 PM.' },
-  { label: 'Services', example: "Project A's estimated margin is below your normal target." },
-  { label: 'Wholesale', example: "Customer A's outstanding balance has increased for three billing cycles." }
+const HONEST = [
+  ['It shows its working.', 'Each finding comes with the bills, items or days behind it, so you can check it yourself.'],
+  ['It tells you how sure it is.', 'Forecasts show a range and how accurate they have been for your business.'],
+  ['You make the call.', 'Suggestions open a draft or a list to review. Nothing is ordered, changed or sent on its own.'],
+  ['It does not promise miracles.', 'Flow AI helps you notice things sooner. It does not guarantee profit or catch every loss.']
 ];
 
-const EveryBusiness = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => staggerReveal(scope.current.querySelectorAll('[data-card]'), { each: 0.06 }));
-  }, { scope });
+const Honest = () => (
+  <Section className="border-t border-line bg-surface" eyebrow="Honest by design" title="AI you can check.">
+    <div className="grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
+      {HONEST.map(([title, body], i) => (
+        <Reveal key={title} index={i} className="border-t-2 border-ink-900 pt-5">
+          <h3 className="text-body font-semibold text-ink-900">{title}</h3>
+          <p className="mt-2 text-body text-ink-500">{body}</p>
+        </Reveal>
+      ))}
+    </div>
+  </Section>
+);
 
-  return (
-    <Section
-      className="border-b border-line"
-      eyebrow="Not restaurant-specific"
-      title="The same intelligence, your business's language."
-      lead="FlowXP reads whichever context you signed up as — menu and food cost for a restaurant, SKUs and margin for retail, appointments and no-shows for a salon."
-    >
-      <div ref={scope} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {BUSINESS_TYPES.map((type) => (
-          <div key={type.label} data-card className="rounded-xl border border-line bg-surface p-5">
-            <h3 className="text-sm font-semibold text-ink-900">{type.label}</h3>
-            <p className="mt-2 text-xs leading-relaxed text-ink-500">“{type.example}”</p>
-          </div>
-        ))}
-      </div>
-    </Section>
-  );
-};
+/* ── 9. Final call ────────────────────────────────────────────────────── */
 
-/* ── Trust ─────────────────────────────────────────────────────────────── */
-const TRUST_TERMS = [
-  { label: 'Fact', body: 'Directly observed business data.' },
-  { label: 'Estimate', body: 'Calculated from available data — labelled as an estimate, never a guaranteed figure.' },
-  { label: 'Prediction', body: 'A forecast from historical patterns, shown with a confidence level.' },
-  { label: 'Recommendation', body: 'An AI-generated suggestion. You decide whether to act on it.' }
-];
-
-const Trust = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => staggerReveal(scope.current.querySelectorAll('[data-card]'), { each: 0.08 }));
-  }, { scope });
-
-  return (
-    <Section eyebrow="AI you can trust" title="It never overpromises.">
-      <div ref={scope} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {TRUST_TERMS.map((term) => (
-          <div key={term.label} data-card className="rounded-xl border border-line bg-surface p-5">
-            <h3 className="text-sm font-semibold text-ink-900">{term.label}</h3>
-            <p className="mt-2 text-xs leading-relaxed text-ink-500">{term.body}</p>
-          </div>
-        ))}
-      </div>
-      <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-ink-500">
-        FlowXP AI helps you make better decisions and spot what deserves your attention — it doesn't
-        guarantee profit, prevent every loss, or run your business for you.
-      </p>
-    </Section>
-  );
-};
-
-/* ── Final CTA ─────────────────────────────────────────────────────────── */
-const FinalCta = () => {
-  const scope = useRef(null);
-  useGSAP(() => {
-    revealOnScroll(scope.current, () => fadeUp(scope.current.querySelector('[data-copy]'), { distance: 20 }));
-  }, { scope });
-
-  return (
-    <Section className="border-t border-line">
-      <Container>
-        <div ref={scope}>
-          <div data-copy className="bg-gradient-brand rounded-[--radius-card] px-8 py-12 text-center">
-            <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              Your business shouldn't just generate data.
-              <br />
-              It should generate decisions.
-            </h2>
-            <p className="mx-auto mt-3 max-w-md text-sm text-white/85">
-              Start your 7-day FlowXP trial and see what your business data can tell you.
-            </p>
-            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-              <Button to="/signup" variant="secondary" size="lg">Start free trial</Button>
-              <Button to="/" size="lg" className="!bg-white/10 text-white hover:!bg-white/20">Explore FlowXP</Button>
-            </div>
-          </div>
-        </div>
-      </Container>
-    </Section>
-  );
-};
+const Closing = () => (
+  <FinalCta
+    title="Your bills already know what to do next. Let FlowXP tell you."
+    lead="Start billing today. The forecasts and suggestions get sharper with every week of your own sales."
+    secondary={{ to: '/', label: 'See all of FlowXP' }}
+  />
+);
 
 const AIPage = () => (
   <>
     <Hero />
-    <DataToDecision />
-    <CorePromises />
-    <Profitability />
-    <Leakage />
-    <ActionCenter />
-    <AskFlowXP />
-    <HealthScore />
+    <LabelStrip />
+    <HowItThinks />
+    <Features />
+    <Ask />
+    <Extras />
     <EveryBusiness />
-    <Trust />
-    <FinalCta />
+    <Honest />
+    <Closing />
   </>
 );
 

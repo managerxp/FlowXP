@@ -23,8 +23,11 @@ import { ModifierError, outletSettingsFor, resolveModifiers } from '../modules/m
 import { branchFilter } from '../utils/scope.js';
 import { comboBlocker, loadCombos } from '../modules/combos.js';
 import { isEligibleWaiter } from '../modules/waiters.js';
+import { eligibleRiders, isEligibleRider } from '../modules/riders.js';
+import { resolveStation } from '../modules/stations.js';
+import { getAdapter } from '../modules/delivery/registry.js';
 
-const OPEN_STATUSES = ['OPEN', 'PREPARING', 'READY', 'SERVED'];
+const OPEN_STATUSES = ['PENDING_ACCEPT', 'OPEN', 'PREPARING', 'READY', 'SERVED'];
 
 /* Exported: reused by publicOrdering.controller.js, which has no req/res of
    its own to run these through — a customer's browser has no session, so the
@@ -78,7 +81,7 @@ export const insertOrderItems = async (client, businessId, orderId, rawItems) =>
         if (blocked) throw new OrderItemsError(blocked);
       }
       productId = product.product_id;
-      stationId = product.station_id;
+      stationId = await resolveStation(client, businessId, orderBranch, product.station_id);
       expectedMinutes = product.prep_minutes ?? defaultMinutes;
       description = raw.description || product.name;
       unitPricePaise = raw.unit_price != null ? toPaise(raw.unit_price) : (here?.price_paise ?? product.selling_price_paise);
@@ -170,6 +173,8 @@ const asOrderItem = (row) => ({
   quantity: Number(row.quantity),
   unit_price: toRupees(row.unit_price_paise),
   line_total: toRupees(Math.round(Number(row.quantity) * row.unit_price_paise)),
+  // the GST the bill will add (the product's rate, as billing uses); only on the order detail
+  ...(row.tax_rate !== undefined ? { tax_rate: Number(row.tax_rate || 0) } : {}),
   kitchen_notes: row.kitchen_notes,
   kot_id: row.kot_id,
   status: row.status,
@@ -184,18 +189,38 @@ const asOrder = (row) => ({
   table_id: row.table_id,
   table_name: row.table_name,
   customer_id: row.customer_id,
-  customer_name: row.customer_name,
+  // a saved customer's name if one is attached, else the diner's name as the delivery platform gave it
+  customer_name: row.customer_name ?? row.guest_name ?? null,
   platform: row.platform,
   external_order_id: row.external_order_id,
   external_order_number: row.external_order_number,
   waiter_user_id: row.waiter_user_id ?? null,
   waiter_name: row.waiter_name ?? null,
+  brand_id: row.brand_id ?? null,
+  brand_name: row.brand_name ?? null,
+  rider_user_id: row.rider_user_id ?? null,
+  rider_name: row.rider_name ?? null,
+  picked_up_at: row.picked_up_at ?? null,
+  out_for_delivery_at: row.out_for_delivery_at ?? null,
+  delivered_at: row.delivered_at ?? null,
   status: row.status,
   notes: row.notes,
+  rejection_reason: row.rejection_reason ?? null,
   invoice_id: row.invoice_id,
   merged_into_order_id: row.merged_into_order_id,
   created_at: row.created_at,
-  updated_at: row.updated_at
+  updated_at: row.updated_at,
+  // only on the list: what is still to bill, and where the kitchen is with it
+  ...(row.open_lines != null ? { summary: summaryOf(row) } : {})
+});
+
+export const summaryOf = (row) => ({
+  items: Number(row.open_qty),
+  lines: row.open_lines,
+  estimate: toRupees(row.open_paise),
+  not_sent: row.not_sent,
+  cooking: row.cooking,
+  ready: row.ready
 });
 
 /* ==========================================================================
@@ -209,6 +234,9 @@ export const create = async (req, res) => {
   }
   if (orderType === 'DINE_IN' && !body.table_id) {
     return res.status(400).json({ success: false, message: 'Choose a table for a dine-in order' });
+  }
+  if (body.brand_id && !(await pool.query(`SELECT 1 FROM brands WHERE brand_id = $1 AND business_id = $2`, [body.brand_id, req.tenant.businessId])).rows.length) {
+    return res.status(400).json({ success: false, message: 'Brand not found' });
   }
 
   let tableWaiter = null;
@@ -237,10 +265,10 @@ export const create = async (req, res) => {
     let order;
     try {
       order = (await client.query(
-        `INSERT INTO orders (business_id, branch_id, order_number, order_type, table_id, customer_id, notes, created_by, waiter_user_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+        `INSERT INTO orders (business_id, branch_id, order_number, order_type, table_id, customer_id, notes, created_by, waiter_user_id, brand_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
         [req.tenant.businessId, req.tenant.branchId, orderNumber, orderType, body.table_id || null,
-         body.customer_id || null, body.notes || null, req.auth.userId, waiterId]
+         body.customer_id || null, body.notes || null, req.auth.userId, waiterId, body.brand_id || null]
       )).rows[0];
     } catch (dbError) {
       // 23505 on uq_orders_open_table: someone else opened this table a moment ago.
@@ -276,11 +304,23 @@ export const list = async (req, res) => {
   const scope = branchFilter(req.tenant, 'o.branch_id', values);
 
   const { rows } = await pool.query(
-    `SELECT o.*, t.name AS table_name, c.name AS customer_name, w.name AS waiter_name
+    `SELECT o.*, t.name AS table_name, c.name AS customer_name, w.name AS waiter_name, br.name AS brand_name, rd.name AS rider_name, s.*
      FROM orders o
      LEFT JOIN users w ON w.user_id = o.waiter_user_id
+     LEFT JOIN users rd ON rd.user_id = o.rider_user_id
      LEFT JOIN dining_tables t ON t.table_id = o.table_id
      LEFT JOIN customers c ON c.customer_id = o.customer_id
+     LEFT JOIN brands br ON br.brand_id = o.brand_id
+     LEFT JOIN LATERAL (
+       SELECT COUNT(*) FILTER (WHERE oi.status <> 'CANCELLED' AND oi.invoice_id IS NULL)::int AS open_lines,
+              COALESCE(SUM(oi.quantity) FILTER (WHERE oi.status <> 'CANCELLED' AND oi.invoice_id IS NULL), 0) AS open_qty,
+              COALESCE(SUM(ROUND(oi.quantity * oi.unit_price_paise * (1 + CASE WHEN b.gst_enabled THEN COALESCE(p.tax_rate, 0) / 100.0 ELSE 0 END))) FILTER (WHERE oi.status <> 'CANCELLED' AND oi.invoice_id IS NULL), 0) AS open_paise,
+              COUNT(*) FILTER (WHERE oi.status = 'PENDING')::int AS not_sent,
+              COUNT(*) FILTER (WHERE oi.status = 'PREPARING')::int AS cooking,
+              COUNT(*) FILTER (WHERE oi.status = 'READY')::int AS ready
+         FROM order_items oi LEFT JOIN products p ON p.product_id = oi.product_id
+         JOIN businesses b ON b.business_id = o.business_id
+         WHERE oi.order_id = o.order_id) s ON TRUE
      WHERE o.business_id = $1 ${clauses.map((c) => `AND ${c}`).join(' ')}${scope}
      ORDER BY o.created_at DESC LIMIT 200`,
     values
@@ -295,18 +335,21 @@ export const get = async (req, res) => {
   const scopeValues = [req.tenant.businessId, req.params.id];
   const scope = branchFilter(req.tenant, 'o.branch_id', scopeValues);
   const { rows } = await pool.query(
-    `SELECT o.*, t.name AS table_name, c.name AS customer_name, w.name AS waiter_name
+    `SELECT o.*, t.name AS table_name, c.name AS customer_name, w.name AS waiter_name, br.name AS brand_name, rd.name AS rider_name
      FROM orders o
      LEFT JOIN users w ON w.user_id = o.waiter_user_id
+     LEFT JOIN users rd ON rd.user_id = o.rider_user_id
      LEFT JOIN dining_tables t ON t.table_id = o.table_id
      LEFT JOIN customers c ON c.customer_id = o.customer_id
+     LEFT JOIN brands br ON br.brand_id = o.brand_id
      WHERE o.business_id = $1 AND o.order_id = $2${scope}`,
     scopeValues
   );
   if (!rows.length) return res.status(404).json({ success: false, message: 'Not found' });
 
   const items = (await pool.query(
-    `SELECT * FROM order_items WHERE order_id = $1 ORDER BY order_item_id`, [req.params.id]
+    `SELECT oi.*, p.tax_rate FROM order_items oi LEFT JOIN products p ON p.product_id = oi.product_id
+     WHERE oi.order_id = $1 ORDER BY oi.order_item_id`, [req.params.id]
   )).rows;
 
   const kots = (await pool.query(
@@ -379,7 +422,11 @@ export const updateItem = async (req, res) => {
 
   // A billed line is on someone's invoice: its quantity and existence are no longer the floor's to change.
   const editsBill = body.quantity != null || body.status === 'CANCELLED';
-  if (body.quantity != null) { values.push(Number(body.quantity)); fields.push(`quantity = $${values.length}`); }
+  if (body.quantity != null) {
+    const q = Number(body.quantity);
+    if (!Number.isFinite(q) || q <= 0 || q > 9999) return res.status(400).json({ success: false, message: 'Quantity must be a number above zero' });
+    values.push(q); fields.push(`quantity = $${values.length}`);
+  }
   if (body.kitchen_notes !== undefined) { values.push(body.kitchen_notes); fields.push(`kitchen_notes = $${values.length}`); }
   if (body.status) {
     if (!['PENDING', 'PREPARING', 'READY', 'SERVED', 'CANCELLED'].includes(body.status)) {
@@ -394,11 +441,14 @@ export const updateItem = async (req, res) => {
   if (!fields.length) return res.status(400).json({ success: false, message: 'Nothing to update' });
 
   values.push(req.params.itemId, req.params.id, req.tenant.businessId);
+  // number the three before the outlet filter adds its own parameter (it used to shift them, so at
+  // an outlet the line was never found: quantity changes and cancelling a line both failed)
+  const [itemAt, orderAt, businessAt] = [values.length - 2, values.length - 1, values.length];
   const scope = branchFilter(req.tenant, 'branch_id', values);
   const { rows } = await pool.query(
     `UPDATE order_items SET ${fields.join(', ')}
-     WHERE order_item_id = $${values.length - 2} AND order_id = $${values.length - 1}${editsBill ? ' AND invoice_id IS NULL' : ''}
-       AND order_id IN (SELECT order_id FROM orders WHERE business_id = $${values.length - (scope ? 1 : 0)}${scope})
+     WHERE order_item_id = $${itemAt} AND order_id = $${orderAt}${editsBill ? ' AND invoice_id IS NULL' : ''}
+       AND order_id IN (SELECT order_id FROM orders WHERE business_id = $${businessAt}${scope})
      RETURNING *`,
     values
   );
@@ -455,6 +505,101 @@ export const sendKot = async (req, res) => {
   } finally {
     client.release();
   }
+};
+
+/* ==========================================================================
+   GET /api/orders/pending-deliveries — every platform order waiting on a
+   decision, with its full item list, for the pop-up that rings until someone
+   accepts or rejects (IncomingDeliveryAlert.jsx). A plain GET /orders row has
+   no items; this exists so that pop-up can show what was actually ordered
+   without a request per order.
+   ========================================================================== */
+export const pendingDeliveries = async (req, res) => {
+  const values = [req.tenant.businessId];
+  const scope = branchFilter(req.tenant, 'o.branch_id', values);
+  const orders = (await pool.query(
+    `SELECT o.order_id, o.order_number, o.platform, o.external_order_number, o.notes, o.created_at,
+            COALESCE(c.name, o.guest_name) AS customer_name, COALESCE(c.phone, o.guest_phone) AS customer_phone
+     FROM orders o LEFT JOIN customers c ON c.customer_id = o.customer_id
+     WHERE o.business_id = $1 AND o.status = 'PENDING_ACCEPT'${scope}
+     ORDER BY o.created_at`,
+    values
+  )).rows;
+  if (!orders.length) return res.json({ success: true, data: [] });
+
+  const items = (await pool.query(
+    `SELECT order_id, order_item_id, description, quantity, unit_price_paise FROM order_items
+     WHERE order_id = ANY($1::int[]) AND status <> 'CANCELLED' ORDER BY order_item_id`,
+    [orders.map((o) => o.order_id)]
+  )).rows;
+
+  res.json({
+    success: true,
+    data: orders.map((o) => ({
+      order_id: o.order_id, order_number: o.order_number, platform: o.platform, external_order_number: o.external_order_number, notes: o.notes,
+      created_at: o.created_at, customer_name: o.customer_name, customer_phone: o.customer_phone,
+      items: items.filter((i) => i.order_id === o.order_id).map((i) => ({
+        order_item_id: i.order_item_id, description: i.description, quantity: Number(i.quantity), unit_price: toRupees(i.unit_price_paise)
+      }))
+    }))
+  });
+};
+
+/* ==========================================================================
+   POST /api/orders/:id/accept — a delivery-platform order: send it to the
+   kitchen. Until this, nothing about it exists in the kitchen at all.
+   ========================================================================== */
+export const acceptDelivery = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const scope = [req.params.id, req.tenant.businessId];
+    const order = (await client.query(
+      `SELECT * FROM orders WHERE order_id = $1 AND business_id = $2 AND status = 'PENDING_ACCEPT'${branchFilter(req.tenant, 'branch_id', scope)} FOR UPDATE`,
+      scope
+    )).rows[0];
+    if (!order) { await client.query('ROLLBACK'); return res.status(404).json({ success: false, message: 'Not found, or already accepted or rejected' }); }
+
+    const sent = await sendKotCore(client, { businessId: req.tenant.businessId, orderId: order.order_id, createdBy: req.auth.userId, priority: 'NORMAL' });
+    if (!sent) { await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: 'This order has no items to send' }); }
+    await client.query(`UPDATE orders SET status = 'PREPARING', updated_at = CURRENT_TIMESTAMP WHERE order_id = $1`, [order.order_id]);
+
+    await client.query('COMMIT');
+    recordAudit(req, { action: 'order.delivery_accepted', resource_type: 'order', resource_id: order.order_id, metadata: { platform: order.platform, kot_number: sent.kot.kot_number } });
+    recordEvent('delivery_order_accepted', { userId: req.auth.userId, businessId: req.tenant.businessId, properties: { platform: order.platform } });
+    if (order.platform) getAdapter(order.platform).pushOrderStatus(order, 'ACCEPTED').catch(() => {});
+
+    res.json({ success: true, data: { order_id: order.order_id, order_number: order.order_number, kot_number: sent.kot.kot_number } });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('[orders] acceptDelivery failed:', error.message);
+    res.status(500).json({ success: false, message: 'Could not accept the order' });
+  } finally {
+    client.release();
+  }
+};
+
+/* ==========================================================================
+   POST /api/orders/:id/reject { reason } — a delivery-platform order the
+   kitchen never saw: too busy, out of stock, closing. Never touches the
+   kitchen or stock, unlike cancelling an order already in progress.
+   ========================================================================== */
+export const rejectDelivery = async (req, res) => {
+  const reason = String(req.body?.reason || '').trim().slice(0, 300) || null;
+  const values = [req.params.id, req.tenant.businessId, reason];
+  const reasonAt = values.length;
+  const scope = branchFilter(req.tenant, 'branch_id', values);
+  const { rows } = await pool.query(
+    `UPDATE orders SET status = 'CANCELLED', rejection_reason = $${reasonAt}, updated_at = CURRENT_TIMESTAMP
+     WHERE order_id = $1 AND business_id = $2 AND status = 'PENDING_ACCEPT'${scope}
+     RETURNING *`,
+    values
+  );
+  if (!rows.length) return res.status(404).json({ success: false, message: 'Not found, or already accepted or rejected' });
+  await pool.query(`UPDATE order_items SET status = 'CANCELLED', cancelled_at = CURRENT_TIMESTAMP WHERE order_id = $1`, [rows[0].order_id]);
+  recordAudit(req, { action: 'order.delivery_rejected', resource_type: 'order', resource_id: rows[0].order_id, metadata: { platform: rows[0].platform, reason } });
+  if (rows[0].platform) getAdapter(rows[0].platform).pushOrderStatus(rows[0], 'REJECTED').catch(() => {});
+  res.json({ success: true });
 };
 
 /* ==========================================================================
@@ -565,7 +710,8 @@ export const bill = async (req, res) => {
       couponCode: body.coupon_code,
       redeemPoints: body.redeem_points,
       notes: body.notes || order.notes,
-      payment: body.payment
+      payment: body.payment,
+      payments: body.payments
     });
 
     await client.query(`UPDATE order_items SET invoice_id = $1 WHERE order_item_id = ANY($2::int[])`, [invoice.invoice_id, items.map((i) => i.order_item_id)]);
@@ -630,5 +776,82 @@ export const setWaiter = async (req, res) => {
   }
   await pool.query(`UPDATE orders SET waiter_user_id = $1, updated_at = CURRENT_TIMESTAMP WHERE order_id = $2`, [waiterId, order.order_id]);
   recordAudit(req, { action: 'order.waiter_set', resource_type: 'order', resource_id: order.order_id, metadata: { waiter_user_id: waiterId } });
+  return get({ ...req, params: { id: order.order_id } }, res);
+};
+
+/* ==========================================================================
+   PATCH /api/orders/:id/brand  { brand_id | null } — tag which virtual brand this order is for
+   ========================================================================== */
+export const setBrand = async (req, res) => {
+  const brandId = req.body?.brand_id ? Number(req.body.brand_id) : null;
+  const scope = [req.params.id, req.tenant.businessId];
+  const order = (await pool.query(
+    `SELECT order_id, status FROM orders WHERE order_id = $1 AND business_id = $2${branchFilter(req.tenant, 'branch_id', scope)}`, scope
+  )).rows[0];
+  if (!order) return res.status(404).json({ success: false, message: 'Not found' });
+  if (['BILLED', 'CANCELLED', 'MERGED'].includes(order.status)) return res.status(409).json({ success: false, message: 'This order is closed' });
+  if (brandId && !(await pool.query(`SELECT 1 FROM brands WHERE brand_id = $1 AND business_id = $2`, [brandId, req.tenant.businessId])).rows.length) {
+    return res.status(400).json({ success: false, message: 'Brand not found' });
+  }
+  await pool.query(`UPDATE orders SET brand_id = $1, updated_at = CURRENT_TIMESTAMP WHERE order_id = $2`, [brandId, order.order_id]);
+  recordAudit(req, { action: 'order.brand_set', resource_type: 'order', resource_id: order.order_id, metadata: { brand_id: brandId } });
+  return get({ ...req, params: { id: order.order_id } }, res);
+};
+
+/* GET /api/orders/riders — who can be assigned to a delivery order at this outlet */
+export const listRiders = async (req, res) => {
+  res.json({ success: true, data: await eligibleRiders(pool, req.tenant.businessId, req.tenant.branchId) });
+};
+
+/* ==========================================================================
+   PATCH /api/orders/:id/rider  { rider_user_id | null } — assign or change who delivers this order
+   ========================================================================== */
+export const setRider = async (req, res) => {
+  const riderId = req.body?.rider_user_id ? Number(req.body.rider_user_id) : null;
+  const scope = [req.params.id, req.tenant.businessId];
+  const order = (await pool.query(
+    `SELECT order_id, branch_id, order_type, status FROM orders WHERE order_id = $1 AND business_id = $2${branchFilter(req.tenant, 'branch_id', scope)}`, scope
+  )).rows[0];
+  if (!order) return res.status(404).json({ success: false, message: 'Not found' });
+  if (order.order_type !== 'DELIVERY') return res.status(400).json({ success: false, message: 'Only delivery orders have a rider' });
+  if (['BILLED', 'CANCELLED', 'MERGED'].includes(order.status)) return res.status(409).json({ success: false, message: 'This order is closed' });
+  if (riderId && !(await isEligibleRider(pool, req.tenant.businessId, order.branch_id, riderId))) {
+    return res.status(400).json({ success: false, message: 'Choose someone who works at this outlet' });
+  }
+  await pool.query(`UPDATE orders SET rider_user_id = $1, updated_at = CURRENT_TIMESTAMP WHERE order_id = $2`, [riderId, order.order_id]);
+  recordAudit(req, { action: 'order.rider_set', resource_type: 'order', resource_id: order.order_id, metadata: { rider_user_id: riderId } });
+  return get({ ...req, params: { id: order.order_id } }, res);
+};
+
+/* ==========================================================================
+   POST /api/orders/:id/delivery-status  { status: PICKED_UP | OUT_FOR_DELIVERY | DELIVERED }
+   Each step needs a rider assigned and the step before it already done — the
+   same lifecycle order.controller.js's own README-style comment for the spec
+   asked for (READY -> ASSIGNED -> PICKED_UP -> OUT_FOR_DELIVERY -> DELIVERED),
+   just as nullable timestamps rather than a parallel status enum.
+   ========================================================================== */
+const DELIVERY_STEPS = ['PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED'];
+const DELIVERY_COLUMN = { PICKED_UP: 'picked_up_at', OUT_FOR_DELIVERY: 'out_for_delivery_at', DELIVERED: 'delivered_at' };
+
+export const setDeliveryStatus = async (req, res) => {
+  const status = String(req.body?.status || '').toUpperCase();
+  const stepIndex = DELIVERY_STEPS.indexOf(status);
+  if (stepIndex === -1) return res.status(400).json({ success: false, message: 'Status must be PICKED_UP, OUT_FOR_DELIVERY or DELIVERED' });
+
+  const scope = [req.params.id, req.tenant.businessId];
+  const order = (await pool.query(
+    `SELECT order_id, order_type, rider_user_id, picked_up_at, out_for_delivery_at, delivered_at
+     FROM orders WHERE order_id = $1 AND business_id = $2${branchFilter(req.tenant, 'branch_id', scope)}`, scope
+  )).rows[0];
+  if (!order) return res.status(404).json({ success: false, message: 'Not found' });
+  if (order.order_type !== 'DELIVERY') return res.status(400).json({ success: false, message: 'Only delivery orders have a delivery status' });
+  if (!order.rider_user_id) return res.status(400).json({ success: false, message: 'Assign a rider first' });
+
+  const priorDone = stepIndex === 0 || order[DELIVERY_COLUMN[DELIVERY_STEPS[stepIndex - 1]]];
+  if (!priorDone) return res.status(409).json({ success: false, message: `Mark it ${DELIVERY_STEPS[stepIndex - 1].toLowerCase().replace(/_/g, ' ')} first` });
+
+  const column = DELIVERY_COLUMN[status];
+  await pool.query(`UPDATE orders SET ${column} = COALESCE(${column}, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE order_id = $1`, [order.order_id]);
+  recordAudit(req, { action: 'order.delivery_status', resource_type: 'order', resource_id: order.order_id, metadata: { status } });
   return get({ ...req, params: { id: order.order_id } }, res);
 };

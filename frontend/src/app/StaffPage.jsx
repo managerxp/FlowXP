@@ -11,14 +11,15 @@ import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Selec
 
 const ROLES = {
   OWNER: 'Owner', ADMIN: 'Admin', MANAGER: 'Manager', CASHIER: 'Cashier', WAITER: 'Waiter',
-  KITCHEN: 'Kitchen', INVENTORY_MANAGER: 'Stock manager', STAFF: 'Staff'
+  KITCHEN: 'Kitchen', INVENTORY_MANAGER: 'Stock manager', STAFF: 'Staff', DELIVERY: 'Delivery rider'
 };
 const GROUP_ROLES = ['OWNER', 'ADMIN'];
-const FLOOR_ROLES = ['CASHIER', 'WAITER', 'KITCHEN', 'STAFF'];
+const FLOOR_ROLES = ['CASHIER', 'WAITER', 'KITCHEN', 'STAFF', 'DELIVERY'];
 const ROLE_HELP = {
   OWNER: 'Everything, including billing and staff.', ADMIN: 'Runs the business day to day; can’t manage owners.',
   MANAGER: 'Reports, stock, buying and refunds.', CASHIER: 'Bills sales and takes payments.', WAITER: 'Takes and bills orders.',
-  KITCHEN: 'Sees and advances kitchen tickets only.', INVENTORY_MANAGER: 'Stock, purchasing and suppliers.', STAFF: 'Billing only.'
+  KITCHEN: 'Sees and advances kitchen tickets only.', INVENTORY_MANAGER: 'Stock, purchasing and suppliers.', STAFF: 'Billing only.',
+  DELIVERY: 'Gets assigned to delivery orders and updates pickup/delivered status.'
 };
 
 /* What this person may do: the role's default, with an allow or deny for anything the owner wants different. */

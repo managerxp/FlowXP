@@ -6,13 +6,73 @@
  * a validity window and usage limits.
  */
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Gift } from 'lucide-react';
+import { useAuth } from '../context/AuthContext.jsx';
 import { api, formatCurrency } from '../lib/api.js';
 import PointsTab from './PointsTab.jsx';
 import { Alert, Badge, Button, Card, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Th, Thead, Tr, useToast } from '../components/ui.jsx';
 
+const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] || 'th'}`;
+const daysAgoText = (d) => {
+  if (!d) return '';
+  const n = Math.round((new Date(new Date().toDateString()) - new Date(`${d}T00:00`)) / 86400000);
+  return n <= 0 ? 'today' : n === 1 ? 'yesterday' : `${n} days ago`;
+};
+
+/* The card as customers see it on the QR menu and at the till: the program at a glance. */
+const CardPreview = ({ business, n, reward, qty, on, minBill }) => (
+  <div className={`relative overflow-hidden rounded-(--radius-panel) p-5 text-white shadow-md ${on ? 'bg-brand-500' : 'bg-ink-700'}`}>
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <p className="text-caption font-semibold uppercase tracking-[0.14em] text-white/80">{business || 'Your'} visit card</p>
+        <p className="mt-1 text-title font-semibold leading-snug">{reward ? `Every ${ordinal(n)} visit: ${qty > 1 ? `${qty} × ` : ''}${reward} free` : 'Choose the free item'}</p>
+      </div>
+      <Gift aria-hidden="true" className="h-8 w-8 shrink-0 text-white/90" />
+    </div>
+    <div className="mt-4 flex flex-wrap gap-1.5" aria-hidden="true">
+      {Array.from({ length: Math.min(n - 1, 14) }, (_, i) => (
+        <span key={i} className={`flex h-8 w-8 items-center justify-center rounded-full text-caption font-bold ${i < Math.min(3, n - 2) ? 'bg-white text-brand-700' : 'border border-white/50 text-white/80'}`}>{i < Math.min(3, n - 2) ? '✓' : i + 1}</span>
+      ))}
+      <span className="flex h-8 items-center gap-1 rounded-full border border-dashed border-white/70 px-3 text-caption font-bold"><Gift className="h-3.5 w-3.5" />FREE</span>
+    </div>
+    <p className="mt-3 text-caption text-white/80">{on ? `On${minBill > 0 ? ` · bills of ${formatCurrency(minBill)} or more earn a stamp` : ''} · shown on the QR menu and at the till` : 'Off: customers do not see it yet'}</p>
+  </div>
+);
+
+const Insight = ({ label, value, note, tone }) => (
+  <div className="rounded-(--radius-card) border border-line bg-surface p-4">
+    <p className="text-caption text-ink-500">{label}</p>
+    <p className={`tabular mt-1 text-title font-semibold ${tone || 'text-ink-900'}`}>{value}</p>
+    {note && <p className="mt-0.5 text-caption text-ink-500">{note}</p>}
+  </div>
+);
+
+const People = ({ title, note, list, count, empty, tone = 'text-ink-900' }) => (
+  <section className="rounded-(--radius-card) border border-line bg-surface p-5">
+    <div className="mb-1 flex items-baseline justify-between gap-2">
+      <h3 className="text-small font-semibold text-ink-900">{title} <span className={`tabular ml-1 ${tone}`}>{count}</span></h3>
+    </div>
+    <p className="mb-3 text-caption text-ink-500">{note}</p>
+    {list.length === 0 ? <p className="text-small text-ink-500">{empty}</p> : (
+      <ul className="divide-y divide-line">
+        {list.map((m) => (
+          <li key={m.customer_id} className="flex items-center justify-between gap-3 py-2 text-small">
+            <Link to={`/app/customers?c=${m.customer_id}`} className="min-w-0 truncate font-medium text-ink-900 hover:text-brand-700">{m.name}</Link>
+            <span className="shrink-0 text-caption text-ink-500">{m.visits} visit{m.visits === 1 ? '' : 's'} · last {daysAgoText(m.last_visit)}{m.phone && <> · <a href={`tel:${m.phone}`} className="font-medium text-brand-700">Call</a></>}</span>
+          </li>
+        ))}
+      </ul>
+    )}
+    {count > list.length && <p className="mt-2 text-caption text-ink-500">and {count - list.length} more.</p>}
+  </section>
+);
+
 const Program = () => {
   const toast = useToast();
+  const { business } = useAuth();
   const [form, setForm] = useState(null);
+  const [saved, setSaved] = useState(null);
   const [dishes, setDishes] = useState([]);
   const [stats, setStats] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -21,86 +81,144 @@ const Program = () => {
   const load = async () => {
     try {
       const [program, products, summary] = await Promise.all([api('/loyalty/program'), api('/products?kind=DISH'), api('/loyalty/summary')]);
-      setForm({ is_enabled: program.is_enabled, visits_required: String(program.visits_required), reward_product_id: program.reward_product_id ? String(program.reward_product_id) : '', reward_quantity: String(program.reward_quantity), min_bill: program.min_bill ? String(program.min_bill) : '' });
-      setDishes(products); setStats(summary);
+      const f = { is_enabled: program.is_enabled, visits_required: String(program.visits_required), reward_product_id: program.reward_product_id ? String(program.reward_product_id) : '', reward_quantity: String(program.reward_quantity), min_bill: program.min_bill ? String(program.min_bill) : '' };
+      setForm(f); setSaved(JSON.stringify(f)); setDishes(products); setStats(summary);
     } catch (caught) { setError(caught.status === 403 ? 'Loyalty is set up by owners and admins.' : caught.message); }
   };
   useEffect(() => { load(); }, []);
 
-  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
   const reward = dishes.find((d) => String(d.product_id) === form?.reward_product_id);
-
-  const save = async (e) => {
-    e.preventDefault();
+  const save = async (next = form) => {
     setError(''); setBusy(true);
     try {
       await api('/loyalty/program', { method: 'PUT', body: {
-        is_enabled: form.is_enabled, visits_required: Number(form.visits_required), reward_product_id: form.reward_product_id ? Number(form.reward_product_id) : null,
-        reward_quantity: Number(form.reward_quantity) || 1, min_bill: form.min_bill ? Number(form.min_bill) : 0
+        is_enabled: next.is_enabled, visits_required: Number(next.visits_required), reward_product_id: next.reward_product_id ? Number(next.reward_product_id) : null,
+        reward_quantity: Number(next.reward_quantity) || 1, min_bill: next.min_bill ? Number(next.min_bill) : 0
       } });
-      toast.success('Loyalty program saved');
+      toast.success(next.is_enabled ? 'Visit card saved and on' : 'Visit card saved, and off');
       load();
     } catch (caught) { setError(caught.message); }
     finally { setBusy(false); }
   };
 
-  if (!form) return error ? <Alert>{error}</Alert> : <p className="py-10 text-center text-sm text-ink-400">Loading…</p>;
-  const n = Number(form.visits_required) || 7;
+  if (!form) return error ? <Alert>{error}</Alert> : <div className="h-64 animate-pulse rounded-(--radius-card) bg-surface-3" />;
+  const n = Math.max(2, Number(form.visits_required) || 7);
+  const qty = Number(form.reward_quantity) || 1;
+  const dirty = JSON.stringify(form) !== saved;
+  const Chip = ({ active, onClick, children }) => (
+    <button type="button" onClick={onClick} aria-pressed={active}
+            className={`rounded-lg border px-3 py-1.5 text-small ${active ? 'border-brand-500 bg-brand-50 font-medium text-brand-700 ring-1 ring-brand-500' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>{children}</button>
+  );
+  const Step = ({ n: num, title, children }) => (
+    <div className="flex gap-3">
+      <span className="tabular flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink-900 text-caption font-semibold text-white">{num}</span>
+      <div className="min-w-0 flex-1"><p className="text-small font-semibold text-ink-900">{title}</p><div className="mt-2">{children}</div></div>
+    </div>
+  );
+  const maxBucket = Math.max(1, ...(stats?.by_visits || []).map((b) => b.count));
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,26rem)_1fr]">
-      <form onSubmit={save} className="glass space-y-4 rounded-[--radius-card] p-5">
-        <Alert>{error}</Alert>
-        <label className="flex items-center gap-2 text-sm font-medium text-ink-900">
-          <input type="checkbox" checked={form.is_enabled} onChange={set('is_enabled')} className="h-4 w-4 accent-[var(--color-brand-500)]" /> Loyalty program is on
-        </label>
-        <div className="grid grid-cols-2 gap-4">
-          <Field id="l-visits" label="Free on visit number" hint={`${n - 1} visits earn stamps, visit ${n} is free.`}>
-            <Input id="l-visits" type="number" min="2" max="50" value={form.visits_required} onChange={set('visits_required')} required />
-          </Field>
-          <Field id="l-qty" label="How many free"><Input id="l-qty" type="number" min="1" max="10" value={form.reward_quantity} onChange={set('reward_quantity')} required /></Field>
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="space-y-4">
+          <CardPreview business={business?.name} n={n} reward={reward?.name} qty={qty} on={form.is_enabled} minBill={Number(form.min_bill) || 0} />
+          <p className="px-1 text-caption text-ink-500">A customer is their mobile number. Every day they are billed counts as one visit, at any outlet. On the visit that earns it, the free item comes off the bill once it is on the order (the till offers to add it).</p>
         </div>
-        <Field id="l-item" label="Free item" hint="Applied automatically when it is on the bill of the visit that earns it.">
-          <Select id="l-item" value={form.reward_product_id} onChange={set('reward_product_id')}>
-            <option value="">Choose from your menu…</option>
-            {dishes.map((d) => <option key={d.product_id} value={d.product_id}>{d.name} ({formatCurrency(d.shared_price ?? d.selling_price)})</option>)}
-          </Select>
-        </Field>
-        <Field id="l-min" label="Minimum bill for a visit to count (₹)" hint="Leave blank to count every bill.">
-          <Input id="l-min" type="number" min="0" step="1" value={form.min_bill} onChange={set('min_bill')} />
-        </Field>
-        <div className="rounded-lg bg-surface-2 p-3 text-sm text-ink-600">
-          {reward ? <>Customers get <strong>{Number(form.reward_quantity) > 1 ? `${form.reward_quantity} × ` : ''}{reward.name}</strong> free on <strong>visit number {n}</strong>, then the card starts again. A customer is identified by their mobile number; several bills on one day count as one visit, at any outlet.</> : 'Pick the item that will be free.'}
-        </div>
-        <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save'}</Button>
-      </form>
 
-      <div className="space-y-6">
-        {stats && (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {[['Members', stats.members, 'have at least one visit'], ['Visits, 30 days', stats.visits_30d, 'stamps given'], ['Rewards given', stats.rewards_redeemed, `${stats.rewards_redeemed_30d} in 30 days · worth ${formatCurrency(stats.rewards_value)}`], ['Coupons, 30 days', stats.coupon_uses_30d, `${formatCurrency(stats.coupon_discount_30d)} off`]].map(([label, value, sub]) => (
-              <Card key={label}><p className="text-xs font-semibold uppercase tracking-wider text-ink-400">{label}</p><p className="mt-1 text-xl font-bold text-ink-900">{value}</p><p className="text-xs text-ink-400">{sub}</p></Card>
-            ))}
+        <form onSubmit={(e) => { e.preventDefault(); save(); }} className="space-y-5 rounded-(--radius-card) border border-line bg-surface p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-title font-semibold text-ink-900">Set it up</h2>
+            <label className="flex cursor-pointer items-center gap-2 text-small font-medium text-ink-900">
+              <span>{form.is_enabled ? 'On' : 'Off'}</span>
+              <button type="button" role="switch" aria-checked={form.is_enabled} aria-label="Visit card on" onClick={() => setForm((f) => ({ ...f, is_enabled: !f.is_enabled }))}
+                      className={`relative h-6 w-11 rounded-full transition-colors duration-(--duration-fast) ${form.is_enabled ? 'bg-brand-500' : 'bg-line-strong'}`}>
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[left] duration-(--duration-fast) ${form.is_enabled ? 'left-[22px]' : 'left-0.5'}`} />
+              </button>
+            </label>
           </div>
-        )}
-        {stats?.regulars.length > 0 && (
-          <div>
-            <h2 className="mb-2 text-sm font-semibold text-ink-900">Most frequent customers</h2>
-            <Table>
-              <Thead><Th>Customer</Th><Th className="text-right">Visits</Th><Th>Card</Th></Thead>
-              <tbody>
-                {stats.regulars.map((r) => (
-                  <Tr key={r.customer_id}>
-                    <Td className="font-medium">{r.name} <span className="text-xs text-ink-400">{r.phone}</span></Td>
-                    <Td className="text-right">{r.visits}</Td>
-                    <Td>{r.reward_ready ? <Badge tone="success">Free item due</Badge> : r.stamps != null ? <span className="text-ink-500">{r.stamps} of {n - 1}</span> : '—'}</Td>
-                  </Tr>
-                ))}
-              </tbody>
-            </Table>
+          <Alert>{error}</Alert>
+          <Step n="1" title="What is free?">
+            <div className="flex gap-2">
+              <Select aria-label="Free item" value={form.reward_product_id} onChange={(e) => setForm((f) => ({ ...f, reward_product_id: e.target.value }))} className="flex-1">
+                <option value="">Choose from your menu…</option>
+                {dishes.map((d) => <option key={d.product_id} value={d.product_id}>{d.name} ({formatCurrency(d.shared_price ?? d.selling_price)})</option>)}
+              </Select>
+              <Select aria-label="How many free" value={form.reward_quantity} onChange={(e) => setForm((f) => ({ ...f, reward_quantity: e.target.value }))} className="!w-20">
+                {[1, 2, 3, 4].map((x) => <option key={x} value={x}>× {x}</option>)}
+              </Select>
+            </div>
+            {reward && <p className="mt-1 text-caption text-ink-500">Worth {formatCurrency(qty * (reward.shared_price ?? reward.selling_price))} to the customer; it costs you {reward.unit_cost ? formatCurrency(qty * reward.unit_cost) : 'its ingredients'}.</p>}
+          </Step>
+          <Step n="2" title="On which visit?">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[5, 7, 10].map((x) => <Chip key={x} active={n === x} onClick={() => setForm((f) => ({ ...f, visits_required: String(x) }))}>{ordinal(x)} visit</Chip>)}
+              <span className="flex items-center gap-1.5 text-small text-ink-500">or <Input aria-label="Visit number" type="number" min="2" max="50" value={form.visits_required} onChange={(e) => setForm((f) => ({ ...f, visits_required: e.target.value }))} className="!h-9 !w-20" /></span>
+            </div>
+          </Step>
+          <Step n="3" title="Which bills earn a stamp?">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[['', 'Every bill'], ['100', '₹100 or more'], ['150', '₹150 or more'], ['300', '₹300 or more']].map(([v, label]) => <Chip key={v || 'all'} active={(form.min_bill || '') === v} onClick={() => setForm((f) => ({ ...f, min_bill: v }))}>{label}</Chip>)}
+              <span className="flex items-center gap-1.5 text-small text-ink-500">or ₹<Input aria-label="Minimum bill" type="number" min="0" step="1" value={form.min_bill} onChange={(e) => setForm((f) => ({ ...f, min_bill: e.target.value }))} className="!h-9 !w-24" /></span>
+            </div>
+          </Step>
+          <p className="rounded-lg bg-surface-2 p-3 text-small text-ink-700">
+            {reward ? <>Customers get <strong>{qty > 1 ? `${qty} × ` : ''}{reward.name}</strong> free on their <strong>{ordinal(n)} visit</strong>, then the card starts again.{Number(form.min_bill) > 0 && <> Only bills of {formatCurrency(Number(form.min_bill))} or more earn a stamp.</>}</> : 'Pick the item that will be free.'}
+          </p>
+          <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
+            <p className="text-caption text-ink-500">{dirty ? 'You have changes not saved yet.' : 'Saved.'}</p>
+            <Button type="submit" disabled={busy || !dirty || (form.is_enabled && !form.reward_product_id)}>{busy ? 'Saving…' : 'Save'}</Button>
           </div>
-        )}
+        </form>
       </div>
+
+      {stats && (
+        <>
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+            <Insight label="Members" value={stats.members} note={`${stats.new_30d} new in the last 30 days`} />
+            <Insight label="Came back, 30 days" value={stats.active_30d} note={`${stats.visits_30d} visits stamped`} />
+            <Insight label="Free items given" value={stats.rewards_redeemed} note={`${stats.rewards_redeemed_30d} in 30 days · worth ${formatCurrency(stats.rewards_value)}`} />
+            <Insight label="Not back in 60 days" value={stats.lapsed_60d} tone={stats.lapsed_60d > 0 ? 'text-warning' : undefined} note={stats.lapsed_60d > 0 ? <Link to="/app/messaging" className="font-medium text-brand-700">Send them an offer</Link> : 'everyone is coming back'} />
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+            <section className="rounded-(--radius-card) border border-line bg-surface p-5">
+              <h3 className="text-small font-semibold text-ink-900">How often members come</h3>
+              <p className="mb-4 text-caption text-ink-500">Visits on the card since they joined.</p>
+              <ul className="space-y-3">
+                {stats.by_visits.map((b) => (
+                  <li key={b.label} className="text-small">
+                    <span className="flex justify-between"><span className="text-ink-700">{b.label}</span><span className="tabular font-semibold text-ink-900">{b.count}<span className="ml-1.5 font-normal text-ink-500">{stats.members ? Math.round((b.count / stats.members) * 100) : 0}%</span></span></span>
+                    <span aria-hidden="true" className="mt-1 block h-2 overflow-hidden rounded-full bg-surface-3"><span className="block h-full rounded-full bg-brand-500" style={{ width: `${(b.count / maxBucket) * 100}%` }} /></span>
+                  </li>
+                ))}
+              </ul>
+              {stats.members > 0 && stats.by_visits[0].count / stats.members > 0.5 && <p className="mt-4 rounded-lg bg-surface-2 p-3 text-caption text-ink-700">Most members have come only once. A lower first reward (the {ordinal(Math.max(3, n - 2))} visit) or an offer to first-timers can bring them back.</p>}
+            </section>
+            <div className="space-y-4">
+              <People title="Free item due now" count={stats.reward_due.count} tone="text-success" list={stats.reward_due.members} note="Their next bill gets the free item. A nice reason to call them in." empty="Nobody has a reward waiting." />
+              <People title="One visit away" count={stats.one_visit_away.count} list={stats.one_visit_away.members} note="One more visit and the next one is free." empty="Nobody is one visit away right now." />
+            </div>
+          </div>
+
+          {stats.regulars.length > 0 && (
+            <section className="rounded-(--radius-card) border border-line bg-surface p-5">
+              <h3 className="mb-3 text-small font-semibold text-ink-900">Your regulars</h3>
+              <ul className="divide-y divide-line">
+                {stats.regulars.map((r) => (
+                  <li key={r.customer_id} className="flex items-center justify-between gap-3 py-2.5 text-small">
+                    <Link to={`/app/customers?c=${r.customer_id}`} className="min-w-0 truncate font-medium text-ink-900 hover:text-brand-700">{r.name} <span className="font-normal text-ink-500">{r.phone}</span></Link>
+                    <span className="flex shrink-0 items-center gap-3">
+                      <span className="tabular text-ink-500">{r.visits} visits</span>
+                      {r.reward_ready ? <span className="rounded bg-success/10 px-1.5 py-0.5 text-caption font-semibold text-success">Free item due</span>
+                        : r.stamps != null && <span className="flex gap-0.5" aria-label={`${r.stamps} of ${n - 1} stamps`}>{Array.from({ length: Math.min(n - 1, 10) }, (_, i) => <span key={i} className={`h-2 w-2 rounded-full ${i < r.stamps ? 'bg-brand-500' : 'bg-surface-3'}`} />)}</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </>
+      )}
     </div>
   );
 };
@@ -210,11 +328,11 @@ const LoyaltyPage = () => {
   const [tab, setTab] = useState('program');
   return (
     <div>
-      <PageHeader title="Loyalty & coupons" lead="Reward regulars with a free item, and hand out offer codes." />
-      <div className="mb-6 flex gap-2" role="tablist">
+      <PageHeader title="Loyalty & coupons" lead="Bring customers back: a free item on every few visits, points, and offer codes." />
+      <div className="mb-6 flex gap-1 border-b border-line" role="tablist">
         {[['program', 'Visit card'], ['points', 'Points & tiers'], ['coupons', 'Coupons']].map(([id, label]) => (
           <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
-                  className={`rounded-lg px-3.5 py-1.5 text-sm font-medium ${tab === id ? 'bg-brand-50 text-brand-600' : 'text-ink-600 hover:bg-surface-2'}`}>{label}</button>
+                  className={`-mb-px border-b-2 px-3 py-2 text-small font-medium ${tab === id ? 'border-brand-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'}`}>{label}</button>
         ))}
       </div>
       {tab === 'program' ? <Program /> : tab === 'points' ? <PointsTab /> : <Coupons />}

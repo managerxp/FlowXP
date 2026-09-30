@@ -14,17 +14,52 @@ import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { PageHeader, Card, Field, Input, Select, Button, Alert, useToast } from '../components/ui.jsx';
 import { getDevicePrefs, setDevicePref, testPrint } from '../lib/printing.js';
+import { COUNTRIES, regionsFor, subdivisionLabel } from '../lib/states.js';
+import PincodeHint from '../components/PincodeHint.jsx';
 
 const FIELDS = [
   ['name', 'Business name'],
   ['email', 'Email'],
   ['phone', 'Phone'],
-  ['address', 'Address'],
-  ['city', 'City'],
-  ['state', 'State'],
   ['gstin', 'GSTIN', 'Optional — only needed if you charge GST'],
-  ['upi_vpa', 'UPI ID for QR payments', 'e.g. shopname@okhdfcbank — shown to customers ordering by QR']
+  ['upi_vpa', 'UPI ID for QR payments', 'e.g. shopname@okhdfcbank — shown to customers ordering by QR'],
+  ['google_review_link', 'Google review link', 'Paste the https:// link from "Share" on your Google Business listing — shown to a customer who rates their visit 4-5 stars']
 ];
+
+/* Address fields, broken out of the generic FIELDS loop above so state and country can be proper
+   dropdowns (regionsFor()) instead of free text, with the same PIN-code assist as onboarding. */
+const AddressFields = ({ form, set, setForm }) => {
+  const regions = regionsFor(form.country || 'India');
+  const setCountry = (e) => setForm((f) => ({ ...f, country: e.target.value, state: '' }));
+  return (
+    <>
+      <Field id="address" label="Address"><Input id="address" value={form.address || ''} onChange={set('address')} /></Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field id="city" label="City"><Input id="city" value={form.city || ''} onChange={set('city')} /></Field>
+        <Field id="country" label="Country">
+          <Select id="country" value={form.country || 'India'} onChange={setCountry}>
+            {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </Select>
+        </Field>
+        <Field id="state" label={subdivisionLabel(form.country || 'India')}>
+          {regions.length > 0 ? (
+            <Select id="state" value={form.state || ''} onChange={set('state')}>
+              <option value="">Choose {subdivisionLabel(form.country || 'India').toLowerCase()}</option>
+              {regions.map((r) => <option key={r.shortCode} value={r.name}>{r.name}</option>)}
+            </Select>
+          ) : (
+            <Input id="state" value={form.state || ''} onChange={set('state')} />
+          )}
+        </Field>
+        <Field id="postal_code" label={(form.country || 'India') === 'India' ? 'PIN code' : 'Postal code'}>
+          <Input id="postal_code" value={form.postal_code || ''} onChange={set('postal_code')} inputMode="numeric" />
+          <PincodeHint postalCode={form.postal_code} country={form.country || 'India'}
+                       onApply={(r) => setForm((f) => ({ ...f, city: r.city, state: r.state }))} />
+        </Field>
+      </div>
+    </>
+  );
+};
 
 /* The picture printed at the top of browser receipts. */
 const LogoSetting = ({ logoUrl, onChange }) => {
@@ -191,7 +226,7 @@ const BusinessSettings = () => {
     try {
       await api('/businesses/current', {
         method: 'PATCH',
-        body: Object.fromEntries(FIELDS.map(([key]) => [key, form[key] || '']))
+        body: Object.fromEntries([...FIELDS.map(([key]) => [key, form[key] || '']), ...['address', 'city', 'state', 'postal_code', 'country'].map((key) => [key, form[key] || ''])])
       });
       toast.success('Saved');
       refresh(); // business name may have changed — the nav/topbar read it from AuthContext
@@ -207,7 +242,13 @@ const BusinessSettings = () => {
       <Card>
         <form onSubmit={save} className="space-y-4">
           <Alert>{error}</Alert>
-          {FIELDS.map(([key, label, hint]) => (
+          {FIELDS.slice(0, 3).map(([key, label, hint]) => (
+            <Field key={key} id={key} label={label} hint={hint}>
+              <Input id={key} value={form[key] || ''} onChange={set(key)} />
+            </Field>
+          ))}
+          <AddressFields form={form} set={set} setForm={setForm} />
+          {FIELDS.slice(3).map(([key, label, hint]) => (
             <Field key={key} id={key} label={label} hint={hint}>
               <Input id={key} value={form[key] || ''} onChange={set(key)} />
             </Field>

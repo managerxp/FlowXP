@@ -7,10 +7,9 @@
  */
 import pool from '../config/database.js';
 
-const clientIp = (req) =>
-  req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-  req.socket?.remoteAddress ||
-  null;
+/* req.ip, which honours the proxy setting in server.js: reading X-Forwarded-For directly would let anyone write
+   whatever address they like into the activity log. */
+const clientIp = (req) => req.ip || req.socket?.remoteAddress || null;
 
 /**
  * Record a business-meaningful change: invoice created, permission changed,

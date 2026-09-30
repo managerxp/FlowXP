@@ -20,7 +20,7 @@ const Change = ({ value }) => {
 };
 
 const Stat = ({ label, value, sub }) => (
-  <div className="glass rounded-[--radius-card] p-4">
+  <div className="border border-line bg-surface rounded-(--radius-card) p-4">
     <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">{label}</p>
     <p className="mt-1 text-xl font-bold text-ink-900">{value}</p>
     <p className="text-xs text-ink-400">{sub}</p>
@@ -57,7 +57,7 @@ const KitchenPerformancePage = () => {
       {!data && !error && <p className="py-10 text-center text-sm text-ink-400">Reading the tickets…</p>}
 
       {data && o.lines === 0 && (
-        <p className="rounded-[--radius-card] border border-dashed border-line-strong py-10 text-center text-sm text-ink-500">
+        <p className="rounded-(--radius-card) border border-dashed border-line-strong py-10 text-center text-sm text-ink-500">
           No finished tickets in this period yet. Times are recorded from when an order is sent to the kitchen until the kitchen marks it ready.
         </p>
       )}

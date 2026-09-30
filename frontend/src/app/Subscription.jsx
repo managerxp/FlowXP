@@ -1,13 +1,13 @@
 /*
  * /app/settings/subscription
  *
- * Reads the real state — status, trial window, plan, limits. The upgrade
- * button does not charge anything yet: the payment provider is Priority 4 and
- * the brief says not to hardcode one. A button that looks live and silently
- * does nothing is worse than one that says what it is waiting on.
+ * Reads the real state — status, trial window, plan, limits. There is no
+ * fixed self-serve price to "Upgrade" into (Option B, 2026-09-28): a super
+ * admin sets a price for this business and sends a Cashfree hosted payment
+ * link, which shows up here as pending_payment until it's paid.
  */
 import { useEffect, useState } from 'react';
-import { api, formatMoney } from '../lib/api.js';
+import { api, formatMoney, formatCurrency } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Button, Card } from '../components/ui.jsx';
 
@@ -46,7 +46,7 @@ const Subscription = () => {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight text-ink-900">Subscription</h1>
+      <h1 className="text-h3 font-semibold text-ink-900">Subscription</h1>
 
       <Card>
         <dl className="divide-y divide-line">
@@ -66,11 +66,24 @@ const Subscription = () => {
           {data.next_billing_date && <Row label="Next billing date">{formatDate(data.next_billing_date)}</Row>}
         </dl>
 
-        {data.status === 'EXPIRED' && (
+        {data.status === 'EXPIRED' && !data.pending_payment && (
           <p className="mt-5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-sm text-ink-700">
             Your trial has ended. Everything you created is still here and still readable —
-            upgrading turns billing back on.
+            paying turns billing back on.
           </p>
+        )}
+
+        {data.pending_payment && (
+          <div className="mt-5 rounded-lg border border-brand-500/40 bg-brand-50 px-4 py-4">
+            <p className="text-sm font-semibold text-ink-900">
+              {formatCurrency(data.pending_payment.amount)}
+              <span className="ml-1 font-normal text-ink-500">/ {data.pending_payment.billing_cycle.toLowerCase()}</span>
+            </p>
+            <p className="mt-1 text-sm text-ink-500">A payment link was sent for your account. Pay on Cashfree's secure page — we never see your card or UPI details.</p>
+            <Button className="mt-3" onClick={() => window.open(data.pending_payment.payment_link_url, '_blank', 'noopener')}>
+              Pay {formatCurrency(data.pending_payment.amount)} now
+            </Button>
+          </div>
         )}
       </Card>
 
@@ -86,14 +99,14 @@ const Subscription = () => {
                   ? <>{formatMoney(plan.price_monthly_paise)}<span className="text-sm font-normal text-ink-400">/month</span></>
                   : 'Pricing on request'}
               </p>
-              {/* Deliberately inert until the provider lands — see the note at
-                  the top of this file. */}
+              {/* There's no self-serve checkout for a fixed price — see the
+                  note at the top of this file. */}
               <Button
                 variant="secondary"
                 size="sm"
                 className="mt-5 w-full"
                 disabled
-                title="Online payment is not connected yet"
+                title="Contact us for a price — we'll send a secure payment link"
               >
                 Upgrade
               </Button>
@@ -102,8 +115,8 @@ const Subscription = () => {
         </div>
 
         <p className="mt-5 text-xs text-ink-400">
-          Online payment is not connected yet. To upgrade in the meantime, contact
-          support@managerxp.com.
+          Pricing is agreed with our team, not self-serve. Contact support@managerxp.com
+          and we'll send a secure payment link for your plan.
         </p>
       </div>
     </div>

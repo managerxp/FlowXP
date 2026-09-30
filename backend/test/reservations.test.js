@@ -82,6 +82,28 @@ test('availability lists tables that fit and are free for the slot', { skip }, a
   assert.ok(names(await q(2, inMin(1200))).includes('T2'));                     // a different time is free again
 });
 
+test('a table with guests on it now cannot be booked for the next hour, only for later', { skip }, async () => {
+  const t = await A.table('Busy', 4);
+  const order = (await pool.query(`INSERT INTO orders (business_id, branch_id, table_id, order_type, status, order_number) VALUES ($1,$2,$3,'DINE_IN','OPEN','O-busy') RETURNING order_id`, [A.biz, A.branchId, t])).rows[0].order_id;
+  const free = async (when) => (await A.call(rv.availability, { query: { reserved_at: when, party_size: '2', duration_min: '90' } })).body.data.some((x) => x.table_id === t);
+  assert.equal(await free(inMin(30)), false);
+  assert.equal(await free(inMin(1500)), true);
+
+  const soon = await A.call(rv.create, { body: { guest_name: 'Soon', party_size: 2, reserved_at: inMin(30), table_id: t } });
+  assert.equal(soon.code, 409);
+  assert.match(soon.body.message, /guests on it right now/);
+  const later = await A.call(rv.create, { body: { guest_name: 'Later', party_size: 2, reserved_at: inMin(1500), table_id: t } });
+  assert.equal(later.code, 201, JSON.stringify(later.body));
+
+  // moving the later booking into the next hour is refused; editing its note is not
+  assert.equal((await A.call(rv.update, { params: { id: later.body.data.reservation_id }, body: { reserved_at: inMin(20) } })).code, 409);
+  assert.equal((await A.call(rv.update, { params: { id: later.body.data.reservation_id }, body: { notes: 'cake' } })).code, 200);
+
+  await pool.query(`UPDATE orders SET status = 'BILLED' WHERE order_id = $1`, [order]);
+  assert.equal(await free(inMin(30)), true);
+  assert.equal((await A.call(rv.create, { body: { guest_name: 'Soon', party_size: 2, reserved_at: inMin(30), table_id: t } })).code, 201);
+});
+
 test('editing moves a booking, keeping the clash rule (not against itself)', { skip }, async () => {
   const same = await A.call(rv.update, { params: { id: A.r1.reservation_id }, body: { notes: 'window seat' } });
   assert.equal(same.code, 200, JSON.stringify(same.body));

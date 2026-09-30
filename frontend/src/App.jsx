@@ -11,7 +11,11 @@ import { useAuth } from './context/AuthContext.jsx';
 import { AdminAuthProvider } from './admin/AdminAuthContext.jsx';
 import SiteLayout from './site/SiteLayout.jsx';
 import Home from './site/Home.jsx';
-import MarketingPage from './site/MarketingPage.jsx';
+import ProductPage from './site/ProductPage.jsx';
+import IndustriesPage from './site/IndustriesPage.jsx';
+import SiteIntegrations from './site/IntegrationsPage.jsx';
+import AboutPage from './site/AboutPage.jsx';
+import ContactPage from './site/ContactPage.jsx';
 import AIPage from './site/AIPage.jsx';
 import Pricing from './site/Pricing.jsx';
 import { Privacy, Terms } from './site/Legal.jsx';
@@ -26,6 +30,9 @@ const AdminDashboard = lazy(() => import('./admin/AdminDashboard.jsx'));
 const AdminBusinesses = lazy(() => import('./admin/AdminBusinesses.jsx'));
 const AdminBusinessDetail = lazy(() => import('./admin/AdminBusinessDetail.jsx'));
 const AdminPlans = lazy(() => import('./admin/AdminPlans.jsx'));
+const AdminFeatures = lazy(() => import('./admin/AdminFeatures.jsx'));
+const AdminAddons = lazy(() => import('./admin/AdminAddons.jsx'));
+const AdminSettings = lazy(() => import('./admin/AdminSettings.jsx'));
 
 /* One AdminAuthProvider instance shared by the login screen and the shell —
    two separate providers would each hold their own state, so signing in on
@@ -69,10 +76,16 @@ const CreditNotePrint = lazy(() => import('./app/PrintPages.jsx').then((m) => ({
 const OrdersPage = lazy(() => import('./app/OrdersPage.jsx'));
 const KitchenDisplay = lazy(() => import('./app/KitchenDisplay.jsx'));
 const KitchenPerformancePage = lazy(() => import('./app/KitchenPerformancePage.jsx'));
+const OrderReadyBoard = lazy(() => import('./app/OrderReadyBoard.jsx'));
 const TablesPage = lazy(() => import('./app/TablesPage.jsx'));
 const IntegrationsPage = lazy(() => import('./app/IntegrationsPage.jsx'));
+const SettlementsPage = lazy(() => import('./app/SettlementsPage.jsx'));
 const OutletsPage = lazy(() => import('./app/OutletsPage.jsx'));
 const ReservationsPage = lazy(() => import('./app/ReservationsPage.jsx'));
+const DebitNotesPage = lazy(() => import('./app/DebitNotesPage.jsx'));
+const GstPage = lazy(() => import('./app/GstPage.jsx'));
+const SecurityPage = lazy(() => import('./app/SecurityPage.jsx'));
+const StockRequestsPage = lazy(() => import('./app/StockRequestsPage.jsx'));
 const LoyaltyPage = lazy(() => import('./app/LoyaltyPage.jsx'));
 const AIManagerPage = lazy(() => import('./app/AIManagerPage.jsx'));
 const ActivityPage = lazy(() => import('./app/ActivityPage.jsx'));
@@ -86,6 +99,7 @@ const StaffPage = lazy(() => import('./app/StaffPage.jsx'));
 const CustomerMenu = lazy(() => import('./public/CustomerMenu.jsx'));
 const BillPage = lazy(() => import('./public/BillPage.jsx'));
 const MessagingPage = lazy(() => import('./app/MessagingPage.jsx'));
+const ReviewsPage = lazy(() => import('./app/ReviewsPage.jsx'));
 
 /* Screens still to come (none right now: every app page has a real screen). */
 const PENDING = [];
@@ -109,12 +123,12 @@ const App = () => (
     {/* Public */}
     <Route element={<SiteLayout />}>
       <Route index element={<Home />} />
-      <Route path="features" element={<MarketingPage page="features" />} />
-      <Route path="industries" element={<MarketingPage page="industries" />} />
+      <Route path="features" element={<ProductPage />} />
+      <Route path="industries" element={<IndustriesPage />} />
       <Route path="ai" element={<AIPage />} />
-      <Route path="integrations" element={<MarketingPage page="integrations" />} />
-      <Route path="about" element={<MarketingPage page="about" />} />
-      <Route path="contact" element={<MarketingPage page="contact" />} />
+      <Route path="integrations" element={<SiteIntegrations />} />
+      <Route path="about" element={<AboutPage />} />
+      <Route path="contact" element={<ContactPage />} />
       <Route path="pricing" element={<Pricing />} />
       <Route path="privacy" element={<Privacy />} />
       <Route path="terms" element={<Terms />} />
@@ -162,12 +176,19 @@ const App = () => (
       <Route path="orders" element={<OrdersPage />} />
       <Route path="kitchen" element={<KitchenDisplay />} />
       <Route path="kitchen/performance" element={<KitchenPerformancePage />} />
+      <Route path="kitchen/board" element={<OrderReadyBoard />} />
       <Route path="tables" element={<TablesPage />} />
       <Route path="reservations" element={<ReservationsPage />} />
+      <Route path="debit-notes" element={<DebitNotesPage />} />
+      <Route path="gst" element={<GstPage />} />
+      <Route path="security" element={<SecurityPage />} />
+      <Route path="stock-requests" element={<StockRequestsPage />} />
       <Route path="integrations" element={<IntegrationsPage />} />
+      <Route path="settlements" element={<SettlementsPage />} />
       <Route path="outlets" element={<OutletsPage />} />
       <Route path="loyalty" element={<LoyaltyPage />} />
       <Route path="messaging" element={<MessagingPage />} />
+      <Route path="reviews" element={<ReviewsPage />} />
       <Route path="ai" element={<AIManagerPage />} />
       <Route path="print/receipt/:id" element={<ReceiptPage />} />
       <Route path="print/kot/:id" element={<KotPage />} />
@@ -218,6 +239,9 @@ const App = () => (
         <Route path="businesses" element={<AdminBusinesses />} />
         <Route path="businesses/:id" element={<AdminBusinessDetail />} />
         <Route path="plans" element={<AdminPlans />} />
+        <Route path="features" element={<AdminFeatures />} />
+        <Route path="addons" element={<AdminAddons />} />
+        <Route path="settings" element={<AdminSettings />} />
       </Route>
     </Route>
 

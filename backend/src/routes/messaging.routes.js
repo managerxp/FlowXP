@@ -1,10 +1,11 @@
 import { Router } from 'express';
-import { requireAuth, withBusiness, requirePermission } from '../middleware/auth.js';
+import { requireAuth, withBusiness, requirePermission, requirePlanFeature } from '../middleware/auth.js';
 import * as m from '../controllers/messaging.controller.js';
 
 const router = Router();
-const read = (perm) => [requireAuth, withBusiness(), requirePermission(perm)];
-const write = (perm) => [requireAuth, withBusiness({ requireActive: true }), requirePermission(perm)];
+const feature = requirePlanFeature('messaging');
+const read = (perm) => [requireAuth, withBusiness(), feature, requirePermission(perm)];
+const write = (perm) => [requireAuth, withBusiness({ requireActive: true }), feature, requirePermission(perm)];
 
 router.get('/messaging/settings', ...read('settings'), m.getSettingsHandler);
 router.put('/messaging/settings', ...write('settings'), m.putSettings);

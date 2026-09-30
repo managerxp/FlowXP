@@ -9,6 +9,7 @@
  * do, so "why does this product show 12" always has one place to look.
  */
 import pool from '../config/database.js';
+import { TransferError, transferStock } from '../modules/transfers.js';
 import { recordAudit } from '../modules/events.js';
 import { toRupees } from '../utils/money.js';
 import { moveStock, stockAt } from '../modules/stock.js';
@@ -31,7 +32,7 @@ export const levels = async (req, res) => {
   if (low_stock === 'true') clauses.push(`${qty} <= p.min_stock`);
 
   const { rows } = await pool.query(
-    `SELECT p.product_id, p.name, p.unit, ${qty} AS current_stock, p.min_stock, p.purchase_price_paise
+    `SELECT p.product_id, p.name, p.unit, p.kind, ${qty} AS current_stock, p.min_stock, p.purchase_price_paise
      FROM products p ${join} WHERE ${clauses.join(' AND ')} ORDER BY p.name`,
     values
   );
@@ -39,7 +40,8 @@ export const levels = async (req, res) => {
   res.json({
     success: true,
     data: rows.map((r) => ({
-      product_id: r.product_id, name: r.name, unit: r.unit,
+      product_id: r.product_id, name: r.name, unit: r.unit, kind: r.kind,
+      unit_cost: toRupees(r.purchase_price_paise),
       current_stock: Number(r.current_stock), min_stock: Number(r.min_stock),
       low_stock: Number(r.current_stock) <= Number(r.min_stock),
       stock_value: toRupees(Number(r.current_stock) * Number(r.purchase_price_paise))
@@ -73,8 +75,14 @@ export const history = async (req, res) => {
 
   const values = [req.params.productId];
   const { rows } = await pool.query(
-    `SELECT txn_id, branch_id, transaction_type, quantity, reference_type, reference_id, notes, created_at
-     FROM inventory_transactions WHERE product_id = $1${branchFilter(req.tenant, 'branch_id', values)} ORDER BY created_at DESC, txn_id DESC LIMIT 200`,
+    // what each movement points at, by its own number, so the history reads without opening anything
+    `SELECT t.txn_id, t.branch_id, b.name AS outlet, t.transaction_type, t.quantity, t.reference_type, t.reference_id, t.reason_code, t.notes, t.created_at,
+            i.invoice_number, po.po_number
+     FROM inventory_transactions t
+     LEFT JOIN branches b ON b.branch_id = t.branch_id
+     LEFT JOIN invoices i ON t.reference_type = 'invoice' AND i.invoice_id = t.reference_id
+     LEFT JOIN purchase_orders po ON t.reference_type = 'purchase_order' AND po.po_id = t.reference_id
+     WHERE t.product_id = $1${branchFilter(req.tenant, 't.branch_id', values)} ORDER BY t.created_at DESC, t.txn_id DESC LIMIT 200`,
     values
   );
   res.json({ success: true, data: rows.map((r) => ({ ...r, quantity: Number(r.quantity) })) });
@@ -224,36 +232,14 @@ export const transfer = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const outlets = (await client.query(`SELECT branch_id FROM branches WHERE business_id = $1 AND status = 'ACTIVE' AND branch_id = ANY($2::int[])`, [req.tenant.businessId, [from, to]])).rows;
-    if (outlets.length !== 2) { await client.query('ROLLBACK'); return res.status(404).json({ success: false, message: 'Not found' }); }
-    const { rows } = await client.query(
-      `SELECT product_id, name, track_inventory FROM products WHERE product_id = $1 AND business_id = $2 FOR UPDATE`,
-      [body.product_id, req.tenant.businessId]
-    );
-    if (!rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ success: false, message: 'Not found' }); }
-    if (!rows[0].track_inventory) { await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: `${rows[0].name} does not track stock` }); }
-
-    const have = (await stockAt(client, from, [rows[0].product_id])).get(rows[0].product_id);
-    if (have < quantity) { await client.query('ROLLBACK'); return res.status(409).json({ success: false, message: `Only ${have} of ${rows[0].name} at the sending outlet` }); }
-
     const note = body.notes ? String(body.notes).trim().slice(0, 200) : null;
-    const t = (await client.query(
-      `INSERT INTO stock_transfers (business_id, from_branch_id, to_branch_id, product_id, quantity, notes, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING transfer_id`,
-      [req.tenant.businessId, from, to, rows[0].product_id, quantity, note, req.auth.userId]
-    )).rows[0];
-    for (const [branchId, delta] of [[from, -quantity], [to, quantity]]) {
-      await moveStock(client, { businessId: req.tenant.businessId, branchId, productId: rows[0].product_id, delta });
-      await client.query(
-        `INSERT INTO inventory_transactions (business_id, branch_id, product_id, transaction_type, quantity, reference_type, reference_id, notes, created_by)
-         VALUES ($1,$2,$3,'TRANSFER',$4,'stock_transfer',$5,$6,$7)`,
-        [req.tenant.businessId, branchId, rows[0].product_id, delta, t.transfer_id, note, req.auth.userId]
-      );
-    }
+    const done = await transferStock(client, { businessId: req.tenant.businessId, from, to, productId: body.product_id, quantity, notes: note, userId: req.auth.userId });
     await client.query('COMMIT');
-    recordAudit(req, { action: 'inventory.transferred', resource_type: 'product', resource_id: rows[0].product_id, metadata: { from, to, quantity } });
-    res.status(201).json({ success: true, data: { transfer_id: t.transfer_id } });
+    recordAudit(req, { action: 'inventory.transferred', resource_type: 'product', resource_id: done.productId, metadata: { from, to, quantity } });
+    res.status(201).json({ success: true, data: { transfer_id: done.transferId } });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
+    if (error instanceof TransferError) return res.status(error.status).json({ success: false, message: error.message });
     throw error;
   } finally {
     client.release();

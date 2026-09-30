@@ -10,6 +10,17 @@ import { recordAudit } from '../modules/events.js';
 import { toPaise, toRupees } from '../utils/money.js';
 import { branchFilter } from '../utils/scope.js';
 
+const METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER'];
+// a real calendar day: 2026-02-31 would roll over in JavaScript but is refused by the database
+const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v)) && new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === String(v);
+/* The checks create and update share; returns a message, or null when the fields are fine. */
+const invalid = (body) => {
+  if ('category' in body && (!String(body.category ?? '').trim() || String(body.category).trim().length > 60)) return 'Choose a category (up to 60 letters)';
+  if (body.payment_method != null && !METHODS.includes(body.payment_method)) return 'Choose how it was paid';
+  if (body.expense_date != null && body.expense_date !== '' && !isDate(body.expense_date)) return 'Enter a valid date';
+  return null;
+};
+
 const asExpense = (row) => ({
   expense_id: row.expense_id,
   category: row.category,
@@ -37,9 +48,40 @@ export const list = async (req, res) => {
   res.json({ success: true, data: rows.map(asExpense) });
 };
 
+/* GET /api/expenses/summary?from=&to= : exact totals for a period, by category and by how it was paid,
+   plus every category this outlet has used (for the add form). The list is capped; this is not. */
+export const summary = async (req, res) => {
+  const { from, to } = req.query;
+  if ((from && !isDate(from)) || (to && !isDate(to))) return res.status(400).json({ success: false, message: 'Enter valid dates' });
+  const values = [req.tenant.businessId];
+  const scope = branchFilter(req.tenant, 'branch_id', values);
+  const range = [];
+  if (from) { values.push(from); range.push(`expense_date >= $${values.length}`); }
+  if (to) { values.push(to); range.push(`expense_date <= $${values.length}`); }
+  const inRange = range.map((c) => ` AND ${c}`).join('');
+  const [byCategory, byMethod, known] = await Promise.all([
+    pool.query(`SELECT category, SUM(amount_paise) AS paise, COUNT(*)::int AS n FROM expenses WHERE business_id = $1${scope}${inRange} GROUP BY category ORDER BY paise DESC, category`, values),
+    pool.query(`SELECT payment_method, SUM(amount_paise) AS paise FROM expenses WHERE business_id = $1${scope}${inRange} GROUP BY payment_method ORDER BY paise DESC`, values),
+    pool.query(`SELECT category, COUNT(*)::int AS n FROM expenses WHERE business_id = $1${scope} GROUP BY category ORDER BY n DESC, category LIMIT 30`, values.slice(0, scope ? 2 : 1))
+  ]);
+  const totalPaise = byCategory.rows.reduce((t, r) => t + Number(r.paise), 0);
+  res.json({
+    success: true,
+    data: {
+      total: toRupees(totalPaise),
+      count: byCategory.rows.reduce((t, r) => t + r.n, 0),
+      by_category: byCategory.rows.map((r) => ({ category: r.category, total: toRupees(r.paise), count: r.n })),
+      by_method: byMethod.rows.map((r) => ({ method: r.payment_method, total: toRupees(r.paise) })),
+      categories: known.rows.map((r) => r.category)
+    }
+  });
+};
+
 export const create = async (req, res) => {
   const body = req.body || {};
   if (!body.category || !String(body.category).trim()) return res.status(400).json({ success: false, message: 'Choose a category' });
+  const bad = invalid(body);
+  if (bad) return res.status(400).json({ success: false, message: bad });
 
   let amountPaise;
   try { amountPaise = toPaise(body.amount); } catch { return res.status(400).json({ success: false, message: 'Enter an amount' }); }
@@ -61,6 +103,8 @@ export const create = async (req, res) => {
 
 export const update = async (req, res) => {
   const body = req.body || {};
+  const bad = invalid(body);
+  if (bad) return res.status(400).json({ success: false, message: bad });
   const updates = [];
   const values = [];
 

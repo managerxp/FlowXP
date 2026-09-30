@@ -81,6 +81,13 @@ export const config = {
   },
   // Extra browser origins allowed to call the API (comma separated), on top of APP_ORIGIN.
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
+  /* Cashfree Payment Links — custom-priced subscription payments (no keys = the
+     admin gets a clear "not set up yet" error instead of a broken call). */
+  cashfree: {
+    appId: process.env.CASHFREE_APP_ID || '',
+    secretKey: process.env.CASHFREE_SECRET_KEY || '',
+    env: (process.env.CASHFREE_ENV || 'SANDBOX').toUpperCase() // SANDBOX | PRODUCTION
+  },
   mail: {
     host: process.env.SMTP_HOST || '',
     port: Number(process.env.SMTP_PORT || 587),

@@ -157,7 +157,7 @@ export const scanStock = async (businessId) => {
     const late = (await pool.query(
       `SELECT po.po_id, po.po_number, s.name AS supplier_name, po.expected_date::text AS expected_date, (${'$2'}::date - po.expected_date)::int AS days_late
        FROM purchase_orders po LEFT JOIN suppliers s ON s.supplier_id = po.supplier_id
-       WHERE po.business_id = $1 AND po.branch_id = $3 AND po.status = 'ORDERED' AND po.expected_date < $2::date`, [businessId, today, outlet.branch_id])).rows;
+       WHERE po.business_id = $1 AND po.branch_id = $3 AND po.status IN ('ORDERED','PARTIAL') AND po.expected_date < $2::date`, [businessId, today, outlet.branch_id])).rows;
     for (const alert of overdueOrderAlerts(late)) sent += await notify(businessId, forOutlet(alert, outlet, outlets.length > 1));
   }
   return sent;
@@ -204,7 +204,7 @@ export const scanAccount = async (businessId) => {
 
 /* ── scheduling ───────────────────────────────────────────────────────────── */
 
-const RESTAURANT = ['RESTAURANT', 'CAFE', 'GAMING_CAFE', 'RACING'];
+const RESTAURANT = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE', 'RACING'];
 
 export const localHour = (timezone, now = new Date()) => Number(new Intl.DateTimeFormat('en-GB', { timeZone: timezone, hour: 'numeric', hour12: false }).format(now)) % 24;
 

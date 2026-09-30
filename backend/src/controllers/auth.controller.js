@@ -10,7 +10,8 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import pool from '../config/database.js';
-import { signToken } from '../middleware/auth.js';
+import { readChallenge, signChallenge, signToken } from '../middleware/auth.js';
+import { alertNewDevice, decryptSecret, lockedMinutes, recordLogin, recoveryCodesLeft, useRecoveryCode, verifyTotp } from '../modules/security.js';
 import { newTrialWindow, subscriptionSummary } from '../modules/subscription.js';
 import { recordAudit, recordEvent } from '../modules/events.js';
 import { sendPasswordReset } from '../modules/mailer.js';
@@ -24,6 +25,10 @@ import {
 const BCRYPT_ROUNDS = 12;
 const RESET_TTL_MS = 60 * 60 * 1000;
 
+/* A real hash of a random password, so an unknown address costs the same time as a wrong password. (A malformed
+   string would make bcrypt return at once, and the difference in timing would tell an attacker which addresses exist.) */
+const DUMMY_HASH = bcrypt.hashSync(crypto.randomBytes(16).toString('hex'), BCRYPT_ROUNDS);
+
 const publicUser = (user) => ({
   user_id: user.user_id,
   name: user.name,
@@ -36,7 +41,7 @@ const publicUser = (user) => ({
    POST /api/auth/signup
    ========================================================================== */
 export const signup = async (req, res) => {
-  const { name, email, phone, password, business_name, business_type } = req.body || {};
+  const { name, email, phone, password, business_name, business_type, accepted_terms: acceptedTerms } = req.body || {};
 
   const error = firstError([
     checkName(name, 'Your name'),
@@ -44,7 +49,10 @@ export const signup = async (req, res) => {
     checkPhone(phone),
     checkPassword(password),
     checkName(business_name, 'Business name'),
-    checkBusinessType(business_type)
+    checkBusinessType(business_type),
+    // Checked here too, not only by the signup form's disabled button — a
+    // direct API call must not be able to create an account without it.
+    acceptedTerms ? null : 'You must agree to the Terms and Privacy Policy to create an account'
   ]);
   if (error) return res.status(400).json({ success: false, message: error });
 
@@ -58,8 +66,8 @@ export const signup = async (req, res) => {
     let user;
     try {
       user = (await client.query(
-        `INSERT INTO users (name, email, phone, password_hash)
-         VALUES ($1,$2,$3,$4)
+        `INSERT INTO users (name, email, phone, password_hash, terms_accepted_at)
+         VALUES ($1,$2,$3,$4,CURRENT_TIMESTAMP)
          RETURNING user_id, name, email, phone, email_verified`,
         [String(name).trim(), emailLower, phone ? String(phone).trim() : null, passwordHash]
       )).rows[0];
@@ -79,8 +87,10 @@ export const signup = async (req, res) => {
     const business = (await client.query(
       `INSERT INTO businesses
          (name, business_type, owner_user_id, email, phone,
-          subscription_status, plan_code, trial_started_at, trial_ends_at)
-       VALUES ($1,$2,$3,$4,$5,'TRIAL','TRIAL',$6,$7)
+          subscription_status, plan_code, plan_version_id, trial_started_at, trial_ends_at)
+       VALUES ($1,$2,$3,$4,$5,'TRIAL','TRIAL',
+               (SELECT plan_version_id FROM plan_versions WHERE plan_code = 'TRIAL' AND effective_to IS NULL),
+               $6,$7)
        RETURNING *`,
       [
         String(business_name).trim(),
@@ -157,6 +167,51 @@ export const signup = async (req, res) => {
 /* ==========================================================================
    POST /api/auth/login
    ========================================================================== */
+/* What a signed-in session looks like to the app: the token, the person and their businesses. */
+const sessionPayload = async (user) => {
+  const businesses = (await pool.query(
+    `SELECT bu.role, b.business_id, b.name, b.business_type, b.currency, b.onboarding_step,
+            b.subscription_status, b.plan_code, b.billing_cycle,
+            b.trial_started_at, b.trial_ends_at, b.next_billing_date
+     FROM business_users bu
+     JOIN businesses b ON b.business_id = bu.business_id
+     WHERE bu.user_id = $1 AND bu.status = 'ACTIVE' AND b.status <> 'CLOSED'
+     ORDER BY b.business_id`,
+    [user.user_id]
+  )).rows;
+  return {
+    token: signToken(user),
+    user: publicUser(user),
+    businesses: businesses.map((b) => ({
+      business_id: b.business_id,
+      name: b.name,
+      business_type: b.business_type,
+      currency: b.currency,
+      onboarding_step: b.onboarding_step,
+      role: b.role,
+      subscription: subscriptionSummary(b)
+    }))
+  };
+};
+
+const LOCKED = (minutes) => `Too many failed attempts on this account. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}, or reset your password.`;
+
+/** A finished sign-in: remember it, warn about a new device, hand back the session. */
+const finishLogin = async (req, res, user, method) => {
+  const { newDevice } = await recordLogin(pool, { userId: user.user_id, email: user.email, req, outcome: 'SUCCESS', method });
+  if (newDevice) alertNewDevice(user, req);
+  pool.query(`UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE user_id = $1`, [user.user_id]).catch(() => {});
+  res.json({ success: true, data: { ...(await sessionPayload(user)), new_device: newDevice } });
+};
+
+/* ==========================================================================
+   POST /api/auth/login
+
+   Password first. With two-step verification on, a correct password only earns
+   a short-lived challenge; the session comes from POST /auth/login/2fa.
+   Five failures in a row on one address lock it for a quarter of an hour, so a
+   guessing attack has to be spread over many addresses and many IPs.
+   ========================================================================== */
 export const login = async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) {
@@ -164,20 +219,24 @@ export const login = async (req, res) => {
   }
 
   try {
+    const address = normaliseEmail(email);
+    const locked = await lockedMinutes(pool, address);
+    if (locked) {
+      await recordLogin(pool, { email: address, req, outcome: 'LOCKED' });
+      return res.status(429).json({ success: false, message: LOCKED(locked) });
+    }
+
     const { rows } = await pool.query(
-      `SELECT user_id, name, email, phone, password_hash, email_verified, is_super_admin
+      `SELECT user_id, name, email, phone, password_hash, email_verified, is_super_admin, token_version, totp_enabled
        FROM users WHERE email = $1`,
-      [normaliseEmail(email)]
+      [address]
     );
 
     const user = rows[0];
-    /* Hash against a dummy when the user does not exist, so a missing account
-       and a wrong password take the same time. Skipping this leaks which
-       addresses are registered to anyone with a stopwatch. */
-    const hash = user?.password_hash || '$2a$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalidin';
-    const ok = await bcrypt.compare(String(password), hash);
+    const ok = await bcrypt.compare(String(password), user?.password_hash || DUMMY_HASH);
 
     if (!user || !ok) {
+      await recordLogin(pool, { userId: user?.user_id ?? null, email: address, req, outcome: user ? 'BAD_PASSWORD' : 'UNKNOWN_USER' });
       return res.status(401).json({ success: false, message: 'Email or password is incorrect' });
     }
 
@@ -194,38 +253,52 @@ export const login = async (req, res) => {
       });
     }
 
-    pool.query(`UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE user_id = $1`, [user.user_id])
-      .catch(() => {});
-
-    const businesses = (await pool.query(
-      `SELECT bu.role, b.business_id, b.name, b.business_type, b.currency, b.onboarding_step,
-              b.subscription_status, b.plan_code, b.billing_cycle,
-              b.trial_started_at, b.trial_ends_at, b.next_billing_date
-       FROM business_users bu
-       JOIN businesses b ON b.business_id = bu.business_id
-       WHERE bu.user_id = $1 AND bu.status = 'ACTIVE' AND b.status <> 'CLOSED'
-       ORDER BY b.business_id`,
-      [user.user_id]
-    )).rows;
-
-    res.json({
-      success: true,
-      data: {
-        token: signToken(user),
-        user: publicUser(user),
-        businesses: businesses.map((b) => ({
-          business_id: b.business_id,
-          name: b.name,
-          business_type: b.business_type,
-          currency: b.currency,
-          onboarding_step: b.onboarding_step,
-          role: b.role,
-          subscription: subscriptionSummary(b)
-        }))
-      }
-    });
+    if (user.totp_enabled) {
+      return res.json({ success: true, data: { requires_2fa: true, challenge: signChallenge(user) } });
+    }
+    await finishLogin(req, res, user, 'PASSWORD');
   } catch (error) {
     console.error('[auth] login failed:', error.message);
+    res.status(500).json({ success: false, message: 'Could not sign you in' });
+  }
+};
+
+/* ==========================================================================
+   POST /api/auth/login/2fa { challenge, code | recovery_code }
+   ========================================================================== */
+export const loginTwoFactor = async (req, res) => {
+  const { challenge, code, recovery_code: recovery } = req.body || {};
+  const claim = readChallenge(challenge);
+  if (!claim) return res.status(401).json({ success: false, message: 'That sign-in took too long. Enter your password again.' });
+
+  try {
+    const user = (await pool.query(
+      `SELECT user_id, name, email, phone, email_verified, is_super_admin, token_version, totp_enabled, totp_secret_enc, totp_last_step FROM users WHERE user_id = $1`, [claim.sub])).rows[0];
+    // a password change or sign-out-everywhere since the password step voids the challenge
+    if (!user || !user.totp_enabled || user.token_version !== (claim.tv ?? 0)) return res.status(401).json({ success: false, message: 'That sign-in took too long. Enter your password again.' });
+
+    const locked = await lockedMinutes(pool, user.email);
+    if (locked) {
+      await recordLogin(pool, { userId: user.user_id, email: user.email, req, outcome: 'LOCKED' });
+      return res.status(429).json({ success: false, message: LOCKED(locked) });
+    }
+
+    let method = null;
+    if (recovery) {
+      if (await useRecoveryCode(pool, user.user_id, recovery)) method = 'RECOVERY';
+    } else {
+      const step = verifyTotp(decryptSecret(user.totp_secret_enc), code, { lastStep: user.totp_last_step });
+      // remember the step, so this same code can't be used a second time
+      if (step != null && (await pool.query(`UPDATE users SET totp_last_step = $2 WHERE user_id = $1 AND (totp_last_step IS NULL OR totp_last_step < $2)`, [user.user_id, step])).rowCount === 1) method = '2FA';
+    }
+    if (!method) {
+      await recordLogin(pool, { userId: user.user_id, email: user.email, req, outcome: 'TWO_FACTOR_FAILED' });
+      return res.status(401).json({ success: false, message: recovery ? 'That recovery code is not valid, or was already used.' : 'That code is not right. Codes change every 30 seconds.' });
+    }
+    if (method === 'RECOVERY') recordAudit(req, { user_id: user.user_id, action: 'user.recovery_code_used', resource_type: 'user', resource_id: user.user_id, metadata: { left: await recoveryCodesLeft(pool, user.user_id) } });
+    await finishLogin(req, res, user, method);
+  } catch (error) {
+    console.error('[auth] 2fa login failed:', error.message);
     res.status(500).json({ success: false, message: 'Could not sign you in' });
   }
 };
@@ -242,7 +315,7 @@ export const me = async (req, res) => {
   res.json({
     success: true,
     data: {
-      user: publicUser(req.auth.user),
+      user: { ...publicUser(req.auth.user), two_factor_enabled: Boolean(req.auth.user.totp_enabled) },
       businesses: req.memberships.map((m) => ({
         business_id: m.business_id,
         name: m.name,
@@ -250,7 +323,12 @@ export const me = async (req, res) => {
         currency: m.currency,
         onboarding_step: m.onboarding_step,
         gst_enabled: m.gst_enabled,
+        upi_vpa: m.upi_vpa || null,   // the till shows a UPI QR for this ID
+        two_factor_required: Boolean(m.require_2fa_admins) && ['OWNER', 'ADMIN'].includes(m.role),
         role: m.role,
+        // this person's own permission overrides, so the app can show a sidebar
+        // and screens that match what they can actually do, not just their role
+        permissions: m.permissions || {},
         branch_id: m.branch_id,
         outlets: outlets.filter((o) => o.business_id === m.business_id && (m.branch_id == null || o.branch_id === m.branch_id))
           .map((o) => ({ branch_id: o.branch_id, name: o.name, is_primary: o.is_primary })),
@@ -337,7 +415,7 @@ export const resetPassword = async (req, res) => {
     const passwordHash = await bcrypt.hash(String(password), BCRYPT_ROUNDS);
 
     await pool.query(
-      `UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2`,
+      `UPDATE users SET password_hash = $1, token_version = token_version + 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2`,
       [passwordHash, userId]
     );
     await pool.query(

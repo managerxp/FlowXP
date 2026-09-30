@@ -4,20 +4,25 @@
  * Quantities are per ONE portion in the ingredient's own unit.
  */
 
-/** Load recipes for a set of dishes: Map(dishId -> [{ ingredient_id, quantity, wastage_pct, ingredient_name, unit, price_paise }]). */
-export const loadRecipes = async (client, businessId, dishIds) => {
+/**
+ * Load recipes for a set of dishes: Map(dishId -> [{ ingredient_id, quantity, wastage_pct, ingredient_name, unit, price_paise }]).
+ * With a `branchId`, a dish that has its own recipe at that outlet uses it (whole, not merged); otherwise the default recipe.
+ */
+export const loadRecipes = async (client, businessId, dishIds, branchId = null) => {
   const map = new Map();
   if (!dishIds.length) return map;
   const { rows } = await client.query(
-    `SELECT r.dish_product_id, r.ingredient_product_id, r.quantity, r.wastage_pct,
+    `SELECT r.dish_product_id, r.ingredient_product_id, r.quantity, r.wastage_pct, r.branch_id,
             i.name AS ingredient_name, i.unit, i.purchase_price_paise
      FROM recipe_items r
      JOIN products i ON i.product_id = r.ingredient_product_id
-     WHERE r.business_id = $1 AND r.dish_product_id = ANY($2::int[])
+     WHERE r.business_id = $1 AND r.dish_product_id = ANY($2::int[]) AND (r.branch_id IS NULL OR r.branch_id = $3::int)
      ORDER BY r.recipe_item_id`,
-    [businessId, dishIds]
+    [businessId, dishIds, branchId]
   );
+  const overridden = new Set(rows.filter((r) => r.branch_id != null).map((r) => r.dish_product_id));
   for (const r of rows) {
+    if (overridden.has(r.dish_product_id) !== (r.branch_id != null)) continue;   // the outlet's own recipe, or the default when it has none
     if (!map.has(r.dish_product_id)) map.set(r.dish_product_id, []);
     map.get(r.dish_product_id).push({
       ingredient_id: r.ingredient_product_id,

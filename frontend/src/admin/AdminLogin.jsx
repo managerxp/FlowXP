@@ -40,14 +40,14 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="glow-brand flex min-h-full flex-col items-center justify-center px-5 py-14">
+    <div className="flex min-h-full flex-col items-center justify-center px-5 py-14">
       <Logo showTagline />
       <p className="mb-9 mt-2 text-xs font-semibold uppercase tracking-[0.2em] text-ink-400">
         Platform administration
       </p>
 
-      <div className="glass w-full max-w-sm rounded-[--radius-card] p-7 sm:p-8">
-        <h1 className="text-2xl font-bold tracking-tight text-ink-900">Super admin sign in</h1>
+      <div className="border border-line bg-surface w-full max-w-sm rounded-(--radius-card) p-7 sm:p-8">
+        <h1 className="text-h3 font-semibold text-ink-900">Super admin sign in</h1>
         <p className="mt-2 text-sm text-ink-500">Manage every FlowXP tenant from here.</p>
 
         <form onSubmit={onSubmit} className="mt-7 space-y-4">

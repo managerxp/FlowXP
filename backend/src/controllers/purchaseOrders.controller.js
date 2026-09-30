@@ -18,6 +18,7 @@ import { branchFilter } from '../utils/scope.js';
 import { addDaysISO, businessToday } from '../utils/dates.js';
 import { toPaise, toQuantity, toRupees } from '../utils/money.js';
 import { asPO, nextPoNumber, paymentStatus } from './purchases.controller.js';
+import { listPrices } from './supplierPrices.controller.js';
 
 const OPEN = ['DRAFT', 'ORDERED'];
 
@@ -31,7 +32,7 @@ const fail = (res, error) => {
 };
 
 /** Validate order lines against this business's products and work out tax. */
-const prepareLines = async (client, businessId, business, rawItems) => {
+const prepareLines = async (client, businessId, business, rawItems, supplierId = null) => {
   if (!Array.isArray(rawItems) || !rawItems.length) throw new OrderError(400, 'Add at least one item');
   const ids = [...new Set(rawItems.filter((i) => i.product_id).map((i) => Number(i.product_id)))];
   const products = new Map();
@@ -39,6 +40,9 @@ const prepareLines = async (client, businessId, business, rawItems) => {
     const { rows } = await client.query(`SELECT product_id, name, track_inventory FROM products WHERE business_id = $1 AND product_id = ANY($2::int[])`, [businessId, ids]);
     for (const p of rows) products.set(p.product_id, p);
   }
+  // a line with no price takes the supplier's listed price, else the product's last purchase price
+  const listed = supplierId ? await listPrices(client, businessId, supplierId, ids) : new Map();
+  const lastPaid = new Map((ids.length ? (await client.query(`SELECT product_id, purchase_price_paise FROM products WHERE business_id = $1 AND product_id = ANY($2::int[])`, [businessId, ids])).rows : []).map((r) => [r.product_id, Number(r.purchase_price_paise)]));
   return rawItems.map((raw) => {
     const quantity = toQuantity(raw.quantity);
     let description; let product = null;
@@ -50,7 +54,8 @@ const prepareLines = async (client, businessId, business, rawItems) => {
       if (!raw.description) throw new OrderError(400, 'A custom line needs a description');
       description = String(raw.description).trim();
     }
-    const unitCostPaise = toPaise(raw.unit_cost ?? 0);
+    const noPrice = raw.unit_cost == null || raw.unit_cost === '';
+    const unitCostPaise = noPrice && product ? (listed.get(product.product_id)?.price_paise ?? lastPaid.get(product.product_id) ?? 0) : toPaise(raw.unit_cost ?? 0);
     const taxRate = Number(raw.tax_rate) || 0;
     const tax = computeLineTax({ quantity, unitPricePaise: unitCostPaise, taxRatePercent: taxRate, gstEnabled: business.gst_enabled, interState: isInterState(business.state, null) });
     return { product_id: product?.product_id ?? null, description, quantity, unitCostPaise, taxRate, ...tax };
@@ -82,7 +87,7 @@ const validDate = (v) => (v == null || v === '' ? null : /^\d{4}-\d{2}-\d{2}$/.t
 const createOpenOrder = async (client, { tenant, userId, supplierId, items, notes, expectedDate, source = 'MANUAL', businessId = tenant.businessId }) => {
   const business = await businessOf(client, businessId);
   const supplier = await checkSupplier(client, businessId, supplierId);
-  const lines = await prepareLines(client, businessId, business, items);
+  const lines = await prepareLines(client, businessId, business, items, supplier?.supplier_id ?? null);
   const totals = sumLines(lines);
   const poNumber = await nextPoNumber(client, businessId);
   const po = (await client.query(
@@ -120,9 +125,9 @@ export const fromForecast = async (req, res) => {
 
     // What is already on an open order at this outlet counts towards the need, so pressing this twice doesn't order twice.
     const onOrder = new Map((await client.query(
-      `SELECT i.product_id, SUM(i.quantity) AS qty FROM purchase_order_items i JOIN purchase_orders po ON po.po_id = i.po_id
+      `SELECT i.product_id, SUM(i.quantity - COALESCE(i.received_quantity, 0)) AS qty FROM purchase_order_items i JOIN purchase_orders po ON po.po_id = i.po_id
        WHERE po.business_id = $1 AND po.branch_id = $2 AND po.status = ANY($3::text[]) AND i.product_id IS NOT NULL GROUP BY i.product_id`,
-      [businessId, branchId, OPEN]
+      [businessId, branchId, [...OPEN, 'PARTIAL']]
     )).rows.map((r) => [r.product_id, Number(r.qty)]));
 
     const created = []; const skipped = [];
@@ -149,7 +154,7 @@ const lockOpen = async (client, req, { allow = OPEN } = {}) => {
     `SELECT * FROM purchase_orders WHERE business_id = $1 AND po_id = $2${branchFilter(req.tenant, 'branch_id', values)} FOR UPDATE`, values
   )).rows[0];
   if (!po) throw new OrderError(404, 'Not found');
-  if (!allow.includes(po.status)) throw new OrderError(409, po.status === 'RECEIVED' ? 'This order has already been received' : po.status === 'CANCELLED' ? 'This order was cancelled' : 'This order can’t be changed now');
+  if (!allow.includes(po.status)) throw new OrderError(409, po.status === 'RECEIVED' ? 'This order has already been received' : po.status === 'CANCELLED' ? 'This order was cancelled' : po.status === 'PARTIAL' ? 'Part of this order has arrived. Receive the rest, or close it as short.' : 'This order can’t be changed now');
   return po;
 };
 
@@ -164,7 +169,7 @@ export const update = async (req, res) => {
     const supplier = 'supplier_id' in body ? await checkSupplier(client, req.tenant.businessId, body.supplier_id) : null;
     let totals = { subtotal_paise: po.subtotal_paise, tax_paise: po.tax_paise, total_paise: po.total_paise };
     if ('items' in body) {
-      const lines = await prepareLines(client, req.tenant.businessId, business, body.items);
+      const lines = await prepareLines(client, req.tenant.businessId, business, body.items, 'supplier_id' in body ? (supplier?.supplier_id ?? null) : po.supplier_id);
       totals = sumLines(lines);
       await client.query(`DELETE FROM purchase_order_items WHERE po_id = $1`, [po.po_id]);
       await insertLines(client, po.po_id, lines);
@@ -240,14 +245,16 @@ export const cancel = async (req, res) => {
   } catch (error) { await client.query('ROLLBACK').catch(() => {}); return fail(res, error); } finally { client.release(); }
 };
 
-/* POST /api/purchases/:id/receive { items?: [{ item_id, received_quantity, unit_cost? }], payment? }
-   What arrived replaces what was ordered. A line not mentioned is taken as delivered in full. */
+/* POST /api/purchases/:id/receive { items?: [{ item_id, received_quantity, unit_cost? }], payment?, backorder? }
+   What arrived (in this delivery) is added to what came before. A line not mentioned is taken as delivered in full
+   (whatever is still owed). `backorder: true` says the rest is still coming: the order stays open as PARTIAL and what
+   is still owed is the back-order; otherwise the order is closed and anything short is written off. */
 export const receive = async (req, res) => {
   const body = req.body || {};
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const po = await lockOpen(client, req);
+    const po = await lockOpen(client, req, { allow: [...OPEN, 'PARTIAL'] });
     const business = await businessOf(client, req.tenant.businessId);
     const lines = (await client.query(
       `SELECT i.*, p.track_inventory FROM purchase_order_items i LEFT JOIN products p ON p.product_id = i.product_id WHERE i.po_id = $1 ORDER BY i.item_id FOR UPDATE OF i`, [po.po_id]
@@ -255,45 +262,58 @@ export const receive = async (req, res) => {
     const given = new Map((Array.isArray(body.items) ? body.items : []).map((x) => [Number(x.item_id), x]));
     for (const id of given.keys()) if (!lines.some((l) => l.item_id === id)) throw new OrderError(400, 'One of those lines isn’t on this order');
 
+    const supplierList = po.supplier_id ? await listPrices(client, req.tenant.businessId, po.supplier_id, lines.map((l) => l.product_id).filter(Boolean)) : new Map();
     const received = lines.map((l) => {
+      const before = l.received_quantity == null ? 0 : Number(l.received_quantity);
       const g = given.get(l.item_id);
-      const qty = g?.received_quantity != null ? Number(g.received_quantity) : Number(l.quantity);
-      if (!Number.isFinite(qty) || qty < 0) throw new OrderError(400, 'Received quantity can’t be negative');
+      const now = g?.received_quantity != null ? Number(g.received_quantity) : Math.max(0, Number(l.quantity) - before);
+      if (!Number.isFinite(now) || now < 0) throw new OrderError(400, 'Received quantity can’t be negative');
       const cost = g?.unit_cost != null ? toPaise(g.unit_cost) : Number(l.unit_cost_paise);
       if (cost < 0) throw new OrderError(400, 'Cost can’t be negative');
-      const tax = computeLineTax({ quantity: qty, unitPricePaise: cost, taxRatePercent: Number(l.tax_rate), gstEnabled: business.gst_enabled, interState: isInterState(business.state, null) });
-      return { line: l, qty, cost, tax };
+      const tax = computeLineTax({ quantity: now, unitPricePaise: cost, taxRatePercent: Number(l.tax_rate), gstEnabled: business.gst_enabled, interState: isInterState(business.state, null) });
+      return { line: l, before, now, cost, tax };
     });
-    if (!received.some((r) => r.qty > 0)) throw new OrderError(400, 'Nothing was received. Cancel the order instead.');
+    if (!received.some((r) => r.now > 0)) throw new OrderError(400, 'Nothing was received. Cancel the order instead.');
 
-    const totals = sumLines(received.map((r) => r.tax));
     let paid = 0;
     if (body.payment?.amount != null) { paid = toPaise(body.payment.amount); if (paid < 0) throw new OrderError(400, 'Payment amount cannot be negative'); }
 
     // Products are locked in id order, the same order billing uses, so a delivery and a sale can't deadlock.
     for (const r of [...received].sort((a, b) => (a.line.product_id ?? 0) - (b.line.product_id ?? 0))) {
+      // value so far: a line never received holds only its ordered figures, which don't count
+      const prevValue = r.line.received_quantity == null ? 0 : Number(r.line.line_total_paise);
+      const prevTax = r.line.received_quantity == null ? 0 : Number(r.line.tax_amount_paise);
       await client.query(
         `UPDATE purchase_order_items SET received_quantity = $2, unit_cost_paise = $3, tax_amount_paise = $4, line_total_paise = $5 WHERE item_id = $1`,
-        [r.line.item_id, r.qty, r.cost, r.tax.tax_paise, r.tax.line_total_paise]
+        [r.line.item_id, r.before + r.now, r.cost, prevTax + r.tax.tax_paise, prevValue + r.tax.line_total_paise]
       );
-      if (r.line.product_id && r.qty > 0) {
+      if (r.line.product_id && r.now > 0) {
         await client.query(`UPDATE products SET purchase_price_paise = $1 WHERE product_id = $2 AND business_id = $3`, [r.cost, r.line.product_id, req.tenant.businessId]);
         if (r.line.track_inventory) {
           await client.query(`SELECT 1 FROM products WHERE product_id = $1 FOR UPDATE`, [r.line.product_id]);
-          await moveStock(client, { businessId: req.tenant.businessId, branchId: po.branch_id, productId: r.line.product_id, delta: r.qty });
+          await moveStock(client, { businessId: req.tenant.businessId, branchId: po.branch_id, productId: r.line.product_id, delta: r.now });
           await client.query(
             `INSERT INTO inventory_transactions (business_id, branch_id, product_id, transaction_type, quantity, reference_type, reference_id, created_by)
              VALUES ($1,$2,$3,'PURCHASE',$4,'purchase_order',$5,$6)`,
-            [req.tenant.businessId, po.branch_id, r.line.product_id, r.qty, po.po_id, req.auth.userId]
+            [req.tenant.businessId, po.branch_id, r.line.product_id, r.now, po.po_id, req.auth.userId]
           );
         }
       }
     }
+
+    const owed = received.filter((r) => r.before + r.now < Number(r.line.quantity));
+    const partial = body.backorder === true && owed.length > 0;
+    const totals = (await client.query(
+      `SELECT COALESCE(SUM(line_total_paise - tax_amount_paise), 0) AS sub, COALESCE(SUM(tax_amount_paise), 0) AS tax, COALESCE(SUM(line_total_paise), 0) AS total
+       FROM purchase_order_items WHERE po_id = $1 AND received_quantity IS NOT NULL`, [po.po_id])).rows[0];
+    const total = Number(totals.total);
+    const amountPaid = Number(po.amount_paid_paise) + paid;
+    const balance = Math.max(0, total - Number(po.debited_paise) - amountPaid);
     const { rows } = await client.query(
-      `UPDATE purchase_orders SET status = 'RECEIVED', received_at = CURRENT_TIMESTAMP, po_date = CURRENT_DATE,
+      `UPDATE purchase_orders SET status = $8, received_at = CURRENT_TIMESTAMP, po_date = COALESCE(CASE WHEN status = 'PARTIAL' THEN po_date END, CURRENT_DATE),
               subtotal_paise = $2, tax_paise = $3, total_paise = $4, amount_paid_paise = $5, balance_due_paise = $6, payment_status = $7
        WHERE po_id = $1 RETURNING *`,
-      [po.po_id, totals.subtotal_paise, totals.tax_paise, totals.total_paise, paid, Math.max(0, totals.total_paise - paid), paymentStatus(totals.total_paise, paid)]
+      [po.po_id, Number(totals.sub), Number(totals.tax), total, amountPaid, balance, paymentStatus(total - Number(po.debited_paise), amountPaid), partial ? 'PARTIAL' : 'RECEIVED']
     );
     if (paid > 0) {
       await client.query(
@@ -302,8 +322,41 @@ export const receive = async (req, res) => {
       );
     }
     await client.query('COMMIT');
-    const short = received.filter((r) => r.qty < Number(r.line.quantity)).map((r) => r.line.description);
-    recordAudit(req, { action: 'purchase_order.received', resource_type: 'purchase_order', resource_id: po.po_id, metadata: { total: toRupees(totals.total_paise), short } });
-    res.json({ success: true, data: { ...asPO({ ...rows[0], supplier_name: null }), short_delivered: short } });
+
+    const short = owed.map((r) => r.line.description);
+    // a delivery billed above the supplier's agreed price
+    const priceAlerts = received.filter((r) => r.now > 0 && supplierList.has(r.line.product_id) && r.cost > supplierList.get(r.line.product_id).price_paise)
+      .map((r) => ({ item_id: r.line.item_id, description: r.line.description, list_price: toRupees(supplierList.get(r.line.product_id).price_paise), charged: toRupees(r.cost), extra_per_unit: toRupees(r.cost - supplierList.get(r.line.product_id).price_paise), quantity: r.now }));
+    recordAudit(req, { action: partial ? 'purchase_order.part_received' : 'purchase_order.received', resource_type: 'purchase_order', resource_id: po.po_id, metadata: { total: toRupees(total), short, price_alerts: priceAlerts.length } });
+    res.json({ success: true, data: { ...asPO({ ...rows[0], supplier_name: null }), short_delivered: short, back_order: partial ? owed.map((r) => ({ description: r.line.description, outstanding: Math.round((Number(r.line.quantity) - r.before - r.now) * 1000) / 1000 })) : [], price_alerts: priceAlerts } });
   } catch (error) { await client.query('ROLLBACK').catch(() => {}); return fail(res, error); } finally { client.release(); }
+};
+
+/* POST /api/purchases/:id/close-short — the rest of a part-delivered order is not coming: close it as received */
+export const closeShort = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const po = await lockOpen(client, req, { allow: ['PARTIAL'] });
+    await client.query(`UPDATE purchase_orders SET status = 'RECEIVED' WHERE po_id = $1`, [po.po_id]);
+    await client.query('COMMIT');
+    recordAudit(req, { action: 'purchase_order.closed_short', resource_type: 'purchase_order', resource_id: po.po_id });
+    res.json({ success: true });
+  } catch (error) { await client.query('ROLLBACK').catch(() => {}); return fail(res, error); } finally { client.release(); }
+};
+
+/* GET /api/purchases/backorders — orders that arrived in part, with what is still owed */
+export const backorders = async (req, res) => {
+  const values = [req.tenant.businessId];
+  const { rows } = await pool.query(
+    `SELECT po.po_id, po.po_number, po.expected_date, po.branch_id, s.name AS supplier_name, i.description, i.quantity, COALESCE(i.received_quantity, 0) AS received
+     FROM purchase_orders po JOIN purchase_order_items i ON i.po_id = po.po_id LEFT JOIN suppliers s ON s.supplier_id = po.supplier_id
+     WHERE po.business_id = $1 AND po.status = 'PARTIAL' AND i.quantity > COALESCE(i.received_quantity, 0)${branchFilter(req.tenant, 'po.branch_id', values)}
+     ORDER BY po.po_id, i.item_id`, values);
+  const byOrder = new Map();
+  for (const r of rows) {
+    if (!byOrder.has(r.po_id)) byOrder.set(r.po_id, { po_id: r.po_id, po_number: r.po_number, supplier_name: r.supplier_name, expected_date: r.expected_date ? String(r.expected_date).slice(0, 10) : null, outstanding: [] });
+    byOrder.get(r.po_id).outstanding.push({ description: r.description, ordered: Number(r.quantity), received: Number(r.received), owed: Math.round((Number(r.quantity) - Number(r.received)) * 1000) / 1000 });
+  }
+  res.json({ success: true, data: [...byOrder.values()] });
 };

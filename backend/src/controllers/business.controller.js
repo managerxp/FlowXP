@@ -9,8 +9,10 @@
  */
 import pool from '../config/database.js';
 import { EXT_BY_MIME, putFile, removeFile } from '../modules/storage.js';
+import { looksLikeImage } from '../middleware/upload.js';
 import { subscriptionSummary, newTrialWindow } from '../modules/subscription.js';
 import { recordAudit, recordEvent } from '../modules/events.js';
+import { toRupees } from '../utils/money.js';
 import {
   checkBusinessType, checkEmail, checkGstin, checkName, checkPhone, checkUpiVpa, firstError
 } from '../utils/validate.js';
@@ -136,6 +138,10 @@ export const getCurrent = async (req, res) => {
         onboarding_step: b.onboarding_step,
         receipt_settings: { ...RECEIPT_DEFAULTS, ...(b.receipt_settings || {}) },
         role: req.tenant.role,
+        // this person's own permission overrides (not the full role table — the
+        // frontend only needs to know its own access, to keep the sidebar and
+        // per-role screens honest about what this person can actually do)
+        permissions: req.tenant.permissions || {},
         branches,
         subscription: subscriptionSummary(b)
       }
@@ -176,7 +182,9 @@ const EDITABLE = {
   round_off_enabled:          () => null,
   invoice_prefix:             (v) =>
     String(v ?? '').trim().length <= 12 ? null : 'Invoice prefix is too long',
-  upi_vpa:                    checkUpiVpa
+  upi_vpa:                    checkUpiVpa,
+  google_review_link:         (v) => (!v || (String(v).trim().length <= 300 && /^https:\/\//.test(String(v).trim()))
+    ? null : 'Paste the https:// link from "Share" on your Google Business listing')
 };
 
 /* Receipt printing preferences: every key checked, unknown keys dropped. */
@@ -280,16 +288,38 @@ export const updateCurrent = async (req, res) => {
 export const getSubscription = async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT b.*, p.name AS plan_name, p.description AS plan_description,
-              p.price_monthly_paise, p.price_yearly_paise, p.limits, p.features
+      `SELECT b.*, p.name AS plan_name, p.description AS plan_description, p.features,
+              -- the PINNED version's price/limits/features, not the plan's current (possibly
+              -- since-changed) ones — see migration 0038's grandfathering comment
+              COALESCE(pv.price_monthly_paise, p.price_monthly_paise) AS price_monthly_paise,
+              COALESCE(pv.price_yearly_paise, p.price_yearly_paise) AS price_yearly_paise,
+              COALESCE(pv.limits, p.limits) AS limits,
+              COALESCE(pv.feature_flags, p.feature_flags) AS feature_flags,
+              btf.feature_flags AS business_type_feature_flags,
+              COALESCE(bfo.overrides, '{}'::jsonb) AS feature_overrides
        FROM businesses b
        LEFT JOIN plans p ON p.plan_code = b.plan_code
+       LEFT JOIN plan_versions pv ON pv.plan_version_id = b.plan_version_id
+       LEFT JOIN business_type_features btf ON btf.business_type = b.business_type AND btf.plan_code = b.plan_code
+       LEFT JOIN LATERAL (
+         SELECT jsonb_object_agg(feature_key, enabled) AS overrides FROM business_feature_overrides
+         WHERE business_id = b.business_id AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+       ) bfo ON true
        WHERE b.business_id = $1`,
       [req.tenant.businessId]
     );
     if (!rows.length) return res.status(404).json({ success: false, message: 'Not found' });
 
     const b = rows[0];
+    // A payment link the admin generated for this business, waiting to be paid —
+    // custom-priced (Option B), so this is the only place a price appears at all.
+    const pending = (await pool.query(
+      `SELECT amount_paise, billing_cycle, payment_link_url FROM subscription_orders
+       WHERE business_id = $1 AND status = 'PENDING' AND payment_link_url IS NOT NULL
+       ORDER BY created_at DESC LIMIT 1`,
+      [req.tenant.businessId]
+    )).rows[0];
+
     res.json({
       success: true,
       data: {
@@ -302,7 +332,12 @@ export const getSubscription = async (req, res) => {
           price_yearly_paise: b.price_yearly_paise,
           limits: b.limits,
           features: b.features
-        }
+        },
+        pending_payment: pending ? {
+          amount: toRupees(pending.amount_paise),
+          billing_cycle: pending.billing_cycle,
+          payment_link_url: pending.payment_link_url
+        } : null
       }
     });
   } catch (error) {
@@ -314,6 +349,7 @@ export const getSubscription = async (req, res) => {
 /* POST /api/businesses/current/logo — the picture printed at the top of browser receipts */
 export const uploadLogo = async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'Choose an image to upload' });
+  if (!looksLikeImage(req.file.buffer, req.file.mimetype)) return res.status(400).json({ success: false, message: 'That file is not a valid JPEG, PNG or WebP image' });
   const old = (await pool.query('SELECT receipt_settings FROM businesses WHERE business_id = $1', [req.tenant.businessId])).rows[0]?.receipt_settings?.logo_url;
   let url;
   try {

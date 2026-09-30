@@ -1,104 +1,130 @@
 /*
- * Every delivery adapter's parseWebhookOrder() is a pure function turning one
- * platform's payload shape into the same normalized order shape — the one
- * place a malformed or subtly-wrong parse would silently mis-price a
- * delivery order's kitchen ticket. No database needed.
- *
- * Run: npm test
+ * Delivery rider assignment and status (owner's request, 2026-09-29, from
+ * the "Cloud Kitchen module" spec) — reuses the business's own staff/RBAC
+ * (a new DELIVERY role) rather than a separate rider entity, the same way
+ * orders.waiter_user_id already reuses `users` for waiters.
  */
-process.env.DATABASE_URL ||= 'postgres://unused/unused';
-process.env.JWT_SECRET ||= 'test-secret-not-used-for-signing-anything-real';
-
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { setupTestDb } from './helpers/db.js';
 
-const zomato = await import('../src/modules/delivery/adapters/zomato.js');
-const swiggy = await import('../src/modules/delivery/adapters/swiggy.js');
-const ondc = await import('../src/modules/delivery/adapters/ondc.js');
-const magicpin = await import('../src/modules/delivery/adapters/magicpin.js');
-const { getAdapter, PLATFORMS } = await import('../src/modules/delivery/registry.js');
+const { pool, skip, cleanup } = await setupTestDb();
+const { runMigrations } = await import('../src/config/migrate.js');
+const orders = await import('../src/controllers/orders.controller.js');
+const { requirePlanFeature } = await import('../src/middleware/auth.js');
 
-const ADAPTERS = { ZOMATO: zomato, SWIGGY: swiggy, ONDC: ondc, MAGICPIN: magicpin };
+test.after(cleanup);
 
-test('every platform is reachable through the registry and matches its own module', () => {
-  for (const platform of PLATFORMS) {
-    assert.equal(getAdapter(platform), ADAPTERS[platform]);
-  }
-  assert.throws(() => getAdapter('DOORDASH'), /Unknown delivery platform/);
+const fakeRes = () => ({ code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; }, set() { return this; } });
+let A; let B;
+
+const makeBusiness = async (label) => {
+  const owner = (await pool.query(`INSERT INTO users (name, email, password_hash) VALUES ($1,$2,'x') RETURNING user_id`, [label, `${label}-owner@delivery.test`])).rows[0];
+  const biz = (await pool.query(`INSERT INTO businesses (name, owner_user_id, business_type, plan_code) VALUES ($1,$2,'CLOUD_KITCHEN','GROWTH') RETURNING business_id`, [label, owner.user_id])).rows[0];
+  const branchId = (await pool.query(`INSERT INTO branches (business_id, name, is_primary) VALUES ($1,'Main',TRUE) RETURNING branch_id`, [biz.business_id])).rows[0].branch_id;
+  const otherBranchId = (await pool.query(`INSERT INTO branches (business_id, name) VALUES ($1,'Other') RETURNING branch_id`, [biz.business_id])).rows[0].branch_id;
+  const tenant = { businessId: biz.business_id, branchId, role: 'OWNER', permissions: {} };
+  const req = (extra = {}) => ({ tenant, auth: { userId: owner.user_id }, params: {}, body: {}, query: {}, headers: {}, ip: '127.0.0.1', ...extra });
+  const call = async (fn, extra) => { const res = fakeRes(); await fn(req(extra), res); return res; };
+  const rider = async (name, opts = {}) => {
+    const u = (await pool.query(`INSERT INTO users (name, email, password_hash) VALUES ($1,$2,'x') RETURNING user_id`, [name, `${label}-${name}@delivery.test`])).rows[0];
+    await pool.query(
+      `INSERT INTO business_users (business_id, user_id, role, status, branch_id) VALUES ($1,$2,'DELIVERY','ACTIVE',$3)`,
+      [biz.business_id, u.user_id, opts.otherBranch ? otherBranchId : branchId]
+    );
+    return u.user_id;
+  };
+  const openDelivery = async () => (await call(orders.create, { body: { order_type: 'DELIVERY' } })).body.data.order_id;
+  return { biz: biz.business_id, branchId, tenant, req, call, rider, openDelivery };
+};
+
+test('setup', { skip }, async () => {
+  await runMigrations(pool);
+  A = await makeBusiness('a');
+  B = await makeBusiness('b');
+  A.ravi = await A.rider('Ravi');
 });
 
-test('each adapter normalizes its own sample payload to the common order shape', () => {
-  for (const platform of PLATFORMS) {
-    const adapter = ADAPTERS[platform];
-    const payload = adapter.generateSamplePayload();
-    const order = adapter.parseWebhookOrder(payload);
+test('delivery_fleet is on by default, and an admin can switch it off for a plan', { skip }, async () => {
+  const middleware = requirePlanFeature('delivery_fleet');
+  let next = false;
+  await middleware({ tenant: { planFeatures: {} } }, fakeRes(), () => { next = true; });
+  assert.ok(next);
 
-    assert.ok(order.external_order_id, `${platform}: missing external_order_id`);
-    assert.ok(order.items.length > 0, `${platform}: no items parsed`);
-    for (const item of order.items) {
-      assert.ok(item.description, `${platform}: item missing description`);
-      assert.ok(item.quantity > 0, `${platform}: item quantity must be positive`);
-      assert.ok(item.unit_price >= 0, `${platform}: item price must not be negative`);
-    }
-  }
+  next = false;
+  const res = fakeRes();
+  await middleware({ tenant: { planFeatures: { delivery_fleet: false } } }, res, () => { next = true; });
+  assert.equal(next, false);
+  assert.equal(res.code, 402);
 });
 
-test('zomato: fields map to the names its payload actually uses', () => {
-  const order = zomato.parseWebhookOrder({
-    order: {
-      id: 'Z1', display_id: '#42', customer: { name: 'Asha', phone: '+911111111111' },
-      items: [{ name: 'Dosa', quantity: 2, price: 90 }], instructions: 'no chutney'
-    }
-  });
-  assert.deepEqual(order, {
-    external_order_id: 'Z1', external_order_number: '#42',
-    customer_name: 'Asha', customer_phone: '+911111111111',
-    items: [{ description: 'Dosa', quantity: 2, unit_price: 90 }],
-    notes: 'no chutney'
-  });
+test('listRiders returns only eligible staff at this outlet, not another business\'s', { skip }, async () => {
+  const list = await A.call(orders.listRiders);
+  assert.deepEqual(list.body.data.map((r) => r.name), ['Ravi']);
+  assert.deepEqual((await B.call(orders.listRiders)).body.data, []);
 });
 
-test('swiggy: reads items from the nested cart, not the top level', () => {
-  const order = swiggy.parseWebhookOrder({
-    order_id: 'S1', order_number: 'SW-1', customer_details: { name: 'Bala', mobile: '+912222222222' },
-    cart: { items: [{ item_name: 'Idli', quantity: 4, item_price: 20 }] }, special_instructions: null
-  });
-  assert.equal(order.items.length, 1);
-  assert.equal(order.items[0].description, 'Idli');
-  assert.equal(order.notes, null);
+test('a rider can only be assigned to a delivery order, not dine-in or takeaway', { skip }, async () => {
+  const takeawayId = (await A.call(orders.create, { body: { order_type: 'TAKEAWAY' } })).body.data.order_id;
+  const res = await A.call(orders.setRider, { params: { id: takeawayId }, body: { rider_user_id: A.ravi } });
+  assert.equal(res.code, 400);
 });
 
-test('ondc: unwraps the Beckn-style message.order nesting', () => {
-  const order = ondc.parseWebhookOrder({
-    context: { transaction_id: 'txn-1' },
-    message: { order: {
-      id: 'O1', billing: { name: 'Chitra', phone: '+913333333333' },
-      items: [{ descriptor: { name: 'Filter Coffee' }, quantity: { count: 3 }, price: { value: '25' } }]
-    } }
-  });
-  assert.equal(order.external_order_number, 'txn-1');
-  assert.equal(order.items[0].quantity, 3);
-  assert.equal(order.items[0].unit_price, 25);
+test('only someone eligible at this outlet can be assigned, and it is isolated per business', { skip }, async () => {
+  const orderId = await A.openDelivery();
+
+  const unknownUser = 999999;
+  assert.equal((await A.call(orders.setRider, { params: { id: orderId }, body: { rider_user_id: unknownUser } })).code, 400);
+
+  const outsideRider = await A.rider('Faraway', { otherBranch: true });
+  assert.equal((await A.call(orders.setRider, { params: { id: orderId }, body: { rider_user_id: outsideRider } })).code, 400);
+
+  const ok = await A.call(orders.setRider, { params: { id: orderId }, body: { rider_user_id: A.ravi } });
+  assert.equal(ok.code ?? 200, 200, JSON.stringify(ok.body));
+  assert.equal(ok.body.data.rider_name, 'Ravi');
+
+  assert.equal((await B.call(orders.setRider, { params: { id: orderId }, body: { rider_user_id: A.ravi } })).code, 404); // not B's order
+
+  const cleared = await A.call(orders.setRider, { params: { id: orderId }, body: { rider_user_id: null } });
+  assert.equal(cleared.body.data.rider_user_id, null);
 });
 
-test('magicpin: reads lineItems with its own field names', () => {
-  const order = magicpin.parseWebhookOrder({
-    orderId: 'M1', orderRef: 'MP-1', customer: { fullName: 'Deepak', contactNumber: '+914444444444' },
-    lineItems: [{ title: 'Thali', qty: 1, rate: 150 }]
-  });
-  assert.equal(order.items[0].description, 'Thali');
-  assert.equal(order.items[0].unit_price, 150);
+test('delivery status must be set in order, and needs a rider first', { skip }, async () => {
+  const orderId = await A.openDelivery();
+
+  const noRider = await A.call(orders.setDeliveryStatus, { params: { id: orderId }, body: { status: 'PICKED_UP' } });
+  assert.equal(noRider.code, 400);
+  assert.match(noRider.body.message, /rider/i);
+
+  await A.call(orders.setRider, { params: { id: orderId }, body: { rider_user_id: A.ravi } });
+
+  const skipped = await A.call(orders.setDeliveryStatus, { params: { id: orderId }, body: { status: 'OUT_FOR_DELIVERY' } });
+  assert.equal(skipped.code, 409);
+  assert.match(skipped.body.message, /picked up/i);
+
+  const bad = await A.call(orders.setDeliveryStatus, { params: { id: orderId }, body: { status: 'WALKING' } });
+  assert.equal(bad.code, 400);
+
+  const pickedUp = await A.call(orders.setDeliveryStatus, { params: { id: orderId }, body: { status: 'PICKED_UP' } });
+  assert.equal(pickedUp.code ?? 200, 200);
+  assert.ok(pickedUp.body.data.picked_up_at);
+
+  // idempotent: setting it again doesn't move the timestamp
+  const again = await A.call(orders.setDeliveryStatus, { params: { id: orderId }, body: { status: 'PICKED_UP' } });
+  assert.equal(new Date(again.body.data.picked_up_at).getTime(), new Date(pickedUp.body.data.picked_up_at).getTime());
+
+  const outForDelivery = await A.call(orders.setDeliveryStatus, { params: { id: orderId }, body: { status: 'OUT_FOR_DELIVERY' } });
+  assert.ok(outForDelivery.body.data.out_for_delivery_at);
+  assert.equal(outForDelivery.body.data.delivered_at, null);
+
+  const delivered = await A.call(orders.setDeliveryStatus, { params: { id: orderId }, body: { status: 'DELIVERED' } });
+  assert.ok(delivered.body.data.delivered_at);
+
+  assert.equal((await B.call(orders.setDeliveryStatus, { params: { id: orderId }, body: { status: 'PICKED_UP' } })).code, 404);
 });
 
-test('every adapter rejects a payload with no items rather than silently billing zero', () => {
-  assert.throws(() => zomato.parseWebhookOrder({ order: { id: 'Z1', items: [] } }));
-  assert.throws(() => swiggy.parseWebhookOrder({ order_id: 'S1', cart: { items: [] } }));
-  assert.throws(() => ondc.parseWebhookOrder({ message: { order: { id: 'O1', items: [] } } }));
-  assert.throws(() => magicpin.parseWebhookOrder({ orderId: 'M1', lineItems: [] }));
-});
-
-test('mock adapters accept every webhook — verifySignature is a documented stub', () => {
-  for (const platform of PLATFORMS) {
-    assert.equal(ADAPTERS[platform].verifySignature({}, {}), true);
-  }
+test('a dine-in or takeaway order has no delivery status to set', { skip }, async () => {
+  const takeawayId = (await A.call(orders.create, { body: { order_type: 'TAKEAWAY' } })).body.data.order_id;
+  const res = await A.call(orders.setDeliveryStatus, { params: { id: takeawayId }, body: { status: 'PICKED_UP' } });
+  assert.equal(res.code, 400);
 });

@@ -1,13 +1,14 @@
 import { Router } from 'express';
-import { requireAuth, requireGroupUser, requirePermission, withBusiness } from '../middleware/auth.js';
+import { requireAuth, requireGroupUser, requirePermission, requirePlanFeature, withBusiness } from '../middleware/auth.js';
 import * as loyalty from '../controllers/loyalty.controller.js';
 import * as points from '../controllers/points.controller.js';
 
 const router = Router();
-const authed = [requireAuth, withBusiness()];
+const feature = requirePlanFeature('loyalty');
+const authed = [requireAuth, withBusiness(), feature];
 const till = requirePermission('billing');
 const settingsRead = [...authed, requirePermission('settings')];
-const settingsWrite = [requireAuth, withBusiness({ requireActive: true }), requirePermission('settings'), requireGroupUser];
+const settingsWrite = [requireAuth, withBusiness({ requireActive: true }), feature, requirePermission('settings'), requireGroupUser];
 
 /* The till: look a customer up by mobile, see their card, check a coupon. */
 router.get('/loyalty/lookup', ...authed, till, loyalty.lookup);

@@ -10,7 +10,10 @@ import { Button, Logo } from '../components/ui.jsx';
 const NAV = [
   { to: '/superadmin', label: 'Overview', end: true },
   { to: '/superadmin/businesses', label: 'Businesses' },
-  { to: '/superadmin/plans', label: 'Plans' }
+  { to: '/superadmin/plans', label: 'Plans' },
+  { to: '/superadmin/features', label: 'Features' },
+  { to: '/superadmin/addons', label: 'Add-ons' },
+  { to: '/superadmin/settings', label: 'Settings' }
 ];
 
 const AdminShell = () => {
@@ -36,7 +39,7 @@ const AdminShell = () => {
 
   return (
     <div className="flex min-h-full">
-      <aside className="hidden w-60 shrink-0 border-r border-line bg-surface/60 backdrop-blur-xl lg:block">
+      <aside className="hidden w-60 shrink-0 border-r border-line bg-surface lg:block">
         <div className="flex h-14 items-center px-5"><Logo /></div>
         <p className="px-5 pb-2 text-xs font-semibold uppercase tracking-[0.16em] text-ink-400">
           Platform admin
@@ -51,7 +54,7 @@ const AdminShell = () => {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center justify-between gap-3 border-b border-line bg-surface/70 px-5 backdrop-blur-xl">
+        <header className="flex h-14 items-center justify-between gap-3 border-b border-line bg-surface px-5">
           <p className="text-sm font-semibold text-ink-900 lg:hidden">FlowXP Admin</p>
           <div className="flex items-center gap-2 lg:ml-auto">
             <span className="hidden text-sm text-ink-500 sm:inline">{admin.email}</span>

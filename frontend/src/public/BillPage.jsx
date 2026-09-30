@@ -1,6 +1,12 @@
 /*
  * The bill a customer opens from the link in their WhatsApp/SMS. No login, no app chrome:
  * the unguessable token in the URL is the whole key (see publicBill.controller.js).
+ *
+ * Also carries the "rate your visit" prompt (2026-09-29): a star rating and an
+ * optional comment, submitted right here — no extra link, no app to install.
+ * A 4-5 star rating is then asked to also post it on Google (the business's
+ * own share link); 1-3 stars just says thanks and stays private for the
+ * owner to see on their own Reviews page.
  */
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -9,6 +15,77 @@ import { api, formatCurrency } from '../lib/api.js';
 const Row = ({ label, value, strong }) => (
   <div className={`flex justify-between py-1 text-sm ${strong ? 'border-t border-line pt-2 text-base font-semibold text-ink-900' : 'text-ink-600'}`}><span>{label}</span><span>{value}</span></div>
 );
+
+const StarPicker = ({ value, onChange }) => (
+  <div className="flex justify-center gap-1.5" role="radiogroup" aria-label="Rate your visit">
+    {[1, 2, 3, 4, 5].map((n) => (
+      <button
+        key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${n} star${n === 1 ? '' : 's'}`}
+        onClick={() => onChange(n)}
+        className={`text-3xl leading-none transition-transform ${value >= n ? 'text-warning' : 'text-line-strong'} hover:scale-110`}
+      >★</button>
+    ))}
+  </div>
+);
+
+const FeedbackBox = ({ token, initial }) => {
+  const [submitted, setSubmitted] = useState(initial ? { rating: initial.rating } : null);
+  const [rating, setRating] = useState(initial?.rating || 0);
+  const [comment, setComment] = useState(initial?.comment || '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [outcome, setOutcome] = useState(null); // { happy, google_review_link } after a fresh submit
+
+  const submit = async () => {
+    setError('');
+    setBusy(true);
+    try {
+      const result = await api(`/public/bill/${token}/feedback`, { method: 'POST', body: { rating, comment: comment.trim() || undefined } });
+      setSubmitted({ rating });
+      setOutcome(result);
+    } catch (caught) {
+      setError(caught.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div className="mt-4 rounded-2xl border border-line bg-surface p-5 text-center shadow-sm">
+        <p className="text-2xl" aria-hidden="true">{'★'.repeat(submitted.rating)}{'☆'.repeat(5 - submitted.rating)}</p>
+        {outcome?.happy && outcome.google_review_link ? (
+          <>
+            <p className="mt-2 text-sm font-semibold text-ink-900">Thank you! Would you share this on Google too?</p>
+            <a href={outcome.google_review_link} target="_blank" rel="noreferrer" className="mt-3 inline-block rounded-full bg-brand-500 px-5 py-2 text-sm font-semibold text-white">Post a Google review</a>
+          </>
+        ) : (
+          <p className="mt-2 text-sm text-ink-600">Thanks for letting us know — we've noted it.</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 rounded-2xl border border-line bg-surface p-5 shadow-sm">
+      <p className="text-center text-sm font-semibold text-ink-900">How was your visit?</p>
+      <div className="mt-3"><StarPicker value={rating} onChange={setRating} /></div>
+      {rating > 0 && (
+        <div className="mt-3 space-y-2">
+          <textarea
+            value={comment} onChange={(e) => setComment(e.target.value)} maxLength={1000} rows={2}
+            placeholder="Anything you'd like to add? (optional)"
+            className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none"
+          />
+          {error && <p className="text-xs text-danger">{error}</p>}
+          <button type="button" onClick={submit} disabled={busy} className="w-full rounded-full bg-brand-500 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+            {busy ? 'Sending…' : 'Submit'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const BillPage = () => {
   const { token } = useParams();
@@ -45,6 +122,7 @@ const BillPage = () => {
 
         {bill.upi_link && <a href={bill.upi_link} className="mt-4 block rounded-full bg-brand-500 py-2.5 text-center text-sm font-semibold text-white">Pay {formatCurrency(bill.balance)} with UPI</a>}
       </div>
+      {bill.feedback_enabled && <FeedbackBox token={token} initial={bill.feedback} />}
       <p className="mt-4 text-center text-xs text-ink-400">Thank you for visiting {bill.business}.</p>
     </main>
   );

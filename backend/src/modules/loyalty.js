@@ -67,6 +67,8 @@ export const describe = (program, progress) => {
   const togo = Math.max(0, need - progress.stamps);
   return {
     visits_required: program.visits_required, stamps: Math.min(progress.stamps, need), reward_item: item,
+    // the till adds this item to the bill to give the reward (billing makes it free), and a bill below min_bill earns no stamp
+    reward_product_id: program.reward_product_id, reward_quantity: program.reward_quantity, min_bill: Number(program.min_bill_paise || 0) / 100,
     reward_ready: progress.reward_ready, visits_to_go: togo,
     message: progress.reward_ready
       ? `Free ${item} on this visit!`

@@ -7,6 +7,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api, clearToken, getBranchId, getBusinessId, setBranchId, setBusinessId, setToken } from '../lib/api.js';
+import { hasPermission } from '../lib/permissions.js';
 
 const AuthContext = createContext(null);
 
@@ -95,11 +96,23 @@ export const AuthProvider = ({ children }) => {
 
   const switchOutlet = useCallback((id) => { setBranchId(id); setBranch(id == null ? null : String(id)); }, []);
 
+  // what THIS person can do in the active business — the sidebar and screens read this
+  // instead of role alone, so a per-user permission override (Staff → Permissions) is honoured too
+  const can = useCallback((permission) => hasPermission(business, permission), [business]);
+
+  // whether the business's PLAN includes a feature at all — separate from `can`, which is per-user.
+  // Missing key = on, same rule as the backend (modules/planFeatures.js); a server route can still
+  // refuse (402) if this runs on stale data, so this only ever hides a door, never opens one.
+  const hasFeature = useCallback(
+    (feature) => business?.subscription?.feature_flags?.[feature] !== false,
+    [business]
+  );
+
   const value = useMemo(() => ({
     user, businesses, business, businessId, loading,
-    outlets, outletId, activeOutlet, pinned, canViewAll, switchOutlet,
+    outlets, outletId, activeOutlet, pinned, canViewAll, switchOutlet, can, hasFeature,
     signIn, signOut, switchBusiness, refresh
-  }), [user, businesses, business, businessId, loading, outlets, outletId, activeOutlet, pinned, canViewAll, switchOutlet, signIn, signOut, switchBusiness, refresh]);
+  }), [user, businesses, business, businessId, loading, outlets, outletId, activeOutlet, pinned, canViewAll, switchOutlet, can, hasFeature, signIn, signOut, switchBusiness, refresh]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

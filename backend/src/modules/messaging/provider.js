@@ -9,6 +9,7 @@
  * Everything else depends only on deliver()'s shape, so setProvider() swaps in a test double.
  */
 import config from '../../config/env.js';
+import { getPlatformSetting } from '../platformSettings.js';
 
 const TIMEOUT_MS = 20000;
 
@@ -16,10 +17,29 @@ export class MessageError extends Error {
   constructor(message) { super(message); this.name = 'MessageError'; }
 }
 
+/* The admin's Settings → Messaging screen wins when it has been filled in; otherwise
+   the .env values, so an install with nothing saved there behaves exactly as before.
+   Resolved fresh per call (not cached) — messages go out one at a time, not in a hot loop. */
+const resolveConfig = async () => {
+  const saved = await getPlatformSetting('messaging').catch(() => null);
+  const db = saved?.value;
+  return {
+    provider: db?.provider || config.messaging.provider,
+    whatsappToken: db?.whatsappToken || config.messaging.whatsappToken,
+    whatsappPhoneId: db?.whatsappPhoneId || config.messaging.whatsappPhoneId,
+    whatsappLanguage: db?.whatsappLanguage || config.messaging.whatsappLanguage,
+    twilioSid: db?.twilioSid || config.messaging.twilioSid,
+    twilioToken: db?.twilioToken || config.messaging.twilioToken,
+    twilioFrom: db?.twilioFrom || config.messaging.twilioFrom,
+    twilioWhatsappFrom: db?.twilioWhatsappFrom || config.messaging.twilioWhatsappFrom,
+    countryCode: db?.countryCode || config.messaging.countryCode
+  };
+};
+
 /** 10-digit Indian mobile (or any digits) to E.164 without the plus. */
-export const toE164 = (phone) => {
+export const toE164 = (phone, countryCode = config.messaging.countryCode) => {
   const digits = String(phone ?? '').replace(/\D/g, '');
-  return digits.length === 10 ? `${config.messaging.countryCode}${digits}` : digits;
+  return digits.length === 10 ? `${countryCode}${digits}` : digits;
 };
 
 const post = async (url, { headers, body }) => {
@@ -36,14 +56,14 @@ const post = async (url, { headers, body }) => {
   }
 };
 
-const whatsappCloud = async ({ channel, to, template }) => {
+const whatsappCloud = async ({ channel, to, template }, cfg) => {
   if (channel !== 'WHATSAPP') return { status: 'SKIPPED', note: 'SMS is not available with this provider' };
-  const { ok, data } = await post(`https://graph.facebook.com/v20.0/${config.messaging.whatsappPhoneId}/messages`, {
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${config.messaging.whatsappToken}` },
+  const { ok, data } = await post(`https://graph.facebook.com/v20.0/${cfg.whatsappPhoneId}/messages`, {
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${cfg.whatsappToken}` },
     body: JSON.stringify({
-      messaging_product: 'whatsapp', to: toE164(to), type: 'template',
+      messaging_product: 'whatsapp', to: toE164(to, cfg.countryCode), type: 'template',
       template: {
-        name: template.name, language: { code: config.messaging.whatsappLanguage },
+        name: template.name, language: { code: cfg.whatsappLanguage },
         components: [{ type: 'body', parameters: template.params.map((text) => ({ type: 'text', text: String(text) })) }]
       }
     })
@@ -52,12 +72,12 @@ const whatsappCloud = async ({ channel, to, template }) => {
   return { status: 'SENT', providerId: data?.messages?.[0]?.id ?? null };
 };
 
-const twilio = async ({ channel, to, text }) => {
-  const { twilioSid, twilioToken, twilioFrom, twilioWhatsappFrom } = config.messaging;
+const twilio = async ({ channel, to, text }, cfg) => {
+  const { twilioSid, twilioToken, twilioFrom, twilioWhatsappFrom } = cfg;
   const wa = channel === 'WHATSAPP';
   if (wa && !twilioWhatsappFrom) return { status: 'SKIPPED', note: 'No Twilio WhatsApp sender is set up' };
   const form = new URLSearchParams({
-    To: `${wa ? 'whatsapp:' : ''}+${toE164(to)}`,
+    To: `${wa ? 'whatsapp:' : ''}+${toE164(to, cfg.countryCode)}`,
     From: wa ? `whatsapp:${twilioWhatsappFrom}` : twilioFrom,
     Body: text
   });
@@ -79,14 +99,15 @@ let override = null;
 /** Tests: replace the provider with `(message) => ({ status, providerId })`; null restores the real one. */
 export const setProvider = (fn) => { override = fn; };
 
-export const providerName = () => (override ? 'test' : config.messaging.provider);
+export const providerName = async () => (override ? 'test' : (await resolveConfig()).provider);
 /** True when messages really go somewhere. */
-export const isConnected = () => Boolean(override) || config.messaging.provider !== 'log';
+export const isConnected = async () => Boolean(override) || (await resolveConfig()).provider !== 'log';
 /** Which channels the provider can carry. */
-export const channelsAvailable = () => {
+export const channelsAvailable = async () => {
   if (override) return ['WHATSAPP', 'SMS'];
-  if (config.messaging.provider === 'whatsapp_cloud') return ['WHATSAPP'];
-  if (config.messaging.provider === 'twilio') return config.messaging.twilioWhatsappFrom ? ['SMS', 'WHATSAPP'] : ['SMS'];
+  const cfg = await resolveConfig();
+  if (cfg.provider === 'whatsapp_cloud') return ['WHATSAPP'];
+  if (cfg.provider === 'twilio') return cfg.twilioWhatsappFrom ? ['SMS', 'WHATSAPP'] : ['SMS'];
   return [];
 };
 
@@ -94,4 +115,8 @@ export const channelsAvailable = () => {
  * @param message { channel, to, kind, text, template: { name, params } }
  * @returns { status: 'SENT'|'SKIPPED', providerId?, note? }; throws MessageError when the provider refuses
  */
-export const deliver = async (message) => (override ?? DRIVERS[config.messaging.provider] ?? DRIVERS.log)(message);
+export const deliver = async (message) => {
+  if (override) return override(message);
+  const cfg = await resolveConfig();
+  return (DRIVERS[cfg.provider] ?? DRIVERS.log)(message, cfg);
+};

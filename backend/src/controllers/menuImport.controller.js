@@ -5,6 +5,7 @@
  * the one request and sent to the AI service, then dropped.
  */
 import pool from '../config/database.js';
+import { looksLikeImage } from '../middleware/upload.js';
 import config from '../config/env.js';
 import { recordAudit } from '../modules/events.js';
 import { AIProviderError, isConfigured } from '../modules/ai/provider.js';
@@ -25,7 +26,7 @@ export const scan = async (req, res) => {
   const files = Array.isArray(req.files) ? req.files : [];
   if (!files.length) return bad(res, 'Take or choose a photo of the menu');
   if (files.length > MAX_PHOTOS) return bad(res, `Use at most ${MAX_PHOTOS} photos at a time`);
-  if (files.some((f) => !MEDIA.includes(f.mimetype))) return bad(res, 'Photos must be JPEG, PNG or WebP');
+  if (files.some((f) => !MEDIA.includes(f.mimetype) || !looksLikeImage(f.buffer, f.mimetype))) return bad(res, 'Photos must be JPEG, PNG or WebP');
 
   if (!isConfigured()) return bad(res, 'Reading a menu from a photo needs the AI service, which isn’t set up on this server yet. You can still add products by hand.', 503, 'AI_NOT_CONFIGURED');
   if (!(await enabled(businessId))) return bad(res, 'Flow AI is switched off for this business. An owner can turn it on in the AI page.', 403, 'AI_DISABLED');

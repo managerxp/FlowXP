@@ -11,11 +11,11 @@ import { KINDS, TEMPLATES, metaBody } from '../modules/messaging/templates.js';
 import { SEGMENTS, audience, cleanSettings, getSettings, resend, sendBill, startCampaign } from '../modules/messaging/index.js';
 
 const bad = (res, message, status = 400) => res.status(status).json({ success: false, message });
-const provider = () => ({ name: providerName(), connected: isConnected(), channels: channelsAvailable() });
+const provider = async () => ({ name: await providerName(), connected: await isConnected(), channels: await channelsAvailable() });
 
 /* GET /api/messaging/settings */
 export const getSettingsHandler = async (req, res) => {
-  res.json({ success: true, data: { settings: await getSettings(pool, req.tenant.businessId), provider: provider(), segments: SEGMENTS } });
+  res.json({ success: true, data: { settings: await getSettings(pool, req.tenant.businessId), provider: await provider(), segments: SEGMENTS } });
 };
 
 /* PUT /api/messaging/settings */
@@ -25,7 +25,7 @@ export const putSettings = async (req, res) => {
   if (error) return bad(res, error);
   await pool.query(`UPDATE businesses SET messaging_settings = $1 WHERE business_id = $2`, [JSON.stringify(settings), req.tenant.businessId]);
   recordAudit(req, { action: 'messaging.settings_updated', resource_type: 'business', resource_id: req.tenant.businessId, metadata: req.body });
-  res.json({ success: true, data: { settings, provider: provider(), segments: SEGMENTS } });
+  res.json({ success: true, data: { settings, provider: await provider(), segments: SEGMENTS } });
 };
 
 /* GET /api/messaging/templates — the WhatsApp templates to create once in Meta Business Manager */

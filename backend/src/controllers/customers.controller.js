@@ -18,17 +18,24 @@ const asCustomer = (row) => ({
   email: row.email,
   address: row.address,
   state: row.state,
+  pincode: row.pincode,
   gstin: row.gstin,
   credit_limit: toRupees(row.credit_limit_paise),
   outstanding_balance: toRupees(row.outstanding_paise || 0),
   total_purchases: toRupees(row.total_purchases_paise || 0),
+  bills: Number(row.bill_count || 0),
+  first_bill_date: row.first_bill_date,
+  last_bill_date: row.last_bill_date,
   status: row.status
 });
 
 const SELECT = `
   SELECT c.*,
          COALESCE(SUM(i.balance_due_paise) FILTER (WHERE i.status = 'ISSUED'), 0) AS outstanding_paise,
-         COALESCE(SUM(i.total_paise) FILTER (WHERE i.status = 'ISSUED'), 0) AS total_purchases_paise
+         COALESCE(SUM(i.total_paise) FILTER (WHERE i.status = 'ISSUED'), 0) AS total_purchases_paise,
+         COUNT(i.invoice_id) FILTER (WHERE i.status = 'ISSUED') AS bill_count,
+         MIN(i.invoice_date) FILTER (WHERE i.status = 'ISSUED') AS first_bill_date,
+         MAX(i.invoice_date) FILTER (WHERE i.status = 'ISSUED') AS last_bill_date
   FROM customers c
   LEFT JOIN invoices i ON i.customer_id = c.customer_id
   WHERE c.business_id = $1
@@ -86,20 +93,22 @@ export const create = async (req, res) => {
     checkName(body.name, 'Customer name'),
     checkPhone(body.phone),
     body.email ? checkEmail(body.email) : null,
-    checkGstin(body.gstin)
+    checkGstin(body.gstin),
+    body.pincode && !/^[1-9]\d{5}$/.test(String(body.pincode).trim()) ? 'A pincode is 6 digits' : null
   ]);
   if (error) return res.status(400).json({ success: false, message: error });
 
   const { rows } = await pool.query(
-    `INSERT INTO customers (business_id, name, phone, email, address, state, gstin, credit_limit_paise)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING customer_id`,
+    `INSERT INTO customers (business_id, name, phone, email, address, state, gstin, credit_limit_paise, pincode)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING customer_id`,
     [
       req.tenant.businessId, String(body.name).trim(),
       body.phone ? String(body.phone).trim() : null,
       body.email ? String(body.email).trim().toLowerCase() : null,
       body.address || null, body.state || null,
       body.gstin ? String(body.gstin).trim().toUpperCase() : null,
-      Math.round((Number(body.credit_limit) || 0) * 100)
+      Math.round((Number(body.credit_limit) || 0) * 100),
+      body.pincode ? String(body.pincode).trim() : null
     ]
   );
 
@@ -114,9 +123,10 @@ const VALIDATORS = {
   name: (v) => checkName(v, 'Customer name'),
   phone: checkPhone,
   email: (v) => (v ? checkEmail(v) : null),
-  gstin: checkGstin
+  gstin: checkGstin,
+  pincode: (v) => (v && !/^[1-9]\d{5}$/.test(String(v).trim()) ? 'A pincode is 6 digits' : null)
 };
-const EDITABLE = ['name', 'phone', 'email', 'address', 'state', 'gstin', 'status'];
+const EDITABLE = ['name', 'phone', 'email', 'address', 'state', 'gstin', 'status', 'pincode'];
 
 export const update = async (req, res) => {
   const body = req.body || {};

@@ -86,11 +86,11 @@ const NotificationsPage = () => {
           </label>
           <Alert>{error}</Alert>
           {!items && !error && <p className="py-10 text-center text-sm text-ink-400">Loading…</p>}
-          {items?.length === 0 && <p className="rounded-[--radius-card] border border-dashed border-line-strong py-10 text-center text-sm text-ink-500">{unreadOnly ? 'Nothing unread.' : 'No notifications yet. Stock, unusual-activity and trial alerts will appear here.'}</p>}
+          {items?.length === 0 && <p className="rounded-(--radius-card) border border-dashed border-line-strong py-10 text-center text-sm text-ink-500">{unreadOnly ? 'Nothing unread.' : 'No notifications yet. Stock, unusual-activity and trial alerts will appear here.'}</p>}
           <ul className="space-y-2">
             {items?.map((n) => (
               <li key={n.notification_id}>
-                <button type="button" onClick={() => open(n)} className={`flex w-full gap-3 rounded-[--radius-card] border border-line p-4 text-left hover:bg-surface-2 ${n.read_at ? 'bg-surface' : 'bg-brand-50/50'}`}>
+                <button type="button" onClick={() => open(n)} className={`flex w-full gap-3 rounded-(--radius-card) border border-line p-4 text-left hover:bg-surface-2 ${n.read_at ? 'bg-surface' : 'bg-brand-50/50'}`}>
                   <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${SEVERITY_DOT[n.severity]}`} aria-hidden="true" />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-3">

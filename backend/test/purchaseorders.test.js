@@ -167,8 +167,16 @@ test('receiving records what arrived, at the price charged, at the order’s own
 
   assert.equal((await call(orders.receive, { params: { id: po } })).code, 409, 'can’t be received twice');
   assert.equal((await call(orders.cancel, { params: { id: po } })).code, 409, 'or cancelled once received');
-  // and now it can be paid
-  assert.equal((await call(purchases.addPayment, { params: { id: po }, body: { amount: 1750 } })).code, 201);
+  // and now it can be paid, but not more than is owed, and only by a known method
+  const over = await call(purchases.addPayment, { params: { id: po }, body: { amount: 1750.01 } });
+  assert.equal(over.code, 400);
+  assert.match(over.body.message, /more than the ₹1,750.00 still owed/);
+  assert.equal((await call(purchases.addPayment, { params: { id: po }, body: { amount: 10, method: 'BITCOIN' } })).code, 400);
+  assert.equal((await call(purchases.addPayment, { params: { id: po }, body: { amount: 1750, method: 'bank_transfer' } })).code, 201);
+  assert.match((await call(purchases.addPayment, { params: { id: po }, body: { amount: 1 } })).body.message, /Nothing is owed/);
+  const paid = (await call(purchases.get, { params: { id: po } })).body.data;
+  assert.deepEqual(paid.payments.map((p) => [p.method, p.amount]), [['UPI', 1000], ['BANK_TRANSFER', 1750]]);
+  assert.deepEqual([paid.balance_due, paid.payment_status, paid.debited], [0, 'PAID', 0]);
 });
 
 test('a delivery that brought nothing, or a line that is not on the order, is refused', { skip }, async () => {

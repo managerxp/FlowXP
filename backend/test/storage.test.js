@@ -131,7 +131,8 @@ test('a rejected or unreachable bucket raises an error the caller can handle', a
 
 let biz; let user; let product;
 const upload = async (file, id = product, businessId = biz) => { const res = fakeRes(); await products.uploadImage({ tenant: { businessId }, auth: { userId: user }, params: { id }, file, headers: {}, ip: '127.0.0.1' }, res); return res; };
-const photo = (type = 'image/jpeg') => ({ mimetype: type, buffer: Buffer.from(`bytes-${Math.random()}`) });
+const MAGIC = { 'image/jpeg': [0xff, 0xd8, 0xff, 0xe0], 'image/png': [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 'image/webp': [0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50] };
+const photo = (type = 'image/jpeg') => ({ mimetype: type, buffer: Buffer.concat([Buffer.from(MAGIC[type] || MAGIC['image/jpeg']), Buffer.from(`bytes-${Math.random()}`)]) });
 
 test('setup', { skip }, async () => {
   await runMigrations(pool);

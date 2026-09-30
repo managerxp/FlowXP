@@ -28,6 +28,30 @@ export const LoyaltyCard = ({ card, compact = false }) => {
 };
 
 /**
+ * What this bill does for the visit card, so the reward is never missed: billing
+ * makes the reward item free only when it is on the bill, so when it is due the
+ * till offers to add it; otherwise it says whether this bill earns a stamp.
+ * `items` are the bill's lines ({ product_id }); `total` what the bill comes to.
+ */
+export const RewardHint = ({ card, items, total, onAdd }) => {
+  if (!card) return null;
+  if (card.reward_ready) {
+    const on = items.some((i) => i.product_id === card.reward_product_id);
+    return on
+      ? <p className="rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">✓ {card.reward_item} is on the bill and comes off free when you bill.</p>
+      : (
+        <button type="button" onClick={onAdd} className="flex w-full items-center justify-between gap-2 rounded-lg border-2 border-dashed border-success/60 bg-success/5 px-3 py-2.5 text-left text-sm font-semibold text-success hover:bg-success/10">
+          <span>Add the free {card.reward_item}</span><span aria-hidden="true">+</span>
+        </button>
+      );
+  }
+  if (!card.min_bill) return null;
+  return total >= card.min_bill
+    ? <p className="text-xs text-ink-500">This bill earns a visit stamp.</p>
+    : <p className="text-xs text-ink-500">Bills of {formatCurrency(card.min_bill)} or more earn a stamp ({formatCurrency(card.min_bill - total)} more).</p>;
+};
+
+/**
  * A customer's points at the till: balance, tier, and a box to spend some on this bill.
  * `points` is what /loyalty/... returns (null when the scheme is off); `total` is what is left to pay
  * in rupees (used only to suggest a sensible maximum, the server enforces the real one).

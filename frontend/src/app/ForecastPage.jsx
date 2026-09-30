@@ -94,7 +94,7 @@ const Demand = () => {
       <div className="flex flex-wrap items-center gap-2"><Prediction /><Accuracy accuracy={data.accuracy} /></div>
 
       {data.daily.every((d) => d.insufficient_data) ? (
-        <p className="rounded-[--radius-card] border border-dashed border-line-strong py-10 text-center text-sm text-ink-500">
+        <p className="rounded-(--radius-card) border border-dashed border-line-strong py-10 text-center text-sm text-ink-500">
           Forecasting needs at least three weeks of sales on the same weekday. You have {data.history_days} trading days so far — check back as history builds.
         </p>
       ) : (
@@ -104,7 +104,7 @@ const Demand = () => {
               const on = d.date === data.focus.date;
               return (
                 <button key={d.date} type="button" onClick={() => { setFocus(d.date); load(d.date); }} aria-pressed={on}
-                        className={`rounded-[--radius-card] border p-3 text-left transition-colors ${on ? 'border-brand-500 bg-brand-50' : 'border-line bg-surface hover:bg-surface-2'}`}>
+                        className={`rounded-(--radius-card) border p-3 text-left transition-colors ${on ? 'border-brand-500 bg-brand-50' : 'border-line bg-surface hover:bg-surface-2'}`}>
                   <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">{d.weekday.slice(0, 3)} {shortDate(d.date)}</p>
                   {d.orders ? (
                     <>
@@ -213,7 +213,7 @@ const Stock = () => {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[['Order now', s.order_now, 'will run short before a delivery can arrive'], ['Order soon', s.order_soon, 'within the next couple of days'],
           ['Suggested purchases', formatCurrency(s.estimated_cost), 'at your latest prices'], ['Missed by a fixed minimum', s.flagged_only_by_prediction, 'items a simple low-stock alert would not have flagged']].map(([label, value, sub]) => (
-          <div key={label} className="glass rounded-[--radius-card] p-4">
+          <div key={label} className="border border-line bg-surface rounded-(--radius-card) p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">{label}</p>
             <p className="mt-1 text-xl font-bold text-ink-900">{value}</p>
             <p className="text-xs text-ink-400">{sub}</p>

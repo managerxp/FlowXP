@@ -7,6 +7,7 @@
  */
 import pool from '../config/database.js';
 import { componentLabels, loadCombos } from '../modules/combos.js';
+import { stationScope } from '../modules/stations.js';
 import { recordAudit } from '../modules/events.js';
 import { minutesSince, performance, urgency } from '../modules/kitchen.js';
 import { addDaysISO, businessToday } from '../utils/dates.js';
@@ -20,15 +21,17 @@ export const tickets = async (req, res) => {
   const id = req.tenant.businessId;
   const values = [id, String(CANCEL_VISIBLE_MINUTES)];
   const scope = branchFilter(req.tenant, 'o.branch_id', values);
+  const stationParams = [id];
   const [rows, stations] = await Promise.all([
     pool.query(
       `SELECT oi.order_item_id, oi.order_id, oi.product_id, oi.description, oi.quantity, oi.kitchen_notes, oi.modifiers, oi.status, oi.station_id,
               oi.expected_minutes, oi.sent_at, oi.ready_at, oi.served_at, oi.cancelled_at,
-              o.order_number, o.order_type, o.platform, t.name AS table_name, k.priority, k.kot_number
+              o.order_number, o.order_type, o.platform, t.name AS table_name, k.priority, k.kot_number, br.name AS brand_name
        FROM order_items oi
        JOIN orders o ON o.order_id = oi.order_id
        LEFT JOIN dining_tables t ON t.table_id = o.table_id
        LEFT JOIN kot_tickets k ON k.kot_id = oi.kot_id
+       LEFT JOIN brands br ON br.brand_id = o.brand_id
        WHERE o.business_id = $1 AND oi.sent_at IS NOT NULL${scope}
          AND (o.status IN ('OPEN','PREPARING','READY','SERVED') OR (o.status = 'BILLED' AND oi.status IN ('PREPARING','READY') AND oi.sent_at > now() - interval '6 hours'))
          AND (oi.status IN ('PREPARING','READY')
@@ -37,20 +40,20 @@ export const tickets = async (req, res) => {
        ORDER BY (k.priority = 'RUSH') DESC, oi.sent_at, oi.order_item_id`,
       values
     ),
-    pool.query(`SELECT station_id, name FROM kitchen_stations WHERE business_id = $1 AND is_active ORDER BY sort_order, station_id`, [id])
+    pool.query(`SELECT station_id, name FROM kitchen_stations WHERE business_id = $1 AND is_active${stationScope(req.tenant, 'branch_id', stationParams)} ORDER BY sort_order, station_id`, stationParams)
   ]);
 
   const combos = await loadCombos(pool, id, [...new Set(rows.rows.map((r) => r.product_id).filter(Boolean))]);
   const byOrder = new Map();
   for (const r of rows.rows) {
     if (!byOrder.has(r.order_id)) {
-      byOrder.set(r.order_id, { order_id: r.order_id, order_number: r.order_number, order_type: r.order_type, platform: r.platform, table_name: r.table_name, priority: r.priority || 'NORMAL', sent_at: r.sent_at, items: [] });
+      byOrder.set(r.order_id, { order_id: r.order_id, order_number: r.order_number, order_type: r.order_type, platform: r.platform, table_name: r.table_name, brand_name: r.brand_name, priority: r.priority || 'NORMAL', sent_at: r.sent_at, items: [] });
     }
     const making = r.status === 'PREPARING';
     const elapsed = making ? minutesSince(r.sent_at) : null;
     byOrder.get(r.order_id).items.push({
       order_item_id: r.order_item_id, description: r.description, combo: componentLabels(combos.get(r.product_id)), quantity: Number(r.quantity), modifiers: r.modifiers || [], kitchen_notes: r.kitchen_notes,
-      status: r.status, station_id: r.station_id, expected_minutes: r.expected_minutes, sent_at: r.sent_at,
+      status: r.status, station_id: r.station_id, expected_minutes: r.expected_minutes, sent_at: r.sent_at, ready_at: r.ready_at, served_at: r.served_at,
       elapsed_minutes: elapsed, urgency: making ? urgency(elapsed, r.expected_minutes) : null,
       prep_minutes: r.ready_at ? Math.round((new Date(r.ready_at) - new Date(r.sent_at)) / 60000) : null,
       cancelled: r.status === 'CANCELLED'
@@ -81,8 +84,8 @@ export const printableKot = async (req, res) => {
   const values = [req.params.id, req.tenant.businessId];
   const scope = branchFilter(req.tenant, 'o.branch_id', values);
   const kot = (await pool.query(
-    `SELECT k.kot_id, k.kot_number, k.priority, k.created_at, o.order_id, o.order_number, o.order_type, o.platform, o.notes AS order_notes,
-            t.name AS table_name, br.name AS outlet_name, c.name AS customer_name
+    `SELECT k.kot_id, k.kot_number, k.priority, k.created_at, o.order_id, o.order_number, o.order_type, o.platform, o.external_order_number, o.notes AS order_notes,
+            t.name AS table_name, br.name AS outlet_name, COALESCE(c.name, o.guest_name) AS customer_name
      FROM kot_tickets k JOIN orders o ON o.order_id = k.order_id
      LEFT JOIN dining_tables t ON t.table_id = o.table_id LEFT JOIN branches br ON br.branch_id = o.branch_id LEFT JOIN customers c ON c.customer_id = o.customer_id
      WHERE k.kot_id = $1 AND k.business_id = $2${scope}`, values
@@ -106,7 +109,7 @@ export const printableKot = async (req, res) => {
     success: true,
     data: {
       kot_id: kot.kot_id, kot_number: kot.kot_number, priority: kot.priority, created_at: kot.created_at,
-      order_number: kot.order_number, order_type: kot.order_type, platform: kot.platform, table_name: kot.table_name,
+      order_number: kot.order_number, order_type: kot.order_type, platform: kot.platform, platform_order_number: kot.external_order_number, table_name: kot.table_name,
       outlet: kot.outlet_name, customer: kot.customer_name, order_notes: kot.order_notes, stations
     }
   });
@@ -151,9 +154,12 @@ export const rush = async (req, res) => {
 /* ── stations and routing ─────────────────────────────────────────────────── */
 
 export const listStations = async (req, res) => {
+  const params = [req.tenant.businessId];
+  const scope = stationScope(req.tenant, 's.branch_id', params);
   const { rows } = await pool.query(
-    `SELECT s.station_id, s.name, s.sort_order, s.is_active, (SELECT COUNT(*)::int FROM products p WHERE p.station_id = s.station_id AND p.status = 'ACTIVE') AS dishes
-     FROM kitchen_stations s WHERE s.business_id = $1 AND s.is_active ORDER BY s.sort_order, s.station_id`, [req.tenant.businessId]);
+    `SELECT s.station_id, s.name, s.sort_order, s.is_active, s.branch_id, b.name AS outlet_name, (SELECT COUNT(*)::int FROM products p WHERE p.station_id = s.station_id AND p.status = 'ACTIVE') AS dishes
+     FROM kitchen_stations s LEFT JOIN branches b ON b.branch_id = s.branch_id
+     WHERE s.business_id = $1 AND s.is_active${scope} ORDER BY s.sort_order, s.station_id`, params);
   res.json({ success: true, data: rows });
 };
 
@@ -162,10 +168,13 @@ const cleanName = (name) => String(name || '').trim().slice(0, 60);
 export const createStation = async (req, res) => {
   const name = cleanName(req.body?.name);
   if (!name) return bad(res, 'Name the station');
+  // an outlet's own station, or (default) one every outlet shares
+  const outletOnly = req.body?.outlet_only === true;
+  if (outletOnly && req.tenant.scopeBranchId == null) return bad(res, 'Pick an outlet first to add a station that belongs to it');
   try {
     const { rows } = await pool.query(
-      `INSERT INTO kitchen_stations (business_id, name, sort_order) VALUES ($1,$2,(SELECT COALESCE(MAX(sort_order),0)+1 FROM kitchen_stations WHERE business_id = $1)) RETURNING station_id, name`,
-      [req.tenant.businessId, name]
+      `INSERT INTO kitchen_stations (business_id, branch_id, name, sort_order) VALUES ($1,$2,$3,(SELECT COALESCE(MAX(sort_order),0)+1 FROM kitchen_stations WHERE business_id = $1)) RETURNING station_id, name, branch_id`,
+      [req.tenant.businessId, outletOnly ? req.tenant.scopeBranchId : null, name]
     );
     recordAudit(req, { action: 'kitchen.station_created', resource_type: 'kitchen_station', resource_id: rows[0].station_id, metadata: { name } });
     res.status(201).json({ success: true, data: rows[0] });
@@ -179,9 +188,10 @@ export const updateStation = async (req, res) => {
   const name = req.body?.name != null ? cleanName(req.body.name) : null;
   if (req.body?.name != null && !name) return bad(res, 'Name the station');
   try {
+    const params = [req.params.id, req.tenant.businessId, name, typeof req.body?.is_active === 'boolean' ? req.body.is_active : null];
     const { rowCount } = await pool.query(
-      `UPDATE kitchen_stations SET name = COALESCE($3, name), is_active = COALESCE($4, is_active) WHERE station_id = $1 AND business_id = $2`,
-      [req.params.id, req.tenant.businessId, name, typeof req.body?.is_active === 'boolean' ? req.body.is_active : null]
+      `UPDATE kitchen_stations SET name = COALESCE($3, name), is_active = COALESCE($4, is_active) WHERE station_id = $1 AND business_id = $2${stationScope(req.tenant, 'branch_id', params)}`,
+      params
     );
     if (!rowCount) return bad(res, 'Not found', 404);
     recordAudit(req, { action: 'kitchen.station_updated', resource_type: 'kitchen_station', resource_id: req.params.id, metadata: req.body });

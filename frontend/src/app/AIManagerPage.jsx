@@ -37,7 +37,7 @@ const RichText = ({ text }) => {
 
 const Message = ({ m }) => (
   <div className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-    <div className={`max-w-[92%] rounded-2xl px-4 py-3 sm:max-w-[80%] ${m.role === 'user' ? 'bg-brand-500 text-white' : 'glass'}`}>
+    <div className={`max-w-[92%] rounded-2xl px-4 py-3 sm:max-w-[80%] ${m.role === 'user' ? 'bg-brand-500 text-white' : 'border border-line bg-surface'}`}>
       {m.role === 'user' ? <p className="whitespace-pre-wrap text-sm">{m.content}</p> : <RichText text={m.content} />}
       {m.role === 'assistant' && m.tools?.length > 0 && (
         <p className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-line pt-2 text-xs text-ink-400">
@@ -142,7 +142,7 @@ const AIManagerPage = () => {
         <section className="order-1 flex min-h-[26rem] flex-col lg:order-2">
           <div className="flex-1 space-y-4">
             {messages.length === 0 && !busy && (
-              <div className="rounded-[--radius-card] border border-dashed border-line-strong p-6">
+              <div className="rounded-(--radius-card) border border-dashed border-line-strong p-6">
                 <p className="text-sm font-semibold text-ink-900">Try asking</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {status.suggestions.map((s) => (
@@ -154,7 +154,7 @@ const AIManagerPage = () => {
               </div>
             )}
             {messages.map((m, i) => <Message key={i} m={m} />)}
-            {busy && <div className="flex justify-start"><div className="glass rounded-2xl px-4 py-3 text-sm text-ink-500">Looking at your numbers…</div></div>}
+            {busy && <div className="flex justify-start"><div className="border border-line bg-surface rounded-2xl px-4 py-3 text-sm text-ink-500">Looking at your numbers…</div></div>}
             <div ref={endRef} />
           </div>
 

@@ -6,10 +6,11 @@
  * adapter needs, and prove the whole pipeline works with a test order before
  * a real one ever arrives.
  *
- * A "connected" order — real or simulated — becomes a normal `order` with a
- * KOT already sent (see integrations.controller.js's ingestOrder), so it
- * just shows up on Orders and Kitchen Display like anything else. No
- * separate "incoming orders" view is needed here.
+ * A "connected" order — real or simulated — becomes a normal `order`, but
+ * awaiting acceptance: no KOT, nothing sent to the kitchen (see
+ * integrations.controller.js's ingestOrder). It shows up on Orders with the
+ * rest, and the top-bar alert (IncomingDeliveryAlert.jsx) rings until someone
+ * accepts or rejects it there — no separate "incoming orders" view needed here.
  */
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
@@ -50,7 +51,7 @@ const PlatformCard = ({ integration, onChanged }) => {
     setBusy('test'); setError(''); setNotice('');
     try {
       const result = await api(`/integrations/${integration.platform}/simulate-order`, { method: 'POST' });
-      setNotice(`Test order ${result.order_number} sent to the kitchen — check Orders or Kitchen Display.`);
+      setNotice(`Test order ${result.order_number} arrived, awaiting acceptance — check Orders.`);
     } catch (caught) { setError(caught.message); }
     finally { setBusy(''); }
   };
@@ -98,7 +99,7 @@ const IntegrationsPage = () => {
 
   return (
     <div>
-      <PageHeader title="Delivery integrations" lead="Zomato, Swiggy and other delivery platforms — orders land straight in your kitchen queue." />
+      <PageHeader title="Delivery integrations" lead="Zomato, Swiggy and other delivery platforms — new orders wait for you to accept or reject before anything reaches the kitchen." />
       <Alert>{error}</Alert>
       {integrations && (
         <div className="grid gap-4 sm:grid-cols-2">

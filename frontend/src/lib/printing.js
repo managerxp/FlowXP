@@ -10,6 +10,10 @@ import { api } from './api.js';
 const KEY = 'flowxp.device';
 const DEFAULTS = {
   autoPrintKot: false, autoPrintReceipt: false, kitchenSound: true,
+  // Billing at a restaurant or café: send each counter sale to the kitchen as well
+  posSendToKitchen: true,
+  // A loud repeating ring for an incoming Zomato/Swiggy/ONDC/Magicpin order waiting to be accepted
+  deliveryRingSound: true,
   // Silent printing through the print agent on this computer (see print-agent/README.md)
   printMode: 'browser', agentUrl: 'http://127.0.0.1:9101', agentToken: '', receiptTarget: '', kotTarget: '', openDrawer: false
 };
@@ -112,4 +116,25 @@ export const beep = (kind = 'new') => {
       osc.start(audio.currentTime + at); osc.stop(audio.currentTime + at + 0.18);
     }
   } catch { /* no audio available: the screen still shows everything */ }
+};
+
+/* A loud, unmissable ring for a delivery-platform order waiting to be accepted or rejected —
+   deliberately louder and longer than beep(), which is easy to miss under kitchen noise. The
+   caller (IncomingDeliveryAlert.jsx) repeats this every few seconds until the order is handled. */
+export const ringAlarm = () => {
+  try {
+    audio ??= new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === 'suspended') audio.resume();
+    // two short "ring ring" bursts, each two rising tones, louder than beep()
+    const pattern = [[520, 0], [660, 0.14], [520, 0.5], [660, 0.64]];
+    for (const [freq, at] of pattern) {
+      const osc = audio.createOscillator(); const gain = audio.createGain();
+      osc.frequency.value = freq; osc.type = 'triangle';
+      gain.gain.setValueAtTime(0.0001, audio.currentTime + at);
+      gain.gain.exponentialRampToValueAtTime(0.55, audio.currentTime + at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + at + 0.13);
+      osc.connect(gain).connect(audio.destination);
+      osc.start(audio.currentTime + at); osc.stop(audio.currentTime + at + 0.15);
+    }
+  } catch { /* no audio available: the banner still shows */ }
 };

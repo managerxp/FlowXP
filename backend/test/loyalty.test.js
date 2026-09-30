@@ -319,6 +319,13 @@ test('the summary counts members, rewards and coupon use', { skip }, async () =>
   assert.ok(s.rewards_redeemed >= 1);
   assert.ok(s.coupon_uses_30d >= 0);
   assert.ok(Array.isArray(s.regulars) && s.regulars.length > 0);
+  // every member is in exactly one "how often" group, and the other counts never exceed the members
+  assert.equal(s.by_visits.reduce((n, b) => n + b.count, 0), s.members);
+  assert.deepEqual(s.by_visits.map((b) => b.label), ['Once', '2–3 times', '4–6 times', '7 or more']);
+  for (const k of ['new_30d', 'active_30d', 'lapsed_60d']) assert.ok(s[k] >= 0 && s[k] <= s.members, k);
+  assert.ok(s.reward_due.count >= s.reward_due.members.length && s.one_visit_away.count >= 0);
+  // a regular whose card shows the reward due is in the "due" list
+  for (const r of s.regulars.filter((x) => x.reward_ready)) assert.ok(s.reward_due.members.some((m) => m.customer_id === r.customer_id) || s.reward_due.count > 20, r.name);
   void tenantFor; void ravi;
 });
 

@@ -16,6 +16,7 @@ import { branchFilter } from '../utils/scope.js';
 const bad = (res, message, status = 400) => res.status(status).json({ success: false, message });
 const words = (s) => String(s).toLowerCase().replace('_', ' ');
 const WALKIN_HOLD_MIN = 60;   // a walk-in seated now shouldn't run into a booking within this long
+const NEAR_BOOKING_MIN = 60;  // a booking starting within this long can't take a table that has guests on it now
 
 const OPEN_ORDER = `EXISTS (SELECT 1 FROM orders o WHERE o.table_id = t.table_id AND o.status NOT IN ('BILLED','CANCELLED','MERGED'))`;
 /* Another live reservation on table t overlaps [$n, $n + $n+1 minutes). */
@@ -83,17 +84,21 @@ export const availability = async (req, res) => {
     `SELECT t.table_id, t.name, t.zone, t.seats FROM dining_tables t
      WHERE t.business_id = $1 AND t.status <> 'CLOSED' AND (t.seats IS NULL OR t.seats >= $4)${scope}
        AND NOT ${overlap(2)}
+       AND NOT (${OPEN_ORDER} AND $2::timestamptz < CURRENT_TIMESTAMP + make_interval(mins => ${NEAR_BOOKING_MIN}))
      ORDER BY t.seats NULLS LAST, t.name`, values);
   res.json({ success: true, data: rows });
 };
 
 /* Validate a table for a booking; returns an error response body or the table id. */
-const bookTable = async (req, res, { tableId, party, at, minutes, excludeReservation }) => {
+const bookTable = async (req, res, { tableId, party, at, minutes, excludeReservation, checkBusy = true }) => {
   if (!tableId) return { id: null };
   const s = await checkTable(req, Number(tableId), { at: at.toISOString(), minutes, excludeReservation });
   if (s.error) return bad(res, s.error, s.status) && null;
   if (s.table.seats && s.table.seats < party) return bad(res, `${s.table.name} seats ${s.table.seats}, the party is ${party}`, 409) && null;
   if (s.clash) return bad(res, `${s.table.name} is already reserved around then`, 409) && null;
+  if (checkBusy && s.busy && at.getTime() < Date.now() + NEAR_BOOKING_MIN * 60000) {
+    return bad(res, `${s.table.name} has guests on it right now. Choose another table, or decide the table later.`, 409) && null;
+  }
   return { id: s.table.table_id };
 };
 
@@ -139,7 +144,9 @@ export const update = async (req, res) => {
   const minutes = stayMinutes(body.duration_min);
   if (!minutes) return bad(res, 'Stay length must be 15 minutes to 8 hours');
 
-  const table = await bookTable(req, res, { tableId: body.table_id, party: g.party, at, minutes, excludeReservation: cur.reservation_id });
+  // only a new table or time is checked against who is sitting there now, so editing a note never fails on it
+  const moved = Number(body.table_id || 0) !== Number(cur.table_id || 0) || at.getTime() !== new Date(cur.reserved_at).getTime();
+  const table = await bookTable(req, res, { tableId: body.table_id, party: g.party, at, minutes, excludeReservation: cur.reservation_id, checkBusy: moved });
   if (!table) return;
   const { rows } = await pool.query(
     `UPDATE reservations SET table_id=$1, customer_id=$2, guest_name=$3, phone=$4, party_size=$5, reserved_at=$6, duration_min=$7, notes=$8

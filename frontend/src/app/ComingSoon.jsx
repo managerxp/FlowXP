@@ -16,7 +16,7 @@ const ComingSoon = ({ title, body, priority }) => (
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-600">
         Priority {priority}
       </p>
-      <h1 className="mt-3 text-2xl font-bold tracking-tight text-ink-900">{title}</h1>
+      <h1 className="mt-3 text-h3 font-semibold text-ink-900">{title}</h1>
       <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink-500">{body}</p>
       <Button to="/app" variant="secondary" size="sm" className="mt-7">Back to dashboard</Button>
     </Card>

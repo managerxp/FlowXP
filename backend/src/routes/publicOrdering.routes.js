@@ -17,9 +17,12 @@ const router = Router();
 const billLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { success: false, message: 'Too many requests. Try again shortly.' } });
 router.get('/bill/:token', billLimiter, publicBill.bill);
 
-/* The one unauthenticated write in this whole API. Generous relative to the
-   login limiter — a real table can place several rounds over a meal — but
-   still bounded, since nothing past the token itself stops a request. */
+/* A bill is rated once or twice at most (submit, maybe change your mind) — tighter than the order limiter below. */
+const feedbackLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { success: false, message: 'Too many requests. Try again shortly.' } });
+router.post('/bill/:token/feedback', feedbackLimiter, publicBill.submitFeedback);
+
+/* Generous relative to the login limiter — a real table can place several
+   rounds over a meal — but still bounded, since nothing past the token itself stops a request. */
 const placeOrderLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
   max: 20,

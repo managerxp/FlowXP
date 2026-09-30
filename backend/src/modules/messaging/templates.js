@@ -44,6 +44,11 @@ export const TEMPLATES = {
     name: 'flowxp_offer', promo: true,
     vars: ['name', 'business', 'offer'],
     text: (p) => `Hi ${p.name}, ${p.business}: ${p.offer} Reply STOP to opt out.`
+  },
+  REVIEW_REPLY: {
+    name: 'flowxp_review_reply', promo: false,
+    vars: ['name', 'business', 'reply'],
+    text: (p) => `Hi ${p.name}, ${p.business}: ${p.reply}`
   }
 };
 

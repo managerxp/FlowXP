@@ -75,7 +75,7 @@ const ActivityPage = () => {
 
       <Alert>{error}</Alert>
       {!entries && !error && <p className="py-10 text-center text-sm text-ink-400">Loading…</p>}
-      {entries?.length === 0 && <p className="rounded-[--radius-card] border border-dashed border-line-strong py-10 text-center text-sm text-ink-400">Nothing recorded for these filters.</p>}
+      {entries?.length === 0 && <p className="rounded-(--radius-card) border border-dashed border-line-strong py-10 text-center text-sm text-ink-400">Nothing recorded for these filters.</p>}
 
       {entries?.length > 0 && (
         <>

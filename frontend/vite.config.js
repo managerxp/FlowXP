@@ -2,8 +2,17 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
+/* Lists the built files the service worker keeps for offline use. */
+const precacheList = () => ({
+  name: 'flowxp-precache',
+  generateBundle(_options, bundle) {
+    const files = Object.keys(bundle).filter((f) => f.startsWith('assets/')).map((f) => '/' + f);
+    this.emitFile({ type: 'asset', fileName: 'precache.json', source: JSON.stringify(files) });
+  }
+});
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), precacheList()],
   server: {
     /* 5174, not the Vite default: the ManagerXP platform's own frontend lives
        on 5173 and the two get run side by side. */

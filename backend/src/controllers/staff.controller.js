@@ -20,7 +20,7 @@ import { PERMISSIONS, cleanOverrides, describePermissions } from '../modules/per
 
 const ROLES = Object.keys(ROLE_PERMISSIONS);
 const GROUP_ROLES = ['OWNER', 'ADMIN'];                    // always see every outlet
-const FLOOR_ROLES = ['CASHIER', 'STAFF', 'WAITER', 'KITCHEN'];   // always pinned to one outlet
+const FLOOR_ROLES = ['CASHIER', 'STAFF', 'WAITER', 'KITCHEN', 'DELIVERY'];   // always pinned to one outlet
 const PRIVILEGED = ['OWNER', 'ADMIN'];
 const INVITE_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -66,7 +66,13 @@ export const invite = async (req, res) => {
   const { branchId, error: branchError } = await resolveBranch(req.tenant.businessId, role, body.branch_id);
   if (branchError) return deny(res, branchError, 400);
 
-  const limit = (await pool.query(`SELECT p.limits FROM businesses b JOIN plans p ON p.plan_code = b.plan_code WHERE b.business_id = $1`, [req.tenant.businessId])).rows[0]?.limits?.users;
+  // The pinned plan version's limit, not the plan's current one — see migration 0038.
+  const limit = (await pool.query(
+    `SELECT COALESCE(pv.limits, p.limits) AS limits FROM businesses b
+     JOIN plans p ON p.plan_code = b.plan_code
+     LEFT JOIN plan_versions pv ON pv.plan_version_id = b.plan_version_id
+     WHERE b.business_id = $1`, [req.tenant.businessId]
+  )).rows[0]?.limits?.users;
   if (limit != null) {
     const n = Number((await pool.query(`SELECT COUNT(*) AS n FROM business_users WHERE business_id = $1 AND status = 'ACTIVE'`, [req.tenant.businessId])).rows[0].n);
     if (n >= Number(limit)) return deny(res, `Your plan includes ${limit} users. Upgrade to add more people.`, 402);
@@ -120,7 +126,9 @@ export const update = async (req, res) => {
   const status = body.status !== undefined ? body.status : target.status;
   if (!['ACTIVE', 'DISABLED'].includes(status)) return deny(res, 'Status must be ACTIVE or DISABLED', 400);
 
-  if (target.role === 'OWNER' && (role !== 'OWNER' || status !== 'ACTIVE') && (await activeOwners(req.tenant.businessId)) <= 1) {
+  // only an already-ACTIVE owner counts toward "the last one" — changing a disabled
+  // owner's stored role never reduces how many owners are actually active
+  if (target.role === 'OWNER' && target.status === 'ACTIVE' && (role !== 'OWNER' || status !== 'ACTIVE') && (await activeOwners(req.tenant.businessId)) <= 1) {
     return deny(res, 'A business needs at least one active owner', 409);
   }
 

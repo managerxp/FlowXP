@@ -162,7 +162,7 @@ const main = async () => {
     `INSERT INTO businesses (name, business_type, owner_user_id, email, phone, address, city, state, gstin, gst_enabled,
                              subscription_status, plan_code, billing_cycle, onboarding_step, upi_vpa)
      VALUES ('FlowXP Demo Restaurant','RESTAURANT',$1,'demo@flowxp.test','9876500000','12 MG Road','Bengaluru','Karnataka','29ABCDE1234F1Z5',TRUE,
-             'ACTIVE','BUSINESS','MONTHLY',10,'demorestaurant@okhdfcbank')
+             'ACTIVE','ENTERPRISE','MONTHLY',10,'demorestaurant@okhdfcbank')
      RETURNING business_id`,
     [staff.owner.userId]
   )).rows[0];
@@ -269,6 +269,10 @@ const main = async () => {
     ing[name] = { id, cost, target: stock, supplier: 'Dairy Delight' };
     dishes.push({ id, name, popularity, groups: [], packaged: true, cost, stock });
   }
+  // the veg / non-veg / egg mark on the menu
+  await pool.query(
+    `UPDATE products SET food_type = CASE WHEN name ~* '(chicken|mutton|fish|prawn|keema)' THEN 'NON_VEG' WHEN name ~* 'egg' THEN 'EGG' ELSE 'VEG' END
+     WHERE business_id = $1 AND kind = 'DISH'`, [businessId]);
 
   // Kitchen stations and routing.
   const dishInfo = new Map();

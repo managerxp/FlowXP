@@ -12,13 +12,15 @@ import { loadCombos } from '../modules/combos.js';
 
 const bad = (res, message, status = 400) => res.status(status).json({ success: false, message });
 
-const asGroup = (g, modifiers) => ({
+const asGroup = (g, modifiers, products = []) => ({
   group_id: g.group_id,
   name: g.name,
   is_variant: g.is_variant,
   min_select: g.min_select,
   max_select: g.max_select,
   is_active: g.is_active,
+  // the dishes that offer this group (active ones), so the screen can show and change them
+  products: products.map((p) => ({ product_id: p.product_id, name: p.name, category_name: p.category_name })),
   modifiers: modifiers.map((m) => ({
     modifier_id: m.modifier_id,
     name: m.name,
@@ -41,7 +43,14 @@ const loadGroups = async (businessId, { all = false, groupId = null } = {}) => {
      ORDER BY sort_order, modifier_id`,
     [businessId, groups.map((g) => g.group_id)]
   )).rows;
-  return groups.map((g) => asGroup(g, mods.filter((m) => m.group_id === g.group_id)));
+  const used = (await pool.query(
+    `SELECT pg.group_id, p.product_id, p.name, c.name AS category_name
+     FROM product_modifier_groups pg JOIN products p ON p.product_id = pg.product_id
+     LEFT JOIN categories c ON c.category_id = p.category_id
+     WHERE p.business_id = $1 AND p.status = 'ACTIVE' AND pg.group_id = ANY($2::int[]) ORDER BY p.name`,
+    [businessId, groups.map((g) => g.group_id)]
+  )).rows;
+  return groups.map((g) => asGroup(g, mods.filter((m) => m.group_id === g.group_id), used.filter((u) => u.group_id === g.group_id)));
 };
 
 /** Validate the shared shape of a group body; returns an error string or null. */
@@ -171,6 +180,35 @@ export const updateGroup = async (req, res) => {
   }
 };
 
+/* PUT /api/modifier-groups/:id/products { product_ids } — the full set of dishes that offer this group
+   (the other way round from a dish's own list, for "put Extras on every main" in one go) */
+export const setGroupProducts = async (req, res) => {
+  const ids = Array.isArray(req.body?.product_ids) ? [...new Set(req.body.product_ids.map(Number))] : null;
+  if (!ids || ids.some((id) => !Number.isInteger(id))) return bad(res, 'product_ids must be a list of products');
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const group = await client.query(`SELECT 1 FROM modifier_groups WHERE group_id = $1 AND business_id = $2`, [req.params.id, req.tenant.businessId]);
+    if (!group.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ success: false, message: 'Not found' }); }
+    if (ids.length) {
+      const owned = await client.query(`SELECT 1 FROM products WHERE business_id = $1 AND product_id = ANY($2::int[]) AND kind = 'DISH'`, [req.tenant.businessId, ids]);
+      if (owned.rows.length !== ids.length) { await client.query('ROLLBACK'); return bad(res, 'Choose items from your own menu'); }
+    }
+    await client.query(`DELETE FROM product_modifier_groups WHERE group_id = $1`, [req.params.id]);
+    for (const id of ids) await client.query(`INSERT INTO product_modifier_groups (product_id, group_id) VALUES ($1,$2)`, [id, req.params.id]);
+    await client.query('COMMIT');
+    recordAudit(req, { action: 'modifier_group.products_set', resource_type: 'modifier_group', resource_id: req.params.id, metadata: { products: ids.length } });
+    const [updated] = await loadGroups(req.tenant.businessId, { all: true, groupId: Number(req.params.id) });
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 /* PUT /api/products/:id/modifier-groups — the full set of groups this dish offers */
 export const setProductGroups = async (req, res) => {
   const ids = Array.isArray(req.body?.group_ids) ? [...new Set(req.body.group_ids.map(Number))] : null;
@@ -200,17 +238,32 @@ export const setProductGroups = async (req, res) => {
 
 /* ── Recipes ───────────────────────────────────────────────────────────── */
 
-const recipeResponse = async (client, businessId, productId) => {
+/* Which recipe a request is about: the default (no branch_id) or one outlet's own. A person pinned to an outlet can only work on theirs. */
+const recipeBranch = async (req) => {
+  const raw = req.query?.branch_id ?? req.body?.branch_id;
+  if (raw == null || raw === '' || raw === 'default') return { branchId: null };
+  const id = Number(raw);
+  const own = Number.isInteger(id) && (await pool.query(`SELECT 1 FROM branches WHERE branch_id = $1 AND business_id = $2 AND status = 'ACTIVE'`, [id, req.tenant.businessId])).rows.length;
+  if (!own) return { error: 'Choose one of your outlets', status: 404 };
+  if (req.tenant.pinned && id !== req.tenant.branchId) return { error: 'You can only change your own outlet\'s recipe', status: 403 };
+  return { branchId: id };
+};
+
+const recipeResponse = async (client, businessId, productId, branchId = null) => {
   const product = (await client.query(
     `SELECT product_id, name, selling_price_paise, unit FROM products WHERE product_id = $1 AND business_id = $2`,
     [productId, businessId]
   )).rows[0];
   if (!product) return null;
-  const rows = (await loadRecipes(client, businessId, [Number(productId)])).get(Number(productId)) || [];
+  const rows = (await loadRecipes(client, businessId, [Number(productId)], branchId)).get(Number(productId)) || [];
   const margin = recipeMargin(recipeCostPaise(rows), product.selling_price_paise);
+  const ownRecipe = branchId != null && (await client.query(`SELECT 1 FROM recipe_items WHERE dish_product_id = $1 AND branch_id = $2 LIMIT 1`, [productId, branchId])).rows.length > 0;
   return {
     product_id: product.product_id,
     name: product.name,
+    branch_id: branchId,
+    // true when this outlet has its own recipe; false means it is showing the default
+    outlet_specific: ownRecipe,
     selling_price: toRupees(product.selling_price_paise),
     ingredients: rows.map((r) => ({
       ingredient_id: r.ingredient_id,
@@ -228,7 +281,9 @@ const recipeResponse = async (client, businessId, productId) => {
 
 /* GET /api/products/:id/recipe */
 export const getRecipe = async (req, res) => {
-  const data = await recipeResponse(pool, req.tenant.businessId, req.params.id);
+  const scope = await recipeBranch(req);
+  if (scope.error) return res.status(scope.status).json({ success: false, message: scope.error });
+  const data = await recipeResponse(pool, req.tenant.businessId, req.params.id, scope.branchId);
   if (!data) return res.status(404).json({ success: false, message: 'Not found' });
   res.json({ success: true, data });
 };
@@ -237,6 +292,10 @@ export const getRecipe = async (req, res) => {
 export const setRecipe = async (req, res) => {
   const items = Array.isArray(req.body?.ingredients) ? req.body.ingredients : null;
   if (!items) return bad(res, 'ingredients must be a list');
+  const scope = await recipeBranch(req);
+  if (scope.error) return res.status(scope.status).json({ success: false, message: scope.error });
+  const { branchId } = scope;
+  if (branchId != null && !items.length) return bad(res, 'An outlet recipe needs at least one ingredient. To use the default again, remove the outlet recipe.');
 
   const seen = new Set();
   for (const item of items) {
@@ -256,16 +315,16 @@ export const setRecipe = async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(404).json({ success: false, message: 'Product or ingredient not found' });
     }
-    await client.query(`DELETE FROM recipe_items WHERE dish_product_id = $1 AND business_id = $2`, [req.params.id, req.tenant.businessId]);
+    await client.query(`DELETE FROM recipe_items WHERE dish_product_id = $1 AND business_id = $2 AND branch_id IS NOT DISTINCT FROM $3::int`, [req.params.id, req.tenant.businessId, branchId]);
     for (const item of items) {
       await client.query(
-        `INSERT INTO recipe_items (business_id, dish_product_id, ingredient_product_id, quantity, wastage_pct) VALUES ($1,$2,$3,$4,$5)`,
-        [req.tenant.businessId, req.params.id, item.ingredient_id, Number(item.quantity), Number(item.wastage_pct ?? 0)]
+        `INSERT INTO recipe_items (business_id, dish_product_id, ingredient_product_id, quantity, wastage_pct, branch_id) VALUES ($1,$2,$3,$4,$5,$6)`,
+        [req.tenant.businessId, req.params.id, item.ingredient_id, Number(item.quantity), Number(item.wastage_pct ?? 0), branchId]
       );
     }
-    const data = await recipeResponse(client, req.tenant.businessId, req.params.id);
+    const data = await recipeResponse(client, req.tenant.businessId, req.params.id, branchId);
     await client.query('COMMIT');
-    recordAudit(req, { action: 'recipe.updated', resource_type: 'product', resource_id: req.params.id, metadata: { ingredients: items.length } });
+    recordAudit(req, { action: 'recipe.updated', resource_type: 'product', resource_id: req.params.id, metadata: { ingredients: items.length, branch_id: branchId } });
     res.json({ success: true, data });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
@@ -273,6 +332,17 @@ export const setRecipe = async (req, res) => {
   } finally {
     client.release();
   }
+};
+
+/* DELETE /api/products/:id/recipe?branch_id= — drop an outlet's own recipe so it uses the default again */
+export const clearOutletRecipe = async (req, res) => {
+  const scope = await recipeBranch(req);
+  if (scope.error) return res.status(scope.status).json({ success: false, message: scope.error });
+  if (scope.branchId == null) return bad(res, 'Say which outlet\'s recipe to remove');
+  if (!(await ownsProducts(pool, req.tenant.businessId, [req.params.id]))) return res.status(404).json({ success: false, message: 'Not found' });
+  await pool.query(`DELETE FROM recipe_items WHERE dish_product_id = $1 AND business_id = $2 AND branch_id = $3`, [req.params.id, req.tenant.businessId, scope.branchId]);
+  recordAudit(req, { action: 'recipe.outlet_cleared', resource_type: 'product', resource_id: req.params.id, metadata: { branch_id: scope.branchId } });
+  res.json({ success: true, data: await recipeResponse(pool, req.tenant.businessId, req.params.id, scope.branchId) });
 };
 
 /* ── Combos ────────────────────────────────────────────────────────────── */

@@ -163,7 +163,7 @@ const LeakagePage = () => {
           </Card>
 
           {open.length === 0 && (
-            <p className="rounded-[--radius-card] border border-dashed border-line-strong py-10 text-center text-sm text-ink-500">
+            <p className="rounded-(--radius-card) border border-dashed border-line-strong py-10 text-center text-sm text-ink-500">
               Nothing unusual found in the last {data.period.days} days. FlowXP compares against your own normal, so this improves as your history grows.
             </p>
           )}

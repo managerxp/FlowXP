@@ -18,18 +18,43 @@ import { loadProductGroups, outletSettingsFor } from '../modules/menu.js';
 import { describe, findCustomerByPhone, getProgram, isLive, normalisePhone, progressFor } from '../modules/loyalty.js';
 import { businessToday } from '../utils/dates.js';
 import { OrderItemsError, getOrCreateOpenOrderForTable, insertOrderItems, sendKotCore } from './orders.controller.js';
+import { effectiveFeatureFlags, hasPlanFeature } from '../modules/planFeatures.js';
 
+/*
+ * All three gates (plan, business type on that plan, per-business override —
+ * see modules/planFeatures.js), not just the plan's own flags: this predates
+ * the business-type axis (migration 0044) and only ever checked `plans`
+ * directly, so switching qr_ordering off for one business type (e.g. Cloud
+ * Kitchen has no tables to scan, 2026-09-29) silently did nothing here.
+ */
 const resolveTable = async (client, token) => {
   const { rows } = await client.query(
     `SELECT t.table_id, t.branch_id, t.name AS table_name, t.status AS table_status, t.business_id,
-            b.name AS business_name, b.currency, b.status AS business_status, b.upi_vpa
+            b.name AS business_name, b.currency, b.status AS business_status, b.upi_vpa,
+            b.receipt_settings->>'logo_url' AS logo_url, COALESCE(br.address, b.address) AS address, COALESCE(br.city, b.city) AS city,
+            COALESCE(br.phone, b.phone) AS phone, br.name AS outlet_name,
+            COALESCE(p.feature_flags, '{}'::jsonb) AS plan_feature_flags,
+            btf.feature_flags AS type_feature_flags,
+            COALESCE(bfo.overrides, '{}'::jsonb) AS feature_overrides
      FROM dining_tables t
      JOIN businesses b ON b.business_id = t.business_id
+     LEFT JOIN branches br ON br.branch_id = t.branch_id
+     LEFT JOIN plans p ON p.plan_code = b.plan_code
+     LEFT JOIN business_type_features btf ON btf.business_type = b.business_type AND btf.plan_code = b.plan_code
+     LEFT JOIN LATERAL (
+       SELECT jsonb_object_agg(feature_key, enabled) AS overrides FROM business_feature_overrides
+       WHERE business_id = b.business_id AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+     ) bfo ON true
      WHERE t.qr_token = $1`,
     [token]
   );
   return rows[0] || null;
 };
+
+/* Same "not available right now" the customer sees for a closed table or a suspended
+   business — QR ordering being off for this plan is not something to explain to a diner. */
+const unavailable = (table) => !table || table.table_status === 'CLOSED' || table.business_status !== 'ACTIVE'
+  || !hasPlanFeature({ planFeatures: effectiveFeatureFlags([table.plan_feature_flags, table.type_feature_flags], table.feature_overrides) }, 'qr_ordering');
 
 /* ==========================================================================
    GET /api/public/menu/:token
@@ -37,12 +62,12 @@ const resolveTable = async (client, token) => {
 export const getMenu = async (req, res) => {
   try {
     const table = await resolveTable(pool, req.params.token);
-    if (!table || table.table_status === 'CLOSED' || table.business_status !== 'ACTIVE') {
+    if (unavailable(table)) {
       return res.status(404).json({ success: false, message: 'This ordering link is not available right now' });
     }
 
     const { rows } = await pool.query(
-      `SELECT p.product_id, p.name, p.description, p.image_url, p.unit,
+      `SELECT p.product_id, p.name, p.description, p.image_url, p.unit, p.food_type,
               p.selling_price_paise, p.category_id, c.name AS category_name
        FROM products p
        LEFT JOIN categories c ON c.category_id = p.category_id
@@ -69,6 +94,7 @@ export const getMenu = async (req, res) => {
         description: row.description,
         image_url: row.image_url,
         unit: row.unit,
+        food_type: row.food_type || null,
         price: toRupees(row.selling_price_paise),
         modifier_groups: groupsByProduct.get(row.product_id).map((g) => ({
           group_id: g.group_id, name: g.name, is_variant: g.is_variant, min_select: g.min_select, max_select: g.max_select,
@@ -80,7 +106,7 @@ export const getMenu = async (req, res) => {
     const program = await getProgram(pool, table.business_id);
     const loyalty = isLive(program) ? {
       visits_required: program.visits_required, reward_item: `${program.reward_quantity > 1 ? `${program.reward_quantity} × ` : ''}${program.reward_name}`,
-      min_bill: toRupees(program.min_bill_paise)
+      min_bill: toRupees(program.min_bill_paise), reward_image_url: null
     } : null;
 
     res.json({
@@ -90,7 +116,11 @@ export const getMenu = async (req, res) => {
         // upi_vpa reaches the customer's own confirmation screen so it can
         // show a "pay now" QR — this is the same idea as a UPI QR sticker on
         // the counter, not a payment gateway; see the column comment.
-        business: { name: table.business_name, currency: table.currency, upi_vpa: table.upi_vpa },
+        business: {
+          name: table.business_name, currency: table.currency, upi_vpa: table.upi_vpa,
+          // what the customer sees at the top of the menu: who they are ordering from
+          logo_url: table.logo_url || null, outlet: table.outlet_name, address: [table.address, table.city].filter(Boolean).join(', ') || null, phone: table.phone || null
+        },
         table: { table_id: table.table_id, name: table.table_name },
         categories: [...byCategory.values()]
       }
@@ -111,7 +141,7 @@ export const getMenu = async (req, res) => {
 export const loyaltyCard = async (req, res) => {
   try {
     const table = await resolveTable(pool, req.params.token);
-    if (!table || table.table_status === 'CLOSED' || table.business_status !== 'ACTIVE') {
+    if (unavailable(table)) {
       return res.status(404).json({ success: false, message: 'This ordering link is not available right now' });
     }
     if (!normalisePhone(req.body?.phone)) return res.status(400).json({ success: false, message: 'Enter a 10-digit mobile number' });
@@ -146,7 +176,7 @@ export const placeOrder = async (req, res) => {
     await client.query('BEGIN');
 
     const table = await resolveTable(client, req.params.token);
-    if (!table || table.table_status === 'CLOSED' || table.business_status !== 'ACTIVE') {
+    if (unavailable(table)) {
       await client.query('ROLLBACK');
       return res.status(404).json({ success: false, message: 'This ordering link is not available right now' });
     }

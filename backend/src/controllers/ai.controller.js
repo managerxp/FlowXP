@@ -10,6 +10,7 @@ import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
 import { AIProviderError, isConfigured } from '../modules/ai/provider.js';
 import { ask } from '../modules/ai/manager.js';
+import { converseOnboarding } from '../modules/ai/onboarding.js';
 import { toolsFor } from '../modules/ai/tools.js';
 import config from '../config/env.js';
 
@@ -31,7 +32,13 @@ const SUGGESTIONS = [
 /** How many questions this business has used this month, and its allowance (null = unlimited). */
 export const allowance = async (businessId) => {
   const [limit, used] = await Promise.all([
-    pool.query(`SELECT p.limits FROM businesses b JOIN plans p ON p.plan_code = b.plan_code WHERE b.business_id = $1`, [businessId]),
+    // The pinned plan version's limit, not the plan's current one — see migration 0038.
+    pool.query(
+      `SELECT COALESCE(pv.limits, p.limits) AS limits FROM businesses b
+       JOIN plans p ON p.plan_code = b.plan_code
+       LEFT JOIN plan_versions pv ON pv.plan_version_id = b.plan_version_id
+       WHERE b.business_id = $1`, [businessId]
+    ),
     pool.query(
       `SELECT COUNT(*)::int AS n FROM ai_usage
        WHERE business_id = $1 AND created_at >= date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE COALESCE((SELECT timezone FROM businesses WHERE business_id = $1), 'Asia/Kolkata')) AT TIME ZONE COALESCE((SELECT timezone FROM businesses WHERE business_id = $1), 'Asia/Kolkata')`,
@@ -136,6 +143,51 @@ export const conversation = async (req, res) => {
   if (!own) return bad(res, 'Not found', 404);
   const { rows } = await pool.query(`SELECT role, content, tools, created_at FROM ai_messages WHERE conversation_id = $1 ORDER BY message_id`, [req.params.id]);
   res.json({ success: true, data: { ...own, messages: rows } });
+};
+
+const MAX_ONBOARDING_MESSAGE = 500;
+const ONBOARDING_HISTORY_TURNS = 12;
+
+/*
+ * POST /api/ai/onboarding-chat { message, history?, current_form? }
+ * The setup wizard's chat helper (Onboarding.jsx) — drafts field values from
+ * what the owner types, never writes anything itself. No conversation is
+ * persisted server-side: the wizard keeps its own short-lived history for
+ * the length of setup, same as any other client-only form state.
+ */
+export const onboardingChat = async (req, res) => {
+  const { businessId } = req.tenant;
+  const message = String(req.body?.message ?? '').trim();
+  if (!message) return bad(res, 'Type something');
+  if (message.length > MAX_ONBOARDING_MESSAGE) return bad(res, `Keep it under ${MAX_ONBOARDING_MESSAGE} characters`);
+
+  if (!isConfigured()) return bad(res, 'Flow AI isn’t set up on this server yet.', 503, 'AI_NOT_CONFIGURED');
+  if (!(await enabled(businessId))) return bad(res, 'Flow AI is switched off for this business.', 403, 'AI_DISABLED');
+  const allow = await allowance(businessId);
+  if (allow.remaining === 0) return bad(res, `You have used all ${allow.limit} AI questions on your plan this month. They reset next month, or you can upgrade.`, 402, 'AI_LIMIT');
+
+  const history = Array.isArray(req.body?.history)
+    ? req.body.history
+        .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+        .slice(-ONBOARDING_HISTORY_TURNS)
+    : [];
+  const currentForm = req.body?.current_form && typeof req.body.current_form === 'object' ? req.body.current_form : {};
+
+  let result;
+  try {
+    result = await converseOnboarding({ businessName: req.tenant.name, businessType: req.tenant.businessType, currentForm, message, history });
+  } catch (error) {
+    if (error instanceof AIProviderError) return bad(res, error.message, error.status === 429 ? 429 : 502, 'AI_UNAVAILABLE');
+    throw error;
+  }
+
+  // No conversation to link this to — see the comment above.
+  await pool.query(
+    `INSERT INTO ai_usage (business_id, user_id, conversation_id, model, input_tokens, output_tokens) VALUES ($1,$2,NULL,$3,$4,$5)`,
+    [businessId, req.auth.userId, config.ai.model, result.usage.input_tokens, result.usage.output_tokens]
+  );
+
+  res.json({ success: true, data: { reply: result.reply, fields: result.fields, remaining: allow.remaining == null ? null : allow.remaining - 1 } });
 };
 
 /* PUT /api/ai/settings { enabled } — owner only */

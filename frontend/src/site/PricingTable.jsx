@@ -19,7 +19,7 @@ const Price = ({ plan, cycle }) => {
 
   return (
     <p className="flex items-baseline gap-1.5">
-      <span className="text-3xl font-extrabold tracking-tight text-ink-900">
+      <span className="text-3xl font-semibold tracking-tight text-ink-900">
         {formatMoney(paise)}
       </span>
       <span className="text-sm text-ink-400">/{cycle === 'YEARLY' ? 'year' : 'month'}</span>
@@ -56,14 +56,14 @@ const PricingTable = () => {
   return (
     <>
       <div className="mb-10 flex justify-center">
-        <div className="inline-flex rounded-full border border-line bg-surface-2 p-1">
+        <div className="inline-flex rounded-lg border border-line bg-surface-2 p-1">
           {['MONTHLY', 'YEARLY'].map((option) => (
             <button
               key={option}
               type="button"
               onClick={() => setCycle(option)}
               aria-pressed={cycle === option}
-              className={`rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors ${
+              className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
                 cycle === option ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500'
               }`}
             >
@@ -73,7 +73,7 @@ const PricingTable = () => {
         </div>
       </div>
 
-      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
         {plans.map((plan, index) => {
           /* The second plan is the recommended one. Highlighted by position
              rather than by a database flag until there is a reason to make it
@@ -83,15 +83,15 @@ const PricingTable = () => {
             <Card
               key={plan.plan_code}
               data-price-card
-              className={`transition-transform duration-300 hover:-translate-y-1 ${featured ? 'ring-2 ring-brand-500 relative' : ''}`}
+              className={`relative ${featured ? 'border-brand-500 ring-1 ring-brand-500' : ''}`}
             >
               {featured && (
-                <span className="absolute -top-2.5 left-6 rounded-full bg-brand-500 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                <span className="absolute -top-2.5 left-6 rounded-full bg-brand-500 px-2.5 py-0.5 text-[11px] font-semibold text-white">
                   Most popular
                 </span>
               )}
 
-              <h3 className="text-sm font-bold uppercase tracking-wider text-brand-600">
+              <h3 className="text-base font-semibold text-ink-900">
                 {plan.name}
               </h3>
               <p className="mt-2 min-h-10 text-sm text-ink-500">{plan.description}</p>
@@ -101,7 +101,7 @@ const PricingTable = () => {
               <ul className="mt-6 space-y-2.5">
                 {(plan.features || []).map((feature) => (
                   <li key={feature} className="flex gap-2.5 text-sm text-ink-700">
-                    <span aria-hidden="true" className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-500" />
+                    <span aria-hidden="true" className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
                     {feature}
                   </li>
                 ))}

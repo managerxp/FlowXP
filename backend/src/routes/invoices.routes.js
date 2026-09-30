@@ -8,6 +8,7 @@ const authed = [requireAuth, withBusiness(), requirePermission('billing')];
 const write = [requireAuth, withBusiness({ requireActive: true }), requirePermission('billing')];
 
 router.get('/', ...authed, invoices.list);
+router.get('/summary', ...authed, invoices.summary);
 router.get('/:id', ...authed, invoices.get);
 router.post('/', ...write, requireOutlet, idempotent(), invoices.create);
 router.post('/:id/payments', ...write, idempotent(), invoices.addPayment);

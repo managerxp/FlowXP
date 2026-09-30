@@ -13,7 +13,9 @@ import { checkName, firstError } from '../utils/validate.js';
 import { moveStock, stockAt } from '../modules/stock.js';
 import { outletSettingsFor } from '../modules/menu.js';
 import { EXT_BY_MIME, putFile, removeFile } from '../modules/storage.js';
+import { looksLikeImage } from '../middleware/upload.js';
 import { branchFilter } from '../utils/scope.js';
+import { loadRecipes, recipeCostPaise, recipeMargin } from '../modules/recipes.js';
 
 /* Products are one shared menu. When the request is for one outlet, show that
    outlet's stock, price and availability instead of the business-wide ones. */
@@ -28,13 +30,33 @@ const forOutlet = async (rows, tenant) => {
   });
 };
 
+/* What one of each sold item costs you, and what is left of its price: from its
+   recipe (at the viewer's outlet) when it has one, else what you pay for it.
+   Pre-tax, like the recipe editor; ingredients and packaging get none. */
+const withCosts = async (rows, tenant) => {
+  const dishes = rows.filter((r) => r.kind === 'DISH').map((r) => r.product_id);
+  if (!dishes.length) return rows;
+  const recipes = await loadRecipes(pool, tenant.businessId, dishes, tenant.scopeBranchId ?? null);
+  return rows.map((r) => {
+    if (r.kind !== 'DISH') return r;
+    const recipe = recipes.get(r.product_id);
+    const costPaise = recipe?.length ? recipeCostPaise(recipe) : Number(r.purchase_price_paise) || null;
+    if (!costPaise) return { ...r, cost_source: null };
+    const m = recipeMargin(costPaise, r.selling_price_paise);
+    return { ...r, cost_source: recipe?.length ? 'recipe' : 'purchase', unit_cost_paise: costPaise, margin_pct: m.gross_margin_pct };
+  });
+};
+
 const asProduct = (row) => ({
   product_id: row.product_id,
   category_id: row.category_id,
   category_name: row.category_name,
+  brand_id: row.brand_id,
+  brand_name: row.brand_name,
   supplier_id: row.supplier_id,
   name: row.name,
   kind: row.kind,
+  food_type: row.food_type || null,
   is_combo: Boolean(row.is_combo),
   lead_time_days: row.lead_time_days,
   modifier_group_ids: row.modifier_group_ids || [],
@@ -55,16 +77,21 @@ const asProduct = (row) => ({
   low_stock: row.track_inventory && Number(row.current_stock) <= Number(row.min_stock),
   status: row.status,
   is_available: row.is_available !== false,
-  price_overridden: Boolean(row.price_overridden)
+  price_overridden: Boolean(row.price_overridden),
+  ...(row.cost_source !== undefined ? { cost_source: row.cost_source, unit_cost: row.cost_source ? toRupees(row.unit_cost_paise) : null, margin_pct: row.cost_source ? row.margin_pct : null } : {})
 });
 
 const KINDS = ['DISH', 'INGREDIENT', 'PACKAGING'];
+const FOOD_TYPES = ['VEG', 'NON_VEG', 'EGG'];
+/* '' or null clears the mark; anything else must be one of the three. Returns [value, error]. */
+const foodType = (v) => (v == null || v === '' ? [null, null] : FOOD_TYPES.includes(String(v).toUpperCase()) ? [String(v).toUpperCase(), null] : [null, 'Choose veg, non-veg or egg']);
 
 const SELECT = `
-  SELECT p.*, c.name AS category_name,
+  SELECT p.*, c.name AS category_name, br.name AS brand_name,
          COALESCE((SELECT array_agg(pg.group_id ORDER BY pg.group_id) FROM product_modifier_groups pg WHERE pg.product_id = p.product_id), '{}') AS modifier_group_ids
   FROM products p
   LEFT JOIN categories c ON c.category_id = p.category_id
+  LEFT JOIN brands br ON br.brand_id = p.brand_id
   WHERE p.business_id = $1
 `;
 
@@ -72,13 +99,14 @@ const SELECT = `
    GET /api/products
    ========================================================================== */
 export const list = async (req, res) => {
-  const { search, category_id, low_stock, kind, status = 'ACTIVE' } = req.query;
+  const { search, category_id, brand_id, low_stock, kind, status = 'ACTIVE' } = req.query;
   const clauses = [];
   const values = [req.tenant.businessId];
 
   if (status !== 'all') { values.push(status); clauses.push(`p.status = $${values.length}`); }
   if (kind) { values.push(String(kind).toUpperCase()); clauses.push(`p.kind = $${values.length}`); }
   if (category_id) { values.push(Number(category_id)); clauses.push(`p.category_id = $${values.length}`); }
+  if (brand_id) { values.push(Number(brand_id)); clauses.push(`p.brand_id = $${values.length}`); }
   if (search) {
     values.push(`%${search}%`);
     const likeIndex = values.length;
@@ -96,7 +124,7 @@ export const list = async (req, res) => {
     `${SELECT} ${clauses.map((c) => `AND ${c}`).join(' ')} ORDER BY p.name`,
     values
   );
-  res.json({ success: true, data: (await forOutlet(rows, req.tenant)).map(asProduct) });
+  res.json({ success: true, data: (await withCosts(await forOutlet(rows, req.tenant), req.tenant)).map(asProduct) });
 };
 
 /* One product by id or, given a barcode, by scan — the billing screen's two
@@ -104,7 +132,7 @@ export const list = async (req, res) => {
 export const get = async (req, res) => {
   const { rows } = await pool.query(`${SELECT} AND p.product_id = $2`, [req.tenant.businessId, req.params.id]);
   if (!rows.length) return res.status(404).json({ success: false, message: 'Not found' });
-  res.json({ success: true, data: asProduct((await forOutlet(rows, req.tenant))[0]) });
+  res.json({ success: true, data: asProduct((await withCosts(await forOutlet(rows, req.tenant), req.tenant))[0]) });
 };
 
 export const findByBarcode = async (req, res) => {
@@ -136,6 +164,11 @@ export const create = async (req, res) => {
 
   const kind = body.kind ? String(body.kind).toUpperCase() : 'DISH';
   if (!KINDS.includes(kind)) return res.status(400).json({ success: false, message: 'Kind must be DISH, INGREDIENT or PACKAGING' });
+  const [food, foodError] = foodType(body.food_type);
+  if (foodError) return res.status(400).json({ success: false, message: foodError });
+  if (body.brand_id && !(await pool.query(`SELECT 1 FROM brands WHERE brand_id = $1 AND business_id = $2`, [body.brand_id, req.tenant.businessId])).rows.length) {
+    return res.status(400).json({ success: false, message: 'Brand not found' });
+  }
 
   const trackInventory = body.track_inventory !== false;
 
@@ -144,8 +177,8 @@ export const create = async (req, res) => {
       `INSERT INTO products
          (business_id, category_id, supplier_id, name, sku, barcode, unit,
           selling_price_paise, purchase_price_paise, tax_rate, hsn_sac,
-          track_inventory, current_stock, min_stock, description, kind)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+          track_inventory, current_stock, min_stock, description, kind, food_type, brand_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
        RETURNING product_id`,
       [
         req.tenant.businessId,
@@ -163,7 +196,9 @@ export const create = async (req, res) => {
         0,   // opening stock is added below, through moveStock, so outlet and total agree
         Number(body.min_stock) || 0,
         body.description ? String(body.description).trim() : null,
-        kind
+        kind,
+        food,
+        body.brand_id || null
       ]
     );
 
@@ -202,8 +237,8 @@ export const create = async (req, res) => {
    a purchase, or an explicit adjustment in inventory.controller.js), so this
    allowlist excludes it on purpose.
    ========================================================================== */
-const EDITABLE = ['name', 'category_id', 'supplier_id', 'sku', 'barcode', 'unit',
-  'tax_rate', 'hsn_sac', 'min_stock', 'status', 'description', 'kind', 'lead_time_days'];
+const EDITABLE = ['name', 'category_id', 'supplier_id', 'brand_id', 'sku', 'barcode', 'unit',
+  'tax_rate', 'hsn_sac', 'min_stock', 'status', 'description', 'kind', 'lead_time_days', 'food_type'];
 
 export const update = async (req, res) => {
   const body = req.body || {};
@@ -213,9 +248,17 @@ export const update = async (req, res) => {
   if ('lead_time_days' in body && !(Number.isInteger(Number(body.lead_time_days)) && body.lead_time_days >= 0 && body.lead_time_days <= 30)) {
     return res.status(400).json({ success: false, message: 'Lead time must be a whole number of days from 0 to 30' });
   }
+  if ('food_type' in body) {
+    const [food, foodError] = foodType(body.food_type);
+    if (foodError) return res.status(400).json({ success: false, message: foodError });
+    body.food_type = food;
+  }
   if ('kind' in body) {
     body.kind = String(body.kind).toUpperCase();
     if (!KINDS.includes(body.kind)) return res.status(400).json({ success: false, message: 'Kind must be DISH, INGREDIENT or PACKAGING' });
+  }
+  if (body.brand_id && !(await pool.query(`SELECT 1 FROM brands WHERE brand_id = $1 AND business_id = $2`, [body.brand_id, req.tenant.businessId])).rows.length) {
+    return res.status(400).json({ success: false, message: 'Brand not found' });
   }
   for (const field of EDITABLE) {
     if (!(field in body)) continue;
@@ -256,6 +299,7 @@ export const update = async (req, res) => {
    ========================================================================== */
 export const uploadImage = async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'Choose an image to upload' });
+  if (!looksLikeImage(req.file.buffer, req.file.mimetype)) return res.status(400).json({ success: false, message: 'That file is not a valid JPEG, PNG or WebP image' });
 
   const own = await pool.query(`SELECT image_url FROM products WHERE business_id = $1 AND product_id = $2`, [req.tenant.businessId, req.params.id]);
   if (!own.rows.length) return res.status(404).json({ success: false, message: 'Not found' });

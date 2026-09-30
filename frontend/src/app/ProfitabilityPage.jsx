@@ -33,7 +33,7 @@ const Delta = ({ value, unit = '%', upIsGood = true }) => {
 };
 
 const Stat = ({ label, value, sub, delta }) => (
-  <div className="glass rounded-[--radius-card] p-4">
+  <div className="border border-line bg-surface rounded-(--radius-card) p-4">
     <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">{label}</p>
     <p className="mt-1 text-xl font-bold text-ink-900">{value}</p>
     <div className="mt-1 flex items-center gap-2">{delta}{sub && <span className="text-xs text-ink-400">{sub}</span>}</div>
@@ -257,7 +257,7 @@ const ProfitabilityPage = () => {
             />
           </div>
 
-          <details className="rounded-[--radius-card] border border-line bg-surface p-4 text-sm text-ink-600">
+          <details className="rounded-(--radius-card) border border-line bg-surface p-4 text-sm text-ink-600">
             <summary className="cursor-pointer font-semibold text-ink-900">How this is calculated</summary>
             <ul className="mt-3 list-disc space-y-1.5 pl-5">
               <li><strong>Net revenue</strong> is what was billed before tax, minus discounts and refunds. Cancelled invoices are left out.</li>

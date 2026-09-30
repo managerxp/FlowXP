@@ -9,6 +9,7 @@ import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
 import { toRupees } from '../utils/money.js';
 import { checkEmail, checkGstin, checkName, checkPhone, firstError } from '../utils/validate.js';
+import { branchFilter } from '../utils/scope.js';
 
 const asSupplier = (row) => ({
   supplier_id: row.supplier_id,
@@ -19,49 +20,67 @@ const asSupplier = (row) => ({
   gstin: row.gstin,
   payable_balance: toRupees(row.payable_paise || 0),
   total_purchases: toRupees(row.total_purchases_paise || 0),
+  received_orders: row.received_orders ?? 0,
+  open_orders: row.open_orders ?? 0,
+  last_po_date: row.last_po_date ?? null,
   status: row.status
 });
 
-const SELECT = `
+/* Money and orders per supplier, counted only at the outlet(s) the viewer may see
+   (a supplier is shared, what you owe them is per outlet, as on Purchases).
+   `values` must start with the business id; the scope parameter is pushed here. */
+const selectFor = (tenant, values) => `
   SELECT s.*,
-         COALESCE(SUM(po.balance_due_paise) FILTER (WHERE po.status = 'RECEIVED'), 0) AS payable_paise,
-         COALESCE(SUM(po.total_paise) FILTER (WHERE po.status = 'RECEIVED'), 0) AS total_purchases_paise
+         COALESCE(SUM(po.balance_due_paise) FILTER (WHERE po.status IN ('RECEIVED','PARTIAL')), 0) AS payable_paise,
+         COALESCE(SUM(po.total_paise - po.debited_paise) FILTER (WHERE po.status IN ('RECEIVED','PARTIAL')), 0) AS total_purchases_paise,
+         COUNT(po.po_id) FILTER (WHERE po.status IN ('RECEIVED','PARTIAL'))::int AS received_orders,
+         COUNT(po.po_id) FILTER (WHERE po.status IN ('ORDERED','PARTIAL'))::int AS open_orders,
+         MAX(po.po_date) FILTER (WHERE po.status IN ('RECEIVED','PARTIAL')) AS last_po_date
   FROM suppliers s
-  LEFT JOIN purchase_orders po ON po.supplier_id = s.supplier_id
+  LEFT JOIN purchase_orders po ON po.supplier_id = s.supplier_id${branchFilter(tenant, 'po.branch_id', values)}
   WHERE s.business_id = $1
 `;
+const one = async (req, id) => {
+  const values = [req.tenant.businessId];
+  const sql = selectFor(req.tenant, values);
+  values.push(id);
+  return (await pool.query(`${sql} AND s.supplier_id = $${values.length} ${GROUP}`, values)).rows[0];
+};
 const GROUP = `GROUP BY s.supplier_id`;
 
 export const list = async (req, res) => {
   const { search, status = 'ACTIVE' } = req.query;
   const clauses = [];
   const values = [req.tenant.businessId];
+  const sql = selectFor(req.tenant, values);
   if (status !== 'all') { values.push(status); clauses.push(`s.status = $${values.length}`); }
   if (search) { values.push(`%${search}%`); clauses.push(`(s.name ILIKE $${values.length} OR s.phone ILIKE $${values.length})`); }
 
-  const { rows } = await pool.query(`${SELECT} ${clauses.map((c) => `AND ${c}`).join(' ')} ${GROUP} ORDER BY s.name`, values);
+  const { rows } = await pool.query(`${sql} ${clauses.map((c) => `AND ${c}`).join(' ')} ${GROUP} ORDER BY s.name`, values);
   res.json({ success: true, data: rows.map(asSupplier) });
 };
 
 export const get = async (req, res) => {
-  const { rows } = await pool.query(`${SELECT} AND s.supplier_id = $2 ${GROUP}`, [req.tenant.businessId, req.params.id]);
-  if (!rows.length) return res.status(404).json({ success: false, message: 'Not found' });
-  res.json({ success: true, data: asSupplier(rows[0]) });
+  const row = await one(req, req.params.id);
+  if (!row) return res.status(404).json({ success: false, message: 'Not found' });
+  res.json({ success: true, data: asSupplier(row) });
 };
 
 export const purchaseHistory = async (req, res) => {
   const owns = await pool.query(`SELECT 1 FROM suppliers WHERE supplier_id = $1 AND business_id = $2`, [req.params.id, req.tenant.businessId]);
   if (!owns.rows.length) return res.status(404).json({ success: false, message: 'Not found' });
 
+  const values = [req.params.id];
   const { rows } = await pool.query(
-    `SELECT po_id, po_number, po_date, total_paise, balance_due_paise, payment_status, status
-     FROM purchase_orders WHERE supplier_id = $1 ORDER BY po_date DESC, po_id DESC LIMIT 100`,
-    [req.params.id]
+    `SELECT po_id, po_number, po_date, expected_date, total_paise, balance_due_paise, payment_status, status
+     FROM purchase_orders WHERE supplier_id = $1${branchFilter(req.tenant, 'branch_id', values)} ORDER BY po_date DESC, po_id DESC LIMIT 100`,
+    values
   );
   res.json({
     success: true,
     data: rows.map((r) => ({
       po_id: r.po_id, po_number: r.po_number, po_date: r.po_date,
+      expected_date: r.expected_date ? String(r.expected_date).slice(0, 10) : null,
       total: toRupees(r.total_paise), balance_due: toRupees(r.balance_due_paise),
       payment_status: r.payment_status, status: r.status
     }))
@@ -91,8 +110,7 @@ export const create = async (req, res) => {
   );
 
   recordAudit(req, { action: 'supplier.created', resource_type: 'supplier', resource_id: rows[0].supplier_id });
-  const { rows: full } = await pool.query(`${SELECT} AND s.supplier_id = $2 ${GROUP}`, [req.tenant.businessId, rows[0].supplier_id]);
-  res.status(201).json({ success: true, data: asSupplier(full[0]) });
+  res.status(201).json({ success: true, data: asSupplier(await one(req, rows[0].supplier_id)) });
 };
 
 const VALIDATORS = {
@@ -125,6 +143,5 @@ export const update = async (req, res) => {
   if (!rowCount) return res.status(404).json({ success: false, message: 'Not found' });
 
   recordAudit(req, { action: 'supplier.updated', resource_type: 'supplier', resource_id: req.params.id });
-  const { rows: full } = await pool.query(`${SELECT} AND s.supplier_id = $2 ${GROUP}`, [req.tenant.businessId, req.params.id]);
-  res.json({ success: true, data: asSupplier(full[0]) });
+  res.json({ success: true, data: asSupplier(await one(req, req.params.id)) });
 };

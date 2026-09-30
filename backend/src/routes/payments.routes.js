@@ -6,6 +6,7 @@ import { idempotent } from '../middleware/idempotency.js';
 const router = Router();
 
 router.get('/', requireAuth, withBusiness(), requirePermission('payments'), payments.list);
+router.get('/summary', requireAuth, withBusiness(), requirePermission('payments'), payments.summary);
 router.post('/', requireAuth, withBusiness({ requireActive: true }), requirePermission('payments'), requireOutlet, idempotent(), payments.create);
 
 export default router;

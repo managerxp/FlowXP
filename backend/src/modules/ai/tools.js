@@ -226,6 +226,32 @@ export const TOOLS = [
         coupons: coupons.rows.map((c) => ({ code: c.code, active: c.is_active, uses_30_days: c.uses, discount_given_30_days: rupees(c.given) }))
       };
     }
+  },
+  {
+    name: 'feedback_summary', label: 'Customer feedback', permission: 'settings',
+    description: 'Post-bill star ratings and comments for a period: how many, the average, the split by star count, and recent comments. No customer names or phone numbers.',
+    input_schema: schema({ ...dateArgs }),
+    run: async (tenant, args) => {
+      const { from, to } = await rangeOf(tenant, args, 30);
+      const id = tenant.businessId; const branch = scope(tenant);
+      const b = branch != null ? ' AND branch_id = $4' : '';
+      const params = branch != null ? [id, from, to, branch] : [id, from, to];
+      const [agg, dist, recent] = await Promise.all([
+        pool.query(`SELECT COUNT(*)::int AS n, COALESCE(AVG(rating), 0) AS avg FROM customer_feedback
+                    WHERE business_id = $1 AND created_at >= $2::date AND created_at < ($3::date + 1)${b}`, params),
+        pool.query(`SELECT rating, COUNT(*)::int AS n FROM customer_feedback
+                    WHERE business_id = $1 AND created_at >= $2::date AND created_at < ($3::date + 1)${b} GROUP BY rating ORDER BY rating DESC`, params),
+        pool.query(`SELECT rating, comment, created_at FROM customer_feedback
+                    WHERE business_id = $1 AND created_at >= $2::date AND created_at < ($3::date + 1)${b} AND comment IS NOT NULL AND comment <> ''
+                    ORDER BY created_at DESC LIMIT 20`, params)
+      ]);
+      return {
+        period: { from, to }, count: agg.rows[0].n,
+        average_rating: agg.rows[0].n ? Math.round(Number(agg.rows[0].avg) * 10) / 10 : null,
+        by_rating: dist.rows.map((r) => ({ rating: r.rating, count: r.n })),
+        recent_comments: recent.rows.map((r) => ({ rating: r.rating, comment: r.comment, date: r.created_at }))
+      };
+    }
   }
 ];
 

@@ -8,7 +8,7 @@ import { daysAgoISO } from '../lib/dates.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Badge, Button, Card, Field, Input, ListState, Modal, PageHeader, Table, Td, Th, Thead, Tr } from '../components/ui.jsx';
 
-const EMPTY = { name: '', code: '', city: '', state: '', phone: '', address: '', gstin: '' };
+const EMPTY = { name: '', code: '', city: '', state: '', phone: '', address: '', gstin: '', pincode: '', invoice_prefix: '', invoice_next_number: '' };
 
 const OutletForm = ({ outlet, onSaved, onClose }) => {
   const [form, setForm] = useState(outlet ? Object.fromEntries(Object.keys(EMPTY).map((k) => [k, outlet[k] ?? ''])) : EMPTY);
@@ -20,7 +20,7 @@ const OutletForm = ({ outlet, onSaved, onClose }) => {
     e.preventDefault();
     setError(''); setBusy(true);
     try {
-      await api(outlet ? `/outlets/${outlet.branch_id}` : '/outlets', { method: outlet ? 'PUT' : 'POST', body: form });
+      await api(outlet ? `/outlets/${outlet.branch_id}` : '/outlets', { method: outlet ? 'PUT' : 'POST', body: { ...form, invoice_next_number: form.invoice_prefix && form.invoice_next_number !== '' ? Number(form.invoice_next_number) : undefined } });
       onSaved();
     } catch (caught) { setError(caught.message); }
     finally { setBusy(false); }
@@ -39,7 +39,16 @@ const OutletForm = ({ outlet, onSaved, onClose }) => {
           <Field id="o-state" label="State" hint="Decides GST place of supply for this outlet."><Input id="o-state" value={form.state} onChange={set('state')} /></Field>
           <Field id="o-phone" label="Phone"><Input id="o-phone" value={form.phone} onChange={set('phone')} /></Field>
         </div>
-        <Field id="o-address" label="Address"><Input id="o-address" value={form.address} onChange={set('address')} /></Field>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="sm:col-span-2"><Field id="o-address" label="Address"><Input id="o-address" value={form.address} onChange={set('address')} /></Field></div>
+          <Field id="o-pin" label="Pincode" hint="For GST e-invoices and e-way bills"><Input id="o-pin" inputMode="numeric" value={form.pincode} onChange={set('pincode')} maxLength={6} /></Field>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field id="o-prefix" label="Invoice prefix" hint="Optional. Gives this outlet its own numbers (IND-0001). Empty uses the business-wide series."><Input id="o-prefix" value={form.invoice_prefix} onChange={set('invoice_prefix')} maxLength={12} placeholder="IND" /></Field>
+          {form.invoice_prefix && (
+            <Field id="o-next" label="Next number" hint={outlet ? 'Never lower than numbers already issued.' : 'Starts at 1 unless you say otherwise.'}><Input id="o-next" type="number" min="1" value={form.invoice_next_number} onChange={set('invoice_next_number')} placeholder={outlet ? String(outlet.invoice_next_number) : '1'} /></Field>
+          )}
+        </div>
         <Field id="o-gstin" label="GSTIN" hint="Only if this outlet has its own registration."><Input id="o-gstin" value={form.gstin} onChange={set('gstin')} maxLength={15} /></Field>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
@@ -73,13 +82,14 @@ const OutletList = () => {
       <ListState loading={!outlets && !error} empty={outlets?.length === 0} emptyLabel="No outlets yet." />
       {outlets?.length > 0 && (
         <Table>
-          <Thead><Th>Outlet</Th><Th>Location</Th><Th>GSTIN</Th><Th>Status</Th><Th></Th></Thead>
+          <Thead><Th>Outlet</Th><Th>Location</Th><Th>GSTIN</Th><Th>Invoice series</Th><Th>Status</Th><Th></Th></Thead>
           <tbody>
             {outlets.map((o) => (
               <Tr key={o.branch_id}>
                 <Td className="font-medium">{o.name} {o.code && <span className="text-xs text-ink-400">· {o.code}</span>} {o.is_primary && <Badge tone="brand">Main</Badge>}</Td>
                 <Td className="text-ink-500">{[o.city, o.state].filter(Boolean).join(', ') || '—'}</Td>
                 <Td className="text-ink-500">{o.gstin || 'Business GSTIN'}</Td>
+                <Td className="text-ink-500">{o.invoice_prefix ? `${o.invoice_prefix}-${String(o.invoice_next_number).padStart(4, '0')} next` : 'Business series'}</Td>
                 <Td>{o.status === 'ACTIVE' ? <Badge tone="success">Open</Badge> : <Badge tone="neutral">Closed</Badge>}</Td>
                 <Td className="space-x-3 text-right">
                   <button onClick={() => setEditing(o)} className="text-xs font-semibold text-brand-600">Edit</button>
