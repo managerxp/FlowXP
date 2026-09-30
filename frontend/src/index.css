@@ -1,0 +1,196 @@
+@import "tailwindcss";
+
+/*
+ * FlowXP design tokens (see design.md at the repo root).
+ *
+ * Professional and flat: white and near-white grounds, the logo's navy for
+ * text, the logo's blue as the one solid accent for actions and selection,
+ * neutral borders, very little shadow. The logo's gradient stays in the logo;
+ * nothing else on the site is a gradient. Every
+ * colour used anywhere is declared here; a hex code written inline in a
+ * component is how a design system stops being one.
+ *
+ * Token names are roles, not shades, so the whole app re-themes from this
+ * block:
+ *
+ *   surface / surface-2 / surface-3   grounds (card, subtle, sunken)
+ *   line / line-strong                borders and rules
+ *   ink-900 / -700 / -500 / -400      text, strongest first
+ *   brand-*                           the logo blue: primary action, active, selected
+ *   cyan / violet / teal / amber      chart and avatar series only, kept muted
+ */
+@theme {
+  --color-page: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-2: #f3f6fa;
+  --color-surface-3: #e9eef5;
+  --color-line: #e3e8ef;
+  --color-line-strong: #cdd5e0;
+
+  /* Text: the navy of the "Flow" wordmark. ink-500 on white is 5.3:1;
+     ink-400 is for 18px+ or decoration only. */
+  --color-ink-900: #011531;
+  --color-ink-700: #22324d;
+  --color-ink-500: #5a6b87;
+  --color-ink-400: #8494ad;
+
+  /* The logo blue, sampled from logo.png (#0054FA), solid. 500 on white is 6.2:1,
+     so it is safe for text and small labels as well as buttons. */
+  --color-brand-50: #eef3ff;
+  --color-brand-100: #dce6ff;
+  --color-brand-400: #3d7dfb;
+  --color-brand-500: #0054fa;
+  --color-brand-600: #0046d1;
+  --color-brand-700: #00369f;
+
+  /* Series colours for charts, avatars and category dots. Muted on purpose:
+     they separate things, they are not a second brand. */
+  --color-cyan-400: #5fcfe0;
+  --color-cyan-500: #0ea5c0;
+  --color-cyan-600: #0b839a;
+  --color-violet-400: #7a8aa6;
+  --color-violet-500: #475467;
+  --color-violet-600: #344054;
+  --color-teal-500: #0e9384;
+  --color-amber-500: #dc6803;
+
+  --color-success: #067647;
+  --color-warning: #b54708;
+  --color-danger: #d92d20;
+  --color-info: #1570ef;
+
+  /* Plus Jakarta Sans: modern and friendly without being casual, has the ₹ glyph
+     and true tabular figures (checked). One family for the site and the app. */
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Type scale, ~1.2 ratio from a 16px body (the minimum for comfortable reading). The two large steps are fluid
+     (clamp) so headings shrink smoothly on phones instead of jumping. */
+  --text-caption: 0.75rem;     --text-caption--line-height: 1.4;
+  --text-small: 0.875rem;      --text-small--line-height: 1.5;
+  --text-body: 1rem;           --text-body--line-height: 1.6;
+  --text-lead: 1.125rem;       --text-lead--line-height: 1.6;
+  --text-title: 1.1875rem;     --text-title--line-height: 1.4;   --text-title--letter-spacing: -0.01em;
+  --text-h3: 1.5rem;           --text-h3--line-height: 1.3;      --text-h3--letter-spacing: -0.01em;
+  --text-h2: clamp(1.875rem, 1.35rem + 1.9vw, 2.5rem);     --text-h2--line-height: 1.15;      --text-h2--letter-spacing: -0.018em;
+  --text-display: clamp(2.375rem, 1.6rem + 2.8vw, 3.25rem); --text-display--line-height: 1.08; --text-display--letter-spacing: -0.02em;
+
+  /* Radius: inputs and buttons 8, cards 12, panels/dialogs 16. Pills are
+     reserved for status tags. */
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-panel: 16px;
+
+  /* Elevation. Borders do most of the work; shadows are for things that
+     float (menus, dialogs, the product screenshots). */
+  --shadow-sm: 0 1px 2px rgb(17 24 39 / 0.05);
+  --shadow-md: 0 8px 24px -12px rgb(17 24 39 / 0.18);
+  --shadow-lg: 0 24px 48px -24px rgb(17 24 39 / 0.28);
+  --shadow-glow: 0 1px 2px rgb(17 24 39 / 0.08);
+
+  /* Motion. Purposeful, quick, decelerating on entry; see .rise and .reveal. */
+  --duration-fast: 120ms;      /* hover, press, colour changes */
+  --duration-normal: 200ms;    /* tabs, menus, small moves */
+  --duration-moderate: 320ms;  /* panels, lift on hover */
+  --duration-slow: 520ms;      /* entrances and scroll reveals */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+}
+
+:root {
+  color-scheme: light;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-page);
+  color: var(--color-ink-900);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+/* a printed bill is on white paper, not the app's page tint */
+@media print { body { background: #fff; } }
+
+/*
+ * Retired helpers from the old gradient/glass look. Kept as names so any
+ * screen not yet redesigned still renders cleanly, but they now mean
+ * "brand text", "dark panel" and "plain bordered surface".
+ */
+.text-gradient { color: var(--color-brand-500); }
+.bg-gradient-brand { background: var(--color-ink-900); }
+.glow-brand { position: relative; }
+
+.glass {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+}
+.glass-on-dark {
+  background: rgb(255 255 255 / 0.08);
+  border: 1px solid rgb(255 255 255 / 0.16);
+}
+
+/*
+ * Entrances. .rise plays once on load (the hero); .reveal plays once when it
+ * scrolls into view (components/Reveal.jsx sets data-shown). Both stagger by
+ * --i. Only opacity and transform move, so they never cause layout.
+ */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.rise {
+  animation: rise var(--duration-slow) var(--ease-decelerate) both;
+  animation-delay: calc(var(--d, 0ms) + var(--i, 0) * 60ms);
+}
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity var(--duration-slow) var(--ease-decelerate), transform var(--duration-slow) var(--ease-decelerate);
+  transition-delay: calc(var(--i, 0) * 60ms);
+}
+.reveal[data-shown] { opacity: 1; transform: none; }
+
+/* A card that lifts a little under the pointer. */
+.lift {
+  transition: transform var(--duration-moderate) var(--ease-standard), box-shadow var(--duration-moderate) var(--ease-standard), border-color var(--duration-normal) var(--ease-standard);
+}
+@media (hover: hover) {
+  .lift:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--color-line-strong); }
+}
+
+/* The flow diagram's connectors draw themselves once revealed. */
+.draw { transform: scaleX(0); transform-origin: left; transition: transform 600ms var(--ease-decelerate) 250ms; }
+[data-shown] .draw { transform: scaleX(1); }
+@media (max-width: 1023px) {
+  .draw { transform: scaleY(0); transform-origin: top; }
+  [data-shown] .draw { transform: scaleY(1); }
+}
+
+/* Tab panels fade in when switched. */
+@keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.fade-in { animation: fade-in var(--duration-moderate) var(--ease-decelerate) both; }
+
+/* Numbers in tables and totals line up. */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Focus is never removed, only restyled. */
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .draw { opacity: 1; transform: none; transition: none; }
+  .rise, .fade-in { animation: none; }
+  .lift:hover { transform: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /superadmin/
+Disallow: /order/
+Disallow: /bill/
+
+Sitemap: https://flowxp.example.com/sitemap.xml
