@@ -84,6 +84,58 @@ const returnableLines = async (req, res) => {
   });
 };
 
+/**
+ * The whole of a sales return inside the caller's transaction: the credit note, the stock (restocked into its batch,
+ * or logged as damaged), and the return record. Used by the Returns screen and by a part-delivered delivery, so a
+ * refusal at the door and a return later are the same, atomic thing.
+ */
+export const processSalesReturn = async (client, req, { invoiceId, reason, notes, list, b = {} }) => {
+  const inv = (await client.query(`SELECT invoice_id, invoice_number, customer_id, branch_id FROM invoices WHERE business_id = $1 AND invoice_id = $2`, [req.tenant.businessId, invoiceId])).rows[0];
+  if (!inv || (req.tenant.pinned && inv.branch_id !== req.tenant.branchId)) throw new WholesaleError(404, 'Invoice not found');
+  const lines = new Map((await client.query(`SELECT ii.item_id, ii.product_id, ii.unit_name, ii.unit_factor, ii.description, p.track_inventory FROM invoice_items ii LEFT JOIN products p ON p.product_id = ii.product_id WHERE ii.invoice_id = $1`, [invoiceId])).rows.map((r) => [r.item_id, r]));
+  const prepared = list.map((x) => {
+    const line = lines.get(Number(x.invoice_item_id));
+    if (!line || !line.product_id) throw new WholesaleError(400, 'One of those items is not on this invoice');
+    const quantity = num(x.quantity, `${line.description} quantity`, { min: 0.001, required: true });
+    const disposition = oneOf(x.disposition, 'What happens to the goods', DISPOSITIONS, { fallback: reason === 'DAMAGED' ? 'DAMAGED' : reason === 'EXPIRED' ? 'EXPIRED' : 'RESTOCK' });
+    return { line, quantity, disposition, base: q3(quantity * Number(line.unit_factor || 1)), batchId: x.batch_id ? Number(x.batch_id) : null };
+  });
+  await lockProducts(client, req.tenant.businessId, prepared.map((p) => p.line.product_id));
+  // the credit note itself: tax, balance, refund (the shared engine; stock is handled below, line by line)
+  const cn = await issueCreditNote(client, {
+    tenant: req.tenant, auth: req.auth, params: { id: invoiceId },
+    body: { items: prepared.map((p) => ({ item_id: p.line.item_id, quantity: p.quantity })), reason: `${reason.replace(/_/g, ' ').toLowerCase()}${notes ? `: ${notes}` : ''}`, restock: false, refund: b.refund?.method ? { method: b.refund.method } : undefined }
+  });
+  const tracked = await batchTracked(client, req.tenant.businessId, prepared.map((p) => p.line.product_id));
+  const number = await nextNumber(client, req.tenant.businessId, 'RT', 'RT');
+  const ret = (await client.query(
+    `INSERT INTO wholesale_returns (business_id, branch_id, kind, return_number, invoice_id, cn_id, customer_id, reason, notes, created_by) VALUES ($1,$2,'SALE',$3,$4,$5,$6,$7,$8,$9) RETURNING return_id`,
+    [req.tenant.businessId, cn.invoice.branch_id, number, invoiceId, cn.note.cn_id, inv.customer_id, reason, notes, req.auth.userId])).rows[0];
+  for (const p of prepared) {
+    const pid = p.line.product_id; let batchId = p.batchId;
+    if (p.disposition === 'RESTOCK' && p.line.track_inventory) {
+      const tr = tracked.get(pid);
+      if (tr?.batch_tracking || tr?.expiry_tracking) {
+        if (!batchId) {
+          // the batch the goods came out of, when the invoice took them from exactly one
+          const used = (await client.query(`SELECT m.batch_id FROM wholesale_batch_moves m JOIN wholesale_batches bt ON bt.batch_id = m.batch_id WHERE m.ref_type = 'invoice' AND m.ref_id = $1 AND bt.product_id = $2 GROUP BY m.batch_id`, [invoiceId, pid])).rows;
+          if (used.length === 1) batchId = Number(used[0].batch_id);
+          else throw new WholesaleError(400, `${p.line.description} is batch-tracked: say which batch the goods belong to`);
+        }
+        const owned = (await client.query(`SELECT 1 FROM wholesale_batches WHERE batch_id = $1 AND business_id = $2 AND branch_id = $3 AND product_id = $4`, [batchId, req.tenant.businessId, cn.invoice.branch_id, pid])).rowCount;
+        if (!owned) throw new WholesaleError(400, 'That batch is not at the invoice’s warehouse');
+        await returnToBatch(client, { businessId: req.tenant.businessId, batchId, qty: p.base, refType: 'credit_note', refId: cn.note.cn_id });
+      }
+      await stockIn(client, { businessId: req.tenant.businessId, branchId: cn.invoice.branch_id, productId: pid, qty: p.base, type: 'RETURN', refType: 'credit_note', refId: cn.note.cn_id, notes: cn.note.cn_number, userId: req.auth.userId });
+    } else if (['DAMAGED', 'EXPIRED'].includes(p.disposition) && p.line.track_inventory) {
+      await logDamaged(client, { businessId: req.tenant.businessId, branchId: cn.invoice.branch_id, productId: pid, qty: p.base, source: 'RETURN', refType: 'credit_note', refId: cn.note.cn_id, note: `${p.disposition === 'EXPIRED' ? 'Expired' : 'Damaged'} return ${number}`, userId: req.auth.userId });
+    }
+    await client.query(`INSERT INTO wholesale_return_items (return_id, product_id, invoice_item_id, quantity, unit_name, base_qty, batch_id, disposition, reason) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [ret.return_id, pid, p.line.item_id, p.quantity, p.line.unit_name, p.base, batchId, p.disposition, reason]);
+  }
+  return { return_id: ret.return_id, number, cn, inv };
+};
+
 /*
  * POST /returns/sales
  * { invoice_id, reason, notes?, items: [{ invoice_item_id, quantity, disposition?, batch_id? }], refund?: { method } }
@@ -96,52 +148,7 @@ const salesReturn = async (req, res) => {
   const notes = text(b.notes, 'Notes', { max: 300 });
   const list = Array.isArray(b.items) ? b.items : [];
   if (!list.length || list.length > 200) throw new WholesaleError(400, 'Choose what is being returned');
-  const out = await withTransaction(async (client) => {
-    const inv = (await client.query(`SELECT invoice_id, invoice_number, customer_id, branch_id FROM invoices WHERE business_id = $1 AND invoice_id = $2`, [req.tenant.businessId, invoiceId])).rows[0];
-    if (!inv || (req.tenant.pinned && inv.branch_id !== req.tenant.branchId)) throw new WholesaleError(404, 'Invoice not found');
-    const lines = new Map((await client.query(`SELECT ii.item_id, ii.product_id, ii.unit_name, ii.unit_factor, ii.description, p.track_inventory FROM invoice_items ii LEFT JOIN products p ON p.product_id = ii.product_id WHERE ii.invoice_id = $1`, [invoiceId])).rows.map((r) => [r.item_id, r]));
-    const prepared = list.map((x) => {
-      const line = lines.get(Number(x.invoice_item_id));
-      if (!line || !line.product_id) throw new WholesaleError(400, 'One of those items is not on this invoice');
-      const quantity = num(x.quantity, `${line.description} quantity`, { min: 0.001, required: true });
-      const disposition = oneOf(x.disposition, 'What happens to the goods', DISPOSITIONS, { fallback: reason === 'DAMAGED' ? 'DAMAGED' : reason === 'EXPIRED' ? 'EXPIRED' : 'RESTOCK' });
-      return { line, quantity, disposition, base: q3(quantity * Number(line.unit_factor || 1)), batchId: x.batch_id ? Number(x.batch_id) : null };
-    });
-    await lockProducts(client, req.tenant.businessId, prepared.map((p) => p.line.product_id));
-    // the credit note itself: tax, balance, refund (the shared engine; stock is handled below, line by line)
-    const cn = await issueCreditNote(client, {
-      tenant: req.tenant, auth: req.auth, params: { id: invoiceId },
-      body: { items: prepared.map((p) => ({ item_id: p.line.item_id, quantity: p.quantity })), reason: `${reason.replace(/_/g, ' ').toLowerCase()}${notes ? `: ${notes}` : ''}`, restock: false, refund: b.refund?.method ? { method: b.refund.method } : undefined }
-    });
-    const tracked = await batchTracked(client, req.tenant.businessId, prepared.map((p) => p.line.product_id));
-    const number = await nextNumber(client, req.tenant.businessId, 'RT', 'RT');
-    const ret = (await client.query(
-      `INSERT INTO wholesale_returns (business_id, branch_id, kind, return_number, invoice_id, cn_id, customer_id, reason, notes, created_by) VALUES ($1,$2,'SALE',$3,$4,$5,$6,$7,$8,$9) RETURNING return_id`,
-      [req.tenant.businessId, cn.invoice.branch_id, number, invoiceId, cn.note.cn_id, inv.customer_id, reason, notes, req.auth.userId])).rows[0];
-    for (const p of prepared) {
-      const pid = p.line.product_id; let batchId = p.batchId;
-      if (p.disposition === 'RESTOCK' && p.line.track_inventory) {
-        const tr = tracked.get(pid);
-        if (tr?.batch_tracking || tr?.expiry_tracking) {
-          if (!batchId) {
-            // the batch the goods came out of, when the invoice took them from exactly one
-            const used = (await client.query(`SELECT m.batch_id FROM wholesale_batch_moves m JOIN wholesale_batches bt ON bt.batch_id = m.batch_id WHERE m.ref_type = 'invoice' AND m.ref_id = $1 AND bt.product_id = $2 GROUP BY m.batch_id`, [invoiceId, pid])).rows;
-            if (used.length === 1) batchId = Number(used[0].batch_id);
-            else throw new WholesaleError(400, `${p.line.description} is batch-tracked: say which batch the goods belong to`);
-          }
-          const owned = (await client.query(`SELECT 1 FROM wholesale_batches WHERE batch_id = $1 AND business_id = $2 AND branch_id = $3 AND product_id = $4`, [batchId, req.tenant.businessId, cn.invoice.branch_id, pid])).rowCount;
-          if (!owned) throw new WholesaleError(400, 'That batch is not at the invoice’s warehouse');
-          await returnToBatch(client, { businessId: req.tenant.businessId, batchId, qty: p.base, refType: 'credit_note', refId: cn.note.cn_id });
-        }
-        await stockIn(client, { businessId: req.tenant.businessId, branchId: cn.invoice.branch_id, productId: pid, qty: p.base, type: 'RETURN', refType: 'credit_note', refId: cn.note.cn_id, notes: cn.note.cn_number, userId: req.auth.userId });
-      } else if (['DAMAGED', 'EXPIRED'].includes(p.disposition) && p.line.track_inventory) {
-        await logDamaged(client, { businessId: req.tenant.businessId, branchId: cn.invoice.branch_id, productId: pid, qty: p.base, source: 'RETURN', refType: 'credit_note', refId: cn.note.cn_id, note: `${p.disposition === 'EXPIRED' ? 'Expired' : 'Damaged'} return ${number}`, userId: req.auth.userId });
-      }
-      await client.query(`INSERT INTO wholesale_return_items (return_id, product_id, invoice_item_id, quantity, unit_name, base_qty, batch_id, disposition, reason) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [ret.return_id, pid, p.line.item_id, p.quantity, p.line.unit_name, p.base, batchId, p.disposition, reason]);
-    }
-    return { return_id: ret.return_id, number, cn, inv };
-  });
+  const out = await withTransaction((client) => processSalesReturn(client, req, { invoiceId, reason, notes, list, b }));
   audit(req, 'wholesale.sales_return', 'return', out.return_id, null, { number: out.number, invoice: out.inv.invoice_number, credit_note: out.cn.note.cn_number, total: rupees(out.cn.total), refunded: rupees(out.cn.refund), reason });
   req.params = { id: out.return_id };
   const row = (await pool.query(`SELECT ${COLS} ${FROM} WHERE r.return_id = $1`, [out.return_id])).rows[0];

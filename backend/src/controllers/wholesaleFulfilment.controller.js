@@ -12,6 +12,7 @@
  * The invoice is made by the shared billing engine (modules/billing.js), so GST, numbering, loyalty, payments and
  * every report treat it like any other invoice.
  */
+import { processSalesReturn } from './wholesaleReturns.controller.js';
 import pool from '../config/database.js';
 import { toRupees } from '../utils/money.js';
 import { hasPermission } from '../middleware/auth.js';
@@ -361,8 +362,8 @@ const dispatch = async (req, res) => {
 
 /* ── deliveries ───────────────────────────────────────────────────────────────────────────── */
 
-const DELIVERY_STATUSES = ['PENDING', 'ASSIGNED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'FAILED', 'RETURNED'];
-const NEXT = { PENDING: ['ASSIGNED', 'OUT_FOR_DELIVERY'], ASSIGNED: ['OUT_FOR_DELIVERY', 'FAILED'], OUT_FOR_DELIVERY: ['DELIVERED', 'FAILED'], FAILED: ['OUT_FOR_DELIVERY', 'RETURNED'], DELIVERED: [], RETURNED: [] };
+const DELIVERY_STATUSES = ['PENDING', 'ASSIGNED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'PARTIAL', 'FAILED', 'RETURNED'];
+const NEXT = { PENDING: ['ASSIGNED', 'OUT_FOR_DELIVERY'], ASSIGNED: ['OUT_FOR_DELIVERY', 'FAILED'], OUT_FOR_DELIVERY: ['DELIVERED', 'PARTIAL', 'FAILED'], FAILED: ['OUT_FOR_DELIVERY', 'RETURNED'], DELIVERED: [], PARTIAL: [], RETURNED: [] };
 
 const deliveryShape = (d) => ({
   delivery_id: d.delivery_id, challan_number: d.challan_number, status: d.status, order_id: d.order_id, order_number: d.order_number, customer_id: d.customer_id, customer: d.customer_name,
@@ -423,7 +424,7 @@ const getDelivery = async (req, res) => {
 const updateDelivery = async (req, res) => {
   const b = req.body || {};
   const d = await loadDelivery(req, req.params.id);
-  if (['DELIVERED', 'RETURNED'].includes(d.status)) throw new WholesaleError(409, `A ${d.status.toLowerCase()} delivery cannot be changed`);
+  if (['DELIVERED', 'PARTIAL', 'RETURNED'].includes(d.status)) throw new WholesaleError(409, `A ${d.status.toLowerCase()} delivery cannot be changed`);
   const f = {};
   if ('driver_name' in b) f.driver_name = text(b.driver_name, 'Driver', { max: 120 });
   if ('driver_phone' in b) f.driver_phone = text(b.driver_phone, 'Driver phone', { max: 32 });
@@ -448,7 +449,7 @@ const setDeliveryStatus = async (req, res) => {
     const d = await loadDelivery(req, req.params.id, { db: client, lock: true });
     if (!NEXT[d.status].includes(to)) throw new WholesaleError(409, `A ${d.status.toLowerCase().replace(/_/g, ' ')} delivery cannot become ${to.toLowerCase().replace(/_/g, ' ')}`);
     const f = { status: to };
-    if (to === 'DELIVERED') {
+    if (to === 'DELIVERED' || to === 'PARTIAL') {
       f.delivered_at = new Date();
       f.pod_received_by = text(b.pod_received_by, 'Received by', { max: 120, required: true });
       f.pod_note = text(b.pod_note, 'Note', { max: 300 });
@@ -458,11 +459,25 @@ const setDeliveryStatus = async (req, res) => {
     }
     if (to === 'FAILED') f.failure_reason = text(b.failure_reason, 'Reason', { max: 200, required: true, min: 3 });
     if (to === 'RETURNED') f.failure_reason = text(b.failure_reason, 'Reason', { max: 200, required: true, min: 3 }) || d.failure_reason;
+    // a part delivery: the customer took some and refused the rest. The refused goods are a sales return in the same
+    // transaction — credit note for them, stock back (or logged damaged) — so the invoice, the stock and the ledger agree.
+    if (to === 'PARTIAL') {
+      const refused = Array.isArray(b.returned_items) ? b.returned_items : [];
+      if (!refused.length) throw new WholesaleError(400, 'Say what the customer refused');
+      if (!d.invoice_id) throw new WholesaleError(409, 'This delivery has no invoice to credit');
+      f.failure_reason = text(b.failure_reason, 'Reason', { max: 200, required: true, min: 3 });
+      f.pod_note = f.pod_note || f.failure_reason;
+      await processSalesReturn(client, req, { invoiceId: d.invoice_id, reason: 'CUSTOMER_REJECTION', notes: f.failure_reason, list: refused, b: {} });
+    }
     const keys = Object.keys(f);
     await client.query(`UPDATE wholesale_deliveries SET ${keys.map((k, i) => `${k} = $${i + 2}`).join(', ')} WHERE delivery_id = $1`, [d.delivery_id, ...keys.map((k) => f[k])]);
     const status = await refreshStatus(client, d.order_id);
     return { d, status };
   });
+  if (['OUT_FOR_DELIVERY', 'DELIVERED', 'PARTIAL', 'FAILED'].includes(to)) {
+    const label = { OUT_FOR_DELIVERY: 'out for delivery', DELIVERED: 'delivered', PARTIAL: 'delivered in part', FAILED: 'could not be delivered — we will contact you' }[to];
+    notify(req, 'delivery_update', { customerId: result.d.customer_id, values: { order: result.d.order_number, status: label } });
+  }
   audit(req, 'wholesale.delivery_status', 'delivery', result.d.delivery_id, { status: result.d.status }, { status: to }, { challan: result.d.challan_number });
   ok(res, { ...deliveryShape(await loadDelivery(req, result.d.delivery_id)), order_status: result.status, ...(to === 'RETURNED' ? { hint: 'Record a sales return against the invoice to take the goods back into stock and credit the customer.' } : {}) });
 };

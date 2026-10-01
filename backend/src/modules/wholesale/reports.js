@@ -17,6 +17,7 @@ const sum = (rows, key) => rows.reduce((s, x) => s + n(x[key]), 0);
 
 /** The invoice set of a report: issued, in these warehouses, in the period. */
 const INV = `FROM invoices i WHERE i.business_id = $1 AND i.branch_id = ANY($2::int[]) AND i.status = 'ISSUED' AND i.invoice_date >= $3::date AND i.invoice_date <= $4::date`;
+export { r, n, pct, col, sum, INV, run, runNow };
 const run = async (ctx, sql, extra = []) => (await ctx.db.query(sql, [ctx.businessId, ctx.branchIds, ctx.from, ctx.to, ...extra])).rows;
 const runNow = async (ctx, sql, extra = []) => (await ctx.db.query(sql, [ctx.businessId, ctx.branchIds, ...extra])).rows;
 
@@ -295,11 +296,16 @@ export const REPORTS = {
   }
 };
 
-export const catalogue = () => Object.entries(REPORTS).map(([key, d]) => ({ key, group: d.group, label: d.label, description: d.description, period: d.period, filters: d.filters || [] }));
+/** The distributor module adds its own reports here (they are listed and run only for a distributor). */
+export const registerReports = (defs) => { for (const [key, d] of Object.entries(defs)) REPORTS[key] = { ...d, distributor: true }; };
+
+export const catalogue = ({ distributor = false } = {}) => Object.entries(REPORTS)
+  .filter(([, d]) => distributor || !d.distributor)
+  .map(([key, d]) => ({ key, group: d.group, label: d.label, description: d.description, period: d.period, filters: d.filters || [], ...(d.distributor ? { distributor: true } : {}) }));
 
 export const runReport = async (key, ctx) => {
   const def = REPORTS[key];
-  if (!def) throw new WholesaleError(404, 'Not found');
+  if (!def || (def.distributor && !ctx.distributor)) throw new WholesaleError(404, 'Not found');
   const out = await def.run(ctx);
   return { key, title: def.label, group: def.group, description: def.description, period: def.period, from: def.period ? ctx.from : null, to: def.period ? ctx.to : null, ...out };
 };

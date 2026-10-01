@@ -17,7 +17,8 @@ const inr = (n) => Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2,
 const rupees = (v) => toRupees(Number(v || 0));
 const n = (v) => Number(v || 0);
 
-const dashboard = async (req, res) => {
+/** The wholesale dashboard payload for this person (shared with the distributor dashboard, which adds to it). */
+export const buildDashboard = async (req) => {
   const businessId = req.tenant.businessId;
   const date = await today(pool, businessId);
   const monthStart = `${date.slice(0, 8)}01`;
@@ -160,8 +161,9 @@ const dashboard = async (req, res) => {
   if (out.purchasing?.late_orders > 0) push('warning', `${out.purchasing.late_orders} purchase order${out.purchasing.late_orders === 1 ? ' is' : 's are'} late`, '/app/wholesale/purchasing');
   if (out.money?.payable_due_soon > 0) push('informational', `₹${inr(out.money.payable_due_soon)} due to suppliers within a week`, '/app/wholesale/money?tab=payables');
   out.alerts = list;
-
-  ok(res, out);
+  return out;
 };
+
+const dashboard = async (req, res) => ok(res, await buildDashboard(req));
 
 export default wrapAll({ dashboard });

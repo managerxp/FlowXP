@@ -17,7 +17,8 @@ export const EVENTS = {
   invoice_issued: 'WS_INVOICE',
   payment_received: 'WS_PAYMENT_RECEIVED',
   payment_due: 'WS_PAYMENT_DUE',
-  payment_overdue: 'WS_PAYMENT_OVERDUE'
+  payment_overdue: 'WS_PAYMENT_OVERDUE',
+  delivery_update: 'WS_DELIVERY_UPDATE'
 };
 
 const REMINDERS = new Set(['payment_due', 'payment_overdue']);

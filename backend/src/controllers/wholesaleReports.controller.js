@@ -4,10 +4,12 @@
  */
 import pool from '../config/database.js';
 import { catalogue, runReport } from '../modules/wholesale/reports.js';
+import '../modules/distributor/reports.js';   // registers the distributor reports
+import { isDistributor } from '../modules/distributor/common.js';
 import { WholesaleError, addDays, audit, getSettings, isoDate, ok, today, wrapAll } from '../modules/wholesale/common.js';
 import { scopeBranches } from './wholesaleInventory.controller.js';
 
-const list = async (req, res) => ok(res, catalogue());
+const list = async (req, res) => ok(res, catalogue({ distributor: await isDistributor(req) }));
 
 const run = async (req, res) => {
   const date = await today(pool, req.tenant.businessId);
@@ -17,7 +19,7 @@ const run = async (req, res) => {
   if (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`) > 800 * 86400000) throw new WholesaleError(400, 'Choose a period of up to about two years');
   const settings = await getSettings(pool, req.tenant.businessId);
   const branchIds = await scopeBranches(req, req.query.branch_id);
-  const report = await runReport(req.params.key, { db: pool, businessId: req.tenant.businessId, branchIds, from, to, query: req.query, settings });
+  const report = await runReport(req.params.key, { db: pool, businessId: req.tenant.businessId, branchIds, from, to, query: req.query, settings, distributor: await isDistributor(req) });
   if (req.query.export === '1') audit(req, 'wholesale.report_exported', 'report', null, null, { report: req.params.key, from, to });
   ok(res, report);
 };

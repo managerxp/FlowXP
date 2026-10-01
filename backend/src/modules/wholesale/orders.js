@@ -135,13 +135,13 @@ export const loadItems = async (db, orderId, { lock = false } = {}) =>
  */
 export const refreshStatus = async (client, orderId) => {
   const order = (await client.query(`SELECT order_id, status FROM wholesale_sales_orders WHERE order_id = $1 FOR UPDATE`, [orderId])).rows[0];
-  if (!order || ['DRAFT', 'PENDING', 'CANCELLED'].includes(order.status)) return order?.status ?? null;
+  if (!order || ['DRAFT', 'PENDING', 'CANCELLED', 'REJECTED'].includes(order.status)) return order?.status ?? null;
   const t = (await client.query(
     `SELECT COALESCE(SUM(shipped_base), 0) AS shipped, COALESCE(SUM(base_qty - shipped_base - cancelled_base), 0) AS open FROM wholesale_sales_order_items WHERE order_id = $1`, [orderId])).rows[0];
   const shipped = Number(t.shipped); const open = Number(t.open);
   const d = (await client.query(
     `SELECT COUNT(*) FILTER (WHERE status IN ('PENDING','ASSIGNED','OUT_FOR_DELIVERY')) AS moving, COUNT(*) FILTER (WHERE status = 'OUT_FOR_DELIVERY') AS out_now,
-            COUNT(*) FILTER (WHERE status = 'DELIVERED') AS delivered, COUNT(*) FILTER (WHERE status NOT IN ('FAILED','RETURNED')) AS live,
+            COUNT(*) FILTER (WHERE status IN ('DELIVERED','PARTIAL')) AS delivered, COUNT(*) FILTER (WHERE status NOT IN ('FAILED','RETURNED')) AS live,
             COUNT(*) FILTER (WHERE dispatch_date IS NOT NULL AND status NOT IN ('FAILED','RETURNED')) AS dispatched
      FROM wholesale_deliveries WHERE order_id = $1`, [orderId])).rows[0];
   let status;

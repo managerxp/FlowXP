@@ -460,7 +460,7 @@ const withMode = (req, shaped) => ({ ...shaped, distributor_enabled: req.tenant.
 
 const getSettingsEndpoint = async (req, res) => ok(res, withMode(req, settingsShape(await getSettings(pool, req.tenant.businessId))));
 
-const NOTIFY_KEYS = ['order_confirmed', 'order_dispatched', 'invoice_issued', 'payment_received', 'payment_due', 'payment_overdue'];
+const NOTIFY_KEYS = ['order_confirmed', 'order_dispatched', 'invoice_issued', 'payment_received', 'payment_due', 'payment_overdue', 'delivery_update'];
 
 const updateSettings = async (req, res) => {
   const b = req.body || {}; const f = {};

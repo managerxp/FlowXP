@@ -10,6 +10,8 @@ import {
 } from '../modules/distributor/common.js';
 import { eligibleSchemes } from '../modules/distributor/schemes.js';
 import { loadUnits, unitFor } from '../modules/wholesale/units.js';
+import { send } from '../modules/messaging/index.js';
+import { territoryScope } from '../modules/distributor/common.js';
 
 const rupees = (v) => toRupees(Number(v || 0));
 const CUSTOMER_TYPES = ['RETAILER', 'DEALER', 'DISTRIBUTOR', 'BUSINESS', 'CORPORATE', 'OTHER'];
@@ -246,4 +248,29 @@ const performance = async (req, res) => {
   });
 };
 
-export default wrapAll({ list, get, create, update, remove, eligible, performance });
+/* POST /schemes/:id/announce — tell the retailers who qualify about a live scheme, through the business's own messaging channel (promotional: opt-outs are respected) */
+const announce = async (req, res) => {
+  const row = await load(pool, req.tenant.businessId, req.params.id);
+  if (!row) throw new WholesaleError(404, 'Not found');
+  const on = await today(pool, req.tenant.businessId);
+  if (state(row, on) !== 'ACTIVE') throw new WholesaleError(409, 'Only a scheme that is running can be announced');
+  const named = new Set((await pool.query(`SELECT customer_id FROM dist_scheme_customers WHERE scheme_id = $1`, [row.scheme_id])).rows.map((r) => r.customer_id));
+  const nodes = (await pool.query(`SELECT territory_id FROM dist_scheme_territories WHERE scheme_id = $1`, [row.scheme_id])).rows.map((r) => r.territory_id);
+  const inTerritories = new Set(); for (const t of nodes) for (const id of await territoryScope(pool, req.tenant.businessId, t)) inTerritories.add(id);
+  const business = (await pool.query(`SELECT name FROM businesses WHERE business_id = $1`, [req.tenant.businessId])).rows[0].name;
+  const candidates = (await pool.query(
+    `SELECT c.customer_id, c.name, c.phone, COALESCE(w.customer_type, 'RETAILER') AS type, w.territory_id FROM customers c LEFT JOIN wholesale_customer_profiles w ON w.customer_id = c.customer_id
+     WHERE c.business_id = $1 AND c.status = 'ACTIVE' AND c.phone IS NOT NULL AND c.phone <> '' ORDER BY c.customer_id`, [req.tenant.businessId])).rows
+    .filter((c) => (!row.customer_types?.length || row.customer_types.includes(c.type)) && (!named.size || named.has(c.customer_id)) && (!nodes.length || (c.territory_id && inTerritories.has(c.territory_id))));
+  if (candidates.length > 500) throw new WholesaleError(400, `${candidates.length} retailers qualify. Narrow the scheme to a territory or a customer type, or announce it in parts.`);
+  const until = row.ends_on ? ` Valid till ${new Date(row.ends_on).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}.` : '';
+  let sent = 0;
+  for (const c of candidates) {
+    const result = await send(pool, { businessId: req.tenant.businessId, customerId: c.customer_id, phone: c.phone, kind: 'OFFER', values: { name: c.name, business, offer: `${describe(row)}.${until}` }, createdBy: req.auth.userId, related: { type: 'scheme', id: row.scheme_id } }).catch(() => null);
+    if (result && !result.skipped) sent++;
+  }
+  audit(req, 'distributor.scheme_announced', 'scheme', row.scheme_id, null, null, { qualifying: candidates.length, sent });
+  ok(res, { qualifying: candidates.length, sent, skipped: candidates.length - sent });
+};
+
+export default wrapAll({ list, get, create, update, remove, eligible, performance, announce });

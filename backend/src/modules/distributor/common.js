@@ -7,17 +7,21 @@ import pool from '../../config/database.js';
 export * from '../wholesale/common.js';
 import { WholesaleError } from '../wholesale/common.js';
 
+/** Does this business have the distributor features (a DISTRIBUTOR, or a WHOLESALE business that switched them on)? */
+export const isDistributor = async (req) => {
+  if (req.tenant?.businessType === 'DISTRIBUTOR') return true;
+  if (req.tenant?.businessType !== 'WHOLESALE') return false;
+  const row = (await pool.query(`SELECT distributor_enabled FROM wholesale_settings WHERE business_id = $1`, [req.tenant.businessId])).rows[0];
+  return Boolean(row?.distributor_enabled);
+};
+
 /**
  * Distributor routes exist for a DISTRIBUTOR business, and for a WHOLESALE business that switched
  * "Wholesale + Distributor" on in settings. Anyone else gets the answer a missing route gives.
  */
 export const distributorOn = async (req, res, next) => {
   try {
-    if (req.tenant?.businessType === 'DISTRIBUTOR') return next();
-    if (req.tenant?.businessType === 'WHOLESALE') {
-      const row = (await pool.query(`SELECT distributor_enabled FROM wholesale_settings WHERE business_id = $1`, [req.tenant.businessId])).rows[0];
-      if (row?.distributor_enabled) return next();
-    }
+    if (await isDistributor(req)) return next();
     return res.status(404).json({ success: false, message: 'Not found' });
   } catch (error) { next(error); }
 };

@@ -9,10 +9,12 @@ import { Router } from 'express';
 import { requireAnyPermission, requireAuth, requirePermission, withBusiness } from '../middleware/auth.js';
 import { idempotent } from '../middleware/idempotency.js';
 import { distributorOn, wholesaleOnly } from '../modules/distributor/common.js';
+import '../modules/distributor/scans.js';   // registers the background checks with the worker
 import principals from '../controllers/distributorPrincipals.controller.js';
 import territories from '../controllers/distributorTerritories.controller.js';
 import schemes from '../controllers/distributorSchemes.controller.js';
 import vehicles from '../controllers/distributorVehicles.controller.js';
+import dashboard from '../controllers/distributorDashboard.controller.js';
 import team from '../controllers/distributorTeam.controller.js';
 
 const router = Router();
@@ -22,6 +24,8 @@ const write = [requireAuth, withBusiness({ requireActive: true }), wholesaleOnly
 const any = (...p) => requireAnyPermission(...p);
 const can = (p) => requirePermission(p);
 const once = idempotent();
+
+router.get('/dashboard', ...read, any('reports', 'payments', 'sales_orders', 'fulfilment', 'inventory', 'purchases', 'field_sales'), dashboard.dashboard);
 
 /* ── principals and brands ────────────────────────────────────────────────── */
 router.get('/principals', ...read, any('principals', 'products', 'purchases', 'reports'), principals.list);
@@ -52,6 +56,7 @@ router.post('/schemes', ...write, can('schemes'), schemes.create);
 router.get('/schemes/:id', ...read, any('schemes', 'sales_orders', 'field_sales', 'reports'), schemes.get);
 router.put('/schemes/:id', ...write, can('schemes'), schemes.update);
 router.delete('/schemes/:id', ...write, can('schemes'), schemes.remove);
+router.post('/schemes/:id/announce', ...write, can('schemes'), once, schemes.announce);
 router.get('/schemes/:id/performance', ...read, any('schemes', 'reports'), schemes.performance);
 
 /* ── vans ─────────────────────────────────────────────────────────────────── */

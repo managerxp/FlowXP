@@ -127,6 +127,11 @@ export const TEMPLATES = {
     vars: ['name', 'business', 'amount', 'number', 'days'],
     text: (p) => `Hi ${p.name}, ${p.amount} on invoice ${p.number} to ${p.business} is ${p.days} days overdue. Please arrange payment at the earliest.`
   },
+  WS_DELIVERY_UPDATE: {
+    name: 'flowxp_ws_delivery_update', promo: false,
+    vars: ['name', 'business', 'order', 'status'],
+    text: (p) => `Hi ${p.name}, update on your order ${p.order} from ${p.business}: ${p.status}.`
+  },
   REVIEW_REPLY: {
     name: 'flowxp_review_reply', promo: false,
     vars: ['name', 'business', 'reply'],
