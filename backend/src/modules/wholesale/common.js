@@ -15,7 +15,7 @@ export class WholesaleError extends Error {
   constructor(status, message, extra = {}) { super(message); this.name = 'WholesaleError'; this.status = status; Object.assign(this, extra); }
 }
 
-const CLIENT_ERRORS = new Set(['SalonError', 'WholesaleError', 'BillingError', 'PointsError', 'CouponError', 'TransferError']);
+const CLIENT_ERRORS = new Set(['SalonError', 'WholesaleError', 'BillingError', 'PointsError', 'CouponError', 'TransferError', 'NoteError']);
 
 export const wrap = (fn) => async (req, res, next) => {
   try {

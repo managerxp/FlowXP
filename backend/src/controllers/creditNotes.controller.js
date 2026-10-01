@@ -23,7 +23,7 @@ import { toQuantity, toRupees } from '../utils/money.js';
 const METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER'];
 const bad = (res, message, status = 400) => res.status(status).json({ success: false, message });
 
-class NoteError extends Error { constructor(status, message) { super(message); this.status = status; } }
+export class NoteError extends Error { constructor(status, message) { super(message); this.name = 'NoteError'; this.status = status; } }
 
 export const asCreditNote = (r) => ({
   cn_id: r.cn_id, cn_number: r.cn_number, date: r.cn_date, invoice_id: r.invoice_id, invoice_number: r.invoice_number,
@@ -37,129 +37,137 @@ export const asCreditNote = (r) => ({
 const share = (amount, qty, whole, remainingQty, alreadyCredited) =>
   Math.abs(qty - remainingQty) < 1e-9 ? Number(amount) - alreadyCredited : Math.round((Number(amount) * qty) / whole);
 
-/* POST /api/invoices/:id/credit-notes { items: [{ item_id, quantity }], reason, restock?, refund?: { method } } */
-export const create = async (req, res) => {
+/**
+ * Issue a credit note inside the caller's transaction (no BEGIN / COMMIT here). Throws NoteError for anything the user
+ * can fix. Returns { note, invoice, total, refund, leftover, picked }.
+ */
+export const issueCreditNote = async (client, req) => {
   const body = req.body || {};
   const reason = String(body.reason ?? '').trim();
-  if (!reason) return bad(res, 'Say why you are issuing a credit note');
-  if (!Array.isArray(body.items) || !body.items.length) return bad(res, 'Choose at least one item');
+  if (!reason) throw new NoteError(400, 'Say why you are issuing a credit note');
+  if (!Array.isArray(body.items) || !body.items.length) throw new NoteError(400, 'Choose at least one item');
   const method = body.refund?.method ? String(body.refund.method).toUpperCase() : null;
-  if (method && !METHODS.includes(method)) return bad(res, 'Unknown refund method');
+  if (method && !METHODS.includes(method)) throw new NoteError(400, 'Unknown refund method');
+  const scope = [req.tenant.businessId, req.params.id];
+  const invoice = (await client.query(
+    `SELECT * FROM invoices WHERE business_id = $1 AND invoice_id = $2${branchFilter(req.tenant, 'branch_id', scope)} FOR UPDATE`, scope
+  )).rows[0];
+  if (!invoice) throw new NoteError(404, 'Not found');
+  if (invoice.status !== 'ISSUED') throw new NoteError(409, 'A cancelled invoice can’t have a credit note');
 
+  const lines = (await client.query(
+    `SELECT ii.*, p.track_inventory,
+            COALESCE((SELECT SUM(c.quantity) FROM credit_note_items c WHERE c.invoice_item_id = ii.item_id), 0) AS credited_qty,
+            COALESCE((SELECT SUM(c.tax_amount_paise) FROM credit_note_items c WHERE c.invoice_item_id = ii.item_id), 0) AS credited_tax,
+            COALESCE((SELECT SUM(c.line_total_paise) FROM credit_note_items c WHERE c.invoice_item_id = ii.item_id), 0) AS credited_total
+     FROM invoice_items ii LEFT JOIN products p ON p.product_id = ii.product_id
+     WHERE ii.invoice_id = $1 ORDER BY ii.item_id`, [invoice.invoice_id]
+  )).rows;
+  const byId = new Map(lines.map((l) => [l.item_id, l]));
+
+  const picked = []; const seen = new Set();
+  for (const raw of body.items) {
+    const line = byId.get(Number(raw.item_id));
+    if (!line) throw new NoteError(400, 'One of those items isn’t on this invoice');
+    if (seen.has(line.item_id)) throw new NoteError(400, `${line.description} is listed twice`);
+    seen.add(line.item_id);
+    const qty = toQuantity(raw.quantity);
+    const remaining = Math.round((Number(line.quantity) - Number(line.credited_qty)) * 1000) / 1000;
+    if (qty > remaining + 1e-9) throw new NoteError(400, `${line.description}: only ${remaining} left to credit`);
+    const whole = Number(line.quantity);
+    const tax = share(line.tax_amount_paise, qty, whole, remaining, Number(line.credited_tax));
+    const total = share(line.line_total_paise, qty, whole, remaining, Number(line.credited_total));
+    picked.push({ line, qty, tax, total });
+  }
+
+  const linesTotal = picked.reduce((s, p) => s + p.total, 0);
+  const taxTotal = picked.reduce((s, p) => s + p.tax, 0);
+  const invoiceLinesSum = lines.reduce((s, l) => s + Number(l.line_total_paise), 0);
+  const priorShare = Number((await client.query(`SELECT COALESCE(SUM(discount_share_paise),0) AS s FROM credit_notes WHERE invoice_id = $1`, [invoice.invoice_id])).rows[0].s);
+  const invoiceDiscount = Number(invoice.discount_paise);
+  const creditedAllLines = lines.every((l) => {
+    const p = picked.find((x) => x.line.item_id === l.item_id);
+    return Math.abs(Number(l.quantity) - Number(l.credited_qty) - (p?.qty ?? 0)) < 1e-9;
+  });
+  // The last note that completes the invoice takes the exact remainder of the discount.
+  const discountShare = invoiceDiscount === 0 || invoiceLinesSum === 0 ? 0
+    : creditedAllLines ? invoiceDiscount - priorShare
+      : Math.min(invoiceDiscount - priorShare, Math.round((invoiceDiscount * linesTotal) / invoiceLinesSum));
+  const total = linesTotal - discountShare;
+  if (total <= 0) throw new NoteError(400, 'That credit note would be for nothing');
+
+  // CGST/SGST/IGST follow how the invoice itself was taxed.
+  const igst = Number(invoice.igst_paise) > 0 ? taxTotal : 0;
+  const cgst = igst ? 0 : Math.floor(taxTotal / 2);
+  const sgst = igst ? 0 : taxTotal - cgst;
+  const taxable = linesTotal - taxTotal;
+
+  // Settle: what the customer still owes first, then (if asked) money back.
+  const fromBalance = Math.min(total, Number(invoice.balance_due_paise));
+  const leftover = total - fromBalance;
+  const refundable = Math.max(0, Number(invoice.amount_paid_paise) - Number(invoice.refunded_paise));
+  const refund = method ? Math.min(leftover, refundable) : 0;
+
+  const numbering = (await client.query(`SELECT credit_note_prefix, credit_note_next_number FROM businesses WHERE business_id = $1 FOR UPDATE`, [req.tenant.businessId])).rows[0];
+  await client.query(`UPDATE businesses SET credit_note_next_number = credit_note_next_number + 1 WHERE business_id = $1`, [req.tenant.businessId]);
+  const cnNumber = `${numbering.credit_note_prefix}-${String(numbering.credit_note_next_number).padStart(4, '0')}`;
+
+  const note = (await client.query(
+    `INSERT INTO credit_notes (business_id, branch_id, invoice_id, cn_number, reason, subtotal_paise, cgst_paise, sgst_paise, igst_paise, tax_paise,
+                               discount_share_paise, total_paise, settled_balance_paise, refunded_paise, created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+    [req.tenant.businessId, invoice.branch_id, invoice.invoice_id, cnNumber, reason, taxable, cgst, sgst, igst, taxTotal, discountShare, total, fromBalance, refund, req.auth.userId]
+  )).rows[0];
+
+  for (const p of picked) {
+    const restock = Boolean(body.restock) && p.line.track_inventory && p.line.product_id;
+    await client.query(
+      `INSERT INTO credit_note_items (cn_id, invoice_item_id, product_id, description, quantity, tax_rate, tax_amount_paise, line_total_paise, restocked)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [note.cn_id, p.line.item_id, p.line.product_id, p.line.description, p.qty, p.line.tax_rate, p.tax, p.total, Boolean(restock)]
+    );
+    if (restock) {
+      await client.query(`SELECT 1 FROM products WHERE product_id = $1 FOR UPDATE`, [p.line.product_id]);
+      const back = Math.round(p.qty * Number(p.line.unit_factor || 1) * 1000) / 1000;   // a returned carton is 24 boxes back on the shelf
+      await moveStock(client, { businessId: req.tenant.businessId, branchId: invoice.branch_id, productId: p.line.product_id, delta: back });
+      await client.query(
+        `INSERT INTO inventory_transactions (business_id, branch_id, product_id, transaction_type, quantity, reference_type, reference_id, notes, created_by)
+         VALUES ($1,$2,$3,'RETURN',$4,'credit_note',$5,$6,$7)`,
+        [req.tenant.businessId, invoice.branch_id, p.line.product_id, back, note.cn_id, cnNumber, req.auth.userId]
+      );
+    }
+  }
+
+  if (refund > 0) {
+    await client.query(
+      `INSERT INTO refunds (business_id, invoice_id, amount_paise, method, reason, created_by, credit_note_id) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [req.tenant.businessId, invoice.invoice_id, refund, method, `${cnNumber}: ${reason}`, req.auth.userId, note.cn_id]
+    );
+  }
+  const newBalance = Number(invoice.balance_due_paise) - fromBalance;
+  await client.query(
+    `UPDATE invoices SET credited_paise = credited_paise + $2::bigint, balance_due_paise = $3::bigint, refunded_paise = refunded_paise + $4::bigint, cn_refunded_paise = cn_refunded_paise + $4::bigint,
+            payment_status = CASE WHEN $3::bigint = 0 AND $5::bigint > 0 THEN 'PAID' ELSE payment_status END
+     WHERE invoice_id = $1`,
+    [invoice.invoice_id, total, newBalance, refund, fromBalance]
+  );
+
+  // the customer gives back a share of the points that bill earned
+  await reverseForCredit(client, { businessId: req.tenant.businessId, invoiceId: invoice.invoice_id, creditedTotalPaise: Number(invoice.credited_paise) + total, createdBy: req.auth.userId });
+  // a salon bill: commission shrinks with the credited share; a package / membership / gift card credited in full is withdrawn
+  if (req.tenant.businessType === 'SALON') await onCreditNote(client, { businessId: req.tenant.businessId, invoiceId: invoice.invoice_id, userId: req.auth.userId });
+
+  return { note, invoice, total, refund, leftover, picked };
+};
+
+/* POST /api/invoices/:id/credit-notes { items: [{ item_id, quantity }], reason, restock?, refund?: { method } } */
+export const create = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const scope = [req.tenant.businessId, req.params.id];
-    const invoice = (await client.query(
-      `SELECT * FROM invoices WHERE business_id = $1 AND invoice_id = $2${branchFilter(req.tenant, 'branch_id', scope)} FOR UPDATE`, scope
-    )).rows[0];
-    if (!invoice) throw new NoteError(404, 'Not found');
-    if (invoice.status !== 'ISSUED') throw new NoteError(409, 'A cancelled invoice can’t have a credit note');
-
-    const lines = (await client.query(
-      `SELECT ii.*, p.track_inventory,
-              COALESCE((SELECT SUM(c.quantity) FROM credit_note_items c WHERE c.invoice_item_id = ii.item_id), 0) AS credited_qty,
-              COALESCE((SELECT SUM(c.tax_amount_paise) FROM credit_note_items c WHERE c.invoice_item_id = ii.item_id), 0) AS credited_tax,
-              COALESCE((SELECT SUM(c.line_total_paise) FROM credit_note_items c WHERE c.invoice_item_id = ii.item_id), 0) AS credited_total
-       FROM invoice_items ii LEFT JOIN products p ON p.product_id = ii.product_id
-       WHERE ii.invoice_id = $1 ORDER BY ii.item_id`, [invoice.invoice_id]
-    )).rows;
-    const byId = new Map(lines.map((l) => [l.item_id, l]));
-
-    const picked = []; const seen = new Set();
-    for (const raw of body.items) {
-      const line = byId.get(Number(raw.item_id));
-      if (!line) throw new NoteError(400, 'One of those items isn’t on this invoice');
-      if (seen.has(line.item_id)) throw new NoteError(400, `${line.description} is listed twice`);
-      seen.add(line.item_id);
-      const qty = toQuantity(raw.quantity);
-      const remaining = Math.round((Number(line.quantity) - Number(line.credited_qty)) * 1000) / 1000;
-      if (qty > remaining + 1e-9) throw new NoteError(400, `${line.description}: only ${remaining} left to credit`);
-      const whole = Number(line.quantity);
-      const tax = share(line.tax_amount_paise, qty, whole, remaining, Number(line.credited_tax));
-      const total = share(line.line_total_paise, qty, whole, remaining, Number(line.credited_total));
-      picked.push({ line, qty, tax, total });
-    }
-
-    const linesTotal = picked.reduce((s, p) => s + p.total, 0);
-    const taxTotal = picked.reduce((s, p) => s + p.tax, 0);
-    const invoiceLinesSum = lines.reduce((s, l) => s + Number(l.line_total_paise), 0);
-    const priorShare = Number((await client.query(`SELECT COALESCE(SUM(discount_share_paise),0) AS s FROM credit_notes WHERE invoice_id = $1`, [invoice.invoice_id])).rows[0].s);
-    const invoiceDiscount = Number(invoice.discount_paise);
-    const creditedAllLines = lines.every((l) => {
-      const p = picked.find((x) => x.line.item_id === l.item_id);
-      return Math.abs(Number(l.quantity) - Number(l.credited_qty) - (p?.qty ?? 0)) < 1e-9;
-    });
-    // The last note that completes the invoice takes the exact remainder of the discount.
-    const discountShare = invoiceDiscount === 0 || invoiceLinesSum === 0 ? 0
-      : creditedAllLines ? invoiceDiscount - priorShare
-        : Math.min(invoiceDiscount - priorShare, Math.round((invoiceDiscount * linesTotal) / invoiceLinesSum));
-    const total = linesTotal - discountShare;
-    if (total <= 0) throw new NoteError(400, 'That credit note would be for nothing');
-
-    // CGST/SGST/IGST follow how the invoice itself was taxed.
-    const igst = Number(invoice.igst_paise) > 0 ? taxTotal : 0;
-    const cgst = igst ? 0 : Math.floor(taxTotal / 2);
-    const sgst = igst ? 0 : taxTotal - cgst;
-    const taxable = linesTotal - taxTotal;
-
-    // Settle: what the customer still owes first, then (if asked) money back.
-    const fromBalance = Math.min(total, Number(invoice.balance_due_paise));
-    const leftover = total - fromBalance;
-    const refundable = Math.max(0, Number(invoice.amount_paid_paise) - Number(invoice.refunded_paise));
-    const refund = method ? Math.min(leftover, refundable) : 0;
-
-    const numbering = (await client.query(`SELECT credit_note_prefix, credit_note_next_number FROM businesses WHERE business_id = $1 FOR UPDATE`, [req.tenant.businessId])).rows[0];
-    await client.query(`UPDATE businesses SET credit_note_next_number = credit_note_next_number + 1 WHERE business_id = $1`, [req.tenant.businessId]);
-    const cnNumber = `${numbering.credit_note_prefix}-${String(numbering.credit_note_next_number).padStart(4, '0')}`;
-
-    const note = (await client.query(
-      `INSERT INTO credit_notes (business_id, branch_id, invoice_id, cn_number, reason, subtotal_paise, cgst_paise, sgst_paise, igst_paise, tax_paise,
-                                 discount_share_paise, total_paise, settled_balance_paise, refunded_paise, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
-      [req.tenant.businessId, invoice.branch_id, invoice.invoice_id, cnNumber, reason, taxable, cgst, sgst, igst, taxTotal, discountShare, total, fromBalance, refund, req.auth.userId]
-    )).rows[0];
-
-    for (const p of picked) {
-      const restock = Boolean(body.restock) && p.line.track_inventory && p.line.product_id;
-      await client.query(
-        `INSERT INTO credit_note_items (cn_id, invoice_item_id, product_id, description, quantity, tax_rate, tax_amount_paise, line_total_paise, restocked)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [note.cn_id, p.line.item_id, p.line.product_id, p.line.description, p.qty, p.line.tax_rate, p.tax, p.total, Boolean(restock)]
-      );
-      if (restock) {
-        await client.query(`SELECT 1 FROM products WHERE product_id = $1 FOR UPDATE`, [p.line.product_id]);
-        const back = Math.round(p.qty * Number(p.line.unit_factor || 1) * 1000) / 1000;   // a returned carton is 24 boxes back on the shelf
-        await moveStock(client, { businessId: req.tenant.businessId, branchId: invoice.branch_id, productId: p.line.product_id, delta: back });
-        await client.query(
-          `INSERT INTO inventory_transactions (business_id, branch_id, product_id, transaction_type, quantity, reference_type, reference_id, notes, created_by)
-           VALUES ($1,$2,$3,'RETURN',$4,'credit_note',$5,$6,$7)`,
-          [req.tenant.businessId, invoice.branch_id, p.line.product_id, back, note.cn_id, cnNumber, req.auth.userId]
-        );
-      }
-    }
-
-    if (refund > 0) {
-      await client.query(
-        `INSERT INTO refunds (business_id, invoice_id, amount_paise, method, reason, created_by, credit_note_id) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        [req.tenant.businessId, invoice.invoice_id, refund, method, `${cnNumber}: ${reason}`, req.auth.userId, note.cn_id]
-      );
-    }
-    const newBalance = Number(invoice.balance_due_paise) - fromBalance;
-    await client.query(
-      `UPDATE invoices SET credited_paise = credited_paise + $2::bigint, balance_due_paise = $3::bigint, refunded_paise = refunded_paise + $4::bigint, cn_refunded_paise = cn_refunded_paise + $4::bigint,
-              payment_status = CASE WHEN $3::bigint = 0 AND $5::bigint > 0 THEN 'PAID' ELSE payment_status END
-       WHERE invoice_id = $1`,
-      [invoice.invoice_id, total, newBalance, refund, fromBalance]
-    );
-
-    // the customer gives back a share of the points that bill earned
-    await reverseForCredit(client, { businessId: req.tenant.businessId, invoiceId: invoice.invoice_id, creditedTotalPaise: Number(invoice.credited_paise) + total, createdBy: req.auth.userId });
-    // a salon bill: commission shrinks with the credited share; a package / membership / gift card credited in full is withdrawn
-    if (req.tenant.businessType === 'SALON') await onCreditNote(client, { businessId: req.tenant.businessId, invoiceId: invoice.invoice_id, userId: req.auth.userId });
-
+    const { note, invoice, total, refund, leftover } = await issueCreditNote(client, req);
     await client.query('COMMIT');
-    recordAudit(req, { action: 'credit_note.issued', resource_type: 'credit_note', resource_id: note.cn_id, metadata: { total: toRupees(total), invoice_id: invoice.invoice_id, refunded: toRupees(refund), restocked: Boolean(body.restock) } });
+    recordAudit(req, { action: 'credit_note.issued', resource_type: 'credit_note', resource_id: note.cn_id, metadata: { total: toRupees(total), invoice_id: invoice.invoice_id, refunded: toRupees(refund), restocked: Boolean(req.body?.restock) } });
     res.status(201).json({ success: true, data: { ...asCreditNote({ ...note, invoice_number: invoice.invoice_number }), unrefunded: toRupees(leftover - refund) } });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});

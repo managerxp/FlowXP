@@ -259,6 +259,7 @@ export const receive = async (req, res) => {
     const lines = (await client.query(
       `SELECT i.*, p.track_inventory FROM purchase_order_items i LEFT JOIN products p ON p.product_id = i.product_id WHERE i.po_id = $1 ORDER BY i.item_id FOR UPDATE OF i`, [po.po_id]
     )).rows;
+    if (lines.some((l) => Number(l.unit_factor) !== 1)) throw new OrderError(409, 'This order is in cartons or boxes. Receive it with a goods receipt (Wholesale → Purchasing).');
     const given = new Map((Array.isArray(body.items) ? body.items : []).map((x) => [Number(x.item_id), x]));
     for (const id of given.keys()) if (!lines.some((l) => l.item_id === id)) throw new OrderError(400, 'One of those lines isn’t on this order');
 

@@ -14,6 +14,11 @@ import parties from '../controllers/wholesaleParties.controller.js';
 import orders from '../controllers/wholesaleOrders.controller.js';
 import fulfilment from '../controllers/wholesaleFulfilment.controller.js';
 import inventory from '../controllers/wholesaleInventory.controller.js';
+import purchasing from '../controllers/wholesalePurchasing.controller.js';
+import money from '../controllers/wholesaleMoney.controller.js';
+import returns from '../controllers/wholesaleReturns.controller.js';
+import * as purchases from '../controllers/purchases.controller.js';
+import * as debitNotes from '../controllers/debitNotes.controller.js';
 
 const router = Router();
 
@@ -118,6 +123,38 @@ router.get('/transfers/:id', ...read, any('inventory', 'fulfilment'), ...fulfilG
 router.post('/transfers/:id/dispatch', ...write, any('inventory', 'fulfilment'), ...fulfilGate, once, inventory.dispatchTransfer);
 router.post('/transfers/:id/receive', ...write, any('inventory', 'fulfilment'), ...fulfilGate, once, inventory.receiveTransfer);
 router.post('/transfers/:id/cancel', ...write, can('inventory'), ...fulfilGate, once, inventory.cancelTransfer);
+
+/* ── purchasing: orders, approval, goods receipt, supplier payments ───────── */
+router.get('/purchase-orders', ...read, any('purchases', 'payments'), purchasing.listPOs);
+router.get('/purchase-orders/due-in', ...read, any('purchases', 'inventory'), purchasing.dueIn);
+router.post('/purchase-orders', ...write, can('purchases'), once, purchasing.createPO);
+router.get('/purchase-orders/:id', ...read, any('purchases', 'payments'), purchasing.getPO);
+router.put('/purchase-orders/:id', ...write, can('purchases'), purchasing.updatePO);
+router.post('/purchase-orders/:id/approve', ...write, can('purchase_approve'), once, purchasing.approvePO);
+router.post('/purchase-orders/:id/send', ...write, can('purchases'), purchasing.sendPO);
+router.post('/purchase-orders/:id/cancel', ...write, can('purchases'), once, purchasing.cancelPO);
+router.post('/purchase-orders/:id/close-short', ...write, can('purchases'), once, purchasing.closeShort);
+router.post('/purchase-orders/:id/payments', ...write, any('payments', 'purchases'), once, purchases.addPayment);
+router.get('/purchase-orders/:id/debit-notes/options', ...read, can('purchases'), debitNotes.options);
+router.get('/grns', ...read, any('purchases', 'inventory'), purchasing.listGRNs);
+router.post('/grns', ...write, any('purchases', 'inventory'), once, purchasing.createGRN);
+router.get('/grns/:id', ...read, any('purchases', 'inventory'), purchasing.getGRN);
+
+/* ── customer receipts, advances, refunds ─────────────────────────────────── */
+router.get('/receipts', ...read, any('payments', 'reports'), money.list);
+router.post('/receipts', ...write, can('payments'), once, money.create);
+router.get('/receipts/:id', ...read, any('payments', 'reports'), money.get);
+router.post('/receipts/:id/allocate', ...write, can('payments'), once, money.allocateLater);
+router.post('/receipts/:id/reverse', ...write, can('refunds'), once, money.reverse);
+router.post('/refunds', ...write, can('refunds'), once, money.refund);
+router.get('/customers/:id/open-invoices', ...read, any('payments', 'billing', 'customers'), money.openInvoices);
+
+/* ── returns (credit notes and debit notes) ───────────────────────────────── */
+router.get('/returns', ...read, any('refunds', 'inventory', 'purchases', 'reports'), returns.list);
+router.get('/returns/:id', ...read, any('refunds', 'inventory', 'purchases', 'reports'), returns.get);
+router.get('/invoices/:id/returnable', ...read, any('refunds', 'billing'), returns.returnableLines);
+router.post('/returns/sales', ...write, can('refunds'), once, returns.salesReturn);
+router.post('/returns/purchase', ...write, can('purchases'), once, returns.purchaseReturn);
 
 /* ── suppliers ────────────────────────────────────────────────────────────── */
 router.get('/suppliers', ...read, any('suppliers', 'purchases'), parties.listSuppliers);

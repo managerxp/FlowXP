@@ -70,3 +70,27 @@ export const addBatch = async (pool, w, productId, { batchNo, qty, expiry = null
 };
 
 export const dayFromNow = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+
+/**
+ * A finished sale the way the product does it: order → confirm → pick → pack → dispatch. Returns { orderId, invoiceId, invoiceTotal (₹), deliveryId }.
+ * `lines` are order lines; `dispatch` are dispatch options (payment, kind ...). Needs the controllers' env (call after setupTestDb).
+ */
+export const makeInvoice = async (w, { customer, lines, dispatch = {}, order = {} }) => {
+  const { default: orders } = await import('../../src/controllers/wholesaleOrders.controller.js');
+  const { default: ful } = await import('../../src/controllers/wholesaleFulfilment.controller.js');
+  const made = await w.call(orders.create, { body: { customer_id: customer, lines, ...order } });
+  if (made.code !== 201) throw new Error(`order: ${JSON.stringify(made.body)}`);
+  const id = made.body.data.order_id;
+  const c = await w.call(orders.confirm, { params: { id }, body: { credit_override: true, reason: 'test' } });
+  if (c.code !== 200) throw new Error(`confirm: ${JSON.stringify(c.body)}`);
+  const pl = await w.call(ful.createPick, { params: { id }, body: {} });
+  if (pl.code !== 201) throw new Error(`pick: ${JSON.stringify(pl.body)}`);
+  const pid = pl.body.data.pick_id;
+  await w.call(ful.recordPick, { params: { id: pid }, body: { all: true } });
+  await w.call(ful.pack, { params: { id: pid }, body: {} });
+  const d = await w.call(ful.dispatch, { params: { id: pid }, body: dispatch });
+  if (d.code !== 201) throw new Error(`dispatch: ${JSON.stringify(d.body)}`);
+  return { orderId: id, invoiceId: d.body.data.invoice_id, invoiceTotal: d.body.data.invoice_total, deliveryId: d.body.data.delivery_id };
+};
+
+export const invoiceRow = async (pool, invoiceId) => (await pool.query(`SELECT total_paise, amount_paid_paise, balance_due_paise, payment_status, status FROM invoices WHERE invoice_id = $1`, [invoiceId])).rows[0];

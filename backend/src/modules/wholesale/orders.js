@@ -155,3 +155,26 @@ export const refreshStatus = async (client, orderId) => {
   if (status !== order.status) await client.query(`UPDATE wholesale_sales_orders SET status = $2, updated_at = CURRENT_TIMESTAMP WHERE order_id = $1`, [orderId, status]);
   return status;
 };
+
+/**
+ * Goods have arrived at a warehouse: hand them to the customers waiting on a back-order, oldest order first.
+ * The caller holds the product locks. Rows another request is working on are skipped (they can press "reserve"
+ * again) rather than waited for, so a delivery never deadlocks with someone confirming an order.
+ * Returns [{ order_id, order_number, reserved }].
+ */
+export const allocateArrivals = async (client, { businessId, branchId, productIds }) => {
+  if (!productIds.length) return [];
+  const rows = (await client.query(
+    `SELECT i.*, o.order_number FROM wholesale_sales_order_items i JOIN wholesale_sales_orders o ON o.order_id = i.order_id
+     WHERE o.business_id = $1 AND o.branch_id = $2 AND o.status = ANY($3::text[]) AND i.product_id = ANY($4::int[])
+       AND i.base_qty - i.shipped_base - i.cancelled_base - i.reserved_base > 0.0005
+     ORDER BY o.order_date, o.order_id, i.item_id FOR UPDATE OF i SKIP LOCKED`, [businessId, branchId, ACTIVE_STATUSES, productIds])).rows;
+  const touched = new Map();
+  for (const it of rows) {
+    const before = Number(it.reserved_base);
+    await reserveOrder(client, { branch_id: branchId }, [it]);
+    const got = q3(Number(it.reserved_base) - before);
+    if (got > 0) touched.set(it.order_id, { order_id: it.order_id, order_number: it.order_number, reserved: q3((touched.get(it.order_id)?.reserved || 0) + got) });
+  }
+  return [...touched.values()];
+};

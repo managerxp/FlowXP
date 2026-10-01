@@ -15,8 +15,8 @@ import { branchFilter } from '../utils/scope.js';
 import { toPaise, toQuantity, toRupees } from '../utils/money.js';
 import { paymentStatus } from './purchases.controller.js';
 
-class NoteError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+export class NoteError extends Error {
+  constructor(status, message) { super(message); this.name = 'NoteError'; this.status = status; }
 }
 const bad = (res, message, status = 400) => res.status(status).json({ success: false, message });
 const round3 = (n) => Math.round(n * 1000) / 1000;
@@ -36,7 +36,7 @@ const nextDnNumber = async (client, businessId) => {
 
 /** Received, already sent back, and so still returnable, per line of an order. */
 const returnable = async (db, poId) => (await db.query(
-  `SELECT i.item_id, i.product_id, i.description, i.received_quantity, i.unit_cost_paise, i.tax_rate,
+  `SELECT i.item_id, i.product_id, i.description, i.received_quantity, i.unit_cost_paise, i.tax_rate, i.unit_factor, i.unit_name,
           COALESCE((SELECT SUM(d.quantity) FROM debit_note_items d JOIN debit_notes n ON n.dn_id = d.dn_id WHERE d.po_item_id = i.item_id AND n.kind = 'RETURN'), 0) AS returned,
           p.track_inventory
    FROM purchase_order_items i LEFT JOIN products p ON p.product_id = i.product_id
@@ -59,85 +59,93 @@ export const options = async (req, res) => {
 
 /* POST /api/purchases/:id/debit-notes { kind: RETURN | PRICE, reason, items: [{ item_id, quantity, unit_cost? }] }
    RETURN: quantity sent back (at the price paid). PRICE: quantity affected and unit_cost = the overcharge per unit. */
-export const create = async (req, res) => {
+/**
+ * Issue a debit note inside the caller's transaction (no BEGIN / COMMIT here). Throws NoteError for anything the user
+ * can fix. Returns { note, applied, credit, po, total, kind }.
+ */
+export const issueDebitNote = async (client, req) => {
   const body = req.body || {};
   const kind = body.kind === 'PRICE' ? 'PRICE' : body.kind === 'RETURN' ? 'RETURN' : null;
-  if (!kind) return bad(res, 'Choose whether this is goods sent back or a price correction');
+  if (!kind) throw new NoteError(400, 'Choose whether this is goods sent back or a price correction');
   const reason = String(body.reason ?? '').trim().slice(0, 300);
-  if (!reason) return bad(res, 'Say why (the supplier will read it)');
-  if (!Array.isArray(body.items) || !body.items.length) return bad(res, 'Choose at least one line');
-  if (new Set(body.items.map((i) => Number(i.item_id))).size !== body.items.length) return bad(res, 'A line is listed twice');
+  if (!reason) throw new NoteError(400, 'Say why (the supplier will read it)');
+  if (!Array.isArray(body.items) || !body.items.length) throw new NoteError(400, 'Choose at least one line');
+  if (new Set(body.items.map((i) => Number(i.item_id))).size !== body.items.length) throw new NoteError(400, 'A line is listed twice');
+  const values = [req.tenant.businessId, req.params.id];
+  const po = (await client.query(`SELECT * FROM purchase_orders WHERE business_id = $1 AND po_id = $2${branchFilter(req.tenant, 'branch_id', values)} FOR UPDATE`, values)).rows[0];
+  if (!po) throw new NoteError(404, 'Not found');
+  if (!['RECEIVED', 'PARTIAL'].includes(po.status)) throw new NoteError(409, 'Only an order that has arrived can have a debit note');
+  const business = (await client.query(`SELECT gst_enabled, state FROM businesses WHERE business_id = $1`, [req.tenant.businessId])).rows[0];
 
+  const lines = new Map((await returnable(client, po.po_id)).map((r) => [r.item_id, r]));
+  const prepared = body.items.map((raw) => {
+    const line = lines.get(Number(raw.item_id));
+    if (!line) throw new NoteError(400, 'One of those lines isn’t on this order');
+    const quantity = toQuantity(raw.quantity);
+    const received = Number(line.received_quantity);
+    let unit;
+    if (kind === 'RETURN') {
+      const left = round3(received - Number(line.returned));
+      if (quantity > left) throw new NoteError(409, left > 0 ? `Only ${left} of ${line.description} can still be returned` : `${line.description} has already been returned in full`);
+      unit = Number(line.unit_cost_paise);
+    } else {
+      if (quantity > received) throw new NoteError(409, `Only ${received} of ${line.description} arrived`);
+      unit = toPaise(raw.unit_cost);
+      if (!(unit > 0)) throw new NoteError(400, `Enter the overcharge per unit for ${line.description}`);
+      if (unit > Number(line.unit_cost_paise)) throw new NoteError(409, `The overcharge can’t be more than the price paid for ${line.description}`);
+    }
+    const tax = computeLineTax({ quantity, unitPricePaise: unit, taxRatePercent: Number(line.tax_rate), gstEnabled: business.gst_enabled, interState: isInterState(business.state, null) });
+    return { line, quantity, unit, tax };
+  });
+
+  const totals = sumLines(prepared.map((p) => p.tax));
+  const dnNumber = await nextDnNumber(client, req.tenant.businessId);
+  const note = (await client.query(
+    `INSERT INTO debit_notes (business_id, branch_id, supplier_id, po_id, dn_number, kind, reason, subtotal_paise, tax_paise, total_paise, created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+    [req.tenant.businessId, po.branch_id, po.supplier_id, po.po_id, dnNumber, kind, reason, totals.subtotal_paise, totals.tax_paise, totals.total_paise, req.auth.userId]
+  )).rows[0];
+
+  for (const p of [...prepared].sort((a, b) => (a.line.product_id ?? 0) - (b.line.product_id ?? 0))) {
+    await client.query(
+      `INSERT INTO debit_note_items (dn_id, po_item_id, product_id, description, quantity, unit_cost_paise, tax_rate, tax_amount_paise, line_total_paise, unit_factor)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [note.dn_id, p.line.item_id, p.line.product_id, p.line.description, p.quantity, p.unit, p.line.tax_rate, p.tax.tax_paise, p.tax.line_total_paise, p.line.unit_factor]
+    );
+    if (kind === 'RETURN' && p.line.product_id && p.line.track_inventory) {
+      await client.query(`SELECT 1 FROM products WHERE product_id = $1 FOR UPDATE`, [p.line.product_id]);
+      const base = round3(p.quantity * Number(p.line.unit_factor || 1));   // goods bought by the carton go back by the carton
+      const have = (await stockAt(client, po.branch_id, [p.line.product_id])).get(p.line.product_id);
+      if (have < base) throw new NoteError(409, `Only ${have} of ${p.line.description} is in stock here, so that much can’t go back`);
+      await moveStock(client, { businessId: req.tenant.businessId, branchId: po.branch_id, productId: p.line.product_id, delta: -base });
+      await client.query(
+        `INSERT INTO inventory_transactions (business_id, branch_id, product_id, transaction_type, quantity, reference_type, reference_id, notes, created_by)
+         VALUES ($1,$2,$3,'PURCHASE_RETURN',$4,'debit_note',$5,$6,$7)`,
+        [req.tenant.businessId, po.branch_id, p.line.product_id, -base, note.dn_id, dnNumber, req.auth.userId]
+      );
+    }
+  }
+
+  // what we owe falls first; whatever the order had already been paid beyond that becomes the supplier's credit to us
+  const total = Number(totals.total_paise);
+  const newDebited = Number(po.debited_paise) + total;
+  const newBalance = Math.max(0, Number(po.total_paise) - newDebited - Number(po.amount_paid_paise));
+  const applied = Math.max(0, Number(po.balance_due_paise) - newBalance);
+  const credit = total - applied;
+  await client.query(`UPDATE debit_notes SET applied_paise = $2, credit_paise = $3 WHERE dn_id = $1`, [note.dn_id, applied, credit]);
+  await client.query(
+    `UPDATE purchase_orders SET debited_paise = $2, balance_due_paise = $3, payment_status = $4 WHERE po_id = $1`,
+    [po.po_id, newDebited, newBalance, newBalance === 0 ? 'PAID' : paymentStatus(Number(po.total_paise) - newDebited, Number(po.amount_paid_paise))]   // settled by the note counts as settled
+  );
+  return { note, applied, credit, po, total, kind };
+};
+
+export const create = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const values = [req.tenant.businessId, req.params.id];
-    const po = (await client.query(`SELECT * FROM purchase_orders WHERE business_id = $1 AND po_id = $2${branchFilter(req.tenant, 'branch_id', values)} FOR UPDATE`, values)).rows[0];
-    if (!po) throw new NoteError(404, 'Not found');
-    if (!['RECEIVED', 'PARTIAL'].includes(po.status)) throw new NoteError(409, 'Only an order that has arrived can have a debit note');
-    const business = (await client.query(`SELECT gst_enabled, state FROM businesses WHERE business_id = $1`, [req.tenant.businessId])).rows[0];
-
-    const lines = new Map((await returnable(client, po.po_id)).map((r) => [r.item_id, r]));
-    const prepared = body.items.map((raw) => {
-      const line = lines.get(Number(raw.item_id));
-      if (!line) throw new NoteError(400, 'One of those lines isn’t on this order');
-      const quantity = toQuantity(raw.quantity);
-      const received = Number(line.received_quantity);
-      let unit;
-      if (kind === 'RETURN') {
-        const left = round3(received - Number(line.returned));
-        if (quantity > left) throw new NoteError(409, left > 0 ? `Only ${left} of ${line.description} can still be returned` : `${line.description} has already been returned in full`);
-        unit = Number(line.unit_cost_paise);
-      } else {
-        if (quantity > received) throw new NoteError(409, `Only ${received} of ${line.description} arrived`);
-        unit = toPaise(raw.unit_cost);
-        if (!(unit > 0)) throw new NoteError(400, `Enter the overcharge per unit for ${line.description}`);
-        if (unit > Number(line.unit_cost_paise)) throw new NoteError(409, `The overcharge can’t be more than the price paid for ${line.description}`);
-      }
-      const tax = computeLineTax({ quantity, unitPricePaise: unit, taxRatePercent: Number(line.tax_rate), gstEnabled: business.gst_enabled, interState: isInterState(business.state, null) });
-      return { line, quantity, unit, tax };
-    });
-
-    const totals = sumLines(prepared.map((p) => p.tax));
-    const dnNumber = await nextDnNumber(client, req.tenant.businessId);
-    const note = (await client.query(
-      `INSERT INTO debit_notes (business_id, branch_id, supplier_id, po_id, dn_number, kind, reason, subtotal_paise, tax_paise, total_paise, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
-      [req.tenant.businessId, po.branch_id, po.supplier_id, po.po_id, dnNumber, kind, reason, totals.subtotal_paise, totals.tax_paise, totals.total_paise, req.auth.userId]
-    )).rows[0];
-
-    for (const p of [...prepared].sort((a, b) => (a.line.product_id ?? 0) - (b.line.product_id ?? 0))) {
-      await client.query(
-        `INSERT INTO debit_note_items (dn_id, po_item_id, product_id, description, quantity, unit_cost_paise, tax_rate, tax_amount_paise, line_total_paise)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [note.dn_id, p.line.item_id, p.line.product_id, p.line.description, p.quantity, p.unit, p.line.tax_rate, p.tax.tax_paise, p.tax.line_total_paise]
-      );
-      if (kind === 'RETURN' && p.line.product_id && p.line.track_inventory) {
-        await client.query(`SELECT 1 FROM products WHERE product_id = $1 FOR UPDATE`, [p.line.product_id]);
-        const have = (await stockAt(client, po.branch_id, [p.line.product_id])).get(p.line.product_id);
-        if (have < p.quantity) throw new NoteError(409, `Only ${have} of ${p.line.description} is in stock here, so that much can’t go back`);
-        await moveStock(client, { businessId: req.tenant.businessId, branchId: po.branch_id, productId: p.line.product_id, delta: -p.quantity });
-        await client.query(
-          `INSERT INTO inventory_transactions (business_id, branch_id, product_id, transaction_type, quantity, reference_type, reference_id, notes, created_by)
-           VALUES ($1,$2,$3,'PURCHASE_RETURN',$4,'debit_note',$5,$6,$7)`,
-          [req.tenant.businessId, po.branch_id, p.line.product_id, -p.quantity, note.dn_id, dnNumber, req.auth.userId]
-        );
-      }
-    }
-
-    // what we owe falls first; whatever the order had already been paid beyond that becomes the supplier's credit to us
-    const total = Number(totals.total_paise);
-    const newDebited = Number(po.debited_paise) + total;
-    const newBalance = Math.max(0, Number(po.total_paise) - newDebited - Number(po.amount_paid_paise));
-    const applied = Math.max(0, Number(po.balance_due_paise) - newBalance);
-    const credit = total - applied;
-    await client.query(`UPDATE debit_notes SET applied_paise = $2, credit_paise = $3 WHERE dn_id = $1`, [note.dn_id, applied, credit]);
-    await client.query(
-      `UPDATE purchase_orders SET debited_paise = $2, balance_due_paise = $3, payment_status = $4 WHERE po_id = $1`,
-      [po.po_id, newDebited, newBalance, newBalance === 0 ? 'PAID' : paymentStatus(Number(po.total_paise) - newDebited, Number(po.amount_paid_paise))]   // settled by the note counts as settled
-    );
+    const { note, applied, credit, po, total, kind } = await issueDebitNote(client, req);
     await client.query('COMMIT');
-
     recordAudit(req, { action: 'debit_note.issued', resource_type: 'debit_note', resource_id: note.dn_id, metadata: { total: toRupees(total), kind, po_id: po.po_id, credit: toRupees(credit) } });
     res.status(201).json({ success: true, data: { ...asNote({ ...note, applied_paise: applied, credit_paise: credit, po_number: po.po_number }) } });
   } catch (error) {
