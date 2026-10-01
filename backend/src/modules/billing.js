@@ -45,7 +45,7 @@ export const paymentStatus = (totalPaise, paidPaise) => {
  * the business row for the rest of the transaction, so two invoices billed in
  * the same instant cannot both read "next number 47".
  */
-const nextInvoiceNumber = async (client, businessId, branchId) => {
+export const nextInvoiceNumber = async (client, businessId, branchId) => {
   // an outlet with its own series numbers from its own counter. NO KEY UPDATE: a plain FOR UPDATE would clash with the
   // foreign-key checks other inserts make on this branch row (the audit log, an order) and could deadlock with them.
   const own = branchId ? (await client.query(`SELECT invoice_prefix, invoice_next_number FROM branches WHERE branch_id = $1 AND business_id = $2 FOR NO KEY UPDATE`, [branchId, businessId])).rows[0] : null;
@@ -118,7 +118,7 @@ const MAX_SPLIT = 6;
  * (tax rounding, round-off, loyalty rewards), so the till cannot fill the last
  * part in to the paisa.
  */
-const plannedPayments = (input, totalPaise) => {
+export const plannedPayments = (input, totalPaise) => {
   if (Array.isArray(input.payments)) {
     const list = input.payments.filter((p) => p && (p.amount != null && p.amount !== ''));
     if (list.length > MAX_SPLIT) throw new BillingError(400, `A bill can be split into at most ${MAX_SPLIT} payments`);

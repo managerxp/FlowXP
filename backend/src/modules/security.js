@@ -109,7 +109,7 @@ export const lockedMinutes = async (db, email, now = Date.now()) => {
   const { rows } = await db.query(
     `SELECT COUNT(*)::int AS fails, MAX(created_at) AS last
      FROM login_events
-     WHERE email = $1 AND outcome IN ('BAD_PASSWORD','UNKNOWN_USER','TWO_FACTOR_FAILED')
+     WHERE email = $1 AND outcome IN ('BAD_PASSWORD','UNKNOWN_USER','TWO_FACTOR_FAILED','EMAIL_OTP_FAILED','PASSWORD_RESET_FAILED')
        AND created_at > GREATEST(
              CURRENT_TIMESTAMP - make_interval(mins => $2::int),
              COALESCE((SELECT MAX(created_at) FROM login_events WHERE email = $1 AND outcome = 'SUCCESS'), '-infinity'))`,

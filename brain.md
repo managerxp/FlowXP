@@ -29,7 +29,7 @@ Product of ManagerXP. Standalone: its own server and Postgres, nothing shared wi
 | Frontend | Vite 7, React 19, React Router 7, Tailwind 4, GSAP (marketing), qrcode. No UI kit; own components in `components/ui.jsx` |
 | Ports | API **5100**, web dev **5174** (Vite proxies `/api` and `/uploads` to 5100) |
 | Tests | `node --test` in `backend/` (real Postgres, one throwaway DB per test file, see `test/helpers/db.js`) |
-| Deploy | Docker (`backend/Dockerfile`, `frontend/Dockerfile` + nginx), `docker-compose.yml`, GitHub Actions CI, `DEPLOY.md`. **Written, never run** (no Docker on the dev machine) |
+| Deploy | One VPS, no containers: Postgres + API under PM2 (`ecosystem.config.cjs`) + nginx serving the frontend build and proxying `/api` (`deploy/nginx.conf`), GitHub Actions CI, `DEPLOY.md`. **Written, never run against a live server** |
 
 ```
 cd backend && npm start          # API :5100, migrates on boot
@@ -152,7 +152,7 @@ local | s3 with hand-written SigV4). Real services are **untested live** (no key
 | **Phone app** | PWA: install, service worker (app shell, built files, menu reads), **offline POS sales queue** with idempotent replay, offline banner/review, phone-friendly header |
 | **Security** | Sign-in history + new-device email, lockout, TOTP two-step login with recovery codes, owner policy to require it for admins, session versions (sign out everywhere), magic-byte upload checks, security headers; Security page. See SECURITY.md |
 | **GST filing** | GSTR-1 JSON (B2B/B2CL/B2CS/credit notes/HSN/doc series, per GSTIN, totals equal the GST report, readiness warnings), GSTR-3B figures (outward, ITC net of debit notes), e-invoice JSON + IRN recording, e-way bill JSON + number recording; pincodes on outlets/customers |
-| Ops | Storage (local/S3), production config checks, /health /ready, request ids, Docker/compose/CI/backup script, DEPLOY.md |
+| Ops | Storage (local/S3), production config checks, /health /ready, request ids, PM2/nginx/CI/backup script, DEPLOY.md |
 | **Onboarding** | 4 steps, no re-ask of business name/type (signup already asked): where you trade (India state dropdown, country, a no-key Google Maps `output=embed` preview), logo (same upload as Business Settings — shows on receipts and the QR menu), tax, invoices. `frontend/src/lib/states.js` (36 Indian states/UTs, matches `backend/src/modules/gst/states.js`'s `STATE_CODES` keys — kept as a separate small list, not imported, since the backend module is outside the frontend's build root). Step numbers 5/6/8/10 (was 3/5/8/10); resume logic is backward compatible with a business mid-wizard from before. |
 | Marketing site | `public/sitemap.xml` + `public/robots.txt` added (marketing pages only; app/admin/QR-menu/bill-link routes disallowed) — placeholder domain, swap in the real one before launch. `AuthPages.jsx` login/signup `<main>` no longer vertically centers below `lg`, which was leaving a large dead gap above and below the form on a phone. |
 | Integrations | Delivery platforms (Zomato/Swiggy/ONDC/Magicpin) exist as **mocks** only. An incoming order lands `PENDING_ACCEPT` (no KOT, nothing sent to the kitchen) and needs an explicit Accept/Reject — it used to skip straight to the kitchen; migration 0032 adds the status, 0033 adds `orders.guest_name/guest_phone` (the diner's own name/phone from the platform payload, previously parsed and discarded). `GET /orders/pending-deliveries` returns every such order with full items for `IncomingDeliveryAlert.jsx`, a draggable (pointer-events drag, per-card position) fixed pop-up mounted once in AppShell (any screen, any scroll position) that rings a loud repeating alarm (`lib/printing.js ringAlarm`, distinct from the quiet Kitchen-screen `beep`) every 3.5s until every pending order is decided; also has its own dedicated view in OrdersPage.jsx when opened directly. `POST /orders/:id/accept` sends it to the kitchen (same `sendKotCore` as everything else); `POST /orders/:id/reject { reason }` cancels it, never touching the kitchen; both call the mock adapter's `pushOrderStatus`. The platform's own order number (e.g. Zomato's #6350, `orders.external_order_number`) now prints on the KOT slip and the receipt, and shows in the Orders list/detail. Billing's Orders-picker and BillingPage.loadOrder both refuse a still-pending delivery order (must be accepted first). test/deliveryorders.test.js (8 tests: PENDING_ACCEPT on arrival, dedupe, disabled/unknown/malformed webhook, pending-deliveries with items, accept→kitchen, reject→cancelled+reason, outlet isolation). |
@@ -176,7 +176,7 @@ local | s3 with hand-written SigV4). Real services are **untested live** (no key
   management~~ are both built without needing that approval (see §4, migration 0047) — reconciliation
   via pasted statement import, riders via the business's own staff.
 - Run AI manager + menu scan with a **real `ANTHROPIC_API_KEY`**; run messaging against real WhatsApp/Twilio; try S3 against a real bucket
-- **Run** the Docker/compose/CI files once (expect small fixes); restore-test a backup
+- **Run** the PM2/nginx setup against a real VPS once (expect small fixes — paths, the Postgres auth method); restore-test a backup
 - Browser walkthrough of all new screens (most verified by API/build/tests only); end-to-end browser tests
 - Redis / queues / running the background worker on more than one server (`WORKER_ENABLED=false` on extras); error tracker; WAF
 - Real-time push (WebSocket/SSE) for kitchen/notifications; push notifications for the PWA; background sync when the app is closed
@@ -731,7 +731,7 @@ Required: `DATABASE_URL`, `JWT_SECRET` (≥32 chars in production). Common: `POR
 `CORS_ORIGINS`, `SMTP_*`/`MAIL_FROM`, `SUPER_ADMIN_EMAIL/PASSWORD`, `ANTHROPIC_API_KEY`/`AI_MODEL`/`AI_MAX_TOKENS`,
 `STORAGE_DRIVER` (`local`|`s3`) + `S3_ENDPOINT/REGION/BUCKET/ACCESS_KEY_ID/SECRET_ACCESS_KEY/PUBLIC_URL`,
 `MESSAGING_PROVIDER` (`log`|`whatsapp_cloud`|`twilio`) + `WHATSAPP_TOKEN/PHONE_ID/TEMPLATE_LANG`, `TWILIO_SID/TOKEN/FROM/WHATSAPP_FROM`,
-`MESSAGING_COUNTRY_CODE` (default 91), `WORKER_ENABLED`. Root `.env.example` feeds docker-compose.
+`MESSAGING_COUNTRY_CODE` (default 91), `WORKER_ENABLED`. `backend/.env.example` is the one source of truth for every setting (also `CORS_ORIGINS`, `STORAGE_DRIVER`/`S3_*`, formerly only in a docker-compose-only root `.env.example` — that file is gone now that deploy is PM2, not containers).
 `SMTP_*`, `MESSAGING_*`/`WHATSAPP_*`/`TWILIO_*` and `CASHFREE_*` are now just the fallback — a row in
 `platform_settings` (Super Admin → Settings) overrides them without a restart; see brain.md's platform-
 settings entry in section 4.

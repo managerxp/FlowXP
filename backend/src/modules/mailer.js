@@ -55,23 +55,73 @@ export const sendMail = async ({ to, subject, text, html }) => {
   }
 };
 
-export const sendPasswordReset = (to, name, token) => {
-  const link = `${config.appOrigin}/reset-password?token=${token}`;
-  return sendMail({
-    to,
-    subject: 'Reset your FlowXP password',
-    text: [
-      `Hi ${name},`,
-      '',
-      'Use this link to set a new FlowXP password. It expires in one hour.',
-      link,
-      '',
-      'If you did not ask for this, you can ignore this email — your password is unchanged.',
-      '',
-      'FlowXP by ManagerXP'
-    ].join('\n')
-  });
-};
+/*
+ * The one HTML layout every OTP email uses — a code is the whole message, so one card with a big,
+ * letter-spaced number is the entire template. Table-based markup and inline styles only: email clients
+ * don't run a stylesheet, and plenty still don't run flexbox/grid, so this is the one place in the codebase
+ * a hex code belongs directly in markup rather than as a design token (see design.md) — there is no
+ * build step between this file and the inbox to resolve a CSS variable. Colors are FlowXP's own
+ * (index.css's --color-ink-900 / --color-brand-500 / --color-ink-500), copied in by hand for that reason.
+ */
+const otpEmailHtml = ({ name, code, lead, note }) => `<!doctype html>
+<html>
+  <body style="margin:0;padding:32px 16px;background:#f8fafc;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+      <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;background:#ffffff;border:1px solid #e3e8ef;border-radius:16px;overflow:hidden;">
+        <tr><td style="padding:32px 32px 0;">
+          <img src="${config.appOrigin}/logo.png" alt="FlowXP" height="28" style="display:block;height:28px;width:auto;" />
+        </td></tr>
+        <tr><td style="padding:28px 32px 0;">
+          <p style="margin:0;font-size:15px;line-height:1.6;color:#22324d;">Hi ${name},</p>
+          <p style="margin:12px 0 0;font-size:15px;line-height:1.6;color:#22324d;">${lead}</p>
+        </td></tr>
+        <tr><td style="padding:24px 32px 0;" align="center">
+          <div style="display:inline-block;padding:16px 28px;background:#eef3ff;border-radius:12px;font-size:32px;font-weight:700;letter-spacing:0.3em;color:#0054fa;font-variant-numeric:tabular-nums;">${code}</div>
+        </td></tr>
+        <tr><td style="padding:20px 32px 0;">
+          <p style="margin:0;font-size:13px;line-height:1.6;color:#5a6b87;">${note || 'This code expires in 10 minutes.'} If you did not request this, you can safely ignore this email.</p>
+        </td></tr>
+        <tr><td style="padding:28px 32px 32px;border-top:1px solid #e3e8ef;margin-top:24px;">
+          <p style="margin:24px 0 0;font-size:12px;color:#65758e;">FlowXP by ManagerXP</p>
+        </td></tr>
+      </table>
+    </td></tr></table>
+  </body>
+</html>`;
+
+export const sendPasswordReset = (to, name, code) => sendMail({
+  to,
+  subject: `${code} is your FlowXP password reset code`,
+  text: [
+    `Hi ${name},`,
+    '',
+    `Your FlowXP password reset code is: ${code}`,
+    '',
+    'It expires in 10 minutes. Enter it on the reset-password screen to choose a new password.',
+    '',
+    'If you did not ask for this, you can ignore this email — your password is unchanged.',
+    '',
+    'FlowXP by ManagerXP'
+  ].join('\n'),
+  html: otpEmailHtml({ name, code, lead: 'Use this code to set a new FlowXP password:' })
+});
+
+export const sendEmailOtp = (to, name, code) => sendMail({
+  to,
+  subject: `${code} is your FlowXP verification code`,
+  text: [
+    `Hi ${name},`,
+    '',
+    `Your FlowXP verification code is: ${code}`,
+    '',
+    'It expires in 10 minutes. Enter it on the sign-in screen to finish setting up your account.',
+    '',
+    'If you did not try to sign in to FlowXP, you can ignore this email.',
+    '',
+    'FlowXP by ManagerXP'
+  ].join('\n'),
+  html: otpEmailHtml({ name, code, lead: 'Use this code to finish signing in to FlowXP:' })
+});
 
 /** Tells a person they were added to a business; `token` (new accounts only) lets them choose a password. */
 export const sendStaffInvite = (to, name, businessName, token) => {

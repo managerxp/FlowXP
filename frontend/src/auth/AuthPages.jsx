@@ -48,11 +48,12 @@ const ASIDES = {
  *
  * Spacing: on a phone the form sits a fixed distance under the header and
  * the legal line follows it, rather than being pinned to the bottom with an
- * empty screen in between. On a desktop the form's heading and the side
- * panel's heading start on the same line (the panel's top padding is the
- * header's 4rem plus the same 12vh), so the two columns read as one layout;
- * a long form like signup simply runs on below. The screenshot is shown
- * whole — a cropped screen looks like a layout bug, not a design.
+ * empty screen in between. On a desktop both columns centre vertically in
+ * the space between the header and the footer — a short form (login) and a
+ * long one (signup, which can still run past the fold and scroll) both sit
+ * in the middle of the screen rather than stranded near the top with a
+ * growing void underneath. The screenshot is shown whole — a cropped screen
+ * looks like a layout bug, not a design.
  */
 const AuthLayout = ({ title, lead, children, footer, aside = 'login', top }) => {
   const side = ASIDES[aside];
@@ -64,7 +65,7 @@ const AuthLayout = ({ title, lead, children, footer, aside = 'login', top }) => 
           {top && <p className="text-small text-ink-500">{top}</p>}
         </div>
 
-        <main className="flex justify-center pb-12 pt-10 sm:pt-16 lg:flex-1 lg:pt-[12vh]">
+        <main className="flex justify-center pb-12 pt-10 sm:pt-16 lg:flex-1 lg:items-center">
           <div className="rise w-full max-w-[400px]">
             <h1 className="text-h2 font-semibold text-ink-900">{title}</h1>
             {lead && <p className="mt-2 text-body text-ink-500">{lead}</p>}
@@ -80,7 +81,7 @@ const AuthLayout = ({ title, lead, children, footer, aside = 'login', top }) => 
         </p>
       </div>
 
-      <aside aria-label="About FlowXP" className="hidden border-l border-line bg-brand-50 lg:sticky lg:top-0 lg:block lg:h-screen lg:self-start lg:overflow-hidden lg:px-12 lg:pb-12 lg:pt-[calc(4rem+12vh)] xl:px-16">
+      <aside aria-label="About FlowXP" className="hidden border-l border-line bg-brand-50 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:justify-center lg:self-start lg:overflow-hidden lg:px-12 xl:px-16">
         <div className="w-full max-w-xl">
           <div className="rise" style={{ '--d': '160ms' }}>
             <p className="text-h3 font-semibold text-ink-900">{side.title}</p>
@@ -112,6 +113,12 @@ const PasswordInput = ({ id, ...rest }) => {
   );
 };
 
+/* A 6-digit code input, the shape every one-time code on this page shares (2FA, email verification). */
+const CodeField = (props) => (
+  <Input inputMode="numeric" autoComplete="one-time-code" autoFocus required placeholder="000 000" maxLength={7}
+         className="tabular text-center text-xl tracking-[0.3em]" {...props} />
+);
+
 /*
  * Every form here submits the same way: disable, call, show the server's
  * message on failure. Written once rather than in each of the four.
@@ -136,26 +143,78 @@ const useSubmit = () => {
   return { busy, error, submit };
 };
 
+/* What every successful sign-in (password, 2FA, email code) ends with: a session, and the wizard if setup
+   never finished rather than a dashboard with nothing on it yet. */
+const useFinishAuth = () => {
+  const { signIn } = useAuth();
+  const navigate = useNavigate();
+  return (data) => {
+    signIn(data.token, data.user, data.businesses);
+    const first = data.businesses[0];
+    navigate(first && first.onboarding_step < 10 ? '/app/onboarding' : '/app', { replace: true });
+  };
+};
+
+/*
+ * The "enter the code we emailed you" step — shared by Signup (verifying a brand new account) and Login
+ * (an earlier signup that never finished verifying). Both end the same way: the session this challenge was
+ * one step away from, handed to `onDone`.
+ */
+const EmailCodeStep = ({ challenge, aside, onDone, onBack }) => {
+  const { busy, error, submit } = useSubmit();
+  const [code, setCode] = useState('');
+  const [resent, setResent] = useState(false);
+
+  const onSubmit = (event) => submit(event, async () => {
+    onDone(await api('/auth/verify-email', { method: 'POST', body: { challenge, code } }));
+  });
+  const resend = async () => {
+    setResent(false);
+    try { await api('/auth/resend-email-otp', { method: 'POST', body: { challenge } }); setResent(true); } catch { /* the field's own error alert covers a real failure on the next submit */ }
+  };
+
+  return (
+    <AuthLayout
+      aside={aside}
+      title="Check your email"
+      lead="Enter the 6-digit code we just sent you. It expires in 10 minutes."
+      footer={onBack && <button type="button" className="font-medium text-brand-600 hover:text-brand-700" onClick={onBack}>← Back</button>}
+    >
+      <form onSubmit={onSubmit} className="space-y-4">
+        <Alert>{error}</Alert>
+        {resent && <p role="status" className="rounded-lg border border-success/30 bg-success/10 px-3.5 py-2.5 text-sm text-success">A new code is on its way.</p>}
+        <Field id="code" label="Code">
+          <CodeField id="code" value={code} onChange={(e) => setCode(e.target.value)} />
+        </Field>
+        <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? 'Checking…' : 'Verify and continue'}</Button>
+        <button type="button" className="text-small font-medium text-brand-600 hover:text-brand-700" onClick={resend}>Resend code</button>
+      </form>
+    </AuthLayout>
+  );
+};
+
 /* ==========================================================================
    Signup
    ========================================================================== */
 export const Signup = () => {
-  const { signIn } = useAuth();
-  const navigate = useNavigate();
+  const finish = useFinishAuth();
   const { busy, error, submit } = useSubmit();
   const [form, setForm] = useState({
     name: '', email: '', phone: '', password: '', business_name: '', business_type: ''
   });
   const [agreed, setAgreed] = useState(false);
+  const [challenge, setChallenge] = useState(null);   // set once the account exists and a code has been emailed
 
   const set = (field) => (event) => setForm((f) => ({ ...f, [field]: event.target.value }));
 
   const onSubmit = (event) => submit(event, async () => {
     const data = await api('/auth/signup', { method: 'POST', body: { ...form, accepted_terms: agreed } });
-    signIn(data.token, data.user, [data.business]);
-    // Straight into onboarding — the brief's five-minute target starts here.
-    navigate('/app/onboarding', { replace: true });
+    setChallenge(data.challenge);
   });
+
+  // The brief's five-minute-to-first-bill target starts once this code is entered, not before —
+  // an unverified email is not yet an account that can sign in.
+  if (challenge) return <EmailCodeStep aside="signup" challenge={challenge} onBack={() => setChallenge(null)} onDone={finish} />;
 
   return (
     <AuthLayout
@@ -233,23 +292,17 @@ export const Signup = () => {
    Login
    ========================================================================== */
 export const Login = () => {
-  const { signIn } = useAuth();
+  const finish = useFinishAuth();
   const [params] = useSearchParams();
   const justReset = params.get('reset') === '1';
-  const navigate = useNavigate();
   const { busy, error, submit } = useSubmit();
   const [form, setForm] = useState({ email: '', password: '' });
-  const [second, setSecond] = useState(null);     // { challenge } once the password was right and a code is needed
+  const [second, setSecond] = useState(null);         // { challenge } once the password was right and a 2FA code is needed
+  const [otpChallenge, setOtpChallenge] = useState(null);   // set instead, when the account's email isn't verified yet
   const [code, setCode] = useState('');
   const [useRecovery, setUseRecovery] = useState(false);
 
   const set = (field) => (event) => setForm((f) => ({ ...f, [field]: event.target.value }));
-
-  const finish = (data) => {
-    signIn(data.token, data.user, data.businesses);
-    const first = data.businesses[0];
-    navigate(first && first.onboarding_step < 10 ? '/app/onboarding' : '/app', { replace: true });
-  };
 
   const onCode = (event) => submit(event, async () => {
     finish(await api('/auth/login/2fa', { method: 'POST', body: { challenge: second.challenge, ...(useRecovery ? { recovery_code: code } : { code }) } }));
@@ -257,14 +310,14 @@ export const Login = () => {
 
   const onSubmit = (event) => submit(event, async () => {
     const data = await api('/auth/login', { method: 'POST', body: form });
+    // Checked before 2FA: an account that never finished verifying its email can't have set 2FA up yet
+    // either, but if it somehow had both pending, finishing email verification is the one that unblocks it.
+    if (data.requires_email_otp) { setOtpChallenge(data.challenge); return; }
     if (data.requires_2fa) { setSecond({ challenge: data.challenge }); return; }
-    signIn(data.token, data.user, data.businesses);
-
-    /* Somebody who never finished setting up lands back in the wizard rather
-       than on a dashboard with nothing on it. */
-    const first = data.businesses[0];
-    navigate(first && first.onboarding_step < 10 ? '/app/onboarding' : '/app', { replace: true });
+    finish(data);
   });
+
+  if (otpChallenge) return <EmailCodeStep challenge={otpChallenge} onBack={() => setOtpChallenge(null)} onDone={finish} />;
 
   if (second) {
     return (
@@ -273,9 +326,9 @@ export const Login = () => {
         <form onSubmit={onCode} className="space-y-4">
           <Alert>{error}</Alert>
           <Field id="code" label={useRecovery ? 'Recovery code' : 'Code'}>
-            <Input id="code" value={code} onChange={(e) => setCode(e.target.value)} inputMode={useRecovery ? 'text' : 'numeric'} autoComplete="one-time-code" autoFocus required
-                   placeholder={useRecovery ? 'xxxxx-xxxxx' : '000 000'} maxLength={useRecovery ? 24 : 7}
-                   className={useRecovery ? '' : 'tabular text-center text-xl tracking-[0.3em]'} />
+            {useRecovery
+              ? <Input id="code" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" autoFocus required placeholder="xxxxx-xxxxx" maxLength={24} />
+              : <CodeField id="code" value={code} onChange={(e) => setCode(e.target.value)} />}
           </Field>
           <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? 'Checking…' : 'Sign in'}</Button>
           <button type="button" className="text-small font-medium text-brand-600 hover:text-brand-700" onClick={() => { setUseRecovery((v) => !v); setCode(''); }}>{useRecovery ? 'Use my authenticator app instead' : 'I lost my phone: use a recovery code'}</button>
@@ -319,65 +372,35 @@ export const Login = () => {
 };
 
 /* ==========================================================================
-   Forgot password
+   Forgot password — a 6-digit emailed code, entered on this same screen,
+   rather than a link to a separate page. Two steps in one component for the
+   same reason Login's 2FA step is: one shared submit/error pattern, no route
+   for a "reset-password" page that a code-based flow never navigates to.
    ========================================================================== */
 export const ForgotPassword = () => {
+  const navigate = useNavigate();
   const { busy, error, submit } = useSubmit();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [mismatch, setMismatch] = useState('');
+  const [resent, setResent] = useState(false);
 
-  const onSubmit = (event) => submit(event, async () => {
+  const onRequest = (event) => submit(event, async () => {
     await api('/auth/forgot-password', { method: 'POST', body: { email } });
     setSent(true);
   });
 
-  return (
-    <AuthLayout
-      title="Reset your password"
-      lead={sent ? undefined : 'We will email you a link. It works for one hour.'}
-      footer={<Link to="/login" className="font-medium text-brand-600 hover:text-brand-700">← Back to sign in</Link>}
-    >
-      {sent ? (
-        /* The same words whether or not the address is registered — the API
-           deliberately does not say, and neither should this. */
-        <p className="text-sm leading-relaxed text-ink-500">
-          If <span className="font-medium text-ink-900">{email}</span> has a FlowXP account,
-          a reset link is on its way. Check your spam folder if it has not arrived in a
-          few minutes.
-        </p>
-      ) : (
-        <form onSubmit={onSubmit} className="space-y-4">
-          <Alert>{error}</Alert>
-          <Field id="email" label="Email">
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                   autoComplete="email" required />
-          </Field>
-          <Button type="submit" size="lg" className="w-full" disabled={busy}>
-            {busy ? 'Sending…' : 'Send reset link'}
-          </Button>
-        </form>
-      )}
-    </AuthLayout>
-  );
-};
+  const resend = async () => {
+    setResent(false);
+    try { await api('/auth/forgot-password', { method: 'POST', body: { email } }); setResent(true); } catch { /* the field's own error alert covers a real failure on the next submit */ }
+  };
 
-/* ==========================================================================
-   Reset password
-   ========================================================================== */
-export const ResetPassword = () => {
-  const [params] = useSearchParams();
-  const navigate = useNavigate();
-  const { busy, error, submit } = useSubmit();
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [mismatch, setMismatch] = useState('');
-
-  const token = params.get('token') || '';
-
-  const onSubmit = (event) => {
-    /* Checked here rather than at the API: the server never needs the second
-       copy, and asking it to compare two strings is a round trip to tell the
-       user something the browser already knows. */
+  const onReset = (event) => {
+    // Checked here rather than at the API: the server never needs the second copy, and asking it to
+    // compare two strings is a round trip to tell the user something the browser already knows.
     if (password !== confirm) {
       event.preventDefault();
       setMismatch('Both passwords must match');
@@ -385,34 +408,51 @@ export const ResetPassword = () => {
     }
     setMismatch('');
     submit(event, async () => {
-      await api('/auth/reset-password', { method: 'POST', body: { token, password } });
+      await api('/auth/reset-password', { method: 'POST', body: { email, code, password } });
       navigate('/login?reset=1', { replace: true });
     });
   };
 
-  if (!token) {
+  if (sent) {
     return (
-      <AuthLayout title="This link is not valid" lead="Reset links expire after an hour.">
-        <Button to="/forgot-password" size="lg" className="w-full">Request a new link</Button>
+      <AuthLayout
+        title="Enter your code"
+        lead={`If ${email} has a FlowXP account, a code is on its way. It expires in 10 minutes.`}
+        footer={<button type="button" className="font-medium text-brand-600 hover:text-brand-700" onClick={() => { setSent(false); setCode(''); setPassword(''); setConfirm(''); }}>← Use a different email</button>}
+      >
+        <form onSubmit={onReset} className="space-y-4">
+          <Alert>{error}</Alert>
+          {resent && <p role="status" className="rounded-lg border border-success/30 bg-success/10 px-3.5 py-2.5 text-sm text-success">A new code is on its way.</p>}
+          <Field id="code" label="Code">
+            <CodeField id="code" value={code} onChange={(e) => setCode(e.target.value)} />
+          </Field>
+          <Field id="password" label="New password" hint="At least 8 characters.">
+            <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={8} required />
+          </Field>
+          <Field id="confirm" label="Confirm new password" error={mismatch}>
+            <PasswordInput id="confirm" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" minLength={8} required />
+          </Field>
+          <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? 'Saving…' : 'Set new password'}</Button>
+          <button type="button" className="text-small font-medium text-brand-600 hover:text-brand-700" onClick={resend}>Resend code</button>
+        </form>
       </AuthLayout>
     );
   }
 
   return (
-    <AuthLayout title="Choose a new password" lead="At least 8 characters.">
-      <form onSubmit={onSubmit} className="space-y-4">
+    <AuthLayout
+      title="Reset your password"
+      lead="We will email you a 6-digit code to reset it with."
+      footer={<Link to="/login" className="font-medium text-brand-600 hover:text-brand-700">← Back to sign in</Link>}
+    >
+      <form onSubmit={onRequest} className="space-y-4">
         <Alert>{error}</Alert>
-
-        <Field id="password" label="New password">
-          <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={8} required />
+        <Field id="email" label="Email">
+          <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                 autoComplete="email" autoFocus required />
         </Field>
-
-        <Field id="confirm" label="Confirm new password" error={mismatch}>
-          <PasswordInput id="confirm" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" minLength={8} required />
-        </Field>
-
         <Button type="submit" size="lg" className="w-full" disabled={busy}>
-          {busy ? 'Saving…' : 'Set new password'}
+          {busy ? 'Sending…' : 'Send code'}
         </Button>
       </form>
     </AuthLayout>

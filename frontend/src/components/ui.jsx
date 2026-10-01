@@ -265,8 +265,11 @@ const BADGE_TONES = {
   danger: 'bg-danger/10 text-danger'
 };
 
+/* transition-colors so a status moving PENDING → PREPARING → READY (or a
+   table going occupied → free) fades to its new tone instead of snapping —
+   the one change this element needs to read as "live", everywhere it's used. */
 export const Badge = ({ tone = 'neutral', children }) => (
-  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${BADGE_TONES[tone]}`}>
+  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium transition-colors duration-(--duration-normal) ${BADGE_TONES[tone]}`}>
     {children}
   </span>
 );
@@ -316,6 +319,42 @@ export const Avatar = ({ name, size = 'md', className = '' }) => (
     {initialsOf(name)}
   </span>
 );
+
+/* ── Animated number ────────────────────────────────────────────────────
+   Counts between values instead of jumping — a bill total growing as an
+   item is added, a KPI settling to a fresher figure, stock ticking down a
+   unit. The first render for a given mount shows its value immediately (a
+   page should never count up from zero on load); only a later change to
+   the same mounted element tweens. prefers-reduced-motion skips the tween
+   outright, same as everything else in index.css. */
+const reducedMotion = () =>
+  typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+export const AnimatedNumber = ({ value, format = (n) => Math.round(n).toLocaleString('en-IN'), duration = 400, className = '' }) => {
+  const [shown, setShown] = useState(value);
+  const fromRef = useRef(value);
+  const mountedRef = useRef(false);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    const from = fromRef.current;
+    fromRef.current = value;
+    if (!mountedRef.current) { mountedRef.current = true; setShown(value); return undefined; }
+    if (!Number.isFinite(from) || !Number.isFinite(value) || from === value || reducedMotion()) { setShown(value); return undefined; }
+
+    const start = performance.now();
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - (1 - t) ** 3; // ease-out: fast start, settles gently
+      setShown(from + (value - from) * eased);
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [value, duration]);
+
+  return <span className={`tabular ${className}`}>{format(shown)}</span>;
+};
 
 /* ── Table ──────────────────────────────────────────────────────────────── */
 /* A wide table must scroll inside its own box, never the page — the one rule

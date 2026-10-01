@@ -13,7 +13,7 @@ import { Link } from 'react-router-dom';
 import { ArrowDownRight, ArrowUpRight, Boxes, ChevronRight, ClipboardList, Plus, Sparkles, Wallet } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Button, Card, Skeleton, StatCard, StatusBadge } from '../components/ui.jsx';
+import { AnimatedNumber, Button, Card, Skeleton, StatCard, StatusBadge } from '../components/ui.jsx';
 
 const greeting = () => {
   const h = new Date().getHours();
@@ -270,10 +270,10 @@ const Dashboard = () => {
       {!setup.complete && <div className="rise" style={{ '--i': 1 }}><Setup setup={setup} /></div>}
 
       <section aria-label="Today" className="rise grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" style={{ '--i': 1 }}>
-        <Kpi label="Today's sales" value={formatCurrency(m.today_sales)}><Change now={m.today_sales} before={m.yesterday_sales} /></Kpi>
-        <Kpi label="Bills today" value={m.today_invoice_count}><Change now={m.today_invoice_count} before={m.yesterday_invoice_count} money={false} /></Kpi>
-        <Kpi label="Average bill" value={formatCurrency(avg)}><Change now={avg} before={avgBefore} /></Kpi>
-        <Kpi label="To collect" value={formatCurrency(m.outstanding)} to="/app/billing/invoices">
+        <Kpi label="Today's sales" value={<AnimatedNumber value={m.today_sales} format={formatCurrency} />}><Change now={m.today_sales} before={m.yesterday_sales} /></Kpi>
+        <Kpi label="Bills today" value={<AnimatedNumber value={m.today_invoice_count} />}><Change now={m.today_invoice_count} before={m.yesterday_invoice_count} money={false} /></Kpi>
+        <Kpi label="Average bill" value={<AnimatedNumber value={avg} format={formatCurrency} />}><Change now={avg} before={avgBefore} /></Kpi>
+        <Kpi label="To collect" value={<AnimatedNumber value={m.outstanding} format={formatCurrency} />} to="/app/billing/invoices">
           <span className="text-ink-500">Unpaid and part-paid bills</span>
         </Kpi>
       </section>

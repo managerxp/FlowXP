@@ -11,11 +11,11 @@ export const ROLE_PERMISSIONS = {
   ADMIN: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
     'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds', 'appointments', 'staff_commission',
     'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
-    'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections'],
+    'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing'],
   MANAGER: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
     'payments', 'expenses', 'reports', 'ai', 'refunds', 'appointments', 'staff_commission',
     'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
-    'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections'],
+    'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing'],
   CASHIER: ['billing', 'customers', 'payments'],
   STAFF: ['billing'],
   WAITER: ['billing'],
@@ -37,7 +37,12 @@ export const ROLE_PERMISSIONS = {
   COLLECTION_EXECUTIVE: ['customers', 'collections', 'field_sales'],
   DELIVERY_MANAGER: ['fulfilment', 'vehicles', 'inventory'],
   DISTRIBUTOR_ADMIN: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers', 'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds',
-    'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve', 'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections']
+    'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve', 'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections'],
+  // Pharmacy roles (see backend/src/middleware/auth.js)
+  PHARMACIST: ['billing', 'inventory', 'prescriptions', 'dispensing', 'customers'],
+  SALES_STAFF: ['billing', 'customers'],
+  GRN_MANAGER: ['purchases', 'inventory', 'suppliers'],
+  AUDITOR: ['reports', 'export']
 };
 
 export const hasPermission = (business, permission) => {

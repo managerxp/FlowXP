@@ -22,7 +22,7 @@ import FoodMark from '../components/FoodMark.jsx';
 import { LoyaltyCard, MobileLookup, PointsPanel, RewardHint } from '../components/LoyaltyCard.jsx';
 import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, setDevicePref } from '../lib/printing.js';
 import ModifierPicker, { needsChoices, useModifierGroups } from '../components/ModifierPicker.jsx';
-import { Alert, Badge, Button, Field, Input, Modal, Select, humanize, useToast, useDialog, StatCard } from '../components/ui.jsx';
+import { AnimatedNumber, Alert, Badge, Button, Field, Input, Modal, Select, humanize, useToast, useDialog, StatCard } from '../components/ui.jsx';
 import { platformName } from '../lib/business.js';
 
 const TYPE_LABEL = { DINE_IN: 'Dine-in', TAKEAWAY: 'Takeaway', DELIVERY: 'Delivery' };
@@ -745,7 +745,7 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
           )}
           <div className="flex items-baseline justify-between border-t border-line pt-2">
             <span className="text-body font-semibold text-ink-900">{billedCount ? 'Left to bill' : 'Total'} <span className="text-caption font-normal text-ink-500">(estimate)</span></span>
-            <span className="tabular text-[26px] font-semibold leading-none tracking-tight text-ink-900">{formatCurrency(total)}</span>
+            <AnimatedNumber value={total} format={formatCurrency} className="text-[26px] font-semibold leading-none tracking-tight text-ink-900" />
           </div>
 
           <div role="radiogroup" aria-label="How is it paid?" className="mt-3 grid grid-cols-3 gap-1.5">

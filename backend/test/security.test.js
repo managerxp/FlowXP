@@ -76,7 +76,7 @@ test('uploads are judged by their first bytes, not the type the sender claims', 
 
 let A;
 const makeUser = async (label, { role = 'OWNER', biz = null, superAdmin = false } = {}) => {
-  const u = (await pool.query(`INSERT INTO users (name, email, password_hash, is_super_admin) VALUES ($1,$2,$3,$4) RETURNING user_id, email, name`,
+  const u = (await pool.query(`INSERT INTO users (name, email, password_hash, is_super_admin, email_verified) VALUES ($1,$2,$3,$4,TRUE) RETURNING user_id, email, name`,
     [label, `${label}@sec.test`, await bcrypt.hash(PASSWORD, 4), superAdmin])).rows[0];
   let businessId = biz;
   if (!businessId && !superAdmin) {
@@ -246,13 +246,26 @@ test('changing the password, or signing out everywhere, ends the other sessions'
   assert.ok(dan.user_id);
 });
 
-test('a password reset ends every session', { skip }, async () => {
+test('a password reset ends every session, and the code is a 6-digit one-time code, not a link', { skip }, async () => {
   const eve = await makeUser('eve');
   const token = (await login('eve@sec.test')).body.data.token;
-  const raw = crypto.randomBytes(20).toString('hex');
-  await pool.query(`INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1,$2, CURRENT_TIMESTAMP + INTERVAL '1 hour')`, [crypto.createHash('sha256').update(raw).digest('hex'), eve.user_id]);
-  assert.equal((await post(auth.resetPassword, { token: raw, password: 'another new secret' })).code, 200);
+  const code = '483920';
+  await pool.query(`INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1,$2, CURRENT_TIMESTAMP + INTERVAL '10 minutes')`, [crypto.createHash('sha256').update(code).digest('hex'), eve.user_id]);
+
+  assert.equal((await post(auth.resetPassword, { email: 'eve@sec.test', code: '000000', password: 'another new secret' })).code, 400);   // wrong code
+  assert.equal((await post(auth.resetPassword, { email: 'eve@sec.test', code, password: 'short' })).code, 400);                           // password too short, code untouched
+  const ok = await post(auth.resetPassword, { email: 'eve@sec.test', code, password: 'another new secret' });
+  assert.equal(ok.code, 200, JSON.stringify(ok.body));
   assert.equal((await authed(token)).passed, false);
+
+  // spent: that exact code can't be used a second time, even before it would have expired
+  assert.equal((await post(auth.resetPassword, { email: 'eve@sec.test', code, password: 'one more secret' })).code, 400);
+
+  // a freshly requested code (a different value — token_hash is the table's primary key, so two pending
+  // codes can never collide) still works normally
+  const second = '710284';
+  await pool.query(`INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1,$2, CURRENT_TIMESTAMP + INTERVAL '10 minutes')`, [crypto.createHash('sha256').update(second).digest('hex'), eve.user_id]);
+  assert.equal((await post(auth.resetPassword, { email: 'eve@sec.test', code: second, password: 'yet another secret' })).code, 200);
 });
 
 test('a token from before session versions existed keeps working until the version changes', { skip }, async () => {
@@ -343,4 +356,88 @@ test('the platform console can be protected with a code as well', { skip }, asyn
   assert.equal(ok.code, 200, JSON.stringify(ok.body));
   assert.ok(t2 && root.user_id);
   assert.equal((await post(admin.login, { email: 'ann@sec.test', password: PASSWORD })).code, 401);      // an ordinary account is not an admin
+});
+
+/* ── email OTP: the first sign-in on a new account ────────────────────────── */
+
+// The real code is emailed, not returned to the caller (same reasoning as the password-reset test below not
+// calling forgotPassword() to get a token) — write a known code's hash straight onto the row, the same way
+// issueEmailOtp() would have, and drive verifyEmailOtp()/resendEmailOtp() against it for real.
+const plantOtp = (userId, code, { expired = false } = {}) => pool.query(
+  `UPDATE users SET email_otp_hash = $2, email_otp_expires_at = CURRENT_TIMESTAMP + INTERVAL '${expired ? '-1' : '10'} minutes' WHERE user_id = $1`,
+  [userId, crypto.createHash('sha256').update(code).digest('hex')]
+);
+
+test('signup leaves the account unverified and hands back a challenge, not a session', { skip }, async () => {
+  const res = await post(auth.signup, { name: 'Gia', email: 'gia@sec.test', phone: '9000000099', password: PASSWORD, business_name: 'Gia Co', business_type: 'RETAIL', accepted_terms: true });
+  assert.equal(res.code, 201, JSON.stringify(res.body));
+  assert.equal(res.body.data.requires_email_otp, true);
+  assert.ok(res.body.data.challenge);
+  assert.equal(res.body.data.token, undefined);
+  assert.equal(res.body.data.business, undefined);
+
+  const row = (await pool.query(`SELECT user_id, email_verified, email_otp_hash, email_otp_expires_at FROM users WHERE email = 'gia@sec.test'`)).rows[0];
+  assert.equal(row.email_verified, false);
+  assert.ok(row.email_otp_hash, 'issueEmailOtp should have written a code hash');          // proves login()/signup() really call it
+  assert.ok(new Date(row.email_otp_expires_at) > new Date());
+
+  await plantOtp(row.user_id, '123456');
+  const verified = await post(auth.verifyEmailOtp, { challenge: res.body.data.challenge, code: '123456' });
+  assert.equal(verified.code, 200, JSON.stringify(verified.body));
+  assert.ok(verified.body.data.token);
+  assert.equal(verified.body.data.businesses.length, 1);
+  assert.equal(verified.body.data.businesses[0].name, 'Gia Co');
+  assert.equal((await pool.query(`SELECT email_verified, email_otp_hash FROM users WHERE user_id = $1`, [row.user_id])).rows[0].email_verified, true);
+  assert.equal((await pool.query(`SELECT email_verified, email_otp_hash FROM users WHERE user_id = $1`, [row.user_id])).rows[0].email_otp_hash, null);   // spent
+  assert.equal((await pool.query(`SELECT method FROM login_events WHERE user_id = $1 AND outcome = 'SUCCESS' ORDER BY event_id DESC LIMIT 1`, [row.user_id])).rows[0].method, 'EMAIL_OTP');
+
+  // once verified, it never asks again
+  assert.equal((await login('gia@sec.test')).body.data.requires_email_otp, undefined);
+});
+
+test('a login on an unverified account is gated the same way signup is, with a fresh code each time', { skip }, async () => {
+  const heidi = await makeUser('heidi');
+  await pool.query(`UPDATE users SET email_verified = FALSE WHERE user_id = $1`, [heidi.user_id]);   // simulate: never finished the first one
+
+  const first = await login('heidi@sec.test');
+  assert.equal(first.body.data.requires_email_otp, true);
+  const firstHash = (await pool.query(`SELECT email_otp_hash FROM users WHERE user_id = $1`, [heidi.user_id])).rows[0].email_otp_hash;
+
+  const second = await login('heidi@sec.test');       // tried again without ever entering the first code
+  const secondHash = (await pool.query(`SELECT email_otp_hash FROM users WHERE user_id = $1`, [heidi.user_id])).rows[0].email_otp_hash;
+  assert.notEqual(firstHash, secondHash, 'a new attempt should invalidate the old code');
+
+  assert.equal((await post(auth.verifyEmailOtp, { challenge: 'garbage', code: '123456' })).code, 401);
+  await plantOtp(heidi.user_id, '000111', { expired: true });
+  const expired = await post(auth.verifyEmailOtp, { challenge: second.body.data.challenge, code: '000111' });
+  assert.equal(expired.code, 401);
+  assert.match(expired.body.message, /expired/);
+
+  await plantOtp(heidi.user_id, '222333');
+  const wrong = await post(auth.verifyEmailOtp, { challenge: second.body.data.challenge, code: '999999' });
+  assert.equal(wrong.code, 401);
+  // one for the expired code, one for the wrong one — the bad-challenge attempt above never reached the DB
+  assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM login_events WHERE user_id = $1 AND outcome = 'EMAIL_OTP_FAILED'`, [heidi.user_id])).rows[0].n, 2);
+
+  const right = await post(auth.verifyEmailOtp, { challenge: second.body.data.challenge, code: '222333' });
+  assert.equal(right.code, 200, JSON.stringify(right.body));
+  assert.ok(right.body.data.token);
+});
+
+test('resend sends a different code under the same challenge, and repeated wrong codes lock the account', { skip }, async () => {
+  const ivan = await makeUser('ivan');
+  await pool.query(`UPDATE users SET email_verified = FALSE WHERE user_id = $1`, [ivan.user_id]);
+  const { challenge } = (await login('ivan@sec.test')).body.data;
+  const before = (await pool.query(`SELECT email_otp_hash FROM users WHERE user_id = $1`, [ivan.user_id])).rows[0].email_otp_hash;
+
+  const resent = await post(auth.resendEmailOtp, { challenge });
+  assert.equal(resent.code, 200, JSON.stringify(resent.body));
+  const after = (await pool.query(`SELECT email_otp_hash FROM users WHERE user_id = $1`, [ivan.user_id])).rows[0].email_otp_hash;
+  assert.notEqual(before, after);
+  assert.equal((await post(auth.resendEmailOtp, { challenge: 'garbage' })).code, 401);
+
+  for (let i = 0; i < 5; i += 1) assert.equal((await post(auth.verifyEmailOtp, { challenge, code: '000000' })).code, 401);
+  const locked = await post(auth.verifyEmailOtp, { challenge, code: '000000' });
+  assert.equal(locked.code, 429);
+  assert.match(locked.body.message, /Try again in \d+ minute/);
 });

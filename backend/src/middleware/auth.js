@@ -36,11 +36,11 @@ export const ROLE_PERMISSIONS = {
   ADMIN:   ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
             'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds',
             'appointments', 'staff_commission', 'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
-            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections'],
+            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing'],
   MANAGER: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
             'payments', 'expenses', 'reports', 'ai', 'refunds', 'appointments', 'staff_commission',
             'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
-            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections'],
+            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing'],
   CASHIER: ['billing', 'customers', 'payments'],
   STAFF:   ['billing'],
   // Restaurant floor roles. WAITER can take and bill orders like STAFF; KITCHEN
@@ -72,7 +72,15 @@ export const ROLE_PERMISSIONS = {
   COLLECTION_EXECUTIVE: ['customers', 'collections', 'field_sales'],
   DELIVERY_MANAGER: ['fulfilment', 'vehicles', 'inventory'],
   DISTRIBUTOR_ADMIN: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers', 'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds',
-            'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve', 'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections']
+            'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve', 'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections'],
+  // Pharmacy roles. A pharmacist sells, views stock and dispenses against a prescription, but does not approve
+  // adjustments or edit the medicine master; sales staff is narrower still (no inventory at all — product lookups
+  // for billing ride on 'billing' itself, same as CASHIER); a GRN manager receives goods and runs suppliers but
+  // cannot approve adjustments or touch the catalogue; an auditor reads reports and the activity log only.
+  PHARMACIST: ['billing', 'inventory', 'prescriptions', 'dispensing', 'customers'],
+  SALES_STAFF: ['billing', 'customers'],
+  GRN_MANAGER: ['purchases', 'inventory', 'suppliers'],
+  AUDITOR: ['reports', 'export']
 };
 
 export const hasPermission = (tenant, permission) => {
@@ -99,14 +107,18 @@ export const signToken = (user) =>
     { expiresIn: config.jwtExpiresIn, algorithm: 'HS256' }
   );
 
-/** A short-lived token that proves the password was right and only the second step is left. It is not a session. */
-export const signChallenge = (user) =>
-  jwt.sign({ sub: user.user_id, purpose: '2fa', tv: user.token_version ?? 0 }, config.jwtSecret, { expiresIn: '5m', algorithm: 'HS256' });
+/*
+ * A short-lived token that proves one step of sign-in was completed and only the next is left. It is not a
+ * session. `purpose` keeps a 2FA challenge from being replayed as an email-OTP challenge or vice versa —
+ * each readChallenge() call names the one purpose it will accept.
+ */
+export const signChallenge = (user, { purpose = '2fa', expiresIn = '5m' } = {}) =>
+  jwt.sign({ sub: user.user_id, purpose, tv: user.token_version ?? 0 }, config.jwtSecret, { expiresIn, algorithm: 'HS256' });
 
-export const readChallenge = (token) => {
+export const readChallenge = (token, purpose = '2fa') => {
   try {
     const p = jwt.verify(String(token ?? ''), config.jwtSecret, { algorithms: ['HS256'] });
-    return p.purpose === '2fa' ? p : null;
+    return p.purpose === purpose ? p : null;
   } catch { return null; }
 };
 

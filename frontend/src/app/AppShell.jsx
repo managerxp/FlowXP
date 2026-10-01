@@ -27,7 +27,7 @@ import NotificationBell from '../components/NotificationBell.jsx';
 import { InstallButton, OfflineStatus } from '../components/OfflineStatus.jsx';
 import CommandPalette from '../components/CommandPalette.jsx';
 import IncomingDeliveryAlert from '../components/IncomingDeliveryAlert.jsx';
-import { RESTAURANT_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
+import { PHARMACY_TYPES, RESTAURANT_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
 
 /*
  * The sidebar, grouped by the job rather than listed alphabetically: that
@@ -44,6 +44,7 @@ const DINE_IN_TYPES = RESTAURANT_TYPES.filter((t) => t !== 'CLOUD_KITCHEN');
 
 const SALON = ['SALON'];
 const WHOLESALE = WHOLESALE_TYPES;
+const PHARMACY = PHARMACY_TYPES;
 /* the generic stock, buying and customer screens give way to the wholesale ones for a wholesaler */
 const NOT_SALON_OR_WHOLESALE = [...SALON, ...WHOLESALE];
 
@@ -55,7 +56,7 @@ const NAV_GROUPS = [
   {
     label: 'Sell',
     items: [
-      { to: '/app/billing', label: 'Counter billing', icon: ReceiptText, end: true, permission: 'billing', notTypes: SALON },
+      { to: '/app/billing', label: 'Counter billing', icon: ReceiptText, end: true, permission: 'billing', notTypes: [...SALON, ...PHARMACY] },
       { to: '/app/billing/invoices', label: 'Invoices', icon: FileText, permission: 'billing' },
       { to: '/app/orders', label: 'Orders', icon: ClipboardList, types: RESTAURANT_TYPES, anyPermission: ['billing', 'kitchen'] },
       { to: '/app/payments', label: 'Payments', icon: Wallet, permission: 'payments' }
@@ -99,6 +100,15 @@ const NAV_GROUPS = [
     ]
   },
   {
+    label: 'Pharmacy',
+    items: [
+      { to: '/app/pharmacy/pos', label: 'Billing', icon: ReceiptText, types: PHARMACY, permission: 'billing' },
+      { to: '/app/pharmacy/products', label: 'Products', icon: Package, types: PHARMACY, anyPermission: ['products', 'inventory', 'billing', 'purchases'] },
+      { to: '/app/pharmacy/inventory', label: 'Inventory', icon: Boxes, types: PHARMACY, anyPermission: ['inventory', 'purchases', 'billing'] },
+      { to: '/app/pharmacy/grn', label: 'Goods receipts', icon: PackageCheck, types: PHARMACY, anyPermission: ['purchases', 'inventory'] }
+    ]
+  },
+  {
     label: 'Restaurant',
     items: [
       { to: '/app/tables', label: 'Tables', icon: LayoutGrid, types: DINE_IN_TYPES, permission: 'billing' },
@@ -109,10 +119,12 @@ const NAV_GROUPS = [
   {
     label: 'Stock',
     items: [
-      { to: '/app/products', label: 'Products', icon: Package, permission: 'products', notTypes: WHOLESALE },
+      { to: '/app/products', label: 'Products', icon: Package, permission: 'products', notTypes: [...WHOLESALE, ...PHARMACY] },
       { to: '/app/modifiers', label: 'Options & add-ons', icon: SlidersHorizontal, types: RESTAURANT_TYPES, permission: 'products' },
-      { to: '/app/inventory', label: 'Inventory', icon: Boxes, permission: 'inventory', notTypes: WHOLESALE },
-      { to: '/app/purchases', label: 'Purchases', icon: ShoppingCart, permission: 'purchases', feature: 'purchases', notTypes: WHOLESALE },
+      { to: '/app/inventory', label: 'Inventory', icon: Boxes, permission: 'inventory', notTypes: [...WHOLESALE, ...PHARMACY] },
+      // pharmacy's GRN is the only receiving document it has — no generic Purchase Order screen for it (see
+      // pharmacy.routes.js's header note: no PO route exists anywhere in that module, by design)
+      { to: '/app/purchases', label: 'Purchases', icon: ShoppingCart, permission: 'purchases', feature: 'purchases', notTypes: [...WHOLESALE, ...PHARMACY] },
       { to: '/app/suppliers', label: 'Suppliers', icon: Truck, permission: 'suppliers', feature: 'purchases', notTypes: WHOLESALE },
       { to: '/app/stock-requests', label: 'Stock requests', icon: ArrowLeftRight, types: RESTAURANT_TYPES, multiOutlet: true, permission: 'inventory' }
     ]
@@ -149,7 +161,7 @@ const NAV_GROUPS = [
   {
     label: 'Team',
     items: [
-      { to: '/app/outlets', label: 'Outlets', icon: Store, roles: ['OWNER', 'ADMIN'], types: [...RESTAURANT_TYPES, ...WHOLESALE] },
+      { to: '/app/outlets', label: 'Outlets', icon: Store, roles: ['OWNER', 'ADMIN'], types: [...RESTAURANT_TYPES, ...WHOLESALE, ...PHARMACY] },
       { to: '/app/staff', label: 'Staff', icon: Users, roles: ['OWNER', 'ADMIN'] },
       { to: '/app/activity', label: 'Activity log', icon: History, roles: ['OWNER', 'ADMIN'] }
     ]

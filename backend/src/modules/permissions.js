@@ -38,6 +38,8 @@ export const PERMISSION_INFO = {
   vehicles:    { label: 'Vehicle stock', description: 'Load vans, sell from them, take unsold stock back and reconcile.' },
   field_sales: { label: 'Field sales', description: 'Visit retailers on a beat, record visits and take orders in the field.' },
   collections: { label: 'Collections', description: 'Record payments collected from retailers and allocate them to invoices.' },
+  prescriptions: { label: 'Prescriptions', description: 'Create, review and approve prescriptions.' },
+  dispensing:    { label: 'Dispensing', description: 'Select batches and dispense medicines against a prescription.' },
   ai:        { label: 'Flow AI', description: 'Ask the AI assistant about the business.' },
   settings:  { label: 'Settings and team', description: 'Business settings, outlets, staff, loyalty, coupons, leakage checks and the activity log.' }
 };

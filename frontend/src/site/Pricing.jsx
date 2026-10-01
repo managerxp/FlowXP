@@ -9,14 +9,14 @@ import PricingTable from './PricingTable.jsx';
 import { CellGrid, FinalCta, PageHero } from './parts.jsx';
 
 const EVERY_PLAN = [
+  { title: 'Your data', body: 'Exportable any time you like, in full, and still readable if you stop paying. Nothing about this is a paid feature.', big: true },
   { title: 'GST billing', body: 'CGST, SGST and IGST on every line, credit notes and round-off.' },
   { title: 'Stock', body: 'Updates with every sale and purchase, with low-stock alerts.' },
   { title: 'Customers', body: 'History, credit and dues, found by mobile number.' },
   { title: 'Reports', body: 'Sales, stock, GST and payments for any dates.' },
   { title: 'Works offline', body: 'Keep billing when the internet drops.' },
   { title: 'Phone app', body: 'Install from the browser on Android or iPhone.' },
-  { title: 'Security', body: 'Two-step login, sign-in history and new-device alerts.' },
-  { title: 'Your data', body: 'Exportable any time, and kept if you stop paying.' }
+  { title: 'Security', body: 'Two-step login, sign-in history and new-device alerts.' }
 ];
 
 const Pricing = () => (

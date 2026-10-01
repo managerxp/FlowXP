@@ -6,19 +6,74 @@
  * "where am I", "where can I go" and "start". It turns solid once the page
  * scrolls so content never shows through it.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Button, Container, Logo } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { READY } from './industries/data.js';
 
+/* Everything but Industries is a plain link; Industries opens a menu of
+   the built verticals instead (see IndustriesMenu), so it is handled
+   separately in both the desktop nav and the mobile panel below. */
 const NAV = [
   { to: '/features', label: 'Product' },
-  { to: '/industries', label: 'Industries' },
   { to: '/ai', label: 'AI Manager' },
   { to: '/integrations', label: 'Integrations' },
   { to: '/pricing', label: 'Pricing' },
   { to: '/about', label: 'About' }
 ];
+
+const Chevron = ({ open }) => (
+  <svg aria-hidden="true" viewBox="0 0 12 12" className={`h-3 w-3 transition-transform duration-(--duration-fast) ${open ? 'rotate-180' : ''}`}>
+    <path fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M3 4.5l3 3 3-3" />
+  </svg>
+);
+
+/* Desktop-only: a button that opens a panel listing every built vertical,
+   plus the hub and the coming-soon page. Closes on an outside click, Escape
+   or route change. */
+const IndustriesMenu = () => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const location = useLocation();
+  const active = location.pathname.startsWith('/industries');
+
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="true"
+        className={`flex items-center gap-1 rounded-md px-3 py-2 text-sm transition-colors ${active ? 'font-medium text-ink-900' : 'text-ink-500 hover:text-ink-900'}`}
+      >
+        Industries
+        <Chevron open={open} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-2 w-72 rounded-(--radius-card) border border-line bg-page p-2 shadow-lg">
+          <Link to="/industries" className="block rounded-md px-3 py-2 text-sm font-medium text-ink-900 hover:bg-surface-2">All industries</Link>
+          <div className="my-1 border-t border-line" />
+          {READY.map((k) => (
+            <Link key={k.slug} to={`/industries/${k.slug}`} className="block rounded-md px-3 py-2 text-sm text-ink-700 hover:bg-surface-2">{k.label}</Link>
+          ))}
+          <div className="my-1 border-t border-line" />
+          <Link to="/industries/coming-soon" className="block rounded-md px-3 py-2 text-sm text-ink-500 hover:bg-surface-2">Coming soon</Link>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const FOOTER_GROUPS = [
   { heading: 'Product', links: [
@@ -70,7 +125,11 @@ const Header = () => {
         <Link to="/" aria-label="FlowXP home" className="shrink-0"><Logo /></Link>
 
         <nav aria-label="Main" className="hidden flex-1 items-center gap-1 lg:flex">
-          {NAV.map((item) => (
+          <NavLink to="/features" className={({ isActive }) => `rounded-md px-3 py-2 text-sm transition-colors ${isActive ? 'font-medium text-ink-900' : 'text-ink-500 hover:text-ink-900'}`}>
+            Product
+          </NavLink>
+          <IndustriesMenu />
+          {NAV.slice(1).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -109,7 +168,18 @@ const Header = () => {
       {open && (
         <div id="site-menu" className="border-t border-line bg-page lg:hidden">
           <Container className="flex flex-col py-3">
-            {NAV.map((item) => (
+            <Link to="/features" className="border-b border-line py-3 text-[15px] text-ink-700">Product</Link>
+            <div className="border-b border-line py-3">
+              <p className="text-[15px] text-ink-700">Industries</p>
+              <div className="mt-2 flex flex-col gap-2 pl-3">
+                <Link to="/industries" className="text-[14px] font-medium text-ink-900">All industries</Link>
+                {READY.map((k) => (
+                  <Link key={k.slug} to={`/industries/${k.slug}`} className="text-[14px] text-ink-500">{k.label}</Link>
+                ))}
+                <Link to="/industries/coming-soon" className="text-[14px] text-ink-500">Coming soon</Link>
+              </div>
+            </div>
+            {NAV.slice(1).map((item) => (
               <Link key={item.to} to={item.to} className="border-b border-line py-3 text-[15px] text-ink-700 last:border-0">
                 {item.label}
               </Link>

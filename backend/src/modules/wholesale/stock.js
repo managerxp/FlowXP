@@ -91,7 +91,7 @@ export const addToBatch = async (client, { businessId, branchId, productId, batc
 export const allocateBatches = async (client, { branchId, productId, qty, fefo = true, today }) => {
   const rows = (await client.query(
     `SELECT batch_id, qty_on_hand FROM wholesale_batches
-     WHERE branch_id = $1 AND product_id = $2 AND qty_on_hand > 0 AND (expiry_date IS NULL OR expiry_date >= $3::date)
+     WHERE branch_id = $1 AND product_id = $2 AND qty_on_hand > 0 AND status = 'ACTIVE' AND (expiry_date IS NULL OR expiry_date >= $3::date)
      ORDER BY ${fefo ? 'expiry_date NULLS LAST,' : ''} received_on, batch_id FOR UPDATE`, [branchId, productId, today])).rows;
   let left = q3(qty); const allocations = [];
   for (const r of rows) {

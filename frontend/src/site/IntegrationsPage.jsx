@@ -32,7 +32,7 @@ const HARDWARE = [
 ];
 
 const CONNECTED = [
-  { title: 'WhatsApp', body: 'Bill links, booking confirmations and offers through the WhatsApp Business platform.' },
+  { title: 'WhatsApp', body: 'Bill links, booking confirmations and offers through the WhatsApp Business platform — the channel most of your customers already read.', big: true },
   { title: 'SMS', body: 'The same messages by text, for customers not on WhatsApp.' },
   { title: 'Email', body: 'Purchase orders to suppliers, password resets and sign-in alerts.' },
   { title: 'GST portal', body: 'GSTR-1 JSON to upload, e-invoice and e-way bill files, IRN recorded back.' },
@@ -43,8 +43,7 @@ const CONNECTED = [
 ];
 
 const COMING = [
-  { title: 'Zomato', body: 'Online orders straight into your kitchen and bills.', soon: true },
-  { title: 'Swiggy', body: 'Online orders straight into your kitchen and bills.', soon: true },
+  { title: 'Zomato and Swiggy', body: 'Online orders arrive straight into the kitchen and the day\'s bills, no re-typing.', soon: true, big: true },
   { title: 'ONDC and Magicpin', body: 'More order channels on the same screen.', soon: true },
   { title: 'Payment links and QR', body: 'Collect UPI and card payments inside FlowXP.', soon: true }
 ];

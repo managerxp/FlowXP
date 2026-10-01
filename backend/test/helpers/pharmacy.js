@@ -1,0 +1,66 @@
+/*
+ * Builds pharmacies for the pharmacy tests and calls controllers the way the router would — same shape as
+ * test/helpers/wholesale.js (makeWholesaler), since pharmacy reuses that module's batch/FEFO/lock engine.
+ */
+import { fakeRes } from './salon.js';
+
+export { fakeRes };
+let seq = 0;
+
+export const makePharmacy = async (pool, label, { gst = true, branches = 1, state = 'Telangana' } = {}) => {
+  seq += 1;
+  const tag = `${label}${seq}`;
+  const user = (await pool.query(`INSERT INTO users (name, email, password_hash) VALUES ($1,$2,'x') RETURNING user_id`, [`Owner ${tag}`, `${tag}@pharmacy.test`])).rows[0];
+  const biz = (await pool.query(
+    `INSERT INTO businesses (name, owner_user_id, business_type, gst_enabled, state, subscription_status, plan_code) VALUES ($1,$2,'PHARMACY',$3,$4,'ACTIVE','GROWTH') RETURNING business_id`,
+    [`Pharmacy ${tag}`, user.user_id, gst, state])).rows[0];
+  await pool.query(`INSERT INTO business_users (business_id, user_id, role, status) VALUES ($1,$2,'OWNER','ACTIVE')`, [biz.business_id, user.user_id]);
+  const branchIds = [];
+  for (let i = 0; i < branches; i++) {
+    branchIds.push((await pool.query(`INSERT INTO branches (business_id, name, is_primary, state) VALUES ($1,$2,$3,$4) RETURNING branch_id`, [biz.business_id, i === 0 ? 'Main store' : `Store ${i + 1}`, i === 0, state])).rows[0].branch_id);
+  }
+  const tenantFor = (role = 'OWNER', { branchId = branchIds[0], permissions = {}, userId = user.user_id, pinned = false } = {}) => ({
+    businessId: biz.business_id, businessType: 'PHARMACY', role, permissions, branchId, scopeBranchId: branchId, viewAll: false, pinned, userId,
+    multiOutlet: branchIds.length > 1, name: `Pharmacy ${tag}`
+  });
+  const p = { tag, userId: user.user_id, businessId: biz.business_id, branchId: branchIds[0], branchIds, tenantFor };
+  p.req = (extra = {}, tenant = tenantFor()) => ({
+    tenant, auth: { userId: tenant.userId ?? user.user_id, user: { name: `Owner ${tag}` } },
+    params: {}, body: {}, query: {}, headers: {}, ip: '127.0.0.1', get: () => undefined, ...extra
+  });
+  p.call = async (handler, extra, tenant) => { const res = fakeRes(); await handler(p.req(extra, tenant), res); return res; };
+  return p;
+};
+
+/** A product with pharmacy behavior flags. Prices are in rupees. */
+export const addProduct = async (pool, p, { name, unit = 'pcs', price = 50, cost = 30, tax = 12, stock = 0, mrp = null, batch = false, expiry = false, serial = false, prescription = false, branchId = p.branchId } = {}) => {
+  const id = (await pool.query(
+    `INSERT INTO products (business_id, name, unit, selling_price_paise, purchase_price_paise, tax_rate, track_inventory, current_stock)
+     VALUES ($1,$2,$3,$4,$5,$6,TRUE,$7) RETURNING product_id`, [p.businessId, name, unit, Math.round(price * 100), Math.round(cost * 100), tax, stock])).rows[0].product_id;
+  await pool.query(
+    `INSERT INTO pharmacy_item_details (product_id, business_id, mrp_paise, batch_tracking, expiry_tracking, serial_tracking, prescription_required)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)`, [id, p.businessId, mrp == null ? null : Math.round(mrp * 100), batch || expiry, expiry, serial, prescription]);
+  if (stock) await pool.query(`INSERT INTO branch_stock (branch_id, product_id, quantity) VALUES ($1,$2,$3)`, [branchId, id, stock]);
+  return id;
+};
+
+export const addSupplier = async (pool, p, name = 'MedPlus Distributors') =>
+  (await pool.query(`INSERT INTO suppliers (business_id, name) VALUES ($1,$2) RETURNING supplier_id`, [p.businessId, name])).rows[0].supplier_id;
+
+export const addCustomer = async (pool, p, name = 'Walk-in') =>
+  (await pool.query(`INSERT INTO customers (business_id, name) VALUES ($1,$2) RETURNING customer_id`, [p.businessId, name])).rows[0].customer_id;
+
+export const stockOf = async (pool, branchId, productId) => {
+  const r = (await pool.query(`SELECT COALESCE(quantity, 0) AS q, COALESCE(reserved_qty, 0) AS r FROM branch_stock WHERE branch_id = $1 AND product_id = $2`, [branchId, productId])).rows[0];
+  return { on_hand: Number(r?.q ?? 0), reserved: Number(r?.r ?? 0) };
+};
+
+/** Put a batch of a product on the shelf directly (the stock ledger and the batch table together), bypassing GRN. */
+export const addBatch = async (pool, p, productId, { batchNo, qty, expiry = null, cost = 20, status = 'ACTIVE', branchId = p.branchId } = {}) => {
+  await pool.query(`INSERT INTO wholesale_batches (business_id, branch_id, product_id, batch_no, expiry_date, qty_on_hand, cost_paise, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    [p.businessId, branchId, productId, batchNo, expiry, qty, Math.round(cost * 100), status]);
+  await pool.query(`INSERT INTO branch_stock (branch_id, product_id, quantity) VALUES ($1,$2,$3) ON CONFLICT (branch_id, product_id) DO UPDATE SET quantity = branch_stock.quantity + EXCLUDED.quantity`, [branchId, productId, qty]);
+  await pool.query(`UPDATE products SET current_stock = current_stock + $2 WHERE product_id = $1`, [productId, qty]);
+};
+
+export const dayFromNow = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);

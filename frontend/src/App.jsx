@@ -13,12 +13,14 @@ import SiteLayout from './site/SiteLayout.jsx';
 import Home from './site/Home.jsx';
 import ProductPage from './site/ProductPage.jsx';
 import IndustriesPage from './site/IndustriesPage.jsx';
+import IndustryDetail from './site/industries/IndustryDetail.jsx';
+import ComingSoonPage from './site/industries/ComingSoon.jsx';
 import SiteIntegrations from './site/IntegrationsPage.jsx';
 import AboutPage from './site/AboutPage.jsx';
 import ContactPage from './site/ContactPage.jsx';
 import AIPage from './site/AIPage.jsx';
 import Pricing from './site/Pricing.jsx';
-import { ForgotPassword, Login, ResetPassword, Signup } from './auth/AuthPages.jsx';
+import { ForgotPassword, Login, Signup } from './auth/AuthPages.jsx';
 import { PageLoader } from './components/ui.jsx';
 
 /* The legal pages are long text almost nobody opens on their first visit;
@@ -142,6 +144,13 @@ const SalonStock = lazy(() => import('./app/salon/SalonStock.jsx'));
 const SalonReports = lazy(() => import('./app/salon/SalonReports.jsx'));
 const SalonSettings = lazy(() => import('./app/salon/SalonSettings.jsx'));
 
+/* The pharmacy module (business type PHARMACY). Its screens live in app/pharmacy/ and load only for a pharmacy. */
+const PharmacyDashboard = lazy(() => import('./app/pharmacy/PharmacyDashboard.jsx'));
+const PharmacyPos = lazy(() => import('./app/pharmacy/PharmacyPos.jsx'));
+const PharmacyProducts = lazy(() => import('./app/pharmacy/PharmacyProducts.jsx'));
+const PharmacyInventory = lazy(() => import('./app/pharmacy/PharmacyInventory.jsx'));
+const PharmacyGrn = lazy(() => import('./app/pharmacy/PharmacyGrn.jsx'));
+
 /* The page a customer's own phone opens after scanning a table's QR code —
    no login, no nav, not inside SiteLayout or AppShell at all. See
    public/CustomerMenu.jsx's header comment. */
@@ -169,6 +178,7 @@ const RequireAuth = ({ children }) => {
 const HomeRoute = () => {
   const { business } = useAuth();
   if (business?.business_type === 'SALON') return <SalonDashboard />;
+  if (business?.business_type === 'PHARMACY') return <PharmacyDashboard />;
   if (['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type)) return business?.distributor_enabled ? <DistributorDashboard /> : <WholesaleDashboard />;
   return <Dashboard />;
 };
@@ -180,6 +190,8 @@ const App = () => (
       <Route index element={<Home />} />
       <Route path="features" element={<ProductPage />} />
       <Route path="industries" element={<IndustriesPage />} />
+      <Route path="industries/coming-soon" element={<ComingSoonPage />} />
+      <Route path="industries/:slug" element={<IndustryDetail />} />
       <Route path="ai" element={<AIPage />} />
       <Route path="integrations" element={<SiteIntegrations />} />
       <Route path="about" element={<AboutPage />} />
@@ -193,8 +205,9 @@ const App = () => (
         offering seven ways to leave it. */}
     <Route path="login" element={<Login />} />
     <Route path="signup" element={<Signup />} />
+    {/* reset-password is no longer a route: the code is entered on /forgot-password itself now, not via an
+        emailed link to a separate page — see AuthPages.jsx's header comment on ForgotPassword. */}
     <Route path="forgot-password" element={<ForgotPassword />} />
-    <Route path="reset-password" element={<ResetPassword />} />
 
     {/* The product */}
     <Route
@@ -289,6 +302,12 @@ const App = () => (
       <Route path="salon/stock" element={<SalonStock />} />
       <Route path="salon/reports" element={<SalonReports />} />
       <Route path="salon/settings" element={<SalonSettings />} />
+
+      <Route path="pharmacy/pos" element={<PharmacyPos />} />
+      <Route path="pharmacy/products" element={<PharmacyProducts />} />
+      <Route path="pharmacy/inventory" element={<PharmacyInventory />} />
+      <Route path="pharmacy/grn" element={<PharmacyGrn />} />
+
       <Route path="activity" element={<ActivityPage />} />
 
     </Route>

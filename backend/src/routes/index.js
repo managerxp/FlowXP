@@ -57,6 +57,7 @@ import publicOrderingRoutes from './publicOrdering.routes.js';
 import salonRoutes from './salon.routes.js';
 import wholesaleRoutes from './wholesale.routes.js';
 import distributorRoutes from './distributor.routes.js';
+import pharmacyRoutes from './pharmacy.routes.js';
 
 const router = Router();
 
@@ -85,6 +86,8 @@ const resetLimiter = limiter(5, 60, 'Too many reset requests. Try again later.')
 router.post('/auth/signup', signupLimiter, auth.signup);
 router.post('/auth/login', loginLimiter, auth.login);
 router.post('/auth/login/2fa', loginLimiter, auth.loginTwoFactor);
+router.post('/auth/verify-email', loginLimiter, auth.verifyEmailOtp);
+router.post('/auth/resend-email-otp', loginLimiter, auth.resendEmailOtp);
 router.post('/auth/forgot-password', resetLimiter, auth.forgotPassword);
 router.post('/auth/reset-password', resetLimiter, auth.resetPassword);
 
@@ -189,6 +192,7 @@ router.use('/menu-import', menuImportRoutes);
 router.use('/distributor', distributorRoutes);   // the distributor layer: principals, territories, beats, schemes, targets, field sales, vans
 router.use('/wholesale', wholesaleRoutes);   // the wholesale / distribution module (WHOLESALE and DISTRIBUTOR businesses only)
 router.use('/salon', salonRoutes);          // the salon module (salon businesses only)
+router.use('/pharmacy', pharmacyRoutes);    // the pharmacy module (PHARMACY businesses only)
 
 /* ── Platform administration — not a tenant, sits outside the business
    model entirely; see admin.routes.js for its own auth gate. ──────────── */

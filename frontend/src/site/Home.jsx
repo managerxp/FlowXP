@@ -12,7 +12,7 @@
  * Motion (index.css): the hero rises in once on load, sections reveal once as
  * they scroll into view, cards lift slightly on hover. Nothing loops.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Container, Eyebrow, Section } from '../components/ui.jsx';
 import Reveal from '../components/Reveal.jsx';
@@ -204,6 +204,17 @@ const BUSINESSES = [
 const ForYourBusiness = () => {
   const [active, setActive] = useState(BUSINESSES[0].key);
   const b = BUSINESSES.find((x) => x.key === active);
+  // The underline slides to the active tab rather than two borders swapping colour — the one place
+  // on the page a literal position change earns its keep, since it IS what "switching tab" means.
+  const tabRefs = useRef({});
+  const [indicator, setIndicator] = useState(null);
+  useEffect(() => {
+    const measure = () => { const el = tabRefs.current[active]; if (el) setIndicator({ left: el.offsetLeft, width: el.offsetWidth }); };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [active]);
+
   return (
     <Section
       id="industries"
@@ -213,21 +224,25 @@ const ForYourBusiness = () => {
       lead="The billing, stock, GST and insights are the same for everyone. On top of that, FlowXP shows each kind of business the tools it needs."
     >
       <Reveal>
-        <div role="tablist" aria-label="Kind of business" className="flex gap-1 overflow-x-auto border-b border-line">
+        <div role="tablist" aria-label="Kind of business" className="relative flex gap-1 overflow-x-auto border-b border-line">
           {BUSINESSES.map((x) => (
             <button
               key={x.key}
+              ref={(el) => { tabRefs.current[x.key] = el; }}
               role="tab"
               type="button"
               id={`tab-${x.key}`}
               aria-selected={x.key === active}
               aria-controls="business-panel"
               onClick={() => setActive(x.key)}
-              className={`-mb-px shrink-0 border-b-2 px-4 py-3 text-body font-medium transition-colors duration-(--duration-normal) ${x.key === active ? 'border-brand-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'}`}
+              className={`shrink-0 px-4 py-3 text-body font-medium transition-colors duration-(--duration-normal) ${x.key === active ? 'text-ink-900' : 'text-ink-500 hover:text-ink-900'}`}
             >
               {x.label}
             </button>
           ))}
+          {indicator && (
+            <span aria-hidden="true" className="absolute bottom-0 h-0.5 bg-brand-500 transition-[left,width] duration-(--duration-normal) ease-(--ease-standard)" style={{ left: indicator.left, width: indicator.width }} />
+          )}
         </div>
         <div key={b.key} id="business-panel" role="tabpanel" aria-labelledby={`tab-${b.key}`} className="fade-in grid items-center gap-10 pt-10 lg:grid-cols-12">
           <div className="lg:col-span-5">
@@ -411,36 +426,56 @@ const BeforeAfter = () => (
 
 /* ── 9. Works with ────────────────────────────────────────────────────── */
 
+/* The two FlowXP leans on hardest get the wider cells — not an arbitrary
+   pattern, the two that most change how someone sells (orders arriving from
+   an app, bills going out over chat) earn the room. Everything else is the
+   same size: a bento grid is a hierarchy, not decoration, so only genuinely
+   bigger ideas get a bigger cell. */
 const WORKS_WITH = [
-  ['Receipt printers', '58 and 80 mm thermal printers'],
-  ['Barcode scanners', 'Any USB or Bluetooth scanner'],
-  ['UPI, cards and cash', 'Split one bill across several payments'],
-  ['WhatsApp and SMS', 'Send bills, reminders and offers'],
-  ['GST portal', 'GSTR-1, e-invoice and e-way bill files'],
-  ['Works offline', 'Keep billing when the internet drops'],
-  ['Phone app', 'Install on Android or iPhone from the browser'],
-  ['Zomato and Swiggy', 'Online orders straight into FlowXP', true]
+  { title: 'Zomato and Swiggy', body: 'Online orders arrive straight into the kitchen and the day\'s bills, no re-typing.', soon: true, big: true },
+  { title: 'WhatsApp and SMS', body: 'Bills, payment reminders and offers go out the way your customers already read you.', big: true },
+  { title: 'UPI, cards and cash', body: 'Split one bill across several payments.' },
+  { title: 'GST portal', body: 'GSTR-1, e-invoice and e-way bill files, ready to upload.' },
+  { title: 'Works offline', body: 'Keep billing when the internet drops.' },
+  { title: 'Receipt printers', body: '58 and 80 mm thermal printers.' },
+  { title: 'Barcode scanners', body: 'Any USB or Bluetooth scanner.' },
+  { title: 'Phone app', body: 'Install on Android or iPhone from the browser.' }
 ];
 
-const WorksWith = () => (
-  <Section
-    eyebrow="Works with"
-    title="Fits the counter you already have."
-    lead="Use the laptop, tablet or phone you own. Add a printer, scanner or cash drawer when you want one."
-  >
-    <ul className="grid gap-px overflow-hidden rounded-(--radius-panel) border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
-      {WORKS_WITH.map(([title, body, soon], i) => (
-        <Reveal as="li" key={title} index={i % 4} className="bg-surface p-5 transition-colors duration-(--duration-normal) hover:bg-brand-50">
-          <p className="flex flex-wrap items-center gap-2 text-body font-semibold text-ink-900">
-            {title}
-            {soon && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-medium text-ink-500">Coming soon</span>}
-          </p>
-          <p className="mt-1 text-small text-ink-500">{body}</p>
-        </Reveal>
-      ))}
-    </ul>
-  </Section>
-);
+const WorksWith = () => {
+  const featured = WORKS_WITH.filter((w) => w.big);
+  const rest = WORKS_WITH.filter((w) => !w.big);
+  return (
+    <Section
+      eyebrow="Works with"
+      title="Fits the counter you already have."
+      lead="Use the laptop, tablet or phone you own. Add a printer, scanner or cash drawer when you want one."
+    >
+      {/* The two featured cells are their own row, not columns mixed into the grid below — two different
+          span widths inside one CSS grid leaves an uneven, gap-ridden last row the moment the item count
+          doesn't divide evenly; a separate row sidesteps that arithmetic entirely. */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        {featured.map(({ title, body, soon }, i) => (
+          <Reveal as="div" key={title} index={i} className="lift rounded-(--radius-card) border border-brand-100 bg-brand-50 p-6">
+            <p className="flex flex-wrap items-center gap-2 text-title font-semibold text-ink-900">
+              {title}
+              {soon && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-medium text-ink-500">Coming soon</span>}
+            </p>
+            <p className="mt-1.5 text-body text-ink-500">{body}</p>
+          </Reveal>
+        ))}
+      </div>
+      <ul className="mt-3 grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        {rest.map(({ title, body }, i) => (
+          <Reveal as="li" key={title} index={i % 4} className="lift rounded-(--radius-card) border border-line bg-surface p-5">
+            <p className="text-body font-semibold text-ink-900">{title}</p>
+            <p className="mt-1 text-small text-ink-500">{body}</p>
+          </Reveal>
+        ))}
+      </ul>
+    </Section>
+  );
+};
 
 /* ── 10. Built so nothing gets lost ───────────────────────────────────── */
 

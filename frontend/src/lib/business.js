@@ -9,5 +9,9 @@ export const platformName = (code) => PLATFORM_LABEL[code] || (code ? code.charA
 export const WHOLESALE_TYPES = ['WHOLESALE', 'DISTRIBUTOR'];
 export const isWholesale = (business) => WHOLESALE_TYPES.includes(business?.business_type);
 
+/* Pharmacies: they get the pharmacy module (batch/FEFO product master, direct GRN, inventory, till) instead of
+   the generic billing/products/inventory screens. */
+export const PHARMACY_TYPES = ['PHARMACY'];
+
 /* The distributor features: a DISTRIBUTOR always has them; a wholesaler can switch them on (Wholesale + Distributor). */
 export const isDistributor = (business) => isWholesale(business) && Boolean(business?.distributor_enabled);

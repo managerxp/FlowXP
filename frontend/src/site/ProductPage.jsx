@@ -46,7 +46,7 @@ const ListPanel = ({ title, groups }) => (
 );
 
 const ALSO = [
-  { title: 'Several businesses, one login', body: 'Switch between them; each keeps its own data.' },
+  { title: 'Several businesses, one login', body: 'Switch between them from the same account; each keeps its own stock, staff and invoice numbers.', big: true },
   { title: 'Branches and outlets', body: 'Own stock, staff and invoice series, one owner view.' },
   { title: 'Works offline', body: 'Bills are saved on the device and sent when the internet is back.' },
   { title: 'Phone app', body: 'Install FlowXP on Android or iPhone from the browser.' },

@@ -74,8 +74,8 @@ const Ticket = ({ ticket, tab, now, stationName, dimmed, focusKey, onAdvance, on
   const servedAt = tab.key === 'served' && live.length ? live.map((i) => i.served_at).filter(Boolean).sort().pop() : null;
 
   return (
-    <article className={`flex flex-col overflow-hidden rounded-(--radius-card) border bg-surface shadow-sm transition-opacity duration-(--duration-fast) ${rush ? 'border-danger ring-2 ring-danger' : worst === 'late' ? 'border-danger/50' : 'border-line'} ${dimmed ? 'opacity-35' : ''}`}>
-      <header className={`px-4 pb-3 pt-3.5 ${rush ? 'bg-danger/5' : making ? tone.head : tab.key === 'ready' ? 'bg-success/5' : 'bg-surface-2'}`}>
+    <article className={`flex flex-col overflow-hidden rounded-(--radius-card) border bg-surface shadow-sm transition-[opacity,border-color] duration-(--duration-moderate) ${rush ? 'border-danger ring-2 ring-danger' : worst === 'late' ? 'border-danger/50' : 'border-line'} ${dimmed ? 'opacity-35' : ''}`}>
+      <header className={`px-4 pb-3 pt-3.5 transition-colors duration-(--duration-moderate) ${rush ? 'bg-danger/5' : making ? tone.head : tab.key === 'ready' ? 'bg-success/5' : 'bg-surface-2'}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate text-[24px] font-bold leading-tight tracking-tight text-ink-900">{title}</p>

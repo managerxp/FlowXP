@@ -31,7 +31,7 @@ const PASSWORD = 'correct horse battery';
 
 const makeOwner = async (label, planCode) => {
   const u = (await pool.query(
-    `INSERT INTO users (name, email, password_hash) VALUES ($1,$2,$3) RETURNING user_id, email`,
+    `INSERT INTO users (name, email, password_hash, email_verified) VALUES ($1,$2,$3,TRUE) RETURNING user_id, email`,
     [label, `${label}@planfeat.test`, await bcrypt.hash(PASSWORD, 4)]
   )).rows[0];
   const biz = (await pool.query(

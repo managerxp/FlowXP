@@ -149,17 +149,48 @@ export const FinalCta = ({ title, lead, secondary = { to: '/contact', label: 'Ta
   </section>
 );
 
-/* A bordered grid of small titled cells (hardware lists, "also included"). */
-export const CellGrid = ({ items, cols = 'sm:grid-cols-2 lg:grid-cols-4' }) => (
-  <ul className={`grid gap-px overflow-hidden rounded-(--radius-panel) border border-line bg-line ${cols}`}>
-    {items.map(({ title, body, soon }, i) => (
-      <Reveal as="li" key={title} index={i % 4} className="bg-surface p-5 transition-colors duration-(--duration-normal) hover:bg-brand-50">
-        <p className="flex flex-wrap items-center gap-2 text-body font-semibold text-ink-900">
-          {title}
-          {soon && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-medium text-ink-500">Coming soon</span>}
-        </p>
-        {body && <p className="mt-1 text-small text-ink-500">{body}</p>}
-      </Reveal>
-    ))}
-  </ul>
-);
+/*
+ * A grid of small titled cells (hardware lists, "also included", plan
+ * extras). `big: true` on one or two items calls them out as their own row
+ * above the uniform grid of the rest — a hierarchy signal for the genuinely
+ * bigger news on a list, not decoration applied evenly. Most call sites pass
+ * none, and get the plain even grid they always had.
+ *
+ * Featured items are a separate row rather than wider cells mixed into the
+ * same grid: two different cell spans in one CSS grid leaves an uneven,
+ * gap-ridden last row the moment the item count doesn't divide evenly by the
+ * column count (it did, for most of these lists) — a separate row sidesteps
+ * that arithmetic for every list length, not just the ones that happen to work out.
+ */
+export const CellGrid = ({ items, cols = 'sm:grid-cols-2 lg:grid-cols-4' }) => {
+  const featured = items.filter((i) => i.big);
+  const rest = items.filter((i) => !i.big);
+  return (
+    <div className={featured.length ? 'space-y-3' : ''}>
+      {featured.length > 0 && (
+        <div className={`grid gap-3 ${featured.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+          {featured.map(({ title, body, soon }, i) => (
+            <Reveal as="div" key={title} index={i} className="lift rounded-(--radius-card) border border-brand-100 bg-brand-50 p-6">
+              <p className="flex flex-wrap items-center gap-2 text-title font-semibold text-ink-900">
+                {title}
+                {soon && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-medium text-ink-500">Coming soon</span>}
+              </p>
+              {body && <p className="mt-1.5 text-body text-ink-500">{body}</p>}
+            </Reveal>
+          ))}
+        </div>
+      )}
+      <ul className={`grid gap-3 ${cols}`}>
+        {rest.map(({ title, body, soon }, i) => (
+          <Reveal as="li" key={title} index={i % 4} className="lift rounded-(--radius-card) border border-line bg-surface p-5">
+            <p className="flex flex-wrap items-center gap-2 text-body font-semibold text-ink-900">
+              {title}
+              {soon && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-medium text-ink-500">Coming soon</span>}
+            </p>
+            {body && <p className="mt-1 text-small text-ink-500">{body}</p>}
+          </Reveal>
+        ))}
+      </ul>
+    </div>
+  );
+};

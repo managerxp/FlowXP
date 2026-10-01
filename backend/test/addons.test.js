@@ -53,7 +53,7 @@ test('setup', { skip }, async () => {
   config.cashfree.secretKey = SECRET;
   const bcrypt = (await import('bcryptjs')).default;
   owner = (await pool.query(
-    `INSERT INTO users (name, email, phone, password_hash) VALUES ('Addon Owner','addon-owner@test.local','9000000002',$1) RETURNING user_id`,
+    `INSERT INTO users (name, email, phone, password_hash, email_verified) VALUES ('Addon Owner','addon-owner@test.local','9000000002',$1,TRUE) RETURNING user_id`,
     [await bcrypt.hash('password123', 4)]
   )).rows[0].user_id;
   // STARTER has reservations off by default — a clean baseline to prove the add-on turns it on.

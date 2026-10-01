@@ -14,7 +14,7 @@ import { readChallenge, signChallenge, signToken } from '../middleware/auth.js';
 import { alertNewDevice, decryptSecret, lockedMinutes, recordLogin, recoveryCodesLeft, useRecoveryCode, verifyTotp } from '../modules/security.js';
 import { newTrialWindow, subscriptionSummary } from '../modules/subscription.js';
 import { recordAudit, recordEvent } from '../modules/events.js';
-import { sendPasswordReset } from '../modules/mailer.js';
+import { sendEmailOtp, sendPasswordReset } from '../modules/mailer.js';
 import {
   checkBusinessType, checkEmail, checkName, checkPassword, checkPhone,
   firstError, normaliseEmail
@@ -23,7 +23,26 @@ import {
 /* Cost 12: roughly 250ms per hash on current hardware. Slow enough to make
    offline cracking expensive, fast enough that login does not feel broken. */
 const BCRYPT_ROUNDS = 12;
-const RESET_TTL_MS = 60 * 60 * 1000;
+const RESET_TTL_MS = 10 * 60 * 1000;   // a typed code, not a clicked link — 10 minutes is plenty and matches the email's own wording
+const OTP_TTL_MS = 10 * 60 * 1000;
+
+/*
+ * Email OTP verification — the first sign-in on a new account (whether it's finishing signup or a later login
+ * attempt before the previous code was ever entered) is gated on a 6-digit code sent to the address on file.
+ * Once verified, email_verified stays true and this never runs again for that account — not "every time",
+ * only "the first time". The code is stored as a hash on the user's own row (modules/security.js's existing
+ * lockout, keyed off login_events, covers brute-forcing it — no separate attempts counter needed).
+ */
+const issueEmailOtp = async (user) => {
+  const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+  const hash = crypto.createHash('sha256').update(code).digest('hex');
+  await pool.query(
+    `UPDATE users SET email_otp_hash = $2, email_otp_expires_at = $3 WHERE user_id = $1`,
+    [user.user_id, hash, new Date(Date.now() + OTP_TTL_MS)]
+  );
+  await sendEmailOtp(user.email, user.name, code);
+};
+const emailOtpChallenge = (user) => signChallenge(user, { purpose: 'email_otp', expiresIn: '10m' });
 
 /* A real hash of a random password, so an unknown address costs the same time as a wrong password. (A malformed
    string would make bcrypt return at once, and the difference in timing would tell an attacker which addresses exist.) */
@@ -105,11 +124,11 @@ export const signup = async (req, res) => {
 
     /* One branch, created up front. Billing then never has to ask "which
        location" for the ~95% of businesses that only ever have one. */
-    const branch = (await client.query(
+    await client.query(
       `INSERT INTO branches (business_id, name, is_primary)
-       VALUES ($1,'Main',TRUE) RETURNING branch_id`,
+       VALUES ($1,'Main',TRUE)`,
       [business.business_id]
-    )).rows[0];
+    );
 
     await client.query(
       `INSERT INTO business_users (business_id, user_id, role, branch_id, status)
@@ -138,22 +157,11 @@ export const signup = async (req, res) => {
       resource_id: business.business_id
     });
 
+    // First sign-in on a brand new account is always unverified — send the code before handing out a session.
+    await issueEmailOtp(user);
     res.status(201).json({
       success: true,
-      data: {
-        token: signToken(user),
-        user: publicUser(user),
-        business: {
-          business_id: business.business_id,
-          name: business.name,
-          business_type: business.business_type,
-          currency: business.currency,
-          onboarding_step: business.onboarding_step,
-          primary_branch_id: branch.branch_id,
-          role: 'OWNER',
-          subscription: subscriptionSummary(business)
-        }
-      }
+      data: { requires_email_otp: true, challenge: emailOtpChallenge(user) }
     });
   } catch (dbError) {
     await client.query('ROLLBACK').catch(() => {});
@@ -253,6 +261,13 @@ export const login = async (req, res) => {
       });
     }
 
+    // Finishing a first sign-in that never got past the email code: send a fresh one rather than assume the
+    // old email is still sitting in their inbox. Checked before 2FA — an account can't have set 2FA up
+    // without already having signed in once, so the two gates never both apply in practice.
+    if (!user.email_verified) {
+      await issueEmailOtp(user);
+      return res.json({ success: true, data: { requires_email_otp: true, challenge: emailOtpChallenge(user) } });
+    }
     if (user.totp_enabled) {
       return res.json({ success: true, data: { requires_2fa: true, challenge: signChallenge(user) } });
     }
@@ -304,6 +319,72 @@ export const loginTwoFactor = async (req, res) => {
 };
 
 /* ==========================================================================
+   POST /api/auth/verify-email { challenge, code }
+
+   Finishes whichever step issued the challenge (signup or a login on an unverified account) with the same
+   session shape login() hands back — the frontend's existing "sign in succeeded" handling covers both.
+   ========================================================================== */
+export const verifyEmailOtp = async (req, res) => {
+  const { challenge, code } = req.body || {};
+  const claim = readChallenge(challenge, 'email_otp');
+  if (!claim) return res.status(401).json({ success: false, message: 'That took too long. Sign in again.' });
+
+  try {
+    const user = (await pool.query(
+      `SELECT user_id, name, email, phone, email_verified, is_super_admin, token_version, totp_enabled, email_otp_hash, email_otp_expires_at
+       FROM users WHERE user_id = $1`, [claim.sub])).rows[0];
+    // a password change or sign-out-everywhere since the code was sent voids the challenge
+    if (!user || user.token_version !== (claim.tv ?? 0)) return res.status(401).json({ success: false, message: 'That took too long. Sign in again.' });
+
+    const locked = await lockedMinutes(pool, user.email);
+    if (locked) {
+      await recordLogin(pool, { userId: user.user_id, email: user.email, req, outcome: 'LOCKED' });
+      return res.status(429).json({ success: false, message: LOCKED(locked) });
+    }
+
+    const given = String(code ?? '').replace(/\s/g, '');
+    const expired = !user.email_otp_expires_at || new Date(user.email_otp_expires_at) <= new Date();
+    const hash = given ? crypto.createHash('sha256').update(given).digest('hex') : null;
+    const valid = !expired && user.email_otp_hash && hash === user.email_otp_hash;
+
+    if (!valid) {
+      await recordLogin(pool, { userId: user.user_id, email: user.email, req, outcome: 'EMAIL_OTP_FAILED' });
+      return res.status(401).json({ success: false, message: expired ? 'That code has expired. Request a new one.' : 'That code is not right.' });
+    }
+
+    await pool.query(`UPDATE users SET email_verified = TRUE, email_otp_hash = NULL, email_otp_expires_at = NULL WHERE user_id = $1`, [user.user_id]);
+    user.email_verified = true;   // so the session payload below reflects it immediately, not the pre-update read
+    recordAudit(req, { user_id: user.user_id, action: 'user.email_verified', resource_type: 'user', resource_id: user.user_id });
+    await finishLogin(req, res, user, 'EMAIL_OTP');
+  } catch (error) {
+    console.error('[auth] verify-email failed:', error.message);
+    res.status(500).json({ success: false, message: 'Could not verify your email' });
+  }
+};
+
+/* ==========================================================================
+   POST /api/auth/resend-email-otp { challenge }
+   ========================================================================== */
+export const resendEmailOtp = async (req, res) => {
+  const claim = readChallenge(req.body?.challenge, 'email_otp');
+  if (!claim) return res.status(401).json({ success: false, message: 'That took too long. Sign in again.' });
+
+  try {
+    const user = (await pool.query(`SELECT user_id, name, email, token_version FROM users WHERE user_id = $1`, [claim.sub])).rows[0];
+    if (!user || user.token_version !== (claim.tv ?? 0)) return res.status(401).json({ success: false, message: 'That took too long. Sign in again.' });
+
+    const locked = await lockedMinutes(pool, user.email);
+    if (locked) return res.status(429).json({ success: false, message: LOCKED(locked) });
+
+    await issueEmailOtp(user);
+    res.json({ success: true, message: 'A new code is on its way.' });
+  } catch (error) {
+    console.error('[auth] resend-email-otp failed:', error.message);
+    res.status(500).json({ success: false, message: 'Could not send a new code' });
+  }
+};
+
+/* ==========================================================================
    GET /api/auth/me
    ========================================================================== */
 export const me = async (req, res) => {
@@ -341,7 +422,10 @@ export const me = async (req, res) => {
 };
 
 /* ==========================================================================
-   POST /api/auth/forgot-password
+   POST /api/auth/forgot-password { email }
+
+   Emails a 6-digit code rather than a link — entered on the same screen that asked for it, no separate page
+   to land on. Still the one genuine-looking reply regardless of whether the address has an account.
    ========================================================================== */
 export const forgotPassword = async (req, res) => {
   const email = normaliseEmail(req.body?.email);
@@ -351,7 +435,7 @@ export const forgotPassword = async (req, res) => {
      test which of a leaked email list has FlowXP accounts. */
   const genericReply = () => res.json({
     success: true,
-    message: 'If that email has an account, a reset link is on its way.'
+    message: 'If that email has an account, a code is on its way.'
   });
 
   if (checkEmail(email)) return genericReply();
@@ -363,10 +447,10 @@ export const forgotPassword = async (req, res) => {
     if (!rows.length) return genericReply();
 
     const user = rows[0];
-    const token = crypto.randomBytes(32).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    const codeHash = crypto.createHash('sha256').update(code).digest('hex');
 
-    /* Invalidate outstanding links first. Without this, a reset requested by
+    /* Invalidate outstanding codes first. Without this, a reset requested by
        someone who has taken over the mailbox stays valid alongside the real
        owner's. */
     await pool.query(
@@ -377,10 +461,10 @@ export const forgotPassword = async (req, res) => {
     await pool.query(
       `INSERT INTO password_resets (token_hash, user_id, expires_at)
        VALUES ($1,$2,$3)`,
-      [tokenHash, user.user_id, new Date(Date.now() + RESET_TTL_MS)]
+      [codeHash, user.user_id, new Date(Date.now() + RESET_TTL_MS)]
     );
 
-    await sendPasswordReset(user.email, user.name, token);
+    await sendPasswordReset(user.email, user.name, code);
     genericReply();
   } catch (error) {
     console.error('[auth] forgot-password failed:', error.message);
@@ -389,43 +473,52 @@ export const forgotPassword = async (req, res) => {
 };
 
 /* ==========================================================================
-   POST /api/auth/reset-password
+   POST /api/auth/reset-password { email, code, password }
+
+   The code, not a token from a link, so `email` is needed to know whose lockout counter and whose pending
+   code to check against — the same login_events-based lockout as a wrong login password or wrong 2FA/email
+   code (see modules/security.js's lockedMinutes) protects a 6-digit code from being guessable in practice.
    ========================================================================== */
 export const resetPassword = async (req, res) => {
-  const { token, password } = req.body || {};
+  const email = normaliseEmail(req.body?.email);
+  const code = String(req.body?.code ?? '').replace(/\s/g, '');
+  const { password } = req.body || {};
   const error = checkPassword(password);
   if (error) return res.status(400).json({ success: false, message: error });
-  if (!token || typeof token !== 'string') {
-    return res.status(400).json({ success: false, message: 'This reset link is not valid' });
-  }
+  if (checkEmail(email)) return res.status(400).json({ success: false, message: 'Enter the email you requested the code with' });
+  if (!/^\d{6}$/.test(code)) return res.status(400).json({ success: false, message: 'Enter the 6-digit code' });
 
   try {
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const user = (await pool.query(`SELECT user_id FROM users WHERE email = $1`, [email])).rows[0];
+    // the same wrong answer whether the address or the code is what's wrong — nothing here should confirm an address exists
+    const wrong = () => res.status(400).json({ success: false, message: 'That code is not right, or has expired. Request a new one.' });
+    if (!user) return wrong();
+
+    const locked = await lockedMinutes(pool, email);
+    if (locked) return res.status(429).json({ success: false, message: LOCKED(locked) });
+
+    const codeHash = crypto.createHash('sha256').update(code).digest('hex');
     const { rows } = await pool.query(
-      `SELECT user_id FROM password_resets
-       WHERE token_hash = $1 AND used_at IS NULL AND expires_at > CURRENT_TIMESTAMP`,
-      [tokenHash]
+      `SELECT token_hash FROM password_resets
+       WHERE user_id = $1 AND token_hash = $2 AND used_at IS NULL AND expires_at > CURRENT_TIMESTAMP`,
+      [user.user_id, codeHash]
     );
     if (!rows.length) {
-      return res.status(400).json({
-        success: false,
-        message: 'This reset link has expired. Request a new one.'
-      });
+      await recordLogin(pool, { userId: user.user_id, email, req, outcome: 'PASSWORD_RESET_FAILED' });
+      return wrong();
     }
 
-    const userId = rows[0].user_id;
     const passwordHash = await bcrypt.hash(String(password), BCRYPT_ROUNDS);
-
     await pool.query(
       `UPDATE users SET password_hash = $1, token_version = token_version + 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2`,
-      [passwordHash, userId]
+      [passwordHash, user.user_id]
     );
     await pool.query(
       `UPDATE password_resets SET used_at = CURRENT_TIMESTAMP WHERE token_hash = $1`,
-      [tokenHash]
+      [rows[0].token_hash]
     );
 
-    recordAudit(req, { user_id: userId, action: 'user.password_reset', resource_type: 'user', resource_id: userId });
+    recordAudit(req, { user_id: user.user_id, action: 'user.password_reset', resource_type: 'user', resource_id: user.user_id });
     res.json({ success: true, message: 'Password updated. Sign in with your new password.' });
   } catch (dbError) {
     console.error('[auth] reset-password failed:', dbError.message);

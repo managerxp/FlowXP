@@ -16,7 +16,7 @@ import { useIdempotencyKey } from '../lib/idempotency.js';
 import { daysAgoISO } from '../lib/dates.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { RESTAURANT_TYPES } from '../lib/business.js';
-import { Alert, Button, Field, Input, Modal, Select, useToast, StatCard, EmptyState } from '../components/ui.jsx';
+import { AnimatedNumber, Alert, Button, Field, Input, Modal, Select, useToast, StatCard, EmptyState } from '../components/ui.jsx';
 
 const qty = (n) => Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 3 });
 const when = (iso) => {
@@ -41,7 +41,7 @@ const Meter = ({ item }) => {
   const pct = Math.max(0, Math.min(100, (item.current_stock / (item.min_stock * 2)) * 100));
   return (
     <span aria-hidden="true" className="mt-1.5 block h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
-      <span className={`block h-full rounded-full ${s === 'out' ? 'bg-danger' : s === 'low' ? 'bg-warning' : 'bg-brand-500'}`} style={{ width: `${Math.max(pct, s === 'out' ? 0 : 4)}%` }} />
+      <span className={`block h-full rounded-full transition-[width,background-color] duration-(--duration-moderate) ${s === 'out' ? 'bg-danger' : s === 'low' ? 'bg-warning' : 'bg-brand-500'}`} style={{ width: `${Math.max(pct, s === 'out' ? 0 : 4)}%` }} />
     </span>
   );
 };
@@ -419,7 +419,7 @@ const ItemPanel = ({ item, refreshKey, canWrite, multiOutlet, allView, onAction,
         <h2 className="mt-0.5 text-title font-semibold text-ink-900">{item.name}</h2>
         <div className="mt-3 flex items-end justify-between gap-4">
           <p>
-            <span className={`tabular text-[32px] font-semibold leading-none tracking-tight ${s === 'out' ? 'text-danger' : s === 'low' ? 'text-warning' : 'text-ink-900'}`}>{qty(item.current_stock)}</span>
+            <AnimatedNumber value={item.current_stock} format={qty} className={`text-[32px] font-semibold leading-none tracking-tight transition-colors duration-(--duration-normal) ${s === 'out' ? 'text-danger' : s === 'low' ? 'text-warning' : 'text-ink-900'}`} />
             <span className="ml-1.5 text-body text-ink-500">{item.unit}</span>
           </p>
           <p className="tabular text-right text-small text-ink-500"><span className="block font-semibold text-ink-900">{formatCurrency(item.stock_value)}</span>{item.unit_cost > 0 ? `at ${formatCurrency(item.unit_cost)} a ${item.unit}` : 'no cost set'}</p>
@@ -486,7 +486,7 @@ const ItemRow = ({ item, active, onOpen }) => (
         <span className="block max-w-[14rem]"><Meter item={item} /></span>
       </span>
       <span className="text-right">
-        <span className={`tabular block text-small font-semibold ${stateOf(item) === 'out' ? 'text-danger' : stateOf(item) === 'low' ? 'text-warning' : 'text-ink-900'}`}>{qty(item.current_stock)} {item.unit}</span>
+        <span className={`block text-small font-semibold ${stateOf(item) === 'out' ? 'text-danger' : stateOf(item) === 'low' ? 'text-warning' : 'text-ink-900'}`}><AnimatedNumber value={item.current_stock} format={qty} /> {item.unit}</span>
         <span className="tabular block text-caption text-ink-500">{formatCurrency(item.stock_value)}</span>
       </span>
     </button>

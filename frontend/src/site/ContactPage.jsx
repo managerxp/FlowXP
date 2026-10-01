@@ -2,6 +2,7 @@
  * /contact — real ways to reach us. No form: there is no endpoint behind one
  * yet, and a form that silently goes nowhere is worse than an email address.
  */
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Section } from '../components/ui.jsx';
 import Reveal from '../components/Reveal.jsx';
@@ -9,6 +10,28 @@ import { FAQ } from './content.js';
 import { PageHero, TextLink } from './parts.jsx';
 
 const EMAIL = 'flowxp.manager@gmail.com';
+
+/* The one bit of "delight" this deliberately form-free page earns: copying the address is one tap on a
+   phone, rather than a long-press-to-select. Falls back to just the mailto link if the clipboard API is
+   blocked (an iframe preview, an old browser) — nothing here depends on it working. */
+const EmailLink = () => {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(EMAIL); setCopied(true); setTimeout(() => setCopied(false), 1600); }
+    catch { /* clipboard blocked: the mailto link below still works */ }
+  };
+  return (
+    <span className="inline-flex flex-wrap items-center gap-3">
+      <a href={`mailto:${EMAIL}`} className="text-h3 font-semibold text-brand-600 hover:text-brand-700">{EMAIL}</a>
+      <button
+        type="button" onClick={copy}
+        className="rounded-md border border-line-strong px-2.5 py-1 text-small font-medium text-ink-700 transition-colors duration-(--duration-fast) hover:border-ink-400"
+      >
+        {copied ? 'Copied' : 'Copy'}
+      </button>
+    </span>
+  );
+};
 
 const WAYS = [
   { title: 'Questions before you sign up', body: 'Pricing, moving from your current software, or whether FlowXP fits how you work.', action: 'Email us', href: `mailto:${EMAIL}?subject=${encodeURIComponent('Question about FlowXP')}` },
@@ -24,7 +47,7 @@ const ContactPage = () => (
       lead="We would rather answer your questions before you sign up than after. Write to us and someone from the FlowXP team will reply."
       cta={false}
     >
-      <a href={`mailto:${EMAIL}`} className="text-h3 font-semibold text-brand-600 hover:text-brand-700">{EMAIL}</a>
+      <EmailLink />
     </PageHero>
 
     <Section>
