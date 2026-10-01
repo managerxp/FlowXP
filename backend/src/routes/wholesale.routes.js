@@ -97,6 +97,7 @@ router.post('/orders/:id/submit', ...write, can('sales_orders'), ...orderGate, o
 router.post('/orders/:id/confirm', ...write, can('sales_orders'), ...orderGate, once, orders.confirm);
 router.post('/orders/:id/reserve', ...write, any('sales_orders', 'fulfilment'), ...orderGate, once, orders.reserve);
 router.post('/orders/:id/cancel', ...write, can('sales_orders'), ...orderGate, once, orders.cancel);
+router.post('/orders/:id/reject', ...write, can('sales_cancel'), ...orderGate, once, orders.reject);
 router.post('/orders/:id/close', ...write, can('sales_cancel'), ...orderGate, once, orders.close);
 
 /* ── warehouse fulfilment: pick → pack → dispatch → deliver ──────────────── */
@@ -157,13 +158,13 @@ router.post('/grns', ...write, any('purchases', 'inventory'), once, purchasing.c
 router.get('/grns/:id', ...read, any('purchases', 'inventory'), purchasing.getGRN);
 
 /* ── customer receipts, advances, refunds ─────────────────────────────────── */
-router.get('/receipts', ...read, any('payments', 'reports'), money.list);
-router.post('/receipts', ...write, can('payments'), once, money.create);
-router.get('/receipts/:id', ...read, any('payments', 'reports'), money.get);
-router.post('/receipts/:id/allocate', ...write, can('payments'), once, money.allocateLater);
+router.get('/receipts', ...read, any('payments', 'reports', 'collections'), money.list);
+router.post('/receipts', ...write, any('payments', 'collections'), once, money.create);
+router.get('/receipts/:id', ...read, any('payments', 'reports', 'collections'), money.get);
+router.post('/receipts/:id/allocate', ...write, any('payments', 'collections'), once, money.allocateLater);
 router.post('/receipts/:id/reverse', ...write, can('refunds'), once, money.reverse);
 router.post('/refunds', ...write, can('refunds'), once, money.refund);
-router.get('/customers/:id/open-invoices', ...read, any('payments', 'billing', 'customers'), money.openInvoices);
+router.get('/customers/:id/open-invoices', ...read, any('payments', 'billing', 'customers', 'collections'), money.openInvoices);
 
 /* ── returns (credit notes and debit notes) ───────────────────────────────── */
 router.get('/returns', ...read, any('refunds', 'inventory', 'purchases', 'reports'), returns.list);

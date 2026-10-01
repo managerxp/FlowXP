@@ -8,6 +8,7 @@
  * Confirming reserves what is on the shelf; whatever is short stays a back-order and is reserved when stock arrives
  * (POST /orders/:id/reserve, or automatically when a goods receipt is posted).
  */
+import { fieldContext } from '../modules/distributor/field.js';
 import pool from '../config/database.js';
 import { toRupees } from '../utils/money.js';
 import { hasPermission } from '../middleware/auth.js';
@@ -25,7 +26,7 @@ import { mySalesperson } from './wholesaleParties.controller.js';
 
 const rupees = (v) => toRupees(Number(v || 0));
 
-const STATUSES = ['DRAFT', 'PENDING', 'CONFIRMED', 'PARTIALLY_FULFILLED', 'FULFILLED', 'PACKED', 'DISPATCHED', 'DELIVERED', 'CANCELLED'];
+const STATUSES = ['DRAFT', 'PENDING', 'CONFIRMED', 'PARTIALLY_FULFILLED', 'FULFILLED', 'PACKED', 'DISPATCHED', 'DELIVERED', 'CANCELLED', 'REJECTED'];
 
 const HEADER_SELECT = `
   SELECT o.*, c.name AS customer_name, c.phone AS customer_phone, c.gstin AS customer_gstin, sp.name AS salesperson_name, b.name AS warehouse_name, u.name AS created_by_name
@@ -38,7 +39,8 @@ const headerShape = (o) => ({
   salesperson_id: o.salesperson_id, salesperson: o.salesperson_name, payment_terms_days: o.payment_terms_days, expected_delivery: o.expected_delivery,
   shipping_address: o.shipping_address, shipping_charge: rupees(o.shipping_charge_paise), shipping_tax_rate: Number(o.shipping_tax_rate), discount: rupees(o.discount_paise),
   subtotal: rupees(o.subtotal_paise), tax: rupees(o.tax_paise), total: rupees(o.total_paise), customer_po: o.customer_po, notes: o.notes, credit_note: o.credit_note,
-  approval_needed: o.approval_needed, created_by: o.created_by_name, created_at: o.created_at, confirmed_at: o.confirmed_at, cancelled_at: o.cancelled_at, cancel_reason: o.cancel_reason
+  approval_needed: o.approval_needed, created_by: o.created_by_name, created_at: o.created_at, confirmed_at: o.confirmed_at, cancelled_at: o.cancelled_at, cancel_reason: o.cancel_reason,
+  territory_id: o.territory_id ?? null, beat_id: o.beat_id ?? null, visit_id: o.visit_id ?? null, source: o.source ?? 'OFFICE', reject_reason: o.reject_reason ?? null
 });
 
 const itemShape = (it, name, avail, unitEntry) => {
@@ -225,7 +227,7 @@ const create = async (req, res) => {
   const h = await headerFields(req, b, customer, settings);
   const orderId = await withTransaction(async (client) => {
     const number = await nextNumber(client, req.tenant.businessId, 'SO', settings.order_prefix);
-    const cols = { ...h, branch_id: branchId, customer_id: customer.customer_id, order_number: number, status: bool(b.submit) ? 'PENDING' : 'DRAFT', created_by: req.auth.userId };
+    const cols = { ...h, ...(await fieldContext(req, b, customer)), branch_id: branchId, customer_id: customer.customer_id, order_number: number, status: bool(b.submit) ? 'PENDING' : 'DRAFT', created_by: req.auth.userId };
     const keys = Object.keys(cols);
     const row = (await client.query(`INSERT INTO wholesale_sales_orders (business_id, ${keys.join(', ')}) VALUES ($1, ${keys.map((_, i) => `$${i + 2}`).join(', ')}) RETURNING *`, [req.tenant.businessId, ...keys.map((k) => cols[k])])).rows[0];
     await saveLines(client, req, row, b, customer, settings);
@@ -297,7 +299,7 @@ const confirm = async (req, res) => {
   const credit = await checkCredit(pool, { businessId: req.tenant.businessId, customerId: o.customer_id, amountPaise: Number(o.total_paise), excludeOrderId: o.order_id, settings });
   let creditNote = null;
   if (credit.level === 'BLOCK') {
-    if (!(bool(b.credit_override) && hasPermission(req.tenant, 'sales_cancel'))) {
+    if (!(bool(b.credit_override) && hasPermission(req.tenant, 'sales_cancel') && settings.credit_manager_override !== false)) {
       throw new WholesaleError(409, `Credit limit: ${credit.reasons.join('. ')}`, { code: 'CREDIT_BLOCK', data: { reasons: credit.reasons } });
     }
     creditNote = `Override by ${req.auth.userId}: ${text(b.reason, 'Reason', { max: 120 }) || 'no reason given'} (${credit.reasons.join('; ')})`.slice(0, 200);
@@ -318,6 +320,18 @@ const confirm = async (req, res) => {
   notify(req, 'order_confirmed', { customerId: o.customer_id, values: { order: o.order_number, total: Number(o.total_paise) } });
   const out = await fullOrder(pool, req.tenant.businessId, await loadOrder(pool, req.tenant.businessId, o.order_id));
   ok(res, { ...out, warnings: credit.level === 'WARN' ? credit.reasons : [], backordered: result });
+};
+
+/* POST /orders/:id/reject { reason } — the approver says no to a submitted order; nothing was reserved, so nothing is released */
+const reject = async (req, res) => {
+  const o = await visibleOrder(req, req.params.id);
+  if (!hasPermission(req.tenant, 'sales_cancel')) throw new WholesaleError(403, 'You do not have permission to reject an order');
+  if (o.status !== 'PENDING') throw new WholesaleError(409, 'Only a submitted order can be rejected');
+  const reason = text(req.body?.reason, 'Reason', { max: 200, required: true, min: 3 });
+  const hit = await pool.query(`UPDATE wholesale_sales_orders SET status = 'REJECTED', rejected_by = $2, reject_reason = $3, updated_at = CURRENT_TIMESTAMP WHERE order_id = $1 AND status = 'PENDING' RETURNING order_id`, [o.order_id, req.auth.userId, reason]);
+  if (!hit.rowCount) throw new WholesaleError(409, 'This order has already been handled');
+  audit(req, 'wholesale.order_rejected', 'sales_order', o.order_id, null, null, { number: o.order_number, reason });
+  ok(res, await fullOrder(pool, req.tenant.businessId, await loadOrder(pool, req.tenant.businessId, o.order_id)));
 };
 
 /* POST /orders/:id/reserve — try again to reserve what a back-order is waiting for (stock has arrived) */
@@ -395,5 +409,5 @@ const backorders = async (req, res) => {
   ok(res, rows.map((r) => ({ ...r, short: Number(r.short), available: Number(r.available) })));
 };
 
-export default wrapAll({ list, get, preview, create, update, submit, confirm, reserve: reserveAgain, cancel, close: closeOrder, backorders });
+export default wrapAll({ list, get, preview, create, update, submit, confirm, reserve: reserveAgain, cancel, close: closeOrder, reject, backorders });
 export { loadOrder, fullOrder };

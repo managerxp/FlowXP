@@ -11,6 +11,7 @@ import pool from '../config/database.js';
 import { toRupees } from '../utils/money.js';
 import { customerBalances } from '../modules/wholesale/ledger.js';
 import { notify } from '../modules/wholesale/notify.js';
+import { mySalesperson } from './wholesaleParties.controller.js';
 import {
   WholesaleError, audit, getSettings, int, isoDate, like, nextNumber, ok, oneOf, page, paging, text, today, withTransaction, wrapAll
 } from '../modules/wholesale/common.js';
@@ -32,6 +33,8 @@ const list = async (req, res) => {
   if (req.query.customer_id) { values.push(Number(req.query.customer_id) || 0); where.push(`r.customer_id = $${values.length}`); }
   if (req.query.method) { values.push(String(req.query.method).toUpperCase()); where.push(`r.method = $${values.length}`); }
   if (req.query.status) { values.push(String(req.query.status).toUpperCase()); where.push(`r.status = $${values.length}`); }
+  // a field rep or collection executive sees the receipts they took, not the whole cash book
+  if (['FIELD_SALES', 'COLLECTION_EXECUTIVE'].includes(req.tenant.role)) { values.push(req.auth.userId); where.push(`r.created_by = $${values.length}`); }
   if (req.query.advance === '1') where.push(`r.kind = 'RECEIPT' AND r.status = 'POSTED' AND r.amount_paise > r.allocated_paise`);
   const from = isoDate(req.query.from, 'From'); const to = isoDate(req.query.to, 'To');
   if (from) { values.push(from); where.push(`r.receipt_date >= $${values.length}`); }
@@ -119,6 +122,12 @@ const create = async (req, res) => {
   if (!Number.isFinite(amount) || amount <= 0) throw new WholesaleError(400, 'Enter the amount received');
   if (amount > 100000000000) throw new WholesaleError(400, 'That amount is too large');
   const reference = text(b.reference, 'Reference', { max: 80 });
+  const visitId = int(b.visit_id, 'Visit', { min: 1 });
+  const fieldRole = ['FIELD_SALES', 'COLLECTION_EXECUTIVE'].includes(req.tenant.role);
+  if (fieldRole && (await getSettings(pool, req.tenant.businessId)).field_collections === false) throw new WholesaleError(403, 'Collecting payments in the field is switched off in settings');
+  const mine = await mySalesperson(req);
+  if (mine != null && !(await pool.query(`SELECT 1 FROM wholesale_customer_profiles WHERE customer_id = $1 AND salesperson_id = $2`, [customerId, mine])).rowCount) throw new WholesaleError(403, 'That customer is not assigned to you');
+  if (visitId && !(await pool.query(`SELECT 1 FROM dist_visits WHERE business_id = $1 AND visit_id = $2 AND customer_id = $3`, [req.tenant.businessId, visitId, customerId])).rowCount) throw new WholesaleError(400, 'That visit was not found for this customer');
   if (['CHEQUE', 'BANK_TRANSFER', 'UPI'].includes(method) && !reference) throw new WholesaleError(400, method === 'CHEQUE' ? 'Enter the cheque number' : 'Enter the transaction reference');
   const out = await withTransaction(async (client) => {
     const customer = (await client.query(`SELECT customer_id, name FROM customers WHERE business_id = $1 AND customer_id = $2 FOR UPDATE`, [req.tenant.businessId, customerId])).rows[0];
@@ -126,9 +135,9 @@ const create = async (req, res) => {
     const date = isoDate(b.receipt_date, 'Receipt date') || await today(client, req.tenant.businessId);
     const number = await nextNumber(client, req.tenant.businessId, 'RC', 'RC');
     const receipt = (await client.query(
-      `INSERT INTO wholesale_receipts (business_id, branch_id, customer_id, receipt_number, receipt_date, method, reference, cheque_date, bank, amount_paise, notes, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-      [req.tenant.businessId, req.tenant.branchId, customerId, number, date, method, reference, isoDate(b.cheque_date, 'Cheque date'), text(b.bank, 'Bank', { max: 80 }), amount, text(b.notes, 'Notes', { max: 300 }), req.auth.userId])).rows[0];
+      `INSERT INTO wholesale_receipts (business_id, branch_id, customer_id, receipt_number, receipt_date, method, reference, cheque_date, bank, amount_paise, notes, created_by, visit_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+      [req.tenant.businessId, req.tenant.branchId, customerId, number, date, method, reference, isoDate(b.cheque_date, 'Cheque date'), text(b.bank, 'Bank', { max: 80 }), amount, text(b.notes, 'Notes', { max: 300 }), req.auth.userId, visitId])).rows[0];
     let plan = cleanPlan(b.allocations, amount);
     if (!plan.length && String(b.allocate || 'OLDEST').toUpperCase() !== 'NONE') plan = await oldestFirst(client, req.tenant.businessId, customerId, amount);
     const done = plan.length ? await allocate(client, req, receipt, plan) : 0;

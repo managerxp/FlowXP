@@ -11,6 +11,7 @@ import { idempotent } from '../middleware/idempotency.js';
 import { distributorOn, wholesaleOnly } from '../modules/distributor/common.js';
 import principals from '../controllers/distributorPrincipals.controller.js';
 import territories from '../controllers/distributorTerritories.controller.js';
+import team from '../controllers/distributorTeam.controller.js';
 
 const router = Router();
 
@@ -41,5 +42,24 @@ router.get('/beats', ...read, any('territories', 'field_sales', 'reports'), terr
 router.post('/beats', ...write, can('territories'), territories.createBeat);
 router.get('/beats/:id', ...read, any('territories', 'field_sales', 'reports'), territories.getBeat);
 router.put('/beats/:id', ...write, can('territories'), territories.updateBeat);
+
+/* ── sales team, targets, commission ──────────────────────────────────────── */
+router.get('/team', ...read, any('targets', 'territories', 'reports', 'field_sales'), team.team);
+router.get('/targets', ...read, any('targets', 'reports', 'field_sales'), team.listTargets);
+router.post('/targets', ...write, can('targets'), team.setTarget);
+router.post('/targets/bulk', ...write, can('targets'), team.bulkTargets);
+router.delete('/targets/:id', ...write, can('targets'), team.deleteTarget);
+router.get('/commission/rules', ...read, any('targets', 'reports'), team.listRules);
+router.post('/commission/rules', ...write, can('targets'), team.createRule);
+router.put('/commission/rules/:id', ...write, can('targets'), team.updateRule);
+router.delete('/commission/rules/:id', ...write, can('targets'), team.deleteRule);
+router.get('/commission', ...read, any('targets', 'reports', 'field_sales'), team.commissionStatement);
+
+/* ── field sales: visits and the rep's day ────────────────────────────────── */
+router.get('/visits', ...read, any('field_sales', 'reports', 'territories'), team.listVisits);
+router.post('/visits', ...write, can('field_sales'), team.recordVisit);
+router.patch('/visits/:id', ...write, can('field_sales'), team.updateVisit);
+router.get('/field/today', ...read, can('field_sales'), team.fieldToday);
+router.get('/field/customers/:id', ...read, can('field_sales'), team.fieldCustomer);
 
 export default router;
