@@ -50,7 +50,7 @@ const finish = (res, req, kind, rows, errors, apply, written) => {
 
 /*
  * POST /import/products { rows, apply?: true, mode?: 'create' | 'upsert' }
- * columns: name*, sku, barcode, unit, category, hsn, tax_rate, purchase_price, wholesale_price, distributor_price, retailer_price, mrp, moq, reorder_level, max_stock,
+ * columns: name*, sku, barcode, unit, category, brand, principal, pack_size, principal_price, hsn, tax_rate, purchase_price, wholesale_price, distributor_price, retailer_price, mrp, moq, reorder_level, max_stock,
  *          batch_tracking, expiry_tracking, unit_1_name, unit_1_factor, unit_2_name, unit_2_factor, opening_stock, warehouse, batch_no, expiry_date
  */
 const importProducts = async (req, res) => {
@@ -60,9 +60,12 @@ const importProducts = async (req, res) => {
   const warehouses = new Map((await pool.query(`SELECT branch_id, lower(name) AS n FROM branches WHERE business_id = $1 AND status = 'ACTIVE'`, [businessId])).rows.map((r) => [r.n, r.branch_id]));
   const existing = new Map((await pool.query(`SELECT product_id, lower(sku) AS sku FROM products WHERE business_id = $1 AND sku IS NOT NULL`, [businessId])).rows.map((r) => [r.sku, r.product_id]));
   const taken = new Set((await pool.query(`SELECT barcode FROM products WHERE business_id = $1 AND barcode IS NOT NULL`, [businessId])).rows.map((r) => r.barcode));
+  const principalsByName = new Map((await pool.query(`SELECT principal_id, lower(name) AS n FROM dist_principals WHERE business_id = $1`, [businessId])).rows.map((r) => [r.n, r.principal_id]));
   const seenSku = new Set(); const seenBar = new Set();
   const { errors, ok: items } = await checkAll(rows, async (r) => {
     const name = text(r.name, 'Name', { max: 160, min: 2, required: true });
+    let principalId = null;
+    if (!blank(r.principal)) { principalId = principalsByName.get(String(r.principal).trim().toLowerCase()); if (!principalId) throw new WholesaleError(400, `Principal "${r.principal}" was not found. Add it under Principals first.`); }
     const sku = text(r.sku, 'SKU', { max: 64 }); const barcode = text(r.barcode, 'Barcode', { max: 64 });
     if (sku) { if (seenSku.has(sku.toLowerCase())) throw new WholesaleError(400, `SKU ${sku} appears twice in the file`); seenSku.add(sku.toLowerCase()); }
     if (barcode) { if (seenBar.has(barcode)) throw new WholesaleError(400, `Barcode ${barcode} appears twice in the file`); seenBar.add(barcode); }
@@ -90,6 +93,7 @@ const importProducts = async (req, res) => {
     }
     const expiry = isoDate(r.expiry_date, 'Expiry date');
     return {
+      principalId, brand: text(r.brand, 'Brand', { max: 80 }), packSize: text(r.pack_size, 'Pack size', { max: 40 }), principalPrice: paise(r.principal_price, 'Principal price'),
       productId, name, sku, barcode, unit, units, category, hsn: text(r.hsn || r.hsn_sac, 'HSN', { max: 16 }), tax, cost: paise(r.purchase_price, 'Purchase price'),
       wholesale: paise(r.wholesale_price ?? r.selling_price, 'Wholesale price'), distributor: paise(r.distributor_price, 'Distributor price'), retailer: paise(r.retailer_price, 'Retailer price'), mrp: paise(r.mrp, 'MRP'),
       moq: dec(r.moq, 'MOQ', { min: 0.001 }) ?? 1, reorder: dec(r.reorder_level, 'Reorder level', { min: 0 }), max: dec(r.max_stock, 'Max stock', { min: 0 }),
@@ -127,6 +131,15 @@ const importProducts = async (req, res) => {
            wholesale_price_paise = COALESCE(EXCLUDED.wholesale_price_paise, wholesale_item_details.wholesale_price_paise), retailer_price_paise = COALESCE(EXCLUDED.retailer_price_paise, wholesale_item_details.retailer_price_paise),
            moq = EXCLUDED.moq, max_stock = COALESCE(EXCLUDED.max_stock, wholesale_item_details.max_stock), batch_tracking = wholesale_item_details.batch_tracking OR EXCLUDED.batch_tracking, expiry_tracking = wholesale_item_details.expiry_tracking OR EXCLUDED.expiry_tracking, updated_at = CURRENT_TIMESTAMP`,
         [id, businessId, it.mrp, it.distributor, it.wholesale, it.retailer, it.moq, it.max, it.batch, it.expiryTracking]);
+      if (it.brand) {
+        let brandId = (await client.query(`SELECT brand_id FROM brands WHERE business_id = $1 AND lower(name) = lower($2)`, [businessId, it.brand])).rows[0]?.brand_id;
+        if (!brandId) brandId = (await client.query(`INSERT INTO brands (business_id, name, principal_id, sort_order) VALUES ($1,$2,$3,(SELECT COALESCE(MAX(sort_order), 0) + 1 FROM brands WHERE business_id = $1)) RETURNING brand_id`, [businessId, it.brand, it.principalId])).rows[0].brand_id;
+        else if (it.principalId) await client.query(`UPDATE brands SET principal_id = COALESCE(principal_id, $2) WHERE brand_id = $1`, [brandId, it.principalId]);
+        await client.query(`UPDATE products SET brand_id = $2 WHERE product_id = $1`, [id, brandId]);
+      }
+      if (it.principalId || it.packSize || it.principalPrice != null) {
+        await client.query(`UPDATE wholesale_item_details SET principal_id = COALESCE($2, principal_id), pack_size = COALESCE($3, pack_size), principal_price_paise = COALESCE($4, principal_price_paise) WHERE product_id = $1`, [id, it.principalId, it.packSize, it.principalPrice]);
+      }
       for (const u of it.units) await client.query(`INSERT INTO wholesale_product_units (business_id, product_id, unit_name, factor) VALUES ($1,$2,$3,$4) ON CONFLICT (product_id, lower(unit_name)) DO UPDATE SET factor = EXCLUDED.factor`, [businessId, id, u.unit_name, u.factor]);
       if (it.stock > 0) {
         await client.query(`SELECT 1 FROM products WHERE product_id = $1 FOR UPDATE`, [id]);
@@ -151,13 +164,16 @@ const phoneKey = (v) => String(v ?? '').replace(/\D/g, '').slice(-10);
 
 /*
  * POST /import/customers { rows, apply? }
- * columns: name*, phone, email, gstin, pan, type, contact_person, address, city, state, pincode, shipping_address, payment_terms_days, credit_limit, opening_balance, salesperson, price_list, discount_pct
+ * columns: name*, phone, email, gstin, pan, type, contact_person, address, city, state, pincode, shipping_address, payment_terms_days, credit_limit, opening_balance, salesperson, price_list, discount_pct,
+ *          territory (a region / territory / area by name), beat (an existing beat; the retailer goes to the end of its route)
  * A row matching an existing customer (same GSTIN, else same mobile number) updates that customer.
  */
 const importCustomers = async (req, res) => {
   const rows = rowsOf(req.body); const apply = bool(req.body.apply); const businessId = req.tenant.businessId;
   const people = new Map((await pool.query(`SELECT salesperson_id, lower(name) AS n FROM wholesale_salespeople WHERE business_id = $1`, [businessId])).rows.map((r) => [r.n, r.salesperson_id]));
   const lists = new Map((await pool.query(`SELECT list_id, lower(name) AS n FROM wholesale_price_lists WHERE business_id = $1`, [businessId])).rows.map((r) => [r.n, r.list_id]));
+  const nodes = (await pool.query(`SELECT territory_id, lower(name) AS n, level FROM dist_territories WHERE business_id = $1`, [businessId])).rows;
+  const beats = new Map((await pool.query(`SELECT beat_id, lower(name) AS n, weekday FROM dist_beats WHERE business_id = $1`, [businessId])).rows.map((r) => [r.n, r]));
   const byGst = new Map(); const byPhone = new Map();
   for (const c of (await pool.query(`SELECT customer_id, gstin, phone FROM customers WHERE business_id = $1`, [businessId])).rows) { if (c.gstin) byGst.set(c.gstin.toUpperCase(), c.customer_id); if (phoneKey(c.phone).length === 10) byPhone.set(phoneKey(c.phone), c.customer_id); }
   const seen = new Set();
@@ -174,7 +190,18 @@ const importCustomers = async (req, res) => {
     let sp = null; if (!blank(r.salesperson)) { sp = people.get(String(r.salesperson).trim().toLowerCase()); if (!sp) throw new WholesaleError(400, `Salesperson "${r.salesperson}" was not found`); }
     let pl = null; if (!blank(r.price_list)) { pl = lists.get(String(r.price_list).trim().toLowerCase()); if (!pl) throw new WholesaleError(400, `Price list "${r.price_list}" was not found`); }
     const pin = text(r.pincode, 'Pincode', { max: 6 }); if (pin && !/^[1-9]\d{5}$/.test(pin)) throw new WholesaleError(400, 'A pincode is 6 digits');
+    // a territory by name — "Ameerpet", or the whole path "South > Secunderabad > Ameerpet" (the last name counts); it has to be unambiguous
+    let territoryId = null;
+    if (!blank(r.territory)) {
+      const last = String(r.territory).split(/[>/›]/).pop().trim().toLowerCase();
+      const hit = nodes.filter((x) => x.n === last);
+      if (!hit.length) throw new WholesaleError(400, `Territory "${r.territory}" was not found`);
+      if (hit.length > 1) throw new WholesaleError(400, `"${r.territory}" matches more than one territory. Use a more specific name.`);
+      territoryId = hit[0].territory_id;
+    }
+    let beat = null; if (!blank(r.beat)) { beat = beats.get(String(r.beat).trim().toLowerCase()); if (!beat) throw new WholesaleError(400, `Beat "${r.beat}" was not found`); }
     return {
+      territoryId, beat,
       customerId, name, phone, email: blank(r.email) ? null : String(r.email).trim().toLowerCase(), gstin: g, pan: pan(r.pan), type, contact: text(r.contact_person, 'Contact', { max: 120 }), address: text(r.address, 'Address', { max: 400 }), city: text(r.city, 'City', { max: 80 }),
       state: text(r.state, 'State', { max: 80 }), pincode: pin, shipping: text(r.shipping_address, 'Shipping address', { max: 400 }), terms: dec(r.payment_terms_days, 'Payment terms', { min: 0, max: 365 }), limit: paise(r.credit_limit, 'Credit limit'),
       opening: blank(r.opening_balance) ? null : Math.round(Number(String(r.opening_balance).replace(/[₹,]/g, '')) * 100), sp, pl, discount: dec(r.discount_pct, 'Discount', { min: 0, max: 100 })
@@ -201,6 +228,14 @@ const importCustomers = async (req, res) => {
            payment_terms_days = COALESCE($9, wholesale_customer_profiles.payment_terms_days), salesperson_id = COALESCE($10, wholesale_customer_profiles.salesperson_id), price_list_id = COALESCE($11, wholesale_customer_profiles.price_list_id),
            default_discount_pct = COALESCE($12, wholesale_customer_profiles.default_discount_pct), opening_balance_paise = COALESCE($13, wholesale_customer_profiles.opening_balance_paise), updated_at = CURRENT_TIMESTAMP`,
         [id, businessId, it.type, it.contact, it.pan, it.address, it.shipping, it.city, it.terms, it.sp, it.pl, it.discount, it.opening]);
+      if (it.territoryId) await client.query(`UPDATE wholesale_customer_profiles SET territory_id = $2 WHERE customer_id = $1`, [id, it.territoryId]);
+      if (it.beat) {
+        // on the beat, at the end of its route — unless the retailer is already on a beat that runs the same day
+        const clash = it.beat.weekday != null ? (await client.query(
+          `SELECT b.name FROM dist_beat_customers bc JOIN dist_beats b ON b.beat_id = bc.beat_id WHERE bc.customer_id = $1 AND b.beat_id <> $2 AND b.status = 'ACTIVE' AND b.weekday = $3 LIMIT 1`, [id, it.beat.beat_id, it.beat.weekday])).rows[0] : null;
+        if (clash) throw new WholesaleError(409, `${it.name} is already on ${clash.name}, which runs on the same day`);
+        await client.query(`INSERT INTO dist_beat_customers (beat_id, customer_id, business_id, seq) VALUES ($1,$2,$3,(SELECT COALESCE(MAX(seq), 0) + 1 FROM dist_beat_customers WHERE beat_id = $1)) ON CONFLICT DO NOTHING`, [it.beat.beat_id, id, businessId]);
+      }
     }
   });
   finish(res, req, 'customers', rows, errors, apply, { created, updated });
@@ -287,4 +322,5 @@ const bulkCustomers = async (req, res) => {
   ok(res, { updated: count });
 };
 
+export { rowsOf, lower, checkAll, finish, blank, paise, dec, yes };
 export default wrapAll({ importProducts, importCustomers, importSuppliers, bulkProducts, bulkCustomers });

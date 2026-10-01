@@ -15,6 +15,7 @@ import territories from '../controllers/distributorTerritories.controller.js';
 import schemes from '../controllers/distributorSchemes.controller.js';
 import vehicles from '../controllers/distributorVehicles.controller.js';
 import dashboard from '../controllers/distributorDashboard.controller.js';
+import importer from '../controllers/distributorImport.controller.js';
 import team from '../controllers/distributorTeam.controller.js';
 
 const router = Router();
@@ -26,6 +27,10 @@ const can = (p) => requirePermission(p);
 const once = idempotent();
 
 router.get('/dashboard', ...read, any('reports', 'payments', 'sales_orders', 'fulfilment', 'inventory', 'purchases', 'field_sales'), dashboard.dashboard);
+
+/* ── bulk imports (the product and retailer imports are the wholesale ones, extended with principal, brand, territory and beat) ── */
+router.post('/import/price-list', ...write, can('pricing'), importer.importPriceList);
+router.post('/import/stock', ...write, any('inventory', 'vehicles'), importer.importStock);
 
 /* ── principals and brands ────────────────────────────────────────────────── */
 router.get('/principals', ...read, any('principals', 'products', 'purchases', 'reports'), principals.list);
