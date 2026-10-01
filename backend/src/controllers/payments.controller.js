@@ -10,7 +10,7 @@ import { recordAudit } from '../modules/events.js';
 import { toPaise, toRupees } from '../utils/money.js';
 import { branchFilter } from '../utils/scope.js';
 
-const METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CREDIT', 'OTHER'];
+const METHODS = ['CHEQUE', 'CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CREDIT', 'OTHER'];
 const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v));
 
 /* The payments table holds both sides: money taken from customers (po_id is null)

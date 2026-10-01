@@ -96,6 +96,37 @@ export const TEMPLATES = {
     vars: ['name', 'business', 'number', 'amount'],
     text: (p) => `Hi ${p.name}, a gentle reminder that ${p.amount} is still due on bill ${p.number} at ${p.business}. Thank you!`
   },
+  // Wholesale. Kinds stay within the messages.kind column (24 characters).
+  WS_ORDER_CONFIRMED: {
+    name: 'flowxp_ws_order_confirmed', promo: false,
+    vars: ['name', 'business', 'order', 'total'],
+    text: (p) => `Hi ${p.name}, ${p.business} has confirmed your order ${p.order} (${p.total}). We will let you know when it is dispatched.`
+  },
+  WS_ORDER_DISPATCHED: {
+    name: 'flowxp_ws_order_dispatched', promo: false,
+    vars: ['name', 'business', 'order', 'invoice', 'vehicle'],
+    text: (p) => `Hi ${p.name}, your order ${p.order} from ${p.business} has been dispatched with invoice ${p.invoice}${p.vehicle === '-' ? '' : ` on vehicle ${p.vehicle}`}.`
+  },
+  WS_INVOICE: {
+    name: 'flowxp_ws_invoice', promo: false,
+    vars: ['name', 'business', 'number', 'total', 'due', 'link'],
+    text: (p) => `Hi ${p.name}, invoice ${p.number} from ${p.business} for ${p.total} is due on ${p.due}. View it here: ${p.link}`
+  },
+  WS_PAYMENT_RECEIVED: {
+    name: 'flowxp_ws_payment_received', promo: false,
+    vars: ['name', 'business', 'amount', 'receipt'],
+    text: (p) => `Hi ${p.name}, ${p.business} has received your payment of ${p.amount} (receipt ${p.receipt}). Thank you!`
+  },
+  WS_PAYMENT_DUE: {
+    name: 'flowxp_ws_payment_due', promo: false,
+    vars: ['name', 'business', 'amount', 'number', 'due'],
+    text: (p) => `Hi ${p.name}, a reminder from ${p.business}: ${p.amount} on invoice ${p.number} is due on ${p.due}. Thank you!`
+  },
+  WS_PAYMENT_OVERDUE: {
+    name: 'flowxp_ws_payment_overdue', promo: false,
+    vars: ['name', 'business', 'amount', 'number', 'days'],
+    text: (p) => `Hi ${p.name}, ${p.amount} on invoice ${p.number} to ${p.business} is ${p.days} days overdue. Please arrange payment at the earliest.`
+  },
   REVIEW_REPLY: {
     name: 'flowxp_review_reply', promo: false,
     vars: ['name', 'business', 'reply'],

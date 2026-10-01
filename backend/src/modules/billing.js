@@ -106,7 +106,7 @@ export const asInvoice = (row) => ({
  *   payments: [{ amount, method, reference_number }]     or several (split); one of them may be
  *             'REST' (whatever the others leave), and together they may not exceed the bill
  */
-const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CREDIT', 'OTHER', 'WALLET', 'GIFT_CARD'];
+const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CREDIT', 'OTHER', 'WALLET', 'GIFT_CARD', 'CHEQUE'];
 const MAX_SPLIT = 6;
 
 /*
@@ -208,7 +208,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   const overrideIds = new Set();   // ingredients a line named by hand (consumption_actual) — must all exist
   for (const raw of items) {
     const quantity = toQuantity(raw.quantity);
-    let description, unitPricePaise, taxRate, product = null, modifiers = [], consumption = [];
+    let description, unitPricePaise, taxRate, product = null, modifiers = [], consumption = [], stockFactor = 1;
 
     if (raw.product_id) {
       product = products.get(Number(raw.product_id));
@@ -216,7 +216,11 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       if (product.status !== 'ACTIVE') throw new BillingError(400, `${product.name} is archived`);
       const here = outletSettings.get(product.product_id);
       if (here && here.is_available === false) throw new BillingError(409, `${product.name} is not available at this outlet`);
-      if (product.track_inventory && outletStock.get(product.product_id) < quantity) {
+      // a line sold in a larger unit (a carton of 24 boxes) moves `unit_factor` times as much stock as its quantity
+      const factor = raw.unit_factor != null ? Number(raw.unit_factor) : 1;
+      if (!Number.isFinite(factor) || factor <= 0) throw new BillingError(400, 'The unit conversion must be above zero');
+      stockFactor = factor;
+      if (product.track_inventory && !input.allowNegativeStock && outletStock.get(product.product_id) < quantity * factor - 1e-9) {
         throw new BillingError(409, `Not enough stock for ${product.name} (${outletStock.get(product.product_id)} left here)`);
       }
       description = raw.description || product.name;
@@ -285,7 +289,8 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     lines.push({
       product_id: product?.product_id || null, description, quantity, unitPricePaise,
       discountPaise, taxRate, trackInventory: Boolean(product?.track_inventory), modifiers, consumption,
-      fallbackCostPaise: product ? Number(product.purchase_price_paise) : 0, ...tax
+      unitName: raw.unit_name ? String(raw.unit_name).slice(0, 24) : null, stockFactor,
+      fallbackCostPaise: product ? Math.round(Number(product.purchase_price_paise) * stockFactor) : 0, ...tax
     });
   }
 
@@ -378,18 +383,19 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   for (const line of lines) {
     await client.query(
       `INSERT INTO invoice_items
-         (invoice_id, product_id, description, quantity, unit_price_paise, discount_paise, tax_rate, tax_amount_paise, line_total_paise, modifiers, unit_cost_paise)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+         (invoice_id, product_id, description, quantity, unit_price_paise, discount_paise, tax_rate, tax_amount_paise, line_total_paise, modifiers, unit_cost_paise, unit_name, unit_factor)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
       [invoice.invoice_id, line.product_id, line.description, line.quantity, line.unitPricePaise,
-       line.discountPaise, line.taxRate, line.tax_paise, line.line_total_paise, JSON.stringify(line.modifiers), line.unitCostPaise]
+       line.discountPaise, line.taxRate, line.tax_paise, line.line_total_paise, JSON.stringify(line.modifiers), line.unitCostPaise, line.unitName, line.stockFactor]
     );
 
     if (line.trackInventory) {
-      await moveStock(client, { businessId: tenant.businessId, branchId: tenant.branchId, productId: line.product_id, delta: -line.quantity });
+      const stockQty = Math.round(line.quantity * line.stockFactor * 1000) / 1000;
+      await moveStock(client, { businessId: tenant.businessId, branchId: tenant.branchId, productId: line.product_id, delta: -stockQty });
       await client.query(
         `INSERT INTO inventory_transactions (business_id, branch_id, product_id, transaction_type, quantity, reference_type, reference_id, created_by)
          VALUES ($1,$2,$3,'SALE',$4,'invoice',$5,$6)`,
-        [tenant.businessId, tenant.branchId, line.product_id, -line.quantity, invoice.invoice_id, userId]
+        [tenant.businessId, tenant.branchId, line.product_id, -stockQty, invoice.invoice_id, userId]
       );
     }
   }

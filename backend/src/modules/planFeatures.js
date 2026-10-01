@@ -32,7 +32,12 @@ export const PLAN_FEATURES = [
   ['salon_packages', 'Service packages', 'Bundles of services sold at one price and used visit by visit'],
   ['salon_gift_cards', 'Gift cards', 'Sell and redeem stored-value gift cards'],
   ['salon_commission', 'Staff commission', 'Commission rules, approval and payouts for stylists and therapists'],
-  ['salon_automation', 'Salon reminders', 'Appointment, birthday, membership, points and revisit reminders']
+  ['salon_automation', 'Salon reminders', 'Appointment, birthday, membership, points and revisit reminders'],
+  // Wholesale module — separate switches so a plan can include orders without the warehouse tools, and so on.
+  ['wholesale_orders', 'Sales orders', 'B2B sales orders with stock reservation, partial fulfilment and back-orders'],
+  ['wholesale_fulfilment', 'Warehouse fulfilment', 'Pick lists, packing, delivery challans and in-transit transfers'],
+  ['wholesale_pricing', 'Wholesale pricing', 'Price lists, customer-specific prices, quantity breaks and promotions'],
+  ['wholesale_batches', 'Batches and expiry', 'Batch and serial tracking with first-expiry-first-out and expiry alerts']
 ];
 
 export const PLAN_FEATURE_KEYS = PLAN_FEATURES.map(([key]) => key);

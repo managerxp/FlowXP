@@ -26,6 +26,11 @@ export const PERMISSION_INFO = {
   export:    { label: 'Export data', description: 'Download the activity log as a file.' },
   appointments:     { label: 'Appointments', description: 'Book, move and cancel appointments and see who is free (a stylist sees only their own).' },
   staff_commission: { label: 'Salon team and commission', description: 'Salon staff profiles, attendance, commission and payouts.' },
+  sales_orders:     { label: 'Sales orders', description: 'Create, edit and confirm wholesale sales orders and invoice them.' },
+  sales_cancel:     { label: 'Cancel sales orders', description: 'Cancel confirmed sales orders and release their stock.' },
+  fulfilment:       { label: 'Warehouse fulfilment', description: 'See pick lists, pick, pack, dispatch and update deliveries.' },
+  pricing:          { label: 'Wholesale pricing', description: 'Manage price lists, customer prices and bulk price updates.' },
+  purchase_approve: { label: 'Approve purchases', description: 'Approve purchase orders and post goods receipts above the limit.' },
   ai:        { label: 'Flow AI', description: 'Ask the AI assistant about the business.' },
   settings:  { label: 'Settings and team', description: 'Business settings, outlets, staff, loyalty, coupons, leakage checks and the activity log.' }
 };

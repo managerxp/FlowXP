@@ -55,6 +55,7 @@ import locationsRoutes from './locations.routes.js';
 import { uploadLogo } from '../middleware/upload.js';
 import publicOrderingRoutes from './publicOrdering.routes.js';
 import salonRoutes from './salon.routes.js';
+import wholesaleRoutes from './wholesale.routes.js';
 
 const router = Router();
 
@@ -184,6 +185,7 @@ router.use('/integrations', integrationsRoutes);
 router.use('/ai', aiRoutes);
 router.use('/audit', auditRoutes);
 router.use('/menu-import', menuImportRoutes);
+router.use('/wholesale', wholesaleRoutes);   // the wholesale / distribution module (WHOLESALE and DISTRIBUTOR businesses only)
 router.use('/salon', salonRoutes);          // the salon module (salon businesses only)
 
 /* ── Platform administration — not a tenant, sits outside the business

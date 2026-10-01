@@ -248,7 +248,7 @@ export const get = async (req, res) => {
 /* ==========================================================================
    POST /api/invoices/:id/payments — clearing a balance after the fact
    ========================================================================== */
-const CUSTOMER_PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CREDIT', 'OTHER'];
+const CUSTOMER_PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CREDIT', 'OTHER', 'CHEQUE'];
 const rupeesText = (paise) => `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export const addPayment = async (req, res) => {

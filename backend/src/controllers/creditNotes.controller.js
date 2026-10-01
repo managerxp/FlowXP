@@ -129,11 +129,12 @@ export const create = async (req, res) => {
       );
       if (restock) {
         await client.query(`SELECT 1 FROM products WHERE product_id = $1 FOR UPDATE`, [p.line.product_id]);
-        await moveStock(client, { businessId: req.tenant.businessId, branchId: invoice.branch_id, productId: p.line.product_id, delta: p.qty });
+        const back = Math.round(p.qty * Number(p.line.unit_factor || 1) * 1000) / 1000;   // a returned carton is 24 boxes back on the shelf
+        await moveStock(client, { businessId: req.tenant.businessId, branchId: invoice.branch_id, productId: p.line.product_id, delta: back });
         await client.query(
           `INSERT INTO inventory_transactions (business_id, branch_id, product_id, transaction_type, quantity, reference_type, reference_id, notes, created_by)
            VALUES ($1,$2,$3,'RETURN',$4,'credit_note',$5,$6,$7)`,
-          [req.tenant.businessId, invoice.branch_id, p.line.product_id, p.qty, note.cn_id, cnNumber, req.auth.userId]
+          [req.tenant.businessId, invoice.branch_id, p.line.product_id, back, note.cn_id, cnNumber, req.auth.userId]
         );
       }
     }

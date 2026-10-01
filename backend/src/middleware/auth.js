@@ -35,9 +35,10 @@ export const ROLE_PERMISSIONS = {
   OWNER:   ['*'],
   ADMIN:   ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
             'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds',
-            'appointments', 'staff_commission'],
+            'appointments', 'staff_commission', 'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve'],
   MANAGER: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
-            'payments', 'expenses', 'reports', 'ai', 'refunds', 'appointments', 'staff_commission'],
+            'payments', 'expenses', 'reports', 'ai', 'refunds', 'appointments', 'staff_commission',
+            'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve'],
   CASHIER: ['billing', 'customers', 'payments'],
   STAFF:   ['billing'],
   // Restaurant floor roles. WAITER can take and bill orders like STAFF; KITCHEN
@@ -48,14 +49,21 @@ export const ROLE_PERMISSIONS = {
   // A rider sees and updates the delivery orders assigned to them — same
   // narrow scope as WAITER, since orders.controller.js already gates all of
   // this behind the 'billing' permission Orders itself uses.
-  DELIVERY: ['billing'],
+  DELIVERY: ['billing', 'fulfilment'],
   // Salon floor roles. A receptionist books, bills and looks after clients; a stylist sees their own
   // appointments (the appointments screens narrow a STYLIST to the salon_staff row linked to their login);
   // an accountant works the money side — billing records, payments, expenses, reports and GST — and cannot
   // change the catalogue or the team.
   RECEPTIONIST: ['billing', 'customers', 'payments', 'appointments'],
   STYLIST: ['appointments'],
-  ACCOUNTANT: ['billing', 'payments', 'expenses', 'gst', 'reports', 'export', 'refunds']
+  ACCOUNTANT: ['billing', 'payments', 'expenses', 'gst', 'reports', 'export', 'refunds'],
+  // Wholesale roles. Sales people take and manage orders; warehouse people pick, pack, receive and count; the
+  // purchase manager buys and approves; the accountant (above) owns money, GST and reports.
+  SALES_MANAGER: ['billing', 'customers', 'payments', 'reports', 'refunds', 'sales_orders', 'sales_cancel', 'pricing', 'export'],
+  SALES_EXECUTIVE: ['billing', 'customers', 'sales_orders'],
+  WAREHOUSE_MANAGER: ['inventory', 'purchases', 'fulfilment', 'suppliers'],
+  WAREHOUSE_STAFF: ['fulfilment'],
+  PURCHASE_MANAGER: ['purchases', 'suppliers', 'inventory', 'purchase_approve', 'payments', 'reports']
 };
 
 export const hasPermission = (tenant, permission) => {
