@@ -331,7 +331,7 @@ export const Thead = ({ children }) => (
   </thead>
 );
 export const Th = ({ className = '', children }) => <th className={`px-4 py-3 font-semibold ${className}`}>{children}</th>;
-export const Td = ({ className = '', children }) => <td className={`px-4 py-3 text-ink-900 ${className}`}>{children}</td>;
+export const Td = ({ className = '', children, ...rest }) => <td className={`px-4 py-3 text-ink-900 ${className}`} {...rest}>{children}</td>;
 export const Tr = ({ onClick, className = '', children }) => (
   <tr
     onClick={onClick}

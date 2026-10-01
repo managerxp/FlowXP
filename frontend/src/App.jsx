@@ -97,6 +97,30 @@ const ReceiptPage = lazy(() => import('./app/PrintPages.jsx').then((m) => ({ def
 const KotPage = lazy(() => import('./app/PrintPages.jsx').then((m) => ({ default: m.KotPage })));
 const StaffPage = lazy(() => import('./app/StaffPage.jsx'));
 
+/* The wholesale module (WHOLESALE and DISTRIBUTOR). Its screens live in app/wholesale/ and load only for those businesses. */
+const WholesaleDashboard = lazy(() => import('./app/wholesale/WholesaleDashboard.jsx'));
+const WholesaleOrders = lazy(() => import('./app/wholesale/WholesaleOrders.jsx'));
+const WholesaleOrderEditor = lazy(() => import('./app/wholesale/OrderEditor.jsx'));
+const WholesaleOrderDetail = lazy(() => import('./app/wholesale/OrderDetail.jsx'));
+const WholesaleFulfilment = lazy(() => import('./app/wholesale/WholesaleFulfilment.jsx'));
+const WholesaleCustomers = lazy(() => import('./app/wholesale/WholesaleCustomers.jsx'));
+const WholesaleCustomerProfile = lazy(() => import('./app/wholesale/CustomerProfile.jsx'));
+const WholesaleSuppliers = lazy(() => import('./app/wholesale/WholesaleSuppliers.jsx'));
+const WholesaleSupplierProfile = lazy(() => import('./app/wholesale/SupplierProfile.jsx'));
+const WholesaleProducts = lazy(() => import('./app/wholesale/WholesaleProducts.jsx'));
+const WholesaleInventory = lazy(() => import('./app/wholesale/WholesaleInventory.jsx'));
+const WholesalePurchasing = lazy(() => import('./app/wholesale/WholesalePurchasing.jsx'));
+const WholesalePurchaseEditor = lazy(() => import('./app/wholesale/PurchaseEditor.jsx'));
+const WholesalePurchaseDetail = lazy(() => import('./app/wholesale/PurchaseDetail.jsx'));
+const WholesaleMoney = lazy(() => import('./app/wholesale/WholesaleMoney.jsx'));
+const WholesaleReturns = lazy(() => import('./app/wholesale/WholesaleReturns.jsx'));
+const WholesaleReports = lazy(() => import('./app/wholesale/WholesaleReports.jsx'));
+const WholesaleSettings = lazy(() => import('./app/wholesale/WholesaleSettings.jsx'));
+const WholesaleLabels = lazy(() => import('./app/wholesale/LabelsPrint.jsx'));
+const WholesaleOrderPrint = lazy(() => import('./app/wholesale/WholesalePrint.jsx').then((m) => ({ default: m.OrderPrint })));
+const WholesaleChallanPrint = lazy(() => import('./app/wholesale/WholesalePrint.jsx').then((m) => ({ default: m.ChallanPrint })));
+const WholesalePickPrint = lazy(() => import('./app/wholesale/WholesalePrint.jsx').then((m) => ({ default: m.PickPrint })));
+
 /* The salon module (business type SALON). Its screens live in app/salon/ and load only for a salon. */
 const SalonDashboard = lazy(() => import('./app/salon/SalonDashboard.jsx'));
 const SalonPos = lazy(() => import('./app/salon/SalonPos.jsx'));
@@ -135,7 +159,9 @@ const RequireAuth = ({ children }) => {
 /* The front page of the app is the salon's own dashboard for a salon, the general one otherwise. */
 const HomeRoute = () => {
   const { business } = useAuth();
-  return business?.business_type === 'SALON' ? <SalonDashboard /> : <Dashboard />;
+  if (business?.business_type === 'SALON') return <SalonDashboard />;
+  if (['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type)) return <WholesaleDashboard />;
+  return <Dashboard />;
 };
 
 const App = () => (
@@ -213,6 +239,30 @@ const App = () => (
       <Route path="print/receipt/:id" element={<ReceiptPage />} />
       <Route path="print/kot/:id" element={<KotPage />} />
       <Route path="staff" element={<StaffPage />} />
+
+      <Route path="wholesale/orders" element={<WholesaleOrders />} />
+      <Route path="wholesale/orders/new" element={<WholesaleOrderEditor />} />
+      <Route path="wholesale/orders/:id" element={<WholesaleOrderDetail />} />
+      <Route path="wholesale/orders/:id/edit" element={<WholesaleOrderEditor />} />
+      <Route path="wholesale/orders/:id/print" element={<WholesaleOrderPrint />} />
+      <Route path="wholesale/fulfilment" element={<WholesaleFulfilment />} />
+      <Route path="wholesale/deliveries/:id/print" element={<WholesaleChallanPrint />} />
+      <Route path="wholesale/pick-lists/:id/print" element={<WholesalePickPrint />} />
+      <Route path="wholesale/customers" element={<WholesaleCustomers />} />
+      <Route path="wholesale/customers/:id" element={<WholesaleCustomerProfile />} />
+      <Route path="wholesale/suppliers" element={<WholesaleSuppliers />} />
+      <Route path="wholesale/suppliers/:id" element={<WholesaleSupplierProfile />} />
+      <Route path="wholesale/products" element={<WholesaleProducts />} />
+      <Route path="wholesale/labels" element={<WholesaleLabels />} />
+      <Route path="wholesale/inventory" element={<WholesaleInventory />} />
+      <Route path="wholesale/purchasing" element={<WholesalePurchasing />} />
+      <Route path="wholesale/purchasing/new" element={<WholesalePurchaseEditor />} />
+      <Route path="wholesale/purchasing/:id" element={<WholesalePurchaseDetail />} />
+      <Route path="wholesale/purchasing/:id/edit" element={<WholesalePurchaseEditor />} />
+      <Route path="wholesale/money" element={<WholesaleMoney />} />
+      <Route path="wholesale/returns" element={<WholesaleReturns />} />
+      <Route path="wholesale/reports" element={<WholesaleReports />} />
+      <Route path="wholesale/settings" element={<WholesaleSettings />} />
 
       <Route path="salon/pos" element={<SalonPos />} />
       <Route path="salon/appointments" element={<SalonAppointments />} />

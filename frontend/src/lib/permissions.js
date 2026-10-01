@@ -9,19 +9,27 @@
 export const ROLE_PERMISSIONS = {
   OWNER: ['*'],
   ADMIN: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
-    'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds', 'appointments', 'staff_commission'],
+    'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds', 'appointments', 'staff_commission',
+    'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve'],
   MANAGER: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
-    'payments', 'expenses', 'reports', 'ai', 'refunds', 'appointments', 'staff_commission'],
+    'payments', 'expenses', 'reports', 'ai', 'refunds', 'appointments', 'staff_commission',
+    'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve'],
   CASHIER: ['billing', 'customers', 'payments'],
   STAFF: ['billing'],
   WAITER: ['billing'],
   KITCHEN: ['kitchen'],
   INVENTORY_MANAGER: ['inventory', 'purchases', 'suppliers'],
-  DELIVERY: ['billing'],
+  DELIVERY: ['billing', 'fulfilment'],
   // Salon floor roles (see backend/src/middleware/auth.js)
   RECEPTIONIST: ['billing', 'customers', 'payments', 'appointments'],
   STYLIST: ['appointments'],
-  ACCOUNTANT: ['billing', 'payments', 'expenses', 'gst', 'reports', 'export', 'refunds']
+  ACCOUNTANT: ['billing', 'payments', 'expenses', 'gst', 'reports', 'export', 'refunds'],
+  // Wholesale roles (see backend/src/middleware/auth.js)
+  SALES_MANAGER: ['billing', 'customers', 'payments', 'reports', 'refunds', 'sales_orders', 'sales_cancel', 'pricing', 'export'],
+  SALES_EXECUTIVE: ['billing', 'customers', 'sales_orders'],
+  WAREHOUSE_MANAGER: ['inventory', 'purchases', 'fulfilment', 'suppliers'],
+  WAREHOUSE_STAFF: ['fulfilment'],
+  PURCHASE_MANAGER: ['purchases', 'suppliers', 'inventory', 'purchase_approve', 'payments', 'reports']
 };
 
 export const hasPermission = (business, permission) => {

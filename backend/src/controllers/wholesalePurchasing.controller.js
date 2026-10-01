@@ -48,13 +48,14 @@ const loadPO = async (req, id, { db = pool, lock = false } = {}) => {
 };
 
 const poItems = async (db, poId) => (await db.query(
-  `SELECT i.*, p.sku, p.unit AS base_unit FROM purchase_order_items i LEFT JOIN products p ON p.product_id = i.product_id WHERE i.po_id = $1 ORDER BY i.item_id`, [poId])).rows;
+  `SELECT i.*, p.sku, p.unit AS base_unit, COALESCE(d.batch_tracking, FALSE) AS batch_tracking, COALESCE(d.expiry_tracking, FALSE) AS expiry_tracking, COALESCE(d.serial_tracking, FALSE) AS serial_tracking
+   FROM purchase_order_items i LEFT JOIN products p ON p.product_id = i.product_id LEFT JOIN wholesale_item_details d ON d.product_id = i.product_id WHERE i.po_id = $1 ORDER BY i.item_id`, [poId])).rows;
 
 const itemShape = (i) => {
   const ordered = Number(i.quantity); const got = i.received_quantity == null ? 0 : Number(i.received_quantity);
   return {
     item_id: i.item_id, product_id: i.product_id, description: i.description, sku: i.sku, unit_name: i.unit_name || i.base_unit, unit_factor: Number(i.unit_factor), base_unit: i.base_unit,
-    ordered, received: got, outstanding: Math.max(0, q3(ordered - got)), unit_cost: rupees(i.unit_cost_paise), tax_rate: Number(i.tax_rate), tax: rupees(i.tax_amount_paise), line_total: rupees(i.line_total_paise)
+    ordered, received: got, outstanding: Math.max(0, q3(ordered - got)), batch_tracking: i.batch_tracking, expiry_tracking: i.expiry_tracking, serial_tracking: i.serial_tracking, unit_cost: rupees(i.unit_cost_paise), tax_rate: Number(i.tax_rate), tax: rupees(i.tax_amount_paise), line_total: rupees(i.line_total_paise)
   };
 };
 

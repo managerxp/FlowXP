@@ -13,7 +13,7 @@ import { toPaise, toRupees, toQuantity } from '../utils/money.js';
 import { moveStock } from '../modules/stock.js';
 import { branchFilter } from '../utils/scope.js';
 
-const SUPPLIER_PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER'];
+const SUPPLIER_PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CHEQUE', 'OTHER'];
 
 export const paymentStatus = (totalPaise, paidPaise) => {
   if (paidPaise <= 0) return 'UNPAID';
