@@ -77,7 +77,7 @@ const DistributorDashboard = () => {
             <StatCard size="lg" to="/app/wholesale/returns" label="Sales returns" value={money(k.sales_returns)} note={`${plural(k.sales_returns_count, 'credit note')} this month`} />
           </section>
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
             <Panel title="Sales, last 30 days" lead="Invoiced amounts after returns">
               <Bars data={d.sales.trend.map((x) => ({ label: x.date, value: x.sales }))} every={5} label="Daily sales for the last 30 days" />
             </Panel>
@@ -87,7 +87,7 @@ const DistributorDashboard = () => {
           <Alerts items={d.alerts || []} />
 
           {perf && (
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
               <Panel title="Sales by territory" lead="This month, net of GST"><RankBars rows={perf.by_territory} valueKey="revenue" labelKey="name" empty="No sales yet this month." /></Panel>
               <Panel title="Sales by salesperson" lead="This month"><RankBars rows={perf.by_salesperson} valueKey="revenue" labelKey="name" empty="No sales yet this month." /></Panel>
               <Panel title="Top retailers" lead="This month"><RankBars rows={perf.by_retailer} valueKey="revenue" labelKey="name" empty="No sales yet this month." /></Panel>
@@ -103,7 +103,7 @@ const DistributorDashboard = () => {
           )}
 
           {m && (
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
               <Panel title="What retailers owe" lead="By how late it is">
                 <StackStrip parts={[['current', 'Not due yet'], ['d1_30', '1–30 days'], ['d31_60', '31–60 days'], ['d61_90', '61–90 days'], ['d90_plus', 'Over 90 days']].map(([key, label]) => ({ label, value: m.ageing[key], tone: BUCKET_TONES[key] }))} />
               </Panel>
@@ -115,7 +115,7 @@ const DistributorDashboard = () => {
             </div>
           )}
 
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-3">
             {d.distributor.targets?.length > 0 && (
               <Panel title="Salespeople against target" action={<Button to="/app/distributor/team?tab=targets" variant="ghost">Targets</Button>}>
                 <ul className="space-y-3">{d.distributor.targets.slice(0, 6).map((t) => (

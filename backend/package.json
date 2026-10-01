@@ -9,7 +9,8 @@
     "test": "node --test",
     "seed:demo": "node scripts/seed-demo.js",
     "migrate": "node -e \"import('./src/config/database.js').then(async m=>{await m.initializeDatabase();await m.default.end()})\"",
-    "seed:wholesale": "node scripts/seed-wholesale.js"
+    "seed:wholesale": "node scripts/seed-wholesale.js",
+    "seed:distributor": "node scripts/seed-wholesale.js && node scripts/seed-distributor.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

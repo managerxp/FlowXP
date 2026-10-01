@@ -48,8 +48,8 @@ const OrderTaker = ({ customer, visit, beatId, salespersonId, onDone, schemes })
   const [notes, setNotes] = useState('');
   const [busy, run] = useAction();
   const [key] = useState(newRef);
-  const setQty = (id, q) => setLines((ls) => ls.map((l) => (l.product_id === id ? { ...l, quantity: Math.max(0, q) } : l)).filter((l) => l.quantity > 0));
-  const add = (p) => setLines((ls) => ls.some((l) => l.product_id === p.product_id) ? ls.map((l) => (l.product_id === p.product_id ? { ...l, quantity: l.quantity + 1 } : l)) : [...ls, { product_id: p.product_id, name: p.name, unit: p.unit, price: p.wholesale_price ?? p.selling_price, quantity: 1 }]);
+  const setQty = (id, q) => setLines((ls) => ls.map((l) => (l.product_id === id ? { ...l, quantity: Math.max(0, q) } : l)).filter((l) => l.quantity > 0 && l.quantity >= l.moq));
+  const add = (p) => setLines((ls) => ls.some((l) => l.product_id === p.product_id) ? ls.map((l) => (l.product_id === p.product_id ? { ...l, quantity: l.quantity + 1 } : l)) : [...ls, { product_id: p.product_id, name: p.name, unit: p.unit, price: p.wholesale_price ?? p.selling_price, moq: Number(p.moq) || 1, quantity: Number(p.moq) || 1 }]);
   const total = lines.reduce((s, l) => s + l.quantity * Number(l.price || 0), 0);
   const submit = async () => {
     const r = await run(async () => {
@@ -73,7 +73,7 @@ const OrderTaker = ({ customer, visit, beatId, salespersonId, onDone, schemes })
       <ul className="divide-y divide-line rounded-lg border border-line">
         {lines.map((l) => (
           <li key={l.product_id} className="flex items-center gap-2 px-3 py-2">
-            <span className="min-w-0 flex-1"><span className="block truncate text-small font-medium text-ink-900">{l.name}</span><span className="text-caption text-ink-500">{money(l.price)} / {l.unit}</span></span>
+            <span className="min-w-0 flex-1"><span className="block truncate text-small font-medium text-ink-900">{l.name}</span><span className="text-caption text-ink-500">{money(l.price)} / {l.unit}{l.moq > 1 ? ` · min ${l.moq}` : ''}</span></span>
             <button type="button" aria-label={`One less ${l.name}`} onClick={() => setQty(l.product_id, l.quantity - 1)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-line"><Minus aria-hidden="true" className="h-4 w-4" /></button>
             <input aria-label={`Quantity of ${l.name}`} inputMode="decimal" value={l.quantity} onChange={(e) => setQty(l.product_id, Number(e.target.value) || 0)} className="h-9 w-14 rounded-lg border border-line text-center text-small tabular" />
             <button type="button" aria-label={`One more ${l.name}`} onClick={() => setQty(l.product_id, l.quantity + 1)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-line"><Plus aria-hidden="true" className="h-4 w-4" /></button>
@@ -130,7 +130,7 @@ const Retailer = ({ stop, beatId, salespersonId, onBack, onChanged }) => {
   const toast = useToast();
   const customer = { customer_id: stop.customer_id, name: stop.name };
   const visit = useVisit({ customer, salespersonId, beatId });
-  const done = () => { setMode(null); reload(); onChanged(); };
+  const done = () => { setMode(null); if (navigator.onLine) { reload(); onChanged(); } };
   const log = async () => {
     const r = await run(async () => { await visit.ensure(outcome, notes); return true; });
     if (r) { toast.success('Visit recorded'); done(); }
@@ -152,7 +152,7 @@ const Retailer = ({ stop, beatId, salespersonId, onBack, onChanged }) => {
       {credit && (
         <div className="grid grid-cols-3 gap-2 text-center">
           {[['Owes', credit.outstanding], ['Overdue', credit.overdue], ['Can still buy', credit.available]].map(([l, v]) => (
-            <div key={l} className="rounded-lg border border-line p-2"><p className="text-caption text-ink-500">{l}</p><p className={`text-small font-semibold tabular ${l === 'Overdue' && v > 0 ? 'text-danger' : 'text-ink-900'}`}>{v == null ? 'No limit' : money(v)}</p></div>
+            <div key={l} className="rounded-lg border border-line p-2"><p className="text-caption text-ink-500">{l}</p><p className={`text-small font-semibold tabular ${l === 'Overdue' && v > 0 ? 'text-danger' : 'text-ink-900'}`}>{v == null ? 'No limit' : v < 0 ? `Over by ${money(-v)}` : money(v)}</p></div>
           ))}
         </div>
       )}
@@ -163,11 +163,11 @@ const Retailer = ({ stop, beatId, salespersonId, onBack, onChanged }) => {
           <Button variant="secondary" className="col-span-2" onClick={() => setMode('visit')}>Log visit without order</Button>
         </div>
       )}
-      {mode === 'order' && <Panel title="New order" action={<button type="button" className="text-small text-brand-700" onClick={() => setMode(null)}>Cancel</button>}><div className="p-4"><OrderTaker customer={customer} visit={visit} beatId={beatId} salespersonId={salespersonId} schemes={schemes} onDone={done} /></div></Panel>}
-      {mode === 'collect' && <Panel title="Collect payment" action={<button type="button" className="text-small text-brand-700" onClick={() => setMode(null)}>Cancel</button>}><div className="p-4"><Collector customer={customer} outstanding={credit?.outstanding || 0} visit={visit} onDone={done} /></div></Panel>}
+      {mode === 'order' && <Panel title="New order" action={<button type="button" className="text-small text-brand-700" onClick={() => setMode(null)}>Cancel</button>}><div><OrderTaker customer={customer} visit={visit} beatId={beatId} salespersonId={salespersonId} schemes={schemes} onDone={done} /></div></Panel>}
+      {mode === 'collect' && <Panel title="Collect payment" action={<button type="button" className="text-small text-brand-700" onClick={() => setMode(null)}>Cancel</button>}><div><Collector customer={customer} outstanding={credit?.outstanding || 0} visit={visit} onDone={done} /></div></Panel>}
       {mode === 'visit' && (
         <Panel title="Log visit" action={<button type="button" className="text-small text-brand-700" onClick={() => setMode(null)}>Cancel</button>}>
-          <div className="space-y-3 p-4">
+          <div className="space-y-3">
             <Field id="fs-outcome" label="What happened"><Select id="fs-outcome" value={outcome} onChange={(e) => setOutcome(e.target.value)}>{Object.entries(VISIT_OUTCOMES).filter(([k]) => !['ORDER', 'COLLECTION'].includes(k)).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
             <Field id="fs-vnotes" label="Notes"><Textarea id="fs-vnotes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} /></Field>
             <Button className="w-full" onClick={log} loading={busy}>Save visit</Button>

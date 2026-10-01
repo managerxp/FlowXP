@@ -160,7 +160,7 @@ const VehicleDetail = () => {
                     {manage && v.stock.length > 0 && <Button variant="secondary" onClick={() => setModal('count')}><ClipboardCheck aria-hidden="true" className="h-4 w-4" />Count &amp; close</Button>}
                     {manage && v.stock.length > 0 && <Button variant="ghost" loading={busy} onClick={sendBack}>Return all</Button>}
                   </>} />
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
           <Panel title="On the van" lead={v.items ? `${v.items} line${v.items === 1 ? '' : 's'} · ${money(v.stock_value)} at cost` : undefined}>
             <ListState empty={v.stock.length === 0} emptyLabel="The van is empty" emptyBody={manage ? 'Load it from the warehouse to start selling.' : 'Nothing is loaded.'} />

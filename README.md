@@ -143,6 +143,12 @@ A native module for `WHOLESALE` and `DISTRIBUTOR` businesses — price lists and
 reservation and back-orders, pick/pack/dispatch, purchasing and goods receipt, batches and expiry, receipts and ageing, returns
 and reports. See [WHOLESALE.md](WHOLESALE.md).
 
+### Distributor management
+
+Turn on **Wholesale + Distributor** in Wholesale settings to add principals and brands, territories and beats, a field sales force
+with targets and commission, schemes with free goods, van stock, part deliveries and the distributor reports — on top of the
+wholesale module, offline-capable for the field. See [DISTRIBUTOR.md](DISTRIBUTOR.md); demo data with `npm run seed:distributor`.
+
 ---
 
 ## What is not built
