@@ -195,7 +195,12 @@ t('visits: recorded once even when replayed, linked to the order and the collect
   const rc = await w.call(money.create, { body: { customer_id: c, amount: 250, method: 'CASH', visit_id: vid, allocate: 'NONE' } });
   assert.equal(rc.code, 201, JSON.stringify(rc.body));
   const shown = (await w.call(team.listVisits, {})).body.data[0];
-  assert.equal(shown.order_value, 1000); assert.equal(shown.collection, 250); assert.equal(shown.customer, 'Balaji Kirana'); assert.equal(shown.beat, 'Mon');
+  assert.equal(shown.order_value, 1000); assert.equal(shown.collection, 250);   // (the offline pair below comes after this check) assert.equal(shown.customer, 'Balaji Kirana'); assert.equal(shown.beat, 'Mon');
+  // an order and a collection taken offline name the visit by the reference the device gave it
+  const viaRef = await w.call(orders.create, { body: { customer_id: c, visit_ref: 'dev-1-0001', lines: [{ product_id: p, quantity: 2 }] } });
+  assert.equal(viaRef.code, 201, JSON.stringify(viaRef.body)); assert.equal(viaRef.body.data.visit_id, vid);
+  const rcRef = await w.call(money.create, { body: { customer_id: c, amount: 100, method: 'CASH', visit_ref: 'dev-1-0001', allocate: 'NONE' } });
+  assert.equal(rcRef.code, 201); assert.equal(Number((await pool.query(`SELECT visit_id FROM wholesale_receipts WHERE receipt_id = $1`, [rcRef.body.data.receipt_id])).rows[0].visit_id), vid);
   // a visit to a different retailer cannot be attached to this order
   const c2 = await addCustomer(pool, w, { name: 'Other' });
   assert.equal((await w.call(orders.create, { body: { customer_id: c2, visit_id: vid, lines: [{ product_id: p, quantity: 1 }] } })).code, 400);

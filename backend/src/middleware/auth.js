@@ -165,9 +165,11 @@ export const requireAuth = async (req, res, next) => {
               -- (possibly since-changed) values — see modules/planFeatures.js and migration 0038.
               COALESCE(pv.feature_flags, p.feature_flags, '{}'::jsonb) AS feature_flags,
               COALESCE(btf.feature_flags, '{}'::jsonb) AS business_type_feature_flags,
-              COALESCE(bfo.overrides, '{}'::jsonb) AS feature_overrides
+              COALESCE(bfo.overrides, '{}'::jsonb) AS feature_overrides,
+              (b.business_type = 'DISTRIBUTOR' OR COALESCE(wss.distributor_enabled, FALSE)) AS distributor_enabled
        FROM business_users bu
        JOIN businesses b ON b.business_id = bu.business_id
+       LEFT JOIN wholesale_settings wss ON wss.business_id = b.business_id
        LEFT JOIN plans p ON p.plan_code = b.plan_code
        LEFT JOIN plan_versions pv ON pv.plan_version_id = b.plan_version_id
        LEFT JOIN business_type_features btf ON btf.business_type = b.business_type AND btf.plan_code = b.plan_code

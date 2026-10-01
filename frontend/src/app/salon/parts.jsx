@@ -96,9 +96,9 @@ export const SelectField = ({ id, label, hint, value, onChange, children, ...res
   <Field id={id} label={label} hint={hint}><Select id={id} value={value ?? ''} onChange={(e) => onChange(e.target.value)} {...rest}>{children}</Select></Field>
 );
 
-export const Toggle = ({ checked, onChange, label, hint, id }) => (
-  <label htmlFor={id} className="flex cursor-pointer items-start gap-3">
-    <input id={id} type="checkbox" checked={Boolean(checked)} onChange={(e) => onChange(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-(--color-brand-500)" />
+export const Toggle = ({ checked, onChange, label, hint, id, disabled = false }) => (
+  <label htmlFor={id} className={`flex items-start gap-3 ${disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}>
+    <input id={id} type="checkbox" checked={Boolean(checked)} disabled={disabled} onChange={(e) => onChange(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-(--color-brand-500)" />
     <span><span className="block text-small font-medium text-ink-900">{label}</span>{hint && <span className="block text-caption text-ink-500">{hint}</span>}</span>
   </label>
 );

@@ -122,7 +122,9 @@ const create = async (req, res) => {
   if (!Number.isFinite(amount) || amount <= 0) throw new WholesaleError(400, 'Enter the amount received');
   if (amount > 100000000000) throw new WholesaleError(400, 'That amount is too large');
   const reference = text(b.reference, 'Reference', { max: 80 });
-  const visitId = int(b.visit_id, 'Visit', { min: 1 });
+  let visitId = int(b.visit_id, 'Visit', { min: 1 });
+  const visitRef = text(b.visit_ref, 'Visit reference', { max: 64 });
+  if (!visitId && visitRef) visitId = (await pool.query(`SELECT visit_id FROM dist_visits WHERE business_id = $1 AND client_ref = $2`, [req.tenant.businessId, visitRef])).rows[0]?.visit_id ?? null;
   const fieldRole = ['FIELD_SALES', 'COLLECTION_EXECUTIVE'].includes(req.tenant.role);
   if (fieldRole && (await getSettings(pool, req.tenant.businessId)).field_collections === false) throw new WholesaleError(403, 'Collecting payments in the field is switched off in settings');
   const mine = await mySalesperson(req);

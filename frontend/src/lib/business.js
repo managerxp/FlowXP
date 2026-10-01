@@ -8,3 +8,6 @@ export const platformName = (code) => PLATFORM_LABEL[code] || (code ? code.charA
 /* Wholesalers and distributors: they get the wholesale module (orders, warehouses, batches, receivables ...). */
 export const WHOLESALE_TYPES = ['WHOLESALE', 'DISTRIBUTOR'];
 export const isWholesale = (business) => WHOLESALE_TYPES.includes(business?.business_type);
+
+/* The distributor features: a DISTRIBUTOR always has them; a wholesaler can switch them on (Wholesale + Distributor). */
+export const isDistributor = (business) => isWholesale(business) && Boolean(business?.distributor_enabled);

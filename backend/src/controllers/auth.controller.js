@@ -323,6 +323,8 @@ export const me = async (req, res) => {
         currency: m.currency,
         onboarding_step: m.onboarding_step,
         gst_enabled: m.gst_enabled,
+        // a distributor, or a wholesaler who switched the distributor features on: the app shows the Distributor menu
+        distributor_enabled: Boolean(m.distributor_enabled),
         upi_vpa: m.upi_vpa || null,   // the till shows a UPI QR for this ID
         two_factor_required: Boolean(m.require_2fa_admins) && ['OWNER', 'ADMIN'].includes(m.role),
         role: m.role,

@@ -13,15 +13,17 @@ const ROLES = {
   OWNER: 'Owner', ADMIN: 'Admin', MANAGER: 'Manager', CASHIER: 'Cashier', WAITER: 'Waiter',
   KITCHEN: 'Kitchen', INVENTORY_MANAGER: 'Stock manager', STAFF: 'Staff', DELIVERY: 'Delivery rider',
   RECEPTIONIST: 'Receptionist', STYLIST: 'Stylist', ACCOUNTANT: 'Accountant',
-  SALES_MANAGER: 'Sales manager', SALES_EXECUTIVE: 'Sales executive', WAREHOUSE_MANAGER: 'Warehouse manager', WAREHOUSE_STAFF: 'Warehouse staff', PURCHASE_MANAGER: 'Purchase manager'
+  SALES_MANAGER: 'Sales manager', SALES_EXECUTIVE: 'Sales executive', WAREHOUSE_MANAGER: 'Warehouse manager', WAREHOUSE_STAFF: 'Warehouse staff', PURCHASE_MANAGER: 'Purchase manager',
+  DISTRIBUTOR_ADMIN: 'Distributor admin', FIELD_SALES: 'Field sales rep', COLLECTION_EXECUTIVE: 'Collection executive', DELIVERY_MANAGER: 'Delivery manager'
 };
 /* Roles that only make sense for one kind of business: a salon has no kitchen, a restaurant has no stylists. */
 const SALON_ONLY = ['RECEPTIONIST', 'STYLIST'];
-const WHOLESALE_ONLY = ['SALES_MANAGER', 'SALES_EXECUTIVE', 'WAREHOUSE_MANAGER', 'WAREHOUSE_STAFF', 'PURCHASE_MANAGER'];
+const WHOLESALE_ONLY = ['SALES_MANAGER', 'SALES_EXECUTIVE', 'WAREHOUSE_MANAGER', 'WAREHOUSE_STAFF', 'PURCHASE_MANAGER', 'DISTRIBUTOR_ADMIN', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'DELIVERY_MANAGER'];
 const NOT_FOR_SALON = ['WAITER', 'KITCHEN', 'DELIVERY'];
 const NOT_FOR_WHOLESALE = ['WAITER', 'KITCHEN'];
+const DISTRIBUTOR_ONLY = ['DISTRIBUTOR_ADMIN', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'DELIVERY_MANAGER'];   // only where the distributor features are on
 const GROUP_ROLES = ['OWNER', 'ADMIN'];
-const FLOOR_ROLES = ['CASHIER', 'WAITER', 'KITCHEN', 'STAFF', 'DELIVERY', 'RECEPTIONIST', 'STYLIST', 'ACCOUNTANT', 'WAREHOUSE_STAFF', 'SALES_EXECUTIVE'];
+const FLOOR_ROLES = ['CASHIER', 'WAITER', 'KITCHEN', 'STAFF', 'DELIVERY', 'RECEPTIONIST', 'STYLIST', 'ACCOUNTANT', 'WAREHOUSE_STAFF', 'SALES_EXECUTIVE', 'FIELD_SALES', 'COLLECTION_EXECUTIVE'];
 const ROLE_HELP = {
   OWNER: 'Everything, including billing and staff.', ADMIN: 'Runs the business day to day; can’t manage owners.',
   MANAGER: 'Reports, stock, buying and refunds.', CASHIER: 'Bills sales and takes payments.', WAITER: 'Takes and bills orders.',
@@ -34,7 +36,11 @@ const ROLE_HELP = {
   SALES_EXECUTIVE: 'Takes orders for their own customers. Cannot change prices or see the books.',
   WAREHOUSE_MANAGER: 'Stock, goods receipts, transfers, picking and dispatch.',
   WAREHOUSE_STAFF: 'Picks, packs and dispatches orders in their own warehouse.',
-  PURCHASE_MANAGER: 'Buys, approves purchase orders and pays suppliers.'
+  PURCHASE_MANAGER: 'Buys, approves purchase orders and pays suppliers. Manages principals.',
+  DISTRIBUTOR_ADMIN: 'Runs the distribution business day to day: territories, targets, schemes, vans, pricing and settings.',
+  FIELD_SALES: 'Visits their own retailers on a beat, takes orders and collects payments. Sees only their own retailers, targets and van.',
+  COLLECTION_EXECUTIVE: 'Collects payments from retailers and records visits. Cannot take orders or see the books.',
+  DELIVERY_MANAGER: 'Runs the vans and the drivers: loading, counting, deliveries and dispatch.'
 };
 
 /* What this person may do: the role's default, with an allow or deny for anything the owner wants different. */
@@ -175,7 +181,7 @@ const StaffPage = () => {
   // An admin can't hand out or change the top roles.
   const salon = business?.business_type === 'SALON';
   const wholesale = ['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type);
-  const roles = Object.keys(ROLES).filter((r) => (isOwner || !GROUP_ROLES.includes(r)) && (salon ? !NOT_FOR_SALON.includes(r) && !WHOLESALE_ONLY.includes(r) : wholesale ? !NOT_FOR_WHOLESALE.includes(r) && !SALON_ONLY.includes(r) : !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r)));
+  const roles = Object.keys(ROLES).filter((r) => (isOwner || !GROUP_ROLES.includes(r)) && (salon ? !NOT_FOR_SALON.includes(r) && !WHOLESALE_ONLY.includes(r) : wholesale ? !NOT_FOR_WHOLESALE.includes(r) && !SALON_ONLY.includes(r) && (business?.distributor_enabled || !DISTRIBUTOR_ONLY.includes(r)) : !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r)));
 
   const load = () => api('/staff').then(setPeople).catch((e) => setError(e.status === 403 ? 'Managing staff is for owners and admins.' : e.message));
   useEffect(() => { load(); }, []);

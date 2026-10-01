@@ -4,15 +4,20 @@
  * group by territory, beat and salesperson without guessing from the customer's current assignment.
  */
 import pool from '../../config/database.js';
-import { WholesaleError, int, oneOf } from '../wholesale/common.js';
+import { WholesaleError, int, oneOf, text } from '../wholesale/common.js';
 
 export const fieldContext = async (req, b, customer) => {
   const businessId = req.tenant.businessId;
   const profile = (await pool.query(`SELECT territory_id FROM wholesale_customer_profiles WHERE customer_id = $1`, [customer.customer_id])).rows[0] || {};
   let visit = null;
+  // a visit is named by its id, or by the reference the device gave it — an order taken offline arrives after its visit
+  // and cannot know the id the server will give it
   const visitId = int(b.visit_id, 'Visit', { min: 1 });
-  if (visitId) {
-    visit = (await pool.query(`SELECT visit_id, customer_id, beat_id FROM dist_visits WHERE business_id = $1 AND visit_id = $2`, [businessId, visitId])).rows[0];
+  const visitRef = text(b.visit_ref, 'Visit reference', { max: 64 });
+  if (visitId || visitRef) {
+    visit = visitId
+      ? (await pool.query(`SELECT visit_id, customer_id, beat_id FROM dist_visits WHERE business_id = $1 AND visit_id = $2`, [businessId, visitId])).rows[0]
+      : (await pool.query(`SELECT visit_id, customer_id, beat_id FROM dist_visits WHERE business_id = $1 AND client_ref = $2`, [businessId, visitRef])).rows[0];
     if (!visit) throw new WholesaleError(400, 'That visit was not found');
     if (visit.customer_id !== customer.customer_id) throw new WholesaleError(400, 'That visit was to a different retailer');
   }

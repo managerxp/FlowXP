@@ -117,6 +117,15 @@ const WholesaleReturns = lazy(() => import('./app/wholesale/WholesaleReturns.jsx
 const WholesaleReports = lazy(() => import('./app/wholesale/WholesaleReports.jsx'));
 const WholesaleSettings = lazy(() => import('./app/wholesale/WholesaleSettings.jsx'));
 const WholesaleLabels = lazy(() => import('./app/wholesale/LabelsPrint.jsx'));
+/* The distributor layer (principals, territories and beats, sales team, schemes, vans, field sales). */
+const DistributorDashboard = lazy(() => import('./app/distributor/DistributorDashboard.jsx'));
+const DistributorPrincipals = lazy(() => import('./app/distributor/Principals.jsx'));
+const DistributorTerritories = lazy(() => import('./app/distributor/Territories.jsx'));
+const DistributorTeam = lazy(() => import('./app/distributor/SalesTeam.jsx'));
+const DistributorSchemes = lazy(() => import('./app/distributor/Schemes.jsx'));
+const DistributorVehicles = lazy(() => import('./app/distributor/Vehicles.jsx'));
+const DistributorVehicleDetail = lazy(() => import('./app/distributor/VehicleDetail.jsx'));
+const DistributorField = lazy(() => import('./app/distributor/FieldSales.jsx'));
 const WholesaleOrderPrint = lazy(() => import('./app/wholesale/WholesalePrint.jsx').then((m) => ({ default: m.OrderPrint })));
 const WholesaleChallanPrint = lazy(() => import('./app/wholesale/WholesalePrint.jsx').then((m) => ({ default: m.ChallanPrint })));
 const WholesalePickPrint = lazy(() => import('./app/wholesale/WholesalePrint.jsx').then((m) => ({ default: m.PickPrint })));
@@ -160,7 +169,7 @@ const RequireAuth = ({ children }) => {
 const HomeRoute = () => {
   const { business } = useAuth();
   if (business?.business_type === 'SALON') return <SalonDashboard />;
-  if (['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type)) return <WholesaleDashboard />;
+  if (['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type)) return business?.distributor_enabled ? <DistributorDashboard /> : <WholesaleDashboard />;
   return <Dashboard />;
 };
 
@@ -263,6 +272,13 @@ const App = () => (
       <Route path="wholesale/returns" element={<WholesaleReturns />} />
       <Route path="wholesale/reports" element={<WholesaleReports />} />
       <Route path="wholesale/settings" element={<WholesaleSettings />} />
+      <Route path="distributor/principals" element={<DistributorPrincipals />} />
+      <Route path="distributor/territories" element={<DistributorTerritories />} />
+      <Route path="distributor/team" element={<DistributorTeam />} />
+      <Route path="distributor/schemes" element={<DistributorSchemes />} />
+      <Route path="distributor/vehicles" element={<DistributorVehicles />} />
+      <Route path="distributor/vehicles/:id" element={<DistributorVehicleDetail />} />
+      <Route path="distributor/field" element={<DistributorField />} />
 
       <Route path="salon/pos" element={<SalonPos />} />
       <Route path="salon/appointments" element={<SalonAppointments />} />

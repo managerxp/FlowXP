@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Pencil, Plus } from 'lucide-react';
 import { api } from '../../lib/api.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { money, useLoad } from '../../lib/wholesale.js';
 import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Skeleton, Table, Td, Th, Thead, Tr, useToast } from '../../components/ui.jsx';
 import { NumberField, Panel, Tabs, Toggle, useAction } from './parts.jsx';
@@ -22,6 +23,7 @@ const NOTIFY = [
 
 const General = () => {
   const toast = useToast();
+  const { refresh } = useAuth();
   const { data: s, loading, error, reload } = useLoad('/wholesale/settings');
   const lists = useLoad('/wholesale/price-lists');
   const [f, setF] = useState(null);
@@ -34,12 +36,28 @@ const General = () => {
     const days = String(f.expiry_alert_days).split(/[,\s]+/).filter(Boolean).map(Number);
     const body = { credit_policy: f.credit_policy, block_when_overdue: f.block_when_overdue, overdue_grace_days: Number(f.overdue_grace_days), default_payment_terms_days: Number(f.default_payment_terms_days), default_price_list_id: f.default_price_list_id === '' ? null : Number(f.default_price_list_id),
       negative_stock: f.negative_stock, reserve_on_confirm: f.reserve_on_confirm, fefo: f.fefo, expiry_alert_days: days, order_approval_over: f.order_approval_over === '' ? null : Number(f.order_approval_over), slow_moving_days: Number(f.slow_moving_days), dead_stock_days: Number(f.dead_stock_days),
-      order_prefix: f.order_prefix, invoice_footer: f.invoice_footer || null, notifications: f.notifications };
+      order_prefix: f.order_prefix, invoice_footer: f.invoice_footer || null, notifications: f.notifications,
+      distributor_enabled: f.distributor_enabled, scheme_stacking: f.scheme_stacking, visit_location: f.visit_location, field_collections: f.field_collections, credit_manager_override: f.credit_manager_override };
     const r = await run(() => api('/wholesale/settings', { method: 'PUT', body }), 'Settings saved');
-    if (r) reload();
+    if (r) { reload(); refresh(); }   // the menu follows the Distributor switch
   };
   return (
     <div className="space-y-6">
+      <Panel title="Wholesale + Distributor" lead="Principals, territories and beats, schemes with free quantity, targets and commission, field sales and vans — on top of everything a wholesaler has">
+        <div className="space-y-4">
+          <Toggle id="s-dist" checked={f.distributor_enabled} disabled={f.distributor_locked} onChange={(v) => setF((x) => ({ ...x, distributor_enabled: v }))} label="Run this business as a distributor" hint={f.distributor_locked ? 'This is a distributor business, so these features are always on' : 'Adds the Distributor menu. Nothing about your existing wholesale work changes.'} />
+          {f.distributor_enabled && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field id="s-stack" label="When several schemes fit an order" hint="A scheme can also be marked stackable on its own"><Select id="s-stack" value={f.scheme_stacking} onChange={set('scheme_stacking')}><option value="BEST">Give the best one only</option><option value="ALL">Give all of them</option></Select></Field>
+              <div className="space-y-3">
+                <Toggle id="s-fcoll" checked={f.field_collections} onChange={(v) => setF((x) => ({ ...x, field_collections: v }))} label="Field reps may collect payments" hint="Off: only the office records receipts" />
+                <Toggle id="s-over" checked={f.credit_manager_override} onChange={(v) => setF((x) => ({ ...x, credit_manager_override: v }))} label="A manager may override a credit block" hint="Off: a blocked order stays blocked until the customer pays" />
+                <Toggle id="s-loc" checked={f.visit_location} onChange={(v) => setF((x) => ({ ...x, visit_location: v }))} label="Keep the location of a visit" hint="Only the place a rep records a visit is stored, and only when they choose to share it" />
+              </div>
+            </div>
+          )}
+        </div>
+      </Panel>
       <Panel title="Credit control" lead="What happens when a customer’s order would take them past their credit limit">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="s-policy" label="When over the limit" hint="A customer can have their own rule on their profile"><Select id="s-policy" value={f.credit_policy} onChange={set('credit_policy')}><option value="OFF">Allow it (no checks)</option><option value="WARN">Warn, but allow</option><option value="BLOCK">Block until a manager overrides</option></Select></Field>

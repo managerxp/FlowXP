@@ -16,7 +16,8 @@ import {
   ArrowLeftRight, BadgePercent, Boxes, CalendarClock, CalendarDays, ChartColumn, ChartLine, ChefHat, ChevronDown, ClipboardList, FileText, Gift,
   History, Landmark, LayoutDashboard, LayoutGrid, Lock, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
-  Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X, Warehouse, PackageCheck, Undo2, HandCoins, ChartBar, ShoppingBag, Tags
+  Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X, Warehouse, PackageCheck, Undo2, HandCoins, ChartBar, ShoppingBag, Tags,
+  Factory, MapPinned, Target, Percent, Container, Smartphone
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Avatar, Button, EmptyState, Logo, PageLoader, useToast } from '../components/ui.jsx';
@@ -72,6 +73,17 @@ const NAV_GROUPS = [
       { to: '/app/wholesale/suppliers', label: 'Suppliers', icon: Truck, types: WHOLESALE, anyPermission: ['suppliers', 'purchases'] },
       { to: '/app/wholesale/money', label: 'Receivables & payables', icon: HandCoins, types: WHOLESALE, anyPermission: ['payments', 'reports'] },
       { to: '/app/wholesale/returns', label: 'Returns', icon: Undo2, types: WHOLESALE, anyPermission: ['refunds', 'inventory', 'purchases'] }
+    ]
+  },
+  {
+    label: 'Distributor',
+    items: [
+      { to: '/app/distributor/field', label: 'Field sales', icon: Smartphone, types: WHOLESALE, distributor: true, permission: 'field_sales' },
+      { to: '/app/distributor/principals', label: 'Principals & brands', icon: Factory, types: WHOLESALE, distributor: true, anyPermission: ['principals', 'products', 'purchases', 'reports'] },
+      { to: '/app/distributor/territories', label: 'Territories & beats', icon: MapPinned, types: WHOLESALE, distributor: true, anyPermission: ['territories', 'field_sales', 'reports'] },
+      { to: '/app/distributor/team', label: 'Sales team & targets', icon: Target, types: WHOLESALE, distributor: true, anyPermission: ['targets', 'territories', 'reports', 'field_sales'] },
+      { to: '/app/distributor/schemes', label: 'Schemes', icon: Percent, types: WHOLESALE, distributor: true, anyPermission: ['schemes', 'sales_orders', 'field_sales', 'reports'] },
+      { to: '/app/distributor/vehicles', label: 'Vehicle stock', icon: Container, types: WHOLESALE, distributor: true, anyPermission: ['vehicles', 'field_sales', 'reports'] }
     ]
   },
   {
@@ -312,6 +324,7 @@ const AppShell = () => {
   if (!business) return <Navigate to="/app/onboarding" replace />;
 
   const allowed = (item) => (!item.types || item.types.includes(business.business_type))
+    && (!item.distributor || business.distributor_enabled)
     && (!item.notTypes || !item.notTypes.includes(business.business_type))
     && (!item.roles || item.roles.includes(business.role))
     && (!item.multiOutlet || outlets.length > 1)
