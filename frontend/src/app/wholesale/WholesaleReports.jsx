@@ -32,10 +32,14 @@ const WholesaleReports = () => {
   const [group, setGroup] = useState('day');
   const [category, setCategory] = useState('');
   const [salesperson, setSalesperson] = useState('');
+  const [level, setLevel] = useState('AREA');
+  const [by, setBy] = useState('product');
+  const [principal, setPrincipal] = useState('');
   const def = (catalogue.data || []).find((r) => r.key === key);
   const cats = useLoad(def?.filters?.includes('category_id') ? '/wholesale/categories' : null);
+  const principals = useLoad(def?.filters?.includes('principal_id') ? '/distributor/principals?status=ALL&limit=200' : null, { paged: true });
   const people = useLoad(def?.filters?.includes('salesperson_id') ? '/wholesale/salespeople' : null);
-  const query = useMemo(() => qs({ from: def?.period ? from : undefined, to: def ? to : undefined, branch_id: warehouse, group: def?.filters?.includes('group') ? group : undefined, category_id: def?.filters?.includes('category_id') ? category : undefined, salesperson_id: def?.filters?.includes('salesperson_id') ? salesperson : undefined }), [def, from, to, warehouse, group, category, salesperson]);
+  const query = useMemo(() => qs({ from: def?.period ? from : undefined, to: def ? to : undefined, branch_id: warehouse, group: def?.filters?.includes('group') ? group : undefined, category_id: def?.filters?.includes('category_id') ? category : undefined, salesperson_id: def?.filters?.includes('salesperson_id') ? salesperson : undefined, level: def?.filters?.includes('level') ? level : undefined, by: def?.filters?.includes('by') ? by : undefined, principal_id: def?.filters?.includes('principal_id') ? principal : undefined }), [def, from, to, warehouse, group, category, salesperson, level, by, principal]);
   const { data: rep, loading, error } = useLoad(def ? `/wholesale/reports/${key}${query}` : null);
 
   const groups = useMemo(() => { const g = {}; for (const r of catalogue.data || []) (g[r.group] ||= []).push(r); return g; }, [catalogue.data]);
@@ -63,6 +67,9 @@ const WholesaleReports = () => {
                   {!['receivables_ageing', 'payables_ageing', 'customer_outstanding', 'supplier_outstanding', 'collections'].includes(key) && <WarehouseSelect allowAll value={warehouse} onChange={setWarehouse} id="rp-wh" />}
                   {def.filters?.includes('group') && <Field id="rp-group" label="Group by"><Select id="rp-group" value={group} onChange={(e) => setGroup(e.target.value)}><option value="day">Day</option><option value="week">Week</option><option value="month">Month</option></Select></Field>}
                   {def.filters?.includes('category_id') && <Field id="rp-cat" label="Category"><Select id="rp-cat" value={category} onChange={(e) => setCategory(e.target.value)}><option value="">All</option>{(cats.data || []).map((c) => <option key={c.category_id} value={c.category_id}>{c.name}</option>)}</Select></Field>}
+                  {def.filters?.includes('level') && <Field id="rp-level" label="Level"><Select id="rp-level" value={level} onChange={(e) => setLevel(e.target.value)}><option value="REGION">Region</option><option value="TERRITORY">Territory</option><option value="AREA">Area</option></Select></Field>}
+                  {def.filters?.includes('by') && <Field id="rp-by" label="Break down by"><Select id="rp-by" value={by} onChange={(e) => setBy(e.target.value)}>{[['product', 'Product'], ['brand', 'Brand'], ['principal', 'Principal'], ['customer', 'Customer'], ['salesperson', 'Salesperson'], ['territory', 'Territory'], ['category', 'Category']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>}
+                  {def.filters?.includes('principal_id') && <Field id="rp-prin" label="Principal"><Select id="rp-prin" value={principal} onChange={(e) => setPrincipal(e.target.value)}><option value="">All</option>{(principals.data || []).map((x) => <option key={x.principal_id} value={x.principal_id}>{x.name}</option>)}</Select></Field>}
                   {def.filters?.includes('salesperson_id') && <Field id="rp-sp" label="Salesperson"><Select id="rp-sp" value={salesperson} onChange={(e) => setSalesperson(e.target.value)}><option value="">All</option>{(people.data || []).map((p) => <option key={p.salesperson_id} value={p.salesperson_id}>{p.name}</option>)}</Select></Field>}
                   <div className="ml-auto flex gap-2 pb-0.5">{rep && can('export') && <Button variant="secondary" onClick={exportCsv}><Download aria-hidden="true" className="h-4 w-4" />CSV</Button>}{rep && <Button variant="secondary" onClick={() => window.print()}><Printer aria-hidden="true" className="h-4 w-4" />Print</Button>}</div>
                 </div>

@@ -75,7 +75,7 @@ const OrderEditor = () => {
       setCustomer({ customer_id: o.customer_id, name: o.customer, phone: o.customer_phone, gstin: o.customer_gstin });
       setWarehouse(String(o.branch_id));
       setHead({ order_date: String(o.order_date).slice(0, 10), expected_delivery: o.expected_delivery ? String(o.expected_delivery).slice(0, 10) : '', shipping_address: o.shipping_address || '', shipping_charge: o.shipping_charge || '', shipping_tax_rate: o.shipping_tax_rate || '', discount: o.discount || '', customer_po: o.customer_po || '', notes: o.notes || '', payment_terms_days: o.payment_terms_days ?? '', salesperson_id: o.salesperson_id ?? '' });
-      setLines(o.items.map((i) => ({ key: newKey(), product_id: i.product_id, name: i.product, unit_name: i.unit_name, units: [{ unit_name: i.base_unit, factor: 1 }, { unit_name: i.unit_name, factor: i.unit_factor }], base_unit: i.base_unit, quantity: String(i.quantity), price: '', discount_pct: i.discount_pct ? String(i.discount_pct) : '', notes: i.notes || '' })));
+      setLines(o.items.filter((i) => !i.is_free).map((i) => ({ key: newKey(), product_id: i.product_id, name: i.product, unit_name: i.unit_name, units: [{ unit_name: i.base_unit, factor: 1 }, { unit_name: i.unit_name, factor: i.unit_factor }], base_unit: i.base_unit, quantity: String(i.quantity), price: '', discount_pct: i.discount_pct ? String(i.discount_pct) : '', notes: i.notes || '' })));
       setLoaded(true);
     }).catch((e) => setLoadError(e.message));
   }, [id, editing]);
@@ -234,6 +234,13 @@ const OrderEditor = () => {
                 <div className="flex justify-between border-t border-line pt-2 text-body font-semibold"><dt>Order total</dt><dd className="tabular">{money(preview.total)}</dd></div>
               </dl>
             )}
+            {preview?.lines.some((l) => l.is_free) && (
+              <div className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-caption text-brand-800">
+                <p className="font-semibold">Offers applied</p>
+                <ul className="mt-1 space-y-0.5">{preview.schemes.map((a) => <li key={a.scheme_id}>• {a.scheme}{a.free_base ? ` — ${qty(a.free_base)} free` : ''}{a.discount ? ` — ${money(a.discount)} off` : ''}</li>)}</ul>
+              </div>
+            )}
+            {preview?.scheme_hints?.length > 0 && <ul className="mt-3 space-y-1 rounded-lg bg-surface-2 px-3 py-2 text-caption text-ink-700">{preview.scheme_hints.map((h, i) => <li key={i}>💡 {h.message || h}</li>)}</ul>}
             {preview?.lines.some((l) => l.short > 0) && <p className="mt-3 rounded-lg bg-warning/10 px-3 py-2 text-caption text-warning">Some lines are short of stock. They will be back-ordered and filled when goods arrive.</p>}
             {preview?.approval_needed && <p className="mt-3 rounded-lg bg-warning/10 px-3 py-2 text-caption text-warning">This order is over the approval limit. A sales manager has to confirm it.</p>}
           </Panel>

@@ -6,15 +6,18 @@ import { useEffect, useState } from 'react';
 import { api } from '../../lib/api.js';
 import { CUSTOMER_TYPES } from '../../lib/wholesale.js';
 import { Alert, Button, Field, Input, Modal, Select, Textarea, useToast } from '../../components/ui.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { TerritorySelect } from '../distributor/parts.jsx';
 import { NumberField, Segmented } from './parts.jsx';
 
 const blank = { name: '', customer_type: 'RETAILER', contact_person: '', phone: '', email: '', gstin: '', pan: '', billing_address: '', city: '', state: '', pincode: '', shipping_address: '', shipping_city: '', shipping_state: '', shipping_pincode: '',
-  credit_limit: '', payment_terms_days: '', salesperson_id: '', price_list_id: '', default_discount_pct: '', opening_balance: '', credit_policy: '', notes: '' };
+  credit_limit: '', payment_terms_days: '', salesperson_id: '', territory_id: '', price_list_id: '', default_discount_pct: '', opening_balance: '', credit_policy: '', notes: '' };
 
 const fromCustomer = (c) => ({ ...blank, ...Object.fromEntries(Object.keys(blank).map((k) => [k, c[k] ?? ''])), billing_address: c.billing_address ?? c.address ?? '', credit_limit: c.credit_limit || '', default_discount_pct: c.default_discount_pct || '', opening_balance: c.opening_balance || '' });
 
 export const CustomerForm = ({ customer, onClose, onSaved }) => {
   const toast = useToast();
+  const { business } = useAuth();
   const editing = Boolean(customer?.customer_id);
   const [f, setF] = useState(() => (customer ? fromCustomer(customer) : blank));
   const [tab, setTab] = useState('details');
@@ -36,7 +39,7 @@ export const CustomerForm = ({ customer, onClose, onSaved }) => {
       name: f.name, customer_type: f.customer_type, contact_person: f.contact_person || null, phone: f.phone || null, email: f.email || null, gstin: f.gstin || null, pan: f.pan || null,
       address: f.billing_address || null, billing_address: f.billing_address || null, city: f.city || null, state: f.state || null, pincode: f.pincode || null,
       shipping_address: sameShip ? null : (f.shipping_address || null), shipping_city: sameShip ? null : (f.shipping_city || null), shipping_state: sameShip ? null : (f.shipping_state || null), shipping_pincode: sameShip ? null : (f.shipping_pincode || null),
-      credit_limit: num(f.credit_limit) ?? 0, payment_terms_days: num(f.payment_terms_days), salesperson_id: num(f.salesperson_id), price_list_id: num(f.price_list_id), default_discount_pct: num(f.default_discount_pct) ?? 0,
+      credit_limit: num(f.credit_limit) ?? 0, payment_terms_days: num(f.payment_terms_days), salesperson_id: num(f.salesperson_id), ...(business?.distributor_enabled ? { territory_id: num(f.territory_id) } : {}), price_list_id: num(f.price_list_id), default_discount_pct: num(f.default_discount_pct) ?? 0,
       opening_balance: num(f.opening_balance) ?? 0, credit_policy: f.credit_policy || null, notes: f.notes || null
     };
     try {
@@ -84,6 +87,7 @@ export const CustomerForm = ({ customer, onClose, onSaved }) => {
             <NumberField id="cf-terms" label="Payment terms" suffix="days" step={1} hint="Blank uses your default" value={f.payment_terms_days} onChange={set('payment_terms_days')} />
             <Field id="cf-policy" label="When over the limit" hint="Blank follows your wholesale settings"><Select id="cf-policy" value={f.credit_policy} onChange={set('credit_policy')}><option value="">Business default</option><option value="OFF">Allow</option><option value="WARN">Warn</option><option value="BLOCK">Block</option></Select></Field>
             <Field id="cf-sp" label="Salesperson"><Select id="cf-sp" value={f.salesperson_id} onChange={set('salesperson_id')}><option value="">None</option>{people.map((p) => <option key={p.salesperson_id} value={p.salesperson_id}>{p.name}</option>)}</Select></Field>
+            {business?.distributor_enabled && <TerritorySelect id="cf-terr" value={f.territory_id} onChange={(v) => setF((x) => ({ ...x, territory_id: v }))} hint="Drives territory pricing, targets and beats" levels={['AREA', 'TERRITORY']} />}
             <Field id="cf-pl" label="Price list" hint="Blank uses the list for their type"><Select id="cf-pl" value={f.price_list_id} onChange={set('price_list_id')}><option value="">Default</option>{lists.map((l) => <option key={l.list_id} value={l.list_id}>{l.name}</option>)}</Select></Field>
             <NumberField id="cf-disc" label="Standing discount" suffix="%" hint="Off list prices, not off negotiated prices" value={f.default_discount_pct} onChange={set('default_discount_pct')} />
             <NumberField id="cf-open" label="Opening balance" prefix="₹" hint="What they owed when you started (negative if you owe them)" min={-100000000} value={f.opening_balance} onChange={set('opening_balance')} />

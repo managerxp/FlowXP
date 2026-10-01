@@ -222,12 +222,13 @@ export const DateRange = ({ from, to, onChange }) => {
  * Choose a CSV, see what the server makes of it (a dry run — nothing is saved), fix the file if rows have problems,
  * then import. `kind` is products | customers | suppliers.
  */
-export const CsvImportModal = ({ kind, title, onClose, onDone, allowUpdate = true }) => {
+export const CsvImportModal = ({ kind, title, onClose, onDone, allowUpdate = true, endpoint, template, extra, modes, initialMode, children }) => {
   const toast = useToast();
-  const tpl = CSV_TEMPLATES[kind];
+  const tpl = template || CSV_TEMPLATES[kind];
+  const url = endpoint || `/wholesale/import/${kind}`;
   const [rows, setRows] = useState(null);
   const [fileName, setFileName] = useState('');
-  const [mode, setMode] = useState('create');
+  const [mode, setMode] = useState(initialMode || 'create');
   const [check, setCheck] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -236,7 +237,7 @@ export const CsvImportModal = ({ kind, title, onClose, onDone, allowUpdate = tru
 
   const dryRun = async (r, m) => {
     setBusy(true); setError(''); setCheck(null);
-    try { setCheck(await api(`/wholesale/import/${kind}`, { method: 'POST', body: { rows: r, mode: m } })); }
+    try { setCheck(await api(url, { method: 'POST', body: { ...extra, rows: r, mode: m } })); }
     catch (e) { setError(e.message); } finally { setBusy(false); }
   };
 
@@ -253,7 +254,7 @@ export const CsvImportModal = ({ kind, title, onClose, onDone, allowUpdate = tru
   const apply = async () => {
     setBusy(true); setError('');
     try {
-      const out = await api(`/wholesale/import/${kind}`, { method: 'POST', body: { rows, mode, apply: true } });
+      const out = await api(url, { method: 'POST', body: { ...extra, rows, mode, apply: true } });
       toast.success(`Imported: ${out.created ?? 0} added${out.updated ? `, ${out.updated} updated` : ''}`);
       onDone?.(out);
     } catch (e) { setError(e.message); if (e.data?.errors) setCheck({ ...check, errors: e.data.errors, total_errors: e.data.total_errors }); }
@@ -264,7 +265,9 @@ export const CsvImportModal = ({ kind, title, onClose, onDone, allowUpdate = tru
   return (
     <Modal title={title} onClose={onClose} wide footer={null}>
       <div className="space-y-4">
-        <p className="text-small text-ink-500">Use a CSV file whose first line is the column names. <button type="button" onClick={() => downloadTemplate(kind)} className="font-semibold text-brand-600 hover:underline"><Download aria-hidden="true" className="mr-1 inline h-3.5 w-3.5" />Download a template</button></p>
+        <p className="text-small text-ink-500">Use a CSV file whose first line is the column names. <button type="button" onClick={() => downloadTemplate(template || kind)} className="font-semibold text-brand-600 hover:underline"><Download aria-hidden="true" className="mr-1 inline h-3.5 w-3.5" />Download a template</button></p>
+        {children}
+        {modes && <Field id="imp-mode" label="What the file means"><Select id="imp-mode" value={mode} onChange={(e) => { setMode(e.target.value); if (rows) dryRun(rows, e.target.value); }}>{modes.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}</Select></Field>}
         <label className="flex cursor-pointer items-center gap-3 rounded-(--radius-card) border border-dashed border-line-strong bg-surface-2 px-4 py-5 hover:border-brand-500">
           <Upload aria-hidden="true" className="h-5 w-5 text-ink-400" />
           <span className="text-small text-ink-700">{fileName ? <><strong className="font-semibold text-ink-900">{fileName}</strong> · {rows?.length ?? 0} rows</> : 'Choose a CSV file'}</span>

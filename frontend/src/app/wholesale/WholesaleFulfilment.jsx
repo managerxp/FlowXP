@@ -213,7 +213,7 @@ const DeliveryDialog = ({ delivery, onClose, onChanged }) => {
         {!mode && !['DELIVERED', 'RETURNED'].includes(delivery.status) && (
           <div className="flex flex-wrap gap-2 border-t border-line pt-4">
             {next.map(([to, label]) => <Button key={to} loading={busy} onClick={() => status(to)}>{label}</Button>)}
-            {delivery.status === 'OUT_FOR_DELIVERY' && <><Button onClick={() => setMode('delivered')}>Delivered…</Button><Button variant="secondary" onClick={() => setMode('failed')}>Could not deliver…</Button></>}
+            {delivery.status === 'OUT_FOR_DELIVERY' && <><Button onClick={() => setMode('delivered')}>Delivered…</Button>{delivery.invoice_id && <Button variant="secondary" onClick={() => setMode('partial')}>Part delivered…</Button>}<Button variant="secondary" onClick={() => setMode('failed')}>Could not deliver…</Button></>}
             {delivery.status === 'FAILED' && <Button variant="secondary" onClick={() => setMode('returned')}>Goods came back…</Button>}
             <Button variant="ghost" onClick={() => setMode('edit')}>Driver and vehicle…</Button>
           </div>
@@ -222,9 +222,30 @@ const DeliveryDialog = ({ delivery, onClose, onChanged }) => {
         {mode === 'delivered' && <div className="space-y-3 border-t border-line pt-4"><Field id="p-by" label="Received by" hint="Name of the person who took the goods"><Input id="p-by" value={f.received_by} onChange={set('received_by')} autoFocus /></Field><Field id="p-note" label="Note"><Input id="p-note" value={f.note} onChange={set('note')} /></Field>
           <Field id="p-photo" label="Photo of the signed challan" hint="Optional"><Input id="p-photo" type="file" accept="image/*" capture="environment" onChange={(e) => onPhoto(e.target.files?.[0])} /></Field>{f.photo && <img src={f.photo} alt="Proof of delivery" className="max-h-40 rounded-lg border border-line" />}
           <div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => setMode(null)}>Back</Button><Button loading={busy} disabled={!f.received_by.trim()} onClick={() => status('DELIVERED', { pod_received_by: f.received_by, pod_note: f.note || undefined, pod_image_url: f.photo || undefined })}>Mark delivered</Button></div></div>}
+        {mode === 'partial' && <PartDelivery delivery={delivery} f={f} set={set} busy={busy} onBack={() => setMode(null)} onSubmit={(items) => status('PARTIAL', { pod_received_by: f.received_by, failure_reason: f.reason, returned_items: items })} />}
         {(mode === 'failed' || mode === 'returned') && <div className="space-y-3 border-t border-line pt-4"><Field id="f-r" label={mode === 'failed' ? 'Why could it not be delivered?' : 'What happened?'}><Input id="f-r" value={f.reason} onChange={set('reason')} autoFocus maxLength={200} /></Field><div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => setMode(null)}>Back</Button><Button variant="danger" loading={busy} disabled={f.reason.trim().length < 3} onClick={() => status(mode === 'failed' ? 'FAILED' : 'RETURNED', { failure_reason: f.reason })}>{mode === 'failed' ? 'Mark failed' : 'Mark returned'}</Button></div></div>}
       </div>
     </Modal>
+  );
+};
+
+/** The customer took some of the load and refused the rest: say how much of each line came back. */
+const PartDelivery = ({ delivery, f, set, busy, onBack, onSubmit }) => {
+  const { data, loading, error } = useLoad(`/wholesale/invoices/${delivery.invoice_id}/returnable`);
+  const [rows, setRows] = useState({});
+  const lines = (data?.items || data?.lines || []).filter((i) => i.returnable > 0);
+  const items = lines.map((i) => ({ invoice_item_id: i.item_id, quantity: Number(rows[i.item_id] || 0) })).filter((x) => x.quantity > 0);
+  return (
+    <div className="space-y-3 border-t border-line pt-4">
+      <p className="text-small text-ink-500">Enter what the customer refused. They are credited for it and it goes back into stock; the rest stays billed.</p>
+      <ListState loading={loading} error={error} />
+      <ul className="divide-y divide-line rounded-lg border border-line">
+        {lines.map((i) => <li key={i.item_id} className="flex items-center gap-3 px-3 py-2 text-small"><span className="min-w-0 flex-1 truncate">{i.description}<span className="ml-2 text-caption text-ink-500">of {qty(i.returnable)} {i.unit_name}</span></span><Input aria-label={`Refused quantity of ${i.description}`} type="number" min="0" max={i.returnable} step="any" value={rows[i.item_id] ?? ''} onChange={(e) => setRows({ ...rows, [i.item_id]: e.target.value })} className="w-24 text-right" /></li>)}
+      </ul>
+      <Field id="pd-by" label="Received by"><Input id="pd-by" value={f.received_by} onChange={set('received_by')} /></Field>
+      <Field id="pd-r" label="Why was it refused?"><Input id="pd-r" value={f.reason} onChange={set('reason')} maxLength={200} /></Field>
+      <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onBack}>Back</Button><Button loading={busy} disabled={!items.length || !f.received_by.trim() || f.reason.trim().length < 3} onClick={() => onSubmit(items)}>Record part delivery</Button></div>
+    </div>
   );
 };
 
@@ -241,7 +262,7 @@ const Deliveries = ({ reloadKey, onChanged }) => {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3"><div className="w-full sm:w-64"><Input type="search" aria-label="Search deliveries" placeholder="Challan, order, customer or vehicle" value={q} onChange={(e) => { setQ(e.target.value); setOffset(0); }} /></div>
-        <Chips label="Delivery status" value={effective} onChange={(v) => { setStatus(v); setOffset(0); }} options={[{ value: '', label: 'Open' }, { value: 'ASSIGNED,PENDING', label: 'To send' }, { value: 'OUT_FOR_DELIVERY', label: 'Out now' }, { value: 'FAILED', label: 'Failed' }, { value: 'DELIVERED', label: 'Delivered' }, { value: 'RETURNED', label: 'Returned' }]} /></div>
+        <Chips label="Delivery status" value={effective} onChange={(v) => { setStatus(v); setOffset(0); }} options={[{ value: '', label: 'Open' }, { value: 'ASSIGNED,PENDING', label: 'To send' }, { value: 'OUT_FOR_DELIVERY', label: 'Out now' }, { value: 'FAILED', label: 'Failed' }, { value: 'DELIVERED,PARTIAL', label: 'Delivered' }, { value: 'RETURNED', label: 'Returned' }]} /></div>
       <ListState loading={loading && !data} error={error} empty={data?.length === 0} emptyIcon={Truck} emptyLabel="No deliveries here" emptyBody="Deliveries appear when an order is dispatched." />
       {data?.length > 0 && (
         <>

@@ -15,6 +15,7 @@ const STEPS = [['DRAFT', 'Draft'], ['PENDING', 'Submitted'], ['CONFIRMED', 'Conf
 const stepOf = (s) => ({ DRAFT: 0, PENDING: 1, CONFIRMED: 2, PACKED: 2, PARTIALLY_FULFILLED: 3, FULFILLED: 4, DISPATCHED: 4, DELIVERED: 5 }[s] ?? 0);
 
 const Progress = ({ status }) => {
+  if (status === 'REJECTED') return <p className="text-small text-danger">This order was rejected.</p>;
   if (status === 'CANCELLED') return <p className="text-small text-ink-500">This order was cancelled.</p>;
   const at = stepOf(status);
   return (
@@ -80,6 +81,10 @@ const OrderDetail = () => {
     const reason = await dialog.prompt({ title: 'Close the rest of this order?', body: 'What has not shipped is cancelled. The customer will not receive it.', label: 'Reason', confirmLabel: 'Close it' });
     if (reason) act('close', 'Order closed', { reason });
   };
+  const rejectOrder = async () => {
+    const reason = await dialog.prompt({ title: `Reject ${o.order_number}?`, body: 'Any stock held for it is released. The customer is not invoiced.', label: 'Reason', confirmLabel: 'Reject order' });
+    if (reason) act('reject', 'Order rejected', { reason });
+  };
   const makePick = async () => {
     const out = await run(() => api(`/wholesale/orders/${o.order_id}/pick-lists`, { method: 'POST', body: {} }), 'Pick list created');
     if (out) navigate(`/app/wholesale/fulfilment?tab=picks&open=${out.pick_id}`);
@@ -102,6 +107,7 @@ const OrderDetail = () => {
                     {canPick && <Button loading={busy} onClick={makePick}>Create pick list</Button>}
                     {confirmed && backorder > 0 && <Button variant="secondary" loading={busy} onClick={reserveAgain}>Reserve available stock</Button>}
                     {o.status === 'PARTIALLY_FULFILLED' && can('sales_cancel') && <Button variant="secondary" onClick={closeRest}>Close the rest</Button>}
+                    {['PENDING', 'CONFIRMED'].includes(o.status) && can('sales_cancel') && !o.items.some((i) => i.shipped > 0) && <Button variant="ghost" onClick={rejectOrder}>Reject</Button>}
                     {['DRAFT', 'PENDING', 'CONFIRMED', 'PACKED'].includes(o.status) && (o.status === 'DRAFT' || can('sales_cancel')) && !o.items.some((i) => i.shipped > 0) && <Button variant="ghost" onClick={() => setCancelling(true)}>Cancel order</Button>}
                   </>} />
       <div className="mb-5"><Progress status={o.status} /></div>
@@ -117,7 +123,7 @@ const OrderDetail = () => {
               <tbody>
                 {o.items.map((i) => (
                   <Tr key={i.item_id}>
-                    <Td><span className="font-medium">{i.product}</span>{i.sku && <span className="ml-2 text-caption text-ink-500">{i.sku}</span>}<span className="block text-caption text-ink-500">{priceSourceText(i.price_source)}{i.discount_pct ? ` · ${i.discount_pct}% off` : ''}{i.tax_rate ? ` · GST ${i.tax_rate}%` : ''}</span></Td>
+                    <Td><span className="font-medium">{i.product}</span>{i.is_free && <span className="ml-2"><Badge tone="success">Free</Badge></span>}{i.sku && <span className="ml-2 text-caption text-ink-500">{i.sku}</span>}<span className="block text-caption text-ink-500">{priceSourceText(i.price_source)}{i.discount_pct ? ` · ${i.discount_pct}% off` : ''}{i.tax_rate ? ` · GST ${i.tax_rate}%` : ''}</span></Td>
                     <Td className="text-right tabular">{qty(i.quantity)} {i.unit_name}{i.unit_factor !== 1 && <span className="block text-caption text-ink-500">{qty(i.base_qty)} {i.base_unit}</span>}</Td>
                     <Td className="text-right tabular">{money(i.price)}<span className="block text-caption text-ink-500">per {i.unit_name}</span></Td>
                     <Td className="text-right tabular">{qty(i.reserved)}</Td><Td className="text-right tabular">{qty(i.picked)}</Td><Td className="text-right tabular">{qty(i.shipped)}</Td>
@@ -174,6 +180,7 @@ const OrderDetail = () => {
               <div className="flex justify-between"><dt className="text-ink-500">Before GST</dt><dd className="tabular">{money(o.subtotal)}</dd></div>
               {o.shipping_charge > 0 && <div className="flex justify-between"><dt className="text-ink-500">Shipping</dt><dd className="tabular">{money(o.shipping_charge)}</dd></div>}
               <div className="flex justify-between"><dt className="text-ink-500">GST</dt><dd className="tabular">{money(o.tax)}</dd></div>
+              {o.scheme_discount > 0 && <div className="flex justify-between"><dt className="text-ink-500">Scheme discount</dt><dd className="tabular">−{money(o.scheme_discount)}</dd></div>}
               {o.discount > 0 && <div className="flex justify-between"><dt className="text-ink-500">Discount</dt><dd className="tabular">−{money(o.discount)}</dd></div>}
               <div className="flex justify-between border-t border-line pt-2 text-body font-semibold"><dt>Total</dt><dd className="tabular">{money(o.total)}</dd></div>
             </dl>

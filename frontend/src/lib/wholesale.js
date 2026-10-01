@@ -19,7 +19,7 @@ export const pct = (n) => (n == null ? '—' : `${Number(n).toLocaleString('en-I
 export const ORDER_STATUS = {
   DRAFT: { label: 'Draft', tone: 'neutral' }, PENDING: { label: 'Pending approval', tone: 'warning' }, CONFIRMED: { label: 'Confirmed', tone: 'brand' },
   PARTIALLY_FULFILLED: { label: 'Partly shipped', tone: 'warning' }, FULFILLED: { label: 'Fulfilled', tone: 'success' }, PACKED: { label: 'Packed', tone: 'brand' },
-  DISPATCHED: { label: 'Dispatched', tone: 'brand' }, DELIVERED: { label: 'Delivered', tone: 'success' }, CANCELLED: { label: 'Cancelled', tone: 'neutral' }
+  DISPATCHED: { label: 'Dispatched', tone: 'brand' }, DELIVERED: { label: 'Delivered', tone: 'success' }, CANCELLED: { label: 'Cancelled', tone: 'neutral' }, REJECTED: { label: 'Rejected', tone: 'danger' }
 };
 export const PICK_STATUS = {
   PENDING: { label: 'To pick', tone: 'warning' }, PICKING: { label: 'Picking', tone: 'warning' }, PICKED: { label: 'Picked', tone: 'brand' }, PACKING: { label: 'Packing', tone: 'brand' },
@@ -27,7 +27,7 @@ export const PICK_STATUS = {
 };
 export const DELIVERY_STATUS = {
   PENDING: { label: 'Awaiting driver', tone: 'warning' }, ASSIGNED: { label: 'Assigned', tone: 'brand' }, OUT_FOR_DELIVERY: { label: 'Out for delivery', tone: 'brand' },
-  DELIVERED: { label: 'Delivered', tone: 'success' }, FAILED: { label: 'Failed', tone: 'danger' }, RETURNED: { label: 'Returned', tone: 'neutral' }
+  DELIVERED: { label: 'Delivered', tone: 'success' }, PARTIAL: { label: 'Delivered in part', tone: 'warning' }, FAILED: { label: 'Failed', tone: 'danger' }, RETURNED: { label: 'Returned', tone: 'neutral' }
 };
 export const PO_STATUS = {
   DRAFT: { label: 'Draft', tone: 'neutral' }, ORDERED: { label: 'Ordered', tone: 'brand' }, CONFIRMED: { label: 'Confirmed', tone: 'brand' }, PARTIAL: { label: 'Part received', tone: 'warning' },
@@ -94,18 +94,24 @@ export const parseCsv = (input) => {
   return body.map((r) => Object.fromEntries(keys.map((k, i) => [k, (r[i] ?? '').trim()])));
 };
 
+/** The distributor bulk imports: each has its own endpoint and sample file. */
+export const DIST_IMPORTS = {
+  'price-list': { title: 'Import a price list', file: 'price-list-template.csv', columns: ['SKU', 'Unit', 'Min Qty', 'Price', 'Discount Pct'], sample: ['PARLEG100', 'box', '10', '55.00', ''] },
+  stock: { title: 'Import stock', file: 'stock-template.csv', columns: ['SKU', 'Warehouse', 'Quantity', 'Unit', 'Batch No', 'Mfg Date', 'Expiry Date', 'Cost'], sample: ['PARLEG100', 'Main warehouse', '240', 'pcs', 'B2401', '2026-01-10', '2026-12-31', '4.20'] }
+};
+
 export const CSV_TEMPLATES = {
-  products: { file: 'products-template.csv', columns: ['Name', 'SKU', 'Barcode', 'Unit', 'Category', 'HSN', 'Tax Rate', 'Purchase Price', 'Wholesale Price', 'Distributor Price', 'Retailer Price', 'MRP', 'MOQ', 'Reorder Level', 'Max Stock', 'Batch Tracking', 'Expiry Tracking', 'Unit 1 Name', 'Unit 1 Factor', 'Unit 2 Name', 'Unit 2 Factor', 'Opening Stock', 'Warehouse', 'Batch No', 'Expiry Date'],
-    sample: ['Parle-G 100g', 'PARLEG100', '8901719101012', 'pcs', 'Biscuits', '1905', '18', '4.20', '5.00', '4.80', '5.50', '5.00', '12', '240', '5000', 'yes', 'yes', 'box', '12', 'carton', '288', '2880', '', 'B2401', '2026-12-31'] },
-  customers: { file: 'customers-template.csv', columns: ['Name', 'Phone', 'Email', 'GSTIN', 'PAN', 'Type', 'Contact Person', 'Address', 'City', 'State', 'Pincode', 'Shipping Address', 'Payment Terms Days', 'Credit Limit', 'Opening Balance', 'Salesperson', 'Price List', 'Discount Pct'],
-    sample: ['Sharma General Store', '9876543210', 'sharma@example.com', '36ABCDE1234F1Z5', 'ABCDE1234F', 'RETAILER', 'Mr Sharma', '12 Main Road', 'Hyderabad', 'Telangana', '500001', '', '30', '50000', '0', '', '', '0'] },
+  products: { file: 'products-template.csv', columns: ['Name', 'SKU', 'Barcode', 'Unit', 'Category', 'Brand', 'Principal', 'Pack Size', 'Principal Price', 'HSN', 'Tax Rate', 'Purchase Price', 'Wholesale Price', 'Distributor Price', 'Retailer Price', 'MRP', 'MOQ', 'Reorder Level', 'Max Stock', 'Batch Tracking', 'Expiry Tracking', 'Unit 1 Name', 'Unit 1 Factor', 'Unit 2 Name', 'Unit 2 Factor', 'Opening Stock', 'Warehouse', 'Batch No', 'Expiry Date'],
+    sample: ['Parle-G 100g', 'PARLEG100', '8901719101012', 'pcs', 'Biscuits', 'Parle-G', 'Parle Products', '12 x 100 g', '3.90', '1905', '18', '4.20', '5.00', '4.80', '5.50', '5.00', '12', '240', '5000', 'yes', 'yes', 'box', '12', 'carton', '288', '2880', '', 'B2401', '2026-12-31'] },
+  customers: { file: 'customers-template.csv', columns: ['Name', 'Phone', 'Email', 'GSTIN', 'PAN', 'Type', 'Contact Person', 'Address', 'City', 'State', 'Pincode', 'Shipping Address', 'Payment Terms Days', 'Credit Limit', 'Opening Balance', 'Salesperson', 'Price List', 'Discount Pct', 'Territory', 'Beat'],
+    sample: ['Sharma General Store', '9876543210', 'sharma@example.com', '36ABCDE1234F1Z5', 'ABCDE1234F', 'RETAILER', 'Mr Sharma', '12 Main Road', 'Hyderabad', 'Telangana', '500001', '', '30', '50000', '0', '', '', '0', '', ''] },
   suppliers: { file: 'suppliers-template.csv', columns: ['Name', 'Phone', 'Email', 'GSTIN', 'PAN', 'Contact Person', 'Address', 'City', 'State', 'Pincode', 'Payment Terms Days', 'Opening Balance', 'Bank Details'],
     sample: ['Acme Foods Pvt Ltd', '9123456780', 'sales@acme.example', '27AAPFU0939F1ZV', '', 'Ms Rao', 'Plot 4, MIDC', 'Pune', 'Maharashtra', '411019', '45', '0', 'HDFC 5010 0123 4567 IFSC HDFC0000123'] }
 };
 
 /** Download an empty CSV with the right headers and one sample row. */
 export const downloadTemplate = (kind) => {
-  const t = CSV_TEMPLATES[kind];
+  const t = typeof kind === 'string' ? CSV_TEMPLATES[kind] : kind;
   const cell = (v) => (/[",\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : v);
   const blob = new Blob([`﻿${t.columns.map(cell).join(',')}\n${t.sample.map(cell).join(',')}\n`], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);

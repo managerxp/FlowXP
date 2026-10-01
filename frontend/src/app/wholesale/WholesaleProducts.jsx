@@ -8,10 +8,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Barcode, Download, Package, Pencil, Plus, Trash, Upload } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { api } from '../../lib/api.js';
-import { fetchAll, money, qs, qty, saveCsv, useDebounced, useLoad, dateText, CUSTOMER_TYPES } from '../../lib/wholesale.js';
+import { DIST_IMPORTS, fetchAll, money, qs, qty, saveCsv, useDebounced, useLoad, dateText, CUSTOMER_TYPES } from '../../lib/wholesale.js';
 import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Th, Thead, Tr, useDialog, useToast } from '../../components/ui.jsx';
 import { Chips, CsvImportModal, NumberField, Pager, Panel, ProductPicker, Segmented, StatusPill, Tabs, Toggle, Toolbar, useAction } from './parts.jsx';
 import ProductForm from './ProductForm.jsx';
+import PriceListImport from '../distributor/PriceListImport.jsx';
 
 /* ── bulk price change: preview first, then apply ─────────────────────────────────────────────── */
 const BulkPrice = ({ onClose, onDone }) => {
@@ -66,7 +67,7 @@ const BulkEdit = ({ ids, onClose, onDone }) => {
 
 /* ── the product list ─────────────────────────────────────────────────────────────────────────── */
 const ProductsTab = () => {
-  const { can } = useAuth();
+  const { can, business } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
   const [q, setQ] = useState('');
@@ -98,6 +99,7 @@ const ProductsTab = () => {
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
         {can('export') && <Button variant="secondary" onClick={exportCsv}><Download aria-hidden="true" className="h-4 w-4" />Export</Button>}
+        {canEdit && business?.distributor_enabled && <><Button variant="secondary" onClick={() => setImporting('price-list')}><Upload aria-hidden="true" className="h-4 w-4" />Prices</Button><Button variant="secondary" onClick={() => setImporting('stock')}><Upload aria-hidden="true" className="h-4 w-4" />Stock</Button></>}
         {canEdit && <Button variant="secondary" onClick={() => setImporting(true)}><Upload aria-hidden="true" className="h-4 w-4" />Import</Button>}
         {can('pricing') && <Button variant="secondary" onClick={() => setBulkPrice(true)}>Change prices</Button>}
         {canEdit && <Button onClick={() => setForm({})}><Plus aria-hidden="true" className="h-4 w-4" />Add product</Button>}
@@ -133,7 +135,9 @@ const ProductsTab = () => {
         </>
       )}
       {form && <ProductForm product={form.product_id ? form : null} onClose={() => setForm(null)} onSaved={() => { setForm(null); setStamp((n) => n + 1); }} />}
-      {importing && <CsvImportModal kind="products" title="Import products" onClose={() => setImporting(false)} onDone={() => { setImporting(false); setStamp((n) => n + 1); }} />}
+      {importing === 'price-list' && <PriceListImport onClose={() => setImporting(false)} onDone={() => { setImporting(false); setStamp((n) => n + 1); }} />}
+      {importing === 'stock' && <CsvImportModal kind="stock" title={DIST_IMPORTS.stock.title} endpoint="/distributor/import/stock" template={DIST_IMPORTS.stock} allowUpdate={false} initialMode="add" modes={[{ value: 'add', label: 'Add this to the shelf (opening stock, new goods)' }, { value: 'set', label: 'Set the shelf to exactly this (stock take)' }]} onClose={() => setImporting(false)} onDone={() => { setImporting(false); setStamp((n) => n + 1); }} />}
+      {importing === true && <CsvImportModal kind="products" title="Import products" onClose={() => setImporting(false)} onDone={() => { setImporting(false); setStamp((n) => n + 1); }} />}
       {bulk && <BulkEdit ids={[...picked]} onClose={() => setBulk(false)} onDone={(n) => { setBulk(false); setPicked(new Set()); setStamp((x) => x + 1); toast.success(`${n} product${n === 1 ? '' : 's'} updated`); }} />}
       {bulkPrice && <BulkPrice onClose={() => setBulkPrice(false)} onDone={() => { setBulkPrice(false); setStamp((n) => n + 1); }} />}
     </div>
