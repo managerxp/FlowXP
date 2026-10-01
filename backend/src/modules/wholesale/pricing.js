@@ -7,7 +7,7 @@
  *   1. A price negotiated with THIS customer (wholesale_customer_prices): a product rule beats a category rule; of
  *      the quantity breaks that apply, the one with the highest minimum quantity wins. Fixed price or % off the tier price.
  *   2. Otherwise the better (lower) of
- *        a. the customer's list: the list assigned to them, else the list for their customer type, else the
+ *        a. the customer's list: the list assigned to them, else the list for their territory (nearest first), else the list for their customer type, else the
  *           business's default list (a rule with a price replaces the tier price; a rule with a % takes it off), and
  *        b. a running promotion (a PROMOTION list valid today), and
  *      starting from the tier price for their customer type when no list rule applies:
@@ -39,10 +39,14 @@ export const priceLines = async (db, { businessId, customerId = null, lines, on 
      WHERE p.business_id = $1 AND p.product_id = ANY($2::int[])`, [businessId, ids])).rows.map((r) => [r.product_id, r]));
   const units = await loadUnits(db, businessId, ids);
   const customer = customerId ? (await db.query(
-    `SELECT c.customer_id, COALESCE(w.customer_type, 'RETAILER') AS type, w.price_list_id, COALESCE(w.default_discount_pct, 0) AS discount
+    `SELECT c.customer_id, COALESCE(w.customer_type, 'RETAILER') AS type, w.price_list_id, w.territory_id, COALESCE(w.default_discount_pct, 0) AS discount
      FROM customers c LEFT JOIN wholesale_customer_profiles w ON w.customer_id = c.customer_id WHERE c.business_id = $1 AND c.customer_id = $2`, [businessId, customerId])).rows[0] : null;
 
   const settings = (await db.query(`SELECT default_price_list_id FROM wholesale_settings WHERE business_id = $1`, [businessId])).rows[0];
+  // the customer's territory and every one above it: a price list for a region reaches the areas inside it
+  const chain = customer?.territory_id ? (await db.query(
+    `WITH RECURSIVE up AS (SELECT territory_id, parent_id FROM dist_territories WHERE territory_id = $1 UNION ALL SELECT t.territory_id, t.parent_id FROM dist_territories t JOIN up ON t.territory_id = up.parent_id) SELECT territory_id FROM up`,
+    [customer.territory_id])).rows.map((r) => r.territory_id) : [];
   const categoryIds = [...new Set([...products.values()].flatMap((p) => [p.category_id, p.subcategory_id]).filter(Boolean))];
 
   const special = customer ? (await db.query(
@@ -51,9 +55,9 @@ export const priceLines = async (db, { businessId, customerId = null, lines, on 
 
   // lists that can apply: the customer's own, the one for their type, the default, and any running promotion
   const lists = (await db.query(
-    `SELECT list_id, kind, customer_type, starts_on, ends_on FROM wholesale_price_lists
-     WHERE business_id = $1 AND is_active AND (kind = 'PROMOTION' OR list_id = $2 OR list_id = $3 OR ($4::text IS NOT NULL AND customer_type = $4))`,
-    [businessId, customer?.price_list_id ?? null, settings?.default_price_list_id ?? null, customer?.type ?? null])).rows.filter((l) => inWindow(l, date));
+    `SELECT list_id, kind, customer_type, territory_id, starts_on, ends_on FROM wholesale_price_lists
+     WHERE business_id = $1 AND is_active AND (kind = 'PROMOTION' OR list_id = $2 OR list_id = $3 OR ($4::text IS NOT NULL AND customer_type = $4) OR territory_id = ANY($5::int[]))`,
+    [businessId, customer?.price_list_id ?? null, settings?.default_price_list_id ?? null, customer?.type ?? null, chain])).rows.filter((l) => inWindow(l, date));
   const items = lists.length ? (await db.query(
     `SELECT * FROM wholesale_price_list_items WHERE list_id = ANY($1::int[]) AND (product_id = ANY($2::int[]) OR category_id = ANY($3::int[]))`,
     [lists.map((l) => l.list_id), ids, categoryIds])).rows : [];
@@ -61,7 +65,8 @@ export const priceLines = async (db, { businessId, customerId = null, lines, on 
   const promoIds = lists.filter((l) => l.kind === 'PROMOTION').map((l) => l.list_id);
   // the list the customer is on: assigned, else by type, else default
   const own = lists.find((l) => l.kind === 'STANDARD' && l.list_id === customer?.price_list_id)
-    || lists.find((l) => l.kind === 'STANDARD' && customer && l.customer_type === customer.type)
+    || lists.filter((l) => l.kind === 'STANDARD' && l.territory_id != null && chain.includes(l.territory_id)).sort((a, b) => chain.indexOf(a.territory_id) - chain.indexOf(b.territory_id))[0]   // nearest territory first: area, then territory, then region
+    || lists.find((l) => l.kind === 'STANDARD' && l.territory_id == null && customer && l.customer_type === customer.type)
     || lists.find((l) => l.kind === 'STANDARD' && l.list_id === settings?.default_price_list_id) || null;
 
   const out = new Map();

@@ -9,6 +9,7 @@
  * (POST /orders/:id/reserve, or automatically when a goods receipt is posted).
  */
 import { fieldContext } from '../modules/distributor/field.js';
+import { evaluateSchemes } from '../modules/distributor/schemes.js';
 import pool from '../config/database.js';
 import { toRupees } from '../utils/money.js';
 import { hasPermission } from '../middleware/auth.js';
@@ -37,7 +38,7 @@ const headerShape = (o) => ({
   order_id: o.order_id, order_number: o.order_number, order_date: o.order_date, status: o.status, branch_id: o.branch_id, warehouse: o.warehouse_name,
   customer_id: o.customer_id, customer: o.customer_name, customer_phone: o.customer_phone, customer_gstin: o.customer_gstin,
   salesperson_id: o.salesperson_id, salesperson: o.salesperson_name, payment_terms_days: o.payment_terms_days, expected_delivery: o.expected_delivery,
-  shipping_address: o.shipping_address, shipping_charge: rupees(o.shipping_charge_paise), shipping_tax_rate: Number(o.shipping_tax_rate), discount: rupees(o.discount_paise),
+  shipping_address: o.shipping_address, shipping_charge: rupees(o.shipping_charge_paise), shipping_tax_rate: Number(o.shipping_tax_rate), discount: rupees(Number(o.discount_paise) - Number(o.scheme_discount_paise || 0)), scheme_discount: rupees(o.scheme_discount_paise || 0),
   subtotal: rupees(o.subtotal_paise), tax: rupees(o.tax_paise), total: rupees(o.total_paise), customer_po: o.customer_po, notes: o.notes, credit_note: o.credit_note,
   approval_needed: o.approval_needed, created_by: o.created_by_name, created_at: o.created_at, confirmed_at: o.confirmed_at, cancelled_at: o.cancelled_at, cancel_reason: o.cancel_reason,
   territory_id: o.territory_id ?? null, beat_id: o.beat_id ?? null, visit_id: o.visit_id ?? null, source: o.source ?? 'OFFICE', reject_reason: o.reject_reason ?? null
@@ -48,7 +49,7 @@ const itemShape = (it, name, avail, unitEntry) => {
   return {
     item_id: it.item_id, line_no: it.line_no, product_id: it.product_id, product: name, sku: it.sku ?? null, unit_name: it.unit_name, unit_factor: Number(it.unit_factor),
     quantity: Number(it.quantity), base_qty: Number(it.base_qty), base_unit: it.base_unit, price: rupees(it.price_paise), price_source: it.price_source, discount_pct: Number(it.discount_pct),
-    tax_rate: Number(it.tax_rate), notes: it.notes,
+    tax_rate: Number(it.tax_rate), notes: it.notes, is_free: Boolean(it.is_free), scheme_id: it.scheme_id ?? null,
     reserved: Number(it.reserved_base), picked: Number(it.picked_base), shipped: Number(it.shipped_base), cancelled: Number(it.cancelled_base), open,
     backorder: Math.max(0, q3(open - Number(it.reserved_base))),
     ...(avail ? { available: avail.available, on_hand: avail.quantity } : {}),
@@ -133,6 +134,8 @@ const fullOrder = async (db, businessId, o) => {
     items: items.map((it) => itemShape(it, it.product_name, avail.get(it.product_id), units.get(it.product_id))).map((x, k) => ({ ...x, sku: items[k].sku })),
     shipments: shipments.map((d) => ({ delivery_id: d.delivery_id, challan_number: d.challan_number, status: d.status, dispatch_date: d.dispatch_date, delivered_at: d.delivered_at, driver_name: d.driver_name, vehicle_no: d.vehicle_no, invoice_id: d.invoice_id, invoice_number: d.invoice_number, invoice_total: d.total_paise == null ? null : rupees(d.total_paise), invoice_balance: d.balance_due_paise == null ? null : rupees(d.balance_due_paise) })),
     pick_lists: picks,
+    schemes: (await db.query(`SELECT a.scheme_id, s.name, s.kind, s.funded_by, a.free_product_id, a.free_base, a.discount_paise, a.cost_paise FROM dist_scheme_applications a JOIN dist_schemes s ON s.scheme_id = a.scheme_id WHERE a.order_id = $1 ORDER BY a.application_id`, [o.order_id])).rows
+      .map((a) => ({ scheme_id: a.scheme_id, name: a.name, kind: a.kind, funded_by: a.funded_by, free_product_id: a.free_product_id, free_base: Number(a.free_base), discount: rupees(a.discount_paise), cost: rupees(a.cost_paise) })),
     credit: credit && { level: credit.level, reasons: credit.reasons, limit: rupees(credit.position?.limit), outstanding: rupees(credit.position?.outstanding), available: credit.position?.available == null ? null : rupees(credit.position.available) }
   };
 };
@@ -177,9 +180,9 @@ const writeItems = async (client, order, lines) => {
   await client.query(`DELETE FROM wholesale_sales_order_items WHERE order_id = $1`, [order.order_id]);
   for (const l of lines) {
     await client.query(
-      `INSERT INTO wholesale_sales_order_items (order_id, business_id, line_no, product_id, unit_name, unit_factor, quantity, base_qty, price_paise, price_source, discount_pct, tax_rate, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-      [order.order_id, order.business_id, l.line_no, l.product_id, l.unit_name, l.unit_factor, l.quantity, l.base_qty, l.price_paise, l.price_source, l.discount_pct, l.tax_rate, l.notes]);
+      `INSERT INTO wholesale_sales_order_items (order_id, business_id, line_no, product_id, unit_name, unit_factor, quantity, base_qty, price_paise, price_source, discount_pct, tax_rate, notes, is_free, scheme_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+      [order.order_id, order.business_id, l.line_no, l.product_id, l.unit_name, l.unit_factor, l.quantity, l.base_qty, l.price_paise, l.price_source, l.discount_pct, l.tax_rate, l.notes, Boolean(l.is_free), l.scheme_id ?? null]);
   }
 };
 
@@ -195,26 +198,47 @@ const preview = async (req, res) => {
   const h = await headerFields(req, b, customer, settings);
   const client = await pool.connect();
   try {
-    const lines = await buildLines(client, { tenant: req.tenant, customerId: customer.customer_id, input: b.lines, allowBelowMoq: bool(b.allow_below_moq) });
-    const est = await estimate(client, { businessId: req.tenant.businessId, branchId, customerId: customer.customer_id, lines, shippingPaise: h.shipping_charge_paise, shippingTaxRate: h.shipping_tax_rate, discountPaise: h.discount_paise });
+    const built = await buildLines(client, { tenant: req.tenant, customerId: customer.customer_id, input: paidInput(b), allowBelowMoq: bool(b.allow_below_moq) });
+    const sch = await withSchemes(client, req, { customerId: customer.customer_id, lines: built, settings, on: h.order_date });
+    const lines = withFree(sch);
+    const est = await estimate(client, { businessId: req.tenant.businessId, branchId, customerId: customer.customer_id, lines, shippingPaise: h.shipping_charge_paise, shippingTaxRate: h.shipping_tax_rate, discountPaise: h.discount_paise + sch.order_discount_paise });
     const avail = await availability(client, branchId, lines.map((l) => l.product_id));
     const credit = await checkCredit(client, { businessId: req.tenant.businessId, customerId: customer.customer_id, amountPaise: est.total_paise, settings });
     ok(res, {
-      lines: est.lines.map((l) => ({ line_no: l.line_no, product_id: l.product_id, product: l.name, unit_name: l.unit_name, quantity: l.quantity, base_qty: l.base_qty, price: rupees(l.price_paise), price_source: l.price_source, discount_pct: l.discount_pct, tax_rate: l.tax_rate, line_total: rupees(l.line_total_paise), available: avail.get(l.product_id).available, short: Math.max(0, q3(l.base_qty - avail.get(l.product_id).available)) })),
+      lines: est.lines.map((l) => ({ line_no: l.line_no, product_id: l.product_id, product: l.name, unit_name: l.unit_name, quantity: l.quantity, base_qty: l.base_qty, price: rupees(l.price_paise), price_source: l.price_source, discount_pct: l.discount_pct, tax_rate: l.tax_rate, is_free: Boolean(l.is_free), scheme_id: l.scheme_id ?? null, line_total: rupees(l.line_total_paise), available: avail.get(l.product_id).available, short: Math.max(0, q3(l.base_qty - avail.get(l.product_id).available)) })),
       subtotal: rupees(est.subtotal_paise), tax: rupees(est.tax_paise), total: rupees(est.total_paise), inter_state: est.inter_state,
+      schemes: sch.applications.map((a) => ({ scheme_id: a.scheme_id, scheme: a.scheme, kind: a.kind, free_product_id: a.free_product_id, free_base: a.free_base, discount: rupees(a.discount_paise) })), scheme_hints: sch.hints, scheme_discount: rupees(sch.order_discount_paise),
       approval_needed: needsApproval(req, settings, est.total_paise),
       credit: { level: credit.level, reasons: credit.reasons, limit: rupees(credit.position?.limit), outstanding: rupees(credit.position?.outstanding), available: credit.position?.available == null ? null : rupees(credit.position.available) }
     });
   } finally { client.release(); }
 };
 
+/** Schemes only apply for a distributor (or a wholesaler who switched the distributor features on). */
+const withSchemes = async (db, req, { customerId, lines, settings, on }) => {
+  const none = { lines, free: [], order_discount_paise: 0, applications: [], hints: [] };
+  if (!(req.tenant.businessType === 'DISTRIBUTOR' || settings.distributor_enabled)) return none;
+  return evaluateSchemes(db, { businessId: req.tenant.businessId, customerId, lines, on, stacking: settings.scheme_stacking });
+};
+/** What the client sends back never includes free goods: those are worked out again from the schemes each time. */
+const paidInput = (b) => (Array.isArray(b.lines) ? b.lines.filter((l) => !l?.is_free) : b.lines);
+const withFree = (sch) => [...sch.lines, ...sch.free.map((f, k) => ({ ...f, line_no: sch.lines.length + k + 1 }))];
+
 const saveLines = async (client, req, order, b, customer, settings) => {
-  const lines = await buildLines(client, { tenant: req.tenant, customerId: customer.customer_id, input: b.lines, allowBelowMoq: bool(b.allow_below_moq) });
-  const est = await estimate(client, { businessId: order.business_id, branchId: order.branch_id, customerId: customer.customer_id, lines, shippingPaise: Number(order.shipping_charge_paise), shippingTaxRate: Number(order.shipping_tax_rate), discountPaise: Number(order.discount_paise) });
+  const built = await buildLines(client, { tenant: req.tenant, customerId: customer.customer_id, input: paidInput(b), allowBelowMoq: bool(b.allow_below_moq) });
+  const sch = await withSchemes(client, req, { customerId: customer.customer_id, lines: built, settings, on: String(order.order_date).slice(0, 10) });
+  const lines = withFree(sch);
+  const manual = Number(order.discount_paise);
+  const est = await estimate(client, { businessId: order.business_id, branchId: order.branch_id, customerId: customer.customer_id, lines, shippingPaise: Number(order.shipping_charge_paise), shippingTaxRate: Number(order.shipping_tax_rate), discountPaise: manual + sch.order_discount_paise });
   await writeItems(client, order, lines);
+  await client.query(`DELETE FROM dist_scheme_applications WHERE order_id = $1`, [order.order_id]);
+  for (const a of sch.applications) {
+    await client.query(`INSERT INTO dist_scheme_applications (business_id, order_id, scheme_id, free_product_id, free_base, discount_paise, cost_paise) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [order.business_id, order.order_id, a.scheme_id, a.free_product_id, a.free_base, a.discount_paise, a.cost_paise]);
+  }
   const approval = needsApproval(req, settings, est.total_paise);
-  await client.query(`UPDATE wholesale_sales_orders SET subtotal_paise = $2, tax_paise = $3, total_paise = $4, approval_needed = $5, updated_at = CURRENT_TIMESTAMP WHERE order_id = $1`,
-    [order.order_id, est.subtotal_paise, est.tax_paise, est.total_paise, approval]);
+  await client.query(`UPDATE wholesale_sales_orders SET subtotal_paise = $2, tax_paise = $3, total_paise = $4, approval_needed = $5, discount_paise = $6, scheme_discount_paise = $7, updated_at = CURRENT_TIMESTAMP WHERE order_id = $1`,
+    [order.order_id, est.subtotal_paise, est.tax_paise, est.total_paise, approval, manual + sch.order_discount_paise, sch.order_discount_paise]);
   return { lines, est, approval };
 };
 
@@ -247,7 +271,7 @@ const update = async (req, res) => {
   const customer = await getCustomer(req, before.customer_id);
   const h = await headerFields(req, { ...Object.fromEntries(Object.entries({
     order_date: before.order_date, payment_terms_days: before.payment_terms_days, expected_delivery: before.expected_delivery, shipping_address: before.shipping_address,
-    shipping_charge: rupees(before.shipping_charge_paise), shipping_tax_rate: before.shipping_tax_rate, discount: rupees(before.discount_paise), customer_po: before.customer_po, notes: before.notes, salesperson_id: before.salesperson_id
+    shipping_charge: rupees(before.shipping_charge_paise), shipping_tax_rate: before.shipping_tax_rate, discount: rupees(Number(before.discount_paise) - Number(before.scheme_discount_paise || 0)), customer_po: before.customer_po, notes: before.notes, salesperson_id: before.salesperson_id
   }).map(([k, v]) => [k, v instanceof Date ? v.toISOString().slice(0, 10) : v])), ...b }, customer, settings);
   await withTransaction(async (client) => {
     const order = await loadOrder(client, req.tenant.businessId, before.order_id, { lock: true });
@@ -265,8 +289,8 @@ const update = async (req, res) => {
     else {
       // header-only edit: totals change when shipping or the discount did
       const items = (await loadItems(client, order.order_id)).map((i) => ({ quantity: Number(i.quantity), price_paise: Number(i.price_paise), discount_pct: Number(i.discount_pct), tax_rate: Number(i.tax_rate) }));
-      const est = await estimate(client, { businessId: order.business_id, branchId: order.branch_id, customerId: order.customer_id, lines: items, shippingPaise: h.shipping_charge_paise, shippingTaxRate: h.shipping_tax_rate, discountPaise: h.discount_paise });
-      await client.query(`UPDATE wholesale_sales_orders SET subtotal_paise = $2, tax_paise = $3, total_paise = $4, approval_needed = $5 WHERE order_id = $1`, [order.order_id, est.subtotal_paise, est.tax_paise, est.total_paise, needsApproval(req, settings, est.total_paise)]);
+      const est = await estimate(client, { businessId: order.business_id, branchId: order.branch_id, customerId: order.customer_id, lines: items, shippingPaise: h.shipping_charge_paise, shippingTaxRate: h.shipping_tax_rate, discountPaise: h.discount_paise + Number(order.scheme_discount_paise || 0) });
+      await client.query(`UPDATE wholesale_sales_orders SET subtotal_paise = $2, tax_paise = $3, total_paise = $4, approval_needed = $5, discount_paise = $6 WHERE order_id = $1`, [order.order_id, est.subtotal_paise, est.tax_paise, est.total_paise, needsApproval(req, settings, est.total_paise), h.discount_paise + Number(order.scheme_discount_paise || 0)]);
     }
     if (ACTIVE_STATUSES.includes(order.status) && settings.reserve_on_confirm) {
       const items = await loadItems(client, order.order_id, { lock: true });

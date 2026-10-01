@@ -293,14 +293,14 @@ const renameCategory = async (req, res) => {
 
 const CUSTOMER_TYPES = ['RETAILER', 'DEALER', 'DISTRIBUTOR', 'BUSINESS', 'CORPORATE', 'OTHER'];
 
-const listShape = (r) => ({ list_id: r.list_id, name: r.name, kind: r.kind, customer_type: r.customer_type, starts_on: r.starts_on, ends_on: r.ends_on, is_active: r.is_active, notes: r.notes, items: r.items == null ? undefined : Number(r.items), customers: r.customers == null ? undefined : Number(r.customers), is_default: Boolean(r.is_default) });
+const listShape = (r) => ({ list_id: r.list_id, name: r.name, kind: r.kind, customer_type: r.customer_type, territory_id: r.territory_id ?? null, territory: r.territory_name ?? null, starts_on: r.starts_on, ends_on: r.ends_on, is_active: r.is_active, notes: r.notes, items: r.items == null ? undefined : Number(r.items), customers: r.customers == null ? undefined : Number(r.customers), is_default: Boolean(r.is_default) });
 
 const priceLists = async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT l.*, (SELECT COUNT(*) FROM wholesale_price_list_items i WHERE i.list_id = l.list_id) AS items,
+    `SELECT l.*, t.name AS territory_name, (SELECT COUNT(*) FROM wholesale_price_list_items i WHERE i.list_id = l.list_id) AS items,
             (SELECT COUNT(*) FROM wholesale_customer_profiles w WHERE w.price_list_id = l.list_id) AS customers,
             (s.default_price_list_id = l.list_id) AS is_default
-     FROM wholesale_price_lists l LEFT JOIN wholesale_settings s ON s.business_id = l.business_id WHERE l.business_id = $1 ORDER BY l.is_active DESC, l.kind, lower(l.name)`, [req.tenant.businessId]);
+     FROM wholesale_price_lists l LEFT JOIN wholesale_settings s ON s.business_id = l.business_id LEFT JOIN dist_territories t ON t.territory_id = l.territory_id WHERE l.business_id = $1 ORDER BY l.is_active DESC, l.kind, lower(l.name)`, [req.tenant.businessId]);
   ok(res, rows.map(listShape));
 };
 
@@ -309,6 +309,7 @@ const listFields = (body, partial) => {
   if (!partial || 'name' in body) f.name = text(body.name, 'Name', { max: 80, min: 2, required: true });
   if ('kind' in body) f.kind = oneOf(body.kind, 'Kind', ['STANDARD', 'PROMOTION'], { required: true });
   if ('customer_type' in body) f.customer_type = body.customer_type ? oneOf(body.customer_type, 'Customer type', CUSTOMER_TYPES) : null;
+  if ('territory_id' in body) f.territory_id = int(body.territory_id, 'Territory', { min: 1 });
   if ('starts_on' in body) f.starts_on = text(body.starts_on, 'Start date', { max: 10 }) || null;
   if ('ends_on' in body) f.ends_on = text(body.ends_on, 'End date', { max: 10 }) || null;
   if ('is_active' in body) f.is_active = bool(body.is_active);
@@ -317,8 +318,13 @@ const listFields = (body, partial) => {
   return f;
 };
 
+const checkTerritory = async (req, f) => {
+  if (f.territory_id && !(await pool.query(`SELECT 1 FROM dist_territories WHERE business_id = $1 AND territory_id = $2`, [req.tenant.businessId, f.territory_id])).rowCount) throw new WholesaleError(400, 'That territory was not found');
+};
+
 const createList = async (req, res) => {
   const f = listFields(req.body || {}, false);
+  await checkTerritory(req, f);
   const keys = Object.keys(f);
   try {
     const row = (await pool.query(`INSERT INTO wholesale_price_lists (business_id, ${keys.join(', ')}) VALUES ($1, ${keys.map((_, i) => `$${i + 2}`).join(', ')}) RETURNING *`, [req.tenant.businessId, ...keys.map((k) => f[k])])).rows[0];
@@ -331,6 +337,7 @@ const updateList = async (req, res) => {
   const before = (await pool.query(`SELECT * FROM wholesale_price_lists WHERE list_id = $1 AND business_id = $2`, [req.params.id, req.tenant.businessId])).rows[0];
   if (!before) throw new WholesaleError(404, 'Not found');
   const f = listFields(req.body || {}, true);
+  await checkTerritory(req, f);
   const keys = Object.keys(f);
   if (!keys.length && !('make_default' in (req.body || {}))) throw new WholesaleError(400, 'Nothing to update');
   let after = before;

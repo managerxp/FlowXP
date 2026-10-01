@@ -11,6 +11,7 @@ import { idempotent } from '../middleware/idempotency.js';
 import { distributorOn, wholesaleOnly } from '../modules/distributor/common.js';
 import principals from '../controllers/distributorPrincipals.controller.js';
 import territories from '../controllers/distributorTerritories.controller.js';
+import schemes from '../controllers/distributorSchemes.controller.js';
 import team from '../controllers/distributorTeam.controller.js';
 
 const router = Router();
@@ -42,6 +43,15 @@ router.get('/beats', ...read, any('territories', 'field_sales', 'reports'), terr
 router.post('/beats', ...write, can('territories'), territories.createBeat);
 router.get('/beats/:id', ...read, any('territories', 'field_sales', 'reports'), territories.getBeat);
 router.put('/beats/:id', ...write, can('territories'), territories.updateBeat);
+
+/* ── schemes ──────────────────────────────────────────────────────────────── */
+router.get('/schemes', ...read, any('schemes', 'sales_orders', 'field_sales', 'reports'), schemes.list);
+router.get('/schemes/eligible', ...read, any('schemes', 'sales_orders', 'field_sales'), schemes.eligible);
+router.post('/schemes', ...write, can('schemes'), schemes.create);
+router.get('/schemes/:id', ...read, any('schemes', 'sales_orders', 'field_sales', 'reports'), schemes.get);
+router.put('/schemes/:id', ...write, can('schemes'), schemes.update);
+router.delete('/schemes/:id', ...write, can('schemes'), schemes.remove);
+router.get('/schemes/:id/performance', ...read, any('schemes', 'reports'), schemes.performance);
 
 /* ── sales team, targets, commission ──────────────────────────────────────── */
 router.get('/team', ...read, any('targets', 'territories', 'reports', 'field_sales'), team.team);
