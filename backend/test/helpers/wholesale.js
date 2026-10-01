@@ -20,7 +20,7 @@ export const makeWholesaler = async (pool, label, { gst = true, branches = 1, st
     branchIds.push((await pool.query(`INSERT INTO branches (business_id, name, is_primary, state) VALUES ($1,$2,$3,$4) RETURNING branch_id`, [biz.business_id, i === 0 ? 'Main warehouse' : `Warehouse ${i + 1}`, i === 0, state])).rows[0].branch_id);
   }
   const tenantFor = (role = 'OWNER', { branchId = branchIds[0], permissions = {}, planFeatures = {}, userId = user.user_id, pinned = false } = {}) => ({
-    businessId: biz.business_id, businessType: type, role, permissions, branchId, scopeBranchId: branchId, viewAll: !pinned, pinned, planFeatures, userId,
+    businessId: biz.business_id, businessType: type, role, permissions, branchId, scopeBranchId: branchId, viewAll: false, pinned, planFeatures, userId,
     multiOutlet: branchIds.length > 1, name: `Wholesale ${tag}`
   });
   const w = { tag, userId: user.user_id, businessId: biz.business_id, branchId: branchIds[0], branchIds, tenantFor };

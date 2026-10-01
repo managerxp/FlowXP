@@ -36,6 +36,15 @@ export const mySalesperson = async (req) => {
   return row ? row.salesperson_id : 0;
 };
 
+/** A customer row this person may see: everyone's for staff, only their own customers' for a sales executive. */
+export const visibleCustomer = async (req, id) => {
+  const row = await loadCustomer(pool, req.tenant.businessId, id);
+  if (!row) throw new WholesaleError(404, 'Not found');
+  const mine = await mySalesperson(req);
+  if (mine != null && row.salesperson_id !== mine) throw new WholesaleError(404, 'Not found');
+  return row;
+};
+
 /* ═══ customers ═══════════════════════════════════════════════════════════════════════════════ */
 
 const CUSTOMER_FROM = `
@@ -96,8 +105,7 @@ const listCustomers = async (req, res) => {
 const loadCustomer = async (db, businessId, id) => (await db.query(`SELECT ${CUSTOMER_COLS} ${CUSTOMER_FROM} WHERE c.business_id = $1 AND c.customer_id = $2`, [businessId, id])).rows[0];
 
 const getCustomer = async (req, res) => {
-  const row = await loadCustomer(pool, req.tenant.businessId, req.params.id);
-  if (!row) throw new WholesaleError(404, 'Not found');
+  const row = await visibleCustomer(req, req.params.id);
   const s = await getSettings(pool, req.tenant.businessId);
   const bal = (await customerBalances(pool, { businessId: req.tenant.businessId, customerIds: [row.customer_id], graceDays: s.overdue_grace_days })).get(row.customer_id);
   const position = await creditPosition(pool, { businessId: req.tenant.businessId, customerId: row.customer_id, settings: s });
@@ -170,8 +178,7 @@ const createCustomer = async (req, res) => {
 };
 
 const updateCustomer = async (req, res) => {
-  const before = await loadCustomer(pool, req.tenant.businessId, req.params.id);
-  if (!before) throw new WholesaleError(404, 'Not found');
+  const before = await visibleCustomer(req, req.params.id);
   const { core, prof } = customerFields(req.body || {}, true);
   if (!Object.keys(core).length && !Object.keys(prof).length) throw new WholesaleError(400, 'Nothing to update');
   await checkRefs(pool, req.tenant.businessId, prof);
@@ -186,6 +193,7 @@ const updateCustomer = async (req, res) => {
 };
 
 const setCustomerStatus = (status) => async (req, res) => {
+  await visibleCustomer(req, req.params.id);
   const hit = await pool.query(`UPDATE customers SET status = $3 WHERE business_id = $1 AND customer_id = $2 RETURNING customer_id`, [req.tenant.businessId, req.params.id, status]);
   if (!hit.rowCount) throw new WholesaleError(404, 'Not found');
   audit(req, `wholesale.customer_${status === 'ACTIVE' ? 'restored' : 'archived'}`, 'customer', hit.rows[0].customer_id);
@@ -193,8 +201,7 @@ const setCustomerStatus = (status) => async (req, res) => {
 };
 
 const customerLedgerEndpoint = async (req, res) => {
-  const row = await loadCustomer(pool, req.tenant.businessId, req.params.id);
-  if (!row) throw new WholesaleError(404, 'Not found');
+  const row = await visibleCustomer(req, req.params.id);
   const l = await customerLedger(pool, { businessId: req.tenant.businessId, customerId: row.customer_id, from: isoDate(req.query.from, 'From'), to: isoDate(req.query.to, 'To') });
   ok(res, {
     customer: { customer_id: row.customer_id, name: row.name, gstin: row.gstin, phone: row.phone },
@@ -205,8 +212,7 @@ const customerLedgerEndpoint = async (req, res) => {
 };
 
 const customerAgeing = async (req, res) => {
-  const row = await loadCustomer(pool, req.tenant.businessId, req.params.id);
-  if (!row) throw new WholesaleError(404, 'Not found');
+  const row = await visibleCustomer(req, req.params.id);
   const items = await receivableAgeing(pool, { businessId: req.tenant.businessId, customerId: row.customer_id });
   const buckets = Object.fromEntries(BUCKETS.map(([k]) => [k, 0]));
   for (const i of items) buckets[i.bucket] += Number(i.balance_due_paise);
@@ -214,6 +220,7 @@ const customerAgeing = async (req, res) => {
 };
 
 const customerInvoices = async (req, res) => {
+  await visibleCustomer(req, req.params.id);
   const pg = paging(req.query, { max: 100, fallback: 25 });
   const { rows } = await pool.query(
     `SELECT i.invoice_id, i.invoice_number, i.invoice_date, i.total_paise, i.balance_due_paise, i.payment_status, i.status, m.due_date, m.kind, COUNT(*) OVER() AS total
@@ -223,6 +230,7 @@ const customerInvoices = async (req, res) => {
 };
 
 const customerCredit = async (req, res) => {
+  await visibleCustomer(req, req.params.id);
   const position = await creditPosition(pool, { businessId: req.tenant.businessId, customerId: Number(req.params.id) });
   if (!position) throw new WholesaleError(404, 'Not found');
   ok(res, { limit: rupees(position.limit), outstanding: rupees(position.outstanding), overdue: rupees(position.overdue), promised: rupees(position.promised), available: position.available == null ? null : rupees(position.available), utilization_pct: position.utilization_pct, policy: position.policy });
@@ -440,7 +448,7 @@ const settingsShape = (s) => ({
 
 const getSettingsEndpoint = async (req, res) => ok(res, settingsShape(await getSettings(pool, req.tenant.businessId)));
 
-const NOTIFY_KEYS = ['order_confirmed', 'order_dispatched', 'invoice_issued', 'payment_received', 'payment_due', 'low_stock', 'expiry'];
+const NOTIFY_KEYS = ['order_confirmed', 'order_dispatched', 'invoice_issued', 'payment_received', 'payment_due', 'payment_overdue'];
 
 const updateSettings = async (req, res) => {
   const b = req.body || {}; const f = {};

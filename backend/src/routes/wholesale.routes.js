@@ -17,6 +17,10 @@ import inventory from '../controllers/wholesaleInventory.controller.js';
 import purchasing from '../controllers/wholesalePurchasing.controller.js';
 import money from '../controllers/wholesaleMoney.controller.js';
 import returns from '../controllers/wholesaleReturns.controller.js';
+import dashboard from '../controllers/wholesaleDashboard.controller.js';
+import reports from '../controllers/wholesaleReports.controller.js';
+import importer from '../controllers/wholesaleImport.controller.js';
+import '../modules/wholesale/scans.js';   // registers the background checks with the worker
 import * as purchases from '../controllers/purchases.controller.js';
 import * as debitNotes from '../controllers/debitNotes.controller.js';
 
@@ -28,6 +32,18 @@ const any = (...p) => requireAnyPermission(...p);
 const can = (p) => requirePermission(p);
 const feature = (f) => requirePlanFeature(f);
 const once = idempotent();
+
+/* ── dashboard and reports ────────────────────────────────────────────────── */
+router.get('/dashboard', ...read, any('reports', 'payments', 'sales_orders', 'fulfilment', 'inventory', 'purchases'), dashboard.dashboard);
+router.get('/reports', ...read, can('reports'), reports.list);
+router.get('/reports/:key', ...read, can('reports'), reports.run);
+
+/* ── bulk work: imports and bulk edits ────────────────────────────────────── */
+router.post('/import/products', ...write, can('products'), importer.importProducts);
+router.post('/import/customers', ...write, can('customers'), importer.importCustomers);
+router.post('/import/suppliers', ...write, can('suppliers'), importer.importSuppliers);
+router.post('/products/bulk', ...write, can('products'), importer.bulkProducts);
+router.post('/customers/bulk', ...write, can('customers'), importer.bulkCustomers);
 
 /* ── settings ─────────────────────────────────────────────────────────────── */
 router.get('/settings', ...read, parties.getSettings);

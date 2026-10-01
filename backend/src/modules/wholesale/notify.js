@@ -20,6 +20,7 @@ export const EVENTS = {
   payment_overdue: 'WS_PAYMENT_OVERDUE'
 };
 
+const REMINDERS = new Set(['payment_due', 'payment_overdue']);
 const inr = (paise) => `₹${toRupees(paise).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 const day = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -28,7 +29,9 @@ export const deliver = async (db, { businessId, branchId = null, event, customer
   const kind = EVENTS[event];
   if (!kind) throw new Error(`Unknown wholesale event ${event}`);
   const settings = await getSettings(db, businessId);
-  if (settings.notifications?.[event] === false) return { skipped: 'DISABLED' };
+  // order, invoice and payment messages go out unless switched off; reminders to customers are opt-in
+  const flag = settings.notifications?.[event];
+  if (REMINDERS.has(event) ? flag !== true : flag === false) return { skipped: 'DISABLED' };
   const c = (await db.query(`SELECT c.name, c.phone, b.name AS business FROM customers c JOIN businesses b ON b.business_id = c.business_id WHERE c.business_id = $1 AND c.customer_id = $2`, [businessId, customerId])).rows[0];
   if (!c?.phone) return { skipped: 'NO_PHONE' };
   const v = { name: c.name, business: c.business, ...values };

@@ -9,6 +9,7 @@
  */
 import pool from '../config/database.js';
 import { toRupees } from '../utils/money.js';
+import { stockAlertCounts } from '../modules/wholesale/alerts.js';
 import {
   addToBatch, allocateBatches, availability, batchTracked, consumeBatches, expiredQty, lockProducts, logDamaged, returnToBatch, stockIn, stockOut
 } from '../modules/wholesale/stock.js';
@@ -33,6 +34,7 @@ const scopeBranches = async (req, requested = null) => {
 };
 
 const ownBranch = async (req, id) => {
+  if (id == null || id === '') throw new WholesaleError(400, 'Choose a warehouse first', { code: 'OUTLET_REQUIRED' });
   const ids = await scopeBranches(req, id);
   return ids[0];
 };
@@ -259,26 +261,7 @@ const expiry = async (req, res) => {
 };
 
 /* GET /inventory/alerts — the counts behind the dashboard's stock alerts */
-const alerts = async (req, res) => {
-  const branches = await scopeBranches(req, req.query.branch_id);
-  const s = await getSettings(pool, req.tenant.businessId);
-  const q = async (sql, extra = []) => Number((await pool.query(sql, [req.tenant.businessId, branches, ...extra])).rows[0].n);
-  const stocked = `FROM products p WHERE p.business_id = $1 AND p.status = 'ACTIVE' AND p.track_inventory AND p.kind IN ('DISH','INGREDIENT','PACKAGING')`;
-  const onHand = `COALESCE((SELECT SUM(quantity) FROM branch_stock WHERE product_id = p.product_id AND branch_id = ANY($2::int[])), 0)`;
-  const avail = `COALESCE((SELECT SUM(quantity - reserved_qty) FROM branch_stock WHERE product_id = p.product_id AND branch_id = ANY($2::int[])), 0)`;
-  ok(res, {
-    low_stock: await q(`SELECT COUNT(*) AS n ${stocked} AND p.min_stock > 0 AND ${avail} <= p.min_stock AND ${onHand} > 0`),
-    out_of_stock: await q(`SELECT COUNT(*) AS n ${stocked} AND ${onHand} <= 0 AND EXISTS (SELECT 1 FROM branch_stock WHERE product_id = p.product_id)`),
-    overstock: await q(`SELECT COUNT(*) AS n ${stocked} AND EXISTS (SELECT 1 FROM wholesale_item_details d WHERE d.product_id = p.product_id AND d.max_stock IS NOT NULL AND ${onHand} > d.max_stock)`),
-    expired: await q(`SELECT COUNT(*) AS n FROM wholesale_batches WHERE business_id = $1 AND branch_id = ANY($2::int[]) AND qty_on_hand > 0 AND expiry_date < CURRENT_DATE`),
-    expiring: await q(`SELECT COUNT(*) AS n FROM wholesale_batches WHERE business_id = $1 AND branch_id = ANY($2::int[]) AND qty_on_hand > 0 AND expiry_date >= CURRENT_DATE AND expiry_date <= CURRENT_DATE + $3::int`, [s.expiry_alert_days.at(-1) ?? 90]),
-    slow_moving: await q(`SELECT COUNT(*) AS n ${stocked} AND ${onHand} > 0 AND NOT EXISTS (SELECT 1 FROM inventory_transactions t WHERE t.product_id = p.product_id AND t.transaction_type = 'SALE' AND t.created_at > CURRENT_TIMESTAMP - make_interval(days => $3::int))
-      AND EXISTS (SELECT 1 FROM inventory_transactions t WHERE t.product_id = p.product_id AND t.transaction_type = 'SALE' AND t.created_at > CURRENT_TIMESTAMP - make_interval(days => $4::int))`, [s.slow_moving_days, s.dead_stock_days]),
-    dead_stock: await q(`SELECT COUNT(*) AS n ${stocked} AND ${onHand} > 0 AND NOT EXISTS (SELECT 1 FROM inventory_transactions t WHERE t.product_id = p.product_id AND t.transaction_type = 'SALE' AND t.created_at > CURRENT_TIMESTAMP - make_interval(days => $3::int))`, [s.dead_stock_days]),
-    damaged_units: Number((await pool.query(`SELECT COALESCE(SUM(qty), 0) AS n FROM wholesale_damaged_log WHERE business_id = $1 AND branch_id = ANY($2::int[])`, [req.tenant.businessId, branches])).rows[0].n),
-    in_transit_transfers: await q(`SELECT COUNT(*) AS n FROM wholesale_transfers WHERE business_id = $1 AND status = 'IN_TRANSIT' AND (to_branch_id = ANY($2::int[]) OR from_branch_id = ANY($2::int[]))`)
-  });
-};
+const alerts = async (req, res) => ok(res, await stockAlertCounts(pool, { businessId: req.tenant.businessId, branchIds: await scopeBranches(req, req.query.branch_id) }));
 
 /* ═══ adjustments ═════════════════════════════════════════════════════════════════════════════ */
 
@@ -292,7 +275,7 @@ const MODES = ['OPENING', 'ADD', 'REMOVE', 'COUNT', 'DAMAGE', 'EXPIRED'];
  */
 const adjust = async (req, res) => {
   const b = req.body || {};
-  const branchId = await ownBranch(req, b.branch_id ?? req.tenant.branchId);
+  const branchId = await ownBranch(req, b.branch_id ?? (req.tenant.viewAll ? null : req.tenant.branchId));
   const productId = int(b.product_id, 'Product', { min: 1, required: true });
   const mode = oneOf(b.mode, 'Adjustment type', MODES, { required: true });
   const reason = text(b.reason, 'Reason', { max: 200, required: mode !== 'OPENING', min: 3 }) || 'Opening stock';
@@ -374,7 +357,7 @@ const adjust = async (req, res) => {
 /* POST /inventory/write-off-damaged { branch_id, product_id, quantity, note } — damaged goods thrown away */
 const writeOffDamaged = async (req, res) => {
   const b = req.body || {};
-  const branchId = await ownBranch(req, b.branch_id ?? req.tenant.branchId);
+  const branchId = await ownBranch(req, b.branch_id ?? (req.tenant.viewAll ? null : req.tenant.branchId));
   const productId = int(b.product_id, 'Product', { min: 1, required: true });
   const qty = num(b.quantity, 'Quantity', { min: 0.001, required: true });
   await withTransaction(async (client) => {

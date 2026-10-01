@@ -8,6 +8,7 @@
 import pool from '../config/database.js';
 import { toRupees } from '../utils/money.js';
 import { branchFilter } from '../utils/scope.js';
+import { visibleCustomer } from './wholesaleParties.controller.js';
 import { priceLines } from '../modules/wholesale/pricing.js';
 import { loadUnits } from '../modules/wholesale/units.js';
 import {
@@ -397,6 +398,7 @@ const removeItem = async (req, res) => {
 /* ── customer-specific prices ─────────────────────────────────────────────────────────────── */
 
 const customerPrices = async (req, res) => {
+  await visibleCustomer(req, req.params.id);
   const own = (await pool.query(`SELECT 1 FROM customers WHERE customer_id = $1 AND business_id = $2`, [req.params.id, req.tenant.businessId])).rows.length;
   if (!own) throw new WholesaleError(404, 'Not found');
   const rows = (await pool.query(

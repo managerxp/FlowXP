@@ -135,6 +135,7 @@ const writePOLines = async (client, poId, lines) => {
 };
 
 const warehouseFor = async (req, requested) => {
+  if (!requested && req.tenant.viewAll) throw new WholesaleError(400, 'Choose a warehouse first', { code: 'OUTLET_REQUIRED' });
   const id = requested ? Number(requested) : req.tenant.branchId;
   if (req.tenant.pinned && id !== req.tenant.branchId) throw new WholesaleError(403, 'You can only buy into your own warehouse');
   if (!(await pool.query(`SELECT 1 FROM branches WHERE branch_id = $1 AND business_id = $2 AND status = 'ACTIVE'`, [id, req.tenant.businessId])).rowCount) throw new WholesaleError(400, 'That warehouse was not found');

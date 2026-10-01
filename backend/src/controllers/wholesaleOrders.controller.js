@@ -70,6 +70,7 @@ const visibleOrder = async (req, id, opts) => {
 };
 
 const pickBranch = async (req, requested) => {
+  if (!requested && req.tenant.viewAll) throw new WholesaleError(400, 'Choose a warehouse first', { code: 'OUTLET_REQUIRED' });
   const id = requested ? Number(requested) : req.tenant.branchId;
   if (!Number.isInteger(id)) throw new WholesaleError(400, 'Choose a warehouse');
   if (req.tenant.pinned && id !== req.tenant.branchId) throw new WholesaleError(403, 'You can only use your own warehouse');
