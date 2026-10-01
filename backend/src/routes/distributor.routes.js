@@ -12,6 +12,7 @@ import { distributorOn, wholesaleOnly } from '../modules/distributor/common.js';
 import principals from '../controllers/distributorPrincipals.controller.js';
 import territories from '../controllers/distributorTerritories.controller.js';
 import schemes from '../controllers/distributorSchemes.controller.js';
+import vehicles from '../controllers/distributorVehicles.controller.js';
 import team from '../controllers/distributorTeam.controller.js';
 
 const router = Router();
@@ -20,7 +21,7 @@ const read = [requireAuth, withBusiness(), wholesaleOnly, distributorOn];
 const write = [requireAuth, withBusiness({ requireActive: true }), wholesaleOnly, distributorOn];
 const any = (...p) => requireAnyPermission(...p);
 const can = (p) => requirePermission(p);
-const once = idempotent();   // eslint-disable-line no-unused-vars
+const once = idempotent();
 
 /* ── principals and brands ────────────────────────────────────────────────── */
 router.get('/principals', ...read, any('principals', 'products', 'purchases', 'reports'), principals.list);
@@ -52,6 +53,17 @@ router.get('/schemes/:id', ...read, any('schemes', 'sales_orders', 'field_sales'
 router.put('/schemes/:id', ...write, can('schemes'), schemes.update);
 router.delete('/schemes/:id', ...write, can('schemes'), schemes.remove);
 router.get('/schemes/:id/performance', ...read, any('schemes', 'reports'), schemes.performance);
+
+/* ── vans ─────────────────────────────────────────────────────────────────── */
+router.get('/vehicles', ...read, any('vehicles', 'field_sales', 'reports'), vehicles.list);
+router.get('/vehicles/stock', ...read, any('vehicles', 'reports', 'inventory'), vehicles.stockAll);
+router.post('/vehicles', ...write, can('vehicles'), vehicles.create);
+router.get('/vehicles/:id', ...read, any('vehicles', 'field_sales', 'reports'), vehicles.get);
+router.put('/vehicles/:id', ...write, can('vehicles'), vehicles.update);
+router.post('/vehicles/:id/load', ...write, can('vehicles'), once, vehicles.load);
+router.post('/vehicles/:id/return', ...write, can('vehicles'), once, vehicles.giveBack);
+router.post('/vehicles/:id/reconcile', ...write, can('vehicles'), once, vehicles.reconcile);
+router.post('/vehicles/:id/sell', ...write, any('vehicles', 'field_sales'), once, vehicles.sell);
 
 /* ── sales team, targets, commission ──────────────────────────────────────── */
 router.get('/team', ...read, any('targets', 'territories', 'reports', 'field_sales'), team.team);

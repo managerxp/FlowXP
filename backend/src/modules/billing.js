@@ -389,7 +389,8 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
        line.discountPaise, line.taxRate, line.tax_paise, line.line_total_paise, JSON.stringify(line.modifiers), line.unitCostPaise, line.unitName, line.stockFactor]
     );
 
-    if (line.trackInventory) {
+    // stockHandledElsewhere: the goods are not in this outlet's stock (a distributor's van holds them), so selling them here must not take them out of it
+    if (line.trackInventory && !input.stockHandledElsewhere) {
       const stockQty = Math.round(line.quantity * line.stockFactor * 1000) / 1000;
       await moveStock(client, { businessId: tenant.businessId, branchId: tenant.branchId, productId: line.product_id, delta: -stockQty });
       await client.query(
