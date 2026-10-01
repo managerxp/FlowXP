@@ -166,6 +166,39 @@ const Hours = ({ s }) => {
   );
 };
 
+
+/* ── online booking ───────────────────────────────────────────────────────── */
+
+const OnlineBooking = ({ s }) => {
+  const c = s.data.settings;
+  const toast = useToast();
+  const [form, setForm] = useState({ enabled: Boolean(c.online_booking_enabled), slug: c.online_booking_slug || '', notice: c.online_booking_notice || '' });
+  const link = form.slug ? `${window.location.origin}/book/${form.slug}` : '';
+  const submit = async (e) => {
+    e.preventDefault();
+    await s.save({ online_booking_enabled: form.enabled, online_booking_slug: form.slug || null, online_booking_notice: form.notice || null }, form.enabled ? 'Online booking is on' : 'Saved');
+  };
+  return (
+    <Panel title="Online booking" lead="A page clients can use to book themselves, without calling. It follows your opening hours, team hours, leave and booking rules.">
+      <form onSubmit={submit} className="space-y-4">
+        <Toggle id="ob-on" checked={form.enabled} onChange={(v) => setForm((f) => ({ ...f, enabled: v }))} label="Let clients book online" hint="Needs the Appointments feature on your plan." />
+        <Field id="ob-slug" label="Your booking address" hint="Letters, numbers and dashes. This becomes part of the link.">
+          <div className="flex items-center gap-2"><span className="text-small text-ink-500">/book/</span><div className="flex-1"><Input id="ob-slug" value={form.slug} maxLength={40} onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))} /></div></div>
+        </Field>
+        <Field id="ob-notice" label="Message at the top of the page" hint="Optional — parking, what to bring, a festive notice."><Input id="ob-notice" value={form.notice} maxLength={300} onChange={(e) => setForm((f) => ({ ...f, notice: e.target.value }))} /></Field>
+        {c.online_booking_enabled && link && (
+          <div className="flex flex-wrap items-center gap-2 rounded-(--radius-control) bg-surface-2 px-3.5 py-2.5 text-small">
+            <a href={link} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate font-medium text-brand-600 underline">{link}</a>
+            <Button type="button" variant="secondary" size="sm" onClick={() => navigator.clipboard?.writeText(link).then(() => toast.success('Link copied'))}>Copy link</Button>
+          </div>
+        )}
+        <p className="text-caption text-ink-500">Online bookings arrive as Booked appointments marked Online. One mobile number can hold up to three upcoming online bookings.</p>
+        <SaveBar busy={s.busy} />
+      </form>
+    </Panel>
+  );
+};
+
 /* ── tax & payments ───────────────────────────────────────────────────────── */
 
 const TaxPayments = ({ s }) => {
@@ -409,7 +442,7 @@ const SalonSettings = () => {
         <>
           <ListState loading={s.loading && !s.data} error={s.error} />
           {s.data && tab === 'profile' && <Profile s={s} />}
-          {s.data && tab === 'hours' && <Hours s={s} />}
+          {s.data && tab === 'hours' && <div className="space-y-6"><Hours s={s} /><OnlineBooking s={s} /></div>}
           {s.data && tab === 'tax' && <TaxPayments s={s} />}
           {s.data && tab === 'clients' && <Segments s={s} />}
         </>

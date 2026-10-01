@@ -10,6 +10,7 @@ import rateLimit from 'express-rate-limit';
 import * as publicOrdering from '../controllers/publicOrdering.controller.js';
 import * as publicBill from '../controllers/publicBill.controller.js';
 import { idempotent } from '../middleware/idempotency.js';
+import * as publicSalon from '../controllers/salonPublic.controller.js';
 
 const router = Router();
 
@@ -43,5 +44,13 @@ const loyaltyLimiter = rateLimit({
 router.get('/menu/:token', publicOrdering.getMenu);
 router.post('/menu/:token/loyalty', loyaltyLimiter, publicOrdering.loyaltyCard);
 router.post('/menu/:token/order', placeOrderLimiter, idempotent((req) => `t:${req.params.token}`), publicOrdering.placeOrder);
+
+/* Online booking for a salon, found by the address its owner chose. Reading is generous; booking is tight, since each
+   one holds a stylist's time. */
+const salonReadLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false, message: { success: false, message: 'Too many requests. Try again shortly.' } });
+const salonBookLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 12, standardHeaders: true, legacyHeaders: false, message: { success: false, message: 'Too many bookings from here. Please call the salon.' } });
+router.get('/salon/:slug', salonReadLimiter, publicSalon.info);
+router.get('/salon/:slug/availability', salonReadLimiter, publicSalon.availability);
+router.post('/salon/:slug/appointments', salonBookLimiter, publicSalon.book);
 
 export default router;

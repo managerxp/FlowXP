@@ -113,6 +113,7 @@ const SalonSettings = lazy(() => import('./app/salon/SalonSettings.jsx'));
    no login, no nav, not inside SiteLayout or AppShell at all. See
    public/CustomerMenu.jsx's header comment. */
 const CustomerMenu = lazy(() => import('./public/CustomerMenu.jsx'));
+const SalonBooking = lazy(() => import('./public/SalonBooking.jsx'));
 const BillPage = lazy(() => import('./public/BillPage.jsx'));
 const MessagingPage = lazy(() => import('./app/MessagingPage.jsx'));
 const ReviewsPage = lazy(() => import('./app/ReviewsPage.jsx'));
@@ -229,6 +230,7 @@ const App = () => (
     {/* A customer's own phone — no login, no nav, no SiteLayout/AppShell
         chrome at all. The first bare page in this app; see
         public/CustomerMenu.jsx. */}
+    <Route path="book/:slug" element={<Suspense fallback={<PageLoader />}><SalonBooking /></Suspense>} />
     <Route path="bill/:token" element={<Suspense fallback={<PageLoader />}><BillPage /></Suspense>} />
     <Route
       path="order/:token"

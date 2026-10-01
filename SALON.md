@@ -35,7 +35,7 @@ with a per-person advisory lock inside the booking transaction.
 Backend: `backend/src/modules/salon/*` (logic), `backend/src/controllers/salon*.controller.js`,
 `backend/src/routes/salon.routes.js`. Frontend: `frontend/src/app/salon/*`, `frontend/src/lib/salon.js`.
 
-## 2. Database changes (migrations 0048–0050, each with `down()`)
+## 2. Database changes (migrations 0048–0051, each with `down()`)
 
 - **0048 foundation** — widens checks (roles `RECEPTIONIST`, `STYLIST`, `ACCOUNTANT`; product kind `SERVICE`; payment
   methods `WALLET`, `GIFT_CARD`; points kind `EXPIRE`); adds `points_programs.expiry_days`, `categories.item_scope`,
@@ -49,13 +49,15 @@ Backend: `backend/src/modules/salon/*` (logic), `backend/src/controllers/salon*.
   `salon_loyalty_rules`, `salon_stock_batches`, `salon_automations`, `salon_automation_log`, view `salon_customer_stats`,
   indexes for 10k+ clients.
 
+- **0051 online booking** — `salon_settings.online_booking_enabled`, `online_booking_slug` (unique), `online_booking_notice`.
+
 Design notes: a member keeps the terms they bought (snapshot); usage rows are voided, never deleted, when a bill is
 cancelled; commission is an append-only ledger (a payout already made is offset by a negative row, never rewritten);
 stock batches record *when it expires* while the ledger stays the single truth for *how much*.
 
 ## 3. API (all under `/api/salon`, all tenant-scoped, validated, audited; money-moving POSTs accept `Idempotency-Key`)
 
-settings · categories · services (+ consumables) · products · staff · attendance · appointments (+ schedule,
+public booking (`/api/public/salon/:slug`, no login) · settings · categories · services (+ consumables) · products · staff · attendance · appointments (+ schedule,
 availability, status) · clients (list/segments/lookup/profile/notes/timeline) · pos (catalog, products, entitlements,
 quote, invoices) · membership-plans · memberships · packages · client-packages · gift-cards · offers · loyalty ·
 commissions (+ approve, pay, payouts) · stock (in, batches) · alerts · dashboard · reports (22) · automations · campaigns.
@@ -66,7 +68,7 @@ Lists are paged in the database (`limit`/`offset`, `meta.total`).
 Dashboard (the `/app` home for a salon) · Appointments (day by person, week, list) · Billing (POS) · Clients ·
 Services (+ retail products, consumables) · Memberships & offers (plans, members, packages, gift cards, offers) ·
 Team & commission (team, attendance, commission, payouts) · Stock & alerts · Reports · Salon settings
-(profile, hours & booking, tax & payments, loyalty, clients & stock, messages). Reusable pieces:
+(profile, hours & booking + online booking, tax & payments, loyalty, clients & stock, messages). Public page: `/book/<address>`. Reusable pieces:
 `ClientPicker`, `parts.jsx` (Tabs, Segmented, Chips, Panel, NumberField, Toggle, Pager), `useLoad`, CSV export.
 POS shortcuts: `/` search · `F2` client · `F9` / `Ctrl+Enter` take payment.
 
@@ -113,18 +115,21 @@ untouched codebase between 00:00 and 05:30 IST (payments, salesreport) are not c
 
 - Receipts and invoices print through the browser (Print / Save as PDF); no server-side PDF file is generated.
 - WhatsApp/SMS delivery depends on the configured messaging provider; nothing is sent when messaging is off.
-- Offline: a bill taken without a connection is queued and sent later (idempotent). The catalogue is not cached
-  offline, so the till must have been opened online first; appointments need a connection.
+- Offline: a bill taken without a connection is queued and sent later (idempotent). The till's catalogue (services,
+  team, packages, plans, first page of retail products) is kept on the device each time it opens online and wiped on
+  sign-out; the till must have been opened online once on that device. Offline totals are estimates; client search,
+  entitlements (membership/package balances), appointments and reports need a connection.
+- Online booking has no OTP or self-service cancel/reschedule yet (limits: honeypot, rate limits, 3 upcoming bookings
+  per mobile number); clients call the salon to change a booking.
 - Package and membership sales have no HSN/SAC line detail beyond the SAC code set on the plan.
 - A membership's free-service allowance is per term, not per month.
 - Points redemption eligibility is checked on list-price amounts of eligible lines (services/products).
 - Payments created by the billing engine carry the database's date (UTC); salon reports use the salon's local day
   from `created_at`, but the general Payments screen still shows the database date (pre-existing behaviour).
-- No online booking page for clients yet (the `ONLINE`/`APP` sources and availability API are ready for it).
 
 ## 11. Recommended next steps
 
-1. Public online booking page using `/availability` (+ OTP) and a reminder confirm-by-reply.
+1. OTP verification and self-service cancel/reschedule for online bookings; confirm-by-reply reminders.
 2. Server-side PDF invoices and WhatsApp document sharing.
 3. Membership instalments / auto-renew and per-month free-service allowances.
 4. Product-level batch picking at the till for expiry-sensitive retail.

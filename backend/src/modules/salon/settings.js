@@ -28,7 +28,7 @@ export const DEFAULTS = {
   tax_inclusive: false, default_service_tax_rate: 0, default_product_tax_rate: 0, default_service_sac: null,
   commission_on_package_use: true, commission_base: 'NET',
   expiry_alert_days: 30, consumption_alert_factor: 2,
-  segment_rules: {}, payment_methods: PAYMENT_METHODS, extra: {}
+  segment_rules: {}, payment_methods: PAYMENT_METHODS, extra: {}, online_booking_enabled: false, online_booking_slug: null, online_booking_notice: null
 };
 
 const hhmm = (t) => (t ? String(t).slice(0, 5) : t);
@@ -136,6 +136,13 @@ export const cleanSettings = (body) => {
     out.segment_rules = JSON.stringify(rules);
   }
 
+  if ('online_booking_enabled' in body) out.online_booking_enabled = bool(body.online_booking_enabled);
+  if ('online_booking_slug' in body) {
+    const v = text(body.online_booking_slug, 'Booking address', { max: 40 });
+    if (v && !/^[a-z0-9][a-z0-9-]{2,39}$/.test(v.toLowerCase())) throw new SalonError(400, 'The booking address can use letters, numbers and dashes (3 to 40 characters)');
+    out.online_booking_slug = v ? v.toLowerCase() : null;
+  }
+  if ('online_booking_notice' in body) out.online_booking_notice = text(body.online_booking_notice, 'Booking page message', { max: 300 });
   if ('payment_methods' in body) {
     const m = Array.isArray(body.payment_methods) ? [...new Set(body.payment_methods.map((x) => String(x).toUpperCase()))] : null;
     if (!m || !m.length || m.some((x) => !PAYMENT_METHODS.includes(x))) throw new SalonError(400, `Choose payment methods from: ${PAYMENT_METHODS.join(', ')}`);

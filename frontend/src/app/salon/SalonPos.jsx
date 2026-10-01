@@ -20,6 +20,7 @@ import { useIdempotencyKey } from '../../lib/idempotency.js';
 import { queueSale, useOnline } from '../../lib/offline.js';
 import { getDevicePrefs, printReceipt } from '../../lib/printing.js';
 import { PAYMENT_LABEL, dateText, useDebounced, useLoad } from '../../lib/salon.js';
+import { readOffline, saveOffline } from '../../lib/salonOffline.js';
 import { Alert, Badge, Button, EmptyState, Field, Input, Modal, PageHeader, PageLoader, Select, Textarea, useToast } from '../../components/ui.jsx';
 import ClientPicker from './ClientPicker.jsx';
 import { Chips } from './parts.jsx';
@@ -81,7 +82,12 @@ const Catalogue = ({ catalog, tab, setTab, add, search, setSearch, searchRef, fe
     if (tab !== 'PRODUCT') return undefined;
     let live = true;
     setBusy(true);
-    api(`/salon/pos/products?limit=48${term ? `&q=${encodeURIComponent(term)}` : ''}`).then((rows) => { if (live) setProducts(rows); }).catch(() => { if (live) setProducts([]); }).finally(() => { if (live) setBusy(false); });
+    api(`/salon/pos/products?limit=48${term ? `&q=${encodeURIComponent(term)}` : ''}`)
+      .then((rows) => { if (!term) saveOffline('products', rows); if (live) setProducts(rows); })
+      .catch((error) => {   // no connection: the saved first page, narrowed by what was typed
+        const kept = error instanceof TypeError ? readOffline('products')?.data || [] : [];
+        if (live) setProducts(kept.filter((p) => !term || `${p.name} ${p.sku || ''} ${p.barcode || ''}`.toLowerCase().includes(term.toLowerCase())));
+      }).finally(() => { if (live) setBusy(false); });
     return () => { live = false; };
   }, [tab, term]);
 
@@ -345,13 +351,31 @@ const Done = ({ result, queued, onNew, onClose }) => {
 
 /* ── the screen ───────────────────────────────────────────────────────────── */
 
+/* The till's catalogue: fresh from the server when there is a connection (and kept on the device), otherwise the copy kept
+   from the last time the till was opened online. */
+const useTillCatalog = () => {
+  const [state, setState] = useState({ data: null, loading: true, error: '', savedAt: null });
+  useEffect(() => {
+    let live = true;
+    api('/salon/pos/catalog').then((data) => { saveOffline('catalog', data); if (live) setState({ data, loading: false, error: '', savedAt: null }); })
+      .catch((error) => {
+        const kept = error instanceof TypeError ? readOffline('catalog') : null;
+        if (!live) return;
+        if (kept) setState({ data: kept.data, loading: false, error: '', savedAt: kept.at });
+        else setState({ data: null, loading: false, error: error instanceof TypeError ? 'The till has not been opened on this device while online yet, so there is no saved catalogue. Connect once to load it.' : error.message, savedAt: null });
+      });
+    return () => { live = false; };
+  }, []);
+  return state;
+};
+
 const SalonPos = () => {
   const { hasFeature } = useAuth();
   const toast = useToast();
   const online = useOnline();
   const idem = useIdempotencyKey();
   const [params, setParams] = useSearchParams();
-  const catalogState = useLoad('/salon/pos/catalog');
+  const catalogState = useTillCatalog();
   const catalog = catalogState.data;
 
   const [tab, setTab] = useState('SERVICE');
@@ -370,6 +394,7 @@ const SalonPos = () => {
   const [appointment, setAppointment] = useState(null);
   const [quote, setQuote] = useState(null);
   const [quoteError, setQuoteError] = useState('');
+  const [offlineQuote, setOfflineQuote] = useState(false);
   const [quoting, setQuoting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(null);
@@ -432,8 +457,8 @@ const SalonPos = () => {
     let live = true;
     setQuoting(true);
     api('/salon/pos/quote', { method: 'POST', body })
-      .then((q) => { if (live) { setQuote(q); setQuoteError(''); } })
-      .catch((e) => { if (live) setQuoteError(e.message); })
+      .then((q) => { if (live) { setQuote(q); setQuoteError(''); setOfflineQuote(false); } })
+      .catch((e) => { if (!live) return; if (e instanceof TypeError) { setQuote(null); setQuoteError(''); setOfflineQuote(true); } else { setOfflineQuote(false); setQuoteError(e.message); } })
       .finally(() => { if (live) setQuoting(false); });
     return () => { live = false; };
   }, [debounced, cart.length, waiting]);
@@ -505,6 +530,7 @@ const SalonPos = () => {
     <div>
       <PageHeader title="Billing" lead="Ring up services and products, apply what the client has, take payment."
                   action={<span className="hidden text-caption text-ink-500 lg:block"><kbd className="rounded border border-line bg-surface px-1.5">/</kbd> search · <kbd className="rounded border border-line bg-surface px-1.5">F2</kbd> client · <kbd className="rounded border border-line bg-surface px-1.5">F9</kbd> take payment</span>} />
+      {catalogState.savedAt && <div className="mb-4 rounded-(--radius-control) border border-warning/30 bg-warning/10 px-3.5 py-2 text-small text-ink-900">Showing the catalogue saved on this device ({new Date(catalogState.savedAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}). Prices and stock are checked when the bill is sent.</div>}
       {!online && <div className="mb-4 rounded-(--radius-control) border border-warning/30 bg-warning/10 px-3.5 py-2 text-small text-ink-900">You are offline. Bills taken now are kept on this device and sent when the connection returns.</div>}
 
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_26rem] xl:grid-cols-[minmax(0,1fr)_28rem]">
@@ -555,6 +581,7 @@ const SalonPos = () => {
           {cart.length > 0 && (
             <div className="rounded-(--radius-card) border border-line bg-surface p-4">
               {quoteError && <div className="mb-3"><Alert>{quoteError}</Alert></div>}
+              {offlineQuote && <p className="mb-3 rounded-(--radius-control) bg-surface-2 px-3 py-2 text-caption text-ink-700">No connection: the total below is an estimate before GST, discounts and offers. The exact bill is worked out when it is sent.</p>}
               <dl className={`space-y-1.5 text-small ${quoting || !fresh ? 'opacity-60' : ''}`} aria-live="polite">
                 {t && <>
                   <div className="flex justify-between"><dt className="text-ink-500">Subtotal</dt><dd className="tabular">{money(t.subtotal)}</dd></div>

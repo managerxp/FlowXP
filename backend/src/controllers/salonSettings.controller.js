@@ -35,7 +35,11 @@ const update = async (req, res) => {
   const columns = cleanSettings(req.body);
   if (!Object.keys(columns).length) throw new SalonError(400, 'Nothing to update');
   const before = await getSettings(pool, req.tenant.businessId);
-  await saveSettings(pool, req.tenant.businessId, columns);
+  if (columns.online_booking_enabled && !(columns.online_booking_slug ?? before.online_booking_slug)) throw new SalonError(400, 'Choose a booking address first');
+  try { await saveSettings(pool, req.tenant.businessId, columns); } catch (error) {
+    if (error.code === '23505') throw new SalonError(409, 'That booking address is taken. Try another.');
+    throw error;
+  }
   const after = await getSettings(pool, req.tenant.businessId);
   audit(req, 'salon.settings_changed', 'salon_settings', req.tenant.businessId, null, null, { changes: diff(before, after) });
   ok(res, present(after));
