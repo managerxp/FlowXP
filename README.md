@@ -137,6 +137,12 @@ business needs GST on ad hoc order lines.
 A native module for `SALON` businesses — appointments, salon POS, CRM, memberships, packages, gift cards, commission,
 batch-aware stock, reports and reminders. See [SALON.md](SALON.md).
 
+## Wholesale & Distribution module
+
+A native module for `WHOLESALE` and `DISTRIBUTOR` businesses — price lists and quantity breaks, B2B credit, sales orders with
+reservation and back-orders, pick/pack/dispatch, purchasing and goods receipt, batches and expiry, receipts and ageing, returns
+and reports. See [WHOLESALE.md](WHOLESALE.md).
+
 ---
 
 ## What is not built

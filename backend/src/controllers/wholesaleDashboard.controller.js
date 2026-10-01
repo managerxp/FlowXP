@@ -13,6 +13,7 @@ import { addDays, getSettings, ok, today, wrapAll } from '../modules/wholesale/c
 import { mySalesperson } from './wholesaleParties.controller.js';
 import { scopeBranches } from './wholesaleInventory.controller.js';
 
+const inr = (n) => Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const rupees = (v) => toRupees(Number(v || 0));
 const n = (v) => Number(v || 0);
 
@@ -146,7 +147,7 @@ const dashboard = async (req, res) => {
   // the alerts a person should act on today, most urgent first
   const list = [];
   const push = (level, text, link) => list.push({ level, text, link });
-  if (out.money?.overdue > 0) push('warning', `₹${out.money.overdue.toLocaleString('en-IN')} is overdue from customers`, '/app/wholesale/receivables');
+  if (out.money?.overdue > 0) push('warning', `₹${inr(out.money.overdue)} is overdue from customers`, '/app/wholesale/money');
   if (out.money?.credit_exceeded > 0) push('critical', `${out.money.credit_exceeded} customer${out.money.credit_exceeded === 1 ? ' is' : 's are'} over their credit limit`, '/app/wholesale/customers?credit=over');
   if (out.inventory?.alerts.out_of_stock > 0) push('critical', `${out.inventory.alerts.out_of_stock} product${out.inventory.alerts.out_of_stock === 1 ? ' is' : 's are'} out of stock`, '/app/wholesale/inventory?state=out');
   if (out.inventory?.alerts.low_stock > 0) push('warning', `${out.inventory.alerts.low_stock} product${out.inventory.alerts.low_stock === 1 ? ' is' : 's are'} running low`, '/app/wholesale/inventory?state=low');
@@ -154,10 +155,10 @@ const dashboard = async (req, res) => {
   if (out.inventory?.alerts.expiring > 0) push('warning', `${out.inventory.alerts.expiring} batch${out.inventory.alerts.expiring === 1 ? '' : 'es'} expiring within ${settings.expiry_alert_days.at(-1) ?? 90} days`, '/app/wholesale/inventory?tab=expiry');
   if (out.orders?.needing_approval > 0) push('warning', `${out.orders.needing_approval} order${out.orders.needing_approval === 1 ? '' : 's'} waiting for approval`, '/app/wholesale/orders?status=PENDING');
   if (out.orders?.backorder_lines > 0) push('informational', `${out.orders.backorder_lines} back-ordered line${out.orders.backorder_lines === 1 ? '' : 's'} waiting for stock`, '/app/wholesale/orders?backorders=1');
-  if (out.fulfilment?.failed_deliveries > 0) push('warning', `${out.fulfilment.failed_deliveries} failed deliver${out.fulfilment.failed_deliveries === 1 ? 'y' : 'ies'} to follow up`, '/app/wholesale/deliveries?status=FAILED');
+  if (out.fulfilment?.failed_deliveries > 0) push('warning', `${out.fulfilment.failed_deliveries} failed deliver${out.fulfilment.failed_deliveries === 1 ? 'y' : 'ies'} to follow up`, '/app/wholesale/fulfilment?tab=deliveries&status=FAILED');
   if (out.purchasing?.drafts_to_approve > 0 && hasPermission(req.tenant, 'purchase_approve')) push('informational', `${out.purchasing.drafts_to_approve} purchase order${out.purchasing.drafts_to_approve === 1 ? '' : 's'} to approve`, '/app/wholesale/purchasing?status=DRAFT');
   if (out.purchasing?.late_orders > 0) push('warning', `${out.purchasing.late_orders} purchase order${out.purchasing.late_orders === 1 ? ' is' : 's are'} late`, '/app/wholesale/purchasing');
-  if (out.money?.payable_due_soon > 0) push('informational', `₹${out.money.payable_due_soon.toLocaleString('en-IN')} due to suppliers within a week`, '/app/wholesale/payables');
+  if (out.money?.payable_due_soon > 0) push('informational', `₹${inr(out.money.payable_due_soon)} due to suppliers within a week`, '/app/wholesale/money?tab=payables');
   out.alerts = list;
 
   ok(res, out);

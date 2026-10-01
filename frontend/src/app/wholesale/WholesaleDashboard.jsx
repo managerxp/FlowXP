@@ -63,7 +63,7 @@ const WholesaleDashboard = () => {
             {f && <StatCard size="lg" to="/app/wholesale/fulfilment" label="Out for delivery" value={f.out_for_delivery} note={`${f.delivered_today} delivered today${f.failed_deliveries ? ` · ${f.failed_deliveries} failed` : ''}`} tone={f.failed_deliveries ? 'warning' : undefined} />}
           </section>
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
             {s && (
               <Panel title="Sales, last 30 days" lead="Invoiced amounts after returns">
                 <Bars data={s.trend.map((x) => ({ label: x.date, value: x.sales }))} every={5} label="Daily sales for the last 30 days" />
@@ -73,7 +73,7 @@ const WholesaleDashboard = () => {
             <Alerts items={d.alerts} />
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
             {s && <Panel title="Top customers" lead="This month, by net sales"><RankBars rows={s.top_customers.map((c) => ({ ...c, label: c.name, value: c.total }))} sub={(c) => plural(c.invoices, 'invoice')} onClick={(c) => navigate(`/app/wholesale/customers/${c.customer_id}`)} /></Panel>}
             {s && <Panel title="Top products" lead="This month, by revenue before GST"><RankBars rows={s.top_products.map((x) => ({ ...x, label: x.name, value: x.revenue }))} tone="bg-cyan-100" sub={(x) => `${qty(x.units)} units`} /></Panel>}
             {s?.by_salesperson && s.by_salesperson.length > 0 && <Panel title="Sales by salesperson" lead="This month"><RankBars rows={s.by_salesperson.map((x) => ({ ...x, label: x.name, value: x.total }))} tone="bg-amber-100" sub={(x) => plural(x.invoices, 'invoice')} /></Panel>}
@@ -81,14 +81,14 @@ const WholesaleDashboard = () => {
           </div>
 
           {m && (
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
               <Panel title="Receivables by age" lead="Days past due date"><StackStrip parts={[['current', 'Current'], ['d1_30', '1–30'], ['d31_60', '31–60'], ['d61_90', '61–90'], ['d90_plus', '90+']].map(([k, label]) => ({ label, value: m.ageing[k], tone: BUCKET_TONES[k] }))} /></Panel>
               {m.payable_ageing && <Panel title="Payables by age" lead="Days past due date"><StackStrip parts={[['current', 'Current'], ['d1_30', '1–30'], ['d31_60', '31–60'], ['d61_90', '61–90'], ['d90_plus', '90+']].map(([k, label]) => ({ label, value: m.payable_ageing[k], tone: BUCKET_TONES[k] }))} /></Panel>}
             </div>
           )}
 
           {inv && (
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
               <Panel title="Running low" lead="Available stock at or below the reorder level" action={<Button to="/app/wholesale/inventory?state=low" variant="ghost" size="sm">See all</Button>}>
                 {inv.low_stock.length === 0 ? <EmptyState compact icon={Package} title="Nothing low" body="Every product is above its reorder level." /> : (
                   <Table><Thead><Th>Product</Th><Th className="text-right">Available</Th><Th className="text-right">Reorder at</Th></Thead>

@@ -45,7 +45,7 @@ const WholesaleReports = () => {
     <div>
       <style>{`@media print { .no-print { display: none !important; } main { padding: 0 !important; } }`}</style>
       <div className="no-print"><PageHeader title="Reports" lead="Sales, purchases, stock and money, worked out live from your records." /></div>
-      <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <nav aria-label="Reports" className="no-print space-y-4 lg:sticky lg:top-4 lg:self-start">
           {Object.entries(groups).map(([name, items]) => (
             <div key={name}><p className="mb-1 px-2 text-caption font-semibold uppercase tracking-wide text-ink-500">{name}</p>

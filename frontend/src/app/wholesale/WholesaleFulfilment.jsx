@@ -145,7 +145,7 @@ const PickDialog = ({ id, onClose, onChanged }) => {
 /* ── tabs ─────────────────────────────────────────────────────────────────────────────────────── */
 
 const ToPick = ({ reloadKey, onCreated }) => {
-  const { data, loading, error } = useLoad(`/wholesale/orders${qs({ status: 'CONFIRMED,PARTIALLY_FULFILLED,PACKED', limit: 100 })}`, { paged: true });
+  const { data, loading, error } = useLoad(`/wholesale/orders${qs({ pickable: 1, limit: 100 })}`, { paged: true });
   const [busy, run] = useAction();
   const create = async (o) => { const out = await run(() => api(`/wholesale/orders/${o.order_id}/pick-lists`, { method: 'POST', body: {} }), 'Pick list created'); if (out) onCreated(out.pick_id); };
   return (

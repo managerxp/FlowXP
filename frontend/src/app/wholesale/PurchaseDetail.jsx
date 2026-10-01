@@ -52,7 +52,7 @@ const PurchaseDetail = () => {
                   </>} />
       {po.status === 'DRAFT' && !can('purchase_approve') && <p className="mb-4 rounded-lg bg-surface-2 px-4 py-2.5 text-small text-ink-700">This is a draft. A purchase manager has to approve it before it is ordered.</p>}
       {po.approved_by && <p className="mb-4 text-small text-ink-500">Approved by {po.approved_by} on {longDate(po.approved_at)}.</p>}
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
           <Panel title="Items">
             <Table><Thead><Th>Product</Th><Th className="text-right">Ordered</Th><Th className="text-right">Received</Th><Th className="text-right">Outstanding</Th><Th className="text-right">Cost</Th><Th className="text-right">GST</Th></Thead>

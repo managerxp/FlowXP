@@ -58,7 +58,7 @@ const SupplierProfile = () => {
         <StatCard size="lg" label="Terms" value={s.payment_terms_days != null ? `${s.payment_terms_days} days` : '—'} note={s.stats.last_order ? `Last order ${dateText(s.stats.last_order)}` : 'No orders yet'} />
       </section>
       <Tabs tabs={[{ key: 'overview', label: 'Overview' }, { key: 'ledger', label: 'Ledger' }, { key: 'orders', label: 'Purchase orders' }]} value={tab} onChange={(k) => setParams(k === 'overview' ? {} : { tab: k }, { replace: true })} />
-      {tab === 'overview' && <div className="grid gap-6 lg:grid-cols-2">
+      {tab === 'overview' && <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
         <Panel title="Details"><dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-small">{[['Contact person', s.contact_person], ['Phone', s.phone], ['Email', s.email], ['GSTIN', s.gstin], ['PAN', s.pan], ['Opening balance', money(s.opening_balance)]].map(([k, v]) => <div key={k}><dt className="text-caption text-ink-500">{k}</dt><dd className="font-medium text-ink-900">{v || '—'}</dd></div>)}</dl></Panel>
         <Panel title="Address and bank"><p className="whitespace-pre-line text-small text-ink-900">{s.address || '—'}</p><p className="text-small text-ink-500">{[s.city, s.state, s.pincode].filter(Boolean).join(', ')}</p>{s.bank_details && <p className="mt-3 border-t border-line pt-3 text-small text-ink-700">{s.bank_details}</p>}</Panel>
       </div>}

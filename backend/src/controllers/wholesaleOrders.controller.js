@@ -91,6 +91,8 @@ const list = async (req, res) => {
     values.push(wanted); where.push(`o.status = ANY($${values.length}::text[])`);
   }
   if (req.query.open === '1') { values.push(OPEN_STATUSES); where.push(`o.status = ANY($${values.length}::text[])`); }
+  // orders with reserved stock nobody has picked yet — what the warehouse board's "to pick" count shows
+  if (req.query.pickable === '1') where.push(`o.status IN ('CONFIRMED', 'PARTIALLY_FULFILLED') AND EXISTS (SELECT 1 FROM wholesale_sales_order_items pi WHERE pi.order_id = o.order_id AND pi.reserved_base - (pi.picked_base - pi.shipped_base) > 0.0005)`);
   if (req.query.customer_id) { values.push(Number(req.query.customer_id) || 0); where.push(`o.customer_id = $${values.length}`); }
   if (req.query.salesperson_id) { values.push(Number(req.query.salesperson_id) || 0); where.push(`o.salesperson_id = $${values.length}`); }
   if (req.query.branch_id) { values.push(Number(req.query.branch_id) || 0); where.push(`o.branch_id = $${values.length}`); }

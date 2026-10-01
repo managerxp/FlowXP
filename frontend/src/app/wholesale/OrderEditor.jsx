@@ -169,7 +169,7 @@ const OrderEditor = () => {
     <div>
       <PageHeader title={editing ? 'Edit order' : 'New sales order'} lead={editing && lockLines ? 'Changing a confirmed order releases and re-reserves its stock.' : 'Add products, check the price and stock, then save or confirm.'} />
       <Alert>{error}</Alert>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-6">
           <Panel title="Customer">
             <div className="grid gap-4 md:grid-cols-2">

@@ -201,7 +201,7 @@ const CustomerProfile = () => {
       </section>
       <Tabs tabs={[{ key: 'overview', label: 'Overview' }, { key: 'ledger', label: 'Ledger' }, { key: 'invoices', label: 'Invoices' }, { key: 'orders', label: 'Orders' }, ...(can('pricing') || can('sales_orders') ? [{ key: 'prices', label: 'Special prices' }] : [])]} value={tab} onChange={setTab} />
       {tab === 'overview' && (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
           <Panel title="Details">
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-small">
               {[['Contact person', c.contact_person], ['PAN', c.pan], ['Payment terms', c.payment_terms_days != null ? `${c.payment_terms_days} days` : 'Business default'], ['Salesperson', c.salesperson], ['Price list', c.price_list || 'Default'],

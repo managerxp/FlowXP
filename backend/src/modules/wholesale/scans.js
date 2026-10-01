@@ -47,7 +47,7 @@ export const runForBusiness = async (db, businessId) => {
     if (Number(r.customers) > 0) {
       out.overdue = await notifyTeam(businessId, {
         category: 'sales', type: 'wholesale_overdue', severity: 'warning', title: `${r.customers} customer${Number(r.customers) === 1 ? '' : 's'} overdue`, body: `${inr(Number(r.amount))} is past its due date.`,
-        link: '/app/wholesale/receivables', dedupeKey: `ws-overdue-${date}`
+        link: '/app/wholesale/money', dedupeKey: `ws-overdue-${date}`
       }, db);
     }
     const p = (await db.query(
@@ -55,7 +55,7 @@ export const runForBusiness = async (db, businessId) => {
     if (Number(p.n) > 0) {
       out.payables = await notifyTeam(businessId, {
         category: 'sales', type: 'wholesale_payables', severity: 'informational', title: `${p.n} supplier bill${Number(p.n) === 1 ? '' : 's'} due soon`, body: `${inr(Number(p.amount))} falls due within 3 days.`,
-        link: '/app/wholesale/payables', dedupeKey: `ws-payables-${date}`
+        link: '/app/wholesale/money?tab=payables', dedupeKey: `ws-payables-${date}`
       }, db);
     }
   } catch (error) { console.error(`[wholesale] dues alert failed for ${businessId}:`, error.message); }

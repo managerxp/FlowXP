@@ -80,7 +80,7 @@ const PurchaseEditor = () => {
     <div>
       <PageHeader title={editing ? 'Edit purchase order' : 'New purchase order'} lead="Order goods from a supplier in the unit you buy them in." />
       <Alert>{error}</Alert>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
           <Panel title="Supplier">
             <div className="grid gap-4 md:grid-cols-2">

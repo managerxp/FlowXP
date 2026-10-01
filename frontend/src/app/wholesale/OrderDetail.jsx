@@ -109,7 +109,7 @@ const OrderDetail = () => {
       {o.credit_note && <p className="mb-4 rounded-lg bg-surface-2 px-4 py-2.5 text-small text-ink-700">Credit note on this order: {o.credit_note}</p>}
       {o.credit?.reasons?.length > 0 && ['DRAFT', 'PENDING'].includes(o.status) && <p className={`mb-4 rounded-lg px-4 py-2.5 text-small ${o.credit.level === 'BLOCK' ? 'bg-danger/5 text-danger' : 'bg-warning/10 text-warning'}`}>{o.credit.reasons.join('. ')}.</p>}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
           <Panel title="Items">
             <Table>

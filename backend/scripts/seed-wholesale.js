@@ -247,6 +247,7 @@ const main = async () => {
     if (deliver) {
       await call(fulfilment.setDeliveryStatus, { who: 'driver', params: { id: d.delivery_id }, body: { status: 'OUT_FOR_DELIVERY' } });
       await call(fulfilment.setDeliveryStatus, { who: 'driver', params: { id: d.delivery_id }, body: { status: 'DELIVERED', pod_received_by: pick(['Store manager', 'Owner', 'Godown keeper']), pod_note: 'Received in good condition' } });
+      await pool.query(`UPDATE wholesale_deliveries SET delivered_at = ($2::date)::timestamptz + interval '15 hours' WHERE delivery_id = $1`, [d.delivery_id, date]);
     }
     return { ...d, orderId: o.order_id, ageDays, total: Number(d.invoice_total), customer: c };
   };
