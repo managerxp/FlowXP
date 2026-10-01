@@ -31,6 +31,13 @@ export const PERMISSION_INFO = {
   fulfilment:       { label: 'Warehouse fulfilment', description: 'See pick lists, pick, pack, dispatch and update deliveries.' },
   pricing:          { label: 'Wholesale pricing', description: 'Manage price lists, customer prices and bulk price updates.' },
   purchase_approve: { label: 'Approve purchases', description: 'Approve purchase orders and post goods receipts above the limit.' },
+  principals:  { label: 'Principals and brands', description: 'Manage the manufacturers and brands you distribute, and their agreements.' },
+  territories: { label: 'Territories and beats', description: 'Manage regions, territories, areas and beat plans, and assign retailers to them.' },
+  schemes:     { label: 'Schemes', description: 'Create and change schemes: free quantity, quantity and value discounts.' },
+  targets:     { label: 'Targets and commission', description: 'Set sales targets and commission rules, and see the team\'s achievement.' },
+  vehicles:    { label: 'Vehicle stock', description: 'Load vans, sell from them, take unsold stock back and reconcile.' },
+  field_sales: { label: 'Field sales', description: 'Visit retailers on a beat, record visits and take orders in the field.' },
+  collections: { label: 'Collections', description: 'Record payments collected from retailers and allocate them to invoices.' },
   ai:        { label: 'Flow AI', description: 'Ask the AI assistant about the business.' },
   settings:  { label: 'Settings and team', description: 'Business settings, outlets, staff, loyalty, coupons, leakage checks and the activity log.' }
 };

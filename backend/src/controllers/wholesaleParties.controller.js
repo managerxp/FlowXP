@@ -31,7 +31,7 @@ const failed = (e) => { if (e) throw new WholesaleError(400, e); };
 
 /** A sales executive sees and creates only their own customers: the salesperson record linked to their login (0 = none, sees nothing). */
 export const mySalesperson = async (req) => {
-  if (req.tenant.role !== 'SALES_EXECUTIVE') return null;
+  if (!['SALES_EXECUTIVE', 'FIELD_SALES'].includes(req.tenant.role)) return null;
   const row = (await pool.query(`SELECT salesperson_id FROM wholesale_salespeople WHERE business_id = $1 AND user_id = $2 AND status = 'ACTIVE'`, [req.tenant.businessId, req.auth.userId])).rows[0];
   return row ? row.salesperson_id : 0;
 };
@@ -50,11 +50,12 @@ export const visibleCustomer = async (req, id) => {
 const CUSTOMER_FROM = `
   FROM customers c LEFT JOIN wholesale_customer_profiles w ON w.customer_id = c.customer_id
   LEFT JOIN wholesale_salespeople sp ON sp.salesperson_id = w.salesperson_id
-  LEFT JOIN wholesale_price_lists pl ON pl.list_id = w.price_list_id`;
+  LEFT JOIN wholesale_price_lists pl ON pl.list_id = w.price_list_id
+  LEFT JOIN dist_territories tt ON tt.territory_id = w.territory_id`;
 const CUSTOMER_COLS = `c.customer_id, c.name, c.phone, c.email, c.address, c.state, c.pincode, c.gstin, c.credit_limit_paise, c.status, c.created_at,
   w.customer_type, w.contact_person, w.pan, w.billing_address, w.shipping_address, w.city, w.shipping_city, w.shipping_state, w.shipping_pincode,
   w.payment_terms_days, w.salesperson_id, sp.name AS salesperson_name, w.price_list_id, pl.name AS price_list_name, w.default_discount_pct,
-  w.opening_balance_paise, w.credit_policy, w.notes`;
+  w.opening_balance_paise, w.credit_policy, w.notes, w.territory_id, tt.name AS territory_name`;
 
 const customerShape = (r, bal = null, position = null) => ({
   customer_id: r.customer_id, name: r.name, phone: r.phone, email: r.email, status: r.status, created_at: r.created_at,
@@ -62,7 +63,7 @@ const customerShape = (r, bal = null, position = null) => ({
   address: r.address, state: r.state, pincode: r.pincode, billing_address: r.billing_address || r.address, shipping_address: r.shipping_address,
   city: r.city, shipping_city: r.shipping_city, shipping_state: r.shipping_state, shipping_pincode: r.shipping_pincode,
   credit_limit: rupees(r.credit_limit_paise), payment_terms_days: r.payment_terms_days, salesperson_id: r.salesperson_id, salesperson: r.salesperson_name,
-  price_list_id: r.price_list_id, price_list: r.price_list_name, default_discount_pct: Number(r.default_discount_pct || 0),
+  price_list_id: r.price_list_id, price_list: r.price_list_name, territory_id: r.territory_id ?? null, territory: r.territory_name ?? null, default_discount_pct: Number(r.default_discount_pct || 0),
   opening_balance: rupees(r.opening_balance_paise), credit_policy: r.credit_policy, notes: r.notes,
   ...(bal ? { outstanding: rupees(bal.outstanding), overdue: rupees(bal.overdue), total_invoiced: rupees(bal.invoiced), total_paid: rupees(bal.paid) } : {}),
   ...(position ? { credit: { limit: rupees(position.limit), outstanding: rupees(position.outstanding), overdue: rupees(position.overdue), promised: rupees(position.promised), available: position.available == null ? null : rupees(position.available), utilization_pct: position.utilization_pct, policy: position.policy } } : {})
@@ -143,12 +144,14 @@ const customerFields = (b, partial) => {
   if ('opening_balance' in b) prof.opening_balance_paise = money(b.opening_balance, 'Opening balance', { min: -100000000000 }) ?? 0;
   if ('credit_policy' in b) prof.credit_policy = b.credit_policy ? oneOf(b.credit_policy, 'Credit policy', ['OFF', 'WARN', 'BLOCK']) : null;
   if ('notes' in b) prof.notes = text(b.notes, 'Notes', { max: 1000 });
+  if ('territory_id' in b) prof.territory_id = int(b.territory_id, 'Territory', { min: 1 });
   return { core, prof };
 };
 
 const checkRefs = async (db, businessId, prof) => {
   if (prof.salesperson_id && !(await db.query(`SELECT 1 FROM wholesale_salespeople WHERE business_id = $1 AND salesperson_id = $2`, [businessId, prof.salesperson_id])).rowCount) throw new WholesaleError(400, 'That salesperson does not exist');
   if (prof.price_list_id && !(await db.query(`SELECT 1 FROM wholesale_price_lists WHERE business_id = $1 AND list_id = $2`, [businessId, prof.price_list_id])).rowCount) throw new WholesaleError(400, 'That price list does not exist');
+  if (prof.territory_id && !(await db.query(`SELECT 1 FROM dist_territories WHERE business_id = $1 AND territory_id = $2`, [businessId, prof.territory_id])).rowCount) throw new WholesaleError(400, 'That territory was not found');
 };
 
 const upsertProfile = async (client, businessId, customerId, prof) => {
@@ -372,6 +375,7 @@ const adjustLedger = async (req, res) => {
 const spShape = (r) => ({
   salesperson_id: r.salesperson_id, user_id: r.user_id, name: r.name, phone: r.phone, email: r.email, territory: r.territory,
   commission_pct: Number(r.commission_pct), commission_on: r.commission_on, status: r.status,
+  employee_id: r.employee_id ?? null, sales_role: r.sales_role ?? 'SALES_EXECUTIVE', territory_id: r.territory_id ?? null, manager_id: r.manager_id ?? null,
   ...(r.customers != null ? { customers: Number(r.customers) } : {})
 });
 
@@ -392,6 +396,10 @@ const spFields = (b, partial) => {
   if ('commission_on' in b) f.commission_on = oneOf(b.commission_on, 'Commission basis', ['SALES', 'COLLECTIONS'], { required: true });
   if ('status' in b) f.status = oneOf(b.status, 'Status', ['ACTIVE', 'INACTIVE'], { required: true });
   if ('user_id' in b) f.user_id = int(b.user_id, 'Login', { min: 1 });
+  if ('employee_id' in b) f.employee_id = text(b.employee_id, 'Employee ID', { max: 40 });
+  if ('sales_role' in b) f.sales_role = oneOf(b.sales_role, 'Role', ['SALES_MANAGER', 'SALES_EXECUTIVE', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'DELIVERY_EXECUTIVE'], { required: true });
+  if ('territory_id' in b) f.territory_id = int(b.territory_id, 'Territory', { min: 1 });
+  if ('manager_id' in b) f.manager_id = int(b.manager_id, 'Manager', { min: 1 });
   return f;
 };
 
@@ -443,10 +451,14 @@ const settingsShape = (s) => ({
   credit_policy: s.credit_policy, block_when_overdue: s.block_when_overdue, overdue_grace_days: s.overdue_grace_days, default_payment_terms_days: s.default_payment_terms_days,
   default_price_list_id: s.default_price_list_id, negative_stock: s.negative_stock, reserve_on_confirm: s.reserve_on_confirm, fefo: s.fefo, expiry_alert_days: s.expiry_alert_days,
   order_approval_over: s.order_approval_over_paise == null ? null : rupees(s.order_approval_over_paise), slow_moving_days: s.slow_moving_days, dead_stock_days: s.dead_stock_days,
-  order_prefix: s.order_prefix, invoice_footer: s.invoice_footer, notifications: s.notifications || {}
+  order_prefix: s.order_prefix, invoice_footer: s.invoice_footer, notifications: s.notifications || {},
+  distributor_enabled: Boolean(s.distributor_enabled), scheme_stacking: s.scheme_stacking || 'BEST', visit_location: Boolean(s.visit_location),
+  field_collections: s.field_collections !== false, credit_manager_override: s.credit_manager_override !== false
 });
+/** A DISTRIBUTOR business always has the distributor features; a WHOLESALE business can switch them on. */
+const withMode = (req, shaped) => ({ ...shaped, distributor_enabled: req.tenant.businessType === 'DISTRIBUTOR' || shaped.distributor_enabled, distributor_locked: req.tenant.businessType === 'DISTRIBUTOR' });
 
-const getSettingsEndpoint = async (req, res) => ok(res, settingsShape(await getSettings(pool, req.tenant.businessId)));
+const getSettingsEndpoint = async (req, res) => ok(res, withMode(req, settingsShape(await getSettings(pool, req.tenant.businessId))));
 
 const NOTIFY_KEYS = ['order_confirmed', 'order_dispatched', 'invoice_issued', 'payment_received', 'payment_due', 'payment_overdue'];
 
@@ -476,6 +488,11 @@ const updateSettings = async (req, res) => {
     if (!/^[A-Za-z0-9]{1,8}$/.test(f.order_prefix)) throw new WholesaleError(400, 'The order prefix is letters and digits only');
     f.order_prefix = f.order_prefix.toUpperCase();
   }
+  if ('distributor_enabled' in b) f.distributor_enabled = req.tenant.businessType === 'DISTRIBUTOR' ? true : bool(b.distributor_enabled);
+  if ('scheme_stacking' in b) f.scheme_stacking = oneOf(b.scheme_stacking, 'Scheme stacking', ['BEST', 'ALL'], { required: true });
+  if ('visit_location' in b) f.visit_location = bool(b.visit_location);
+  if ('field_collections' in b) f.field_collections = bool(b.field_collections);
+  if ('credit_manager_override' in b) f.credit_manager_override = bool(b.credit_manager_override);
   if ('invoice_footer' in b) f.invoice_footer = text(b.invoice_footer, 'Invoice footer', { max: 300 });
   if ('notifications' in b) {
     const n = {}; for (const k of NOTIFY_KEYS) if (k in (b.notifications || {})) n[k] = bool(b.notifications[k]);
@@ -489,7 +506,7 @@ const updateSettings = async (req, res) => {
      ON CONFLICT (business_id) DO UPDATE SET ${keys.map((k) => `${k} = EXCLUDED.${k}`).join(', ')}, updated_at = CURRENT_TIMESTAMP`, [req.tenant.businessId, ...keys.map((k) => f[k])]);
   const after = settingsShape(await getSettings(pool, req.tenant.businessId));
   audit(req, 'wholesale.settings_updated', 'settings', req.tenant.businessId, null, null, { changes: diff(before, after) });
-  ok(res, after);
+  ok(res, withMode(req, after));
 };
 
 export default wrapAll({

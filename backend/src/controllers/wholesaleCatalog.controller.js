@@ -23,10 +23,12 @@ const LIST_SELECT = `
          p.selling_price_paise, p.purchase_price_paise, p.tax_rate, p.hsn_sac, p.min_stock, p.status, p.image_url, p.description, p.track_inventory,
          d.subcategory_id, sc.name AS subcategory_name, d.manufacturer, d.mrp_paise, d.distributor_price_paise, d.wholesale_price_paise, d.retailer_price_paise,
          COALESCE(d.moq, 1) AS moq, d.max_stock, COALESCE(d.batch_tracking, FALSE) AS batch_tracking, COALESCE(d.expiry_tracking, FALSE) AS expiry_tracking,
-         COALESCE(d.serial_tracking, FALSE) AS serial_tracking, d.sale_unit, d.purchase_unit`;
+         COALESCE(d.serial_tracking, FALSE) AS serial_tracking, d.sale_unit, d.purchase_unit,
+         d.principal_id, pr.name AS principal_name, d.principal_price_paise, d.pack_size`;
 const LIST_FROM = `
   FROM products p LEFT JOIN categories c ON c.category_id = p.category_id LEFT JOIN brands b ON b.brand_id = p.brand_id
-  LEFT JOIN wholesale_item_details d ON d.product_id = p.product_id LEFT JOIN categories sc ON sc.category_id = d.subcategory_id`;
+  LEFT JOIN wholesale_item_details d ON d.product_id = p.product_id LEFT JOIN categories sc ON sc.category_id = d.subcategory_id
+  LEFT JOIN dist_principals pr ON pr.principal_id = d.principal_id`;
 
 const shape = (r, stock, units) => ({
   product_id: r.product_id, name: r.name, sku: r.sku, barcode: r.barcode, unit: r.unit, status: r.status, image_url: r.image_url, description: r.description,
@@ -36,6 +38,7 @@ const shape = (r, stock, units) => ({
   moq: Number(r.moq), reorder_level: Number(r.min_stock), max_stock: r.max_stock == null ? null : Number(r.max_stock),
   batch_tracking: r.batch_tracking, expiry_tracking: r.expiry_tracking, serial_tracking: r.serial_tracking, track_inventory: r.track_inventory,
   sale_unit: r.sale_unit, purchase_unit: r.purchase_unit,
+  principal_id: r.principal_id ?? null, principal: r.principal_name ?? null, principal_price: paise(r.principal_price_paise), pack_size: r.pack_size ?? null,
   ...(stock ? { on_hand: stock.quantity, reserved: stock.reserved, available: stock.available, low: r.track_inventory && stock.available <= Number(r.min_stock) } : {}),
   ...(units ? { units: units.map((u) => ({ unit_name: u.name, factor: u.factor, barcode: u.barcode })) } : {})
 });
@@ -58,6 +61,7 @@ const list = async (req, res) => {
   const status = String(req.query.status || 'ACTIVE').toUpperCase();
   if (status !== 'ALL') { values.push(status === 'ARCHIVED' ? 'ARCHIVED' : 'ACTIVE'); where.push(`p.status = $${values.length}`); }
   if (req.query.category_id) { values.push(Number(req.query.category_id) || 0); where.push(`(p.category_id = $${values.length} OR d.subcategory_id = $${values.length})`); }
+  if (req.query.principal_id) { values.push(Number(req.query.principal_id) || 0); where.push(`d.principal_id = $${values.length}`); }
   if (req.query.brand_id) { values.push(Number(req.query.brand_id) || 0); where.push(`p.brand_id = $${values.length}`); }
   if (req.query.q) {
     const term = String(req.query.q).trim().slice(0, 80);
@@ -150,6 +154,13 @@ const fields = async (req, body, { partial, existing = null }) => {
     if (id != null && !(await pool.query(`SELECT 1 FROM categories WHERE category_id = $1 AND business_id = $2`, [id, req.tenant.businessId])).rows.length) throw new WholesaleError(400, 'Choose a subcategory from your own list');
     d.subcategory_id = id;
   }
+  if ('principal_id' in body) {
+    const id = int(body.principal_id, 'Principal', { min: 1 });
+    if (id != null && !(await pool.query(`SELECT 1 FROM dist_principals WHERE principal_id = $1 AND business_id = $2`, [id, req.tenant.businessId])).rows.length) throw new WholesaleError(400, 'Choose a principal from your own list');
+    d.principal_id = id;
+  }
+  if ('principal_price' in body) d.principal_price_paise = body.principal_price === null || body.principal_price === '' ? null : money(body.principal_price, 'Principal price', { min: 0 });
+  if ('pack_size' in body) d.pack_size = text(body.pack_size, 'Pack size', { max: 40 });
   if ('manufacturer' in body) d.manufacturer = text(body.manufacturer, 'Manufacturer', { max: 120 });
   for (const [k, col] of [['mrp', 'mrp_paise'], ['distributor_price', 'distributor_price_paise'], ['wholesale_price', 'wholesale_price_paise'], ['retailer_price', 'retailer_price_paise']]) {
     if (k in body) d[col] = body[k] === null || body[k] === '' ? null : money(body[k], k.replace('_', ' '), { min: 0 });
