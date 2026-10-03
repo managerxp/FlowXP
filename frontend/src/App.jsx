@@ -7,6 +7,7 @@
  */
 import { lazy, Suspense } from 'react';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { Compass } from 'lucide-react';
 import { useAuth } from './context/AuthContext.jsx';
 import { AdminAuthProvider } from './admin/AdminAuthContext.jsx';
 import SiteLayout from './site/SiteLayout.jsx';
@@ -20,13 +21,15 @@ import AboutPage from './site/AboutPage.jsx';
 import ContactPage from './site/ContactPage.jsx';
 import AIPage from './site/AIPage.jsx';
 import Pricing from './site/Pricing.jsx';
+import NotFoundPage from './site/NotFoundPage.jsx';
 import { ForgotPassword, Login, Signup } from './auth/AuthPages.jsx';
-import { PageLoader } from './components/ui.jsx';
+import { Button, EmptyState, PageLoader } from './components/ui.jsx';
 
 /* The legal pages are long text almost nobody opens on their first visit;
    keeping them out of the entry bundle keeps the landing page fast. */
 const Privacy = lazy(() => import('./site/Legal.jsx').then((m) => ({ default: m.Privacy })));
 const Terms = lazy(() => import('./site/Legal.jsx').then((m) => ({ default: m.Terms })));
+const CookiePolicy = lazy(() => import('./site/Legal.jsx').then((m) => ({ default: m.Cookies })));
 
 /* The super admin console — a separate concern from the product, so it stays
    out of every bundle except its own until someone actually visits it. */
@@ -186,6 +189,13 @@ const HomeRoute = () => {
   return <Dashboard />;
 };
 
+/* A mistyped or retired address inside the app: say so, inside the shell, with the way back. */
+const AppNotFound = () => (
+  <EmptyState icon={Compass} className="mx-auto mt-10 max-w-md" title="This page isn't here"
+              body="The link may be old or mistyped. Everything you can open is in the sidebar, or press Ctrl K to search."
+              action={<Button to="/app" variant="secondary" size="sm">Back to Dashboard</Button>} />
+);
+
 const App = () => (
   <Routes>
     {/* Public */}
@@ -202,6 +212,9 @@ const App = () => (
       <Route path="pricing" element={<Pricing />} />
       <Route path="privacy" element={<Suspense fallback={<PageLoader />}><Privacy /></Suspense>} />
       <Route path="terms" element={<Suspense fallback={<PageLoader />}><Terms /></Suspense>} />
+      <Route path="cookies" element={<Suspense fallback={<PageLoader />}><CookiePolicy /></Suspense>} />
+      {/* Anything the site does not have: a real "not found" page (noindex, see site/seo.js), not a redirect home. */}
+      <Route path="*" element={<NotFoundPage />} />
     </Route>
 
     {/* Auth — outside SiteLayout: a signup form does not need a nav bar
@@ -315,6 +328,7 @@ const App = () => (
       <Route path="pharmacy/grn" element={<PharmacyGrn />} />
 
       <Route path="activity" element={<ActivityPage />} />
+      <Route path="*" element={<AppNotFound />} />
 
     </Route>
 
@@ -364,7 +378,6 @@ const App = () => (
       </Route>
     </Route>
 
-    <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>
 );
 

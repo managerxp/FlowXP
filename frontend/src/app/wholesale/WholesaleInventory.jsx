@@ -9,7 +9,7 @@ import { Download, Plus, Warehouse as WarehouseIcon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { api } from '../../lib/api.js';
 import { dateText, fetchAll, longDate, money, qs, qty, saveCsv, useDebounced, useLoad, useWarehouses } from '../../lib/wholesale.js';
-import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, StatCard, Table, Td, Textarea, Th, Thead, Tr, useDialog, useToast } from '../../components/ui.jsx';
+import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, StatCard, Table, Td, Textarea, Th, Thead, Tr, useDialog, useToast, PageLoader } from '../../components/ui.jsx';
 import { Chips, NumberField, Pager, Panel, ProductPicker, Segmented, Tabs, Toolbar, WarehouseSelect, useAction } from './parts.jsx';
 import TransfersTab from './InventoryTransfers.jsx';
 
@@ -80,7 +80,7 @@ const ProductStock = ({ id, onClose, onAdjust }) => {
   return (
     <Modal title={data?.product.name || 'Stock'} onClose={onClose} wide>
       <Alert>{error}</Alert>
-      {loading && !data && <p className="py-8 text-center text-small text-ink-500">Loading…</p>}
+      {loading && !data && <PageLoader compact />}
       {data && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-2 text-small text-ink-500"><span>{[data.product.sku, `base unit ${data.product.unit}`, data.product.units.filter((u) => u.factor !== 1).map((u) => `${u.unit_name} = ${u.factor}`).join(', ')].filter(Boolean).join(' · ')}</span>{can('inventory') && <Button size="sm" onClick={() => onAdjust({ product_id: id, name: data.product.name, unit: data.product.unit })}>Adjust stock</Button>}</div>

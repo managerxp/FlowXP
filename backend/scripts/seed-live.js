@@ -5,7 +5,7 @@
  *
  *   npm run seed:live
  */
-import 'dotenv/config';
+import './no-production.js'; // loads .env, and stops here in production
 import pool from '../src/config/database.js';
 
 const API = process.env.SEED_API || 'http://localhost:5100/api';

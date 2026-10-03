@@ -8,7 +8,7 @@ import { ArrowRight, Plus, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { api } from '../../lib/api.js';
 import { TRANSFER_STATUS, longDate, qs, qty, useLoad, useWarehouses } from '../../lib/wholesale.js';
-import { Alert, Button, Field, Input, ListState, Modal, Select, Table, Td, Th, Thead, Tr, useToast } from '../../components/ui.jsx';
+import { Alert, Button, Field, Input, ListState, Modal, Select, Table, Td, Th, Thead, Tr, useToast, PageLoader } from '../../components/ui.jsx';
 import { Chips, NumberField, Pager, ProductPicker, StatusPill, useAction } from './parts.jsx';
 
 const NewTransfer = ({ onClose, onDone }) => {
@@ -56,7 +56,7 @@ const TransferDialog = ({ id, onClose, onChanged }) => {
   return (
     <Modal title={t ? `${t.transfer_number}` : 'Transfer'} onClose={onClose} wide>
       <Alert>{error}</Alert>
-      {loading && !t && <p className="py-8 text-center text-small text-ink-500">Loading…</p>}
+      {loading && !t && <PageLoader compact />}
       {t && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3 text-small"><StatusPill map={TRANSFER_STATUS} status={t.status} /><span className="flex items-center gap-2 font-medium">{t.from_warehouse}<ArrowRight aria-hidden="true" className="h-4 w-4 text-ink-400" />{t.to_warehouse}</span>{t.vehicle_no && <span className="text-ink-500">{t.vehicle_no}</span>}{t.dispatched_at && <span className="text-ink-500">sent {longDate(t.dispatched_at)}</span>}{t.received_at && <span className="text-ink-500">received {longDate(t.received_at)}</span>}</div>

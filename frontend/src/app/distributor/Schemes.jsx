@@ -8,7 +8,7 @@ import { Megaphone, Pencil, Percent, Plus, Trash } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { api } from '../../lib/api.js';
 import { SCHEME_KINDS, SCHEME_STATUS, dateText, money, qs, qty, useDebounced, useLoad } from '../../lib/distributor.js';
-import { Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Textarea, Th, Thead, Tr, useDialog, useToast } from '../../components/ui.jsx';
+import { Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Textarea, Th, Thead, Tr, useDialog, useToast, PageLoader } from '../../components/ui.jsx';
 import { Chips, NumberField, Pager, Panel, Segmented, StatusPill, Toggle, Toolbar, useAction } from '../wholesale/parts.jsx';
 import { ProductPicker } from '../wholesale/parts.jsx';
 import { CUSTOMER_TYPES } from '../../lib/wholesale.js';
@@ -54,7 +54,7 @@ const SchemeForm = ({ scheme, onClose, onSaved }) => {
   const buyProductId = scopeKind === 'PRODUCT' ? scope?.id : null;
   const product = useLoad(buyProductId ? `/wholesale/products/${buyProductId}` : null).data;
   const freeProduct = useLoad(free?.id ? `/wholesale/products/${free.id}` : null).data;
-  if (!form) return <Modal title="Scheme" onClose={onClose}><p className="py-8 text-center text-small text-ink-500">Loading…</p></Modal>;
+  if (!form) return <Modal title="Scheme" onClose={onClose}><PageLoader compact /></Modal>;
   const set = (k) => (e) => setF({ ...form, [k]: e?.target ? e.target.value : e });
   const setAll = (patch) => setF({ ...form, ...patch });
   const chosenRetailers = retailers ?? []; const chosenPlaces = places ?? [];
@@ -141,7 +141,7 @@ const SchemeDetail = ({ id, onClose, onChanged, onEdit }) => {
   const remove = async () => { if (await dialog.confirm({ title: `Delete ${s.name}?`, confirmLabel: 'Delete', danger: true })) { const r = await run(() => api(`/distributor/schemes/${id}`, { method: 'DELETE' }), 'Deleted'); if (r) { onChanged(); onClose(); } } };
   return (
     <Modal title={s ? s.name : 'Scheme'} onClose={onClose} wide>
-      {!s ? <p className="py-8 text-center text-small text-ink-500">Loading…</p> : (
+      {!s ? <PageLoader compact /> : (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2"><StatusPill map={SCHEME_STATUS} status={s.status} /><Badge>{SCHEME_KINDS[s.kind]}</Badge>{s.funded_by === 'PRINCIPAL' && <Badge tone="brand">Funded by {s.principal || 'principal'}</Badge>}{s.stackable && <Badge>Combines</Badge>}</div>
           <p className="text-body text-ink-900">{s.description}</p>

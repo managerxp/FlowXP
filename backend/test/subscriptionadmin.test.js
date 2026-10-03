@@ -128,8 +128,16 @@ test('business history surfaces subscription-relevant admin actions for that bus
   await admin.updateBusinessStatus({ params: { id: growth.businessId }, body: { status: 'SUSPENDED' }, auth: { userId: null } }, fakeRes());
   await admin.updateBusinessStatus({ params: { id: growth.businessId }, body: { status: 'ACTIVE' }, auth: { userId: null } }, fakeRes());
 
-  const res = fakeRes();
-  await admin.businessHistory({ params: { id: growth.businessId } }, res);
+  // recordAudit (modules/events.js) writes without being awaited, by design: a failed audit line must never block
+  // the action itself. So the two lines may land a moment after the calls return; wait for them (up to 2s) rather
+  // than read the history the instant the second call returns, which made this test fail now and then.
+  let res = fakeRes();
+  for (let tries = 0; tries < 40; tries++) {
+    res = fakeRes();
+    await admin.businessHistory({ params: { id: growth.businessId } }, res);
+    if (res.body.data.length >= 2) break;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
   assert.ok(res.body.data.length >= 2);
   assert.ok(res.body.data.every((e) => e.action.startsWith('admin.') || e.action.startsWith('subscription.')));
 

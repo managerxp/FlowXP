@@ -16,6 +16,7 @@ import * as auth from '../controllers/auth.controller.js';
 import * as security from '../controllers/security.controller.js';
 import * as business from '../controllers/business.controller.js';
 import * as dashboard from '../controllers/dashboard.controller.js';
+import * as siteAssistant from '../controllers/siteAssistant.controller.js';
 import * as webhooks from '../controllers/webhooks.controller.js';
 import * as contact from '../controllers/contact.controller.js';
 import productsRoutes from './products.routes.js';
@@ -83,6 +84,8 @@ const loginLimiter = limiter(10, 15, 'Too many attempts. Try again in a few minu
 const signupLimiter = limiter(5, 60, 'Too many accounts created from here. Try again later.');
 const resetLimiter = limiter(5, 60, 'Too many reset requests. Try again later.');
 const contactLimiter = limiter(5, 60, 'Too many messages sent. Try again later.');
+/* The website chat calls the AI provider, which costs money per message: generous for a person, tight for a script. */
+const assistantLimiter = limiter(30, 15, 'Too many questions in a short time. Try again in a few minutes.');
 
 /* ── Public ─────────────────────────────────────────────────────────────── */
 
@@ -94,6 +97,7 @@ router.post('/auth/resend-email-otp', loginLimiter, auth.resendEmailOtp);
 router.post('/auth/forgot-password', resetLimiter, auth.forgotPassword);
 router.post('/auth/reset-password', resetLimiter, auth.resetPassword);
 router.post('/contact', contactLimiter, contact.send);
+router.post('/public/assistant', assistantLimiter, siteAssistant.ask);
 
 /* The public pricing page reads this. Prices live in the database so they can
    change without a deploy — see the note in database.js. */

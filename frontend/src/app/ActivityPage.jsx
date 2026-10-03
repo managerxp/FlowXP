@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { api, downloadFile } from '../lib/api.js';
 import { daysAgoISO } from '../lib/dates.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Alert, Badge, Button, Input, PageHeader, Select, Table, Td, Th, Thead, Tr } from '../components/ui.jsx';
+import { Alert, Badge, Button, Input, PageHeader, Select, Table, Td, Th, Thead, Tr, PageLoader } from '../components/ui.jsx';
 
 const TONE = { sales: 'brand', stock: 'neutral', menu: 'neutral', money: 'warning', customers: 'neutral', team: 'danger', oversight: 'neutral', other: 'neutral' };
 const when = (iso) => new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -74,7 +74,7 @@ const ActivityPage = () => {
       </div>
 
       <Alert>{error}</Alert>
-      {!entries && !error && <p className="py-10 text-center text-sm text-ink-400">Loading…</p>}
+      {!entries && !error && <PageLoader compact />}
       {entries?.length === 0 && <p className="rounded-(--radius-card) border border-dashed border-line-strong py-10 text-center text-sm text-ink-400">Nothing recorded for these filters.</p>}
 
       {entries?.length > 0 && (

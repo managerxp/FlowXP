@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
-import { Alert, Button, Field, Input, Modal, Select, useToast } from './ui.jsx';
+import { Alert, Button, Field, Input, Modal, Select, useToast, PageLoader } from './ui.jsx';
 
 const METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER'];
 
@@ -48,7 +48,7 @@ const CreditNoteModal = ({ invoice, onClose, onIssued }) => {
     <Modal title={`Credit note — ${invoice.invoice_number}`} onClose={onClose} wide>
       <form onSubmit={submit} className="space-y-4">
         <Alert>{error}</Alert>
-        {!options ? <p className="text-sm text-ink-400">Loading…</p> : (
+        {!options ? <PageLoader compact /> : (
           <>
             <p className="text-sm text-ink-700">Choose what is being returned or corrected. GST on those items is reversed, and the credit note gets its own number.</p>
             <div className="space-y-2">

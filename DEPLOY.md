@@ -37,7 +37,8 @@ The database migrations run by themselves when the API starts (`config/migrate.j
 
 ```bash
 sudo cp deploy/nginx.conf /etc/nginx/sites-available/flowxp
-# edit it: server_name app.example.com → your domain, root → /var/www/flowxp/frontend/dist
+sudo mkdir -p /etc/nginx/snippets && sudo cp deploy/nginx-security-headers.conf /etc/nginx/snippets/flowxp-security-headers.conf   # CSP and other security headers, see the file
+# it is set up for flowxp.in (www.flowxp.in redirects to it); check root → /var/www/flowxp/frontend/dist
 sudo ln -s /etc/nginx/sites-available/flowxp /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
@@ -46,7 +47,7 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d app.example.com
+sudo certbot --nginx -d flowxp.in -d www.flowxp.in
 ```
 
 ### What goes in `backend/.env`
@@ -55,7 +56,7 @@ sudo certbot --nginx -d app.example.com
 |---|---|
 | `DATABASE_URL` | `postgres://flowxp:<password>@localhost:5432/flowxp`, matching the user/db you created above |
 | `JWT_SECRET` | 32+ random characters (the API refuses to start in production with less) — `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
-| `APP_ORIGIN` | your public address, `https://app.example.com` (must be https in production) |
+| `APP_ORIGIN` | your public address, `https://flowxp.in` (must be https in production) |
 | `CORS_ORIGINS` | other sites allowed to call the API, e.g. a separate marketing site (optional) |
 | `SMTP_*`, `MAIL_FROM` | outbound email: password links, staff invites, supplier orders. Blank = logged only |
 | `ANTHROPIC_API_KEY` | switches on Flow AI and reading menus from photos. Blank = both stay off |

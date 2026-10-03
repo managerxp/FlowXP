@@ -11,6 +11,9 @@
  * needs an AI key on the server), the page shows the real suggested
  * questions and what the assistant can read instead of a made-up reply.
  */
+import { useEffect, useRef, useState } from 'react';
+import { useReducedMotion } from 'motion/react';
+import { Sparkles } from 'lucide-react';
 import { Button, Container, Section } from '../components/ui.jsx';
 import Reveal from '../components/Reveal.jsx';
 import { Check, Connector, FeatureRow, FinalCta, H2, Node, Shot, Tag, TextLink } from './parts.jsx';
@@ -161,15 +164,98 @@ const Features = () => (
 
 /* The questions the app itself suggests (AIManagerPage), and the records the
    assistant is allowed to read (the tools in backend/src/modules/ai/tools.js). */
-const QUESTIONS = [
-  'How did we do last week compared with the week before?',
-  'Which items make us the most money, and which the least?',
-  'What should I order tomorrow?',
-  'What do you expect this weekend?',
-  'Is there anything unusual I should look at?',
-  'Is anything running slow in the kitchen?'
-];
 const READS = ['Sales', 'Daily trend', 'Item performance', 'Stock forecast', 'Demand forecast', 'Kitchen timing', 'Wastage', 'Expenses', 'Leakage check', 'Branch comparison', 'Loyalty and coupons'];
+
+/* A few answers to try, all from the FlowXP demo business (the same figures as the screens on this site), so a
+   visitor sees what a reply looks like: the answer, what kind of statement it is, and the records behind it. */
+const DEMO = [
+  {
+    q: 'How are sales compared with last month?',
+    kind: 'happened',
+    answer: 'Sales are up 16.6% on the previous 30 days.',
+    source: 'Recorded bills'
+  },
+  {
+    q: 'What should I order tomorrow?',
+    kind: 'suggest',
+    answer: 'Two items to order across two suppliers, about ₹5,380 in all.',
+    lines: [['Halal Meats Co', 'Chicken, 15.5 kg', '₹3,778'], ['Dairy Delight', 'Paneer, 5 kg', '₹1,601']],
+    source: 'Stock forecast and latest purchase prices'
+  },
+  {
+    q: 'Is there anything unusual I should look at?',
+    kind: 'check',
+    answer: "One cashier's discounts are 2.9% of sales. Everyone else gives 0.2%.",
+    source: 'Discounts on 41 bills'
+  },
+  {
+    q: 'What is running low?',
+    kind: 'suggest',
+    answer: '10 items are at their reorder point. Reorder before the weekend.',
+    source: 'Stock levels and reorder points'
+  }
+];
+
+const Conversation = () => {
+  const reduce = useReducedMotion();
+  const [picked, setPicked] = useState(1);
+  const [thinking, setThinking] = useState(false);
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const ask = (i) => {
+    if (i === picked && !thinking) return;
+    clearTimeout(timer.current);
+    setPicked(i);
+    if (reduce) return;
+    setThinking(true);
+    timer.current = setTimeout(() => setThinking(false), 650);
+  };
+  const d = DEMO[picked];
+  return (
+    <div className="overflow-hidden rounded-(--radius-panel) border border-line bg-surface shadow-lg">
+      <div className="flex items-center justify-between border-b border-line px-5 py-3">
+        <p className="flex items-center gap-2 text-small font-semibold text-ink-900"><Sparkles aria-hidden="true" className="h-4 w-4 text-brand-500" strokeWidth={2} />Flow AI</p>
+        <span className="text-caption text-ink-500">Example, demo business</span>
+      </div>
+      <div className="space-y-4 bg-surface-2/60 px-5 py-6 sm:px-6" aria-live="polite">
+        <p className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-brand-500 px-4 py-2.5 text-small text-white">{d.q}</p>
+        {thinking ? (
+          <p className="flex w-fit items-center gap-1.5 rounded-2xl rounded-bl-md border border-line bg-surface px-4 py-3" aria-label="Flow AI is answering">
+            {[0, 1, 2].map((n) => <span key={n} className="typing-dot h-1.5 w-1.5 rounded-full bg-ink-400" style={{ animationDelay: `${n * 140}ms` }} />)}
+          </p>
+        ) : (
+          <div className="fade-in max-w-[92%] rounded-2xl rounded-bl-md border border-line bg-surface p-4 shadow-sm">
+            <Tag kind={d.kind} />
+            <p className="mt-2 text-body font-medium text-ink-900">{d.answer}</p>
+            {d.lines && (
+              <table className="mt-3 w-full text-small">
+                <tbody className="divide-y divide-line">
+                  {d.lines.map(([who, what, cost]) => (
+                    <tr key={who}><td className="py-2 font-medium text-ink-900">{who}</td><td className="py-2 text-ink-500">{what}</td><td className="tabular py-2 text-right text-ink-900">{cost}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <p className="mt-3 text-caption text-ink-500">From: {d.source}</p>
+          </div>
+        )}
+      </div>
+      <div className="border-t border-line px-5 py-4">
+        <p className="text-caption font-medium text-ink-500">Try asking</p>
+        <ul className="mt-2 flex flex-wrap gap-2">
+          {DEMO.map((x, i) => (
+            <li key={x.q}>
+              <button type="button" onClick={() => ask(i)} aria-pressed={i === picked}
+                      className={`min-h-9 rounded-full border px-3.5 py-1.5 text-small transition-colors duration-(--duration-fast) active:scale-[0.98] ${i === picked ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong bg-surface text-ink-700 hover:border-brand-500 hover:text-brand-600'}`}>
+                {x.q}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+};
 
 const Ask = () => (
   <Section id="questions" className="scroll-mt-16">
@@ -185,25 +271,16 @@ const Ask = () => (
           <li className="flex gap-3"><Check />Staff see answers only about what their role allows.</li>
           <li className="flex gap-3"><Check />Summarised figures go to the AI service; customer names and phone numbers never do.</li>
         </ul>
-      </Reveal>
-      <div className="lg:col-span-7">
-        <Reveal className="rounded-(--radius-panel) border border-line bg-surface p-5 shadow-md sm:p-7">
-          <p className="text-small font-semibold text-ink-900">Try asking</p>
-          <ul className="mt-4 flex flex-wrap gap-2">
-            {QUESTIONS.map((q) => (
-              <li key={q} className="rounded-full border border-line-strong bg-surface px-3.5 py-2 text-small text-ink-700 transition-colors duration-(--duration-normal) hover:border-brand-500 hover:text-brand-600">
-                {q}
-              </li>
-            ))}
+        <div className="mt-6 border-t border-line pt-5">
+          <p className="text-small font-semibold text-ink-900">What it looks at to answer</p>
+          <ul className="mt-3 flex flex-wrap gap-1.5">
+            {READS.map((r) => <li key={r} className="rounded-md bg-surface-2 px-2.5 py-1 text-caption font-medium text-ink-700">{r}</li>)}
           </ul>
-          <div className="mt-6 border-t border-line pt-5">
-            <p className="text-small font-semibold text-ink-900">What it looks at to answer</p>
-            <ul className="mt-3 flex flex-wrap gap-1.5">
-              {READS.map((r) => <li key={r} className="rounded-md bg-surface-2 px-2.5 py-1 text-caption font-medium text-ink-700">{r}</li>)}
-            </ul>
-          </div>
-        </Reveal>
-      </div>
+        </div>
+      </Reveal>
+      <Reveal index={1} className="lg:col-span-7">
+        <Conversation />
+      </Reveal>
     </div>
   </Section>
 );

@@ -12,6 +12,9 @@ import { ArrowRight, ChevronDown, CookingPot, Pill, Scissors, Store, Truck, Uten
 import { Button, Container, Logo } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { READY } from './industries/data.js';
+import { useSeo } from './seo.js';
+import AskFlowXP from './AskFlowXP.jsx';
+import CookieNotice from './CookieNotice.jsx';
 
 /* Everything but Industries is a plain link; Industries opens a menu of
    the built verticals instead (see IndustriesMenu), so it is handled
@@ -126,7 +129,8 @@ const FOOTER_GROUPS = [
   ]},
   { heading: 'Legal', links: [
     { to: '/privacy', label: 'Privacy' },
-    { to: '/terms', label: 'Terms' }
+    { to: '/terms', label: 'Terms' },
+    { to: '/cookies', label: 'Cookies' }
   ]}
 ];
 
@@ -234,7 +238,7 @@ const Header = () => {
 };
 
 const Footer = () => (
-  <footer className="border-t border-line bg-surface">
+  <footer className="site-footer mx-2 rounded-t-[2rem] bg-brand-50 sm:mx-3">
     <Container className="py-14">
       <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-6">
         <div className="lg:col-span-2">
@@ -261,7 +265,7 @@ const Footer = () => (
         ))}
       </div>
 
-      <div className="mt-12 flex flex-col gap-2 border-t border-line pt-6 text-xs text-ink-500 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-12 flex flex-col gap-2 border-t border-brand-100 pt-6 text-xs text-ink-500 sm:flex-row sm:items-center sm:justify-between">
         <p>© {new Date().getFullYear()} ManagerXP. All rights reserved.</p>
         <p>Made in India for Indian businesses. Prices in ₹, GST built in.</p>
       </div>
@@ -272,12 +276,15 @@ const Footer = () => (
 const SiteLayout = () => {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  useSeo();
 
   return (
     <div className="flex min-h-full flex-col bg-page">
       <Header />
       <main className="flex-1"><Outlet /></main>
       <Footer />
+      <AskFlowXP />
+      <CookieNotice />
     </div>
   );
 };

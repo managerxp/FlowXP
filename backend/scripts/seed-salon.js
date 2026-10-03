@@ -7,7 +7,7 @@
  * memberships and packages), so every number on the screens is genuine; only the timestamps are back-dated.
  * Sign in: salon@flowxp.test / demo1234   (staff: salon-reception@flowxp.test, same password)
  */
-import 'dotenv/config';
+import './no-production.js'; // loads .env, and stops here in production
 import bcrypt from 'bcryptjs';
 import pool, { initializeDatabase } from '../src/config/database.js';
 import { createSalonInvoice } from '../src/modules/salon/pos.js';

@@ -238,7 +238,7 @@ const ExpensesPage = () => {
           {summary?.by_category.length > 0 && (
             <div className="rounded-(--radius-card) border border-line bg-surface p-5">
               <div className="mb-3 flex items-baseline justify-between">
-                <h2 className="text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">Where it went</h2>
+                <h2 className="text-body font-semibold text-ink-900">Where it went</h2>
                 {category && <button type="button" onClick={() => setCategory(null)} className="text-caption font-medium text-brand-700">Show all</button>}
               </div>
               <ul className="space-y-1">

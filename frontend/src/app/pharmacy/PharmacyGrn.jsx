@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Plus, Truck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { dateText, money, qty, useLoad } from '../../lib/pharmacy.js';
-import { Alert, Button, ListState, Modal, PageHeader, Table, Td, Th, Thead, Tr } from '../../components/ui.jsx';
+import { Alert, Button, ListState, Modal, PageHeader, Table, Td, Th, Thead, Tr, PageLoader } from '../../components/ui.jsx';
 import { Pager } from './parts.jsx';
 import PharmacyGrnModal from './PharmacyGrnModal.jsx';
 
@@ -15,7 +15,7 @@ const GrnDetail = ({ id, onClose }) => {
   return (
     <Modal title={data ? data.grn_number : 'Goods receipt'} onClose={onClose} wide>
       <Alert>{error}</Alert>
-      {loading && !data && <p className="py-6 text-center text-small text-ink-500">Loading…</p>}
+      {loading && !data && <PageLoader compact />}
       {data && (
         <div className="space-y-4">
           <div className="grid gap-3 text-small sm:grid-cols-2">

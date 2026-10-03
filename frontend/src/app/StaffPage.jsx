@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Th, Thead, Tr, useToast } from '../components/ui.jsx';
+import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Th, Thead, Tr, useToast, PageLoader } from '../components/ui.jsx';
 
 const ROLES = {
   OWNER: 'Owner', ADMIN: 'Admin', MANAGER: 'Manager', CASHIER: 'Cashier', WAITER: 'Waiter',
@@ -82,7 +82,7 @@ const PermissionsModal = ({ person, onClose, onSaved }) => {
     <Modal title={`Permissions — ${person.name}`} onClose={onClose} wide>
       <p className="mb-4 text-sm text-ink-500">{person.name} is a <strong>{ROLES[person.role]}</strong>. Each row starts from what that role allows; change one only when this person should differ.</p>
       <Alert>{error}</Alert>
-      {!rows ? <p className="text-sm text-ink-400">Loading…</p> : (
+      {!rows ? <PageLoader compact /> : (
         <div className="space-y-2">
           {rows.map((p) => (
             <div key={p.key} className="grid items-center gap-3 rounded-lg border border-line p-3 sm:grid-cols-[1fr_auto]">

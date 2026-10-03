@@ -17,7 +17,7 @@ import {
   History, Landmark, LayoutDashboard, LayoutGrid, Lock, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
   Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X, Warehouse, PackageCheck, Undo2, HandCoins, ChartBar, ShoppingBag, Tags,
-  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis
+  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Avatar, Button, EmptyState, Logo, PageLoader, useToast } from '../components/ui.jsx';
@@ -47,6 +47,12 @@ const SALON = ['SALON'];
 const WHOLESALE = WHOLESALE_TYPES;
 const PHARMACY = PHARMACY_TYPES;
 const RETAIL = RETAIL_TYPES;
+
+/* The header's business/outlet pickers: a native select dressed to match the search box (room for an icon on the
+   left and our chevron on the right). */
+const PICKER = 'h-9 w-full cursor-pointer appearance-none truncate rounded-lg border border-line bg-surface-2 pl-8 pr-8 text-small '
+  + 'transition-colors duration-(--duration-fast) hover:border-line-strong hover:bg-surface focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-3 focus:ring-brand-500/15 pointer-coarse:h-11';
+const initials = (name = '') => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 /* the generic stock, buying and customer screens give way to the wholesale ones for a wholesaler */
 const NOT_SALON_OR_WHOLESALE = [...SALON, ...WHOLESALE];
 
@@ -325,8 +331,9 @@ const AppShell = () => {
      signed-in user to /login for the half-second the request takes. */
   if (loading) {
     return (
-      <div className="flex min-h-full items-center justify-center bg-page">
-        <PageLoader label="Loading FlowXP…" />
+      <div className="flex min-h-full flex-col items-center justify-center gap-2 bg-page">
+        <Logo />
+        <PageLoader label="Loading FlowXP…" compact />
       </div>
     );
   }
@@ -372,6 +379,13 @@ const AppShell = () => {
     .filter((i) => location.pathname === i.to || location.pathname.startsWith(`${i.to}/`))
     .sort((a, b) => b.to.length - a.to.length)[0];
   const blocked = owner && !accessible(owner);
+  /* Fit, checked the same way: a typed URL for a screen made for another kind of business (the retail stock
+     center opened by a pharmacy) would load and then fail against an API that only serves that trade. Several
+     nav entries can share a path (Inventory is listed per trade), so the screen fits if any of them does. */
+  const fits = (item) => (!item.types || item.types.includes(business.business_type))
+    && (!item.notTypes || !item.notTypes.includes(business.business_type))
+    && (!item.distributor || business.distributor_enabled);
+  const notHere = owner && !blocked && !allItems.filter((i) => i.to === owner.to).some(fits);
   const paletteItems = [
     ...groups.flatMap((g) => g.items.map((i) => ({ ...i, group: g.label || 'Overview' }))),
     ...systemItems.map((i) => ({ ...i, group: 'System' }))
@@ -452,29 +466,36 @@ const AppShell = () => {
 
             {/* Business and outlet: native selects, keyboard-friendly and native on a phone. */}
             {businesses.length > 1 ? (
-              <label className="min-w-0">
+              <label className="relative min-w-0">
                 <span className="sr-only">Business</span>
+                <Store aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
                 <select value={businessId ?? ''} onChange={(e) => switchBusiness(Number(e.target.value))}
-                        className="h-9 max-w-52 truncate rounded-lg border border-line-strong bg-surface px-3 text-small font-semibold text-ink-900 pointer-coarse:h-11">
+                        className={`${PICKER} max-w-56 font-semibold text-ink-900`}>
                   {businesses.map((b) => <option key={b.business_id} value={b.business_id}>{b.name}</option>)}
                 </select>
+                <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
               </label>
             ) : (
-              <p className="hidden truncate text-small font-semibold text-ink-900 sm:block">{business.name}</p>
+              <p className="hidden min-w-0 items-center gap-2 sm:flex">
+                <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-50 text-[11px] font-bold text-brand-700">{initials(business.name)}</span>
+                <span className="truncate text-small font-semibold text-ink-900">{business.name}</span>
+              </p>
             )}
 
             {outlets.length > 1 && (
               canViewAll ? (
-                <label className="min-w-0">
+                <label className="relative min-w-0">
                   <span className="sr-only">Outlet</span>
+                  <MapPinned aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
                   <select value={outletId ?? ''} onChange={(e) => switchOutlet(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                          className="h-9 max-w-44 truncate rounded-lg border border-line-strong bg-surface px-3 text-small font-medium text-ink-700 pointer-coarse:h-11">
+                          className={`${PICKER} max-w-48 font-medium text-ink-700`}>
                     {outlets.map((o) => <option key={o.branch_id} value={o.branch_id}>{o.name}</option>)}
                     <option value="all">All outlets</option>
                   </select>
+                  <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
                 </label>
               ) : (
-                <span className="truncate rounded-lg bg-surface-2 px-3 py-1.5 text-small font-medium text-ink-700">{outlets[0]?.name}</span>
+                <span className="flex min-w-0 items-center gap-1.5 truncate rounded-lg bg-surface-2 px-3 py-1.5 text-small font-medium text-ink-700"><MapPinned aria-hidden="true" className="h-4 w-4 shrink-0 text-ink-400" />{outlets[0]?.name}</span>
               )
             )}
 
@@ -502,6 +523,14 @@ const AppShell = () => {
                 className="mx-auto mt-10 max-w-md"
                 title="You don't have access to this"
                 body="Ask an owner or admin if you need it."
+                action={<Button to="/app" variant="secondary" size="sm">Back to Dashboard</Button>}
+              />
+            ) : notHere ? (
+              <EmptyState
+                icon={Compass}
+                className="mx-auto mt-10 max-w-md"
+                title="This screen is for another kind of business"
+                body={`${owner.label} isn't part of how ${business.name} is set up. Everything that applies to it is in the sidebar.`}
                 action={<Button to="/app" variant="secondary" size="sm">Back to Dashboard</Button>}
               />
             ) : (

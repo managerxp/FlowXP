@@ -66,7 +66,7 @@ const Change = ({ now, before, vs, goodWhenUp = true }) => {
 const Section = ({ title, action, children, note }) => (
   <section className="rounded-(--radius-card) border border-line bg-surface p-5">
     <div className="mb-3 flex items-baseline justify-between gap-3">
-      <h3 className="text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">{title}</h3>
+      <h3 className="text-body font-semibold text-ink-900">{title}</h3>
       {action}
     </div>
     {children}
@@ -83,14 +83,17 @@ const Columns = ({ points, label, valueText }) => {
   return (
     <div>
       <p className="tabular mb-2 h-5 text-small text-ink-700"><span className="font-semibold text-ink-900">{shown.label}</span> · {valueText(shown)}{hover == null && <span className="text-ink-500"> (the most)</span>}</p>
-      <div className="flex h-40 items-end gap-[2px]" onMouseLeave={() => setHover(null)}>
-        {points.map((p, i) => (
-          <button key={p.key} type="button" onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)} aria-label={`${p.label}: ${valueText(p)}`}
-                  className="group flex h-full min-w-0 flex-1 items-end focus:outline-none">
-            <span className={`block w-full rounded-t-[3px] transition-colors duration-(--duration-fast) ${hover === i ? 'bg-brand-700' : 'bg-brand-500'} group-focus-visible:ring-2 group-focus-visible:ring-brand-700`}
-                  style={{ height: `${p.value ? Math.max(2, (p.value / max) * 100) : 0}%` }} />
-          </button>
-        ))}
+      <div className="relative h-40" onMouseLeave={() => setHover(null)}>
+        {[25, 50, 75].map((y) => <span key={y} aria-hidden="true" className="absolute inset-x-0 border-t border-dashed border-line" style={{ bottom: `${y}%` }} />)}
+        <div className="relative flex h-full items-end gap-[3px]">
+          {points.map((p, i) => (
+            <button key={p.key} type="button" onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)} aria-label={`${p.label}: ${valueText(p)}`}
+                    className="group flex h-full min-w-0 flex-1 items-end focus:outline-none">
+              <span className={`block w-full rounded-t-[4px] transition-colors duration-(--duration-fast) ${p === shown ? 'bg-brand-500' : 'bg-brand-200 group-hover:bg-brand-400'} group-focus-visible:ring-2 group-focus-visible:ring-brand-700`}
+                    style={{ height: `${p.value ? Math.max(2, (p.value / max) * 100) : 0}%` }} />
+            </button>
+          ))}
+        </div>
       </div>
       <div className="mt-1.5 flex justify-between text-caption text-ink-500"><span>{points[0].axis}</span><span>{points[points.length - 1].axis}</span></div>
       <table className="sr-only"><caption>{label}</caption><tbody>{points.map((p) => <tr key={p.key}><th>{p.label}</th><td>{valueText(p)}</td></tr>)}</tbody></table>

@@ -52,8 +52,16 @@ export const sendMail = async ({ to, subject, text, html, replyTo }) => {
     console.log(`\n[mail:dev] to=${to}\n[mail:dev] subject=${subject}\n${text}\n`);
     return;
   }
+  const message = { from: built.from, to, subject, text, html, replyTo, attachments: withLogo(html) };
   try {
-    await built.transport.sendMail({ from: built.from, to, subject, text, html, replyTo, attachments: withLogo(html) });
+    try {
+      await built.transport.sendMail(message);
+    } catch (first) {
+      // A dropped or reset connection to the mail server is usually momentary; one more try saves the sign-in code.
+      if (!['ECONNRESET', 'ETIMEDOUT', 'ESOCKET', 'ECONNECTION'].includes(first.code)) throw first;
+      console.warn('[mail] retrying after:', first.message);
+      await built.transport.sendMail(message);
+    }
   } catch (error) {
     /* Never fail the request that triggered the email. A signup that 500s
        because the SMTP server hiccuped loses a customer over a retryable

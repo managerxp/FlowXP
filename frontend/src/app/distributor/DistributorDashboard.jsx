@@ -5,12 +5,25 @@
  * only their own sales.
  */
 import { Link } from 'react-router-dom';
-import { Plus, Target, TriangleAlert } from 'lucide-react';
+import { CalendarRange, HandCoins, IndianRupee, Plus, Target, TriangleAlert } from 'lucide-react';
+import MetricCard from '../../components/MetricCard.jsx';
+import { AreaChart, Gauge } from '../../components/charts.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { BUCKET_TONES } from '../wholesale/constants.js';
 import { money, pct, plural, useLoad } from '../../lib/distributor.js';
-import { Alert, Badge, Button, EmptyState, PageHeader, SkeletonCards, StatCard, Table, Td, Th, Thead, Tr } from '../../components/ui.jsx';
-import { Bars, Panel, RankBars, StackStrip } from '../wholesale/parts.jsx';
+import { Alert, Badge, Button, EmptyState, DashboardHeader, SkeletonCards, StatCard, Table, Td, Th, Thead, Tr } from '../../components/ui.jsx';
+import { Panel, RankBars, StackStrip } from '../wholesale/parts.jsx';
+
+/* "1 to 31 October" (or "28 September to 4 October" across a month end) from the ISO dates the API sends. */
+const dayLabel = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+const shortDate = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+const monthRange = ({ from, to }) => {
+  const f = new Date(`${from}T00:00:00`); const t = new Date(`${to}T00:00:00`);
+  const day = (d) => d.toLocaleDateString('en-IN', { day: 'numeric' });
+  const dm = (d) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long' });
+  return f.getMonth() === t.getMonth() ? `${day(f)} to ${dm(t)}` : `${dm(f)} to ${dm(t)}`;
+};
 
 const ALERT_TONE = { critical: 'danger', warning: 'warning', informational: 'brand' };
 
@@ -34,12 +47,17 @@ const Alerts = ({ items }) => (
 /** Progress toward the month's target: the bar, the percentage, and what is needed each remaining day. */
 const TargetCard = ({ k, month }) => {
   if (!k?.month_target) return <Panel title="Monthly target"><EmptyState compact icon={Target} title="No target set" body="Set this month’s target to see how the month is going." action={<Button to="/app/distributor/team?tab=targets" variant="secondary">Set targets</Button>} /></Panel>;
-  const done = Math.min(100, k.target_achievement_pct || 0);
   return (
-    <Panel title="Monthly target" lead={`${month.from} to ${month.to}`}>
-      <div className="flex items-end justify-between gap-3"><p className="text-display-sm font-semibold tabular">{pct(k.target_achievement_pct)}</p><p className="text-small text-ink-500">{money(k.net_sales_month)} of {money(k.month_target)}</p></div>
-      <div className="mt-3 h-3 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={Math.round(done)} aria-valuemin={0} aria-valuemax={100} aria-label="Target achieved"><div className={`h-full rounded-full ${done >= 100 ? 'bg-success' : 'bg-brand-500'}`} style={{ width: `${done}%` }} /></div>
-      <p className="mt-3 text-small text-ink-700">{k.target_remaining > 0 ? <>{money(k.target_remaining)} to go — about <strong>{money(k.target_per_day)}</strong> a day.</> : 'Target reached for the month.'}</p>
+    <Panel title="Monthly target" lead={monthRange(month)}>
+      <Gauge value={k.net_sales_month} target={k.month_target} label={`${pct(k.target_achievement_pct)} of this month's target`}>
+        <span className="tabular block text-[28px] font-semibold leading-none text-ink-900">{pct(k.target_achievement_pct)}</span>
+        <span className="mt-1 block text-caption text-ink-500">of the target</span>
+      </Gauge>
+      <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-4 text-center">
+        <div><dt className="text-caption text-ink-500">Sold</dt><dd className="tabular text-small font-semibold text-ink-900">{money(k.net_sales_month)}</dd></div>
+        <div><dt className="text-caption text-ink-500">Target</dt><dd className="tabular text-small font-semibold text-ink-900">{money(k.month_target)}</dd></div>
+      </dl>
+      <p className="mt-3 text-center text-small text-ink-700">{k.target_remaining > 0 ? <>{money(k.target_remaining)} to go, about <strong>{money(k.target_per_day)}</strong> a day.</> : 'Target reached for the month.'}</p>
     </Panel>
   );
 };
@@ -51,7 +69,7 @@ const DistributorDashboard = () => {
 
   return (
     <div>
-      <PageHeader title={business?.name || 'Today'} lead="Sales, collections, targets, stock and the field force at a glance."
+      <DashboardHeader title={business?.name || 'Today'} lead="Sales, collections, targets, stock and the field force at a glance."
                   action={<>
                     {can('field_sales') && <Button to="/app/distributor/field" variant="secondary">Field sales</Button>}
                     {can('sales_orders') && hasFeature('wholesale_orders') && <Button to="/app/wholesale/orders/new"><Plus aria-hidden="true" className="h-4 w-4" />New order</Button>}
@@ -61,25 +79,54 @@ const DistributorDashboard = () => {
       {loading && !d && <SkeletonCards count={4} />}
       {d && k && (
         <div className="space-y-6">
-          <section aria-label="Key figures" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard size="lg" label="Sales today" value={money(k.sales_today)} note={`${plural(k.orders_today.count, 'order')} placed · ${money(k.orders_today.value)}`} />
-            <StatCard size="lg" label="Collected today" value={k.collections_today == null ? '—' : money(k.collections_today)} note={m ? `${money(m.collected_month)} this month` : undefined} />
-            <StatCard size="lg" label="Sales this month" value={money(k.sales_month)} note={k.sales_change_pct != null ? `${k.sales_change_pct >= 0 ? '▲' : '▼'} ${Math.abs(k.sales_change_pct)}% vs last month` : 'First month of sales'} />
-            <StatCard size="lg" label="Target achieved" value={k.target_achievement_pct == null ? '—' : pct(k.target_achievement_pct)} note={k.month_target ? `of ${money(k.month_target)}` : 'No target set'} tone={k.target_achievement_pct != null && k.target_achievement_pct < 50 ? 'warning' : undefined} />
-            {k.receivables != null && <StatCard size="lg" to="/app/wholesale/money" label="Retailers owe" value={money(k.receivables)} tone={m?.overdue > 0 ? 'warning' : undefined} note={m?.overdue > 0 ? `${money(m.overdue)} overdue` : 'Nothing overdue'} />}
-            {k.payable != null && <StatCard size="lg" to="/app/wholesale/money?tab=payables" label="You owe principals" value={money(k.payable)} note={m?.payable_due_soon > 0 ? `${money(m.payable_due_soon)} due this week` : undefined} />}
-            <StatCard size="lg" label="Gross margin" value={money(k.gross_margin)} note={k.margin_pct != null ? `${pct(k.margin_pct)} this month` : 'No sales yet'} tone={k.gross_margin < 0 ? 'danger' : undefined} />
-            {k.stock_value != null && <StatCard size="lg" to="/app/wholesale/inventory" label="Stock value" value={money(k.stock_value)} note={f?.van_stock_value > 0 ? `${money(f.van_stock_value)} on vans` : undefined} />}
-            {k.low_stock != null && <StatCard size="lg" to="/app/wholesale/inventory?state=low" label="Low stock" value={k.low_stock} tone={k.low_stock ? 'warning' : undefined} note={k.low_stock ? 'Reorder soon' : 'All above reorder level'} />}
-            {k.expiring_stock != null && <StatCard size="lg" to="/app/wholesale/inventory?tab=expiry" label="Expiring stock" value={k.expiring_stock} tone={k.expiring_stock ? 'warning' : undefined} note={k.expiring_stock ? 'Batches expiring or expired' : 'Nothing near expiry'} />}
-            <StatCard size="lg" to="/app/wholesale/orders?status=PENDING" label="Pending orders" value={k.pending_orders} tone={k.pending_orders ? 'warning' : undefined} note={k.pending_orders ? 'Waiting to be approved or shipped' : 'Nothing waiting'} />
-            {k.pending_deliveries != null && <StatCard size="lg" to="/app/wholesale/fulfilment?tab=deliveries" label="Pending deliveries" value={k.pending_deliveries} tone={k.pending_deliveries ? 'warning' : undefined} note={d.fulfilment ? `${d.fulfilment.out_for_delivery} on the road · ${d.fulfilment.failed_deliveries} failed` : undefined} />}
-            <StatCard size="lg" to="/app/wholesale/returns" label="Sales returns" value={money(k.sales_returns)} note={`${plural(k.sales_returns_count, 'credit note')} this month`} />
+          <section aria-label="Today and this month" className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+            <MetricCard icon={IndianRupee} label="Sales today" value={money(k.sales_today)} spark={d.sales.trend.slice(-7).map((x) => x.sales)}
+                        note={`${plural(k.orders_today.count, 'order')} placed · ${money(k.orders_today.value)}`} />
+            <MetricCard icon={HandCoins} tone="teal" label="Collected today" value={k.collections_today == null ? '—' : money(k.collections_today)} note={m ? `${money(m.collected_month)} this month` : undefined} />
+            <MetricCard icon={CalendarRange} tone="violet" label="Sales this month" value={money(k.sales_month)}
+                        note={k.sales_change_pct != null ? `${k.sales_change_pct >= 0 ? '▲' : '▼'} ${Math.abs(k.sales_change_pct)}% vs last month` : 'First month of sales'} />
+            <MetricCard icon={Target} tone={k.target_achievement_pct != null && k.target_achievement_pct < 50 ? 'warning' : 'success'} label="Target achieved"
+                        value={k.target_achievement_pct == null ? '—' : pct(k.target_achievement_pct)} valueTone={k.target_achievement_pct != null && k.target_achievement_pct < 50 ? 'text-warning' : undefined}
+                        note={k.month_target ? `of ${money(k.month_target)}` : 'No target set'} />
           </section>
+
+          <section aria-label="Money and stock" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {k.receivables != null && <StatCard to="/app/wholesale/money" label="Retailers owe" value={money(k.receivables)} tone={m?.overdue > 0 ? 'warning' : undefined} note={m?.overdue > 0 ? `${money(m.overdue)} overdue` : 'Nothing overdue'} />}
+            {k.payable != null && <StatCard to="/app/wholesale/money?tab=payables" label="You owe principals" value={money(k.payable)} note={m?.payable_due_soon > 0 ? `${money(m.payable_due_soon)} due this week` : undefined} />}
+            <StatCard label="Gross margin" value={money(k.gross_margin)} note={k.margin_pct != null ? `${pct(k.margin_pct)} this month` : 'No sales yet'} tone={k.gross_margin < 0 ? 'danger' : undefined} />
+            {k.stock_value != null && <StatCard to="/app/wholesale/inventory" label="Stock value" value={money(k.stock_value)} note={f?.van_stock_value > 0 ? `${money(f.van_stock_value)} on vans` : undefined} />}
+          </section>
+
+          {/* The work waiting on the team, as one strip of counts rather than five more tiles. */}
+          <nav aria-label="Waiting on the team" className="overflow-hidden rounded-(--radius-card) border border-line bg-surface">
+            <ul className="grid grid-cols-2 divide-line sm:grid-cols-3 lg:grid-cols-5 lg:divide-x">
+              {[
+                k.low_stock != null && ['Low stock', k.low_stock, '/app/wholesale/inventory?state=low', k.low_stock ? 'Reorder soon' : 'All above reorder level'],
+                k.expiring_stock != null && ['Expiring stock', k.expiring_stock, '/app/wholesale/inventory?tab=expiry', k.expiring_stock ? 'Expiring or expired' : 'Nothing near expiry'],
+                ['Pending orders', k.pending_orders, '/app/wholesale/orders?status=PENDING', k.pending_orders ? 'To approve or ship' : 'Nothing waiting'],
+                k.pending_deliveries != null && ['Pending deliveries', k.pending_deliveries, '/app/wholesale/fulfilment?tab=deliveries', d.fulfilment ? `${d.fulfilment.out_for_delivery} on the road · ${d.fulfilment.failed_deliveries} failed` : 'On their way'],
+                ['Sales returns', money(k.sales_returns), '/app/wholesale/returns', `${plural(k.sales_returns_count, 'credit note')} this month`]
+              ].filter(Boolean).map(([label, value, to, note]) => {
+                const hot = typeof value === 'number' && value > 0 && label !== 'Sales returns';
+                return (
+                  <li key={label} className="border-b border-line last:border-b-0 lg:border-b-0">
+                    <Link to={to} className="group block h-full px-4 py-3.5 transition-colors duration-(--duration-fast) hover:bg-surface-2">
+                      <span className="block text-caption font-medium text-ink-500">{label}</span>
+                      <span className={`tabular mt-0.5 block text-title font-semibold ${hot ? 'text-warning' : 'text-ink-900'}`}>{value}</span>
+                      <span className="block truncate text-caption text-ink-500">{note}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
 
           <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
             <Panel title="Sales, last 30 days" lead="Invoiced amounts after returns">
-              <Bars data={d.sales.trend.map((x) => ({ label: x.date, value: x.sales }))} every={5} label="Daily sales for the last 30 days" />
+              <div className="pt-8">
+                <AreaChart format={money} caption="Daily sales for the last 30 days" height="h-56"
+                           points={d.sales.trend.map((x, i, all) => ({ key: x.date, value: x.sales, label: i === all.length - 1 ? 'Today' : dayLabel(x.date), axis: i === all.length - 1 ? 'Today' : (all.length - 1 - i) % 7 === 0 ? shortDate(x.date) : '' }))} />
+              </div>
             </Panel>
             <TargetCard k={k} month={d.distributor.month} />
           </div>

@@ -1238,6 +1238,42 @@ If you are accepting these Terms on behalf of a business, you represent that you
 End of FlowXP Terms and Conditions`]
 ];
 
+/* The cookie policy: what FlowXP actually keeps in a visitor's browser, item by item, as the code does it today
+   (src/lib/api.js, printing.js, offline.js, posCatalog.js, scanner.js, public/sw.js, site/AskFlowXP.jsx,
+   site/CookieNotice.jsx). It narrows Privacy §23 to the specifics; if a new browser-storage key or any analytics or
+   advertising tool is ever added, it must be added here (and the notice in CookieNotice.jsx revisited) first. */
+const COOKIE_POLICY = [
+  ['In short', `FlowXP does not use advertising cookies, does not use analytics or tracking cookies, and does not let other companies track you on flowxp.in.
+What FlowXP does keep in your browser is only what the product needs to work: keeping you signed in, remembering which business and outlet you are working in, your settings on that device, and letting billing continue when the internet drops. These are strictly necessary, so they are on whenever you use FlowXP, and you can remove them at any time (see "How to remove them").
+This policy explains the specifics behind section 23 of the FlowXP Privacy Policy.`],
+
+  ['Cookies', `FlowXP itself sets no cookies on flowxp.in. Signing in, the website chat and every other feature work without them.`],
+
+  ['What FlowXP stores in your browser', `Instead of cookies, FlowXP uses your browser's own storage on your device:
+- Sign-in (flowxp.token, and flowxp.admin.token for the platform admin console): keeps you signed in until you sign out. Removed when you sign out.
+- Business and outlet (flowxp.business, flowxp.branch): which of your businesses and outlets you were working in.
+- Menu layout (flowxp.nav.collapsed): whether you folded the side menu.
+- This device's settings (flowxp.device): printing, kitchen and delivery sounds, and similar choices for this counter.
+- Scanner sound (flowxp.scanSound): whether the camera barcode scanner beeps.
+- Offline bills (flowxp.offlineQueue): bills made while the internet was down, sent to FlowXP as soon as it is back, then removed.
+- Price list for offline billing (a browser database named flowxp-pos-…): a copy of your products and prices so the till can work offline.
+- The app itself (the service worker's cache): FlowXP's own files, so the app opens quickly and works offline.
+- Website chat (flowxp.ask, for the open tab only): your "Ask FlowXP" conversation, so it stays while you move between pages. Gone when you close the tab.
+- This notice (flowxp.cookies.seen): that you have already seen the cookie notice, so it does not show again.
+None of these are used to profile you or shared with anyone for advertising.`],
+
+  ['Other companies', `- Google Maps: while you set up a business, FlowXP can show your address on a Google map. That map is loaded from Google, which may set its own cookies under Google's privacy policy. It appears only on that setup step.
+- Location lookup: if you choose to use your current location during setup, the coordinates are sent to BigDataCloud to turn them into an address. Nothing else is sent, and no cookie is set.
+- Payments: when a payment page from our payment partner opens, that page follows the partner's own cookie and privacy policy.`],
+
+  ['How to remove them', `- Signing out removes your sign-in.
+- Your browser's settings can clear "cookies and site data" for flowxp.in; this removes everything listed above from that device. You will need to sign in again, and bills not yet sent while offline would be lost, so clear it only when the device is online.`],
+
+  ['Changes', `If FlowXP ever adds a cookie or storage item that is not strictly necessary, such as analytics, it will be listed here first and you will be asked before it is used where the law requires.`],
+
+  ['Contact', `Questions about this policy: write to us from the Contact page on flowxp.in.`]
+];
+
 const slug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
 /* "- item" -> a bullet list, "**text**" -> a bold sub-heading paragraph,
@@ -1323,5 +1359,13 @@ export const Terms = () => (
     heading="Terms of service"
     intro="The agreement between your business and ManagerXP for the use of FlowXP."
     sections={TERMS}
+  />
+);
+
+export const Cookies = () => (
+  <LegalPage
+    heading="Cookie policy"
+    intro="FlowXP uses no advertising or tracking cookies. Here is exactly what it keeps in your browser, and why."
+    sections={COOKIE_POLICY}
   />
 );

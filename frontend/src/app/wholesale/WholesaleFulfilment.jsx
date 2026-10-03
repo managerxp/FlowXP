@@ -9,7 +9,7 @@ import { Printer, Truck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { api } from '../../lib/api.js';
 import { DELIVERY_STATUS, ORDER_STATUS, PAYMENT_METHODS, PICK_STATUS, dateText, longDate, money, qs, qty, todayIn, useLoad } from '../../lib/wholesale.js';
-import { Alert, Button, Field, Input, ListState, Modal, PageHeader, Select, StatCard, Table, Td, Textarea, Th, Thead, Tr, useToast } from '../../components/ui.jsx';
+import { Alert, Button, Field, Input, ListState, Modal, PageHeader, Select, StatCard, Table, Td, Textarea, Th, Thead, Tr, useToast, PageLoader } from '../../components/ui.jsx';
 import { Chips, NumberField, Pager, StatusPill, Tabs, useAction } from './parts.jsx';
 
 /* ── pick list dialog: one component, the step follows the status ─────────────────────────────── */
@@ -124,7 +124,7 @@ const PickDialog = ({ id, onClose, onChanged }) => {
   return (
     <Modal title={pick ? `${pick.pick_number} · ${pick.customer}` : 'Pick list'} onClose={onClose} wide>
       <Alert>{error}</Alert>
-      {loading && !pick && <p className="py-8 text-center text-small text-ink-500">Loading…</p>}
+      {loading && !pick && <PageLoader compact />}
       {pick && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3 text-small"><StatusPill map={PICK_STATUS} status={pick.status} /><Link to={`/app/wholesale/orders/${pick.order_id}`} className="font-medium text-brand-700 hover:underline">{pick.order_number}</Link><span className="text-ink-500">{pick.warehouse}</span>

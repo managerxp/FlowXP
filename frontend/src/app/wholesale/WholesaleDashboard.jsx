@@ -8,7 +8,7 @@ import { ClipboardList, Package, Plus, TriangleAlert, Truck } from 'lucide-react
 import { useAuth } from '../../context/AuthContext.jsx';
 import { BUCKET_TONES } from './constants.js';
 import { dateText, money, pct, plural, qty, useLoad } from '../../lib/wholesale.js';
-import { Alert, Badge, Button, EmptyState, PageHeader, SkeletonCards, StatCard, Table, Td, Th, Thead, Tr } from '../../components/ui.jsx';
+import { Alert, Badge, Button, EmptyState, DashboardHeader, SkeletonCards, StatCard, Table, Td, Th, Thead, Tr } from '../../components/ui.jsx';
 import { Bars, Panel, RankBars, StackStrip } from './parts.jsx';
 
 const ALERT_TONE = { critical: 'danger', warning: 'warning', informational: 'brand' };
@@ -38,7 +38,7 @@ const WholesaleDashboard = () => {
 
   return (
     <div>
-      <PageHeader title={business?.name || 'Today'} lead="Sales, receivables, stock and the warehouse at a glance."
+      <DashboardHeader title={business?.name || 'Today'} lead="Sales, receivables, stock and the warehouse at a glance."
                   action={<>
                     {can('sales_orders') && hasFeature('wholesale_orders') && <Button to="/app/wholesale/orders/new"><Plus aria-hidden="true" className="h-4 w-4" />New order</Button>}
                     {can('purchases') && <Button to="/app/wholesale/purchasing/new" variant="secondary"><Package aria-hidden="true" className="h-4 w-4" />New purchase</Button>}

@@ -6,7 +6,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Alert, Badge, Button, Card, PageHeader } from '../components/ui.jsx';
+import { Alert, Badge, Button, Card, PageHeader, PageLoader } from '../components/ui.jsx';
+import LatticeLoader from '../components/reactbits/LatticeLoader.jsx';
 
 /* A small, safe renderer for the plain formatting the assistant uses (bullets, numbers, **bold**). No HTML is ever injected. */
 const inline = (text) => text.split(/(\*\*[^*]+\*\*)/g).map((part, i) => (part.startsWith('**') && part.endsWith('**') ? <strong key={i}>{part.slice(2, -2)}</strong> : part));
@@ -98,7 +99,7 @@ const AIManagerPage = () => {
     catch (caught) { setError(caught.message); }
   };
 
-  if (!status) return <div><PageHeader title="Flow AI" />{error ? <Alert>{error}</Alert> : <p className="py-10 text-center text-sm text-ink-400">Loading…</p>}</div>;
+  if (!status) return <div><PageHeader title="Flow AI" />{error ? <Alert>{error}</Alert> : <PageLoader />}</div>;
 
   const scope = outletId === 'all' ? 'all outlets' : activeOutlet?.name;
   return (
@@ -154,7 +155,7 @@ const AIManagerPage = () => {
               </div>
             )}
             {messages.map((m, i) => <Message key={i} m={m} />)}
-            {busy && <div className="flex justify-start"><div className="border border-line bg-surface rounded-2xl px-4 py-3 text-sm text-ink-500">Looking at your numbers…</div></div>}
+            {busy && <div className="flex justify-start"><div className="rounded-2xl border border-line bg-surface px-4 py-3 text-ink-500"><LatticeLoader label="Looking at your numbers" color="var(--color-brand-500)" pattern="spin" grid={4} cellSize={4} gap={2} fontSize={14} /></div></div>}
             <div ref={endRef} />
           </div>
 

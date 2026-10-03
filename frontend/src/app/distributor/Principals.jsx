@@ -9,7 +9,7 @@ import { Download, Factory, Pencil, Plus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { api } from '../../lib/api.js';
 import { AGREEMENT, dateText, fetchAll, money, qs, saveCsv, useDebounced, useLoad } from '../../lib/distributor.js';
-import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Table, Td, Textarea, Th, Thead, Tr, useToast } from '../../components/ui.jsx';
+import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Table, Td, Textarea, Th, Thead, Tr, useToast, PageLoader } from '../../components/ui.jsx';
 import { Chips, NumberField, Pager, Panel, StatusPill, Tabs, Toolbar, useAction } from '../wholesale/parts.jsx';
 import { ProductPicker } from '../wholesale/parts.jsx';
 
@@ -91,7 +91,7 @@ const PrincipalDetail = ({ id, onClose, onChanged }) => {
   const addBrand = async (e) => { e.preventDefault(); if (!brandName.trim()) return; const r = await run(() => api('/distributor/brands', { method: 'POST', body: { name: brandName.trim(), principal_id: id } }), 'Brand added'); if (r) { setBrandName(''); reload(); onChanged(); } };
   return (
     <Modal title={p ? p.name : 'Principal'} onClose={onClose} wide>
-      {!p ? <p className="py-8 text-center text-small text-ink-500">Loading…</p> : (
+      {!p ? <PageLoader compact /> : (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2"><StatusPill map={AGREEMENT} status={p.agreement_status} />{p.status === 'INACTIVE' && <Badge>Inactive</Badge>}<span className="text-small text-ink-500">{[p.company_name, p.gstin].filter(Boolean).join(' · ')}</span>
             {edit && <Button variant="secondary" size="sm" className="ml-auto" onClick={() => setEditing(true)}><Pencil aria-hidden="true" className="h-4 w-4" />Edit</Button>}</div>

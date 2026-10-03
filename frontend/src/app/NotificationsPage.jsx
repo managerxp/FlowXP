@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { SEVERITY_DOT, timeAgo } from '../components/NotificationBell.jsx';
-import { Alert, Button, Card, PageHeader, useToast } from '../components/ui.jsx';
+import { Alert, Button, Card, PageHeader, useToast, PageLoader } from '../components/ui.jsx';
 
 const Toggle = ({ checked, onChange, label }) => (
   <input type="checkbox" checked={checked} onChange={onChange} aria-label={label} className="h-4 w-4 accent-[var(--color-brand-500)]" />
@@ -85,7 +85,7 @@ const NotificationsPage = () => {
             <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> Unread only
           </label>
           <Alert>{error}</Alert>
-          {!items && !error && <p className="py-10 text-center text-sm text-ink-400">Loading…</p>}
+          {!items && !error && <PageLoader compact />}
           {items?.length === 0 && <p className="rounded-(--radius-card) border border-dashed border-line-strong py-10 text-center text-sm text-ink-500">{unreadOnly ? 'Nothing unread.' : 'No notifications yet. Stock, unusual-activity and trial alerts will appear here.'}</p>}
           <ul className="space-y-2">
             {items?.map((n) => (

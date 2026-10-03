@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { adminApi } from '../lib/adminApi.js';
 import { formatCurrency } from '../lib/api.js';
-import { Card, PageHeader, StatusBadge, Badge, Button, Alert, Field, Input, Select, Table, Thead, Th, Td, Tr, useToast } from '../components/ui.jsx';
+import { Card, PageHeader, StatusBadge, Badge, Button, Alert, Field, Input, Select, Table, Thead, Th, Td, Tr, useToast, PageLoader } from '../components/ui.jsx';
 
 const LINK_STATUS_TONE = { PENDING: 'neutral', PAID: 'success', EXPIRED: 'danger', CANCELLED: 'danger' };
 
@@ -510,7 +510,7 @@ const AdminBusinessDetail = () => {
   };
 
   if (error) return <Alert>{error}</Alert>;
-  if (!business) return <p className="text-sm text-ink-400">Loading…</p>;
+  if (!business) return <PageLoader compact />;
 
   return (
     <div>

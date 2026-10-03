@@ -8,7 +8,7 @@
  * month, one already expired, one quarantined and one recalled, prescription-only medicines, and serial-tracked devices.
  * Sign in: pharmacy@flowxp.test / demo1234   (staff: pharmacy-pharmacist@flowxp.test, same password)
  */
-import 'dotenv/config';
+import './no-production.js'; // loads .env, and stops here in production
 import bcrypt from 'bcryptjs';
 import pool, { initializeDatabase } from '../src/config/database.js';
 import { createPharmacySale } from '../src/modules/pharmacy/pos.js';

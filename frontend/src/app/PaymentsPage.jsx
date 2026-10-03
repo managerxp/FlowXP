@@ -199,7 +199,7 @@ const PaymentsPage = () => {
         <section aria-label="By method" className="space-y-4">
           <div className="rounded-(--radius-card) border border-line bg-surface p-5">
             <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">{direction === 'in' ? 'How customers paid' : 'How suppliers were paid'}</h2>
+              <h2 className="text-body font-semibold text-ink-900">{direction === 'in' ? 'How customers paid' : 'How suppliers were paid'}</h2>
               {method && <button type="button" onClick={() => setMethod(null)} className="text-caption font-medium text-brand-700">Show all</button>}
             </div>
             {!side ? <div className="h-24 animate-pulse rounded-lg bg-surface-3" /> : side.by_method.length === 0 ? <p className="text-small text-ink-500">Nothing {period.label}.</p> : (

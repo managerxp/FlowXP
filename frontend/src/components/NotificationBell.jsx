@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import SwipeToast from './SwipeToast.jsx';
+import { PageLoader } from './ui.jsx';
 
 export const SEVERITY_DOT = { critical: 'bg-danger', warning: 'bg-warning', positive: 'bg-success', informational: 'bg-line-strong' };
 
@@ -102,7 +103,7 @@ const NotificationBell = () => {
             <p className="text-sm font-semibold text-ink-900">Notifications</p>
             <Link to="/app/notifications" onClick={() => setOpen(false)} className="text-xs font-semibold text-brand-600">See all</Link>
           </div>
-          {!items && <p className="px-4 py-6 text-center text-sm text-ink-400">Loading…</p>}
+          {!items && <PageLoader compact />}
           {items?.length === 0 && <p className="px-4 py-6 text-center text-sm text-ink-400">Nothing new. You're all caught up.</p>}
           <ul className="max-h-96 overflow-y-auto">
             {items?.map((n) => (

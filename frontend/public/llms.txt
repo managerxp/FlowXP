@@ -1,0 +1,45 @@
+# FlowXP
+
+> FlowXP is billing, POS, inventory and GST software for Indian businesses, made by ManagerXP. It keeps billing, payments, stock, purchases, customers and reports in one place, and Flow AI reads those records to say what is selling, what is running out and what needs attention. It runs in the browser on a counter PC, tablet or phone, with no special hardware.
+
+Key facts:
+
+- Built for India: prices in rupees (₹), GST bills, GSTR-1 JSON and GSTR-3B figures, e-invoice and e-way bill files, UPI, cash, card, bank transfer and credit (pay later) on the same bill.
+- One system for several kinds of business. When a business signs up it picks its trade, and FlowXP switches on the tools for it: restaurants and cafés, cloud kitchens, wholesalers, distributors (field sales), salons and spas, and pharmacies. Retail shops and supermarkets use the core billing, barcode scanning and stock.
+- Several outlets or branches under one login, each with its own stock, prices, staff and invoice numbers, compared side by side.
+- Roles and permissions for owners, managers, cashiers, waiters, kitchen staff and field staff; staff see only what their role allows. Owners can turn on two-step login.
+- Flow AI only reads the business's own records, cannot change prices, bills or stock, and says when a figure is an estimate.
+- 7-day free trial with no credit card. Plans: Starter, Growth and Enterprise (see the pricing page; prices are set per plan).
+- Works offline for billing and syncs when the connection returns. Receipt printers (58/80 mm), barcode scanners and cash drawers are optional.
+- Not built yet (stated on the site): direct Zomato/Swiggy order intake, ONDC and Magicpin, and in-app payment collection by link or QR through a payment gateway.
+
+## Product
+
+- [Home](https://flowxp.in/): what FlowXP is, with real screens from the demo business
+- [Features](https://flowxp.in/features): billing and payments, invoices, stock and buying, GST, customers and loyalty, reports, team and roles
+- [Flow AI](https://flowxp.in/ai): the AI manager, what it reads and how it answers
+- [Integrations](https://flowxp.in/integrations): printers, scanners, cash drawers, WhatsApp, SMS, email, GST portal files, CSV export
+- [Pricing](https://flowxp.in/pricing): plans and the free trial
+
+## Industries
+
+- [All industries](https://flowxp.in/industries): every trade FlowXP supports
+- [Restaurants and cafés](https://flowxp.in/industries/restaurant): counter billing, tables and table QR ordering, kitchen display, menu with options, recipes and food cost, reservations, loyalty
+- [Cloud kitchens](https://flowxp.in/industries/cloud-kitchen): delivery orders, several brands from one kitchen, payouts and profit after platform fees
+- [Wholesale](https://flowxp.in/industries/wholesale): sales orders, credit limits, batches and expiry, warehouse and delivery, purchasing, receivables and payables
+- [Distribution](https://flowxp.in/industries/distributor): principals and brands, territories and beats, field sales on a phone, schemes, vans, targets
+- [Salons and spas](https://flowxp.in/industries/salon): appointments, online booking, services, staff commission, memberships and packages, product stock
+- [Pharmacies](https://flowxp.in/industries/pharmacy): billing by batch with expiry, goods receipts from suppliers, stock and expiry alerts
+- [Not built yet](https://flowxp.in/industries/coming-soon): businesses and features FlowXP does not support yet
+
+## Company
+
+- [About](https://flowxp.in/about): ManagerXP and how FlowXP is built
+- [Contact](https://flowxp.in/contact): sales and support
+
+## Optional
+
+- [Privacy policy](https://flowxp.in/privacy)
+- [Terms of service](https://flowxp.in/terms)
+- [Cookie policy](https://flowxp.in/cookies): no advertising or tracking cookies; what is kept in the browser and why
+- [Sitemap](https://flowxp.in/sitemap.xml)

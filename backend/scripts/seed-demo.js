@@ -17,7 +17,7 @@
  *
  * Sign in: demo@flowxp.test / demo1234   (staff: demo-manager@ etc., same password)
  */
-import 'dotenv/config';
+import './no-production.js'; // loads .env, and stops here in production
 import bcrypt from 'bcryptjs';
 import pool, { initializeDatabase } from '../src/config/database.js';
 import { createInvoiceInTransaction } from '../src/modules/billing.js';

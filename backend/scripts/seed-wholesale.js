@@ -13,7 +13,7 @@
  *
  * Sign in: wholesale@flowxp.test / demo1234   (staff: wholesale-sales@, -warehouse@, -purchase@, -accounts@ ... same password)
  */
-import 'dotenv/config';
+import './no-production.js'; // loads .env, and stops here in production
 import bcrypt from 'bcryptjs';
 import pool, { initializeDatabase } from '../src/config/database.js';
 import catalog from '../src/controllers/wholesaleCatalog.controller.js';

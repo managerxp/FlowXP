@@ -265,17 +265,18 @@ const DayGrid = ({ data, appts, tz, date, onBook, onOpen }) => {
 
   return (
     <div className="overflow-x-auto rounded-(--radius-card) border border-line bg-surface">
-      <div className="flex min-w-max">
-        <div className="sticky left-0 z-10 w-14 shrink-0 border-r border-line bg-surface">
+      {/* Staff columns grow to fill the width (at least 11rem each, scrolling sideways past that). */}
+      <div className="flex w-max min-w-full">
+        <div className="sticky left-0 z-10 w-[4.5rem] shrink-0 border-r border-line bg-surface">
           <div className="h-11 border-b border-line" />
           <div className="relative" style={{ height }}>
-            {hours.map((m) => <span key={m} className="absolute right-2 -translate-y-1/2 text-[11px] text-ink-400" style={{ top: (m - open) * PX_PER_MIN }}>{clockText(toClock(m))}</span>)}
+            {hours.map((m) => <span key={m} className="absolute right-2 -translate-y-1/2 whitespace-nowrap text-[11px] text-ink-400" style={{ top: (m - open) * PX_PER_MIN }}>{clockText(toClock(m))}</span>)}
           </div>
         </div>
         {staff.map((s) => {
           const w = s.window ? { start: toMinutes(s.window.start), end: toMinutes(s.window.end) } : null;
           return (
-            <div key={s.staff_id} className="w-44 shrink-0 border-r border-line last:border-0">
+            <div key={s.staff_id} className="min-w-44 flex-1 border-r border-line last:border-0">
               <div className="flex h-11 flex-col justify-center border-b border-line px-3">
                 <span className="truncate text-small font-semibold text-ink-900">{s.name}</span>
                 <span className="truncate text-[11px] text-ink-500">{s.off ? (s.attendance === 'LEAVE' ? 'On leave' : s.attendance === 'ABSENT' ? 'Absent' : 'Day off') : `${clockText(s.window.start)} – ${clockText(s.window.end)}`}</span>

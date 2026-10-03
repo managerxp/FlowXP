@@ -3,11 +3,12 @@
  * insights, the team's month, and what needs attention. Figures come straight from /salon/dashboard; someone who
  * runs the floor but may not see takings gets the activity without the money (the server withholds it).
  */
-import { CalendarDays, Plus, ReceiptText, TriangleAlert, UserPlus } from 'lucide-react';
+import { Boxes, CalendarDays, IndianRupee, Plus, ReceiptText, TriangleAlert, UserPlus, UserRound, Users, Wallet } from 'lucide-react';
+import MetricCard from '../../components/MetricCard.jsx';
 import { formatCurrency } from '../../lib/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { APPT_STATUS, DEFAULT_TZ, timeText, todayIn, useLoad } from '../../lib/salon.js';
-import { Alert, Badge, Button, EmptyState, ListState, PageHeader, SkeletonCards, StatCard, Table, Td, Th, Thead, Tr } from '../../components/ui.jsx';
+import { Alert, Badge, Button, EmptyState, ListState, DashboardHeader, SkeletonCards, Table, Td, Th, Thead, Tr } from '../../components/ui.jsx';
 import { Panel } from './parts.jsx';
 
 const money = (n) => formatCurrency(n);
@@ -66,7 +67,7 @@ const SalonDashboard = () => {
 
   return (
     <div>
-      <PageHeader title={business?.name || 'Today'} lead="How the salon is doing today."
+      <DashboardHeader title={business?.name || 'Today'} lead="How the salon is doing today."
                   action={<>
                     {can('billing') && <Button to="/app/salon/pos"><ReceiptText aria-hidden="true" className="h-4 w-4" />New bill</Button>}
                     {apptOn && <Button to="/app/salon/appointments" variant="secondary"><Plus aria-hidden="true" className="h-4 w-4" />Book</Button>}
@@ -76,16 +77,17 @@ const SalonDashboard = () => {
       {loading && !d && <SkeletonCards count={4} />}
       {d && (
         <div className="space-y-6">
-          <section aria-label="Today" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {showMoney && <StatCard size="lg" label="Sales today" value={money(o.sales_today)} note={`${o.invoices_today} bill${o.invoices_today === 1 ? '' : 's'} · ${money(o.collections_today)} collected`} />}
-            {apptOn && <StatCard size="lg" to="/app/salon/appointments" label="Appointments today" value={o.appointments_today} note={`${o.appointments_completed} done · ${o.appointments_upcoming} to come${o.appointments_no_show ? ` · ${o.appointments_no_show} no-show` : ''}${o.appointments_cancelled ? ` · ${o.appointments_cancelled} cancelled` : ''}`} />}
-            <StatCard size="lg" to={can('staff_commission') || apptOn ? '/app/salon/team' : undefined} label="Team in today" value={`${o.active_staff} of ${o.staff_total}`} note={o.attendance_marked ? 'From attendance' : 'Attendance not marked yet'} />
-            <StatCard size="lg" label="Clients today" value={o.new_customers + o.returning_customers} note={`${o.new_customers} new · ${o.returning_customers} returning`} />
-            {showMoney && <StatCard size="lg" to="/app/billing/invoices" label="Still to collect" value={money(o.outstanding)} tone={o.outstanding > 0 ? 'warning' : undefined} note={`${o.outstanding_bills} unpaid bill${o.outstanding_bills === 1 ? '' : 's'}`} />}
-            {(can('inventory') || can('reports')) && <StatCard size="lg" to="/app/salon/stock" label="Stock to check" value={o.low_stock} tone={o.low_stock > 0 ? 'warning' : undefined} note={o.low_stock ? 'Low or out of stock' : 'Nothing low'} />}
+          <section aria-label="Today" className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+            {showMoney && <MetricCard icon={IndianRupee} label="Sales today" value={money(o.sales_today)} note={`${o.invoices_today} bill${o.invoices_today === 1 ? '' : 's'} · ${money(o.collections_today)} collected`} />}
+            {apptOn && <MetricCard icon={CalendarDays} tone="violet" to="/app/salon/appointments" label="Appointments today" value={o.appointments_today}
+                                   note={`${o.appointments_completed} done · ${o.appointments_upcoming} to come${o.appointments_no_show ? ` · ${o.appointments_no_show} no-show` : ''}${o.appointments_cancelled ? ` · ${o.appointments_cancelled} cancelled` : ''}`} />}
+            <MetricCard icon={Users} tone="teal" to={can('staff_commission') || apptOn ? '/app/salon/team' : undefined} label="Team in today" value={`${o.active_staff} of ${o.staff_total}`} note={o.attendance_marked ? 'From attendance' : 'Attendance not marked yet'} />
+            <MetricCard icon={UserRound} label="Clients today" value={o.new_customers + o.returning_customers} note={`${o.new_customers} new · ${o.returning_customers} returning`} />
+            {showMoney && <MetricCard icon={Wallet} tone={o.outstanding > 0 ? 'warning' : 'success'} to="/app/billing/invoices" label="Still to collect" value={money(o.outstanding)} note={o.outstanding > 0 ? `${o.outstanding_bills} unpaid bill${o.outstanding_bills === 1 ? '' : 's'}` : 'Every bill is paid'} />}
+            {(can('inventory') || can('reports')) && <MetricCard icon={Boxes} tone={o.low_stock > 0 ? 'warning' : 'success'} to="/app/salon/stock" label="Stock to check" value={o.low_stock} valueTone={o.low_stock > 0 ? 'text-warning' : undefined} note={o.low_stock ? 'Low or out of stock' : 'Nothing low'} />}
           </section>
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
             {d.revenue && (
               <Panel title="Revenue" lead="Billed amounts after returns. The split below each chart is before GST.">
                 <div className="mb-5 grid grid-cols-3 gap-3">

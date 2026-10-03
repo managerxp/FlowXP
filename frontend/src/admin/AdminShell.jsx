@@ -5,7 +5,7 @@
  */
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAdminAuth } from './AdminAuthContext.jsx';
-import { Button, Logo } from '../components/ui.jsx';
+import { Button, Logo, PageLoader } from '../components/ui.jsx';
 
 const NAV = [
   { to: '/superadmin', label: 'Overview', end: true },
@@ -23,7 +23,7 @@ const AdminShell = () => {
   if (loading) {
     return (
       <div className="flex min-h-full items-center justify-center">
-        <p className="text-sm text-ink-400">Loading…</p>
+        <PageLoader compact />
       </div>
     );
   }

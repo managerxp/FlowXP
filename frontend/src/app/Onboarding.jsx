@@ -23,7 +23,7 @@ import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { COUNTRIES, regionsFor, subdivisionLabel } from '../lib/states.js';
 import PincodeHint from '../components/PincodeHint.jsx';
-import { Alert, Button, Card, Field, Input, Select, useToast } from '../components/ui.jsx';
+import { Alert, Button, Card, Field, Input, Select, useToast, PageLoader } from '../components/ui.jsx';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -301,7 +301,7 @@ const Onboarding = () => {
   }, [business?.business_id]);
 
   if (error && !form) return <p className="text-sm text-danger">{error}</p>;
-  if (!form) return <p className="text-sm text-ink-400">Loading…</p>;
+  if (!form) return <PageLoader compact />;
 
   /*
    * An expired business cannot write, so every Save here would 402. Guarding

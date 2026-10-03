@@ -12,6 +12,7 @@ import { Button, Container, Section } from '../../components/ui.jsx';
 import Reveal from '../../components/Reveal.jsx';
 import { Check, FinalCta, PageHero, PhoneShot, Shot, TextLink } from '../parts.jsx';
 import { ALIASES, READY, UNDERNEATH } from './data.js';
+import NotFoundPage from '../NotFoundPage.jsx';
 
 /* Short names for the "on this page" bar. */
 const NAV = {
@@ -266,7 +267,7 @@ const IndustryDetail = () => {
   const { slug } = useParams();
   if (ALIASES[slug]) return <Navigate to={`/industries/${ALIASES[slug]}`} replace />;
   const industry = READY.find((i) => i.slug === slug);
-  if (!industry) return <Navigate to="/industries" replace />;
+  if (!industry) return <NotFoundPage />;
 
   return (
     <>

@@ -23,7 +23,7 @@ export const StatusPill = ({ map, status }) => {
 /* ── charts ───────────────────────────────────────────────────────────────── */
 
 /* Vertical bars, one per item; `format` shapes the tooltip. */
-export const Bars = ({ data, valueKey = 'value', labelKey = 'label', format = money, height = 'h-36', tone = 'bg-brand-500', label = 'Chart', every = 1 }) => {
+export const Bars = ({ data, valueKey = 'value', labelKey = 'label', format = money, height = 'h-36', tone = 'bg-brand-400', label = 'Chart', every = 1 }) => {
   const max = Math.max(1, ...data.map((d) => Number(d[valueKey]) || 0));
   return (
     <figure>
@@ -32,7 +32,7 @@ export const Bars = ({ data, valueKey = 'value', labelKey = 'label', format = mo
           const v = Number(d[valueKey]) || 0;
           return (
             <div key={`${d[labelKey]}-${i}`} className="group relative flex h-full min-w-0 flex-1 flex-col justify-end" title={`${d[labelKey]}: ${format(v)}`}>
-              <div className={`${tone} rounded-t ${v === 0 ? 'opacity-30' : ''}`} style={{ height: `${Math.max(v === 0 ? 1 : 3, (v / max) * 100)}%` }} />
+              <div className={`${tone} rounded-t-[4px] transition-colors duration-(--duration-fast) group-hover:bg-brand-600 ${v === 0 ? 'opacity-30' : ''}`} style={{ height: `${Math.max(v === 0 ? 1 : 3, (v / max) * 100)}%` }} />
             </div>
           );
         })}

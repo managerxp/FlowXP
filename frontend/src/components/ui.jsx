@@ -9,6 +9,7 @@ import { createContext, useCallback, useContext, useEffect, useId, useMemo, useR
 import { Link } from 'react-router-dom';
 import { Inbox, LoaderCircle, X } from 'lucide-react';
 import Reveal from './Reveal.jsx';
+import LatticeLoader from './reactbits/LatticeLoader.jsx';
 
 /* ── Logo ────────────────────────────────────────────────────────────────
    The uploaded mark (frontend/public/logo.png) already is "FlowXP", icon and
@@ -219,7 +220,7 @@ export const Input = ({ className = '', ...rest }) => (
 );
 
 export const Select = ({ className = '', children, ...rest }) => (
-  <select className={`${CONTROL} ${className}`} {...rest}>
+  <select className={`${CONTROL} select-control ${className}`} {...rest}>
     {children}
   </select>
 );
@@ -504,10 +505,12 @@ export const EmptyState = ({ icon: Icon = Inbox, title, body, action, compact = 
 
 /* The one loading line used where no shape-matched skeleton fits: route
    fallbacks, a panel still fetching. */
-export const PageLoader = ({ label = 'Loading…', className = '' }) => (
-  <div role="status" className={`flex items-center justify-center gap-2 py-16 text-sm text-ink-500 ${className}`}>
-    <Spinner />
-    {label}
+/* Whole pages, panels and dialogs while their data arrives (lists prefer a skeleton shaped like the rows). The
+   lattice is React Bits' LatticeLoader; it announces itself to screen readers, and under reduced motion it only
+   breathes. `compact` for inside a panel or dialog. */
+export const PageLoader = ({ label = 'Loading…', compact = false, className = '' }) => (
+  <div className={`flex items-center justify-center text-ink-500 ${compact ? 'py-6' : 'py-16'} ${className}`}>
+    <LatticeLoader label={label} color="var(--color-brand-500)" pattern={compact ? 'ripple' : 'orbit'} cellSize={compact ? 5 : 6} gap={2} fontSize={14} showTimer={false} />
   </div>
 );
 
@@ -682,6 +685,21 @@ export const useDialog = () => {
 
 /* A page's title row: heading + one primary action, the shape every list
    screen in /app opens with. */
+/* The front page of each kind of business opens on the same brand stage as the website hero (dotted tint, see
+   .hero-stage in index.css), so the app and the site read as one product. Same props as PageHeader. */
+export const DashboardHeader = ({ title, lead, action }) => (
+  <div className="rise relative mb-6 overflow-hidden rounded-(--radius-panel) border border-brand-100">
+    <div aria-hidden="true" className="hero-stage absolute inset-0" />
+    <div className="relative flex flex-wrap items-end justify-between gap-x-6 gap-y-4 px-5 py-6 sm:px-7 sm:py-7">
+      <div className="min-w-0">
+        <h1 className="text-h3 font-semibold text-ink-900">{title}</h1>
+        {lead && <p className="mt-1 max-w-2xl text-small text-ink-500">{lead}</p>}
+      </div>
+      {action && <div className="flex flex-wrap items-center gap-2">{action}</div>}
+    </div>
+  </div>
+);
+
 export const PageHeader = ({ title, lead, action }) => (
   <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
     <div className="min-w-0">

@@ -13,7 +13,7 @@
  * Sign in: wholesale@flowxp.test / demo1234 (owner); field reps: wholesale-field1@ and wholesale-field2@flowxp.test;
  * wholesale-collect@ (collection executive) and wholesale-delivery@ (delivery manager), same password.
  */
-import 'dotenv/config';
+import './no-production.js'; // loads .env, and stops here in production
 import bcrypt from 'bcryptjs';
 import pool, { initializeDatabase } from '../src/config/database.js';
 import parties from '../src/controllers/wholesaleParties.controller.js';
