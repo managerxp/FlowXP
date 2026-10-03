@@ -31,7 +31,7 @@ const METHODS = [['CASH', 'Cash'], ['UPI', 'UPI'], ['CARD', 'Card'], ['BANK_TRAN
 const POLL_MS = 15000;
 
 const minutesSince = (iso) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
-const ageMin = (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`);
+const ageMin = (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)}h ${m % 60}m`);
 const age = (iso) => ageMin(minutesSince(iso));
 const titleOf = (o) => o.table_name || (o.platform ? humanize(o.platform) : `Takeaway ${o.order_number}`);
 const LONG_MIN = 45;
@@ -801,12 +801,12 @@ const OrderCard = ({ order, active, onOpen }) => {
     : <span className="text-ink-500">All served</span>;
   return (
     <button type="button" onClick={onOpen} aria-current={active ? 'true' : undefined}
-            className={`relative flex w-full flex-col gap-2.5 overflow-hidden rounded-(--radius-card) border bg-surface p-4 pt-4.5 text-left shadow-sm transition-colors duration-(--duration-fast) ${active ? 'border-brand-500 ring-1 ring-brand-500' : 'border-line hover:border-line-strong'}`}>
+            className={`relative flex w-full flex-col gap-2 overflow-hidden rounded-(--radius-card) border bg-surface p-3 pt-3.5 text-left shadow-sm transition-colors duration-(--duration-fast) ${active ? 'border-brand-500 ring-1 ring-brand-500' : 'border-line hover:border-line-strong'}`}>
       <span aria-hidden="true" className={`absolute inset-x-0 top-0 h-1 ${stripe}`} />
-      <span className="flex items-start gap-3">
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${order.order_type === 'DINE_IN' ? 'bg-brand-50 text-brand-600' : 'bg-ink-900 text-white'}`}><Icon aria-hidden="true" className="h-4 w-4" /></span>
+      <span className="flex items-start gap-2.5">
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${order.order_type === 'DINE_IN' ? 'bg-brand-50 text-brand-600' : 'bg-ink-900 text-white'}`}><Icon aria-hidden="true" className="h-4 w-4" /></span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-body font-bold text-ink-900">{title}</span>
+          <span className="block truncate text-small font-bold text-ink-900">{title}</span>
           <span className="block truncate text-caption text-ink-500">{sub || TYPE_LABEL[order.order_type]}</span>
         </span>
         <span className={`tabular flex shrink-0 items-center gap-1 whitespace-nowrap text-caption font-medium ${mins >= LONG_MIN ? 'text-danger' : mins >= 25 ? 'text-warning' : 'text-ink-500'}`}><Clock aria-hidden="true" className="h-3 w-3" />{age(order.created_at)}</span>
@@ -814,13 +814,14 @@ const OrderCard = ({ order, active, onOpen }) => {
       <ProgressBar s={s} />
       <span className="flex items-baseline justify-between gap-2">
         <span className="min-w-0 truncate text-caption font-semibold">{status}</span>
-        <span className="tabular shrink-0 text-body font-bold text-ink-900">{s.items ? formatCurrency(s.estimate) : ''}</span>
+        <span className="tabular shrink-0 text-small font-bold text-ink-900">{s.items ? formatCurrency(s.estimate) : ''}</span>
       </span>
     </button>
   );
 };
 
-const Stat = (props) => <StatCard size="lg" {...props} />;
+/* Compact tiles: this list sits beside the open order, so the four must fit a column about 550px wide. */
+const Stat = ({ className = '', ...props }) => <StatCard className={`!p-3 ${className}`} {...props} />;
 
 const OrdersPage = () => {
   const [params, setParams] = useSearchParams();
@@ -879,12 +880,12 @@ const OrdersPage = () => {
 
         {orders && all.length > 0 && (
           <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
-            <Stat label="Open orders" value={all.length} note={`${counts.DINE_IN} dine-in · ${counts.TAKEAWAY + counts.DELIVERY} away`} />
-            <Stat label="Running bills" value={formatCurrency(running)} note="not billed yet, with GST" />
+            <Stat label="Open orders" value={all.length} note={`${counts.DINE_IN} dine-in, ${counts.TAKEAWAY + counts.DELIVERY} away`} />
+            <Stat label="Running bills" value={formatCurrency(running)} note="not billed, with GST" />
             <Stat label="Need attention" value={attentionCount} tone={attentionCount ? 'text-danger' : 'text-success'} active={attention}
                   note={attentionCount ? [ready && `${ready} ready`, notSent && `${notSent} to send`].filter(Boolean).join(' · ') || `open ${LONG_MIN}+ min` : 'All on track'}
                   onClick={attentionCount ? () => setAttention((a) => !a) : undefined} />
-            <Stat label="Oldest open" value={ageMin(oldest)} tone={oldest >= LONG_MIN ? 'text-danger' : 'text-ink-900'} note="since it was started" />
+            <Stat label="Oldest open" value={ageMin(oldest)} tone={oldest >= LONG_MIN ? 'text-danger' : 'text-ink-900'} note="since it started" />
           </div>
         )}
 

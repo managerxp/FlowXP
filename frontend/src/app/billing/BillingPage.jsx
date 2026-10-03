@@ -884,7 +884,7 @@ const BillingPage = () => {
             <div role="group" aria-label="What are you billing?" className="mb-3 grid grid-cols-2 gap-1 rounded-lg bg-surface-2 p-1">
               {[
                 { key: 'counter', active: !orderMode, label: 'Counter sale', onClick: () => { if (orderMode) resetSale(); } },
-                { key: 'order', active: orderMode, label: 'Table or open order', count: openOrders.length, onClick: () => { loadOpenOrders(); setOrdersOpen(true); } }
+                { key: 'order', active: orderMode, label: 'Open order', count: openOrders.length, onClick: () => { loadOpenOrders(); setOrdersOpen(true); } }
               ].map((s) => (
                 <button key={s.key} type="button" aria-pressed={s.active} onClick={s.onClick}
                         className={`flex min-h-9 items-center justify-center gap-1.5 rounded-md px-2 text-small font-medium transition-colors duration-(--duration-fast) pointer-coarse:min-h-11 ${s.active ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-900'}`}>
@@ -989,7 +989,7 @@ const BillingPage = () => {
         </div>
 
         {/* Totals and payment */}
-        <div className="border-t border-line px-5 py-4">
+        <div className="border-t border-line px-5 pt-3 lg:max-h-[66vh] lg:overflow-y-auto">
           <Alert>{error}</Alert>
 
           <div className={error ? 'mt-3' : ''}>
@@ -1065,10 +1065,10 @@ const BillingPage = () => {
             </div>
           ) : (
           <>
-          <div role="radiogroup" aria-label="How is it paid?" className="mt-4 grid grid-cols-3 gap-1.5">
+          <div role="radiogroup" aria-label="How is it paid?" className="pos-gap pos-methods mt-3 grid grid-cols-3 gap-1.5">
             {METHODS.map(([value, label]) => (
               <button key={value} type="button" role="radio" aria-checked={method === value} onClick={() => { setMethod(value); setReceived(''); }}
-                      className={`h-10 rounded-lg border text-small font-medium transition-colors duration-(--duration-fast) pointer-coarse:h-11 ${method === value ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>
+                      className={`pos-method h-10 rounded-lg border text-small font-medium transition-colors duration-(--duration-fast) pointer-coarse:h-11 ${method === value ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>
                 {label}
               </button>
             ))}
@@ -1088,7 +1088,7 @@ const BillingPage = () => {
               <p className="tabular flex-1 text-caption text-ink-500">
                 {cashChange > 0 ? <span className="text-small font-semibold text-brand-700">Change {formatCurrency(cashChange)}</span>
                   : partial ? <span className="text-warning">Part payment. {formatCurrency(totals.total - amount)} stays due.</span>
-                  : method === 'CASH' ? 'Cash received. Leave blank if exact.' : 'Paid in full. Type less for a part payment.'}
+                  : <span className="pos-hint">{method === 'CASH' ? 'Cash received. Leave blank if exact.' : 'Paid in full. Type less for a part payment.'}</span>}
               </p>
             </div>
           )}
@@ -1096,11 +1096,11 @@ const BillingPage = () => {
             <div className="mt-3">
               <Input value={cardRef} maxLength={80} onChange={(e) => setCardRef(e.target.value)}
                      placeholder="Machine approval code (optional)" aria-label="Card machine approval code" className="!py-2 pointer-coarse:!py-3" />
-              <p className="mt-1 text-caption text-ink-500">From the card machine's slip. It is saved on the bill so you can match your settlement.</p>
+              <p className="pos-hint mt-1 text-caption text-ink-500">From the card machine's slip. It is saved on the bill so you can match your settlement.</p>
             </div>
           )}
           {method === 'UPI' && !split && (
-            <p className="mt-2 text-caption text-ink-500">
+            <p className="pos-hint mt-2 text-caption text-ink-500">
               {business?.upi_vpa
                 ? <>The bill is saved, then a QR for the exact amount appears for the customer to scan ({business.upi_vpa}).</>
                 : <>To show a UPI QR for each bill, add your UPI ID in <Link to="/app/settings/business" className="font-medium text-brand-700 hover:underline">Business settings</Link>.</>}
@@ -1113,11 +1113,11 @@ const BillingPage = () => {
           )}
 
           {restaurant && (!orderMode || orderLines.some((l) => l.pending)) && (
-            <label className="mt-4 flex items-start gap-2.5 rounded-lg border border-line px-3 py-2.5">
+            <label className="pos-gap mt-3 flex items-start gap-2.5 rounded-lg border border-line px-3 py-2">
               <input type="checkbox" checked={toKitchen} onChange={(e) => { setToKitchen(e.target.checked); setDevicePref('posSendToKitchen', e.target.checked); }} className="mt-0.5 h-4 w-4 accent-[var(--color-brand-500)] pointer-coarse:h-5 pointer-coarse:w-5" />
               <span className="min-w-0">
                 <span className="flex items-center gap-1.5 text-small font-medium text-ink-900"><ChefHat aria-hidden="true" className="h-4 w-4 text-ink-500" />Send to the kitchen</span>
-                <span className="block text-caption text-ink-500">
+                <span className="pos-hint block text-caption text-ink-500">
                   {orderMode ? `The ${orderLines.filter((l) => l.pending).length} items not sent yet go to the kitchen, then the order is billed.`
                     : toKitchen ? 'The kitchen screen gets a ticket when you charge, with an order number to call out.' : 'Off: nothing goes to the kitchen (for drinks or packed items served at the counter).'}
                 </span>
@@ -1125,12 +1125,12 @@ const BillingPage = () => {
             </label>
           )}
 
-          <Button onClick={charge} disabled={busy || !billLines.length} size="lg" className="mt-4 h-12 w-full text-body">{chargeLabel}</Button>
+          <div className="-mx-5 bg-surface px-5 pb-3 pt-3 lg:sticky lg:bottom-0 lg:z-10 lg:pt-2"><Button onClick={charge} disabled={busy || !billLines.length} size="lg" className="h-12 w-full text-body">{chargeLabel}</Button></div>
           {collecting && (
             <UpiCollect invoice={collecting.invoice} amount={collecting.amount} vpa={business.upi_vpa} payee={business.name}
                         onPaid={finishUpi} onLater={() => finishUpi(collecting.invoice)} />
           )}
-          <p className="mt-2 hidden text-center text-caption text-ink-400 lg:block">
+          <p className="pos-hint mt-2 hidden text-center text-caption text-ink-400 lg:block">
             {retail ? 'Ctrl + Enter to charge · / search · F2 customer · F4 discount · F8 payment · + − Del the selected line' : 'Ctrl + Enter to charge · / to search'}
           </p>
           <p className="mt-1 text-center text-caption text-ink-400 lg:hidden"><Link to="/app/billing/invoices" className="inline-flex min-h-11 items-center px-3 hover:text-ink-700">See earlier bills</Link></p>

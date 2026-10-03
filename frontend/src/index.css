@@ -222,6 +222,31 @@ main:has(> .final-cta:last-child) + .site-footer { padding-top: 6rem; }
 @media (prefers-reduced-motion: reduce) { .cookie-notice { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .ask-panel { animation: none; } }
 
+/* App sidebar rhythm (AppShell): a link row, the gap above each group, and the group heading. Rows are 36px, 32px on
+   a short screen (a laptop at 640 to 780px tall: the menu needs to fit without scrolling past Flow AI, Staff, Settings),
+   and always 44px for a touch screen. */
+.nav-item { height: 2.25rem; }
+.nav-group { margin-top: 1rem; }
+.nav-label { margin-bottom: 0.25rem; }
+@media (max-height: 780px) {
+  .nav-item { height: 2rem; }
+  .nav-group { margin-top: 0.375rem; }
+  .nav-label { margin-bottom: 0; line-height: 1.25rem; }
+}
+@media (pointer: coarse) { .nav-item { height: 2.75rem; } }
+/* A slim scrollbar for the sidebar and its fade, instead of the browser's wide one. */
+.nav-scroll { scrollbar-width: thin; scrollbar-color: var(--color-line-strong) transparent; }
+
+/* The till's bill panel (BillingPage) on a short screen: explanations that repeat what the screen already shows go,
+   and the method buttons shrink, so the item list keeps room and Charge is always in view. */
+@media (max-height: 780px) {
+  .pos-hint { display: none; }
+  .pos-method { height: 2.25rem; font-size: 0.8125rem; padding-inline: 0; }
+  .pos-gap { margin-top: 0.5rem; }
+  /* all six payment methods in one row instead of two */
+  .pos-methods { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.25rem; }
+}
+
 /* Numbers in tables and totals line up. */
 .tabular { font-variant-numeric: tabular-nums; }
 

@@ -143,12 +143,11 @@ export const fromGeminiResponse = (payload) => {
   };
 };
 
-const gemini = async (request) => {
-  const model = modelFor(request.tier);
-  const body = JSON.stringify(toGeminiBody(request));
+/* One model, up to three tries: Google answers 503 "high demand" in short spikes (the newest models most often), so a
+   moment later usually gets through. Returns the payload, or { unusable } when this model should be skipped. */
+const askGemini = async (model, body) => {
   let response; let payload;
-  // Google answers 503 "high demand" in short spikes; one more try a moment later usually gets through
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
@@ -165,17 +164,43 @@ const gemini = async (request) => {
       clearTimeout(timer);
     }
     payload = await response.json().catch(() => ({}));
-    if (response.status !== 503 || attempt === 1) break;
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    if (response.status !== 503 || attempt === 2) break;
+    await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)));
   }
-  if (!response.ok) {
-    console.error('[ai] provider error', response.status, payload?.error?.status, payload?.error?.message);
-    const busy = response.status === 429 || response.status === 503;
-    throw new AIProviderError(busy ? 'The AI service is busy right now. Try again in a moment.' : 'The AI service could not answer that', busy ? 429 : 502);
+  if (response.ok) return { payload };
+  const message = payload?.error?.message || '';
+  // Reasons to try another model instead of failing: Google does not know this name (a typo, or a retired model),
+  // this plan has no quota for it at all ("limit: 0", e.g. a Pro model on the free tier), or it is overloaded (503).
+  const unknown = response.status === 404;
+  const noQuota = response.status === 429 && /limit: 0(?![0-9])/.test(message);
+  const overloaded = response.status === 503;
+  if (unknown || noQuota || overloaded) {
+    return { unusable: unknown ? 'is not known to Gemini' : noQuota ? 'is not available on this plan (quota limit 0)' : 'is overloaded right now', status: response.status };
   }
-  // No candidate at all (e.g. the prompt was blocked for safety) is Gemini's version of a failed reply.
-  if (!payload.candidates?.length) throw new AIProviderError('The AI service could not answer that', 502);
-  return { ...fromGeminiResponse(payload), model };
+  console.error('[ai] provider error', response.status, payload?.error?.status, message);
+  const busy = response.status === 429;
+  throw new AIProviderError(busy ? 'The AI service is busy right now. Try again in a moment.' : 'The AI service could not answer that', busy ? 429 : 502);
+};
+
+const gemini = async (request) => {
+  const body = JSON.stringify(toGeminiBody(request));
+  // The model this call asked for, then the default, then the fast one: a bad name or an overloaded model must not
+  // take the whole assistant down. The log says which model was skipped and why.
+  const candidates = [...new Set([modelFor(request.tier), config.ai.models.default, config.ai.models.fast])];
+  let last;
+  for (const model of candidates) {
+    const result = await askGemini(model, body);
+    if (result.unusable) {
+      last = { model, ...result };
+      console.error(`[ai] model "${model}" ${result.unusable}${model === candidates[candidates.length - 1] ? '' : '; trying the next one'}. Check GEMINI_*_MODEL in .env.`);
+      continue;
+    }
+    // No candidate at all (e.g. the prompt was blocked for safety) is Gemini's version of a failed reply.
+    if (!result.payload.candidates?.length) throw new AIProviderError('The AI service could not answer that', 502);
+    return { ...fromGeminiResponse(result.payload), model };
+  }
+  const busy = last?.status === 503 || last?.status === 429;
+  throw new AIProviderError(busy ? 'The AI service is busy right now. Try again in a moment.' : 'The AI service could not answer that', busy ? 429 : 502);
 };
 
 /* ── dispatch ─────────────────────────────────────────────────────────────────────────────────────────── */

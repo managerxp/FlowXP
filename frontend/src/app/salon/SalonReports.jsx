@@ -58,11 +58,11 @@ const SalonReports = () => {
       <PageHeader title="Reports" lead="Sales, clients, team, stock and money — for any dates you choose."
                   action={<Button variant="secondary" onClick={exportCsv} disabled={!d || !d.rows.length}><Download aria-hidden="true" className="h-4 w-4" />Export CSV</Button>} />
       <div className="grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
-        <nav aria-label="Reports" className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+        <nav aria-label="Reports" className="space-y-3 lg:sticky lg:top-20 lg:self-start">
           <ListState loading={catalog.loading && !catalog.data} error={catalog.error} />
           {groups.map(([group, list]) => (
             <div key={group}>
-              <p className="mb-1 px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-400">{group}</p>
+              <p className="mb-0.5 px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-400">{group}</p>
               <div className="space-y-0.5">
                 {list.map((r) => <button key={r.key} type="button" onClick={() => setReport(r.key)} aria-current={report === r.key ? 'page' : undefined} className={`block w-full rounded-lg px-2.5 py-1.5 text-left text-small transition-colors ${report === r.key ? 'bg-brand-50 font-semibold text-brand-700' : 'text-ink-700 hover:bg-surface-2'}`}><span className="flex items-center justify-between gap-2">{r.title}{r.advanced && !hasFeature('advanced_reports') && <Lock aria-label="Part of Advanced reports" className="h-3.5 w-3.5 shrink-0 text-ink-400" />}</span></button>)}
               </div>

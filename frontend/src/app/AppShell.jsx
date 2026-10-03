@@ -202,7 +202,7 @@ const NavItem = ({ item, collapsed, onNavigate }) => {
       onClick={onNavigate}
       title={collapsed ? item.label : undefined}
       className={({ isActive }) =>
-        `group relative flex h-9 items-center gap-3 rounded-lg px-2.5 text-small transition-colors duration-(--duration-fast) pointer-coarse:h-11 ${
+        `nav-item group relative flex items-center gap-3 rounded-lg px-2.5 text-small transition-colors duration-(--duration-fast) ${
           isActive ? 'bg-brand-50 font-semibold text-brand-700' : 'text-ink-700 hover:bg-surface-2 hover:text-ink-900'
         } ${collapsed ? 'lg:justify-center lg:px-0' : ''}`
       }
@@ -418,11 +418,11 @@ const AppShell = () => {
             </button>
           </div>
 
-          <nav className="flex-1 overflow-y-auto px-2.5 py-3">
+          <nav className="nav-scroll flex-1 overflow-y-auto px-2.5 py-2">
             {mainGroups.map((group) => (
-              <div key={group.label || 'overview'} className={group.label ? 'mt-4' : ''}>
+              <div key={group.label || 'overview'} className={group.label ? 'nav-group' : ''}>
                 {group.label && (
-                  <p className={`mb-1 px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-400 ${collapsed ? 'lg:sr-only' : ''}`}>{group.label}</p>
+                  <p className={`nav-label px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-400 ${collapsed ? 'lg:sr-only' : ''}`}>{group.label}</p>
                 )}
                 <div className="space-y-0.5">
                   {group.items.map((item) => <NavItem key={item.to} item={item} collapsed={collapsed} onNavigate={closeNav} />)}
@@ -430,10 +430,10 @@ const AppShell = () => {
               </div>
             ))}
             {moreItems.length > 0 && (
-              <div className="mt-4">
+              <div className="nav-group">
                 <button type="button" onClick={() => { if (!onMorePage) setMoreOpen((v) => !v); }} aria-expanded={showMore} aria-controls="nav-more"
                         title={collapsed ? 'More' : undefined}
-                        className={`flex h-9 w-full items-center gap-3 rounded-lg px-2.5 text-small text-ink-700 transition-colors duration-(--duration-fast) hover:bg-surface-2 hover:text-ink-900 pointer-coarse:h-11 ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}>
+                        className={`nav-item flex w-full items-center gap-3 rounded-lg px-2.5 text-small text-ink-700 transition-colors duration-(--duration-fast) hover:bg-surface-2 hover:text-ink-900 ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}>
                   <Ellipsis aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-ink-400" />
                   <span className={`flex-1 text-left ${collapsed ? 'lg:sr-only' : ''}`}>More</span>
                   {!collapsed && <ChevronDown aria-hidden="true" className={`h-4 w-4 text-ink-400 transition-transform duration-(--duration-fast) ${showMore ? 'rotate-180' : ''}`} />}
@@ -449,10 +449,10 @@ const AppShell = () => {
                 half-visible group label reads as "more below", not as a
                 clipped layout. Sticky: once scrolled to the end it sits in
                 the padding under the last link and covers nothing. */}
-            <div aria-hidden="true" className="pointer-events-none sticky -bottom-3 -mx-2.5 -mb-3 h-8 bg-linear-to-t from-surface to-transparent" />
+            <div aria-hidden="true" className="pointer-events-none sticky bottom-0 -mx-2.5 h-0"><div className="absolute inset-x-0 bottom-0 h-5 bg-linear-to-t from-surface to-transparent" /></div>
           </nav>
 
-          <div className="shrink-0 space-y-0.5 border-t border-line px-2.5 py-3">
+          <div className="shrink-0 space-y-0.5 border-t border-line px-2.5 py-2">
             {pinnedItems.map((item) => <NavItem key={item.to} item={item} collapsed={collapsed} onNavigate={closeNav} />)}
           </div>
         </aside>

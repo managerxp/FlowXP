@@ -375,12 +375,12 @@ const ReportsPage = () => {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
-        <nav aria-label="Reports" className="flex gap-1.5 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
+        <nav aria-label="Reports" className="flex gap-1.5 overflow-x-auto pb-1 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:pb-0">
           {reports.map((r) => (
             <button key={r.key} type="button" onClick={() => setTab(r.key)} aria-current={r.key === report.key ? 'page' : undefined}
-                    className={`shrink-0 rounded-lg px-3 py-2 text-left transition-colors duration-(--duration-fast) ${r.key === report.key ? 'bg-brand-50 text-brand-700' : 'text-ink-700 hover:bg-surface-2'} max-lg:border max-lg:border-line`}>
+                    className={`shrink-0 rounded-lg px-3 py-1.5 text-left transition-colors duration-(--duration-fast) ${r.key === report.key ? 'bg-brand-50 text-brand-700' : 'text-ink-700 hover:bg-surface-2'} max-lg:border max-lg:border-line`}>
               <span className="block text-small font-medium">{r.label}</span>
-              <span className="hidden text-caption text-ink-500 lg:block">{r.text}</span>
+              <span className="hidden text-caption leading-snug text-ink-500 lg:block [@media(max-height:780px)]:lg:hidden">{r.text}</span>
             </button>
           ))}
         </nav>
