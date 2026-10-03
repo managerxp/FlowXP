@@ -1,6 +1,6 @@
 /*
- * The cookie notice on the public website: one line that says what is true (no advertising or tracking cookies; the
- * browser keeps only what FlowXP needs to work), a link to the full list (/cookies), and "OK". There is no
+ * The cookie notice on the public website: one line that says what is true (no advertising or tracking cookies; one
+ * strictly necessary session cookie, flowxp_session, set at sign-in), a link to the full list (/cookies), and "OK". There is no
  * Accept/Reject choice because there is nothing optional to accept or reject; if analytics or anything else that is
  * not strictly necessary is ever added, this becomes a real choice and nothing optional runs before a yes.
  * Seen once per browser (localStorage flowxp.cookies.seen); sits bottom-left so it never covers the chat button.
@@ -21,7 +21,7 @@ const CookieNotice = () => {
       <div className="flex gap-3">
         <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><Cookie className="h-[18px] w-[18px]" strokeWidth={2} /></span>
         <p className="text-small text-ink-700">
-          No advertising or tracking cookies here. Your browser keeps only what FlowXP needs to work, like keeping you signed in.{' '}
+          No advertising or tracking cookies here. FlowXP uses one essential cookie to keep you signed in, and no other cookies.{' '}
           <Link to="/cookies" className="font-medium text-brand-600 underline underline-offset-2 hover:text-brand-700">Cookie policy</Link>
         </p>
       </div>

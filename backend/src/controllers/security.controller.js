@@ -8,7 +8,7 @@
  */
 import bcrypt from 'bcryptjs';
 import pool from '../config/database.js';
-import { signToken } from '../middleware/auth.js';
+import { signToken, setSessionCookie } from '../middleware/auth.js';
 import { recordAudit } from '../modules/events.js';
 import { decryptSecret, encryptSecret, issueRecoveryCodes, newSecret, otpauthUrl, recoveryCodesLeft, useRecoveryCode, verifyTotp } from '../modules/security.js';
 import { checkPassword } from '../utils/validate.js';
@@ -24,9 +24,11 @@ const requiredFor = (req) => req.memberships.some((m) => m.require_2fa_admins &&
 const samePassword = async (user, password) => Boolean(password) && bcrypt.compare(String(password), user.password_hash);
 
 /** Bump the session version and return a token for the new one, so this session survives and the others end. */
-const rotate = async (userId) => {
+const rotate = async (userId, res) => {
   const { rows } = await pool.query(`UPDATE users SET token_version = token_version + 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1 RETURNING user_id, email, token_version`, [userId]);
-  return signToken(rows[0]);
+  const token = signToken(rows[0]);
+  if (res) setSessionCookie(res, token);   // this browser keeps its session; every other one is now signed out
+  return token;
 };
 
 /* GET /api/auth/2fa */
@@ -56,7 +58,7 @@ export const enable = async (req, res) => {
     `UPDATE users SET totp_enabled = TRUE, totp_secret_enc = totp_pending_enc, totp_pending_enc = NULL, totp_last_step = $2, totp_enabled_at = CURRENT_TIMESTAMP WHERE user_id = $1`,
     [u.user_id, step]);
   const codes = await issueRecoveryCodes(pool, u.user_id);
-  const token = await rotate(u.user_id);
+  const token = await rotate(u.user_id, res);
   recordAudit(req, { action: 'user.two_factor_enabled', resource_type: 'user', resource_id: u.user_id, business_id: req.memberships[0]?.business_id ?? null });
   res.json({ success: true, data: { recovery_codes: codes, token } });
 };
@@ -72,7 +74,7 @@ export const disable = async (req, res) => {
   if (!ok) return bad(res, 'That code is not right.', 401);
   await pool.query(`UPDATE users SET totp_enabled = FALSE, totp_secret_enc = NULL, totp_pending_enc = NULL, totp_last_step = NULL, totp_enabled_at = NULL WHERE user_id = $1`, [u.user_id]);
   await pool.query(`DELETE FROM recovery_codes WHERE user_id = $1`, [u.user_id]);
-  const token = await rotate(u.user_id);
+  const token = await rotate(u.user_id, res);
   recordAudit(req, { action: 'user.two_factor_disabled', resource_type: 'user', resource_id: u.user_id, business_id: req.memberships[0]?.business_id ?? null });
   res.json({ success: true, data: { token } });
 };
@@ -93,14 +95,14 @@ export const changePassword = async (req, res) => {
   if (problem) return bad(res, problem);
   if (req.body.new_password === req.body.current_password) return bad(res, 'Choose a password you have not used just now.');
   await pool.query(`UPDATE users SET password_hash = $2 WHERE user_id = $1`, [u.user_id, await bcrypt.hash(String(req.body.new_password), 12)]);
-  const token = await rotate(u.user_id);
+  const token = await rotate(u.user_id, res);
   recordAudit(req, { action: 'user.password_changed', resource_type: 'user', resource_id: u.user_id, business_id: req.memberships[0]?.business_id ?? null });
   res.json({ success: true, data: { token } });
 };
 
 /* POST /api/auth/sign-out-everywhere */
 export const signOutEverywhere = async (req, res) => {
-  const token = await rotate(req.auth.userId);
+  const token = await rotate(req.auth.userId, res);
   recordAudit(req, { action: 'user.signed_out_everywhere', resource_type: 'user', resource_id: req.auth.userId, business_id: req.memberships[0]?.business_id ?? null });
   res.json({ success: true, data: { token } });
 };

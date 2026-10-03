@@ -122,17 +122,66 @@ export const readChallenge = (token, purpose = '2fa') => {
   } catch { return null; }
 };
 
-const readToken = (req) => {
+/* ── The session cookie ──────────────────────────────────────────────────────
+   The browser's session is a cookie the page's own JavaScript cannot read (httpOnly), so a script injected into
+   the page could not steal it, as it could a token kept in localStorage. Secure in production (https only),
+   SameSite=Lax (not sent on another site's form posts or background requests), and scoped to /api, the only
+   place it is needed. The Authorization header still works too: the print agent, scripts and tests use it, and a
+   browser signed in before the cookie existed is moved over on its next /auth/me. */
+export const SESSION_COOKIE = 'flowxp_session';
+const cookieOptions = () => ({ httpOnly: true, secure: config.isProduction, sameSite: 'lax', path: '/api' });
+
+const cookieValue = (req, name) => {
+  const raw = req.headers.cookie;
+  if (!raw) return null;
+  for (const part of raw.split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0 && part.slice(0, i).trim() === name) {
+      try { return decodeURIComponent(part.slice(i + 1).trim()); } catch { return null; }
+    }
+  }
+  return null;
+};
+
+/** Put a session token in the browser's cookie, for as long as the token itself is valid. */
+export const setSessionCookie = (res, token) => {
+  if (typeof res.cookie !== 'function' || !token) return;    // a test double with no cookie jar
+  const exp = jwt.decode(token)?.exp;
+  res.cookie(SESSION_COOKIE, token, { ...cookieOptions(), ...(exp ? { maxAge: exp * 1000 - Date.now() } : {}) });
+};
+
+export const clearSessionCookie = (res) => {
+  if (typeof res.clearCookie === 'function') res.clearCookie(SESSION_COOKIE, cookieOptions());
+};
+
+/* Which token came with the request, and how. The header wins, so a script with a token is never confused by a
+   stale cookie from a browser session. */
+const presented = (req) => {
   const header = req.headers.authorization || '';
-  if (!header.startsWith('Bearer ')) return null;
+  if (header.startsWith('Bearer ')) return { token: header.slice(7).trim(), via: 'header' };
+  const cookie = cookieValue(req, SESSION_COOKIE);
+  return cookie ? { token: cookie, via: 'cookie' } : { token: null, via: null };
+};
+
+const readToken = (req) => {
+  const { token, via } = presented(req);
+  if (!token) return null;
   try {
-    const payload = jwt.verify(header.slice(7).trim(), config.jwtSecret, { algorithms: ['HS256'] });
-    return payload.purpose ? null : payload;      // a half-finished sign-in (2FA challenge) is not a session
+    const payload = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
+    if (payload.purpose) return null;             // a half-finished sign-in (2FA challenge) is not a session
+    req.authVia = via;
+    return payload;
   } catch {
     // Expired, forged or malformed all mean the same thing here: no session.
     return null;
   }
 };
+
+/* Cross-site request forgery: a browser attaches a cookie on its own, so a change made with the cookie must also
+   carry X-Requested-With: FlowXP, which lib/api.js always sends and which another site's page cannot add without
+   passing CORS (refused by server.js for any origin not on the list). Reads (GET/HEAD/OPTIONS) change nothing. */
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const forged = (req) => req.authVia === 'cookie' && !SAFE_METHODS.has(req.method) && req.headers['x-requested-with'] !== 'FlowXP';
 
 /* ==========================================================================
    MIDDLEWARE
@@ -148,6 +197,9 @@ export const requireAuth = async (req, res, next) => {
   const payload = readToken(req);
   if (!payload?.sub) {
     return res.status(401).json({ success: false, message: 'Sign in to continue' });
+  }
+  if (forged(req)) {
+    return res.status(403).json({ success: false, message: 'This request did not come from the FlowXP app.' });
   }
 
   try {

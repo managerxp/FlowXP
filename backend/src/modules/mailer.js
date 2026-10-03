@@ -17,10 +17,13 @@ const LOGO_CID = 'flowxp-logo';
 const logoAttachment = { filename: 'flowxp-logo.png', path: fileURLToPath(new URL('../../assets/email-logo.png', import.meta.url)), cid: LOGO_CID };
 const withLogo = (html) => (html?.includes(`cid:${LOGO_CID}`) ? [logoAttachment] : undefined);
 
-/* The admin's Settings → Email screen wins when it has been filled in; otherwise the
-   .env values, so an install with nothing saved there behaves exactly as before.
-   Resolved fresh per send (not cached) so a saved change takes effect immediately,
-   and built into a transport per send since sending mail is not a hot path. */
+/* The admin's Settings → Email screen wins when it has been filled in; otherwise the .env values, so an install
+   with nothing saved there behaves exactly as before. The settings are read fresh per send, so a saved change takes
+   effect on the next email.
+   The connection is pooled and kept for as long as the settings stay the same: opening a new connection and
+   logging in to the mail server took 1 to 3 seconds per email with Gmail (once 19), and a sign-in code should not
+   pay that every time. A changed setting closes the old pool and opens a new one. */
+let pooled = null;   // { key, transport }
 const buildTransport = async () => {
   const saved = await getPlatformSetting('email').catch(() => null);
   const db = saved?.value;
@@ -29,10 +32,37 @@ const buildTransport = async () => {
   const port = Number(db?.smtpPort || config.mail.port);
   const user = db?.smtpUser || config.mail.user;
   const pass = db?.smtpPass || config.mail.pass;
-  return {
-    from: db?.mailFrom || config.mail.from,
-    transport: nodemailer.createTransport({ host, port, secure: port === 465, auth: user ? { user, pass } : undefined })
-  };
+  const key = JSON.stringify([host, port, user, pass]);
+  if (!pooled || pooled.key !== key) {
+    pooled?.transport.close();
+    pooled = {
+      key,
+      transport: nodemailer.createTransport({
+        host, port, secure: port === 465, auth: user ? { user, pass } : undefined,
+        pool: true, maxConnections: 2, maxMessages: 100,
+        connectionTimeout: 15000, greetingTimeout: 10000, socketTimeout: 30000
+      })
+    };
+  }
+  return { from: db?.mailFrom || config.mail.from, transport: pooled.transport };
+};
+
+/* Momentary failures worth another try: a dropped, reset or timed-out connection (a pooled connection the server
+   closed while idle shows up this way too), or the server saying "try again later" (4xx). */
+const TRANSIENT = new Set(['ECONNRESET', 'ETIMEDOUT', 'ESOCKET', 'ECONNECTION', 'EDNS', 'EPIPE']);
+const transient = (error) => TRANSIENT.has(error.code) || (error.responseCode >= 400 && error.responseCode < 500);
+const PAUSES_MS = [800, 2500];   // three attempts in all, about 3 seconds of waiting at most
+
+const sendWithRetry = async (transport, message) => {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await transport.sendMail(message);
+    } catch (error) {
+      if (attempt >= PAUSES_MS.length || !transient(error)) throw error;
+      console.warn(`[mail] attempt ${attempt + 1} failed (${error.code || error.responseCode || error.message}), trying again`);
+      await new Promise((resolve) => setTimeout(resolve, PAUSES_MS[attempt]));
+    }
+  }
 };
 
 /* Throws on failure, so a queued job can retry. sendMail below swallows errors
@@ -43,7 +73,7 @@ export const deliverMail = async ({ to, subject, text, html }) => {
     console.log(`\n[mail:dev] to=${to}\n[mail:dev] subject=${subject}\n${text}\n`);
     return;
   }
-  await built.transport.sendMail({ from: built.from, to, subject, text, html, attachments: withLogo(html) });
+  await sendWithRetry(built.transport, { from: built.from, to, subject, text, html, attachments: withLogo(html) });
 };
 
 export const sendMail = async ({ to, subject, text, html, replyTo }) => {
@@ -53,15 +83,13 @@ export const sendMail = async ({ to, subject, text, html, replyTo }) => {
     return;
   }
   const message = { from: built.from, to, subject, text, html, replyTo, attachments: withLogo(html) };
+  const started = Date.now();
   try {
-    try {
-      await built.transport.sendMail(message);
-    } catch (first) {
-      // A dropped or reset connection to the mail server is usually momentary; one more try saves the sign-in code.
-      if (!['ECONNRESET', 'ETIMEDOUT', 'ESOCKET', 'ECONNECTION'].includes(first.code)) throw first;
-      console.warn('[mail] retrying after:', first.message);
-      await built.transport.sendMail(message);
-    }
+    const info = await sendWithRetry(built.transport, message);
+    const ms = Date.now() - started;
+    // what the mail server said, so "the email never came" can be answered from the log: accepted means the
+    // provider took it (a later bounce or spam folder is outside our reach), rejected means it refused the address
+    console.log(`[mail] "${subject}" to ${to}: ${info?.rejected?.length ? 'REJECTED by the mail server' : 'accepted by the mail server'} in ${ms}ms`);
   } catch (error) {
     /* Never fail the request that triggered the email. A signup that 500s
        because the SMTP server hiccuped loses a customer over a retryable

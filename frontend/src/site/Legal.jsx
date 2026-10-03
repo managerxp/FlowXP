@@ -1244,13 +1244,15 @@ End of FlowXP Terms and Conditions`]
    advertising tool is ever added, it must be added here (and the notice in CookieNotice.jsx revisited) first. */
 const COOKIE_POLICY = [
   ['In short', `FlowXP does not use advertising cookies, does not use analytics or tracking cookies, and does not let other companies track you on flowxp.in.
-What FlowXP does keep in your browser is only what the product needs to work: keeping you signed in, remembering which business and outlet you are working in, your settings on that device, and letting billing continue when the internet drops. These are strictly necessary, so they are on whenever you use FlowXP, and you can remove them at any time (see "How to remove them").
+What FlowXP does keep in your browser is only what the product needs to work: one cookie that keeps you signed in, and browser storage that remembers which business and outlet you are working in, your settings on that device, and lets billing continue when the internet drops. These are strictly necessary, so they are on whenever you use FlowXP, and you can remove them at any time (see "How to remove them").
 This policy explains the specifics behind section 23 of the FlowXP Privacy Policy.`],
 
-  ['Cookies', `FlowXP itself sets no cookies on flowxp.in. Signing in, the website chat and every other feature work without them.`],
+  ['Cookies', `FlowXP sets one cookie, and only when you sign in:
+- flowxp_session: keeps you signed in to FlowXP. It is strictly necessary, first-party (flowxp.in only), sent only to FlowXP's own server, and marked HttpOnly (the page's own scripts cannot read it, which protects your session), Secure (sent over https only) and SameSite=Lax (not sent along with other websites' requests). It lasts up to 7 days and is renewed while you use FlowXP; signing out removes it, and "sign out of all devices" or a password change ends it everywhere.
+Visitors who do not sign in get no FlowXP cookie at all, including when they use the website chat.`],
 
   ['What FlowXP stores in your browser', `Instead of cookies, FlowXP uses your browser's own storage on your device:
-- Sign-in (flowxp.token, and flowxp.admin.token for the platform admin console): keeps you signed in until you sign out. Removed when you sign out.
+- Platform admin sign-in (flowxp.admin.token, FlowXP staff only): keeps the admin console signed in. Removed when they sign out.
 - Business and outlet (flowxp.business, flowxp.branch): which of your businesses and outlets you were working in.
 - Menu layout (flowxp.nav.collapsed): whether you folded the side menu.
 - This device's settings (flowxp.device): printing, kitchen and delivery sounds, and similar choices for this counter.
@@ -1266,7 +1268,7 @@ None of these are used to profile you or shared with anyone for advertising.`],
 - Location lookup: if you choose to use your current location during setup, the coordinates are sent to BigDataCloud to turn them into an address. Nothing else is sent, and no cookie is set.
 - Payments: when a payment page from our payment partner opens, that page follows the partner's own cookie and privacy policy.`],
 
-  ['How to remove them', `- Signing out removes your sign-in.
+  ['How to remove them', `- Signing out removes the flowxp_session cookie.
 - Your browser's settings can clear "cookies and site data" for flowxp.in; this removes everything listed above from that device. You will need to sign in again, and bills not yet sent while offline would be lost, so clear it only when the device is online.`],
 
   ['Changes', `If FlowXP ever adds a cookie or storage item that is not strictly necessary, such as analytics, it will be listed here first and you will be asked before it is used where the law requires.`],

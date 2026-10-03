@@ -434,6 +434,9 @@ test('resend sends a different code under the same challenge, and repeated wrong
   assert.equal(resent.code, 200, JSON.stringify(resent.body));
   const after = (await pool.query(`SELECT email_otp_hash FROM users WHERE user_id = $1`, [ivan.user_id])).rows[0].email_otp_hash;
   assert.notEqual(before, after);
+  // the reply carries a fresh sign-up session, so waiting on the code page does not outlive the new code
+  assert.ok(resent.body.data.challenge, 'resend returns a session for the page to keep');
+  assert.equal((await post(auth.resendEmailOtp, { challenge: resent.body.data.challenge })).code, 200, 'the renewed challenge works for the next resend');
   assert.equal((await post(auth.resendEmailOtp, { challenge: 'garbage' })).code, 401);
 
   for (let i = 0; i < 5; i += 1) assert.equal((await post(auth.verifyEmailOtp, { challenge, code: '000000' })).code, 401);

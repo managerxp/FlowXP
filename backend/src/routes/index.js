@@ -11,7 +11,7 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import pool from '../config/database.js';
-import { requireAuth, withBusiness, requireOwner, requirePermission } from '../middleware/auth.js';
+import { requireAuth, withBusiness, requireOwner, requirePermission, clearSessionCookie } from '../middleware/auth.js';
 import * as auth from '../controllers/auth.controller.js';
 import * as security from '../controllers/security.controller.js';
 import * as business from '../controllers/business.controller.js';
@@ -146,9 +146,13 @@ router.post('/businesses', requireAuth, business.createBusiness);
  * trail has something to record; it deliberately does not maintain a
  * denylist. Add one when tokens outlive a session in a way that matters.
  */
-router.post('/auth/logout', requireAuth, (_req, res) =>
-  res.json({ success: true, message: 'Signed out' })
-);
+router.post('/auth/logout', (req, res) => {
+  // Clears the session cookie. No sign-in needed: an expired session must still be able to clear its cookie.
+  // The X-Requested-With check keeps another site from signing people out with a hidden form.
+  if (req.headers['x-requested-with'] !== 'FlowXP' && !req.headers.authorization) return res.status(403).json({ success: false, message: 'This request did not come from the FlowXP app.' });
+  clearSessionCookie(res);
+  res.json({ success: true, message: 'Signed out' });
+});
 
 /* ── Signed in, scoped to one business ──────────────────────────────────── */
 

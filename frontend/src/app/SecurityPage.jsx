@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { api, setToken } from '../lib/api.js';
+import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Badge, Button, Card, Field, Input, ListState, Table, Td, Th, Thead, Tr, useToast, useDialog } from '../components/ui.jsx';
 
@@ -72,13 +72,13 @@ const TwoFactor = () => {
   });
   const enable = () => run(async () => {
     const r = await api('/auth/2fa/enable', { method: 'POST', body: { code } });
-    setToken(r.token); setSetup(null); setCode(''); setCodes(r.recovery_codes); load(); refresh();
+    setSetup(null); setCode(''); setCodes(r.recovery_codes); load(); refresh();
   });
   const newCodes = async () => { const pw = await dialog.prompt({ title: 'New recovery codes', body: 'The old codes stop working as soon as new ones are made.', label: 'Your password', type: 'password', autoComplete: 'current-password', confirmLabel: 'Make new codes' }); if (pw) run(async () => { setCodes((await api('/auth/2fa/recovery-codes', { method: 'POST', body: { password: pw } })).recovery_codes); load(); }); };
   const turnOff = () => run(async () => {
     const isRecovery = code.includes('-');
     const r = await api('/auth/2fa/disable', { method: 'POST', body: { password, ...(isRecovery ? { recovery_code: code } : { code }) } });
-    setToken(r.token); setOff(false); setPassword(''); setCode(''); toast.success('Two-step verification is off'); load(); refresh();
+    setOff(false); setPassword(''); setCode(''); toast.success('Two-step verification is off'); load(); refresh();
   });
 
   if (!status) return <ListState loading={!error} error={error} />;
@@ -132,12 +132,12 @@ const Password = () => {
   const [busy, setBusy] = useState(false);
   const save = async (e) => {
     e.preventDefault(); setBusy(true); setError('');
-    try { const r = await api('/auth/change-password', { method: 'POST', body: form }); setToken(r.token); setForm({ current_password: '', new_password: '' }); toast.success('Password changed. Your other devices were signed out.'); }
+    try { const r = await api('/auth/change-password', { method: 'POST', body: form }); setForm({ current_password: '', new_password: '' }); toast.success('Password changed. Your other devices were signed out.'); }
     catch (caught) { setError(caught.message); } finally { setBusy(false); }
   };
   const out = async () => {
     if (!(await dialog.confirm({ title: 'Sign out everywhere else?', body: 'Every other device and tab is signed out. You stay signed in here.', confirmLabel: 'Sign out others' }))) return;
-    try { const r = await api('/auth/sign-out-everywhere', { method: 'POST' }); setToken(r.token); toast.success('Every other device was signed out'); } catch (caught) { setError(caught.message); }
+    try { const r = await api('/auth/sign-out-everywhere', { method: 'POST' }); toast.success('Every other device was signed out'); } catch (caught) { setError(caught.message); }
   };
   return (
     <Card className="p-5">

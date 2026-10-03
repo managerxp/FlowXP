@@ -5,9 +5,10 @@
  * an error style. Four files would mean four copies of the same twelve lines
  * of form plumbing, and the copies would drift.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api.js';
+import { suggestEmail } from '../lib/emailTypos.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Button, Field, Input, Logo } from '../components/ui.jsx';
 import { Check, Shot } from '../site/parts.jsx';
@@ -160,34 +161,61 @@ const useFinishAuth = () => {
  * (an earlier signup that never finished verifying). Both end the same way: the session this challenge was
  * one step away from, handed to `onDone`.
  */
-const EmailCodeStep = ({ challenge, aside, onDone, onBack }) => {
+const RESEND_WAIT_S = 30;
+
+const EmailCodeStep = ({ challenge: initialChallenge, email, aside, onDone, onBack }) => {
   const { busy, error, submit } = useSubmit();
   const [code, setCode] = useState('');
+  const [challenge, setChallenge] = useState(initialChallenge);   // renewed by every resend
   const [resent, setResent] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendError, setResendError] = useState('');
+  const [wait, setWait] = useState(0);                            // seconds until Resend can be pressed again
+
+  useEffect(() => {
+    if (wait <= 0) return undefined;
+    const timer = setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [wait]);
 
   const onSubmit = (event) => submit(event, async () => {
     onDone(await api('/auth/verify-email', { method: 'POST', body: { challenge, code } }));
   });
   const resend = async () => {
-    setResent(false);
-    try { await api('/auth/resend-email-otp', { method: 'POST', body: { challenge } }); setResent(true); } catch { /* the field's own error alert covers a real failure on the next submit */ }
+    if (resending || wait > 0) return;
+    setResent(false); setResendError(''); setResending(true);
+    try {
+      const data = await api('/auth/resend-email-otp', { method: 'POST', body: { challenge } });
+      if (data?.challenge) setChallenge(data.challenge);
+      setResent(true); setCode(''); setWait(RESEND_WAIT_S);
+    } catch (caught) {
+      // say what happened: an expired sign-up session or the rate limit looked like "the button does nothing"
+      setResendError(caught instanceof ApiError
+        ? (caught.status === 401 ? 'This page has been open too long. Go back and sign in again to get a new code.' : caught.message)
+        : 'Could not reach FlowXP. Check your connection and try again.');
+    } finally {
+      setResending(false);
+    }
   };
 
   return (
     <AuthLayout
       aside={aside}
       title="Check your email"
-      lead="Enter the 6-digit code we just sent you. It expires in 10 minutes."
-      footer={onBack && <button type="button" className="font-medium text-brand-600 hover:text-brand-700" onClick={onBack}>← Back</button>}
+      lead={email ? <>We sent a 6-digit code to <strong className="font-semibold text-ink-900 [overflow-wrap:anywhere]">{email}</strong>. It expires in 10 minutes.</> : 'Enter the 6-digit code we just sent you. It expires in 10 minutes.'}
+      footer={onBack && <button type="button" className="font-medium text-brand-600 hover:text-brand-700" onClick={onBack}>{email ? 'Wrong email? Go back' : '← Back'}</button>}
     >
       <form onSubmit={onSubmit} className="space-y-4">
-        <Alert>{error}</Alert>
-        {resent && <p role="status" className="rounded-lg border border-success/30 bg-success/10 px-3.5 py-2.5 text-sm text-success">A new code is on its way.</p>}
+        <Alert>{error || resendError}</Alert>
+        {resent && <p role="status" className="rounded-lg border border-success/30 bg-success/10 px-3.5 py-2.5 text-sm text-success">A new code is on its way. It can take a minute; check your spam folder too.</p>}
         <Field id="code" label="Code">
           <CodeField id="code" value={code} onChange={(e) => setCode(e.target.value)} />
         </Field>
         <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? 'Checking…' : 'Verify and continue'}</Button>
-        <button type="button" className="text-small font-medium text-brand-600 hover:text-brand-700" onClick={resend}>Resend code</button>
+        <button type="button" disabled={resending || wait > 0} aria-disabled={resending || wait > 0}
+                className="text-small font-medium text-brand-600 hover:text-brand-700 disabled:cursor-not-allowed disabled:text-ink-400 disabled:hover:text-ink-400" onClick={resend}>
+          {resending ? 'Sending…' : wait > 0 ? `Resend code in ${wait}s` : 'Resend code'}
+        </button>
       </form>
     </AuthLayout>
   );
@@ -206,6 +234,7 @@ export const Signup = () => {
   const [challenge, setChallenge] = useState(null);   // set once the account exists and a code has been emailed
 
   const set = (field) => (event) => setForm((f) => ({ ...f, [field]: event.target.value }));
+  const emailSuggestion = suggestEmail(form.email);
 
   const onSubmit = (event) => submit(event, async () => {
     const data = await api('/auth/signup', { method: 'POST', body: { ...form, accepted_terms: agreed } });
@@ -214,7 +243,7 @@ export const Signup = () => {
 
   // The brief's five-minute-to-first-bill target starts once this code is entered, not before —
   // an unverified email is not yet an account that can sign in.
-  if (challenge) return <EmailCodeStep aside="signup" challenge={challenge} onBack={() => setChallenge(null)} onDone={finish} />;
+  if (challenge) return <EmailCodeStep aside="signup" challenge={challenge} email={form.email.trim()} onBack={() => setChallenge(null)} onDone={finish} />;
 
   return (
     <AuthLayout
@@ -231,8 +260,15 @@ export const Signup = () => {
           <Field id="name" label="Your name">
             <Input id="name" value={form.name} onChange={set('name')} autoComplete="name" required />
           </Field>
-          <Field id="email" label="Email">
-            <Input id="email" type="email" value={form.email} onChange={set('email')} autoComplete="email" required />
+          <Field id="email" label="Email" hint="We send a 6-digit code here to confirm it is yours.">
+            <Input id="email" type="email" value={form.email} onChange={set('email')} autoComplete="email" inputMode="email" autoCapitalize="none" spellCheck={false} required
+                   aria-describedby={emailSuggestion ? 'email-suggestion' : undefined} />
+            {emailSuggestion && (
+              <p id="email-suggestion" role="status" className="mt-1.5 rounded-lg bg-warning/10 px-3 py-2 text-small text-ink-700">
+                Did you mean <strong className="font-semibold text-ink-900">{emailSuggestion}</strong>?{' '}
+                <button type="button" onClick={() => setForm((f) => ({ ...f, email: emailSuggestion }))} className="font-medium text-brand-600 underline underline-offset-2 hover:text-brand-700">Use it</button>
+              </p>
+            )}
           </Field>
           <Field id="phone" label="Mobile number (optional)" hint="For account recovery and bill delivery.">
             <Input id="phone" type="tel" inputMode="tel" value={form.phone} onChange={set('phone')} autoComplete="tel" />
@@ -317,7 +353,7 @@ export const Login = () => {
     finish(data);
   });
 
-  if (otpChallenge) return <EmailCodeStep challenge={otpChallenge} onBack={() => setOtpChallenge(null)} onDone={finish} />;
+  if (otpChallenge) return <EmailCodeStep challenge={otpChallenge} email={form.email.trim()} onBack={() => setOtpChallenge(null)} onDone={finish} />;
 
   if (second) {
     return (
@@ -393,9 +429,11 @@ export const ForgotPassword = () => {
     setSent(true);
   });
 
+  const [resendError, setResendError] = useState('');
   const resend = async () => {
-    setResent(false);
-    try { await api('/auth/forgot-password', { method: 'POST', body: { email } }); setResent(true); } catch { /* the field's own error alert covers a real failure on the next submit */ }
+    setResent(false); setResendError('');
+    try { await api('/auth/forgot-password', { method: 'POST', body: { email } }); setResent(true); }
+    catch (caught) { setResendError(caught instanceof ApiError ? caught.message : 'Could not reach FlowXP. Check your connection and try again.'); }
   };
 
   const onReset = (event) => {
@@ -421,8 +459,8 @@ export const ForgotPassword = () => {
         footer={<button type="button" className="font-medium text-brand-600 hover:text-brand-700" onClick={() => { setSent(false); setCode(''); setPassword(''); setConfirm(''); }}>← Use a different email</button>}
       >
         <form onSubmit={onReset} className="space-y-4">
-          <Alert>{error}</Alert>
-          {resent && <p role="status" className="rounded-lg border border-success/30 bg-success/10 px-3.5 py-2.5 text-sm text-success">A new code is on its way.</p>}
+          <Alert>{error || resendError}</Alert>
+          {resent && <p role="status" className="rounded-lg border border-success/30 bg-success/10 px-3.5 py-2.5 text-sm text-success">A new code is on its way. It can take a minute; check your spam folder too.</p>}
           <Field id="code" label="Code">
             <CodeField id="code" value={code} onChange={(e) => setCode(e.target.value)} />
           </Field>

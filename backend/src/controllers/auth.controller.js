@@ -10,11 +10,12 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import pool from '../config/database.js';
-import { readChallenge, signChallenge, signToken } from '../middleware/auth.js';
+import { readChallenge, signChallenge, signToken, setSessionCookie } from '../middleware/auth.js';
 import { alertNewDevice, decryptSecret, lockedMinutes, recordLogin, recoveryCodesLeft, useRecoveryCode, verifyTotp } from '../modules/security.js';
 import { newTrialWindow, subscriptionSummary } from '../modules/subscription.js';
 import { recordAudit, recordEvent } from '../modules/events.js';
 import { sendEmailOtp, sendPasswordReset } from '../modules/mailer.js';
+import { emailProblem } from '../utils/emailCheck.js';
 import {
   checkBusinessType, checkEmail, checkName, checkPassword, checkPhone,
   firstError, normaliseEmail
@@ -40,7 +41,9 @@ const issueEmailOtp = async (user) => {
     `UPDATE users SET email_otp_hash = $2, email_otp_expires_at = $3 WHERE user_id = $1`,
     [user.user_id, hash, new Date(Date.now() + OTP_TTL_MS)]
   );
-  await sendEmailOtp(user.email, user.name, code);
+  // Not awaited: the code is already saved, so the person moves on to "enter the code" at once while the email
+  // goes out in the background (sendMail retries and never throws; Resend code is there if it never arrives).
+  sendEmailOtp(user.email, user.name, code).catch((error) => console.error("[auth] code email failed:", error.message));
 };
 const emailOtpChallenge = (user) => signChallenge(user, { purpose: 'email_otp', expiresIn: '10m' });
 
@@ -74,6 +77,11 @@ export const signup = async (req, res) => {
     acceptedTerms ? null : 'You must agree to the Terms and Privacy Policy to create an account'
   ]);
   if (error) return res.status(400).json({ success: false, message: error });
+
+  // Before an account exists and before any code is sent: an address nobody can receive mail at (a typo like
+  // gmial.com or gmail.con, a domain that does not exist) is refused here, with what to fix.
+  const emailError = await emailProblem(email);
+  if (emailError) return res.status(400).json({ success: false, message: emailError, code: 'EMAIL_UNDELIVERABLE' });
 
   const client = await pool.connect();
   try {
@@ -209,7 +217,9 @@ const finishLogin = async (req, res, user, method) => {
   const { newDevice } = await recordLogin(pool, { userId: user.user_id, email: user.email, req, outcome: 'SUCCESS', method });
   if (newDevice) alertNewDevice(user, req);
   pool.query(`UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE user_id = $1`, [user.user_id]).catch(() => {});
-  res.json({ success: true, data: { ...(await sessionPayload(user)), new_device: newDevice } });
+  const session = await sessionPayload(user);
+  setSessionCookie(res, session.token);
+  res.json({ success: true, data: { ...session, new_device: newDevice } });
 };
 
 /* ==========================================================================
@@ -377,7 +387,8 @@ export const resendEmailOtp = async (req, res) => {
     if (locked) return res.status(429).json({ success: false, message: LOCKED(locked) });
 
     await issueEmailOtp(user);
-    res.json({ success: true, message: 'A new code is on its way.' });
+    // a fresh challenge too: the new code lives 10 minutes, and the page's session should not die before it
+    res.json({ success: true, message: 'A new code is on its way.', data: { challenge: emailOtpChallenge(user) } });
   } catch (error) {
     console.error('[auth] resend-email-otp failed:', error.message);
     res.status(500).json({ success: false, message: 'Could not send a new code' });
@@ -388,6 +399,9 @@ export const resendEmailOtp = async (req, res) => {
    GET /api/auth/me
    ========================================================================== */
 export const me = async (req, res) => {
+  // a fresh cookie on every app start: the session slides forward while it is in use (same token_version, so
+  // sign-out-everywhere still ends it), and a browser that sent the old Authorization header gets its cookie here
+  setSessionCookie(res, signToken(req.auth.user));
   // Outlets per business, so the app can offer an outlet switcher. A pinned user sees only their own.
   const outlets = (await pool.query(
     `SELECT business_id, branch_id, name, is_primary FROM branches WHERE status = 'ACTIVE' AND business_id = ANY($1::int[]) ORDER BY is_primary DESC, branch_id`,
@@ -464,7 +478,7 @@ export const forgotPassword = async (req, res) => {
       [codeHash, user.user_id, new Date(Date.now() + RESET_TTL_MS)]
     );
 
-    await sendPasswordReset(user.email, user.name, code);
+    sendPasswordReset(user.email, user.name, code).catch((error) => console.error("[auth] reset email failed:", error.message));   // in the background, as for sign-up codes
     genericReply();
   } catch (error) {
     console.error('[auth] forgot-password failed:', error.message);

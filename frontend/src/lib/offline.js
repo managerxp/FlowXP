@@ -4,7 +4,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { createQueue } from './offlineQueue.js';
-import { getBranchId, getBusinessId, getToken } from './api.js';
+import { APP_HEADER, getBranchId, getBusinessId, getToken } from './api.js';
 
 const storage = {
   getItem: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
@@ -18,11 +18,11 @@ export const queue = createQueue({
   storage,
   onChange: (items) => { snapshot = items; listeners.forEach((l) => l()); },
   send: async (item) => {
-    const headers = { 'Content-Type': 'application/json', 'Idempotency-Key': item.idempotencyKey };
+    const headers = { 'Content-Type': 'application/json', 'Idempotency-Key': item.idempotencyKey, ...APP_HEADER };
     const token = getToken(); if (token) headers.Authorization = `Bearer ${token}`;
     if (item.scope?.businessId) headers['X-Business-Id'] = String(item.scope.businessId);
     if (item.scope?.branchId) headers['X-Branch-Id'] = String(item.scope.branchId);
-    const response = await fetch(`/api${item.path}`, { method: 'POST', headers, body: JSON.stringify(item.body) });
+    const response = await fetch(`/api${item.path}`, { method: 'POST', headers, credentials: 'same-origin', body: JSON.stringify(item.body) });
     const payload = await response.json().catch(() => ({}));
     return { status: response.status, message: payload.message };
   }
