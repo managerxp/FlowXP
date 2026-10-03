@@ -9,6 +9,7 @@ import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
 import { toPaise, toRupees } from '../utils/money.js';
 import { branchFilter } from '../utils/scope.js';
+import { paymentReference } from '../modules/billing.js';
 
 const METHODS = ['CHEQUE', 'CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CREDIT', 'OTHER'];
 const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v));
@@ -98,13 +99,16 @@ export const create = async (req, res) => {
   try { amountPaise = toPaise(body.amount); } catch { return res.status(400).json({ success: false, message: 'Enter a payment amount' }); }
   if (amountPaise <= 0) return res.status(400).json({ success: false, message: 'Payment amount must be greater than zero' });
 
+  let reference;
+  try { reference = paymentReference(body.reference_number); } catch (error) { return res.status(error.status || 400).json({ success: false, message: error.message }); }
+
   const owns = await pool.query(`SELECT 1 FROM customers WHERE customer_id = $1 AND business_id = $2`, [body.customer_id, req.tenant.businessId]);
   if (!owns.rows.length) return res.status(400).json({ success: false, message: 'Customer not found' });
 
   const { rows } = await pool.query(
     `INSERT INTO payments (business_id, branch_id, customer_id, payment_method, amount_paise, reference_number, notes, created_by)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING payment_id`,
-    [req.tenant.businessId, req.tenant.branchId, body.customer_id, method, amountPaise, body.reference_number || null, body.notes || null, req.auth.userId]
+    [req.tenant.businessId, req.tenant.branchId, body.customer_id, method, amountPaise, reference, body.notes || null, req.auth.userId]
   );
 
   recordAudit(req, { action: 'payment.recorded', resource_type: 'payment', resource_id: rows[0].payment_id, metadata: { amount: toRupees(amountPaise) } });

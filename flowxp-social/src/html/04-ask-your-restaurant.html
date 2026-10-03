@@ -1,0 +1,47 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#060913; --blue:#0054FA; --cyan:#36d1ff; --violet:#8b6cff; --mint:#3ee0a8; }
+  * { box-sizing: border-box; }
+  body { margin:0; width:1080px; height:1350px; background:var(--bg); font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:#fff; position:relative; overflow:hidden; -webkit-font-smoothing:antialiased; }
+  .glow1 { position:absolute; right:-240px; top:-280px; width:900px; height:900px; background:radial-gradient(closest-side, rgba(0,84,250,.50), rgba(0,84,250,0)); }
+  .glow2 { position:absolute; left:-300px; bottom:-300px; width:900px; height:900px; background:radial-gradient(closest-side, rgba(139,108,255,.30), rgba(139,108,255,0)); }
+  .glow3 { position:absolute; right:-200px; bottom:120px; width:600px; height:600px; background:radial-gradient(closest-side, rgba(54,209,255,.14), rgba(54,209,255,0)); }
+  .logo { position:absolute; left:58px; top:44px; height:72px; }
+  .count { position:absolute; right:64px; top:68px; font-size:22px; font-weight:600; color:rgba(255,255,255,.5); letter-spacing:.02em; }
+  h1 { position:absolute; left:64px; top:140px; width:952px; margin:0; font-weight:800; font-size:80px; line-height:1.03; letter-spacing:-.035em; }
+  h1 em { font-style:normal; color:var(--cyan); }
+  .sub { position:absolute; left:64px; width:860px; font-size:29px; line-height:1.38; font-weight:500; color:rgba(255,255,255,.76); }
+  .win { position:absolute; overflow:hidden; background:#fff; box-shadow:0 34px 90px rgba(0,0,0,.6), 0 0 0 1.5px rgba(255,255,255,.16); }
+  .win img { position:absolute; display:block; max-width:none; }
+  .chip { position:absolute; padding:12px 20px; border-radius:16px; font-weight:700; font-size:22px; line-height:1.25; background:rgba(9,15,32,.92); border:1.5px solid rgba(54,209,255,.5); box-shadow:0 14px 40px rgba(0,0,0,.5); }
+  .chip.mint { border-color:rgba(62,224,168,.55); }
+  .chip.violet { border-color:rgba(139,108,255,.6); }
+  .step { position:absolute; height:44px; min-width:44px; padding:0 18px 0 6px; border-radius:999px; background:var(--blue); font-weight:800; font-size:22px; display:flex; align-items:center; gap:10px; box-shadow:0 10px 30px rgba(0,84,250,.55); }
+  .step b { width:32px; height:32px; border-radius:50%; background:#fff; color:var(--blue); display:flex; align-items:center; justify-content:center; font-size:19px; }
+  .arrow { position:absolute; font-weight:800; color:var(--cyan); font-size:34px; line-height:1; }
+  .cta { position:absolute; left:64px; bottom:60px; height:68px; padding:0 36px; border-radius:999px; background:var(--blue); font-weight:800; font-size:26px; display:flex; align-items:center; gap:12px; box-shadow:0 14px 44px rgba(0,84,250,.5); }
+  .byline { position:absolute; right:64px; bottom:78px; font-size:21px; font-weight:600; color:rgba(255,255,255,.55); }
+  .note { position:absolute; left:64px; bottom:24px; font-size:15px; font-weight:500; color:rgba(255,255,255,.38); }
+</style></head><body>
+  <div class="glow1"></div><div class="glow2"></div><div class="glow3"></div>
+  <img class="logo" src="file:///C:/flowxp/flowxp-social/src/assets/logo-reversed.png"><div class="count">4 / 5</div>
+  <h1>Ask your restaurant<br>a <em>question</em>.</h1>
+  <div class="sub" style="top:330px">Flow AI answers from your own records and shows what it looked at. It reads your figures. It can’t change anything.</div>
+  
+  <div class="win"  style="left:565px;top:478px;width:455px;height:61px;border-radius:28px;box-shadow:0 14px 40px rgba(0,84,250,.45);">
+    <img src="file:///C:/flowxp/flowxp-social/screenshots/ai/flow-ai-answer.png" style="width:1901px;left:-1404px;top:-220px">
+  </div>
+  <div class="win"  style="left:64px;top:548px;width:922px;height:387px;border-radius:18px;">
+    <img src="file:///C:/flowxp/flowxp-social/screenshots/ai/flow-ai-answer.png" style="width:1843px;left:-666px;top:-291px">
+  </div>
+  <div class="win"  style="left:64px;top:954px;width:902px;height:32px;border-radius:12px;">
+    <img src="file:///C:/flowxp/flowxp-social/screenshots/inventory/inventory-forecast.png" style="width:1901px;left:-359px;top:-296px">
+  </div>
+  <div class="win"  style="left:64px;top:998px;width:850px;height:182px;border-radius:18px;">
+    <img src="file:///C:/flowxp/flowxp-social/screenshots/inventory/inventory-forecast.png" style="width:1901px;left:-359px;top:-356px">
+  </div>
+  <div class="cta">Book a demo <span style="font-size:28px">&rarr;</span></div>
+  <div class="byline">FlowXP by ManagerXP</div>
+  <div class="note">Sample data from the FlowXP demo restaurant.</div>
+</body></html>

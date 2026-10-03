@@ -33,11 +33,11 @@ import { hasPlanFeature, effectiveFeatureFlags } from '../modules/planFeatures.j
  */
 export const ROLE_PERMISSIONS = {
   OWNER:   ['*'],
-  ADMIN:   ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
+  ADMIN:   ['billing', 'products', 'inventory', 'barcode_reassign', 'product_quick_add', 'purchases', 'customers', 'suppliers',
             'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds',
             'appointments', 'staff_commission', 'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
             'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing'],
-  MANAGER: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
+  MANAGER: ['billing', 'products', 'inventory', 'barcode_reassign', 'product_quick_add', 'purchases', 'customers', 'suppliers',
             'payments', 'expenses', 'reports', 'ai', 'refunds', 'appointments', 'staff_commission',
             'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
             'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing'],
@@ -47,7 +47,7 @@ export const ROLE_PERMISSIONS = {
   // sees and advances tickets only; INVENTORY_MANAGER runs stock and buying.
   WAITER:  ['billing'],
   KITCHEN: ['kitchen'],
-  INVENTORY_MANAGER: ['inventory', 'purchases', 'suppliers'],
+  INVENTORY_MANAGER: ['inventory', 'barcode_reassign', 'purchases', 'suppliers'],
   // A rider sees and updates the delivery orders assigned to them — same
   // narrow scope as WAITER, since orders.controller.js already gates all of
   // this behind the 'billing' permission Orders itself uses.

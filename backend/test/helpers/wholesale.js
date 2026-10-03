@@ -69,7 +69,7 @@ export const addBatch = async (pool, w, productId, { batchNo, qty, expiry = null
   await pool.query(`UPDATE products SET current_stock = current_stock + $2 WHERE product_id = $1`, [productId, qty]);
 };
 
-export const dayFromNow = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+export { dayFromNow } from './dates.js';
 
 /**
  * A finished sale the way the product does it: order → confirm → pick → pack → dispatch. Returns { orderId, invoiceId, invoiceTotal (₹), deliveryId }.

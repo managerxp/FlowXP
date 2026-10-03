@@ -6,9 +6,16 @@
  * tested without a real mail account does not get tested, and the reset link
  * printed to the terminal is exactly what a developer needs.
  */
+import { fileURLToPath } from 'node:url';
 import nodemailer from 'nodemailer';
 import config from '../config/env.js';
 import { getPlatformSetting } from './platformSettings.js';
+
+/* The logo travels inside the email (cid:), not as a link to our site: a link to APP_ORIGIN is a broken image
+   whenever that address isn't public (development) and is blocked by default in many mail apps. */
+const LOGO_CID = 'flowxp-logo';
+const logoAttachment = { filename: 'flowxp-logo.png', path: fileURLToPath(new URL('../../assets/email-logo.png', import.meta.url)), cid: LOGO_CID };
+const withLogo = (html) => (html?.includes(`cid:${LOGO_CID}`) ? [logoAttachment] : undefined);
 
 /* The admin's Settings → Email screen wins when it has been filled in; otherwise the
    .env values, so an install with nothing saved there behaves exactly as before.
@@ -36,17 +43,17 @@ export const deliverMail = async ({ to, subject, text, html }) => {
     console.log(`\n[mail:dev] to=${to}\n[mail:dev] subject=${subject}\n${text}\n`);
     return;
   }
-  await built.transport.sendMail({ from: built.from, to, subject, text, html });
+  await built.transport.sendMail({ from: built.from, to, subject, text, html, attachments: withLogo(html) });
 };
 
-export const sendMail = async ({ to, subject, text, html }) => {
+export const sendMail = async ({ to, subject, text, html, replyTo }) => {
   const built = await buildTransport();
   if (!built) {
     console.log(`\n[mail:dev] to=${to}\n[mail:dev] subject=${subject}\n${text}\n`);
     return;
   }
   try {
-    await built.transport.sendMail({ from: built.from, to, subject, text, html });
+    await built.transport.sendMail({ from: built.from, to, subject, text, html, replyTo, attachments: withLogo(html) });
   } catch (error) {
     /* Never fail the request that triggered the email. A signup that 500s
        because the SMTP server hiccuped loses a customer over a retryable
@@ -69,7 +76,7 @@ const otpEmailHtml = ({ name, code, lead, note }) => `<!doctype html>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
       <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;background:#ffffff;border:1px solid #e3e8ef;border-radius:16px;overflow:hidden;">
         <tr><td style="padding:32px 32px 0;">
-          <img src="${config.appOrigin}/logo.png" alt="FlowXP" height="28" style="display:block;height:28px;width:auto;" />
+          <img src="cid:${LOGO_CID}" alt="FlowXP" height="28" style="display:block;height:28px;width:auto;" />
         </td></tr>
         <tr><td style="padding:28px 32px 0;">
           <p style="margin:0;font-size:15px;line-height:1.6;color:#22324d;">Hi ${name},</p>
@@ -91,7 +98,9 @@ const otpEmailHtml = ({ name, code, lead, note }) => `<!doctype html>
 
 export const sendPasswordReset = (to, name, code) => sendMail({
   to,
-  subject: `${code} is your FlowXP password reset code`,
+  // The code lives in the body only — a subject line is what a lock-screen notification or an inbox list
+  // shows without anyone opening the email, so it is the one place a one-time code must never sit.
+  subject: 'Your FlowXP password reset code',
   text: [
     `Hi ${name},`,
     '',
@@ -108,7 +117,7 @@ export const sendPasswordReset = (to, name, code) => sendMail({
 
 export const sendEmailOtp = (to, name, code) => sendMail({
   to,
-  subject: `${code} is your FlowXP verification code`,
+  subject: 'Your FlowXP verification code',
   text: [
     `Hi ${name},`,
     '',

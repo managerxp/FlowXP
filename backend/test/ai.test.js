@@ -13,10 +13,10 @@ const { runMigrations } = await import('../src/config/migrate.js');
 const { createInvoiceInTransaction } = await import('../src/modules/billing.js');
 const { TOOLS, toolsFor, runTool, ToolError } = await import('../src/modules/ai/tools.js');
 const { ask, systemPrompt } = await import('../src/modules/ai/manager.js');
-const { setProvider, AIProviderError } = await import('../src/modules/ai/provider.js');
+const { setProvider, setConfigured, AIProviderError } = await import('../src/modules/ai/provider.js');
 const ai = await import('../src/controllers/ai.controller.js');
 
-test.after(() => { setProvider(null); return cleanup(); });
+test.after(() => { setProvider(null); setConfigured(undefined); return cleanup(); });
 
 const fakeRes = () => ({ code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; }, set() { return this; } });
 
@@ -184,12 +184,16 @@ const call = async (fn, role, userId, extra = {}) => { const res = fakeRes(); aw
 const chat = (message, more = {}, role = 'OWNER', userId = owner) => call(ai.chat, role, userId, { body: { message, ...more } });
 
 test('without a key the assistant says it is not set up, and nothing is sent', { skip }, async () => {
-  setProvider(null);
-  const res = await chat('hello');
-  assert.equal(res.code, 503);
-  assert.equal(res.body.code, 'AI_NOT_CONFIGURED');
-  const s = (await call(ai.status, 'OWNER', owner)).body.data;
-  assert.deepEqual([s.configured, s.can_ask], [false, false]);
+  // Forces the gate itself, not just a provider swap — this environment's own .env may carry a real key
+  // (see config/env.js), and this test is about the "no key" path, not about which key happens to be set.
+  setConfigured(false);
+  try {
+    const res = await chat('hello');
+    assert.equal(res.code, 503);
+    assert.equal(res.body.code, 'AI_NOT_CONFIGURED');
+    const s = (await call(ai.status, 'OWNER', owner)).body.data;
+    assert.deepEqual([s.configured, s.can_ask], [false, false]);
+  } finally { setConfigured(undefined); }
 });
 
 test('a question is answered, stored, and counted', { skip }, async () => {

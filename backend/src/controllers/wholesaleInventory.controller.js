@@ -221,7 +221,8 @@ const batches = async (req, res) => {
   const branches = await scopeBranches(req, req.query.branch_id);
   const settings = await getSettings(pool, req.tenant.businessId);
   const values = [req.tenant.businessId, branches, settings.expiry_alert_days.at(-1) ?? 90];
-  const where = ['b.business_id = $1', 'b.branch_id = ANY($2::int[])'];
+  // $3 (the alert window) is always sent, so it is always referenced: Postgres refuses a call that supplies a parameter the query never uses
+  const where = ['b.business_id = $1', 'b.branch_id = ANY($2::int[])', '$3::int > 0'];
   if (req.query.all !== '1') where.push('b.qty_on_hand > 0');
   if (req.query.product_id) { values.push(Number(req.query.product_id) || 0); where.push(`b.product_id = $${values.length}`); }
   if (req.query.q) { values.push(like(String(req.query.q).slice(0, 80))); where.push(`(b.batch_no ILIKE $${values.length} OR p.name ILIKE $${values.length})`); }

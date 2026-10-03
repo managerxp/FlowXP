@@ -1,0 +1,44 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#060913; --blue:#0054FA; --cyan:#36d1ff; --violet:#8b6cff; --mint:#3ee0a8; }
+  * { box-sizing: border-box; }
+  body { margin:0; width:1080px; height:1350px; background:var(--bg); font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:#fff; position:relative; overflow:hidden; -webkit-font-smoothing:antialiased; }
+  .glow1 { position:absolute; right:-240px; top:-280px; width:900px; height:900px; background:radial-gradient(closest-side, rgba(0,84,250,.50), rgba(0,84,250,0)); }
+  .glow2 { position:absolute; left:-300px; bottom:-300px; width:900px; height:900px; background:radial-gradient(closest-side, rgba(139,108,255,.30), rgba(139,108,255,0)); }
+  .glow3 { position:absolute; right:-200px; bottom:120px; width:600px; height:600px; background:radial-gradient(closest-side, rgba(54,209,255,.14), rgba(54,209,255,0)); }
+  .logo { position:absolute; left:58px; top:44px; height:72px; }
+  .count { position:absolute; right:64px; top:68px; font-size:22px; font-weight:600; color:rgba(255,255,255,.5); letter-spacing:.02em; }
+  h1 { position:absolute; left:64px; top:140px; width:952px; margin:0; font-weight:800; font-size:80px; line-height:1.03; letter-spacing:-.035em; }
+  h1 em { font-style:normal; color:var(--cyan); }
+  .sub { position:absolute; left:64px; width:860px; font-size:29px; line-height:1.38; font-weight:500; color:rgba(255,255,255,.76); }
+  .win { position:absolute; overflow:hidden; background:#fff; box-shadow:0 34px 90px rgba(0,0,0,.6), 0 0 0 1.5px rgba(255,255,255,.16); }
+  .win img { position:absolute; display:block; max-width:none; }
+  .chip { position:absolute; padding:12px 20px; border-radius:16px; font-weight:700; font-size:22px; line-height:1.25; background:rgba(9,15,32,.92); border:1.5px solid rgba(54,209,255,.5); box-shadow:0 14px 40px rgba(0,0,0,.5); }
+  .chip.mint { border-color:rgba(62,224,168,.55); }
+  .chip.violet { border-color:rgba(139,108,255,.6); }
+  .step { position:absolute; height:44px; min-width:44px; padding:0 18px 0 6px; border-radius:999px; background:var(--blue); font-weight:800; font-size:22px; display:flex; align-items:center; gap:10px; box-shadow:0 10px 30px rgba(0,84,250,.55); }
+  .step b { width:32px; height:32px; border-radius:50%; background:#fff; color:var(--blue); display:flex; align-items:center; justify-content:center; font-size:19px; }
+  .arrow { position:absolute; font-weight:800; color:var(--cyan); font-size:34px; line-height:1; }
+  .cta { position:absolute; left:64px; bottom:60px; height:68px; padding:0 36px; border-radius:999px; background:var(--blue); font-weight:800; font-size:26px; display:flex; align-items:center; gap:12px; box-shadow:0 14px 44px rgba(0,84,250,.5); }
+  .byline { position:absolute; right:64px; bottom:78px; font-size:21px; font-weight:600; color:rgba(255,255,255,.55); }
+  .note { position:absolute; left:64px; bottom:24px; font-size:15px; font-weight:500; color:rgba(255,255,255,.38); }
+</style></head><body>
+  <div class="glow1"></div><div class="glow2"></div><div class="glow3"></div>
+  <img class="logo" src="file:///C:/flowxp/flowxp-social/src/assets/logo-reversed.png"><div class="count">2 / 5</div>
+  <h1>One branch is easy.<br>What happens at <em>three</em>?</h1>
+  <div class="sub" style="top:330px">Compare every outlet side by side: orders, revenue, average bill and food cost.</div>
+  
+  <div class="win"  style="left:64px;top:470px;width:961px;height:124px;border-radius:18px;">
+    <img src="file:///C:/flowxp/flowxp-social/screenshots/branches/outlets-compare.png" style="width:1843px;left:-348px;top:-356px">
+  </div>
+  <div class="win"  style="left:64px;top:612px;width:941px;height:273px;border-radius:18px;">
+    <img src="file:///C:/flowxp/flowxp-social/screenshots/branches/outlets-compare.png" style="width:2246px;left:-424px;top:-626px">
+  </div><div class="chip mint" style="left:64px;top:912px;width:560px;">Green is the best outlet on each measure, amber the weakest</div><div class="chip cyan" style="left:64px;top:1004px;width:640px;">The menu is shared. Stock, tables, orders and staff belong to each outlet.</div>
+  <div class="win"  style="left:64px;top:1104px;width:648px;height:87px;border-radius:16px;">
+    <img src="file:///C:/flowxp/flowxp-social/screenshots/dashboard/dashboard-all-outlets.png" style="width:2880px;left:-511px;top:-14px">
+  </div><div class="chip violet" style="left:736px;top:1088px;width:280px;font-size:20px;padding:10px 16px">Switch to <b>All outlets</b> for the whole business</div>
+  <div class="cta">Book a demo <span style="font-size:28px">&rarr;</span></div>
+  <div class="byline">FlowXP by ManagerXP</div>
+  <div class="note">Sample data from the FlowXP demo restaurant.</div>
+</body></html>

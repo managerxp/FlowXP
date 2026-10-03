@@ -42,7 +42,7 @@ export const scan = async (req, res) => {
   }
   await pool.query(
     `INSERT INTO ai_usage (business_id, user_id, model, input_tokens, output_tokens) VALUES ($1,$2,$3,$4,$5)`,
-    [businessId, req.auth.userId, config.ai.model, result.usage.input_tokens, result.usage.output_tokens]
+    [businessId, req.auth.userId, result.model || config.ai.model, result.usage.input_tokens, result.usage.output_tokens]
   );
 
   // Flag what is already on the menu, so importing twice doesn't double everything.

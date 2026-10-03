@@ -258,7 +258,7 @@ t('background checks: scheme expiry, target shortfall and collection chase notif
   const { w, ravi, scheme, c1 } = await build('sc1');
   await w.call(schemes.update, { params: { id: scheme.scheme_id }, body: { ends_on: dayFromNow(1) } });
   await w.call(team.setTarget, { body: { scope_type: 'SALESPERSON', scope_id: ravi.salesperson_id, period_type: 'MONTHLY', target: 1000000 } });
-  await pool.query(`UPDATE wholesale_invoice_meta SET due_date = CURRENT_DATE - 10 WHERE business_id = $1`, [w.businessId]);
+  await pool.query(`UPDATE wholesale_invoice_meta SET due_date = business_today(business_id) - 10 WHERE business_id = $1`, [w.businessId]);
   const first = await distScans.runForBusiness(pool, w.businessId);
   assert.equal(first.schemes, 1);
   assert.equal(first.collections, 1);

@@ -19,14 +19,16 @@ Rules:
 - Output only the reply text itself, nothing before or after it.`;
 
 /**
- * @returns { reply, usage: { input_tokens, output_tokens } }
+ * @returns { reply, usage: { input_tokens, output_tokens }, model }
  */
 export const draftReviewReply = async ({ businessName, rating, comment }) => {
   const message = comment?.trim() ? `The customer wrote: "${comment.trim()}"` : 'The customer left a rating with no written comment.';
+  // 'fast': a 2-4 sentence draft from one short review — no tools, no multi-turn reasoning.
   const reply = await complete({
     system: systemPrompt({ businessName, rating }),
     messages: [{ role: 'user', content: message }],
-    maxTokens: 300
+    maxTokens: 300,
+    tier: 'fast'
   });
-  return { reply: textOf(reply.content) || 'Thank you for your feedback.', usage: reply.usage || { input_tokens: 0, output_tokens: 0 } };
+  return { reply: textOf(reply.content) || 'Thank you for your feedback.', usage: reply.usage || { input_tokens: 0, output_tokens: 0 }, model: reply.model };
 };

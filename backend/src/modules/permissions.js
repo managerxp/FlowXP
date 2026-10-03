@@ -15,6 +15,8 @@ export const PERMISSION_INFO = {
   kitchen:   { label: 'Kitchen display', description: 'See and advance kitchen tickets.' },
   products:  { label: 'Menu and products', description: 'Add and edit products, prices, recipes, modifiers and kitchen routing.' },
   inventory: { label: 'Stock', description: 'See stock, adjust it, log wastage, move stock between outlets.' },
+  barcode_reassign: { label: 'Move barcodes', description: 'Take a barcode off one product and put it on another.' },
+  product_quick_add: { label: 'Add products at the till', description: 'Create a missing product while billing: name, price, GST. FlowXP makes its SKU.' },
   purchases: { label: 'Purchasing', description: 'Create, send and receive purchase orders.' },
   suppliers: { label: 'Suppliers', description: 'Add and edit suppliers.' },
   customers: { label: 'Customers', description: 'Add and edit customers.' },

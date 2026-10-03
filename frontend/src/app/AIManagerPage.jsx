@@ -114,7 +114,7 @@ const AIManagerPage = () => {
 
       {!status.configured && (
         <Card className="mb-6"><p className="text-sm font-semibold text-ink-900">Flow AI isn’t set up on this server yet.</p>
-          <p className="mt-1 text-sm text-ink-500">Whoever runs FlowXP needs to add an AI key (<code>ANTHROPIC_API_KEY</code> in the backend settings). Until then nothing is sent anywhere and the rest of the app works as usual.</p></Card>
+          <p className="mt-1 text-sm text-ink-500">Whoever runs FlowXP needs to add an AI key (<code>{String(status.provider || 'ANTHROPIC').toUpperCase()}_API_KEY</code> in the backend settings). Until then nothing is sent anywhere and the rest of the app works as usual.</p></Card>
       )}
       {status.configured && !status.enabled && (
         <Card className="mb-6 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-ink-700">Flow AI is switched off for this business, so nothing is sent to the AI service.</p>

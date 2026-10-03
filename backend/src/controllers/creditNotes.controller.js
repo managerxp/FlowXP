@@ -17,6 +17,8 @@ import pool from '../config/database.js';
 import { reverseForCredit } from '../modules/points.js';
 import { recordAudit } from '../modules/events.js';
 import { moveStock } from '../modules/stock.js';
+import { restoreBatches } from '../modules/retailStock.js';
+import { isRetail } from '../modules/retailSettings.js';
 import { branchFilter } from '../utils/scope.js';
 import { toQuantity, toRupees } from '../utils/money.js';
 
@@ -135,6 +137,7 @@ export const issueCreditNote = async (client, req) => {
          VALUES ($1,$2,$3,'RETURN',$4,'credit_note',$5,$6,$7)`,
         [req.tenant.businessId, invoice.branch_id, p.line.product_id, back, note.cn_id, cnNumber, req.auth.userId]
       );
+      if (isRetail(req.tenant)) await restoreBatches(client, { businessId: req.tenant.businessId, invoiceId: invoice.invoice_id, productId: p.line.product_id, qty: back });
     }
   }
 

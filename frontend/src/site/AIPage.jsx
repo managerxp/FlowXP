@@ -11,7 +11,7 @@
  * needs an AI key on the server), the page shows the real suggested
  * questions and what the assistant can read instead of a made-up reply.
  */
-import { Button, Container, Eyebrow, Section } from '../components/ui.jsx';
+import { Button, Container, Section } from '../components/ui.jsx';
 import Reveal from '../components/Reveal.jsx';
 import { Check, Connector, FeatureRow, FinalCta, H2, Node, Shot, Tag, TextLink } from './parts.jsx';
 
@@ -21,7 +21,6 @@ const Hero = () => (
   <section className="overflow-hidden border-b border-line">
     <Container className="grid items-center gap-12 pb-16 pt-12 sm:pb-28 sm:pt-16 lg:grid-cols-12 lg:gap-10 lg:pb-32 lg:pt-20">
       <div className="lg:col-span-5">
-        <Eyebrow className="rise">Flow AI · the AI Manager inside FlowXP</Eyebrow>
         <h1 className="rise mt-4 text-display font-semibold text-ink-900" style={{ '--i': 1 }}>
           An AI manager that reads your numbers.
         </h1>
@@ -85,7 +84,6 @@ const LabelStrip = () => (
 
 const HowItThinks = () => (
   <Section
-    eyebrow="How it works"
     title="From your bills to a decision, in plain words."
     lead="Flow AI does not guess from the internet. It looks only at what your business recorded, compares it with your own normal, and hands you the result with a button to act on it."
   >
@@ -151,7 +149,6 @@ const Features = () => (
   <Section
     id="features"
     className="border-y border-line bg-surface"
-    eyebrow="What it tells you"
     title="Four questions every owner asks. Answered from your own data."
   >
     <div className="space-y-20 lg:space-y-28">
@@ -178,7 +175,6 @@ const Ask = () => (
   <Section id="questions" className="scroll-mt-16">
     <div className="grid gap-12 lg:grid-cols-12">
       <Reveal className="lg:col-span-5">
-        <Eyebrow>Ask Flow AI</Eyebrow>
         <H2>Ask your business a question. In plain English.</H2>
         <p className="mt-4 text-lead text-ink-500">
           Type a question the way you would ask your manager. Flow AI looks up the answer in your
@@ -215,7 +211,7 @@ const Ask = () => (
 /* ── 6. Less typing ───────────────────────────────────────────────────── */
 
 const Extras = () => (
-  <Section className="border-y border-line bg-surface" eyebrow="Less typing" title="AI that saves you setup time too.">
+  <Section className="border-y border-line bg-surface"  title="AI that saves you setup time too.">
     <div className="grid gap-5 md:grid-cols-2">
       <Reveal className="lift rounded-(--radius-panel) border border-line bg-surface p-6 sm:p-8">
         <Tag kind="suggest" />
@@ -247,7 +243,7 @@ const EVERY = [
 ];
 
 const EveryBusiness = () => (
-  <Section eyebrow="Every business" title="The same manager, in your business's language.">
+  <Section  title="The same manager, in your business's language.">
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {EVERY.map(([title, body], i) => (
         <Reveal key={title} index={i} className="lift rounded-(--radius-card) border border-line bg-surface p-5">
@@ -269,7 +265,7 @@ const HONEST = [
 ];
 
 const Honest = () => (
-  <Section className="border-t border-line bg-surface" eyebrow="Honest by design" title="AI you can check.">
+  <Section className="border-t border-line bg-surface"  title="AI you can check.">
     <div className="grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
       {HONEST.map(([title, body], i) => (
         <Reveal key={title} index={i} className="border-t-2 border-ink-900 pt-5">

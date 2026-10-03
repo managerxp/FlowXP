@@ -8,6 +8,7 @@
  * (1200×750). Both are shown whole, never cropped.
  */
 import { Link } from 'react-router-dom';
+import { ArrowRight, Check as CheckIcon, X } from 'lucide-react';
 import { Button, Container, Eyebrow } from '../components/ui.jsx';
 import Reveal from '../components/Reveal.jsx';
 
@@ -26,23 +27,27 @@ export const Shot = ({ src, alt, size = MAIN, eager = false, className = '', sty
   </figure>
 );
 
+/* A phone screen (1170×2532, the page as it fills a phone), in a rounded device edge. Used where the screen only
+   exists on a phone: the field salesperson’s beat, the guest’s QR menu, a salon’s online booking page. */
+export const PhoneShot = ({ src, alt, className = '' }) => (
+  <figure className={`mx-auto w-full max-w-[14rem] overflow-hidden rounded-[1.75rem] border-[5px] border-ink-900 bg-surface shadow-lg ${className}`}>
+    <img src={src} alt={alt} width={1170} height={2532} loading="lazy" decoding="async" className="block h-auto w-full" />
+  </figure>
+);
+
 export const TextLink = ({ to, href, children }) => {
   const Tag = href ? 'a' : Link;
   return (
     <Tag {...(href ? { href } : { to })} className="group inline-flex items-center text-body font-medium text-brand-600 hover:text-brand-700">
       {children}
-      <span aria-hidden="true" className="ml-1 inline-block transition-transform duration-(--duration-normal) group-hover:translate-x-1">→</span>
+      <ArrowRight aria-hidden="true" strokeWidth={2} className="ml-1.5 h-4 w-4 transition-transform duration-(--duration-normal) group-hover:translate-x-1" />
     </Tag>
   );
 };
 
-export const Check = () => (
-  <svg aria-hidden="true" viewBox="0 0 16 16" className="mt-0.5 h-4 w-4 shrink-0 text-brand-500"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3.5 8.5l3 3 6-7" /></svg>
-);
-
-export const Cross = () => (
-  <svg aria-hidden="true" viewBox="0 0 16 16" className="mt-0.5 h-4 w-4 shrink-0 text-ink-400"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M4.5 4.5l7 7m0-7l-7 7" /></svg>
-);
+/* Marks come from the icon library (one stroke weight everywhere), never drawn by hand. */
+export const Check = () => <CheckIcon aria-hidden="true" strokeWidth={2.25} className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />;
+export const Cross = () => <X aria-hidden="true" strokeWidth={2.25} className="mt-0.5 h-4 w-4 shrink-0 text-ink-400" />;
 
 export const H2 = ({ children }) => <h2 className="mt-3 text-h2 font-semibold text-ink-900">{children}</h2>;
 
@@ -64,35 +69,41 @@ export const Tag = ({ kind, className = '' }) => (
 /* ── Page building blocks ─────────────────────────────────────────────── */
 
 /*
- * The top of every marketing page: eyebrow, headline, lead, actions and an
- * optional list of reassurances on the left; a real screen (or any visual)
- * on the right. Rises in once on load.
+ * The top of every marketing page: a headline of at most two lines, one short sentence, the actions, and a real screen.
+ * Reassurances ("no card", "works on a phone") are not part of the hero: they sit in a quiet strip directly beneath it.
+ * `split` picks the text column width: '5-7' (a wide screen) or '6-6' (a longer headline). Rises in once on load.
  */
-export const PageHero = ({ eyebrow, title, lead, children, points, visual, cta = true }) => (
-  <section className="overflow-hidden border-b border-line">
-    <Container className={`grid items-center gap-12 pb-16 pt-12 sm:pt-16 lg:gap-10 lg:pt-20 ${visual ? 'lg:grid-cols-12 lg:pb-24' : 'lg:pb-20'}`}>
-      <div className={visual ? 'lg:col-span-5' : 'max-w-3xl'}>
-        {eyebrow && <Eyebrow className="rise">{eyebrow}</Eyebrow>}
-        <h1 className="rise mt-4 text-display font-semibold text-ink-900" style={{ '--i': 1 }}>{title}</h1>
-        {lead && <p className="rise mt-6 max-w-xl text-lead text-ink-500" style={{ '--i': 2 }}>{lead}</p>}
-        {(cta || children) && (
-          <div className="rise mt-8 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ '--i': 3 }}>
-            {children ?? <Button to="/signup" size="lg">Start 7-day free trial</Button>}
+export const PageHero = ({ eyebrow, title, lead, children, points, visual, cta = true, split = '5-7' }) => (
+  <>
+    <section className={`overflow-hidden ${points ? '' : 'border-b border-line'}`}>
+      <Container className={`grid items-center gap-12 pb-14 pt-12 sm:pt-16 lg:gap-12 lg:pt-20 ${visual ? 'lg:grid-cols-12 lg:pb-20' : 'lg:pb-16'}`}>
+        <div className={visual ? (split === '6-6' ? 'lg:col-span-6' : 'lg:col-span-5') : 'max-w-3xl'}>
+          {eyebrow && <Eyebrow className="rise">{eyebrow}</Eyebrow>}
+          <h1 className={`rise text-hero font-semibold text-ink-900 ${eyebrow ? 'mt-4' : ''}`} style={{ '--i': 1 }}>{title}</h1>
+          {lead && <p className="rise mt-5 max-w-lg text-lead text-ink-500" style={{ '--i': 2 }}>{lead}</p>}
+          {(cta || children) && (
+            <div className="rise mt-8 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ '--i': 3 }}>
+              {children ?? <Button to="/signup" size="lg">Start 7-day free trial</Button>}
+            </div>
+          )}
+        </div>
+        {visual && (
+          <div className={`rise relative ${split === '6-6' ? 'lg:col-span-6' : 'lg:col-span-7'}`} style={{ '--d': '180ms' }}>
+            <div className="rounded-(--radius-panel) bg-brand-50 p-3 sm:p-6">{visual}</div>
           </div>
         )}
-        {points && (
-          <ul className="rise mt-8 space-y-2 text-small text-ink-500" style={{ '--i': 4 }}>
-            {points.map((t) => <li key={t} className="flex items-start gap-1.5"><Check />{t}</li>)}
+      </Container>
+    </section>
+    {points && (
+      <div className="border-y border-line bg-surface">
+        <Container>
+          <ul className="flex flex-wrap gap-x-8 gap-y-2 py-4 text-small text-ink-500">
+            {points.map((t) => <li key={t} className="flex items-center gap-2"><Check />{t}</li>)}
           </ul>
-        )}
+        </Container>
       </div>
-      {visual && (
-        <div className="rise relative lg:col-span-7" style={{ '--d': '180ms' }}>
-          <div className="rounded-(--radius-panel) bg-brand-50 p-3 sm:p-6">{visual}</div>
-        </div>
-      )}
-    </Container>
-  </section>
+    )}
+  </>
 );
 
 /* Text on one side, a real screen (or `aside`) on the other; `flip` swaps

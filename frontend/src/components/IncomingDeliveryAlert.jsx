@@ -15,11 +15,12 @@
  * pressing "Send to kitchen" does; reject never touches it.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Bell, BellOff, ChefHat, GripHorizontal } from 'lucide-react';
+import { ChefHat, GripHorizontal } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getDevicePrefs, ringAlarm, setDevicePref } from '../lib/printing.js';
 import { platformName } from '../lib/business.js';
+import BellToggle from './BellToggle.jsx';
 import { Button, useToast, useDialog } from './ui.jsx';
 
 const POLL_MS = 5000;
@@ -131,10 +132,10 @@ const IncomingDeliveryAlert = () => {
 
   return (
     <div className="pointer-events-none fixed inset-x-0 top-16 z-[200] flex flex-col items-center gap-3 px-4 sm:top-20">
-      <button type="button" onClick={toggleSound} aria-pressed={sound} className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-ink-900/80 px-3 py-1 text-caption font-medium text-white backdrop-blur-sm">
-        {sound ? <Bell aria-hidden="true" className="h-3 w-3" /> : <BellOff aria-hidden="true" className="h-3 w-3" />}
-        {sound ? 'Ringing until accepted or rejected — mute' : 'Ring muted for this device'}
-      </button>
+      <span className="pointer-events-auto">
+        <BellToggle size="sm" label="Ring for new delivery orders" offLabel="Ring muted for this device" onLabel="Ringing until accepted or rejected" pressed={sound} onChange={toggleSound} badge={false}
+                    background="var(--color-surface-3)" color="var(--color-ink-700)" onBackground="var(--color-ink-900)" onColor="#ffffff" />
+      </span>
       {orders.map((order) => (
         <OrderPopup key={order.order_id} order={order} busy={busy === order.order_id} onAccept={() => accept(order)} onReject={() => reject(order)} />
       ))}

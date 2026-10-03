@@ -34,7 +34,8 @@ Product of ManagerXP. Standalone: its own server and Postgres, nothing shared wi
 ```
 cd backend && npm start          # API :5100, migrates on boot
 cd backend && npm test           # ~320 tests, ~1-2 min
-cd backend && npm run seed:demo  # demo restaurant data
+cd backend && npm run seed:demo  # demo restaurant data (then `npm run seed:live` adds today's open tables, kitchen tickets, bookings, reviews)
+cd backend && npm run seed:salon | seed:pharmacy | seed:distributor   # the other demo businesses (salon@, pharmacy@, wholesale@ flowxp.test, password demo1234)
 cd frontend && npm run dev       # web :5174
 cd frontend && npx vite build    # production build (also writes dist/precache.json)
 ```
@@ -130,7 +131,7 @@ local | s3 with hand-written SigV4). Real services are **untested live** (no key
 - QR menu (public/CustomerMenu.jsx) redesigned: logo (receipt_settings.logo_url) or initials, outlet/address, table chip, search, veg-only, category tiles, dish rows with FoodMark + photo + Add/stepper, visit card panel (check stamps, add the free item), bottom order bar + sheet. Migration 0031 adds products.food_type (VEG/NON_VEG/EGG); components/FoodMark.jsx draws the mark. The order and table lists carry a `summary` / `open_order` from one LATERAL join (items, estimate incl. GST, not_sent/cooking/ready); `GET /orders/:id` items carry `tax_rate` so the panel total includes GST. Coupons, points and round-off are only known once billed.
 - Offline: `sw.js` (production only) + `offlineQueue.js` (pure, tested from backend tests).
 - **Design system: `design.md` (repo root) is the authority.** Tokens live only in `src/index.css` (`@theme`): brand = the logo blue #0054FA (solid, never a gradient), ink = logo navy #011531, font Plus Jakarta Sans (has ₹ and tabular figures; type tokens text-caption/small/body 16px/lead/title/h3/h2/display, the last two fluid), flat white/near-white grounds, 8px controls, 12px cards, 16px panels, borders over shadows. `.glass`, `.text-gradient`, `.bg-gradient-brand` are retired aliases (flat). No 3D/particle effects (three.js removed). Motion tokens --duration-fast/normal/moderate/slow and --ease-standard/decelerate; .rise (on load), .reveal via components/Reveal.jsx (once on scroll), .lift (hover), all off under reduced motion. Tailwind v4 arbitrary vars are `rounded-(--radius-card)`, not `rounded-[--radius-card]`.
-- Marketing screenshots are real screens in `public/product/*.webp` (`pos.webp` whole window 1440x900; `*-main.webp` main area 1200x750, shown uncropped), captured from the seeded demo business (renamed The Food Hub locally) with a headless-Chrome script; re-shoot them when the app UI changes.
+- Marketing screenshots are real screens in `public/product/*.webp`: the older `pos.webp` (whole window 1440x900) and `*-main.webp`, and the industry pages' set named `<industry>-<screen>.webp` (restaurant-, cloud-, wholesale-, dist-, salon-, pharmacy-; main area only, 1800x1125, phone shots 1170x2532). They are taken from the seeded demo businesses with headless Chrome (Playwright) after `seed:demo` + `seed:live`, `seed:salon`, `seed:pharmacy`, `seed:distributor`; the cloud-kitchen set is the restaurant demo switched to CLOUD_KITCHEN with brands (re-run `seed:demo` afterwards). Re-shoot them when the app UI changes. The industry pages are `site/industries/IndustryDetail.jsx` (template) + `site/industries/content/<slug>.js` (copy, screens, checklist, limits, FAQ); every claim there must name something the app really does.
 
 ## 4. Feature status
 

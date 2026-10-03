@@ -37,9 +37,9 @@ export const Logo = ({ className = '', showTagline = false }) => {
    announced as a link by a screen reader. */
 const VARIANTS = {
   primary:
-    'bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700 shadow-sm',
+    'bg-brand-500 text-white hover:bg-brand-600 hover:-translate-y-0.5 hover:shadow-md active:bg-brand-700 shadow-sm',
   secondary:
-    'bg-surface text-ink-900 border border-line-strong hover:bg-surface-2 hover:border-ink-400 shadow-sm',
+    'bg-surface text-ink-900 border border-line-strong hover:bg-surface-2 hover:border-ink-400 hover:-translate-y-0.5 hover:shadow-md shadow-sm',
   ghost:
     'text-ink-700 hover:text-ink-900 hover:bg-surface-2',
   danger:
@@ -290,7 +290,7 @@ const statusLabel = (status) => STATUS_LABELS[status] || humanize(status);
 export const StatusBadge = ({ status }) => <Badge tone={STATUS_TONES[status] || 'neutral'}>{statusLabel(status)}</Badge>;
 
 /* ── Avatar ─────────────────────────────────────────────────────────────── */
-const AVATAR_COLORS = ['bg-brand-500', 'bg-cyan-500', 'bg-violet-500', 'bg-teal-500', 'bg-amber-500'];
+const AVATAR_COLORS = ['bg-brand-500', 'bg-cyan-700', 'bg-violet-600', 'bg-teal-700', 'bg-amber-700'];
 
 const initialsOf = (name) => {
   const parts = String(name || '').trim().split(/\s+/);

@@ -22,7 +22,6 @@ const EVERY_PLAN = [
 const Pricing = () => (
   <>
     <PageHero
-      eyebrow="Pricing"
       title="Start free. Pay when it has earned it."
       lead="Every plan begins with the same seven-day free trial, with every feature switched on. No card, no sales call, no setup fee."
       points={['7 days free on every plan', 'No credit card needed to start', 'Your data stays if you stop paying']}
@@ -32,7 +31,7 @@ const Pricing = () => (
       <Reveal><PricingTable /></Reveal>
     </Section>
 
-    <Section className="border-y border-line bg-surface" eyebrow="In every plan" title="The basics are never an extra.">
+    <Section className="border-y border-line bg-surface"  title="The basics are never an extra.">
       <CellGrid items={EVERY_PLAN} />
     </Section>
 

@@ -7,7 +7,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Download, Plus, Search, Upload, X } from 'lucide-react';
 import { api } from '../../lib/api.js';
-import { CSV_TEMPLATES, addDays, downloadTemplate, money, parseCsv, todayIn, useDebounced, useWarehouses } from '../../lib/wholesale.js';
+import { CSV_TEMPLATES, addDays, downloadTemplate, money, todayIn, useDebounced, useWarehouses } from '../../lib/wholesale.js';
+import { readTable } from '../../lib/spreadsheet.js';
 import { Alert, Badge, Button, Field, Input, Modal, Select, useToast } from '../../components/ui.jsx';
 
 export { Chips, Money, NumberField, Pager, Panel, Pill, Segmented, SelectField, Tabs, Toggle, Toolbar, useAction } from '../salon/parts.jsx';
@@ -232,7 +233,7 @@ export const CsvImportModal = ({ kind, title, onClose, onDone, allowUpdate = tru
   const [check, setCheck] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const known = useMemo(() => new Set(tpl.columns.map((c) => c.toLowerCase().replace(/\s+/g, '_'))), [tpl]);
+  const known = useMemo(() => new Set([...tpl.columns, ...(tpl.accepts || [])].map((c) => c.toLowerCase().replace(/\s+/g, '_'))), [tpl]);
   const unknown = useMemo(() => (rows?.length ? Object.keys(rows[0]).filter((k) => !known.has(k.toLowerCase().replace(/[\s-]+/g, '_'))) : []), [rows, known]);
 
   const dryRun = async (r, m) => {
@@ -245,17 +246,17 @@ export const CsvImportModal = ({ kind, title, onClose, onDone, allowUpdate = tru
     if (!file) return;
     setFileName(file.name); setRows(null); setCheck(null); setError('');
     try {
-      const parsed = parseCsv(await file.text());
+      const parsed = await readTable(file);
       if (!parsed.length) { setError('That file has no rows. The first line must be the column names.'); return; }
       setRows(parsed); await dryRun(parsed, mode);
-    } catch { setError('Could not read that file. Save it as CSV (comma separated) and try again.'); }
+    } catch { setError('Could not read that file. Use a CSV (comma separated) or an Excel .xlsx file, with the column names in the first row.'); }
   };
 
   const apply = async () => {
     setBusy(true); setError('');
     try {
       const out = await api(url, { method: 'POST', body: { ...extra, rows, mode, apply: true } });
-      toast.success(`Imported: ${out.created ?? 0} added${out.updated ? `, ${out.updated} updated` : ''}`);
+      toast.success(out.changed != null ? `Stock updated for ${out.changed} product${out.changed === 1 ? '' : 's'}` : `Imported: ${out.created ?? 0} added${out.updated ? `, ${out.updated} updated` : ''}`);
       onDone?.(out);
     } catch (e) { setError(e.message); if (e.data?.errors) setCheck({ ...check, errors: e.data.errors, total_errors: e.data.total_errors }); }
     finally { setBusy(false); }
@@ -265,13 +266,13 @@ export const CsvImportModal = ({ kind, title, onClose, onDone, allowUpdate = tru
   return (
     <Modal title={title} onClose={onClose} wide footer={null}>
       <div className="space-y-4">
-        <p className="text-small text-ink-500">Use a CSV file whose first line is the column names. <button type="button" onClick={() => downloadTemplate(template || kind)} className="font-semibold text-brand-600 hover:underline"><Download aria-hidden="true" className="mr-1 inline h-3.5 w-3.5" />Download a template</button></p>
+        <p className="text-small text-ink-500">Use a CSV or Excel (.xlsx) file whose first row is the column names. <button type="button" onClick={() => downloadTemplate(template || kind)} className="font-semibold text-brand-600 hover:underline"><Download aria-hidden="true" className="mr-1 inline h-3.5 w-3.5" />Download a template</button></p>
         {children}
         {modes && <Field id="imp-mode" label="What the file means"><Select id="imp-mode" value={mode} onChange={(e) => { setMode(e.target.value); if (rows) dryRun(rows, e.target.value); }}>{modes.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}</Select></Field>}
         <label className="flex cursor-pointer items-center gap-3 rounded-(--radius-card) border border-dashed border-line-strong bg-surface-2 px-4 py-5 hover:border-brand-500">
           <Upload aria-hidden="true" className="h-5 w-5 text-ink-400" />
-          <span className="text-small text-ink-700">{fileName ? <><strong className="font-semibold text-ink-900">{fileName}</strong> · {rows?.length ?? 0} rows</> : 'Choose a CSV file'}</span>
-          <input type="file" accept=".csv,text/csv" className="sr-only" onChange={(e) => onFile(e.target.files?.[0])} />
+          <span className="text-small text-ink-700">{fileName ? <><strong className="font-semibold text-ink-900">{fileName}</strong> · {rows?.length ?? 0} rows</> : 'Choose a CSV or Excel file'}</span>
+          <input type="file" accept=".csv,text/csv,.xlsx" className="sr-only" onChange={(e) => onFile(e.target.files?.[0])} />
         </label>
         {allowUpdate && (
           <label className="flex items-center gap-2 text-small text-ink-700">
@@ -284,7 +285,7 @@ export const CsvImportModal = ({ kind, title, onClose, onDone, allowUpdate = tru
         {check && (
           <div className={`rounded-(--radius-card) border px-4 py-3 text-small ${bad ? 'border-danger/30 bg-danger/5' : 'border-success/30 bg-success/5'}`}>
             {bad ? <p className="font-semibold text-danger">{check.total_errors} row{check.total_errors === 1 ? ' has' : 's have'} a problem. Fix them in the file and choose it again.</p>
-              : <p className="flex items-center gap-2 font-semibold text-success"><Check aria-hidden="true" className="h-4 w-4" />Ready: {check.to_create ?? 0} to add{check.to_update ? `, ${check.to_update} to update` : ''}.</p>}
+              : <p className="flex items-center gap-2 font-semibold text-success"><Check aria-hidden="true" className="h-4 w-4" />Ready: {[check.to_create && `${check.to_create} to add`, check.to_update && `${check.to_update} to ${check.to_create === undefined ? 'change' : 'update'}`].filter(Boolean).join(', ') || 'nothing to change'}.</p>}
             {bad && (
               <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto text-caption text-ink-700">
                 {check.errors.map((e, i) => <li key={i}><strong className="font-semibold">Row {e.row}:</strong> {e.message}</li>)}

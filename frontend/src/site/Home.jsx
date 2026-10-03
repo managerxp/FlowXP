@@ -14,7 +14,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Container, Eyebrow, Section } from '../components/ui.jsx';
+import { Button, Container, Section } from '../components/ui.jsx';
 import Reveal from '../components/Reveal.jsx';
 import { FAQ } from './content.js';
 import PricingTable from './PricingTable.jsx';
@@ -61,27 +61,16 @@ const Hero = () => (
   <section className="overflow-hidden border-b border-line">
     <Container className="grid items-center gap-12 pb-16 pt-12 sm:pb-28 sm:pt-16 lg:grid-cols-12 lg:gap-10 lg:pb-32 lg:pt-20">
       <div className="lg:col-span-5">
-        <Eyebrow className="rise">AI-powered billing for Indian businesses</Eyebrow>
-        <h1 className="rise mt-4 text-display font-semibold text-ink-900" style={{ '--i': 1 }}>
+        <h1 className="rise text-hero font-semibold text-ink-900">
           Billing software that tells you what to do next.
         </h1>
-        <p className="rise mt-6 max-w-md text-lead text-ink-500" style={{ '--i': 2 }}>
-          FlowXP does your billing, payments, stock and GST in one place. Then it reads your
-          numbers every day and tells you, in plain words, what is selling, what is running out
-          and where money is leaking.
+        <p className="rise mt-6 max-w-md text-lead text-ink-500" style={{ '--i': 1 }}>
+          Bills, stock and GST in one place, then a daily note on what is selling and what needs you.
         </p>
-        <p className="rise mt-3 max-w-md text-body text-ink-500" style={{ '--i': 3 }}>
-          For shops, restaurants, salons, wholesalers and service businesses.
-        </p>
-        <div className="rise mt-8 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ '--i': 4 }}>
+        <div className="rise mt-8 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ '--i': 2 }}>
           <Button to="/signup" size="lg">Start 7-day free trial</Button>
           <TextLink href="#how-it-works">See how it works</TextLink>
         </div>
-        <ul className="rise mt-8 flex flex-wrap gap-x-5 gap-y-2 text-small text-ink-500" style={{ '--i': 5 }}>
-          {['No credit card', 'No software to install', 'Works on laptop, tablet or phone'].map((t) => (
-            <li key={t} className="flex items-center gap-1.5"><Check />{t}</li>
-          ))}
-        </ul>
       </div>
 
       <div className="relative lg:col-span-7">
@@ -141,7 +130,6 @@ const Connector = () => (
 
 const OneBill = () => (
   <Section
-    eyebrow="How it fits together"
     title="Make the bill once. FlowXP does the rest."
     lead="However you sell, the sale goes into one system. Your stock, your customer's account, your GST and your reports all move with it, so nothing is written down twice."
   >
@@ -219,7 +207,6 @@ const ForYourBusiness = () => {
     <Section
       id="industries"
       className="border-y border-line bg-surface"
-      eyebrow="Who it is for"
       title="Built for the business you run."
       lead="The billing, stock, GST and insights are the same for everyone. On top of that, FlowXP shows each kind of business the tools it needs."
     >
@@ -285,7 +272,6 @@ const Insights = () => (
   <Section id="ai">
     <div className="grid gap-12 lg:grid-cols-12">
       <Reveal className="lg:col-span-5">
-        <Eyebrow>Insights and decisions</Eyebrow>
         <H2>It does not just record your business. It helps you run it.</H2>
         <p className="mt-4 text-lead text-ink-500">
           Most billing software stops at the bill. FlowXP keeps reading your sales, stock and expenses,
@@ -333,15 +319,13 @@ const HowItWorks = () => (
   <Section
     id="how-it-works"
     className="scroll-mt-16 border-y border-line bg-surface"
-    eyebrow="How it works"
     title="Start billing today. Get smarter every day after."
     lead="There is nothing to install and no machine to buy. Most businesses make their first bill within an hour."
   >
     <ol className="grid gap-px overflow-hidden rounded-(--radius-panel) border border-line bg-line sm:grid-cols-2 lg:grid-cols-5">
       {STEPS.map(([title, body], i) => (
         <Reveal as="li" key={title} index={i} className="bg-surface p-6">
-          <p className="tabular text-small font-semibold text-brand-600">{String(i + 1).padStart(2, '0')}</p>
-          <p className="mt-3 text-title font-semibold text-ink-900">{title}</p>
+          <p className="text-title font-semibold text-ink-900">{title}</p>
           <p className="mt-2 text-body text-ink-500">{body}</p>
         </Reveal>
       ))}
@@ -367,7 +351,6 @@ const FeatureCard = ({ title, body, src, alt, index }) => (
 const Screens = () => (
   <Section
     id="features"
-    eyebrow="The product"
     title="Simple enough for the counter. Detailed enough for the owner."
     lead="These are real FlowXP screens. Your staff bill on the first one; you check the rest when you want to know how things are going."
   >
@@ -406,7 +389,7 @@ const AFTER = [
 ];
 
 const BeforeAfter = () => (
-  <Section className="border-y border-line bg-surface" eyebrow="Why switch" title="Less paperwork. Fewer surprises at month end.">
+  <Section className="border-y border-line bg-surface"  title="Less paperwork. Fewer surprises at month end.">
     <div className="grid gap-5 md:grid-cols-2">
       <Reveal className="rounded-(--radius-panel) border border-line bg-page p-6 sm:p-8">
         <h3 className="text-body font-semibold text-ink-500">Without FlowXP</h3>
@@ -447,7 +430,6 @@ const WorksWith = () => {
   const rest = WORKS_WITH.filter((w) => !w.big);
   return (
     <Section
-      eyebrow="Works with"
       title="Fits the counter you already have."
       lead="Use the laptop, tablet or phone you own. Add a printer, scanner or cash drawer when you want one."
     >
@@ -487,7 +469,7 @@ const TRUST = [
 ];
 
 const Trust = () => (
-  <Section className="border-y border-line bg-surface" eyebrow="Built to be trusted" title="Built so nothing gets lost.">
+  <Section className="border-y border-line bg-surface"  title="Built so nothing gets lost.">
     <div className="grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
       {TRUST.map(([title, body], i) => (
         <Reveal key={title} index={i} className="border-t-2 border-ink-900 pt-5">
@@ -502,7 +484,7 @@ const Trust = () => (
 /* ── 11. Pricing, FAQ, final call ─────────────────────────────────────── */
 
 const PricingSection = () => (
-  <Section id="pricing" center eyebrow="Pricing" title="Simple plans. Start free."
+  <Section id="pricing" center  title="Simple plans. Start free."
            lead="Every plan starts with the same 7-day free trial. Move to a paid plan when FlowXP has earned it.">
     <Reveal><PricingTable /></Reveal>
   </Section>
@@ -512,7 +494,6 @@ const Faq = () => (
   <Section id="faq" className="border-t border-line bg-surface">
     <div className="grid gap-10 lg:grid-cols-12">
       <Reveal className="lg:col-span-4">
-        <Eyebrow>FAQ</Eyebrow>
         <h2 className="mt-3 text-h2 font-semibold text-ink-900">Questions owners ask first</h2>
         <p className="mt-4 text-body text-ink-500">
           Something else? <Link to="/contact" className="font-medium text-brand-600 hover:text-brand-700">Talk to us</Link>.

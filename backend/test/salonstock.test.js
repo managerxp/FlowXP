@@ -5,6 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setupTestDb } from './helpers/db.js';
+import { dayFromNow } from './helpers/dates.js';
 import { addRecipe, addService, addStaff, addStock, makeSalon, sell, stockOf } from './helpers/salon.js';
 
 const { pool, skip, cleanup } = await setupTestDb();
@@ -21,7 +22,7 @@ test.after(cleanup);
 
 let S; let ravi; let shampoo; let colour; let gel; let colouring; let trim;
 const go = (input, opts) => sell(pool, createSalonInvoice, S, input, opts);
-const day = (n) => (n == null ? null : new Date(Date.now() + n * 86400000).toISOString().slice(0, 10));
+const day = (n) => (n == null ? null : dayFromNow(n));
 const today = () => day(0);
 
 test('setup', { skip }, async () => {
@@ -66,8 +67,13 @@ test('stock in with a batch number and expiry raises stock and records the batch
   assert.deepEqual(t.map((r) => [r.transaction_type, Number(r.quantity)]), [['OPENING', 10]]);
   const b = (await pool.query(`SELECT * FROM salon_stock_batches WHERE product_id = $1`, [shampoo])).rows[0];
   assert.equal(b.batch_no, 'SH-01'); assert.equal(Number(b.qty_received), 10); assert.equal(Number(b.unit_cost_paise), 25000);
-  await new Promise((r) => setTimeout(r, 300));   // the audit write is fire-and-forget
-  assert.ok((await pool.query(`SELECT 1 FROM audit_log WHERE business_id = $1 AND action = 'salon.stock_in'`, [S.businessId])).rowCount >= 1, 'audited');
+  // the audit write is fire-and-forget: wait for it to land (up to 3 s under load, same pattern as audit.test.js)
+  let audited = 0;
+  for (let i = 0; i < 30 && audited < 1; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+    audited = (await pool.query(`SELECT COUNT(*)::int AS n FROM audit_log WHERE business_id = $1 AND action = 'salon.stock_in'`, [S.businessId])).rows[0].n;
+  }
+  assert.ok(audited >= 1, 'audited');
 });
 
 test('stock in is validated: a product that is yours, tracked, and a positive amount', { skip }, async () => {

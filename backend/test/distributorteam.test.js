@@ -21,7 +21,7 @@ test.after(cleanup);
 if (!skip) await runMigrations(pool);
 const t = (name, fn) => test(name, { skip }, fn);
 
-const today = async (w) => (await pool.query(`SELECT ((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date)::text AS d`)).rows[0].d;
+const today = async (w) => (await pool.query(`SELECT business_today($1)::text AS d`, [w.businessId])).rows[0].d;
 const rep = async (w, name, extra = {}) => (await w.call(parties.createSalesperson, { body: { name, ...extra } })).body.data;
 const assignRep = (customerId, repId, territoryId = null) => pool.query(`UPDATE wholesale_customer_profiles SET salesperson_id = $2, territory_id = COALESCE($3, territory_id) WHERE customer_id = $1`, [customerId, repId, territoryId]);
 

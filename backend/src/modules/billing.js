@@ -20,6 +20,8 @@ import { computeLineTax, isInterState, sumLines } from './tax.js';
 import { toPaise, toQuantity, toRupees } from '../utils/money.js';
 import { ModifierError, modifierLabel, outletSettingsFor, resolveModifiers } from './menu.js';
 import { moveStock, stockAt } from './stock.js';
+import { takeBatchesForSale } from './retailStock.js';
+import { isRetail } from './retailSettings.js';
 import { getProgram, isLive, progressFor, recordEvent as recordLoyalty } from './loyalty.js';
 import { CouponError, validateCoupon } from './coupons.js';
 import { consumptionPerUnit, loadRecipes } from './recipes.js';
@@ -34,6 +36,13 @@ export class BillingError extends Error {
     this.status = status;
   }
 }
+
+/** A card-slip / UTR / cheque reference: trimmed, blank means none, and longer than the column (80) is refused rather than a 500. */
+export const paymentReference = (value) => {
+  const text = String(value ?? '').trim();
+  if (text.length > 80) throw new BillingError(400, 'The payment reference is too long (80 characters at most)');
+  return text || null;
+};
 
 export const paymentStatus = (totalPaise, paidPaise) => {
   if (paidPaise <= 0) return 'UNPAID';
@@ -126,10 +135,10 @@ export const plannedPayments = (input, totalPaise) => {
     const rows = list.map((p) => {
       const method = String(p.method || 'CASH').toUpperCase();
       if (!PAYMENT_METHODS.includes(method)) throw new BillingError(400, `Unknown payment method: ${p.method}`);
-      if (p.amount === 'REST' || p.amount === 'FULL') return { method, rest: true, reference: p.reference_number || null };
+      if (p.amount === 'REST' || p.amount === 'FULL') return { method, rest: true, reference: paymentReference(p.reference_number) };
       const amountPaise = toPaise(p.amount);
       if (amountPaise <= 0) throw new BillingError(400, 'Each part of a split payment needs an amount above zero');
-      return { method, amountPaise, reference: p.reference_number || null };
+      return { method, amountPaise, reference: paymentReference(p.reference_number) };
     });
     const fixed = rows.reduce((s, r) => s + (r.rest ? 0 : r.amountPaise), 0);
     if (fixed > totalPaise) throw new BillingError(400, `The payments add up to ₹${toRupees(fixed)}, more than the bill of ₹${toRupees(totalPaise)}`);
@@ -143,7 +152,7 @@ export const plannedPayments = (input, totalPaise) => {
     const asked = input.payment.amount === 'FULL' ? totalPaise : toPaise(input.payment.amount);
     if (asked < 0) throw new BillingError(400, 'Payment amount cannot be negative');
     const amountPaise = Math.min(asked, totalPaise);
-    return amountPaise > 0 ? [{ method: input.payment.method || 'CASH', amountPaise, reference: input.payment.reference_number || null }] : [];
+    return amountPaise > 0 ? [{ method: input.payment.method || 'CASH', amountPaise, reference: paymentReference(input.payment.reference_number) }] : [];
   }
   return [];
 };
@@ -399,6 +408,12 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
         [tenant.businessId, tenant.branchId, line.product_id, -stockQty, invoice.invoice_id, userId]
       );
     }
+  }
+
+  // a retail product that tracks expiry is sold from its soonest-expiring batch
+  if (isRetail(tenant) && !input.stockHandledElsewhere) {
+    await takeBatchesForSale(client, { businessId: tenant.businessId, branchId: tenant.branchId, invoiceId: invoice.invoice_id,
+      lines: lines.filter((l) => l.trackInventory && l.product_id).map((l) => ({ productId: l.product_id, qty: Math.round(l.quantity * l.stockFactor * 1000) / 1000 })) });
   }
 
   /* Ingredient consumption: one ledger row per ingredient for the whole

@@ -50,12 +50,35 @@ export const config = {
     email: process.env.SUPER_ADMIN_EMAIL || '',
     password: process.env.SUPER_ADMIN_PASSWORD || ''
   },
-  /* Flow AI. With no key the assistant reports that it isn't set up; nothing is ever sent to a provider. */
-  ai: {
-    apiKey: process.env.ANTHROPIC_API_KEY || '',
-    model: process.env.AI_MODEL || 'claude-sonnet-5',
-    maxTokens: Number(process.env.AI_MAX_TOKENS || 1200)
-  },
+  /* Flow AI — chat, onboarding, menu scanning and review replies all go through modules/ai/provider.js's
+     single complete(), which dispatches to whichever provider AI_PROVIDER names. Each call picks a model
+     *tier* ('default' | 'fast' | 'reasoning' — see each feature module's own complete() call for which it
+     asks for and why); `apiKey`/`model` stay as "the active provider's default-tier pair" for anything
+     that doesn't care which tier (isConfigured(), the /ai/status screen), while `models` is the full tier
+     map provider.js actually picks from. Anthropic has no tiers configured here (nobody asked for that
+     yet), so all three names resolve to its one AI_MODEL. With no key for the active provider, the
+     assistant reports that it isn't set up; nothing is ever sent to a provider. */
+  ai: (() => {
+    const provider = (process.env.AI_PROVIDER || 'anthropic').toLowerCase();
+    const anthropicModel = process.env.AI_MODEL || 'claude-sonnet-5';
+    // GEMINI_DEFAULT_MODEL is the one every other tier falls back to, so setting only that still gives
+    // all three tiers a real model; GEMINI_MODEL (the old single-model name) is one fallback step further
+    // down, for an env file nobody has touched since before tiers existed.
+    const geminiDefault = process.env.GEMINI_DEFAULT_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+    const byProvider = {
+      anthropic: { apiKey: process.env.ANTHROPIC_API_KEY || '', models: { default: anthropicModel, fast: anthropicModel, reasoning: anthropicModel } },
+      gemini: {
+        apiKey: process.env.GEMINI_API_KEY || '',
+        models: {
+          default: geminiDefault,
+          fast: process.env.GEMINI_FAST_MODEL || geminiDefault,
+          reasoning: process.env.GEMINI_REASONING_MODEL || geminiDefault
+        }
+      }
+    };
+    const active = byProvider[provider] || byProvider.anthropic;
+    return { provider, apiKey: active.apiKey, model: active.models.default, models: active.models, maxTokens: Number(process.env.AI_MAX_TOKENS || 1200) };
+  })(),
   /* Uploaded files. 'local' = this server's disk; 's3' = any S3-compatible bucket (AWS S3, Cloudflare R2, Spaces, MinIO). */
   storage: {
     driver: (process.env.STORAGE_DRIVER || 'local').toLowerCase(),

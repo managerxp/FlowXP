@@ -108,8 +108,13 @@ test('cancelling a membership needs a reason, stops its benefits, and is audited
   assert.equal((await go({ customer_id: client, items: [{ type: 'SERVICE', service_id: haircut, staff_id: ravi }] }, { dryRun: true })).invoice.subtotal, 500);
   const again = fakeRes(); await plansApi.cancelMembership(S.req({ params: { id }, body: { reason: 'again' } }), again);
   assert.equal(again.code, 409);
-  await new Promise((r) => setTimeout(r, 300));
-  assert.ok((await row(`SELECT COUNT(*)::int AS n FROM audit_log WHERE business_id = $1 AND action = 'salon.membership_cancelled'`, [S.businessId])).n >= 1);
+  // the audit write is fire-and-forget: wait for it to land (up to 3 s under load, same pattern as audit.test.js)
+  let audited = 0;
+  for (let i = 0; i < 30 && audited < 1; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+    audited = (await row(`SELECT COUNT(*)::int AS n FROM audit_log WHERE business_id = $1 AND action = 'salon.membership_cancelled'`, [S.businessId])).n;
+  }
+  assert.ok(audited >= 1);
   const list = fakeRes(); await plansApi.listMemberships(S.req({ query: { status: 'CANCELLED' } }), list);
   assert.ok(list.body.data.some((m) => m.membership_id === id));
 });

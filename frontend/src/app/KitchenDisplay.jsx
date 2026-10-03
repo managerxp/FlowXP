@@ -14,10 +14,11 @@
  * A mis-tap can be undone for a few seconds. Full screen for a kitchen TV.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Bell, BellOff, Check, ChefHat, Flame, Maximize2, Minimize2, Undo2, X } from 'lucide-react';
+import { Check, ChefHat, Flame, Maximize2, Minimize2, Undo2, X } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { beep, getDevicePrefs, setDevicePref } from '../lib/printing.js';
+import BellToggle from '../components/BellToggle.jsx';
 import { Alert, Button, Field, Input, Modal, SkeletonRows, humanize, useToast, useDialog, StatCard } from '../components/ui.jsx';
 
 const POLL_MS = 8000;
@@ -411,7 +412,7 @@ const KitchenDisplay = () => {
           <p className="text-small text-ink-500">Tap a dish when it is ready, or the whole ticket at once. Oldest first; rush on top.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={toggleSound} aria-pressed={sound}>{sound ? <Bell aria-hidden="true" className="h-4 w-4" /> : <BellOff aria-hidden="true" className="h-4 w-4 text-danger" />}{sound ? 'Sound on' : 'Sound off'}</Button>
+          <BellToggle size="sm" label="Sound for new orders" offLabel="Sound off" onLabel="Sound on" pressed={sound} onChange={toggleSound} badge={false} background="var(--color-surface-3)" color="var(--color-ink-700)" onBackground="var(--color-brand-500)" onColor="#ffffff" />
           {!full && <Button variant="ghost" to="/app/kitchen/performance">Performance</Button>}
           {!full && <Button variant="ghost" onClick={() => setSetup(true)}>Stations</Button>}
           {!full && <Button variant="ghost" to="/app/kitchen/board">Order board</Button>}

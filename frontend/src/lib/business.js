@@ -15,3 +15,6 @@ export const PHARMACY_TYPES = ['PHARMACY'];
 
 /* The distributor features: a DISTRIBUTOR always has them; a wholesaler can switch them on (Wholesale + Distributor). */
 export const isDistributor = (business) => isWholesale(business) && Boolean(business?.distributor_enabled);
+
+/* Supermarkets and retail shops: the generic products/billing screens, with generated SKUs, any number of barcodes and an MRP. */
+export const RETAIL_TYPES = ['SUPERMARKET', 'RETAIL'];

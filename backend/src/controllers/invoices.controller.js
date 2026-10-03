@@ -15,10 +15,12 @@ import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
 import { toPaise, toRupees } from '../utils/money.js';
 import { moveStock } from '../modules/stock.js';
+import { restoreBatches } from '../modules/retailStock.js';
+import { isRetail } from '../modules/retailSettings.js';
 import { describe as describeCard, getProgram, isLive, progressFor, voidForInvoice } from '../modules/loyalty.js';
 import { businessToday } from '../utils/dates.js';
 import { branchFilter } from '../utils/scope.js';
-import { asInvoice, BillingError, createInvoiceInTransaction, paymentStatus, recordInvoiceCreated } from '../modules/billing.js';
+import { asInvoice, BillingError, createInvoiceInTransaction, paymentReference, paymentStatus, recordInvoiceCreated } from '../modules/billing.js';
 import { insertOrderItems, nextNumber, OrderItemsError, sendKotCore } from './orders.controller.js';
 
 /* ==========================================================================
@@ -259,6 +261,8 @@ export const addPayment = async (req, res) => {
   if (amountPaise <= 0) return res.status(400).json({ success: false, message: 'Payment amount must be greater than zero' });
   const method = String(body.method || 'CASH').toUpperCase();
   if (!CUSTOMER_PAYMENT_METHODS.includes(method)) return res.status(400).json({ success: false, message: `Unknown payment method: ${body.method}` });
+  let reference;
+  try { reference = paymentReference(body.reference_number); } catch (error) { return res.status(error.status || 400).json({ success: false, message: error.message }); }
 
   const client = await pool.connect();
   try {
@@ -285,7 +289,7 @@ export const addPayment = async (req, res) => {
       `INSERT INTO payments (business_id, branch_id, invoice_id, customer_id, payment_method, amount_paise, reference_number, notes, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
       [req.tenant.businessId, invoice.branch_id, invoice.invoice_id, invoice.customer_id,
-       method, amountPaise, body.reference_number || null, body.notes || null, req.auth.userId]
+       method, amountPaise, reference, body.notes || null, req.auth.userId]
     );
     await client.query(
       `UPDATE invoices SET amount_paid_paise = $1, balance_due_paise = $2, payment_status = $3 WHERE invoice_id = $4`,
@@ -347,6 +351,7 @@ export const cancel = async (req, res) => {
       );
     }
 
+    if (isRetail(req.tenant)) await restoreBatches(client, { businessId: req.tenant.businessId, invoiceId: Number(req.params.id) });   // expiry batches get their stock back too
     await voidForInvoice(client, req.tenant.businessId, req.params.id);   // the loyalty stamp and coupon use come back
     // a salon bill also hands back package visits and gift card money, and withdraws what it sold (or refuses if that was used)
     if (req.tenant.businessType === 'SALON') await onInvoiceCancelled(client, { businessId: req.tenant.businessId, invoiceId: Number(req.params.id), userId: req.auth.userId });

@@ -11,9 +11,10 @@
  * itself rather than only being watched.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Bell, BellOff, CheckCircle2, ChefHat, Maximize2, Minimize2 } from 'lucide-react';
+import { CheckCircle2, ChefHat, Maximize2, Minimize2 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { beep, getDevicePrefs, setDevicePref } from '../lib/printing.js';
+import BellToggle from '../components/BellToggle.jsx';
 import { Alert, Button, humanize } from '../components/ui.jsx';
 
 const POLL_MS = 8000;
@@ -102,7 +103,7 @@ const OrderReadyBoard = () => {
           <p className="text-small text-ink-500">For a screen near pickup. Customers watch their order number move across; it updates itself.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={toggleSound} aria-pressed={sound}>{sound ? <Bell aria-hidden="true" className="h-4 w-4" /> : <BellOff aria-hidden="true" className="h-4 w-4" />}{sound ? 'Sound on' : 'Sound off'}</Button>
+          <BellToggle size="sm" label="Sound for new orders" offLabel="Sound off" onLabel="Sound on" pressed={sound} onChange={toggleSound} badge={false} background="var(--color-surface-3)" color="var(--color-ink-700)" onBackground="var(--color-brand-500)" onColor="#ffffff" />
           {!full && <Button variant="ghost" to="/app/kitchen">Back to kitchen</Button>}
           <Button variant="secondary" onClick={toggleFull} aria-label={full ? 'Leave full screen' : 'Full screen'}>{full ? <Minimize2 aria-hidden="true" className="h-4 w-4" /> : <Maximize2 aria-hidden="true" className="h-4 w-4" />}<span className="hidden sm:inline">{full ? 'Exit full screen' : 'Full screen'}</span></Button>
         </div>

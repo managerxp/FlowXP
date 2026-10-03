@@ -17,7 +17,7 @@ import {
   History, Landmark, LayoutDashboard, LayoutGrid, Lock, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
   Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X, Warehouse, PackageCheck, Undo2, HandCoins, ChartBar, ShoppingBag, Tags,
-  Factory, MapPinned, Target, Percent, Container, Smartphone
+  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Avatar, Button, EmptyState, Logo, PageLoader, useToast } from '../components/ui.jsx';
@@ -27,7 +27,7 @@ import NotificationBell from '../components/NotificationBell.jsx';
 import { InstallButton, OfflineStatus } from '../components/OfflineStatus.jsx';
 import CommandPalette from '../components/CommandPalette.jsx';
 import IncomingDeliveryAlert from '../components/IncomingDeliveryAlert.jsx';
-import { PHARMACY_TYPES, RESTAURANT_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
+import { PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
 
 /*
  * The sidebar, grouped by the job rather than listed alphabetically: that
@@ -35,7 +35,8 @@ import { PHARMACY_TYPES, RESTAURANT_TYPES, WHOLESALE_TYPES } from '../lib/busine
  *
  * `types` restricts an item to certain business types (a salon has no use
  * for a kitchen screen), `roles` to certain roles, `multiOutlet` to
- * businesses with more than one outlet. Absent means "everyone".
+ * businesses with more than one outlet. Absent means "everyone". `more` keeps
+ * an item out of the main list and under "More" (the daily screens stay short).
  */
 /* A cloud kitchen has no dine-in seating — it cooks for delivery/takeaway only — so Tables and
    Reservations are the two RESTAURANT_TYPES screens it doesn't need, unlike Kitchen/Orders/Modifiers/
@@ -45,6 +46,7 @@ const DINE_IN_TYPES = RESTAURANT_TYPES.filter((t) => t !== 'CLOUD_KITCHEN');
 const SALON = ['SALON'];
 const WHOLESALE = WHOLESALE_TYPES;
 const PHARMACY = PHARMACY_TYPES;
+const RETAIL = RETAIL_TYPES;
 /* the generic stock, buying and customer screens give way to the wholesale ones for a wholesaler */
 const NOT_SALON_OR_WHOLESALE = [...SALON, ...WHOLESALE];
 
@@ -56,10 +58,10 @@ const NAV_GROUPS = [
   {
     label: 'Sell',
     items: [
-      { to: '/app/billing', label: 'Counter billing', icon: ReceiptText, end: true, permission: 'billing', notTypes: [...SALON, ...PHARMACY] },
-      { to: '/app/billing/invoices', label: 'Invoices', icon: FileText, permission: 'billing' },
+      { to: '/app/billing', label: 'Billing', icon: ReceiptText, end: true, permission: 'billing', notTypes: [...SALON, ...PHARMACY] },
+      { to: '/app/billing/invoices', label: 'Invoices', icon: FileText, permission: 'billing', more: true },
       { to: '/app/orders', label: 'Orders', icon: ClipboardList, types: RESTAURANT_TYPES, anyPermission: ['billing', 'kitchen'] },
-      { to: '/app/payments', label: 'Payments', icon: Wallet, permission: 'payments' }
+      { to: '/app/payments', label: 'Payments', icon: Wallet, permission: 'payments', more: true }
     ]
   },
   {
@@ -113,20 +115,23 @@ const NAV_GROUPS = [
     items: [
       { to: '/app/tables', label: 'Tables', icon: LayoutGrid, types: DINE_IN_TYPES, permission: 'billing' },
       { to: '/app/kitchen', label: 'Kitchen', icon: ChefHat, types: RESTAURANT_TYPES, anyPermission: ['billing', 'kitchen'] },
-      { to: '/app/reservations', label: 'Reservations', icon: CalendarClock, types: DINE_IN_TYPES, permission: 'billing', feature: 'reservations' }
+      { to: '/app/reservations', label: 'Reservations', icon: CalendarClock, types: DINE_IN_TYPES, permission: 'billing', feature: 'reservations', more: true }
     ]
   },
   {
     label: 'Stock',
     items: [
       { to: '/app/products', label: 'Products', icon: Package, permission: 'products', notTypes: [...WHOLESALE, ...PHARMACY] },
-      { to: '/app/modifiers', label: 'Options & add-ons', icon: SlidersHorizontal, types: RESTAURANT_TYPES, permission: 'products' },
-      { to: '/app/inventory', label: 'Inventory', icon: Boxes, permission: 'inventory', notTypes: [...WHOLESALE, ...PHARMACY] },
+      { to: '/app/modifiers', label: 'Options & add-ons', icon: SlidersHorizontal, types: RESTAURANT_TYPES, permission: 'products', more: true },
+      // a supermarket works from the Stock center (scan in, count, expiry, import); Inventory stays for single-item changes
+      { to: '/app/stock', label: 'Stock center', icon: Warehouse, types: RETAIL, permission: 'inventory' },
+      { to: '/app/inventory', label: 'Inventory', icon: Boxes, permission: 'inventory', notTypes: [...WHOLESALE, ...PHARMACY, ...RETAIL] },
+      { to: '/app/inventory', label: 'Adjust & wastage', icon: Boxes, types: RETAIL, permission: 'inventory', more: true },
       // pharmacy's GRN is the only receiving document it has — no generic Purchase Order screen for it (see
       // pharmacy.routes.js's header note: no PO route exists anywhere in that module, by design)
-      { to: '/app/purchases', label: 'Purchases', icon: ShoppingCart, permission: 'purchases', feature: 'purchases', notTypes: [...WHOLESALE, ...PHARMACY] },
-      { to: '/app/suppliers', label: 'Suppliers', icon: Truck, permission: 'suppliers', feature: 'purchases', notTypes: WHOLESALE },
-      { to: '/app/stock-requests', label: 'Stock requests', icon: ArrowLeftRight, types: RESTAURANT_TYPES, multiOutlet: true, permission: 'inventory' }
+      { to: '/app/purchases', label: 'Purchases', icon: ShoppingCart, permission: 'purchases', feature: 'purchases', notTypes: [...WHOLESALE, ...PHARMACY], more: true },
+      { to: '/app/suppliers', label: 'Suppliers', icon: Truck, permission: 'suppliers', feature: 'purchases', notTypes: WHOLESALE, more: true },
+      { to: '/app/stock-requests', label: 'Stock requests', icon: ArrowLeftRight, types: RESTAURANT_TYPES, multiOutlet: true, permission: 'inventory', more: true }
     ]
   },
   {
@@ -136,9 +141,9 @@ const NAV_GROUPS = [
       // customers has no permission gate server-side. Editing needs 'customers' and is rejected
       // there if not; CustomersPage does not yet hide its own Edit/Add buttons for a role without it.
       { to: '/app/customers', label: 'Customers', icon: UserRound, notTypes: NOT_SALON_OR_WHOLESALE },
-      { to: '/app/loyalty', label: 'Loyalty & coupons', icon: Gift, roles: ['OWNER', 'ADMIN'], feature: 'loyalty' },
-      { to: '/app/messaging', label: 'Messaging', icon: MessageSquare, roles: ['OWNER', 'ADMIN'], feature: 'messaging' },
-      { to: '/app/reviews', label: 'Reviews', icon: Star, roles: ['OWNER', 'ADMIN'], permission: 'settings', feature: 'reviews' }
+      { to: '/app/loyalty', label: 'Loyalty & coupons', icon: Gift, roles: ['OWNER', 'ADMIN'], feature: 'loyalty', more: true },
+      { to: '/app/messaging', label: 'Messaging', icon: MessageSquare, roles: ['OWNER', 'ADMIN'], feature: 'messaging', more: true },
+      { to: '/app/reviews', label: 'Reviews', icon: Star, roles: ['OWNER', 'ADMIN'], permission: 'settings', feature: 'reviews', more: true }
     ]
   },
   {
@@ -147,33 +152,30 @@ const NAV_GROUPS = [
       { to: '/app/reports', label: 'Reports', icon: ChartColumn, permission: 'reports', notTypes: NOT_SALON_OR_WHOLESALE },
       { to: '/app/wholesale/reports', label: 'Reports', icon: ChartBar, types: WHOLESALE, permission: 'reports' },
       { to: '/app/salon/reports', label: 'Reports', icon: ChartColumn, types: SALON, permission: 'reports' },
-      { to: '/app/profitability', label: 'Profitability', icon: TrendingUp, types: RESTAURANT_TYPES, permission: 'reports', feature: 'advanced_reports' },
-      { to: '/app/forecast', label: 'Forecast', icon: ChartLine, types: RESTAURANT_TYPES, permission: 'reports', feature: 'advanced_reports' },
-      { to: '/app/leakage', label: 'Leakage', icon: ShieldAlert, types: RESTAURANT_TYPES, permission: 'settings', feature: 'advanced_reports' },
-      { to: '/app/expenses', label: 'Expenses', icon: Receipt, permission: 'expenses', feature: 'expenses' },
-      { to: '/app/gst', label: 'GST filing', icon: Landmark, roles: ['OWNER', 'ADMIN'] }
+      { to: '/app/profitability', label: 'Profitability', icon: TrendingUp, types: RESTAURANT_TYPES, permission: 'reports', feature: 'advanced_reports', more: true },
+      { to: '/app/forecast', label: 'Forecast', icon: ChartLine, types: RESTAURANT_TYPES, permission: 'reports', feature: 'advanced_reports', more: true },
+      { to: '/app/leakage', label: 'Leakage', icon: ShieldAlert, types: RESTAURANT_TYPES, permission: 'settings', feature: 'advanced_reports', more: true },
+      { to: '/app/expenses', label: 'Expenses', icon: Receipt, permission: 'expenses', feature: 'expenses', more: true },
+      { to: '/app/gst', label: 'GST filing', icon: Landmark, roles: ['OWNER', 'ADMIN'], more: true },
+      { to: '/app/ai', label: 'Flow AI', icon: Sparkles, permission: 'ai', feature: 'ai' }
     ]
-  },
-  {
-    label: 'Intelligence',
-    items: [{ to: '/app/ai', label: 'Flow AI', icon: Sparkles, permission: 'ai', feature: 'ai' }]
   },
   {
     label: 'Team',
     items: [
-      { to: '/app/outlets', label: 'Outlets', icon: Store, roles: ['OWNER', 'ADMIN'], types: [...RESTAURANT_TYPES, ...WHOLESALE, ...PHARMACY] },
+      { to: '/app/outlets', label: 'Outlets', icon: Store, roles: ['OWNER', 'ADMIN'], types: [...RESTAURANT_TYPES, ...WHOLESALE, ...PHARMACY], more: true },
       { to: '/app/staff', label: 'Staff', icon: Users, roles: ['OWNER', 'ADMIN'] },
-      { to: '/app/activity', label: 'Activity log', icon: History, roles: ['OWNER', 'ADMIN'] }
+      { to: '/app/activity', label: 'Activity log', icon: History, roles: ['OWNER', 'ADMIN'], more: true }
     ]
   }
 ];
 
 /* Pinned to the bottom of the sidebar. */
 const SYSTEM_ITEMS = [
-  { to: '/app/integrations', label: 'Integrations', icon: Plug, types: RESTAURANT_TYPES, permission: 'settings' },
-  { to: '/app/settlements', label: 'Settlements', icon: ArrowLeftRight, types: RESTAURANT_TYPES, permission: 'settings', feature: 'integrations' },
+  { to: '/app/integrations', label: 'Integrations', icon: Plug, types: RESTAURANT_TYPES, permission: 'settings', more: true },
+  { to: '/app/settlements', label: 'Settlements', icon: ArrowLeftRight, types: RESTAURANT_TYPES, permission: 'settings', feature: 'integrations', more: true },
   // personal account security (password, 2FA, sessions) — every role manages their own
-  { to: '/app/security', label: 'Security', icon: Shield },
+  { to: '/app/security', label: 'Security', icon: Shield, more: true },
   // the business's own identity/GSTIN/logo can only be SAVED by the owner (see business.routes.js),
   // so showing it to anyone else is a form they can look at but never use
   { to: '/app/wholesale/settings', label: 'Wholesale settings', icon: SlidersHorizontal, types: WHOLESALE, permission: 'settings' },
@@ -194,7 +196,7 @@ const NavItem = ({ item, collapsed, onNavigate }) => {
       onClick={onNavigate}
       title={collapsed ? item.label : undefined}
       className={({ isActive }) =>
-        `group relative flex h-9 items-center gap-3 rounded-lg px-2.5 text-small transition-colors duration-(--duration-fast) ${
+        `group relative flex h-9 items-center gap-3 rounded-lg px-2.5 text-small transition-colors duration-(--duration-fast) pointer-coarse:h-11 ${
           isActive ? 'bg-brand-50 font-semibold text-brand-700' : 'text-ink-700 hover:bg-surface-2 hover:text-ink-900'
         } ${collapsed ? 'lg:justify-center lg:px-0' : ''}`
       }
@@ -227,7 +229,7 @@ const ProfileMenu = ({ user, role, onSignOut }) => {
   return (
     <div className="relative" ref={box}>
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="menu"
-              className="flex items-center gap-2 rounded-lg py-1 pl-1 pr-1.5 hover:bg-surface-2 md:pr-2">
+              className="flex items-center gap-2 rounded-lg py-1 pl-1 pr-1.5 hover:bg-surface-2 pointer-coarse:min-h-11 pointer-coarse:min-w-11 md:pr-2">
         <Avatar name={user.name} size="sm" />
         <span className="hidden max-w-32 truncate text-small font-medium text-ink-900 md:inline">{user.name}</span>
         <ChevronDown aria-hidden="true" className="hidden h-4 w-4 text-ink-400 md:block" />
@@ -298,6 +300,7 @@ const AppShell = () => {
   useEffect(() => { setPrintErrorHandler((message) => toast.error(message)); return () => setPrintErrorHandler(null); }, [toast]);
   const [navOpen, setNavOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readCollapsed);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   const toggleCollapsed = () => setCollapsed((v) => {
@@ -315,6 +318,8 @@ const AppShell = () => {
     return () => document.removeEventListener('keydown', onKey);
   }, []);
   useEffect(() => { setNavOpen(false); }, [location.pathname]);
+  // keep the current page's link visible in a long sidebar (a page under "More" opens that list below the fold)
+  useEffect(() => { document.querySelector('aside [aria-current="page"]')?.scrollIntoView({ block: 'nearest' }); }, [location.pathname, navOpen]);
 
   /* Wait for /auth/me before deciding. Without this, a page refresh bounces a
      signed-in user to /login for the half-second the request takes. */
@@ -351,6 +356,12 @@ const AppShell = () => {
     && (!item.feature || hasFeature(item.feature));
   const groups = NAV_GROUPS.map((group) => ({ ...group, items: group.items.filter(allowed) })).filter((group) => group.items.length > 0);
   const systemItems = SYSTEM_ITEMS.filter(allowed);
+  /* The sidebar shows the daily screens; the rest sit under "More" (still one click away, and always in Ctrl K). */
+  const mainGroups = groups.map((g) => ({ ...g, items: g.items.filter((i) => !i.more) })).filter((g) => g.items.length > 0);
+  const moreItems = [...groups.flatMap((g) => g.items.filter((i) => i.more)), ...systemItems.filter((i) => i.more)];
+  const pinnedItems = systemItems.filter((i) => !i.more);
+  const onMorePage = moreItems.some((i) => location.pathname === i.to || location.pathname.startsWith(`${i.to}/`));
+  const showMore = moreOpen || onMorePage;
 
   /* The sidebar hides a link this role can't use, but a typed or bookmarked URL still
      reaches the route — this is the same policy, checked again for whichever nav entry
@@ -384,7 +395,7 @@ const AppShell = () => {
         >
           <div className={`flex h-14 shrink-0 items-center justify-between border-b border-line px-4 ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}>
             <Link to="/app" aria-label="FlowXP dashboard" className={collapsed ? 'lg:hidden' : ''}><Logo /></Link>
-            <button type="button" onClick={closeNav} aria-label="Close menu" className="rounded-lg p-1.5 text-ink-500 hover:bg-surface-2 lg:hidden">
+            <button type="button" onClick={closeNav} aria-label="Close menu" className="rounded-lg p-1.5 text-ink-500 hover:bg-surface-2 pointer-coarse:p-3 lg:hidden">
               <X className="h-5 w-5" />
             </button>
             <button type="button" onClick={toggleCollapsed} aria-label={collapsed ? 'Expand the menu' : 'Collapse the menu'} title={collapsed ? 'Expand the menu' : 'Collapse the menu'}
@@ -394,7 +405,7 @@ const AppShell = () => {
           </div>
 
           <nav className="flex-1 overflow-y-auto px-2.5 py-3">
-            {groups.map((group) => (
+            {mainGroups.map((group) => (
               <div key={group.label || 'overview'} className={group.label ? 'mt-4' : ''}>
                 {group.label && (
                   <p className={`mb-1 px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-400 ${collapsed ? 'lg:sr-only' : ''}`}>{group.label}</p>
@@ -404,6 +415,22 @@ const AppShell = () => {
                 </div>
               </div>
             ))}
+            {moreItems.length > 0 && (
+              <div className="mt-4">
+                <button type="button" onClick={() => { if (!onMorePage) setMoreOpen((v) => !v); }} aria-expanded={showMore} aria-controls="nav-more"
+                        title={collapsed ? 'More' : undefined}
+                        className={`flex h-9 w-full items-center gap-3 rounded-lg px-2.5 text-small text-ink-700 transition-colors duration-(--duration-fast) hover:bg-surface-2 hover:text-ink-900 pointer-coarse:h-11 ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}>
+                  <Ellipsis aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-ink-400" />
+                  <span className={`flex-1 text-left ${collapsed ? 'lg:sr-only' : ''}`}>More</span>
+                  {!collapsed && <ChevronDown aria-hidden="true" className={`h-4 w-4 text-ink-400 transition-transform duration-(--duration-fast) ${showMore ? 'rotate-180' : ''}`} />}
+                </button>
+                {showMore && (
+                  <div id="nav-more" className="fade-in mt-0.5 space-y-0.5">
+                    {moreItems.map((item) => <NavItem key={item.to} item={item} collapsed={collapsed} onNavigate={closeNav} />)}
+                  </div>
+                )}
+              </div>
+            )}
             {/* A soft edge where the list runs under the pinned items, so a
                 half-visible group label reads as "more below", not as a
                 clipped layout. Sticky: once scrolled to the end it sits in
@@ -412,14 +439,14 @@ const AppShell = () => {
           </nav>
 
           <div className="shrink-0 space-y-0.5 border-t border-line px-2.5 py-3">
-            {systemItems.map((item) => <NavItem key={item.to} item={item} collapsed={collapsed} onNavigate={closeNav} />)}
+            {pinnedItems.map((item) => <NavItem key={item.to} item={item} collapsed={collapsed} onNavigate={closeNav} />)}
           </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex min-h-14 items-center gap-2 border-b border-line bg-surface/95 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-sm sm:gap-3 sm:px-5 print:hidden">
             <button type="button" onClick={() => setNavOpen(true)} aria-label="Open menu" aria-expanded={navOpen}
-                    className="rounded-lg p-2 text-ink-700 hover:bg-surface-2 lg:hidden">
+                    className="rounded-lg p-2 text-ink-700 hover:bg-surface-2 pointer-coarse:p-3 lg:hidden">
               <Menu className="h-5 w-5" />
             </button>
 
@@ -428,7 +455,7 @@ const AppShell = () => {
               <label className="min-w-0">
                 <span className="sr-only">Business</span>
                 <select value={businessId ?? ''} onChange={(e) => switchBusiness(Number(e.target.value))}
-                        className="h-9 max-w-52 truncate rounded-lg border border-line-strong bg-surface px-3 text-small font-semibold text-ink-900">
+                        className="h-9 max-w-52 truncate rounded-lg border border-line-strong bg-surface px-3 text-small font-semibold text-ink-900 pointer-coarse:h-11">
                   {businesses.map((b) => <option key={b.business_id} value={b.business_id}>{b.name}</option>)}
                 </select>
               </label>
@@ -441,7 +468,7 @@ const AppShell = () => {
                 <label className="min-w-0">
                   <span className="sr-only">Outlet</span>
                   <select value={outletId ?? ''} onChange={(e) => switchOutlet(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                          className="h-9 max-w-44 truncate rounded-lg border border-line-strong bg-surface px-3 text-small font-medium text-ink-700">
+                          className="h-9 max-w-44 truncate rounded-lg border border-line-strong bg-surface px-3 text-small font-medium text-ink-700 pointer-coarse:h-11">
                     {outlets.map((o) => <option key={o.branch_id} value={o.branch_id}>{o.name}</option>)}
                     <option value="all">All outlets</option>
                   </select>
@@ -452,7 +479,7 @@ const AppShell = () => {
             )}
 
             <button type="button" onClick={() => setPaletteOpen(true)}
-                    className="ml-auto flex h-9 items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 text-small text-ink-500 hover:border-line-strong md:ml-4 md:w-64 lg:w-80">
+                    className="ml-auto flex h-9 items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 text-small text-ink-500 hover:border-line-strong pointer-coarse:h-11 md:ml-4 md:w-64 lg:w-80">
               <Search aria-hidden="true" className="h-4 w-4" />
               <span className="hidden md:inline">Go to…</span>
               <kbd className="ml-auto hidden rounded border border-line bg-surface px-1.5 text-[11px] text-ink-500 md:block">Ctrl K</kbd>

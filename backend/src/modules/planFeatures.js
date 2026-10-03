@@ -37,7 +37,9 @@ export const PLAN_FEATURES = [
   ['wholesale_orders', 'Sales orders', 'B2B sales orders with stock reservation, partial fulfilment and back-orders'],
   ['wholesale_fulfilment', 'Warehouse fulfilment', 'Pick lists, packing, delivery challans and in-transit transfers'],
   ['wholesale_pricing', 'Wholesale pricing', 'Price lists, customer-specific prices, quantity breaks and promotions'],
-  ['wholesale_batches', 'Batches and expiry', 'Batch and serial tracking with first-expiry-first-out and expiry alerts']
+  ['wholesale_batches', 'Batches and expiry', 'Batch and serial tracking with first-expiry-first-out and expiry alerts'],
+  // Supermarket / retail. Missing key = on.
+  ['auto_sku', 'Automatic SKU', 'FlowXP makes each new product\'s SKU (MILK-00001), so nobody has to invent one']
 ];
 
 export const PLAN_FEATURE_KEYS = PLAN_FEATURES.map(([key]) => key);

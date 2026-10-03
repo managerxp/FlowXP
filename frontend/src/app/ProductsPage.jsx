@@ -13,7 +13,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Camera, ChefHat, Layers, Plus, Search, Sparkles, Package } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { RESTAURANT_TYPES } from '../lib/business.js';
+import { RESTAURANT_TYPES, RETAIL_TYPES } from '../lib/business.js';
+import ProductIdentifiers from '../components/ProductIdentifiers.jsx';
 import MenuImportModal from '../components/MenuImportModal.jsx';
 import FoodMark, { FOOD_TYPES } from '../components/FoodMark.jsx';
 import { Alert, Button, Field, Input, Modal, Select, Textarea, useToast, useDialog, EmptyState } from '../components/ui.jsx';
@@ -24,7 +25,7 @@ const qty = (n) => Number(n || 0).toLocaleString('en-IN', { maximumFractionDigit
 const LOW_MARGIN = 30;   // below this a dish's margin is shown as a warning, as in the recipe editor
 
 const emptyForm = {
-  name: '', kind: 'DISH', lead_time_days: '1', modifier_group_ids: [], category_id: '', sku: '', barcode: '', unit: 'pc',
+  name: '', kind: 'DISH', lead_time_days: '1', modifier_group_ids: [], category_id: '', sku: '', barcode: '', mrp: '', erp_code: '', unit: 'pc',
   selling_price: '', purchase_price: '', tax_rate: '0', hsn_sac: '', description: '', food_type: '',
   track_inventory: true, opening_stock: '0', min_stock: '0'
 };
@@ -59,9 +60,38 @@ const ImageUploader = ({ product, onUploaded, large = false }) => {
   );
 };
 
+/* ── Retail product settings ──────────────────────────────────────────── */
+
+const RetailSettings = ({ onClose, onChanged }) => {
+  const toast = useToast();
+  const [s, setS] = useState(null);
+  const [error, setError] = useState('');
+  useEffect(() => { api('/retail/settings').then(setS).catch((e) => setError(e.message)); }, []);
+  const save = async (patch) => {
+    setError('');
+    try { const next = await api('/retail/settings', { method: 'PUT', body: patch }); setS(next); onChanged(next); toast.success('Saved'); }
+    catch (caught) { setError(caught.message); }
+  };
+  const row = (key, title, body, disabled) => (
+    <label className="flex items-start gap-3">
+      <input type="checkbox" checked={Boolean(s?.[key])} disabled={!s || disabled} onChange={(e) => save({ [key]: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-brand-500)] pointer-coarse:h-5 pointer-coarse:w-5" />
+      <span><span className="block text-small font-medium text-ink-900">{title}</span><span className="block text-caption text-ink-500">{body}</span></span>
+    </label>
+  );
+  return (
+    <Modal title="Product settings" onClose={onClose}>
+      <div className="space-y-4">
+        <Alert>{error}</Alert>
+        {row('auto_sku', 'Make the SKU for me', s && !s.auto_sku_available ? 'Switched off for your plan.' : 'New products get a code like MILK-00001. You never have to invent one.', s && !s.auto_sku_available)}
+        {row('require_barcode', 'Ask for a barcode on every product', 'Leave off if some of your goods have no barcode. Products can sell without one.')}
+      </div>
+    </Modal>
+  );
+};
+
 /* ── Add / edit ───────────────────────────────────────────────────────── */
 
-const ProductForm = ({ initial, categories, groups, brands, isRestaurant, onSaved, onClose, onCreateCategory, onCreateBrand }) => {
+const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail, autoSku, onSaved, onClose, onCreateCategory, onCreateBrand }) => {
   const [form, setForm] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -95,8 +125,13 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, onSave
     setError(''); setBusy(true);
     try {
       const body = {
-        name: form.name, category_id: form.category_id || null, sku: form.sku || null,
-        barcode: form.barcode || null, unit: form.unit, selling_price: sold ? form.selling_price : (form.selling_price || 0),
+        name: form.name, category_id: form.category_id || null,
+        // a retail SKU is made by FlowXP: only a typed one is sent, so a blank box can never wipe the generated one
+        ...(retail ? (form.sku.trim() && form.sku.trim() !== (initial.sku || '') ? { sku: form.sku.trim() } : {}) : { sku: form.sku || null }),
+        // a retail product's barcodes are managed on its own screen once it exists
+        ...(retail && isEdit ? {} : { barcode: form.barcode || null }),
+        ...(retail ? { mrp: form.mrp === '' ? null : form.mrp, erp_code: form.erp_code || null } : {}),
+        unit: form.unit, selling_price: sold ? form.selling_price : (form.selling_price || 0),
         purchase_price: form.purchase_price || 0, tax_rate: form.tax_rate, hsn_sac: form.hsn_sac || null,
         description: form.description || null, food_type: sold ? (form.food_type || null) : null,
         track_inventory: form.track_inventory, min_stock: form.min_stock,
@@ -194,8 +229,9 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, onSave
 
         <fieldset className="space-y-4">
           <legend className={legend}>Price and GST</legend>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className={`grid gap-4 ${retail ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
             {sold && <Field id="selling_price" label="Selling price (₹)" hint="Before GST"><Input id="selling_price" type="number" min="0" step="0.01" value={form.selling_price} onChange={set('selling_price')} required /></Field>}
+            {retail && <Field id="mrp" label="MRP (₹)" hint="Printed price, optional"><Input id="mrp" type="number" min="0" step="0.01" value={form.mrp ?? ''} onChange={set('mrp')} /></Field>}
             <Field id="purchase_price" label={sold ? 'Cost price (₹)' : 'What you pay (₹)'} hint={sold && isRestaurant ? 'For dishes with a recipe, the recipe sets the cost' : `Per ${form.unit}, used for stock value`}>
               <Input id="purchase_price" type="number" min="0" step="0.01" value={form.purchase_price} onChange={set('purchase_price')} />
             </Field>
@@ -204,12 +240,27 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, onSave
             </Field>
           </div>
           {sold && Number(form.selling_price) > 0 && Number(form.tax_rate) > 0 && <p className="tabular -mt-2 text-caption text-ink-500">{formatCurrency(Number(form.selling_price))} + {form.tax_rate}% GST = {formatCurrency(withGst)} on the bill.</p>}
-          <div className="grid gap-4 sm:grid-cols-4">
+          <div className={`grid gap-4 ${retail ? 'sm:grid-cols-3' : 'sm:grid-cols-4'}`}>
             <Field id="unit" label="Sold / counted in"><Select id="unit" value={form.unit} onChange={set('unit')}>{[...new Set([...UNITS, form.unit])].map((u) => <option key={u} value={u}>{u}</option>)}</Select></Field>
             <Field id="hsn_sac" label="HSN / SAC"><Input id="hsn_sac" value={form.hsn_sac || ''} onChange={set('hsn_sac')} /></Field>
-            <Field id="sku" label="SKU"><Input id="sku" value={form.sku || ''} onChange={set('sku')} /></Field>
-            <Field id="barcode" label="Barcode"><Input id="barcode" value={form.barcode || ''} onChange={set('barcode')} /></Field>
+            {!retail && <Field id="sku" label="SKU"><Input id="sku" value={form.sku || ''} onChange={set('sku')} /></Field>}
+            {(!retail || !isEdit) && <Field id="barcode" label={retail ? 'Barcode (optional)' : 'Barcode'} hint={retail ? 'Scan or type it. Add more later.' : undefined}><Input id="barcode" value={form.barcode || ''} onChange={set('barcode')} /></Field>}
           </div>
+          {retail && (
+            <div className="space-y-3">
+              <p className="text-small text-ink-700">
+                <span className="font-medium text-ink-900">SKU: </span>
+                {isEdit ? (initial.sku || 'none') : autoSku ? 'Automatically generated when you save' : 'Add one below, or leave it blank'}
+              </p>
+              <details className="rounded-(--radius-card) border border-line">
+                <summary className="cursor-pointer select-none px-3 py-2 text-small font-medium text-ink-700 pointer-coarse:min-h-11">Advanced details</summary>
+                <div className="grid gap-4 border-t border-line p-3 sm:grid-cols-2">
+                  <Field id="sku" label="Your own SKU (optional)" hint={autoSku ? 'Leave blank and FlowXP keeps its own' : undefined}><Input id="sku" value={form.sku || ''} onChange={set('sku')} placeholder={initial.sku || ''} /></Field>
+                  <Field id="erp_code" label="ERP code (optional)"><Input id="erp_code" value={form.erp_code || ''} onChange={set('erp_code')} /></Field>
+                </div>
+              </details>
+            </div>
+          )}
         </fieldset>
 
         {isRestaurant && form.kind === 'DISH' && groups.length > 0 && (
@@ -495,7 +546,7 @@ const Detail = ({ label, children }) => (
   <div className="flex justify-between gap-4 py-2 text-small"><dt className="text-ink-500">{label}</dt><dd className="text-right text-ink-900">{children}</dd></div>
 );
 
-const ProductPanel = ({ product: p, refreshKey, groups, isRestaurant, multiOutlet, outletId, onEdit, onAction, onArchive, onRestore, onPhoto, onBack }) => {
+const ProductPanel = ({ product: p, refreshKey, groups, isRestaurant, retail, canEdit, canMove, onChanged, multiOutlet, outletId, onEdit, onAction, onArchive, onRestore, onPhoto, onBack }) => {
   const [recipe, setRecipe] = useState(null);
   const [combo, setCombo] = useState(null);
   const dish = p.kind === 'DISH';
@@ -600,9 +651,35 @@ const ProductPanel = ({ product: p, refreshKey, groups, isRestaurant, multiOutle
             {dish && isRestaurant && <Detail label="Options">{optionNames.length ? optionNames.join(', ') : <span className="text-ink-500">None</span>}</Detail>}
             <Detail label="GST">{p.tax_rate}%{p.hsn_sac && <span className="text-ink-500"> · HSN {p.hsn_sac}</span>}</Detail>
             <Detail label={dish ? 'Sold in' : 'Counted in'}>{p.unit}</Detail>
-            {(p.sku || p.barcode) && <Detail label="Codes">{[p.sku && `SKU ${p.sku}`, p.barcode && `barcode ${p.barcode}`].filter(Boolean).join(' · ')}</Detail>}
+            {retail && p.mrp != null && <Detail label="MRP"><span className="tabular">{formatCurrency(p.mrp)}</span></Detail>}
+            {retail && (
+              <Detail label="Track expiry dates">
+                {canEdit && !archived ? (
+                  <button type="button" role="switch" aria-checked={Boolean(p.track_expiry)} aria-label="Track expiry dates for this product"
+                          onClick={async () => { await api(`/products/${p.product_id}`, { method: 'PATCH', body: { track_expiry: !p.track_expiry } }).catch(() => {}); onChanged?.(); }}
+                          className={`relative h-6 w-11 rounded-full transition-colors pointer-coarse:h-8 pointer-coarse:w-14 ${p.track_expiry ? 'bg-brand-500' : 'bg-line-strong'}`}>
+                    <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform pointer-coarse:h-7 pointer-coarse:w-7 ${p.track_expiry ? 'translate-x-5 pointer-coarse:translate-x-6' : ''}`} />
+                  </button>
+                ) : (p.track_expiry ? 'On' : 'Off')}
+                <span className="mt-1 block text-caption text-ink-500">Stock is kept in dated batches and sold soonest-expiry first. Expiry dates are asked for when you receive stock.</span>
+              </Detail>
+            )}
+            {retail && (
+              <Detail label="Quick button at the till">
+                {canEdit && !archived ? (
+                  <button type="button" role="switch" aria-checked={Boolean(p.is_quick)} aria-label="Show as a quick button at the till"
+                          onClick={async () => { await api(`/products/${p.product_id}`, { method: 'PATCH', body: { is_quick: !p.is_quick } }).catch(() => {}); onChanged?.(); }}
+                          className={`relative h-6 w-11 rounded-full transition-colors pointer-coarse:h-8 pointer-coarse:w-14 ${p.is_quick ? 'bg-brand-500' : 'bg-line-strong'}`}>
+                    <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform pointer-coarse:h-7 pointer-coarse:w-7 ${p.is_quick ? 'translate-x-5 pointer-coarse:translate-x-6' : ''}`} />
+                  </button>
+                ) : (p.is_quick ? 'On' : 'Off')}
+              </Detail>
+            )}
+            {!retail && (p.sku || p.barcode) && <Detail label="Codes">{[p.sku && `SKU ${p.sku}`, p.barcode && `barcode ${p.barcode}`].filter(Boolean).join(' · ')}</Detail>}
           </dl>
         </section>
+
+        {retail && <ProductIdentifiers product={p} canEdit={canEdit && !archived} canMove={canMove} onChanged={onChanged} />}
 
         {p.description && <section aria-label="Description"><h3 className="mb-1 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">On the QR menu</h3><p className="text-small text-ink-700">{p.description}</p></section>}
 
@@ -654,8 +731,11 @@ const ProductsPage = () => {
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const selectedId = params.get('p') ? Number(params.get('p')) : null;
-  const { business, outlets, outletId, hasFeature } = useAuth();
+  const { business, outlets, outletId, hasFeature, can } = useAuth();
   const isRestaurant = RESTAURANT_TYPES.includes(business?.business_type);
+  const retail = RETAIL_TYPES.includes(business?.business_type);
+  const [autoSku, setAutoSku] = useState(false);
+  const [matches, setMatches] = useState(null);   // retail: product ids the server's search found (names, SKU, barcodes, aliases, codes)
   const multiOutlet = outlets.length > 1;
   const multiBrand = hasFeature('multi_brand');
   const [products, setProducts] = useState(null);
@@ -683,6 +763,16 @@ const ProductsPage = () => {
     } catch (caught) { setError(caught.message); }
   };
   useEffect(() => { load(); }, [outletId, isRestaurant, multiBrand]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (retail) api('/retail/settings').then((s) => setAutoSku(Boolean(s.auto_sku_active))).catch(() => setAutoSku(false)); }, [retail]);
+  // retail search asks the server, so an alias, a supplier code or a pasted barcode finds the product too
+  useEffect(() => {
+    const text = search.trim();
+    if (!retail || !text) { setMatches(null); return undefined; }
+    const timer = setTimeout(() => {
+      api(`/products?status=all&limit=500&search=${encodeURIComponent(text)}`).then((rows) => setMatches(new Set(rows.map((r) => r.product_id)))).catch(() => setMatches(null));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search, retail]);
   const changed = () => { setRefreshKey((k) => k + 1); load(); };
   const open = (id) => setParams(id ? { p: String(id) } : {});
 
@@ -700,7 +790,7 @@ const ProductsPage = () => {
   const q = search.trim().toLowerCase();
   const shown = inTab
     .filter((p) => (!category || (p.category_name || 'No category') === category) && (!noCost || (p.kind === 'DISH' && !p.cost_source))
-      && (!q || p.name.toLowerCase().includes(q) || String(p.sku || '').toLowerCase().includes(q) || String(p.barcode || '') === q))
+      && (!q || (retail && matches ? matches.has(p.product_id) : p.name.toLowerCase().includes(q) || String(p.sku || '').toLowerCase().includes(q) || String(p.barcode || '') === q)))
     .sort(SORTS[sort][1]);
   const selected = all.find((p) => p.product_id === selectedId);
   const dishes = active.filter((p) => p.kind === 'DISH');
@@ -743,6 +833,7 @@ const ProductsPage = () => {
           </div>
           <div className="flex flex-wrap gap-2">
             {isRestaurant && <Button variant="secondary" onClick={() => setAction('import')}><Sparkles aria-hidden="true" className="h-4 w-4" />Menu from a photo</Button>}
+            {retail && can('settings') && <Button variant="secondary" onClick={() => setAction('settings')}>Product settings</Button>}
             <Button onClick={() => setEditing({})}><Plus aria-hidden="true" className="h-4 w-4" />Add product</Button>
           </div>
         </div>
@@ -760,7 +851,7 @@ const ProductsPage = () => {
           <label className="relative min-w-[12rem] flex-1">
             <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
             <span className="sr-only">Search products</span>
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name, SKU or barcode" className="!pl-9" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={retail ? 'Name, brand, SKU, barcode or other name' : 'Name, SKU or barcode'} className="!pl-9" />
           </label>
           <Select aria-label="Sort by" value={sort} onChange={(e) => setSort(e.target.value)} className="!w-auto">
             {Object.entries(SORTS).filter(([k]) => k !== 'margin' || tab === 'DISH' || tab === 'all').map(([k, [label]]) => <option key={k} value={k}>{label}</option>)}
@@ -810,7 +901,7 @@ const ProductsPage = () => {
 
       <section aria-label="Selected product" className={`min-h-0 min-w-0 flex-col border-line bg-surface xl:flex xl:border-l ${selectedId ? 'flex min-h-[calc(100vh-3.5rem)] xl:min-h-0' : 'hidden'}`}>
         {selected ? (
-          <ProductPanel key={selected.product_id} product={selected} refreshKey={refreshKey} groups={groups} isRestaurant={isRestaurant} multiOutlet={multiOutlet} outletId={outletId}
+          <ProductPanel key={selected.product_id} product={selected} refreshKey={refreshKey} groups={groups} isRestaurant={isRestaurant} retail={retail} canEdit={can('products')} canMove={can('barcode_reassign')} onChanged={changed} multiOutlet={multiOutlet} outletId={outletId}
                         onEdit={() => setEditing(selected)} onAction={setAction} onArchive={() => archive(selected)} onRestore={() => restore(selected)}
                         onPhoto={() => { toast.success('Photo saved'); load(); }} onBack={() => open(null)} />
         ) : selectedId && products ? (
@@ -822,10 +913,11 @@ const ProductsPage = () => {
 
       {editing && (
         <ProductForm initial={editing.product_id ? formInitial(editing) : { ...emptyForm, brand_id: '', kind: isRestaurant && ['INGREDIENT', 'PACKAGING'].includes(tab) ? tab : 'DISH' }}
-                     categories={categories} groups={groups} brands={brands} isRestaurant={isRestaurant} onCreateCategory={createCategory} onCreateBrand={createBrand} onClose={() => setEditing(null)}
+                     categories={categories} groups={groups} brands={brands} isRestaurant={isRestaurant} retail={retail} autoSku={autoSku} onCreateCategory={createCategory} onCreateBrand={createBrand} onClose={() => setEditing(null)}
                      onSaved={(p, isNew) => { setEditing(null); toast.success(isNew ? `${p.name} added` : 'Saved'); changed(); if (isNew) open(p.product_id); }} />
       )}
       {action === 'import' && <MenuImportModal onClose={() => setAction(null)} onDone={changed} />}
+      {action === 'settings' && <RetailSettings onClose={() => setAction(null)} onChanged={(s) => setAutoSku(Boolean(s.auto_sku_active))} />}
       {action === 'outlets' && selected && <OutletPrices dish={selected} onClose={() => { setAction(null); changed(); }} />}
       {action === 'combo' && selected && <ComboEditor dish={selected} onClose={() => { setAction(null); changed(); }} />}
       {action === 'recipe' && selected && <RecipeEditor dish={selected} onClose={() => { setAction(null); changed(); }} />}

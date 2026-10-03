@@ -40,7 +40,7 @@ const trim = (value) => {
  * @param tenant    req.tenant
  * @param question  the new user message
  * @param history   earlier turns [{ role, content: string }]
- * @returns { answer, toolsUsed: [{ name, label }], usage: { input_tokens, output_tokens } }
+ * @returns { answer, toolsUsed: [{ name, label }], usage: { input_tokens, output_tokens }, model }
  */
 export const ask = async ({ tenant, question, history = [] }) => {
   const [today, outlet] = await Promise.all([
@@ -53,15 +53,19 @@ export const ask = async ({ tenant, question, history = [] }) => {
   const messages = [...history.map((m) => ({ role: m.role, content: m.content })), { role: 'user', content: question }];
   const usage = { input_tokens: 0, output_tokens: 0 };
   const toolsUsed = [];
+  let model;
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
-    const reply = await complete({ system, messages, tools });
+    // 'reasoning': deciding which of a dozen tools answer a nuanced question, then synthesising the
+    // result, is the one Flow AI job worth the strongest (and slowest/costliest) tier.
+    const reply = await complete({ system, messages, tools, tier: 'reasoning' });
+    model = reply.model;
     usage.input_tokens += reply.usage?.input_tokens ?? 0;
     usage.output_tokens += reply.usage?.output_tokens ?? 0;
 
     const calls = reply.content.filter((b) => b.type === 'tool_use');
     if (reply.stopReason !== 'tool_use' || !calls.length) {
-      return { answer: textOf(reply.content) || 'I could not put an answer together for that. Try asking it another way.', toolsUsed, usage };
+      return { answer: textOf(reply.content) || 'I could not put an answer together for that. Try asking it another way.', toolsUsed, usage, model };
     }
 
     messages.push({ role: 'assistant', content: reply.content });
@@ -78,5 +82,5 @@ export const ask = async ({ tenant, question, history = [] }) => {
     }
     messages.push({ role: 'user', content: results });
   }
-  return { answer: 'That needed more lookups than I can do in one go. Try a narrower question, such as one week or one outlet.', toolsUsed, usage };
+  return { answer: 'That needed more lookups than I can do in one go. Try a narrower question, such as one week or one outlet.', toolsUsed, usage, model };
 };

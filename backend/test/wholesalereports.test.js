@@ -192,7 +192,7 @@ t('the worker scan raises stock and overdue notices once a day and sends reminde
   const c = await addCustomer(pool, w, { name: 'Late', terms: 10 });
   await pool.query(`UPDATE customers SET phone = '9876500123' WHERE customer_id = $1`, [c]);
   const sale = await makeInvoice(w, { customer: c, lines: [{ product_id: p, quantity: 1 }] });
-  await pool.query(`UPDATE wholesale_invoice_meta SET due_date = CURRENT_DATE - 5 WHERE invoice_id = $1`, [sale.invoiceId]);
+  await pool.query(`UPDATE wholesale_invoice_meta SET due_date = business_today(business_id) - 5 WHERE invoice_id = $1`, [sale.invoiceId]);
   const first = await scans.runForBusiness(pool, w.businessId);
   assert.equal(first.stock, 1); assert.equal(first.overdue, 1);                               // the owner heard once
   const second = await scans.runForBusiness(pool, w.businessId);

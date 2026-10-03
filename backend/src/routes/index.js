@@ -17,6 +17,7 @@ import * as security from '../controllers/security.controller.js';
 import * as business from '../controllers/business.controller.js';
 import * as dashboard from '../controllers/dashboard.controller.js';
 import * as webhooks from '../controllers/webhooks.controller.js';
+import * as contact from '../controllers/contact.controller.js';
 import productsRoutes from './products.routes.js';
 import menuRoutes from './menu.routes.js';
 import brandsRoutes from './brands.routes.js';
@@ -58,6 +59,7 @@ import salonRoutes from './salon.routes.js';
 import wholesaleRoutes from './wholesale.routes.js';
 import distributorRoutes from './distributor.routes.js';
 import pharmacyRoutes from './pharmacy.routes.js';
+import retailRoutes from './retail.routes.js';
 
 const router = Router();
 
@@ -80,6 +82,7 @@ const limiter = (max, minutes, message) => rateLimit({
 const loginLimiter = limiter(10, 15, 'Too many attempts. Try again in a few minutes.');
 const signupLimiter = limiter(5, 60, 'Too many accounts created from here. Try again later.');
 const resetLimiter = limiter(5, 60, 'Too many reset requests. Try again later.');
+const contactLimiter = limiter(5, 60, 'Too many messages sent. Try again later.');
 
 /* ── Public ─────────────────────────────────────────────────────────────── */
 
@@ -90,6 +93,7 @@ router.post('/auth/verify-email', loginLimiter, auth.verifyEmailOtp);
 router.post('/auth/resend-email-otp', loginLimiter, auth.resendEmailOtp);
 router.post('/auth/forgot-password', resetLimiter, auth.forgotPassword);
 router.post('/auth/reset-password', resetLimiter, auth.resetPassword);
+router.post('/contact', contactLimiter, contact.send);
 
 /* The public pricing page reads this. Prices live in the database so they can
    change without a deploy — see the note in database.js. */
@@ -193,6 +197,7 @@ router.use('/distributor', distributorRoutes);   // the distributor layer: princ
 router.use('/wholesale', wholesaleRoutes);   // the wholesale / distribution module (WHOLESALE and DISTRIBUTOR businesses only)
 router.use('/salon', salonRoutes);          // the salon module (salon businesses only)
 router.use('/pharmacy', pharmacyRoutes);    // the pharmacy module (PHARMACY businesses only)
+router.use('/retail', retailRoutes);        // supermarket / retail settings (SUPERMARKET and RETAIL businesses only)
 
 /* ── Platform administration — not a tenant, sits outside the business
    model entirely; see admin.routes.js for its own auth gate. ──────────── */
