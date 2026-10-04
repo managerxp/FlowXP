@@ -13,20 +13,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
-  ArrowLeftRight, Boxes, CalendarClock, ChartColumn, ChartLine, ChefHat, ChevronDown, ClipboardList, FileText, Gift,
-  History, Landmark, LayoutDashboard, LayoutGrid, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
+  ArrowLeftRight, BadgePercent, Boxes, CalendarClock, CalendarDays, ChartColumn, ChartLine, ChefHat, ChevronDown, ClipboardList, FileText, Gift,
+  History, Landmark, LayoutDashboard, LayoutGrid, Lock, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
-  TrendingUp, Truck, UserRound, Users, Wallet, X
+  Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X, Warehouse, PackageCheck, Undo2, HandCoins, ChartBar, ShoppingBag, Tags,
+  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Avatar, Button, Logo, useToast } from '../components/ui.jsx';
+import { Avatar, Button, EmptyState, Logo, PageLoader, useToast } from '../components/ui.jsx';
 import { setPrintErrorHandler } from '../lib/printing.js';
 import { ErrorBoundary } from '../components/ErrorBoundary.jsx';
 import NotificationBell from '../components/NotificationBell.jsx';
 import { InstallButton, OfflineStatus } from '../components/OfflineStatus.jsx';
 import CommandPalette from '../components/CommandPalette.jsx';
 import IncomingDeliveryAlert from '../components/IncomingDeliveryAlert.jsx';
-import { RESTAURANT_TYPES } from '../lib/business.js';
+import { PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
 
 /*
  * The sidebar, grouped by the job rather than listed alphabetically: that
@@ -34,12 +35,26 @@ import { RESTAURANT_TYPES } from '../lib/business.js';
  *
  * `types` restricts an item to certain business types (a salon has no use
  * for a kitchen screen), `roles` to certain roles, `multiOutlet` to
- * businesses with more than one outlet. Absent means "everyone".
+ * businesses with more than one outlet. Absent means "everyone". `more` keeps
+ * an item out of the main list and under "More" (the daily screens stay short).
  */
 /* A cloud kitchen has no dine-in seating — it cooks for delivery/takeaway only — so Tables and
    Reservations are the two RESTAURANT_TYPES screens it doesn't need, unlike Kitchen/Orders/Modifiers/
    Integrations which every restaurant-family type (including it) still does. */
 const DINE_IN_TYPES = RESTAURANT_TYPES.filter((t) => t !== 'CLOUD_KITCHEN');
+
+const SALON = ['SALON'];
+const WHOLESALE = WHOLESALE_TYPES;
+const PHARMACY = PHARMACY_TYPES;
+const RETAIL = RETAIL_TYPES;
+
+/* The header's business/outlet pickers: a native select dressed to match the search box (room for an icon on the
+   left and our chevron on the right). */
+const PICKER = 'h-9 w-full cursor-pointer appearance-none truncate rounded-lg border border-line bg-surface-2 pl-8 pr-8 text-small '
+  + 'transition-colors duration-(--duration-fast) hover:border-line-strong hover:bg-surface focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-3 focus:ring-brand-500/15 pointer-coarse:h-11';
+const initials = (name = '') => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+/* the generic stock, buying and customer screens give way to the wholesale ones for a wholesaler */
+const NOT_SALON_OR_WHOLESALE = [...SALON, ...WHOLESALE];
 
 const NAV_GROUPS = [
   {
@@ -49,29 +64,80 @@ const NAV_GROUPS = [
   {
     label: 'Sell',
     items: [
-      { to: '/app/billing', label: 'Billing', icon: ReceiptText, end: true, permission: 'billing' },
-      { to: '/app/billing/invoices', label: 'Invoices', icon: FileText, permission: 'billing' },
+      { to: '/app/billing', label: 'Billing', icon: ReceiptText, end: true, permission: 'billing', notTypes: [...SALON, ...PHARMACY] },
+      { to: '/app/billing/invoices', label: 'Invoices', icon: FileText, permission: 'billing', more: true },
       { to: '/app/orders', label: 'Orders', icon: ClipboardList, types: RESTAURANT_TYPES, anyPermission: ['billing', 'kitchen'] },
-      { to: '/app/payments', label: 'Payments', icon: Wallet, permission: 'payments' }
+      { to: '/app/payments', label: 'Payments', icon: Wallet, permission: 'payments', more: true }
+    ]
+  },
+  {
+    label: 'Wholesale',
+    items: [
+      { to: '/app/wholesale/orders', label: 'Sales orders', icon: ClipboardList, types: WHOLESALE, permission: 'sales_orders', feature: 'wholesale_orders' },
+      { to: '/app/wholesale/fulfilment', label: 'Warehouse & delivery', icon: PackageCheck, types: WHOLESALE, permission: 'fulfilment', feature: 'wholesale_fulfilment' },
+      { to: '/app/wholesale/customers', label: 'Customers', icon: UserRound, types: WHOLESALE, anyPermission: ['customers', 'sales_orders', 'payments'] },
+      { to: '/app/wholesale/products', label: 'Products & pricing', icon: Tags, types: WHOLESALE, anyPermission: ['products', 'pricing', 'sales_orders', 'purchases', 'inventory'] },
+      { to: '/app/wholesale/inventory', label: 'Inventory', icon: Warehouse, types: WHOLESALE, anyPermission: ['inventory', 'fulfilment', 'purchases', 'sales_orders'] },
+      { to: '/app/wholesale/purchasing', label: 'Purchasing', icon: ShoppingBag, types: WHOLESALE, anyPermission: ['purchases', 'payments'] },
+      { to: '/app/wholesale/suppliers', label: 'Suppliers', icon: Truck, types: WHOLESALE, anyPermission: ['suppliers', 'purchases'] },
+      { to: '/app/wholesale/money', label: 'Receivables & payables', icon: HandCoins, types: WHOLESALE, anyPermission: ['payments', 'reports'] },
+      { to: '/app/wholesale/returns', label: 'Returns', icon: Undo2, types: WHOLESALE, anyPermission: ['refunds', 'inventory', 'purchases'] }
+    ]
+  },
+  {
+    label: 'Distributor',
+    items: [
+      { to: '/app/distributor/field', label: 'Field sales', icon: Smartphone, types: WHOLESALE, distributor: true, permission: 'field_sales' },
+      { to: '/app/distributor/principals', label: 'Principals & brands', icon: Factory, types: WHOLESALE, distributor: true, anyPermission: ['principals', 'products', 'purchases', 'reports'] },
+      { to: '/app/distributor/territories', label: 'Territories & beats', icon: MapPinned, types: WHOLESALE, distributor: true, anyPermission: ['territories', 'field_sales', 'reports'] },
+      { to: '/app/distributor/team', label: 'Sales team & targets', icon: Target, types: WHOLESALE, distributor: true, anyPermission: ['targets', 'territories', 'reports', 'field_sales'] },
+      { to: '/app/distributor/schemes', label: 'Schemes', icon: Percent, types: WHOLESALE, distributor: true, anyPermission: ['schemes', 'sales_orders', 'field_sales', 'reports'] },
+      { to: '/app/distributor/vehicles', label: 'Vehicle stock', icon: Container, types: WHOLESALE, distributor: true, anyPermission: ['vehicles', 'field_sales', 'reports'] }
+    ]
+  },
+  {
+    label: 'Salon',
+    items: [
+      { to: '/app/salon/appointments', label: 'Appointments', icon: CalendarDays, types: SALON, permission: 'appointments', feature: 'salon_appointments' },
+      { to: '/app/salon/pos', label: 'Billing', icon: ReceiptText, types: SALON, permission: 'billing' },
+      { to: '/app/salon/clients', label: 'Clients', icon: UserRound, types: SALON, anyPermission: ['customers', 'billing', 'appointments'] },
+      { to: '/app/salon/services', label: 'Services', icon: Scissors, types: SALON, permission: 'products' },
+      { to: '/app/salon/memberships', label: 'Memberships & offers', icon: BadgePercent, types: SALON, permission: 'products' },
+      { to: '/app/salon/team', label: 'Team & commission', icon: Users, types: SALON, anyPermission: ['staff_commission', 'appointments'] },
+      { to: '/app/salon/stock', label: 'Stock & alerts', icon: Boxes, types: SALON, anyPermission: ['inventory', 'reports'] }
+    ]
+  },
+  {
+    label: 'Pharmacy',
+    items: [
+      { to: '/app/pharmacy/pos', label: 'Billing', icon: ReceiptText, types: PHARMACY, permission: 'billing' },
+      { to: '/app/pharmacy/products', label: 'Products', icon: Package, types: PHARMACY, anyPermission: ['products', 'inventory', 'billing', 'purchases'] },
+      { to: '/app/pharmacy/inventory', label: 'Inventory', icon: Boxes, types: PHARMACY, anyPermission: ['inventory', 'purchases', 'billing'] },
+      { to: '/app/pharmacy/grn', label: 'Goods receipts', icon: PackageCheck, types: PHARMACY, anyPermission: ['purchases', 'inventory'] }
     ]
   },
   {
     label: 'Restaurant',
     items: [
-      { to: '/app/tables', label: 'Tables', icon: LayoutGrid, types: DINE_IN_TYPES, permission: 'billing' },
-      { to: '/app/kitchen', label: 'Kitchen', icon: ChefHat, types: RESTAURANT_TYPES, anyPermission: ['billing', 'kitchen'] },
-      { to: '/app/reservations', label: 'Reservations', icon: CalendarClock, types: DINE_IN_TYPES, permission: 'billing', feature: 'reservations' }
+      { to: '/app/tables', label: 'Tables', icon: LayoutGrid, types: DINE_IN_TYPES, permission: 'billing', feature: 'tables' },
+      { to: '/app/kitchen', label: 'Kitchen', icon: ChefHat, types: RESTAURANT_TYPES, anyPermission: ['billing', 'kitchen'], feature: 'kitchen' },
+      { to: '/app/reservations', label: 'Reservations', icon: CalendarClock, types: DINE_IN_TYPES, permission: 'billing', feature: 'reservations', more: true }
     ]
   },
   {
     label: 'Stock',
     items: [
-      { to: '/app/products', label: 'Products', icon: Package, permission: 'products' },
-      { to: '/app/modifiers', label: 'Options & add-ons', icon: SlidersHorizontal, types: RESTAURANT_TYPES, permission: 'products' },
-      { to: '/app/inventory', label: 'Inventory', icon: Boxes, permission: 'inventory' },
-      { to: '/app/purchases', label: 'Purchases', icon: ShoppingCart, permission: 'purchases', feature: 'purchases' },
-      { to: '/app/suppliers', label: 'Suppliers', icon: Truck, permission: 'suppliers', feature: 'purchases' },
-      { to: '/app/stock-requests', label: 'Stock requests', icon: ArrowLeftRight, types: RESTAURANT_TYPES, multiOutlet: true, permission: 'inventory' }
+      { to: '/app/products', label: 'Products', icon: Package, permission: 'products', notTypes: [...WHOLESALE, ...PHARMACY] },
+      { to: '/app/modifiers', label: 'Options & add-ons', icon: SlidersHorizontal, types: RESTAURANT_TYPES, permission: 'products', more: true },
+      // a supermarket works from the Stock center (scan in, count, expiry, import); Inventory stays for single-item changes
+      { to: '/app/stock', label: 'Stock center', icon: Warehouse, types: RETAIL, permission: 'inventory' },
+      { to: '/app/inventory', label: 'Inventory', icon: Boxes, permission: 'inventory', notTypes: [...WHOLESALE, ...PHARMACY, ...RETAIL] },
+      { to: '/app/inventory', label: 'Adjust & wastage', icon: Boxes, types: RETAIL, permission: 'inventory', more: true },
+      // pharmacy's GRN is the only receiving document it has — no generic Purchase Order screen for it (see
+      // pharmacy.routes.js's header note: no PO route exists anywhere in that module, by design)
+      { to: '/app/purchases', label: 'Purchases', icon: ShoppingCart, permission: 'purchases', feature: 'purchases', notTypes: [...WHOLESALE, ...PHARMACY], more: true },
+      { to: '/app/suppliers', label: 'Suppliers', icon: Truck, permission: 'suppliers', feature: 'purchases', notTypes: WHOLESALE, more: true },
+      { to: '/app/stock-requests', label: 'Stock requests', icon: ArrowLeftRight, types: RESTAURANT_TYPES, multiOutlet: true, permission: 'inventory', more: true }
     ]
   },
   {
@@ -80,45 +146,46 @@ const NAV_GROUPS = [
       // every signed-in team member may look a customer up (billing/loyalty need this) — reading
       // customers has no permission gate server-side. Editing needs 'customers' and is rejected
       // there if not; CustomersPage does not yet hide its own Edit/Add buttons for a role without it.
-      { to: '/app/customers', label: 'Customers', icon: UserRound },
-      { to: '/app/loyalty', label: 'Loyalty & coupons', icon: Gift, roles: ['OWNER', 'ADMIN'], feature: 'loyalty' },
-      { to: '/app/messaging', label: 'Messaging', icon: MessageSquare, roles: ['OWNER', 'ADMIN'], feature: 'messaging' },
-      { to: '/app/reviews', label: 'Reviews', icon: Star, roles: ['OWNER', 'ADMIN'], permission: 'settings', feature: 'reviews' }
+      { to: '/app/customers', label: 'Customers', icon: UserRound, notTypes: NOT_SALON_OR_WHOLESALE },
+      { to: '/app/loyalty', label: 'Loyalty & coupons', icon: Gift, roles: ['OWNER', 'ADMIN'], feature: 'loyalty', more: true },
+      { to: '/app/messaging', label: 'Messaging', icon: MessageSquare, roles: ['OWNER', 'ADMIN'], feature: 'messaging', more: true },
+      { to: '/app/reviews', label: 'Reviews', icon: Star, roles: ['OWNER', 'ADMIN'], permission: 'settings', feature: 'reviews', more: true }
     ]
   },
   {
     label: 'Business',
     items: [
-      { to: '/app/reports', label: 'Reports', icon: ChartColumn, permission: 'reports' },
-      { to: '/app/profitability', label: 'Profitability', icon: TrendingUp, types: RESTAURANT_TYPES, permission: 'reports', feature: 'advanced_reports' },
-      { to: '/app/forecast', label: 'Forecast', icon: ChartLine, types: RESTAURANT_TYPES, permission: 'reports', feature: 'advanced_reports' },
-      { to: '/app/leakage', label: 'Leakage', icon: ShieldAlert, types: RESTAURANT_TYPES, permission: 'settings', feature: 'advanced_reports' },
-      { to: '/app/expenses', label: 'Expenses', icon: Receipt, permission: 'expenses', feature: 'expenses' },
-      { to: '/app/gst', label: 'GST filing', icon: Landmark, roles: ['OWNER', 'ADMIN'] }
+      { to: '/app/reports', label: 'Reports', icon: ChartColumn, permission: 'reports', notTypes: NOT_SALON_OR_WHOLESALE },
+      { to: '/app/wholesale/reports', label: 'Reports', icon: ChartBar, types: WHOLESALE, permission: 'reports' },
+      { to: '/app/salon/reports', label: 'Reports', icon: ChartColumn, types: SALON, permission: 'reports' },
+      { to: '/app/profitability', label: 'Profitability', icon: TrendingUp, types: RESTAURANT_TYPES, permission: 'reports', feature: 'advanced_reports', more: true },
+      { to: '/app/forecast', label: 'Forecast', icon: ChartLine, types: RESTAURANT_TYPES, permission: 'reports', feature: 'advanced_reports', more: true },
+      { to: '/app/leakage', label: 'Leakage', icon: ShieldAlert, types: RESTAURANT_TYPES, permission: 'settings', feature: 'advanced_reports', more: true },
+      { to: '/app/expenses', label: 'Expenses', icon: Receipt, permission: 'expenses', feature: 'expenses', more: true },
+      { to: '/app/gst', label: 'GST filing', icon: Landmark, roles: ['OWNER', 'ADMIN'], more: true },
+      { to: '/app/ai', label: 'Flow AI', icon: Sparkles, permission: 'ai', feature: 'ai' }
     ]
-  },
-  {
-    label: 'Intelligence',
-    items: [{ to: '/app/ai', label: 'Flow AI', icon: Sparkles, permission: 'ai', feature: 'ai' }]
   },
   {
     label: 'Team',
     items: [
-      { to: '/app/outlets', label: 'Outlets', icon: Store, roles: ['OWNER', 'ADMIN'], types: RESTAURANT_TYPES },
+      { to: '/app/outlets', label: 'Outlets', icon: Store, roles: ['OWNER', 'ADMIN'], types: [...RESTAURANT_TYPES, ...WHOLESALE, ...PHARMACY], more: true },
       { to: '/app/staff', label: 'Staff', icon: Users, roles: ['OWNER', 'ADMIN'] },
-      { to: '/app/activity', label: 'Activity log', icon: History, roles: ['OWNER', 'ADMIN'] }
+      { to: '/app/activity', label: 'Activity log', icon: History, roles: ['OWNER', 'ADMIN'], more: true }
     ]
   }
 ];
 
 /* Pinned to the bottom of the sidebar. */
 const SYSTEM_ITEMS = [
-  { to: '/app/integrations', label: 'Integrations', icon: Plug, types: RESTAURANT_TYPES, permission: 'settings' },
-  { to: '/app/settlements', label: 'Settlements', icon: ArrowLeftRight, types: RESTAURANT_TYPES, permission: 'settings', feature: 'integrations' },
+  { to: '/app/integrations', label: 'Integrations', icon: Plug, types: RESTAURANT_TYPES, permission: 'settings', more: true },
+  { to: '/app/settlements', label: 'Settlements', icon: ArrowLeftRight, types: RESTAURANT_TYPES, permission: 'settings', feature: 'integrations', more: true },
   // personal account security (password, 2FA, sessions) — every role manages their own
-  { to: '/app/security', label: 'Security', icon: Shield },
+  { to: '/app/security', label: 'Security', icon: Shield, more: true },
   // the business's own identity/GSTIN/logo can only be SAVED by the owner (see business.routes.js),
   // so showing it to anyone else is a form they can look at but never use
+  { to: '/app/wholesale/settings', label: 'Wholesale settings', icon: SlidersHorizontal, types: WHOLESALE, permission: 'settings' },
+  { to: '/app/salon/settings', label: 'Salon settings', icon: SlidersHorizontal, types: SALON, permission: 'settings' },
   { to: '/app/settings', label: 'Settings', icon: Settings, roles: ['OWNER'] }
 ];
 
@@ -135,7 +202,7 @@ const NavItem = ({ item, collapsed, onNavigate }) => {
       onClick={onNavigate}
       title={collapsed ? item.label : undefined}
       className={({ isActive }) =>
-        `group relative flex h-9 items-center gap-3 rounded-lg px-2.5 text-small transition-colors duration-(--duration-fast) ${
+        `nav-item group relative flex items-center gap-3 rounded-lg px-2.5 text-small transition-colors duration-(--duration-fast) ${
           isActive ? 'bg-brand-50 font-semibold text-brand-700' : 'text-ink-700 hover:bg-surface-2 hover:text-ink-900'
         } ${collapsed ? 'lg:justify-center lg:px-0' : ''}`
       }
@@ -168,7 +235,7 @@ const ProfileMenu = ({ user, role, onSignOut }) => {
   return (
     <div className="relative" ref={box}>
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="menu"
-              className="flex items-center gap-2 rounded-lg py-1 pl-1 pr-1.5 hover:bg-surface-2 md:pr-2">
+              className="flex items-center gap-2 rounded-lg py-1 pl-1 pr-1.5 hover:bg-surface-2 pointer-coarse:min-h-11 pointer-coarse:min-w-11 md:pr-2">
         <Avatar name={user.name} size="sm" />
         <span className="hidden max-w-32 truncate text-small font-medium text-ink-900 md:inline">{user.name}</span>
         <ChevronDown aria-hidden="true" className="hidden h-4 w-4 text-ink-400 md:block" />
@@ -239,6 +306,9 @@ const AppShell = () => {
   useEffect(() => { setPrintErrorHandler((message) => toast.error(message)); return () => setPrintErrorHandler(null); }, [toast]);
   const [navOpen, setNavOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readCollapsed);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef(null);
+  const [moreClosedAt, setMoreClosedAt] = useState(null);   // the page where the person folded More, so it stays folded there
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   const toggleCollapsed = () => setCollapsed((v) => {
@@ -256,13 +326,16 @@ const AppShell = () => {
     return () => document.removeEventListener('keydown', onKey);
   }, []);
   useEffect(() => { setNavOpen(false); }, [location.pathname]);
+  // keep the current page's link visible in a long sidebar (a page under "More" opens that list below the fold)
+  useEffect(() => { document.querySelector('aside [aria-current="page"]')?.scrollIntoView({ block: 'nearest' }); }, [location.pathname, navOpen]);
 
   /* Wait for /auth/me before deciding. Without this, a page refresh bounces a
      signed-in user to /login for the half-second the request takes. */
   if (loading) {
     return (
-      <div className="flex min-h-full items-center justify-center bg-page">
-        <p className="text-small text-ink-500">Loading FlowXP…</p>
+      <div className="flex min-h-full flex-col items-center justify-center gap-2 bg-page">
+        <Logo />
+        <PageLoader label="Loading FlowXP…" compact />
       </div>
     );
   }
@@ -277,6 +350,8 @@ const AppShell = () => {
   if (!business) return <Navigate to="/app/onboarding" replace />;
 
   const allowed = (item) => (!item.types || item.types.includes(business.business_type))
+    && (!item.distributor || business.distributor_enabled)
+    && (!item.notTypes || !item.notTypes.includes(business.business_type))
     && (!item.roles || item.roles.includes(business.role))
     && (!item.multiOutlet || outlets.length > 1)
     && (!item.permission || can(item.permission))
@@ -290,6 +365,14 @@ const AppShell = () => {
     && (!item.feature || hasFeature(item.feature));
   const groups = NAV_GROUPS.map((group) => ({ ...group, items: group.items.filter(allowed) })).filter((group) => group.items.length > 0);
   const systemItems = SYSTEM_ITEMS.filter(allowed);
+  /* The sidebar shows the daily screens; the rest sit under "More" (still one click away, and always in Ctrl K). */
+  const mainGroups = groups.map((g) => ({ ...g, items: g.items.filter((i) => !i.more) })).filter((g) => g.items.length > 0);
+  // under "More" the items keep their sections (Stock, Customers, Business...) instead of one long list
+  const moreGroups = [...groups.map((g) => ({ label: g.label || 'Overview', items: g.items.filter((i) => i.more) })), { label: 'System', items: systemItems.filter((i) => i.more) }].filter((g) => g.items.length > 0);
+  const moreItems = moreGroups.flatMap((g) => g.items);
+  const pinnedItems = systemItems.filter((i) => !i.more);
+  const onMorePage = moreItems.some((i) => location.pathname === i.to || location.pathname.startsWith(`${i.to}/`));
+  const showMore = moreOpen || (onMorePage && moreClosedAt !== location.pathname);
 
   /* The sidebar hides a link this role can't use, but a typed or bookmarked URL still
      reaches the route — this is the same policy, checked again for whichever nav entry
@@ -300,6 +383,13 @@ const AppShell = () => {
     .filter((i) => location.pathname === i.to || location.pathname.startsWith(`${i.to}/`))
     .sort((a, b) => b.to.length - a.to.length)[0];
   const blocked = owner && !accessible(owner);
+  /* Fit, checked the same way: a typed URL for a screen made for another kind of business (the retail stock
+     center opened by a pharmacy) would load and then fail against an API that only serves that trade. Several
+     nav entries can share a path (Inventory is listed per trade), so the screen fits if any of them does. */
+  const fits = (item) => (!item.types || item.types.includes(business.business_type))
+    && (!item.notTypes || !item.notTypes.includes(business.business_type))
+    && (!item.distributor || business.distributor_enabled);
+  const notHere = owner && !blocked && !allItems.filter((i) => i.to === owner.to).some(fits);
   const paletteItems = [
     ...groups.flatMap((g) => g.items.map((i) => ({ ...i, group: g.label || 'Overview' }))),
     ...systemItems.map((i) => ({ ...i, group: 'System' }))
@@ -323,7 +413,7 @@ const AppShell = () => {
         >
           <div className={`flex h-14 shrink-0 items-center justify-between border-b border-line px-4 ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}>
             <Link to="/app" aria-label="FlowXP dashboard" className={collapsed ? 'lg:hidden' : ''}><Logo /></Link>
-            <button type="button" onClick={closeNav} aria-label="Close menu" className="rounded-lg p-1.5 text-ink-500 hover:bg-surface-2 lg:hidden">
+            <button type="button" onClick={closeNav} aria-label="Close menu" className="rounded-lg p-1.5 text-ink-500 hover:bg-surface-2 pointer-coarse:p-3 lg:hidden">
               <X className="h-5 w-5" />
             </button>
             <button type="button" onClick={toggleCollapsed} aria-label={collapsed ? 'Expand the menu' : 'Collapse the menu'} title={collapsed ? 'Expand the menu' : 'Collapse the menu'}
@@ -332,61 +422,96 @@ const AppShell = () => {
             </button>
           </div>
 
-          <nav className="flex-1 overflow-y-auto px-2.5 py-3">
-            {groups.map((group) => (
-              <div key={group.label || 'overview'} className={group.label ? 'mt-4' : ''}>
+          <nav className="nav-scroll flex-1 overflow-y-auto px-2.5 py-2">
+            {mainGroups.map((group) => (
+              <div key={group.label || 'overview'} className={group.label ? 'nav-group' : ''}>
                 {group.label && (
-                  <p className={`mb-1 px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-400 ${collapsed ? 'lg:sr-only' : ''}`}>{group.label}</p>
+                  <p className={`nav-label px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-400 ${collapsed ? 'lg:sr-only' : ''}`}>{group.label}</p>
                 )}
                 <div className="space-y-0.5">
                   {group.items.map((item) => <NavItem key={item.to} item={item} collapsed={collapsed} onNavigate={closeNav} />)}
                 </div>
               </div>
             ))}
+            {moreItems.length > 0 && (
+              <div ref={moreRef} className="nav-group">
+                <button type="button" onClick={() => { if (showMore) { setMoreOpen(false); setMoreClosedAt(location.pathname); } else { setMoreOpen(true); setMoreClosedAt(null); setTimeout(() => moreRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 30); } }} aria-expanded={showMore} aria-controls="nav-more"
+                        title={collapsed ? 'More' : undefined}
+                        className={`nav-item flex w-full items-center gap-3 rounded-lg px-2.5 text-small text-ink-700 transition-colors duration-(--duration-fast) hover:bg-surface-2 hover:text-ink-900 ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}>
+                  <Ellipsis aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-ink-400" />
+                  <span className={`flex-1 text-left ${collapsed ? 'lg:sr-only' : ''}`}>More</span>
+                  {!collapsed && <ChevronDown aria-hidden="true" className={`h-4 w-4 text-ink-400 transition-transform duration-(--duration-fast) ${showMore ? 'rotate-180' : ''}`} />}
+                </button>
+                {showMore && (
+                  <div id="nav-more" className="fade-in mt-1 border-t border-line pt-0.5">
+                    {moreGroups.map((group) => (
+                      <div key={group.label} className="nav-group">
+                        <p className={`nav-label px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-400 ${collapsed ? 'lg:sr-only' : ''}`}>{group.label}</p>
+                        <div className="space-y-0.5">
+                          {group.items.map((item) => <NavItem key={item.to} item={item} collapsed={collapsed} onNavigate={closeNav} />)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {/* A soft edge where the list runs under the pinned items, so a
+                half-visible group label reads as "more below", not as a
+                clipped layout. Sticky: once scrolled to the end it sits in
+                the padding under the last link and covers nothing. */}
+            <div aria-hidden="true" className="pointer-events-none sticky bottom-0 -mx-2.5 h-0"><div className="absolute inset-x-0 bottom-0 h-5 bg-linear-to-t from-surface to-transparent" /></div>
           </nav>
 
-          <div className="shrink-0 space-y-0.5 border-t border-line px-2.5 py-3">
-            {systemItems.map((item) => <NavItem key={item.to} item={item} collapsed={collapsed} onNavigate={closeNav} />)}
+          <div className="shrink-0 space-y-0.5 border-t border-line px-2.5 py-2">
+            {pinnedItems.map((item) => <NavItem key={item.to} item={item} collapsed={collapsed} onNavigate={closeNav} />)}
           </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex min-h-14 items-center gap-2 border-b border-line bg-surface/95 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-sm sm:gap-3 sm:px-5 print:hidden">
             <button type="button" onClick={() => setNavOpen(true)} aria-label="Open menu" aria-expanded={navOpen}
-                    className="rounded-lg p-2 text-ink-700 hover:bg-surface-2 lg:hidden">
+                    className="rounded-lg p-2 text-ink-700 hover:bg-surface-2 pointer-coarse:p-3 lg:hidden">
               <Menu className="h-5 w-5" />
             </button>
 
             {/* Business and outlet: native selects, keyboard-friendly and native on a phone. */}
             {businesses.length > 1 ? (
-              <label className="min-w-0">
+              <label className="relative min-w-0">
                 <span className="sr-only">Business</span>
+                <Store aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
                 <select value={businessId ?? ''} onChange={(e) => switchBusiness(Number(e.target.value))}
-                        className="h-9 max-w-52 truncate rounded-lg border border-line-strong bg-surface px-3 text-small font-semibold text-ink-900">
+                        className={`${PICKER} max-w-56 font-semibold text-ink-900`}>
                   {businesses.map((b) => <option key={b.business_id} value={b.business_id}>{b.name}</option>)}
                 </select>
+                <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
               </label>
             ) : (
-              <p className="hidden truncate text-small font-semibold text-ink-900 sm:block">{business.name}</p>
+              <p className="hidden min-w-0 items-center gap-2 sm:flex">
+                <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-50 text-[11px] font-bold text-brand-700">{initials(business.name)}</span>
+                <span className="truncate text-small font-semibold text-ink-900">{business.name}</span>
+              </p>
             )}
 
             {outlets.length > 1 && (
               canViewAll ? (
-                <label className="min-w-0">
+                <label className="relative min-w-0">
                   <span className="sr-only">Outlet</span>
+                  <MapPinned aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
                   <select value={outletId ?? ''} onChange={(e) => switchOutlet(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                          className="h-9 max-w-44 truncate rounded-lg border border-line-strong bg-surface px-3 text-small font-medium text-ink-700">
+                          className={`${PICKER} max-w-48 font-medium text-ink-700`}>
                     {outlets.map((o) => <option key={o.branch_id} value={o.branch_id}>{o.name}</option>)}
                     <option value="all">All outlets</option>
                   </select>
+                  <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
                 </label>
               ) : (
-                <span className="truncate rounded-lg bg-surface-2 px-3 py-1.5 text-small font-medium text-ink-700">{outlets[0]?.name}</span>
+                <span className="flex min-w-0 items-center gap-1.5 truncate rounded-lg bg-surface-2 px-3 py-1.5 text-small font-medium text-ink-700"><MapPinned aria-hidden="true" className="h-4 w-4 shrink-0 text-ink-400" />{outlets[0]?.name}</span>
               )
             )}
 
             <button type="button" onClick={() => setPaletteOpen(true)}
-                    className="ml-auto flex h-9 items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 text-small text-ink-500 hover:border-line-strong md:ml-4 md:w-64 lg:w-80">
+                    className="ml-auto flex h-9 items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 text-small text-ink-500 hover:border-line-strong pointer-coarse:h-11 md:ml-4 md:w-64 lg:w-80">
               <Search aria-hidden="true" className="h-4 w-4" />
               <span className="hidden md:inline">Go to…</span>
               <kbd className="ml-auto hidden rounded border border-line bg-surface px-1.5 text-[11px] text-ink-500 md:block">Ctrl K</kbd>
@@ -404,11 +529,21 @@ const AppShell = () => {
               does not follow you to the next. */}
           <main className="flex-1 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 lg:p-8">
             {blocked ? (
-              <div className="mx-auto mt-16 max-w-sm text-center">
-                <p className="text-body font-semibold text-ink-900">You don't have access to this</p>
-                <p className="mt-1 text-small text-ink-500">Ask an owner or admin if you need it.</p>
-                <Link to="/app" className="mt-4 inline-block text-small font-medium text-brand-600 hover:underline">Back to Dashboard</Link>
-              </div>
+              <EmptyState
+                icon={Lock}
+                className="mx-auto mt-10 max-w-md"
+                title="You don't have access to this"
+                body="Ask an owner or admin if you need it."
+                action={<Button to="/app" variant="secondary" size="sm">Back to Dashboard</Button>}
+              />
+            ) : notHere ? (
+              <EmptyState
+                icon={Compass}
+                className="mx-auto mt-10 max-w-md"
+                title="This screen is for another kind of business"
+                body={`${owner.label} isn't part of how ${business.name} is set up. Everything that applies to it is in the sidebar.`}
+                action={<Button to="/app" variant="secondary" size="sm">Back to Dashboard</Button>}
+              />
             ) : (
               <ErrorBoundary key={`${location.pathname}:${outletId ?? ''}`}><Outlet /></ErrorBoundary>
             )}

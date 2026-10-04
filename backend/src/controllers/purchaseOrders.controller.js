@@ -259,6 +259,7 @@ export const receive = async (req, res) => {
     const lines = (await client.query(
       `SELECT i.*, p.track_inventory FROM purchase_order_items i LEFT JOIN products p ON p.product_id = i.product_id WHERE i.po_id = $1 ORDER BY i.item_id FOR UPDATE OF i`, [po.po_id]
     )).rows;
+    if (lines.some((l) => Number(l.unit_factor) !== 1)) throw new OrderError(409, 'This order is in cartons or boxes. Receive it with a goods receipt (Wholesale → Purchasing).');
     const given = new Map((Array.isArray(body.items) ? body.items : []).map((x) => [Number(x.item_id), x]));
     for (const id of given.keys()) if (!lines.some((l) => l.item_id === id)) throw new OrderError(400, 'One of those lines isn’t on this order');
 
@@ -297,6 +298,17 @@ export const receive = async (req, res) => {
              VALUES ($1,$2,$3,'PURCHASE',$4,'purchase_order',$5,$6)`,
             [req.tenant.businessId, po.branch_id, r.line.product_id, r.now, po.po_id, req.auth.userId]
           );
+          // a delivery line may carry its batch number and expiry date (salon stock, cosmetics, anything that expires)
+          const extra = given.get(r.line.item_id);
+          if (extra && (extra.batch_no || extra.expiry_date)) {
+            const expiry = extra.expiry_date ? String(extra.expiry_date).slice(0, 10) : null;
+            if (expiry && !/^\d{4}-\d{2}-\d{2}$/.test(expiry)) throw new OrderError(400, 'Expiry date must be a date (YYYY-MM-DD)');
+            await client.query(
+              `INSERT INTO salon_stock_batches (business_id, branch_id, product_id, batch_no, expiry_date, qty_received, unit_cost_paise, source, reference_id, created_by)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,'PURCHASE',$8,$9)`,
+              [req.tenant.businessId, po.branch_id, r.line.product_id, extra.batch_no ? String(extra.batch_no).slice(0, 40) : null, expiry, r.now, r.cost, po.po_id, req.auth.userId]
+            );
+          }
         }
       }
     }

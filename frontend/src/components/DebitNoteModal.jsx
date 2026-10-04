@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
-import { Alert, Button, Field, Input, Modal, Select, useToast } from './ui.jsx';
+import { Alert, Button, Field, Input, Modal, Select, useToast, PageLoader } from './ui.jsx';
 
 const DebitNoteModal = ({ poId, poNumber, onClose, onDone }) => {
   const toast = useToast();
@@ -52,7 +52,7 @@ const DebitNoteModal = ({ poId, poNumber, onClose, onDone }) => {
             <option value="PRICE">A price overcharge</option>
           </Select>
         </Field>
-        {!options && !error && <p className="text-sm text-ink-400">Loading…</p>}
+        {!options && !error && <PageLoader compact />}
         {options && (
           <div className="space-y-2">
             <p className="text-xs text-ink-500">{kind === 'RETURN' ? 'Enter how many of each item go back. Stock is reduced and tax reversed at the same rate as the purchase.' : 'Enter how many units were overcharged and the extra you were charged per unit.'}</p>

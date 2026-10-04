@@ -58,7 +58,7 @@ const Finding = ({ finding, onReview }) => {
       </div>
 
       <h3 className="mt-3 text-base font-semibold text-ink-900">{finding.title}</h3>
-      <p className="mt-1.5 text-sm leading-relaxed text-ink-600">{finding.summary}</p>
+      <p className="mt-1.5 text-sm leading-relaxed text-ink-700">{finding.summary}</p>
 
       {finding.expected_value !== undefined && (
         <div className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
@@ -151,7 +151,7 @@ const LeakagePage = () => {
                 <ul className="space-y-2">
                   {data.summary.by_category.map((c) => (
                     <li key={c.category} className="grid grid-cols-[8rem_1fr_auto] items-center gap-3 text-sm">
-                      <span className="text-ink-600">{CATEGORY_LABEL[c.category] || c.category}</span>
+                      <span className="text-ink-700">{CATEGORY_LABEL[c.category] || c.category}</span>
                       <span className="h-2 overflow-hidden rounded-full bg-surface-3"><span className="block h-full rounded-full bg-brand-500" style={{ width: `${(c.potential / max) * 100}%` }} /></span>
                       <span className="font-medium text-ink-900">{formatCurrency(c.potential)}</span>
                     </li>

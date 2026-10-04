@@ -17,7 +17,7 @@ const Hub = () => (
     </div>
     <div className="py-2 sm:px-2"><Node strong title="FlowXP" body="Your bills, stock and GST" /></div>
     <div className="space-y-3">
-      <Node title="WhatsApp and SMS" body="Bills, offers, bookings" />
+      <Node title="WhatsApp and SMS" body="Coming soon" />
       <Node title="GST portal" body="GSTR-1, e-invoice, e-way" />
       <Node title="Your accountant" body="CSV exports" />
     </div>
@@ -32,8 +32,6 @@ const HARDWARE = [
 ];
 
 const CONNECTED = [
-  { title: 'WhatsApp', body: 'Bill links, booking confirmations and offers through the WhatsApp Business platform.' },
-  { title: 'SMS', body: 'The same messages by text, for customers not on WhatsApp.' },
   { title: 'Email', body: 'Purchase orders to suppliers, password resets and sign-in alerts.' },
   { title: 'GST portal', body: 'GSTR-1 JSON to upload, e-invoice and e-way bill files, IRN recorded back.' },
   { title: 'CSV export', body: 'Reports and the GST register for your accountant or spreadsheet.' },
@@ -43,8 +41,9 @@ const CONNECTED = [
 ];
 
 const COMING = [
-  { title: 'Zomato', body: 'Online orders straight into your kitchen and bills.', soon: true },
-  { title: 'Swiggy', body: 'Online orders straight into your kitchen and bills.', soon: true },
+  { title: 'WhatsApp', body: 'Bill links, booking confirmations and offers through the WhatsApp Business platform, the channel most of your customers already read.', soon: true, big: true },
+  { title: 'SMS', body: 'The same messages by text, for customers not on WhatsApp.', soon: true },
+  { title: 'Zomato and Swiggy', body: 'Online orders arrive straight into the kitchen and the day\'s bills, no re-typing.', soon: true, big: true },
   { title: 'ONDC and Magicpin', body: 'More order channels on the same screen.', soon: true },
   { title: 'Payment links and QR', body: 'Collect UPI and card payments inside FlowXP.', soon: true }
 ];
@@ -56,13 +55,12 @@ const STEPS = [
 ];
 
 const PrintSteps = () => (
-  <Section className="border-y border-line bg-surface" eyebrow="Printing" title="Paper when you want it, never required."
-           lead="Most businesses send the bill on WhatsApp. If you want paper, any receipt printer works through the browser, and the print agent makes it instant.">
+  <Section className="border-y border-line bg-surface"  title="Paper when you want it, never required."
+           lead="Share the bill as a link or by email. If you want paper, any receipt printer works through the browser, and the print agent makes it instant.">
     <ol className="grid gap-px overflow-hidden rounded-(--radius-panel) border border-line bg-line sm:grid-cols-3">
       {STEPS.map(([title, body], i) => (
         <Reveal as="li" key={title} index={i} className="bg-surface p-6">
-          <p className="tabular text-small font-semibold text-brand-600">{String(i + 1).padStart(2, '0')}</p>
-          <p className="mt-3 text-title font-semibold text-ink-900">{title}</p>
+          <p className="text-title font-semibold text-ink-900">{title}</p>
           <p className="mt-2 text-body text-ink-500">{body}</p>
         </Reveal>
       ))}
@@ -73,24 +71,23 @@ const PrintSteps = () => (
 const IntegrationsPage = () => (
   <>
     <PageHero
-      eyebrow="Integrations"
       title="Works with what is already on your counter."
-      lead="FlowXP works on its own from the first day. Add a printer, a scanner, WhatsApp or your accountant's files when you want them. None of them are needed to start billing."
+      lead="FlowXP works on its own from the first day. Add a printer, a scanner or your accountant's files when you want them. None of them are needed to start billing."
       points={['No special hardware to buy', 'Nothing breaks if a device is unplugged', 'Your data can always be exported']}
       visual={<Hub />}
     />
 
-    <Section eyebrow="Hardware" title="Printers, scanners and cash drawers.">
+    <Section  title="Printers, scanners and cash drawers.">
       <CellGrid items={HARDWARE} />
     </Section>
 
     <PrintSteps />
 
-    <Section eyebrow="Connected" title="Messages, GST and your accountant.">
+    <Section  title="Messages, GST and your accountant.">
       <CellGrid items={CONNECTED} />
     </Section>
 
-    <Section className="border-t border-line bg-surface" eyebrow="Coming soon" title="Online orders and payment collection."
+    <Section className="border-t border-line bg-surface"  title="Online orders and payment collection."
              lead="These are being built. They will appear here, and in your account, when they are ready to use.">
       <CellGrid items={COMING} />
     </Section>

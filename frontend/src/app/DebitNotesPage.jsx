@@ -15,7 +15,7 @@ const Detail = ({ id, onClose }) => {
       <Alert>{error}</Alert>
       {n && (
         <div className="space-y-3 text-sm">
-          <p className="text-ink-600">{n.kind === 'RETURN' ? 'Goods returned' : 'Price correction'} on {n.po_number} · {String(n.dn_date).slice(0, 10)}</p>
+          <p className="text-ink-700">{n.kind === 'RETURN' ? 'Goods returned' : 'Price correction'} on {n.po_number} · {String(n.dn_date).slice(0, 10)}</p>
           <p className="rounded-lg bg-surface-2 p-3 text-ink-700">{n.reason}</p>
           <Table>
             <Thead><Th>Item</Th><Th className="text-right">Qty</Th><Th className="text-right">Rate</Th><Th className="text-right">Tax</Th><Th className="text-right">Total</Th></Thead>

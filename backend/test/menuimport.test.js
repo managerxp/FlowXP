@@ -11,9 +11,9 @@ const { pool, skip, cleanup } = await setupTestDb();
 const { runMigrations } = await import('../src/config/migrate.js');
 const menuImport = await import('../src/controllers/menuImport.controller.js');
 const { normaliseItems, SYSTEM, TOOL } = await import('../src/modules/ai/menuScan.js');
-const { setProvider, AIProviderError } = await import('../src/modules/ai/provider.js');
+const { setProvider, setConfigured, AIProviderError } = await import('../src/modules/ai/provider.js');
 
-test.after(() => { setProvider(null); return cleanup(); });
+test.after(() => { setProvider(null); setConfigured(undefined); return cleanup(); });
 
 const fakeRes = () => ({ code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; }, set() { return this; } });
 const recorded = (items, notes = null) => ({ content: [{ type: 'tool_use', id: 't1', name: 'record_menu', input: { items, notes } }], stopReason: 'tool_use', usage: { input_tokens: 1500, output_tokens: 300 } });
@@ -72,11 +72,13 @@ test('setup', { skip }, async () => {
 });
 
 test('without an AI key the scan explains itself and nothing is sent', { skip }, async () => {
-  setProvider(null);
-  const res = await call(menuImport.scan, { files: [photo()] });
-  assert.equal(res.code, 503);
-  assert.equal(res.body.code, 'AI_NOT_CONFIGURED');
-  assert.match(res.body.message, /add products by hand/);
+  setConfigured(false);
+  try {
+    const res = await call(menuImport.scan, { files: [photo()] });
+    assert.equal(res.code, 503);
+    assert.equal(res.body.code, 'AI_NOT_CONFIGURED');
+    assert.match(res.body.message, /add products by hand/);
+  } finally { setConfigured(undefined); }
 });
 
 test('the photos and the request reach the AI service in the right shape', { skip }, async () => {

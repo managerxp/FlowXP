@@ -33,21 +33,54 @@ import { hasPlanFeature, effectiveFeatureFlags } from '../modules/planFeatures.j
  */
 export const ROLE_PERMISSIONS = {
   OWNER:   ['*'],
-  ADMIN:   ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
-            'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds'],
-  MANAGER: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
-            'payments', 'expenses', 'reports', 'ai', 'refunds'],
+  ADMIN:   ['billing', 'products', 'inventory', 'barcode_reassign', 'product_quick_add', 'purchases', 'customers', 'suppliers',
+            'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds',
+            'appointments', 'staff_commission', 'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
+            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing'],
+  MANAGER: ['billing', 'products', 'inventory', 'barcode_reassign', 'product_quick_add', 'purchases', 'customers', 'suppliers',
+            'payments', 'expenses', 'reports', 'ai', 'refunds', 'appointments', 'staff_commission',
+            'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
+            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing'],
   CASHIER: ['billing', 'customers', 'payments'],
   STAFF:   ['billing'],
   // Restaurant floor roles. WAITER can take and bill orders like STAFF; KITCHEN
   // sees and advances tickets only; INVENTORY_MANAGER runs stock and buying.
   WAITER:  ['billing'],
   KITCHEN: ['kitchen'],
-  INVENTORY_MANAGER: ['inventory', 'purchases', 'suppliers'],
+  INVENTORY_MANAGER: ['inventory', 'barcode_reassign', 'purchases', 'suppliers'],
   // A rider sees and updates the delivery orders assigned to them — same
   // narrow scope as WAITER, since orders.controller.js already gates all of
   // this behind the 'billing' permission Orders itself uses.
-  DELIVERY: ['billing']
+  DELIVERY: ['billing', 'fulfilment'],
+  // Salon floor roles. A receptionist books, bills and looks after clients; a stylist sees their own
+  // appointments (the appointments screens narrow a STYLIST to the salon_staff row linked to their login);
+  // an accountant works the money side — billing records, payments, expenses, reports and GST — and cannot
+  // change the catalogue or the team.
+  RECEPTIONIST: ['billing', 'customers', 'payments', 'appointments'],
+  STYLIST: ['appointments'],
+  ACCOUNTANT: ['billing', 'payments', 'expenses', 'gst', 'reports', 'export', 'refunds', 'collections'],
+  // Wholesale roles. Sales people take and manage orders; warehouse people pick, pack, receive and count; the
+  // purchase manager buys and approves; the accountant (above) owns money, GST and reports.
+  SALES_MANAGER: ['billing', 'customers', 'payments', 'reports', 'refunds', 'sales_orders', 'sales_cancel', 'pricing', 'export', 'territories', 'schemes', 'targets', 'field_sales', 'collections'],
+  SALES_EXECUTIVE: ['billing', 'customers', 'sales_orders', 'field_sales'],
+  WAREHOUSE_MANAGER: ['inventory', 'purchases', 'fulfilment', 'suppliers', 'vehicles'],
+  WAREHOUSE_STAFF: ['fulfilment'],
+  PURCHASE_MANAGER: ['purchases', 'suppliers', 'inventory', 'purchase_approve', 'payments', 'reports', 'principals'],
+  // Distributor roles. A field rep sells and collects for their own beat; a collection executive only collects; the
+  // delivery manager runs the vans and the drivers' work; the distributor admin runs the business day to day.
+  FIELD_SALES: ['customers', 'sales_orders', 'field_sales', 'collections'],
+  COLLECTION_EXECUTIVE: ['customers', 'collections', 'field_sales'],
+  DELIVERY_MANAGER: ['fulfilment', 'vehicles', 'inventory'],
+  DISTRIBUTOR_ADMIN: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers', 'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds',
+            'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve', 'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections'],
+  // Pharmacy roles. A pharmacist sells, views stock and dispenses against a prescription, but does not approve
+  // adjustments or edit the medicine master; sales staff is narrower still (no inventory at all — product lookups
+  // for billing ride on 'billing' itself, same as CASHIER); a GRN manager receives goods and runs suppliers but
+  // cannot approve adjustments or touch the catalogue; an auditor reads reports and the activity log only.
+  PHARMACIST: ['billing', 'inventory', 'prescriptions', 'dispensing', 'customers'],
+  SALES_STAFF: ['billing', 'customers'],
+  GRN_MANAGER: ['purchases', 'inventory', 'suppliers'],
+  AUDITOR: ['reports', 'export']
 };
 
 export const hasPermission = (tenant, permission) => {
@@ -67,35 +100,88 @@ export const hasPermission = (tenant, permission) => {
 
 /* `tv` is the user's session version: raising it (sign out everywhere, a password change or reset) ends every token
    issued before, without a denylist. Tokens from before this existed have no `tv` and count as version 0. */
-export const signToken = (user) =>
+export const signToken = (user, { expiresIn = config.jwtExpiresIn } = {}) =>
   jwt.sign(
     { sub: user.user_id, email: user.email, tv: user.token_version ?? 0 },
     config.jwtSecret,
-    { expiresIn: config.jwtExpiresIn, algorithm: 'HS256' }
+    { expiresIn, algorithm: 'HS256' }
   );
 
-/** A short-lived token that proves the password was right and only the second step is left. It is not a session. */
-export const signChallenge = (user) =>
-  jwt.sign({ sub: user.user_id, purpose: '2fa', tv: user.token_version ?? 0 }, config.jwtSecret, { expiresIn: '5m', algorithm: 'HS256' });
+/*
+ * A short-lived token that proves one step of sign-in was completed and only the next is left. It is not a
+ * session. `purpose` keeps a 2FA challenge from being replayed as an email-OTP challenge or vice versa —
+ * each readChallenge() call names the one purpose it will accept.
+ */
+export const signChallenge = (user, { purpose = '2fa', expiresIn = '5m' } = {}) =>
+  jwt.sign({ sub: user.user_id, purpose, tv: user.token_version ?? 0 }, config.jwtSecret, { expiresIn, algorithm: 'HS256' });
 
-export const readChallenge = (token) => {
+export const readChallenge = (token, purpose = '2fa') => {
   try {
     const p = jwt.verify(String(token ?? ''), config.jwtSecret, { algorithms: ['HS256'] });
-    return p.purpose === '2fa' ? p : null;
+    return p.purpose === purpose ? p : null;
   } catch { return null; }
 };
 
-const readToken = (req) => {
+/* ── The session cookie ──────────────────────────────────────────────────────
+   The browser's session is a cookie the page's own JavaScript cannot read (httpOnly), so a script injected into
+   the page could not steal it, as it could a token kept in localStorage. Secure in production (https only),
+   SameSite=Lax (not sent on another site's form posts or background requests), and scoped to /api, the only
+   place it is needed. The Authorization header still works too: the print agent, scripts and tests use it, and a
+   browser signed in before the cookie existed is moved over on its next /auth/me. */
+export const SESSION_COOKIE = 'flowxp_session';
+const cookieOptions = () => ({ httpOnly: true, secure: config.isProduction, sameSite: 'lax', path: '/api' });
+
+export const cookieValue = (req, name) => {
+  const raw = req.headers.cookie;
+  if (!raw) return null;
+  for (const part of raw.split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0 && part.slice(0, i).trim() === name) {
+      try { return decodeURIComponent(part.slice(i + 1).trim()); } catch { return null; }
+    }
+  }
+  return null;
+};
+
+/** Put a session token in the browser's cookie, for as long as the token itself is valid. */
+export const setSessionCookie = (res, token) => {
+  if (typeof res.cookie !== 'function' || !token) return;    // a test double with no cookie jar
+  const exp = jwt.decode(token)?.exp;
+  res.cookie(SESSION_COOKIE, token, { ...cookieOptions(), ...(exp ? { maxAge: exp * 1000 - Date.now() } : {}) });
+};
+
+export const clearSessionCookie = (res) => {
+  if (typeof res.clearCookie === 'function') res.clearCookie(SESSION_COOKIE, cookieOptions());
+};
+
+/* Which token came with the request, and how. The header wins, so a script with a token is never confused by a
+   stale cookie from a browser session. */
+const presented = (req) => {
   const header = req.headers.authorization || '';
-  if (!header.startsWith('Bearer ')) return null;
+  if (header.startsWith('Bearer ')) return { token: header.slice(7).trim(), via: 'header' };
+  const cookie = cookieValue(req, SESSION_COOKIE);
+  return cookie ? { token: cookie, via: 'cookie' } : { token: null, via: null };
+};
+
+const readToken = (req) => {
+  const { token, via } = presented(req);
+  if (!token) return null;
   try {
-    const payload = jwt.verify(header.slice(7).trim(), config.jwtSecret, { algorithms: ['HS256'] });
-    return payload.purpose ? null : payload;      // a half-finished sign-in (2FA challenge) is not a session
+    const payload = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
+    if (payload.purpose) return null;             // a half-finished sign-in (2FA challenge) is not a session
+    req.authVia = via;
+    return payload;
   } catch {
     // Expired, forged or malformed all mean the same thing here: no session.
     return null;
   }
 };
+
+/* Cross-site request forgery: a browser attaches a cookie on its own, so a change made with the cookie must also
+   carry X-Requested-With: FlowXP, which lib/api.js always sends and which another site's page cannot add without
+   passing CORS (refused by server.js for any origin not on the list). Reads (GET/HEAD/OPTIONS) change nothing. */
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const forged = (req) => req.authVia === 'cookie' && !SAFE_METHODS.has(req.method) && req.headers['x-requested-with'] !== 'FlowXP';
 
 /* ==========================================================================
    MIDDLEWARE
@@ -111,6 +197,9 @@ export const requireAuth = async (req, res, next) => {
   const payload = readToken(req);
   if (!payload?.sub) {
     return res.status(401).json({ success: false, message: 'Sign in to continue' });
+  }
+  if (forged(req)) {
+    return res.status(403).json({ success: false, message: 'This request did not come from the FlowXP app.' });
   }
 
   try {
@@ -140,9 +229,11 @@ export const requireAuth = async (req, res, next) => {
               -- (possibly since-changed) values — see modules/planFeatures.js and migration 0038.
               COALESCE(pv.feature_flags, p.feature_flags, '{}'::jsonb) AS feature_flags,
               COALESCE(btf.feature_flags, '{}'::jsonb) AS business_type_feature_flags,
-              COALESCE(bfo.overrides, '{}'::jsonb) AS feature_overrides
+              COALESCE(bfo.overrides, '{}'::jsonb) AS feature_overrides,
+              (b.business_type = 'DISTRIBUTOR' OR COALESCE(wss.distributor_enabled, FALSE)) AS distributor_enabled
        FROM business_users bu
        JOIN businesses b ON b.business_id = bu.business_id
+       LEFT JOIN wholesale_settings wss ON wss.business_id = b.business_id
        LEFT JOIN plans p ON p.plan_code = b.plan_code
        LEFT JOIN plan_versions pv ON pv.plan_version_id = b.plan_version_id
        LEFT JOIN business_type_features btf ON btf.business_type = b.business_type AND btf.plan_code = b.plan_code
@@ -273,7 +364,7 @@ export const withBusiness = (options = {}) => async (req, res, next) => {
     subscription: subscriptionSummary(membership),
     // whole-business feature gates — the plan AND the business type combined (either can turn
     // a feature off), checked by requirePlanFeature() below; separate from `permissions`, which is per-user
-    planFeatures: effectiveFeatureFlags([membership.feature_flags, membership.business_type_feature_flags], membership.feature_overrides)
+    planFeatures: effectiveFeatureFlags([membership.feature_flags, membership.business_type_feature_flags], membership.feature_overrides, membership.business_type)
   };
 
   /*
@@ -379,6 +470,14 @@ export const requireOwner = (req, res, next) => {
  * manages every tenant, not one, and most admin routes have no business_id
  * claim to resolve at all. Mount after requireAuth, same as requirePermission.
  */
+/** In production the console needs two-step verification: an admin without it can only reach /me and the page that sets it up. */
+export const requireAdminTwoFactor = (req, res, next) => {
+  if (config.adminRequire2fa && !req.auth?.user?.totp_enabled && req.path !== '/me') {
+    return res.status(403).json({ success: false, code: 'TWO_FACTOR_REQUIRED', message: 'Turn on two-step verification to use the admin console.' });
+  }
+  next();
+};
+
 export const requireSuperAdmin = (req, res, next) => {
   if (!req.auth?.isSuperAdmin) {
     return res.status(403).json({ success: false, message: 'Super admin access required' });

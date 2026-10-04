@@ -12,7 +12,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { PageHeader, Card, Field, Input, Select, Button, Alert, useToast } from '../components/ui.jsx';
+import { PageHeader, Card, Field, Input, Select, Button, Alert, useToast, PageLoader } from '../components/ui.jsx';
 import { getDevicePrefs, setDevicePref, testPrint } from '../lib/printing.js';
 import { COUNTRIES, regionsFor, subdivisionLabel } from '../lib/states.js';
 import PincodeHint from '../components/PincodeHint.jsx';
@@ -234,7 +234,7 @@ const BusinessSettings = () => {
     finally { setBusy(false); }
   };
 
-  if (!form) return <p className="text-sm text-ink-400">Loading…</p>;
+  if (!form) return <PageLoader compact />;
 
   return (
     <div className="mx-auto max-w-2xl">

@@ -11,12 +11,15 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import pool from '../config/database.js';
-import { requireAuth, withBusiness, requireOwner, requirePermission } from '../middleware/auth.js';
+import { requireAuth, withBusiness, requireOwner, requirePermission, clearSessionCookie } from '../middleware/auth.js';
 import * as auth from '../controllers/auth.controller.js';
+import * as oauth from '../controllers/oauth.controller.js';
 import * as security from '../controllers/security.controller.js';
 import * as business from '../controllers/business.controller.js';
 import * as dashboard from '../controllers/dashboard.controller.js';
+import * as siteAssistant from '../controllers/siteAssistant.controller.js';
 import * as webhooks from '../controllers/webhooks.controller.js';
+import * as contact from '../controllers/contact.controller.js';
 import productsRoutes from './products.routes.js';
 import menuRoutes from './menu.routes.js';
 import brandsRoutes from './brands.routes.js';
@@ -54,6 +57,11 @@ import heldBillsRoutes from './heldBills.routes.js';
 import locationsRoutes from './locations.routes.js';
 import { uploadLogo } from '../middleware/upload.js';
 import publicOrderingRoutes from './publicOrdering.routes.js';
+import salonRoutes from './salon.routes.js';
+import wholesaleRoutes from './wholesale.routes.js';
+import distributorRoutes from './distributor.routes.js';
+import pharmacyRoutes from './pharmacy.routes.js';
+import retailRoutes from './retail.routes.js';
 
 const router = Router();
 
@@ -65,25 +73,39 @@ const router = Router();
  * behind a token, which is its own limit. Blanket-limiting the whole API just
  * throttles the billing screen during a lunch rush.
  */
-const limiter = (max, minutes, message) => rateLimit({
+const limiter = (max, minutes, message, options = {}) => rateLimit({
   windowMs: minutes * 60 * 1000,
   max,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message }
+  message: { success: false, message },
+  ...options
 });
 
-const loginLimiter = limiter(10, 15, 'Too many attempts. Try again in a few minutes.');
+/* Only FAILED attempts count against an address: a restaurant with a dozen staff behind one router signs in every
+   morning, and those successes must not use up the allowance a guesser would. Each account has its own lockout on top
+   (5 wrong passwords, 15 minutes: modules/security.js), so spreading guesses over many emails does not get around it. */
+const loginLimiter = limiter(20, 15, 'Too many attempts. Try again in a few minutes.', { skipSuccessfulRequests: true });
 const signupLimiter = limiter(5, 60, 'Too many accounts created from here. Try again later.');
 const resetLimiter = limiter(5, 60, 'Too many reset requests. Try again later.');
+const contactLimiter = limiter(5, 60, 'Too many messages sent. Try again later.');
+/* The website chat calls the AI provider, which costs money per message: generous for a person, tight for a script. */
+const assistantLimiter = limiter(30, 15, 'Too many questions in a short time. Try again in a few minutes.');
 
 /* ── Public ─────────────────────────────────────────────────────────────── */
 
 router.post('/auth/signup', signupLimiter, auth.signup);
 router.post('/auth/login', loginLimiter, auth.login);
 router.post('/auth/login/2fa', loginLimiter, auth.loginTwoFactor);
+router.get('/auth/oauth/providers', oauth.providers);
+router.get('/auth/google/start', loginLimiter, oauth.googleStart);
+router.get('/auth/google/callback', loginLimiter, oauth.googleCallback);
+router.post('/auth/verify-email', loginLimiter, auth.verifyEmailOtp);
+router.post('/auth/resend-email-otp', loginLimiter, auth.resendEmailOtp);
 router.post('/auth/forgot-password', resetLimiter, auth.forgotPassword);
 router.post('/auth/reset-password', resetLimiter, auth.resetPassword);
+router.post('/contact', contactLimiter, contact.send);
+router.post('/public/assistant', assistantLimiter, siteAssistant.ask);
 
 /* The public pricing page reads this. Prices live in the database so they can
    change without a deploy — see the note in database.js. */
@@ -132,9 +154,13 @@ router.post('/businesses', requireAuth, business.createBusiness);
  * trail has something to record; it deliberately does not maintain a
  * denylist. Add one when tokens outlive a session in a way that matters.
  */
-router.post('/auth/logout', requireAuth, (_req, res) =>
-  res.json({ success: true, message: 'Signed out' })
-);
+router.post('/auth/logout', (req, res) => {
+  // Clears the session cookie. No sign-in needed: an expired session must still be able to clear its cookie.
+  // The X-Requested-With check keeps another site from signing people out with a hidden form.
+  if (req.headers['x-requested-with'] !== 'FlowXP' && !req.headers.authorization) return res.status(403).json({ success: false, message: 'This request did not come from the FlowXP app.' });
+  clearSessionCookie(res);
+  res.json({ success: true, message: 'Signed out' });
+});
 
 /* ── Signed in, scoped to one business ──────────────────────────────────── */
 
@@ -183,6 +209,11 @@ router.use('/integrations', integrationsRoutes);
 router.use('/ai', aiRoutes);
 router.use('/audit', auditRoutes);
 router.use('/menu-import', menuImportRoutes);
+router.use('/distributor', distributorRoutes);   // the distributor layer: principals, territories, beats, schemes, targets, field sales, vans
+router.use('/wholesale', wholesaleRoutes);   // the wholesale / distribution module (WHOLESALE and DISTRIBUTOR businesses only)
+router.use('/salon', salonRoutes);          // the salon module (salon businesses only)
+router.use('/pharmacy', pharmacyRoutes);    // the pharmacy module (PHARMACY businesses only)
+router.use('/retail', retailRoutes);        // supermarket / retail settings (SUPERMARKET and RETAIL businesses only)
 
 /* ── Platform administration — not a tenant, sits outside the business
    model entirely; see admin.routes.js for its own auth gate. ──────────── */

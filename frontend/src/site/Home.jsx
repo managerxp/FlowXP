@@ -12,13 +12,16 @@
  * Motion (index.css): the hero rises in once on load, sections reveal once as
  * they scroll into view, cards lift slightly on hover. Nothing loops.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Container, Eyebrow, Section } from '../components/ui.jsx';
+import { Button, Container, Section } from '../components/ui.jsx';
 import Reveal from '../components/Reveal.jsx';
 import { FAQ } from './content.js';
 import PricingTable from './PricingTable.jsx';
-import { Check, Cross, FULL, H2, KIND, MAIN, Shot, TextLink } from './parts.jsx';
+import { Boxes, ChevronDown, FileCheck2, Lightbulb, ReceiptText, Store } from 'lucide-react';
+import BlurText from '../components/reactbits/BlurText.jsx';
+import SpotlightCard from '../components/reactbits/SpotlightCard.jsx';
+import { Check, Cross, FinalCta, FULL, H2, KIND, MAIN, PhoneShot, Shot, TextLink } from './parts.jsx';
 
 /*
  * The "what needs your attention" panel: the kind of thing FlowXP tells an
@@ -44,7 +47,10 @@ const AttentionPanel = ({ className = '', style }) => (
         <li key={text} className="rise border-t border-line pt-3 first:border-0 first:pt-0" style={{ '--d': '700ms', '--i': i * 2 }}>
           <span className={`inline-flex rounded-full px-2 py-0.5 text-caption font-medium ${KIND[kind][1]}`}>{KIND[kind][0]}</span>
           <p className="mt-1.5 text-small leading-snug text-ink-900">{text}</p>
-          <span className="mt-2 inline-flex rounded-md border border-line px-2 py-1 text-caption font-medium text-ink-700">{action}</span>
+          {/* The action chips make the panel taller than the screenshot it
+              floats over; where it overlays (sm and up) the sentence already
+              says what to do, so they are left out there. */}
+          <span className="mt-2 inline-flex rounded-md border border-line px-2 py-1 text-caption font-medium text-ink-700 sm:hidden">{action}</span>
         </li>
       ))}
     </ul>
@@ -55,40 +61,30 @@ const AttentionPanel = ({ className = '', style }) => (
 /* ── 1. Hero ──────────────────────────────────────────────────────────── */
 
 const Hero = () => (
-  <section className="overflow-hidden border-b border-line">
-    <Container className="grid items-center gap-12 pb-16 pt-12 sm:pb-28 sm:pt-16 lg:grid-cols-12 lg:gap-10 lg:pb-32 lg:pt-20">
-      <div className="lg:col-span-5">
-        <Eyebrow className="rise">AI-powered billing for Indian businesses</Eyebrow>
-        <h1 className="rise mt-4 text-display font-semibold text-ink-900" style={{ '--i': 1 }}>
-          Billing software that tells you what to do next.
-        </h1>
-        <p className="rise mt-6 max-w-md text-lead text-ink-500" style={{ '--i': 2 }}>
-          FlowXP does your billing, payments, stock and GST in one place. Then it reads your
-          numbers every day and tells you, in plain words, what is selling, what is running out
-          and where money is leaking.
-        </p>
-        <p className="rise mt-3 max-w-md text-body text-ink-500" style={{ '--i': 3 }}>
-          For shops, restaurants, salons, wholesalers and service businesses.
-        </p>
-        <div className="rise mt-8 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ '--i': 4 }}>
-          <Button to="/signup" size="lg">Start 7-day free trial</Button>
-          <TextLink href="#how-it-works">See how it works</TextLink>
-        </div>
-        <ul className="rise mt-8 flex flex-wrap gap-x-5 gap-y-2 text-small text-ink-500" style={{ '--i': 5 }}>
-          {['No credit card', 'No software to install', 'Works on laptop, tablet or phone'].map((t) => (
-            <li key={t} className="flex items-center gap-1.5"><Check />{t}</li>
-          ))}
-        </ul>
+  <section className="relative overflow-hidden">
+    {/* The stage: a soft brand panel behind the top of the hero, ending part way down the screenshot so the
+        product rises out of it onto the page. */}
+    <div aria-hidden="true" className="hero-stage absolute inset-x-2 bottom-[30%] top-2 rounded-[2rem] sm:inset-x-3 sm:top-3" />
+    <Container className="relative pb-20 pt-16 text-center sm:pb-24 sm:pt-24">
+      <BlurText as="h1" text="Billing software that tells you what to do next."
+                className="mx-auto flex max-w-4xl flex-wrap justify-center text-display font-semibold text-ink-900" />
+      <p className="rise mx-auto mt-6 max-w-xl text-lead text-ink-500" style={{ '--d': '450ms' }}>
+        Bills, stock and GST in one place, then a daily note on what is selling and what needs you.
+      </p>
+      <div className="rise mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-4" style={{ '--d': '550ms' }}>
+        <Button to="/signup" size="lg">Start 7-day free trial</Button>
+        <TextLink href="#how-it-works">See how it works</TextLink>
       </div>
 
-      <div className="relative lg:col-span-7">
-        <div className="rise rounded-(--radius-panel) bg-brand-50 p-3 sm:p-6" style={{ '--d': '180ms' }}>
-          <Shot src="/product/pos.webp" size={FULL} eager
+      {/* The product, at the width of the page: the first thing that proves what FlowXP is. */}
+      <div className="relative mx-auto mt-14 max-w-6xl text-left sm:mt-16">
+        <div className="rise rounded-(--radius-panel) bg-surface/70 p-2 shadow-lg ring-1 ring-line backdrop-blur-sm sm:p-3" style={{ '--d': '650ms' }}>
+          <Shot src="/product/pos.webp" size={FULL} eager className="shadow-none"
                 alt="The FlowXP billing screen with six items on a ₹1,315 bill, GST worked out, and a Charge button." />
         </div>
         <AttentionPanel
-          style={{ '--d': '480ms' }}
-          className="rise relative z-10 mx-auto -mt-10 w-[92%] max-w-[300px] sm:absolute sm:-bottom-20 sm:-left-8 sm:mt-0 sm:w-[270px] lg:-left-4"
+          style={{ '--d': '950ms' }}
+          className="rise relative z-10 mx-auto -mt-10 w-[92%] max-w-[300px] sm:absolute sm:-bottom-12 sm:-right-4 sm:mt-0 sm:w-[280px] lg:-right-10"
         />
       </div>
     </Container>
@@ -102,7 +98,7 @@ const CAPABILITIES = [
   ['Payments', 'Cash, UPI, card, credit, split'],
   ['Stock', 'Updates itself with every sale'],
   ['GST', 'Returns ready for your accountant'],
-  ['Customers', 'Dues, history, loyalty, WhatsApp'],
+  ['Customers', 'Dues, history, loyalty'],
   ['AI insights', 'What to check and what to do next']
 ];
 
@@ -138,7 +134,6 @@ const Connector = () => (
 
 const OneBill = () => (
   <Section
-    eyebrow="How it fits together"
     title="Make the bill once. FlowXP does the rest."
     lead="However you sell, the sale goes into one system. Your stock, your customer's account, your GST and your reports all move with it, so nothing is written down twice."
   >
@@ -146,7 +141,7 @@ const OneBill = () => (
       <div className="grid items-center lg:grid-cols-[1fr_auto_1fr_auto_1fr]">
         <div className="space-y-3">
           <Node title="At the counter" body="Scan a barcode or search, and bill in seconds." />
-          <Node title="On the phone or WhatsApp" body="Take the order and send the bill as a link." />
+          <Node title="On the phone" body="Take the order and send the bill as a link." />
           <Node title="At the table or by QR" body="For restaurants and cafés, orders go straight to the kitchen." />
         </div>
         <Connector />
@@ -186,7 +181,7 @@ const BUSINESSES = [
     key: 'services', label: 'Salons and services',
     title: 'For salons, clinics and service businesses',
     body: 'Bill services and products on one GST invoice, remember your regulars, and bring them back with offers.',
-    points: ['Services and products on the same bill', 'Customer history and visit counts', 'Loyalty points, coupons and WhatsApp offers', 'Staff logins with the right permissions', 'Appointments and staff scheduling: coming soon'],
+    points: ['Services and products on the same bill', 'Customer history and visit counts', 'Loyalty points and coupons', 'Staff logins with the right permissions', 'Appointments and staff scheduling: coming soon'],
     src: '/product/pos-main.webp', alt: 'FlowXP billing screen with items, quantities, GST and a Charge button.'
   },
   {
@@ -201,30 +196,44 @@ const BUSINESSES = [
 const ForYourBusiness = () => {
   const [active, setActive] = useState(BUSINESSES[0].key);
   const b = BUSINESSES.find((x) => x.key === active);
+  // The underline slides to the active tab rather than two borders swapping colour — the one place
+  // on the page a literal position change earns its keep, since it IS what "switching tab" means.
+  const tabRefs = useRef({});
+  const [indicator, setIndicator] = useState(null);
+  useEffect(() => {
+    const measure = () => { const el = tabRefs.current[active]; if (el) setIndicator({ left: el.offsetLeft, width: el.offsetWidth }); };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [active]);
+
   return (
     <Section
       id="industries"
       className="border-y border-line bg-surface"
-      eyebrow="Who it is for"
       title="Built for the business you run."
       lead="The billing, stock, GST and insights are the same for everyone. On top of that, FlowXP shows each kind of business the tools it needs."
     >
       <Reveal>
-        <div role="tablist" aria-label="Kind of business" className="flex gap-1 overflow-x-auto border-b border-line">
+        <div role="tablist" aria-label="Kind of business" className="relative flex gap-1 overflow-x-auto border-b border-line">
           {BUSINESSES.map((x) => (
             <button
               key={x.key}
+              ref={(el) => { tabRefs.current[x.key] = el; }}
               role="tab"
               type="button"
               id={`tab-${x.key}`}
               aria-selected={x.key === active}
               aria-controls="business-panel"
               onClick={() => setActive(x.key)}
-              className={`-mb-px shrink-0 border-b-2 px-4 py-3 text-body font-medium transition-colors duration-(--duration-normal) ${x.key === active ? 'border-brand-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'}`}
+              className={`shrink-0 px-4 py-3 text-body font-medium transition-colors duration-(--duration-normal) ${x.key === active ? 'text-ink-900' : 'text-ink-500 hover:text-ink-900'}`}
             >
               {x.label}
             </button>
           ))}
+          {indicator && (
+            <span aria-hidden="true" className="absolute bottom-0 h-0.5 bg-brand-500 transition-[left,width] duration-(--duration-normal) ease-(--ease-standard)" style={{ left: indicator.left, width: indicator.width }} />
+          )}
         </div>
         <div key={b.key} id="business-panel" role="tabpanel" aria-labelledby={`tab-${b.key}`} className="fade-in grid items-center gap-10 pt-10 lg:grid-cols-12">
           <div className="lg:col-span-5">
@@ -267,7 +276,6 @@ const Insights = () => (
   <Section id="ai">
     <div className="grid gap-12 lg:grid-cols-12">
       <Reveal className="lg:col-span-5">
-        <Eyebrow>Insights and decisions</Eyebrow>
         <H2>It does not just record your business. It helps you run it.</H2>
         <p className="mt-4 text-lead text-ink-500">
           Most billing software stops at the bill. FlowXP keeps reading your sales, stock and expenses,
@@ -292,12 +300,39 @@ const Insights = () => (
             </Reveal>
           ))}
         </ul>
-        <Reveal className="mt-6">
-          <Shot src="/product/leakage-main.webp"
-                alt="FlowXP leakage report: ₹28,290 of cancellations, discounts and refunds that differ from normal, with a suggested next step." />
-        </Reveal>
       </div>
     </div>
+  </Section>
+);
+
+/* ── Outlets: the whole business on one screen, shown large ─────────────── */
+
+const OUTLET_FACTS = [
+  ['One login', 'Switch between outlets, or look at all of them together.'],
+  ['Compared side by side', 'Revenue, orders, food cost and margin for each outlet.'],
+  ['Each outlet its own', 'Stock, prices, invoice series and staff, kept per outlet.']
+];
+
+const Outlets = () => (
+  <Section className="border-t border-line">
+    <div className="grid gap-x-12 gap-y-8 lg:grid-cols-12">
+      <Reveal className="lg:col-span-5">
+        <H2>Every outlet, on one screen.</H2>
+        <p className="mt-4 text-lead text-ink-500">Open one branch or all of them, and see which one is earning and which one needs you.</p>
+      </Reveal>
+      <dl className="grid gap-6 sm:grid-cols-3 lg:col-span-7 lg:pt-2">
+        {OUTLET_FACTS.map(([term, text], i) => (
+          <Reveal key={term} index={i} className="border-t border-line pt-4">
+            <dt className="text-body font-semibold text-ink-900">{term}</dt>
+            <dd className="mt-1.5 text-small text-ink-500">{text}</dd>
+          </Reveal>
+        ))}
+      </dl>
+    </div>
+    <Reveal className="mt-12 rounded-(--radius-panel) bg-brand-50 p-3 sm:p-6 lg:p-8">
+      <Shot src="/product/restaurant-outlets.webp"
+            alt="FlowXP outlets compared side by side on revenue, orders, food cost, contribution and estimated net, from the demo business." />
+    </Reveal>
   </Section>
 );
 
@@ -305,67 +340,91 @@ const Insights = () => (
 
 const STEPS = [
   ['Set up', 'Add your business, GST number and products. Import a list or add them as you go.'],
-  ['Bill', 'Scan or search, take cash, UPI or card, and print or WhatsApp the GST bill.'],
+  ['Bill', 'Scan or search, take cash, UPI or card, and print or share the GST bill as a link.'],
   ['Stock moves', 'Every sale and purchase updates stock. Low items show up before they run out.'],
   ['GST is ready', 'At month end, download the GSTR-1 file and GSTR-3B figures for your accountant.'],
   ['Decide', 'Each day, FlowXP shows what changed and what needs doing. You make the call.']
 ];
 
+const STEP_ICONS = [Store, ReceiptText, Boxes, FileCheck2, Lightbulb];
+
 const HowItWorks = () => (
-  <Section
-    id="how-it-works"
-    className="scroll-mt-16 border-y border-line bg-surface"
-    eyebrow="How it works"
-    title="Start billing today. Get smarter every day after."
-    lead="There is nothing to install and no machine to buy. Most businesses make their first bill within an hour."
-  >
-    <ol className="grid gap-px overflow-hidden rounded-(--radius-panel) border border-line bg-line sm:grid-cols-2 lg:grid-cols-5">
-      {STEPS.map(([title, body], i) => (
-        <Reveal as="li" key={title} index={i} className="bg-surface p-6">
-          <p className="tabular text-small font-semibold text-brand-600">{String(i + 1).padStart(2, '0')}</p>
-          <p className="mt-3 text-title font-semibold text-ink-900">{title}</p>
-          <p className="mt-2 text-body text-ink-500">{body}</p>
-        </Reveal>
-      ))}
-    </ol>
+  <Section id="how-it-works" className="scroll-mt-16 border-y border-line bg-surface">
+    <div className="grid gap-12 lg:grid-cols-12">
+      <Reveal className="lg:sticky lg:top-28 lg:col-span-5 lg:self-start">
+        <H2>Start billing today. Get smarter every day after.</H2>
+        <p className="mt-4 max-w-md text-lead text-ink-500">Nothing to install and no machine to buy. Most businesses make their first bill within an hour.</p>
+        <div className="mt-8"><Button to="/signup">Start free trial</Button></div>
+      </Reveal>
+      <ol className="lg:col-span-6 lg:col-start-7">
+        {STEPS.map(([title, body], i) => {
+          const Icon = STEP_ICONS[i];
+          return (
+            <Reveal as="li" key={title} index={i} className="relative flex gap-5 pb-12 last:pb-0">
+              {i < STEPS.length - 1 && <span aria-hidden="true" className="absolute bottom-0 left-5 top-12 w-px -translate-x-1/2 bg-line-strong" />}
+              <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white shadow-sm">
+                <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+              </span>
+              <div className="pt-1.5">
+                <h3 className="text-title font-semibold text-ink-900">{title}</h3>
+                <p className="mt-1.5 max-w-md text-body text-ink-500">{body}</p>
+              </div>
+            </Reveal>
+          );
+        })}
+      </ol>
+    </div>
   </Section>
 );
 
 /* ── 7. Real screens ──────────────────────────────────────────────────── */
 
-const FeatureCard = ({ title, body, src, alt, index }) => (
-  <Reveal as="article" index={index} className="lift group flex flex-col overflow-hidden rounded-(--radius-panel) border border-line bg-surface">
-    <div className="overflow-hidden bg-surface-2 px-5 pt-5 sm:px-7 sm:pt-7">
-      <img src={src} alt={alt} width={MAIN.width} height={MAIN.height} loading="lazy" decoding="async"
-           className="block h-auto w-full rounded-t-lg border border-b-0 border-line shadow-md transition-transform duration-(--duration-slow) ease-(--ease-standard) group-hover:-translate-y-1" />
-    </div>
-    <div className="border-t border-line p-5 sm:p-6">
-      <h3 className="text-title font-semibold text-ink-900">{title}</h3>
-      <p className="mt-1.5 text-body text-ink-500">{body}</p>
-    </div>
-  </Reveal>
+/* Tiles on a 12-column grid: a tall brand tile (5 columns, two rows), then 7, and 4 + 3 beside it. Each tile is a
+   real screen, cropped to its top-left corner where the point is; SpotlightCard adds a soft light under the pointer. */
+const TileImg = ({ src, alt, zoom = 100, className = '' }) => (
+  <div className={`overflow-hidden rounded-tl-lg border-l border-t border-line bg-surface shadow-md ${className}`}>
+    {/* `zoom` widens the picture past its tile so the corner that shows is large enough to read. */}
+    <img src={src} alt={alt} width={MAIN.width} height={MAIN.height} loading="lazy" decoding="async"
+         style={{ width: `${zoom}%` }} className="block h-auto max-w-none" />
+  </div>
 );
 
-const Screens = () => (
-  <Section
-    id="features"
-    eyebrow="The product"
-    title="Simple enough for the counter. Detailed enough for the owner."
-    lead="These are real FlowXP screens. Your staff bill on the first one; you check the rest when you want to know how things are going."
-  >
-    <div className="grid gap-5 lg:grid-cols-2">
-      <FeatureCard index={0} title="Bill in seconds."
-        body="Search or scan, change quantity, add a discount, and take one or several payments. GST is worked out on every line."
-        src="/product/pos-main.webp" alt="FlowXP billing screen with six items on the bill and the total with GST." />
-      <FeatureCard index={1} title="Know what you really earn."
-        body="Sales minus the cost of what you sold, fees, commission and expenses, by day, product and branch."
-        src="/product/profit-main.webp" alt="FlowXP profitability report: net revenue, cost share, margin and daily revenue." />
-      <FeatureCard index={0} title="Never run out of the things that sell."
-        body="Current stock, what it is worth, what is running low and what was wasted, for every branch."
-        src="/product/inventory-main.webp" alt="FlowXP inventory screen with stock value, low-stock count, wastage and product list." />
-      <FeatureCard index={1} title="Restaurant tools when you need them."
-        body="Tables, table QR ordering, a kitchen display and recipes are switched on for restaurants and cafés."
-        src="/product/tables-main.webp" alt="FlowXP tables screen showing which tables are free and which are occupied." />
+const Bento = () => (
+  <Section id="features" title="Simple enough for the counter. Detailed enough for the owner."
+           lead="Real FlowXP screens, from the demo business.">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-12">
+      <Reveal className="md:row-span-2 lg:col-span-5">
+        <SpotlightCard spotlightColor="rgba(255, 255, 255, 0.28)" className="flex h-full flex-col rounded-(--radius-panel) bg-brand-500 px-7 pt-8 text-white">
+          <h3 className="text-h3 font-semibold">Guests order from the table.</h3>
+          <p className="mt-2 max-w-sm text-body text-white/80">They scan the QR on the table, pick from the menu, and the order reaches the kitchen.</p>
+          <div className="mt-8 flex flex-1 items-end justify-center">
+            <div className="w-full max-w-[17rem] translate-y-8">
+              <PhoneShot src="/product/restaurant-qr.webp" className="max-w-none" alt="The FlowXP guest menu on a phone, opened from a table QR code." />
+            </div>
+          </div>
+        </SpotlightCard>
+      </Reveal>
+      <Reveal index={1} className="lg:col-span-7">
+        <SpotlightCard spotlightColor="rgba(0, 84, 250, 0.14)" className="flex h-full flex-col rounded-(--radius-panel) bg-brand-50 pl-7 pt-8">
+          <h3 className="pr-7 text-h3 font-semibold text-ink-900">Ask your business a question.</h3>
+          <p className="mt-2 max-w-md pr-7 text-body text-ink-500">Flow AI answers from your own bills and stock, and says when a figure is an estimate.</p>
+          <TileImg src="/product/restaurant-ai.webp" alt="Flow AI answering a question about the demo restaurant's sales." zoom={125} className="mt-6 h-56 sm:h-64" />
+        </SpotlightCard>
+      </Reveal>
+      <Reveal index={2} className="lg:col-span-4">
+        <SpotlightCard spotlightColor="rgba(0, 84, 250, 0.10)" className="flex h-full flex-col rounded-(--radius-panel) border border-line bg-surface pl-7 pt-8">
+          <h3 className="pr-7 text-title font-semibold text-ink-900">Know what you really earn.</h3>
+          <p className="mt-1.5 pr-7 text-small text-ink-500">Sales minus cost, fees and expenses, per product and branch.</p>
+          <TileImg src="/product/profit-main.webp" alt="FlowXP profitability report with net revenue, cost share and margin." zoom={190} className="mt-6 h-44" />
+        </SpotlightCard>
+      </Reveal>
+      <Reveal index={3} className="lg:col-span-3">
+        <SpotlightCard spotlightColor="rgba(255, 255, 255, 0.16)" className="flex h-full flex-col rounded-(--radius-panel) bg-ink-900 pl-7 pt-8 text-white">
+          <h3 className="pr-7 text-title font-semibold">Never run short.</h3>
+          <p className="mt-1.5 pr-7 text-small text-white/70">Low stock shows up before the weekend rush.</p>
+          <TileImg src="/product/reorder-main.webp" alt="FlowXP reorder list with items at their reorder point." zoom={230} className="mt-6 h-44" />
+        </SpotlightCard>
+      </Reveal>
     </div>
   </Section>
 );
@@ -388,7 +447,7 @@ const AFTER = [
 ];
 
 const BeforeAfter = () => (
-  <Section className="border-y border-line bg-surface" eyebrow="Why switch" title="Less paperwork. Fewer surprises at month end.">
+  <Section className="border-y border-line bg-surface"  title="Less paperwork. Fewer surprises at month end.">
     <div className="grid gap-5 md:grid-cols-2">
       <Reveal className="rounded-(--radius-panel) border border-line bg-page p-6 sm:p-8">
         <h3 className="text-body font-semibold text-ink-500">Without FlowXP</h3>
@@ -408,36 +467,55 @@ const BeforeAfter = () => (
 
 /* ── 9. Works with ────────────────────────────────────────────────────── */
 
+/* The two FlowXP leans on hardest get the wider cells — not an arbitrary
+   pattern, the two that most change how someone sells (orders arriving from
+   an app, bills going out over chat) earn the room. Everything else is the
+   same size: a bento grid is a hierarchy, not decoration, so only genuinely
+   bigger ideas get a bigger cell. */
 const WORKS_WITH = [
-  ['Receipt printers', '58 and 80 mm thermal printers'],
-  ['Barcode scanners', 'Any USB or Bluetooth scanner'],
-  ['UPI, cards and cash', 'Split one bill across several payments'],
-  ['WhatsApp and SMS', 'Send bills, reminders and offers'],
-  ['GST portal', 'GSTR-1, e-invoice and e-way bill files'],
-  ['Works offline', 'Keep billing when the internet drops'],
-  ['Phone app', 'Install on Android or iPhone from the browser'],
-  ['Zomato and Swiggy', 'Online orders straight into FlowXP', true]
+  { title: 'Zomato and Swiggy', body: 'Online orders arrive straight into the kitchen and the day\'s bills, no re-typing.', soon: true, big: true },
+  { title: 'WhatsApp and SMS', body: 'Bills, payment reminders and offers go out the way your customers already read you.', soon: true, big: true },
+  { title: 'UPI, cards and cash', body: 'Split one bill across several payments.' },
+  { title: 'GST portal', body: 'GSTR-1, e-invoice and e-way bill files, ready to upload.' },
+  { title: 'Works offline', body: 'Keep billing when the internet drops.' },
+  { title: 'Receipt printers', body: '58 and 80 mm thermal printers.' },
+  { title: 'Barcode scanners', body: 'Any USB or Bluetooth scanner.' },
+  { title: 'Phone app', body: 'Install on Android or iPhone from the browser.' }
 ];
 
-const WorksWith = () => (
-  <Section
-    eyebrow="Works with"
-    title="Fits the counter you already have."
-    lead="Use the laptop, tablet or phone you own. Add a printer, scanner or cash drawer when you want one."
-  >
-    <ul className="grid gap-px overflow-hidden rounded-(--radius-panel) border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
-      {WORKS_WITH.map(([title, body, soon], i) => (
-        <Reveal as="li" key={title} index={i % 4} className="bg-surface p-5 transition-colors duration-(--duration-normal) hover:bg-brand-50">
-          <p className="flex flex-wrap items-center gap-2 text-body font-semibold text-ink-900">
-            {title}
-            {soon && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-medium text-ink-500">Coming soon</span>}
-          </p>
-          <p className="mt-1 text-small text-ink-500">{body}</p>
-        </Reveal>
-      ))}
-    </ul>
-  </Section>
-);
+const WorksWith = () => {
+  const featured = WORKS_WITH.filter((w) => w.big);
+  const rest = WORKS_WITH.filter((w) => !w.big);
+  return (
+    <Section
+      title="Fits the counter you already have."
+      lead="Use the laptop, tablet or phone you own. Add a printer, scanner or cash drawer when you want one."
+    >
+      {/* The two featured cells are their own row, not columns mixed into the grid below — two different
+          span widths inside one CSS grid leaves an uneven, gap-ridden last row the moment the item count
+          doesn't divide evenly; a separate row sidesteps that arithmetic entirely. */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        {featured.map(({ title, body, soon }, i) => (
+          <Reveal as="div" key={title} index={i} className="lift rounded-(--radius-card) border border-brand-100 bg-brand-50 p-6">
+            <p className="flex flex-wrap items-center gap-2 text-title font-semibold text-ink-900">
+              {title}
+              {soon && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-medium text-ink-500">Coming soon</span>}
+            </p>
+            <p className="mt-1.5 text-body text-ink-500">{body}</p>
+          </Reveal>
+        ))}
+      </div>
+      <ul className="mt-3 grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        {rest.map(({ title, body }, i) => (
+          <Reveal as="li" key={title} index={i % 4} className="lift rounded-(--radius-card) border border-line bg-surface p-5">
+            <p className="text-body font-semibold text-ink-900">{title}</p>
+            <p className="mt-1 text-small text-ink-500">{body}</p>
+          </Reveal>
+        ))}
+      </ul>
+    </Section>
+  );
+};
 
 /* ── 10. Built so nothing gets lost ───────────────────────────────────── */
 
@@ -449,7 +527,7 @@ const TRUST = [
 ];
 
 const Trust = () => (
-  <Section className="border-y border-line bg-surface" eyebrow="Built to be trusted" title="Built so nothing gets lost.">
+  <Section className="border-y border-line bg-surface"  title="Built so nothing gets lost.">
     <div className="grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
       {TRUST.map(([title, body], i) => (
         <Reveal key={title} index={i} className="border-t-2 border-ink-900 pt-5">
@@ -464,54 +542,34 @@ const Trust = () => (
 /* ── 11. Pricing, FAQ, final call ─────────────────────────────────────── */
 
 const PricingSection = () => (
-  <Section id="pricing" center eyebrow="Pricing" title="Simple plans. Start free."
+  <Section id="pricing" center  title="Simple plans. Start free."
            lead="Every plan starts with the same 7-day free trial. Move to a paid plan when FlowXP has earned it.">
     <Reveal><PricingTable /></Reveal>
   </Section>
 );
 
 const Faq = () => (
-  <Section id="faq" className="border-t border-line bg-surface">
+  <Section id="faq" className="border-t border-line">
     <div className="grid gap-10 lg:grid-cols-12">
       <Reveal className="lg:col-span-4">
-        <Eyebrow>FAQ</Eyebrow>
-        <h2 className="mt-3 text-h2 font-semibold text-ink-900">Questions owners ask first</h2>
+        <H2>Questions owners ask first</H2>
         <p className="mt-4 text-body text-ink-500">
           Something else? <Link to="/contact" className="font-medium text-brand-600 hover:text-brand-700">Talk to us</Link>.
         </p>
       </Reveal>
-      <Reveal index={1} className="divide-y divide-line border-y border-line lg:col-span-8">
+      <Reveal index={1} className="space-y-3 lg:col-span-8">
         {FAQ.map((item) => (
-          <details key={item.q} className="group py-5">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-body font-medium text-ink-900">
+          <details key={item.q} className="group rounded-(--radius-card) border border-line bg-surface px-5 shadow-sm transition-shadow duration-(--duration-fast) open:shadow-md">
+            <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-4 text-body font-medium text-ink-900 [&::-webkit-details-marker]:hidden">
               {item.q}
-              <span aria-hidden="true" className="shrink-0 text-xl leading-none text-ink-400 transition-transform duration-(--duration-normal) group-open:rotate-45">+</span>
+              <ChevronDown aria-hidden="true" strokeWidth={2} className="h-4 w-4 shrink-0 text-ink-500 transition-transform duration-(--duration-normal) group-open:rotate-180" />
             </summary>
-            <p className="mt-3 text-body text-ink-500">{item.a}</p>
+            <p className="pb-5 pr-6 text-body text-ink-500">{item.a}</p>
           </details>
         ))}
       </Reveal>
     </div>
   </Section>
-);
-
-const FinalCta = () => (
-  <section className="bg-ink-900">
-    <Container>
-      <Reveal className="grid items-center gap-8 py-16 sm:py-20 lg:grid-cols-12">
-        <div className="lg:col-span-8">
-          <h2 className="text-h2 font-semibold text-white">Make your first bill on FlowXP today.</h2>
-          <p className="mt-4 max-w-xl text-lead text-white/70">
-            Add your products, print a test bill and see your first report. Seven days free, no card, no sales call.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3 lg:col-span-4 lg:justify-end">
-          <Button to="/signup" size="lg">Start free trial</Button>
-          <Button to="/contact" size="lg" variant="ghost" className="text-white hover:bg-white/10 hover:text-white">Talk to us</Button>
-        </div>
-      </Reveal>
-    </Container>
-  </section>
 );
 
 const Home = () => (
@@ -521,14 +579,15 @@ const Home = () => (
     <OneBill />
     <ForYourBusiness />
     <Insights />
+    <Outlets />
     <HowItWorks />
-    <Screens />
+    <Bento />
     <BeforeAfter />
     <WorksWith />
     <Trust />
     <PricingSection />
     <Faq />
-    <FinalCta />
+    <FinalCta title="Make your first bill on FlowXP today." lead="Add your products, print a test bill and see your first report. Seven days free, no card, no sales call." />
   </>
 );
 

@@ -72,18 +72,21 @@ export const normaliseItems = (raw) => {
 
 /**
  * @param images [{ mediaType, data }]  data is base64
- * @returns { items, notes, usage }
+ * @returns { items, notes, usage, model }
  */
 export const scanMenu = async (images) => {
   const content = [
     ...images.map((img) => ({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.data } })),
     { type: 'text', text: images.length > 1 ? `These ${images.length} photos are pages of one menu. Record every item.` : 'Record every item on this menu.' }
   ];
-  const reply = await complete({ system: SYSTEM, messages: [{ role: 'user', content }], tools: [TOOL], toolChoice: { type: 'tool', name: TOOL.name }, maxTokens: 8000 });
+  // 'default': reading a photographed menu is real multimodal work, but it's a one-shot background
+  // import a person waits for once, not a live chat turn — doesn't need the 'reasoning' tier's cost.
+  const reply = await complete({ system: SYSTEM, messages: [{ role: 'user', content }], tools: [TOOL], toolChoice: { type: 'tool', name: TOOL.name }, maxTokens: 8000, tier: 'default' });
   const call = reply.content.find((b) => b.type === 'tool_use' && b.name === TOOL.name);
   return {
     items: normaliseItems(call?.input?.items),
     notes: clean(call?.input?.notes, 400),
-    usage: reply.usage ?? { input_tokens: 0, output_tokens: 0 }
+    usage: reply.usage ?? { input_tokens: 0, output_tokens: 0 },
+    model: reply.model
   };
 };

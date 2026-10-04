@@ -20,6 +20,8 @@ import { computeLineTax, isInterState, sumLines } from './tax.js';
 import { toPaise, toQuantity, toRupees } from '../utils/money.js';
 import { ModifierError, modifierLabel, outletSettingsFor, resolveModifiers } from './menu.js';
 import { moveStock, stockAt } from './stock.js';
+import { takeBatchesForSale } from './retailStock.js';
+import { isRetail } from './retailSettings.js';
 import { getProgram, isLive, progressFor, recordEvent as recordLoyalty } from './loyalty.js';
 import { CouponError, validateCoupon } from './coupons.js';
 import { consumptionPerUnit, loadRecipes } from './recipes.js';
@@ -35,6 +37,13 @@ export class BillingError extends Error {
   }
 }
 
+/** A card-slip / UTR / cheque reference: trimmed, blank means none, and longer than the column (80) is refused rather than a 500. */
+export const paymentReference = (value) => {
+  const text = String(value ?? '').trim();
+  if (text.length > 80) throw new BillingError(400, 'The payment reference is too long (80 characters at most)');
+  return text || null;
+};
+
 export const paymentStatus = (totalPaise, paidPaise) => {
   if (paidPaise <= 0) return 'UNPAID';
   return paidPaise >= totalPaise ? 'PAID' : 'PARTIAL';
@@ -45,7 +54,7 @@ export const paymentStatus = (totalPaise, paidPaise) => {
  * the business row for the rest of the transaction, so two invoices billed in
  * the same instant cannot both read "next number 47".
  */
-const nextInvoiceNumber = async (client, businessId, branchId) => {
+export const nextInvoiceNumber = async (client, businessId, branchId) => {
   // an outlet with its own series numbers from its own counter. NO KEY UPDATE: a plain FOR UPDATE would clash with the
   // foreign-key checks other inserts make on this branch row (the audit log, an order) and could deadlock with them.
   const own = branchId ? (await client.query(`SELECT invoice_prefix, invoice_next_number FROM branches WHERE branch_id = $1 AND business_id = $2 FOR NO KEY UPDATE`, [branchId, businessId])).rows[0] : null;
@@ -106,7 +115,7 @@ export const asInvoice = (row) => ({
  *   payments: [{ amount, method, reference_number }]     or several (split); one of them may be
  *             'REST' (whatever the others leave), and together they may not exceed the bill
  */
-const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CREDIT', 'OTHER'];
+const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CREDIT', 'OTHER', 'WALLET', 'GIFT_CARD', 'CHEQUE'];
 const MAX_SPLIT = 6;
 
 /*
@@ -118,7 +127,7 @@ const MAX_SPLIT = 6;
  * (tax rounding, round-off, loyalty rewards), so the till cannot fill the last
  * part in to the paisa.
  */
-const plannedPayments = (input, totalPaise) => {
+export const plannedPayments = (input, totalPaise) => {
   if (Array.isArray(input.payments)) {
     const list = input.payments.filter((p) => p && (p.amount != null && p.amount !== ''));
     if (list.length > MAX_SPLIT) throw new BillingError(400, `A bill can be split into at most ${MAX_SPLIT} payments`);
@@ -126,10 +135,10 @@ const plannedPayments = (input, totalPaise) => {
     const rows = list.map((p) => {
       const method = String(p.method || 'CASH').toUpperCase();
       if (!PAYMENT_METHODS.includes(method)) throw new BillingError(400, `Unknown payment method: ${p.method}`);
-      if (p.amount === 'REST' || p.amount === 'FULL') return { method, rest: true, reference: p.reference_number || null };
+      if (p.amount === 'REST' || p.amount === 'FULL') return { method, rest: true, reference: paymentReference(p.reference_number) };
       const amountPaise = toPaise(p.amount);
       if (amountPaise <= 0) throw new BillingError(400, 'Each part of a split payment needs an amount above zero');
-      return { method, amountPaise, reference: p.reference_number || null };
+      return { method, amountPaise, reference: paymentReference(p.reference_number) };
     });
     const fixed = rows.reduce((s, r) => s + (r.rest ? 0 : r.amountPaise), 0);
     if (fixed > totalPaise) throw new BillingError(400, `The payments add up to ₹${toRupees(fixed)}, more than the bill of ₹${toRupees(totalPaise)}`);
@@ -143,7 +152,7 @@ const plannedPayments = (input, totalPaise) => {
     const asked = input.payment.amount === 'FULL' ? totalPaise : toPaise(input.payment.amount);
     if (asked < 0) throw new BillingError(400, 'Payment amount cannot be negative');
     const amountPaise = Math.min(asked, totalPaise);
-    return amountPaise > 0 ? [{ method: input.payment.method || 'CASH', amountPaise, reference: input.payment.reference_number || null }] : [];
+    return amountPaise > 0 ? [{ method: input.payment.method || 'CASH', amountPaise, reference: paymentReference(input.payment.reference_number) }] : [];
   }
   return [];
 };
@@ -205,9 +214,10 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   const recipes = await loadRecipes(client, tenant.businessId, [...new Set([...productIds, ...componentIds])], tenant.branchId);
 
   const lines = [];
+  const overrideIds = new Set();   // ingredients a line named by hand (consumption_actual) — must all exist
   for (const raw of items) {
     const quantity = toQuantity(raw.quantity);
-    let description, unitPricePaise, taxRate, product = null, modifiers = [], consumption = [];
+    let description, unitPricePaise, taxRate, product = null, modifiers = [], consumption = [], stockFactor = 1;
 
     if (raw.product_id) {
       product = products.get(Number(raw.product_id));
@@ -215,7 +225,11 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       if (product.status !== 'ACTIVE') throw new BillingError(400, `${product.name} is archived`);
       const here = outletSettings.get(product.product_id);
       if (here && here.is_available === false) throw new BillingError(409, `${product.name} is not available at this outlet`);
-      if (product.track_inventory && outletStock.get(product.product_id) < quantity) {
+      // a line sold in a larger unit (a carton of 24 boxes) moves `unit_factor` times as much stock as its quantity
+      const factor = raw.unit_factor != null ? Number(raw.unit_factor) : 1;
+      if (!Number.isFinite(factor) || factor <= 0) throw new BillingError(400, 'The unit conversion must be above zero');
+      stockFactor = factor;
+      if (product.track_inventory && !input.allowNegativeStock && outletStock.get(product.product_id) < quantity * factor - 1e-9) {
         throw new BillingError(409, `Not enough stock for ${product.name} (${outletStock.get(product.product_id)} left here)`);
       }
       description = raw.description || product.name;
@@ -238,6 +252,19 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       }
       if (modifiers.length) description = `${description} (${modifierLabel(modifiers)})`;
       consumption = consumptionPerUnit(recipes.get(product.product_id), modifiers);
+      /* The amount actually used can differ from the recipe (hair colour: 50 ml by default, 60 ml today). The till sends
+         the TOTAL used for this line, per ingredient; anything it lists replaces the recipe's figure, and an ingredient
+         that is not in the recipe can be added. Ids are checked against the business below, where ingredients are loaded. */
+      if (Array.isArray(raw.consumption_actual)) {
+        const byId = new Map(consumption.map((c) => [c.ingredient_id, c.qty_per_unit]));
+        for (const a of raw.consumption_actual) {
+          const id = Number(a.ingredient_id); const used = Number(a.quantity);
+          if (!Number.isInteger(id) || !Number.isFinite(used) || used < 0) throw new BillingError(400, 'Each consumable needs a quantity of zero or more');
+          byId.set(id, used / quantity);
+          overrideIds.add(id);
+        }
+        consumption = [...byId].map(([ingredient_id, qty_per_unit]) => ({ ingredient_id, qty_per_unit }));
+      }
       const parts = combos.get(product.product_id);
       if (parts) {
         const blocked = await comboBlocker(client, tenant.branchId, product.name, parts, quantity);
@@ -265,13 +292,14 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     }
     const tax = computeLineTax({
       quantity, unitPricePaise, discountPaise, taxRatePercent: taxRate,
-      gstEnabled: business.gst_enabled, interState
+      gstEnabled: business.gst_enabled, interState, inclusive: input.taxInclusive === true
     });
 
     lines.push({
       product_id: product?.product_id || null, description, quantity, unitPricePaise,
       discountPaise, taxRate, trackInventory: Boolean(product?.track_inventory), modifiers, consumption,
-      fallbackCostPaise: product ? Number(product.purchase_price_paise) : 0, ...tax
+      unitName: raw.unit_name ? String(raw.unit_name).slice(0, 24) : null, stockFactor,
+      fallbackCostPaise: product ? Math.round(Number(product.purchase_price_paise) * stockFactor) : 0, ...tax
     });
   }
 
@@ -287,6 +315,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     );
     for (const r of rows) ingredients.set(r.product_id, r);
   }
+  for (const id of overrideIds) if (!ingredients.has(id)) throw new BillingError(400, 'One of the consumables is not in your stock list');
   for (const line of lines) {
     line.unitCostPaise = line.consumption.length
       ? Math.round(line.consumption.reduce((sum, c) => sum + c.qty_per_unit * Number(ingredients.get(c.ingredient_id)?.purchase_price_paise || 0), 0))
@@ -331,7 +360,11 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     finalTotalPaise += roundOffPaise;
   }
 
-  const pointsEarned = pts ? earnFor(pts, pointsState, finalTotalPaise) : 0;
+  /* A caller with its own earning rules (the salon: a different rate for services, products, packages) supplies them;
+     everyone else earns the program's single rate on the bill. */
+  const pointsEarned = pts
+    ? (typeof input.earnPoints === 'function' ? Math.max(0, Math.floor(input.earnPoints({ lines, finalTotalPaise, state: pointsState, cfg: pts }))) : earnFor(pts, pointsState, finalTotalPaise))
+    : 0;
 
   const takenPayments = plannedPayments(input, finalTotalPaise);
   const paidPaise = takenPayments.reduce((s, p) => s + p.amountPaise, 0);
@@ -359,20 +392,28 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   for (const line of lines) {
     await client.query(
       `INSERT INTO invoice_items
-         (invoice_id, product_id, description, quantity, unit_price_paise, discount_paise, tax_rate, tax_amount_paise, line_total_paise, modifiers, unit_cost_paise)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+         (invoice_id, product_id, description, quantity, unit_price_paise, discount_paise, tax_rate, tax_amount_paise, line_total_paise, modifiers, unit_cost_paise, unit_name, unit_factor)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
       [invoice.invoice_id, line.product_id, line.description, line.quantity, line.unitPricePaise,
-       line.discountPaise, line.taxRate, line.tax_paise, line.line_total_paise, JSON.stringify(line.modifiers), line.unitCostPaise]
+       line.discountPaise, line.taxRate, line.tax_paise, line.line_total_paise, JSON.stringify(line.modifiers), line.unitCostPaise, line.unitName, line.stockFactor]
     );
 
-    if (line.trackInventory) {
-      await moveStock(client, { businessId: tenant.businessId, branchId: tenant.branchId, productId: line.product_id, delta: -line.quantity });
+    // stockHandledElsewhere: the goods are not in this outlet's stock (a distributor's van holds them), so selling them here must not take them out of it
+    if (line.trackInventory && !input.stockHandledElsewhere) {
+      const stockQty = Math.round(line.quantity * line.stockFactor * 1000) / 1000;
+      await moveStock(client, { businessId: tenant.businessId, branchId: tenant.branchId, productId: line.product_id, delta: -stockQty });
       await client.query(
         `INSERT INTO inventory_transactions (business_id, branch_id, product_id, transaction_type, quantity, reference_type, reference_id, created_by)
          VALUES ($1,$2,$3,'SALE',$4,'invoice',$5,$6)`,
-        [tenant.businessId, tenant.branchId, line.product_id, -line.quantity, invoice.invoice_id, userId]
+        [tenant.businessId, tenant.branchId, line.product_id, -stockQty, invoice.invoice_id, userId]
       );
     }
+  }
+
+  // a retail product that tracks expiry is sold from its soonest-expiring batch
+  if (isRetail(tenant) && !input.stockHandledElsewhere) {
+    await takeBatchesForSale(client, { businessId: tenant.businessId, branchId: tenant.branchId, invoiceId: invoice.invoice_id,
+      lines: lines.filter((l) => l.trackInventory && l.product_id).map((l) => ({ productId: l.product_id, qty: Math.round(l.quantity * l.stockFactor * 1000) / 1000 })) });
   }
 
   /* Ingredient consumption: one ledger row per ingredient for the whole

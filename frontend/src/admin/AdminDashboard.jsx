@@ -7,14 +7,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { adminApi } from '../lib/adminApi.js';
 import { formatCurrency } from '../lib/api.js';
-import { PageHeader, Card, SkeletonCards, Alert } from '../components/ui.jsx';
+import { PageHeader, Card, SkeletonCards, Alert, StatCard } from '../components/ui.jsx';
 
-const Stat = ({ label, value, tone = 'text-ink-900' }) => (
-  <div className="border border-line bg-surface rounded-(--radius-card) p-5">
-    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-400">{label}</p>
-    <p className={`mt-2 tabular text-2xl font-semibold tracking-tight ${tone}`}>{value}</p>
-  </div>
-);
+const Stat = (props) => <StatCard size="lg" {...props} />;
 
 /* Same visual language as ReportsPage.jsx's Columns: one series, brand blue, the tallest labelled,
    a screen-reader table underneath. Kept local rather than shared across app/ and admin/ — a few

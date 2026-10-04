@@ -48,7 +48,7 @@ const EWayBillModal = ({ invoice, onClose, onDone }) => {
         {result && (
           <div className="space-y-3 border-t border-line pt-4">
             {result.errors.length > 0 && <div className="rounded-lg bg-danger/10 p-3 text-sm text-danger"><p className="font-semibold">Fix these first:</p><ul className="mt-1 list-disc pl-5">{result.errors.map((e, i) => <li key={i}>{e}</li>)}</ul></div>}
-            {result.warnings.map((w, i) => <p key={i} className="rounded-lg bg-amber-500/10 p-3 text-sm text-ink-800">{w.message}</p>)}
+            {result.warnings.map((w, i) => <p key={i} className="rounded-lg bg-amber-500/10 p-3 text-sm text-ink-900">{w.message}</p>)}
             {result.ready && (
               <>
                 <Button variant="secondary" onClick={download}>Download e-way bill file (JSON)</Button>

@@ -6,6 +6,8 @@
  * GST is computed the same way a sale's is (see modules/tax.js); the
  * difference is only which side of the business the tax sits on.
  */
+import { addToBatch } from '../modules/wholesale/stock.js';
+import { defaultBatchNo } from '../modules/retailStock.js';
 import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
 import { computeLineTax, isInterState, sumLines } from '../modules/tax.js';
@@ -13,7 +15,7 @@ import { toPaise, toRupees, toQuantity } from '../utils/money.js';
 import { moveStock } from '../modules/stock.js';
 import { branchFilter } from '../utils/scope.js';
 
-const SUPPLIER_PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER'];
+const SUPPLIER_PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CHEQUE', 'OTHER'];
 
 export const paymentStatus = (totalPaise, paidPaise) => {
   if (paidPaise <= 0) return 'UNPAID';
@@ -54,6 +56,8 @@ export const nextPoNumber = async (client, businessId) => {
 /* ==========================================================================
    POST /api/purchases
    ========================================================================== */
+const isRealDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`)) && new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v;
+
 export const create = async (req, res) => {
   const body = req.body || {};
   const items = Array.isArray(body.items) ? body.items : [];
@@ -83,7 +87,7 @@ export const create = async (req, res) => {
     const products = new Map();
     if (productIds.length) {
       const { rows } = await client.query(
-        `SELECT product_id, name, track_inventory FROM products WHERE business_id = $1 AND product_id = ANY($2::int[]) FOR UPDATE`,
+        `SELECT product_id, name, track_inventory, track_expiry FROM products WHERE business_id = $1 AND product_id = ANY($2::int[]) FOR UPDATE`,
         [req.tenant.businessId, productIds]
       );
       for (const p of rows) products.set(p.product_id, p);
@@ -106,7 +110,16 @@ export const create = async (req, res) => {
       const taxRate = Number(raw.tax_rate) || 0;
       const tax = computeLineTax({ quantity, unitPricePaise: unitCostPaise, taxRatePercent: taxRate, gstEnabled: business.gst_enabled, interState });
 
-      lines.push({ product_id: product?.product_id || null, description, quantity, unitCostPaise, taxRate, trackInventory: Boolean(product?.track_inventory), ...tax });
+      /* A product that tracks expiry must arrive with its expiry date: that is what makes it sellable soonest-first
+         and findable on the expiry list. The batch number is optional (the same expiry date is one batch). */
+      let batch = null;
+      if (product?.track_expiry && product.track_inventory) {
+        if (!isRealDate(raw.expiry_date)) { await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: `Enter the expiry date for ${product.name}` }); }
+        if (raw.mfg_date && !isRealDate(raw.mfg_date)) { await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: `The manufacturing date for ${product.name} is not a date` }); }
+        batch = { batchNo: String(raw.batch_no || '').trim() || defaultBatchNo(raw.expiry_date), expiry: raw.expiry_date, mfg: raw.mfg_date || null };
+      }
+
+      lines.push({ product_id: product?.product_id || null, description, quantity, unitCostPaise, taxRate, trackInventory: Boolean(product?.track_inventory), batch, ...tax });
     }
 
     const totals = sumLines(lines);
@@ -152,6 +165,10 @@ export const create = async (req, res) => {
            VALUES ($1,$2,$3,'PURCHASE',$4,'purchase_order',$5,$6)`,
           [req.tenant.businessId, req.tenant.branchId, line.product_id, line.quantity, po.po_id, req.auth.userId]
         );
+        if (line.batch) {
+          await addToBatch(client, { businessId: req.tenant.businessId, branchId: req.tenant.branchId, productId: line.product_id, batchNo: line.batch.batchNo,
+            mfgDate: line.batch.mfg, expiryDate: line.batch.expiry, qty: line.quantity, costPaise: line.unitCostPaise, source: 'GRN', refId: po.po_id, refType: 'PURCHASE' });
+        }
       }
     }
 

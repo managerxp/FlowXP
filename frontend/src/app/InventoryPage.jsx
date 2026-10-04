@@ -10,13 +10,13 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowDownLeft, ArrowLeft, ArrowRightLeft, ArrowUpRight, ClipboardCheck, PackagePlus, Search, Trash2 } from 'lucide-react';
+import { ArrowDownLeft, ArrowLeft, ArrowRightLeft, ArrowUpRight, ClipboardCheck, PackagePlus, Search, Trash2, Boxes } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
 import { daysAgoISO } from '../lib/dates.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { RESTAURANT_TYPES } from '../lib/business.js';
-import { Alert, Button, Field, Input, Modal, Select, useToast } from '../components/ui.jsx';
+import { AnimatedNumber, Alert, Button, Field, Input, Modal, Select, useToast, StatCard, EmptyState } from '../components/ui.jsx';
 
 const qty = (n) => Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 3 });
 const when = (iso) => {
@@ -41,7 +41,7 @@ const Meter = ({ item }) => {
   const pct = Math.max(0, Math.min(100, (item.current_stock / (item.min_stock * 2)) * 100));
   return (
     <span aria-hidden="true" className="mt-1.5 block h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
-      <span className={`block h-full rounded-full ${s === 'out' ? 'bg-danger' : s === 'low' ? 'bg-warning' : 'bg-brand-500'}`} style={{ width: `${Math.max(pct, s === 'out' ? 0 : 4)}%` }} />
+      <span className={`block h-full rounded-full transition-[width,background-color] duration-(--duration-moderate) ${s === 'out' ? 'bg-danger' : s === 'low' ? 'bg-warning' : 'bg-brand-500'}`} style={{ width: `${Math.max(pct, s === 'out' ? 0 : 4)}%` }} />
     </span>
   );
 };
@@ -419,7 +419,7 @@ const ItemPanel = ({ item, refreshKey, canWrite, multiOutlet, allView, onAction,
         <h2 className="mt-0.5 text-title font-semibold text-ink-900">{item.name}</h2>
         <div className="mt-3 flex items-end justify-between gap-4">
           <p>
-            <span className={`tabular text-[32px] font-semibold leading-none tracking-tight ${s === 'out' ? 'text-danger' : s === 'low' ? 'text-warning' : 'text-ink-900'}`}>{qty(item.current_stock)}</span>
+            <AnimatedNumber value={item.current_stock} format={qty} className={`text-[32px] font-semibold leading-none tracking-tight transition-colors duration-(--duration-normal) ${s === 'out' ? 'text-danger' : s === 'low' ? 'text-warning' : 'text-ink-900'}`} />
             <span className="ml-1.5 text-body text-ink-500">{item.unit}</span>
           </p>
           <p className="tabular text-right text-small text-ink-500"><span className="block font-semibold text-ink-900">{formatCurrency(item.stock_value)}</span>{item.unit_cost > 0 ? `at ${formatCurrency(item.unit_cost)} a ${item.unit}` : 'no cost set'}</p>
@@ -475,17 +475,7 @@ const ItemPanel = ({ item, refreshKey, canWrite, multiOutlet, allView, onAction,
 
 /* ── The screen ───────────────────────────────────────────────────────── */
 
-const Tile = ({ label, value, note, tone, onClick, pressed }) => {
-  const Tag = onClick ? 'button' : 'div';
-  return (
-    <Tag type={onClick ? 'button' : undefined} onClick={onClick} aria-pressed={onClick && pressed != null ? pressed : undefined}
-         className={`rounded-(--radius-card) border bg-surface p-4 text-left ${pressed ? 'border-brand-500 ring-1 ring-brand-500' : 'border-line'} ${onClick ? 'transition-colors duration-(--duration-fast) hover:border-ink-400' : ''}`}>
-      <p className="text-caption text-ink-500">{label}</p>
-      <p className={`tabular mt-1 text-title font-semibold ${tone === 'danger' ? 'text-danger' : tone === 'warning' ? 'text-warning' : 'text-ink-900'}`}>{value}</p>
-      {note && <p className="mt-0.5 text-caption text-ink-500">{note}</p>}
-    </Tag>
-  );
-};
+const Tile = StatCard;
 
 const ItemRow = ({ item, active, onOpen }) => (
   <li>
@@ -496,7 +486,7 @@ const ItemRow = ({ item, active, onOpen }) => (
         <span className="block max-w-[14rem]"><Meter item={item} /></span>
       </span>
       <span className="text-right">
-        <span className={`tabular block text-small font-semibold ${stateOf(item) === 'out' ? 'text-danger' : stateOf(item) === 'low' ? 'text-warning' : 'text-ink-900'}`}>{qty(item.current_stock)} {item.unit}</span>
+        <span className={`block text-small font-semibold ${stateOf(item) === 'out' ? 'text-danger' : stateOf(item) === 'low' ? 'text-warning' : 'text-ink-900'}`}><AnimatedNumber value={item.current_stock} format={qty} /> {item.unit}</span>
         <span className="tabular block text-caption text-ink-500">{formatCurrency(item.stock_value)}</span>
       </span>
     </button>
@@ -614,9 +604,7 @@ const InventoryPage = () => {
         ) : selectedId && items ? (
           <div className="p-8 text-center text-small text-ink-500">That item isn't tracked here. <button type="button" onClick={() => open(null)} className="font-medium text-brand-700">Back to all</button></div>
         ) : (
-          <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-            <p className="text-small font-medium text-ink-700">Pick an item to count it, log wastage, or see every movement behind its number</p>
-          </div>
+          <EmptyState compact icon={Boxes} className="h-full justify-center" title="Pick an item" body="Count it, log wastage, or see every movement behind its number." />
         )}
       </section>
 

@@ -133,16 +133,16 @@ const Demand = () => {
               <div className="mt-4 flex h-32 items-end gap-1.5" role="img" aria-label="Expected orders by hour">
                 {data.focus.hourly.map((h) => (
                   <div key={h.hour} className="flex h-full flex-1 flex-col items-center justify-end gap-1" title={`${hourLabel(h.hour)}: about ${h.orders} orders`}>
-                    <span className="text-[10px] text-ink-500">{h.orders >= 1 ? Math.round(h.orders) : ''}</span>
+                    <span className="text-[11px] text-ink-500">{h.orders >= 1 ? Math.round(h.orders) : ''}</span>
                     <div className={`w-full rounded-t-sm ${h.orders >= peak * 0.8 ? 'bg-brand-500' : 'bg-brand-500/40'}`} style={{ height: `${(h.orders / peak) * 100}%` }} />
-                    <span className="text-[10px] text-ink-400">{hourLabel(h.hour)}</span>
+                    <span className="text-[11px] text-ink-500">{hourLabel(h.hour)}</span>
                   </div>
                 ))}
               </div>
             ) : <p className="mt-3 text-sm text-ink-400">No hourly pattern yet.</p>}
           </Card>
 
-          <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <div>
               <h2 className="mb-2 text-sm font-semibold text-ink-900">Expected portions — {shortDate(data.focus.date)}</h2>
               <DataTable
@@ -228,14 +228,14 @@ const Stock = () => {
             <Button size="sm" onClick={draftAll} disabled={busy}>{busy ? 'Creating…' : 'Create draft orders for all'}</Button>
           </div>
           {note && <p className="mb-2 text-sm text-ink-500">{note}</p>}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {data.by_supplier.map((g) => (
               <Card key={g.supplier_id ?? 'none'}>
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="text-sm font-semibold text-ink-900">{g.supplier_name}</h3>
                   <span className="text-sm font-bold text-ink-900">{formatCurrency(g.total)}</span>
                 </div>
-                <ul className="mt-2 space-y-1 text-sm text-ink-600">
+                <ul className="mt-2 space-y-1 text-sm text-ink-700">
                   {g.items.map((i) => <li key={i.product_id} className="flex justify-between"><span>{i.name}</span><span>{i.quantity} {i.unit}</span></li>)}
                 </ul>
                 <Button size="sm" className="mt-4" onClick={() => draft(g)}>Review as an order</Button>

@@ -52,17 +52,20 @@ Rules:
  * @param businessName, businessType, currentForm  context for the system prompt
  * @param message   the new user message
  * @param history   earlier turns this session, [{ role, content }] (kept client-side, not persisted)
- * @returns { reply, fields, usage: { input_tokens, output_tokens } }
+ * @returns { reply, fields, usage: { input_tokens, output_tokens }, model }
  */
 export const converseOnboarding = async ({ businessName, businessType, currentForm, message, history = [] }) => {
   const system = systemPrompt({ businessName, businessType, currentForm });
   const messages = [...history.map((m) => ({ role: m.role, content: m.content })), { role: 'user', content: message }];
-  const reply = await complete({ system, messages, tools: [TOOL] });
+  // 'fast': pulling a handful of fields out of one short typed message, in a live chat widget — the
+  // simplest, most latency-sensitive job of the four Flow AI features.
+  const reply = await complete({ system, messages, tools: [TOOL], tier: 'fast' });
   const call = reply.content.find((b) => b.type === 'tool_use' && b.name === TOOL.name);
   const text = textOf(reply.content);
   return {
     reply: text || (call ? 'Got it, updated your details — what else?' : 'Could you say a bit more about that?'),
     fields: call?.input || {},
-    usage: reply.usage || { input_tokens: 0, output_tokens: 0 }
+    usage: reply.usage || { input_tokens: 0, output_tokens: 0 },
+    model: reply.model
   };
 };

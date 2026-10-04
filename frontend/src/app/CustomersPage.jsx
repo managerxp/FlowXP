@@ -8,11 +8,11 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Mail, Phone, Plus, Search } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Plus, Search, UserRound } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { localISO } from '../lib/dates.js';
 import { LoyaltyCard } from '../components/LoyaltyCard.jsx';
-import { Alert, Button, Field, Input, Modal, Select, StatusBadge, useToast } from '../components/ui.jsx';
+import { Alert, Button, Field, Input, Modal, Select, StatusBadge, useToast, StatCard, EmptyState } from '../components/ui.jsx';
 
 const DAY = 86400000;
 const daysSince = (iso) => (iso ? Math.max(0, Math.round((new Date(`${localISO()}T00:00`) - new Date(`${iso}T00:00`)) / DAY)) : null);
@@ -116,13 +116,7 @@ const CustomerForm = ({ initial, onSaved, onClose }) => {
 
 /* ── One customer ─────────────────────────────────────────────────────── */
 
-const Stat = ({ label, value, note }) => (
-  <div className="rounded-(--radius-card) border border-line bg-surface p-3.5">
-    <p className="text-caption text-ink-500">{label}</p>
-    <p className="tabular mt-1 text-title font-semibold text-ink-900">{value}</p>
-    {note && <p className="mt-0.5 text-caption text-ink-500">{note}</p>}
-  </div>
-);
+const Stat = StatCard;
 
 const BillRow = ({ bill }) => {
   const cancelled = bill.status === 'CANCELLED';
@@ -351,9 +345,7 @@ const CustomersPage = () => {
         ) : selectedId && customers ? (
           <div className="p-8 text-center text-small text-ink-500">That customer isn't in this list. <button type="button" onClick={() => open(null)} className="font-medium text-brand-700">Back to all</button></div>
         ) : (
-          <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-            <p className="text-small font-medium text-ink-700">Pick a customer to see their bills, loyalty and what they owe</p>
-          </div>
+          <EmptyState compact icon={UserRound} className="h-full justify-center" title="Pick a customer" body="See their bills, loyalty and what they owe." />
         )}
       </section>
 

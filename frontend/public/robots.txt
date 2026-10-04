@@ -1,8 +1,19 @@
+# https://flowxp.in
+# The marketing site is open to every crawler. The signed-in app, the platform admin, and each business's own
+# customer pages (table QR menus, public bill links, booking pages) are private or per-business: not for search.
+
 User-agent: *
 Allow: /
 Disallow: /app/
 Disallow: /superadmin/
 Disallow: /order/
 Disallow: /bill/
+Disallow: /book/
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /api/
 
-Sitemap: https://flowxp.example.com/sitemap.xml
+# A plain-text summary of FlowXP for AI assistants: https://flowxp.in/llms.txt
+
+Sitemap: https://flowxp.in/sitemap.xml

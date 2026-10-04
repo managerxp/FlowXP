@@ -16,6 +16,44 @@ import { EXT_BY_MIME, putFile, removeFile } from '../modules/storage.js';
 import { looksLikeImage } from '../middleware/upload.js';
 import { branchFilter } from '../utils/scope.js';
 import { loadRecipes, recipeCostPaise, recipeMargin } from '../modules/recipes.js';
+import { generateSku } from '../modules/sku.js';
+import { addAlias, barcodeOwner, cleanBarcode, cleanCode, findByCode, IdentityError, searchClause } from '../modules/productIdentity.js';
+import { autoSkuOn, getRetailSettings, isRetail } from '../modules/retailSettings.js';
+
+const fail = (res, status, message, extra = {}) => res.status(status).json({ success: false, message, ...extra });
+
+/* A category or supplier id in the body is only a claim: it must belong to this business, or a product could point at
+   (and, through the list's joins, show the name of) another business's category. */
+const ownsRefs = async (db, businessId, body) => {
+  if (body.category_id && !(await db.query(`SELECT 1 FROM categories WHERE category_id = $1 AND business_id = $2`, [body.category_id, businessId])).rows.length) return 'Category not found';
+  if (body.supplier_id && !(await db.query(`SELECT 1 FROM suppliers WHERE supplier_id = $1 AND business_id = $2`, [body.supplier_id, businessId])).rows.length) return 'Supplier not found';
+  return null;
+};
+
+/** '' → null, otherwise trimmed; a barcode or ERP code is checked as the identifier it is. Throws IdentityError. */
+const identifier = (field, value) => {
+  if (value == null || String(value).trim() === '') return null;
+  if (field === 'barcode') return cleanBarcode(value);
+  if (field === 'erp_code') return cleanCode(value, 'ERP code');
+  const text = String(value).trim();
+  if (text.length > 64) throw new IdentityError(400, 'BAD_CODE', 'A SKU is up to 64 characters');
+  return text;
+};
+
+/* The selling price may not exceed the printed MRP: it is the legal ceiling for packaged goods in India. */
+const mrpProblem = (sellingPaise, mrpPaise) => (mrpPaise != null && sellingPaise > mrpPaise ? 'The selling price cannot be above the MRP' : null);
+
+/** A unique-violation, said in words: which identifier clashed and with whom. */
+const clashMessage = async (error, businessId, values = {}) => {
+  const constraint = String(error.constraint || '');
+  if (constraint.includes('barcode')) {
+    const owner = values.barcode ? await barcodeOwner(pool, businessId, values.barcode) : null;
+    return { status: 409, code: 'BARCODE_IN_USE', message: owner ? `This barcode is already assigned to ${owner.name}.` : 'This barcode is already assigned to another product.', data: owner ? { product_id: owner.product_id, name: owner.name } : undefined };
+  }
+  if (constraint.includes('sku')) return { status: 409, code: 'SKU_IN_USE', message: 'Another product already has that SKU.' };
+  if (constraint.includes('erp')) return { status: 409, code: 'ERP_IN_USE', message: 'Another product already has that ERP code.' };
+  return { status: 409, code: 'DUPLICATE', message: 'A product with that SKU or barcode already exists' };
+};
 
 /* Products are one shared menu. When the request is for one outlet, show that
    outlet's stock, price and availability instead of the business-wide ones. */
@@ -62,6 +100,10 @@ const asProduct = (row) => ({
   modifier_group_ids: row.modifier_group_ids || [],
   sku: row.sku,
   barcode: row.barcode,
+  erp_code: row.erp_code || null,
+  is_quick: Boolean(row.is_quick),
+  track_expiry: Boolean(row.track_expiry),
+  mrp: row.mrp_paise == null ? null : toRupees(row.mrp_paise),
   unit: row.unit,
   description: row.description,
   image_url: row.image_url,
@@ -105,14 +147,13 @@ export const list = async (req, res) => {
 
   if (status !== 'all') { values.push(status); clauses.push(`p.status = $${values.length}`); }
   if (kind) { values.push(String(kind).toUpperCase()); clauses.push(`p.kind = $${values.length}`); }
+  // a salon's services have their own screens (/api/salon/services); they are not stock to buy, count or sell as products
+  else clauses.push(`p.kind <> 'SERVICE'`);
   if (category_id) { values.push(Number(category_id)); clauses.push(`p.category_id = $${values.length}`); }
   if (brand_id) { values.push(Number(brand_id)); clauses.push(`p.brand_id = $${values.length}`); }
-  if (search) {
-    values.push(`%${search}%`);
-    const likeIndex = values.length;
-    values.push(String(search));
-    clauses.push(`(p.name ILIKE $${likeIndex} OR p.sku ILIKE $${likeIndex} OR p.barcode = $${values.length})`);
-  }
+  const searched = searchClause(search, values);
+  if (searched) clauses.push(searched);
+  if (req.query.quick === 'true') clauses.push('p.is_quick');
   if (low_stock === 'true') {
     if (req.tenant.scopeBranchId != null) {
       values.push(req.tenant.scopeBranchId);
@@ -120,8 +161,11 @@ export const list = async (req, res) => {
     } else clauses.push(`p.track_inventory AND p.current_stock <= p.min_stock`);
   }
 
+  // paging is opt-in (the till still loads its whole catalogue); a big catalogue's screens ask for a page
+  const limit = Math.min(Math.max(Math.trunc(Number(req.query.limit)) || 0, 0), 500);
+  const offset = Math.max(Math.trunc(Number(req.query.offset)) || 0, 0);
   const { rows } = await pool.query(
-    `${SELECT} ${clauses.map((c) => `AND ${c}`).join(' ')} ORDER BY p.name`,
+    `${SELECT} ${clauses.map((c) => `AND ${c}`).join(' ')} ORDER BY p.name, p.product_id${limit ? ` LIMIT ${limit} OFFSET ${offset}` : ''}`,
     values
   );
   res.json({ success: true, data: (await withCosts(await forOutlet(rows, req.tenant), req.tenant)).map(asProduct) });
@@ -136,11 +180,23 @@ export const get = async (req, res) => {
 };
 
 export const findByBarcode = async (req, res) => {
-  const { rows } = await pool.query(`${SELECT} AND p.barcode = $2 AND p.status = 'ACTIVE'`, [
-    req.tenant.businessId, req.params.barcode
-  ]);
+  const { rows } = await pool.query(
+    `${SELECT} AND p.status = 'ACTIVE' AND p.product_id IN (SELECT product_id FROM product_barcodes WHERE business_id = $1 AND barcode = $2)`,
+    [req.tenant.businessId, String(req.params.barcode).trim()]
+  );
   if (!rows.length) return res.status(404).json({ success: false, message: 'No product with that barcode' });
   res.json({ success: true, data: asProduct((await forOutlet(rows, req.tenant))[0]) });
+};
+
+/* GET /api/products/lookup/:code — a scan or typed code that may be a barcode, SKU, ERP code or supplier code. One
+   match is the product; several (a code two suppliers share) is a list for the person to choose from. */
+export const lookup = async (req, res) => {
+  const found = (await findByCode(pool, req.tenant.businessId, req.params.code)).filter((m) => m.status === 'ACTIVE');
+  if (!found.length) return fail(res, 404, 'No product with that code');
+  const { rows } = await pool.query(`${SELECT} AND p.product_id = ANY($2::int[])`, [req.tenant.businessId, found.map((m) => m.product_id)]);
+  const how = new Map(found.map((m) => [m.product_id, m.matched_on]));
+  const data = (await forOutlet(rows, req.tenant)).map((r) => ({ ...asProduct(r), matched_on: how.get(r.product_id) }));
+  res.json({ success: true, data, ambiguous: data.length > 1 });
 };
 
 /* ==========================================================================
@@ -172,37 +228,86 @@ export const create = async (req, res) => {
 
   const trackInventory = body.track_inventory !== false;
 
-  try {
-    const { rows } = await pool.query(
-      `INSERT INTO products
-         (business_id, category_id, supplier_id, name, sku, barcode, unit,
-          selling_price_paise, purchase_price_paise, tax_rate, hsn_sac,
-          track_inventory, current_stock, min_stock, description, kind, food_type, brand_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
-       RETURNING product_id`,
-      [
-        req.tenant.businessId,
-        body.category_id || null,
-        body.supplier_id || null,
-        String(body.name).trim(),
-        body.sku ? String(body.sku).trim() : null,
-        body.barcode ? String(body.barcode).trim() : null,
-        body.unit ? String(body.unit).trim() : 'pc',
-        sellingPaise,
-        purchasePaise,
-        Number(body.tax_rate) || 0,
-        body.hsn_sac ? String(body.hsn_sac).trim() : null,
-        trackInventory,
-        0,   // opening stock is added below, through moveStock, so outlet and total agree
-        Number(body.min_stock) || 0,
-        body.description ? String(body.description).trim() : null,
-        kind,
-        food,
-        body.brand_id || null
-      ]
-    );
+  const refProblem = await ownsRefs(pool, req.tenant.businessId, body);
+  if (refProblem) return fail(res, 400, refProblem);
+  let mrpPaise = null;
+  if (body.mrp != null && body.mrp !== '') {
+    try { mrpPaise = toPaise(body.mrp); } catch { return fail(res, 400, 'MRP must be a number'); }
+    if (mrpPaise < 0) return fail(res, 400, 'MRP cannot be negative');
+  }
+  const priceProblem = mrpProblem(sellingPaise, mrpPaise);
+  if (priceProblem) return fail(res, 400, priceProblem);
 
-    const productId = rows[0].product_id;
+  let sku; let barcode; let erpCode; const aliases = [];
+  try {
+    sku = identifier('sku', body.sku);
+    barcode = identifier('barcode', body.barcode);
+    erpCode = identifier('erp_code', body.erp_code);
+    for (const a of Array.isArray(body.aliases) ? body.aliases : []) aliases.push(a);
+  } catch (identityError) {
+    if (identityError instanceof IdentityError) return fail(res, identityError.status, identityError.message, { code: identityError.code });
+    throw identityError;
+  }
+  const settings = isRetail(req.tenant) ? await getRetailSettings(pool, req.tenant.businessId) : null;
+  if (settings?.require_barcode && !barcode) return fail(res, 400, 'Add a barcode: your product settings ask for one on every product.', { code: 'BARCODE_REQUIRED' });
+  const generate = !sku && settings && autoSkuOn(req.tenant, settings);
+  const categoryName = body.category_id ? (await pool.query(`SELECT name FROM categories WHERE category_id = $1`, [body.category_id])).rows[0]?.name : null;
+
+  const client = await pool.connect();
+  // the connection goes back as soon as the product is saved: what follows uses the pool, and holding one while
+  // waiting for another is how a burst of cashiers would starve each other of connections
+  let released = false;
+  const release = () => { if (!released) { released = true; client.release(); } };
+  let productId;
+  try {
+    // a generated SKU is taken and the product saved in one transaction; a clash with a hand-typed SKU just takes the next number
+    for (let attempt = 0; ; attempt++) {
+      await client.query('BEGIN');
+      try {
+        const made = generate ? await generateSku(client, { businessId: req.tenant.businessId, categoryName, name: body.name }) : sku;
+        const { rows } = await client.query(
+          `INSERT INTO products
+             (business_id, category_id, supplier_id, name, sku, barcode, unit,
+              selling_price_paise, purchase_price_paise, tax_rate, hsn_sac,
+              track_inventory, current_stock, min_stock, description, kind, food_type, brand_id, mrp_paise, erp_code, track_expiry)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+           RETURNING product_id`,
+          [
+            req.tenant.businessId,
+            body.category_id || null,
+            body.supplier_id || null,
+            String(body.name).trim(),
+            made,
+            barcode,
+            body.unit ? String(body.unit).trim() : 'pc',
+            sellingPaise,
+            purchasePaise,
+            Number(body.tax_rate) || 0,
+            body.hsn_sac ? String(body.hsn_sac).trim() : null,
+            trackInventory,
+            0,   // opening stock is added below, through moveStock, so outlet and total agree
+            Number(body.min_stock) || 0,
+            body.description ? String(body.description).trim() : null,
+            kind,
+            food,
+            body.brand_id || null,
+            mrpPaise,
+            erpCode,
+            body.track_expiry === true
+          ]
+        );
+        productId = rows[0].product_id;
+        for (const alias of aliases) await addAlias(client, { businessId: req.tenant.businessId, productId, alias, userId: req.auth.userId });
+        await client.query('COMMIT');
+        sku = made;
+        break;
+      } catch (inner) {
+        await client.query('ROLLBACK').catch(() => {});
+        if (generate && inner.code === '23505' && String(inner.constraint).includes('sku') && attempt < 3) continue;
+        throw inner;
+      }
+    }
+    release();
 
     /* Opening stock is itself a stock movement — it goes through the same
        ledger a sale or a purchase does, so "where did this product's stock
@@ -217,16 +322,71 @@ export const create = async (req, res) => {
       );
     }
 
-    recordAudit(req, { action: 'product.created', resource_type: 'product', resource_id: productId });
+    recordAudit(req, { action: 'product.created', resource_type: 'product', resource_id: productId, metadata: { sku, sku_generated: Boolean(generate), barcode, erp_code: erpCode, ...(body._via ? { via: body._via } : {}) } });
     const { rows: full } = await pool.query(`${SELECT} AND p.product_id = $2`, [req.tenant.businessId, productId]);
     res.status(201).json({ success: true, data: asProduct(full[0]) });
   } catch (dbError) {
+    if (dbError instanceof IdentityError) return fail(res, dbError.status, dbError.message, { code: dbError.code });
     if (dbError.code === '23505') {
-      return res.status(409).json({ success: false, message: 'A product with that SKU or barcode already exists' });
+      const clash = await clashMessage(dbError, req.tenant.businessId, { barcode });
+      return fail(res, clash.status, clash.message, { code: clash.code, data: clash.data });
     }
     console.error('[products] create failed:', dbError.message);
-    res.status(500).json({ success: false, message: 'Could not create the product' });
+    fail(res, 500, 'Could not create the product');
+  } finally {
+    release();
   }
+};
+
+/* ==========================================================================
+   GET /api/products/pos-catalog?after=<product_id>&limit=  (keyset pages)
+
+   The till's offline copy of the catalogue: compact rows with every barcode, in product_id order, so a phone can keep
+   a whole supermarket (barcode -> product, name search) and keep scanning with no connection. Prices and stock follow
+   the outlet being worked in, like the list.
+   ========================================================================== */
+export const posCatalog = async (req, res) => {
+  const after = Math.max(0, Math.trunc(Number(req.query.after)) || 0);
+  const limit = Math.min(Math.max(Math.trunc(Number(req.query.limit)) || 1000, 1), 2000);
+  const { rows } = await pool.query(
+    `SELECT p.*, c.name AS category_name,
+            COALESCE((SELECT array_agg(b.barcode ORDER BY b.barcode_id) FROM product_barcodes b WHERE b.product_id = p.product_id), '{}') AS barcodes
+     FROM products p LEFT JOIN categories c ON c.category_id = p.category_id
+     WHERE p.business_id = $1 AND p.status = 'ACTIVE' AND p.kind <> 'SERVICE' AND p.product_id > $2
+     ORDER BY p.product_id LIMIT ${limit}`, [req.tenant.businessId, after]
+  );
+  const shaped = await forOutlet(rows, req.tenant);
+  const barcodes = new Map(rows.map((r) => [r.product_id, r.barcodes]));
+  const data = shaped.map((r) => {
+    const p = asProduct(r);
+    return {
+      product_id: p.product_id, name: p.name, sku: p.sku, barcodes: barcodes.get(r.product_id), unit: p.unit, selling_price: p.selling_price, mrp: p.mrp, tax_rate: p.tax_rate,
+      track_inventory: p.track_inventory, current_stock: p.current_stock, category_name: p.category_name, is_quick: p.is_quick, is_available: p.is_available, modifier_group_ids: p.modifier_group_ids
+    };
+  });
+  res.json({ success: true, data, meta: { next_after: rows.length === limit ? rows[rows.length - 1].product_id : null } });
+};
+
+/* ==========================================================================
+   POST /api/products/quick  (permission product_quick_add + billing)
+
+   A missing product made from the till: only name, category, price, MRP, GST, unit and the scanned barcode are taken.
+   It is the ordinary product service (SKU generation, barcode rules, MRP ceiling, audit), not a second copy of it.
+   ========================================================================== */
+export const quickCreate = async (req, res) => {
+  const b = req.body || {};
+  let price = null;
+  try { price = toPaise(b.selling_price ?? 0); } catch { return fail(res, 400, 'Selling price must be a number'); }
+  if (!(price > 0)) return fail(res, 400, 'Enter the selling price');
+  // What is on the shelf, if the person knows. Blank means "not counting this yet": a tracked item with nothing in
+  // stock could not be sold at all, and a cashier must never be stopped by an item that is physically in front of them.
+  const counted = b.opening_stock != null && String(b.opening_stock).trim() !== '';
+  if (counted && !(Number(b.opening_stock) >= 0)) return fail(res, 400, 'Stock on hand must be zero or more');
+  req.body = {
+    name: b.name, category_id: b.category_id, selling_price: b.selling_price, mrp: b.mrp, tax_rate: b.tax_rate, unit: b.unit, barcode: b.barcode,
+    track_inventory: counted, ...(counted ? { opening_stock: Number(b.opening_stock) } : {}), _via: 'till'
+  };
+  return create(req, res);
 };
 
 /* ==========================================================================
@@ -237,13 +397,42 @@ export const create = async (req, res) => {
    a purchase, or an explicit adjustment in inventory.controller.js), so this
    allowlist excludes it on purpose.
    ========================================================================== */
-const EDITABLE = ['name', 'category_id', 'supplier_id', 'brand_id', 'sku', 'barcode', 'unit',
+const EDITABLE = ['name', 'category_id', 'supplier_id', 'brand_id', 'sku', 'barcode', 'erp_code', 'is_quick', 'track_expiry', 'unit',
   'tax_rate', 'hsn_sac', 'min_stock', 'status', 'description', 'kind', 'lead_time_days', 'food_type'];
+/* What the audit log keeps a before and after for: the things that decide what a product is called and what it sells for. */
+const TRACKED = ['name', 'sku', 'barcode', 'erp_code', 'unit', 'tax_rate', 'category_id', 'status', 'selling_price_paise', 'purchase_price_paise', 'mrp_paise'];
 
 export const update = async (req, res) => {
   const body = req.body || {};
   const updates = [];
   const values = [];
+
+  const before = (await pool.query(`SELECT * FROM products WHERE business_id = $1 AND product_id = $2`, [req.tenant.businessId, req.params.id])).rows[0];
+  if (!before) return fail(res, 404, 'Not found');
+  if ('is_quick' in body && typeof body.is_quick !== 'boolean') return fail(res, 400, 'is_quick must be true or false');
+  if ('track_expiry' in body && typeof body.track_expiry !== 'boolean') return fail(res, 400, 'track_expiry must be true or false');
+  const refProblem = await ownsRefs(pool, req.tenant.businessId, body);
+  if (refProblem) return fail(res, 400, refProblem);
+  try {
+    for (const field of ['sku', 'barcode', 'erp_code']) if (field in body) body[field] = identifier(field, body[field]);
+  } catch (identityError) {
+    if (identityError instanceof IdentityError) return fail(res, identityError.status, identityError.message, { code: identityError.code });
+    throw identityError;
+  }
+  if ('barcode' in body && !body.barcode && before.barcode) {
+    const settings = isRetail(req.tenant) ? await getRetailSettings(pool, req.tenant.businessId) : null;
+    if (settings?.require_barcode) return fail(res, 400, 'Add a barcode: your product settings ask for one on every product.', { code: 'BARCODE_REQUIRED' });
+  }
+  // the selling price against the MRP, whichever of the two is being changed
+  let nextSelling = Number(before.selling_price_paise); let nextMrp = before.mrp_paise == null ? null : Number(before.mrp_paise);
+  try {
+    if ('selling_price' in body) nextSelling = toPaise(body.selling_price);
+    if ('mrp' in body) nextMrp = body.mrp == null || body.mrp === '' ? null : toPaise(body.mrp);
+  } catch { return fail(res, 400, 'Prices must be numbers'); }
+  if (nextMrp != null && nextMrp < 0) return fail(res, 400, 'MRP cannot be negative');
+  const priceProblem = mrpProblem(nextSelling, nextMrp);
+  if (priceProblem) return fail(res, 400, priceProblem);
+  if ('mrp' in body) { values.push(nextMrp); updates.push(`mrp_paise = $${values.length}`); }
 
   if ('lead_time_days' in body && !(Number.isInteger(Number(body.lead_time_days)) && body.lead_time_days >= 0 && body.lead_time_days <= 30)) {
     return res.status(400).json({ success: false, message: 'Lead time must be a whole number of days from 0 to 30' });
@@ -276,15 +465,27 @@ export const update = async (req, res) => {
   if (!updates.length) return res.status(400).json({ success: false, message: 'Nothing to update' });
 
   values.push(req.tenant.businessId, req.params.id);
-  const { rows } = await pool.query(
-    `UPDATE products SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
-     WHERE business_id = $${values.length - 1} AND product_id = $${values.length}
-     RETURNING product_id`,
-    values
-  );
-  if (!rows.length) return res.status(404).json({ success: false, message: 'Not found' });
+  let rows;
+  try {
+    ({ rows } = await pool.query(
+      `UPDATE products SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
+       WHERE business_id = $${values.length - 1} AND product_id = $${values.length}
+       RETURNING *`,
+      values
+    ));
+  } catch (dbError) {
+    if (dbError.code !== '23505') throw dbError;
+    const clash = await clashMessage(dbError, req.tenant.businessId, { barcode: body.barcode });
+    return fail(res, clash.status, clash.message, { code: clash.code, data: clash.data });
+  }
+  if (!rows.length) return fail(res, 404, 'Not found');
 
-  recordAudit(req, { action: 'product.updated', resource_type: 'product', resource_id: req.params.id, metadata: { fields: Object.keys(body) } });
+  const changes = {};
+  for (const field of TRACKED) {
+    const a = before[field] ?? null; const b = rows[0][field] ?? null;
+    if (String(a) !== String(b)) changes[field.replace('_paise', '')] = { from: field.endsWith('_paise') && a != null ? toRupees(a) : a, to: field.endsWith('_paise') && b != null ? toRupees(b) : b };
+  }
+  recordAudit(req, { action: 'product.updated', resource_type: 'product', resource_id: req.params.id, metadata: { fields: Object.keys(body), changes } });
   const { rows: full } = await pool.query(`${SELECT} AND p.product_id = $2`, [req.tenant.businessId, req.params.id]);
   res.json({ success: true, data: asProduct(full[0]) });
 };
@@ -358,13 +559,15 @@ export const setOutletSettings = async (req, res) => {
   const branchId = Number(body.branch_id);
   if (req.tenant.pinned && branchId !== req.tenant.branchId) return res.status(403).json({ success: false, message: 'You can only change your own outlet' });
   const outlet = await pool.query(`SELECT 1 FROM branches WHERE branch_id = $1 AND business_id = $2 AND status = 'ACTIVE'`, [branchId, req.tenant.businessId]);
-  const own = await pool.query(`SELECT 1 FROM products WHERE product_id = $1 AND business_id = $2`, [req.params.id, req.tenant.businessId]);
+  const own = await pool.query(`SELECT mrp_paise FROM products WHERE product_id = $1 AND business_id = $2`, [req.params.id, req.tenant.businessId]);
   if (!outlet.rows.length || !own.rows.length) return res.status(404).json({ success: false, message: 'Not found' });
 
   let pricePaise = null;
   if (body.price != null && body.price !== '') {
     try { pricePaise = toPaise(body.price); } catch { return res.status(400).json({ success: false, message: 'Price must be a number' }); }
     if (pricePaise < 0) return res.status(400).json({ success: false, message: 'Price cannot be negative' });
+    const priceProblem = mrpProblem(pricePaise, own.rows[0].mrp_paise == null ? null : Number(own.rows[0].mrp_paise));
+    if (priceProblem) return fail(res, 400, priceProblem);
   }
   const available = body.is_available !== false;
   if (pricePaise == null && available) {

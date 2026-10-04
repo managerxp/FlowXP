@@ -8,12 +8,20 @@
 
 import { clearOfflineCaches } from './pwa.js';
 
+/* The session is a cookie the server sets (flowxp_session: httpOnly, so this code never sees it; the browser sends
+   it with every /api request on its own). TOKEN_KEY is only the old place a session token was kept: a browser
+   signed in before the cookie still sends it once, the server answers /auth/me with a cookie, and
+   forgetLegacyToken() then removes it for good. Nothing writes TOKEN_KEY any more. */
 const TOKEN_KEY = 'flowxp.token';
 const BUSINESS_KEY = 'flowxp.business';
 const BRANCH_KEY = 'flowxp.branch';
 
-export const getToken = () => localStorage.getItem(TOKEN_KEY);
-export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token);
+export const getToken = () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } };
+export const forgetLegacyToken = () => { try { localStorage.removeItem(TOKEN_KEY); } catch { /* storage blocked */ } };
+/* Sent with every request: the server refuses a cookie-signed change without it, which is what stops another
+   website from making changes with a visitor's session (cross-site request forgery). */
+export const APP_HEADER = { 'X-Requested-With': 'FlowXP' };
+
 export const clearToken = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(BUSINESS_KEY);
@@ -48,15 +56,15 @@ export class NetworkError extends TypeError {
   constructor() { super("You're offline, or the server can't be reached. Check the connection and try again."); this.name = 'NetworkError'; }
 }
 
-export const api = async (path, { method = 'GET', body, businessId, idempotencyKey } = {}) => {
+export const api = async (path, { method = 'GET', body, businessId, idempotencyKey, withMeta = false } = {}) => {
   // A file upload (product photos) passes a FormData body — it must never be
   // JSON.stringify'd, and the Content-Type header must be left for the
   // browser to set itself (multipart/form-data with the boundary it chose),
   // not fixed to application/json.
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
-  const headers = isFormData ? {} : { 'Content-Type': 'application/json' };
+  const headers = isFormData ? { ...APP_HEADER } : { 'Content-Type': 'application/json', ...APP_HEADER };
 
-  const token = getToken();
+  const token = getToken();   // only a session from before the cookie (see TOKEN_KEY)
   if (token) headers.Authorization = `Bearer ${token}`;
 
   /* Which business this request is about. Sent as a header rather than woven
@@ -74,6 +82,7 @@ export const api = async (path, { method = 'GET', body, businessId, idempotencyK
     response = await fetch(`/api${path}`, {
       method,
       headers,
+      credentials: 'same-origin',
       body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body)
     });
   } catch {
@@ -100,12 +109,14 @@ export const api = async (path, { method = 'GET', body, businessId, idempotencyK
     );
   }
 
+  // withMeta: paged lists also send { meta: { total, limit, offset } }, which `data` alone would lose
+  if (withMeta) return { data: payload.data, meta: payload.meta };
   return payload.data ?? payload;
 };
 
 /** Download a file the API produces (a CSV export) under the person's own session. */
 export const downloadFile = async (path, filename) => {
-  const headers = {};
+  const headers = { ...APP_HEADER };
   const token = getToken(); if (token) headers.Authorization = `Bearer ${token}`;
   const scope = getBusinessId(); if (scope) headers['X-Business-Id'] = String(scope);
   const outlet = getBranchId(); if (outlet) headers['X-Branch-Id'] = outlet;

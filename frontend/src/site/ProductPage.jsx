@@ -46,7 +46,7 @@ const ListPanel = ({ title, groups }) => (
 );
 
 const ALSO = [
-  { title: 'Several businesses, one login', body: 'Switch between them; each keeps its own data.' },
+  { title: 'Several businesses, one login', body: 'Switch between them from the same account; each keeps its own stock, staff and invoice numbers.', big: true },
   { title: 'Branches and outlets', body: 'Own stock, staff and invoice series, one owner view.' },
   { title: 'Works offline', body: 'Bills are saved on the device and sent when the internet is back.' },
   { title: 'Phone app', body: 'Install FlowXP on Android or iPhone from the browser.' },
@@ -59,7 +59,6 @@ const ALSO = [
 const ProductPage = () => (
   <>
     <PageHero
-      eyebrow="The product"
       title="Everything you need to sell, stock and file GST."
       lead="Billing, payments, stock, purchases, GST, customers, reports and your team, in one place that your staff can learn in an afternoon. The pictures on this page are the real screens."
       points={['Nothing to install: it runs in the browser', 'Works on the laptop, tablet or phone you have', 'Every change is recorded with who made it']}
@@ -70,53 +69,53 @@ const ProductPage = () => (
     <Section>
       <div className="space-y-24 lg:space-y-32">
         <FeatureRow
-          id="billing" eyebrow="Billing and payments" title="Take the money. Give a proper GST bill."
+          id="billing"  title="Take the money. Give a proper GST bill."
           body="Scan a barcode or search, change quantities, add a discount or coupon, and take cash, UPI, card or credit, or several at once. CGST, SGST or IGST is worked out on every line."
-          points={['Print on a 58 or 80 mm printer, or send the bill as a WhatsApp or SMS link', 'Part payments and customer credit, settled later', 'Returns through numbered credit notes that reverse the GST exactly', 'Round-off to the rupee if you want it']}
+          points={['Print on a 58 or 80 mm printer, or share the bill as a link', 'Part payments and customer credit, settled later', 'Returns through numbered credit notes that reverse the GST exactly', 'Round-off to the rupee if you want it']}
           src="/product/pos-main.webp" alt="FlowXP billing screen with six items, quantities, line discounts, subtotal, GST, total and a Charge button."
         />
         <FeatureRow
-          flip eyebrow="Invoices" title="Every bill you have ever made, easy to find."
+          flip  title="Every bill you have ever made, easy to find."
           body="Search by bill number or customer, see what is paid and what is due, open any bill to reprint, cancel or issue a credit note."
           points={['Paid, part paid and unpaid at a glance', 'A separate invoice series for each outlet if you need one', 'GST register as CSV for your accountant']}
           src="/product/invoices-main.webp" alt="FlowXP invoices list with bill numbers, dates, customers, totals and paid and issued status."
         />
         <FeatureRow
-          id="stock" eyebrow="Stock and buying" title="Know what you have. Order before you run out."
+          id="stock"  title="Know what you have. Order before you run out."
           body="Stock goes down with every sale and up with every delivery, at each branch. FlowXP shows what is low, what was wasted and what it is all worth."
           points={['Purchase orders, deliveries in parts, back-orders and supplier price lists', 'Debit notes for returns and price corrections', 'Move stock between branches, or let a branch ask for it', 'Recipes, so selling one item uses up its ingredients']}
           src="/product/inventory-main.webp" alt="FlowXP inventory with stock value, ten items below their reorder point, wastage for the last 30 days and the product list."
         />
         <FeatureRow
-          id="gst" flip eyebrow="GST" title="Your GST returns, prepared from the bills you already made."
+          id="gst" flip  title="Your GST returns, prepared from the bills you already made."
           body="At month end, download the GSTR-1 file and see the GSTR-3B figures, worked out from your sales, credit notes and purchases. You or your accountant upload them on the GST portal."
           points={['GSTR-1 JSON for each GSTIN, with HSN summary and document series', 'GSTR-3B: outward supplies, input tax credit and tax to pay', 'E-invoice and e-way bill files, and a place to record the IRN and e-way number', 'Warnings for what needs fixing before you file']}
           src="/product/gst3b-main.webp" alt="FlowXP GST filing screen showing GSTR-3B figures: taxable value, IGST, CGST and SGST, input tax credit and tax to pay."
         />
         <FeatureRow
-          id="customers" eyebrow="Customers" title="Remember your regulars. Bring them back."
+          id="customers"  title="Remember your regulars. Bring them back."
           body="Every bill can be tied to a customer by mobile number, so you see what they buy, what they owe and how often they come. Then reward them."
           aside={<ListPanel title="Customers, loyalty and messages" groups={[
             ['Customers', ['Purchase history and what is outstanding', 'Credit sales and part payments', 'Found at the till by mobile number']],
             ['Loyalty', ['A free item on the Nth visit', 'Points and tiers, earned and spent at the till', 'Coupons and offer codes']],
-            ['Messages', ['Bill links on WhatsApp or SMS', 'Offers to chosen groups of customers', 'Customers can opt out; it is respected']],
+            ['Messages', ['Bill links on WhatsApp or SMS: coming soon', 'Offers to chosen groups of customers', 'Customers can opt out; it is respected']],
             ['Good to know', ['Works across all your outlets', 'Returns take points back automatically']]
           ]} />}
         />
         <FeatureRow
-          id="reports" flip eyebrow="Reports" title="See what you really earn, not just what you sold."
+          id="reports" flip  title="See what you really earn, not just what you sold."
           body="Sales, profit after costs, expenses, stock, GST and payments, for any dates, by day, item, branch and staff member."
           points={['Profit after cost of goods, fees, commission and expenses', 'Branch against branch, and sales per staff member', 'Unusual discounts, cancellations and refunds flagged for you']}
           src="/product/profit-main.webp" alt="FlowXP profitability report with net revenue, food cost, margin, contribution and daily revenue."
         />
         <FeatureRow
-          id="team" eyebrow="Team and control" title="Everyone sees what they need. You see everything."
+          id="team"  title="Everyone sees what they need. You see everything."
           body="Give each person a role and the outlets they work at. Every change to money, stock, prices or the team is recorded with who did it and when."
           points={['Owner, manager, cashier, waiter, kitchen and stock roles, adjustable per person', 'Activity log you can search and export', 'Two-step login, sign-in history and sign out everywhere']}
           src="/product/activity-main.webp" alt="FlowXP activity log listing who did what, when and at which outlet."
         />
         <FeatureRow
-          id="restaurants" flip eyebrow="For restaurants and cafés" title="The floor, the kitchen and the bill, connected."
+          id="restaurants" flip  title="The floor, the kitchen and the bill, connected."
           body="Switched on for restaurants, cafés and cloud kitchens. Orders go from the table or the QR menu to the right kitchen station, and the bill is always right."
           points={['Tables, waiters and guest ordering by table QR', 'Kitchen display or printed tickets, by station, with timers', 'Reservations and a walk-in waitlist', 'Combos, add-ons and spice levels, split and merged bills']}
           src="/product/kitchen-main.webp" alt="FlowXP kitchen display with six open orders by table, their dishes and minutes since sent."
@@ -138,7 +137,7 @@ const ProductPage = () => (
       </Reveal>
     </Section>
 
-    <Section eyebrow="Also included" title="The small things that make a big difference.">
+    <Section  title="The small things that make a big difference.">
       <CellGrid items={ALSO} />
     </Section>
 

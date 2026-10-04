@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { SEVERITY_DOT, timeAgo } from '../components/NotificationBell.jsx';
-import { Alert, Button, Card, PageHeader, useToast } from '../components/ui.jsx';
+import { Alert, Button, Card, PageHeader, useToast, PageLoader } from '../components/ui.jsx';
 
 const Toggle = ({ checked, onChange, label }) => (
   <input type="checkbox" checked={checked} onChange={onChange} aria-label={label} className="h-4 w-4 accent-[var(--color-brand-500)]" />
@@ -79,13 +79,13 @@ const NotificationsPage = () => {
   return (
     <div>
       <PageHeader title="Notifications" lead="What needs your attention, so you don't have to go looking." action={<Button variant="secondary" onClick={readAll} disabled={!unread}>Mark all read</Button>} />
-      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div>
           <label className="mb-3 flex items-center gap-2 text-sm text-ink-700">
             <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> Unread only
           </label>
           <Alert>{error}</Alert>
-          {!items && !error && <p className="py-10 text-center text-sm text-ink-400">Loading…</p>}
+          {!items && !error && <PageLoader compact />}
           {items?.length === 0 && <p className="rounded-(--radius-card) border border-dashed border-line-strong py-10 text-center text-sm text-ink-500">{unreadOnly ? 'Nothing unread.' : 'No notifications yet. Stock, unusual-activity and trial alerts will appear here.'}</p>}
           <ul className="space-y-2">
             {items?.map((n) => (

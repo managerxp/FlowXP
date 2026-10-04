@@ -17,7 +17,7 @@
  *
  * Sign in: demo@flowxp.test / demo1234   (staff: demo-manager@ etc., same password)
  */
-import 'dotenv/config';
+import './no-production.js'; // loads .env, and stops here in production
 import bcrypt from 'bcryptjs';
 import pool, { initializeDatabase } from '../src/config/database.js';
 import { createInvoiceInTransaction } from '../src/modules/billing.js';
@@ -79,13 +79,13 @@ const DISHES = [
   ['Chicken 65', 'Starters', 280, 10, 5, [['Chicken', .18, 8], ['Cooking Oil', .04, 0], ['Spice Mix', .015, 0]], ['Spice level']],
   ['Veg Spring Roll', 'Starters', 180, 5, 5, [['Maida', .06, 3], ['Onion', .05, 8], ['Cooking Oil', .03, 0]], []],
   ['Egg Bhurji', 'Starters', 150, 4, 5, [['Eggs', 3, 0], ['Onion', .05, 8], ['Tomato', .04, 10]], ['Spice level']],
-  ['Chicken Biryani', 'Mains', 320, 22, 5, [['Basmati Rice', .25, 0], ['Chicken', .18, 10], ['Cooking Oil', .025, 0], ['Spice Mix', .02, 0], ['Onion', .06, 8], ['Curd', .04, 0], ['Ghee', .01, 0]], ['Spice level', 'Extras']],
-  ['Mutton Biryani', 'Mains', 420, 10, 5, [['Basmati Rice', .25, 0], ['Mutton', .2, 12], ['Cooking Oil', .025, 0], ['Spice Mix', .02, 0], ['Onion', .06, 8], ['Ghee', .012, 0]], ['Spice level', 'Extras']],
+  ['Chicken Biryani', 'Mains', 320, 22, 5, [['Basmati Rice', .25, 0], ['Chicken', .18, 10], ['Cooking Oil', .025, 0], ['Spice Mix', .02, 0], ['Onion', .06, 8], ['Curd', .04, 0], ['Ghee', .01, 0]], ['Spice level', 'Non-veg extras']],
+  ['Mutton Biryani', 'Mains', 420, 10, 5, [['Basmati Rice', .25, 0], ['Mutton', .2, 12], ['Cooking Oil', .025, 0], ['Spice Mix', .02, 0], ['Onion', .06, 8], ['Ghee', .012, 0]], ['Spice level', 'Non-veg extras']],
   ['Veg Biryani', 'Mains', 240, 7, 5, [['Basmati Rice', .25, 0], ['Potato', .06, 5], ['Onion', .06, 8], ['Cooking Oil', .025, 0], ['Spice Mix', .02, 0]], ['Spice level']],
-  ['Butter Chicken', 'Mains', 340, 14, 5, [['Chicken', .2, 10], ['Butter', .03, 0], ['Cream', .04, 0], ['Tomato', .1, 10], ['Spice Mix', .015, 0]], ['Spice level', 'Extras']],
-  ['Paneer Butter Masala', 'Mains', 290, 11, 5, [['Paneer', .16, 4], ['Butter', .025, 0], ['Cream', .04, 0], ['Tomato', .1, 10]], ['Spice level', 'Extras']],
+  ['Butter Chicken', 'Mains', 340, 14, 5, [['Chicken', .2, 10], ['Butter', .03, 0], ['Cream', .04, 0], ['Tomato', .1, 10], ['Spice Mix', .015, 0]], ['Spice level', 'Non-veg extras']],
+  ['Paneer Butter Masala', 'Mains', 290, 11, 5, [['Paneer', .16, 4], ['Butter', .025, 0], ['Cream', .04, 0], ['Tomato', .1, 10]], ['Spice level', 'Veg extras']],
   ['Kadai Paneer', 'Mains', 280, 6, 5, [['Paneer', .16, 4], ['Onion', .06, 8], ['Tomato', .08, 10], ['Spice Mix', .015, 0]], ['Spice level']],
-  ['Chicken Curry', 'Mains', 300, 9, 5, [['Chicken', .2, 10], ['Onion', .08, 8], ['Tomato', .08, 10], ['Cooking Oil', .03, 0], ['Spice Mix', .02, 0]], ['Spice level', 'Extras']],
+  ['Chicken Curry', 'Mains', 300, 9, 5, [['Chicken', .2, 10], ['Onion', .08, 8], ['Tomato', .08, 10], ['Cooking Oil', .03, 0], ['Spice Mix', .02, 0]], ['Spice level', 'Non-veg extras']],
   ['Dal Tadka', 'Mains', 180, 9, 5, [['Lentils', .08, 0], ['Onion', .04, 8], ['Tomato', .05, 10], ['Ghee', .01, 0]], ['Spice level']],
   ['Dal Makhani', 'Mains', 220, 8, 5, [['Lentils', .09, 0], ['Butter', .02, 0], ['Cream', .03, 0], ['Tomato', .05, 10]], ['Spice level']],
   ['Egg Curry', 'Mains', 200, 4, 5, [['Eggs', 2, 0], ['Onion', .07, 8], ['Tomato', .07, 10], ['Spice Mix', .015, 0]], ['Spice level']],
@@ -105,7 +105,8 @@ const PACKAGED = [
 
 const GROUPS = [
   { name: 'Spice level', variant: true, options: [['Mild', 0], ['Medium', 0], ['Hot', 0]] },
-  { name: 'Extras', variant: false, min: 0, max: 2, options: [['Extra chicken', 60, 'Chicken', .08], ['Extra cheese', 40, 'Cheese', .03], ['Fried egg', 20, 'Eggs', 1], ['Extra butter', 15, 'Butter', .01]] }
+  { name: 'Veg extras', variant: false, min: 0, max: 3, options: [['Extra cheese', 40, 'Cheese', .03], ['Extra paneer', 60, 'Paneer', .05], ['Extra butter', 15, 'Butter', .01]] },
+  { name: 'Non-veg extras', variant: false, min: 0, max: 3, options: [['Extra chicken', 60, 'Chicken', .08], ['Fried egg', 20, 'Eggs', 1]] }
 ];
 
 // station -> [dish, minutes]: where each dish is cooked and how long it should take.
@@ -381,7 +382,8 @@ const main = async () => {
         const quantity = weighted([[1, 8], [2, 3], [3, 1]]);
         const modifierIds = [];
         if (dish.groups.includes('Spice level')) modifierIds.push(weighted(optionIds['Spice level'].map((id, i) => [id, [3, 5, 2][i]])));
-        if (dish.groups.includes('Extras') && rand() < 0.22) modifierIds.push(pick(optionIds.Extras));
+        const extras = dish.groups.find((g) => g.endsWith('extras'));
+        if (extras && rand() < 0.22) modifierIds.push(pick(optionIds[extras]));
         if (dish.packaged && await stockOf(dish.id, outlet.id) < quantity) continue;
         items.push({ product_id: dish.id, quantity, modifier_ids: modifierIds.length ? modifierIds : undefined });
       }

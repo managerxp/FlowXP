@@ -15,11 +15,11 @@ const invoices = await import('../src/controllers/invoices.controller.js');
 const publicBill = await import('../src/controllers/publicBill.controller.js');
 const reviews = await import('../src/controllers/reviews.controller.js');
 const admin = await import('../src/controllers/admin.controller.js');
-const { setProvider: setAIProvider, AIProviderError } = await import('../src/modules/ai/provider.js');
+const { setProvider: setAIProvider, setConfigured: setAIConfigured, AIProviderError } = await import('../src/modules/ai/provider.js');
 const { setProvider: setMsgProvider } = await import('../src/modules/messaging/provider.js');
 const mod = await import('../src/modules/messaging/index.js');
 
-test.after(async () => { setAIProvider(null); setMsgProvider(null); await cleanup(); });
+test.after(async () => { setAIProvider(null); setAIConfigured(undefined); setMsgProvider(null); await cleanup(); });
 
 const fakeRes = () => ({ code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; }, set() { return this; } });
 const say = (text) => ({ content: [{ type: 'text', text }], stopReason: 'end_turn', usage: { input_tokens: 40, output_tokens: 20 } });
@@ -165,10 +165,12 @@ test('list filters by rating and never leaks another business\'s row by id', { s
 });
 
 test('without an AI key, drafting says so and nothing is charged', { skip }, async () => {
-  setAIProvider(null);
-  const res = await A.call(reviews.draftReply, { params: { id: A.unhappyFeedbackId } });
-  assert.equal(res.code, 503);
-  assert.equal(res.body.code, 'AI_NOT_CONFIGURED');
+  setAIConfigured(false);
+  try {
+    const res = await A.call(reviews.draftReply, { params: { id: A.unhappyFeedbackId } });
+    assert.equal(res.code, 503);
+    assert.equal(res.body.code, 'AI_NOT_CONFIGURED');
+  } finally { setAIConfigured(undefined); }
 });
 
 test('a draft reply is generated, tailored to the rating, and metered', { skip }, async () => {

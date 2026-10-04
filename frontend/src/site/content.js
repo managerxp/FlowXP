@@ -15,7 +15,7 @@ export const FAQ = [
   },
   {
     q: 'Do I need a printer or a billing machine?',
-    a: 'No. FlowXP is digital-first — send an invoice over WhatsApp, email or a link. If you already own a printer you can still use it.'
+    a: 'No. FlowXP is digital-first: share an invoice as a link or by email. If you already own a printer you can still use it. WhatsApp sharing is coming soon.'
   },
   {
     q: 'Can I use it on my phone?',
@@ -31,6 +31,6 @@ export const FAQ = [
   },
   {
     q: 'What does Flow AI actually see?',
-    a: 'Only the business you are signed in to. It answers from your own sales, stock and payment records — it cannot see another business, and it does not invent figures.'
+    a: 'Only the business you are signed in to. It answers from your own sales, stock and payment records. It cannot see another business, and it does not invent figures.'
   }
 ];

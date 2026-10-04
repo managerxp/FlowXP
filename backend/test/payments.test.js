@@ -17,12 +17,13 @@ const fakeRes = () => ({ code: 200, body: null, status(c) { this.code = c; retur
 let biz; let user; let A; let B; let customer; let supplier; let item;
 const at = (scope, branchId = scope ?? A) => ({ businessId: biz, branchId, scopeBranchId: scope, role: 'OWNER', permissions: {} });
 const call = async (fn, tenant, extra = {}) => { const res = fakeRes(); await fn({ tenant, auth: { userId: user }, params: {}, body: {}, query: {}, headers: {}, ip: '127.0.0.1', ...extra }, res); return res; };
-const today = new Date().toISOString().slice(0, 10);
+let today;                       // the business's own today: rows are stamped in its timezone, not UTC
 
 test('setup', { skip }, async () => {
   await runMigrations(pool);
   user = (await pool.query(`INSERT INTO users (name, email, password_hash) VALUES ('p','p@pay.test','x') RETURNING user_id`)).rows[0].user_id;
   biz = (await pool.query(`INSERT INTO businesses (name, owner_user_id, business_type) VALUES ('Shop',$1,'RETAIL') RETURNING business_id`, [user])).rows[0].business_id;
+  today = (await pool.query(`SELECT business_today($1)::text AS d`, [biz])).rows[0].d;
   A = (await pool.query(`INSERT INTO branches (business_id, name, is_primary) VALUES ($1,'A',TRUE) RETURNING branch_id`, [biz])).rows[0].branch_id;
   B = (await pool.query(`INSERT INTO branches (business_id, name) VALUES ($1,'B') RETURNING branch_id`, [biz])).rows[0].branch_id;
   customer = (await pool.query(`INSERT INTO customers (business_id, name) VALUES ($1,'Asha') RETURNING customer_id`, [biz])).rows[0].customer_id;

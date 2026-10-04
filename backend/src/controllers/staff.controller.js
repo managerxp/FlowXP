@@ -20,7 +20,7 @@ import { PERMISSIONS, cleanOverrides, describePermissions } from '../modules/per
 
 const ROLES = Object.keys(ROLE_PERMISSIONS);
 const GROUP_ROLES = ['OWNER', 'ADMIN'];                    // always see every outlet
-const FLOOR_ROLES = ['CASHIER', 'STAFF', 'WAITER', 'KITCHEN', 'DELIVERY'];   // always pinned to one outlet
+const FLOOR_ROLES = ['CASHIER', 'STAFF', 'WAITER', 'KITCHEN', 'DELIVERY', 'RECEPTIONIST', 'STYLIST', 'WAREHOUSE_STAFF', 'SALES_EXECUTIVE', 'FIELD_SALES', 'COLLECTION_EXECUTIVE'];   // always pinned to one outlet
 const PRIVILEGED = ['OWNER', 'ADMIN'];
 const INVITE_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 

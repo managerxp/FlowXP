@@ -60,12 +60,18 @@ const UpiPayment = ({ vpa, businessName, amount, note }) => {
 
 /* ── The visit card ───────────────────────────────────────────────────── */
 
+/* The earned stamps press down one after another starting with the first (a stamp-in each, 140ms apart); the slot the
+   next visit fills pulses softly, and FREE pops in last when the reward is ready. A new key replays it on every check. */
 const Stamps = ({ total, filled, ready }) => (
-  <div className="flex flex-wrap gap-1.5" aria-label={`${filled} of ${total} visits`}>
-    {Array.from({ length: total }, (_, i) => (
-      <span key={i} className={`flex h-7 w-7 items-center justify-center rounded-full text-caption font-bold ${i < filled ? 'bg-white text-brand-700' : 'border border-white/50 text-white/80'}`}>{i < filled ? '✓' : i + 1}</span>
-    ))}
-    <span className={`flex h-7 items-center gap-1 rounded-full px-2.5 text-caption font-bold ${ready ? 'bg-white text-brand-700' : 'border border-dashed border-white/60 text-white'}`}><Gift aria-hidden="true" className="h-3.5 w-3.5" />FREE</span>
+  <div key={`${filled}-${ready}`} className="flex flex-wrap gap-1.5" aria-label={`${filled} of ${total} visits`}>
+    {Array.from({ length: total }, (_, i) => {
+      const done = i < filled;
+      return (
+        <span key={i} style={{ '--i': i }}
+              className={`flex h-7 w-7 items-center justify-center rounded-full text-caption font-bold ${done ? 'stamp-in bg-white text-brand-700' : i === filled && !ready ? 'stamp-next border border-white/70 text-white' : 'border border-white/50 text-white/80'}`}>{done ? '✓' : i + 1}</span>
+      );
+    })}
+    <span style={{ '--i': total }} className={`flex h-7 items-center gap-1 rounded-full px-2.5 text-caption font-bold ${ready ? 'stamp-in bg-white text-brand-700' : 'border border-dashed border-white/60 text-white'}`}><Gift aria-hidden="true" className="h-3.5 w-3.5" />FREE</span>
   </div>
 );
 
@@ -165,7 +171,7 @@ const CustomerMenu = () => {
   const [phone, setPhone] = useState('');
   const [card, setCard] = useState(null);
   const [query, setQuery] = useState('');
-  const [vegOnly, setVegOnly] = useState(false);
+  const [food, setFood] = useState('ALL');   // ALL | VEG | NON_VEG | EGG
   const [active, setActive] = useState(0);
   const [collapsed, setCollapsed] = useState(() => new Set());
   const [sheet, setSheet] = useState(false);
@@ -195,8 +201,9 @@ const CustomerMenu = () => {
 
   const q = query.trim().toLowerCase();
   const categories = useMemo(() => (menu?.categories || []).map((c) => ({
-    ...c, products: c.products.filter((p) => (!vegOnly || p.food_type === 'VEG') && (!q || p.name.toLowerCase().includes(q) || String(p.description || '').toLowerCase().includes(q)))
-  })).filter((c) => c.products.length > 0), [menu, q, vegOnly]);
+    ...c, products: c.products.filter((p) => (food === 'ALL' || p.food_type === food) && (!q || p.name.toLowerCase().includes(q) || String(p.description || '').toLowerCase().includes(q)))
+  })).filter((c) => c.products.length > 0), [menu, q, food]);
+  const hasEgg = (menu?.categories || []).some((c) => c.products.some((p) => p.food_type === 'EGG'));
 
   const jump = (i) => { setActive(i); setCollapsed((s) => { const n = new Set(s); n.delete(categories[i].name); return n; }); sections.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
 
@@ -278,10 +285,18 @@ const CustomerMenu = () => {
                      className="h-11 w-full rounded-lg border border-line-strong bg-surface pl-9 pr-9 text-small text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none" />
               {query && <button type="button" onClick={() => setQuery('')} aria-label="Clear the search" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-ink-400"><X className="h-4 w-4" /></button>}
             </label>
-            <button type="button" onClick={() => setVegOnly((v) => !v)} aria-pressed={vegOnly}
-                    className={`flex h-11 shrink-0 items-center gap-2 rounded-lg border px-3 text-small font-medium ${vegOnly ? 'border-success bg-success/10 text-success' : 'border-line-strong text-ink-700'}`}>
-              <FoodMark type="VEG" size={14} />Veg only
-            </button>
+          </div>
+          <div role="group" aria-label="Show" className="mt-2.5 flex gap-2">
+            {[['ALL', 'All'], ['VEG', 'Veg'], ['NON_VEG', 'Non-veg'], ...(hasEgg ? [['EGG', 'Egg']] : [])].map(([value, label]) => {
+              const on = food === value;
+              const tone = value === 'VEG' ? 'border-success bg-success/10 text-success' : value === 'NON_VEG' ? 'border-danger bg-danger/10 text-danger' : value === 'EGG' ? 'border-warning bg-warning/10 text-warning' : 'border-ink-900 bg-ink-900 text-white';
+              return (
+                <button key={value} type="button" onClick={() => setFood(value)} aria-pressed={on}
+                        className={`flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-small font-medium transition-colors ${on ? tone : 'border-line-strong bg-surface text-ink-700'}`}>
+                  {value !== 'ALL' && <FoodMark type={value} size={13} />}{label}
+                </button>
+              );
+            })}
           </div>
           <nav aria-label="Categories" className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-2">
             {categories.map((c, i) => {
@@ -304,7 +319,7 @@ const CustomerMenu = () => {
         {menu.loyalty && <LoyaltyCardPanel token={token} loyalty={menu.loyalty} phone={phone} setPhone={setPhone} card={card} setCard={setCard}
                                           rewardInCart={Boolean(rewardLine)} onAddReward={rewardProduct ? () => addLine(rewardProduct) : null} />}
 
-        {categories.length === 0 && <p className="py-16 text-center text-small text-ink-500">{q || vegOnly ? 'Nothing matches. Try another word, or show everything.' : 'The menu is being set up.'}</p>}
+        {categories.length === 0 && <p className="py-16 text-center text-small text-ink-500">{q || food !== 'ALL' ? 'Nothing matches. Try another word, or show everything.' : 'The menu is being set up.'}</p>}
         {categories.map((c, i) => {
           const closed = collapsed.has(c.name);
           return (

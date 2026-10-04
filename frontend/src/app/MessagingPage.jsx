@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
-import { Alert, Badge, Button, Card, Field, ListState, PageHeader, Select, Table, Td, Textarea, Th, Thead, Tr, useToast, humanize } from '../components/ui.jsx';
+import { Alert, Badge, Button, Card, Field, ListState, PageHeader, Select, Table, Td, Textarea, Th, Thead, Tr, useToast, humanize, useDialog } from '../components/ui.jsx';
 
 const TONE = { SENT: 'success', FAILED: 'danger', SKIPPED: 'warning', QUEUED: 'neutral' };
 const when = (iso) => new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -76,6 +76,7 @@ const Settings = () => {
 };
 
 const Offers = () => {
+  const dialog = useDialog();
   const toast = useToast();
   const [segments, setSegments] = useState({});
   const [segment, setSegment] = useState('ALL');
@@ -100,7 +101,7 @@ const Offers = () => {
   }, [batch]);
 
   const send = async () => {
-    if (!window.confirm(`Send this offer to ${preview.count} customer${preview.count === 1 ? '' : 's'}?`)) return;
+    if (!(await dialog.confirm({ title: `Send to ${preview.count} customer${preview.count === 1 ? '' : 's'}?`, body: 'Messages go out straight away and cannot be recalled.', confirmLabel: 'Send offer' }))) return;
     setBusy(true); setError('');
     try { const r = await api('/messaging/campaigns', { method: 'POST', body: { segment, days: Number(days), text } }); setBatch(r.batch); setText(''); toast.success(`Sending to ${r.recipients} customers`); }
     catch (caught) { setError(caught.message); }
@@ -118,12 +119,12 @@ const Offers = () => {
       {segment === 'LAPSED' && (
         <Field id="days" label="Not visited in the last (days)"><Select id="days" value={days} onChange={(e) => setDays(e.target.value)}>{[14, 30, 60, 90].map((d) => <option key={d} value={d}>{d}</option>)}</Select></Field>
       )}
-      <p className="text-sm text-ink-600">{!preview ? 'Counting…' : preview.error ? preview.error : `${preview.count} customer${preview.count === 1 ? '' : 's'} will get it${preview.sample?.length ? ` (${preview.sample.join(', ')}${preview.count > preview.sample.length ? '…' : ''})` : ''}.`}</p>
+      <p className="text-sm text-ink-700">{!preview ? 'Counting…' : preview.error ? preview.error : `${preview.count} customer${preview.count === 1 ? '' : 's'} will get it${preview.sample?.length ? ` (${preview.sample.join(', ')}${preview.count > preview.sample.length ? '…' : ''})` : ''}.`}</p>
       <Field id="offer" label="Your offer" hint={`${text.length}/300. Sent as: "Hi <name>, <your business>: <your text> Reply STOP to opt out."`}>
         <Textarea id="offer" rows={3} maxLength={300} value={text} onChange={(e) => setText(e.target.value)} placeholder="Flat 10% off on dinner this weekend. Show this message at the counter." />
       </Field>
       <Button disabled={busy || text.trim().length < 5 || !preview || preview.error || preview.count === 0} onClick={send}>{busy ? 'Sending…' : 'Send offer'}</Button>
-      {progress && <p className="text-sm text-ink-600">Sent {progress.sent || 0}{progress.failed ? ` · failed ${progress.failed}` : ''}{progress.skipped ? ` · skipped ${progress.skipped}` : ''}</p>}
+      {progress && <p className="text-sm text-ink-700">Sent {progress.sent || 0}{progress.failed ? ` · failed ${progress.failed}` : ''}{progress.skipped ? ` · skipped ${progress.skipped}` : ''}</p>}
       <p className="text-xs text-ink-400">One offer per hour, so customers are not flooded. Customers who opted out are left out automatically.</p>
     </div>
   );
@@ -177,7 +178,7 @@ const MessagingPage = () => {
       <div className="mb-6 flex gap-2" role="tablist">
         {[['settings', 'Settings'], ['offers', 'Send an offer'], ['log', 'Message log']].map(([id, label]) => (
           <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
-                  className={`rounded-lg px-3.5 py-1.5 text-sm font-medium ${tab === id ? 'bg-brand-50 text-brand-600' : 'text-ink-600 hover:bg-surface-2'}`}>{label}</button>
+                  className={`rounded-lg px-3.5 py-1.5 text-sm font-medium ${tab === id ? 'bg-brand-50 text-brand-600' : 'text-ink-700 hover:bg-surface-2'}`}>{label}</button>
         ))}
       </div>
       {tab === 'settings' ? <Settings /> : tab === 'offers' ? <Offers /> : <Log />}

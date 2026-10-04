@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { api, formatCurrency } from '../lib/api.js';
 import { daysAgoISO } from '../lib/dates.js';
-import { Alert, Badge, Button, Card, DataTable, Field, Input, Modal, PageHeader, useToast } from '../components/ui.jsx';
+import { Alert, Badge, Button, Card, DataTable, Field, Input, Modal, PageHeader, useToast, StatCard } from '../components/ui.jsx';
 
 const RANGES = [{ days: 7, label: '7 days' }, { days: 30, label: '30 days' }, { days: 60, label: '60 days' }];
 const CHANNEL_LABEL = { COUNTER: 'Counter / dine-in', TAKEAWAY: 'Takeaway', DELIVERY: 'Delivery', ZOMATO: 'Zomato', SWIGGY: 'Swiggy', ONDC: 'ONDC', MAGICPIN: 'Magicpin' };
@@ -33,11 +33,9 @@ const Delta = ({ value, unit = '%', upIsGood = true }) => {
 };
 
 const Stat = ({ label, value, sub, delta }) => (
-  <div className="border border-line bg-surface rounded-(--radius-card) p-4">
-    <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">{label}</p>
-    <p className="mt-1 text-xl font-bold text-ink-900">{value}</p>
-    <div className="mt-1 flex items-center gap-2">{delta}{sub && <span className="text-xs text-ink-400">{sub}</span>}</div>
-  </div>
+  <StatCard label={label} value={value}>
+    {(delta || sub) && <span className="mt-1 flex flex-wrap items-center gap-2 text-caption text-ink-500">{delta}{sub}</span>}
+  </StatCard>
 );
 
 const AssumptionsForm = ({ onSaved, onClose }) => {
@@ -111,7 +109,7 @@ const MoneyBar = ({ totals }) => {
       <ul className="mt-3 grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-5">
         {PARTS.map((p) => (
           <li key={p.key} className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-2 text-ink-600"><span className={`h-2.5 w-2.5 rounded-full ${p.color}`} />{p.label}</span>
+            <span className="flex items-center gap-2 text-ink-700"><span className={`h-2.5 w-2.5 rounded-full ${p.color}`} />{p.label}</span>
             <span className="font-medium text-ink-900">{formatCurrency(totals[p.key])}</span>
           </li>
         ))}
@@ -191,10 +189,10 @@ const ProfitabilityPage = () => {
             <h2 className="mb-3 text-sm font-semibold text-ink-900">Where each rupee of revenue goes</h2>
             <MoneyBar totals={t} />
             <div className="mt-4 grid gap-3 border-t border-line pt-4 text-sm sm:grid-cols-3">
-              <p className="text-ink-600">Contribution <strong className="text-ink-900">{formatCurrency(t.contribution)}</strong></p>
-              <p className="text-ink-600">− Operating expenses <strong className="text-ink-900">{formatCurrency(data.period_costs.expenses_total)}</strong>
+              <p className="text-ink-700">Contribution <strong className="text-ink-900">{formatCurrency(t.contribution)}</strong></p>
+              <p className="text-ink-700">− Operating expenses <strong className="text-ink-900">{formatCurrency(data.period_costs.expenses_total)}</strong>
                 <span className="block text-xs text-ink-400">{data.period_costs.expenses.slice(0, 3).map((e) => `${e.category} ${formatCurrency(e.amount)}`).join(' · ')}</span></p>
-              <p className="text-ink-600">− Wastage <strong className="text-ink-900">{formatCurrency(data.period_costs.wastage)}</strong>
+              <p className="text-ink-700">− Wastage <strong className="text-ink-900">{formatCurrency(data.period_costs.wastage)}</strong>
                 <span className="block text-xs text-ink-400">valued at current cost</span></p>
             </div>
             <p className="mt-3 text-xs text-ink-400">
@@ -257,7 +255,7 @@ const ProfitabilityPage = () => {
             />
           </div>
 
-          <details className="rounded-(--radius-card) border border-line bg-surface p-4 text-sm text-ink-600">
+          <details className="rounded-(--radius-card) border border-line bg-surface p-4 text-sm text-ink-700">
             <summary className="cursor-pointer font-semibold text-ink-900">How this is calculated</summary>
             <ul className="mt-3 list-disc space-y-1.5 pl-5">
               <li><strong>Net revenue</strong> is what was billed before tax, minus discounts and refunds. Cancelled invoices are left out.</li>

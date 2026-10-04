@@ -11,10 +11,10 @@ import { setupTestDb } from './helpers/db.js';
 const { pool, skip, cleanup } = await setupTestDb();
 const { runMigrations } = await import('../src/config/migrate.js');
 const { converseOnboarding } = await import('../src/modules/ai/onboarding.js');
-const { setProvider, AIProviderError } = await import('../src/modules/ai/provider.js');
+const { setProvider, setConfigured, AIProviderError } = await import('../src/modules/ai/provider.js');
 const ai = await import('../src/controllers/ai.controller.js');
 
-test.after(() => { setProvider(null); return cleanup(); });
+test.after(() => { setProvider(null); setConfigured(undefined); return cleanup(); });
 
 const fakeRes = () => ({ code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } });
 
@@ -78,10 +78,12 @@ test('setup', { skip }, async () => {
 });
 
 test('without a key the endpoint says so, and nothing is charged against the quota', { skip }, async () => {
-  setProvider(null);
-  const res = await call({ message: 'hi' });
-  assert.equal(res.code, 503);
-  assert.equal(res.body.code, 'AI_NOT_CONFIGURED');
+  setConfigured(false);
+  try {
+    const res = await call({ message: 'hi' });
+    assert.equal(res.code, 503);
+    assert.equal(res.body.code, 'AI_NOT_CONFIGURED');
+  } finally { setConfigured(undefined); }
 });
 
 test('a blank message is refused before any provider call', { skip }, async () => {

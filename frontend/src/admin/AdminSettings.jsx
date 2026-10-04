@@ -118,7 +118,7 @@ const EmailSettings = () => {
         </Field>
         <SecretField id="em-pass" label="Password" value={form.smtpPass} onChange={set('smtpPass')} />
         <Field id="em-from" label="From address">
-          <Input id="em-from" value={form.mailFrom} onChange={(e) => set('mailFrom')(e.target.value)} placeholder="FlowXP <no-reply@yourdomain.com>" />
+          <Input id="em-from" value={form.mailFrom} onChange={(e) => set('mailFrom')(e.target.value)} placeholder="FlowXP <flowxp.manager@gmail.com>" />
         </Field>
       </div>
       <Button className="mt-4" disabled={!dirty || saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</Button>

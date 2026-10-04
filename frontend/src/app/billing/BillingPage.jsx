@@ -23,17 +23,20 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ChefHat, CheckCircle2, ClipboardList, CloudOff, Minus, PackagePlus, Pause, Plus, Printer, Search, Split, Trash2, UserRound, X } from 'lucide-react';
+import { ChefHat, CheckCircle2, ClipboardList, CloudOff, Minus, PackagePlus, Pause, Plus, Printer, ScanLine, Search, Split, Trash2, UserRound, X } from 'lucide-react';
 import { api, formatCurrency, NetworkError } from '../../lib/api.js';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
 import ModifierPicker, { needsChoices, useModifierGroups } from '../../components/ModifierPicker.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { Alert, Button, Input, Modal, Select, humanize, useToast } from '../../components/ui.jsx';
+import { Alert, Button, Input, Modal, Select, humanize, useToast, useDialog } from '../../components/ui.jsx';
 import { LoyaltyCard, MobileLookup, PointsPanel, RewardHint } from '../../components/LoyaltyCard.jsx';
 import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, setDevicePref } from '../../lib/printing.js';
 import { queueSale } from '../../lib/offline.js';
-import { RESTAURANT_TYPES } from '../../lib/business.js';
+import { RESTAURANT_TYPES, RETAIL_TYPES } from '../../lib/business.js';
 import UpiCollect from '../../components/UpiCollect.jsx';
+import BarcodeScanner from '../../components/BarcodeScanner.jsx';
+import QuickProductModal from '../../components/QuickProductModal.jsx';
+import { catalogInfo, loadCatalog, localLookup, localSearch, subscribeCatalog, syncCatalog, upsertLocal } from '../../lib/posCatalog.js';
 
 /* How the bill is paid. "Pay later" records it unpaid (a customer's credit). */
 const METHODS = [
@@ -49,24 +52,26 @@ const matches = (p, q) => p.name.toLowerCase().includes(q) || p.sku?.toLowerCase
 
 /* ── The item grid ─────────────────────────────────────────────────────── */
 
-const ProductTile = ({ product, inCart, onAdd }) => {
+const ProductTile = ({ product, inCart, onAdd, highlight = false }) => {
   const off = product.is_available === false;
   return (
     <button
       type="button"
       onClick={() => onAdd(product)}
       disabled={off}
-      className="relative flex min-h-[88px] flex-col justify-between rounded-(--radius-card) border border-line bg-surface p-3 text-left transition-[border-color,transform] duration-(--duration-fast) hover:border-brand-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-line"
+      aria-current={highlight || undefined}
+      className={`relative flex min-h-[88px] flex-col justify-between rounded-(--radius-card) border bg-surface p-3 text-left transition-[border-color,transform] duration-(--duration-fast) hover:border-brand-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-line ${highlight ? 'border-brand-500 ring-2 ring-brand-500/40' : inCart > 0 ? 'border-brand-500 bg-brand-500/10' : 'border-line'}`}
     >
+      {inCart > 0 && <span key={inCart} aria-hidden="true" className="tile-added pointer-events-none absolute inset-0 rounded-(--radius-card)" />}
       {inCart > 0 && (
         <span className="tabular absolute right-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[11px] font-semibold text-white">
           {inCart}<span className="sr-only"> in the bill</span>
         </span>
       )}
       <span className="line-clamp-2 pr-6 text-small font-medium leading-snug text-ink-900">{product.name}</span>
-      <span className="mt-2 flex items-end justify-between gap-2">
-        <span className="tabular text-small font-semibold text-ink-900">{formatCurrency(product.selling_price)}</span>
-        <span className="text-right text-[11px] leading-tight text-ink-500">
+      <span className="mt-2 flex flex-wrap items-end justify-between gap-x-2 gap-y-0.5">
+        <span className="tabular shrink-0 text-small font-semibold text-ink-900">{formatCurrency(product.selling_price)}</span>
+        <span className="ml-auto text-right text-[11px] leading-tight text-ink-500">
           {off ? 'Not available' : product.track_inventory
             ? <span className={product.low_stock ? 'font-medium text-warning' : ''}>{Number(product.current_stock)} {product.unit} left</span>
             : product.modifier_group_ids?.length ? 'Options' : ''}
@@ -80,21 +85,21 @@ const ProductTile = ({ product, inCart, onAdd }) => {
 
 const Stepper = ({ value, onChange, label }) => (
   <div className="flex items-center rounded-lg border border-line-strong">
-    <button type="button" onClick={() => onChange(Math.max(0, Number(value) - 1))} aria-label={`One less ${label}`} className="flex h-8 w-8 items-center justify-center text-ink-700 hover:bg-surface-2"><Minus className="h-3.5 w-3.5" /></button>
+    <button type="button" onClick={() => onChange(Math.max(0, Number(value) - 1))} aria-label={`One less ${label}`} className="flex h-8 w-8 items-center justify-center text-ink-700 hover:bg-surface-2 pointer-coarse:h-11 pointer-coarse:w-11"><Minus className="h-3.5 w-3.5" /></button>
     <input
       type="number" min="0" step="any" value={value} aria-label={`Quantity of ${label}`}
       onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
-      className="tabular h-8 w-11 border-x border-line bg-transparent text-center text-small font-medium text-ink-900 [appearance:textfield] focus:outline-none [&::-webkit-inner-spin-button]:appearance-none"
+      className="tabular h-8 w-11 border-x border-line bg-transparent text-center text-small font-medium text-ink-900 [appearance:textfield] focus:outline-none pointer-coarse:h-11 [&::-webkit-inner-spin-button]:appearance-none"
     />
-    <button type="button" onClick={() => onChange(Number(value || 0) + 1)} aria-label={`One more ${label}`} className="flex h-8 w-8 items-center justify-center text-ink-700 hover:bg-surface-2"><Plus className="h-3.5 w-3.5" /></button>
+    <button type="button" onClick={() => onChange(Number(value || 0) + 1)} aria-label={`One more ${label}`} className="flex h-8 w-8 items-center justify-center text-ink-700 hover:bg-surface-2 pointer-coarse:h-11 pointer-coarse:w-11"><Plus className="h-3.5 w-3.5" /></button>
   </div>
 );
 
-const BillLine = ({ line, onChange, onRemove }) => {
+const BillLine = ({ line, onChange, onRemove, selected = false, onSelect }) => {
   const [discountOpen, setDiscountOpen] = useState(Boolean(line.discount));
   const label = line.name || 'custom item';
   return (
-    <li className="py-3">
+    <li className={`-mx-5 px-5 py-3 ${selected ? 'bg-brand-50/70 shadow-[inset_3px_0_0_var(--color-brand-500)]' : ''}`} onClick={onSelect}>
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           {line.custom ? (
@@ -111,7 +116,7 @@ const BillLine = ({ line, onChange, onRemove }) => {
           <p className="tabular mt-0.5 text-caption text-ink-500">
             {formatCurrency(line.unit_price)} each
             {line.discount > 0 && <span className="text-success"> · {formatCurrency(line.discount)} off</span>}
-            {!discountOpen && <button type="button" onClick={() => setDiscountOpen(true)} className="ml-2 font-medium text-brand-600 hover:text-brand-700">Discount</button>}
+            {!discountOpen && <button type="button" onClick={() => setDiscountOpen(true)} className="ml-2 font-medium text-brand-600 hover:text-brand-700 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:px-1">Discount</button>}
           </p>
           {line.track_inventory && Number(line.quantity) > Number(line.current_stock) && (
             <p className="mt-0.5 text-caption font-medium text-danger">Only {Number(line.current_stock)} in stock</p>
@@ -122,7 +127,7 @@ const BillLine = ({ line, onChange, onRemove }) => {
                 <Input type="number" min="0" step="0.01" placeholder="₹ off this line" aria-label={`Discount on ${label} in rupees`} value={line.discount || ''}
                        onChange={(e) => onChange({ discount: Number(e.target.value) })} className="!py-1.5 text-right" />
               </div>
-              <button type="button" onClick={() => { onChange({ discount: 0 }); setDiscountOpen(false); }} className="text-caption text-ink-500 hover:text-ink-900">Remove</button>
+              <button type="button" onClick={() => { onChange({ discount: 0 }); setDiscountOpen(false); }} className="text-caption text-ink-500 hover:text-ink-900 pointer-coarse:min-h-11 pointer-coarse:px-2">Remove</button>
             </div>
           )}
         </div>
@@ -130,7 +135,7 @@ const BillLine = ({ line, onChange, onRemove }) => {
           <p className="tabular text-small font-semibold text-ink-900">{formatCurrency(lineTotal(line))}</p>
           <div className="flex items-center gap-1">
             <Stepper value={line.quantity} label={label} onChange={(q) => onChange({ quantity: q })} />
-            <button type="button" onClick={onRemove} aria-label={`Remove ${label}`} className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-400 hover:bg-danger/5 hover:text-danger"><Trash2 className="h-4 w-4" /></button>
+            <button type="button" onClick={onRemove} aria-label={`Remove ${label}`} className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-400 hover:bg-danger/5 hover:text-danger pointer-coarse:h-11 pointer-coarse:w-11"><Trash2 className="h-4 w-4" /></button>
           </div>
         </div>
       </div>
@@ -230,6 +235,8 @@ const HeldBills = ({ bills, onResume, onDiscard, onClose }) => (
 /* ── Open orders, billed from here ─────────────────────────────────────── */
 
 const orderTitle = (o) => o.table_name || (o.platform ? humanize(o.platform) : `Takeaway ${o.order_number}`);
+const ORDER_KIND = { DINE_IN: 'Dine-in', TAKEAWAY: 'Takeaway', DELIVERY: 'Delivery' };
+const orderKind = (o) => (o.platform ? humanize(o.platform) : ORDER_KIND[o.order_type] || null);
 const minutesAgo = (iso) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
 const LINE_STATUS = { PENDING: ['Not sent', 'text-warning'], PREPARING: ['Cooking', 'text-brand-700'], READY: ['Ready', 'text-success'], SERVED: ['Served', 'text-ink-500'] };
 
@@ -284,7 +291,8 @@ const OrderBillLine = ({ line, onQty }) => {
 /* ── The screen ────────────────────────────────────────────────────────── */
 
 const BillingPage = () => {
-  const { business } = useAuth();
+  const dialog = useDialog();
+  const { business, outletId, can } = useAuth();
   const navigate = useNavigate();
   const searchRef = useRef(null);
 
@@ -308,6 +316,7 @@ const BillingPage = () => {
   const [notes, setNotes] = useState('');
   const [method, setMethod] = useState('CASH');
   const [received, setReceived] = useState('');         // cash handed over, or a part payment
+  const [cardRef, setCardRef] = useState('');           // the card machine's approval code, to match the settlement later
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmation, setConfirmation] = useState(null);
@@ -330,6 +339,21 @@ const BillingPage = () => {
   const [openOrders, setOpenOrders] = useState([]);
   const [ordersOpen, setOrdersOpen] = useState(false);
   const orderMode = orderId != null;
+
+  // supermarkets and shops: scanning, quick products, keyboard lines, server-side search and an offline catalogue
+  const retail = RETAIL_TYPES.includes(business?.business_type);
+  const [scanning, setScanning] = useState(false);
+  const [quickFor, setQuickFor] = useState(null);       // the barcode being made into a product ('' = none scanned)
+  const [resumeScan, setResumeScan] = useState(false);  // go back to the camera after making the product
+  const [justMade, setJustMade] = useState(null);       // its barcode: not to be counted again if the item is still in view
+  const [cats, setCats] = useState([]);
+  const [quick, setQuick] = useState([]);
+  const [selKey, setSelKey] = useState(null);           // the selected bill line, for + / − / Delete
+  const [hi, setHi] = useState(0);                      // the highlighted tile while arrowing through search results
+  const [catalog, setCatalog] = useState(catalogInfo);
+  const scope = `${business?.business_id}-${outletId}`;
+  const cartRef = useRef([]);
+  const selRef = useRef(null); selRef.current = selKey;
 
   const loadHeld = () => api('/held-bills').then(setHeldBills).catch(() => {});
   useEffect(() => { loadHeld(); }, []);
@@ -358,18 +382,64 @@ const BillingPage = () => {
   })) : []), [order]);
 
   const load = () => api('/products?kind=DISH').then(setProducts).catch(() => setProducts([]));
-  useEffect(() => { load(); api('/customers').then(setCustomers).catch(() => {}); }, []);
+  useEffect(() => { if (!retail) load(); api('/customers').then(setCustomers).catch(() => {}); }, [retail]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* A shop's till never loads the whole catalogue to filter it in the browser: it asks the server for a page that
+     matches what was typed (indexed, so it stays quick at 100,000 products), and falls back to its own copy when
+     the connection is down. */
+  useEffect(() => {
+    if (!retail) return undefined;
+    const timer = setTimeout(async () => {
+      const params = new URLSearchParams({ kind: 'DISH', limit: '60' });
+      if (query.trim()) params.set('search', query.trim());
+      const picked = category && cats.find((c) => c.name === category);
+      if (picked) params.set('category_id', picked.category_id);
+      try { setProducts(await api(`/products?${params}`)); }
+      catch (caught) { setProducts(caught instanceof NetworkError ? localSearch(query, 60, category) : []); }
+      setHi(0);
+    }, query ? 200 : 0);
+    return () => clearTimeout(timer);
+  }, [retail, query, category, cats, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!retail) return undefined;
+    api('/categories').then(setCats).catch(() => {});
+    api('/products?kind=DISH&quick=true&limit=30').then(setQuick).catch(() => {});
+    return undefined;
+  }, [retail, scope]);
+
+  // the offline copy: read what the device has, then refresh it, on opening and every few minutes
+  useEffect(() => {
+    if (!retail) return undefined;
+    const off = subscribeCatalog(() => setCatalog(catalogInfo()));
+    const sync = () => syncCatalog(scope, async (after, limit) => {
+      const r = await api(`/products/pos-catalog?after=${after}&limit=${limit}`, { withMeta: true });
+      return { data: r.data, next: r.meta?.next_after };
+    }).catch(() => {});
+    loadCatalog(scope).then(() => { if (!catalogInfo().fresh) sync(); });
+    const timer = setInterval(sync, 5 * 60 * 1000);
+    window.addEventListener('online', sync);
+    return () => { off(); clearInterval(timer); window.removeEventListener('online', sync); };
+  }, [retail, scope]);
 
   useEffect(() => {
     if (!customerId) { setCard(null); setPointsInfo(null); return; }
     api(`/loyalty/customers/${customerId}`).then((d) => { setCard(d.loyalty); setPointsInfo(d.points); }).catch(() => { setCard(null); setPointsInfo(null); });
   }, [customerId]);
 
-  const categories = useMemo(() => [...new Set((products || []).map((p) => p.category_name).filter(Boolean))].sort(), [products]);
+  const categories = useMemo(() => (retail ? cats.map((c) => c.name) : [...new Set((products || []).map((p) => p.category_name).filter(Boolean))].sort()), [products, retail, cats]);
   const q = query.trim().toLowerCase();
-  const shown = useMemo(() => (products || [])
-    .filter((p) => (!category || p.category_name === category) && (!q || matches(p, q))), [products, category, q]);
+  // a shop's list is already what the server matched; a restaurant's small menu is filtered here
+  const shown = useMemo(() => (retail ? (products || []) : (products || [])
+    .filter((p) => (!category || p.category_name === category) && (!q || matches(p, q)))), [products, category, q, retail]);
   const billLines = orderMode ? orderLines : cart;
+  cartRef.current = cart;
+  // keep one bill line selected (the last added) so + / − / Delete always have a target
+  useEffect(() => {
+    if (!retail) return;
+    if (!cart.length) { if (selKey !== null) setSelKey(null); return; }
+    if (!cart.some((l) => l.key === selKey)) setSelKey(cart[cart.length - 1].key);
+  }, [cart, retail, selKey]);
   const inCart = useMemo(() => billLines.reduce((m, l) => (l.product_id ? m.set(l.product_id, (m.get(l.product_id) || 0) + Number(l.quantity || 0)) : m), new Map()), [billLines]);
 
   /* Billing an open order: what is tapped goes on the order itself (not sent to the kitchen yet),
@@ -394,6 +464,7 @@ const BillingPage = () => {
   const addProduct = (product, modifierIds = [], selected = []) => {
     if (orderMode) { addToOrder(product, modifierIds); return; }
     const sig = [...modifierIds].sort((a, b) => a - b).join(',');
+    setSelKey(cartRef.current.find((l) => l.product_id === product.product_id && l.sig === sig)?.key ?? null);
     const delta = selected.reduce((s, m) => s + m.price_delta, 0);
     setCart((c) => {
       const existing = c.find((l) => l.product_id === product.product_id && l.sig === sig);
@@ -484,7 +555,7 @@ const BillingPage = () => {
 
   const startSplit = () => {
     setSplit(true);
-    setParts([{ key: keySeq++, method: payLater ? 'CASH' : method, amount: '' }, { key: keySeq++, method: method === 'UPI' ? 'CASH' : 'UPI', amount: '' }]);
+    setParts([{ key: keySeq++, method: payLater ? 'CASH' : method, amount: '', reference: method === 'CARD' ? cardRef : '' }, { key: keySeq++, method: method === 'UPI' ? 'CASH' : 'UPI', amount: '', reference: '' }]);
     if (payLater) setMethod('CASH');
   };
   const stopSplit = () => { setSplit(false); setParts([]); };
@@ -492,7 +563,7 @@ const BillingPage = () => {
 
   const resetSale = () => {
     setCart([]); setCustomerId(''); setCustomerName(''); setCard(null); setPointsInfo(null); setRedeem(''); setCustomerOpen(false); setInvoiceDiscount(''); setCouponCode(''); setCouponInfo(null); setCouponError('');
-    setNotes(''); setExtrasOpen(false); setReceived(''); setMethod('CASH'); setConfirmation(null); setChange(0); setError(''); setQuery('');
+    setNotes(''); setExtrasOpen(false); setReceived(''); setCardRef(''); setMethod('CASH'); setConfirmation(null); setChange(0); setError(''); setQuery('');
     setSplit(false); setParts([]); setHoldOpen(false); setHoldLabel(''); setCollecting(null);
     setOrderId(null); setOrder(null);
     setTimeout(() => searchRef.current?.focus(), 0);
@@ -515,9 +586,10 @@ const BillingPage = () => {
     let payload = null;
     const sending = restaurant && toKitchen;
     try {
+      const cardSlip = (m, ref) => (m === 'CARD' && ref?.trim() ? { reference_number: ref.trim() } : {});
       const pay = split
-        ? { payments: parts.map((p, i) => ({ method: p.method, amount: i === parts.length - 1 && p.amount === '' ? 'REST' : Number(p.amount) })) }
-        : { payment: payLater || upiQr ? undefined : { method, amount: amount ?? 'FULL' } };
+        ? { payments: parts.map((p, i) => ({ method: p.method, amount: i === parts.length - 1 && p.amount === '' ? 'REST' : Number(p.amount), ...cardSlip(p.method, p.reference) })) }
+        : { payment: payLater || upiQr ? undefined : { method, amount: amount ?? 'FULL', ...cardSlip(method, cardRef) } };
       const extras = {
         discount: Number(invoiceDiscount) || undefined,
         coupon_code: couponCode.trim() || undefined,
@@ -543,7 +615,7 @@ const BillingPage = () => {
         customer_id: customerId || undefined,
         items,
         ...extras,
-        ...(split ? pay : { payment: payLater ? undefined : { method, amount: amount ?? 'FULL' } })
+        ...(split ? pay : { payment: payLater ? undefined : { method, amount: amount ?? 'FULL', ...cardSlip(method, cardRef) } })
       };
       // the QR step records the UPI payment once the customer has paid
       const body = { ...payload, ...pay, ...(sending ? { send_to_kitchen: true } : {}) };
@@ -592,8 +664,9 @@ const BillingPage = () => {
   };
   /* Bill an open order here: the current sale goes on hold first, as when resuming a held bill. */
   const openOrder = async (o) => {
+    if (o.order_id === orderId) { setOrdersOpen(false); loadOrder(o.order_id); return; }   // same id would never refetch after a reset
     if (!orderMode && cart.length) {
-      if (!window.confirm('Put the current bill on hold, and bill this order?')) return;
+      if (!(await dialog.confirm({ title: 'Hold the current bill?', body: 'It goes on hold so you can bill this order. You can resume it any time.', confirmLabel: 'Hold and continue' }))) return;
       if (!(await holdBill('Held while billing an order'))) return;
     }
     resetSale(); setOrdersOpen(false); setOrderId(o.order_id);
@@ -602,7 +675,7 @@ const BillingPage = () => {
   const resume = async (h) => {
     if (orderMode) resetSale();
     else if (cart.length) {
-      if (!window.confirm('Put the current bill on hold, and open this one?')) return;
+      if (!(await dialog.confirm({ title: 'Hold the current bill?', body: 'It goes on hold so you can open this one. You can resume it any time.', confirmLabel: 'Hold and continue' }))) return;
       if (!(await holdBill('Held while resuming another'))) return;
     }
     try {
@@ -617,29 +690,79 @@ const BillingPage = () => {
     } catch (caught) { toast.error(caught.message); loadHeld(); }
   };
   const discard = async (h) => {
-    if (!window.confirm(`Discard ${h.label || 'this held bill'}? It cannot be brought back.`)) return;
+    if (!(await dialog.confirm({ title: `Discard ${h.label || 'this held bill'}?`, body: 'It cannot be brought back.', confirmLabel: 'Discard', danger: true }))) return;
     try { await api(`/held-bills/${h.hold_id}`, { method: 'DELETE' }); } catch (caught) { toast.error(caught.message); }
     loadHeld();
   };
 
-  /* Keyboard: "/" to search, Ctrl/⌘ + Enter to charge, Enter for a new sale when done. */
+  /* Keyboard: "/" to search, Ctrl/⌘ + Enter to charge, Enter for a new sale when done. A shop's till adds the keys a
+     fast cashier expects: F2 customer, F4 discount, F8 payment, and + − Delete and the arrows for the selected line. */
   const chargeRef = useRef(charge); chargeRef.current = charge;
+  const keys = useRef({});
+  keys.current = { retail, scanning, quickFor };
   useEffect(() => {
     const onKey = (e) => {
       const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
       if (e.key === '/' && !typing && !confirmation) { e.preventDefault(); searchRef.current?.focus(); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !confirmation) { e.preventDefault(); chargeRef.current(); }
+      const { retail: shop, scanning: camera, quickFor: making } = keys.current;
+      if (!shop || confirmation || camera || making !== null || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === 'F2') { e.preventDefault(); setCustomerOpen(true); }
+      else if (e.key === 'F4') { e.preventDefault(); setExtrasOpen(true); setTimeout(() => document.getElementById('bill-discount')?.focus(), 30); }
+      else if (e.key === 'F8') { e.preventDefault(); document.getElementById('pay-received')?.focus(); }
+      else if (!typing) {
+        const lines = cartRef.current;
+        const i = lines.findIndex((l) => l.key === selRef.current);
+        if ((e.key === '+' || e.key === '=') && i >= 0) { e.preventDefault(); setCart((c) => c.map((l) => (l.key === selRef.current ? { ...l, quantity: Number(l.quantity || 0) + 1 } : l))); }
+        else if ((e.key === '-' || e.key === '_') && i >= 0) { e.preventDefault(); setCart((c) => c.flatMap((l) => (l.key !== selRef.current ? [l] : Number(l.quantity || 0) > 1 ? [{ ...l, quantity: Number(l.quantity) - 1 }] : []))); }
+        else if (e.key === 'Delete' && i >= 0) { e.preventDefault(); setCart((c) => c.filter((l) => l.key !== selRef.current)); }
+        else if (e.key === 'ArrowDown' && lines.length) { e.preventDefault(); setSelKey(lines[Math.min(lines.length - 1, i + 1)].key); }
+        else if (e.key === 'ArrowUp' && lines.length) { e.preventDefault(); setSelKey(lines[Math.max(0, i - 1)].key); }
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [confirmation]);
 
-  const onSearchKey = (e) => {
+  /* A scan, as the camera screen asks for it: found and added, found but not sellable, or no such barcode.
+     The device's own copy answers first (instant, and it works with no connection); the server is the second opinion. */
+  const handleScan = async (raw) => {
+    const code = String(raw).trim();
+    let product = retail && catalogInfo().ready ? localLookup(code) : null;
+    if (!product) {
+      try { product = await api(`/products/barcode/${encodeURIComponent(code)}`); }
+      catch (caught) {
+        if (caught instanceof NetworkError) return catalogInfo().ready ? { status: 'unknown' } : { status: 'error', label: "You're offline, and this device has no catalogue yet" };
+        if (caught.status !== 404) return { status: 'error', label: caught.message };
+      }
+    }
+    if (!product) return { status: 'unknown' };
+    if (product.is_available === false) return { status: 'blocked', label: `${product.name} is not sold at this outlet` };
+    const have = cartRef.current.filter((l) => l.product_id === product.product_id).reduce((n, l) => n + Number(l.quantity || 0), 0);
+    addProduct(product);
+    return { status: 'ok', label: product.name, detail: `× ${have + 1}` };
+  };
+
+  const afterScanner = () => { setScanning(false); setTimeout(() => searchRef.current?.focus(), 0); };
+  const resumeCamera = () => { if (resumeScan) { setResumeScan(false); setScanning(true); } };
+
+  const onSearchKey = async (e) => {
     if (e.key === 'Escape') { setQuery(''); return; }
+    if (e.key === 'ArrowDown' && retail && shown.length) { e.preventDefault(); setHi((h) => Math.min(shown.length - 1, h + 1)); return; }
+    if (e.key === 'ArrowUp' && retail && shown.length) { e.preventDefault(); setHi((h) => Math.max(0, h - 1)); return; }
     if (e.key !== 'Enter' || !q) return;
     e.preventDefault();
-    const exact = (products || []).find((p) => p.barcode?.toLowerCase() === q || p.sku?.toLowerCase() === q);
-    const pick = exact || shown[0];   // the exact barcode or SKU, else the first match
+    let pick = retail ? localLookup(query.trim()) : null;
+    pick = pick || (products || []).find((p) => p.barcode?.toLowerCase() === q || p.sku?.toLowerCase() === q);   // the exact barcode or SKU
+    if (!pick) {
+      // a product's other barcodes, its ERP or supplier code: the server knows them all
+      try {
+        const found = await api(`/products/lookup/${encodeURIComponent(query.trim())}`);
+        if (found.length > 1) { toast.error('More than one product has that code. Pick one from the list.'); return; }
+        pick = found[0];
+      } catch { /* not a code: fall through to the name match */ }
+    }
+    pick = pick || shown[retail ? hi : 0] || shown[0];
     if (pick && pick.is_available !== false) { choose(pick); setQuery(''); }
   };
 
@@ -678,19 +801,39 @@ const BillingPage = () => {
               className="h-12 w-full rounded-lg border border-line-strong bg-surface pl-11 pr-12 text-body text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none"
             />
             {query ? (
-              <button type="button" onClick={() => { setQuery(''); searchRef.current?.focus(); }} aria-label="Clear search" className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-ink-400 hover:bg-surface-2"><X className="h-4 w-4" /></button>
+              <button type="button" onClick={() => { setQuery(''); searchRef.current?.focus(); }} aria-label="Clear search" className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-ink-400 hover:bg-surface-2 pointer-coarse:h-11 pointer-coarse:w-11"><X className="h-4 w-4" /></button>
             ) : (
               <kbd className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-line px-1.5 text-caption text-ink-400 sm:block">/</kbd>
             )}
           </div>
+          {retail && !orderMode && <Button onClick={() => setScanning(true)} className="h-12 shrink-0"><ScanLine aria-hidden="true" className="h-5 w-5" /><span className="hidden sm:inline">Scan</span><span className="sm:hidden">Scan</span></Button>}
           {!orderMode && <Button variant="secondary" onClick={addCustomLine} className="h-12 shrink-0"><PackagePlus aria-hidden="true" className="h-4 w-4" /><span className="hidden sm:inline">Custom item</span></Button>}
         </div>
 
+        {retail && !query && !orderMode && quick.length > 0 && (
+          <div className="mt-3" role="group" aria-label="Quick products">
+            <p className="mb-1.5 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">Quick</p>
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {quick.map((p) => (
+                <button key={p.product_id} type="button" onClick={() => choose(p)} disabled={p.is_available === false}
+                        className="flex min-h-12 shrink-0 flex-col items-start justify-center rounded-lg border border-brand-500/30 bg-brand-50 px-3 py-1.5 text-left hover:border-brand-500 disabled:opacity-50 pointer-coarse:min-h-14">
+                  <span className="max-w-36 truncate text-small font-semibold text-ink-900">{p.name}</span>
+                  <span className="tabular text-caption text-ink-600">{formatCurrency(p.selling_price)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {retail && (
+          <p className="mt-2 text-caption text-ink-500" aria-live="polite">
+            {catalog.ready ? `Works offline: ${catalog.count.toLocaleString('en-IN')} products on this device${catalog.syncing ? ', updating…' : ''}` : catalog.syncing ? 'Getting the catalogue onto this device…' : 'Catalogue not on this device yet'}
+          </p>
+        )}
         {categories.length > 0 && (
           <div role="group" aria-label="Categories" className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
             {['', ...categories].map((c) => (
               <button key={c || 'all'} type="button" onClick={() => setCategory(c)} aria-pressed={category === c}
-                      className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium transition-colors duration-(--duration-fast) ${category === c ? 'border-ink-900 bg-ink-900 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
+                      className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium transition-colors duration-(--duration-fast) pointer-coarse:min-h-11 pointer-coarse:px-4 ${category === c ? 'border-ink-900 bg-ink-900 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
                 {c || 'All'}
               </button>
             ))}
@@ -699,7 +842,7 @@ const BillingPage = () => {
 
         <div className="mt-4 min-h-0 flex-1 lg:overflow-y-auto lg:pr-1">
           {products === null ? (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">{Array.from({ length: 12 }).map((_, i) => <div key={i} className="h-[88px] animate-pulse rounded-(--radius-card) bg-surface-3" />)}</div>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(8.25rem,1fr))] gap-2">{Array.from({ length: 12 }).map((_, i) => <div key={i} className="h-[88px] animate-pulse rounded-(--radius-card) bg-surface-3" />)}</div>
           ) : products.length === 0 ? (
             <div className="rounded-(--radius-card) border border-dashed border-line-strong p-10 text-center">
               <p className="text-body font-medium text-ink-900">No items to sell yet</p>
@@ -710,8 +853,8 @@ const BillingPage = () => {
             <p className="py-10 text-center text-small text-ink-500">Nothing matches “{query}”.{!orderMode && <> <button type="button" onClick={addCustomLine} className="font-medium text-brand-600">Add it as a custom item</button></>}</p>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
-                {shown.slice(0, TILE_LIMIT).map((p) => <ProductTile key={p.product_id} product={p} inCart={inCart.get(p.product_id) || 0} onAdd={choose} />)}
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(8.25rem,1fr))] gap-2">
+                {shown.slice(0, TILE_LIMIT).map((p, i) => <ProductTile key={p.product_id} product={p} inCart={inCart.get(p.product_id) || 0} onAdd={choose} highlight={retail && Boolean(query) && i === hi} />)}
               </div>
               {shown.length > TILE_LIMIT && <p className="mt-3 text-center text-caption text-ink-500">Showing {TILE_LIMIT} of {shown.length}. Search to narrow it down.</p>}
             </>
@@ -722,32 +865,58 @@ const BillingPage = () => {
       {ordersOpen && <OpenOrders orders={openOrders} onPick={openOrder} onClose={() => setOrdersOpen(false)} />}
       {heldOpen && <HeldBills bills={heldBills} onResume={resume} onDiscard={discard} onClose={() => setHeldOpen(false)} />}
       {picking && <ModifierPicker product={picking} onClose={() => setPicking(null)} onConfirm={(ids, selected) => addProduct(picking, ids, selected)} />}
+      {scanning && (
+        <BarcodeScanner onScan={handleScan} onClose={afterScanner} canCreate={can('product_quick_add')} skipCode={justMade}
+                        onSearch={(code) => { afterScanner(); if (code) setQuery(code); }}
+                        onCreate={(code) => { setScanning(false); setResumeScan(true); setJustMade(null); setQuickFor(code); }} />
+      )}
+      {quickFor !== null && (
+        <QuickProductModal barcode={quickFor} categories={cats}
+                           onCancel={() => { setQuickFor(null); resumeCamera(); }}
+                           onCreated={(p) => { upsertLocal(p); addProduct(p); setJustMade(p.barcode || null); setQuickFor(null); toast.success(`${p.name} added, SKU ${p.sku || 'made'}`); resumeCamera(); }}
+                           onUseExisting={async (c) => { setQuickFor(null); try { addProduct(await api(`/products/${c.product_id}`)); } catch (caught) { setError(caught.message); } resumeCamera(); }} />
+      )}
 
       {/* ── Right: the bill ── */}
       <section id="bill" aria-label="Current bill" className="flex min-h-0 min-w-0 scroll-mt-16 flex-col border-t border-line bg-surface pb-20 lg:border-l lg:border-t-0 lg:pb-0">
-        <div className="flex items-center justify-between border-b border-line px-5 py-3">
-          <h1 className="min-w-0 truncate text-body font-semibold text-ink-900">
-            {orderMode ? (order ? orderTitle(order) : 'Loading the order…') : restaurant ? 'Bill' : 'Current bill'} {itemCount > 0 && <span className="tabular font-normal text-ink-500">· {itemCount} item{itemCount === 1 ? '' : 's'}</span>}
-          </h1>
-          <div className="flex shrink-0 items-center gap-1">
-            {restaurant && (
-              <button type="button" onClick={() => { loadOpenOrders(); setOrdersOpen(true); }} className="flex items-center gap-1 rounded-md px-2 py-1 text-small font-medium text-ink-700 hover:bg-surface-2">
-                <ClipboardList aria-hidden="true" className="h-3.5 w-3.5" />Orders{openOrders.length > 0 && <span className="tabular ml-0.5 rounded-full bg-ink-900 px-1.5 text-[11px] font-semibold text-white">{openOrders.length}</span>}
-              </button>
-            )}
-            {!orderMode && (
-            <button type="button" onClick={() => { loadHeld(); setHeldOpen(true); }} className="rounded-md px-2 py-1 text-small font-medium text-ink-700 hover:bg-surface-2">
-              Held{heldBills.length > 0 && <span className="tabular ml-1.5 rounded-full bg-brand-500 px-1.5 text-[11px] font-semibold text-white">{heldBills.length}</span>}
-            </button>
-            )}
-            {orderMode && <button type="button" onClick={resetSale} className="rounded-md px-2 py-1 text-small font-medium text-ink-500 hover:text-ink-900">New sale</button>}
-            {!orderMode && cart.length > 0 && (
-              <>
-                <button type="button" onClick={() => setHoldOpen((v) => !v)} aria-expanded={holdOpen} className="flex items-center gap-1 rounded-md px-2 py-1 text-small font-medium text-ink-700 hover:bg-surface-2">
-                  <Pause aria-hidden="true" className="h-3.5 w-3.5" />Hold
+        <div className="border-b border-line px-4 py-2">
+          {/* What is being billed: a new counter sale, or an order already open on a table, takeaway or delivery. */}
+          {restaurant && (
+            <div role="group" aria-label="What are you billing?" className="mb-2 grid grid-cols-2 gap-0.5 rounded-lg bg-surface-2 p-0.5">
+              {[
+                { key: 'counter', active: !orderMode, label: 'Counter sale', onClick: () => { if (orderMode) resetSale(); } },
+                { key: 'order', active: orderMode, label: 'Open order', count: openOrders.length, onClick: () => { loadOpenOrders(); setOrdersOpen(true); } }
+              ].map((s) => (
+                <button key={s.key} type="button" aria-pressed={s.active} onClick={s.onClick}
+                        className={`flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 text-caption font-semibold transition-colors duration-(--duration-fast) pointer-coarse:min-h-11 ${s.active ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-900'}`}>
+                  {s.label}
+                  {s.count > 0 && <span className="tabular rounded-full bg-ink-900 px-1.5 text-[11px] font-semibold text-white">{s.count}</span>}
                 </button>
-                <button type="button" onClick={() => { if (window.confirm('Clear this bill?')) resetSale(); }} className="rounded-md px-2 py-1 text-small font-medium text-ink-500 hover:text-danger">Clear</button>
-              </>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-2">
+            <h1 className="flex min-w-0 items-center gap-2 text-body font-semibold text-ink-900">
+              <span className="truncate">{orderMode ? (order ? orderTitle(order) : 'Loading the order…') : 'Bill'}</span>
+              {orderMode && order && orderKind(order) && <span className="shrink-0 rounded-md bg-brand-50 px-2 py-0.5 text-caption font-semibold text-brand-700">{orderKind(order)}</span>}
+              {itemCount > 0 && <span className="tabular shrink-0 font-normal text-ink-500">· {itemCount} item{itemCount === 1 ? '' : 's'}</span>}
+            </h1>
+            {!orderMode && (
+              <div className="flex shrink-0 items-center gap-1">
+                {heldBills.length > 0 && (
+                  <button type="button" onClick={() => { loadHeld(); setHeldOpen(true); }} className="flex items-center gap-1.5 rounded-md px-2 py-1 text-small font-medium text-ink-700 hover:bg-surface-2 pointer-coarse:min-h-11 pointer-coarse:px-3">
+                    Resume<span className="tabular rounded-full bg-brand-500 px-1.5 text-[11px] font-semibold text-white">{heldBills.length}</span>
+                  </button>
+                )}
+                {cart.length > 0 && (
+                  <>
+                    <button type="button" onClick={() => setHoldOpen((v) => !v)} aria-expanded={holdOpen} className="flex items-center gap-1 rounded-md px-2 py-1 text-small font-medium text-ink-700 hover:bg-surface-2 pointer-coarse:min-h-11 pointer-coarse:px-3">
+                      <Pause aria-hidden="true" className="h-3.5 w-3.5" />Hold
+                    </button>
+                    <button type="button" onClick={async () => { if (await dialog.confirm({ title: 'Clear this bill?', body: 'Every item on it is removed.', confirmLabel: 'Clear bill', danger: true })) resetSale(); }} className="rounded-md px-2 py-1 text-small font-medium text-ink-500 hover:text-danger pointer-coarse:min-h-11 pointer-coarse:px-3">Clear</button>
+                  </>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -765,7 +934,7 @@ const BillingPage = () => {
               <div className="flex items-center gap-3">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-50 text-brand-600"><UserRound aria-hidden="true" className="h-4 w-4" /></span>
                 <p className="min-w-0 flex-1 truncate text-small font-medium text-ink-900">{customerName}</p>
-                <button type="button" onClick={clearCustomer} className="text-small font-medium text-ink-500 hover:text-ink-900">Change</button>
+                <button type="button" onClick={clearCustomer} className="text-small font-medium text-ink-500 hover:text-ink-900 pointer-coarse:min-h-11 pointer-coarse:px-2">Change</button>
               </div>
               {card && <LoyaltyCard card={card} compact />}
               <RewardHint card={card} items={billLines} total={totals.total} onAdd={() => { const p = (products || []).find((x) => x.product_id === card.reward_product_id); if (p) addProduct(p); }} />
@@ -782,13 +951,13 @@ const BillingPage = () => {
                   ))}
                 </ul>
               )}
-              <button type="button" onClick={() => setCustomerOpen(false)} className="text-small text-ink-500 hover:text-ink-900">Keep as walk-in</button>
+              <button type="button" onClick={() => setCustomerOpen(false)} className="text-small text-ink-500 hover:text-ink-900 pointer-coarse:min-h-11">Keep as walk-in</button>
             </div>
           ) : (
-            <button type="button" onClick={() => setCustomerOpen(true)} className="flex w-full items-center gap-3 text-left">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-ink-500"><UserRound aria-hidden="true" className="h-4 w-4" /></span>
-              <span className="flex-1 text-small text-ink-700">Walk-in customer</span>
-              <span className="text-small font-medium text-brand-600">Add customer</span>
+            <button type="button" onClick={() => setCustomerOpen(true)} className="flex min-h-8 w-full items-center gap-2.5 text-left pointer-coarse:min-h-11">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-2 text-ink-500"><UserRound aria-hidden="true" className="h-3.5 w-3.5" /></span>
+              <span className="flex-1 text-caption text-ink-700">Walk-in customer</span>
+              <span className="text-caption font-semibold text-brand-600">Add customer</span>
             </button>
           )}
         </div>
@@ -801,7 +970,7 @@ const BillingPage = () => {
         )}
 
         {/* Lines */}
-        <div className="min-h-[120px] flex-1 overflow-y-auto px-5">
+        <div className="min-h-[96px] flex-1 overflow-y-auto px-4">
           {orderMode ? (
             orderLines.length === 0 ? (
               <p className="py-10 text-center text-small text-ink-500">{order ? 'Nothing left to bill on this order. Tap items to add them.' : 'Loading…'}</p>
@@ -809,19 +978,19 @@ const BillingPage = () => {
               <ul className="divide-y divide-line">{orderLines.map((l) => <OrderBillLine key={l.key} line={l} onQty={setOrderQty} />)}</ul>
             )
           ) : cart.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center py-10 text-center">
-              <p className="text-small font-medium text-ink-700">No items yet</p>
+            <div className="flex h-full flex-col items-center justify-center py-6 text-center">
+              <p className="text-caption font-semibold text-ink-700">No items yet</p>
               <p className="mt-1 text-caption text-ink-500">Tap an item or scan a barcode to start the bill.</p>
             </div>
           ) : (
             <ul className="divide-y divide-line">
-              {cart.map((l) => <BillLine key={l.key} line={l} onChange={(patch) => updateLine(l.key, patch)} onRemove={() => removeLine(l.key)} />)}
+              {cart.map((l) => <BillLine key={l.key} line={l} selected={retail && l.key === selKey} onSelect={() => setSelKey(l.key)} onChange={(patch) => updateLine(l.key, patch)} onRemove={() => removeLine(l.key)} />)}
             </ul>
           )}
         </div>
 
         {/* Totals and payment */}
-        <div className="border-t border-line px-5 py-4">
+        <div className="border-t border-line px-4 pt-2 lg:max-h-[66vh] lg:overflow-y-auto">
           <Alert>{error}</Alert>
 
           <div className={error ? 'mt-3' : ''}>
@@ -835,25 +1004,25 @@ const BillingPage = () => {
                 {couponInfo && <p className="text-caption font-medium text-success">{couponInfo.code}: {formatCurrency(couponInfo.discount)} off{couponInfo.description ? ` · ${couponInfo.description}` : ''}</p>}
                 {couponError && <p className="text-caption text-danger" role="alert">{couponError}</p>}
                 <div className="flex gap-2">
-                  <div className="w-36"><Input type="number" min="0" step="0.01" placeholder="₹ off the bill" aria-label="Discount on the whole bill in rupees" value={invoiceDiscount} onChange={(e) => setInvoiceDiscount(e.target.value)} className="!py-2" /></div>
+                  <div className="w-36"><Input type="number" min="0" step="0.01" placeholder="₹ off the bill" id="bill-discount" aria-label="Discount on the whole bill in rupees" value={invoiceDiscount} onChange={(e) => setInvoiceDiscount(e.target.value)} className="!py-2" /></div>
                   <Input placeholder="Note on the bill (optional)" aria-label="Note on the bill" value={notes} onChange={(e) => setNotes(e.target.value)} className="!py-2" />
                 </div>
               </div>
             ) : (
-              <button type="button" onClick={() => setExtrasOpen(true)} className="mb-3 text-small font-medium text-brand-600 hover:text-brand-700">+ Discount, coupon or note</button>
+              <button type="button" onClick={() => setExtrasOpen(true)} className="inline-flex min-h-7 items-center text-caption font-semibold text-brand-600 hover:text-brand-700 pointer-coarse:min-h-11">+ Discount, coupon or note</button>
             )}
           </div>
 
-          <dl className="tabular space-y-1 text-small">
+          <dl className="tabular space-y-0.5 text-caption">
             <div className="flex justify-between text-ink-500"><dt>Subtotal</dt><dd>{formatCurrency(totals.subtotal)}</dd></div>
             {totals.gstEnabled && <div className="flex justify-between text-ink-500"><dt>GST (estimate)</dt><dd>{formatCurrency(totals.tax)}</dd></div>}
             {totals.discount > 0 && <div className="flex justify-between text-ink-500"><dt>Discount</dt><dd>−{formatCurrency(totals.discount)}</dd></div>}
             {totals.coupon > 0 && <div className="flex justify-between text-success"><dt>Coupon {couponInfo.code}</dt><dd>−{formatCurrency(totals.coupon)}</dd></div>}
             {totals.pointsOff > 0 && <div className="flex justify-between text-success"><dt>Points ({redeem})</dt><dd>−{formatCurrency(totals.pointsOff)}</dd></div>}
             {totals.rewardOff > 0 && <div className="flex justify-between text-success"><dt>Free {card.reward_item} (loyalty)</dt><dd>−{formatCurrency(totals.rewardOff)}</dd></div>}
-            <div className="flex items-baseline justify-between pt-1.5">
-              <dt className="text-body font-semibold text-ink-900">Total</dt>
-              <dd className="text-[28px] font-semibold leading-none tracking-tight text-ink-900">{formatCurrency(totals.total)}</dd>
+            <div className="flex items-baseline justify-between pt-1">
+              <dt className="text-small font-semibold text-ink-900">Total</dt>
+              <dd className="text-[22px] font-semibold leading-none tracking-tight text-ink-900">{formatCurrency(totals.total)}</dd>
             </div>
           </dl>
 
@@ -861,12 +1030,13 @@ const BillingPage = () => {
             <div className="mt-4 space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-small font-semibold text-ink-900">Split payment</p>
-                <button type="button" onClick={stopSplit} className="text-small font-medium text-ink-500 hover:text-ink-900">One payment</button>
+                <button type="button" onClick={stopSplit} className="text-small font-medium text-ink-500 hover:text-ink-900 pointer-coarse:min-h-11 pointer-coarse:px-2">One payment</button>
               </div>
               {parts.map((p, i) => {
                 const last = i === parts.length - 1;
                 return (
-                  <div key={p.key} className="flex items-center gap-2">
+                  <div key={p.key} className="space-y-2">
+                  <div className="flex items-center gap-2">
                     <div className="w-32 shrink-0">
                       <Select value={p.method} onChange={(e) => setPart(p.key, { method: e.target.value })} aria-label={`Part ${i + 1} method`} className="!py-2">
                         {SPLIT_METHODS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -875,14 +1045,19 @@ const BillingPage = () => {
                     <Input type="number" min="0" step="0.01" value={p.amount} onChange={(e) => setPart(p.key, { amount: e.target.value })}
                            placeholder={last ? `Rest · ${splitRest.toFixed(2)}` : '₹ amount'} aria-label={`Part ${i + 1} amount${last ? ', blank for the rest' : ''}`} className="!py-2 text-right" />
                     {parts.length > 2 && (
-                      <button type="button" onClick={() => setParts((ps) => ps.filter((x) => x.key !== p.key))} aria-label={`Remove part ${i + 1}`} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-400 hover:bg-danger/5 hover:text-danger"><X className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => setParts((ps) => ps.filter((x) => x.key !== p.key))} aria-label={`Remove part ${i + 1}`} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-400 hover:bg-danger/5 hover:text-danger pointer-coarse:h-11 pointer-coarse:w-11"><X className="h-4 w-4" /></button>
                     )}
+                  </div>
+                  {p.method === 'CARD' && (
+                    <Input value={p.reference || ''} maxLength={80} onChange={(e) => setPart(p.key, { reference: e.target.value })}
+                           placeholder="Machine approval code (optional)" aria-label={`Part ${i + 1} card machine approval code`} className="!py-2" />
+                  )}
                   </div>
                 );
               })}
               <div className="flex items-center justify-between text-caption">
                 {parts.length < 6
-                  ? <button type="button" onClick={() => setParts((ps) => [...ps, { key: keySeq++, method: 'CARD', amount: '' }])} className="font-medium text-brand-600 hover:text-brand-700">+ Add another way</button>
+                  ? <button type="button" onClick={() => setParts((ps) => [...ps, { key: keySeq++, method: 'CARD', amount: '' }])} className="font-medium text-brand-600 hover:text-brand-700 pointer-coarse:min-h-11">+ Add another way</button>
                   : <span />}
                 <span className={`tabular ${fixedParts > totals.total ? 'text-danger' : splitDue > 0 ? 'text-warning' : 'text-ink-500'}`}>
                   {fixedParts > totals.total ? 'More than the bill' : splitDue > 0 ? `${formatCurrency(splitDue)} stays due` : `Last part: ${formatCurrency(lastFixed ?? splitRest)}`}
@@ -891,10 +1066,10 @@ const BillingPage = () => {
             </div>
           ) : (
           <>
-          <div role="radiogroup" aria-label="How is it paid?" className="mt-4 grid grid-cols-3 gap-1.5">
+          <div role="radiogroup" aria-label="How is it paid?" className="pos-gap pos-methods mt-2 grid grid-cols-3 gap-1">
             {METHODS.map(([value, label]) => (
               <button key={value} type="button" role="radio" aria-checked={method === value} onClick={() => { setMethod(value); setReceived(''); }}
-                      className={`h-10 rounded-lg border text-small font-medium transition-colors duration-(--duration-fast) ${method === value ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>
+                      className={`pos-method h-8 rounded-lg border text-caption font-semibold transition-colors duration-(--duration-fast) pointer-coarse:h-11 ${method === value ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>
                 {label}
               </button>
             ))}
@@ -909,34 +1084,41 @@ const BillingPage = () => {
               <div className="w-36">
                 <Input type="number" min="0" step="0.01" value={received} onChange={(e) => setReceived(e.target.value)}
                        placeholder={totals.total ? totals.total.toFixed(2) : '0.00'}
-                       aria-label={method === 'CASH' ? 'Cash received' : 'Amount paid now'} className="!py-2 text-right" />
+                       id="pay-received" aria-label={method === 'CASH' ? 'Cash received' : 'Amount paid now'} className="!py-2 text-right pointer-coarse:!py-3" />
               </div>
               <p className="tabular flex-1 text-caption text-ink-500">
                 {cashChange > 0 ? <span className="text-small font-semibold text-brand-700">Change {formatCurrency(cashChange)}</span>
                   : partial ? <span className="text-warning">Part payment. {formatCurrency(totals.total - amount)} stays due.</span>
-                  : method === 'CASH' ? 'Cash received. Leave blank if exact.' : 'Paid in full. Type less for a part payment.'}
+                  : <span className="pos-hint">{method === 'CASH' ? 'Cash received. Leave blank if exact.' : 'Paid in full. Type less for a part payment.'}</span>}
               </p>
             </div>
           )}
+          {method === 'CARD' && !split && (
+            <div className="mt-3">
+              <Input value={cardRef} maxLength={80} onChange={(e) => setCardRef(e.target.value)}
+                     placeholder="Machine approval code (optional)" aria-label="Card machine approval code" className="!py-2 pointer-coarse:!py-3" />
+              <p className="pos-hint mt-1 text-caption text-ink-500">From the card machine's slip. It is saved on the bill so you can match your settlement.</p>
+            </div>
+          )}
           {method === 'UPI' && !split && (
-            <p className="mt-2 text-caption text-ink-500">
+            <p className="pos-hint mt-2 text-caption text-ink-500">
               {business?.upi_vpa
                 ? <>The bill is saved, then a QR for the exact amount appears for the customer to scan ({business.upi_vpa}).</>
                 : <>To show a UPI QR for each bill, add your UPI ID in <Link to="/app/settings/business" className="font-medium text-brand-700 hover:underline">Business settings</Link>.</>}
             </p>
           )}
-          <button type="button" onClick={startSplit} disabled={!billLines.length} className="mt-2 flex items-center gap-1.5 text-small font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50">
+          <button type="button" onClick={startSplit} disabled={!billLines.length} className="mt-0.5 flex min-h-7 items-center gap-1.5 text-caption font-semibold text-brand-600 hover:text-brand-700 disabled:opacity-50 pointer-coarse:min-h-11">
             <Split aria-hidden="true" className="h-3.5 w-3.5" />Split between payment methods
           </button>
           </>
           )}
 
           {restaurant && (!orderMode || orderLines.some((l) => l.pending)) && (
-            <label className="mt-4 flex items-start gap-2.5 rounded-lg border border-line px-3 py-2.5">
-              <input type="checkbox" checked={toKitchen} onChange={(e) => { setToKitchen(e.target.checked); setDevicePref('posSendToKitchen', e.target.checked); }} className="mt-0.5 h-4 w-4 accent-[var(--color-brand-500)]" />
+            <label className="pos-gap mt-2 flex items-start gap-2 rounded-lg border border-line px-2.5 py-1.5">
+              <input type="checkbox" checked={toKitchen} onChange={(e) => { setToKitchen(e.target.checked); setDevicePref('posSendToKitchen', e.target.checked); }} className="mt-0.5 h-3.5 w-3.5 accent-[var(--color-brand-500)] pointer-coarse:h-5 pointer-coarse:w-5" />
               <span className="min-w-0">
-                <span className="flex items-center gap-1.5 text-small font-medium text-ink-900"><ChefHat aria-hidden="true" className="h-4 w-4 text-ink-500" />Send to the kitchen</span>
-                <span className="block text-caption text-ink-500">
+                <span className="flex items-center gap-1.5 text-caption font-semibold text-ink-900"><ChefHat aria-hidden="true" className="h-3.5 w-3.5 text-ink-500" />Send to the kitchen</span>
+                <span className="pos-hint block text-caption text-ink-500">
                   {orderMode ? `The ${orderLines.filter((l) => l.pending).length} items not sent yet go to the kitchen, then the order is billed.`
                     : toKitchen ? 'The kitchen screen gets a ticket when you charge, with an order number to call out.' : 'Off: nothing goes to the kitchen (for drinks or packed items served at the counter).'}
                 </span>
@@ -944,13 +1126,15 @@ const BillingPage = () => {
             </label>
           )}
 
-          <Button onClick={charge} disabled={busy || !billLines.length} size="lg" className="mt-4 h-12 w-full text-body">{chargeLabel}</Button>
+          <div className="-mx-4 bg-surface px-4 pb-2 pt-2 lg:sticky lg:bottom-0 lg:z-10"><Button onClick={charge} disabled={busy || !billLines.length} className="h-10 w-full text-small">{chargeLabel}</Button></div>
           {collecting && (
             <UpiCollect invoice={collecting.invoice} amount={collecting.amount} vpa={business.upi_vpa} payee={business.name}
                         onPaid={finishUpi} onLater={() => finishUpi(collecting.invoice)} />
           )}
-          <p className="mt-2 hidden text-center text-caption text-ink-400 lg:block">Ctrl + Enter to charge · / to search</p>
-          <p className="mt-2 text-center text-caption text-ink-400 lg:hidden"><Link to="/app/billing/invoices" className="hover:text-ink-700">See earlier bills</Link></p>
+          <p className="pos-hint mt-2 hidden text-center text-caption text-ink-400 lg:block">
+            {retail ? 'Ctrl + Enter to charge · / search · F2 customer · F4 discount · F8 payment · + − Del the selected line' : 'Ctrl + Enter to charge · / to search'}
+          </p>
+          <p className="mt-1 text-center text-caption text-ink-400 lg:hidden"><Link to="/app/billing/invoices" className="inline-flex min-h-11 items-center px-3 hover:text-ink-700">See earlier bills</Link></p>
         </div>
       </section>
 

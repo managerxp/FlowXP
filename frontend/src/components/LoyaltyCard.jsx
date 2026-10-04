@@ -127,7 +127,7 @@ export const MobileLookup = ({ onPick, placeholder = 'Customer mobile number' })
       {error && <p className="text-xs text-danger" role="alert">{error}</p>}
       {found && !found.customer && (
         <div className="rounded-lg border border-dashed border-line-strong p-3">
-          <p className="text-sm text-ink-600">New customer — add them to start a visit card.</p>
+          <p className="text-sm text-ink-700">New customer — add them to start a visit card.</p>
           <div className="mt-2 flex gap-2">
             <Input placeholder="Name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
             <Button type="button" size="sm" onClick={add} disabled={busy}>Add</Button>

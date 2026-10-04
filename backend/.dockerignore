@@ -1,6 +1,0 @@
-node_modules
-uploads
-.env
-*.log
-test
-migrations-before-*

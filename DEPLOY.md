@@ -1,48 +1,76 @@
 # Deploying FlowXP
 
-Two ways: **one server with Docker** (simplest), or **a managed platform** (Render, Railway, Fly) running the
-same containers. Either way you need: a Postgres database, the API, the web app, a domain with HTTPS, and
-(optionally) an S3-compatible bucket for photos, an SMTP account for email and an Anthropic key for the AI features.
+One VPS, no containers: **Postgres + the API under PM2 + nginx** serving the built frontend and proxying `/api`
+to the API. You need: a Linux server (a 2 GB VPS is plenty for a first restaurant group), Postgres, Node 22,
+nginx, a domain with HTTPS, and (optionally) an S3-compatible bucket for photos, an SMTP account for email and
+an Anthropic key for the AI features.
 
-## 1. One server with Docker
-
-Any Linux server with Docker (a 2 GB VPS is plenty for a first restaurant group).
+## 1. One VPS with PM2
 
 ```bash
-git clone <your repo> flowxp && cd flowxp
-cp .env.example .env        # fill it in (see below)
-docker compose up -d --build
+# once per server
+sudo apt update && sudo apt install -y postgresql nginx
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
+sudo apt install -y nodejs
+sudo npm install -g pm2
+
+# the database (adjust the password)
+sudo -u postgres psql -c "CREATE USER flowxp WITH PASSWORD 'change-me';"
+sudo -u postgres psql -c "CREATE DATABASE flowxp OWNER flowxp;"
 ```
 
-The database migrations run by themselves when the API starts. The app is then on port 80 of the server.
+```bash
+git clone <your repo> /var/www/flowxp && cd /var/www/flowxp
 
-**HTTPS:** put a TLS terminator in front of port 80. The least effort is Caddy, which gets certificates for you:
+cd backend && npm ci --omit=dev
+cp .env.example .env         # fill it in (see below) — DATABASE_URL points at the Postgres user/db above
+cd ../frontend && npm ci && npm run build
+cd ..
 
+pm2 start ecosystem.config.cjs --env production
+pm2 save
+pm2 startup                  # prints one command to run once, so PM2 survives a reboot
 ```
-app.example.com {
-  reverse_proxy localhost:80
-}
+
+The database migrations run by themselves when the API starts (`config/migrate.js`). The API is now on
+`127.0.0.1:5100`, managed by PM2; nothing is exposed to the internet yet — nginx is next.
+
+```bash
+sudo cp deploy/nginx.conf /etc/nginx/sites-available/flowxp
+sudo mkdir -p /etc/nginx/snippets && sudo cp deploy/nginx-security-headers.conf /etc/nginx/snippets/flowxp-security-headers.conf   # CSP and other security headers, see the file
+# it is set up for flowxp.in (www.flowxp.in redirects to it); check root → /var/www/flowxp/frontend/dist
+sudo ln -s /etc/nginx/sites-available/flowxp /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-Set `WEB_PORT=8080` in `.env` if Caddy needs port 80, and point Caddy at `localhost:8080`.
+**HTTPS:** certbot gets a certificate and rewrites the nginx config for you:
 
-### What goes in `.env`
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d flowxp.in -d www.flowxp.in
+```
+
+### What goes in `backend/.env`
 
 | Setting | What it is |
 |---|---|
-| `DB_PASSWORD` | any long random string |
-| `JWT_SECRET` | 32+ random characters (the API refuses to start in production with less) |
-| `APP_ORIGIN` | your public address, `https://app.example.com` (must be https in production) |
+| `DATABASE_URL` | `postgres://flowxp:<password>@localhost:5432/flowxp`, matching the user/db you created above |
+| `JWT_SECRET` | 32+ random characters (the API refuses to start in production with less) — `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
+| `APP_ORIGIN` | your public address, `https://flowxp.in` (must be https in production) |
 | `CORS_ORIGINS` | other sites allowed to call the API, e.g. a separate marketing site (optional) |
 | `SMTP_*`, `MAIL_FROM` | outbound email: password links, staff invites, supplier orders. Blank = logged only |
 | `ANTHROPIC_API_KEY` | switches on Flow AI and reading menus from photos. Blank = both stay off |
-| `STORAGE_DRIVER` | `local` (photos on the server's disk volume) or `s3` (see below) |
+| `STORAGE_DRIVER` | `local` (photos on the server's own disk) or `s3` (see below) |
 | `SUPER_ADMIN_EMAIL/PASSWORD` | the platform operator account (optional) |
+
+See `backend/.env.example` for the full list with comments — that file is the source of truth.
 
 ## 2. Photos: local disk or a bucket
 
-With `STORAGE_DRIVER=local`, photos are kept in the `uploads` Docker volume. That is fine on one server **that you
-back up**. It is not fine on a platform where the disk is thrown away on every deploy.
+With `STORAGE_DRIVER=local`, photos are kept under `backend/uploads` on the server's own disk. That is fine on
+one server **that you back up**, and is exactly what the `uploads/` entry in `.gitignore` expects. It stops being
+fine the moment you run more than one API instance (PM2 cluster mode) or move to a new server, since the disk
+isn't shared between them.
 
 For anything else use a bucket. Any S3-compatible service works (AWS S3, Cloudflare R2, DigitalOcean Spaces, MinIO):
 
@@ -68,23 +96,39 @@ Off until you set a provider. With `MESSAGING_PROVIDER=log` (the default) nothin
 - Set `APP_ORIGIN` to the public https address: the bill link customers receive is built from it.
 - Each business then turns a channel on under Messaging. Test with one bill to your own number first.
 
+## 2c. Sign in with Google (optional)
+
+A second way to sign in for people who already have a FlowXP account. It never creates an account: someone whose Google
+address has no FlowXP account is sent to the free-trial form.
+
+1. Google Cloud Console, a project of your own: **APIs & Services > OAuth consent screen** (External, app name FlowXP,
+   your support email, the `flowxp.in` domain), then **Credentials > Create credentials > OAuth client ID > Web application**.
+2. **Authorised redirect URI**: `https://flowxp.in/api/auth/google/callback` (exactly `APP_ORIGIN` + `/api/auth/google/callback`).
+3. Put the client ID and secret in `backend/.env` as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, restart the API.
+   The "Continue with Google" button appears on the sign-in page by itself; with either blank it is hidden.
+4. Publish the consent screen (from "Testing" to "In production") so people outside your test list can use it.
+
+Rules the code enforces: the Google address must be verified by Google, must match an existing FlowXP account whose own
+email is verified, and a super admin cannot use it (the platform console has its own sign-in). An account with an
+authenticator app still has to enter its code. Every Google sign-in appears in the account's sign-in history as `GOOGLE`.
+
 ## 3. Backups (do this before real customers)
 
 ```bash
-docker compose exec api sh -c 'DATABASE_URL=$DATABASE_URL ./scripts/backup.sh /app/backups 14'
+cd /var/www/flowxp/backend && DATABASE_URL=$(grep ^DATABASE_URL .env | cut -d= -f2-) ./scripts/backup.sh /var/backups/flowxp 14
 ```
 
 To run it daily, add to the server's crontab (`crontab -e`):
 
 ```
-0 3 * * *  cd /path/to/flowxp && docker compose exec -T api ./scripts/backup.sh /app/backups 14
+0 3 * * *  cd /var/www/flowxp/backend && DATABASE_URL=$(grep ^DATABASE_URL .env | cut -d= -f2-) ./scripts/backup.sh /var/backups/flowxp 14
 ```
 
 Then **copy the backup files off the server** (a backup on the same disk is not a backup): `rclone`, `scp`, or
 your provider's snapshots. Restore into an empty database with:
 
 ```bash
-gunzip -c flowxp-2026-09-25T0300.sql.gz | docker compose exec -T db psql -U flowxp flowxp
+gunzip -c flowxp-2026-09-25T0300.sql.gz | psql "$DATABASE_URL"
 ```
 
 Try a restore once, on a spare server, before you need it.
@@ -94,36 +138,31 @@ Try a restore once, on a spare server, before you need it.
 - `GET /health` answers if the process is up. `GET /ready` answers only if the database does; point a load balancer
   or uptime monitor (UptimeRobot, Better Stack) at `/ready`.
 - The API logs one JSON line per failed request (or every request in production) with a request id. The same id is
-  in the `X-Request-Id` response header, so a customer can quote it. `docker compose logs -f api`.
-- The API exits on an unexpected crash and Docker restarts it.
+  in the `X-Request-Id` response header, so a customer can quote it. `pm2 logs flowxp-api`.
+- PM2 restarts the process on an unexpected crash (`process.exit(1)` in server.js's own handlers); `pm2 status`
+  shows restart counts, `max_memory_restart` in `ecosystem.config.cjs` guards against a leak eating the VPS.
 
 ## 5. Updating
 
 ```bash
-git pull && docker compose up -d --build
+cd /var/www/flowxp && git pull
+cd backend && npm ci --omit=dev
+cd ../frontend && npm ci && npm run build
+cd .. && pm2 reload flowxp-api     # zero-downtime: finishes in-flight requests first (server.js's SIGTERM handler)
 ```
 
 New migrations apply on start. They only ever move forward, so take a backup first when the release notes mention a
-new migration.
-
-## 6. On a managed platform (Render, Railway, Fly)
-
-Create a Postgres database, then two services from the two Dockerfiles:
-
-- **API** from `backend/` : set the env vars above, plus `DATABASE_URL` from the database. Health check path `/ready`.
-  Use `STORAGE_DRIVER=s3` (the disk is not permanent).
-- **Web** from `frontend/`: the nginx config proxies `/api` to a host called `api`, so on a platform edit
-  `frontend/nginx.conf` to point `proxy_pass` at your API service's internal address, or serve the built `dist/` from a
-  static host and set the API address there.
+new migration. nginx serves the new `frontend/dist` immediately — no reload needed for a frontend-only change.
 
 ## What is not covered here
 
-Scaling beyond one API server (the background worker would then run once per server; set `WORKER_ENABLED=false` on
-all but one), a Redis queue, a WAF, and the payment gateway for subscriptions.
+Running the API as more than one PM2 instance (the background worker would then run once per instance; set
+`WORKER_ENABLED=false` on all but one — and switch `STORAGE_DRIVER` to `s3`, since local disk isn't shared), a
+Redis queue, a WAF, and the payment gateway for subscriptions.
 
 ## Checked so far
 
 The S3 request signing is verified against AWS's published examples and against a local stand-in bucket; the
-production settings check, health endpoints and backup script are in place. The Dockerfiles, compose file and CI
-workflow have **not been run** (no Docker on the machine they were written on), so expect to fix small things on
-the first `docker compose up`.
+production settings check, health endpoints and backup script are in place. The PM2 ecosystem file and nginx
+config have **not been run against a live VPS** (no server available where this was written), so expect to fix
+small things — paths, the Postgres user's auth method — on the first deploy.

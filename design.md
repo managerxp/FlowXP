@@ -195,7 +195,7 @@ Use:
 
 -   warm white / neutral backgrounds
 -   deep navy/charcoal typography
--   controlled FlowXP red
+-   controlled FlowXP blue (the logo's #0054FA)
 -   subtle neutral borders
 -   restrained shadows
 -   carefully selected imagery
@@ -206,9 +206,12 @@ Use:
 
 ### Primary brand accent
 
-FlowXP red should be the primary action color.
+FlowXP blue — the solid blue sampled from the logo — is the primary action
+color. (An earlier draft of this document proposed red; the product ships
+blue so the interface matches the logo. `frontend/src/index.css` is the
+source of truth for every value.)
 
-Use red for:
+Use blue for:
 
 -   primary CTA
 -   active navigation
@@ -217,41 +220,39 @@ Use red for:
 -   important status
 -   product highlights
 
-Do not make the entire interface red.
+Do not make the entire interface blue. The logo's gradient stays in the logo.
 
 ------------------------------------------------------------------------
 
 # 7. Color Tokens
 
-Create tokens rather than scattered colors.
-
-Suggested foundation:
+Create tokens rather than scattered colors. The shipped tokens live in
+`frontend/src/index.css` (`@theme`) and are named by role:
 
 ``` css
---background: #FAFAF8;
---surface: #FFFFFF;
---surface-subtle: #F5F5F2;
+--color-page: #f8fafc;         /* page ground */
+--color-surface: #ffffff;      /* cards, panels */
+--color-surface-2: #f3f6fa;    /* subtle ground, table headers */
+--color-surface-3: #e9eef5;    /* sunken, skeletons */
+--color-line: #e3e8ef;         /* borders */
+--color-line-strong: #cdd5e0;  /* control borders */
 
---text-primary: #111827;
---text-secondary: #667085;
---text-muted: #98A2B3;
+--color-ink-900: #011531;      /* headings, primary text (logo navy) */
+--color-ink-700: #22324d;      /* body text */
+--color-ink-500: #5a6b87;      /* secondary text, 5.4:1 on white */
+--color-ink-400: #65758e;      /* quietest text, still 4.7:1 on white */
 
---border: #E5E7EB;
---border-strong: #D0D5DD;
+--color-brand-500: #0054fa;    /* primary action, active, selected */
+--color-brand-600: #0046d1;    /* hover */
+--color-brand-50:  #eef3ff;    /* soft selected ground */
 
---brand: #D92D20;
---brand-hover: #B42318;
---brand-soft: #FEF3F2;
-
---success: #12B76A;
---warning: #F79009;
---danger: #D92D20;
---info: #1570EF;
+--color-success: #067647;
+--color-warning: #b54708;
+--color-danger:  #d92d20;
+--color-info:    #1570ef;
 ```
 
-These are starting tokens, not immutable values.
-
-The final values must be centralized in the design system.
+Only token names are used in components; a hex code in a component is a bug.
 
 ------------------------------------------------------------------------
 
@@ -273,7 +274,7 @@ dark elevated surface
 dark border
 dark primary text
 dark secondary text
-brand red
+brand blue
 semantic colors
 ```
 
@@ -285,13 +286,9 @@ Avoid pure black unless a specific screen benefits from it.
 
 Use one professional sans-serif family.
 
-Preferred candidates:
-
-1.  Inter
-2.  Geist
-3.  IBM Plex Sans
-
-Choose one consistently.
+FlowXP uses **Plus Jakarta Sans** everywhere (site and app): it has the ₹
+glyph and true tabular figures. The type scale is defined as tokens in
+`index.css` (`text-caption` … `text-display`).
 
 ### Typography principles
 

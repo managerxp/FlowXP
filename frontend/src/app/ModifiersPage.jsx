@@ -11,9 +11,9 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Check, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, Plus, Search, Trash2, SlidersHorizontal } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
-import { Alert, Button, Field, Input, Modal, Select, useToast } from '../components/ui.jsx';
+import { Alert, Button, Field, Input, Modal, Select, useToast, EmptyState } from '../components/ui.jsx';
 
 const blankOption = () => ({ key: Math.random(), name: '', price_delta: '0', ingredient_product_id: '', ingredient_qty: '' });
 const qty = (n) => Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 3 });
@@ -381,9 +381,7 @@ const ModifiersPage = () => {
         {selected ? (
           <GroupPanel key={selected.group_id} group={selected} ingredients={ingredients} onEdit={() => setEditing(selected)} onPick={() => setPicking(true)} onToggle={() => toggle(selected)} onBack={() => open(null)} />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-            <p className="text-small font-medium text-ink-700">Pick a group to see its options, how it looks at the till, and the dishes that offer it</p>
-          </div>
+          <EmptyState compact icon={SlidersHorizontal} className="h-full justify-center" title="Pick a group" body="See its options, how it looks at the till, and the dishes that offer it." />
         )}
       </section>
 

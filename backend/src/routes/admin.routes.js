@@ -6,7 +6,7 @@
  */
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
+import { requireAuth, requireSuperAdmin, requireAdminTwoFactor } from '../middleware/auth.js';
 import { idempotent } from '../middleware/idempotency.js';
 import * as admin from '../controllers/admin.controller.js';
 import * as settings from '../controllers/settings.controller.js';
@@ -16,6 +16,7 @@ const router = Router();
 const adminLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many attempts. Try again in a few minutes.' }
@@ -23,7 +24,10 @@ const adminLoginLimiter = rateLimit({
 
 router.post('/login', adminLoginLimiter, admin.login);
 
-router.use(requireAuth, requireSuperAdmin);
+// a generous ceiling for everything else the console does: it is one person clicking, never a crowd
+router.use(rateLimit({ windowMs: 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false, message: { success: false, message: 'Too many requests. Slow down for a minute.' } }));
+
+router.use(requireAuth, requireSuperAdmin, requireAdminTwoFactor);
 
 router.get('/me', admin.me);
 router.get('/stats', admin.getStats);

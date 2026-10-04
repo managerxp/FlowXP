@@ -9,14 +9,40 @@
 export const ROLE_PERMISSIONS = {
   OWNER: ['*'],
   ADMIN: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
-    'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds'],
+    'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds', 'appointments', 'staff_commission',
+    'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
+    'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing'],
   MANAGER: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
-    'payments', 'expenses', 'reports', 'ai', 'refunds'],
+    'payments', 'expenses', 'reports', 'ai', 'refunds', 'appointments', 'staff_commission',
+    'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
+    'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing'],
   CASHIER: ['billing', 'customers', 'payments'],
   STAFF: ['billing'],
   WAITER: ['billing'],
   KITCHEN: ['kitchen'],
-  INVENTORY_MANAGER: ['inventory', 'purchases', 'suppliers']
+  INVENTORY_MANAGER: ['inventory', 'purchases', 'suppliers'],
+  DELIVERY: ['billing', 'fulfilment'],
+  // Salon floor roles (see backend/src/middleware/auth.js)
+  RECEPTIONIST: ['billing', 'customers', 'payments', 'appointments'],
+  STYLIST: ['appointments'],
+  ACCOUNTANT: ['billing', 'payments', 'expenses', 'gst', 'reports', 'export', 'refunds', 'collections'],
+  // Wholesale roles (see backend/src/middleware/auth.js)
+  SALES_MANAGER: ['billing', 'customers', 'payments', 'reports', 'refunds', 'sales_orders', 'sales_cancel', 'pricing', 'export', 'territories', 'schemes', 'targets', 'field_sales', 'collections'],
+  SALES_EXECUTIVE: ['billing', 'customers', 'sales_orders', 'field_sales'],
+  WAREHOUSE_MANAGER: ['inventory', 'purchases', 'fulfilment', 'suppliers', 'vehicles'],
+  WAREHOUSE_STAFF: ['fulfilment'],
+  PURCHASE_MANAGER: ['purchases', 'suppliers', 'inventory', 'purchase_approve', 'payments', 'reports', 'principals'],
+  // Distributor roles (see backend/src/middleware/auth.js)
+  FIELD_SALES: ['customers', 'sales_orders', 'field_sales', 'collections'],
+  COLLECTION_EXECUTIVE: ['customers', 'collections', 'field_sales'],
+  DELIVERY_MANAGER: ['fulfilment', 'vehicles', 'inventory'],
+  DISTRIBUTOR_ADMIN: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers', 'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds',
+    'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve', 'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections'],
+  // Pharmacy roles (see backend/src/middleware/auth.js)
+  PHARMACIST: ['billing', 'inventory', 'prescriptions', 'dispensing', 'customers'],
+  SALES_STAFF: ['billing', 'customers'],
+  GRN_MANAGER: ['purchases', 'inventory', 'suppliers'],
+  AUDITOR: ['reports', 'export']
 };
 
 export const hasPermission = (business, permission) => {

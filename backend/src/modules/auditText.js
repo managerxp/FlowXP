@@ -11,7 +11,8 @@ export const CATEGORIES = {
   money:      { label: 'Expenses and costs', prefixes: ['expense', 'settings'] },
   customers:  { label: 'Customers and offers', prefixes: ['customer', 'coupon', 'loyalty'] },
   team:       { label: 'Team and outlets', prefixes: ['staff', 'outlet'] },
-  oversight:  { label: 'Oversight and AI', prefixes: ['leakage', 'ai', 'forecast', 'integration', 'business'] }
+  oversight:  { label: 'Oversight and AI', prefixes: ['leakage', 'ai', 'forecast', 'integration', 'business'] },
+  salon:      { label: 'Salon', prefixes: ['salon'] }
 };
 
 /** The action prefixes belonging to a category, or null for an unknown one. */
@@ -125,6 +126,47 @@ const SENTENCES = {
   'forecast.event_removed': () => 'Removed a demand event',
   'integration.updated': (m, t) => join('Changed the', t || 'delivery', 'integration'),
   'integration.menu_synced': (m, t) => join('Synced the menu to', t || 'a delivery platform'),
+  // salon
+  'salon.sale_completed': (m, t) => join('Billed', t || 'a salon sale', m.total != null && `for ${money(m.total)}`, m.offers?.length && `(offers: ${m.offers.join(', ')})`),
+  'salon.price_changed': (m) => join('Changed the price of', m.name, m.before?.price != null && `from ${money(m.before.price)}`, m.after?.price != null && `to ${money(m.after.price)}`),
+  'salon.service_created': (m) => join('Added the service', m.after?.name && `“${m.after.name}”`),
+  'salon.service_updated': (m, t) => join('Edited the service', t),
+  'salon.service_archived': (m) => join('Archived the service', m.name),
+  'salon.service_restored': (m) => join('Restored the service', m.name),
+  'salon.service_consumables_changed': (m) => join('Changed the consumables used by', m.name || 'a service'),
+  'salon.product_details_changed': (m) => join('Changed the salon details of', m.name),
+  'salon.settings_changed': () => 'Changed the salon settings',
+  'salon.branch_settings_changed': (m, t) => join('Changed the hours of', t || 'an outlet'),
+  'salon.appointment_created': (m) => join('Booked an appointment', m.services != null && `(${m.services} service${m.services === 1 ? '' : 's'})`),
+  'salon.appointment_rescheduled': () => 'Moved an appointment',
+  'salon.appointment_status': (m) => join('Marked an appointment', m.after?.status && String(m.after.status).toLowerCase().replace('_', ' '), m.reason && `(${m.reason})`),
+  'salon.staff_created': (m) => join('Added', m.after?.name, 'to the salon team'),
+  'salon.staff_updated': (m, t) => join('Edited the team member', t),
+  'salon.commission_rate_changed': (m, t) => join('Changed the commission rate for', t || m.name),
+  'salon.commission_approved': (m) => join('Approved', money(m.after?.total), 'commission for', m.staff),
+  'salon.commission_paid': (m) => join('Paid', money(m.after?.total), 'commission to', m.staff),
+  'salon.attendance_marked': (m) => join('Marked', m.name, m.after?.status && String(m.after.status).toLowerCase().replace('_', ' ')),
+  'salon.client_created': (m) => join('Added the client', m.after?.name),
+  'salon.client_updated': (m, t) => join('Edited the client', t),
+  'salon.client_note_added': (m, t) => join('Added a private note on', t || 'a client'),
+  'salon.loyalty_rules_changed': () => 'Changed the salon loyalty rules',
+  'salon.points_expired': (m) => join('Expired', m.after?.points, 'loyalty points'),
+  'salon.membership_plan_created': (m) => join('Created the membership plan', m.after?.name),
+  'salon.membership_plan_changed': () => 'Changed a membership plan',
+  'salon.membership_sold': (m) => join('Sold', m.count, m.count === 1 ? 'membership' : 'memberships'),
+  'salon.membership_cancelled': (m) => join('Cancelled a', m.plan, 'membership', m.reason && `(${m.reason})`),
+  'salon.package_created': (m) => join('Created the package', m.after?.name),
+  'salon.package_changed': () => 'Changed a package',
+  'salon.package_sold': (m) => join('Sold', m.count, m.count === 1 ? 'package' : 'packages'),
+  'salon.package_adjusted': (m) => join('Adjusted a client package', m.reason && `(${m.reason})`),
+  'salon.gift_card_issued_free': (m) => join('Issued a free gift card of', money(m.after?.amount), m.reason && `(${m.reason})`),
+  'salon.gift_card_adjusted': (m) => join('Changed a gift card balance from', money(m.before?.balance), 'to', money(m.after?.balance), m.reason && `(${m.reason})`),
+  'salon.gift_card_cancelled': (m) => join('Cancelled a gift card', m.reason && `(${m.reason})`),
+  'salon.offer_created': (m) => join('Created the offer', m.after?.name),
+  'salon.offer_changed': () => 'Changed an offer',
+  'salon.stock_in': (m) => join('Added', m.after?.quantity, 'to', m.name || 'stock', m.after?.batch_no && `(batch ${m.after.batch_no})`),
+  'salon.automation_changed': (m, t) => join('Changed the', t || 'salon', 'automation'),
+  'salon.campaign_sent': (m) => join('Sent a campaign to', m.recipients, m.recipients === 1 ? 'client' : 'clients'),
   'ai.asked': () => 'Asked Flow AI a question',
   'ai.enabled': () => 'Turned Flow AI on',
   'ai.disabled': () => 'Turned Flow AI off'
@@ -148,5 +190,8 @@ export const TARGETS = {
   coupon: { table: 'coupons', id: 'coupon_id', name: 'code' },
   user: { table: 'users', id: 'user_id', name: 'name' },
   branch: { table: 'branches', id: 'branch_id', name: 'name' },
-  supplier: { table: 'suppliers', id: 'supplier_id', name: 'name' }
+  supplier: { table: 'suppliers', id: 'supplier_id', name: 'name' },
+  salon_staff: { table: 'salon_staff', id: 'staff_id', name: 'name' },
+  salon_appointment: { table: 'salon_appointments', id: 'appointment_id', name: "'Appointment #' || appointment_id" },
+  gift_card: { table: 'salon_gift_cards', id: 'card_id', name: 'code' }
 };

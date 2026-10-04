@@ -114,10 +114,15 @@ test('GSTR-1 sorts sales into B2B, B2CL, B2CS and credit notes, and its totals e
   assert.equal((await A.call(invoices.cancel, { params: { id: cancelled.invoice_id }, body: {} })).code, 200);
 
   const line = (id) => pool.query(`SELECT item_id FROM invoice_items WHERE invoice_id = $1`, [id]).then((r) => r.rows[0].item_id);
+  // credit_notes.cn_date defaults to CURRENT_DATE (no date param on this endpoint, unlike invoices) — backdate it
+  // into the filing period under test, same workaround the GSTR-3B test below uses for dn_date.
+  const backdateCn = (id) => pool.query(`UPDATE credit_notes SET cn_date = '2026-09-10' WHERE cn_id = $1`, [id]);
   const cnB2b = await A.call(notes.create, { params: { id: i1.invoice_id }, body: { reason: 'One plate returned', items: [{ item_id: await line(i1.invoice_id), quantity: 1 }] } });
   assert.equal(cnB2b.code, 201, JSON.stringify(cnB2b.body));
+  await backdateCn(cnB2b.body.data.cn_id);
   const cnB2c = await A.call(notes.create, { params: { id: i3.invoice_id }, body: { reason: 'Cold', items: [{ item_id: await line(i3.invoice_id), quantity: 1 }] } });
   assert.equal(cnB2c.code, 201);
+  await backdateCn(cnB2c.body.data.cn_id);
 
   const res = await A.call(gst.gstr1, { query: { period: '2026-09' } });
   assert.equal(res.code, 200, JSON.stringify(res.body));

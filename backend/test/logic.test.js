@@ -138,3 +138,17 @@ test('inter-state detection treats an unknown state as intra-state, not as a gue
   assert.equal(isInterState(null, 'Karnataka'), false);
   assert.equal(isInterState('Telangana', null), false);
 });
+
+test('a card machine approval code is kept on the payment, trimmed; blank is none; too long is refused, not a 500', async () => {
+  const { plannedPayments, paymentReference, BillingError } = await import('../src/modules/billing.js');
+  assert.equal(paymentReference('  AB123  '), 'AB123');
+  assert.equal(paymentReference('   '), null);
+  assert.equal(paymentReference(undefined), null);
+  assert.throws(() => paymentReference('x'.repeat(81)), (e) => e instanceof BillingError && e.status === 400);
+  assert.equal(paymentReference('x'.repeat(80)).length, 80);
+  // one payment, and each part of a split, carry their own reference
+  assert.deepEqual(plannedPayments({ payment: { method: 'CARD', amount: 'FULL', reference_number: ' 998877 ' } }, 10000), [{ method: 'CARD', amountPaise: 10000, reference: '998877' }]);
+  const split = plannedPayments({ payments: [{ method: 'CARD', amount: 40, reference_number: 'A1' }, { method: 'CASH', amount: 'REST' }] }, 10000);
+  assert.deepEqual(split.map((p) => [p.method, p.amountPaise, p.reference]), [['CARD', 4000, 'A1'], ['CASH', 6000, null]]);
+  assert.throws(() => plannedPayments({ payment: { method: 'CARD', amount: 'FULL', reference_number: 'y'.repeat(200) } }, 10000), /too long/);
+});

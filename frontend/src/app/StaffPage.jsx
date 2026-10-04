@@ -7,19 +7,47 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Th, Thead, Tr, useToast } from '../components/ui.jsx';
+import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Th, Thead, Tr, useToast, PageLoader } from '../components/ui.jsx';
 
 const ROLES = {
   OWNER: 'Owner', ADMIN: 'Admin', MANAGER: 'Manager', CASHIER: 'Cashier', WAITER: 'Waiter',
-  KITCHEN: 'Kitchen', INVENTORY_MANAGER: 'Stock manager', STAFF: 'Staff', DELIVERY: 'Delivery rider'
+  KITCHEN: 'Kitchen', INVENTORY_MANAGER: 'Stock manager', STAFF: 'Staff', DELIVERY: 'Delivery rider',
+  RECEPTIONIST: 'Receptionist', STYLIST: 'Stylist', ACCOUNTANT: 'Accountant',
+  SALES_MANAGER: 'Sales manager', SALES_EXECUTIVE: 'Sales executive', WAREHOUSE_MANAGER: 'Warehouse manager', WAREHOUSE_STAFF: 'Warehouse staff', PURCHASE_MANAGER: 'Purchase manager',
+  DISTRIBUTOR_ADMIN: 'Distributor admin', FIELD_SALES: 'Field sales rep', COLLECTION_EXECUTIVE: 'Collection executive', DELIVERY_MANAGER: 'Delivery manager',
+  PHARMACIST: 'Pharmacist', SALES_STAFF: 'Sales staff', GRN_MANAGER: 'GRN manager', AUDITOR: 'Auditor'
 };
+/* Roles that only make sense for one kind of business: a salon has no kitchen, a restaurant has no stylists. */
+const SALON_ONLY = ['RECEPTIONIST', 'STYLIST'];
+const WHOLESALE_ONLY = ['SALES_MANAGER', 'SALES_EXECUTIVE', 'WAREHOUSE_MANAGER', 'WAREHOUSE_STAFF', 'PURCHASE_MANAGER', 'DISTRIBUTOR_ADMIN', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'DELIVERY_MANAGER'];
+const PHARMACY_ONLY = ['PHARMACIST', 'SALES_STAFF', 'GRN_MANAGER', 'AUDITOR'];
+const NOT_FOR_SALON = ['WAITER', 'KITCHEN', 'DELIVERY'];
+const NOT_FOR_WHOLESALE = ['WAITER', 'KITCHEN'];
+const NOT_FOR_PHARMACY = ['WAITER', 'KITCHEN', 'DELIVERY'];
+const DISTRIBUTOR_ONLY = ['DISTRIBUTOR_ADMIN', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'DELIVERY_MANAGER'];   // only where the distributor features are on
 const GROUP_ROLES = ['OWNER', 'ADMIN'];
-const FLOOR_ROLES = ['CASHIER', 'WAITER', 'KITCHEN', 'STAFF', 'DELIVERY'];
+const FLOOR_ROLES = ['CASHIER', 'WAITER', 'KITCHEN', 'STAFF', 'DELIVERY', 'RECEPTIONIST', 'STYLIST', 'ACCOUNTANT', 'WAREHOUSE_STAFF', 'SALES_EXECUTIVE', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'PHARMACIST', 'SALES_STAFF', 'GRN_MANAGER', 'AUDITOR'];
 const ROLE_HELP = {
   OWNER: 'Everything, including billing and staff.', ADMIN: 'Runs the business day to day; can’t manage owners.',
   MANAGER: 'Reports, stock, buying and refunds.', CASHIER: 'Bills sales and takes payments.', WAITER: 'Takes and bills orders.',
   KITCHEN: 'Sees and advances kitchen tickets only.', INVENTORY_MANAGER: 'Stock, purchasing and suppliers.', STAFF: 'Billing only.',
-  DELIVERY: 'Gets assigned to delivery orders and updates pickup/delivered status.'
+  DELIVERY: 'Gets assigned to delivery orders and updates pickup/delivered status.',
+  RECEPTIONIST: 'Books appointments, bills clients and looks after the client book.',
+  STYLIST: 'Sees their own appointments and moves clients through the service. No billing or money.',
+  ACCOUNTANT: 'Billing records, payments, expenses, GST and reports. Cannot change the catalogue or the team.',
+  SALES_MANAGER: 'Orders, customers, pricing, receipts, returns and sales reports. Can cancel orders and override a credit hold.',
+  SALES_EXECUTIVE: 'Takes orders for their own customers. Cannot change prices or see the books.',
+  WAREHOUSE_MANAGER: 'Stock, goods receipts, transfers, picking and dispatch.',
+  WAREHOUSE_STAFF: 'Picks, packs and dispatches orders in their own warehouse.',
+  PURCHASE_MANAGER: 'Buys, approves purchase orders and pays suppliers. Manages principals.',
+  DISTRIBUTOR_ADMIN: 'Runs the distribution business day to day: territories, targets, schemes, vans, pricing and settings.',
+  FIELD_SALES: 'Visits their own retailers on a beat, takes orders and collects payments. Sees only their own retailers, targets and van.',
+  COLLECTION_EXECUTIVE: 'Collects payments from retailers and records visits. Cannot take orders or see the books.',
+  DELIVERY_MANAGER: 'Runs the vans and the drivers: loading, counting, deliveries and dispatch.',
+  PHARMACIST: 'Billing, inventory, prescriptions and dispensing. The till and the shelf.',
+  SALES_STAFF: 'Bills sales and looks up customers. No inventory or buying.',
+  GRN_MANAGER: 'Receives goods, manages suppliers and stock.',
+  AUDITOR: 'Reports and exports only. Cannot bill, buy or change stock.'
 };
 
 /* What this person may do: the role's default, with an allow or deny for anything the owner wants different. */
@@ -54,7 +82,7 @@ const PermissionsModal = ({ person, onClose, onSaved }) => {
     <Modal title={`Permissions — ${person.name}`} onClose={onClose} wide>
       <p className="mb-4 text-sm text-ink-500">{person.name} is a <strong>{ROLES[person.role]}</strong>. Each row starts from what that role allows; change one only when this person should differ.</p>
       <Alert>{error}</Alert>
-      {!rows ? <p className="text-sm text-ink-400">Loading…</p> : (
+      {!rows ? <PageLoader compact /> : (
         <div className="space-y-2">
           {rows.map((p) => (
             <div key={p.key} className="grid items-center gap-3 rounded-lg border border-line p-3 sm:grid-cols-[1fr_auto]">
@@ -65,7 +93,7 @@ const PermissionsModal = ({ person, onClose, onSaved }) => {
               <div className="flex overflow-hidden rounded-lg border border-line-strong text-xs font-semibold" role="group" aria-label={p.label}>
                 {[['default', `Role default (${p.role_default ? 'can' : 'can’t'})`], ['allow', 'Allow'], ['deny', 'Deny']].map(([value, label]) => (
                   <button key={value} type="button" aria-pressed={choice[p.key] === value} onClick={() => setChoice((c) => ({ ...c, [p.key]: value }))}
-                          className={`px-2.5 py-1.5 ${choice[p.key] === value ? (value === 'deny' ? 'bg-danger text-white' : value === 'allow' ? 'bg-success text-white' : 'bg-ink-900 text-white') : 'bg-surface text-ink-600 hover:bg-surface-2'}`}>{label}</button>
+                          className={`px-2.5 py-1.5 ${choice[p.key] === value ? (value === 'deny' ? 'bg-danger text-white' : value === 'allow' ? 'bg-success text-white' : 'bg-ink-900 text-white') : 'bg-surface text-ink-700 hover:bg-surface-2'}`}>{label}</button>
                 ))}
               </div>
             </div>
@@ -120,7 +148,7 @@ const PersonForm = ({ person, roles, outlets, onSaved, onClose }) => {
           </Select>
         </Field>
         {groupRole ? (
-          <p className="rounded-lg bg-surface-2 p-3 text-sm text-ink-600">{ROLES[form.role]}s can see every outlet.</p>
+          <p className="rounded-lg bg-surface-2 p-3 text-sm text-ink-700">{ROLES[form.role]}s can see every outlet.</p>
         ) : (
           outlets.length > 1 && (
             <Field id="s-outlet" label="Outlet" hint={needsOutlet ? 'They can only see and work in this outlet.' : 'Leave on “Every outlet” for a group-level manager.'}>
@@ -158,7 +186,15 @@ const StaffPage = () => {
 
   const isOwner = business?.role === 'OWNER';
   // An admin can't hand out or change the top roles.
-  const roles = Object.keys(ROLES).filter((r) => isOwner || !GROUP_ROLES.includes(r));
+  const salon = business?.business_type === 'SALON';
+  const wholesale = ['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type);
+  const pharmacy = business?.business_type === 'PHARMACY';
+  const roles = Object.keys(ROLES).filter((r) => (isOwner || !GROUP_ROLES.includes(r)) && (
+    salon ? !NOT_FOR_SALON.includes(r) && !WHOLESALE_ONLY.includes(r) && !PHARMACY_ONLY.includes(r)
+    : wholesale ? !NOT_FOR_WHOLESALE.includes(r) && !SALON_ONLY.includes(r) && !PHARMACY_ONLY.includes(r) && (business?.distributor_enabled || !DISTRIBUTOR_ONLY.includes(r))
+    : pharmacy ? !NOT_FOR_PHARMACY.includes(r) && !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r)
+    : !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r) && !PHARMACY_ONLY.includes(r)
+  ));
 
   const load = () => api('/staff').then(setPeople).catch((e) => setError(e.status === 403 ? 'Managing staff is for owners and admins.' : e.message));
   useEffect(() => { load(); }, []);

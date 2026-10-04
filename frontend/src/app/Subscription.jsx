@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react';
 import { api, formatMoney, formatCurrency } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Button, Card } from '../components/ui.jsx';
+import { Button, Card, PageLoader } from '../components/ui.jsx';
 
 const STATUS_LABEL = {
   TRIAL: 'Free trial',
@@ -42,7 +42,7 @@ const Subscription = () => {
   }, [business?.business_id]);
 
   if (error) return <p className="text-sm text-danger">{error}</p>;
-  if (!data) return <p className="text-sm text-ink-400">Loading…</p>;
+  if (!data) return <PageLoader compact />;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -115,7 +115,7 @@ const Subscription = () => {
         </div>
 
         <p className="mt-5 text-xs text-ink-400">
-          Pricing is agreed with our team, not self-serve. Contact support@managerxp.com
+          Pricing is agreed with our team, not self-serve. Contact flowxp.manager@gmail.com
           and we'll send a secure payment link for your plan.
         </p>
       </div>

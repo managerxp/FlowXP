@@ -6,7 +6,7 @@
  * object.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { api, clearToken, getBranchId, getBusinessId, setBranchId, setBusinessId, setToken } from '../lib/api.js';
+import { api, clearToken, forgetLegacyToken, getBranchId, getBusinessId, setBranchId, setBusinessId } from '../lib/api.js';
 import { hasPermission } from '../lib/permissions.js';
 
 const AuthContext = createContext(null);
@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }) => {
   const refresh = useCallback(async () => {
     try {
       const data = await api('/auth/me');
+      forgetLegacyToken();   // the answer carried the session cookie, so an old stored token is no longer needed
       setUser(data.user);
       setBusinesses(data.businesses);
 
@@ -45,8 +46,9 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const signIn = useCallback((token, nextUser, nextBusinesses) => {
-    setToken(token);
+  /* The sign-in reply has already set the session cookie; the token in it is not kept anywhere in the page. */
+  const signIn = useCallback((_token, nextUser, nextBusinesses) => {
+    forgetLegacyToken();
     setUser(nextUser);
     setBusinesses(nextBusinesses);
     const first = nextBusinesses[0]?.business_id ?? null;

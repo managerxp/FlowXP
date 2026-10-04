@@ -15,7 +15,7 @@ import { effectiveFeatureFlags } from '../modules/planFeatures.js';
 const findByToken = (token) => pool.query(
   `SELECT i.invoice_id, i.invoice_number, i.invoice_date, i.subtotal_paise, i.discount_paise, i.cgst_paise, i.sgst_paise, i.igst_paise,
           i.round_off_paise, i.total_paise, i.amount_paid_paise, i.balance_due_paise, i.status, i.business_id, i.branch_id, i.customer_id,
-          b.name AS business_name, b.currency, b.upi_vpa, b.gstin AS business_gstin, b.google_review_link,
+          b.name AS business_name, b.business_type, b.currency, b.upi_vpa, b.gstin AS business_gstin, b.google_review_link,
           br.name AS outlet_name, br.gstin AS outlet_gstin,
           COALESCE(pv.feature_flags, p.feature_flags, '{}'::jsonb) AS plan_feature_flags,
           btf.feature_flags AS type_feature_flags,
@@ -35,7 +35,7 @@ const findByToken = (token) => pool.query(
    WHERE i.share_token = $1`, [String(token || '').slice(0, 40)]
 );
 
-const reviewsOn = (inv) => effectiveFeatureFlags([inv.plan_feature_flags, inv.type_feature_flags], inv.feature_overrides).reviews !== false;
+const reviewsOn = (inv) => effectiveFeatureFlags([inv.plan_feature_flags, inv.type_feature_flags], inv.feature_overrides, inv.business_type).reviews !== false;
 
 /* GET /api/public/bill/:token */
 export const bill = async (req, res) => {

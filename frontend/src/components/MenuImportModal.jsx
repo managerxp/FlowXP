@@ -4,6 +4,7 @@
  * Reading a photo never changes the menu; the review step is what saves.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
 import { Alert, Badge, Button, Input, Modal, Select } from './ui.jsx';
@@ -84,7 +85,7 @@ const MenuImportModal = ({ onClose, onDone }) => {
 
         {step === 'pick' && (
           <>
-            <p className="text-sm text-ink-600">Take a clear photo of your printed menu, or choose pictures you already have. Use one photo per page. FlowXP reads the items and prices, and <strong>you check everything before anything is added</strong>. The photos are not kept.</p>
+            <p className="text-sm text-ink-700">Take a clear photo of your printed menu, or choose pictures you already have. Use one photo per page. FlowXP reads the items and prices, and <strong>you check everything before anything is added</strong>. The photos are not kept.</p>
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => cameraRef.current?.click()}>Take a photo</Button>
               <Button variant="secondary" onClick={() => libraryRef.current?.click()}>Choose photos</Button>
@@ -96,7 +97,7 @@ const MenuImportModal = ({ onClose, onDone }) => {
                 {files.map((f, i) => (
                   <div key={f.url} className="relative">
                     <img src={f.url} alt={`Menu page ${i + 1}`} className="h-28 w-24 rounded-lg border border-line object-cover" />
-                    <button type="button" onClick={() => removeFile(i)} aria-label={`Remove page ${i + 1}`} className="absolute -right-2 -top-2 h-6 w-6 rounded-full bg-ink-900 text-xs text-white">✕</button>
+                    <button type="button" onClick={() => removeFile(i)} aria-label={`Remove page ${i + 1}`} className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-ink-900 text-white hover:bg-danger"><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
                   </div>
                 ))}
               </div>
@@ -119,14 +120,14 @@ const MenuImportModal = ({ onClose, onDone }) => {
 
         {step === 'review' && (
           <>
-            <p className="text-sm text-ink-600">Found <strong>{rows.length}</strong> items. Fix anything that was misread, untick what you don’t want, then add them.</p>
+            <p className="text-sm text-ink-700">Found <strong>{rows.length}</strong> items. Fix anything that was misread, untick what you don’t want, then add them.</p>
             {meta.notes && <Alert>{meta.notes}</Alert>}
             <div className="flex flex-wrap items-end gap-4 rounded-lg bg-surface-2 p-3">
-              <label className="text-xs font-semibold text-ink-600">GST on these items (%)
+              <label className="text-xs font-semibold text-ink-700">GST on these items (%)
                 <Input className="mt-1 w-24" type="number" min="0" max="28" step="0.5" value={tax} onChange={(e) => setTax(e.target.value)} disabled={!meta.gst && tax === '0'} />
               </label>
               {rows.some((r) => r.duplicate) && (
-                <label className="text-xs font-semibold text-ink-600">Items already on your menu
+                <label className="text-xs font-semibold text-ink-700">Items already on your menu
                   <Select className="mt-1" value={onDup} onChange={(e) => setOnDup(e.target.value)}><option value="skip">Leave them as they are</option><option value="update_price">Update their price</option></Select>
                 </label>
               )}
@@ -153,7 +154,7 @@ const MenuImportModal = ({ onClose, onDone }) => {
                       </td>
                       <td className="px-2 py-1.5"><Input type="number" min="0" step="0.01" value={r.price} onChange={(e) => update(r.key, { price: e.target.value })} aria-label="Price" placeholder="?" /></td>
                       <td className="px-2 py-1.5"><Input list="menu-import-categories" value={r.category} onChange={(e) => update(r.key, { category: e.target.value })} aria-label="Category" /></td>
-                      <td className="px-2 py-1.5"><button type="button" onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))} aria-label={`Remove ${r.name}`} className="text-ink-400 hover:text-danger">✕</button></td>
+                      <td className="px-2 py-1.5"><button type="button" onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))} aria-label={`Remove ${r.name}`} className="rounded-md p-1 text-ink-400 hover:bg-danger/10 hover:text-danger"><X aria-hidden="true" className="h-4 w-4" /></button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -174,7 +175,7 @@ const MenuImportModal = ({ onClose, onDone }) => {
         {step === 'done' && result && (
           <div className="space-y-3 py-4 text-center">
             <p className="text-lg font-bold text-ink-900">Your menu is in.</p>
-            <p className="text-sm text-ink-600">{result.created} added{result.categories_created ? ` in ${result.categories_created} new categor${result.categories_created === 1 ? 'y' : 'ies'}` : ''}{result.updated ? `, ${result.updated} prices updated` : ''}{result.skipped ? `, ${result.skipped} skipped` : ''}.</p>
+            <p className="text-sm text-ink-700">{result.created} added{result.categories_created ? ` in ${result.categories_created} new categor${result.categories_created === 1 ? 'y' : 'ies'}` : ''}{result.updated ? `, ${result.updated} prices updated` : ''}{result.skipped ? `, ${result.skipped} skipped` : ''}.</p>
             <p className="text-xs text-ink-400">Next: add recipes to your dishes so stock and food cost are tracked.</p>
             <Button onClick={onClose}>Done</Button>
           </div>

@@ -10,7 +10,7 @@ import { api, formatCurrency } from '../../lib/api.js';
 import { localISO } from '../../lib/dates.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { platformName } from '../../lib/business.js';
-import { Alert, Button, Input } from '../../components/ui.jsx';
+import { Alert, Button, Input, StatCard } from '../../components/ui.jsx';
 
 const d0 = (iso) => new Date(`${iso}T00:00`);
 const plusDays = (iso, n) => { const d = d0(iso); d.setDate(d.getDate() + n); return localISO(d); };
@@ -49,17 +49,7 @@ const StateChip = ({ inv }) => {
   return <span className="rounded bg-warning/10 px-1.5 py-0.5 text-caption font-semibold text-warning">{inv.payment_status === 'PARTIAL' ? 'Part paid' : 'Unpaid'}</span>;
 };
 
-const Tile = ({ label, value, note, tone, onClick, pressed }) => {
-  const Tag = onClick ? 'button' : 'div';
-  return (
-    <Tag type={onClick ? 'button' : undefined} onClick={onClick} aria-pressed={onClick ? pressed : undefined}
-         className={`rounded-(--radius-card) border bg-surface p-4 text-left ${pressed ? 'border-brand-500 ring-1 ring-brand-500' : 'border-line'} ${onClick ? 'transition-colors duration-(--duration-fast) hover:border-ink-400' : ''}`}>
-      <p className="text-caption text-ink-500">{label}</p>
-      <p className={`tabular mt-1 text-title font-semibold ${tone || 'text-ink-900'}`}>{value}</p>
-      {note && <p className="mt-0.5 text-caption text-ink-500">{note}</p>}
-    </Tag>
-  );
-};
+const Tile = StatCard;
 
 const InvoicesPage = () => {
   const navigate = useNavigate();
@@ -106,7 +96,7 @@ const InvoicesPage = () => {
           <p className="mt-1 text-small text-ink-500">Every bill raised, what has been paid, and what is still owed.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="ghost" to="/app/billing/credit-notes">Credit notes</Button>
+          <Button variant="secondary" to="/app/billing/credit-notes">Credit notes</Button>
           <Button to="/app/billing"><Plus aria-hidden="true" className="h-4 w-4" />New sale</Button>
         </div>
       </div>

@@ -3,9 +3,10 @@
  * app/AppShell.jsx: same "guard once here, not per-page" reasoning, far
  * fewer nav items since there's no business context to switch between.
  */
-import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAdminAuth } from './AdminAuthContext.jsx';
-import { Button, Logo } from '../components/ui.jsx';
+import { Button, Logo, PageLoader } from '../components/ui.jsx';
 
 const NAV = [
   { to: '/superadmin', label: 'Overview', end: true },
@@ -13,19 +14,26 @@ const NAV = [
   { to: '/superadmin/plans', label: 'Plans' },
   { to: '/superadmin/features', label: 'Features' },
   { to: '/superadmin/addons', label: 'Add-ons' },
-  { to: '/superadmin/settings', label: 'Settings' }
+  { to: '/superadmin/settings', label: 'Settings' },
+  { to: '/superadmin/security', label: 'Security' }
 ];
 
 const AdminShell = () => {
   const { admin, loading, signOut } = useAdminAuth();
   const location = useLocation();
+  useEffect(() => { const m = document.createElement('meta'); m.name = 'robots'; m.content = 'noindex, nofollow'; document.head.appendChild(m); return () => m.remove(); }, []);
 
   if (loading) {
     return (
       <div className="flex min-h-full items-center justify-center">
-        <p className="text-sm text-ink-400">Loading…</p>
+        <PageLoader compact />
       </div>
     );
+  }
+
+  // A console that requires two-step verification shows nothing but the page that sets it up until it is on.
+  if (admin && admin.two_factor_required && admin.totp_enabled === false && location.pathname !== '/superadmin/security') {
+    return <Navigate to="/superadmin/security" replace />;
   }
 
   if (!admin) {
@@ -61,6 +69,13 @@ const AdminShell = () => {
             <Button onClick={signOut} variant="ghost" size="sm">Sign out</Button>
           </div>
         </header>
+
+        {admin.totp_enabled === false && location.pathname !== '/superadmin/security' && (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-2 border-b border-warning/40 bg-warning/10 px-5 py-2 text-sm text-ink-900">
+            <span><strong className="font-semibold">Two-step verification is off.</strong> This console can change every business and plan: protect it with an authenticator app.</span>
+            <Link to="/superadmin/security" className="font-semibold text-brand-600 hover:underline">Turn it on</Link>
+          </div>
+        )}
 
         <main className="flex-1 bg-surface-2 p-5 sm:p-8">
           <Outlet />

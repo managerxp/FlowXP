@@ -132,6 +132,25 @@ one — so it bills at 0% GST. A catalogue item's rate always comes from the
 product and is unaffected. Add a `tax_rate` column to `order_items` if a
 business needs GST on ad hoc order lines.
 
+## Salon module
+
+A native module for `SALON` businesses — appointments, salon POS, CRM, memberships, packages, gift cards, commission,
+batch-aware stock, reports and reminders. See [SALON.md](SALON.md).
+
+## Wholesale & Distribution module
+
+A native module for `WHOLESALE` and `DISTRIBUTOR` businesses — price lists and quantity breaks, B2B credit, sales orders with
+reservation and back-orders, pick/pack/dispatch, purchasing and goods receipt, batches and expiry, receipts and ageing, returns
+and reports. See [WHOLESALE.md](WHOLESALE.md).
+
+### Distributor management
+
+Turn on **Wholesale + Distributor** in Wholesale settings to add principals and brands, territories and beats, a field sales force
+with targets and commission, schemes with free goods, van stock, part deliveries and the distributor reports — on top of the
+wholesale module, offline-capable for the field. See [DISTRIBUTOR.md](DISTRIBUTOR.md); demo data with `npm run seed:distributor`.
+
+---
+
 ## What is not built
 
 Per the architecture doc's own feature list, checked against what's actually

@@ -5,9 +5,11 @@
  * are small enough that the folder structure would be larger than the code in
  * it; split them out when one of them grows its own state.
  */
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Inbox, LoaderCircle, X } from 'lucide-react';
 import Reveal from './Reveal.jsx';
+import LatticeLoader from './reactbits/LatticeLoader.jsx';
 
 /* ── Logo ────────────────────────────────────────────────────────────────
    The uploaded mark (frontend/public/logo.png) already is "FlowXP", icon and
@@ -36,11 +38,13 @@ export const Logo = ({ className = '', showTagline = false }) => {
    announced as a link by a screen reader. */
 const VARIANTS = {
   primary:
-    'bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700 shadow-sm',
+    'bg-brand-500 text-white hover:bg-brand-600 hover:-translate-y-0.5 hover:shadow-md active:bg-brand-700 shadow-sm',
   secondary:
-    'bg-surface text-ink-900 border border-line-strong hover:bg-surface-2 shadow-sm',
+    'bg-surface text-ink-900 border border-line-strong hover:bg-surface-2 hover:border-ink-400 hover:-translate-y-0.5 hover:shadow-md shadow-sm',
   ghost:
     'text-ink-700 hover:text-ink-900 hover:bg-surface-2',
+  danger:
+    'bg-danger text-white hover:bg-danger/90 active:bg-danger shadow-sm',
   dark:
     'bg-ink-900 text-white hover:bg-ink-700'
 };
@@ -51,20 +55,50 @@ const SIZES = {
   lg: 'h-11 px-5 text-[15px]'
 };
 
+/* The spinner every busy state uses, sized by the text around it. */
+export const Spinner = ({ className = 'h-4 w-4' }) => (
+  <LoaderCircle aria-hidden="true" className={`animate-spin ${className}`} />
+);
+
+/*
+ * `loading` keeps the label (so the button does not change width under the
+ * pointer), puts a spinner beside it, and disables the control. Callers that
+ * already swap the label for "Saving…" can keep doing so.
+ */
 export const Button = ({
-  as, to, href, variant = 'primary', size = 'md', className = '', children, ...rest
+  as, to, href, variant = 'primary', size = 'md', loading = false, className = '', children, ...rest
 }) => {
   const classes =
-    `inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium ` +
-    `transition-colors duration-150 ` +
-    `disabled:cursor-not-allowed disabled:opacity-50 ` +
-    `${VARIANTS[variant]} ${SIZES[size]} ${className}`;
+    `inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-(--radius-control) font-medium ` +
+    `transition-[background-color,border-color,color,box-shadow,transform] duration-(--duration-fast) ` +
+    `active:translate-y-px disabled:pointer-events-none disabled:opacity-50 ` +
+    `${VARIANTS[variant] || VARIANTS.primary} ${SIZES[size] || SIZES.md} ${className}`;
 
   if (to) return <Link to={to} className={classes} {...rest}>{children}</Link>;
   if (href) return <a href={href} className={classes} {...rest}>{children}</a>;
   const Tag = as || 'button';
-  return <Tag className={classes} {...rest}>{children}</Tag>;
+  const busy = loading ? { disabled: true, 'aria-busy': true } : {};
+  return (
+    <Tag className={classes} {...rest} {...busy}>
+      {loading && <Spinner />}
+      {children}
+    </Tag>
+  );
 };
+
+/* A square button that is only an icon. `label` is required: it is the
+   accessible name and the hover title, since there is no visible text. */
+export const IconButton = ({ label, className = '', children, ...rest }) => (
+  <button
+    type="button"
+    aria-label={label}
+    title={label}
+    className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-(--radius-control) text-ink-500 transition-colors duration-(--duration-fast) hover:bg-surface-2 hover:text-ink-900 disabled:pointer-events-none disabled:opacity-50 ${className}`}
+    {...rest}
+  >
+    {children}
+  </button>
+);
 
 /* ── Layout ─────────────────────────────────────────────────────────────── */
 
@@ -77,9 +111,11 @@ export const Eyebrow = ({ children, className = '' }) => (
 );
 
 /* Section headings are left-aligned by default: business readers scan down
-   the left edge. `center` is for the odd section that stands alone. */
+   the left edge. `center` is for the odd section that stands alone.
+   Vertical rhythm: 80px a side on desktop (160px between two sections) —
+   enough to separate ideas without the page reading as mostly empty. */
 export const Section = ({ id, eyebrow, title, lead, className = '', center = false, children }) => (
-  <section id={id} className={`py-16 sm:py-24 ${className}`}>
+  <section id={id} className={`scroll-mt-16 py-14 sm:py-20 ${className}`}>
     <Container>
       {(eyebrow || title || lead) && (
         <Reveal className={`mb-10 max-w-2xl sm:mb-12 ${center ? 'mx-auto text-center' : ''}`}>
@@ -107,6 +143,49 @@ export const Card = ({ className = '', children, ...rest }) => (
   <div className={`rounded-(--radius-card) border border-line bg-surface p-6 ${className}`} {...rest}>{children}</div>
 );
 
+/* ── Stat card ───────────────────────────────────────────────────────────
+   The number tiles at the top of most screens. Before this, thirteen screens
+   each had their own copy, with six different value sizes and three label
+   styles, so the same "Sales" figure looked different on every page.
+
+   size="md" is for dense pages (reports, lists); size="lg" is for screens
+   read at a glance from across a counter (dashboard, orders, tables,
+   kitchen). `children` sits between the value and the note (a change line,
+   a delta). Given `onClick` it is a filter toggle (`pressed`); given `to`,
+   a link. Content is always top-aligned: a <button> centres its content
+   vertically by default, which is what made tiles in one row misalign. */
+const STAT_TONES = { danger: 'text-danger', warning: 'text-warning', success: 'text-success', brand: 'text-brand-600' };
+const STAT_VALUE = {
+  md: 'mt-1 text-title font-semibold',
+  lg: 'mt-2 text-xl font-semibold leading-tight tracking-tight [overflow-wrap:anywhere] sm:text-[26px] sm:leading-none'
+};
+
+export const StatCard = ({
+  label, value, note, sub, tone, size = 'md', onClick, pressed, active, to, className = '', children
+}) => {
+  const isPressed = pressed ?? active;
+  const toneClass = !tone ? 'text-ink-900' : STAT_TONES[tone] || tone;
+  const interactive = Boolean(onClick || to);
+  const classes =
+    `flex h-full min-w-0 flex-col items-stretch justify-start rounded-(--radius-card) border bg-surface text-left ` +
+    `${size === 'lg' ? 'p-4 sm:p-5' : 'p-4'} ` +
+    `${isPressed ? 'border-brand-500 ring-1 ring-brand-500' : 'border-line'} ` +
+    `${interactive ? 'transition-[border-color,box-shadow] duration-(--duration-fast) hover:border-line-strong hover:shadow-sm' : ''} ${className}`;
+  const body = (
+    <>
+      <span className="block text-caption font-medium text-ink-500">{label}</span>
+      <span className={`tabular block ${STAT_VALUE[size] || STAT_VALUE.md} ${toneClass}`}>{value}</span>
+      {children}
+      {(note ?? sub) != null && (note ?? sub) !== '' && (
+        <span className={`block ${size === 'lg' ? 'mt-2' : 'mt-1'} text-caption text-ink-500`}>{note ?? sub}</span>
+      )}
+    </>
+  );
+  if (to) return <Link to={to} className={classes}>{body}</Link>;
+  if (onClick) return <button type="button" onClick={onClick} aria-pressed={isPressed ?? undefined} className={classes}>{body}</button>;
+  return <div className={classes}>{body}</div>;
+};
+
 /* ── Form field ──────────────────────────────────────────────────────────
    The label is always rendered and always tied to the input by id. Placeholder
    text is not a label: it disappears the moment someone types, and screen
@@ -129,24 +208,19 @@ export const Field = ({ id, label, hint, error, children }) => (
  * <Input .../></div>` — the wrapper's width, not a losing class-order fight,
  * is what the input's w-full then fills.
  */
+const CONTROL =
+  'w-full rounded-(--radius-control) border border-line-strong bg-surface px-3.5 py-2.5 text-sm text-ink-900 ' +
+  'transition-[border-color,box-shadow] duration-(--duration-fast) placeholder:text-ink-400 ' +
+  'hover:border-ink-400 focus:border-brand-500 focus:outline-none focus:ring-3 focus:ring-brand-500/15 ' +
+  'disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-500 ' +
+  'aria-[invalid=true]:border-danger aria-[invalid=true]:focus:ring-danger/15';
+
 export const Input = ({ className = '', ...rest }) => (
-  <input
-    className={
-      `w-full rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-sm ` +
-      `text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none ${className}`
-    }
-    {...rest}
-  />
+  <input className={`${CONTROL} ${className}`} {...rest} />
 );
 
 export const Select = ({ className = '', children, ...rest }) => (
-  <select
-    className={
-      `w-full rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-sm ` +
-      `text-ink-900 focus:border-brand-500 focus:outline-none ${className}`
-    }
-    {...rest}
-  >
+  <select className={`${CONTROL} select-control ${className}`} {...rest}>
     {children}
   </select>
 );
@@ -156,7 +230,7 @@ export const Select = ({ className = '', children, ...rest }) => (
 export const Alert = ({ children }) => children ? (
   <div
     role="alert"
-    className="rounded-lg border border-danger/30 bg-danger/8 px-3.5 py-2.5 text-sm text-danger"
+    className="rounded-(--radius-control) border border-danger/30 bg-danger/8 px-3.5 py-2.5 text-sm text-danger"
   >
     {children}
   </div>
@@ -180,13 +254,7 @@ export const Tooltip = ({ label, children }) => (
 );
 
 export const Textarea = ({ className = '', ...rest }) => (
-  <textarea
-    className={
-      `w-full rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-sm ` +
-      `text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none ${className}`
-    }
-    {...rest}
-  />
+  <textarea className={`${CONTROL} ${className}`} {...rest} />
 );
 
 /* ── Badge ──────────────────────────────────────────────────────────────── */
@@ -198,8 +266,11 @@ const BADGE_TONES = {
   danger: 'bg-danger/10 text-danger'
 };
 
+/* transition-colors so a status moving PENDING → PREPARING → READY (or a
+   table going occupied → free) fades to its new tone instead of snapping —
+   the one change this element needs to read as "live", everywhere it's used. */
 export const Badge = ({ tone = 'neutral', children }) => (
-  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${BADGE_TONES[tone]}`}>
+  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium transition-colors duration-(--duration-normal) ${BADGE_TONES[tone]}`}>
     {children}
   </span>
 );
@@ -220,7 +291,7 @@ const statusLabel = (status) => STATUS_LABELS[status] || humanize(status);
 export const StatusBadge = ({ status }) => <Badge tone={STATUS_TONES[status] || 'neutral'}>{statusLabel(status)}</Badge>;
 
 /* ── Avatar ─────────────────────────────────────────────────────────────── */
-const AVATAR_COLORS = ['bg-brand-500', 'bg-cyan-500', 'bg-violet-500', 'bg-teal-500', 'bg-amber-500'];
+const AVATAR_COLORS = ['bg-brand-500', 'bg-cyan-700', 'bg-violet-600', 'bg-teal-700', 'bg-amber-700'];
 
 const initialsOf = (name) => {
   const parts = String(name || '').trim().split(/\s+/);
@@ -250,25 +321,61 @@ export const Avatar = ({ name, size = 'md', className = '' }) => (
   </span>
 );
 
+/* ── Animated number ────────────────────────────────────────────────────
+   Counts between values instead of jumping — a bill total growing as an
+   item is added, a KPI settling to a fresher figure, stock ticking down a
+   unit. The first render for a given mount shows its value immediately (a
+   page should never count up from zero on load); only a later change to
+   the same mounted element tweens. prefers-reduced-motion skips the tween
+   outright, same as everything else in index.css. */
+const reducedMotion = () =>
+  typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+export const AnimatedNumber = ({ value, format = (n) => Math.round(n).toLocaleString('en-IN'), duration = 400, className = '' }) => {
+  const [shown, setShown] = useState(value);
+  const fromRef = useRef(value);
+  const mountedRef = useRef(false);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    const from = fromRef.current;
+    fromRef.current = value;
+    if (!mountedRef.current) { mountedRef.current = true; setShown(value); return undefined; }
+    if (!Number.isFinite(from) || !Number.isFinite(value) || from === value || reducedMotion()) { setShown(value); return undefined; }
+
+    const start = performance.now();
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - (1 - t) ** 3; // ease-out: fast start, settles gently
+      setShown(from + (value - from) * eased);
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [value, duration]);
+
+  return <span className={`tabular ${className}`}>{format(shown)}</span>;
+};
+
 /* ── Table ──────────────────────────────────────────────────────────────── */
 /* A wide table must scroll inside its own box, never the page — the one rule
    that keeps a ten-column invoice list from breaking mobile layout. */
 export const Table = ({ children }) => (
-  <div className="overflow-x-auto rounded-(--radius-card) border border-line bg-surface">
+  <div className="relative overflow-x-auto rounded-(--radius-card) border border-line bg-surface">
     <table className="w-full min-w-max text-sm">{children}</table>
   </div>
 );
 export const Thead = ({ children }) => (
-  <thead className="border-b border-line bg-surface-2 text-left text-xs font-semibold uppercase tracking-wide text-ink-400">
+  <thead className="border-b border-line bg-surface-2 text-left text-xs font-semibold uppercase tracking-wide text-ink-500">
     <tr>{children}</tr>
   </thead>
 );
 export const Th = ({ className = '', children }) => <th className={`px-4 py-3 font-semibold ${className}`}>{children}</th>;
-export const Td = ({ className = '', children }) => <td className={`px-4 py-3 text-ink-900 ${className}`}>{children}</td>;
+export const Td = ({ className = '', children, ...rest }) => <td className={`px-4 py-3 text-ink-900 ${className}`} {...rest}>{children}</td>;
 export const Tr = ({ onClick, className = '', children }) => (
   <tr
     onClick={onClick}
-    className={`border-b border-line last:border-0 ${onClick ? 'cursor-pointer hover:bg-surface-2' : ''} ${className}`}
+    className={`border-b border-line transition-colors duration-(--duration-fast) last:border-0 ${onClick ? 'cursor-pointer hover:bg-surface-2' : ''} ${className}`}
   >
     {children}
   </tr>
@@ -307,7 +414,7 @@ export const DataTable = ({
     <div>
       {searchPlaceholder && (
         <div className="mb-4 max-w-xs">
-          <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input type="search" aria-label={searchPlaceholder} placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
       )}
 
@@ -315,7 +422,7 @@ export const DataTable = ({
         loading={loading}
         error={error}
         empty={empty}
-        emptyLabel={emptyLabel}
+        emptyLabel={term && rows?.length ? `Nothing matches “${search.trim()}”.` : emptyLabel}
         skeleton={<SkeletonRows rows={5} columns={columns.length} />}
       />
 
@@ -380,14 +487,43 @@ export const SkeletonCards = ({ count = 4 }) => (
   </div>
 );
 
+/*
+ * "Nothing here" said properly: what is empty, why that is fine, and the one
+ * thing to do next. `compact` is for a panel inside a page (a side list, a
+ * card) rather than a whole screen.
+ */
+export const EmptyState = ({ icon: Icon = Inbox, title, body, action, compact = false, className = '' }) => (
+  <div className={`flex flex-col items-center text-center ${compact ? 'px-4 py-8' : 'rounded-(--radius-card) border border-dashed border-line-strong bg-surface px-6 py-12'} ${className}`}>
+    <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-ink-400">
+      <Icon className="h-5 w-5" />
+    </span>
+    {title && <p className="mt-3 text-sm font-semibold text-ink-900">{title}</p>}
+    {body && <p className={`${title ? 'mt-1' : 'mt-3'} max-w-sm text-sm text-ink-500`}>{body}</p>}
+    {action && <div className="mt-4">{action}</div>}
+  </div>
+);
+
+/* The one loading line used where no shape-matched skeleton fits: route
+   fallbacks, a panel still fetching. */
+/* Whole pages, panels and dialogs while their data arrives (lists prefer a skeleton shaped like the rows). The
+   lattice is React Bits' LatticeLoader; it announces itself to screen readers, and under reduced motion it only
+   breathes. `compact` for inside a panel or dialog. */
+export const PageLoader = ({ label = 'Loading…', compact = false, className = '' }) => (
+  <div className={`flex items-center justify-center text-ink-500 ${compact ? 'py-6' : 'py-16'} ${className}`}>
+    <LatticeLoader label={label} color="var(--color-brand-500)" pattern={compact ? 'ripple' : 'orbit'} cellSize={compact ? 5 : 6} gap={2} fontSize={14} showTimer={false} />
+  </div>
+);
+
 /* Every list screen's three possible states, in one place so "no results"
    never quietly renders as an empty table with just a header row. Pass
    `skeleton` (a <SkeletonRows/> or <SkeletonCards/>) to show a shape-matched
-   placeholder while loading instead of the plain-text fallback. */
-export const ListState = ({ loading, error, empty, emptyLabel = 'Nothing here yet.', skeleton }) => {
-  if (loading) return skeleton ?? <p className="px-1 py-8 text-center text-sm text-ink-400">Loading…</p>;
+   placeholder while loading instead of the plain-text fallback. `emptyBody`
+   and `emptyAction` turn the empty line into a full EmptyState. */
+export const ListState = ({ loading, error, empty, emptyLabel = 'Nothing here yet.', emptyBody, emptyAction, emptyIcon, skeleton }) => {
+  if (loading) return skeleton ?? <PageLoader />;
   if (error) return <Alert>{error}</Alert>;
-  if (empty) return <p className="px-1 py-8 text-center text-sm text-ink-400">{emptyLabel}</p>;
+  /* Most call sites pass one sentence; that reads as the body, not a bold title. */
+  if (empty) return <EmptyState icon={emptyIcon} title={emptyBody ? emptyLabel : undefined} body={emptyBody ?? emptyLabel} action={emptyAction} />;
   return null;
 };
 
@@ -396,47 +532,181 @@ export const ListState = ({ loading, error, empty, emptyLabel = 'Nothing here ye
    page — a product, a customer, an expense are all "one form, then back to
    the list", and a route per form would mean the list refetches on navigate
    back instead of just updating in place. */
-export const Modal = ({ title, onClose, children, wide = false }) => {
+/*
+ * Accessibility the browser does not give a <div> for free: focus moves into
+ * the dialog when it opens (to an autoFocus field if there is one), Tab stays
+ * inside it, Escape closes only the top-most dialog (a confirm opened from a
+ * form must not close the form too), the page behind stops scrolling, and
+ * focus goes back to whatever opened it on close.
+ */
+const modalStack = [];
+let scrollLocks = 0;
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+export const Modal = ({ title, onClose, children, wide = false, footer }) => {
+  const panel = useRef(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  const titleId = useId();
+  /* Read during the first render, not in the effect: by the time effects run,
+     an autoFocus field inside the dialog has already taken focus. */
+  const [opener] = useState(() => (typeof document !== 'undefined' ? document.activeElement : null));
+
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    const me = {};
+    modalStack.push(me);
+
+    if (scrollLocks++ === 0) document.body.style.overflow = 'hidden';
+
+    const el = panel.current;
+    if (el && !el.contains(document.activeElement)) {
+      const field = el.querySelector('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])');
+      (field || el).focus({ preventScroll: true });
+    }
+
+    const onKey = (e) => {
+      if (modalStack[modalStack.length - 1] !== me) return;
+      if (e.key === 'Escape') { e.stopPropagation(); closeRef.current?.(); return; }
+      if (e.key !== 'Tab' || !panel.current) return;
+      const items = [...panel.current.querySelectorAll(FOCUSABLE)].filter((n) => n.offsetParent !== null);
+      if (items.length === 0) { e.preventDefault(); return; }
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === panel.current)) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      modalStack.splice(modalStack.indexOf(me), 1);
+      if (--scrollLocks === 0) document.body.style.overflow = '';
+      if (opener && typeof opener.focus === 'function' && document.contains(opener)) opener.focus({ preventScroll: true });
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink-900/40 p-4 pt-10 sm:pt-16">
+    <div className="modal-backdrop fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink-900/40 p-4 pt-10 sm:pt-16">
       <div
+        ref={panel}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
-        className={`w-full rounded-(--radius-panel) border border-line bg-surface p-6 shadow-lg ${wide ? 'max-w-2xl' : 'max-w-md'}`}
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className={`modal-panel w-full rounded-(--radius-panel) border border-line bg-surface shadow-lg focus:outline-none ${wide ? 'max-w-2xl' : 'max-w-md'}`}
       >
-        <div className="mb-5 flex items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold tracking-tight text-ink-900">{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded-lg px-2 py-1 text-ink-400 hover:bg-surface-2 hover:text-ink-900"
-          >
-            ✕
-          </button>
+        <div className="flex items-center justify-between gap-4 border-b border-line px-6 py-4">
+          <h2 id={titleId} className="text-title font-semibold text-ink-900">{title}</h2>
+          <IconButton label="Close" onClick={onClose} className="-mr-2"><X className="h-4 w-4" /></IconButton>
         </div>
-        {children}
+        <div className="p-6">{children}</div>
+        {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-line bg-surface-2 px-6 py-4 rounded-b-(--radius-panel)">{footer}</div>}
       </div>
     </div>
   );
 };
 
+/*
+ * In-app replacements for window.confirm and window.prompt: styled like the
+ * rest of FlowXP, readable on a phone, and they name the action on the
+ * button ("Cancel order") instead of a bare OK. Both return a promise, so a
+ * call site reads the same as before with an `await` in front:
+ *
+ *   const { confirm } = useDialog();
+ *   if (!(await confirm({ title: 'Archive Tea?', body: '…', confirmLabel: 'Archive', danger: true }))) return;
+ */
+const DialogContext = createContext(null);
+
+const PromptBody = ({ request, onDone }) => {
+  const [value, setValue] = useState(request.defaultValue ?? '');
+  const id = useId();
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); if (value.trim() || !request.required) onDone(value.trim()); }}>
+      {request.body && <p className="mb-4 text-sm text-ink-500">{request.body}</p>}
+      <Field id={id} label={request.label || 'Your answer'}>
+        {request.multiline
+          ? <Textarea id={id} rows={3} value={value} onChange={(e) => setValue(e.target.value)} autoFocus placeholder={request.placeholder} />
+          : <Input id={id} type={request.type || 'text'} value={value} onChange={(e) => setValue(e.target.value)} autoFocus placeholder={request.placeholder}
+                   inputMode={request.inputMode} autoComplete={request.autoComplete || 'off'} />}
+      </Field>
+      <div className="mt-6 flex flex-wrap justify-end gap-2">
+        <Button type="button" variant="secondary" onClick={() => onDone(null)}>{request.cancelLabel || 'Cancel'}</Button>
+        <Button type="submit" variant={request.danger ? 'danger' : 'primary'} disabled={request.required !== false && !value.trim()}>{request.confirmLabel || 'OK'}</Button>
+      </div>
+    </form>
+  );
+};
+
+export const DialogProvider = ({ children }) => {
+  const [request, setRequest] = useState(null);
+
+  const open = useCallback((kind, options) => new Promise((resolve) => {
+    const opts = typeof options === 'string' ? { title: options } : options;
+    setRequest({ kind, ...opts, resolve });
+  }), []);
+
+  const done = (result) => {
+    request?.resolve(result);
+    setRequest(null);
+  };
+
+  const value = useMemo(() => ({
+    confirm: (options) => open('confirm', options),
+    prompt: (options) => open('prompt', options)
+  }), [open]);
+
+  return (
+    <DialogContext.Provider value={value}>
+      {children}
+      {request && (
+        <Modal title={request.title} onClose={() => done(request.kind === 'confirm' ? false : null)}>
+          {request.kind === 'confirm' ? (
+            <>
+              {request.body && <p className="text-sm leading-relaxed text-ink-500">{request.body}</p>}
+              <div className={`flex flex-wrap justify-end gap-2 ${request.body ? 'mt-6' : ''}`}>
+                <Button variant="secondary" onClick={() => done(false)}>{request.cancelLabel || 'Keep it'}</Button>
+                <Button variant={request.danger ? 'danger' : 'primary'} onClick={() => done(true)} autoFocus>{request.confirmLabel || 'Continue'}</Button>
+              </div>
+            </>
+          ) : (
+            <PromptBody request={request} onDone={done} />
+          )}
+        </Modal>
+      )}
+    </DialogContext.Provider>
+  );
+};
+
+export const useDialog = () => {
+  const context = useContext(DialogContext);
+  if (!context) throw new Error('useDialog must be used inside DialogProvider');
+  return context;
+};
+
 /* A page's title row: heading + one primary action, the shape every list
    screen in /app opens with. */
-export const PageHeader = ({ title, lead, action }) => (
-  <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-    <div>
-      <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{title}</h1>
-      {lead && <p className="mt-1 text-sm text-ink-500">{lead}</p>}
+/* The front page of each kind of business opens on the same brand stage as the website hero (dotted tint, see
+   .hero-stage in index.css), so the app and the site read as one product. Same props as PageHeader. */
+export const DashboardHeader = ({ title, lead, action }) => (
+  <div className="rise relative mb-6 overflow-hidden rounded-(--radius-panel) border border-brand-100">
+    <div aria-hidden="true" className="hero-stage absolute inset-0" />
+    <div className="relative flex flex-wrap items-end justify-between gap-x-6 gap-y-4 px-5 py-6 sm:px-7 sm:py-7">
+      <div className="min-w-0">
+        <h1 className="text-h3 font-semibold text-ink-900">{title}</h1>
+        {lead && <p className="mt-1 max-w-2xl text-small text-ink-500">{lead}</p>}
+      </div>
+      {action && <div className="flex flex-wrap items-center gap-2">{action}</div>}
     </div>
-    {action}
+  </div>
+);
+
+export const PageHeader = ({ title, lead, action }) => (
+  <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+    <div className="min-w-0">
+      <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{title}</h1>
+      {lead && <p className="mt-1 max-w-2xl text-sm text-ink-500">{lead}</p>}
+    </div>
+    {action && <div className="flex flex-wrap items-center gap-2">{action}</div>}
   </div>
 );
 
@@ -449,6 +719,7 @@ export const PageHeader = ({ title, lead, action }) => (
    provider, mounted once in main.jsx, replaces every one of those. */
 const ToastContext = createContext(null);
 const TOAST_TONE_TEXT = { success: 'text-success', danger: 'text-danger', brand: 'text-brand-600' };
+const TOAST_TONE_DOT = { success: 'bg-success', danger: 'bg-danger', brand: 'bg-brand-500' };
 let toastSeq = 0;
 
 export const ToastProvider = ({ children }) => {
@@ -477,9 +748,10 @@ export const ToastProvider = ({ children }) => {
             key={t.id}
             role="status"
             onClick={() => remove(t.id)}
-            className={`pointer-events-auto max-w-sm cursor-pointer rounded-lg border border-line bg-surface px-4 py-2.5 text-sm font-medium shadow-md ${TOAST_TONE_TEXT[t.tone]}`}
+            className={`toast pointer-events-auto flex max-w-sm cursor-pointer items-center gap-2.5 rounded-(--radius-control) border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink-900 shadow-md`}
           >
-            {t.message}
+            <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${TOAST_TONE_DOT[t.tone]}`} />
+            <span className={t.tone === 'danger' ? TOAST_TONE_TEXT.danger : ''}>{t.message}</span>
           </div>
         ))}
       </div>

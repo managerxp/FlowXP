@@ -56,7 +56,7 @@ const FeedbackCard = ({ row, onReplied }) => {
         </div>
         {replied && <Badge tone="success">Replied</Badge>}
       </div>
-      {row.comment && <p className="mt-3 text-sm text-ink-800">“{row.comment}”</p>}
+      {row.comment && <p className="mt-3 text-sm text-ink-900">“{row.comment}”</p>}
       {!row.comment && <p className="mt-3 text-sm text-ink-400">No comment left.</p>}
 
       {error && <div className="mt-3"><Alert>{error}</Alert></div>}

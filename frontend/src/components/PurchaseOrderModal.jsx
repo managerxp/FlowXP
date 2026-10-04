@@ -4,9 +4,10 @@
  * here moves stock until "Receive". A new order starts as a draft.
  */
 import { useEffect, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
-import { Alert, Badge, Button, Field, Input, Modal, Select, useToast } from './ui.jsx';
+import { Alert, Badge, Button, Field, Input, Modal, Select, useToast, useDialog } from './ui.jsx';
 import DebitNoteModal from './DebitNoteModal.jsx';
 
 const emptyLine = () => ({ item_id: null, product_id: '', description: '', quantity: '1', unit_cost: '', tax_rate: '0' });
@@ -19,6 +20,7 @@ const lineTotal = (l) => {
 const STATUS = { DRAFT: ['Draft', 'neutral'], ORDERED: ['Ordered', 'brand'], PARTIAL: ['Part received', 'warning'], RECEIVED: ['Received', 'success'], CANCELLED: ['Cancelled', 'neutral'] };
 
 const PurchaseOrderModal = ({ poId, products, suppliers, prefill, initialMode = 'edit', onClose, onChanged }) => {
+  const dialog = useDialog();
   const toast = useToast();
   const receiveKey = useIdempotencyKey();
   const [po, setPo] = useState(null);                 // the saved order, when there is one
@@ -90,13 +92,13 @@ const PurchaseOrderModal = ({ poId, products, suppliers, prefill, initialMode = 
     fill(await api(`/purchases/${savedId.current}`));
   });
 
-  const closeShort = () => {
-    if (!window.confirm('Close this order as short? The rest is not coming, and nothing more will be expected.')) return;
+  const closeShort = async () => {
+    if (!(await dialog.confirm({ title: 'Close this order as short?', body: 'The rest is not coming, and nothing more will be expected.', confirmLabel: 'Close as short' }))) return;
     run(async () => { await api(`/purchases/${savedId.current}/close-short`, { method: 'POST' }); toast.success('Order closed'); onChanged(); onClose(); });
   };
 
-  const cancel = () => {
-    if (!window.confirm('Cancel this order? Nothing has been received, so stock is unaffected.')) return;
+  const cancel = async () => {
+    if (!(await dialog.confirm({ title: 'Cancel this order?', body: 'Nothing has been received, so stock is unaffected.', confirmLabel: 'Cancel order', danger: true }))) return;
     run(async () => { await api(`/purchases/${savedId.current}/cancel`, { method: 'POST' }); toast.success('Order cancelled'); onChanged(); onClose(); });
   };
 
@@ -131,7 +133,7 @@ const PurchaseOrderModal = ({ poId, products, suppliers, prefill, initialMode = 
         {mode === 'sent' && sent && (
           <div className="space-y-3">
             <p className="text-sm font-semibold text-ink-900">{sent.po_number} is marked as ordered{sent.emailed ? ` and was emailed to ${sent.supplier_email}` : ''}.</p>
-            <textarea readOnly value={sent.message} rows={9} className="w-full rounded-lg border border-line-strong bg-surface-2 p-3 text-sm text-ink-800" />
+            <textarea readOnly value={sent.message} rows={9} className="w-full rounded-lg border border-line-strong bg-surface-2 p-3 text-sm text-ink-900" />
             <div className="flex flex-wrap gap-2">
               <Button variant="secondary" onClick={() => navigator.clipboard?.writeText(sent.message).then(() => toast.success('Copied'))}>Copy message</Button>
               {sent.whatsapp_url && <a href={sent.whatsapp_url} target="_blank" rel="noreferrer"><Button as="span" variant="secondary">Open in WhatsApp</Button></a>}
@@ -159,7 +161,7 @@ const PurchaseOrderModal = ({ poId, products, suppliers, prefill, initialMode = 
                   <Input className={l.product_id ? 'col-span-3' : 'col-span-2'} type="number" min="0.001" step="0.001" placeholder="Qty" value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} disabled={locked} />
                   <Input className="col-span-2" type="number" min="0" step="0.01" placeholder={listed[l.product_id] != null ? `List ₹${listed[l.product_id]}` : 'Cost ₹'} title={listed[l.product_id] != null ? `${'Supplier list price'}: ₹${listed[l.product_id]}` : undefined} value={l.unit_cost} onChange={(e) => setLine(i, { unit_cost: e.target.value })} disabled={locked} />
                   <Input className="col-span-2" type="number" min="0" step="0.01" placeholder="Tax %" value={l.tax_rate} onChange={(e) => setLine(i, { tax_rate: e.target.value })} disabled={locked} />
-                  {!locked && <button type="button" onClick={() => setLines((ls) => ls.filter((_, idx) => idx !== i))} className="col-span-1 text-ink-400 hover:text-danger" aria-label="Remove line">✕</button>}
+                  {!locked && <button type="button" onClick={() => setLines((ls) => ls.filter((_, idx) => idx !== i))} className="col-span-1 flex h-9 items-center justify-center rounded-md text-ink-400 hover:bg-danger/10 hover:text-danger" aria-label="Remove line"><X aria-hidden="true" className="h-4 w-4" /></button>}
                 </div>
               ))}
               {!locked && <Button type="button" variant="secondary" size="sm" onClick={() => setLines((ls) => [...ls, emptyLine()])}>Add line</Button>}
@@ -196,7 +198,7 @@ const PurchaseOrderModal = ({ poId, products, suppliers, prefill, initialMode = 
 
         {mode === 'receive' && po && (
           <div className="space-y-3">
-            <p className="text-sm text-ink-600">Enter what arrived <strong>in this delivery</strong> and what the supplier charged. Stock goes up by that quantity.</p>
+            <p className="text-sm text-ink-700">Enter what arrived <strong>in this delivery</strong> and what the supplier charged. Stock goes up by that quantity.</p>
             {recv.map((r, i) => (
               <div key={r.item_id} className="grid grid-cols-12 items-center gap-2">
                 <span className="col-span-5 text-sm text-ink-900">{r.description} <span className="text-xs text-ink-400">ordered {r.ordered}{r.before > 0 ? `, already had ${r.before}` : ''}</span></span>

@@ -10,13 +10,13 @@ import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import pool from '../config/database.js';
 import { signToken } from '../middleware/auth.js';
-import { decryptSecret, lockedMinutes, recordLogin, verifyTotp } from '../modules/security.js';
+import { decryptSecret, lockedMinutes, recordLogin, recoveryCodesLeft, useRecoveryCode, verifyTotp } from '../modules/security.js';
 import { subscriptionSummary } from '../modules/subscription.js';
 import { recordAudit } from '../modules/events.js';
 import { toRupees, toPaise } from '../utils/money.js';
 import { normaliseEmail, BUSINESS_TYPES } from '../utils/validate.js';
 import { createPaymentLink as cashfreeCreateLink, CashfreeError } from '../modules/payments/cashfree.js';
-import { PLAN_FEATURES, PLAN_FEATURE_KEYS } from '../modules/planFeatures.js';
+import { industryDefaults, PLAN_FEATURES, PLAN_FEATURE_KEYS } from '../modules/planFeatures.js';
 import config from '../config/env.js';
 
 const BUSINESS_STATUSES = ['ACTIVE', 'SUSPENDED', 'CLOSED'];
@@ -58,12 +58,21 @@ export const login = async (req, res) => {
 
     // the platform operator can protect the console with an authenticator app: the code comes with the password
     if (user.totp_enabled) {
+      const recovery = req.body?.recovery_code;
       const step = req.body?.code ? verifyTotp(decryptSecret(user.totp_secret_enc), req.body.code, { lastStep: user.totp_last_step }) : null;
-      if (step == null) {
+      if (recovery) {
+        // a single-use code from the set made when 2FA was turned on, for a lost or broken phone
+        if (!(await useRecoveryCode(pool, user.user_id, recovery))) {
+          await recordLogin(pool, { userId: user.user_id, email: user.email, req, outcome: 'TWO_FACTOR_FAILED' });
+          return res.status(401).json({ success: false, requires_2fa: true, message: 'That recovery code is not valid, or was already used.' });
+        }
+        recordAudit(req, { user_id: user.user_id, action: 'user.recovery_code_used', resource_type: 'user', resource_id: user.user_id, metadata: { left: await recoveryCodesLeft(pool, user.user_id), console: 'admin' } });
+      } else if (step == null) {
         if (req.body?.code) await recordLogin(pool, { userId: user.user_id, email: user.email, req, outcome: 'TWO_FACTOR_FAILED' });
         return res.status(401).json({ success: false, requires_2fa: true, message: req.body?.code ? 'That code is not right.' : 'Enter the code from your authenticator app.' });
+      } else {
+        await pool.query('UPDATE users SET totp_last_step = $2 WHERE user_id = $1', [user.user_id, step]);
       }
-      await pool.query('UPDATE users SET totp_last_step = $2 WHERE user_id = $1', [user.user_id, step]);
     }
     await recordLogin(pool, { userId: user.user_id, email: user.email, req, outcome: 'SUCCESS', method: user.totp_enabled ? '2FA' : 'PASSWORD' });
 
@@ -73,8 +82,9 @@ export const login = async (req, res) => {
     res.json({
       success: true,
       data: {
-        token: signToken(user),
-        admin: { user_id: user.user_id, name: user.name, email: user.email }
+        // the platform console is the most powerful sign-in there is: a working day, not a week
+        token: signToken(user, { expiresIn: '8h' }),
+        admin: { user_id: user.user_id, name: user.name, email: user.email, totp_enabled: Boolean(user.totp_enabled), two_factor_required: config.adminRequire2fa }
       }
     });
   } catch (error) {
@@ -89,7 +99,7 @@ export const login = async (req, res) => {
 export const me = async (req, res) => {
   res.json({
     success: true,
-    data: { user_id: req.auth.userId, name: req.auth.user.name, email: req.auth.email }
+    data: { user_id: req.auth.userId, name: req.auth.user.name, email: req.auth.email, totp_enabled: Boolean(req.auth.user.totp_enabled), two_factor_required: config.adminRequire2fa }
   });
 };
 
@@ -701,7 +711,7 @@ export const listBusinessTypeFeatures = async (_req, res) => {
     const data = [];
     for (const type of BUSINESS_TYPES) {
       for (const plan of plans) {
-        data.push({ business_type: type, plan_code: plan.plan_code, plan_name: plan.name, feature_flags: byKey.get(`${type}:${plan.plan_code}`) || {} });
+        data.push({ business_type: type, plan_code: plan.plan_code, plan_name: plan.name, feature_flags: { ...industryDefaults(type), ...(byKey.get(`${type}:${plan.plan_code}`) || {}) } });
       }
     }
     res.json({ success: true, data });

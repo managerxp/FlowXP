@@ -13,6 +13,7 @@ import { ask } from '../modules/ai/manager.js';
 import { converseOnboarding } from '../modules/ai/onboarding.js';
 import { toolsFor } from '../modules/ai/tools.js';
 import config from '../config/env.js';
+import { businessToday } from '../utils/dates.js';
 
 const MAX_QUESTION = 1000;
 const HISTORY_TURNS = 8;
@@ -59,7 +60,7 @@ export const status = async (req, res) => {
   res.json({
     success: true,
     data: {
-      configured: isConfigured(), enabled: on, model: isConfigured() ? config.ai.model : null, ...allow,
+      configured: isConfigured(), enabled: on, provider: config.ai.provider, model: isConfigured() ? config.ai.model : null, ...allow,
       can_ask: isConfigured() && on && (allow.remaining == null || allow.remaining > 0),
       suggestions: SUGGESTIONS.filter(([, permission]) => (permission === 'settings' ? available.has('leakage_findings') : true)).map(([q]) => q),
       tools: [...available]
@@ -101,7 +102,7 @@ const converse = async (req, res, { question, conversationId, title }) => {
   await pool.query(`UPDATE ai_conversations SET updated_at = CURRENT_TIMESTAMP WHERE conversation_id = $1`, [conversation.conversation_id]);
   await pool.query(
     `INSERT INTO ai_usage (business_id, user_id, conversation_id, model, input_tokens, output_tokens) VALUES ($1,$2,$3,$4,$5,$6)`,
-    [businessId, req.auth.userId, conversation.conversation_id, config.ai.model, result.usage.input_tokens, result.usage.output_tokens]
+    [businessId, req.auth.userId, conversation.conversation_id, result.model || config.ai.model, result.usage.input_tokens, result.usage.output_tokens]
   );
   recordAudit(req, { action: 'ai.asked', resource_type: 'ai_conversation', resource_id: conversation.conversation_id, metadata: { tools: result.toolsUsed.map((t) => t.name) } });
 
@@ -124,7 +125,7 @@ export const chat = async (req, res) => {
 
 /* POST /api/ai/briefing */
 export const briefing = async (req, res) => {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = await businessToday(req.tenant.businessId);
   return converse(req, res, { question: BRIEFING, title: `Briefing ${today}` });
 };
 
@@ -184,7 +185,7 @@ export const onboardingChat = async (req, res) => {
   // No conversation to link this to — see the comment above.
   await pool.query(
     `INSERT INTO ai_usage (business_id, user_id, conversation_id, model, input_tokens, output_tokens) VALUES ($1,$2,NULL,$3,$4,$5)`,
-    [businessId, req.auth.userId, config.ai.model, result.usage.input_tokens, result.usage.output_tokens]
+    [businessId, req.auth.userId, result.model || config.ai.model, result.usage.input_tokens, result.usage.output_tokens]
   );
 
   res.json({ success: true, data: { reply: result.reply, fields: result.fields, remaining: allow.remaining == null ? null : allow.remaining - 1 } });

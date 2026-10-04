@@ -41,7 +41,7 @@ export const AdminAuthProvider = ({ children }) => {
     setAdmin(null);
   }, []);
 
-  const value = useMemo(() => ({ admin, loading, signIn, signOut }), [admin, loading, signIn, signOut]);
+  const value = useMemo(() => ({ admin, loading, signIn, signOut, refresh }), [admin, loading, signIn, signOut, refresh]);
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;
 };

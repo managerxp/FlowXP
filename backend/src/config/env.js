@@ -26,6 +26,9 @@ if (process.env.NODE_ENV === 'production') {
   if ((process.env.STORAGE_DRIVER || 'local').toLowerCase() === 's3') {
     for (const key of ['S3_ENDPOINT', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY']) if (!process.env[key]) problems.push(`${key} is required when STORAGE_DRIVER=s3`);
   }
+  const adminEmail = String(process.env.SUPER_ADMIN_EMAIL || '').toLowerCase();
+  if (adminEmail && /\.(local|test|example|invalid)$/.test(adminEmail)) problems.push('SUPER_ADMIN_EMAIL must be a real address you can receive mail at, not a .local/.test one');
+  if (process.env.SUPER_ADMIN_PASSWORD && process.env.SUPER_ADMIN_PASSWORD.length < 14) problems.push('SUPER_ADMIN_PASSWORD must be at least 14 characters (it is only used the first time the account is created)');
   const messaging = (process.env.MESSAGING_PROVIDER || 'log').toLowerCase();
   if (!['log', 'whatsapp_cloud', 'twilio'].includes(messaging)) problems.push('MESSAGING_PROVIDER must be log, whatsapp_cloud or twilio');
   if (messaging === 'whatsapp_cloud') for (const key of ['WHATSAPP_TOKEN', 'WHATSAPP_PHONE_ID']) if (!process.env[key]) problems.push(`${key} is required when MESSAGING_PROVIDER=whatsapp_cloud`);
@@ -50,12 +53,35 @@ export const config = {
     email: process.env.SUPER_ADMIN_EMAIL || '',
     password: process.env.SUPER_ADMIN_PASSWORD || ''
   },
-  /* Flow AI. With no key the assistant reports that it isn't set up; nothing is ever sent to a provider. */
-  ai: {
-    apiKey: process.env.ANTHROPIC_API_KEY || '',
-    model: process.env.AI_MODEL || 'claude-sonnet-5',
-    maxTokens: Number(process.env.AI_MAX_TOKENS || 1200)
-  },
+  /* Flow AI — chat, onboarding, menu scanning and review replies all go through modules/ai/provider.js's
+     single complete(), which dispatches to whichever provider AI_PROVIDER names. Each call picks a model
+     *tier* ('default' | 'fast' | 'reasoning' — see each feature module's own complete() call for which it
+     asks for and why); `apiKey`/`model` stay as "the active provider's default-tier pair" for anything
+     that doesn't care which tier (isConfigured(), the /ai/status screen), while `models` is the full tier
+     map provider.js actually picks from. Anthropic has no tiers configured here (nobody asked for that
+     yet), so all three names resolve to its one AI_MODEL. With no key for the active provider, the
+     assistant reports that it isn't set up; nothing is ever sent to a provider. */
+  ai: (() => {
+    const provider = (process.env.AI_PROVIDER || 'anthropic').toLowerCase();
+    const anthropicModel = process.env.AI_MODEL || 'claude-sonnet-5';
+    // GEMINI_DEFAULT_MODEL is the one every other tier falls back to, so setting only that still gives
+    // all three tiers a real model; GEMINI_MODEL (the old single-model name) is one fallback step further
+    // down, for an env file nobody has touched since before tiers existed.
+    const geminiDefault = process.env.GEMINI_DEFAULT_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+    const byProvider = {
+      anthropic: { apiKey: process.env.ANTHROPIC_API_KEY || '', models: { default: anthropicModel, fast: anthropicModel, reasoning: anthropicModel } },
+      gemini: {
+        apiKey: process.env.GEMINI_API_KEY || '',
+        models: {
+          default: geminiDefault,
+          fast: process.env.GEMINI_FAST_MODEL || geminiDefault,
+          reasoning: process.env.GEMINI_REASONING_MODEL || geminiDefault
+        }
+      }
+    };
+    const active = byProvider[provider] || byProvider.anthropic;
+    return { provider, apiKey: active.apiKey, model: active.models.default, models: active.models, maxTokens: Number(process.env.AI_MAX_TOKENS || 1200) };
+  })(),
   /* Uploaded files. 'local' = this server's disk; 's3' = any S3-compatible bucket (AWS S3, Cloudflare R2, Spaces, MinIO). */
   storage: {
     driver: (process.env.STORAGE_DRIVER || 'local').toLowerCase(),
@@ -79,7 +105,21 @@ export const config = {
     twilioWhatsappFrom: process.env.TWILIO_WHATSAPP_FROM || '',
     countryCode: process.env.MESSAGING_COUNTRY_CODE || '91'
   },
+  /* The platform console can change every business and plan, so in production a super admin MUST have two-step
+     verification on: until they do, the console shows only the page that sets it up. ADMIN_REQUIRE_2FA=false opts out
+     (never in production unless you accept that risk); in development it is off unless set to true. */
+  adminRequire2fa: process.env.ADMIN_REQUIRE_2FA ? process.env.ADMIN_REQUIRE_2FA.toLowerCase() === 'true' : process.env.NODE_ENV === 'production',
   // Extra browser origins allowed to call the API (comma separated), on top of APP_ORIGIN.
+  /* Sign in with Google, for accounts that already exist. Both blank = the button is simply not shown.
+     The redirect address registered in Google Cloud must be exactly APP_ORIGIN + /api/auth/google/callback
+     (or GOOGLE_REDIRECT_URI when the browser reaches the API on another address, as in local development). */
+  oauth: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      redirectUri: process.env.GOOGLE_REDIRECT_URI || ''
+    }
+  },
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
   /* Cashfree Payment Links — custom-priced subscription payments (no keys = the
      admin gets a clear "not set up yet" error instead of a broken call). */
@@ -93,7 +133,7 @@ export const config = {
     port: Number(process.env.SMTP_PORT || 587),
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
-    from: process.env.MAIL_FROM || 'FlowXP <no-reply@flowxp.managerxp.com>'
+    from: process.env.MAIL_FROM || 'FlowXP <flowxp.manager@gmail.com>'
   }
 };
 

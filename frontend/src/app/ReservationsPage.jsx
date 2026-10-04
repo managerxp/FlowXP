@@ -12,7 +12,7 @@ import { CalendarClock, ChevronLeft, ChevronRight, Minus, Plus, StickyNote, User
 import { api } from '../lib/api.js';
 import { localISO } from '../lib/dates.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Alert, Button, Field, Input, Modal, Select, useToast } from '../components/ui.jsx';
+import { Alert, Button, Field, Input, Modal, Select, useToast, useDialog } from '../components/ui.jsx';
 
 const POLL_MS = 30000;
 const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -221,6 +221,7 @@ const SeatModal = ({ who, party, customerId, initial, seat, onClose, onSeated })
 /* ── Bookings ─────────────────────────────────────────────────────────── */
 
 const BookingCard = ({ r, onSeat, onEdit, onStatus, onTakeOrder }) => {
+  const dialog = useDialog();
   const t = timing(r);
   const seated = r.status === 'SEATED';
   return (
@@ -247,7 +248,7 @@ const BookingCard = ({ r, onSeat, onEdit, onStatus, onTakeOrder }) => {
           <Button size="sm" onClick={onSeat}>Seat</Button>
           <Button size="sm" variant="ghost" onClick={onEdit}>Edit</Button>
           {t?.tone === 'late' && <Button size="sm" variant="ghost" onClick={() => onStatus('NO_SHOW')}>No-show</Button>}
-          <Button size="sm" variant="ghost" className="text-danger" onClick={() => window.confirm(`Cancel ${r.guest_name}'s booking?`) && onStatus('CANCELLED')}>Cancel</Button>
+          <Button size="sm" variant="ghost" className="text-danger" onClick={async () => { if (await dialog.confirm({ title: `Cancel ${r.guest_name}'s booking?`, confirmLabel: 'Cancel booking', danger: true })) onStatus('CANCELLED'); }}>Cancel</Button>
         </>}
         {seated && <>
           <Button size="sm" variant="secondary" onClick={onTakeOrder}>Open order</Button>

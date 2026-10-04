@@ -8,6 +8,7 @@
  * (1200×750). Both are shown whole, never cropped.
  */
 import { Link } from 'react-router-dom';
+import { ArrowRight, Check as CheckIcon, X } from 'lucide-react';
 import { Button, Container, Eyebrow } from '../components/ui.jsx';
 import Reveal from '../components/Reveal.jsx';
 
@@ -26,23 +27,27 @@ export const Shot = ({ src, alt, size = MAIN, eager = false, className = '', sty
   </figure>
 );
 
+/* A phone screen (1170×2532, the page as it fills a phone), in a rounded device edge. Used where the screen only
+   exists on a phone: the field salesperson’s beat, the guest’s QR menu, a salon’s online booking page. */
+export const PhoneShot = ({ src, alt, className = '' }) => (
+  <figure className={`mx-auto w-full max-w-[14rem] overflow-hidden rounded-[1.75rem] border-[5px] border-ink-900 bg-surface shadow-lg ${className}`}>
+    <img src={src} alt={alt} width={1170} height={2532} loading="lazy" decoding="async" className="block h-auto w-full" />
+  </figure>
+);
+
 export const TextLink = ({ to, href, children }) => {
   const Tag = href ? 'a' : Link;
   return (
     <Tag {...(href ? { href } : { to })} className="group inline-flex items-center text-body font-medium text-brand-600 hover:text-brand-700">
       {children}
-      <span aria-hidden="true" className="ml-1 inline-block transition-transform duration-(--duration-normal) group-hover:translate-x-1">→</span>
+      <ArrowRight aria-hidden="true" strokeWidth={2} className="ml-1.5 h-4 w-4 transition-transform duration-(--duration-normal) group-hover:translate-x-1" />
     </Tag>
   );
 };
 
-export const Check = () => (
-  <svg aria-hidden="true" viewBox="0 0 16 16" className="mt-0.5 h-4 w-4 shrink-0 text-brand-500"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3.5 8.5l3 3 6-7" /></svg>
-);
-
-export const Cross = () => (
-  <svg aria-hidden="true" viewBox="0 0 16 16" className="mt-0.5 h-4 w-4 shrink-0 text-ink-400"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M4.5 4.5l7 7m0-7l-7 7" /></svg>
-);
+/* Marks come from the icon library (one stroke weight everywhere), never drawn by hand. */
+export const Check = () => <CheckIcon aria-hidden="true" strokeWidth={2.25} className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />;
+export const Cross = () => <X aria-hidden="true" strokeWidth={2.25} className="mt-0.5 h-4 w-4 shrink-0 text-ink-400" />;
 
 export const H2 = ({ children }) => <h2 className="mt-3 text-h2 font-semibold text-ink-900">{children}</h2>;
 
@@ -64,35 +69,41 @@ export const Tag = ({ kind, className = '' }) => (
 /* ── Page building blocks ─────────────────────────────────────────────── */
 
 /*
- * The top of every marketing page: eyebrow, headline, lead, actions and an
- * optional list of reassurances on the left; a real screen (or any visual)
- * on the right. Rises in once on load.
+ * The top of every marketing page: a headline of at most two lines, one short sentence, the actions, and a real screen.
+ * Reassurances ("no card", "works on a phone") are not part of the hero: they sit in a quiet strip directly beneath it.
+ * `split` picks the text column width: '5-7' (a wide screen) or '6-6' (a longer headline). Rises in once on load.
  */
-export const PageHero = ({ eyebrow, title, lead, children, points, visual, cta = true }) => (
-  <section className="overflow-hidden border-b border-line">
-    <Container className={`grid items-center gap-12 pb-16 pt-12 sm:pt-16 lg:gap-10 lg:pt-20 ${visual ? 'lg:grid-cols-12 lg:pb-24' : 'lg:pb-20'}`}>
-      <div className={visual ? 'lg:col-span-5' : 'max-w-3xl'}>
-        {eyebrow && <Eyebrow className="rise">{eyebrow}</Eyebrow>}
-        <h1 className="rise mt-4 text-display font-semibold text-ink-900" style={{ '--i': 1 }}>{title}</h1>
-        {lead && <p className="rise mt-6 max-w-xl text-lead text-ink-500" style={{ '--i': 2 }}>{lead}</p>}
-        {(cta || children) && (
-          <div className="rise mt-8 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ '--i': 3 }}>
-            {children ?? <Button to="/signup" size="lg">Start 7-day free trial</Button>}
+export const PageHero = ({ eyebrow, title, lead, children, points, visual, cta = true, split = '5-7' }) => (
+  <>
+    <section className={`overflow-hidden ${points ? '' : 'border-b border-line'}`}>
+      <Container className={`grid items-center gap-12 pb-14 pt-12 sm:pt-16 lg:gap-12 lg:pt-20 ${visual ? 'lg:grid-cols-12 lg:pb-20' : 'lg:pb-16'}`}>
+        <div className={visual ? (split === '6-6' ? 'lg:col-span-6' : 'lg:col-span-5') : 'max-w-3xl'}>
+          {eyebrow && <Eyebrow className="rise">{eyebrow}</Eyebrow>}
+          <h1 className={`rise text-hero font-semibold text-ink-900 ${eyebrow ? 'mt-4' : ''}`} style={{ '--i': 1 }}>{title}</h1>
+          {lead && <p className="rise mt-5 max-w-lg text-lead text-ink-500" style={{ '--i': 2 }}>{lead}</p>}
+          {(cta || children) && (
+            <div className="rise mt-8 flex flex-wrap items-center gap-x-6 gap-y-4" style={{ '--i': 3 }}>
+              {children ?? <Button to="/signup" size="lg">Start 7-day free trial</Button>}
+            </div>
+          )}
+        </div>
+        {visual && (
+          <div className={`rise relative ${split === '6-6' ? 'lg:col-span-6' : 'lg:col-span-7'}`} style={{ '--d': '180ms' }}>
+            <div className="rounded-(--radius-panel) bg-brand-50 p-3 sm:p-6">{visual}</div>
           </div>
         )}
-        {points && (
-          <ul className="rise mt-8 space-y-2 text-small text-ink-500" style={{ '--i': 4 }}>
-            {points.map((t) => <li key={t} className="flex items-start gap-1.5"><Check />{t}</li>)}
+      </Container>
+    </section>
+    {points && (
+      <div className="border-y border-line bg-surface">
+        <Container>
+          <ul className="flex flex-wrap gap-x-8 gap-y-2 py-4 text-small text-ink-500">
+            {points.map((t) => <li key={t} className="flex items-center gap-2"><Check />{t}</li>)}
           </ul>
-        )}
+        </Container>
       </div>
-      {visual && (
-        <div className="rise relative lg:col-span-7" style={{ '--d': '180ms' }}>
-          <div className="rounded-(--radius-panel) bg-brand-50 p-3 sm:p-6">{visual}</div>
-        </div>
-      )}
-    </Container>
-  </section>
+    )}
+  </>
 );
 
 /* Text on one side, a real screen (or `aside`) on the other; `flip` swaps
@@ -131,35 +142,66 @@ export const Connector = () => (
   </div>
 );
 
-/* The dark closing band every page ends on. */
+/* The closing call every public page ends on: a brand card that sits over the top of the footer
+   (index.css gives the footer room for it when main ends with .final-cta). */
 export const FinalCta = ({ title, lead, secondary = { to: '/contact', label: 'Talk to us' } }) => (
-  <section className="bg-ink-900">
+  <section className="final-cta relative z-10 pt-8 sm:pt-12">
     <Container>
-      <Reveal className="grid items-center gap-8 py-16 sm:py-20 lg:grid-cols-12">
-        <div className="lg:col-span-8">
-          <h2 className="text-h2 font-semibold text-white">{title}</h2>
-          {lead && <p className="mt-4 max-w-xl text-lead text-white/70">{lead}</p>}
-        </div>
-        <div className="flex flex-wrap gap-3 lg:col-span-4 lg:justify-end">
-          <Button to="/signup" size="lg">Start free trial</Button>
-          {secondary && <Button to={secondary.to} size="lg" variant="ghost" className="text-white hover:bg-white/10 hover:text-white">{secondary.label}</Button>}
+      <Reveal className="relative -mb-24 overflow-hidden rounded-[2rem] bg-brand-500 px-6 py-14 text-center shadow-lg sm:-mb-28 sm:px-12 sm:py-16">
+        <div aria-hidden="true" className="final-cta-glow pointer-events-none absolute inset-0" />
+        <h2 className="relative mx-auto max-w-2xl text-h2 font-semibold text-white">{title}</h2>
+        {lead && <p className="relative mx-auto mt-4 max-w-xl text-lead text-white/80">{lead}</p>}
+        <div className="relative mt-8 flex flex-wrap justify-center gap-3">
+          <Button to="/signup" size="lg" variant="secondary" className="border-transparent">Start free trial</Button>
+          {secondary && <Button to={secondary.to} size="lg" variant="ghost" className="text-white ring-1 ring-white/40 hover:bg-white/10 hover:text-white">{secondary.label}</Button>}
         </div>
       </Reveal>
     </Container>
   </section>
 );
 
-/* A bordered grid of small titled cells (hardware lists, "also included"). */
-export const CellGrid = ({ items, cols = 'sm:grid-cols-2 lg:grid-cols-4' }) => (
-  <ul className={`grid gap-px overflow-hidden rounded-(--radius-panel) border border-line bg-line ${cols}`}>
-    {items.map(({ title, body, soon }, i) => (
-      <Reveal as="li" key={title} index={i % 4} className="bg-surface p-5 transition-colors duration-(--duration-normal) hover:bg-brand-50">
-        <p className="flex flex-wrap items-center gap-2 text-body font-semibold text-ink-900">
-          {title}
-          {soon && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-medium text-ink-500">Coming soon</span>}
-        </p>
-        {body && <p className="mt-1 text-small text-ink-500">{body}</p>}
-      </Reveal>
-    ))}
-  </ul>
-);
+/*
+ * A grid of small titled cells (hardware lists, "also included", plan
+ * extras). `big: true` on one or two items calls them out as their own row
+ * above the uniform grid of the rest — a hierarchy signal for the genuinely
+ * bigger news on a list, not decoration applied evenly. Most call sites pass
+ * none, and get the plain even grid they always had.
+ *
+ * Featured items are a separate row rather than wider cells mixed into the
+ * same grid: two different cell spans in one CSS grid leaves an uneven,
+ * gap-ridden last row the moment the item count doesn't divide evenly by the
+ * column count (it did, for most of these lists) — a separate row sidesteps
+ * that arithmetic for every list length, not just the ones that happen to work out.
+ */
+export const CellGrid = ({ items, cols = 'sm:grid-cols-2 lg:grid-cols-4' }) => {
+  const featured = items.filter((i) => i.big);
+  const rest = items.filter((i) => !i.big);
+  return (
+    <div className={featured.length ? 'space-y-3' : ''}>
+      {featured.length > 0 && (
+        <div className={`grid gap-3 ${featured.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+          {featured.map(({ title, body, soon }, i) => (
+            <Reveal as="div" key={title} index={i} className="lift rounded-(--radius-card) border border-brand-100 bg-brand-50 p-6">
+              <p className="flex flex-wrap items-center gap-2 text-title font-semibold text-ink-900">
+                {title}
+                {soon && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-medium text-ink-500">Coming soon</span>}
+              </p>
+              {body && <p className="mt-1.5 text-body text-ink-500">{body}</p>}
+            </Reveal>
+          ))}
+        </div>
+      )}
+      <ul className={`grid gap-3 ${cols}`}>
+        {rest.map(({ title, body, soon }, i) => (
+          <Reveal as="li" key={title} index={i % 4} className="lift rounded-(--radius-card) border border-line bg-surface p-5">
+            <p className="flex flex-wrap items-center gap-2 text-body font-semibold text-ink-900">
+              {title}
+              {soon && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-medium text-ink-500">Coming soon</span>}
+            </p>
+            {body && <p className="mt-1 text-small text-ink-500">{body}</p>}
+          </Reveal>
+        ))}
+      </ul>
+    </div>
+  );
+};

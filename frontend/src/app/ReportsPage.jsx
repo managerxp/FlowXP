@@ -9,12 +9,12 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Download } from 'lucide-react';
+import { Check, Download } from 'lucide-react';
 import { api, downloadFile, formatCurrency } from '../lib/api.js';
 import { localISO } from '../lib/dates.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { RESTAURANT_TYPES, platformName } from '../lib/business.js';
-import { Alert, Button, Input } from '../components/ui.jsx';
+import { Alert, Button, Input, StatCard } from '../components/ui.jsx';
 
 /* ── Periods ───────────────────────────────────────────────────────────── */
 
@@ -45,20 +45,20 @@ const saveCsv = (name, head, rows) => {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${name}.csv`; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 };
-const CsvButton = ({ name, head, rows }) => (
-  <button type="button" onClick={() => saveCsv(name, head, rows)} disabled={!rows.length} className="flex items-center gap-1 text-caption font-medium text-brand-700 hover:underline disabled:opacity-40">
-    <Download aria-hidden="true" className="h-3.5 w-3.5" />CSV
-  </button>
-);
+/* A real button, not a text link: outlined, lifts to the brand colour on hover, and says "Saved" for a moment after the file is made. */
+const CsvButton = ({ name, head, rows }) => {
+  const [saved, setSaved] = useState(false);
+  const click = () => { saveCsv(name, head, rows); setSaved(true); setTimeout(() => setSaved(false), 1800); };
+  return (
+    <button type="button" onClick={click} disabled={!rows.length} title={rows.length ? `Download ${rows.length} row${rows.length === 1 ? '' : 's'} as a spreadsheet file` : 'Nothing to download yet'}
+            className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-caption font-semibold transition-[color,background-color,border-color,transform] duration-(--duration-fast) active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 pointer-coarse:h-10 pointer-coarse:px-3 ${saved ? 'border-success/40 bg-success/10 text-success' : 'border-line-strong bg-surface text-ink-700 hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 disabled:hover:border-line-strong disabled:hover:bg-surface disabled:hover:text-ink-700'}`}>
+      {saved ? <Check aria-hidden="true" className="h-3.5 w-3.5" /> : <Download aria-hidden="true" className="h-3.5 w-3.5" />}
+      {saved ? 'Saved' : <><span className="max-sm:hidden">Download </span>CSV</>}
+    </button>
+  );
+};
 
-const Tile = ({ label, value, note, change }) => (
-  <div className="rounded-(--radius-card) border border-line bg-surface p-4">
-    <p className="text-caption text-ink-500">{label}</p>
-    <p className="tabular mt-1 text-title font-semibold text-ink-900">{value}</p>
-    {change}
-    {note && <p className="mt-0.5 text-caption text-ink-500">{note}</p>}
-  </div>
-);
+const Tile = ({ change, ...props }) => <StatCard {...props}>{change}</StatCard>;
 
 /* "12% up on the 7 days before": spending more is the thing to notice on costs, earning more on sales. */
 const Change = ({ now, before, vs, goodWhenUp = true }) => {
@@ -73,7 +73,7 @@ const Change = ({ now, before, vs, goodWhenUp = true }) => {
 const Section = ({ title, action, children, note }) => (
   <section className="rounded-(--radius-card) border border-line bg-surface p-5">
     <div className="mb-3 flex items-baseline justify-between gap-3">
-      <h3 className="text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">{title}</h3>
+      <h3 className="text-body font-semibold text-ink-900">{title}</h3>
       {action}
     </div>
     {children}
@@ -90,14 +90,17 @@ const Columns = ({ points, label, valueText }) => {
   return (
     <div>
       <p className="tabular mb-2 h-5 text-small text-ink-700"><span className="font-semibold text-ink-900">{shown.label}</span> · {valueText(shown)}{hover == null && <span className="text-ink-500"> (the most)</span>}</p>
-      <div className="flex h-40 items-end gap-[2px]" onMouseLeave={() => setHover(null)}>
-        {points.map((p, i) => (
-          <button key={p.key} type="button" onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)} aria-label={`${p.label}: ${valueText(p)}`}
-                  className="group flex h-full min-w-0 flex-1 items-end focus:outline-none">
-            <span className={`block w-full rounded-t-[3px] transition-colors duration-(--duration-fast) ${hover === i ? 'bg-brand-700' : 'bg-brand-500'} group-focus-visible:ring-2 group-focus-visible:ring-brand-700`}
-                  style={{ height: `${p.value ? Math.max(2, (p.value / max) * 100) : 0}%` }} />
-          </button>
-        ))}
+      <div className="relative h-40" onMouseLeave={() => setHover(null)}>
+        {[25, 50, 75].map((y) => <span key={y} aria-hidden="true" className="absolute inset-x-0 border-t border-dashed border-line" style={{ bottom: `${y}%` }} />)}
+        <div className="relative flex h-full items-end gap-[3px]">
+          {points.map((p, i) => (
+            <button key={p.key} type="button" onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)} aria-label={`${p.label}: ${valueText(p)}`}
+                    className="group flex h-full min-w-0 flex-1 items-end focus:outline-none">
+              <span className={`block w-full rounded-t-[4px] transition-colors duration-(--duration-fast) ${p === shown ? 'bg-brand-500' : 'bg-brand-200 group-hover:bg-brand-400'} group-focus-visible:ring-2 group-focus-visible:ring-brand-700`}
+                    style={{ height: `${p.value ? Math.max(2, (p.value / max) * 100) : 0}%` }} />
+            </button>
+          ))}
+        </div>
       </div>
       <div className="mt-1.5 flex justify-between text-caption text-ink-500"><span>{points[0].axis}</span><span>{points[points.length - 1].axis}</span></div>
       <table className="sr-only"><caption>{label}</caption><tbody>{points.map((p) => <tr key={p.key}><th>{p.label}</th><td>{valueText(p)}</td></tr>)}</tbody></table>
@@ -379,12 +382,12 @@ const ReportsPage = () => {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
-        <nav aria-label="Reports" className="flex gap-1.5 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
+        <nav aria-label="Reports" className="flex gap-1.5 overflow-x-auto pb-1 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:pb-0">
           {reports.map((r) => (
             <button key={r.key} type="button" onClick={() => setTab(r.key)} aria-current={r.key === report.key ? 'page' : undefined}
-                    className={`shrink-0 rounded-lg px-3 py-2 text-left transition-colors duration-(--duration-fast) ${r.key === report.key ? 'bg-brand-50 text-brand-700' : 'text-ink-700 hover:bg-surface-2'} max-lg:border max-lg:border-line`}>
+                    className={`shrink-0 rounded-lg px-3 py-1.5 text-left transition-colors duration-(--duration-fast) ${r.key === report.key ? 'bg-brand-50 text-brand-700' : 'text-ink-700 hover:bg-surface-2'} max-lg:border max-lg:border-line`}>
               <span className="block text-small font-medium">{r.label}</span>
-              <span className="hidden text-caption text-ink-500 lg:block">{r.text}</span>
+              <span className="hidden text-caption leading-snug text-ink-500 lg:block [@media(max-height:780px)]:lg:hidden">{r.text}</span>
             </button>
           ))}
         </nav>

@@ -199,7 +199,7 @@ const AdminFeatures = () => {
       )}
 
       <p className="mt-4 text-xs text-ink-400">
-        A feature needs to be on in both the plan and the business type on that plan to actually work — each independently gates it.
+        A feature needs to be on in both the plan and the business type on that plan to actually work — each independently gates it. In the business-type view, a feature shown off because it does not suit that industry (a salon has no kitchen display, a pharmacy has no table bookings) can be switched on for that type and plan. A single business can still be forced on or off from its own page.
       </p>
     </div>
   );

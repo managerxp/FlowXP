@@ -12,6 +12,7 @@ export const registerServiceWorker = () => {
 
 /** Signing out (or a dead session) must not leave the last person's data cached on a shared device. */
 export const clearOfflineCaches = () => {
+  try { Object.keys(localStorage).filter((k) => k.startsWith('flowxp.salon.')).forEach((k) => localStorage.removeItem(k)); } catch { /* nothing cached */ }
   try { navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_API' }); } catch { /* no worker: nothing cached */ }
 };
 

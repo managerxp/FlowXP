@@ -6,7 +6,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Alert, Badge, Button, Card, PageHeader } from '../components/ui.jsx';
+import { Alert, Badge, Button, Card, PageHeader, PageLoader } from '../components/ui.jsx';
+import LatticeLoader from '../components/reactbits/LatticeLoader.jsx';
 
 /* A small, safe renderer for the plain formatting the assistant uses (bullets, numbers, **bold**). No HTML is ever injected. */
 const inline = (text) => text.split(/(\*\*[^*]+\*\*)/g).map((part, i) => (part.startsWith('**') && part.endsWith('**') ? <strong key={i}>{part.slice(2, -2)}</strong> : part));
@@ -25,7 +26,7 @@ const RichText = ({ text }) => {
   });
   flush();
   return (
-    <div className="space-y-2 text-sm leading-relaxed text-ink-800">
+    <div className="space-y-2 text-sm leading-relaxed text-ink-900">
       {blocks.map((b) => b.kind === 'p'
         ? <p key={b.key}>{inline(b.text)}</p>
         : b.kind === 'ul'
@@ -98,7 +99,7 @@ const AIManagerPage = () => {
     catch (caught) { setError(caught.message); }
   };
 
-  if (!status) return <div><PageHeader title="Flow AI" />{error ? <Alert>{error}</Alert> : <p className="py-10 text-center text-sm text-ink-400">Loading…</p>}</div>;
+  if (!status) return <div><PageHeader title="Flow AI" />{error ? <Alert>{error}</Alert> : <PageLoader />}</div>;
 
   const scope = outletId === 'all' ? 'all outlets' : activeOutlet?.name;
   return (
@@ -114,7 +115,7 @@ const AIManagerPage = () => {
 
       {!status.configured && (
         <Card className="mb-6"><p className="text-sm font-semibold text-ink-900">Flow AI isn’t set up on this server yet.</p>
-          <p className="mt-1 text-sm text-ink-500">Whoever runs FlowXP needs to add an AI key (<code>ANTHROPIC_API_KEY</code> in the backend settings). Until then nothing is sent anywhere and the rest of the app works as usual.</p></Card>
+          <p className="mt-1 text-sm text-ink-500">Whoever runs FlowXP needs to add an AI key (<code>{String(status.provider || 'ANTHROPIC').toUpperCase()}_API_KEY</code> in the backend settings). Until then nothing is sent anywhere and the rest of the app works as usual.</p></Card>
       )}
       {status.configured && !status.enabled && (
         <Card className="mb-6 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-ink-700">Flow AI is switched off for this business, so nothing is sent to the AI service.</p>
@@ -122,7 +123,7 @@ const AIManagerPage = () => {
       )}
       {status.remaining === 0 && <div className="mb-4"><Alert>You have used all {status.limit} AI questions on your plan this month. They reset next month.</Alert></div>}
 
-      <div className="grid gap-6 lg:grid-cols-[14rem_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
         <aside className="order-2 lg:order-1">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-400">Earlier</p>
           {conversations.length === 0 ? <p className="text-sm text-ink-400">Nothing yet.</p> : (
@@ -154,7 +155,7 @@ const AIManagerPage = () => {
               </div>
             )}
             {messages.map((m, i) => <Message key={i} m={m} />)}
-            {busy && <div className="flex justify-start"><div className="border border-line bg-surface rounded-2xl px-4 py-3 text-sm text-ink-500">Looking at your numbers…</div></div>}
+            {busy && <div className="flex justify-start"><div className="rounded-2xl border border-line bg-surface px-4 py-3 text-ink-500"><LatticeLoader label="Looking at your numbers" color="var(--color-brand-500)" pattern="spin" grid={4} cellSize={4} gap={2} fontSize={14} /></div></div>}
             <div ref={endRef} />
           </div>
 
