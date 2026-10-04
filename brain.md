@@ -4,7 +4,7 @@ One file to remember the whole product: what it is, how it is built, the rules t
 what is left. Read this first in a new session. `documentation.md` has the long per-feature detail (API, schema,
 edge cases); this file is the map and the memory. Keep it current: update the status tables when a feature ships.
 
-Last updated: 2026-09-29 (Tables/Orders/Kitchen/Reservations/Customers/Inventory/Purchases/Suppliers/Expenses/Payments/Invoices/Products/Options/Reports redesign, tap-to-add orders, order board, QR menu and loyalty redesign, UPI QR at the till, billing↔kitchen counter sales, RBAC nav fix, delivery accept/reject + loud pop-up alert, onboarding redesign (+ Flow AI onboarding chat, "use current location"), country/state address engine, Cashfree subscription payment links, real Privacy/Terms text + required signup acceptance checkbox, real per-plan + per-business-type-per-plan feature gating (incl. QR ordering and delivery integrations) + admin Features page, admin plan/business-type override, Cloud Kitchen business type (no Tables/Reservations/QR ordering for it), business-type feature picker redesigned as a dropdown then made plan-aware, Super Admin audit + plan versioning/grandfathering + subscription history + business feature overrides, Overview dashboard MRR/revenue-by-month/pending-payments/trials-ending-soon + a real-revenue bug fix, paid add-ons catalog (fully admin-editable + business-type categorised) + per-business Cashfree add-on links, 3-plan pricing ladder, platform settings (payment gateway + messaging off .env), customer feedback & reviews (post-bill ratings, private unless happy, AI reply drafts), multi-brand (one kitchen, several virtual brands) after auditing a 40-section "Cloud Kitchen module" spec and reusing almost all of it, delivery rider/fleet management (own staff, new DELIVERY role) and aggregator settlement reconciliation (paste-a-statement import + arithmetic/value checks, no real aggregator API access needed). 47 migrations, 522 backend tests passing.
+Last updated: 2026-10-04 (see 4c) (Tables/Orders/Kitchen/Reservations/Customers/Inventory/Purchases/Suppliers/Expenses/Payments/Invoices/Products/Options/Reports redesign, tap-to-add orders, order board, QR menu and loyalty redesign, UPI QR at the till, billing↔kitchen counter sales, RBAC nav fix, delivery accept/reject + loud pop-up alert, onboarding redesign (+ Flow AI onboarding chat, "use current location"), country/state address engine, Cashfree subscription payment links, real Privacy/Terms text + required signup acceptance checkbox, real per-plan + per-business-type-per-plan feature gating (incl. QR ordering and delivery integrations) + admin Features page, admin plan/business-type override, Cloud Kitchen business type (no Tables/Reservations/QR ordering for it), business-type feature picker redesigned as a dropdown then made plan-aware, Super Admin audit + plan versioning/grandfathering + subscription history + business feature overrides, Overview dashboard MRR/revenue-by-month/pending-payments/trials-ending-soon + a real-revenue bug fix, paid add-ons catalog (fully admin-editable + business-type categorised) + per-business Cashfree add-on links, 3-plan pricing ladder, platform settings (payment gateway + messaging off .env), customer feedback & reviews (post-bill ratings, private unless happy, AI reply drafts), multi-brand (one kitchen, several virtual brands) after auditing a 40-section "Cloud Kitchen module" spec and reusing almost all of it, delivery rider/fleet management (own staff, new DELIVERY role) and aggregator settlement reconciliation (paste-a-statement import + arithmetic/value checks, no real aggregator API access needed). 47 migrations, 522 backend tests passing.
 
 ---
 
@@ -710,6 +710,54 @@ form the role could never submit). Fixed:
   (a business's own riders) and real aggregator APIs/fleet dispatch are two different things — this is
   the former only; the latter still needs partner approval FlowXP doesn't have.
 
+## 4c. Pre-launch changes (2026-10-04)
+
+Everything below is in the repo and covered by tests (backend 904 passing at the end of the day).
+
+- **Features by industry.** `modules/planFeatures.js` has `INDUSTRY_OFF`: the features each business type has no use for are OFF by
+  default (a salon has no kitchen, tables, reservations, QR ordering, delivery or wholesale features; a restaurant has no salon or
+  wholesale ones; cloud kitchen also loses tables/reservations/QR; pharmacy/supermarket/retail keep batches; wholesale drops loyalty;
+  OTHER keeps everything). `effectiveFeatureFlags(sources, overrides, businessType)`: `sources` is `[plan flags, type-row flags]`;
+  an explicit `true` in the business-type row turns an industry default back on, a per-business override still beats everything,
+  a plan's own `true` does NOT. Two new feature keys, `tables` and `kitchen`, gate `tables.routes.js` / `kitchen.routes.js` and the
+  Tables and Kitchen nav items. The admin "By business type" grid (`listBusinessTypeFeatures`) shows the defaults merged with saved rows.
+  Callers pass the business type (auth.js membership, subscription.js, publicBill/publicOrdering/salonPublic). Tests: `industryfeatures.test.js`.
+- **Default option groups.** `modules/defaultOptions.js`: a new RESTAURANT/CAFE/CLOUD_KITCHEN gets Spice level (pick one), Veg extras and
+  Non-veg extras at signup; migration 0070 gives the same to existing ones with no groups; a business with its own groups is untouched.
+- **Admin console hardening.** Super admin session is 8h (`signToken(user, { expiresIn })`); sign-in takes an authenticator code or a
+  single-use recovery code (`AdminLogin.jsx`); `/superadmin/security` (`AdminSecurity.jsx`) sets up 2FA through the account's `/api/auth/2fa`
+  routes (the returned token replaces the stored one); a banner shows while 2FA is off; Suspend/Close ask for confirmation; general 300/min
+  limiter on `/api/admin`; admin pages are `noindex`. In production `config/env.js` refuses a `.local/.test` SUPER_ADMIN_EMAIL or a
+  SUPER_ADMIN_PASSWORD under 14 characters. Tests: `admin2fa.test.js`.
+- **Login limits.** `loginLimiter` is 20 failures / 15 min per address and counts only FAILED requests (`skipSuccessfulRequests`), so staff
+  sharing one router are not locked out; per-account lockout (5 wrong in 15 min, `modules/security.js`) is the real brake. Wrong password and
+  unknown email give the same message, status and timing; forgot-password answers identically for known and unknown addresses.
+- **Sign in with Google (existing accounts only).** `modules/oauth.js` + `controllers/oauth.controller.js`: auth-code flow with PKCE, state,
+  nonce in a signed httpOnly cookie (`flowxp_oauth`, path `/api/auth`, 10 min). Matches by Google-verified email to a FlowXP account whose own
+  email is verified; never creates an account; super admins refused; an account with TOTP gets its challenge in the URL fragment (`#second=`).
+  Needs `GOOGLE_CLIENT_ID/SECRET` (+ `GOOGLE_REDIRECT_URI` in dev); the button only shows when `/auth/oauth/providers` says so.
+  Steps in `DEPLOY.md` section 2c. Tests: `oauth.test.js`.
+- **Flow AI.** `ai/grounding.js` checks money-sized figures (>= 1,000) in an answer against the tool results (rounding, "lakh", sums and
+  differences allowed) and appends a "check it" note when one is unmatched; Gemini requests carry `safetySettings` (medium and above);
+  the provider tries the next model when one's daily free quota is spent ("retry in Nh") as well as on limit 0 / 404 / 503.
+- **Kitchen screen.** Cards are compact and content-height (`items-start` grids, two per row in To make, one in Ready); durations read
+  "23h 4m"; a cancelled dish stays on its own table's ticket with a "Got it" button (hidden per device in localStorage `flowxp.kitchenGone`);
+  a table with nothing left to cook shows a small notice strip, sorted last.
+- **Till.** Item tiles already on the bill are highlighted (border, tint, one-shot pulse); the Bill panel is compact (hints hidden on any
+  screen up to 1100px tall: `.pos-hint`, `.pos-methods` one row); UPI QR window has "Print bill with this QR" (the printed bill carries a
+  QR for the exact balance). Card/Bank only record the payment: there is no card-terminal integration (needs the vendor's own API).
+- **Customer QR menu.** All / Veg / Non-veg (/ Egg when the menu has egg dishes) pills; the visit card's earned stamps press in one after
+  another (`.stamp-in`), the next slot pulses (`.stamp-next`).
+- **Dashboard.** Sales chart uses a monotone curve (no invented dips) with today drawn dashed ("Today so far"); owners see a plan strip
+  (plan, status, billing cycle, next payment, days left).
+- **Website.** Home no longer shows the leakage screenshot; WhatsApp/SMS sending is marked "Coming soon" everywhere (Zomato/Swiggy feeds
+  too: the adapters are mocks and Zomato's POS API needs 50 restaurants or 10,000 orders/month, per its docs); both logos scroll/go to the top.
+- **Ops.** `deploy/nginx.conf` proxies `/health` and `/ready` for an uptime monitor. The Cashfree hosted page shows the brand set in the
+  Cashfree dashboard (Payments > One Click Checkout > Settings > Customisation > Visual Customisation > Header: logo and name); our API
+  call cannot set it.
+- **Still the owner's to do before launch:** production `.env` (NODE_ENV, APP_ORIGIN https, JWT_SECRET, real super admin, Cashfree PRODUCTION
+  keys), DNS + certbot, a real email provider, scheduled and off-server backups, 2FA on the super admin, a Gemini spend cap, optional Google keys.
+
 ## 5. Working rules for future sessions
 
 - **Test every feature** in `backend/test/<feature>.test.js`; run the full `npm test` and `npx vite build` before reporting. Real DB, throwaway
@@ -743,7 +791,7 @@ Required: `DATABASE_URL`, `JWT_SECRET` (≥32 chars in production). Common: `POR
 `CORS_ORIGINS`, `SMTP_*`/`MAIL_FROM`, `SUPER_ADMIN_EMAIL/PASSWORD`, `ANTHROPIC_API_KEY`/`AI_MODEL`/`AI_MAX_TOKENS`,
 `STORAGE_DRIVER` (`local`|`s3`) + `S3_ENDPOINT/REGION/BUCKET/ACCESS_KEY_ID/SECRET_ACCESS_KEY/PUBLIC_URL`,
 `MESSAGING_PROVIDER` (`log`|`whatsapp_cloud`|`twilio`) + `WHATSAPP_TOKEN/PHONE_ID/TEMPLATE_LANG`, `TWILIO_SID/TOKEN/FROM/WHATSAPP_FROM`,
-`MESSAGING_COUNTRY_CODE` (default 91), `WORKER_ENABLED`. `backend/.env.example` is the one source of truth for every setting (also `CORS_ORIGINS`, `STORAGE_DRIVER`/`S3_*`, formerly only in a docker-compose-only root `.env.example` — that file is gone now that deploy is PM2, not containers).
+`MESSAGING_COUNTRY_CODE` (default 91), `WORKER_ENABLED`. Also `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/`GOOGLE_REDIRECT_URI` (Sign in with Google; blank hides the button). In production the boot check also rejects a `.local/.test` `SUPER_ADMIN_EMAIL` and a `SUPER_ADMIN_PASSWORD` under 14 characters. `backend/.env.example` is the one source of truth for every setting (also `CORS_ORIGINS`, `STORAGE_DRIVER`/`S3_*`, formerly only in a docker-compose-only root `.env.example` — that file is gone now that deploy is PM2, not containers).
 `SMTP_*`, `MESSAGING_*`/`WHATSAPP_*`/`TWILIO_*` and `CASHFREE_*` are now just the fallback — a row in
 `platform_settings` (Super Admin → Settings) overrides them without a restart; see brain.md's platform-
 settings entry in section 4.
