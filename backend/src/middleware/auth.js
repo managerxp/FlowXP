@@ -470,6 +470,14 @@ export const requireOwner = (req, res, next) => {
  * manages every tenant, not one, and most admin routes have no business_id
  * claim to resolve at all. Mount after requireAuth, same as requirePermission.
  */
+/** In production the console needs two-step verification: an admin without it can only reach /me and the page that sets it up. */
+export const requireAdminTwoFactor = (req, res, next) => {
+  if (config.adminRequire2fa && !req.auth?.user?.totp_enabled && req.path !== '/me') {
+    return res.status(403).json({ success: false, code: 'TWO_FACTOR_REQUIRED', message: 'Turn on two-step verification to use the admin console.' });
+  }
+  next();
+};
+
 export const requireSuperAdmin = (req, res, next) => {
   if (!req.auth?.isSuperAdmin) {
     return res.status(403).json({ success: false, message: 'Super admin access required' });

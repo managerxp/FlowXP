@@ -105,6 +105,10 @@ export const config = {
     twilioWhatsappFrom: process.env.TWILIO_WHATSAPP_FROM || '',
     countryCode: process.env.MESSAGING_COUNTRY_CODE || '91'
   },
+  /* The platform console can change every business and plan, so in production a super admin MUST have two-step
+     verification on: until they do, the console shows only the page that sets it up. ADMIN_REQUIRE_2FA=false opts out
+     (never in production unless you accept that risk); in development it is off unless set to true. */
+  adminRequire2fa: process.env.ADMIN_REQUIRE_2FA ? process.env.ADMIN_REQUIRE_2FA.toLowerCase() === 'true' : process.env.NODE_ENV === 'production',
   // Extra browser origins allowed to call the API (comma separated), on top of APP_ORIGIN.
   /* Sign in with Google, for accounts that already exist. Both blank = the button is simply not shown.
      The redirect address registered in Google Cloud must be exactly APP_ORIGIN + /api/auth/google/callback

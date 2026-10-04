@@ -74,3 +74,21 @@ test('a recovery code signs in once, and only with the password', { skip }, asyn
   const again = await login({ email: 'lostphone@console.test', password: PASSWORD, recovery_code: recovery });
   assert.equal(again.code, 401); assert.equal(again.body.requires_2fa, true);
 });
+
+test('where two-step verification is required, an admin without it reaches only /me; with it, everything', { skip }, async () => {
+  const config = (await import('../src/config/env.js')).default;
+  const { requireAdminTwoFactor } = await import('../src/middleware/auth.js');
+  const run = (path, totp) => { const r = res(); let next = false; requireAdminTwoFactor({ path, auth: { user: { totp_enabled: totp } } }, r, () => { next = true; }); return { next, r }; };
+  const was = config.adminRequire2fa;
+  try {
+    config.adminRequire2fa = true;
+    assert.equal(run('/me', false).next, true, 'the page that asks for setup can still load');
+    for (const path of ['/stats', '/businesses', '/settings/email', '/business-type-features']) {
+      const { next, r } = run(path, false);
+      assert.equal(next, false, path); assert.equal(r.code, 403); assert.equal(r.body.code, 'TWO_FACTOR_REQUIRED');
+    }
+    assert.equal(run('/stats', true).next, true, 'once it is on, nothing is held back');
+    config.adminRequire2fa = false;
+    assert.equal(run('/stats', false).next, true, 'switched off (development): no requirement');
+  } finally { config.adminRequire2fa = was; }
+});

@@ -84,7 +84,7 @@ export const login = async (req, res) => {
       data: {
         // the platform console is the most powerful sign-in there is: a working day, not a week
         token: signToken(user, { expiresIn: '8h' }),
-        admin: { user_id: user.user_id, name: user.name, email: user.email, totp_enabled: Boolean(user.totp_enabled) }
+        admin: { user_id: user.user_id, name: user.name, email: user.email, totp_enabled: Boolean(user.totp_enabled), two_factor_required: config.adminRequire2fa }
       }
     });
   } catch (error) {
@@ -99,7 +99,7 @@ export const login = async (req, res) => {
 export const me = async (req, res) => {
   res.json({
     success: true,
-    data: { user_id: req.auth.userId, name: req.auth.user.name, email: req.auth.email, totp_enabled: Boolean(req.auth.user.totp_enabled) }
+    data: { user_id: req.auth.userId, name: req.auth.user.name, email: req.auth.email, totp_enabled: Boolean(req.auth.user.totp_enabled), two_factor_required: config.adminRequire2fa }
   });
 };
 

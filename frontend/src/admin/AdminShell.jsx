@@ -31,6 +31,11 @@ const AdminShell = () => {
     );
   }
 
+  // A console that requires two-step verification shows nothing but the page that sets it up until it is on.
+  if (admin && admin.two_factor_required && admin.totp_enabled === false && location.pathname !== '/superadmin/security') {
+    return <Navigate to="/superadmin/security" replace />;
+  }
+
   if (!admin) {
     return <Navigate to="/superadmin/login" replace state={{ from: location.pathname }} />;
   }
