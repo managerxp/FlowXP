@@ -39,12 +39,15 @@ const RANK = { ok: 0, warning: 1, late: 2 };
 const urgencyOf = (elapsed, expected) => (!expected ? 'ok' : elapsed > expected ? 'late' : elapsed >= expected * 0.75 ? 'warning' : 'ok');
 const minutesSince = (iso, now) => Math.max(0, Math.floor((now - new Date(iso).getTime()) / 60000));
 const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+// A cancelled dish stays with its own table's ticket: in To make while something there is still cooking, else in Ready, else a notice on its own.
+const homeOf = (t) => (t.items.some((i) => i.status === 'PREPARING') ? 'making' : t.items.some((i) => i.status === 'READY') ? 'ready' : 'making');
 const dishKey = (i) => `${i.description}|${(i.modifiers || []).map((m) => m.name).join(' · ')}`;
+
+const span = (m) => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`);
 
 const Minutes = ({ value, className = '' }) => (
   <span className={`tabular leading-none ${className}`}>
-    {value >= 60 ? <>{Math.floor(value / 60)}<span className="text-small font-medium"> h </span>{value % 60}</> : value}
-    <span className="text-small font-medium"> min</span>
+    {value >= 60 ? <>{Math.floor(value / 60)}<span className="text-small font-medium">h </span>{value % 60}<span className="text-small font-medium">m</span></> : <>{value}<span className="text-small font-medium"> min</span></>}
   </span>
 );
 
@@ -53,17 +56,19 @@ const LineDue = ({ elapsed, expected }) => {
   if (!expected) return null;
   const left = expected - elapsed;
   const u = urgencyOf(elapsed, expected);
-  const text = left > 0 ? `${left} min left` : left === 0 ? 'Due now' : `${-left} min over`;
+  const text = left > 0 ? `${left}m left` : left === 0 ? 'Due now' : `${span(-left)} over`;
   return <span className={`tabular shrink-0 pt-0.5 text-caption ${u === 'late' ? 'font-semibold text-danger' : u === 'warning' ? 'font-semibold text-warning' : 'text-ink-400'}`}>{text}</span>;
 };
 
-const Ticket = ({ ticket, tab, now, stationName, dimmed, focusKey, onAdvance, onRush }) => {
-  const items = ticket.items.filter((i) => tab.statuses.includes(i.status) || (tab.key === 'making' && i.cancelled));
+const Ticket = ({ ticket, tab, now, stationName, dimmed, focusKey, onAdvance, onRush, onDismiss }) => {
+  const items = ticket.items.filter((i) => tab.statuses.includes(i.status) || (i.cancelled && tab.key === homeOf(ticket)));
   const live = items.filter((i) => !i.cancelled);
   const away = ticket.order_type !== 'DINE_IN';
   const kind = ticket.platform ? humanize(ticket.platform) : ticket.order_type === 'TAKEAWAY' ? 'Takeaway' : ticket.order_type === 'DELIVERY' ? 'Delivery' : 'Dine-in';
   const title = ticket.table_name || ticket.order_number;
-  const rush = ticket.priority === 'RUSH';
+  // nothing left to cook (the rest was served or handed over): only the "don't make" notice remains, so it is a small strip
+  const notice = tab.key === 'making' && live.length === 0;
+  const rush = ticket.priority === 'RUSH' && !notice;
   const making = tab.key === 'making';
 
   // the ticket is as late as its latest dish; the bar fills towards the longest dish's time
@@ -75,40 +80,39 @@ const Ticket = ({ ticket, tab, now, stationName, dimmed, focusKey, onAdvance, on
   const servedAt = tab.key === 'served' && live.length ? live.map((i) => i.served_at).filter(Boolean).sort().pop() : null;
 
   return (
-    <article className={`flex flex-col overflow-hidden rounded-(--radius-card) border bg-surface shadow-sm transition-[opacity,border-color] duration-(--duration-moderate) ${rush ? 'border-danger ring-2 ring-danger' : worst === 'late' ? 'border-danger/50' : 'border-line'} ${dimmed ? 'opacity-35' : ''}`}>
-      <header className={`px-4 pb-3 pt-3.5 transition-colors duration-(--duration-moderate) ${rush ? 'bg-danger/5' : making ? tone.head : tab.key === 'ready' ? 'bg-success/5' : 'bg-surface-2'}`}>
+    <article className={`flex flex-col rounded-(--radius-card) border bg-surface shadow-sm transition-[opacity,border-color] duration-(--duration-moderate) ${rush ? 'border-danger ring-2 ring-danger' : worst === 'late' ? 'border-danger/50' : 'border-line'} ${dimmed ? 'opacity-35' : ''}`}>
+      <header className={`rounded-t-[calc(var(--radius-card)-1px)] px-2.5 pb-2 pt-2 transition-colors duration-(--duration-moderate) ${rush ? 'bg-danger/5' : making ? tone.head : tab.key === 'ready' ? 'bg-success/5' : 'bg-surface-2'}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate text-[24px] font-bold leading-tight tracking-tight text-ink-900">{title}</p>
-            <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-caption text-ink-500">
-              <span className={`rounded-md px-1.5 py-0.5 font-semibold ${away ? 'bg-ink-900 text-white' : 'bg-surface-3 text-ink-700'}`}>{kind}</span>
-              {ticket.brand_name && <span className="rounded-md bg-brand-50 px-1.5 py-0.5 font-semibold text-brand-700">{ticket.brand_name}</span>}
-              {rush && <span className="inline-flex items-center gap-1 rounded-md bg-danger px-1.5 py-0.5 font-semibold text-white"><Flame aria-hidden="true" className="h-3 w-3" />Rush</span>}
-              <span className="tabular">{ticket.table_name ? `${ticket.order_number} · ` : ''}{clock(ticket.sent_at)}</span>
+            <p className="truncate text-body font-bold leading-tight tracking-tight text-ink-900">{title}</p>
+            <p className="mt-0.5 flex flex-wrap items-center gap-1 text-caption text-ink-500">
+              <span className={`rounded px-1 font-semibold ${away ? 'bg-ink-900 text-white' : 'bg-surface-3 text-ink-700'}`}>{kind}</span>
+              {ticket.brand_name && <span className="rounded bg-brand-50 px-1 font-semibold text-brand-700">{ticket.brand_name}</span>}
+              {rush && <span className="inline-flex items-center gap-1 rounded bg-danger px-1 font-semibold text-white"><Flame aria-hidden="true" className="h-3 w-3" />Rush</span>}
+              <span className="tabular">{ticket.table_name ? `${ticket.order_number} · ` : ''}{clock(ticket.sent_at)}{servedAt ? ` · ${away ? 'Handed over' : 'Served'} ${clock(servedAt)}` : ''}</span>
             </p>
           </div>
           {making && live.length > 0 && (
             <div className="shrink-0 text-right">
-              <Minutes value={elapsed} className={`text-[28px] font-bold ${tone.text}`} />
-              <p className={`mt-1 text-caption font-semibold ${tone.labelText}`}>{tone.label}{due ? ` · ${due} min dish` : ''}</p>
+              <Minutes value={elapsed} className={`text-body font-bold ${tone.text}`} />
+              <p className={`text-caption font-semibold ${tone.labelText}`}>{tone.label}</p>
             </div>
           )}
           {tab.key === 'ready' && live.length > 0 && (
             <div className="shrink-0 text-right">
-              <Minutes value={waiting} className={`text-[28px] font-bold ${waiting >= 5 ? 'text-warning' : 'text-success'}`} />
-              <p className={`mt-1 text-caption font-semibold ${waiting >= 5 ? 'text-warning' : 'text-success'}`}>{waiting >= 5 ? 'Getting cold' : 'Waiting'}</p>
+              <Minutes value={waiting} className={`text-body font-bold ${waiting >= 5 ? 'text-warning' : 'text-success'}`} />
+              <p className={`text-caption font-semibold ${waiting >= 5 ? 'text-warning' : 'text-success'}`}>{waiting >= 5 ? 'Getting cold' : 'Waiting'}</p>
             </div>
           )}
-          {servedAt && <p className="tabular shrink-0 pt-1 text-small text-ink-500">{away ? 'Handed over' : 'Served'} {clock(servedAt)}</p>}
         </div>
         {making && due > 0 && live.length > 0 && (
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-3" role="presentation">
+          <div className="mt-1.5 h-0.5 overflow-hidden rounded-full bg-surface-3" role="presentation">
             <div className={`h-full rounded-full ${tone.bar} transition-[width] duration-(--duration-slow)`} style={{ width: `${Math.min(100, Math.round((elapsed / due) * 100))}%` }} />
           </div>
         )}
       </header>
 
-      <ul className="flex-1 divide-y divide-line border-t border-line px-2">
+      <ul className="flex-1 divide-y divide-line border-t border-line px-1.5">
         {items.map((item) => {
           const tappable = making && !item.cancelled;
           const Row = tappable ? 'button' : 'div';
@@ -118,23 +122,23 @@ const Ticket = ({ ticket, tab, now, stationName, dimmed, focusKey, onAdvance, on
             <li key={item.order_item_id}>
               <Row
                 {...(tappable ? { type: 'button', onClick: () => onAdvance([item], 'READY', `${title}: ${item.description} ready`), 'aria-label': `Mark ${item.quantity} ${item.description} ready` } : {})}
-                className={`group flex w-full items-start gap-3 px-2 py-2.5 text-left ${tappable ? 'rounded-lg hover:bg-success/5' : ''} ${item.cancelled ? 'bg-danger/5' : ''} ${focused ? 'bg-brand-50' : ''}`}
+                className={`group flex w-full items-start gap-2.5 px-1.5 py-1 text-left ${tappable ? 'rounded-lg hover:bg-success/5' : ''} ${item.cancelled ? 'bg-danger/5' : ''} ${focused ? 'bg-brand-50' : ''}`}
               >
-                {tappable && <span aria-hidden="true" className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 border-line-strong text-transparent group-hover:border-success group-hover:bg-success group-hover:text-white"><Check className="h-4 w-4" /></span>}
-                {tab.key !== 'making' && <span aria-hidden="true" className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-success/10 text-success"><Check className="h-4 w-4" /></span>}
+                {tappable && <span aria-hidden="true" className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 border-line-strong text-transparent group-hover:border-success group-hover:bg-success group-hover:text-white"><Check className="h-3.5 w-3.5" /></span>}
+                {tab.key !== 'making' && !item.cancelled && <span aria-hidden="true" className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-success/10 text-success"><Check className="h-3.5 w-3.5" /></span>}
                 <span className="min-w-0 flex-1">
-                  <span className={`block text-body leading-snug ${item.cancelled ? 'text-danger line-through' : 'text-ink-900'}`}>
-                    <span className="tabular mr-1 inline-block min-w-[1.75rem] rounded bg-ink-900 px-1 text-center text-small font-bold leading-6 text-white">{item.quantity}</span>
-                    <span className="font-medium">{item.description}</span>
+                  <span className={`flex flex-wrap items-baseline gap-x-1.5 text-small leading-snug ${item.cancelled ? 'text-danger line-through' : 'text-ink-900'}`}>
+                    <span className="flex items-baseline gap-1.5"><span className="tabular inline-block min-w-[1.5rem] rounded bg-ink-900 px-1 text-center text-caption font-bold leading-5 text-white">{item.quantity}</span>
+                    <span className="font-medium">{item.description}</span></span>
+                    {item.modifiers?.length > 0 && <span className="text-caption font-semibold text-brand-700">{item.modifiers.map((m) => m.name).join(' · ')}</span>}
                   </span>
-                  {item.combo?.length > 0 && <span className="block text-small text-ink-500">{item.combo.join(' · ')}</span>}
-                  {item.modifiers?.length > 0 && <span className="block text-small font-semibold text-brand-700">{item.modifiers.map((m) => m.name).join(' · ')}</span>}
-                  {item.kitchen_notes && <span className="mt-1 block rounded bg-warning/10 px-1.5 py-0.5 text-small font-semibold text-ink-900">“{item.kitchen_notes}”</span>}
-                  {item.cancelled && <span className="block text-small font-semibold text-danger">Cancelled. Don't make.</span>}
-                  {station && !item.cancelled && <span className="block text-caption text-ink-400">{station}</span>}
+                  {item.combo?.length > 0 && <span className="block text-caption text-ink-500">{item.combo.join(' · ')}</span>}
+                  {item.kitchen_notes && <span className="mt-1 block rounded bg-warning/10 px-1.5 text-caption font-semibold text-ink-900">“{item.kitchen_notes}”</span>}
+                  {item.cancelled && <span className="block text-caption font-semibold text-danger">Cancelled. Don't make.</span>}
                 </span>
+                {item.cancelled && onDismiss && <button type="button" onClick={() => onDismiss(item)} className="shrink-0 rounded-md border border-danger/40 px-2 py-0.5 text-caption font-semibold text-danger hover:bg-danger/10">Got it</button>}
                 {tappable && <LineDue elapsed={minutesSince(item.sent_at, now)} expected={item.expected_minutes} />}
-                {!making && item.prep_minutes != null && <span className="tabular shrink-0 pt-0.5 text-caption text-ink-400">took {item.prep_minutes} min</span>}
+                {!making && item.prep_minutes != null && <span className="tabular shrink-0 pt-0.5 text-caption text-ink-400">took {span(item.prep_minutes)}</span>}
               </Row>
             </li>
           );
@@ -142,12 +146,12 @@ const Ticket = ({ ticket, tab, now, stationName, dimmed, focusKey, onAdvance, on
       </ul>
 
       {tab.next && live.length > 0 && (
-        <footer className="flex gap-2 border-t border-line p-3">
+        <footer className="flex gap-1.5 border-t border-line p-1.5">
           {making
-            ? <Button size="lg" className="flex-1" onClick={() => onAdvance(live, 'READY', `${title} ready`)}><Check aria-hidden="true" className="h-5 w-5" />{live.length > 1 ? 'All ready' : 'Ready'}</Button>
-            : <Button size="lg" className="flex-1 bg-success! hover:bg-success/90!" onClick={() => onAdvance(live, 'SERVED', `${title} ${away ? 'handed over' : 'served'}`)}>{away ? 'Handed over' : 'Served'}</Button>}
-          {tab.back && <Button size="lg" variant="secondary" onClick={() => onAdvance(live, tab.back, `${title} back to the kitchen`)}>Back</Button>}
-          {making && !rush && <Button size="lg" variant="secondary" onClick={() => onRush(ticket)} aria-label={`Rush ${title}`}><Flame aria-hidden="true" className="h-4 w-4 text-danger" />Rush</Button>}
+            ? <Button size="sm" className="flex-1" onClick={() => onAdvance(live, 'READY', `${title} ready`)}><Check aria-hidden="true" className="h-3.5 w-3.5" />{live.length > 1 ? 'All ready' : 'Ready'}</Button>
+            : <Button className="flex-1 bg-success! hover:bg-success/90!" onClick={() => onAdvance(live, 'SERVED', `${title} ${away ? 'handed over' : 'served'}`)}>{away ? 'Handed over' : 'Served'}</Button>}
+          {tab.back && <Button size="sm" variant="secondary" onClick={() => onAdvance(live, tab.back, `${title} back to the kitchen`)}>Back</Button>}
+          {making && !rush && <Button size="sm" variant="secondary" onClick={() => onRush(ticket)} aria-label={`Rush ${title}`}><Flame aria-hidden="true" className="h-4 w-4 text-danger" />Rush</Button>}
         </footer>
       )}
     </article>
@@ -211,7 +215,7 @@ const CookNow = ({ rows, focusKey, onFocus, compact }) => {
   );
 };
 
-const Stat = (props) => <StatCard size="lg" {...props} />;
+const Stat = (props) => <StatCard {...props} />;
 
 /* Stations, which dishes each cooks, and how long a dish should take. */
 const SetupModal = ({ onClose, onSaved }) => {
@@ -318,6 +322,9 @@ const KitchenDisplay = () => {
   const [setup, setSetup] = useState(false);
   const [sound, setSound] = useState(() => getDevicePrefs().kitchenSound);
   const [undo, setUndo] = useState(null);
+  // "Got it" on a cancelled dish hides it on this screen (the server drops it by itself after 15 minutes anyway)
+  const [gone, setGone] = useState(() => { try { return new Set(JSON.parse(localStorage.getItem('flowxp.kitchenGone') || '[]')); } catch { return new Set(); } });
+  const dismiss = (item) => setGone((g) => { const next = new Set(g).add(item.order_item_id); try { localStorage.setItem('flowxp.kitchenGone', JSON.stringify([...next].slice(-200))); } catch { /* private mode */ } return next; });
   const undoTimer = useRef(null);
   const seen = useRef(null);
   const makingHead = useRef(null);
@@ -354,11 +361,12 @@ const KitchenDisplay = () => {
   const stationName = useMemo(() => new Map((data?.stations || []).filter((s) => typeof s.station_id === 'number').map((s) => [s.station_id, s.name])), [data]);
   const inStation = (i) => station === 'all' || (station === 'none' ? i.station_id == null : i.station_id === Number(station));
   // this station's share of every ticket
-  const scoped = useMemo(() => (data ? data.tickets.map((t) => ({ ...t, items: t.items.filter(inStation) })).filter((t) => t.items.length) : []), [data, station]); // eslint-disable-line react-hooks/exhaustive-deps
+  const scoped = useMemo(() => (data ? data.tickets.map((t) => ({ ...t, items: t.items.filter((i) => inStation(i) && !(i.cancelled && gone.has(i.order_item_id))) })).filter((t) => t.items.length) : []), [data, station, gone]); // eslint-disable-line react-hooks/exhaustive-deps
   const has = (t, statuses) => t.items.some((i) => statuses.includes(i.status));
   // Both stages shown together, always — a cook glances at one screen instead of tapping between tabs.
   // "To make" also carries a cancelled-only ticket (nothing left to cook, but the "don't make this" notice still matters).
-  const makingTickets = scoped.filter((t) => t.items.some((i) => i.status === 'PREPARING' || i.cancelled));
+  const makingTickets = scoped.filter((t) => t.items.some((i) => i.status === 'PREPARING' || (i.cancelled && homeOf(t) === 'making')))
+    .sort((a, b) => has(a, ['PREPARING']) === has(b, ['PREPARING']) ? 0 : has(a, ['PREPARING']) ? -1 : 1);   // cancelled-only notices last, so they don't leave a gap mid-grid
   const readyTickets = scoped.filter((t) => has(t, ['READY']));
   const servedTickets = scoped.filter((t) => has(t, ['SERVED']));
 
@@ -425,7 +433,7 @@ const KitchenDisplay = () => {
           <Stat label="To make" value={count.making} note={makingItems.length ? `${makingItems.reduce((n, i) => n + i.quantity, 0)} dishes` : 'All clear'} onClick={() => scrollTo(makingHead)} />
           <Stat label="Late" value={lateTickets} tone={lateTickets ? 'text-danger' : 'text-success'} note={lateTickets ? `${lateTickets === 1 ? 'ticket is' : 'tickets are'} past time` : 'Nothing late'} onClick={() => scrollTo(makingHead)} />
           <Stat label="Oldest ticket" value={<Minutes value={oldest} />} note={makingItems.length ? 'since it was sent' : 'No tickets'} tone={lateTickets ? 'text-danger' : 'text-ink-900'} />
-          <Stat label="Ready, waiting" value={count.ready} tone={longestWait >= 5 ? 'text-warning' : 'text-ink-900'} note={count.ready ? `longest ${longestWait} min` : 'Nothing waiting'} onClick={() => scrollTo(readyHead)} />
+          <Stat label="Ready, waiting" value={count.ready} tone={longestWait >= 5 ? 'text-warning' : 'text-ink-900'} note={count.ready ? `longest ${span(longestWait)}` : 'Nothing waiting'} onClick={() => scrollTo(readyHead)} />
         </div>
       )}
 
@@ -460,17 +468,17 @@ const KitchenDisplay = () => {
             <CookNow rows={cookNow} focusKey={focus} onFocus={setFocusKey} compact />
 
             {/* One screen, not two tabs: a cook sees what to cook and what's waiting to go out at the same glance. */}
-            <div className="grid gap-5 lg:grid-cols-2">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
               <section>
                 <ColumnHeader innerRef={makingHead} label="To make" count={count.making} late={lateTickets} />
                 {makingTickets.length === 0 ? (
                   <EmptyColumn title="Nothing to cook right now" lead="New orders appear here the moment they are sent, with a beep if sound is on." />
                 ) : (
-                  <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
+                  <div className="grid grid-cols-1 items-start gap-3 min-[420px]:grid-cols-2">
                     {makingTickets.map((t) => (
                       <Ticket key={t.order_id} ticket={t} tab={makingTab} now={now} stationName={station === 'all' && stationName.size ? stationName : null}
                               focusKey={focus} dimmed={focus && !t.items.some((i) => i.status === 'PREPARING' && dishKey(i) === focus)}
-                              onAdvance={advance} onRush={rush} />
+                              onAdvance={advance} onRush={rush} onDismiss={dismiss} />
                     ))}
                   </div>
                 )}
@@ -481,10 +489,10 @@ const KitchenDisplay = () => {
                 {readyTickets.length === 0 ? (
                   <EmptyColumn title="Nothing waiting to go out" lead="Dishes you mark ready wait here until they are served or handed over." />
                 ) : (
-                  <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
+                  <div className="grid grid-cols-1 items-start gap-3 min-[420px]:grid-cols-2 lg:grid-cols-1">
                     {readyTickets.map((t) => (
                       <Ticket key={t.order_id} ticket={t} tab={readyTab} now={now} stationName={station === 'all' && stationName.size ? stationName : null}
-                              onAdvance={advance} onRush={rush} />
+                              onAdvance={advance} onRush={rush} onDismiss={dismiss} />
                     ))}
                   </div>
                 )}
@@ -497,7 +505,7 @@ const KitchenDisplay = () => {
                 {servedTickets.length === 0 ? (
                   <EmptyColumn title="Nothing served yet" lead="Tickets served in the last two hours show here." />
                 ) : (
-                  <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
+                  <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]">
                     {servedTickets.map((t) => (
                       <Ticket key={t.order_id} ticket={t} tab={servedTab} now={now} stationName={station === 'all' && stationName.size ? stationName : null}
                               onAdvance={advance} onRush={rush} />

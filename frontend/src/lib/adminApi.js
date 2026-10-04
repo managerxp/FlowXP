@@ -18,19 +18,21 @@ export const setAdminToken = (token) => localStorage.setItem(ADMIN_TOKEN_KEY, to
 export const clearAdminToken = () => localStorage.removeItem(ADMIN_TOKEN_KEY);
 
 export class AdminApiError extends Error {
-  constructor(message, status) {
+  constructor(message, status, payload = {}) {
     super(message);
     this.name = 'AdminApiError';
     this.status = status;
+    this.payload = payload;   // the whole body, e.g. { requires_2fa: true } on a sign-in that still needs its code
   }
 }
 
-export const adminApi = async (path, { method = 'GET', body } = {}) => {
+/** `root` points a call at another part of the API the console also uses (the account's own /api/auth routes). */
+export const adminApi = async (path, { method = 'GET', body, root = '/api/admin' } = {}) => {
   const headers = { 'Content-Type': 'application/json' };
   const token = getAdminToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const response = await fetch(`/api/admin${path}`, {
+  const response = await fetch(`${root}${path}`, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body)
@@ -39,8 +41,9 @@ export const adminApi = async (path, { method = 'GET', body } = {}) => {
   const payload = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    if (response.status === 401) clearAdminToken();
-    throw new AdminApiError(payload.message || 'Something went wrong', response.status);
+    // a 401 on the sign-in itself (a wrong password, or a code still to give) is not an expired session
+    if (response.status === 401 && !payload.requires_2fa && !path.startsWith('/login')) clearAdminToken();
+    throw new AdminApiError(payload.message || 'Something went wrong', response.status, payload);
   }
 
   return payload.data ?? payload;

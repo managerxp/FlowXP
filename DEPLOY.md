@@ -96,6 +96,22 @@ Off until you set a provider. With `MESSAGING_PROVIDER=log` (the default) nothin
 - Set `APP_ORIGIN` to the public https address: the bill link customers receive is built from it.
 - Each business then turns a channel on under Messaging. Test with one bill to your own number first.
 
+## 2c. Sign in with Google (optional)
+
+A second way to sign in for people who already have a FlowXP account. It never creates an account: someone whose Google
+address has no FlowXP account is sent to the free-trial form.
+
+1. Google Cloud Console, a project of your own: **APIs & Services > OAuth consent screen** (External, app name FlowXP,
+   your support email, the `flowxp.in` domain), then **Credentials > Create credentials > OAuth client ID > Web application**.
+2. **Authorised redirect URI**: `https://flowxp.in/api/auth/google/callback` (exactly `APP_ORIGIN` + `/api/auth/google/callback`).
+3. Put the client ID and secret in `backend/.env` as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, restart the API.
+   The "Continue with Google" button appears on the sign-in page by itself; with either blank it is hidden.
+4. Publish the consent screen (from "Testing" to "In production") so people outside your test list can use it.
+
+Rules the code enforces: the Google address must be verified by Google, must match an existing FlowXP account whose own
+email is verified, and a super admin cannot use it (the platform console has its own sign-in). An account with an
+authenticator app still has to enter its code. Every Google sign-in appears in the account's sign-in history as `GOOGLE`.
+
 ## 3. Backups (do this before real customers)
 
 ```bash

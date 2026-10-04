@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { adminApi } from '../lib/adminApi.js';
 import { formatCurrency } from '../lib/api.js';
-import { Card, PageHeader, StatusBadge, Badge, Button, Alert, Field, Input, Select, Table, Thead, Th, Td, Tr, useToast, PageLoader } from '../components/ui.jsx';
+import { Card, PageHeader, StatusBadge, Badge, Button, Alert, Field, Input, Select, Table, Thead, Th, Td, Tr, useToast, useDialog, PageLoader } from '../components/ui.jsx';
 
 const LINK_STATUS_TONE = { PENDING: 'neutral', PAID: 'success', EXPIRED: 'danger', CANCELLED: 'danger' };
 
@@ -493,11 +493,18 @@ const AdminBusinessDetail = () => {
   const [business, setBusiness] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const dialog = useDialog();
 
   const load = () => adminApi(`/businesses/${id}`).then(setBusiness).catch((err) => setError(err.message));
   useEffect(() => { load(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Suspend and Close lock the owner and every member out at once, so they are asked about first.
+  const WARN = {
+    SUSPENDED: { title: 'Suspend this business?', body: 'Nobody in it can bill or change anything until you reactivate it. Their data stays.', confirmLabel: 'Suspend' },
+    CLOSED: { title: 'Close this business?', body: 'It disappears from every member’s account, so they cannot sign in to it. Use this for a business that has left, not to pause one.', confirmLabel: 'Close it' }
+  };
   const setStatus = async (status) => {
+    if (WARN[status] && !(await dialog.confirm({ ...WARN[status], danger: true }))) return;
     setBusy(true);
     try {
       await adminApi(`/businesses/${id}/status`, { method: 'PATCH', body: { status } });

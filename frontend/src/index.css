@@ -213,10 +213,28 @@ main:has(> .final-cta:last-child) + .site-footer { padding-top: 6rem; }
 @media (prefers-reduced-motion: reduce) { .chart-draw, .chart-fade, .chart-arc { animation: none; } }
 
 /* The website chat panel (site/AskFlowXP.jsx) rises from its button. */
+/* A till tile flashes once each time its item is added to the bill (the key on the span restarts it). */
+.tile-added { animation: tile-added 600ms ease-out; }
+@keyframes tile-added { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand-500) 55%, transparent); background-color: color-mix(in srgb, var(--color-brand-500) 22%, transparent); } to { box-shadow: 0 0 0 10px transparent; background-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .tile-added { animation: none; } }
+
 @keyframes ask-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
 .ask-panel { animation: ask-in var(--duration-moderate) var(--ease-decelerate) both; transform-origin: bottom right; }
 /* the chat box shows focus on its frame (focus-within ring), so the textarea inside does not draw a second one */
 .ask-panel textarea:focus-visible { outline: none; }
+/* The Ctrl K search box (components/CommandPalette.jsx): the global focus ring would draw a box inside the dialog and clip at its edge; its row shows focus instead. */
+.palette-input:focus-visible { outline: none; border-radius: 0; }
+/* The QR menu's visit card (public/CustomerMenu.jsx): each earned stamp presses down in turn, the next slot pulses. */
+.stamp-in { animation: stamp-in 460ms cubic-bezier(0.2, 0.9, 0.3, 1.25) both; animation-delay: calc(var(--i, 0) * 140ms + 250ms); }
+@keyframes stamp-in {
+  0% { transform: scale(2.6) rotate(-20deg); opacity: 0; }
+  55% { transform: scale(0.88) rotate(4deg); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+.stamp-next { animation: stamp-next 1.9s ease-out infinite; animation-delay: 600ms; }
+@keyframes stamp-next { 0% { box-shadow: 0 0 0 0 rgb(255 255 255 / 0.55); } 70%, 100% { box-shadow: 0 0 0 8px rgb(255 255 255 / 0); } }
+@media (prefers-reduced-motion: reduce) { .stamp-in, .stamp-next { animation: none; } }
+
 /* The cookie notice (site/CookieNotice.jsx) arrives a moment after the page, so it never competes with the hero. */
 .cookie-notice { animation: ask-in var(--duration-moderate) 900ms var(--ease-decelerate) both; transform-origin: bottom left; }
 @media (prefers-reduced-motion: reduce) { .cookie-notice { animation: none; } }
@@ -237,11 +255,12 @@ main:has(> .final-cta:last-child) + .site-footer { padding-top: 6rem; }
 /* A slim scrollbar for the sidebar and its fade, instead of the browser's wide one. */
 .nav-scroll { scrollbar-width: thin; scrollbar-color: var(--color-line-strong) transparent; }
 
-/* The till's bill panel (BillingPage) on a short screen: explanations that repeat what the screen already shows go,
-   and the method buttons shrink, so the item list keeps room and Charge is always in view. */
-@media (max-height: 780px) {
+/* The till's bill panel (BillingPage) on any ordinary screen (up to 1100px tall, so every laptop and desktop monitor):
+   explanations that repeat what the screen already shows go, and the method buttons sit in one row, so the item list
+   keeps its room and Charge is always in view. Only a very tall display keeps the hints. */
+@media (max-height: 1100px) {
   .pos-hint { display: none; }
-  .pos-method { height: 2.25rem; font-size: 0.8125rem; padding-inline: 0; }
+  .pos-method { height: 2rem; font-size: 0.8125rem; padding-inline: 0; }
   .pos-gap { margin-top: 0.5rem; }
   /* all six payment methods in one row instead of two */
   .pos-methods { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.25rem; }

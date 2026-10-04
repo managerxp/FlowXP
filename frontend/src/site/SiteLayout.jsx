@@ -27,6 +27,16 @@ const NAV = [
   { to: '/about', label: 'About' }
 ];
 
+/* The logo goes home, and when you are already on the home page it scrolls back to the top (a link to the page you are
+   on does nothing by itself). The header's and the footer's logo are both this. */
+const HomeLink = ({ className = '', children }) => {
+  const { pathname } = useLocation();
+  return (
+    <Link to="/" aria-label="FlowXP home" className={className}
+          onClick={() => { if (pathname === '/') window.scrollTo({ top: 0, behavior: 'smooth' }); }}>{children}</Link>
+  );
+};
+
 const Chevron = ({ open }) => (
   <ChevronDown aria-hidden="true" strokeWidth={2} className={`h-3.5 w-3.5 transition-transform duration-(--duration-normal) ${open ? 'rotate-180' : ''}`} />
 );
@@ -162,7 +172,7 @@ const Header = () => {
   return (
     <header className={`sticky top-0 z-50 border-b transition-colors duration-200 ${scrolled || open ? 'border-line bg-page/95 backdrop-blur-sm' : 'border-transparent bg-page'}`}>
       <Container className="flex h-16 items-center justify-between gap-6">
-        <Link to="/" aria-label="FlowXP home" className="shrink-0"><Logo /></Link>
+        <HomeLink className="shrink-0"><Logo /></HomeLink>
 
         <nav aria-label="Main" className="hidden flex-1 items-center gap-0.5 lg:flex">
           <NavLink to="/features" className={({ isActive }) => itemClass(isActive)}>Product</NavLink>
@@ -242,7 +252,7 @@ const Footer = () => (
     <Container className="py-14">
       <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-6">
         <div className="lg:col-span-2">
-          <Logo showTagline />
+          <HomeLink className="inline-block"><Logo showTagline /></HomeLink>
           <p className="mt-5 max-w-xs text-sm leading-relaxed text-ink-500">
             FlowXP is made by ManagerXP, the team behind the counters and back offices of businesses across India.
           </p>

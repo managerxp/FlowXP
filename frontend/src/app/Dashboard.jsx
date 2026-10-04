@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Boxes, ChevronRight, ClipboardList, Clock, IndianRupee, Plus, ReceiptText, ShoppingBasket, Sparkles, Trophy, Wallet
+  BadgeCheck, Boxes, ChevronRight, ClipboardList, Clock, IndianRupee, Plus, ReceiptText, ShoppingBasket, Sparkles, Trophy, Wallet
 } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -52,6 +52,78 @@ export const TodayFigures = ({ m, trend }) => {
   );
 };
 
+/* ── The plan: what they are on, until when, and how many days are left ─── (owners only) */
+
+const PLAN_STATE = {
+  TRIAL: { label: 'Free trial', tone: 'bg-brand-50 text-brand-700' },
+  ACTIVE: { label: 'Active', tone: 'bg-success/10 text-success' },
+  EXPIRED: { label: 'Ended', tone: 'bg-warning/10 text-warning' },
+  CANCELLED: { label: 'Cancelled', tone: 'bg-surface-3 text-ink-700' },
+  SUSPENDED: { label: 'Suspended', tone: 'bg-danger/10 text-danger' }
+};
+const dayMs = 86400000;
+const daysUntil = (value) => (value ? Math.ceil((new Date(value).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / dayMs) : null);
+const dateOf = (value) => new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+export const PlanStrip = () => {
+  const { business } = useAuth();
+  const [sub, setSub] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    api('/businesses/current/subscription').then((d) => { if (!cancelled) setSub(d); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [business?.business_id]);
+  if (!sub) return null;
+
+  const state = PLAN_STATE[sub.status] || { label: sub.status, tone: 'bg-surface-3 text-ink-700' };
+  const trial = sub.status === 'TRIAL';
+  const endsOn = trial ? sub.trial_ends_at : sub.next_billing_date;
+  const left = trial ? (sub.trial_days_remaining ?? daysUntil(endsOn)) : daysUntil(endsOn);
+  const length = trial ? 7 : sub.billing_cycle === 'YEARLY' ? 365 : 30;
+  const pct = left == null ? 0 : Math.max(0, Math.min(100, Math.round((left / length) * 100)));
+  const soon = left != null && left <= (trial ? 2 : 5);
+  const ended = sub.status === 'EXPIRED' || (left != null && left < 0);
+  const cycle = sub.billing_cycle ? sub.billing_cycle.toLowerCase() : null;
+
+  return (
+    <Card className={`flex flex-wrap items-center gap-x-8 gap-y-4 p-4 sm:px-6 ${ended ? 'border-warning/40' : ''}`}>
+      <div className="flex min-w-0 items-center gap-3">
+        <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><BadgeCheck className="h-5 w-5" /></span>
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-2 text-body font-semibold text-ink-900">
+            {sub.plan?.name ?? sub.plan_code} plan
+            <span className={`rounded-full px-2 py-0.5 text-caption font-semibold ${state.tone}`}>{state.label}</span>
+          </p>
+          <p className="text-small text-ink-500">
+            {cycle ? `Billed ${cycle}` : trial ? 'No card on file' : 'Plan details'}
+            {endsOn ? ` · ${trial ? 'trial ends' : 'next payment'} ${dateOf(endsOn)}` : ''}
+          </p>
+        </div>
+      </div>
+
+      <div className="min-w-48 flex-1">
+        {left != null && !ended ? (
+          <>
+            <p className="flex items-baseline gap-1.5">
+              <span className={`tabular text-h3 font-semibold ${soon ? 'text-warning' : 'text-ink-900'}`}>{left}</span>
+              <span className="text-small text-ink-500">{left === 1 ? 'day' : 'days'} left{trial ? ' in your trial' : ' until renewal'}</span>
+            </p>
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-3" role="presentation">
+              <div className={`h-full rounded-full ${soon ? 'bg-warning' : 'bg-brand-500'}`} style={{ width: `${pct}%` }} />
+            </div>
+          </>
+        ) : ended ? (
+          <p className="text-small font-medium text-warning">{trial || sub.status === 'EXPIRED' ? 'Your trial has ended. Your data is safe and readable.' : 'Your renewal date has passed.'}</p>
+        ) : (
+          <p className="text-small text-ink-500">{sub.status === 'ACTIVE' ? 'Renews automatically. No renewal date is set yet.' : 'No end date.'}</p>
+        )}
+      </div>
+
+      <Button to="/app/settings/subscription" variant={ended || soon ? 'primary' : 'secondary'} size="sm">{ended || soon ? 'Renew or upgrade' : 'View plan'}</Button>
+    </Card>
+  );
+};
+
 /* ── The fortnight ───────────────────────────────────────────────────────── */
 
 export const SalesChart = ({ trend }) => {
@@ -60,7 +132,7 @@ export const SalesChart = ({ trend }) => {
   const last = trend.length - 1;
   const points = trend.map((d, i) => ({
     key: d.date, value: d.total, note: `${d.invoice_count} bill${d.invoice_count === 1 ? '' : 's'}`,
-    label: i === last ? 'Today' : weekday(d.date),
+    label: i === last ? 'Today so far' : weekday(d.date),
     axis: i === last ? 'Today' : (last - i) % 3 === 0 ? shortDay(d.date) : ''
   }));
   return (
@@ -75,8 +147,8 @@ export const SalesChart = ({ trend }) => {
           <span className="flex items-center gap-1.5"><span aria-hidden="true" className="w-4 border-t border-dashed border-ink-400" />Average</span>
         </span>
       </div>
-      <div className="mt-10 flex flex-1 flex-col">
-        <AreaChart points={points} format={formatCurrency} caption="Sales for each of the last 14 days" className="flex flex-1 flex-col" height="min-h-56 flex-1" />
+      <div className="mt-8 flex flex-1 flex-col">
+        <AreaChart points={points} format={formatCurrency} caption="Sales for each of the last 14 days" className="flex flex-1 flex-col" height="min-h-56 flex-1" partialLast />
       </div>
     </Card>
   );
@@ -334,6 +406,8 @@ const Dashboard = () => {
           <Button to="/app/billing"><Plus aria-hidden="true" className="h-4 w-4" />New sale</Button>
         </>}
       />
+
+      {business.role === 'OWNER' && <div className="rise" style={{ '--i': 1 }}><PlanStrip /></div>}
 
       {!setup.complete && <div className="rise" style={{ '--i': 1 }}><Setup setup={setup} /></div>}
 

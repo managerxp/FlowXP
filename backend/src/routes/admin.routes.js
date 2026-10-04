@@ -16,12 +16,16 @@ const router = Router();
 const adminLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many attempts. Try again in a few minutes.' }
 });
 
 router.post('/login', adminLoginLimiter, admin.login);
+
+// a generous ceiling for everything else the console does: it is one person clicking, never a crowd
+router.use(rateLimit({ windowMs: 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false, message: { success: false, message: 'Too many requests. Slow down for a minute.' } }));
 
 router.use(requireAuth, requireSuperAdmin);
 

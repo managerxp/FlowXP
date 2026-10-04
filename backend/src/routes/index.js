@@ -13,6 +13,7 @@ import rateLimit from 'express-rate-limit';
 import pool from '../config/database.js';
 import { requireAuth, withBusiness, requireOwner, requirePermission, clearSessionCookie } from '../middleware/auth.js';
 import * as auth from '../controllers/auth.controller.js';
+import * as oauth from '../controllers/oauth.controller.js';
 import * as security from '../controllers/security.controller.js';
 import * as business from '../controllers/business.controller.js';
 import * as dashboard from '../controllers/dashboard.controller.js';
@@ -72,15 +73,19 @@ const router = Router();
  * behind a token, which is its own limit. Blanket-limiting the whole API just
  * throttles the billing screen during a lunch rush.
  */
-const limiter = (max, minutes, message) => rateLimit({
+const limiter = (max, minutes, message, options = {}) => rateLimit({
   windowMs: minutes * 60 * 1000,
   max,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message }
+  message: { success: false, message },
+  ...options
 });
 
-const loginLimiter = limiter(10, 15, 'Too many attempts. Try again in a few minutes.');
+/* Only FAILED attempts count against an address: a restaurant with a dozen staff behind one router signs in every
+   morning, and those successes must not use up the allowance a guesser would. Each account has its own lockout on top
+   (5 wrong passwords, 15 minutes: modules/security.js), so spreading guesses over many emails does not get around it. */
+const loginLimiter = limiter(20, 15, 'Too many attempts. Try again in a few minutes.', { skipSuccessfulRequests: true });
 const signupLimiter = limiter(5, 60, 'Too many accounts created from here. Try again later.');
 const resetLimiter = limiter(5, 60, 'Too many reset requests. Try again later.');
 const contactLimiter = limiter(5, 60, 'Too many messages sent. Try again later.');
@@ -92,6 +97,9 @@ const assistantLimiter = limiter(30, 15, 'Too many questions in a short time. Tr
 router.post('/auth/signup', signupLimiter, auth.signup);
 router.post('/auth/login', loginLimiter, auth.login);
 router.post('/auth/login/2fa', loginLimiter, auth.loginTwoFactor);
+router.get('/auth/oauth/providers', oauth.providers);
+router.get('/auth/google/start', loginLimiter, oauth.googleStart);
+router.get('/auth/google/callback', loginLimiter, oauth.googleCallback);
 router.post('/auth/verify-email', loginLimiter, auth.verifyEmailOtp);
 router.post('/auth/resend-email-otp', loginLimiter, auth.resendEmailOtp);
 router.post('/auth/forgot-password', resetLimiter, auth.forgotPassword);

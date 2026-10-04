@@ -60,7 +60,7 @@ export const subscriptionSummary = (business, now = new Date()) => {
     // combined — see effectiveFeatureFlags(); present whenever the caller's query joined
     // plan_versions/business_type_features/business_feature_overrides (all LEFT JOINs, so a
     // missing side just means {} -> everything on from that side)
-    feature_flags: effectiveFeatureFlags([business.feature_flags, business.business_type_feature_flags], business.feature_overrides)
+    feature_flags: effectiveFeatureFlags([business.feature_flags, business.business_type_feature_flags], business.feature_overrides, business.business_type)
   };
 };
 

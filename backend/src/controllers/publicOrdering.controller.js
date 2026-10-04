@@ -30,7 +30,7 @@ import { effectiveFeatureFlags, hasPlanFeature } from '../modules/planFeatures.j
 const resolveTable = async (client, token) => {
   const { rows } = await client.query(
     `SELECT t.table_id, t.branch_id, t.name AS table_name, t.status AS table_status, t.business_id,
-            b.name AS business_name, b.currency, b.status AS business_status, b.upi_vpa,
+            b.name AS business_name, b.business_type, b.currency, b.status AS business_status, b.upi_vpa,
             b.receipt_settings->>'logo_url' AS logo_url, COALESCE(br.address, b.address) AS address, COALESCE(br.city, b.city) AS city,
             COALESCE(br.phone, b.phone) AS phone, br.name AS outlet_name,
             COALESCE(p.feature_flags, '{}'::jsonb) AS plan_feature_flags,
@@ -54,7 +54,7 @@ const resolveTable = async (client, token) => {
 /* Same "not available right now" the customer sees for a closed table or a suspended
    business — QR ordering being off for this plan is not something to explain to a diner. */
 const unavailable = (table) => !table || table.table_status === 'CLOSED' || table.business_status !== 'ACTIVE'
-  || !hasPlanFeature({ planFeatures: effectiveFeatureFlags([table.plan_feature_flags, table.type_feature_flags], table.feature_overrides) }, 'qr_ordering');
+  || !hasPlanFeature({ planFeatures: effectiveFeatureFlags([table.plan_feature_flags, table.type_feature_flags], table.feature_overrides, table.business_type) }, 'qr_ordering');
 
 /* ==========================================================================
    GET /api/public/menu/:token

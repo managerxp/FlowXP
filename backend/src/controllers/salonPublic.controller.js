@@ -31,7 +31,7 @@ const resolve = async (slug) => {
      WHERE lower(s.online_booking_slug) = lower($1)`, [String(slug || '').slice(0, 40)]);
   const row = rows[0];
   if (!row || !row.online_booking_enabled || row.status !== 'ACTIVE' || row.business_type !== 'SALON') return null;
-  const flags = effectiveFeatureFlags([row.plan_feature_flags, row.type_feature_flags], row.feature_overrides);
+  const flags = effectiveFeatureFlags([row.plan_feature_flags, row.type_feature_flags], row.feature_overrides, row.business_type);
   if (!hasPlanFeature({ planFeatures: flags }, 'salon_appointments')) return null;
   return { ...row, flags };
 };

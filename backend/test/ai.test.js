@@ -178,6 +178,17 @@ test('an oversized tool result is cut down before it goes to the model', { skip 
   assert.ok(provider.seen[1].messages.at(-1).content[0].content.length <= 12100);
 });
 
+test('a figure in the answer that no tool returned gets a "check it" note; a backed one does not', { skip }, async () => {
+  setProvider(scripted(use('sales_summary', { from: FROM }), say('Net sales were ₹1,800 across 3 bills.')));
+  const backed = await ask({ tenant: tenantFor('OWNER', owner), question: 'sales?' });
+  assert.doesNotMatch(backed.answer, /could not match/);
+
+  setProvider(scripted(use('sales_summary', { from: FROM }), say('Net sales were ₹9,40,000 across 3 bills.')));
+  const invented = await ask({ tenant: tenantFor('OWNER', owner), question: 'sales?' });
+  assert.match(invented.answer, /^Net sales were ₹9,40,000/);
+  assert.match(invented.answer, /could not match every ₹ figure/);
+});
+
 /* ── endpoints ──────────────────────────────────────────────────────────── */
 
 const call = async (fn, role, userId, extra = {}) => { const res = fakeRes(); await fn(reqFor(role, userId, extra), res); return res; };

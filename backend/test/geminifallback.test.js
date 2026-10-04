@@ -38,7 +38,10 @@ test('a model with no quota on this plan (limit 0) falls back, but an ordinary r
   assert.equal((await ask()).model, 'good-default');
   assert.deepEqual(asked, ['typo-pro', 'good-default']);
 
-  asked = script({ 'typo-pro': err(429, 'Quota exceeded ... limit: 15, model: typo-pro') });
+  asked = script({ 'typo-pro': err(429, 'Quota exceeded ... limit: 20, model: typo-pro. Please retry in 18h7m1.9s.') });
+  assert.equal((await ask()).model, 'good-default', 'a spent daily cap falls back too');
+
+  asked = script({ 'typo-pro': err(429, 'Quota exceeded ... limit: 15, model: typo-pro. Please retry in 21s.') });
   await assert.rejects(ask(), /busy/);
   assert.deepEqual(asked, ['typo-pro']);   // a real rate limit is just "busy": no switching models
 });

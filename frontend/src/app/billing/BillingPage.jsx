@@ -60,8 +60,9 @@ const ProductTile = ({ product, inCart, onAdd, highlight = false }) => {
       onClick={() => onAdd(product)}
       disabled={off}
       aria-current={highlight || undefined}
-      className={`relative flex min-h-[88px] flex-col justify-between rounded-(--radius-card) border bg-surface p-3 text-left transition-[border-color,transform] duration-(--duration-fast) hover:border-brand-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-line ${highlight ? 'border-brand-500 ring-2 ring-brand-500/40' : 'border-line'}`}
+      className={`relative flex min-h-[88px] flex-col justify-between rounded-(--radius-card) border bg-surface p-3 text-left transition-[border-color,transform] duration-(--duration-fast) hover:border-brand-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-line ${highlight ? 'border-brand-500 ring-2 ring-brand-500/40' : inCart > 0 ? 'border-brand-500 bg-brand-500/10' : 'border-line'}`}
     >
+      {inCart > 0 && <span key={inCart} aria-hidden="true" className="tile-added pointer-events-none absolute inset-0 rounded-(--radius-card)" />}
       {inCart > 0 && (
         <span className="tabular absolute right-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[11px] font-semibold text-white">
           {inCart}<span className="sr-only"> in the bill</span>
@@ -878,16 +879,16 @@ const BillingPage = () => {
 
       {/* ── Right: the bill ── */}
       <section id="bill" aria-label="Current bill" className="flex min-h-0 min-w-0 scroll-mt-16 flex-col border-t border-line bg-surface pb-20 lg:border-l lg:border-t-0 lg:pb-0">
-        <div className="border-b border-line px-5 py-3">
+        <div className="border-b border-line px-4 py-2">
           {/* What is being billed: a new counter sale, or an order already open on a table, takeaway or delivery. */}
           {restaurant && (
-            <div role="group" aria-label="What are you billing?" className="mb-3 grid grid-cols-2 gap-1 rounded-lg bg-surface-2 p-1">
+            <div role="group" aria-label="What are you billing?" className="mb-2 grid grid-cols-2 gap-0.5 rounded-lg bg-surface-2 p-0.5">
               {[
                 { key: 'counter', active: !orderMode, label: 'Counter sale', onClick: () => { if (orderMode) resetSale(); } },
                 { key: 'order', active: orderMode, label: 'Open order', count: openOrders.length, onClick: () => { loadOpenOrders(); setOrdersOpen(true); } }
               ].map((s) => (
                 <button key={s.key} type="button" aria-pressed={s.active} onClick={s.onClick}
-                        className={`flex min-h-9 items-center justify-center gap-1.5 rounded-md px-2 text-small font-medium transition-colors duration-(--duration-fast) pointer-coarse:min-h-11 ${s.active ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-900'}`}>
+                        className={`flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 text-caption font-semibold transition-colors duration-(--duration-fast) pointer-coarse:min-h-11 ${s.active ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-900'}`}>
                   {s.label}
                   {s.count > 0 && <span className="tabular rounded-full bg-ink-900 px-1.5 text-[11px] font-semibold text-white">{s.count}</span>}
                 </button>
@@ -953,10 +954,10 @@ const BillingPage = () => {
               <button type="button" onClick={() => setCustomerOpen(false)} className="text-small text-ink-500 hover:text-ink-900 pointer-coarse:min-h-11">Keep as walk-in</button>
             </div>
           ) : (
-            <button type="button" onClick={() => setCustomerOpen(true)} className="flex min-h-9 w-full items-center gap-3 text-left pointer-coarse:min-h-11">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-ink-500"><UserRound aria-hidden="true" className="h-4 w-4" /></span>
-              <span className="flex-1 text-small text-ink-700">Walk-in customer</span>
-              <span className="text-small font-medium text-brand-600">Add customer</span>
+            <button type="button" onClick={() => setCustomerOpen(true)} className="flex min-h-8 w-full items-center gap-2.5 text-left pointer-coarse:min-h-11">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-2 text-ink-500"><UserRound aria-hidden="true" className="h-3.5 w-3.5" /></span>
+              <span className="flex-1 text-caption text-ink-700">Walk-in customer</span>
+              <span className="text-caption font-semibold text-brand-600">Add customer</span>
             </button>
           )}
         </div>
@@ -969,7 +970,7 @@ const BillingPage = () => {
         )}
 
         {/* Lines */}
-        <div className="min-h-[120px] flex-1 overflow-y-auto px-5">
+        <div className="min-h-[96px] flex-1 overflow-y-auto px-4">
           {orderMode ? (
             orderLines.length === 0 ? (
               <p className="py-10 text-center text-small text-ink-500">{order ? 'Nothing left to bill on this order. Tap items to add them.' : 'Loading…'}</p>
@@ -977,8 +978,8 @@ const BillingPage = () => {
               <ul className="divide-y divide-line">{orderLines.map((l) => <OrderBillLine key={l.key} line={l} onQty={setOrderQty} />)}</ul>
             )
           ) : cart.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center py-10 text-center">
-              <p className="text-small font-medium text-ink-700">No items yet</p>
+            <div className="flex h-full flex-col items-center justify-center py-6 text-center">
+              <p className="text-caption font-semibold text-ink-700">No items yet</p>
               <p className="mt-1 text-caption text-ink-500">Tap an item or scan a barcode to start the bill.</p>
             </div>
           ) : (
@@ -989,7 +990,7 @@ const BillingPage = () => {
         </div>
 
         {/* Totals and payment */}
-        <div className="border-t border-line px-5 pt-3 lg:max-h-[66vh] lg:overflow-y-auto">
+        <div className="border-t border-line px-4 pt-2 lg:max-h-[66vh] lg:overflow-y-auto">
           <Alert>{error}</Alert>
 
           <div className={error ? 'mt-3' : ''}>
@@ -1008,20 +1009,20 @@ const BillingPage = () => {
                 </div>
               </div>
             ) : (
-              <button type="button" onClick={() => setExtrasOpen(true)} className="mb-1 inline-flex min-h-8 items-center text-small font-medium text-brand-600 hover:text-brand-700 pointer-coarse:min-h-11">+ Discount, coupon or note</button>
+              <button type="button" onClick={() => setExtrasOpen(true)} className="inline-flex min-h-7 items-center text-caption font-semibold text-brand-600 hover:text-brand-700 pointer-coarse:min-h-11">+ Discount, coupon or note</button>
             )}
           </div>
 
-          <dl className="tabular space-y-1 text-small">
+          <dl className="tabular space-y-0.5 text-caption">
             <div className="flex justify-between text-ink-500"><dt>Subtotal</dt><dd>{formatCurrency(totals.subtotal)}</dd></div>
             {totals.gstEnabled && <div className="flex justify-between text-ink-500"><dt>GST (estimate)</dt><dd>{formatCurrency(totals.tax)}</dd></div>}
             {totals.discount > 0 && <div className="flex justify-between text-ink-500"><dt>Discount</dt><dd>−{formatCurrency(totals.discount)}</dd></div>}
             {totals.coupon > 0 && <div className="flex justify-between text-success"><dt>Coupon {couponInfo.code}</dt><dd>−{formatCurrency(totals.coupon)}</dd></div>}
             {totals.pointsOff > 0 && <div className="flex justify-between text-success"><dt>Points ({redeem})</dt><dd>−{formatCurrency(totals.pointsOff)}</dd></div>}
             {totals.rewardOff > 0 && <div className="flex justify-between text-success"><dt>Free {card.reward_item} (loyalty)</dt><dd>−{formatCurrency(totals.rewardOff)}</dd></div>}
-            <div className="flex items-baseline justify-between pt-1.5">
-              <dt className="text-body font-semibold text-ink-900">Total</dt>
-              <dd className="text-[28px] font-semibold leading-none tracking-tight text-ink-900">{formatCurrency(totals.total)}</dd>
+            <div className="flex items-baseline justify-between pt-1">
+              <dt className="text-small font-semibold text-ink-900">Total</dt>
+              <dd className="text-[22px] font-semibold leading-none tracking-tight text-ink-900">{formatCurrency(totals.total)}</dd>
             </div>
           </dl>
 
@@ -1065,10 +1066,10 @@ const BillingPage = () => {
             </div>
           ) : (
           <>
-          <div role="radiogroup" aria-label="How is it paid?" className="pos-gap pos-methods mt-3 grid grid-cols-3 gap-1.5">
+          <div role="radiogroup" aria-label="How is it paid?" className="pos-gap pos-methods mt-2 grid grid-cols-3 gap-1">
             {METHODS.map(([value, label]) => (
               <button key={value} type="button" role="radio" aria-checked={method === value} onClick={() => { setMethod(value); setReceived(''); }}
-                      className={`pos-method h-10 rounded-lg border text-small font-medium transition-colors duration-(--duration-fast) pointer-coarse:h-11 ${method === value ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>
+                      className={`pos-method h-8 rounded-lg border text-caption font-semibold transition-colors duration-(--duration-fast) pointer-coarse:h-11 ${method === value ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>
                 {label}
               </button>
             ))}
@@ -1106,17 +1107,17 @@ const BillingPage = () => {
                 : <>To show a UPI QR for each bill, add your UPI ID in <Link to="/app/settings/business" className="font-medium text-brand-700 hover:underline">Business settings</Link>.</>}
             </p>
           )}
-          <button type="button" onClick={startSplit} disabled={!billLines.length} className="mt-1 flex min-h-8 items-center gap-1.5 text-small font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50 pointer-coarse:min-h-11">
+          <button type="button" onClick={startSplit} disabled={!billLines.length} className="mt-0.5 flex min-h-7 items-center gap-1.5 text-caption font-semibold text-brand-600 hover:text-brand-700 disabled:opacity-50 pointer-coarse:min-h-11">
             <Split aria-hidden="true" className="h-3.5 w-3.5" />Split between payment methods
           </button>
           </>
           )}
 
           {restaurant && (!orderMode || orderLines.some((l) => l.pending)) && (
-            <label className="pos-gap mt-3 flex items-start gap-2.5 rounded-lg border border-line px-3 py-2">
-              <input type="checkbox" checked={toKitchen} onChange={(e) => { setToKitchen(e.target.checked); setDevicePref('posSendToKitchen', e.target.checked); }} className="mt-0.5 h-4 w-4 accent-[var(--color-brand-500)] pointer-coarse:h-5 pointer-coarse:w-5" />
+            <label className="pos-gap mt-2 flex items-start gap-2 rounded-lg border border-line px-2.5 py-1.5">
+              <input type="checkbox" checked={toKitchen} onChange={(e) => { setToKitchen(e.target.checked); setDevicePref('posSendToKitchen', e.target.checked); }} className="mt-0.5 h-3.5 w-3.5 accent-[var(--color-brand-500)] pointer-coarse:h-5 pointer-coarse:w-5" />
               <span className="min-w-0">
-                <span className="flex items-center gap-1.5 text-small font-medium text-ink-900"><ChefHat aria-hidden="true" className="h-4 w-4 text-ink-500" />Send to the kitchen</span>
+                <span className="flex items-center gap-1.5 text-caption font-semibold text-ink-900"><ChefHat aria-hidden="true" className="h-3.5 w-3.5 text-ink-500" />Send to the kitchen</span>
                 <span className="pos-hint block text-caption text-ink-500">
                   {orderMode ? `The ${orderLines.filter((l) => l.pending).length} items not sent yet go to the kitchen, then the order is billed.`
                     : toKitchen ? 'The kitchen screen gets a ticket when you charge, with an order number to call out.' : 'Off: nothing goes to the kitchen (for drinks or packed items served at the counter).'}
@@ -1125,7 +1126,7 @@ const BillingPage = () => {
             </label>
           )}
 
-          <div className="-mx-5 bg-surface px-5 pb-3 pt-3 lg:sticky lg:bottom-0 lg:z-10 lg:pt-2"><Button onClick={charge} disabled={busy || !billLines.length} size="lg" className="h-12 w-full text-body">{chargeLabel}</Button></div>
+          <div className="-mx-4 bg-surface px-4 pb-2 pt-2 lg:sticky lg:bottom-0 lg:z-10"><Button onClick={charge} disabled={busy || !billLines.length} className="h-10 w-full text-small">{chargeLabel}</Button></div>
           {collecting && (
             <UpiCollect invoice={collecting.invoice} amount={collecting.amount} vpa={business.upi_vpa} payee={business.name}
                         onPaid={finishUpi} onLater={() => finishUpi(collecting.invoice)} />

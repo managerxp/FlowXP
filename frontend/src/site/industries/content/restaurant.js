@@ -57,13 +57,13 @@ export default {
     {
       id: 'reservations', title: 'Reservations and the walk-in waitlist',
       body: 'Take bookings by phone, and keep a waitlist for walk-ins with a wait you can quote.',
-      points: ['Bookings by time, party size and table, with clashes stopped for you', 'Seat, change, cancel or mark a no-show', 'A waitlist with a quoted wait, and a Table ready message', 'The floor shows the next booking on a table', 'Booking confirmations by WhatsApp or SMS, once messaging is connected'],
+      points: ['Bookings by time, party size and table, with clashes stopped for you', 'Seat, change, cancel or mark a no-show', 'A waitlist with a quoted wait, and a Table ready message', 'The floor shows the next booking on a table', 'Booking confirmations by WhatsApp or SMS: coming soon'],
       shots: [{ src: p('restaurant-reservations'), alt: 'FlowXP reservations with tonight’s bookings by time and a waitlist of walk-in parties.' }]
     },
     {
       id: 'regulars', title: 'Bring regulars back, and hear from them',
       body: 'A visit card, points, coupons and a rating after every bill, so you know who your regulars are and how they felt.',
-      points: ['A visit card: every Nth visit earns a free item, shown on the QR menu and at the till', 'Points and tiers, with a ledger for each customer', 'Coupons and offer codes', 'Every customer’s bills, visits and what they owe', 'A star rating and comment after the bill; happy ratings can go to your Google page, unhappy ones stay private', 'Flow AI can draft a reply to a review for you to edit', 'Bill links and offers by WhatsApp or SMS, for customers who have not opted out'],
+      points: ['A visit card: every Nth visit earns a free item, shown on the QR menu and at the till', 'Points and tiers, with a ledger for each customer', 'Coupons and offer codes', 'Every customer’s bills, visits and what they owe', 'A star rating and comment after the bill; happy ratings can go to your Google page, unhappy ones stay private', 'Flow AI can draft a reply to a review for you to edit', 'Bill links and offers by WhatsApp or SMS: coming soon, and customers will be able to opt out'],
       shots: [{ src: p('restaurant-loyalty'), alt: 'FlowXP loyalty setup with a visit card that gives a free dish on every 7th visit.' }, { src: p('restaurant-reviews'), alt: 'FlowXP reviews with star ratings, comments and a box to reply.' }]
     },
     {
@@ -102,7 +102,7 @@ export default {
     { group: 'Floor and kitchen', items: ['Table map and open tabs', 'Merge, split, move and transfer', 'QR ordering at the table', 'Waiter on every order', 'Kitchen display by station', 'Timers, rush, late flags', 'Ready to serve and handed over', 'Printed kitchen tickets', 'Kitchen performance report', 'Reservations and waitlist'] },
     { group: 'Menu and stock', items: ['Menu with veg and non-veg marks', 'Menu from a photo', 'Recipes and food cost', 'Per-outlet prices', 'Stock for each outlet', 'Reorder levels and alerts', 'Wastage log with reasons', 'Stock counts', 'Transfers and stock requests between outlets'] },
     { group: 'Buying', items: ['Suppliers and price lists', 'Purchase orders', 'Drafts from the forecast', 'Part receiving and back-orders', 'Debit notes', 'Supplier balances and payments'] },
-    { group: 'Guests', items: ['Visit card', 'Points and tiers', 'Coupons', 'Customer history', 'Ratings after the bill', 'Review replies drafted by Flow AI', 'WhatsApp and SMS messages', 'Opt-out respected'] },
+    { group: 'Guests', items: ['Visit card', 'Points and tiers', 'Coupons', 'Customer history', 'Ratings after the bill', 'Review replies drafted by Flow AI', 'WhatsApp and SMS messages (coming soon)', 'Opt-out respected'] },
     { group: 'Money and tax', items: ['Profitability by outlet', 'Revenue leakage checks', 'Expenses', 'Sales, purchase and stock reports', 'CSV export of every report', 'GST invoices and credit notes', 'GSTR-1 file, GSTR-3B figures', 'E-invoice and e-way bill files'] },
     { group: 'Team and control', items: ['Several outlets under one login', 'Roles and per-person permissions', 'Activity log', 'Two-step login', 'Sign-in history and new-device alerts', 'Install on a phone or tablet'] }
   ],

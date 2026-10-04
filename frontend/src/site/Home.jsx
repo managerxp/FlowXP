@@ -98,7 +98,7 @@ const CAPABILITIES = [
   ['Payments', 'Cash, UPI, card, credit, split'],
   ['Stock', 'Updates itself with every sale'],
   ['GST', 'Returns ready for your accountant'],
-  ['Customers', 'Dues, history, loyalty, WhatsApp'],
+  ['Customers', 'Dues, history, loyalty'],
   ['AI insights', 'What to check and what to do next']
 ];
 
@@ -141,7 +141,7 @@ const OneBill = () => (
       <div className="grid items-center lg:grid-cols-[1fr_auto_1fr_auto_1fr]">
         <div className="space-y-3">
           <Node title="At the counter" body="Scan a barcode or search, and bill in seconds." />
-          <Node title="On the phone or WhatsApp" body="Take the order and send the bill as a link." />
+          <Node title="On the phone" body="Take the order and send the bill as a link." />
           <Node title="At the table or by QR" body="For restaurants and cafés, orders go straight to the kitchen." />
         </div>
         <Connector />
@@ -181,7 +181,7 @@ const BUSINESSES = [
     key: 'services', label: 'Salons and services',
     title: 'For salons, clinics and service businesses',
     body: 'Bill services and products on one GST invoice, remember your regulars, and bring them back with offers.',
-    points: ['Services and products on the same bill', 'Customer history and visit counts', 'Loyalty points, coupons and WhatsApp offers', 'Staff logins with the right permissions', 'Appointments and staff scheduling: coming soon'],
+    points: ['Services and products on the same bill', 'Customer history and visit counts', 'Loyalty points and coupons', 'Staff logins with the right permissions', 'Appointments and staff scheduling: coming soon'],
     src: '/product/pos-main.webp', alt: 'FlowXP billing screen with items, quantities, GST and a Charge button.'
   },
   {
@@ -300,10 +300,6 @@ const Insights = () => (
             </Reveal>
           ))}
         </ul>
-        <Reveal className="mt-6">
-          <Shot src="/product/leakage-main.webp"
-                alt="FlowXP leakage report: ₹28,290 of cancellations, discounts and refunds that differ from normal, with a suggested next step." />
-        </Reveal>
       </div>
     </div>
   </Section>
@@ -344,7 +340,7 @@ const Outlets = () => (
 
 const STEPS = [
   ['Set up', 'Add your business, GST number and products. Import a list or add them as you go.'],
-  ['Bill', 'Scan or search, take cash, UPI or card, and print or WhatsApp the GST bill.'],
+  ['Bill', 'Scan or search, take cash, UPI or card, and print or share the GST bill as a link.'],
   ['Stock moves', 'Every sale and purchase updates stock. Low items show up before they run out.'],
   ['GST is ready', 'At month end, download the GSTR-1 file and GSTR-3B figures for your accountant.'],
   ['Decide', 'Each day, FlowXP shows what changed and what needs doing. You make the call.']
@@ -478,7 +474,7 @@ const BeforeAfter = () => (
    bigger ideas get a bigger cell. */
 const WORKS_WITH = [
   { title: 'Zomato and Swiggy', body: 'Online orders arrive straight into the kitchen and the day\'s bills, no re-typing.', soon: true, big: true },
-  { title: 'WhatsApp and SMS', body: 'Bills, payment reminders and offers go out the way your customers already read you.', big: true },
+  { title: 'WhatsApp and SMS', body: 'Bills, payment reminders and offers go out the way your customers already read you.', soon: true, big: true },
   { title: 'UPI, cards and cash', body: 'Split one bill across several payments.' },
   { title: 'GST portal', body: 'GSTR-1, e-invoice and e-way bill files, ready to upload.' },
   { title: 'Works offline', body: 'Keep billing when the internet drops.' },

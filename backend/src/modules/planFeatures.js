@@ -25,6 +25,8 @@ export const PLAN_FEATURES = [
   ['reviews', 'Customer feedback & reviews', 'Post-bill star ratings, private feedback, AI reply drafts and a Google review prompt'],
   ['multi_brand', 'Multiple brands', 'Run several virtual brands from one kitchen — a brand tag on menu items and orders'],
   ['delivery_fleet', 'Delivery riders', 'Assign your own delivery staff to orders and track pickup, out-for-delivery and delivered'],
+  ['tables', 'Tables & floor', 'The floor plan, table status and dine-in orders by table'],
+  ['kitchen', 'Kitchen display', 'The kitchen screen: tickets by station, timing and the order board'],
   // Salon module. Each is its own switch so a plan (or a paid add-on) can include, say, appointments
   // without memberships. Missing key = on, like every feature above.
   ['salon_appointments', 'Appointments', 'Calendar, staff availability, walk-ins and double-booking protection'],
@@ -66,12 +68,44 @@ export const hasPlanFeature = (tenant, feature) => tenant?.planFeatures?.[featur
  * Missing everywhere = on, so a plan, business type or business nobody has
  * touched here keeps working exactly as it did before each axis existed.
  */
-export const effectiveFeatureFlags = (sources, overrides) => {
+/*
+ * Which features each kind of business has no use for. This is the starting point per industry, so a salon is not
+ * offered Reservations or QR table ordering, a pharmacy is not offered the kitchen display, and so on, without an admin
+ * having to switch each one off by hand for every business type and plan.
+ *
+ * It is a default, not a lock: the business-type switch for that (type, plan) in the admin console can turn any of
+ * these back ON with an explicit `true`, and a per-business override still wins over everything. Types not listed
+ * (OTHER) have no defaults, so everything stays on for them.
+ */
+const SALON_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('salon_'));
+const WHOLESALE_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('wholesale_'));
+const NOT_FOOD = ['reservations', 'integrations', 'qr_ordering', 'multi_brand', 'delivery_fleet', 'tables', 'kitchen'];
+const SHOP_OFF = [...NOT_FOOD, ...SALON_KEYS, 'wholesale_orders', 'wholesale_fulfilment', 'wholesale_pricing'];
+const FOOD_OFF = [...SALON_KEYS, ...WHOLESALE_KEYS];
+export const INDUSTRY_OFF = {
+  RESTAURANT: FOOD_OFF, CAFE: FOOD_OFF, GAMING_CAFE: FOOD_OFF, RACING: FOOD_OFF,
+  CLOUD_KITCHEN: [...FOOD_OFF, 'reservations', 'qr_ordering', 'tables'],           // no dining room
+  SALON: [...NOT_FOOD, ...WHOLESALE_KEYS],                                          // appointments, not table bookings
+  RETAIL: SHOP_OFF, SUPERMARKET: SHOP_OFF, PHARMACY: SHOP_OFF,                      // these keep batches and expiry
+  ELECTRONICS: [...SHOP_OFF, 'wholesale_batches'], CLOTHING: [...SHOP_OFF, 'wholesale_batches'], SERVICES: [...SHOP_OFF, 'wholesale_batches'],
+  WHOLESALE: [...NOT_FOOD, ...SALON_KEYS, 'loyalty'], DISTRIBUTOR: [...NOT_FOOD, ...SALON_KEYS, 'loyalty']
+};
+
+/** What the industry's own defaults say for this business type, in the same shape as a feature_flags object: { key: false }. */
+export const industryDefaults = (businessType) => Object.fromEntries((INDUSTRY_OFF[String(businessType || '').toUpperCase()] || []).map((key) => [key, false]));
+
+/**
+ * `sources` is [plan flags, business-type flags for this plan]; `businessType` adds that industry's defaults, which
+ * the business-type flags can turn back on with an explicit `true`.
+ */
+export const effectiveFeatureFlags = (sources, overrides, businessType) => {
   overrides ??= {};
+  const typeFlags = sources?.[1] || {};
+  const off = new Set(Object.keys(industryDefaults(businessType)).filter((key) => typeFlags[key] !== true));
   const merged = {};
   for (const key of PLAN_FEATURE_KEYS) {
     if (overrides[key] === true) continue;   // forced on — skip the off-check below entirely
-    if (overrides[key] === false || sources.some((flags) => flags?.[key] === false)) merged[key] = false;
+    if (overrides[key] === false || off.has(key) || sources.some((flags) => flags?.[key] === false)) merged[key] = false;
   }
   return merged;
 };

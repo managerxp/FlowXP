@@ -22,7 +22,12 @@ const admin = await import('../src/controllers/admin.controller.js');
 const mw = await import('../src/middleware/auth.js');
 const publicOrdering = await import('../src/controllers/publicOrdering.controller.js');
 const integrations = await import('../src/controllers/integrations.controller.js');
-const { PLAN_FEATURE_KEYS, hasPlanFeature } = await import('../src/modules/planFeatures.js');
+const { PLAN_FEATURE_KEYS, hasPlanFeature, industryDefaults } = await import('../src/modules/planFeatures.js');
+// Every test business here is a RESTAURANT, which starts with the salon and wholesale features off (industry defaults);
+// these tests are about the PLAN's flags, so they look past that.
+const RESTAURANT_OFF = industryDefaults('RESTAURANT');
+const planOnly = (flags) => Object.fromEntries(Object.entries(flags).filter(([key]) => !(key in RESTAURANT_OFF)));
+const APPLIES = PLAN_FEATURE_KEYS.filter((key) => !(key in RESTAURANT_OFF));
 
 test.after(cleanup);
 
@@ -78,22 +83,23 @@ test('setup', { skip }, async () => {
 
 test('withBusiness attaches each plan\'s real feature flags to req.tenant', { skip }, async () => {
   const starter = await tenantFor('starter-owner@planfeat.test');
-  assert.deepEqual(starter.planFeatures, {
+  assert.deepEqual(planOnly(starter.planFeatures), {
     loyalty: false, messaging: false, reservations: false, purchases: false, expenses: false, ai: false, advanced_reports: false
   });
 
   const growth = await tenantFor('growth-owner@planfeat.test');
-  assert.deepEqual(growth.planFeatures, { loyalty: false, messaging: false, reservations: false, advanced_reports: false });
+  assert.deepEqual(planOnly(growth.planFeatures), { loyalty: false, messaging: false, reservations: false, advanced_reports: false });
   // Growth's marketing copy explicitly includes these — must not have been switched off.
   assert.equal(growth.planFeatures.purchases, undefined);
   assert.equal(growth.planFeatures.expenses, undefined);
   assert.equal(growth.planFeatures.ai, undefined);
 
   const business = await tenantFor('business-owner@planfeat.test');
-  assert.deepEqual(business.planFeatures, {});
+  assert.deepEqual(planOnly(business.planFeatures), {});
+  for (const key of Object.keys(RESTAURANT_OFF)) assert.equal(business.planFeatures[key], false, `a restaurant starts with ${key} off`);
 
   const trial = await tenantFor('trial-owner@planfeat.test');
-  assert.deepEqual(trial.planFeatures, {}, 'trial must ship with every feature on');
+  assert.deepEqual(planOnly(trial.planFeatures), {}, 'trial must ship with every feature on (that applies to a restaurant)');
 });
 
 // integrations and qr_ordering were added after Starter/Growth were seeded and were deliberately
@@ -115,7 +121,7 @@ test('requirePlanFeature refuses a plan without the feature, with a 402 an owner
   }
 
   const business = await tenantFor('business-owner@planfeat.test');
-  for (const key of PLAN_FEATURE_KEYS) {
+  for (const key of APPLIES) {
     const { next } = await runsThrough(mw.requirePlanFeature(key), business);
     assert.ok(next, `BUSINESS should have ${key}`);
   }
@@ -249,7 +255,7 @@ test('the business-type catalog lists every type crossed with every public plan,
   await admin.listBusinessTypeFeatures({}, res);
   const restaurantRows = res.body.data.filter((t) => t.business_type === 'RESTAURANT');
   assert.deepEqual(restaurantRows.map((r) => r.plan_code).sort(), ['ENTERPRISE', 'GROWTH', 'STARTER']);
-  assert.ok(restaurantRows.every((r) => Object.keys(r.feature_flags).length === 0));
+  assert.ok(restaurantRows.every((r) => JSON.stringify(r.feature_flags) === JSON.stringify(industryDefaults('RESTAURANT'))), "nothing configured shows the industry's own defaults");
   assert.ok(res.body.data.some((t) => t.business_type === 'SALON'), 'every BUSINESS_TYPES entry should be listed, configured or not');
 });
 

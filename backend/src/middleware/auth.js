@@ -100,11 +100,11 @@ export const hasPermission = (tenant, permission) => {
 
 /* `tv` is the user's session version: raising it (sign out everywhere, a password change or reset) ends every token
    issued before, without a denylist. Tokens from before this existed have no `tv` and count as version 0. */
-export const signToken = (user) =>
+export const signToken = (user, { expiresIn = config.jwtExpiresIn } = {}) =>
   jwt.sign(
     { sub: user.user_id, email: user.email, tv: user.token_version ?? 0 },
     config.jwtSecret,
-    { expiresIn: config.jwtExpiresIn, algorithm: 'HS256' }
+    { expiresIn, algorithm: 'HS256' }
   );
 
 /*
@@ -131,7 +131,7 @@ export const readChallenge = (token, purpose = '2fa') => {
 export const SESSION_COOKIE = 'flowxp_session';
 const cookieOptions = () => ({ httpOnly: true, secure: config.isProduction, sameSite: 'lax', path: '/api' });
 
-const cookieValue = (req, name) => {
+export const cookieValue = (req, name) => {
   const raw = req.headers.cookie;
   if (!raw) return null;
   for (const part of raw.split(';')) {
@@ -364,7 +364,7 @@ export const withBusiness = (options = {}) => async (req, res, next) => {
     subscription: subscriptionSummary(membership),
     // whole-business feature gates — the plan AND the business type combined (either can turn
     // a feature off), checked by requirePlanFeature() below; separate from `permissions`, which is per-user
-    planFeatures: effectiveFeatureFlags([membership.feature_flags, membership.business_type_feature_flags], membership.feature_overrides)
+    planFeatures: effectiveFeatureFlags([membership.feature_flags, membership.business_type_feature_flags], membership.feature_overrides, membership.business_type)
   };
 
   /*

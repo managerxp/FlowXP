@@ -12,6 +12,7 @@ import pool from '../../config/database.js';
 import { businessToday } from '../../utils/dates.js';
 import { complete } from './provider.js';
 import { labelOf, runTool, toolsFor } from './tools.js';
+import { CHECK_NOTE, ungrounded } from './grounding.js';
 
 const MAX_ROUNDS = 6;
 const MAX_RESULT_CHARS = 12000;
@@ -53,6 +54,7 @@ export const ask = async ({ tenant, question, history = [] }) => {
   const messages = [...history.map((m) => ({ role: m.role, content: m.content })), { role: 'user', content: question }];
   const usage = { input_tokens: 0, output_tokens: 0 };
   const toolsUsed = [];
+  const facts = [];   // everything the tools returned, to check the answer's figures against
   let model;
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
@@ -65,7 +67,13 @@ export const ask = async ({ tenant, question, history = [] }) => {
 
     const calls = reply.content.filter((b) => b.type === 'tool_use');
     if (reply.stopReason !== 'tool_use' || !calls.length) {
-      return { answer: textOf(reply.content) || 'I could not put an answer together for that. Try asking it another way.', toolsUsed, usage, model };
+      const text = textOf(reply.content);
+      if (!text) return { answer: 'I could not put an answer together for that. Try asking it another way.', toolsUsed, usage, model };
+      const unmatched = ungrounded(text, facts);
+      if (unmatched.length) console.warn('[ai] figures not found in tool results:', unmatched.map((f) => f.text).join(', '));
+      return { answer: unmatched.length ? `${text}
+
+${CHECK_NOTE}` : text, toolsUsed, usage, model };
     }
 
     messages.push({ role: 'assistant', content: reply.content });
@@ -73,6 +81,7 @@ export const ask = async ({ tenant, question, history = [] }) => {
     for (const call of calls) {
       try {
         const data = await runTool(tenant, call.name, call.input);
+        facts.push(data);
         if (!toolsUsed.some((t) => t.name === call.name)) toolsUsed.push({ name: call.name, label: labelOf(call.name) });
         results.push({ type: 'tool_result', tool_use_id: call.id, content: trim(data) });
       } catch (error) {

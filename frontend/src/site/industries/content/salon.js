@@ -62,7 +62,7 @@ export default {
     {
       id: 'reports', title: 'Reports, and clients who come back',
       body: 'How the salon is doing: sales, clients, team, stock and money, for any dates you choose.',
-      points: ['Daily and monthly sales, and sales by service, product, package and membership', 'New and returning clients, retention, lifetime value and top clients', 'Staff performance: services, sales and days present', 'Stock valuation, stock movement, materials used against the recipe, and wastage', 'Every report exports to CSV', 'Loyalty points you set the rules for', 'Reminders and offers to a chosen group of clients by WhatsApp or SMS, once messaging is connected'],
+      points: ['Daily and monthly sales, and sales by service, product, package and membership', 'New and returning clients, retention, lifetime value and top clients', 'Staff performance: services, sales and days present', 'Stock valuation, stock movement, materials used against the recipe, and wastage', 'Every report exports to CSV', 'Loyalty points you set the rules for', 'Reminders and offers to a chosen group of clients by WhatsApp or SMS: coming soon'],
       shots: [{ src: p('salon-reports'), alt: 'FlowXP salon staff performance report with services, service sales, product sales, plans sold and bills for each stylist.' }, { src: p('salon-dashboard'), alt: 'FlowXP salon dashboard with sales today, appointments, team in, revenue chart and the next appointments.' }]
     }
   ],

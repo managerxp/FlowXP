@@ -121,7 +121,9 @@ export const toGeminiBody = ({ system, messages, tools, maxTokens, toolChoice })
   contents: toGeminiContents(messages),
   ...(tools?.length ? { tools: [{ functionDeclarations: tools.map((t) => ({ name: t.name, description: t.description, parameters: toGeminiSchema(t.input_schema) })) }] } : {}),
   ...(toolChoice ? { toolConfig: toGeminiToolConfig(toolChoice) } : {}),
-  generationConfig: { maxOutputTokens: maxTokens ?? config.ai.maxTokens }
+  generationConfig: { maxOutputTokens: maxTokens ?? config.ai.maxTokens },
+  // Google's own filter, switched on explicitly: newer models default to off. A blocked prompt comes back with no candidate.
+  safetySettings: ['HARASSMENT', 'HATE_SPEECH', 'SEXUALLY_EXPLICIT', 'DANGEROUS_CONTENT'].map((c) => ({ category: `HARM_CATEGORY_${c}`, threshold: 'BLOCK_MEDIUM_AND_ABOVE' }))
 });
 
 /** Gemini's { candidates, usageMetadata } → the same { content, stopReason, usage } shape anthropic() returns.
@@ -172,10 +174,11 @@ const askGemini = async (model, body) => {
   // Reasons to try another model instead of failing: Google does not know this name (a typo, or a retired model),
   // this plan has no quota for it at all ("limit: 0", e.g. a Pro model on the free tier), or it is overloaded (503).
   const unknown = response.status === 404;
-  const noQuota = response.status === 429 && /limit: 0(?![0-9])/.test(message);
+  // a daily cap that is spent ("retry in 18h7m") is the same story for that model: another model has its own allowance
+  const noQuota = response.status === 429 && (/limit: 0(?![0-9])/.test(message) || /retry in \d+h/i.test(message));
   const overloaded = response.status === 503;
   if (unknown || noQuota || overloaded) {
-    return { unusable: unknown ? 'is not known to Gemini' : noQuota ? 'is not available on this plan (quota limit 0)' : 'is overloaded right now', status: response.status };
+    return { unusable: unknown ? 'is not known to Gemini' : noQuota ? 'has no quota left (limit 0 or its daily cap is spent)' : 'is overloaded right now', status: response.status };
   }
   console.error('[ai] provider error', response.status, payload?.error?.status, message);
   const busy = response.status === 429;

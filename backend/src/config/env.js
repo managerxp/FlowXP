@@ -26,6 +26,9 @@ if (process.env.NODE_ENV === 'production') {
   if ((process.env.STORAGE_DRIVER || 'local').toLowerCase() === 's3') {
     for (const key of ['S3_ENDPOINT', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY']) if (!process.env[key]) problems.push(`${key} is required when STORAGE_DRIVER=s3`);
   }
+  const adminEmail = String(process.env.SUPER_ADMIN_EMAIL || '').toLowerCase();
+  if (adminEmail && /\.(local|test|example|invalid)$/.test(adminEmail)) problems.push('SUPER_ADMIN_EMAIL must be a real address you can receive mail at, not a .local/.test one');
+  if (process.env.SUPER_ADMIN_PASSWORD && process.env.SUPER_ADMIN_PASSWORD.length < 14) problems.push('SUPER_ADMIN_PASSWORD must be at least 14 characters (it is only used the first time the account is created)');
   const messaging = (process.env.MESSAGING_PROVIDER || 'log').toLowerCase();
   if (!['log', 'whatsapp_cloud', 'twilio'].includes(messaging)) problems.push('MESSAGING_PROVIDER must be log, whatsapp_cloud or twilio');
   if (messaging === 'whatsapp_cloud') for (const key of ['WHATSAPP_TOKEN', 'WHATSAPP_PHONE_ID']) if (!process.env[key]) problems.push(`${key} is required when MESSAGING_PROVIDER=whatsapp_cloud`);
@@ -103,6 +106,16 @@ export const config = {
     countryCode: process.env.MESSAGING_COUNTRY_CODE || '91'
   },
   // Extra browser origins allowed to call the API (comma separated), on top of APP_ORIGIN.
+  /* Sign in with Google, for accounts that already exist. Both blank = the button is simply not shown.
+     The redirect address registered in Google Cloud must be exactly APP_ORIGIN + /api/auth/google/callback
+     (or GOOGLE_REDIRECT_URI when the browser reaches the API on another address, as in local development). */
+  oauth: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      redirectUri: process.env.GOOGLE_REDIRECT_URI || ''
+    }
+  },
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
   /* Cashfree Payment Links — custom-priced subscription payments (no keys = the
      admin gets a clear "not set up yet" error instead of a broken call). */

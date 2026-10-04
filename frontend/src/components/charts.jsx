@@ -14,16 +14,25 @@ import { useId, useState } from 'react';
 const BRAND = 'var(--color-brand-500)';
 const safeId = (id) => id.replace(/[^a-zA-Z0-9_-]/g, '');
 
-/* Points to a smooth path (Catmull-Rom as cubic Béziers), kept inside the box so a dip never draws below zero. */
-const smoothPath = (pts, h) => {
-  if (pts.length < 2) return pts.length ? `M${pts[0][0]},${pts[0][1]}` : '';
-  const clampY = (y) => Math.max(0, Math.min(h, y));
+/* Points to a smooth path: a monotone cubic (Fritsch-Carlson), so the curve never swings past a point it joins. A plain
+   spline overshoots next to a sharp peak and draws dips that are not in the data. */
+const smoothPath = (pts) => {
+  const n = pts.length;
+  if (n < 2) return n ? `M${pts[0][0]},${pts[0][1]}` : '';
+  const dx = []; const m = [];
+  for (let i = 0; i < n - 1; i++) { dx.push(pts[i + 1][0] - pts[i][0]); m.push((pts[i + 1][1] - pts[i][1]) / (dx[i] || 1)); }
+  const t = [m[0]];
+  for (let i = 1; i < n - 1; i++) t.push(m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2);
+  t.push(m[n - 2]);
+  for (let i = 0; i < n - 1; i++) {
+    if (m[i] === 0) { t[i] = 0; t[i + 1] = 0; continue; }
+    const a = t[i] / m[i]; const b = t[i + 1] / m[i]; const r = a * a + b * b;
+    if (r > 9) { const k = 3 / Math.sqrt(r); t[i] = k * a * m[i]; t[i + 1] = k * b * m[i]; }
+  }
   let d = `M${pts[0][0].toFixed(2)},${pts[0][1].toFixed(2)}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] || pts[i]; const p1 = pts[i]; const p2 = pts[i + 1]; const p3 = pts[i + 2] || p2;
-    const c1x = p1[0] + (p2[0] - p0[0]) / 6; const c1y = clampY(p1[1] + (p2[1] - p0[1]) / 6);
-    const c2x = p2[0] - (p3[0] - p1[0]) / 6; const c2y = clampY(p2[1] - (p3[1] - p1[1]) / 6);
-    d += ` C${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2[0].toFixed(2)},${p2[1].toFixed(2)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const h = dx[i] / 3;
+    d += ` C${(pts[i][0] + h).toFixed(2)},${(pts[i][1] + t[i] * h).toFixed(2)} ${(pts[i + 1][0] - h).toFixed(2)},${(pts[i + 1][1] - t[i + 1] * h).toFixed(2)} ${pts[i + 1][0].toFixed(2)},${pts[i + 1][1].toFixed(2)}`;
   }
   return d;
 };
@@ -36,7 +45,7 @@ export const Sparkline = ({ values, tone = BRAND, className = 'h-9 w-full' }) =>
   const max = Math.max(...values); const min = Math.min(...values);
   const span = max - min || 1;
   const pts = values.map((v, i) => [values.length === 1 ? W : (i / (values.length - 1)) * W, H - 3 - ((v - min) / span) * (H - 8)]);
-  const line = smoothPath(pts, H);
+  const line = smoothPath(pts);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className={className} aria-hidden="true">
       <defs>
@@ -54,7 +63,7 @@ export const Sparkline = ({ values, tone = BRAND, className = 'h-9 w-full' }) =>
 /* ── Area chart ──────────────────────────────────────────────────────────────
    points: [{ key, label (tooltip), axis (under the chart, or ''), value, note }]. `focus` is the index called
    out when nothing is hovered (today). Hover or keyboard focus moves the call-out. */
-export const AreaChart = ({ points, format, caption, focus = points.length - 1, height = 'h-52', className = '', averageLabel = 'Average' }) => {
+export const AreaChart = ({ points, format, caption, focus = points.length - 1, height = 'h-52', className = '', averageLabel = 'Average', partialLast = false }) => {
   const id = safeId(useId());
   const [hover, setHover] = useState(null);
   const n = points.length;
@@ -64,7 +73,10 @@ export const AreaChart = ({ points, format, caption, focus = points.length - 1, 
   const x = (i) => (n === 1 ? W / 2 : (i / (n - 1)) * W);
   const y = (v) => H - (v / top) * H;
   const pts = points.map((p, i) => [x(i), y(p.value)]);
-  const line = smoothPath(pts, H);
+  // today is only part of a day: the curve stops at the last full day and a dashed straight line runs on to today
+  const split = partialLast && n > 2;
+  const line = smoothPath(split ? pts.slice(0, -1) : pts);
+  const tail = split ? ` L${pts[n - 1][0].toFixed(2)},${pts[n - 1][1].toFixed(2)}` : '';
   const avg = n ? points.reduce((s, p) => s + p.value, 0) / n : 0;
   const shown = hover ?? focus;
   const sp = points[shown];
@@ -82,12 +94,13 @@ export const AreaChart = ({ points, format, caption, focus = points.length - 1, 
               <stop offset="100%" stopColor={BRAND} stopOpacity="0.02" />
             </linearGradient>
           </defs>
-          <path d={`${line} L${x(n - 1)},${H} L${x(0)},${H} Z`} fill={`url(#${id})`} className="chart-fade" />
+          <path d={`${line}${tail} L${x(n - 1)},${H} L${x(0)},${H} Z`} fill={`url(#${id})`} className="chart-fade" />
           <path d={line} fill="none" stroke={BRAND} strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" className="chart-draw" pathLength="1" />
+          {split && <path d={`M${pts[n - 2][0].toFixed(2)},${pts[n - 2][1].toFixed(2)}${tail}`} fill="none" stroke={BRAND} strokeWidth="2.5" strokeDasharray="5 5" vectorEffect="non-scaling-stroke" strokeLinecap="round" />}
           {avg > 0 && <line x1="0" x2={W} y1={y(avg)} y2={y(avg)} stroke="var(--color-ink-400)" strokeWidth="1.25" strokeDasharray="5 5" vectorEffect="non-scaling-stroke" />}
         </svg>
         {avg > 0 && (
-          <span aria-hidden="true" className="absolute right-0 -translate-y-full rounded bg-surface/90 px-1.5 text-[11px] font-medium text-ink-500" style={{ top: `${(y(avg) / H) * 100}%` }}>
+          <span aria-hidden="true" className="absolute left-0 -translate-y-full rounded bg-surface/90 px-1.5 text-[11px] font-medium text-ink-500" style={{ top: `${(y(avg) / H) * 100}%` }}>
             {averageLabel} {format(avg)}
           </span>
         )}

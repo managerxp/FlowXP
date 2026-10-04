@@ -31,7 +31,7 @@ const PAGES = {
   '/industries': ['Billing software for your kind of business', 'FlowXP for restaurants, cloud kitchens, wholesalers, distributors, salons and pharmacies, each with the tools that trade needs.'],
   '/industries/coming-soon': ['What is not built yet', 'The businesses and features FlowXP does not support yet, listed plainly.'],
   '/ai': ['Flow AI, the AI manager in your billing software', 'Ask your business a question in plain words. Flow AI answers from your own sales, stock and payments, and says when a figure is an estimate.'],
-  '/integrations': ['Printers, scanners, WhatsApp and GST integrations', 'FlowXP works with receipt printers, barcode scanners, cash drawers, WhatsApp, SMS and GST portal files. None are needed to start billing.'],
+  '/integrations': ['Printers, scanners and GST integrations', 'FlowXP works with receipt printers, barcode scanners, cash drawers and GST portal files. WhatsApp and SMS are coming soon. None are needed to start billing.'],
   '/pricing': ['Pricing and plans', 'FlowXP plans for single shops and multi-branch businesses. Every plan starts with a 7-day free trial, no card needed.'],
   '/about': ['About FlowXP and ManagerXP', 'FlowXP is made by ManagerXP, building billing and business software for Indian shops, restaurants and distributors.'],
   '/contact': ['Contact sales and support', 'Talk to the FlowXP team about sales, setup or support.'],

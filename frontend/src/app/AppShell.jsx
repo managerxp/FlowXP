@@ -119,8 +119,8 @@ const NAV_GROUPS = [
   {
     label: 'Restaurant',
     items: [
-      { to: '/app/tables', label: 'Tables', icon: LayoutGrid, types: DINE_IN_TYPES, permission: 'billing' },
-      { to: '/app/kitchen', label: 'Kitchen', icon: ChefHat, types: RESTAURANT_TYPES, anyPermission: ['billing', 'kitchen'] },
+      { to: '/app/tables', label: 'Tables', icon: LayoutGrid, types: DINE_IN_TYPES, permission: 'billing', feature: 'tables' },
+      { to: '/app/kitchen', label: 'Kitchen', icon: ChefHat, types: RESTAURANT_TYPES, anyPermission: ['billing', 'kitchen'], feature: 'kitchen' },
       { to: '/app/reservations', label: 'Reservations', icon: CalendarClock, types: DINE_IN_TYPES, permission: 'billing', feature: 'reservations', more: true }
     ]
   },
@@ -307,6 +307,8 @@ const AppShell = () => {
   const [navOpen, setNavOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef(null);
+  const [moreClosedAt, setMoreClosedAt] = useState(null);   // the page where the person folded More, so it stays folded there
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   const toggleCollapsed = () => setCollapsed((v) => {
@@ -365,10 +367,12 @@ const AppShell = () => {
   const systemItems = SYSTEM_ITEMS.filter(allowed);
   /* The sidebar shows the daily screens; the rest sit under "More" (still one click away, and always in Ctrl K). */
   const mainGroups = groups.map((g) => ({ ...g, items: g.items.filter((i) => !i.more) })).filter((g) => g.items.length > 0);
-  const moreItems = [...groups.flatMap((g) => g.items.filter((i) => i.more)), ...systemItems.filter((i) => i.more)];
+  // under "More" the items keep their sections (Stock, Customers, Business...) instead of one long list
+  const moreGroups = [...groups.map((g) => ({ label: g.label || 'Overview', items: g.items.filter((i) => i.more) })), { label: 'System', items: systemItems.filter((i) => i.more) }].filter((g) => g.items.length > 0);
+  const moreItems = moreGroups.flatMap((g) => g.items);
   const pinnedItems = systemItems.filter((i) => !i.more);
   const onMorePage = moreItems.some((i) => location.pathname === i.to || location.pathname.startsWith(`${i.to}/`));
-  const showMore = moreOpen || onMorePage;
+  const showMore = moreOpen || (onMorePage && moreClosedAt !== location.pathname);
 
   /* The sidebar hides a link this role can't use, but a typed or bookmarked URL still
      reaches the route — this is the same policy, checked again for whichever nav entry
@@ -430,8 +434,8 @@ const AppShell = () => {
               </div>
             ))}
             {moreItems.length > 0 && (
-              <div className="nav-group">
-                <button type="button" onClick={() => { if (!onMorePage) setMoreOpen((v) => !v); }} aria-expanded={showMore} aria-controls="nav-more"
+              <div ref={moreRef} className="nav-group">
+                <button type="button" onClick={() => { if (showMore) { setMoreOpen(false); setMoreClosedAt(location.pathname); } else { setMoreOpen(true); setMoreClosedAt(null); setTimeout(() => moreRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 30); } }} aria-expanded={showMore} aria-controls="nav-more"
                         title={collapsed ? 'More' : undefined}
                         className={`nav-item flex w-full items-center gap-3 rounded-lg px-2.5 text-small text-ink-700 transition-colors duration-(--duration-fast) hover:bg-surface-2 hover:text-ink-900 ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}>
                   <Ellipsis aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-ink-400" />
@@ -439,8 +443,15 @@ const AppShell = () => {
                   {!collapsed && <ChevronDown aria-hidden="true" className={`h-4 w-4 text-ink-400 transition-transform duration-(--duration-fast) ${showMore ? 'rotate-180' : ''}`} />}
                 </button>
                 {showMore && (
-                  <div id="nav-more" className="fade-in mt-0.5 space-y-0.5">
-                    {moreItems.map((item) => <NavItem key={item.to} item={item} collapsed={collapsed} onNavigate={closeNav} />)}
+                  <div id="nav-more" className="fade-in mt-1 border-t border-line pt-0.5">
+                    {moreGroups.map((group) => (
+                      <div key={group.label} className="nav-group">
+                        <p className={`nav-label px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-400 ${collapsed ? 'lg:sr-only' : ''}`}>{group.label}</p>
+                        <div className="space-y-0.5">
+                          {group.items.map((item) => <NavItem key={item.to} item={item} collapsed={collapsed} onNavigate={closeNav} />)}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

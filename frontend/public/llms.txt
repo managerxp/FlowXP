@@ -11,14 +11,14 @@ Key facts:
 - Flow AI only reads the business's own records, cannot change prices, bills or stock, and says when a figure is an estimate.
 - 7-day free trial with no credit card. Plans: Starter, Growth and Enterprise (see the pricing page; prices are set per plan).
 - Works offline for billing and syncs when the connection returns. Receipt printers (58/80 mm), barcode scanners and cash drawers are optional.
-- Not built yet (stated on the site): direct Zomato/Swiggy order intake, ONDC and Magicpin, and in-app payment collection by link or QR through a payment gateway.
+- Not built yet (stated on the site): WhatsApp and SMS sending, direct Zomato/Swiggy order intake, ONDC and Magicpin, and in-app payment collection by link or QR through a payment gateway.
 
 ## Product
 
 - [Home](https://flowxp.in/): what FlowXP is, with real screens from the demo business
 - [Features](https://flowxp.in/features): billing and payments, invoices, stock and buying, GST, customers and loyalty, reports, team and roles
 - [Flow AI](https://flowxp.in/ai): the AI manager, what it reads and how it answers
-- [Integrations](https://flowxp.in/integrations): printers, scanners, cash drawers, WhatsApp, SMS, email, GST portal files, CSV export
+- [Integrations](https://flowxp.in/integrations): printers, scanners, cash drawers, email, GST portal files, CSV export (WhatsApp and SMS sending is coming soon)
 - [Pricing](https://flowxp.in/pricing): plans and the free trial
 
 ## Industries

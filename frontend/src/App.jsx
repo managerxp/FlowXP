@@ -42,6 +42,7 @@ const AdminPlans = lazy(() => import('./admin/AdminPlans.jsx'));
 const AdminFeatures = lazy(() => import('./admin/AdminFeatures.jsx'));
 const AdminAddons = lazy(() => import('./admin/AdminAddons.jsx'));
 const AdminSettings = lazy(() => import('./admin/AdminSettings.jsx'));
+const AdminSecurity = lazy(() => import('./admin/AdminSecurity.jsx'));
 
 /* One AdminAuthProvider instance shared by the login screen and the shell —
    two separate providers would each hold their own state, so signing in on
@@ -375,6 +376,7 @@ const App = () => (
         <Route path="features" element={<AdminFeatures />} />
         <Route path="addons" element={<AdminAddons />} />
         <Route path="settings" element={<AdminSettings />} />
+        <Route path="security" element={<AdminSecurity />} />
       </Route>
     </Route>
 

@@ -47,7 +47,7 @@ const CommandPalette = ({ open, onClose, items }) => {
     <div className="fixed inset-0 z-[70] flex items-start justify-center bg-ink-900/30 p-4 pt-[12vh]" onMouseDown={onClose}>
       <div role="dialog" aria-modal="true" aria-label="Go to a screen" onMouseDown={(e) => e.stopPropagation()}
            className="fade-in w-full max-w-lg overflow-hidden rounded-(--radius-panel) border border-line bg-surface shadow-lg">
-        <div className="flex items-center gap-3 border-b border-line px-4">
+        <div className="flex items-center gap-3 border-b border-line px-4 transition-colors focus-within:border-brand-500">
           <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-ink-400" />
           <input
             ref={inputRef}
@@ -58,7 +58,7 @@ const CommandPalette = ({ open, onClose, items }) => {
             aria-label="Search screens"
             aria-controls="palette-results"
             aria-activedescendant={results[active] ? `palette-${active}` : undefined}
-            className="h-12 w-full bg-transparent text-body text-ink-900 placeholder:text-ink-400 focus:outline-none"
+            className="palette-input h-12 w-full bg-transparent text-body text-ink-900 placeholder:text-ink-400 focus:outline-none"
           />
           <kbd className="hidden rounded border border-line px-1.5 py-0.5 text-caption text-ink-500 sm:block">Esc</kbd>
         </div>

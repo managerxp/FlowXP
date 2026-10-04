@@ -17,6 +17,9 @@ const AdminLogin = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [needCode, setNeedCode] = useState(false);   // the password was right and this account has two-step verification on
+  const [code, setCode] = useState('');
+  const [useRecovery, setUseRecovery] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -29,11 +32,14 @@ const AdminLogin = () => {
     setError('');
     setSubmitting(true);
     try {
-      const data = await adminApi('/login', { method: 'POST', body: { email, password } });
+      const second = needCode ? (useRecovery ? { recovery_code: code.trim() } : { code: code.trim() }) : {};
+      const data = await adminApi('/login', { method: 'POST', body: { email, password, ...second } });
       signIn(data.token, data.admin);
       navigate(location.state?.from || '/superadmin', { replace: true });
     } catch (err) {
-      setError(err.message || 'Could not sign you in');
+      if (err.payload?.requires_2fa) setNeedCode(true);
+      // the first ask for the code is not an error: the code box appearing is the message
+      setError(err.payload?.requires_2fa && !needCode ? '' : (err.message || 'Could not sign you in'));
     } finally {
       setSubmitting(false);
     }
@@ -71,6 +77,17 @@ const AdminLogin = () => {
               required
             />
           </Field>
+
+          {needCode && (
+            <>
+              <Field id="admin-code" label={useRecovery ? 'Recovery code' : 'Code from your authenticator app'}>
+                <Input id="admin-code" inputMode={useRecovery ? 'text' : 'numeric'} autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} autoFocus required />
+              </Field>
+              <button type="button" onClick={() => { setUseRecovery((v) => !v); setCode(''); setError(''); }} className="text-sm text-brand-600 hover:underline">
+                {useRecovery ? 'Use the authenticator app instead' : 'Lost your phone? Use a recovery code'}
+              </button>
+            </>
+          )}
 
           <Alert>{error}</Alert>
 

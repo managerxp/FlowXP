@@ -15,7 +15,7 @@ export const FAQ = [
   },
   {
     q: 'Do I need a printer or a billing machine?',
-    a: 'No. FlowXP is digital-first: send an invoice over WhatsApp, email or a link. If you already own a printer you can still use it.'
+    a: 'No. FlowXP is digital-first: share an invoice as a link or by email. If you already own a printer you can still use it. WhatsApp sharing is coming soon.'
   },
   {
     q: 'Can I use it on my phone?',

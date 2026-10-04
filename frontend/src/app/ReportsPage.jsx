@@ -9,7 +9,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Download } from 'lucide-react';
+import { Check, Download } from 'lucide-react';
 import { api, downloadFile, formatCurrency } from '../lib/api.js';
 import { localISO } from '../lib/dates.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -45,11 +45,18 @@ const saveCsv = (name, head, rows) => {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${name}.csv`; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 };
-const CsvButton = ({ name, head, rows }) => (
-  <button type="button" onClick={() => saveCsv(name, head, rows)} disabled={!rows.length} className="flex items-center gap-1 text-caption font-medium text-brand-700 hover:underline disabled:opacity-40">
-    <Download aria-hidden="true" className="h-3.5 w-3.5" />CSV
-  </button>
-);
+/* A real button, not a text link: outlined, lifts to the brand colour on hover, and says "Saved" for a moment after the file is made. */
+const CsvButton = ({ name, head, rows }) => {
+  const [saved, setSaved] = useState(false);
+  const click = () => { saveCsv(name, head, rows); setSaved(true); setTimeout(() => setSaved(false), 1800); };
+  return (
+    <button type="button" onClick={click} disabled={!rows.length} title={rows.length ? `Download ${rows.length} row${rows.length === 1 ? '' : 's'} as a spreadsheet file` : 'Nothing to download yet'}
+            className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-caption font-semibold transition-[color,background-color,border-color,transform] duration-(--duration-fast) active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 pointer-coarse:h-10 pointer-coarse:px-3 ${saved ? 'border-success/40 bg-success/10 text-success' : 'border-line-strong bg-surface text-ink-700 hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 disabled:hover:border-line-strong disabled:hover:bg-surface disabled:hover:text-ink-700'}`}>
+      {saved ? <Check aria-hidden="true" className="h-3.5 w-3.5" /> : <Download aria-hidden="true" className="h-3.5 w-3.5" />}
+      {saved ? 'Saved' : <><span className="max-sm:hidden">Download </span>CSV</>}
+    </button>
+  );
+};
 
 const Tile = ({ change, ...props }) => <StatCard {...props}>{change}</StatCard>;
 

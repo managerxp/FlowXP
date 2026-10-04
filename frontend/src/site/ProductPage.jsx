@@ -71,7 +71,7 @@ const ProductPage = () => (
         <FeatureRow
           id="billing"  title="Take the money. Give a proper GST bill."
           body="Scan a barcode or search, change quantities, add a discount or coupon, and take cash, UPI, card or credit, or several at once. CGST, SGST or IGST is worked out on every line."
-          points={['Print on a 58 or 80 mm printer, or send the bill as a WhatsApp or SMS link', 'Part payments and customer credit, settled later', 'Returns through numbered credit notes that reverse the GST exactly', 'Round-off to the rupee if you want it']}
+          points={['Print on a 58 or 80 mm printer, or share the bill as a link', 'Part payments and customer credit, settled later', 'Returns through numbered credit notes that reverse the GST exactly', 'Round-off to the rupee if you want it']}
           src="/product/pos-main.webp" alt="FlowXP billing screen with six items, quantities, line discounts, subtotal, GST, total and a Charge button."
         />
         <FeatureRow
@@ -98,7 +98,7 @@ const ProductPage = () => (
           aside={<ListPanel title="Customers, loyalty and messages" groups={[
             ['Customers', ['Purchase history and what is outstanding', 'Credit sales and part payments', 'Found at the till by mobile number']],
             ['Loyalty', ['A free item on the Nth visit', 'Points and tiers, earned and spent at the till', 'Coupons and offer codes']],
-            ['Messages', ['Bill links on WhatsApp or SMS', 'Offers to chosen groups of customers', 'Customers can opt out; it is respected']],
+            ['Messages', ['Bill links on WhatsApp or SMS: coming soon', 'Offers to chosen groups of customers', 'Customers can opt out; it is respected']],
             ['Good to know', ['Works across all your outlets', 'Returns take points back automatically']]
           ]} />}
         />

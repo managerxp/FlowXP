@@ -10,9 +10,10 @@
  */
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { Smartphone } from 'lucide-react';
+import { Printer, Smartphone } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
+import { printReceipt } from '../lib/printing.js';
 import { Alert, Button, Field, Input, Modal } from './ui.jsx';
 
 export const upiLink = ({ vpa, payee, amount, note }) =>
@@ -51,6 +52,8 @@ const UpiCollect = ({ invoice, amount, vpa, payee, onPaid, onLater }) => {
         </div>
         <p className="mt-3 text-small text-ink-700">Paying <span className="font-semibold text-ink-900">{vpa}</span></p>
         <p className="mt-1 flex items-center justify-center gap-1.5 text-caption text-ink-500"><Smartphone aria-hidden="true" className="h-3.5 w-3.5" />Any UPI app: GPay, PhonePe, Paytm, BHIM or a bank app</p>
+        {/* The bill is saved and unpaid, so the printed copy carries this same QR for the exact amount due. */}
+        <Button variant="secondary" size="sm" className="mt-3" onClick={() => printReceipt(invoice.invoice_id)}><Printer aria-hidden="true" className="h-4 w-4" />Print bill with this QR</Button>
       </div>
 
       <div className="mt-5 rounded-lg bg-surface-2 px-3.5 py-3 text-small text-ink-700">
