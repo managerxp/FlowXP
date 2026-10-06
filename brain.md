@@ -758,6 +758,28 @@ Everything below is in the repo and covered by tests (backend 904 passing at the
 - **Still the owner's to do before launch:** production `.env` (NODE_ENV, APP_ORIGIN https, JWT_SECRET, real super admin, Cashfree PRODUCTION
   keys), DNS + certbot, a real email provider, scheduled and off-server backups, 2FA on the super admin, a Gemini spend cap, optional Google keys.
 
+## 4d. Retail / supermarket Phase 4: supplier bill import (2026-10-06)
+
+Read a photographed or PDF supplier bill, match its lines to products, and feed the checked lines into Receive stock. Always reviewed:
+nothing is received until the person presses Receive (the existing `POST /api/purchases`); automation levels beyond "always review" are not built.
+
+- `modules/ai/invoiceScan.js`: one forced tool (`record_supplier_bill`): supplier, bill number/date/total, lines (description, barcode, supplier
+  code, qty, rate, GST, amount, batch, expiry). `normaliseBill` cleans it (a rate worked out from amount is flagged unsure). Images and PDFs
+  (`uploadBillFiles`, `looksLikeBillFile`: a PDF must start `%PDF-`); files held in memory only, one request, counted in `ai_usage`.
+- `modules/invoiceMatch.js`: matching order barcode, then this supplier's code (or a code saved for no supplier), then learned wording
+  (`product_aliases`), then a name guess (shared words, sizes count double, >= 0.6 preselected, >= 0.34 suggested). `matchSupplier`,
+  `findDuplicateBill`.
+- `controllers/invoiceImport.controller.js` + `/api/retail/invoice-import/{scan,check,learn}` (retail businesses only, `inventory`
+  permission, 10 scans / 10 min / person). `scan` returns a draft with `duplicate_of` and `total_mismatch`; `learn` runs after Receive:
+  alias (source SUPPLIER), supplier code (a correction moves a code to the product the person picked), a barcode only if nobody has it;
+  another business's product ids write nothing.
+- `POST /api/purchases` now stores `supplier_invoice_no` / `supplier_invoice_date` and refuses the same supplier's same bill number
+  (409 `DUPLICATE_BILL`) unless `allow_duplicate_bill: true`.
+- Frontend: `components/SupplierBillImport.jsx` (pick, reading, review: per line match chip, change/find/new product, qty/cost/GST/expiry, repeated-bill
+  and total-mismatch banners) opened from `app/ReceiveStockPage.jsx` ("Read a supplier bill"); checked lines become the page's lines, and what was matched is
+  sent to `/learn` after a successful Receive. Tests: `invoiceimport.test.js` (13). Not tried against a real Gemini read of a real bill yet.
+- Phase 5 still to do: returns/exchanges at the till, promotions, pricing rules, a retail dashboard, performance tests.
+
 ## 5. Working rules for future sessions
 
 - **Test every feature** in `backend/test/<feature>.test.js`; run the full `npm test` and `npx vite build` before reporting. Real DB, throwaway

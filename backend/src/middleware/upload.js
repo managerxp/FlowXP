@@ -27,6 +27,14 @@ export const uploadMenuPhotos = multer({
   limits: { fileSize: 8 * 1024 * 1024, files: 5 }
 }).array('images', 5);
 
+/* A supplier bill: photos of its pages, or one PDF (a supplier's emailed invoice). Read once by the AI service, never kept. */
+const BILL_TYPES = new Set([...ALLOWED, 'application/pdf']);
+export const uploadBillFiles = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (_req, file, cb) => (BILL_TYPES.has(file.mimetype) ? cb(null, true) : cb(new Error('Use JPEG, PNG or WebP photos, or a PDF'))),
+  limits: { fileSize: 10 * 1024 * 1024, files: 5 }
+}).array('files', 5);
+
 /* A business logo for receipts: one small image. */
 export const uploadLogo = multer({
   storage: multer.memoryStorage(),
@@ -38,6 +46,10 @@ export const uploadLogo = multer({
  * The type a browser reports for an upload is only what the sender claims. The file's own first bytes say what it
  * really is, so an HTML or script file renamed to .png is refused instead of being stored and served under our address.
  */
+/** A bill file is an image (checked by its first bytes) or a real PDF (starts with %PDF). */
+export const looksLikeBillFile = (buffer, mimetype) =>
+  mimetype === 'application/pdf' ? Buffer.isBuffer(buffer) && buffer.length > 8 && buffer.subarray(0, 5).toString('latin1') === '%PDF-' : looksLikeImage(buffer, mimetype);
+
 export const looksLikeImage = (buffer, mimetype) => {
   if (!Buffer.isBuffer(buffer) || buffer.length < 12) return false;
   const is = { 'image/jpeg': buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff,

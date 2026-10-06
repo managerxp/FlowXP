@@ -83,6 +83,15 @@ export const create = async (req, res) => {
     // column and pass it here if inter-state purchases need IGST split.
     const interState = isInterState(business.state, null);
 
+    /* The supplier's own bill number, kept with the purchase. The same supplier's same bill number twice is almost always
+       a bill entered twice (it doubles the stock and what is owed), so it is refused unless the person confirms. */
+    const billNo = String(body.supplier_invoice_no ?? '').trim().slice(0, 40) || null;
+    const billDate = isRealDate(body.supplier_invoice_date) ? body.supplier_invoice_date : null;
+    if (billNo && supplier && body.allow_duplicate_bill !== true) {
+      const dup = (await client.query(`SELECT po_number FROM purchase_orders WHERE business_id = $1 AND supplier_id = $2 AND lower(supplier_invoice_no) = lower($3) AND status <> 'CANCELLED' LIMIT 1`, [req.tenant.businessId, supplier.supplier_id, billNo])).rows[0];
+      if (dup) { await client.query('ROLLBACK'); return res.status(409).json({ success: false, code: 'DUPLICATE_BILL', message: `Bill ${billNo} from ${supplier.name} is already recorded as ${dup.po_number}. Receive it again only if it is a different delivery.` }); }
+    }
+
     const productIds = [...new Set(items.filter((i) => i.product_id).map((i) => Number(i.product_id)))];
     const products = new Map();
     if (productIds.length) {
@@ -134,13 +143,13 @@ export const create = async (req, res) => {
     const po = (await client.query(
       `INSERT INTO purchase_orders
          (business_id, branch_id, supplier_id, po_number, po_date, subtotal_paise, tax_paise, total_paise,
-          amount_paid_paise, balance_due_paise, payment_status, notes, created_by, received_at)
-       VALUES ($1,$2,$3,$4,COALESCE($5,CURRENT_DATE),$6,$7,$8,$9,$10,$11,$12,$13,CURRENT_TIMESTAMP)
+          amount_paid_paise, balance_due_paise, payment_status, notes, created_by, received_at, supplier_invoice_no, supplier_invoice_date)
+       VALUES ($1,$2,$3,$4,COALESCE($5,CURRENT_DATE),$6,$7,$8,$9,$10,$11,$12,$13,CURRENT_TIMESTAMP,$14,$15)
        RETURNING *`,
       [
         req.tenant.businessId, req.tenant.branchId, supplier?.supplier_id || null, poNumber, body.po_date || null,
         totals.subtotal_paise, totals.tax_paise, totals.total_paise, paidPaise, balancePaise,
-        paymentStatus(totals.total_paise, paidPaise), body.notes || null, req.auth.userId
+        paymentStatus(totals.total_paise, paidPaise), body.notes || null, req.auth.userId, billNo, billDate
       ]
     )).rows[0];
 
