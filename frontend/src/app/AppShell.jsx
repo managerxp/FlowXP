@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
-  ArrowLeftRight, BadgePercent, Boxes, CalendarClock, CalendarDays, ChartColumn, ChartLine, ChefHat, ChevronDown, ClipboardList, FileText, Gift,
+  ArrowLeftRight, BadgePercent, Tag, Boxes, CalendarClock, CalendarDays, ChartColumn, ChartLine, ChefHat, ChevronDown, ClipboardList, FileText, Gift,
   History, Landmark, LayoutDashboard, LayoutGrid, Lock, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
   Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X, Warehouse, PackageCheck, Undo2, HandCoins, ChartBar, ShoppingBag, Tags,
@@ -65,6 +65,7 @@ const NAV_GROUPS = [
     label: 'Sell',
     items: [
       { to: '/app/billing', label: 'Billing', icon: ReceiptText, end: true, permission: 'billing', notTypes: [...SALON, ...PHARMACY] },
+      { to: '/app/returns', label: 'Returns', icon: Undo2, types: RETAIL, permission: 'refunds' },
       { to: '/app/billing/invoices', label: 'Invoices', icon: FileText, permission: 'billing', more: true },
       { to: '/app/orders', label: 'Orders', icon: ClipboardList, types: RESTAURANT_TYPES, anyPermission: ['billing', 'kitchen'] },
       { to: '/app/payments', label: 'Payments', icon: Wallet, permission: 'payments', more: true }
@@ -147,6 +148,7 @@ const NAV_GROUPS = [
       // customers has no permission gate server-side. Editing needs 'customers' and is rejected
       // there if not; CustomersPage does not yet hide its own Edit/Add buttons for a role without it.
       { to: '/app/customers', label: 'Customers', icon: UserRound, notTypes: NOT_SALON_OR_WHOLESALE },
+      { to: '/app/offers', label: 'Offers', icon: Tag, types: RETAIL, anyPermission: ['products', 'settings'] },
       { to: '/app/loyalty', label: 'Loyalty & coupons', icon: Gift, roles: ['OWNER', 'ADMIN'], feature: 'loyalty', more: true },
       { to: '/app/messaging', label: 'Messaging', icon: MessageSquare, roles: ['OWNER', 'ADMIN'], feature: 'messaging', more: true },
       { to: '/app/reviews', label: 'Reviews', icon: Star, roles: ['OWNER', 'ADMIN'], permission: 'settings', feature: 'reviews', more: true }

@@ -780,6 +780,27 @@ nothing is received until the person presses Receive (the existing `POST /api/pu
   sent to `/learn` after a successful Receive. Tests: `invoiceimport.test.js` (13). Not tried against a real Gemini read of a real bill yet.
 - Phase 5 still to do: returns/exchanges at the till, promotions, pricing rules, a retail dashboard, performance tests.
 
+## 4e. Retail / supermarket Phase 5: offers, returns and exchanges, retail dashboard (2026-10-06)
+
+- **Offers** (`migrations/0071`, `modules/promotions.js`, `controllers/promotions.controller.js`, `/api/retail/promotions*`): PERCENT_OFF (optional minimum
+  quantity), BUY_X_GET_Y, BUNDLE_PRICE, for one product or one category, optional dates, optional "customers only". `priceLines` is pure: per product
+  the single best offer wins (never stacked), the saving is spread over that product's lines to the paisa and capped at what the line still costs.
+  `createInvoiceInTransaction` applies them when `input.applyPromotions === true` (the retail till sends `apply_promotions: true`; nothing else does),
+  as an extra line discount BEFORE tax, recorded on `invoice_items.promo_id/promo_discount_paise`. The till shows them via `POST /retail/promotions/preview`
+  (same rules, debounced) as an "Offers" row and a chip on each line. UI: `app/OffersPage.jsx` (`/app/offers`).
+- **Returns and exchanges**: `app/ReturnsPage.jsx` (`/app/returns`, `refunds` permission) finds a bill (number, name, phone) and opens the existing
+  `CreditNoteModal` (GST reversed exactly, stock back). "Keep as credit" leaves the credit on the note (`credit_left` in `asCreditNote`); "Start the
+  exchange sale" opens the till with `?exchange=<cn_id>`. The credit is spent as a PAYMENT (method OTHER, reference "Exchange CN-xxxx"), never as a
+  discount (the return already took that revenue off the old sale), recorded in `credit_notes.credit_used_paise`; it cannot be spent twice and a smaller
+  exchange leaves the rest. Server: `input.exchangeCreditNoteId` in `modules/billing.js`.
+- **Retail dashboard**: `RetailPanel` in `app/Dashboard.jsx` (stock at cost and shelf value, out, low, expiring, expired: tiles link to the stock center with
+  `?status=`; offers and returns today from `GET /api/retail/today`).
+- **Performance** (`scripts/perf-phase5.js`, 100,000 products, p50 / p95): price a 300-line cart with 100 offers 0.6 / 1.9 ms; cart preview endpoint 6.5 / 9.2 ms;
+  a 40-line bill with offers 100 / 141 ms; match 200 supplier-bill lines 294 / 305 ms; find a bill by number 2.7 / 3.3 ms. `scripts/perf-retail.js` covers the
+  product lookups.
+- Tests: `promotions.test.js` (11). Not built: offers by day of week or time, mixed-product bundles, offers in the restaurant till, a refund screen
+  separate from credit notes, an exchange across outlets.
+
 ## 5. Working rules for future sessions
 
 - **Test every feature** in `backend/test/<feature>.test.js`; run the full `npm test` and `npx vite build` before reporting. Real DB, throwaway

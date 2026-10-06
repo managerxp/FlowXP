@@ -76,6 +76,8 @@ const SuppliersPage = lazy(() => import('./app/SuppliersPage.jsx'));
 const InventoryPage = lazy(() => import('./app/InventoryPage.jsx'));
 const RetailStockPage = lazy(() => import('./app/RetailStockPage.jsx'));
 const ReceiveStockPage = lazy(() => import('./app/ReceiveStockPage.jsx'));
+const ReturnsPage = lazy(() => import('./app/ReturnsPage.jsx'));
+const OffersPage = lazy(() => import('./app/OffersPage.jsx'));
 const StockCountPage = lazy(() => import('./app/StockCountPage.jsx'));
 const ExpensesPage = lazy(() => import('./app/ExpensesPage.jsx'));
 const PurchasesPage = lazy(() => import('./app/PurchasesPage.jsx'));
@@ -256,6 +258,8 @@ const App = () => (
       <Route path="inventory" element={<InventoryPage />} />
       <Route path="stock" element={<RetailStockPage />} />
       <Route path="stock/receive" element={<ReceiveStockPage />} />
+      <Route path="returns" element={<ReturnsPage />} />
+      <Route path="offers" element={<OffersPage />} />
       <Route path="stock/counts/:id" element={<StockCountPage />} />
       <Route path="purchases" element={<PurchasesPage />} />
       <Route path="expenses" element={<ExpensesPage />} />

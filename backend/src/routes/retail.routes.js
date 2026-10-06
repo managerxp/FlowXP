@@ -11,6 +11,8 @@ import { idempotent } from '../middleware/idempotency.js';
 import * as identity from '../controllers/productIdentity.controller.js';
 import * as stock from '../controllers/retailStock.controller.js';
 import * as invoiceImport from '../controllers/invoiceImport.controller.js';
+import * as promotions from '../controllers/promotions.controller.js';
+import * as retailDashboard from '../controllers/retailDashboard.controller.js';
 import rateLimit from 'express-rate-limit';
 import { uploadBillFiles } from '../middleware/upload.js';
 import { isRetail } from '../modules/retailSettings.js';
@@ -46,6 +48,18 @@ router.post('/invoice-import/scan', ...write, billScanLimiter, uploadBillFiles, 
   (error, _req, res, _next) => res.status(400).json({ success: false, message: error.message || 'Could not read that file' }));
 router.get('/invoice-import/check', ...read, invoiceImport.check);
 router.post('/invoice-import/learn', ...write, invoiceImport.learn);
+
+/* Offers: the owner manages them (products or settings permission); the till only asks which are on and what a cart gets. */
+const till = [requireAuth, withBusiness(), retailOnly, requirePermission('billing')];
+const offersRead = [requireAuth, withBusiness(), retailOnly, requireAnyPermission('products', 'settings')];
+const offersWrite = [requireAuth, withBusiness({ requireActive: true }), retailOnly, requireAnyPermission('products', 'settings')];
+router.get('/today', requireAuth, withBusiness(), retailOnly, requireAnyPermission('reports', 'inventory', 'billing'), retailDashboard.today);
+router.get('/promotions/active', ...till, promotions.active);
+router.post('/promotions/preview', ...till, promotions.preview);
+router.get('/promotions', ...offersRead, promotions.list);
+router.post('/promotions', ...offersWrite, promotions.create);
+router.put('/promotions/:id', ...offersWrite, promotions.update);
+router.delete('/promotions/:id', ...offersWrite, promotions.remove);
 
 router.post('/import/products', ...write, requirePermission('products'), requireOutlet, stock.importProductRows);
 router.post('/import/stock', ...write, requireOutlet, stock.importStockRows);

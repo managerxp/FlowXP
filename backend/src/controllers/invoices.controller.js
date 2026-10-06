@@ -71,6 +71,8 @@ export const create = async (req, res) => {
       payments: body.payments,
       couponCode: body.coupon_code,
       redeemPoints: body.redeem_points,
+      applyPromotions: body.apply_promotions === true,
+      exchangeCreditNoteId: body.exchange_credit_note_id ? Number(body.exchange_credit_note_id) : undefined,
       invoiceDate: body.invoice_date
     });
 

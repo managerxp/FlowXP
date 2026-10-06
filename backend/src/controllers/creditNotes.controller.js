@@ -32,7 +32,9 @@ export const asCreditNote = (r) => ({
   customer_name: r.customer_name ?? null, reason: r.reason,
   subtotal: toRupees(r.subtotal_paise), cgst: toRupees(r.cgst_paise), sgst: toRupees(r.sgst_paise), igst: toRupees(r.igst_paise), tax: toRupees(r.tax_paise),
   discount_share: toRupees(r.discount_share_paise), total: toRupees(r.total_paise),
-  settled_against_balance: toRupees(r.settled_balance_paise), refunded: toRupees(r.refunded_paise)
+  settled_against_balance: toRupees(r.settled_balance_paise), refunded: toRupees(r.refunded_paise),
+  // what is still there to spend on an exchange bill (or refund): the note's total less what settled a balance, was paid back or was already spent
+  credit_left: toRupees(Math.max(0, Number(r.total_paise) - Number(r.settled_balance_paise) - Number(r.refunded_paise) - Number(r.credit_used_paise || 0)))
 });
 
 /** Proportional part of an amount for `qty` of `whole`, giving the exact remainder for the final piece. */

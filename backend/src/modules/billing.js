@@ -22,6 +22,7 @@ import { ModifierError, modifierLabel, outletSettingsFor, resolveModifiers } fro
 import { moveStock, stockAt } from './stock.js';
 import { takeBatchesForSale } from './retailStock.js';
 import { isRetail } from './retailSettings.js';
+import { activePromotions, priceLines } from './promotions.js';
 import { getProgram, isLive, progressFor, recordEvent as recordLoyalty } from './loyalty.js';
 import { CouponError, validateCoupon } from './coupons.js';
 import { consumptionPerUnit, loadRecipes } from './recipes.js';
@@ -198,7 +199,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   const products = new Map();
   if (productIds.length) {
     const { rows } = await client.query(
-      `SELECT product_id, name, selling_price_paise, purchase_price_paise, tax_rate, track_inventory, current_stock, status
+      `SELECT product_id, name, selling_price_paise, purchase_price_paise, tax_rate, track_inventory, current_stock, status, category_id
        FROM products WHERE business_id = $1 AND product_id = ANY($2::int[]) ORDER BY product_id FOR UPDATE`,
       [tenant.businessId, productIds]
     );
@@ -296,11 +297,29 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     });
 
     lines.push({
-      product_id: product?.product_id || null, description, quantity, unitPricePaise,
+      product_id: product?.product_id || null, categoryId: product?.category_id ?? null, description, quantity, unitPricePaise,
       discountPaise, taxRate, trackInventory: Boolean(product?.track_inventory), modifiers, consumption,
       unitName: raw.unit_name ? String(raw.unit_name).slice(0, 24) : null, stockFactor,
       fallbackCostPaise: product ? Math.round(Number(product.purchase_price_paise) * stockFactor) : 0, ...tax
     });
+  }
+
+  /* Offers: when the till asks for them (a retail till does), every product line is priced by the offers that are on today.
+     The saving is a line discount taken BEFORE tax, so GST follows what was actually charged. */
+  if (input.applyPromotions === true) {
+    const promos = await activePromotions(client, tenant.businessId, today);
+    if (promos.length) {
+      const cut = priceLines(promos, lines.map((l, index) => ({ index, product_id: l.product_id, category_id: l.categoryId, quantity: l.quantity, unitPricePaise: l.unitPricePaise, discountPaise: l.discountPaise })), { hasCustomer: Boolean(customer) });
+      for (const [index, r] of cut) {
+        const line = lines[index];
+        line.discountPaise += r.discountPaise;
+        line.promo = { id: r.promo_id, discountPaise: r.discountPaise };
+        Object.assign(line, computeLineTax({
+          quantity: line.quantity, unitPricePaise: line.unitPricePaise, discountPaise: line.discountPaise, taxRatePercent: line.taxRate,
+          gstEnabled: business.gst_enabled, interState, inclusive: input.taxInclusive === true
+        }));
+      }
+    }
   }
 
   /* Ingredient stock this sale uses, locked in id order so two tills billing
@@ -366,7 +385,22 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     ? (typeof input.earnPoints === 'function' ? Math.max(0, Math.floor(input.earnPoints({ lines, finalTotalPaise, state: pointsState, cfg: pts }))) : earnFor(pts, pointsState, finalTotalPaise))
     : 0;
 
-  const takenPayments = plannedPayments(input, finalTotalPaise);
+  /* An exchange: the credit from a return (a credit note) is spent on this bill as a payment, never as a discount, because the
+     return already took that revenue off the old sale. What the credit does not cover is paid the usual way. */
+  let creditTaken = null;
+  if (input.exchangeCreditNoteId) {
+    const cn = (await client.query(
+      `SELECT cn_id, cn_number, total_paise, settled_balance_paise, refunded_paise, credit_used_paise FROM credit_notes WHERE cn_id = $1 AND business_id = $2 FOR UPDATE`,
+      [input.exchangeCreditNoteId, tenant.businessId])).rows[0];
+    if (!cn) throw new BillingError(400, 'That credit note was not found');
+    const available = Number(cn.total_paise) - Number(cn.settled_balance_paise) - Number(cn.refunded_paise) - Number(cn.credit_used_paise);
+    if (available <= 0) throw new BillingError(400, `${cn.cn_number} has no credit left to use`);
+    creditTaken = { cn, amountPaise: Math.min(available, finalTotalPaise) };
+  }
+  const takenPayments = [
+    ...(creditTaken && creditTaken.amountPaise > 0 ? [{ method: 'OTHER', amountPaise: creditTaken.amountPaise, reference: paymentReference(`Exchange ${creditTaken.cn.cn_number}`) }] : []),
+    ...plannedPayments(input, finalTotalPaise - (creditTaken?.amountPaise || 0))
+  ];
   const paidPaise = takenPayments.reduce((s, p) => s + p.amountPaise, 0);
   const balancePaise = finalTotalPaise - paidPaise;
 
@@ -392,10 +426,11 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   for (const line of lines) {
     await client.query(
       `INSERT INTO invoice_items
-         (invoice_id, product_id, description, quantity, unit_price_paise, discount_paise, tax_rate, tax_amount_paise, line_total_paise, modifiers, unit_cost_paise, unit_name, unit_factor)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+         (invoice_id, product_id, description, quantity, unit_price_paise, discount_paise, tax_rate, tax_amount_paise, line_total_paise, modifiers, unit_cost_paise, unit_name, unit_factor, promo_id, promo_discount_paise)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
       [invoice.invoice_id, line.product_id, line.description, line.quantity, line.unitPricePaise,
-       line.discountPaise, line.taxRate, line.tax_paise, line.line_total_paise, JSON.stringify(line.modifiers), line.unitCostPaise, line.unitName, line.stockFactor]
+       line.discountPaise, line.taxRate, line.tax_paise, line.line_total_paise, JSON.stringify(line.modifiers), line.unitCostPaise, line.unitName, line.stockFactor,
+       line.promo?.id ?? null, line.promo?.discountPaise ?? 0]
     );
 
     // stockHandledElsewhere: the goods are not in this outlet's stock (a distributor's van holds them), so selling them here must not take them out of it
@@ -461,6 +496,10 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     } else if (finalTotalPaise >= Number(program.min_bill_paise)) {
       await recordLoyalty(client, { businessId: tenant.businessId, customerId: customer.customer_id, invoiceId: invoice.invoice_id, date: today, redeemed: false });
     }
+  }
+
+  if (creditTaken && creditTaken.amountPaise > 0) {
+    await client.query(`UPDATE credit_notes SET credit_used_paise = credit_used_paise + $2 WHERE cn_id = $1`, [creditTaken.cn.cn_id, creditTaken.amountPaise]);
   }
 
   for (const p of takenPayments) {

@@ -11,13 +11,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  BadgeCheck, Boxes, ChevronRight, ClipboardList, Clock, IndianRupee, Plus, ReceiptText, ShoppingBasket, Sparkles, Trophy, Wallet
+  AlertTriangle, ArrowLeftRight, BadgeCheck, Boxes, CalendarClock, PackageX, Tag, ChevronRight, ClipboardList, Clock, IndianRupee, Plus, ReceiptText, ShoppingBasket, Sparkles, Trophy, Wallet
 } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { AnimatedNumber, Button, Card, DashboardHeader, Skeleton, StatusBadge } from '../components/ui.jsx';
 import { AreaChart, Donut, Gauge, HourBars } from '../components/charts.jsx';
 import MetricCard from '../components/MetricCard.jsx';
+import { RETAIL_TYPES } from '../lib/business.js';
 
 const greeting = () => {
   const h = new Date().getHours();
@@ -48,6 +49,53 @@ export const TodayFigures = ({ m, trend }) => {
       <MetricCard icon={Wallet} tone={m.outstanding > 0 ? 'warning' : 'success'} label="To collect" to="/app/billing/invoices"
                   value={<AnimatedNumber value={m.outstanding} format={formatCurrency} />}
                   note={m.outstanding > 0 ? 'Unpaid and part-paid bills' : 'Every bill is paid'} />
+    </section>
+  );
+};
+
+/* ── Retail: the shelf, and what offers and returns did today ───────────────────────────────────────────── */
+
+const ShelfTile = ({ to, icon: Icon, label, value, note, tone = 'text-ink-900', bg = 'bg-surface-2 text-ink-500' }) => (
+  <Link to={to} className="lift flex flex-col gap-1 rounded-(--radius-card) border border-line bg-surface p-4 hover:border-brand-500">
+    <span className="flex items-center gap-2 text-small text-ink-500"><span aria-hidden="true" className={`flex h-7 w-7 items-center justify-center rounded-lg ${bg}`}><Icon className="h-4 w-4" /></span>{label}</span>
+    <span className={`tabular text-h3 font-semibold ${tone}`}>{value}</span>
+    <span className="text-caption text-ink-500">{note}</span>
+  </Link>
+);
+
+export const RetailPanel = () => {
+  const { business } = useAuth();
+  const [stock, setStock] = useState(null);
+  const [day, setDay] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    api('/retail/stock?limit=1').then((d) => { if (!cancelled) setStock(d.summary); }).catch(() => {});
+    api('/retail/today').then((d) => { if (!cancelled) setDay(d); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [business?.business_id]);
+  if (!stock) return null;
+
+  return (
+    <section aria-label="Shelf and stock" className="space-y-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <ShelfTile to="/app/stock" icon={Boxes} label="Stock at cost" value={formatCurrency(stock.cost_value)} note={`${formatCurrency(stock.retail_value)} at shelf price`} bg="bg-brand-50 text-brand-600" />
+        <ShelfTile to="/app/stock?status=out" icon={PackageX} label="Out of stock" value={stock.out} note={stock.out ? 'Customers will ask for these' : 'Nothing missing'} tone={stock.out ? 'text-danger' : 'text-success'} bg={stock.out ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success'} />
+        <ShelfTile to="/app/stock?status=low" icon={ClipboardList} label="Running low" value={stock.low} note={stock.low ? 'At or below the reorder level' : 'All above reorder level'} tone={stock.low ? 'text-warning' : 'text-success'} bg={stock.low ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'} />
+        <ShelfTile to="/app/stock?status=expiring" icon={CalendarClock} label="Expiring in 30 days" value={stock.expiring} note="Sell or mark down first" tone={stock.expiring ? 'text-warning' : 'text-ink-900'} bg="bg-warning/10 text-warning" />
+        <ShelfTile to="/app/stock?status=expired" icon={AlertTriangle} label="Expired on the shelf" value={stock.expired} note={stock.expired ? 'Write off and remove' : 'None'} tone={stock.expired ? 'text-danger' : 'text-success'} bg={stock.expired ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success'} />
+      </div>
+      {day && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Link to="/app/offers" className="lift flex items-center gap-3 rounded-(--radius-card) border border-line bg-surface p-4 hover:border-brand-500">
+            <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10 text-success"><Tag className="h-5 w-5" /></span>
+            <span><span className="block text-small text-ink-500">Offers today</span><span className="tabular text-body font-semibold text-ink-900">{day.offers.saving > 0 ? `${formatCurrency(day.offers.saving)} off ${day.offers.lines} line${day.offers.lines === 1 ? '' : 's'}` : 'None applied yet'}</span></span>
+          </Link>
+          <Link to="/app/returns" className="lift flex items-center gap-3 rounded-(--radius-card) border border-line bg-surface p-4 hover:border-brand-500">
+            <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-3 text-ink-700"><ArrowLeftRight className="h-5 w-5" /></span>
+            <span><span className="block text-small text-ink-500">Returns today</span><span className="tabular text-body font-semibold text-ink-900">{day.returns.count ? `${day.returns.count} for ${formatCurrency(day.returns.total)}` : 'None'}</span></span>
+          </Link>
+        </div>
+      )}
     </section>
   );
 };
@@ -412,6 +460,8 @@ const Dashboard = () => {
       {!setup.complete && <div className="rise" style={{ '--i': 1 }}><Setup setup={setup} /></div>}
 
       <div className="rise" style={{ '--i': 1 }}><TodayFigures m={m} trend={sales?.trend} /></div>
+
+      {RETAIL_TYPES.includes(business.business_type) && <div className="rise" style={{ '--i': 2 }}><RetailPanel /></div>}
 
       <div className="rise grid gap-4 sm:gap-5 lg:grid-cols-3" style={{ '--i': 2 }}>
         {sales && <div className="lg:col-span-2"><SalesChart trend={sales.trend} /></div>}

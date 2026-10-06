@@ -95,7 +95,7 @@ const Stepper = ({ value, onChange, label }) => (
   </div>
 );
 
-const BillLine = ({ line, onChange, onRemove, selected = false, onSelect }) => {
+const BillLine = ({ line, onChange, onRemove, selected = false, onSelect, offer = null }) => {
   const [discountOpen, setDiscountOpen] = useState(Boolean(line.discount));
   const label = line.name || 'custom item';
   return (
@@ -116,6 +116,7 @@ const BillLine = ({ line, onChange, onRemove, selected = false, onSelect }) => {
           <p className="tabular mt-0.5 text-caption text-ink-500">
             {formatCurrency(line.unit_price)} each
             {line.discount > 0 && <span className="text-success"> · {formatCurrency(line.discount)} off</span>}
+            {offer && <span className="ml-1 rounded-full bg-success/10 px-1.5 py-0.5 font-semibold text-success">{offer.name}: −{formatCurrency(offer.discount)}</span>}
             {!discountOpen && <button type="button" onClick={() => setDiscountOpen(true)} className="ml-2 font-medium text-brand-600 hover:text-brand-700 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:px-1">Discount</button>}
           </p>
           {line.track_inventory && Number(line.quantity) > Number(line.current_stock) && (
@@ -132,7 +133,7 @@ const BillLine = ({ line, onChange, onRemove, selected = false, onSelect }) => {
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <p className="tabular text-small font-semibold text-ink-900">{formatCurrency(lineTotal(line))}</p>
+          <p className="tabular text-small font-semibold text-ink-900">{formatCurrency(lineTotal(line) - (offer?.discount || 0))}</p>
           <div className="flex items-center gap-1">
             <Stepper value={line.quantity} label={label} onChange={(q) => onChange({ quantity: q })} />
             <button type="button" onClick={onRemove} aria-label={`Remove ${label}`} className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-400 hover:bg-danger/5 hover:text-danger pointer-coarse:h-11 pointer-coarse:w-11"><Trash2 className="h-4 w-4" /></button>
@@ -342,6 +343,13 @@ const BillingPage = () => {
 
   // supermarkets and shops: scanning, quick products, keyboard lines, server-side search and an offline catalogue
   const retail = RETAIL_TYPES.includes(business?.business_type);
+  /* Offers (retail): the server prices them when the bill is made; this asks it for the same figures as the cart changes,
+     so the cashier and the customer see what each offer took off before charging. */
+  const [promoCount, setPromoCount] = useState(0);
+  const [promo, setPromo] = useState({});               // cart line key -> { name, discount }
+  /* An exchange: the credit from a return, spent on this bill as a payment (see Returns). */
+  const [exchange, setExchange] = useState(null);       // { cn_id, cn_number, available }
+  useEffect(() => { if (retail) api('/retail/promotions/active').then((d) => setPromoCount(d.count || 0)).catch(() => {}); }, [retail]);
   const [scanning, setScanning] = useState(false);
   const [quickFor, setQuickFor] = useState(null);       // the barcode being made into a product ('' = none scanned)
   const [resumeScan, setResumeScan] = useState(false);  // go back to the camera after making the product
@@ -488,12 +496,27 @@ const BillingPage = () => {
   const updateLine = (key, patch) => setCart((c) => c.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   const removeLine = (key) => setCart((c) => c.filter((l) => l.key !== key));
 
+  useEffect(() => {
+    if (!retail || !promoCount || orderMode) { setPromo({}); return undefined; }
+    const lines = cart.filter((l) => l.product_id && Number(l.quantity) > 0);
+    if (!lines.length) { setPromo({}); return undefined; }
+    const t = setTimeout(() => {
+      api('/retail/promotions/preview', { method: 'POST', body: { customer_id: customerId || undefined, lines: lines.map((l) => ({ product_id: l.product_id, quantity: l.quantity, unit_price: l.unit_price, discount: l.discount || undefined })) } })
+        .then((d) => setPromo(Object.fromEntries(d.lines.map((r) => [lines[r.index].key, { name: r.name, discount: r.discount }]))))
+        .catch(() => setPromo({}));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [retail, promoCount, orderMode, cart, customerId]);
+
   /* Display-only totals — see the file header. */
   const totals = useMemo(() => {
     const gstEnabled = Boolean(business?.gst_enabled);
     let subtotal = 0, tax = 0;
+    let offers = 0;
     for (const l of billLines) {
-      const gross = lineTotal(l);
+      const off = promo[l.key]?.discount || 0;
+      offers += off;
+      const gross = lineTotal(l) - off;
       subtotal += gross;
       tax += gstEnabled ? gross * (Number(l.tax_rate || 0) / 100) : 0;
     }
@@ -504,8 +527,10 @@ const BillingPage = () => {
     // the loyalty reward: billing makes up to reward_quantity of the reward item free (tax and all)
     const rewardLine = card?.reward_ready ? billLines.find((l) => l.product_id === card.reward_product_id) : null;
     const rewardOff = rewardLine ? Math.min(Number(rewardLine.quantity), card.reward_quantity || 1) * rewardLine.unit_price * (1 + (gstEnabled ? Number(rewardLine.tax_rate || 0) / 100 : 0)) : 0;
-    return { subtotal, tax, discount, coupon, pointsOff, rewardOff, before, total: Math.max(0, before - coupon - pointsOff - rewardOff), gstEnabled };
-  }, [billLines, invoiceDiscount, couponInfo, pointsInfo, redeem, business?.gst_enabled, card]);
+    // the credit from a return pays part of this bill; what is left is what the customer hands over
+    const exchangeOff = exchange ? Math.min(exchange.available, Math.max(0, before - coupon - pointsOff - rewardOff)) : 0;
+    return { subtotal, tax, discount, coupon, pointsOff, rewardOff, offers, exchangeOff, before, total: Math.max(0, before - coupon - pointsOff - rewardOff - exchangeOff), gstEnabled };
+  }, [billLines, invoiceDiscount, couponInfo, pointsInfo, redeem, business?.gst_enabled, card, promo, exchange]);
 
   // A checked coupon was checked against a particular bill; changing the bill means checking again.
   useEffect(() => { setCouponInfo(null); setCouponError(''); }, [billLines, invoiceDiscount, customerId]);
@@ -531,7 +556,9 @@ const BillingPage = () => {
   useEffect(() => {
     const id = params.get('customer');
     const order = params.get('order');
-    if (!id && !order) return;
+    const credit = params.get('exchange');
+    if (credit) api(`/credit-notes/${credit}`).then((cn) => { if (cn.credit_left > 0) setExchange({ cn_id: cn.cn_id, cn_number: cn.cn_number, available: cn.credit_left }); else setError(`${cn.cn_number} has no credit left to use.`); }).catch((e) => setError(e.message));
+    if (!id && !order && !credit) return;
     if (id) api(`/customers/${id}`).then(pickCustomer).catch(() => {});
     if (order) setOrderId(Number(order));
     setParams({}, { replace: true });
@@ -565,7 +592,7 @@ const BillingPage = () => {
     setCart([]); setCustomerId(''); setCustomerName(''); setCard(null); setPointsInfo(null); setRedeem(''); setCustomerOpen(false); setInvoiceDiscount(''); setCouponCode(''); setCouponInfo(null); setCouponError('');
     setNotes(''); setExtrasOpen(false); setReceived(''); setCardRef(''); setMethod('CASH'); setConfirmation(null); setChange(0); setError(''); setQuery('');
     setSplit(false); setParts([]); setHoldOpen(false); setHoldLabel(''); setCollecting(null);
-    setOrderId(null); setOrder(null);
+    setOrderId(null); setOrder(null); setExchange(null); setPromo({});
     setTimeout(() => searchRef.current?.focus(), 0);
   };
 
@@ -614,6 +641,8 @@ const BillingPage = () => {
       payload = {
         customer_id: customerId || undefined,
         items,
+        ...(retail ? { apply_promotions: true } : {}),
+        ...(exchange ? { exchange_credit_note_id: exchange.cn_id } : {}),
         ...extras,
         ...(split ? pay : { payment: payLater ? undefined : { method, amount: amount ?? 'FULL', ...cardSlip(method, cardRef) } })
       };
@@ -969,6 +998,13 @@ const BillingPage = () => {
           </div>
         )}
 
+        {exchange && (
+          <div className="flex items-center justify-between gap-2 border-b border-line bg-brand-50 px-4 py-2 text-caption text-brand-700">
+            <span><strong className="font-semibold">Exchange:</strong> {formatCurrency(exchange.available)} of credit from {exchange.cn_number} pays for these items.</span>
+            <button type="button" onClick={() => setExchange(null)} className="font-semibold hover:underline">Remove</button>
+          </div>
+        )}
+
         {/* Lines */}
         <div className="min-h-[96px] flex-1 overflow-y-auto px-4">
           {orderMode ? (
@@ -984,7 +1020,7 @@ const BillingPage = () => {
             </div>
           ) : (
             <ul className="divide-y divide-line">
-              {cart.map((l) => <BillLine key={l.key} line={l} selected={retail && l.key === selKey} onSelect={() => setSelKey(l.key)} onChange={(patch) => updateLine(l.key, patch)} onRemove={() => removeLine(l.key)} />)}
+              {cart.map((l) => <BillLine key={l.key} line={l} offer={promo[l.key] || null} selected={retail && l.key === selKey} onSelect={() => setSelKey(l.key)} onChange={(patch) => updateLine(l.key, patch)} onRemove={() => removeLine(l.key)} />)}
             </ul>
           )}
         </div>
@@ -1020,6 +1056,8 @@ const BillingPage = () => {
             {totals.coupon > 0 && <div className="flex justify-between text-success"><dt>Coupon {couponInfo.code}</dt><dd>−{formatCurrency(totals.coupon)}</dd></div>}
             {totals.pointsOff > 0 && <div className="flex justify-between text-success"><dt>Points ({redeem})</dt><dd>−{formatCurrency(totals.pointsOff)}</dd></div>}
             {totals.rewardOff > 0 && <div className="flex justify-between text-success"><dt>Free {card.reward_item} (loyalty)</dt><dd>−{formatCurrency(totals.rewardOff)}</dd></div>}
+            {totals.offers > 0 && <div className="flex justify-between text-success"><dt>Offers (already off the lines)</dt><dd>−{formatCurrency(totals.offers)}</dd></div>}
+            {totals.exchangeOff > 0 && <div className="flex justify-between text-success"><dt>Exchange credit {exchange.cn_number}</dt><dd>−{formatCurrency(totals.exchangeOff)}</dd></div>}
             <div className="flex items-baseline justify-between pt-1">
               <dt className="text-small font-semibold text-ink-900">Total</dt>
               <dd className="text-[22px] font-semibold leading-none tracking-tight text-ink-900">{formatCurrency(totals.total)}</dd>
