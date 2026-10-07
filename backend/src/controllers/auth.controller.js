@@ -139,7 +139,7 @@ export const signup = async (req, res) => {
       [business.business_id]
     );
 
-    if (FOOD_TYPES.includes(business.business_type)) await addDefaultOptionGroups(client, business.business_id);
+    if (FOOD_TYPES.includes(business.business_type)) await addDefaultOptionGroups(client, business.business_id, business.business_type);
 
     await client.query(
       `INSERT INTO business_users (business_id, user_id, role, branch_id, status)

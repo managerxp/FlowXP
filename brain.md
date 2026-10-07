@@ -811,6 +811,18 @@ nothing is received until the person presses Receive (the existing `POST /api/pu
   retail dashboard panel and the Offers list. Measured on 100,000 products: active offers 2.5 ms from the database, 0.0 kept; dashboard figures 54 ms, 0.0 kept.
 - Not built: mixed-product "buy A get B free", offers that need a minimum bill value, a refund screen separate from credit notes, caching across several API instances.
 
+## 4f. Café defaults and café page (2026-10-07)
+
+- `modules/defaultOptions.js` now picks the set by type: RESTAURANT/CLOUD_KITCHEN keep Spice level + Veg/Non-veg extras; CAFE gets Size (Small 0, Regular +20, Large +40),
+  Milk (full cream, toned, oat +40, almond +50, soy +40), Sugar (one choice each) and Add-ons (extra shot, syrup, whipped cream, drizzle; optional, up to 3).
+  Signup passes the business type. `migrations/0073` swaps an existing café's three untouched restaurant defaults for the café set, only when none is used by a dish
+  (a café with its own groups, or dishes using them, is untouched). Tests in `defaultoptions.test.js`.
+- Website: `site/industries/content/cafe.js` is a real page at `/industries/cafe` (aliases `cafes`, `coffee-shop`, `bakery`); the restaurant page is now restaurants only;
+  seo, sitemap, llms.txt and the nav icon updated. Its screenshots are the real screens of the demo café.
+- Demo café: `cd backend && npm run seed:cafe` (script `scripts/seed-cafe.js`) builds "Brew & Bloom Café" (login cafe@flowxp.test / demo1234, dev DB only): café option groups with
+  stock usage, 28 menu items with recipes, three stations (Coffee Bar, Cold Bar, Bakery & Kitchen), tables, a visit card, two offers (weekday happy hour, any 2 bakes for ₹180) and
+  30 days of bills made through the real billing engine. Screenshots are `frontend/public/product/cafe-*.webp` (11 files; QR is a phone shot, `phone: true` in cafe.js).
+
 ## 5. Working rules for future sessions
 
 - **Test every feature** in `backend/test/<feature>.test.js`; run the full `npm test` and `npx vite build` before reporting. Real DB, throwaway

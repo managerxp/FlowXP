@@ -11,6 +11,7 @@
     "migrate": "node -e \"import('./src/config/database.js').then(async m=>{await m.initializeDatabase();await m.default.end()})\"",
     "seed:wholesale": "node scripts/seed-wholesale.js",
     "seed:salon": "node scripts/seed-salon.js",
+    "seed:cafe": "node scripts/seed-cafe.js",
     "seed:live": "node scripts/seed-live.js",
     "seed:pharmacy": "node scripts/seed-pharmacy.js",
     "seed:distributor": "node scripts/seed-wholesale.js && node scripts/seed-distributor.js"

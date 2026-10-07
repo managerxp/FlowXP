@@ -12,16 +12,17 @@
  * SOON: named gaps, a feature the trade needs that is not built yet.
  */
 import restaurant from './content/restaurant.js';
+import cafe from './content/cafe.js';
 import cloudKitchen from './content/cloud-kitchen.js';
 import wholesale from './content/wholesale.js';
 import distributor from './content/distributor.js';
 import salon from './content/salon.js';
 import pharmacy from './content/pharmacy.js';
 
-export const READY = [restaurant, cloudKitchen, wholesale, distributor, salon, pharmacy];
+export const READY = [restaurant, cafe, cloudKitchen, wholesale, distributor, salon, pharmacy];
 
-/* Old addresses that still work. The café page was merged into the restaurant page. */
-export const ALIASES = { cafe: 'restaurant', cafes: 'restaurant', 'cafe-and-restaurant': 'restaurant', 'cloud-kitchens': 'cloud-kitchen', distribution: 'distributor', pharmacies: 'pharmacy', salons: 'salon' };
+/* Old and alternative addresses that still work. */
+export const ALIASES = { cafes: 'cafe', 'coffee-shop': 'cafe', bakery: 'cafe', 'cafe-and-restaurant': 'restaurant', restaurants: 'restaurant', 'cloud-kitchens': 'cloud-kitchen', distribution: 'distributor', pharmacies: 'pharmacy', salons: 'salon' };
 
 /* The same on every page: what sits underneath whichever trade you choose. */
 export const UNDERNEATH = [

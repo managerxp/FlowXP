@@ -48,3 +48,39 @@ test('a business that already has option groups is left alone, and a second call
   await addDefaultOptionGroups(pool, fresh); await addDefaultOptionGroups(pool, fresh);
   assert.equal((await groups(fresh)).length, 3);
 });
+
+test('a café gets Size, Milk and Sugar (pick one each) and Add-ons (optional), with no spice or veg / non-veg groups', { skip }, async () => {
+  const id = await business('Bean There', 'CAFE');
+  assert.equal(await addDefaultOptionGroups(pool, id, 'CAFE'), true);
+  const g = await groups(id);
+  assert.deepEqual(g.map((x) => x.name), ['Size', 'Milk', 'Sugar', 'Add-ons']);
+  for (const x of g.slice(0, 3)) assert.deepEqual([x.is_variant, x.min_select, x.max_select], [true, 1, 1], x.name);
+  assert.deepEqual([g[3].is_variant, g[3].min_select, g[3].max_select], [false, 0, 3]);
+  assert.deepEqual(g[0].options, ['Small', 'Regular', 'Large']);
+  assert.ok(g[1].options.includes('Oat') && g[3].options.includes('Extra shot'));
+  const price = async (n) => Number((await pool.query(`SELECT price_delta_paise FROM modifiers WHERE business_id = $1 AND name = $2`, [id, n])).rows[0].price_delta_paise);
+  assert.equal(await price('Large'), 4000); assert.equal(await price('Oat'), 4000); assert.equal(await price('Full cream'), 0);
+  // a restaurant is unchanged by this
+  const r = await business('Curry Two', 'RESTAURANT'); await addDefaultOptionGroups(pool, r, 'RESTAURANT');
+  assert.deepEqual((await groups(r)).map((x) => x.name), ['Spice level', 'Veg extras', 'Non-veg extras']);
+});
+
+test('migration 0073 swaps a café’s untouched restaurant defaults for the café set, and leaves anything built on them alone', { skip }, async () => {
+  const { up } = await import('../migrations/0073_cafe_option_defaults.js');
+  const untouched = await business('Café Untouched', 'CAFE'); await addDefaultOptionGroups(pool, untouched, 'RESTAURANT');
+  const inUse = await business('Café In Use', 'CAFE'); await addDefaultOptionGroups(pool, inUse, 'RESTAURANT');
+  const dish = (await pool.query(`INSERT INTO products (business_id, name, sku, kind, unit, selling_price_paise) VALUES ($1,'Latte','LAT1','DISH','pc',15000) RETURNING product_id`, [inUse])).rows[0].product_id;
+  const spice = (await pool.query(`SELECT group_id FROM modifier_groups WHERE business_id = $1 AND name = 'Spice level'`, [inUse])).rows[0].group_id;
+  await pool.query(`INSERT INTO product_modifier_groups (product_id, group_id) VALUES ($1,$2)`, [dish, spice]);
+  const own = await business('Café Own Setup', 'CAFE');
+  await pool.query(`INSERT INTO modifier_groups (business_id, name, is_variant, min_select, max_select) VALUES ($1,'Temperature',TRUE,1,1)`, [own]);
+  const restaurant = await business('Not A Café', 'RESTAURANT'); await addDefaultOptionGroups(pool, restaurant, 'RESTAURANT');
+
+  await up(pool);
+  assert.deepEqual((await groups(untouched)).map((x) => x.name), ['Size', 'Milk', 'Sugar', 'Add-ons'], 'swapped');
+  assert.deepEqual((await groups(inUse)).map((x) => x.name), ['Spice level', 'Veg extras', 'Non-veg extras'], 'a group on a dish: left alone');
+  assert.equal((await pool.query(`SELECT count(*)::int AS n FROM modifier_groups WHERE business_id = $1`, [own])).rows[0].n, 1, 'its own group: left alone');
+  assert.deepEqual((await groups(restaurant)).map((x) => x.name), ['Spice level', 'Veg extras', 'Non-veg extras'], 'a restaurant: left alone');
+  await up(pool);
+  assert.equal((await groups(untouched)).length, 4, 'running it again changes nothing');
+});

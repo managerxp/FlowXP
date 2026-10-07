@@ -13,11 +13,12 @@ const BRAND = 'FlowXP';
 
 /* Page titles and search phrases per industry. */
 const INDUSTRY_TITLE = {
-  restaurant: 'Restaurant and café billing software', 'cloud-kitchen': 'Cloud kitchen software', wholesale: 'Wholesale billing software',
+  restaurant: 'Restaurant billing software', cafe: 'Café and bakery billing software', 'cloud-kitchen': 'Cloud kitchen software', wholesale: 'Wholesale billing software',
   distributor: 'Distribution and field sales software', salon: 'Salon billing software', pharmacy: 'Pharmacy billing software'
 };
 const INDUSTRY_SEARCH = {
-  restaurant: 'Restaurant and café billing software with POS, table QR ordering, kitchen display, recipes and GST.',
+  restaurant: 'Restaurant billing software with POS, table QR ordering, kitchen display, recipes and GST.',
+  cafe: 'Café and bakery billing software with a fast counter, size, milk and sugar options, a barista screen, recipes, a visit card and GST.',
   'cloud-kitchen': 'Cloud kitchen software for delivery orders, several brands, recipes, payouts and GST.',
   wholesale: 'Wholesale billing and inventory software with credit limits, batches, purchase orders and GST.',
   distributor: 'Distribution software for field sales, beats, schemes, van stock and collections.',

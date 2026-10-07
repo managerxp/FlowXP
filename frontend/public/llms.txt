@@ -24,7 +24,8 @@ Key facts:
 ## Industries
 
 - [All industries](https://flowxp.in/industries): every trade FlowXP supports
-- [Restaurants and cafés](https://flowxp.in/industries/restaurant): counter billing, tables and table QR ordering, kitchen display, menu with options, recipes and food cost, reservations, loyalty
+- [Restaurants](https://flowxp.in/industries/restaurant): counter billing, tables and table QR ordering, kitchen display, menu with options, recipes and food cost, reservations, loyalty
+- [Cafés and bakeries](https://flowxp.in/industries/cafe): a fast counter with order numbers, size, milk and sugar options on drinks, a barista screen, recipes and stock, a visit card, offers by day and hour, GST
 - [Cloud kitchens](https://flowxp.in/industries/cloud-kitchen): delivery orders, several brands from one kitchen, payouts and profit after platform fees
 - [Wholesale](https://flowxp.in/industries/wholesale): sales orders, credit limits, batches and expiry, warehouse and delivery, purchasing, receivables and payables
 - [Distribution](https://flowxp.in/industries/distributor): principals and brands, territories and beats, field sales on a phone, schemes, vans, targets
