@@ -46,10 +46,11 @@ export const totals = (cart: Cart, offers: Map<string, number> = new Map()): Tot
 };
 
 /** What POST /invoices takes: ids, quantities and chosen option ids only. The server prices every line itself. */
-export const saleBody = (cart: Cart, payment: { method: string; reference?: string }, { kitchen = false }: { kitchen?: boolean } = {}) => ({
+export const saleBody = (cart: Cart, payment: { method: string; reference?: string }, { kitchen = false, customerId }: { kitchen?: boolean; customerId?: number | null } = {}) => ({
   items: cart.lines.map((l) => ({ product_id: l.product.product_id, quantity: l.quantity, ...(l.modifierIds.length ? { modifier_ids: l.modifierIds } : {}) })),
   payment: { method: payment.method, amount: 'FULL', ...(payment.reference ? { reference_number: payment.reference } : {}) },
   apply_promotions: true,
+  ...(customerId ? { customer_id: customerId } : {}),
   ...(kitchen ? { send_to_kitchen: true } : {})
 });
 

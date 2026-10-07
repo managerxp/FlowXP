@@ -40,7 +40,7 @@ export default function Receipt() {
   return (
     <SafeAreaView style={s.screen}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
-        <Title>{waiting ? 'Sale saved on this phone' : 'Bill made'}</Title>
+        <Title>{waiting ? 'Bill saved on this phone' : 'Bill made'}</Title>
         {invoice?.order_number ? (
           <View style={[s.card, { alignItems: 'center' }]}>
             <Soft>Token to call out</Soft>
@@ -48,16 +48,16 @@ export default function Receipt() {
           </View>
         ) : null}
         {invoice ? <Soft>{invoice.invoice_number} · {rupees(Math.round(invoice.total * 100))} paid</Soft> : null}
-        {waiting ? <Soft>{pending.state === 'failed' ? 'FlowXP refused this sale. See Sales on this phone.' : 'No connection right now. It will be sent to FlowXP by itself and gets its real bill number then.'}</Soft> : null}
+        {waiting ? <Soft>{pending.state === 'failed' ? 'FlowXP could not accept this bill. Open Bills, then Waiting to send, to see why.' : 'No internet right now. It will be sent by itself, and gets its real bill number then. You do not need to do anything.'}</Soft> : null}
         {change ? <Text style={{ fontSize: 20, fontWeight: '700', color: color.ok }}>Give back {rupees(Number(change))}</Text> : null}
         {!invoice && !pending && !error ? <ActivityIndicator /> : null}
         <ErrorText>{error}</ErrorText>
         {error ? <Button title="Try again" kind="quiet" onPress={load} /> : null}
         {text ? <View style={[s.card]}><Text selectable style={{ fontFamily: 'monospace', fontSize: 13, color: color.ink }}>{text}</Text></View> : null}
-        {text ? <Button title="Print" kind="quiet" onPress={() => { setPrintError(''); void kvGet('paper').then((p) => printReceipt(text, p === '80' ? '80' : '58')).catch((e: Error) => setPrintError(e.message)); }} /> : null}
+        <Button title={invoice?.table_name ? 'Back to the tables' : 'Next customer: new bill'} onPress={() => router.replace(invoice?.table_name ? '/tables' : '/sell')} />
+        {text ? <Button title="Print the bill" kind="quiet" onPress={() => { setPrintError(''); void kvGet('paper').then((p) => printReceipt(text, p === '80' ? '80' : '58')).catch((e: Error) => setPrintError(e.message)); }} /> : null}
         <ErrorText>{printError}</ErrorText>
         {text ? <Button title="Share the bill" kind="quiet" onPress={() => { void Share.share({ message: text }); }} /> : null}
-        <Button title="New sale" onPress={() => router.replace('/till')} />
       </ScrollView>
     </SafeAreaView>
   );

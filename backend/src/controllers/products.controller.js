@@ -367,7 +367,7 @@ const posShape = async (rows, tenant) => {
 export const posRowsByIds = async (tenant, ids) => {
   if (!ids.length) return [];
   const { rows } = await pool.query(
-    `${POS_SELECT} WHERE p.business_id = $1 AND p.status = 'ACTIVE' AND p.kind <> 'SERVICE' AND p.product_id = ANY($2::int[]) ORDER BY p.product_id`, [tenant.businessId, ids]);
+    `${POS_SELECT} WHERE p.business_id = $1 AND p.status = 'ACTIVE' AND p.kind NOT IN ('SERVICE','INGREDIENT','PACKAGING') AND p.product_id = ANY($2::int[]) ORDER BY p.product_id`, [tenant.businessId, ids]);
   return posShape(rows, tenant);
 };
 
@@ -375,7 +375,7 @@ export const posCatalog = async (req, res) => {
   const after = Math.max(0, Math.trunc(Number(req.query.after)) || 0);
   const limit = Math.min(Math.max(Math.trunc(Number(req.query.limit)) || 1000, 1), 2000);
   const { rows } = await pool.query(
-    `${POS_SELECT} WHERE p.business_id = $1 AND p.status = 'ACTIVE' AND p.kind <> 'SERVICE' AND p.product_id > $2
+    `${POS_SELECT} WHERE p.business_id = $1 AND p.status = 'ACTIVE' AND p.kind NOT IN ('SERVICE','INGREDIENT','PACKAGING') AND p.product_id > $2
      ORDER BY p.product_id LIMIT ${limit}`, [req.tenant.businessId, after]
   );
   res.json({ success: true, data: await posShape(rows, req.tenant), meta: { next_after: rows.length === limit ? rows[rows.length - 1].product_id : null } });

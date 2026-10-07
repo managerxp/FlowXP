@@ -3,10 +3,14 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
     "expo": "~57.0.27",
     "expo-application": "~57.0.3",
+    "expo-build-properties": "~57.0.22",
     "expo-camera": "~57.0.6",
     "expo-constants": "~57.0.21",
+    "expo-font": "~57.0.4",
+    "expo-keep-awake": "~57.0.2",
     "expo-linking": "~57.0.12",
     "expo-print": "~57.0.2",
     "expo-router": "~57.0.25",
@@ -29,15 +33,19 @@
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts",
     "e2e": "node --experimental-strip-types --no-warnings scripts/e2e.ts",
     "e2e:offline": "node --experimental-strip-types --no-warnings scripts/e2e-offline.ts",
     "e2e:cafe": "node --experimental-strip-types --no-warnings scripts/e2e-cafe.ts",
     "release:check": "npm run typecheck && npm test && npx expo-doctor && npx expo export --platform android --output-dir dist",
-    "phone": "expo start --lan"
+    "phone": "expo start --lan",
+    "e2e:pages": "node --experimental-strip-types --no-warnings scripts/e2e-pages.ts",
+    "e2e:orders": "node --experimental-strip-types --no-warnings scripts/e2e-orders.ts",
+    "e2e:kitchen": "node --experimental-strip-types --no-warnings scripts/e2e-kitchen.ts",
+    "e2e:changes": "node --experimental-strip-types --no-warnings scripts/e2e-changes.ts"
   },
   "private": true
 }

@@ -151,6 +151,23 @@ test('the option groups a product offers travel with it, and changing them count
   assert.deepEqual((await changes(next)).body.data.changes.find((c) => c.id === shirt).row.modifier_group_ids, []);
 });
 
+test('only things you sell go to the phone: ingredients and packaging are left out, and a product that becomes one is removed from it', { skip }, async () => {
+  const mk = async (name, kind) => (await pool.query(`INSERT INTO products (business_id, name, sku, kind, unit, selling_price_paise, tax_rate, track_inventory) VALUES ($1,$2,$3,$4,'pc',0,5,TRUE) RETURNING product_id`, [biz, name, name.slice(0, 6).toUpperCase() + kind, kind])).rows[0].product_id;
+  const start = await head();
+  const dish = await mk('Plain Toast', 'DISH'); const flour = await mk('Flour Sack', 'INGREDIENT'); const cup = await mk('Paper Cup', 'PACKAGING');
+  const got = (await changes(start)).body.data.changes;
+  assert.equal(got.find((c) => c.id === dish).op, 'upsert');
+  assert.equal(got.find((c) => c.id === flour).op, 'delete', 'an ingredient is never sent as a product');
+  assert.equal(got.find((c) => c.id === cup).op, 'delete');
+  const { posCatalog } = await import('../src/controllers/products.controller.js');
+  const res = fakeRes(); await posCatalog({ tenant: tenant(), query: {} }, res);
+  const names = res.body.data.map((p) => p.name);
+  assert.ok(names.includes('Plain Toast') && !names.includes('Flour Sack') && !names.includes('Paper Cup'));
+  const next = await head();
+  await pool.query(`UPDATE products SET kind = 'INGREDIENT' WHERE product_id = $1`, [dish]);
+  assert.equal((await changes(next)).body.data.changes.find((c) => c.id === dish).op, 'delete', 'a product turned into an ingredient leaves the phone');
+});
+
 test('customers and categories travel too; a customer who is archived is removed from the phone', { skip }, async () => {
   const start = await head();
   const cat = (await pool.query(`INSERT INTO categories (business_id, name) VALUES ($1,'Shirts') RETURNING category_id`, [biz])).rows[0].category_id;

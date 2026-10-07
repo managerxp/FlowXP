@@ -1,14 +1,18 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
+import { goBack } from '../lib/nav.ts';
+import { router, useLocalSearchParams } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ApiError } from '../lib/api.ts';
+import { ApiError, NetworkError, newKey } from '../lib/api.ts';
+import { useLoad } from '../lib/useLoad.ts';
+import { orderTotals, type Order } from '../lib/orders.ts';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
 import { useScope } from '../lib/local.ts';
 import { refreshCounts, syncAll } from '../lib/sync.ts';
 import { takeSale } from '../lib/till.ts';
 import { clearSale, keyForSale, useSale } from '../lib/sale.ts';
+import { markDone } from '../lib/learn.tsx';
 import { KITCHEN_TYPES, totals, upiLink } from '../lib/cart.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Button, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
@@ -20,8 +24,15 @@ export default function Pay() {
   const session = useSession();
   const business = currentBusiness(session);
   const scope = useScope();
-  const { cart, kitchen, offers } = useSale();
+  const { cart, kitchen, offers, customer } = useSale();
   const sum = totals(cart, offers.byKey);
+  // billing a table's order instead of the till's bill: the order is on the server and the server prices it
+  const { order: orderId } = useLocalSearchParams<{ order?: string }>();
+  const order = useLoad<Order>(`order:${session.businessId}:${session.branchId}:${orderId}`, () => api.get<Order>(`/orders/${orderId}`), Boolean(orderId));
+  const orderKey = useRef(newKey());   // one key for billing this order: a retry after a dropped signal returns the same invoice
+  const ot = order.data ? orderTotals(order.data) : null;
+  const total = orderId ? (ot?.totalPaise ?? 0) : sum.totalPaise;
+  const lineCount = orderId ? (ot?.lines ?? 0) : cart.lines.length;
   const toKitchen = kitchen && KITCHEN_TYPES.includes(business?.business_type ?? '');
   const [method, setMethod] = useState<Method>('CASH');
   const [given, setGiven] = useState('');
@@ -29,17 +40,28 @@ export default function Pay() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const change = method === 'CASH' && given ? toPaise(given) - sum.totalPaise : 0;
+  const change = method === 'CASH' && given ? toPaise(given) - total : 0;
+
+  const billOrder = async () => {
+    setBusy(true); setError('');
+    try {
+      const invoice = await api.post<{ invoice_id: number }>(`/orders/${orderId}/bill`, { payment: { method, amount: 'FULL', ...(reference.trim() ? { reference_number: reference.trim() } : {}) }, apply_promotions: true }, { idempotencyKey: orderKey.current });
+      router.replace({ pathname: '/receipt', params: { id: String(invoice.invoice_id), change: change > 0 ? String(change) : '' } });
+    } catch (e) {
+      setError(e instanceof NetworkError ? 'No internet. The order is still open and nothing was billed. Tap again when the internet is back. It will not be billed twice.' : e instanceof ApiError ? e.message : 'Could not make the bill');
+    } finally { setBusy(false); }
+  };
 
   const confirm = async () => {
+    if (orderId) return billOrder();
     if (!scope) return;
     setBusy(true); setError('');
     try {
       // the same key for every attempt at THIS sale: if the first one reached the server before the signal dropped, a retry returns that invoice.
       // With no signal the sale is kept on the phone and sent later, with that same key.
-      const taken = await takeSale({ api, outbox: scope.outbox, cart, method, reference: reference.trim() || undefined, key: keyForSale(), kitchen: toKitchen });
-      if (taken.kind === 'full') { setError('Too many sales are waiting on this phone. Connect to the internet so they can be sent, then bill again.'); return; }
-      clearSale();
+      const taken = await takeSale({ api, outbox: scope.outbox, cart, method, reference: reference.trim() || undefined, key: keyForSale(), kitchen: toKitchen, customerId: customer?.id ?? null });
+      if (taken.kind === 'full') { setError('Too many bills are waiting on this phone. Connect to the internet so they can be sent, then make this bill again.'); return; }
+      clearSale(); markDone('first_bill');
       if (taken.kind === 'queued') {
         await refreshCounts(); void syncAll();
         router.replace({ pathname: '/receipt', params: { local: taken.entry.id, change: change > 0 ? String(change) : '' } });
@@ -47,7 +69,7 @@ export default function Pay() {
         router.replace({ pathname: '/receipt', params: { id: String(taken.invoiceId), change: change > 0 ? String(change) : '' } });
       }
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not make the bill. Nothing was billed twice: tap again.');
+      setError(e instanceof ApiError ? e.message : 'Could not make the bill. Tap again. It will not be billed twice.');
     } finally { setBusy(false); }
   };
 
@@ -55,8 +77,8 @@ export default function Pay() {
   return (
     <SafeAreaView style={s.screen}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled">
-        <Title>{rupees(sum.totalPaise)}</Title>
-        <Soft>About, with GST. {cart.lines.length} lines. The final bill comes from FlowXP.</Soft>
+        <Title>{rupees(total)}</Title>
+        <Soft>About, with GST. {lineCount} lines{orderId && order.data ? ` · ${order.data.table_name ?? order.data.order_type} ${order.data.order_number}` : ''}. The final bill comes from FlowXP.</Soft>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {METHODS.map((m) => (
             <Button key={m.id} title={m.label} kind={method === m.id ? 'primary' : 'quiet'} onPress={() => setMethod(m.id)} style={{ flex: 1 }} />
@@ -66,7 +88,7 @@ export default function Pay() {
         {method === 'CASH' ? (
           <View style={{ gap: 8 }}>
             <Soft>Cash received (optional)</Soft>
-            <TextInput style={s.input} value={given} onChangeText={setGiven} keyboardType="decimal-pad" placeholder={rupees(sum.totalPaise)} accessibilityLabel="Cash received" />
+            <TextInput style={s.input} value={given} onChangeText={setGiven} keyboardType="decimal-pad" placeholder={rupees(total)} accessibilityLabel="Cash received" />
             {change > 0 ? <Text style={{ fontSize: 18, fontWeight: '700', color: color.ok }}>Give back {rupees(change)}</Text> : null}
             {given && change < 0 ? <Text style={{ color: color.danger }}>Short by {rupees(-change)}</Text> : null}
           </View>
@@ -76,7 +98,7 @@ export default function Pay() {
           <View style={[s.card, { alignItems: 'center', gap: 10 }]}>
             {vpa ? (
               <>
-                <QRCode value={upiLink(vpa, business?.name || 'FlowXP', sum.totalPaise, 'Bill')} size={220} />
+                <QRCode value={upiLink(vpa, business?.name || 'FlowXP', total, 'Bill')} size={220} />
                 <Soft>{vpa}</Soft>
                 <Soft>Ask the customer to scan, then confirm the money has arrived.</Soft>
               </>
@@ -93,8 +115,8 @@ export default function Pay() {
         ) : null}
 
         <ErrorText>{error}</ErrorText>
-        <Button title={method === 'CASH' ? 'Cash received, make the bill' : method === 'UPI' ? 'Money received, make the bill' : 'Card paid, make the bill'} onPress={confirm} busy={busy} disabled={!cart.lines.length} />
-        <Button title="Back to the bill" kind="quiet" onPress={() => router.back()} disabled={busy} />
+        <Button title={method === 'CASH' ? 'Cash received, make the bill' : method === 'UPI' ? 'Money received, make the bill' : 'Card paid, make the bill'} onPress={confirm} busy={busy} disabled={lineCount === 0 || (Boolean(orderId) && !order.data)} />
+        <Button title="Back to the bill" kind="quiet" onPress={() => goBack()} disabled={busy} />
       </ScrollView>
     </SafeAreaView>
   );

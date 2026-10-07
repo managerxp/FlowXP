@@ -6,24 +6,31 @@
 import { openOnPhone, type Db } from './db.ts';
 import { SCHEMA as CATALOG_SCHEMA, createCatalog, type Catalog } from './catalog.ts';
 import { SCHEMA as OUTBOX_SCHEMA, createOutbox, type Outbox } from './outbox.ts';
+import { SCHEMA as HELD_SCHEMA, createHeld, type Held } from './held.ts';
+import { SCHEMA as ACTIONS_SCHEMA, createActions, type Actions } from './actions.ts';
+import { migrate } from './migrate.ts';
 import { createStore, useStore } from './store.ts';
 
-export type Scope = { key: string; db: Db; catalog: Catalog; outbox: Outbox };
+export type Scope = { key: string; db: Db; catalog: Catalog; outbox: Outbox; held: Held; actions: Actions };
 
 /** Build the catalogue and outbox on any database (the phone's, or a test's). */
 export const makeScope = async (key: string, db: Db): Promise<Scope> => {
-  await db.exec(CATALOG_SCHEMA); await db.exec(OUTBOX_SCHEMA);
-  return { key, db, catalog: createCatalog(db), outbox: createOutbox(db) };
+  await db.exec(CATALOG_SCHEMA); await db.exec(OUTBOX_SCHEMA); await db.exec(HELD_SCHEMA); await db.exec(ACTIONS_SCHEMA);
+  await migrate(db);
+  return { key, db, catalog: createCatalog(db), outbox: createOutbox(db), held: createHeld(db), actions: createActions(db) };
 };
 
 export const scopeStore = createStore<{ scope: Scope | null }>({ scope: null });
 export const useScope = () => useStore(scopeStore).scope;
 
+const scopes = new Map<string, Promise<Scope>>();
+/** One scope per outlet, built once even if two callers ask together (the start-up and the outlet choice both do). */
 export const openScope = async (businessId: number, branchId: number) => {
   const key = `b${businessId}-o${branchId}`;
-  if (scopeStore.get().scope?.key === key) return scopeStore.get().scope!;
-  const scope = await makeScope(key, await openOnPhone(`flowxp-${key}.db`));
-  scopeStore.set({ scope });
+  let made = scopes.get(key);
+  if (!made) { made = openOnPhone(`flowxp-${key}.db`).then((db) => makeScope(key, db)); scopes.set(key, made); made.catch(() => scopes.delete(key)); }
+  const scope = await made;
+  if (scopeStore.get().scope?.key !== key) scopeStore.set({ scope });
   return scope;
 };
 export const closeScope = () => scopeStore.set({ scope: null });

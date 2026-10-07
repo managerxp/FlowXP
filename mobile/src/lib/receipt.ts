@@ -6,7 +6,7 @@ export type InvoiceLine = { description: string; quantity: number; unit_price: n
 export type Invoice = {
   invoice_id: number; invoice_number: string; invoice_date: string; customer_name?: string | null; cashier?: string | null;
   subtotal: number; discount: number; tax: number; round_off: number; total: number; amount_paid: number; balance_due: number;
-  order_number?: string | null;
+  order_number?: string | null; table_name?: string | null;
   outlet?: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; city?: string | null } | null;
   seller?: { gstin?: string | null; address?: string | null; city?: string | null; phone?: string | null };
   items: InvoiceLine[]; payments: { method: string; amount: number }[];

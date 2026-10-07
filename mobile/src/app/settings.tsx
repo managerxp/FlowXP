@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
+import { goBack } from '../lib/nav.ts';
 import { router } from 'expo-router';
 import * as Updates from 'expo-updates';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +10,8 @@ import { refreshCounts, syncAll, useSyncState } from '../lib/sync.ts';
 import { appVersion, reportError } from '../lib/crash.ts';
 import { printReceipt, type Paper } from '../lib/print.ts';
 import { Button, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
+import { LanguagePicker } from '../lib/lang.tsx';
+import { t } from '../lib/i18n.ts';
 
 const Row = ({ label, value }: { label: string; value: string }) => (
   <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, gap: 12 }}>
@@ -41,15 +44,15 @@ export default function Settings() {
       const found = await Updates.checkForUpdateAsync();
       if (!found.isAvailable) return say('You have the latest version.');
       await Updates.fetchUpdateAsync();
-      Alert.alert('Update ready', 'Restart FlowXP to use the new version. Sales waiting on this phone are kept.', [{ text: 'Later' }, { text: 'Restart now', onPress: () => { void Updates.reloadAsync(); } }]);
+      Alert.alert('Update ready', 'Restart FlowXP to use the new version. Bills waiting to send are kept.', [{ text: 'Later' }, { text: 'Restart now', onPress: () => { void Updates.reloadAsync(); } }]);
       say('An update is ready.');
     } catch (e) { say('', e instanceof Error ? e.message : 'Could not check for updates'); }
   };
 
   const clearData = () => {
     if (!scope) return;
-    if (sync.pending + sync.failed > 0) { say('', `${sync.pending + sync.failed} sale(s) have not reached FlowXP. Send them (or discard the refused ones) before clearing this phone.`); return; }
-    Alert.alert('Clear this phone?', 'Removes the product list and the list of sent sales from this phone. Nothing in FlowXP is deleted; the products download again next time.', [
+    if (sync.pending + sync.failed > 0) { say('', `${sync.pending + sync.failed} bill(s) have not reached FlowXP yet. Send them, or discard the ones FlowXP could not accept, before clearing this phone.`); return; }
+    Alert.alert('Clear this phone?', 'This removes the product list and the list of sent bills from this phone. Nothing in FlowXP is deleted. The products download again next time.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Clear', style: 'destructive', onPress: () => { void (async () => { await scope.catalog.clear(); await scope.outbox.forgetSent(); await refreshCounts(); say('This phone is cleared. The products download again when you open the till.'); })(); } }
     ]);
@@ -59,7 +62,7 @@ export default function Settings() {
     const unsent = sync.pending + sync.failed;
     const go = () => { void signOut().then(() => router.replace('/login')); };
     if (!unsent) return go();
-    Alert.alert(`${unsent} sale${unsent === 1 ? ' is' : 's are'} not sent yet`, 'They stay safe on this phone and are sent after you sign in again to this outlet.', [{ text: 'Stay', style: 'cancel' }, { text: 'Sign out', onPress: go }]);
+    Alert.alert(`${unsent} bill${unsent === 1 ? ' has' : 's have'} not been sent yet`, 'They stay safe on this phone. They are sent after you sign in again at this outlet.', [{ text: 'Stay', style: 'cancel' }, { text: 'Sign out', onPress: go }]);
   };
 
   return (
@@ -72,12 +75,14 @@ export default function Settings() {
           <Row label="Outlet" value={business?.outlets.find((o) => o.branch_id === session.branchId)?.name ?? ''} />
           <Row label="Phone code" value={device} />
           <Row label="Products on this phone" value={String(sync.products)} />
-          <Row label="Last sync" value={sync.syncedAt ? new Date(sync.syncedAt).toLocaleString() : 'never'} />
-          <Row label="Sales waiting / refused" value={`${sync.pending} / ${sync.failed}`} />
+          <Row label="Products last updated" value={sync.syncedAt ? new Date(sync.syncedAt).toLocaleString() : 'never'} />
+          <Row label="Bills waiting / need a decision" value={`${sync.pending} / ${sync.failed}`} />
           <Row label="App version" value={appVersion()} />
           <Row label="Server" value={API_URL} />
         </View>
 
+        <Text style={{ fontWeight: '700', color: color.ink }}>{t('Language')}</Text>
+        <LanguagePicker />
         <Text style={{ fontWeight: '700', color: color.ink }}>Receipt printer paper</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Button title="58 mm" kind={paper === '58' ? 'primary' : 'quiet'} onPress={() => choosePaper('58')} style={{ flex: 1 }} />
@@ -86,14 +91,15 @@ export default function Settings() {
         <Button title="Print a test receipt" kind="quiet" onPress={() => { printReceipt(TEST_RECEIPT, paper).catch((e: Error) => say('', e.message)); }} />
         <Soft>Printing uses the phone's own print system, so it works with any printer the phone can reach (Wi-Fi, USB, or Bluetooth through the printer maker's app).</Soft>
 
-        <Button title="Send sales now" kind="quiet" onPress={() => { void syncAll(); }} busy={sync.busy} />
+        <Button title="Send waiting bills now" kind="quiet" onPress={() => { void syncAll(); }} busy={sync.busy} />
+        <Button title="Refresh the product list" kind="quiet" onPress={() => { void (async () => { if (!scope) return; say('Refreshing…'); try { await scope.catalog.rebuild(); await syncAll(); say('The product list was refreshed.'); } catch (e) { say('', e instanceof Error ? e.message : 'Could not refresh'); } })(); }} busy={sync.busy} />
         <Button title="Check for an update" kind="quiet" onPress={() => { void checkUpdate(); }} />
-        <Button title="Send a test problem report" kind="quiet" onPress={() => { void reportError(new Error(`Test report from ${device || 'a phone'}`), '/settings').then((r) => say(r === 'sent' ? 'Report sent.' : r === 'queued' ? 'No connection: the report will be sent later.' : 'Already sent a moment ago.')); }} />
+        <Button title="Send a test report to FlowXP" kind="quiet" onPress={() => { void reportError(new Error(`Test report from ${device || 'a phone'}`), '/settings').then((r) => say(r === 'sent' ? 'Report sent.' : r === 'queued' ? 'No connection: the report will be sent later.' : 'Already sent a moment ago.')); }} />
         <Button title="Clear this phone's data" kind="danger" onPress={clearData} />
         <ErrorText>{error}</ErrorText>
         {message ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok }}>{message}</Text> : null}
         <Button title="Sign out" kind="quiet" onPress={leave} />
-        <Button title="Back" onPress={() => router.back()} />
+        <Button title="Back" onPress={() => goBack()} />
       </ScrollView>
     </SafeAreaView>
   );

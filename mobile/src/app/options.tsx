@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { goBack } from '../lib/nav.ts';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useScope } from '../lib/local.ts';
 import { add } from '../lib/sale.ts';
+import { ApiError, newKey } from '../lib/api.ts';
+import { api } from '../lib/session.ts';
 import type { Product } from '../lib/catalog.ts';
 import { initialChoice, missing, picked, toggle, type Chosen, type Group } from '../lib/options.ts';
 import { rupees, toPaise } from '../lib/money.ts';
@@ -13,11 +16,13 @@ const delta = (n: number) => (n === 0 ? '' : `${n > 0 ? '+' : '−'}${rupees(Mat
 
 /* Size, milk, sugar, add-ons: the choices for one drink, read from the phone's own copy so it works with no signal. */
 export default function Options() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, order } = useLocalSearchParams<{ id: string; order?: string }>();
   const scope = useScope();
   const [product, setProduct] = useState<Product | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [chosen, setChosen] = useState<Chosen>({});
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState('');
 
   useEffect(() => {
     if (!scope) return;
@@ -33,6 +38,17 @@ export default function Options() {
   const pick = picked(groups, chosen);
   const still = missing(groups, chosen);
   const price = toPaise(product.selling_price) + pick.deltaPaise;
+
+  // for an order (a table) the drink goes straight onto the order; for the till it goes on the bill
+  const confirm = async () => {
+    if (!order) { add(product, 1, pick); goBack(); return; }
+    setBusy(true); setProblem('');
+    try {
+      await api.post(`/orders/${order}/items`, { items: [{ product_id: product.product_id, quantity: 1, modifier_ids: pick.ids }] }, { idempotencyKey: newKey() });
+      goBack();
+    } catch (e) { setProblem(e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'Could not add that'); }
+    finally { setBusy(false); }
+  };
 
   return (
     <SafeAreaView style={s.screen}>
@@ -64,9 +80,10 @@ export default function Options() {
       </ScrollView>
       <View style={{ padding: 12, gap: 8, backgroundColor: color.card, borderTopWidth: 1, borderColor: color.line }}>
         {still ? <Text style={{ color: color.danger }}>Choose {still.name.toLowerCase()} to continue</Text> : null}
+        {problem ? <Text accessibilityRole="alert" style={{ color: color.danger }}>{problem}</Text> : null}
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Button title="Cancel" kind="quiet" onPress={() => router.back()} />
-          <Button title={`Add · ${rupees(price)}`} disabled={Boolean(still) || groups.length === 0} onPress={() => { add(product, 1, pick); router.back(); }} style={{ flex: 1 }} />
+          <Button title="Cancel" kind="quiet" onPress={() => goBack()} />
+          <Button title={`${order ? 'Add to the order' : 'Add'} · ${rupees(price)}`} disabled={Boolean(still) || groups.length === 0} onPress={() => { void confirm(); }} busy={busy} style={{ flex: 1 }} />
         </View>
       </View>
     </SafeAreaView>

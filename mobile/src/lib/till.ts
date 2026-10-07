@@ -27,10 +27,10 @@ export const previewOf = (cart: Cart, method: string): Preview => {
 export const dayOf = (ms: number): string => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 export const takeSale = async (
-  { api, outbox, cart, method, reference, key, kitchen = false, tryMs = 8000 }:
-  { api: Api; outbox: Outbox; cart: Cart; method: string; reference?: string; key: string; kitchen?: boolean; tryMs?: number }
+  { api, outbox, cart, method, reference, key, kitchen = false, customerId = null, tryMs = 8000 }:
+  { api: Api; outbox: Outbox; cart: Cart; method: string; reference?: string; key: string; kitchen?: boolean; customerId?: number | null; tryMs?: number }
 ): Promise<Taken> => {
-  const body = saleBody(cart, { method, reference }, { kitchen });
+  const body = saleBody(cart, { method, reference }, { kitchen, customerId });
   try {
     const invoice = await api.post<{ invoice_id: number; order?: { order_number: string } }>('/invoices', body, { idempotencyKey: key, timeoutMs: tryMs });
     return { kind: 'billed', invoiceId: invoice.invoice_id, token: invoice.order?.order_number ?? null };

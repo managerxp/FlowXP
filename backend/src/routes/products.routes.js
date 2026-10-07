@@ -32,7 +32,7 @@ router.post('/products/:id/aliases', ...write, identity.addAliasTo);
 router.delete('/products/:id/aliases/:aliasId', ...write, identity.removeAliasFrom);
 router.post('/products/:id/supplier-codes', ...write, identity.addSupplierCodeTo);
 router.delete('/products/:id/supplier-codes/:codeId', ...write, identity.removeSupplierCodeFrom);
-router.post('/products', ...write, requireOutlet, products.create);
+router.post('/products', ...write, requireOutlet, idempotent(), products.create);
 router.get('/products/:id/outlets', ...authed, requirePermission('products'), products.getOutletSettings);
 router.put('/products/:id/outlets', ...write, products.setOutletSettings);
 router.patch('/products/:id', ...write, products.update);

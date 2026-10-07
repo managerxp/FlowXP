@@ -11,18 +11,21 @@ import { api } from './session.ts';
 import { sendEntry } from './till.ts';
 
 type SyncState = {
-  busy: boolean; pending: number; failed: number; products: number; progress: number; syncedAt: number | null;
+  busy: boolean; pending: number; failed: number; changesPending: number; changesFailed: number; products: number; progress: number; syncedAt: number | null;
   stopped: null | 'offline' | 'server' | 'auth'; error: string;
 };
-export const syncStore = createStore<SyncState>({ busy: false, pending: 0, failed: 0, products: 0, progress: 0, syncedAt: null, stopped: null, error: '' });
+export const syncStore = createStore<SyncState>({ busy: false, pending: 0, failed: 0, changesPending: 0, changesFailed: 0, products: 0, progress: 0, syncedAt: null, stopped: null, error: '' });
 export const useSyncState = () => useStore(syncStore);
 
 export const refreshCounts = async () => {
   const scope = scopeStore.get().scope;
   if (!scope) return;
-  const c = await scope.outbox.counts();
-  syncStore.set({ pending: c.pending, failed: c.failed, products: await scope.catalog.count(), syncedAt: await scope.catalog.syncedAt() });
+  const c = await scope.outbox.counts(); const a = await scope.actions.counts();
+  syncStore.set({ pending: c.pending, failed: c.failed, changesPending: a.pending, changesFailed: a.failed, products: await scope.catalog.count(), syncedAt: await scope.catalog.syncedAt() });
 };
+
+/** How long to wait before the next look: soon while something is waiting to send, rarely when all is quiet. */
+export const pollDelay = (st: { pending: number; failed: number; changesPending: number; stopped: string | null }): number => (st.pending > 0 || st.changesPending > 0 ? 20000 : 120000);
 
 let running: Promise<void> | null = null;
 export const syncAll = (): Promise<void> => {
@@ -33,14 +36,27 @@ export const syncAll = (): Promise<void> => {
     syncStore.set({ busy: true, error: '' });
     try {
       const flushed = await scope.outbox.flush(sendEntry(api));
-      syncStore.set({ stopped: flushed.stopped });
+      // then the price and stock changes made offline (bills first: a bill must see the stock as it was when it was made)
+      const changed = flushed.stopped === null ? await scope.actions.flush(async (a) => { await api.call(a.path, { method: a.method, body: a.body, idempotencyKey: a.id }); }) : null;
+      syncStore.set({ stopped: flushed.stopped ?? changed?.stopped ?? null });
       await refreshCounts();
-      if (flushed.stopped !== 'offline' && flushed.stopped !== 'auth') {
-        await scope.catalog.sync(api, (n) => syncStore.set({ progress: n }));
+      if (flushed.stopped !== 'offline' && flushed.stopped !== 'auth' && changed?.stopped !== 'offline' && changed?.stopped !== 'auth') {
+        try { await scope.catalog.sync(api, (n) => syncStore.set({ progress: n })); }
+        catch (e) {
+          if (e instanceof NetworkError || e instanceof ApiError) throw e;
+          // the phone's own copy of the product list would not update: rebuild just that copy and download again once
+          await scope.catalog.rebuild();
+          await scope.catalog.sync(api, (n) => syncStore.set({ progress: n }));
+        }
       }
     } catch (e) {
       const offline = e instanceof NetworkError;
-      syncStore.set({ stopped: offline ? 'offline' : (e instanceof ApiError && e.status === 401 ? 'auth' : 'server'), error: offline ? '' : e instanceof Error ? e.message : 'Sync failed' });
+      if (offline || e instanceof ApiError) {
+        syncStore.set({ stopped: offline ? 'offline' : (e.status === 401 ? 'auth' : 'server'), error: offline ? '' : e.message });
+      } else {
+        // not the network and not the server: this phone's own storage (busy, full). Say so, and try again on the next round.
+        syncStore.set({ stopped: null, error: `Could not update the products on this phone. ${e instanceof Error ? e.message.slice(0, 220) : ''} Go to More, Settings, Refresh the product list.` });
+      }
     } finally {
       await refreshCounts().catch(() => {});
       syncStore.set({ busy: false });
@@ -52,7 +68,10 @@ export const syncAll = (): Promise<void> => {
 /** Start the background sync; returns the function that stops it. */
 export const startAutoSync = (): (() => void) => {
   void syncAll();
-  const timer = setInterval(() => { void syncAll(); }, 30000);
+  // battery: look every 20 seconds only while bills are waiting to go; when everything is sent, every 2 minutes (and whenever the app comes to the front)
+  let stopped = false; let timer: ReturnType<typeof setTimeout>;
+  const next = () => { if (stopped) return; timer = setTimeout(() => { void syncAll().finally(next); }, pollDelay(syncStore.get())); };
+  next();
   const sub = AppState.addEventListener('change', (s) => { if (s === 'active') void syncAll(); });
-  return () => { clearInterval(timer); sub.remove(); };
+  return () => { stopped = true; clearTimeout(timer); sub.remove(); };
 };

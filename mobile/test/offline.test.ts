@@ -268,3 +268,42 @@ test('a full queue says so instead of taking a sale it cannot keep', async () =>
 test('the phone\'s date: its own calendar day, zero padded', () => {
   assert.equal(dayOf(new Date(2026, 0, 5, 23, 59).getTime()), '2026-01-05'); assert.equal(dayOf(new Date(2026, 11, 31, 0, 1).getTime()), '2026-12-31');
 });
+
+test('a phone with an older copy downloads once more (so removed kinds of product disappear), and the download leaves no side tables behind', async () => {
+  const server = fakeServer(five());
+  const { db, catalog } = await open();
+  await catalog.sync(server.api);
+  server.remove(4);                                              // the server no longer sends this one (as when ingredients stopped being sent)
+  await db.run(`DELETE FROM meta WHERE k = 'v'`);                // a copy made before the version mark existed
+  const r = await catalog.sync(server.api);
+  assert.deepEqual(r, { mode: 'full', products: 4 }, 'one full download, not just changes');
+  assert.equal(await catalog.findByBarcode('8900000004'), undefined, 'the removed product is gone from the phone');
+  assert.deepEqual((await db.all<{ name: string }>(`SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE '%_next'`)), [], 'no side tables left');
+  assert.equal((await catalog.sync(server.api)).mode, 'changes', 'and from then on, changes again');
+});
+
+test('the phone database: writes queue one at a time, a failed transaction leaves nothing behind, and a write waits for a transaction in progress', async () => {
+  const db = nodeDb(); await db.exec('CREATE TABLE t (n INTEGER)');
+  await assert.rejects(db.tx(async (x) => { await x.run('INSERT INTO t VALUES (1)'); throw new Error('stop half way'); }), /stop half way/);
+  assert.equal((await db.all('SELECT * FROM t')).length, 0, 'rolled back');
+  let release!: () => void; const hold = new Promise<void>((r) => { release = r; });
+  const slow = db.tx(async (x) => { await x.run('INSERT INTO t VALUES (2)'); await hold; await x.run('INSERT INTO t VALUES (3)'); });
+  const other = db.run('INSERT INTO t VALUES (99)');                 // arrives while the transaction is open
+  await new Promise((r) => setTimeout(r, 20));
+  release(); await slow; await other;
+  assert.deepEqual((await db.all<{ n: number }>('SELECT n FROM t ORDER BY n')).map((r) => r.n), [2, 3, 99], 'the other write ran after the transaction, not inside it');
+  await assert.rejects(db.tx(async (x) => { await x.tx(async () => {}); }), /inside another/);
+  const many = await Promise.all(Array.from({ length: 50 }, (_, i) => db.run('INSERT INTO t VALUES (?)', [1000 + i])));
+  assert.equal(many.length, 50); assert.equal(Number((await db.all<{ c: number }>('SELECT COUNT(*) AS c FROM t'))[0].c), 53);
+});
+
+test('rebuilding the product list starts it fresh, even from a damaged copy, and never touches a bill waiting to send', async () => {
+  const server = fakeServer(five()); const { db, catalog, outbox } = await open();
+  await catalog.sync(server.api); await add(outbox, 'waiting-bill');
+  await db.exec(`DROP TABLE barcodes`);                                         // a damaged copy
+  await catalog.rebuild();
+  assert.equal(await catalog.count(), 0);
+  assert.deepEqual((await catalog.sync(server.api)), { mode: 'full', products: 5 }, 'downloads everything again');
+  assert.equal((await outbox.list()).length, 1, 'the bill is still waiting'); assert.equal((await catalog.findByBarcode('8900000001'))?.name, 'Parle-G Biscuit');
+  await db.exec(`DROP TABLE products_next`).catch(() => {});
+});

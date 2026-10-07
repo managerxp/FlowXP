@@ -1,5 +1,7 @@
 # FlowXP mobile app (React Native) and offline sync: plan
 
+> Setting up on another machine, running it, and what to do next: see `HANDOFF.md`. Readiness: `MOBILE_AUDIT.md`.
+
 Status: plan, nothing built. Written 2026-10-07 after reading the web till's offline code (`frontend/src/lib/offlineQueue.js`,
 `posCatalog.js`, `backend/src/middleware/idempotency.js`, `modules/billing.js`).
 
@@ -156,6 +158,64 @@ Today the web till re-pages the whole catalogue (`GET /products/pos-catalog`). F
    NOT done and why: a one-tap Bluetooth ESC/POS printer (needs a native library and a real printer; the server already makes the bytes at `/invoices/:id/escpos`),
    phone screenshots for the store (need a real phone), and anything needing the Expo, Google Play or Sentry accounts. Device pairing was dropped: each phone already has its own code.
    Checks: `npm test` (50), `npm run release:check` (typecheck, tests, expo-doctor 21/21, Android bundle), backend `apperrors.test.js` (4).
+
+### The pages (added 2026-10-07, after phase 4; built for phones and tablets)
+
+Navigation: five tabs, a bar along the bottom on a phone and a rail down the left on a tablet or a phone turned sideways (`app/(tabs)`): **Home**, **Sell**, **Sales**,
+**Products**, **More**. Orientation is free (it was portrait only). Lists keep a readable width on a tablet (`Page`), and **Sell** shows the menu on the left and the bill on
+the right on a tablet; on a phone it has Menu / Bill chips with the total and Take payment always at the bottom.
+- **Home**: today's sales (vs yesterday), bills, money owed, low stock, 14-day bars, best sellers this week, latest bills; sync status; New sale / Scan.
+- **Sell**: menu grid by category (works with no signal), search/scan, options picker, a customer on the bill, kitchen switch, offers line.
+- **Sales**: all bills for Today / Yesterday / 7 / 30 days / month with search and the summary; and "On this phone" (waiting / refused / sent).
+- **Products**: the phone's own copy (searchable by name, SKU, barcode, category, offline); detail with price change, stock correction (a reason is required) and remove; add a product (scan its barcode).
+- **More**: Customers (list, add, detail with bills and what they owe, start a bill), Stock (running low / everything counted), Reports (sales, average bill, GST, payment methods, channels, best sellers, categories, day by day), sales on this phone, Settings, switch outlet, sign out.
+- Every page that reads from the server keeps its last answer and shows it with "No signal. Showing what was saved ..." when offline (`useLoad` + `cache.ts`). A refusal (not allowed) is never hidden behind old data.
+- Following `ui-ux-pro-max`: 44 px minimum targets, contrast of all text at least 4.5:1 (grey text darkened to #475569, amber to #92400e), press feedback and ripple on every row, a spinner or retry on every load / failure, real icons, accessible labels and headings.
+- Server fixes made for it: `POST /products` and `POST /customers` now honor the Idempotency-Key (a double tap made two). Checks: `npm test` (58), `npm run e2e:pages` (every page's calls against the demo café, 28 checks; it creates and removes one test customer and product).
+- **Table orders and held bills (added 2026-10-07).** A restaurant or café gets a **Tables** tab (Products moves into More to keep five tabs). The floor shows every table by zone: free,
+  booked, order open, cooking, ready to serve, served, with items, amount and how long; it refreshes every 15 s while showing. Tap a free table to open an order (a double tap opens one),
+  a busy one to carry on. The order screen shows each item's kitchen status (not sent / cooking / ready / served), quantity buttons for unsent items, Mark served, Cancel item (after it was sent),
+  Add items (tap a tile; tapping the same item raises its quantity; items with options open the picker), Send to the kitchen, Customer, Bill and pay (cash / UPI QR / card, one key so a double tap
+  bills once), and Cancel the whole order. A takeaway order can be started from the floor; open takeaway and delivery orders are listed under the tables.
+  Held bills: **Hold** on the till (name it), a "n bills on hold" line, a Held list (More > Bills on hold) with Resume (asks before replacing the bill on the till; takes it off the list first so two tills
+  cannot resume one bill) and Discard. Held on the server (shared by the outlet's tills, the same shape the website till uses) when there is a signal, on the phone only when there is none.
+  Orders and the floor need a connection (the kitchen is live): offline they show what was last loaded and say so; billing an order offline keeps it open and says so.
+  Not in the app: moving a table, merging or splitting tabs, reservations and the waitlist, waiter assignment, delivery riders and aggregator orders.
+- **Kitchen screen (added 2026-10-07):** More > Kitchen screen (food businesses; a person whose role is KITCHEN opens straight to it, with no till or reports, and a Sign out button instead of Back).
+  Same rules as the website's display: tickets from `GET /kitchen/tickets`, **To make / Ready to serve / Served** (Served behind a "Show served" button), by **station** (chips with how many are being made and
+  whether any is late), each dish on time / nearly due (75% of its time) / late with the time left or over, rush tickets first and boxed, notes in bold, a strip across the top (to make, late, oldest, ready
+  and waiting), and a **Cook now** row that adds up the same dish across tickets. One tap marks a dish ready, "All ready" the whole ticket; Ready tickets get Served (or "Handed over" for takeaway) and Back;
+  Rush; a cancelled dish shows struck through as "Cancelled. Do not make." with "Got it" (remembered on the phone); **Undo** for 7 seconds after any move. It keeps the screen awake, refreshes every 8 s,
+  ages the timers every 15 s, and buzzes for a new order (two short) or a dish that has just gone late (one long); "Buzz on/off" is remembered. Status is shown in words as well as colour, buttons are 52 to 56 px.
+  On a tablet: To make on the left, Ready (and Served) on the right; on a phone: chips for the three columns. Needs a connection and the kitchen feature on the plan; offline it shows the last tickets and says so.
+  Not in it: a sound (only the buzz; no audio file yet), setting up stations and routing, the kitchen performance report (website).
+  Checks: `npm test` (76, incl. 10 for the kitchen logic), `npm run e2e:kitchen` (real tickets: latte with options to the Coffee Bar, cook now, rush first, ready / undo, cancelled dish, served; makes and cancels one table order).
+  Checks: `npm test` (66), `npm run e2e:orders` (the whole table flow and held bills against the demo café: 25 checks; it makes one real sale and cancels two orders).
+- NOT built (web only): the kitchen display, purchases / suppliers / expenses, loyalty and coupons set-up, GST returns, staff and roles, settings of the business, returns and credit notes, multi-outlet reports.
+- Not seen on a real screen by me: the layouts follow the guidance and pass type and bundle checks, but only your phone and a tablet can show how they actually look.
+
+### Easier to learn and use (added 2026-10-07; guided by the impeccable `onboard` / `clarify` / `distill` references and ui-ux-pro-max)
+
+- **One vocabulary:** a *bill* is what a customer pays; an *order* is a table or takeaway before it becomes a bill; *sales* is only the money total (Home, Reports). The tab is now **Bills**; "Sales on this phone" became
+  "Bills waiting to send"; "sync / outbox / catalogue / SKU" never appear on screen. `test/learning.test.ts` fails if jargon or "a sale" creeps back.
+- **Tour (first time only, skippable, replayable from More > Help):** three screens (make a bill in three taps; no internet, keep selling; tables and the kitchen for a café, or "everything else is under More" for a shop), ending at "Make my first bill".
+- **Getting started checklist on Home**, ticked by what the person really did (first bill, first scan, hold a bill or open a table and see the kitchen, look at Bills); goes away when finished or with Hide.
+- **One-time hints** on Sell, offline, Tables, an order, Products and the kitchen screen: a title and two sentences, "Got it" once, never again. More > Help > "Show the tips and checklist again" resets them.
+- **Help** (More, first line): how to make a bill, work offline, hold a bill, change a price, fix stock, add a customer, print, and for cafés take a table order and use the kitchen screen; each is 3 to 6 plain steps with a "Try it now" button.
+- **Simpler till:** the permanent "About: the final bill..." line is gone (the total shows "≈" and the Sell hint explains it once); the outlet line no longer carries the user's name; an empty bill says what to do and has a button back to the menu;
+  "Hold bill" / "Clear bill" say what they hold or clear; the receipt's first button is "Next customer: new bill" (Print and Share below it).
+- **Sign-in:** remembers the email, Show/Hide password, "Forgot your password?" (flowxp.in), plain messages for no internet and for the authenticator code step.
+- **Hindi (added 2026-10-07):** English / हिन्दी buttons on the sign-in screen and in Settings; remembered on the phone; changing it redraws every screen. `lib/i18n.ts` holds the dictionary (about 330 texts: tabs, buttons,
+  fields, list rows, hints, tour, checklist, Help, the till, the sync line, sign-in); shared components translate their own text, so a screen gets Hindi for free. A text with no Hindi shows English. Not translated yet: messages that come
+  from the server (its error texts), the kitchen screen's dynamic lines, receipts (they print what the server made), and the long Settings/Reports sentences. Other languages: add a dictionary beside `HI` and a button in `LANGS`.
+  A native Hindi speaker should read the wording once: it was written for plain shop use, not by a translator.
+- `mobile/PRODUCT.md` records who the app is for, its promises and its voice, for future design work.
+- **Still to do:** a check on a real phone for crowding, tap comfort and anything still confusing.
+
+### Works with no internet (added 2026-10-07)
+Bills (queued, one key each), the menu and search, options, held bills (kept on the phone), the last-loaded pages (marked "saved"), **customer lookup** (the customer list is kept on the phone and followed by changes), and
+**price and stock changes** (queued in an `actions` table with their own keys, shown on the till at once, sent after the bills; a refused one is parked with its reason; shown under Bills, Waiting to send). Needs internet: table orders
+and the floor, the kitchen screen, adding a customer or a product, reports, a live total with offers. Checks: `npm test` (100), `npm run e2e:changes`.
 
 ### Try it on a phone (do this on a real Android phone before the store build)
 

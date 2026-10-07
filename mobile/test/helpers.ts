@@ -1,18 +1,19 @@
 /* Test helpers: Node's built-in SQLite as the app's Db, and a fake FlowXP server that behaves like the real one where it matters. */
 import { DatabaseSync } from 'node:sqlite';
-import type { Db } from '../src/lib/db.ts';
+import { fromExpo, type Db } from '../src/lib/db.ts';
 import { createApi, type Session } from '../src/lib/api.ts';
 import type { Product } from '../src/lib/catalog.ts';
 
+/* Node's SQLite dressed as the phone's library (async calls), then wrapped by the app's own fromExpo: the tests exercise the same queue and
+   transaction code the phone runs. */
 export const nodeDb = (path = ':memory:'): Db => {
   const d = new DatabaseSync(path);
-  const make = (): Db => ({
-    exec: async (sql) => { d.exec(sql); },
-    run: async (sql, params = []) => { d.prepare(sql).run(...params); },
-    all: async <T,>(sql: string, params: (string | number | null)[] = []) => d.prepare(sql).all(...params) as T[],
-    tx: async (work) => { d.exec('BEGIN'); try { await work(make()); d.exec('COMMIT'); } catch (e) { d.exec('ROLLBACK'); throw e; } }
+  const later = <T,>(fn: () => T) => new Promise<T>((resolve, reject) => setImmediate(() => { try { resolve(fn()); } catch (e) { reject(e); } }));
+  return fromExpo({
+    execAsync: (sql) => later(() => { d.exec(sql); }),
+    runAsync: (sql, params) => later(() => d.prepare(sql).run(...params)),
+    getAllAsync: <T,>(sql: string, params: (string | number | null)[]) => later(() => d.prepare(sql).all(...params) as T[])
   });
-  return make();
 };
 
 export const P = (id: number, name: string, price: number, extra: Partial<Product> = {}): Product => ({
@@ -28,7 +29,9 @@ export type Sale = { invoice_id: number; invoice_number: string; key: string; he
 export const fakeServer = (products: Product[] = [], { pageSize = 1000 }: { pageSize?: number } = {}) => {
   const state = {
     products: new Map(products.map((p) => [p.product_id, p])),
-    log: [] as { seq: number; id: number }[],
+    log: [] as { seq: number; id: number; entity: 'product' | 'customer' }[],
+    customers: new Map<number, { customer_id: number; name: string; phone: string | null; email: string | null; gstin: string | null }>(),
+    applied: [] as { path: string; body: unknown; key: string }[],        // changes (price, stock) the server applied, by key
     floor: 0,
     down: false,                         // no signal: fetch throws
     status: 0,                           // a fixed status for every call, e.g. 503
@@ -39,17 +42,21 @@ export const fakeServer = (products: Product[] = [], { pageSize = 1000 }: { page
     lostReplies: 0,                      // the next N sales are made but the reply never arrives (signal dropped just after)
     groups: [] as unknown[],             // GET /modifier-groups
     groupsDown: false,                   // that one call fails
-    offerPerLine: 0 as number            // rupees every previewed line saves (0 = no offers)
+    offerPerLine: 0 as number,           // rupees every previewed line saves (0 = no offers)
+    held: [] as { hold_id: number; label: string | null; bill: unknown; item_count: number; estimate: number; created_at: string; held_by: string | null }[],
+    heldFull: false                      // the outlet already has 50 bills on hold
   };
   let seq = 0;
   const head = () => Math.max(seq, state.floor);          // the real server's head is never below the floor
-  const touch = (id: number) => { state.log.push({ seq: ++seq, id }); };
+  const touch = (id: number, entity: 'product' | 'customer' = 'product') => { state.log.push({ seq: ++seq, id, entity }); };
   products.forEach((p) => touch(p.product_id));
   state.log = [];                        // the initial catalogue is the starting point, not a change
 
   const server = {
     state,
     upsert: (p: Product) => { state.products.set(p.product_id, p); touch(p.product_id); },
+    upsertCustomer: (c: { customer_id: number; name: string; phone?: string | null }) => { state.customers.set(c.customer_id, { email: null, gstin: null, phone: null, ...c }); touch(c.customer_id, 'customer'); },
+    removeCustomer: (id: number) => { state.customers.delete(id); touch(id, 'customer'); },
     remove: (id: number) => { state.products.delete(id); touch(id); },
     session: { token: 'tok', businessId: 7, branchId: 9 } as Session,
     fetchImpl: (async (input: string, init: RequestInit = {}) => {
@@ -60,10 +67,35 @@ export const fakeServer = (products: Product[] = [], { pageSize = 1000 }: { page
       if (state.status) return json(state.status, { success: false, message: `status ${state.status}` });
       const headers = (init.headers || {}) as Record<string, string>;
 
+      if (url === '/customers') return json(200, { success: true, data: [...state.customers.values()] });
+      if (url === '/inventory/adjust' && init.method === 'POST') {
+        const key = headers['Idempotency-Key']; const done = state.applied.find((a) => a.key === key);
+        if (state.refuse.has(key)) return json(state.refuse.get(key)!.status, { success: false, message: state.refuse.get(key)!.message });
+        if (!done) state.applied.push({ path: url, body: JSON.parse(String(init.body)), key });
+        if (state.lostReplies > 0) { state.lostReplies--; throw new TypeError('Network request failed'); }
+        return json(201, { success: true, data: {} });
+      }
+      if (/^\/products\/\d+$/.test(url) && init.method === 'PATCH') {
+        const id = Number(url.split('/')[2]); const b = JSON.parse(String(init.body)); const p = state.products.get(id);
+        if (!p) return json(404, { success: false, message: 'Not found' });
+        state.applied.push({ path: url, body: b, key: headers['Idempotency-Key'] }); state.products.set(id, { ...p, selling_price: b.selling_price }); touch(id); return json(200, { success: true, data: {} });
+      }
       if (url === '/modifier-groups') return state.groupsDown ? json(500, { success: false, message: 'boom' }) : json(200, { success: true, data: state.groups });
       if (url === '/retail/promotions/preview') {
         const lines = JSON.parse(String(init.body)).lines as unknown[];
         return json(200, { success: true, data: { lines: state.offerPerLine ? lines.map((_, index) => ({ index, discount: state.offerPerLine, name: 'Happy hour' })) : [], saving: 0 } });
+      }
+      if (url === '/held-bills' && init.method === 'POST') {
+        if (state.heldFull) return json(409, { success: false, message: '50 bills are already on hold here. Resume or discard some first.' });
+        const b = JSON.parse(String(init.body));
+        const row = { hold_id: state.held.length + 100, label: b.label ?? null, bill: b.bill, item_count: b.bill.lines.reduce((n: number, l: { quantity: number }) => n + l.quantity, 0), estimate: b.estimate ?? 0, created_at: new Date().toISOString(), held_by: 'Ravi' };
+        state.held.push(row); return json(201, { success: true, data: row });
+      }
+      if (url === '/held-bills' && (!init.method || init.method === 'GET')) return json(200, { success: true, data: state.held });
+      if (url.startsWith('/held-bills/') && init.method === 'DELETE') {
+        const at = state.held.findIndex((h) => String(h.hold_id) === url.split('/')[2]);
+        if (at < 0) return json(404, { success: false, message: 'That held bill is not here any more. Someone may have resumed it.' });
+        return json(200, { success: true, data: state.held.splice(at, 1)[0] });
       }
       if (url === '/sync/head') return json(200, { success: true, data: { head: head() } });
       if (url.startsWith('/products/pos-catalog')) {
@@ -75,8 +107,8 @@ export const fakeServer = (products: Product[] = [], { pageSize = 1000 }: { page
         const q = new URL(`http://x${url}`).searchParams; const since = Number(q.get('since')); const limit = Number(q.get('limit'));
         if (since < state.floor || since > head()) return json(409, { success: false, code: 'RESYNC', message: 'Download the catalogue again.', data: { head: seq } });
         const raw = state.log.filter((l) => l.seq > since).slice(0, limit);
-        const last = new Map<number, number>(); raw.forEach((l) => { last.delete(l.id); last.set(l.id, l.seq); });
-        const changes = [...last.keys()].map((id) => { const row = state.products.get(id); return row ? { entity: 'product', op: 'upsert', id, row } : { entity: 'product', op: 'delete', id }; });
+        const last = new Map<string, { id: number; entity: string }>(); raw.forEach((l) => { last.delete(`${l.entity}:${l.id}`); last.set(`${l.entity}:${l.id}`, { id: l.id, entity: l.entity }); });
+        const changes = [...last.values()].map(({ id, entity }) => { const row = entity === 'customer' ? state.customers.get(id) : state.products.get(id); return row ? { entity, op: 'upsert', id, row } : { entity, op: 'delete', id }; });
         const more = raw.length === limit;
         return json(200, { success: true, data: { changes, next: more ? raw[raw.length - 1].seq : Math.max(head(), raw.length ? raw[raw.length - 1].seq : since), has_more: more } });
       }

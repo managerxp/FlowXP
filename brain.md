@@ -1,5 +1,8 @@
 # FlowXP brain
 
+> **Moving to another laptop or starting a new session: read `HANDOFF.md` first** (setup, how to run, current status, next steps). Mobile app: `MOBILE.md`, readiness report: `MOBILE_AUDIT.md`.
+
+
 One file to remember the whole product: what it is, how it is built, the rules the code follows, what exists, and
 what is left. Read this first in a new session. `documentation.md` has the long per-feature detail (API, schema,
 edge cases); this file is the map and the memory. Keep it current: update the status tables when a feature ships.
@@ -868,6 +871,38 @@ nothing is received until the person presses Receive (the existing `POST /api/pu
   root `ErrorBoundary` in `_layout.tsx`, outbox `device()`/`forgetSent()`, `catalog.clear()` also clears groups. `app.json`/`eas.json`/`store/`/`STORE.md`/icons.
 - `npm run release:check` = typecheck + tests + expo-doctor + android export. Tests: `mobile/test/release.test.ts` also checks the permissions, icon sizes and build profiles.
 - The updates URL, EAS project id, Play key and screenshots are the owner's (see `mobile/STORE.md`). The app is still untested on a real phone: `MOBILE.md` has the checklist.
+
+## 4l. Mobile app pages (2026-10-07)
+
+- Routes: `app/(tabs)/{home,sell,sales,products,more}.tsx`; stack screens `customers`, `customer/[id]`, `product/[id]`, `product/new`, `stock`, `reports`, `waiting`, `settings`, `pay`, `receipt`, `options`, `scan`.
+- Shared: `lib/useLoad.ts` + `cache.ts` (last answer kept per business/outlet/query), `ranges.ts`, `responsive.tsx` (`useWide` at 768, `Page` max width), `ui.tsx` (Chips, Stat, Line, Loading, Failed, SavedNote, Empty), `capture.ts` (scan a barcode for a form), `SyncBadge`, `WaitingList`.
+- Catalogue additions: `categories()`, `search(text, limit, category, offset)` (uses SQLite `json_extract`).
+- `expo-font` must stay installed (the icons need it; expo-doctor flags it). `app.json` orientation is `default`.
+- Backend: idempotency on `POST /products` and `POST /customers`.
+
+## 4m. Mobile: table orders and held bills (2026-10-07)
+
+- `lib/orders.ts` (floor/order types, `tableState`, `orderTotals`, `byZone`), `lib/held.ts` (snapshot in the website till's shape, `fromSnapshot`, phone-only holds in SQLite, `holdBill`), scope now has `held`.
+- Screens: `(tabs)/tables.tsx` (food businesses only; Products tab hidden for them), `order/[id].tsx`, `order/add.tsx`, `held.tsx`; `options.tsx?order=` adds to an order, `pay.tsx?order=` bills an order, `customers.tsx?pick=order-ID` sets an order's customer.
+- Backend: `POST /orders/:id/items` now honors the Idempotency-Key. Tests: `mobile/test/orders.test.ts`, `npm run e2e:orders`.
+
+## 4n. Mobile: kitchen screen (2026-10-07)
+
+- `lib/kitchen.ts` (pure: `urgencyOf`, `sortTickets` per station, `cookNow`, `statsOf`, `alertFor`, same rules as the website's KitchenDisplay.jsx), `app/kitchen.tsx` (polls 8 s, ticks 15 s, `expo-keep-awake`, `Vibration` for alerts, undo 7 s).
+- Routes used: `GET /kitchen/tickets`, `POST /kitchen/advance`, `POST /kitchen/orders/:id/rush`. A KITCHEN-role user is sent straight there from `index.tsx`.
+- `mobile/test/kitchen.test.ts`, `npm run e2e:kitchen`. No backend change. Not done: audio alert, station/routing setup, performance report.
+
+## 4o. Fixes from the first real-phone run (2026-10-07)
+
+- "database is locked" on a real phone: the full catalogue download held one long exclusive transaction while the screen read the same file. Now the phone's database is WAL with `busy_timeout` 5 s
+  (`openOnPhone`, and each `tx` sets its own), the download is written to side tables (`products_next`, `barcodes_next`) in small steps and swapped in one short transaction, and a non-network,
+  non-server sync error is reported as a phone-storage problem (it used to say "FlowXP is not answering").
+- `pos-catalog` and the sync deltas no longer send INGREDIENT or PACKAGING products (a menu full of Rs 0 "Almond Milk" and "Bread Slices"). `COPY_VERSION` in `catalog.ts` makes every phone with an
+  older copy download once more; bump it whenever what the phone keeps changes meaning. Tests: `sync.test.js` (16), `offline.test.ts` (versioned re-download).
+
+## 4p. Pending (2026-10-07)
+
+See `HANDOFF.md` section 9 (waiting on the owner, not built in the mobile app, before the Play Store, launch tasks) and `MOBILE_AUDIT.md`. Nothing from the mobile work is committed yet.
 
 ## 5. Working rules for future sessions
 
