@@ -23,6 +23,7 @@ import { moveStock, stockAt } from './stock.js';
 import { takeBatchesForSale } from './retailStock.js';
 import { isRetail } from './retailSettings.js';
 import { activePromotions, priceLines } from './promotions.js';
+import { businessNow } from '../utils/dates.js';
 import { getProgram, isLive, progressFor, recordEvent as recordLoyalty } from './loyalty.js';
 import { CouponError, validateCoupon } from './coupons.js';
 import { consumptionPerUnit, loadRecipes } from './recipes.js';
@@ -307,7 +308,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   /* Offers: when the till asks for them (a retail till does), every product line is priced by the offers that are on today.
      The saving is a line discount taken BEFORE tax, so GST follows what was actually charged. */
   if (input.applyPromotions === true) {
-    const promos = await activePromotions(client, tenant.businessId, today);
+    const promos = await activePromotions(client, tenant.businessId, await businessNow(tenant.businessId, client));
     if (promos.length) {
       const cut = priceLines(promos, lines.map((l, index) => ({ index, product_id: l.product_id, category_id: l.categoryId, quantity: l.quantity, unitPricePaise: l.unitPricePaise, discountPaise: l.discountPaise })), { hasCustomer: Boolean(customer) });
       for (const [index, r] of cut) {

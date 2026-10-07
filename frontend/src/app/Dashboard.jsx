@@ -19,6 +19,7 @@ import { AnimatedNumber, Button, Card, DashboardHeader, Skeleton, StatusBadge } 
 import { AreaChart, Donut, Gauge, HourBars } from '../components/charts.jsx';
 import MetricCard from '../components/MetricCard.jsx';
 import { RETAIL_TYPES } from '../lib/business.js';
+import { useSwr } from '../lib/useSwr.js';
 
 const greeting = () => {
   const h = new Date().getHours();
@@ -64,15 +65,11 @@ const ShelfTile = ({ to, icon: Icon, label, value, note, tone = 'text-ink-900', 
 );
 
 export const RetailPanel = () => {
-  const { business } = useAuth();
-  const [stock, setStock] = useState(null);
-  const [day, setDay] = useState(null);
-  useEffect(() => {
-    let cancelled = false;
-    api('/retail/stock?limit=1').then((d) => { if (!cancelled) setStock(d.summary); }).catch(() => {});
-    api('/retail/today').then((d) => { if (!cancelled) setDay(d); }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [business?.business_id]);
+  const { business, outletId } = useAuth();
+  const scope = `${business?.business_id}-${outletId}`;
+  // the last figures show at once and are refreshed behind them (the server keeps them for 30 seconds too)
+  const { data: stock } = useSwr('/retail/summary', scope);
+  const { data: day } = useSwr('/retail/today', scope);
   if (!stock) return null;
 
   return (

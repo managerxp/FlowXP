@@ -185,6 +185,17 @@ export const create = async (req, res) => {
 };
 
 /* GET /api/credit-notes?from=&to= */
+/* GET /api/credit-notes/by-number/CN-0007: the credit a customer brings to ANY outlet of the business for an exchange. Only
+   what the till needs (number, credit left), whichever outlet issued it; nothing about the sale it came from. */
+export const byNumber = async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT cn_id, cn_number, total_paise, settled_balance_paise, refunded_paise, credit_used_paise FROM credit_notes WHERE business_id = $1 AND lower(cn_number) = lower($2)`,
+    [req.tenant.businessId, String(req.params.number || '').trim()]);
+  if (!rows.length) return bad(res, 'No credit note has that number', 404);
+  const r = rows[0];
+  res.json({ success: true, data: { cn_id: r.cn_id, cn_number: r.cn_number, credit_left: toRupees(Math.max(0, Number(r.total_paise) - Number(r.settled_balance_paise) - Number(r.refunded_paise) - Number(r.credit_used_paise))) } });
+};
+
 export const list = async (req, res) => {
   const values = [req.tenant.businessId];
   let where = 'c.business_id = $1';

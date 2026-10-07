@@ -10,7 +10,7 @@ import { setupTestDb } from './helpers/db.js';
 const { pool, skip, cleanup } = await setupTestDb();
 const { runMigrations } = await import('../src/config/migrate.js');
 const { createInvoiceInTransaction, BillingError } = await import('../src/modules/billing.js');
-const { saving, priceLines } = await import('../src/modules/promotions.js');
+const { saving, priceLines, dropPromotionCache, runsNow, activePromotions } = await import('../src/modules/promotions.js');
 const offers = await import('../src/controllers/promotions.controller.js');
 const notes = await import('../src/controllers/creditNotes.controller.js');
 
@@ -125,15 +125,15 @@ test('a bill with offers takes the saving off the line before tax and records it
   assert.deepEqual(rows.map((r) => [Number(r.discount_paise), Number(r.promo_discount_paise), r.promo_id != null]), [[1000, 1000, true], [4000, 4000, true]]);
   assert.equal(Number(rows[0].tax_amount_paise), 700, '5% of 140, not of 150');
   // an offer that is switched off, or past its end date, is not applied
-  await pool.query(`UPDATE promotions SET ends_on = '2000-01-01' WHERE business_id = $1`, [biz]);
+  await pool.query(`UPDATE promotions SET ends_on = '2000-01-01' WHERE business_id = $1`, [biz]); dropPromotionCache(biz);
   assert.equal((await bill({ items, applyPromotions: true, payment: { amount: 'FULL' } })).total, plain.total, 'expired offers are ignored');
   assert.equal((await call(offers.active)).body.data.count, 0);
-  await pool.query(`UPDATE promotions SET ends_on = NULL, is_active = FALSE WHERE business_id = $1`, [biz]);
+  await pool.query(`UPDATE promotions SET ends_on = NULL, is_active = FALSE WHERE business_id = $1`, [biz]); dropPromotionCache(biz);
   assert.equal((await bill({ items, applyPromotions: true, payment: { amount: 'FULL' } })).total, plain.total);
 });
 
 test('member offers need a customer on the bill', { skip }, async () => {
-  await pool.query(`DELETE FROM promotions WHERE business_id = $1`, [biz]);
+  await pool.query(`DELETE FROM promotions WHERE business_id = $1`, [biz]); dropPromotionCache(biz);
   await call(offers.create, { body: { name: 'Members 20% on dairy', kind: 'PERCENT_OFF', category_id: dairy, percent: 20, members_only: true } });
   const walkIn = await bill({ items: [{ product_id: milk, quantity: 1 }], applyPromotions: true, payment: { amount: 'FULL' } });
   assert.equal(walkIn.total, 52.5);
@@ -177,10 +177,12 @@ test('a smaller exchange uses only what it needs and leaves the rest of the cred
 
 test('the retail day figures count what offers took off today and what was returned', { skip }, async () => {
   const dash = await import('../src/controllers/retailDashboard.controller.js');
-  await pool.query(`DELETE FROM promotions WHERE business_id = $1`, [biz]);
+  await pool.query(`DELETE FROM promotions WHERE business_id = $1`, [biz]); dropPromotionCache(biz);
   await call(offers.create, { body: { name: 'Milk 10% off', kind: 'PERCENT_OFF', product_id: milk, percent: 10 } });
+  dash.dropDashboardCache();
   const before = (await call(dash.today)).body.data;
   await bill({ items: [{ product_id: milk, quantity: 2 }], applyPromotions: true, payment: { amount: 'FULL' } });     // 10% of 100: ₹10 off one line
+  dash.dropDashboardCache();
   const after = (await call(dash.today)).body.data;
   assert.equal(after.offers.saving - before.offers.saving, 10); assert.equal(after.offers.lines - before.offers.lines, 1);
   assert.ok(after.returns.count >= 1, 'the returns made earlier today are counted');

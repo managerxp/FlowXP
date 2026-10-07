@@ -708,6 +708,7 @@ export const bill = async (req, res) => {
       })),
       discount: body.discount,
       couponCode: body.coupon_code,
+      applyPromotions: body.apply_promotions === true,
       redeemPoints: body.redeem_points,
       notes: body.notes || order.notes,
       payment: body.payment,

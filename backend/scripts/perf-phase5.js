@@ -12,7 +12,8 @@ const N = Number(process.argv[2] || 100000);
 const { pool, skip, cleanup } = await setupTestDb();
 if (skip) { console.log(skip); process.exit(0); }
 const { runMigrations } = await import('../src/config/migrate.js');
-const { priceLines } = await import('../src/modules/promotions.js');
+const { priceLines, activePromotions, dropPromotionCache } = await import('../src/modules/promotions.js');
+const dash = await import('../src/controllers/retailDashboard.controller.js');
 const { matchLines } = await import('../src/modules/invoiceMatch.js');
 const { createInvoiceInTransaction } = await import('../src/modules/billing.js');
 const offers = await import('../src/controllers/promotions.controller.js');
@@ -61,6 +62,13 @@ const billLines = (n) => Array.from({ length: n }, (_, i) => {
       : { description: `Brand ${id % 50} ${WORDS[id % 12]} ${50 + (id % 900)}gm` };
 });
 console.log(`match 200 bill lines to ${N} products        ${await time(8, () => matchLines(pool, { businessId: biz, supplierId: supplier, lines: billLines(200) }))}`);
+
+const now = { date: new Date().toISOString().slice(0, 10), dow: 1, minutes: 600 };
+console.log(`active offers, read from the database        ${await time(40, async () => { dropPromotionCache(biz); await activePromotions(pool, biz, now); })}`);
+console.log(`active offers, kept (the usual case)         ${await time(400, () => activePromotions(pool, biz, now))}`);
+const res = { json() {}, status() { return this; } };
+console.log(`retail dashboard figures, from the database  ${await time(8, async () => { dash.dropDashboardCache(); await dash.summary({ tenant }, res); await dash.today({ tenant }, res); })}`);
+console.log(`retail dashboard figures, kept               ${await time(200, async () => { await dash.summary({ tenant }, res); await dash.today({ tenant }, res); })}`);
 
 const invs = await invoices.list({ tenant, auth: { userId: owner }, query: { search: 'INV-000' }, params: {}, headers: {} }, { json() {}, status() { return this; } });
 console.log(`find a bill for a return (search by number) ${await time(30, async (i) => { await invoices.list({ tenant, auth: { userId: owner }, query: { search: `INV-${String(i + 1).padStart(4, '0')}` }, params: {}, headers: {} }, { json() {}, status() { return this; } }); })}`);

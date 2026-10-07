@@ -50,9 +50,13 @@ router.get('/invoice-import/check', ...read, invoiceImport.check);
 router.post('/invoice-import/learn', ...write, invoiceImport.learn);
 
 /* Offers: the owner manages them (products or settings permission); the till only asks which are on and what a cart gets. */
-const till = [requireAuth, withBusiness(), retailOnly, requirePermission('billing')];
-const offersRead = [requireAuth, withBusiness(), retailOnly, requireAnyPermission('products', 'settings')];
-const offersWrite = [requireAuth, withBusiness({ requireActive: true }), retailOnly, requireAnyPermission('products', 'settings')];
+/* Offers work for shops and for restaurants and cafes (the counter and the table bill both apply them). */
+const OFFER_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE', 'RACING'];
+const offersTypes = (req, res, next) => (isRetail(req.tenant) || OFFER_TYPES.includes(req.tenant?.businessType) ? next() : res.status(404).json({ success: false, message: 'Not found' }));
+const till = [requireAuth, withBusiness(), offersTypes, requirePermission('billing')];
+const offersRead = [requireAuth, withBusiness(), offersTypes, requireAnyPermission('products', 'settings')];
+const offersWrite = [requireAuth, withBusiness({ requireActive: true }), offersTypes, requireAnyPermission('products', 'settings')];
+router.get('/summary', requireAuth, withBusiness(), retailOnly, requireAnyPermission('reports', 'inventory', 'billing'), retailDashboard.summary);
 router.get('/today', requireAuth, withBusiness(), retailOnly, requireAnyPermission('reports', 'inventory', 'billing'), retailDashboard.today);
 router.get('/promotions/active', ...till, promotions.active);
 router.post('/promotions/preview', ...till, promotions.preview);

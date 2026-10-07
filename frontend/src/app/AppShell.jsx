@@ -148,7 +148,7 @@ const NAV_GROUPS = [
       // customers has no permission gate server-side. Editing needs 'customers' and is rejected
       // there if not; CustomersPage does not yet hide its own Edit/Add buttons for a role without it.
       { to: '/app/customers', label: 'Customers', icon: UserRound, notTypes: NOT_SALON_OR_WHOLESALE },
-      { to: '/app/offers', label: 'Offers', icon: Tag, types: RETAIL, anyPermission: ['products', 'settings'] },
+      { to: '/app/offers', label: 'Offers', icon: Tag, types: [...RETAIL, ...RESTAURANT_TYPES], anyPermission: ['products', 'settings'], more: true },
       { to: '/app/loyalty', label: 'Loyalty & coupons', icon: Gift, roles: ['OWNER', 'ADMIN'], feature: 'loyalty', more: true },
       { to: '/app/messaging', label: 'Messaging', icon: MessageSquare, roles: ['OWNER', 'ADMIN'], feature: 'messaging', more: true },
       { to: '/app/reviews', label: 'Reviews', icon: Star, roles: ['OWNER', 'ADMIN'], permission: 'settings', feature: 'reviews', more: true }

@@ -798,8 +798,18 @@ nothing is received until the person presses Receive (the existing `POST /api/pu
 - **Performance** (`scripts/perf-phase5.js`, 100,000 products, p50 / p95): price a 300-line cart with 100 offers 0.6 / 1.9 ms; cart preview endpoint 6.5 / 9.2 ms;
   a 40-line bill with offers 100 / 141 ms; match 200 supplier-bill lines 294 / 305 ms; find a bill by number 2.7 / 3.3 ms. `scripts/perf-retail.js` covers the
   product lookups.
-- Tests: `promotions.test.js` (11). Not built: offers by day of week or time, mixed-product bundles, offers in the restaurant till, a refund screen
-  separate from credit notes, an exchange across outlets.
+- Tests: `promotions.test.js` (11), `offers2.test.js` (10).
+- **Offers, second round** (`migrations/0072`): weekdays (`days_of_week`, 0 = Sunday) and hours (`start_time`/`end_time` in the business's own clock, an end before
+  the start runs overnight; `businessNow()` in `utils/dates.js`); `MIX_BUNDLE` = N units from a SET of products (`promotion_products`) for one price, made from
+  the cheapest eligible units first and only on units no other offer has cut; offers also work in the restaurant family (routes allow shops and restaurants,
+  the counter bill and `POST /orders/:id/bill` send `apply_promotions`, Offers is under More for restaurants); an exchange credit can be typed in by number at
+  ANY outlet (`GET /credit-notes/by-number/:number`, business-scoped, returns only number and credit left).
+- **Caching** (`utils/cache.js`, in-process, TTL + single-flight + drop by prefix; fine while the API is one PM2 process, otherwise each instance keeps its own
+  copy for at most the TTL): active offers 60 s per business and day (cleared by every offer write; weekday and hour are checked on every call so an offer starts
+  and stops on time); the retail dashboard figures (`/retail/summary`, `/retail/today`) 30 s per business and outlet. The stock center itself, bills and till
+  lookups are never cached. Browser side: `lib/useSwr.js` (sessionStorage, keyed by business and outlet) shows the last answer at once then refreshes: used by the
+  retail dashboard panel and the Offers list. Measured on 100,000 products: active offers 2.5 ms from the database, 0.0 kept; dashboard figures 54 ms, 0.0 kept.
+- Not built: mixed-product "buy A get B free", offers that need a minimum bill value, a refund screen separate from credit notes, caching across several API instances.
 
 ## 5. Working rules for future sessions
 

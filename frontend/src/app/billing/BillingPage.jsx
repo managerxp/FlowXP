@@ -349,7 +349,14 @@ const BillingPage = () => {
   const [promo, setPromo] = useState({});               // cart line key -> { name, discount }
   /* An exchange: the credit from a return, spent on this bill as a payment (see Returns). */
   const [exchange, setExchange] = useState(null);       // { cn_id, cn_number, available }
-  useEffect(() => { if (retail) api('/retail/promotions/active').then((d) => setPromoCount(d.count || 0)).catch(() => {}); }, [retail]);
+  const [creditNo, setCreditNo] = useState('');
+  const [creditError, setCreditError] = useState('');
+  /* A credit note from any outlet of the business, typed in from the slip the customer brought. */
+  const useCreditNote = () => api(`/credit-notes/by-number/${encodeURIComponent(creditNo.trim())}`)
+    .then((cn) => { if (cn.credit_left > 0) { setExchange({ cn_id: cn.cn_id, cn_number: cn.cn_number, available: cn.credit_left }); setCreditNo(''); setCreditError(''); } else setCreditError(`${cn.cn_number} has no credit left.`); })
+    .catch((e) => setCreditError(e.message));
+  const offersOn = retail || RESTAURANT_TYPES.includes(business?.business_type);   // shops and restaurants both have offers
+  useEffect(() => { if (offersOn) api('/retail/promotions/active').then((d) => setPromoCount(d.count || 0)).catch(() => {}); }, [offersOn]);
   const [scanning, setScanning] = useState(false);
   const [quickFor, setQuickFor] = useState(null);       // the barcode being made into a product ('' = none scanned)
   const [resumeScan, setResumeScan] = useState(false);  // go back to the camera after making the product
@@ -497,8 +504,8 @@ const BillingPage = () => {
   const removeLine = (key) => setCart((c) => c.filter((l) => l.key !== key));
 
   useEffect(() => {
-    if (!retail || !promoCount || orderMode) { setPromo({}); return undefined; }
-    const lines = cart.filter((l) => l.product_id && Number(l.quantity) > 0);
+    if (!offersOn || !promoCount) { setPromo({}); return undefined; }
+    const lines = billLines.filter((l) => l.product_id && Number(l.quantity) > 0);
     if (!lines.length) { setPromo({}); return undefined; }
     const t = setTimeout(() => {
       api('/retail/promotions/preview', { method: 'POST', body: { customer_id: customerId || undefined, lines: lines.map((l) => ({ product_id: l.product_id, quantity: l.quantity, unit_price: l.unit_price, discount: l.discount || undefined })) } })
@@ -506,7 +513,7 @@ const BillingPage = () => {
         .catch(() => setPromo({}));
     }, 250);
     return () => clearTimeout(t);
-  }, [retail, promoCount, orderMode, cart, customerId]);
+  }, [offersOn, promoCount, billLines, customerId]);
 
   /* Display-only totals — see the file header. */
   const totals = useMemo(() => {
@@ -630,7 +637,7 @@ const BillingPage = () => {
           const kot = await api(`/orders/${orderId}/kot`, { method: 'POST', body: {} });
           if (getDevicePrefs().autoPrintKot) printKotSlip(kot.kot_id);
         }
-        invoice = await api(`/orders/${orderId}/bill`, { method: 'POST', idempotencyKey: idem.get(), body: { ...extras, ...pay } });
+        invoice = await api(`/orders/${orderId}/bill`, { method: 'POST', idempotencyKey: idem.get(), body: { ...extras, ...pay, ...(offersOn ? { apply_promotions: true } : {}) } });
         loadOpenOrders();
       } else {
       const items = cart.map((l) => l.custom
@@ -641,7 +648,7 @@ const BillingPage = () => {
       payload = {
         customer_id: customerId || undefined,
         items,
-        ...(retail ? { apply_promotions: true } : {}),
+        ...(offersOn ? { apply_promotions: true } : {}),
         ...(exchange ? { exchange_credit_note_id: exchange.cn_id } : {}),
         ...extras,
         ...(split ? pay : { payment: payLater ? undefined : { method, amount: amount ?? 'FULL', ...cardSlip(method, cardRef) } })
@@ -1043,6 +1050,13 @@ const BillingPage = () => {
                   <div className="w-36"><Input type="number" min="0" step="0.01" placeholder="₹ off the bill" id="bill-discount" aria-label="Discount on the whole bill in rupees" value={invoiceDiscount} onChange={(e) => setInvoiceDiscount(e.target.value)} className="!py-2" /></div>
                   <Input placeholder="Note on the bill (optional)" aria-label="Note on the bill" value={notes} onChange={(e) => setNotes(e.target.value)} className="!py-2" />
                 </div>
+                {retail && !exchange && (
+                  <div className="flex gap-2">
+                    <Input placeholder="Exchange credit: the credit note number" aria-label="Credit note number for an exchange" value={creditNo} onChange={(e) => { setCreditNo(e.target.value.toUpperCase()); setCreditError(''); }} className="!py-2" />
+                    <Button type="button" variant="secondary" size="md" disabled={!creditNo.trim()} onClick={useCreditNote}>Use</Button>
+                  </div>
+                )}
+                {creditError && <p className="text-caption text-danger" role="alert">{creditError}</p>}
               </div>
             ) : (
               <button type="button" onClick={() => setExtrasOpen(true)} className="inline-flex min-h-7 items-center text-caption font-semibold text-brand-600 hover:text-brand-700 pointer-coarse:min-h-11">+ Discount, coupon or note</button>

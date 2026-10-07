@@ -16,3 +16,11 @@ export const businessToday = async (businessId, db = pool) =>
   )).rows[0].d;
 
 export const addDaysISO = (date, n) => new Date(new Date(`${date}T00:00:00Z`).getTime() + n * DAY).toISOString().slice(0, 10);
+
+/** The business's own clock right now: its calendar day, the weekday (0 = Sunday ... 6 = Saturday) and minutes since midnight. */
+export const businessNow = async (businessId, db = pool) => {
+  const r = (await db.query(
+    `SELECT to_char(n, 'YYYY-MM-DD') AS d, EXTRACT(DOW FROM n)::int AS dow, (EXTRACT(HOUR FROM n) * 60 + EXTRACT(MINUTE FROM n))::int AS minutes
+     FROM (SELECT CURRENT_TIMESTAMP AT TIME ZONE COALESCE((SELECT timezone FROM businesses WHERE business_id = $1), 'Asia/Kolkata') AS n) t`, [businessId])).rows[0];
+  return { date: r.d, dow: r.dow, minutes: r.minutes };
+};
