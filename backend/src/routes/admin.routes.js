@@ -10,6 +10,7 @@ import { requireAuth, requireSuperAdmin, requireAdminTwoFactor } from '../middle
 import { idempotent } from '../middleware/idempotency.js';
 import * as admin from '../controllers/admin.controller.js';
 import * as settings from '../controllers/settings.controller.js';
+import * as appErrors from '../controllers/appErrors.controller.js';
 
 const router = Router();
 
@@ -28,6 +29,8 @@ router.post('/login', adminLoginLimiter, admin.login);
 router.use(rateLimit({ windowMs: 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false, message: { success: false, message: 'Too many requests. Slow down for a minute.' } }));
 
 router.use(requireAuth, requireSuperAdmin, requireAdminTwoFactor);
+
+router.get('/app-errors', appErrors.list);   // crash reports from the mobile app
 
 router.get('/me', admin.me);
 router.get('/stats', admin.getStats);

@@ -823,6 +823,52 @@ nothing is received until the person presses Receive (the existing `POST /api/pu
   stock usage, 28 menu items with recipes, three stations (Coffee Bar, Cold Bar, Bakery & Kitchen), tables, a visit card, two offers (weekday happy hour, any 2 bakes for ₹180) and
   30 days of bills made through the real billing engine. Screenshots are `frontend/public/product/cafe-*.webp` (11 files; QR is a phone shot, `phone: true` in cafe.js).
 
+## 4g. Mobile app, phase 0 (2026-10-07): backend foundations (plan in `MOBILE.md`)
+
+- Migration `0074_mobile_sync`: `invoices.client_key` (unique per business) and `sync_log` + `sync_state` with one trigger function on products, barcodes, outlet price,
+  outlet stock, categories, customers. Pruned after 30 days (`sync_state.floor_seq` records how far).
+- `POST /api/invoices`: the Idempotency-Key is also kept on the invoice; a replay (even after the 48 h key table forgot it) or two at once returns the same invoice.
+  `offline: true` in the body records the sale even if stock is short. Other sale routes (restaurant bill-an-order, held bills) are not covered yet.
+- `GET /api/auth/me`: a Bearer caller gets a fresh `token` (sliding session); a cookie caller never does. No separate mobile login.
+- `GET /api/sync/head`, `GET /api/sync/changes?since&limit` (`sync.controller.js`, permission billing, needs a chosen outlet): current rows, collapsed, paged, `409 RESYNC`.
+  `products.controller.js` exports `posRowsByIds`; pos-catalog and the deltas share one row shape.
+- Tests: `test/sync.test.js` (11). Not yet synced: offers; not yet built: any app code (phase 1 is the React Native till).
+
+## 4h. Mobile app, phase 1 (2026-10-07): the online till (`mobile/`)
+
+- Expo SDK 57 + Expo Router (routes in `src/app`), logic in `src/lib` (api, catalog, cart, sale, session, receipt, money) with `npm test` (node --test, strip-types).
+  Screens: login, choose (business+outlet in one list), till, scan (modal), pay, receipt. State is a tiny `createStore` (no library); token in expo-secure-store.
+- The app shows a PREVIEW total (price x qty + GST); the server's invoice is what the receipt shows (offers like "any 2 bakes" make the two differ).
+- Backend fix made on the way: `pos-catalog` now sends `modifier_group_ids` (migration 0075 makes changing them a sync change). Without it the app thought café drinks had no options.
+- Needs `.npmrc legacy-peer-deps=true` (an optional react-native-worklets peer conflict). `npm run e2e` makes ONE real sale in the business it points at.
+- Not run on a real phone or emulator yet (none available here). Next: phase 2 (SQLite catalogue + outbox + offline sale).
+
+## 4i. Mobile app, phase 2 (2026-10-07): offline billing
+
+- `src/lib`: `db.ts` (Db interface: expo-sqlite on the phone, Node's SQLite in tests), `catalog.ts` (SQLite copy + delta sync), `outbox.ts` (unsent sales),
+  `till.ts` (`takeSale`: online or queue; `sendEntry`), `local.ts` (per business+outlet database, app kv), `sync.ts` (badge state + auto sync), `receipt.ts` (+ pending receipt).
+- Server: `invoices.create` reads `X-Offline-Sale: 1` and `X-Sale-Date` (body `offline` / `invoice_date` still work); offline sales are never refused for stock; the sale day is
+  believed within 7 days (else today). Headers, not body, so a queued retry's body equals the first attempt's (the 48 h guard compares bodies).
+- A refusal while ONLINE is shown to the cashier and never queued; only "could not reach the server" queues.
+- Tests: `mobile/test/offline.test.ts` + `helpers.ts` (fake server with switches: down, status, hang, lostReplies), `npm run e2e:offline` makes 3 real sales in the demo business.
+- Not run on a real phone. Next: phase 3 (café/restaurant counter: options, token numbers, offers preview, orders/held bills with the sale key).
+
+## 4j. Mobile app, phase 3 (2026-10-07): the café counter
+
+- `lib/options.ts` (pure picker rules), `lib/offers.ts` (`previewOffers`), `lib/cart.ts` (lines keyed by product + sorted option ids; `totals(cart, offers)` takes the offer off
+  BEFORE GST; `saleBody` adds `modifier_ids` and `send_to_kitchen`), catalog `groups` table + `groupsFor`/`byId`, `app/options.tsx` modal, kitchen switch and offer line on the till, token on the receipt.
+- Server: `invoices.create` ignores `send_to_kitchen` for an offline sale (header `X-Offline-Sale`). The queued body still equals the first attempt (it includes the kitchen flag).
+- Tests: `mobile/test/counter.test.ts`, `npm run e2e:cafe` (makes 2 real sales in the demo café), backend `sync.test.js` now 15.
+- Left for later: table orders / open orders, held bills, customer lookup and visit card, combos, split payments, receipt printer.
+
+## 4k. Mobile app, phase 4 (2026-10-07): polish and release prep
+
+- Backend: migration `0076_app_errors`, `appErrors.controller.js` (`POST /api/app-errors` public + limiter 30/15 min; `GET /api/admin/app-errors` grouped), `test/apperrors.test.js`.
+- Mobile: `lib/report.ts` (pure reporter: dedupe 1/min per message, queue of 20) + `lib/crash.ts` (wiring, global handler), `lib/print.ts` (expo-print, 58/80 mm), `app/settings.tsx`,
+  root `ErrorBoundary` in `_layout.tsx`, outbox `device()`/`forgetSent()`, `catalog.clear()` also clears groups. `app.json`/`eas.json`/`store/`/`STORE.md`/icons.
+- `npm run release:check` = typecheck + tests + expo-doctor + android export. Tests: `mobile/test/release.test.ts` also checks the permissions, icon sizes and build profiles.
+- The updates URL, EAS project id, Play key and screenshots are the owner's (see `mobile/STORE.md`). The app is still untested on a real phone: `MOBILE.md` has the checklist.
+
 ## 5. Working rules for future sessions
 
 - **Test every feature** in `backend/test/<feature>.test.js`; run the full `npm test` and `npx vite build` before reporting. Real DB, throwaway

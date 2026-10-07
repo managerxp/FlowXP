@@ -412,15 +412,15 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
        (business_id, branch_id, customer_id, invoice_number, invoice_date,
         subtotal_paise, discount_paise, cgst_paise, sgst_paise, igst_paise, tax_paise, total_paise,
         amount_paid_paise, balance_due_paise, payment_status, notes, created_by, order_id,
-        coupon_code, coupon_discount_paise, loyalty_discount_paise, round_off_paise)
-     VALUES ($1,$2,$3,$4,COALESCE($5::date,(CURRENT_TIMESTAMP AT TIME ZONE $18)::date),$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$19,$20,$21,$22,$23)
+        coupon_code, coupon_discount_paise, loyalty_discount_paise, round_off_paise, client_key)
+     VALUES ($1,$2,$3,$4,COALESCE($5::date,(CURRENT_TIMESTAMP AT TIME ZONE $18)::date),$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$19,$20,$21,$22,$23,$24)
      RETURNING *`,
     [
       tenant.businessId, tenant.branchId, customer?.customer_id || null, invoiceNumber, input.invoiceDate || null,
       totals.subtotal_paise, invoiceDiscountPaise, totals.cgst_paise, totals.sgst_paise, totals.igst_paise, totals.tax_paise, finalTotalPaise,
       paidPaise, Math.max(0, balancePaise), paymentStatus(finalTotalPaise, paidPaise), input.notes || null, userId,
       business.timezone || 'Asia/Kolkata', input.orderId || null,
-      coupon ? coupon.coupon.code : null, coupon ? coupon.discountPaise : 0, loyalty?.applied ? loyalty.applied.amountPaise : 0, roundOffPaise
+      coupon ? coupon.coupon.code : null, coupon ? coupon.discountPaise : 0, loyalty?.applied ? loyalty.applied.amountPaise : 0, roundOffPaise, input.clientKey || null
     ]
   )).rows[0];
 

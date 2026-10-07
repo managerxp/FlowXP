@@ -62,6 +62,8 @@ import wholesaleRoutes from './wholesale.routes.js';
 import distributorRoutes from './distributor.routes.js';
 import pharmacyRoutes from './pharmacy.routes.js';
 import retailRoutes from './retail.routes.js';
+import syncRoutes from './sync.routes.js';
+import * as appErrors from '../controllers/appErrors.controller.js';
 
 const router = Router();
 
@@ -90,10 +92,12 @@ const signupLimiter = limiter(5, 60, 'Too many accounts created from here. Try a
 const resetLimiter = limiter(5, 60, 'Too many reset requests. Try again later.');
 const contactLimiter = limiter(5, 60, 'Too many messages sent. Try again later.');
 /* The website chat calls the AI provider, which costs money per message: generous for a person, tight for a script. */
+const appErrorLimiter = limiter(30, 15, 'Too many reports from here.');
 const assistantLimiter = limiter(30, 15, 'Too many questions in a short time. Try again in a few minutes.');
 
 /* ── Public ─────────────────────────────────────────────────────────────── */
 
+router.post('/app-errors', appErrorLimiter, appErrors.report);   // the mobile app's crash reports (no sign-in: a crash can come first)
 router.post('/auth/signup', signupLimiter, auth.signup);
 router.post('/auth/login', loginLimiter, auth.login);
 router.post('/auth/login/2fa', loginLimiter, auth.loginTwoFactor);
@@ -191,6 +195,7 @@ router.use('/', brandsRoutes);             // /brands
 router.use('/', settlementsRoutes);        // /settlements (aggregator statement import + reconciliation)
 router.use('/customers', customersRoutes);
 router.use('/suppliers', suppliersRoutes);
+router.use('/sync', syncRoutes);            // /sync/head, /sync/changes (the mobile app's catalogue copy)
 router.use('/invoices', invoicesRoutes);
 router.use('/payments', paymentsRoutes);
 router.use('/inventory', inventoryRoutes);

@@ -404,7 +404,8 @@ export const resendEmailOtp = async (req, res) => {
 export const me = async (req, res) => {
   // a fresh cookie on every app start: the session slides forward while it is in use (same token_version, so
   // sign-out-everywhere still ends it), and a browser that sent the old Authorization header gets its cookie here
-  setSessionCookie(res, signToken(req.auth.user));
+  const refreshed = signToken(req.auth.user);
+  setSessionCookie(res, refreshed);
   // Outlets per business, so the app can offer an outlet switcher. A pinned user sees only their own.
   const outlets = (await pool.query(
     `SELECT business_id, branch_id, name, is_primary FROM branches WHERE status = 'ACTIVE' AND business_id = ANY($1::int[]) ORDER BY is_primary DESC, branch_id`,
@@ -413,6 +414,9 @@ export const me = async (req, res) => {
   res.json({
     success: true,
     data: {
+      // the mobile app signs in with a Bearer token (no cookie jar) and slides it forward here; a browser never gets the token in
+      // a response its scripts can read, which is the point of the httpOnly cookie
+      ...(req.authVia === 'header' ? { token: refreshed } : {}),
       user: { ...publicUser(req.auth.user), two_factor_enabled: Boolean(req.auth.user.totp_enabled) },
       businesses: req.memberships.map((m) => ({
         business_id: m.business_id,

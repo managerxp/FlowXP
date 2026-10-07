@@ -32,9 +32,38 @@ import { insertOrderItems, nextNumber, OrderItemsError, sendKotCore } from './or
    ========================================================================== */
 const KITCHEN_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE', 'RACING'];
 
+/* A sale already made under this Idempotency-Key, answered as the original was. idempotency_keys forgets after 48 hours; the
+   key is also kept on the invoice, so a phone that was offline for days and replays its sale still gets the same bill back. */
+/* A sale the phone took with no connection says so in headers, not the body: the 48-hour duplicate guard compares bodies, and the retry of a
+   sale whose first attempt timed out must still match the first attempt exactly. (The body's own `offline` / `invoice_date` still work.) */
+const isOffline = (req) => req.get?.('X-Offline-Sale') === '1' || req.headers?.['x-offline-sale'] === '1' || req.body?.offline === true;
+const saleDay = (req) => req.get?.('X-Sale-Date') || req.headers?.['x-sale-date'] || req.body?.invoice_date;
+const keyOf = (req) => req.get?.('Idempotency-Key') || req.headers?.['idempotency-key'] || null;
+const replayOf = async (req) => {
+  const key = keyOf(req);
+  if (!key) return null;
+  const { rows } = await pool.query(
+    `SELECT i.*, c.name AS customer_name FROM invoices i LEFT JOIN customers c ON c.customer_id = i.customer_id
+     WHERE i.business_id = $1 AND i.client_key = $2`, [req.tenant.businessId, key]);
+  if (!rows.length) return null;
+  const paid = (await pool.query(`SELECT payment_method, amount_paise FROM payments WHERE invoice_id = $1 ORDER BY payment_id`, [rows[0].invoice_id])).rows;
+  return { ...asInvoice(rows[0]), currency: req.tenant.currency, payments_taken: paid.map((p) => ({ method: p.payment_method, amount: toRupees(p.amount_paise) })) };
+};
+/* The day an offline sale was taken, as the phone says it: believed within the last 7 days (and not later than tomorrow, for a clock a little
+   ahead). Anything else is a wrong phone clock, and the sale is dated today rather than put in a closed month or the future. */
+const offlineDate = async (businessId, day) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(day ?? ''))) return undefined;
+  const age = (Date.parse(await businessToday(businessId)) - Date.parse(day)) / 86400000;
+  return age >= -1 && age <= 7 ? day : undefined;
+};
+const sendReplay = (res, invoice) => { res.set('Idempotent-Replay', 'true'); return res.status(201).json({ success: true, data: invoice }); };
+
 export const create = async (req, res) => {
   const body = req.body || {};
-  const toKitchen = body.send_to_kitchen === true;
+  const earlier = await replayOf(req).catch(() => null);
+  if (earlier) return sendReplay(res, earlier);
+  // a sale taken offline is billed only: its drink was made long ago, and a ticket arriving now would just clutter the kitchen screen
+  const toKitchen = body.send_to_kitchen === true && !isOffline(req);
   if (toKitchen && !KITCHEN_TYPES.includes(req.tenant.businessType)) return res.status(400).json({ success: false, message: 'Kitchen tickets are only for restaurants and cafés' });
   if (toKitchen && !Array.isArray(body.items)) return res.status(400).json({ success: false, message: 'Add at least one item' });
   const client = await pool.connect();
@@ -73,7 +102,10 @@ export const create = async (req, res) => {
       redeemPoints: body.redeem_points,
       applyPromotions: body.apply_promotions === true,
       exchangeCreditNoteId: body.exchange_credit_note_id ? Number(body.exchange_credit_note_id) : undefined,
-      invoiceDate: body.invoice_date
+      invoiceDate: isOffline(req) ? await offlineDate(req.tenant.businessId, saleDay(req)) : body.invoice_date,
+      clientKey: keyOf(req) || undefined,
+      // a sale the phone already made at the counter is never refused for stock: the goods have gone, so it is recorded and the shelf shows the shortfall
+      allowNegativeStock: isOffline(req)
     });
 
     if (counterOrder) {
@@ -87,6 +119,10 @@ export const create = async (req, res) => {
     res.status(201).json({ success: true, data: counterOrder ? { ...invoice, order: counterOrder } : invoice });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
+    if (error.code === '23505' && String(error.constraint) === 'uq_invoices_client_key') {   // the same sale arrived twice at once
+      const again = await replayOf(req).catch(() => null);
+      if (again) return sendReplay(res, again);
+    }
     if (error instanceof BillingError || error instanceof OrderItemsError) {
       return res.status(error.status).json({ success: false, message: error.message });
     }

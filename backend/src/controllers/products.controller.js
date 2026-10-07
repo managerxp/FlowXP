@@ -345,26 +345,40 @@ export const create = async (req, res) => {
    a whole supermarket (barcode -> product, name search) and keep scanning with no connection. Prices and stock follow
    the outlet being worked in, like the list.
    ========================================================================== */
-export const posCatalog = async (req, res) => {
-  const after = Math.max(0, Math.trunc(Number(req.query.after)) || 0);
-  const limit = Math.min(Math.max(Math.trunc(Number(req.query.limit)) || 1000, 1), 2000);
-  const { rows } = await pool.query(
-    `SELECT p.*, c.name AS category_name,
-            COALESCE((SELECT array_agg(b.barcode ORDER BY b.barcode_id) FROM product_barcodes b WHERE b.product_id = p.product_id), '{}') AS barcodes
-     FROM products p LEFT JOIN categories c ON c.category_id = p.category_id
-     WHERE p.business_id = $1 AND p.status = 'ACTIVE' AND p.kind <> 'SERVICE' AND p.product_id > $2
-     ORDER BY p.product_id LIMIT ${limit}`, [req.tenant.businessId, after]
-  );
-  const shaped = await forOutlet(rows, req.tenant);
+const POS_SELECT = `SELECT p.*, c.name AS category_name,
+            COALESCE((SELECT array_agg(b.barcode ORDER BY b.barcode_id) FROM product_barcodes b WHERE b.product_id = p.product_id), '{}') AS barcodes,
+            COALESCE((SELECT array_agg(pg.group_id ORDER BY pg.group_id) FROM product_modifier_groups pg WHERE pg.product_id = p.product_id), '{}') AS modifier_group_ids
+     FROM products p LEFT JOIN categories c ON c.category_id = p.category_id`;
+
+/** Catalogue rows as the till keeps them (this outlet's price and stock), for the pos-catalog pages and the sync deltas alike. */
+const posShape = async (rows, tenant) => {
+  const shaped = await forOutlet(rows, tenant);
   const barcodes = new Map(rows.map((r) => [r.product_id, r.barcodes]));
-  const data = shaped.map((r) => {
+  return shaped.map((r) => {
     const p = asProduct(r);
     return {
       product_id: p.product_id, name: p.name, sku: p.sku, barcodes: barcodes.get(r.product_id), unit: p.unit, selling_price: p.selling_price, mrp: p.mrp, tax_rate: p.tax_rate,
       track_inventory: p.track_inventory, current_stock: p.current_stock, category_name: p.category_name, is_quick: p.is_quick, is_available: p.is_available, modifier_group_ids: p.modifier_group_ids
     };
   });
-  res.json({ success: true, data, meta: { next_after: rows.length === limit ? rows[rows.length - 1].product_id : null } });
+};
+
+/** The sellable products among these ids, shaped for the till. Archived, services and other businesses' ids are simply absent. */
+export const posRowsByIds = async (tenant, ids) => {
+  if (!ids.length) return [];
+  const { rows } = await pool.query(
+    `${POS_SELECT} WHERE p.business_id = $1 AND p.status = 'ACTIVE' AND p.kind <> 'SERVICE' AND p.product_id = ANY($2::int[]) ORDER BY p.product_id`, [tenant.businessId, ids]);
+  return posShape(rows, tenant);
+};
+
+export const posCatalog = async (req, res) => {
+  const after = Math.max(0, Math.trunc(Number(req.query.after)) || 0);
+  const limit = Math.min(Math.max(Math.trunc(Number(req.query.limit)) || 1000, 1), 2000);
+  const { rows } = await pool.query(
+    `${POS_SELECT} WHERE p.business_id = $1 AND p.status = 'ACTIVE' AND p.kind <> 'SERVICE' AND p.product_id > $2
+     ORDER BY p.product_id LIMIT ${limit}`, [req.tenant.businessId, after]
+  );
+  res.json({ success: true, data: await posShape(rows, req.tenant), meta: { next_after: rows.length === limit ? rows[rows.length - 1].product_id : null } });
 };
 
 /* ==========================================================================
