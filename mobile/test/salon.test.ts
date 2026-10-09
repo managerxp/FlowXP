@@ -82,3 +82,13 @@ test('an appointment becomes a bill with its services and who does them; only an
   assert.equal(canNoShow(appt('BOOKED', '2026-10-08T15:00:00Z'), now), false);
   assert.equal(canNoShow(appt('CHECKED_IN', '2026-10-08T10:00:00Z'), now), false);
 });
+
+import { paymentsFor } from '../src/lib/salon.ts';
+
+test('a salon bill sends the whole bill, part of it, or no payment; a gift card keeps it paid in full', () => {
+  assert.deepEqual(paymentsFor(472, 'UPI', ''), [{ method: 'UPI', amount: 472 }]);
+  assert.deepEqual(paymentsFor(472, 'UPI', ' T1 ', undefined, 20000), [{ method: 'UPI', amount: 200, reference_number: 'T1' }], 'part: ₹200 now, the rest is owed');
+  assert.deepEqual(paymentsFor(472, 'CASH', '', undefined, 0), [], 'later: no payment, the bill is left unpaid');
+  const card = { code: 'GC-1', balance: 100 };
+  assert.deepEqual(paymentsFor(472, 'CASH', '', card, 20000), [{ method: 'GIFT_CARD', amount: 100, code: 'GC-1' }, { method: 'CASH', amount: 372 }], 'with a gift card the rest is paid, never left owing');
+});

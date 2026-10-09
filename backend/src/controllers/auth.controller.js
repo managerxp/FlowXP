@@ -19,7 +19,7 @@ import { sendEmailOtp, sendPasswordReset } from '../modules/mailer.js';
 import { emailProblem } from '../utils/emailCheck.js';
 import { addDefaultOptionGroups, FOOD_TYPES } from '../modules/defaultOptions.js';
 import {
-  checkBusinessType, checkEmail, checkName, checkPassword, checkPhone,
+  checkSignupType, checkEmail, checkName, checkPassword, checkPhone,
   firstError, normaliseEmail
 } from '../utils/validate.js';
 
@@ -73,7 +73,7 @@ export const signup = async (req, res) => {
     checkPhone(phone),
     checkPassword(password),
     checkName(business_name, 'Business name'),
-    checkBusinessType(business_type),
+    checkSignupType(business_type),
     // Checked here too, not only by the signup form's disabled button — a
     // direct API call must not be able to create an account without it.
     acceptedTerms ? null : 'You must agree to the Terms and Privacy Policy to create an account'

@@ -15,6 +15,9 @@ import {
 } from './pharmacy.ts';
 import { qty, rupees, toPaise } from './money.ts';
 import { Page } from './responsive.tsx';
+import PayHowPicker from './PayHowPicker.tsx';
+import { t } from './i18n.ts';
+import { payPlan, type PayHow } from './billing.ts';
 import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s } from './ui.tsx';
 
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -37,6 +40,8 @@ export function PharmacyTill() {
   const [patient, setPatient] = useState('');
   const [method, setMethod] = useState('CASH');
   const [reference, setReference] = useState('');
+  const [how, setHow] = useState<PayHow>('FULL');
+  const [nowText, setNowText] = useState('');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState('');
   const key = useRef(newKey());   // one key for this bill: a retry after a dropped signal returns the same invoice, never a second one
@@ -60,6 +65,8 @@ export function PharmacyTill() {
   }, [text, scope]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const bad = pharmacyProblem(lines, rxChecked);
+  const billPaise = quote ? toPaise(quote.invoice.total) : estimate(lines).totalPaise;
+  const plan = payPlan({ how, totalPaise: billPaise, now: nowText, hasCustomer: Boolean(customer) });
   const notBlocked = lines.length > 0;
 
   // the quote: the bill exactly as the server would make it (price, GST, which batch), asked again whenever the bill changes
@@ -84,12 +91,13 @@ export function PharmacyTill() {
 
   const pay = async () => {
     if (bad) return setProblem(bad);
+    if (!plan.ok) return setProblem(plan.problem ? t(plan.problem) : t('Enter how much is being paid now.'));
     if (!quote && !offline) return setProblem(quoteError || 'Wait a moment for the total');
     setBusy(true); setProblem('');
     // the same body for the first try and every retry (the server's duplicate guard compares them), with the total the customer was shown
     const shown = quote ? quote.invoice.total : estimate(lines).totalPaise / 100;
-    const body = saleBody(lines, customer?.id ?? null, method, reference, rxNote(lines, doctor, patient), { rxChecked, expectedTotal: shown });
-    const finish = () => { clearSale(); setLines([]); setRxChecked(false); setDoctor(''); setPatient(''); key.current = newKey(); };
+    const body = saleBody(lines, customer?.id ?? null, method, reference, rxNote(lines, doctor, patient), { rxChecked, expectedTotal: shown, payNowPaise: plan.payNowPaise });
+    const finish = () => { clearSale(); setLines([]); setRxChecked(false); setDoctor(''); setPatient(''); setHow('FULL'); setNowText(''); key.current = newKey(); };
     try {
       const out = await api.post<PharmacyQuote>('/pharmacy/pos/invoices', body, { idempotencyKey: key.current, timeoutMs: 8000 });
       finish();
@@ -97,7 +105,7 @@ export function PharmacyTill() {
     } catch (e) {
       if (unreachable(e) && scope) {
         // no usable connection: keep the sale on this phone, hand over the medicine, and send it later with the same key
-        const entry = await scope.outbox.add({ id: key.current, body, preview: previewOf(lines, method), path: '/pharmacy/pos/invoices' });
+        const entry = await scope.outbox.add({ id: key.current, body, preview: previewOf(lines, method, plan.payNowPaise), path: '/pharmacy/pos/invoices' });
         if (!entry) { setProblem('Too many bills are waiting to send. Connect to the internet before making more.'); setBusy(false); return; }
         for (const l of lines) if (l.product.track_inventory) await scope.catalog.setLocal(l.product.product_id, { stockDelta: -l.quantity });
         finish(); void refreshCounts(); void syncAll();
@@ -191,11 +199,12 @@ export function PharmacyTill() {
                   <Text style={{ fontSize: 28, fontWeight: '800', color: color.ink }}>{`about ${rupees(estimate(lines).totalPaise)}`}</Text>
                 </>
               ) : <Soft>{quoteError || `About ${rupees(roughPaise(lines))}. Working out the exact total…`}</Soft>}
-              <Soft>How is the customer paying?</Soft>
-              <Chips items={METHODS} value={method} onChange={setMethod} />
-              {method !== 'CASH' ? <TextInput style={s.input} value={reference} onChangeText={setReference} placeholder="Reference number (optional)" accessibilityLabel="Reference number" /> : null}
+              <PayHowPicker how={how} onHow={(h) => { setHow(h); setProblem(''); }} nowText={nowText} onNow={setNowText} plan={plan} owes={customer?.name || t('the customer')} totalPaise={billPaise} />
+              {how !== 'LATER' ? <Soft>How is the customer paying?</Soft> : null}
+              {how !== 'LATER' ? <Chips items={METHODS} value={method} onChange={setMethod} /> : null}
+              {how !== 'LATER' && method !== 'CASH' ? <TextInput style={s.input} value={reference} onChangeText={setReference} placeholder="Reference number (optional)" accessibilityLabel="Reference number" /> : null}
               <ErrorText>{problem || (bad && lines.length ? bad : '')}</ErrorText>
-              <Button title="Take payment" onPress={() => { void pay(); }} busy={busy} disabled={(!quote && !offline) || Boolean(bad)} />
+              <Button title={how === 'LATER' ? t('Save the bill, {amount} unpaid', { amount: rupees(billPaise) }) : how === 'PART' && plan.ok ? t('Take {now} now, {rest} stays due', { now: rupees(plan.payNowPaise ?? 0), rest: rupees(plan.balancePaise) }) : 'Take payment'} onPress={() => { void pay(); }} busy={busy} disabled={(!quote && !offline) || Boolean(bad)} />
             </View>
           ) : <View style={{ paddingHorizontal: 16 }}><ErrorText>{problem}</ErrorText></View>}
         </ScrollView>

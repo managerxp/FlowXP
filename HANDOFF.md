@@ -186,3 +186,30 @@ Known gaps: phone push notifications are not built; Flow AI answers need the AI 
 
 - `npm run seed:cloudkitchen` (in `backend/`) makes "Tandoor Box Cloud Kitchen": one kitchen, no dining room, 15 dishes, 10 customers, about 750 bills over 21 days. Sign in `cloudkitchen@flowxp.test` / `demo1234` (also `cloudkitchen-manager@`, `-kitchen@`, `-cashier@`). The café-specific mobile drills (`e2e-cafe`, `e2e-orders`, `e2e-kitchen`, `e2e-stock`) refuse it on purpose: it has no tables, options or ingredients. The others pass.
 - A role that has Reports but not Inventory (wholesale accounts) can now read the warehouse list its report filters need; it still cannot open orders or stock.
+
+
+## Settings: UPI ID and thermal printer (mobile), 2026-10-09
+
+- Settings > UPI ID: shows the business's UPI ID (the QR on the payment screen pays to it); the owner can add, change or clear it (`PATCH /api/businesses/current`, owner only, format check on both sides). `src/lib/UpiSettings.tsx`, `src/lib/upi.ts`.
+- Settings > Receipt printer: "Phone print screen" (as before) or "Thermal printer (RawBT)". `src/lib/escpos.ts` (receipt text to ESC/POS bytes, ₹ printed as Rs., 58/80 mm), `src/lib/thermal.ts` (hands them to RawBT through its `rawbt:` link), `src/lib/print.ts` (falls back to the print screen if RawBT is missing, and says so), `src/lib/PrinterSettings.tsx`. Tests in `test/printer.test.ts`.
+- Not built: connecting a card (POS) machine. Each machine company (Pine Labs, Paytm, Razorpay, Mswipe and others) has its own integration and agreement; card payments are still recorded on the bill with the slip number. Needs a decision on which company.
+- Not built: Bluetooth inside FlowXP itself (no RawBT), or a network (Wi-Fi) printer. Both need a native library and a real printer to test.
+
+
+## UPI: print the bill with the QR, 2026-10-09 (mobile)
+
+- Paying by UPI no longer shows a QR on the phone. The payment screen has "Print the bill with the UPI QR": the bill is printed with a QR code for exactly what is owed (`upi://pay?pa=<UPI ID>&pn=<shop>&am=<amount>&cu=INR`), the customer scans the paper, their UPI app opens with the amount filled in, and the cashier then confirms the money arrived ("Money received, make the bill").
+- A finished bill that still has money owed also prints with a QR for the balance. A bill that is fully paid prints without one.
+- Thermal printer (RawBT): the printer's own QR command is sent (`escpos.ts qrBytes`). Phone print screen: the QR is drawn as a picture (`qr.ts`). Bill text for the request: `upiBill.ts`. Tests in `test/printer.test.ts`.
+- Needs the business's UPI ID (Settings > UPI ID, owner). Not tried against a real printer or a real UPI app yet: print one and scan it with a phone to check the amount.
+- Website till (added later the same day): the UPI collect window's "Print bill with this QR" now prints a QR for exactly the amount being collected, including part payments, and even when the receipt setting for the balance QR is off (`?upi=<rupees>` on the print page and on `GET /api/invoices/:id/escpos`). With the print agent set up, the bill prints by itself the moment the window opens; in a plain browser a print tab needs a click, so the button is the main action there. The on-screen QR in that window is kept. Test: `backend/test/escpos.test.js`.
+
+
+## Part payment and pay later on the phone's sales screen, 2026-10-09
+
+- The pay screen has three choices: **Pay in full**, **Part payment**, **Pay later**. Part: type what is being paid now; the rest stays due on the customer. Later: nothing is taken and the whole bill is the customer's credit. Both need a customer on the bill (the rest has to be owed by someone); the screen says so.
+- Works for the counter sale (online and offline: the queued sale carries the part payment, and its pending receipt shows "BALANCE DUE") and for a table or takeaway order's bill. Logic: `payPlan` in `src/lib/billing.ts`; the sale body in `src/lib/cart.ts` (`payNowPaise`: none = whole bill, 0 = no payment, else the amount); `src/lib/till.ts`; screen `src/app/pay.tsx`.
+- With UPI, the printed bill and its QR are for the amount being paid now, and the bill shows "TO PAY NOW" and "BALANCE LATER".
+- Collecting the rest later: the customer screen's "Collect dues" (unchanged).
+- Check: `FLOWXP_EMAIL=cafe@flowxp.test FLOWXP_PASSWORD=demo1234 npm run e2e:partpay` (makes and cancels real bills in the demo café).
+- Pharmacy and salon tills (added later the same day): the same three choices, from one shared picker (`src/lib/PayHowPicker.tsx`). Pharmacy: part and later work online and offline (the queued sale carries the part payment and its pending receipt shows the balance). Salon: online only; part payment and pay later are not offered when a gift card pays or a gift card is being sold (the server requires those paid in full: "Gift cards must be paid in full before they are issued"). Both need a customer on the bill. Check: `npm run e2e:partpay-shops` with `FLOWXP_EMAIL=pharmacy@flowxp.test` or `salon@flowxp.test`. Wholesale and van sales already had part and credit.

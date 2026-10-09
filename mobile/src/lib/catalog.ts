@@ -188,7 +188,7 @@ export const createCatalog = (db: Db) => {
       const args: (string | number)[] = words.map(like);
       if (category !== undefined) { clauses.push(category === '' ? `json_extract(data, '$.category_name') IS NULL` : `json_extract(data, '$.category_name') = ?`); if (category !== '') args.push(category); }
       const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
-      const order = words.length ? `ORDER BY (name LIKE ? ESCAPE '\\') DESC, name` : 'ORDER BY name';
+      const order = words.length ? `ORDER BY (name LIKE ? ESCAPE '\\') DESC, name, product_id` : 'ORDER BY name, product_id';   // the id breaks ties: two products with one name must not swap places between pages
       if (words.length) args.push(`${words[0].replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
       return (await db.all<{ data: string }>(`SELECT data FROM products ${where} ${order} LIMIT ? OFFSET ?`, [...args, limit, offset])).map((r) => JSON.parse(r.data) as Product);
     },
@@ -208,7 +208,7 @@ export const createCatalog = (db: Db) => {
     customers: async (text: string, limit = 40): Promise<LocalCustomer[]> => {
       const words = text.toLowerCase().split(/\s+/).filter(Boolean);
       const where = words.length ? `WHERE ${words.map(() => `s LIKE ? ESCAPE '\\'`).join(' AND ')}` : '';
-      return (await db.all<{ data: string }>(`SELECT data FROM customers ${where} ORDER BY name LIMIT ?`, [...words.map(like), limit])).map((r) => JSON.parse(r.data) as LocalCustomer);
+      return (await db.all<{ data: string }>(`SELECT data FROM customers ${where} ORDER BY name, customer_id LIMIT ?`, [...words.map(like), limit])).map((r) => JSON.parse(r.data) as LocalCustomer);
     },
     customerCount: async () => Number((await db.all<{ n: number }>(`SELECT COUNT(*) AS n FROM customers`))[0].n),
 

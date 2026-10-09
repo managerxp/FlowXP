@@ -2,14 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { goBack } from '../lib/nav.ts';
 import { router, useLocalSearchParams } from 'expo-router';
-import QRCode from 'react-native-qrcode-svg';
+import { payRequestLines, upiPayLink } from '../lib/upiBill.ts';
+import { printReceipt } from '../lib/print.ts';
+import { kvGet, kvSet, useScope } from '../lib/local.ts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, NetworkError, newKey } from '../lib/api.ts';
 import { useLoad } from '../lib/useLoad.ts';
 import { orderTotals, type Order } from '../lib/orders.ts';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
-import { kvGet, kvSet, useScope } from '../lib/local.ts';
-import { METHOD_ORDER, cartSummary, cashSuggestions, isMethod, orderSummary } from '../lib/billing.ts';
+import { METHOD_ORDER, cartSummary, cashSuggestions, isMethod, orderSummary, payPlan, type PayHow } from '../lib/billing.ts';
 import { refreshCounts, syncAll } from '../lib/sync.ts';
 import { takeSale } from '../lib/till.ts';
 import { clearSale, keyForSale, useSale } from '../lib/sale.ts';
@@ -43,16 +44,21 @@ export default function Pay() {
   // the way this till was paid last time is the way it starts
   useEffect(() => { void kvGet('last_method').then((m) => { if (isMethod(m)) setMethod(m); }); }, []);
   const [given, setGiven] = useState('');
+  const [how, setHow] = useState<PayHow>('FULL');
+  const [nowText, setNowText] = useState('');
   const [reference, setReference] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const change = method === 'CASH' && given ? toPaise(given) - total : 0;
+  const hasCustomer = orderId ? Boolean(order.data?.customer_id) : Boolean(customer);
+  const owes = (orderId ? order.data?.customer_name : customer?.name) || t('the customer');
+  const plan = payPlan({ how, totalPaise: total, now: nowText, hasCustomer });
+  const change = method === 'CASH' && how === 'FULL' && given ? toPaise(given) - total : 0;
 
   const billOrder = async () => {
     setBusy(true); setError('');
     try {
-      const invoice = await api.post<{ invoice_id: number }>(`/orders/${orderId}/bill`, { payment: { method, amount: 'FULL', ...(reference.trim() ? { reference_number: reference.trim() } : {}) }, apply_promotions: true }, { idempotencyKey: orderKey.current });
+      const invoice = await api.post<{ invoice_id: number }>(`/orders/${orderId}/bill`, { ...(plan.payNowPaise === 0 ? {} : { payment: { method, amount: plan.payNowPaise ? plan.payNowPaise / 100 : 'FULL', ...(reference.trim() ? { reference_number: reference.trim() } : {}) } }), apply_promotions: true }, { idempotencyKey: orderKey.current });
       router.replace({ pathname: '/receipt', params: { id: String(invoice.invoice_id), change: change > 0 ? String(change) : '' } });
     } catch (e) {
       setError(e instanceof NetworkError ? 'No internet. The order is still open and nothing was billed. Tap again when the internet is back. It will not be billed twice.' : e instanceof ApiError ? e.message : 'Could not make the bill');
@@ -60,13 +66,14 @@ export default function Pay() {
   };
 
   const confirm = async () => {
+    if (!plan.ok) { setError(plan.problem ? t(plan.problem) : t('Enter how much is being paid now.')); return; }
     if (orderId) return billOrder();
     if (!scope) return;
     setBusy(true); setError('');
     try {
       // the same key for every attempt at THIS sale: if the first one reached the server before the signal dropped, a retry returns that invoice.
       // With no signal the sale is kept on the phone and sent later, with that same key.
-      const taken = await takeSale({ api, outbox: scope.outbox, cart, method, reference: reference.trim() || undefined, key: keyForSale(), kitchen: toKitchen, customerId: customer?.id ?? null });
+      const taken = await takeSale({ api, outbox: scope.outbox, cart, method, reference: reference.trim() || undefined, key: keyForSale(), kitchen: toKitchen, customerId: customer?.id ?? null, payNowPaise: plan.payNowPaise });
       if (taken.kind === 'full') { setError('Too many bills are waiting on this phone. Connect to the internet so they can be sent, then make this bill again.'); return; }
       clearSale(); markDone('first_bill');
       if (taken.kind === 'queued') {
@@ -81,6 +88,90 @@ export default function Pay() {
   };
 
   const vpa = business?.upi_vpa;
+  const [printing, setPrinting] = useState(false);
+  const [printNote, setPrintNote] = useState('');
+  const [printProblem, setPrintProblem] = useState('');
+
+  /* UPI: nothing is shown on the phone. The bill is printed with a QR code for exactly what is owed; the customer scans the paper and their UPI app opens with the amount filled in. */
+  const printUpiBill = async () => {
+    if (!vpa || !summary) return;
+    setPrinting(true); setPrintNote(''); setPrintProblem('');
+    try {
+      const now = plan.payNowPaise ?? total;
+      const lines = payRequestLines({ businessName: business?.name || 'FlowXP', title: orderId && order.data ? (order.data.table_name ?? order.data.order_number) : null, customer: customer?.name ?? null, summary, totalPaise: total, payNowPaise: plan.payNowPaise });
+      const paper = (await kvGet('paper')) === '80' ? '80' : '58';
+      const how = await printReceipt(lines.join('\n'), paper, { qr: upiPayLink(vpa, business?.name || 'FlowXP', now) });
+      setPrintNote(how === 'fallback' ? t("Could not use the thermal printer, so the bill went to the phone's print screen.") : t('Printed. Give it to the customer to scan, then confirm the money has arrived.'));
+    } catch (e) { setPrintProblem(e instanceof Error ? e.message : t('Could not print.')); } finally { setPrinting(false); }
+  };
+  const upiNow = plan.payNowPaise ?? total;
+  const upiPanel = method === 'UPI' && how !== 'LATER' ? (
+    <View style={[s.card, { gap: 10 }]}>
+      {vpa ? (
+        <>
+          <Soft>{t('The bill is printed with a QR code for exactly {amount}. The customer scans the paper and their UPI app opens with the amount filled in.', { amount: rupees(upiNow) })}</Soft>
+          <Button title={t('Print the bill with the UPI QR')} onPress={() => { void printUpiBill(); }} busy={printing} disabled={total <= 0 || !plan.ok} />
+          <ErrorText>{printProblem}</ErrorText>
+          {printNote ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok }}>{printNote}</Text> : null}
+        </>
+      ) : <Soft>This business has no UPI ID set up. Add one in Settings (the owner can), or take the payment another way.</Soft>}
+      <TextInput style={[s.input, { alignSelf: 'stretch' }]} value={reference} onChangeText={setReference} placeholder="UPI reference (optional)" accessibilityLabel="UPI reference" />
+    </View>
+  ) : null;
+  const HOWS: { id: PayHow; label: string }[] = [{ id: 'FULL', label: t('Pay in full') }, { id: 'PART', label: t('Part payment') }, { id: 'LATER', label: t('Pay later') }];
+  const confirmTitle = how === 'LATER' ? t('Save the bill, {amount} unpaid', { amount: rupees(total) })
+    : how === 'PART' ? (plan.ok ? t('Take {now} now, {rest} stays due', { now: rupees(plan.payNowPaise ?? 0), rest: rupees(plan.balancePaise) }) : t('Take part payment'))
+    : method === 'CASH' ? 'Cash received, make the bill' : method === 'UPI' ? 'Money received, make the bill' : 'Card paid, make the bill';
+  const controls = (
+    <>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {HOWS.map((h) => <Button key={h.id} title={h.label} kind={how === h.id ? 'primary' : 'quiet'} onPress={() => { setHow(h.id); setError(''); }} style={{ flex: 1 }} />)}
+      </View>
+      {how === 'PART' ? (
+        <View style={{ gap: 8 }}>
+          <Soft>{t('How much is being paid now?')}</Soft>
+          <TextInput style={s.input} value={nowText} onChangeText={setNowText} keyboardType="decimal-pad" placeholder="0" accessibilityLabel={t('Paying now')} />
+          {plan.ok ? <Text accessibilityLiveRegion="polite" style={{ color: color.warn, fontWeight: '700' }}>{t('{amount} stays due on {name}.', { amount: rupees(plan.balancePaise), name: owes })}</Text> : null}
+        </View>
+      ) : null}
+      {how === 'LATER' ? <Text style={{ color: color.warn, fontWeight: '700' }}>{t('The whole bill, {amount}, is left unpaid on {name}.', { amount: rupees(total), name: owes })}</Text> : null}
+      {how !== 'FULL' && plan.problem ? <ErrorText>{t(plan.problem)}</ErrorText> : null}
+
+      {how !== 'LATER' ? (
+        <>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {METHODS.map((m) => (
+              <Button key={m.id} title={m.label} kind={method === m.id ? 'primary' : 'quiet'} onPress={() => { setMethod(m.id); void kvSet('last_method', m.id); }} style={{ flex: 1 }} />
+            ))}
+          </View>
+
+          {method === 'CASH' && how === 'FULL' ? (
+            <View style={{ gap: 8 }}>
+              <Soft>Cash received (optional)</Soft>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {cashSuggestions(total).map((p, i) => <Button key={p} title={i === 0 ? 'Exact' : rupees(p)} kind={toPaise(given || '0') === p ? 'primary' : 'quiet'} onPress={() => setGiven(String(p / 100))} style={{ minWidth: 88 }} />)}
+              </View>
+              <TextInput style={s.input} value={given} onChangeText={setGiven} keyboardType="decimal-pad" placeholder={rupees(total)} accessibilityLabel="Cash received" />
+              {change > 0 ? <Text style={{ fontSize: 18, fontWeight: '700', color: color.ok }}>Give back {rupees(change)}</Text> : null}
+              {given && change < 0 ? <Text style={{ color: color.danger }}>Short by {rupees(-change)}</Text> : null}
+            </View>
+          ) : null}
+
+          {upiPanel}
+
+          {method === 'CARD' ? (
+            <View style={{ gap: 8 }}>
+              <Soft>Take the card on your machine, then record it here. FlowXP is not connected to the machine.</Soft>
+              <TextInput style={s.input} value={reference} onChangeText={setReference} placeholder="Slip or approval number (optional)" accessibilityLabel="Card reference" />
+            </View>
+          ) : null}
+        </>
+      ) : null}
+
+      <ErrorText>{error}</ErrorText>
+      <Button title={confirmTitle} onPress={confirm} busy={busy} disabled={lineCount === 0 || (Boolean(orderId) && !order.data)} />
+    </>
+  );
   const summary = orderId ? (order.data ? orderSummary(order.data) : null) : cartSummary(cart, offers.byKey);
 
   /* The bill on one side, the way to pay on the other, so a tablet shows both at once. A phone shows the amount, then the way to pay. */
@@ -113,46 +204,7 @@ export default function Pay() {
             <ScrollView style={{ flex: 3 }} contentContainerStyle={{ padding: 20, gap: 14 }} keyboardShouldPersistTaps="handled">
         <Title>{rupees(total)}</Title>
         <Soft>About, with GST. {lineCount} lines{orderId && order.data ? ` · ${order.data.table_name ?? order.data.order_type} ${order.data.order_number}` : ''}. The final bill comes from FlowXP.</Soft>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {METHODS.map((m) => (
-            <Button key={m.id} title={m.label} kind={method === m.id ? 'primary' : 'quiet'} onPress={() => { setMethod(m.id); void kvSet('last_method', m.id); }} style={{ flex: 1 }} />
-          ))}
-        </View>
-
-        {method === 'CASH' ? (
-          <View style={{ gap: 8 }}>
-            <Soft>Cash received (optional)</Soft>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {cashSuggestions(total).map((p, i) => <Button key={p} title={i === 0 ? 'Exact' : rupees(p)} kind={toPaise(given || '0') === p ? 'primary' : 'quiet'} onPress={() => setGiven(String(p / 100))} style={{ minWidth: 88 }} />)}
-            </View>
-            <TextInput style={s.input} value={given} onChangeText={setGiven} keyboardType="decimal-pad" placeholder={rupees(total)} accessibilityLabel="Cash received" />
-            {change > 0 ? <Text style={{ fontSize: 18, fontWeight: '700', color: color.ok }}>Give back {rupees(change)}</Text> : null}
-            {given && change < 0 ? <Text style={{ color: color.danger }}>Short by {rupees(-change)}</Text> : null}
-          </View>
-        ) : null}
-
-        {method === 'UPI' ? (
-          <View style={[s.card, { alignItems: 'center', gap: 10 }]}>
-            {vpa ? (
-              <>
-                <QRCode value={upiLink(vpa, business?.name || 'FlowXP', total, 'Bill')} size={220} />
-                <Soft>{vpa}</Soft>
-                <Soft>Ask the customer to scan, then confirm the money has arrived.</Soft>
-              </>
-            ) : <Soft>This business has no UPI ID set up. Add one in FlowXP settings, or take the payment another way.</Soft>}
-            <TextInput style={[s.input, { alignSelf: 'stretch' }]} value={reference} onChangeText={setReference} placeholder="UPI reference (optional)" accessibilityLabel="UPI reference" />
-          </View>
-        ) : null}
-
-        {method === 'CARD' ? (
-          <View style={{ gap: 8 }}>
-            <Soft>Take the card on your machine, then record it here. FlowXP is not connected to the machine.</Soft>
-            <TextInput style={s.input} value={reference} onChangeText={setReference} placeholder="Slip or approval number (optional)" accessibilityLabel="Card reference" />
-          </View>
-        ) : null}
-
-        <ErrorText>{error}</ErrorText>
-        <Button title={method === 'CASH' ? 'Cash received, make the bill' : method === 'UPI' ? 'Money received, make the bill' : 'Card paid, make the bill'} onPress={confirm} busy={busy} disabled={lineCount === 0 || (Boolean(orderId) && !order.data)} />
+        {controls}
         <Button title="Back to the bill" kind="quiet" onPress={() => goBack()} disabled={busy} />
             </ScrollView>
           </View>
@@ -167,46 +219,7 @@ export default function Pay() {
       <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled">
         <Title>{rupees(total)}</Title>
         <Soft>About, with GST. {lineCount} lines{orderId && order.data ? ` · ${order.data.table_name ?? order.data.order_type} ${order.data.order_number}` : ''}. The final bill comes from FlowXP.</Soft>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {METHODS.map((m) => (
-            <Button key={m.id} title={m.label} kind={method === m.id ? 'primary' : 'quiet'} onPress={() => { setMethod(m.id); void kvSet('last_method', m.id); }} style={{ flex: 1 }} />
-          ))}
-        </View>
-
-        {method === 'CASH' ? (
-          <View style={{ gap: 8 }}>
-            <Soft>Cash received (optional)</Soft>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {cashSuggestions(total).map((p, i) => <Button key={p} title={i === 0 ? 'Exact' : rupees(p)} kind={toPaise(given || '0') === p ? 'primary' : 'quiet'} onPress={() => setGiven(String(p / 100))} style={{ minWidth: 88 }} />)}
-            </View>
-            <TextInput style={s.input} value={given} onChangeText={setGiven} keyboardType="decimal-pad" placeholder={rupees(total)} accessibilityLabel="Cash received" />
-            {change > 0 ? <Text style={{ fontSize: 18, fontWeight: '700', color: color.ok }}>Give back {rupees(change)}</Text> : null}
-            {given && change < 0 ? <Text style={{ color: color.danger }}>Short by {rupees(-change)}</Text> : null}
-          </View>
-        ) : null}
-
-        {method === 'UPI' ? (
-          <View style={[s.card, { alignItems: 'center', gap: 10 }]}>
-            {vpa ? (
-              <>
-                <QRCode value={upiLink(vpa, business?.name || 'FlowXP', total, 'Bill')} size={220} />
-                <Soft>{vpa}</Soft>
-                <Soft>Ask the customer to scan, then confirm the money has arrived.</Soft>
-              </>
-            ) : <Soft>This business has no UPI ID set up. Add one in FlowXP settings, or take the payment another way.</Soft>}
-            <TextInput style={[s.input, { alignSelf: 'stretch' }]} value={reference} onChangeText={setReference} placeholder="UPI reference (optional)" accessibilityLabel="UPI reference" />
-          </View>
-        ) : null}
-
-        {method === 'CARD' ? (
-          <View style={{ gap: 8 }}>
-            <Soft>Take the card on your machine, then record it here. FlowXP is not connected to the machine.</Soft>
-            <TextInput style={s.input} value={reference} onChangeText={setReference} placeholder="Slip or approval number (optional)" accessibilityLabel="Card reference" />
-          </View>
-        ) : null}
-
-        <ErrorText>{error}</ErrorText>
-        <Button title={method === 'CASH' ? 'Cash received, make the bill' : method === 'UPI' ? 'Money received, make the bill' : 'Card paid, make the bill'} onPress={confirm} busy={busy} disabled={lineCount === 0 || (Boolean(orderId) && !order.data)} />
+        {controls}
         <Button title="Back to the bill" kind="quiet" onPress={() => goBack()} disabled={busy} />
       </ScrollView>
       </Page>

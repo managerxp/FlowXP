@@ -47,7 +47,7 @@ export default function Products() {
 
   const loadMore = () => {
     if (!scope || !more) return;
-    void scope.catalog.search(text, PAGE, cat, rows.length).then((r) => { setRows((cur) => [...cur, ...r]); setMore(r.length === PAGE); });
+    void scope.catalog.search(text, PAGE, cat, rows.length).then((r) => { setRows((cur) => { const seen = new Set(cur.map((p) => p.product_id)); return [...cur, ...r.filter((p) => !seen.has(p.product_id))]; }); setMore(r.length === PAGE); });
   };
 
   return (

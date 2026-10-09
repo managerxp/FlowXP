@@ -58,22 +58,26 @@ export const agentStatus = (prefs) => agent('/status', { prefs });
 const sendToAgent = (target, data, prefs) => agent('/print', { method: 'POST', body: { target, data }, prefs });
 
 /** Fetch the printer bytes for a receipt/KOT/test page and send them. Throws on any problem. */
-const printJob = async (kind, id, { drawer = false, prefs = getDevicePrefs() } = {}) => {
+const printJob = async (kind, id, { drawer = false, upi = null, prefs = getDevicePrefs() } = {}) => {
   const d = drawer ? '?drawer=1' : '';
-  if (kind === 'receipt') return sendToAgent(prefs.receiptTarget, (await api(`/invoices/${id}/escpos${d}`)).data, prefs);
+  if (kind === 'receipt') return sendToAgent(prefs.receiptTarget, (await api(`/invoices/${id}/escpos${d}${upi ? `${d ? '&' : '?'}upi=${upi}` : ''}`)).data, prefs);
   if (kind === 'test') return sendToAgent(prefs.receiptTarget, (await api(`/print/test${d}`)).data, prefs);
   const { slips } = await api(`/kitchen/kots/${id}/escpos`);
   for (const slip of slips) await sendToAgent(prefs.kotTarget || prefs.receiptTarget, slip.data, prefs);
 };
 
 /** Print a receipt: silently when the agent is set up, else the browser print view. `cash` pops the drawer with it. */
-export const printReceipt = async (invoiceId, { cash = false } = {}) => {
+export const printReceipt = async (invoiceId, { cash = false, upi = null } = {}) => {
   const prefs = getDevicePrefs();
-  if (!agentOn(prefs) || !prefs.receiptTarget) return openPrint('receipt', invoiceId);
-  try { await printJob('receipt', invoiceId, { drawer: cash && prefs.openDrawer, prefs }); }
-  catch (error) { onPrintError(`Receipt not printed: ${error.message}`); openPrint('receipt', invoiceId); }
+  const extra = upi ? `&upi=${upi}` : '';   // `upi` (rupees): the bill carries a QR for exactly that amount
+  if (!agentOn(prefs) || !prefs.receiptTarget) return openPrint('receipt', invoiceId, extra);
+  try { await printJob('receipt', invoiceId, { drawer: cash && prefs.openDrawer, upi, prefs }); }
+  catch (error) { onPrintError(`Receipt not printed: ${error.message}`); openPrint('receipt', invoiceId, extra); }
   return null;
 };
+
+/** Is silent printing set up on this computer? Then a UPI bill can print by itself the moment it is saved (a browser print tab needs a click). */
+export const silentPrinting = () => { const p = getDevicePrefs(); return agentOn(p) && Boolean(p.receiptTarget); };
 
 /** Print a kitchen ticket, one slip per station. */
 export const printKot = async (kotId) => {

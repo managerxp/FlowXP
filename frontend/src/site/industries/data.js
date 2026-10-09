@@ -1,6 +1,6 @@
 /*
  * What each industry page says, kept in one place so the hub, the detail
- * pages, the navigation and the coming-soon page all read from the same facts.
+ * pages and the navigation read from the same facts.
  *
  * READY: a built vertical with its own screens in the app. Each lives in
  * content/<slug>.js: the modules (a heading, what it does, the points, and the
@@ -9,7 +9,6 @@
  * route and a permission in the app, not a roadmap item.
  * CORE: everything else the core billing/stock/GST engine already serves
  * well, with no dedicated vertical needed.
- * SOON: named gaps, a feature the trade needs that is not built yet.
  */
 import restaurant from './content/restaurant.js';
 import cafe from './content/cafe.js';
@@ -40,13 +39,5 @@ export const CORE = [
   { title: 'Groups with several outlets', body: 'One owner login sees every outlet; each one keeps its own stock, staff and invoice numbers.', big: true },
   { title: 'Retail shops', body: 'Barcode billing, stock and GST for the counter.' },
   { title: 'Supermarkets', body: 'Fast barcode billing and stock across counters.' },
-  { title: 'Bakeries and sweet shops', body: 'Counter billing, recipes and daily wastage.' },
-  { title: 'Gaming cafés and play zones', body: 'Bill time packages, snacks and memberships as items.' }
-];
-
-/* A real, named gap for each — what is missing, not just "not yet". */
-export const SOON = [
-  { title: 'Clothing and footwear', body: 'Billing, stock and loyalty work today. Size and colour variants are next.' },
-  { title: 'Electronics and mobiles', body: 'Billing, stock and customer credit work today. Serial number tracking per unit is next.' },
-  { title: 'Racing and simulator zones', body: 'Time-based billing and packages, the way gaming cafés already work, is next.' }
+  { title: 'Bakeries and sweet shops', body: 'Counter billing, recipes and daily wastage.' }
 ];

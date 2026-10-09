@@ -31,7 +31,6 @@ Key facts:
 - [Distribution](https://flowxp.in/industries/distributor): principals and brands, territories and beats, field sales on a phone, schemes, vans, targets
 - [Salons and spas](https://flowxp.in/industries/salon): appointments, online booking, services, staff commission, memberships and packages, product stock
 - [Pharmacies](https://flowxp.in/industries/pharmacy): billing by batch with expiry, goods receipts from suppliers, stock and expiry alerts
-- [Not built yet](https://flowxp.in/industries/coming-soon): businesses and features FlowXP does not support yet
 
 ## Company
 

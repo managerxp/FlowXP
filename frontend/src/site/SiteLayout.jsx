@@ -111,7 +111,7 @@ const IndustriesMenu = () => {
               ))}
             </ul>
             <div className="mt-1 flex items-center justify-between gap-3 rounded-xl bg-surface-2 px-4 py-2.5 text-sm">
-              <Link to="/industries/coming-soon" className="text-ink-500 transition-colors hover:text-ink-900">More industries coming soon</Link>
+              <span className="text-ink-500">Built for these trades</span>
               <Link to="/industries" className="inline-flex items-center gap-1.5 font-semibold text-brand-600 transition-colors hover:text-brand-700">All industries<ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
             </div>
           </div>

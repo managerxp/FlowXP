@@ -40,9 +40,10 @@ export const quoteBody = (lines: PLine[], customerId: number | null) => ({ items
 
 /** The sale. A prescription medicine on it is sent with the fact that the prescription was checked (the server refuses it otherwise); a sale made with
     no connection also says what total the customer was shown, so the server can flag a price that changed since the phone last synced. */
-export const saleBody = (lines: PLine[], customerId: number | null, method: string, reference: string, notes: string, extra: { rxChecked?: boolean; expectedTotal?: number } = {}) => ({
+export const saleBody = (lines: PLine[], customerId: number | null, method: string, reference: string, notes: string, extra: { rxChecked?: boolean; expectedTotal?: number; payNowPaise?: number | null } = {}) => ({
   ...quoteBody(lines, customerId),
-  payments: [{ method, amount: 'FULL', ...(reference.trim() ? { reference_number: reference.trim() } : {}) }],
+  // payNowPaise: none = the whole bill; 0 = nothing now (left unpaid, the customer's credit); else that much now and the rest is owed
+  payments: extra.payNowPaise === 0 ? [] : [{ method, amount: extra.payNowPaise ? extra.payNowPaise / 100 : 'FULL', ...(reference.trim() ? { reference_number: reference.trim() } : {}) }],
   ...(notes.trim() ? { notes: notes.trim() } : {}),
   ...(extra.rxChecked && rxLines(lines).length ? { prescription_checked: true } : {}),
   ...(extra.expectedTotal != null ? { expected_total: extra.expectedTotal } : {})
@@ -66,9 +67,9 @@ export const estimate = (lines: PLine[]): { subtotalPaise: number; taxPaise: num
 };
 
 /** What the provisional receipt of a queued bill shows. */
-export const previewOf = (lines: PLine[], method: string) => {
+export const previewOf = (lines: PLine[], method: string, paidPaise?: number | null) => {
   const t = estimate(lines);
-  return { lines: lines.map((l) => ({ name: l.product.name, quantity: l.quantity, unitPricePaise: toPaise(l.product.selling_price) })), subtotalPaise: t.subtotalPaise, taxPaise: t.taxPaise, totalPaise: t.totalPaise, method };
+  return { lines: lines.map((l) => ({ name: l.product.name, quantity: l.quantity, unitPricePaise: toPaise(l.product.selling_price) })), subtotalPaise: t.subtotalPaise, taxPaise: t.taxPaise, totalPaise: t.totalPaise, method, ...(paidPaise != null ? { paidPaise } : {}) };
 };
 
 /** Prescription medicines on the bill, to be checked before they are handed over. */

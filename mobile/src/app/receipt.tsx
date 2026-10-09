@@ -6,10 +6,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
 import { kvGet, useScope } from '../lib/local.ts';
 import { printReceipt } from '../lib/print.ts';
+import { t } from '../lib/i18n.ts';
 import { useSyncState } from '../lib/sync.ts';
 import { pendingReceiptText, receiptText, type Invoice } from '../lib/receipt.ts';
 import type { Entry } from '../lib/outbox.ts';
-import { rupees } from '../lib/money.ts';
+import { rupees, toPaise } from '../lib/money.ts';
+import { upiPayLink } from '../lib/upiBill.ts';
 import { Page } from '../lib/responsive.tsx';
 import { Button, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
 
@@ -37,6 +39,8 @@ export default function Receipt() {
   useEffect(load, [invoiceId]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const name = business?.name || 'FlowXP';
+  // a bill with money still owed carries a UPI QR code for exactly that amount, so the customer can settle it by scanning the paper
+  const owed = invoice && invoice.balance_due > 0 ? toPaise(invoice.balance_due) : 0;
   const text = invoice ? receiptText(invoice, name) : pending ? pendingReceiptText(pending, name) : '';
   const waiting = !invoice && pending && pending.state !== 'sent';
   return (
@@ -62,7 +66,7 @@ export default function Receipt() {
         {error ? <Button title="Try again" kind="quiet" onPress={load} /> : null}
         {text ? <View style={[s.card]}><Text selectable style={{ fontFamily: 'monospace', fontSize: 13, color: color.ink }}>{text}</Text></View> : null}
         <Button title={invoice?.table_name ? 'Back to the tables' : 'Next customer: new bill'} onPress={() => router.replace(invoice?.table_name ? '/tables' : '/sell')} />
-        {text ? <Button title="Print the bill" kind="quiet" onPress={() => { setPrintError(''); void kvGet('paper').then((p) => printReceipt(text, p === '80' ? '80' : '58')).catch((e: Error) => setPrintError(e.message)); }} /> : null}
+        {text ? <Button title="Print the bill" kind="quiet" onPress={() => { setPrintError(''); void kvGet('paper').then((p) => printReceipt(text, p === '80' ? '80' : '58', owed && business?.upi_vpa ? { qr: upiPayLink(business.upi_vpa, business.name, owed) } : {})).then((how) => { if (how === 'fallback') setPrintError(t("Could not reach the printer, so the bill went to the phone's print screen instead.")); }).catch((e: Error) => setPrintError(e.message)); }} /> : null}
         <ErrorText>{printError}</ErrorText>
         {text ? <Button title="Send the bill" kind="quiet" onPress={() => { void Share.share({ message: text }); }} /> : null}
         {invoice ? <Button title="Return items" kind="quiet" onPress={() => router.push(['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type ?? '') ? { pathname: '/return-sale', params: { invoice: String(invoiceId) } } : { pathname: '/return', params: { id: String(invoiceId) } })} /> : null}

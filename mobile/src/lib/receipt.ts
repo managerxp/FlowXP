@@ -12,8 +12,8 @@ export type Invoice = {
   items: InvoiceLine[]; payments: { method: string; amount: number }[];
 };
 
-const WIDTH = 32;
-const two = (left: string, right: string) => (left.length + right.length + 1 > WIDTH ? `${left}\n${' '.repeat(Math.max(1, WIDTH - right.length))}${right}` : `${left}${' '.repeat(WIDTH - left.length - right.length)}${right}`);
+export const WIDTH = 32;
+export const two = (left: string, right: string) => (left.length + right.length + 1 > WIDTH ? `${left}\n${' '.repeat(Math.max(1, WIDTH - right.length))}${right}` : `${left}${' '.repeat(WIDTH - left.length - right.length)}${right}`);
 const money = (r: number) => rupees(toPaise(r));
 
 export const receiptLines = (inv: Invoice, businessName: string): string[] => {
@@ -61,7 +61,9 @@ export const pendingReceiptLines = (e: { local_no: string; taken_at: number; pre
   out.push(two('Subtotal', rupees(e.preview.subtotalPaise)));
   out.push(two('GST (about)', rupees(e.preview.taxPaise)));
   out.push(two('TOTAL (about)', rupees(e.preview.totalPaise)));
-  out.push(two(e.preview.method, rupees(e.preview.totalPaise)));
+  const paid = e.preview.paidPaise ?? e.preview.totalPaise;   // not recorded = the whole bill
+  if (paid > 0) out.push(two(e.preview.method, rupees(Math.min(paid, e.preview.totalPaise))));
+  if (paid < e.preview.totalPaise) out.push(two('BALANCE DUE', rupees(e.preview.totalPaise - paid)));
   out.push('-'.repeat(WIDTH));
   return out;
 };

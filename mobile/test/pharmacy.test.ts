@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  addMedicine, batchActions, daysTo, expiryFromMonth, expiryText, grnBody, grnLineProblem, grnProblem, itemsBody, newGrnLine, pharmacyProblem, pickBatch, quoteBody, removeLine, roughPaise, rxNote, saleBody, sellable, setQuantity, shortBy,
+  addMedicine, batchActions, daysTo, previewOf, expiryFromMonth, expiryText, grnBody, grnLineProblem, grnProblem, itemsBody, newGrnLine, pharmacyProblem, pickBatch, quoteBody, removeLine, roughPaise, rxNote, saleBody, sellable, setQuantity, shortBy,
   type Batch, type Medicine
 } from '../src/lib/pharmacy.ts';
 
@@ -97,4 +97,12 @@ test('a delivery needs a supplier and something that came; what is sent has the 
 test('an on-sale batch can be held back, recalled or blocked; any other goes back on sale', () => {
   assert.deepEqual(batchActions('ACTIVE').map((a) => a.to), ['QUARANTINED', 'RECALLED', 'BLOCKED']);
   assert.deepEqual(batchActions('RECALLED').map((a) => a.to), ['ACTIVE']);
+});
+
+test('a pharmacy sale sends the whole bill, part of it, or no payment', () => {
+  const l = addMedicine([], med(1, { name: 'Paracetamol 500', selling_price: 20 }));
+  assert.deepEqual(saleBody(l, 5, 'UPI', '', '').payments, [{ method: 'UPI', amount: 'FULL' }]);
+  assert.deepEqual(saleBody(l, 5, 'UPI', ' T9 ', '', { payNowPaise: 1500 }).payments, [{ method: 'UPI', amount: 15, reference_number: 'T9' }], 'part: that amount now, the rest is owed');
+  assert.deepEqual(saleBody(l, 5, 'CASH', '', '', { payNowPaise: 0 }).payments, [], 'later: nothing is paid, so the bill is left unpaid');
+  assert.equal(previewOf(l, 'CASH', 500).paidPaise, 500); assert.equal('paidPaise' in previewOf(l, 'CASH'), false);
 });

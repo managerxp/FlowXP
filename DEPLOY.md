@@ -56,6 +56,8 @@ sudo certbot --nginx -d flowxp.in -d www.flowxp.in
 |---|---|
 | `DATABASE_URL` | `postgres://flowxp:<password>@localhost:5432/flowxp`, matching the user/db you created above |
 | `JWT_SECRET` | 32+ random characters (the API refuses to start in production with less) — `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
+| `ENCRYPTION_KEY` | recommended: a second secret, 32+ random characters, for stored 2FA secrets and payment/email/messaging keys, so changing `JWT_SECRET` later does not lock 2FA users out. After setting it run `node scripts/reencrypt-secrets.mjs` once. Keep it backed up: losing it makes those secrets unreadable |
+| `PUSH_ENABLED`, `EXPO_ACCESS_TOKEN` | phone alerts go through Expo's push service. On by default; `EXPO_ACCESS_TOKEN` only if you switch on enhanced push security in Expo. The Firebase steps are in `mobile/STORE.md` |
 | `APP_ORIGIN` | your public address, `https://flowxp.in` (must be https in production) |
 | `CORS_ORIGINS` | other sites allowed to call the API, e.g. a separate marketing site (optional) |
 | `SMTP_*`, `MAIL_FROM` | outbound email: password links, staff invites, supplier orders. Blank = logged only |
@@ -166,3 +168,13 @@ The S3 request signing is verified against AWS's published examples and against 
 production settings check, health endpoints and backup script are in place. The PM2 ecosystem file and nginx
 config have **not been run against a live VPS** (no server available where this was written), so expect to fix
 small things — paths, the Postgres user's auth method — on the first deploy.
+
+
+## Before the first real launch: a checklist
+
+- Everything is committed and pushed (nothing from the latest work is yet), and `npm test` in `backend/` passes on the server's copy.
+- `.env` has `JWT_SECRET`, `ENCRYPTION_KEY`, an https `APP_ORIGIN`, real `SMTP_*`, and the super-admin account; `NODE_ENV=production` (the demo seeds refuse to run there).
+- `sudo nginx -t` passes with `deploy/nginx.conf` (it adds per-address rate limits that were not tested on a real nginx) and a certificate is installed.
+- A Postgres backup runs (`backend/scripts/backup.sh`) and one restore has been tried.
+- The privacy policy mentions Flow AI, location for field sales, phone alerts and account deletion (`mobile/PLAY_PRIVACY.md`), and `https://flowxp.in/delete-account` is live.
+- Sign in as each kind of business on the live server once, make a bill, and cancel it.

@@ -7,7 +7,9 @@ import { API_URL, currentBusiness, signOut, useSession } from '../lib/session.ts
 import { kvGet, kvSet, useScope } from '../lib/local.ts';
 import { refreshCounts, syncAll, useSyncState } from '../lib/sync.ts';
 import { appVersion, reportError } from '../lib/crash.ts';
-import { printReceipt, type Paper } from '../lib/print.ts';
+import type { Paper } from '../lib/print.ts';
+import PrinterSettings from '../lib/PrinterSettings.tsx';
+import UpiSettings from '../lib/UpiSettings.tsx';
 import { Page } from '../lib/responsive.tsx';
 import { Button, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
 import { LanguagePicker } from '../lib/lang.tsx';
@@ -21,7 +23,6 @@ const Row = ({ label, value }: { label: string; value: string }) => (
   </View>
 );
 
-const TEST_RECEIPT = ['FlowXP', 'Test receipt', '-'.repeat(32), '12345678901234567890123456789012', 'Total                     ₹1.00', '-'.repeat(32), 'If this lines up, the printer is set.'].join('\n');
 
 export default function Settings() {
   const session = useSession();
@@ -85,13 +86,13 @@ export default function Settings() {
 
         <Text style={{ fontWeight: '700', color: color.ink }}>{t('Language')}</Text>
         <LanguagePicker />
-        <Text style={{ fontWeight: '700', color: color.ink }}>Receipt printer paper</Text>
+        <UpiSettings />
+        <Text style={{ fontWeight: '700', color: color.ink }}>{t('Receipt paper width')}</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Button title="58 mm" kind={paper === '58' ? 'primary' : 'quiet'} onPress={() => choosePaper('58')} style={{ flex: 1 }} />
           <Button title="80 mm" kind={paper === '80' ? 'primary' : 'quiet'} onPress={() => choosePaper('80')} style={{ flex: 1 }} />
         </View>
-        <Button title="Print a test receipt" kind="quiet" onPress={() => { printReceipt(TEST_RECEIPT, paper).catch((e: Error) => say('', e.message)); }} />
-        <Soft>Printing uses the phone's own print system, so it works with any printer the phone can reach (Wi-Fi, USB, or Bluetooth through the printer maker's app).</Soft>
+        <PrinterSettings paper={paper} />
 
         <Text style={{ fontWeight: '700', color: color.ink }}>{t('Alerts on this phone')}</Text>
         <Soft>{t('A new order, a dish ready for your table, stock running out. Choose which ones on the FlowXP website, under Notifications.')}</Soft>

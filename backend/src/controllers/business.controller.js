@@ -15,7 +15,7 @@ import { recordAudit, recordEvent } from '../modules/events.js';
 import { toRupees } from '../utils/money.js';
 import { hasPermission } from '../middleware/auth.js';
 import {
-  checkBusinessType, checkEmail, checkGstin, checkName, checkPhone, checkUpiVpa, firstError
+  checkBusinessType, checkSignupType, checkEmail, checkGstin, checkName, checkPhone, checkUpiVpa, firstError
 } from '../utils/validate.js';
 
 const ONBOARDING_DONE = 10;
@@ -25,7 +25,7 @@ const ONBOARDING_DONE = 10;
    ========================================================================== */
 export const createBusiness = async (req, res) => {
   const { name, business_type } = req.body || {};
-  const error = firstError([checkName(name, 'Business name'), checkBusinessType(business_type)]);
+  const error = firstError([checkName(name, 'Business name'), checkSignupType(business_type)]);
   if (error) return res.status(400).json({ success: false, message: error });
 
   const client = await pool.connect();

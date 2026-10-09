@@ -26,7 +26,7 @@ What was and was not checked is stated per item. "Verified" = I ran it. "Reasone
 - **P1: privacy policy and Data Safety must be updated before submitting.** (a) The app now holds customers' names, phone numbers and what they owe, suppliers, expenses and stock. (b) Flow AI sends the question and business figures from our server to the AI provider; the website privacy policy does not mention AI processing. Play treats a service provider acting for you differently from "sharing", but the policy must say it. Owner/legal task. The draft answers are in `mobile/STORE.md`.
 - **P1: `MOBILE_AUDIT` item 8 is out of date.** In the app now: returns and credit notes, purchase orders and goods received, suppliers, price lists, stock transfers, field sales, van sales, warehouse, medicines, salon, customer dues, Flow AI. Still website-only: staff and roles, business settings, subscription, notifications, QR ordering admin, loyalty.
 - **P2 (done 2026-10-09): `expo-updates` removed** (it was switched off and is one of the audit's flagged packages). Fixes now ship only as store builds.
-- **P2 (done 2026-10-09): the `flowxp://` link removed.** Nothing in the app, website, backend or emails used it; the app still opens web links and phone calls with the system.
+- **P2 (kept, 2026-10-09): the `flowxp://` link stays.** I removed it and put it back: Expo Router needs a link scheme (Expo warns that a built app without one may crash). The app takes no action from a link without a signed-in person tapping again, so the risk is low. Nothing else uses it.
 - **P2: the phone database is not encrypted** (customer names and phones, bills). The Android sandbox and device encryption protect it and backups are off. SQLCipher is possible later.
 - **P2: 16 KB memory pages.** Play requires 16 KB support for new releases. Expo SDK 57 / React Native 0.86 ship aligned libraries (reasoned, not checked). Confirm in the Play pre-launch report.
 - **P2: the Flow AI answer text and the "What happened" sentences on Reports are English only** (they contain names and figures).
@@ -67,7 +67,7 @@ Outbox states are `pending / failed / sent` (not the longer list requested). The
 10. **Dev builds block HTTP** now that cleartext is off; use Expo Go or an HTTPS dev server.
 
 ### P2
-11. Receipt printing uses Android's print dialog (no one-tap Bluetooth ESC/POS).
+11. Receipt printing: the phone's print screen by default; **one-tap thermal printing added 2026-10-09** (Settings > Receipt printer > Thermal printer): FlowXP makes ESC/POS bytes on the phone and hands them to the free RawBT app, which holds the Bluetooth/USB link. Not yet tried against a real printer (use the test print). A direct Bluetooth library inside FlowXP was tried and left out: expo-doctor flags it as untested on this React Native version and it cannot be built or tested here.
 12. Kitchen and tables poll (8 s / 15 s) while open. **Push alerts built 2026-10-09** (new guest or delivery order, dish ready, booking, stock): working end to end against a stand-in for Expo (`backend/scripts/push.mjs`); not yet tried on a real phone, which needs the Firebase steps in `mobile/STORE.md`. The kitchen buzz in the open screen is unchanged.
 13. Screen reader and large-font behaviour were designed for (labels, 44-56 px targets, contrast 4.5:1, text alongside colour) but **not tested with TalkBack or at 200 % font**.
 14. Only Hindi is translated; other languages fall back to English.

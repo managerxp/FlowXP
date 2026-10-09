@@ -21,6 +21,7 @@
     "expo-splash-screen": "~57.0.9",
     "expo-sqlite": "~57.0.4",
     "expo-status-bar": "~57.0.1",
+    "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-qrcode-svg": "^6.3.26",
@@ -68,6 +69,8 @@
     "e2e:returns": "node --experimental-strip-types --no-warnings scripts/e2e-returns.ts",
     "e2e:pharmacy:offline": "node --experimental-strip-types --no-warnings scripts/e2e-pharmacy-offline.ts",
     "e2e:cloudkitchen": "node --experimental-strip-types --no-warnings scripts/e2e-cloudkitchen.ts",
+    "e2e:partpay": "node --experimental-strip-types --no-warnings scripts/e2e-partpay.ts",
+    "e2e:partpay-shops": "node --experimental-strip-types --no-warnings scripts/e2e-partpay-shops.ts",
     "e2e:orders": "node --experimental-strip-types --no-warnings scripts/e2e-orders.ts",
     "e2e:kitchen": "node --experimental-strip-types --no-warnings scripts/e2e-kitchen.ts",
     "e2e:changes": "node --experimental-strip-types --no-warnings scripts/e2e-changes.ts"

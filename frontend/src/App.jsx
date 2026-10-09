@@ -15,7 +15,6 @@ import Home from './site/Home.jsx';
 import ProductPage from './site/ProductPage.jsx';
 import IndustriesPage from './site/IndustriesPage.jsx';
 import IndustryDetail from './site/industries/IndustryDetail.jsx';
-import ComingSoonPage from './site/industries/ComingSoon.jsx';
 import SiteIntegrations from './site/IntegrationsPage.jsx';
 import AboutPage from './site/AboutPage.jsx';
 import ContactPage from './site/ContactPage.jsx';
@@ -208,7 +207,6 @@ const App = () => (
       <Route index element={<Home />} />
       <Route path="features" element={<ProductPage />} />
       <Route path="industries" element={<IndustriesPage />} />
-      <Route path="industries/coming-soon" element={<ComingSoonPage />} />
       <Route path="industries/:slug" element={<IndustryDetail />} />
       <Route path="ai" element={<AIPage />} />
       <Route path="integrations" element={<SiteIntegrations />} />

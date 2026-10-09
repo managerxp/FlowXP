@@ -15,11 +15,12 @@ export type Taken = { kind: 'billed'; invoiceId: number; token: string | null } 
 /** The phone could not get an answer: no connection, a timeout, or a gateway in front of the server that is down. */
 export const unreachable = (e: unknown) => e instanceof NetworkError || (e instanceof ApiError && [502, 503, 504].includes(e.status));
 
-export const previewOf = (cart: Cart, method: string): Preview => {
+export const previewOf = (cart: Cart, method: string, paidPaise?: number | null): Preview => {
   const t = totals(cart);
   return {
     lines: cart.lines.map((l) => ({ name: lineName(l), quantity: l.quantity, unitPricePaise: linePricePaise(l) })),
-    subtotalPaise: t.subtotalPaise, taxPaise: t.taxPaise, totalPaise: t.totalPaise, method
+    subtotalPaise: t.subtotalPaise, taxPaise: t.taxPaise, totalPaise: t.totalPaise, method,
+    ...(paidPaise != null ? { paidPaise } : {})
   };
 };
 
@@ -27,16 +28,16 @@ export const previewOf = (cart: Cart, method: string): Preview => {
 export const dayOf = (ms: number): string => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 export const takeSale = async (
-  { api, outbox, cart, method, reference, key, kitchen = false, customerId = null, tryMs = 8000 }:
-  { api: Api; outbox: Outbox; cart: Cart; method: string; reference?: string; key: string; kitchen?: boolean; customerId?: number | null; tryMs?: number }
+  { api, outbox, cart, method, reference, key, kitchen = false, customerId = null, payNowPaise, tryMs = 8000 }:
+  { api: Api; outbox: Outbox; cart: Cart; method: string; reference?: string; key: string; kitchen?: boolean; customerId?: number | null; payNowPaise?: number | null; tryMs?: number }
 ): Promise<Taken> => {
-  const body = saleBody(cart, { method, reference }, { kitchen, customerId });
+  const body = saleBody(cart, { method, reference, payNowPaise }, { kitchen, customerId });
   try {
     const invoice = await api.post<{ invoice_id: number; order?: { order_number: string } }>('/invoices', body, { idempotencyKey: key, timeoutMs: tryMs });
     return { kind: 'billed', invoiceId: invoice.invoice_id, token: invoice.order?.order_number ?? null };
   } catch (e) {
     if (!unreachable(e)) throw e;
-    const entry = await outbox.add({ id: key, body, preview: previewOf(cart, method) });
+    const entry = await outbox.add({ id: key, body, preview: previewOf(cart, method, payNowPaise) });
     return entry ? { kind: 'queued', entry } : { kind: 'full' };
   }
 };

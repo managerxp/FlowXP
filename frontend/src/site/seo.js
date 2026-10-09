@@ -30,7 +30,6 @@ const PAGES = {
   '/': ['AI billing, inventory and GST software for Indian businesses', 'FlowXP is billing and POS software for shops, restaurants, salons, pharmacies and wholesalers. Billing, stock and GST in one place, with a daily note on what is selling and what needs you.'],
   '/features': ['Billing, inventory, GST and reports in one place', 'GST billing, payments, stock, purchases, customers, reports and roles in one system. See every FlowXP feature with real screens.'],
   '/industries': ['Billing software for your kind of business', 'FlowXP for restaurants, cloud kitchens, wholesalers, distributors, salons and pharmacies, each with the tools that trade needs.'],
-  '/industries/coming-soon': ['What is not built yet', 'The businesses and features FlowXP does not support yet, listed plainly.'],
   '/ai': ['Flow AI, the AI manager in your billing software', 'Ask your business a question in plain words. Flow AI answers from your own sales, stock and payments, and says when a figure is an estimate.'],
   '/integrations': ['Printers, scanners and GST integrations', 'FlowXP works with receipt printers, barcode scanners, cash drawers and GST portal files. WhatsApp and SMS are coming soon. None are needed to start billing.'],
   '/pricing': ['Pricing and plans', 'FlowXP plans for single shops and multi-branch businesses. Every plan starts with a 7-day free trial, no card needed.'],

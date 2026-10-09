@@ -12,6 +12,9 @@ import {
 } from './salon.ts';
 import { rupees, toPaise } from './money.ts';
 import { Page } from './responsive.tsx';
+import PayHowPicker from './PayHowPicker.tsx';
+import { t } from './i18n.ts';
+import { payPlan, type PayHow } from './billing.ts';
 import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from './ui.tsx';
 
 type Quote = { subtotal: number; discount: number; tax: number; round_off: number; total: number; offers: { name: string }[]; membership_discount_pct: number };
@@ -38,6 +41,8 @@ export function SalonTill() {
   const [quoteError, setQuoteError] = useState('');
   const [method, setMethod] = useState('CASH');
   const [reference, setReference] = useState('');
+  const [how, setHow] = useState<PayHow>('FULL');
+  const [nowText, setNowText] = useState('');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState('');
   const [apptId, setApptId] = useState<number | null>(null);
@@ -99,14 +104,20 @@ export function SalonTill() {
   const chooseStaff = (staffId: number) => { const st = cat?.staff.find((x) => x.staff_id === staffId); if (picking && st) edit(addService(lines, picking, st)); setPicking(null); };
   const methods = (cat?.payment_methods ?? ['CASH', 'UPI', 'CARD']).filter((m) => m !== 'GIFT_CARD');
   const bad = salonProblem(lines, customer?.id ?? null);
+  // owing part of a bill is not offered when a gift card pays, or when a gift card is being sold (the server needs those paid in full)
+  const mayOwe = !gift?.usable && !lines.some((l) => l.type === 'GIFT_CARD');
+  const howNow: PayHow = mayOwe ? how : 'FULL';
+  const billPaise = quote ? toPaise(quote.total) : 0;
+  const plan = payPlan({ how: howNow, totalPaise: billPaise, now: nowText, hasCustomer: Boolean(customer) });
 
   const pay = async () => {
     if (bad) return setProblem(bad);
     if (!quote) return setProblem(quoteError || 'Wait a moment for the total');
+    if (!plan.ok) return setProblem(plan.problem ? t(plan.problem) : t('Enter how much is being paid now.'));
     setBusy(true); setProblem('');
     try {
-      const out = await api.post<{ invoice: { invoice_id: number } }>('/salon/pos/invoices', saleBody(lines, customer?.id ?? null, apptId, quote.total, method, reference, extras), { idempotencyKey: key.current });
-      clearSale(); setLines([]); setApptId(null); setOfferCode(''); setPoints(''); setGift(null); setGiftCode(''); key.current = newKey();
+      const out = await api.post<{ invoice: { invoice_id: number } }>('/salon/pos/invoices', saleBody(lines, customer?.id ?? null, apptId, quote.total, method, reference, extras, plan.payNowPaise), { idempotencyKey: key.current });
+      clearSale(); setLines([]); setApptId(null); setOfferCode(''); setPoints(''); setGift(null); setGiftCode(''); setHow('FULL'); setNowText(''); key.current = newKey();
       router.replace({ pathname: '/receipt', params: { id: String(out.invoice.invoice_id) } });
     } catch (e) { setProblem(e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'Could not take the payment'); }
     finally { setBusy(false); }
@@ -215,11 +226,12 @@ export function SalonTill() {
                   {giftNote ? <Soft>{giftNote}</Soft> : null}
                 </View>
               ) : null}
-              <Soft>How is the client paying?</Soft>
-              <Chips items={methods.map((m) => ({ id: m, label: METHOD_LABEL[m] ?? (m.charAt(0) + m.slice(1).toLowerCase().replace('_', ' ')) }))} value={method} onChange={setMethod} />
-              {method === 'UPI' || method === 'CARD' ? <TextInput style={s.input} value={reference} onChangeText={setReference} placeholder="Reference number (optional)" accessibilityLabel="Reference number" /> : null}
+              {mayOwe ? <PayHowPicker how={how} onHow={(h) => { setHow(h); setProblem(''); }} nowText={nowText} onNow={setNowText} plan={plan} owes={customer?.name || t('the customer')} totalPaise={billPaise} /> : null}
+              {howNow !== 'LATER' ? <Soft>How is the client paying?</Soft> : null}
+              {howNow !== 'LATER' ? <Chips items={methods.map((m) => ({ id: m, label: METHOD_LABEL[m] ?? (m.charAt(0) + m.slice(1).toLowerCase().replace('_', ' ')) }))} value={method} onChange={setMethod} /> : null}
+              {howNow !== 'LATER' && (method === 'UPI' || method === 'CARD') ? <TextInput style={s.input} value={reference} onChangeText={setReference} placeholder="Reference number (optional)" accessibilityLabel="Reference number" /> : null}
               <ErrorText>{problem}</ErrorText>
-              <Button title="Take payment" onPress={() => { void pay(); }} busy={busy} disabled={!quote || Boolean(bad)} />
+              <Button title={howNow === 'LATER' ? t('Save the bill, {amount} unpaid', { amount: rupees(billPaise) }) : howNow === 'PART' && plan.ok ? t('Take {now} now, {rest} stays due', { now: rupees(plan.payNowPaise ?? 0), rest: rupees(plan.balancePaise) }) : 'Take payment'} onPress={() => { void pay(); }} busy={busy} disabled={!quote || Boolean(bad)} />
             </View>
           ) : <View style={{ paddingHorizontal: 16 }}><ErrorText>{problem}</ErrorText></View>}
         </ScrollView>

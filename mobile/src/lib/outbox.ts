@@ -37,7 +37,7 @@ export const SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_outbox_state ON outbox (state, n);
 `;
 
-export type Preview = { lines: { name: string; quantity: number; unitPricePaise: number }[]; subtotalPaise: number; taxPaise: number; totalPaise: number; method: string };
+export type Preview = { lines: { name: string; quantity: number; unitPricePaise: number }[]; subtotalPaise: number; taxPaise: number; totalPaise: number; method: string; /** taken now, when only part of the bill was paid (0 = none) */ paidPaise?: number };
 export type Entry = {
   n: number; id: string; local_no: string; body: Record<string, unknown>; preview: Preview; taken_at: number;
   state: 'pending' | 'failed' | 'sent'; attempts: number; error: string | null; invoice_id: number | null; invoice_number: string | null; path: string | null;

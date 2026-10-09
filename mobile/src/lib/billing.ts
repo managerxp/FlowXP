@@ -51,3 +51,26 @@ export const orderSummary = (o: Order): Summary => {
   const t = orderTotals(o);
   return { rows: liveItems(o).map((i) => ({ name: itemName(i), qty: i.quantity, paise: Math.round(toPaise(i.unit_price) * i.quantity) })), items: t.items, subtotalPaise: t.subtotalPaise, offersPaise: 0, taxPaise: t.taxPaise, totalPaise: t.totalPaise };
 };
+
+
+/* ── part payment and pay later ─────────────────────────────────────────── */
+
+/** How a bill is settled at the till: all of it now, some of it now (the rest is owed), or none of it now (the customer's credit). */
+export type PayHow = 'FULL' | 'PART' | 'LATER';
+export type PayPlan = { ok: boolean; /** null = the whole bill; 0 = nothing now; else paise taken now */ payNowPaise: number | null; balancePaise: number; problem: string };
+
+/**
+ * What a payment screen is about to do, and why not when it cannot. Money owed needs somebody who owes it: a part payment or pay-later bill must have a customer.
+ * `now` is what the cashier typed for "paying now".
+ */
+export const payPlan = ({ how, totalPaise, now, hasCustomer }: { how: PayHow; totalPaise: number; now: string; hasCustomer: boolean }): PayPlan => {
+  if (how === 'FULL') return { ok: true, payNowPaise: null, balancePaise: 0, problem: '' };   // (a bill that comes to nothing, like a free service, is still just "paid in full")
+  if (totalPaise <= 0) return { ok: false, payNowPaise: null, balancePaise: 0, problem: '' };
+  if (!hasCustomer) return { ok: false, payNowPaise: how === 'LATER' ? 0 : null, balancePaise: totalPaise, problem: 'Choose the customer first: the rest of the bill is owed by them.' };
+  if (how === 'LATER') return { ok: true, payNowPaise: 0, balancePaise: totalPaise, problem: '' };
+  const text = now.trim();
+  const paise = text === '' ? NaN : toPaise(text);
+  if (!(paise > 0)) return { ok: false, payNowPaise: null, balancePaise: totalPaise, problem: text === '' ? '' : 'Enter how much is being paid now.' };
+  if (paise >= totalPaise) return { ok: false, payNowPaise: null, balancePaise: 0, problem: 'That is the whole bill. Choose Pay in full.' };
+  return { ok: true, payNowPaise: paise, balancePaise: totalPaise - paise, problem: '' };
+};

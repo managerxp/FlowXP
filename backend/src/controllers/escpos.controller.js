@@ -25,14 +25,14 @@ const width = async (req) => {
 
 const b64 = (bytes) => bytes.toString('base64');
 
-/* GET /api/invoices/:id/escpos?cols=&drawer=1 */
+/* GET /api/invoices/:id/escpos?cols=&drawer=1&upi=<rupees> — upi: print the QR for exactly that amount (the UPI payment being taken) */
 export const receipt = async (req, res) => {
   const got = await capture(invoices.get, req);
   if (got.status !== 200) return res.status(got.status).json(got.body);
   const business = (await pool.query(
     `SELECT name, gstin, address, city, phone, gst_enabled, upi_vpa, receipt_settings FROM businesses WHERE business_id = $1`, [req.tenant.businessId])).rows[0];
   const bytes = receiptBytes({ business, settings: business.receipt_settings || {}, invoice: got.body.data },
-    { cols: await width(req), drawer: req.query.drawer === '1' });
+    { cols: await width(req), drawer: req.query.drawer === '1', upi: req.query.upi != null ? Number(req.query.upi) : null });
   res.json({ success: true, data: { data: b64(bytes), bytes: bytes.length } });
 };
 

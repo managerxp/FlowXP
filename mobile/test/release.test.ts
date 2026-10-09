@@ -93,7 +93,7 @@ test('the app asks for the camera (and, while open and only if the business turn
   const camera = app.plugins.find((p: unknown) => Array.isArray(p) && p[0] === 'expo-camera');
   assert.equal(camera[1].recordAudioAndroid, false, 'the camera plugin does not ask for the microphone'); assert.match(camera[1].cameraPermission, /barcode/);
   assert.match(app.version, /^\d+\.\d+\.\d+$/); assert.ok(Number.isInteger(app.android.versionCode) && app.android.versionCode >= 1);
-  assert.equal(app.runtimeVersion, undefined, 'no over-the-air updates: the app changes only through the store'); assert.equal(app.scheme, undefined, 'no custom link opens the app');
+  assert.equal(app.runtimeVersion, undefined, 'no over-the-air updates: the app changes only through the store'); assert.equal(app.scheme, 'flowxp', 'expo-router needs a link scheme: without one a built app can crash at start');
 });
 
 test('the icons exist at the sizes the stores need', () => {

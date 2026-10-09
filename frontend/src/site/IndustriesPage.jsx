@@ -1,14 +1,13 @@
 /*
- * /industries — the hub. Six built industries, each with its own page
- * (see industries/data.js and industries/IndustryDetail.jsx), the trades
- * the core product already serves well, and a named list of what is not
- * built yet at /industries/coming-soon.
+ * /industries — the hub. The built industries, each with its own page
+ * (see industries/data.js and industries/IndustryDetail.jsx), and the trades
+ * the core product already serves well.
  */
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Section } from '../components/ui.jsx';
 import Reveal from '../components/Reveal.jsx';
-import { CellGrid, FinalCta, PageHero, Shot, TextLink } from './parts.jsx';
+import { CellGrid, FinalCta, PageHero, Shot } from './parts.jsx';
 import { CORE, READY } from './industries/data.js';
 
 /* Spans on a 12-column grid: 7/5, 5/7, 6/6, so no row is three equal cards. */
@@ -41,7 +40,7 @@ const IndustriesPage = () => (
       visual={<Shot src="/product/kitchen-main.webp" eager alt="FlowXP kitchen display with open orders by table, the dishes and minutes since sent." />}
     />
 
-    <Section title="Six kinds of business, built in detail." lead="Each has its own screens, tuned for how that trade actually runs. Open one to see every feature, with the real screens.">
+    <Section title="Seven kinds of business, built in detail." lead="Each has its own screens, tuned for how that trade actually runs. Open one to see every feature, with the real screens.">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-12">
         {READY.map((k, i) => <IndustryCard key={k.slug} slug={k.slug} label={k.label} blurb={k.blurb} hero={k.hero} i={i} />)}
       </div>
@@ -49,9 +48,6 @@ const IndustriesPage = () => (
 
     <Section className="border-t border-line bg-surface" title="If you sell things or services, it fits." lead="These run on the same core billing, stock and GST, with nothing extra needed.">
       <CellGrid items={CORE} />
-      <Reveal className="mt-6">
-        <TextLink to="/industries/coming-soon">See what is not built yet</TextLink>
-      </Reveal>
     </Section>
 
     <FinalCta title="Not sure it fits your business?" lead="Tell us how you sell today. We will tell you honestly what works in FlowXP now and what is coming." />

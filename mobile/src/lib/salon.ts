@@ -87,7 +87,10 @@ export const quoteBody = (lines: SalonLine[], customerId: number | null, appoint
 });
 
 /** How a bill is paid when a gift card covers part of it: the card takes what it has (up to the total), the chosen method takes the rest. */
-export const paymentsFor = (total: number, method: string, reference: string, gift?: { code: string; balance: number }) => {
+/** `payNowPaise`: none = the whole bill; 0 = nothing now (the bill is left unpaid, the client's credit); else that much now and the rest is owed. A gift card and part payment do not mix: with a card the bill is paid in full. */
+export const paymentsFor = (total: number, method: string, reference: string, gift?: { code: string; balance: number }, payNowPaise?: number | null) => {
+  if (payNowPaise === 0) return [];
+  if (payNowPaise && !gift) return [{ method, amount: payNowPaise / 100, ...(reference.trim() ? { reference_number: reference.trim() } : {}) }];
   const fromCard = gift ? Math.min(Math.round(gift.balance * 100), Math.round(total * 100)) / 100 : 0;
   const rest = Math.round((total - fromCard) * 100) / 100;
   return [
@@ -97,9 +100,9 @@ export const paymentsFor = (total: number, method: string, reference: string, gi
 };
 
 /** The sale: the same body plus the payment of the whole bill (the quote's total, in rupees). */
-export const saleBody = (lines: SalonLine[], customerId: number | null, appointmentId: number | null, total: number, method: string, reference: string, extras: Extras = {}) => ({
+export const saleBody = (lines: SalonLine[], customerId: number | null, appointmentId: number | null, total: number, method: string, reference: string, extras: Extras = {}, payNowPaise?: number | null) => ({
   ...quoteBody(lines, customerId, appointmentId, extras),
-  payments: paymentsFor(total, method, reference, extras.gift)
+  payments: paymentsFor(total, method, reference, extras.gift, payNowPaise)
 });
 
 /** A gift card sold at the till: its value goes to the client on the bill (or to nobody yet), and is paid for like anything else. */

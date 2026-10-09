@@ -36,7 +36,7 @@ test('the sale body carries ids and quantities only; the server prices the lines
     items: [{ product_id: 1, quantity: 1 }, { product_id: 2, quantity: 2 }],
     payment: { method: 'UPI', amount: 'FULL', reference_number: 'T123' }, apply_promotions: true
   });
-  assert.equal('reference_number' in saleBody(cart, { method: 'CASH' }).payment, false);
+  assert.equal('reference_number' in saleBody(cart, { method: 'CASH' }).payment!, false);
 });
 
 test('a UPI link names the payee, the exact amount and the bill', () => {

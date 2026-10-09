@@ -13,14 +13,13 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Button, Field, Input, Logo } from '../components/ui.jsx';
 import { Check, Shot } from '../site/parts.jsx';
 
-/* Mirrors the list the API validates against. A mismatch here is a 400 the
+/* Mirrors SIGNUP_TYPES in the API (backend/src/utils/validate.js): only the businesses FlowXP is built for. Older accounts of other types keep working.
+   The API validates against it. A mismatch here is a 400 the
    user cannot fix, so the two lists must be changed together. */
 const BUSINESS_TYPES = [
   ['RESTAURANT', 'Restaurant'], ['CAFE', 'Café'], ['CLOUD_KITCHEN', 'Cloud kitchen'], ['RETAIL', 'Retail'],
   ['SUPERMARKET', 'Supermarket'], ['PHARMACY', 'Pharmacy'], ['SALON', 'Salon'],
-  ['SERVICES', 'Services'], ['ELECTRONICS', 'Electronics'], ['CLOTHING', 'Clothing'],
-  ['GAMING_CAFE', 'Gaming café'], ['RACING', 'Racing'], ['WHOLESALE', 'Wholesale'],
-  ['DISTRIBUTOR', 'Distributor'], ['OTHER', 'Other']
+  ['WHOLESALE', 'Wholesale'], ['DISTRIBUTOR', 'Distributor']
 ];
 
 /* Why a first-time visitor can trust this screen, shown beside the form. */

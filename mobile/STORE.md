@@ -80,12 +80,12 @@ Notifications (Android 13 and later asks the person; the app asks once, in its o
 3. **Play service-account key** for uploads: save as `mobile/play-service-account.json` (already ignored by git).
 4. **First build to test**: `npx eas-cli@latest build --platform android --profile preview` gives an installable `.apk`. Try it on real phones (camera, airplane-mode drill, printer) before the store build.
 5. **Store build**: `npx eas-cli@latest build --platform android --profile production`, then `npx eas-cli@latest submit --platform android --profile production` (it lands as a draft in the internal track; you press release).
-6. **Production server**: `https://flowxp.in` must be live with HTTPS, the migrations (up to 0076) applied, and `ADMIN_REQUIRE_2FA` on. The profiles point the app at `https://flowxp.in`.
+6. **Production server**: `https://flowxp.in` must be live with HTTPS, the migrations (up to 0081) applied, and `ADMIN_REQUIRE_2FA` on. The profiles point the app at `https://flowxp.in`.
 7. Take the screenshots, fill in the store listing from this file, submit the data-safety form and content rating.
 
 ## Shipping a fix
 
-Every change goes out as a new store build (raise the version, build, submit). Over-the-air updates were removed on 2026-10-09 (`expo-updates` is no longer installed, and the app has no `flowxp://` link), so a store release is the only way a phone gets new code. The channels in `eas.json` are left over and do nothing.
+Every change goes out as a new store build (raise the version, build, submit). Over-the-air updates were removed on 2026-10-09 (`expo-updates` is no longer installed), so a store release is the only way a phone gets new code. The channels in `eas.json` are left over and do nothing.
 
 ## Before every release
 

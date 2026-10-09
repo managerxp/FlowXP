@@ -307,3 +307,18 @@ test('rebuilding the product list starts it fresh, even from a damaged copy, and
   assert.equal((await outbox.list()).length, 1, 'the bill is still waiting'); assert.equal((await catalog.findByBarcode('8900000001'))?.name, 'Parle-G Biscuit');
   await db.exec(`DROP TABLE products_next`).catch(() => {});
 });
+
+test('paging through the product list never repeats or skips a product, even when names repeat', async () => {
+  const { catalog } = await open();
+  // 130 products sharing a handful of names: the order within one name must be fixed, or a page boundary can show the same product twice
+  const many = Array.from({ length: 130 }, (_, i) => P(1000 + i, ['Americano', 'Latte', 'Muffin'][i % 3], 50 + (i % 7)));
+  await catalog.sync(fakeServer(many).api);
+  const seen: number[] = [];
+  for (let offset = 0; ; offset += 20) {
+    const page = await catalog.search('', 20, undefined, offset);
+    seen.push(...page.map((p) => p.product_id));
+    if (page.length < 20) break;
+  }
+  assert.equal(seen.length, 130);
+  assert.equal(new Set(seen).size, 130, 'no product appears twice');
+});
