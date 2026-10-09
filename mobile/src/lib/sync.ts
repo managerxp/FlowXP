@@ -8,7 +8,8 @@ import { createStore, useStore } from './store.ts';
 import { ApiError, NetworkError } from './api.ts';
 import { scopeStore } from './local.ts';
 import { api } from './session.ts';
-import { sendEntry } from './till.ts';
+import { dayOf, sendEntry } from './till.ts';
+import { guard, split } from './conflicts.ts';
 
 type SyncState = {
   busy: boolean; pending: number; failed: number; changesPending: number; changesFailed: number; products: number; progress: number; syncedAt: number | null;
@@ -37,7 +38,7 @@ export const syncAll = (): Promise<void> => {
     try {
       const flushed = await scope.outbox.flush(sendEntry(api));
       // then the price and stock changes made offline (bills first: a bill must see the stock as it was when it was made)
-      const changed = flushed.stopped === null ? await scope.actions.flush(async (a) => { await api.call(a.path, { method: a.method, body: a.body, idempotencyKey: a.id }); }) : null;
+      const changed = flushed.stopped === null ? await scope.actions.flush(async (a) => { if ((await guard(api, a)) === 'skip') return; await api.call(a.path, { method: a.method, body: split(a.body).clean, idempotencyKey: a.id, ...(/^\/wholesale\/(orders|receipts)/.test(a.path) ? { headers: { 'X-Offline-Sale': '1' } } : /^\/distributor\/vehicles\/\d+\/sell$/.test(a.path) ? { headers: { 'X-Offline-Sale': '1', 'X-Sale-Date': dayOf(a.created_at) } } : {}) }); }) : null;
       syncStore.set({ stopped: flushed.stopped ?? changed?.stopped ?? null });
       await refreshCounts();
       if (flushed.stopped !== 'offline' && flushed.stopped !== 'auth' && changed?.stopped !== 'offline' && changed?.stopped !== 'auth') {

@@ -480,7 +480,7 @@ const WORKS_WITH = [
   { title: 'Works offline', body: 'Keep billing when the internet drops.' },
   { title: 'Receipt printers', body: '58 and 80 mm thermal printers.' },
   { title: 'Barcode scanners', body: 'Any USB or Bluetooth scanner.' },
-  { title: 'Phone app', body: 'Install on Android or iPhone from the browser.' }
+  { title: 'Phone app', body: 'Install from the browser today. Android app in testing.' }
 ];
 
 const WorksWith = () => {
@@ -516,6 +516,41 @@ const WorksWith = () => {
     </Section>
   );
 };
+
+/* ── 9b. The Android app ──────────────────────────────────────────────── */
+
+/* Only what the app does today. It is in testing, not on the Play Store, so the section says so
+   and offers no download button. */
+const APP_POINTS = [
+  ['Bills are never lost.', 'With no signal, bills wait on the phone and go out once when the internet is back. A bill is never made twice.'],
+  ['Tables and the kitchen.', 'Open a table, send the order, and the cook sees it on a large kitchen screen and taps each dish when it is done.'],
+  ['Customers and stock on the phone.', 'Find a customer, change a price or count stock with no signal. The change is sent later, in order.'],
+  ['English and Hindi.', 'Short plain words, big buttons, and a tour for someone who has never used billing software.']
+];
+
+const PhoneApp = () => (
+  <Section id="app" className="border-t border-line">
+    <div className="grid gap-x-12 gap-y-10 lg:grid-cols-12">
+      <Reveal className="lg:col-span-5">
+        <p className="inline-flex rounded-full bg-surface-3 px-2.5 py-0.5 text-caption font-medium text-ink-500">Android app: in testing</p>
+        <H2>The counter in your pocket, even with no signal.</H2>
+        <p className="mt-4 text-lead text-ink-500">
+          The FlowXP app is built for the phone or tablet at the counter. Today it works in any mobile browser;
+          the Android app is being tested with real shops and is not on the Play Store yet.
+        </p>
+        <div className="mt-8"><TextLink to="/contact">Ask to join the test</TextLink></div>
+      </Reveal>
+      <ul className="grid gap-6 sm:grid-cols-2 lg:col-span-7 lg:pt-2">
+        {APP_POINTS.map(([title, body], i) => (
+          <Reveal as="li" key={title} index={i} className="border-t border-line pt-4">
+            <h3 className="text-body font-semibold text-ink-900">{title}</h3>
+            <p className="mt-1.5 text-small text-ink-500">{body}</p>
+          </Reveal>
+        ))}
+      </ul>
+    </div>
+  </Section>
+);
 
 /* ── 10. Built so nothing gets lost ───────────────────────────────────── */
 
@@ -584,6 +619,7 @@ const Home = () => (
     <Bento />
     <BeforeAfter />
     <WorksWith />
+    <PhoneApp />
     <Trust />
     <PricingSection />
     <Faq />

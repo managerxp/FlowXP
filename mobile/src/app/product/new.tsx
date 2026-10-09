@@ -3,7 +3,8 @@ import { ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../../lib/api.ts';
-import { api } from '../../lib/session.ts';
+import { api, currentBusiness, useSession } from '../../lib/session.ts';
+import { KITCHEN_TYPES } from '../../lib/cart.ts';
 import { syncAll } from '../../lib/sync.ts';
 import { goBack } from '../../lib/nav.ts';
 import { setCaptured, useCaptured } from '../../lib/capture.ts';
@@ -16,6 +17,7 @@ type Category = { category_id: number; name: string };
 /* A new product: the few things a till needs. More (brand, recipe, photos) is on the FlowXP website. */
 export default function NewProduct() {
   const captured = useCaptured();
+  const food = KITCHEN_TYPES.includes(currentBusiness(useSession())?.business_type ?? '');   // a menu item has no barcode to scan
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [mrp, setMrp] = useState('');
@@ -66,10 +68,12 @@ export default function NewProduct() {
           <Soft>GST rate</Soft>
           <Chips items={GST.map((g) => ({ id: g, label: `${g}%` }))} value={gst} onChange={setGst} />
           <TextInput style={s.input} value={unit} onChangeText={setUnit} placeholder="Unit (pc, kg, litre)" accessibilityLabel="Unit" autoCapitalize="none" />
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TextInput style={[s.input, { flex: 1 }]} value={barcode} onChangeText={setBarcode} placeholder="Barcode (optional)" accessibilityLabel="Barcode" keyboardType="number-pad" />
-            <Button title="Scan" kind="quiet" onPress={() => router.push({ pathname: '/scan', params: { capture: '1' } })} />
-          </View>
+          {food ? null : (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TextInput style={[s.input, { flex: 1 }]} value={barcode} onChangeText={setBarcode} placeholder="Barcode (optional)" accessibilityLabel="Barcode" keyboardType="number-pad" />
+                <Button title="Scan" kind="quiet" onPress={() => router.push({ pathname: '/scan', params: { capture: '1' } })} />
+            </View>
+          )}
           {categories.length ? (
             <>
               <Soft>Category</Soft>

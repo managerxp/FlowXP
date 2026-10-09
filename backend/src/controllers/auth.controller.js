@@ -13,6 +13,7 @@ import pool from '../config/database.js';
 import { readChallenge, signChallenge, signToken, setSessionCookie } from '../middleware/auth.js';
 import { alertNewDevice, decryptSecret, lockedMinutes, recordLogin, recoveryCodesLeft, useRecoveryCode, verifyTotp } from '../modules/security.js';
 import { newTrialWindow, subscriptionSummary } from '../modules/subscription.js';
+import { effectivePermissions } from '../modules/permissions.js';
 import { recordAudit, recordEvent } from '../modules/events.js';
 import { sendEmailOtp, sendPasswordReset } from '../modules/mailer.js';
 import { emailProblem } from '../utils/emailCheck.js';
@@ -433,6 +434,10 @@ export const me = async (req, res) => {
         // this person's own permission overrides, so the app can show a sidebar
         // and screens that match what they can actually do, not just their role
         permissions: m.permissions || {},
+        // what this person can actually do (role defaults with their overrides applied): the mobile app shows only that
+        effective_permissions: effectivePermissions(m.role, m.permissions || {}),
+        // what a till must know to ask for a manager's PIN when one is needed
+        approval: { needed: effectivePermissions(m.role, m.permissions || {}).approvals !== true, discount_cap_pct: Number(m.discount_cap_pct ?? 100), cancel_needs_approval: m.cancel_needs_approval !== false },
         branch_id: m.branch_id,
         outlets: outlets.filter((o) => o.business_id === m.business_id && (m.branch_id == null || o.branch_id === m.branch_id))
           .map((o) => ({ branch_id: o.branch_id, name: o.name, is_primary: o.is_primary })),

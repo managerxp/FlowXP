@@ -32,10 +32,15 @@ export const checkName = (value, field = 'Name') => {
  * an attacker's wordlist and to nobody else. Eight characters is the floor
  * that keeps bcrypt's work factor meaningful.
  */
+export const PASSWORD_MIN = 10;
+// The passwords people reach for first; length alone lets "password123" through. Compared lower-case, ignoring spaces.
+const COMMON = new Set(['password', 'password1', 'password12', 'password123', 'password1234', 'passw0rd123', 'qwertyuiop', 'qwerty1234', 'qwerty12345', 'qwerty123456', '1234567890', '12345678910', '0123456789', '1111111111', '0000000000', 'abcdefghij', 'abcd123456', 'iloveyou123', 'welcome123', 'welcome1234', 'admin12345', 'administrator', 'letmein1234', 'changeme123', 'india12345', 'india123456', 'flowxp1234', 'flowxp12345', 'flowxp123456']);
+const REPEATED = /^(.)\1+$/;
 export const checkPassword = (value) => {
   const v = String(value ?? '');
-  if (v.length < 8) return 'Password must be at least 8 characters';
+  if (v.length < PASSWORD_MIN) return `Password must be at least ${PASSWORD_MIN} characters`;
   if (v.length > 200) return 'Password is too long';
+  if (COMMON.has(v.toLowerCase().replace(/\s/g, '')) || REPEATED.test(v)) return 'That password is too easy to guess. Choose another.';
   return null;
 };
 

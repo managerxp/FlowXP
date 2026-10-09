@@ -88,15 +88,15 @@ export default function OrderScreen() {
                     </View>
                     {editable ? (
                       <>
-                        <Pressable accessibilityLabel={`One less ${i.description}`} disabled={Boolean(busy)} onPress={() => { void setQtyOf(i, i.quantity - 1); }} style={stepper}><Text style={stepText}>−</Text></Pressable>
+                        <Pressable accessibilityRole="button" accessibilityLabel={`One less ${i.description}`} disabled={Boolean(busy)} onPress={() => { void setQtyOf(i, i.quantity - 1); }} style={stepper}><Text style={stepText}>−</Text></Pressable>
                         <Text style={{ minWidth: 28, textAlign: 'center', fontWeight: '600' }}>{qty(i.quantity)}</Text>
-                        <Pressable accessibilityLabel={`One more ${i.description}`} disabled={Boolean(busy)} onPress={() => { void setQtyOf(i, i.quantity + 1); }} style={stepper}><Text style={stepText}>+</Text></Pressable>
+                        <Pressable accessibilityRole="button" accessibilityLabel={`One more ${i.description}`} disabled={Boolean(busy)} onPress={() => { void setQtyOf(i, i.quantity + 1); }} style={stepper}><Text style={stepText}>+</Text></Pressable>
                       </>
                     ) : <Text style={{ fontWeight: '600', color: color.ink }}>× {qty(i.quantity)}</Text>}
                     <Text style={{ minWidth: 70, textAlign: 'right', fontWeight: '600', color: color.ink }}>{rupees(toPaise(i.line_total))}</Text>
                   </View>
                   {!closed && i.status === 'READY' ? <Button title="Mark served" kind="quiet" onPress={() => { void setStatus(i, 'SERVED'); }} busy={busy === `item-${i.order_item_id}`} /> : null}
-                  {!closed && (i.status === 'PREPARING' || i.status === 'READY' || i.status === 'SERVED') ? <Pressable accessibilityRole="button" onPress={() => cancelItem(i)} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: color.danger }}>Cancel this item</Text></Pressable> : null}
+                  {!closed && (i.status === 'PREPARING' || i.status === 'READY' || i.status === 'SERVED') ? <Pressable accessibilityRole="button" onPress={() => cancelItem(i)} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: color.danger }}>Cancel this item</Text></Pressable> : null}
                 </View>
               );
             })}
@@ -118,9 +118,10 @@ export default function OrderScreen() {
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <Button title="Customer" kind="quiet" onPress={() => router.push({ pathname: '/customers', params: { pick: `order-${id}` } })} />
+              <Button title="Table" kind="quiet" onPress={() => router.push({ pathname: '/order/table', params: { id: String(id) } })} />
               <Button title="Bill and pay" onPress={() => router.push({ pathname: '/pay', params: { order: String(id) } })} disabled={t.lines === 0} style={{ flex: 1 }} />
             </View>
-            <Pressable accessibilityRole="button" onPress={cancelOrder} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: color.danger, textAlign: 'center' }}>Cancel the whole order</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={cancelOrder} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: color.danger, textAlign: 'center' }}>Cancel the whole order</Text></Pressable>
           </View>
         ) : null}
       </Page>
@@ -128,5 +129,5 @@ export default function OrderScreen() {
   );
 }
 
-const stepper = { width: 44, height: 44, borderRadius: 22, backgroundColor: '#eaf1ff', alignItems: 'center' as const, justifyContent: 'center' as const };
+const stepper = { width: 48, height: 48, borderRadius: 24, backgroundColor: '#eaf1ff', alignItems: 'center' as const, justifyContent: 'center' as const };
 const stepText = { fontSize: 22, color: color.brand, fontWeight: '600' as const };

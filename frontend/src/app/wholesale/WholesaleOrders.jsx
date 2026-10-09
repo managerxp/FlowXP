@@ -10,9 +10,10 @@ import { api } from '../../lib/api.js';
 import { ORDER_STATUS, dateText, fetchAll, money, qs, qty, saveCsv, useDebounced, useLoad } from '../../lib/wholesale.js';
 import { Alert, Button, Input, ListState, PageHeader, Table, Td, Th, Thead, Tr, useToast } from '../../components/ui.jsx';
 import { Chips, Pager, StatusPill, Tabs, Toolbar, WarehouseSelect } from './parts.jsx';
+import { OfflineChip } from '../../components/OfflineFlag.jsx';
 
 const STAGES = [
-  ['', 'All'], ['DRAFT,PENDING', 'To confirm'], ['CONFIRMED,PARTIALLY_FULFILLED,PACKED', 'To ship'], ['DISPATCHED', 'On the road'], ['DELIVERED,FULFILLED', 'Done'], ['CANCELLED', 'Cancelled']
+  ['', 'All'], ['DRAFT,PENDING', 'To confirm'], ['CONFIRMED,PARTIALLY_FULFILLED,PACKED', 'To ship'], ['DISPATCHED', 'On the road'], ['DELIVERED,FULFILLED', 'Done'], ['CANCELLED', 'Cancelled'], ['CHECK', 'Needs a look']
 ];
 
 const Backorders = () => {
@@ -52,7 +53,8 @@ const WholesaleOrders = () => {
   const [warehouse, setWarehouse] = useState('');
   const [offset, setOffset] = useState(0);
   const term = useDebounced(q.trim(), 250);
-  const query = useMemo(() => qs({ status, q: term, from, to, branch_id: warehouse, limit: 50, offset }), [status, term, from, to, warehouse, offset]);
+  // "Needs a look" is not a stage: it lists orders a rep took offline that the server wants a person to check
+  const query = useMemo(() => qs({ status: status === 'CHECK' ? '' : status, review: status === 'CHECK' ? '1' : '', q: term, from, to, branch_id: warehouse, limit: 50, offset }), [status, term, from, to, warehouse, offset]);
   const { data, meta, loading, error } = useLoad(tab === 'orders' ? `/wholesale/orders${query}` : null, { paged: true });
   const [busy, setBusy] = useState(false);
 
@@ -95,7 +97,7 @@ const WholesaleOrders = () => {
                 <tbody>
                   {data.map((o) => (
                     <Tr key={o.order_id} onClick={() => navigate(`/app/wholesale/orders/${o.order_id}`)}>
-                      <Td className="font-medium text-brand-700">{o.order_number}{o.approval_needed && <span className="ml-2 text-caption font-normal text-warning">needs approval</span>}</Td>
+                      <Td className="font-medium text-brand-700">{o.order_number}{o.approval_needed && <span className="ml-2 text-caption font-normal text-warning">needs approval</span>}{o.offline && <span className="ml-2"><OfflineChip offline={o.offline} review={o.review} /></span>}</Td>
                       <Td>{dateText(o.order_date)}</Td><Td>{o.customer}</Td><Td className="text-ink-500">{o.salesperson || '—'}</Td>
                       <Td><StatusPill map={ORDER_STATUS} status={o.status} /></Td><Td className="text-right tabular">{o.lines}</Td><Td className="text-right tabular font-medium">{money(o.total)}</Td>
                     </Tr>

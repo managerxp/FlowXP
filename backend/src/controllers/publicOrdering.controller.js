@@ -12,6 +12,7 @@
  * needs its own price) must stay identical between the staff app and here.
  */
 import pool from '../config/database.js';
+import { notify } from '../modules/notifications.js';
 import { toRupees } from '../utils/money.js';
 import { recordAudit, recordEvent } from '../modules/events.js';
 import { loadProductGroups, outletSettingsFor } from '../modules/menu.js';
@@ -167,9 +168,15 @@ export const loyaltyCard = async (req, res) => {
    the same tab), else opens one — then adds the items and sends them to the
    kitchen immediately. A customer has no "send to kitchen" button to press.
    ========================================================================== */
+const MAX_LINES = 30; const MAX_PER_LINE = 20; const MAX_PER_ORDER = 60; const MAX_ORDERS_PER_TABLE_HOUR = 12;
+
 export const placeOrder = async (req, res) => {
   const items = Array.isArray(req.body?.items) ? req.body.items : [];
   if (!items.length) return res.status(400).json({ success: false, message: 'Add at least one item' });
+  // A guest's own order is a table's worth of food, not a bulk order: nothing here stops a photo of the QR being used from far away, so bound the damage.
+  if (items.length > MAX_LINES || items.some((i) => !(Number(i?.quantity ?? 1) >= 1) || Number(i?.quantity ?? 1) > MAX_PER_LINE) || items.reduce((n, i) => n + Number(i?.quantity ?? 1), 0) > MAX_PER_ORDER) {
+    return res.status(400).json({ success: false, message: 'That is a lot for one order. Please ask a staff member.' });
+  }
 
   const client = await pool.connect();
   try {
@@ -179,6 +186,15 @@ export const placeOrder = async (req, res) => {
     if (unavailable(table)) {
       await client.query('ROLLBACK');
       return res.status(404).json({ success: false, message: 'This ordering link is not available right now' });
+    }
+
+    // However many devices it comes from, one table only places so many orders an hour; the per-address limit alone does not stop a spread-out flood.
+    const recent = Number((await client.query(
+      `SELECT COUNT(*) AS n FROM audit_log WHERE business_id = $1 AND action = 'order.placed_by_customer' AND created_at > now() - interval '1 hour' AND (metadata->>'table_id')::int = $2`,
+      [table.business_id, table.table_id])).rows[0].n);
+    if (recent >= MAX_ORDERS_PER_TABLE_HOUR) {
+      await client.query('ROLLBACK');
+      return res.status(429).json({ success: false, message: 'This table has placed several orders already. Please ask a staff member.' });
     }
 
     const notes = [req.body?.customer_name, req.body?.customer_phone, req.body?.notes]
@@ -225,6 +241,9 @@ export const placeOrder = async (req, res) => {
       resource_id: order.order_id,
       metadata: { table_id: table.table_id, items: inserted.length }
     });
+    // the kitchen and whoever bills hear about it on their phones at once; never allowed to hold up or fail the guest's order
+    notify(table.business_id, { category: 'orders', type: 'qr_order', title: `New order: ${table.table_name}`, body: `${inserted.length} item${inserted.length === 1 ? '' : 's'} from the guest`, branchId: table.branch_id, channels: { inApp: false, email: false }, urgent: true, route: '/kitchen' })
+      .catch((e) => console.error('[push] qr order alert failed:', e.message));
     recordEvent('customer_qr_order', { businessId: table.business_id, properties: { table_id: table.table_id } });
 
     res.status(201).json({

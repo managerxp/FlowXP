@@ -3,7 +3,7 @@ import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../../lib/api.ts';
-import { api, useSession } from '../../lib/session.ts';
+import { api, currentBusiness, useSession } from '../../lib/session.ts';
 import { useLoad } from '../../lib/useLoad.ts';
 import { STATE_LABEL, byZone, tableState, type Order, type TableRow, type TableState } from '../../lib/orders.ts';
 import { rupees, toPaise } from '../../lib/money.ts';
@@ -26,7 +26,9 @@ export default function Tables() {
   const session = useSession();
   const wide = useWide();
   const scopeKey = `${session.businessId}:${session.branchId}`;
-  const floor = useLoad<TableRow[]>(`floor:${scopeKey}`, () => api.get<TableRow[]>('/tables'));
+  // a cloud kitchen has no dining room (the server has tables switched off for it): this screen is just its open takeaway and delivery orders
+  const diningRoom = currentBusiness(session)?.business_type !== 'CLOUD_KITCHEN';
+  const floor = useLoad<TableRow[]>(`floor:${scopeKey}`, () => (diningRoom ? api.get<TableRow[]>('/tables') : Promise.resolve([])));
   const open = useLoad<Order[]>(`open-orders:${scopeKey}`, () => api.get<Order[]>('/orders?open_only=true'));
   const [busy, setBusy] = useState<number | 'new' | null>(null);
   const [problem, setProblem] = useState('');
@@ -70,11 +72,12 @@ export default function Tables() {
       <Page max={1000}>
         <ScrollView refreshControl={<RefreshControl refreshing={floor.busy} onRefresh={() => { void floor.refresh(); void open.refresh(); }} />} contentContainerStyle={{ paddingBottom: 24 }}>
           <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-            <View style={{ flex: 1 }}><Title>Tables</Title><Soft>Updates by itself</Soft></View>
+            <View style={{ flex: 1 }}><Title>{diningRoom ? 'Tables' : 'Orders'}</Title><Soft>Updates by itself</Soft></View>
+            {diningRoom ? <Button title="Bookings" kind="quiet" onPress={() => router.push('/reservations')} /> : null}
             <Button title="Takeaway order" kind="quiet" onPress={() => { void takeaway(); }} busy={busy === 'new'} />
           </View>
           <SavedNote at={floor.savedAt} />
-          <Hint id="tables" />
+          {diningRoom ? <Hint id="tables" /> : null}
           {floor.error && !floor.data ? <Failed message={floor.error} onRetry={() => { void floor.refresh(); }} /> : null}
           <View style={{ paddingHorizontal: 16 }}><ErrorText>{problem}</ErrorText></View>
           {floor.busy && !floor.data ? <Loading what="Loading the floor" /> : null}
@@ -83,14 +86,15 @@ export default function Tables() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingBottom: 8 }} style={{ flexGrow: 0 }}>
               {[{ id: null as string | null, label: 'All' }, ...groups.map((g) => ({ id: g.zone as string | null, label: g.zone || 'Main' }))].map((z) => (
                 <Pressable key={String(z.id)} accessibilityRole="button" accessibilityState={{ selected: zone === z.id }} onPress={() => setZone(z.id)}
-                  style={{ minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderRadius: 22, borderWidth: 1, borderColor: zone === z.id ? color.brand : color.line, backgroundColor: zone === z.id ? color.brand : color.card }}>
+                  style={{ minHeight: 48, paddingHorizontal: 16, justifyContent: 'center', borderRadius: 22, borderWidth: 1, borderColor: zone === z.id ? color.brand : color.line, backgroundColor: zone === z.id ? color.brand : color.card }}>
                   <Text style={{ fontWeight: '600', color: zone === z.id ? '#fff' : color.ink }}>{z.label}</Text>
                 </Pressable>
               ))}
             </ScrollView>
           ) : null}
 
-          {floor.data && floor.data.length === 0 ? <Empty>No tables are set up at this outlet yet. Add them on the FlowXP website under Tables, then pull down here to refresh.</Empty> : null}
+          {!diningRoom && open.data && away.length === 0 ? <Empty>No takeaway or delivery orders are open. Tap Takeaway order to start one.</Empty> : null}
+          {diningRoom && floor.data && floor.data.length === 0 ? <Empty>No tables are set up at this outlet yet. Add them on the FlowXP website under Tables, then pull down here to refresh.</Empty> : null}
           {shown.map((g) => (
             <View key={g.zone}>
               {groups.length > 1 ? <SectionTitle>{g.zone || 'Main'}</SectionTitle> : null}

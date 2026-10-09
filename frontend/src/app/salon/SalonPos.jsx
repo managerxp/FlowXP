@@ -17,11 +17,12 @@ import { Check, ChevronDown, Crown, Gift, Minus, PackagePlus, Plus, Printer, Sci
 import { api, formatCurrency } from '../../lib/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
+import { withApproval } from '../../lib/approval.js';
 import { queueSale, useOnline } from '../../lib/offline.js';
 import { getDevicePrefs, printReceipt } from '../../lib/printing.js';
 import { PAYMENT_LABEL, dateText, useDebounced, useLoad } from '../../lib/salon.js';
 import { readOffline, saveOffline } from '../../lib/salonOffline.js';
-import { Alert, Badge, Button, EmptyState, Field, Input, Modal, PageHeader, PageLoader, Select, Textarea, useToast } from '../../components/ui.jsx';
+import { Alert, Badge, Button, EmptyState, Field, Input, Modal, PageHeader, PageLoader, Select, Textarea, useToast, useDialog } from '../../components/ui.jsx';
 import ClientPicker from './ClientPicker.jsx';
 import { Chips } from './parts.jsx';
 
@@ -374,6 +375,7 @@ const SalonPos = () => {
   const toast = useToast();
   const online = useOnline();
   const idem = useIdempotencyKey();
+  const dialog = useDialog();
   const [params, setParams] = useSearchParams();
   const catalogState = useTillCatalog();
   const catalog = catalogState.data;
@@ -493,7 +495,7 @@ const SalonPos = () => {
     try { body = { ...buildBody(), payments: payments() }; } catch (error) { toast.error(error.message); return; }
     setSaving(true);
     try {
-      const result = await api('/salon/pos/invoices', { method: 'POST', body, idempotencyKey: idem.get() });
+      const result = await withApproval(dialog, (approval) => api('/salon/pos/invoices', { method: 'POST', body: approval ? { ...body, approval } : body, idempotencyKey: idem.get() }), idem.settle);
       idem.settle(null);
       if (getDevicePrefs().autoPrintReceipt) printReceipt(result.invoice.invoice_id);
       setDone({ result });

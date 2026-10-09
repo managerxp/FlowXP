@@ -196,6 +196,8 @@ export const webhook = async (req, res) => {
     await client.query('COMMIT');
 
     await logResult('RECEIVED', null, order.order_id);
+    notify(integration.business_id, { category: 'orders', type: 'delivery_order', title: `New ${platform.charAt(0)}${platform.slice(1).toLowerCase()} order`, body: `${order.order_number} is waiting to be accepted`, branchId: order.branch_id, channels: { inApp: false, email: false }, urgent: true, route: '/tables' })
+      .catch((e) => console.error('[push] delivery order alert failed:', e.message));
     recordEvent('delivery_order_received', { businessId: integration.business_id, properties: { platform } });
     res.status(201).json({ success: true, order_number: order.order_number });
   } catch (error) {

@@ -13,6 +13,7 @@ import { looksLikeImage } from '../middleware/upload.js';
 import { subscriptionSummary, newTrialWindow } from '../modules/subscription.js';
 import { recordAudit, recordEvent } from '../modules/events.js';
 import { toRupees } from '../utils/money.js';
+import { hasPermission } from '../middleware/auth.js';
 import {
   checkBusinessType, checkEmail, checkGstin, checkName, checkPhone, checkUpiVpa, firstError
 } from '../utils/validate.js';
@@ -311,6 +312,7 @@ export const getSubscription = async (req, res) => {
     if (!rows.length) return res.status(404).json({ success: false, message: 'Not found' });
 
     const b = rows[0];
+    const owns = hasPermission(req.tenant, 'settings');   // what the business pays is for whoever runs it, not its waiters
     // A payment link the admin generated for this business, waiting to be paid —
     // custom-priced (Option B), so this is the only place a price appears at all.
     const pending = (await pool.query(
@@ -328,12 +330,12 @@ export const getSubscription = async (req, res) => {
           code: b.plan_code,
           name: b.plan_name,
           description: b.plan_description,
-          price_monthly_paise: b.price_monthly_paise,
-          price_yearly_paise: b.price_yearly_paise,
+          price_monthly_paise: owns ? b.price_monthly_paise : null,
+          price_yearly_paise: owns ? b.price_yearly_paise : null,
           limits: b.limits,
           features: b.features
         },
-        pending_payment: pending ? {
+        pending_payment: pending && owns ? {
           amount: toRupees(pending.amount_paise),
           billing_cycle: pending.billing_cycle,
           payment_link_url: pending.payment_link_url
@@ -359,7 +361,7 @@ export const uploadLogo = async (req, res) => {
     return res.status(502).json({ success: false, message: 'Could not save the logo. Try again in a moment.' });
   }
   await pool.query('UPDATE businesses SET receipt_settings = receipt_settings || $1::jsonb, updated_at = CURRENT_TIMESTAMP WHERE business_id = $2', [JSON.stringify({ logo_url: url }), req.tenant.businessId]);
-  if (old) removeFile(old);
+  if (old) removeFile(old, req.tenant.businessId);
   recordAudit(req, { action: 'business.logo_uploaded', resource_type: 'business', resource_id: req.tenant.businessId });
   res.json({ success: true, data: { logo_url: url } });
 };
@@ -368,6 +370,6 @@ export const uploadLogo = async (req, res) => {
 export const removeLogo = async (req, res) => {
   const old = (await pool.query('SELECT receipt_settings FROM businesses WHERE business_id = $1', [req.tenant.businessId])).rows[0]?.receipt_settings?.logo_url;
   await pool.query("UPDATE businesses SET receipt_settings = receipt_settings - 'logo_url', updated_at = CURRENT_TIMESTAMP WHERE business_id = $1", [req.tenant.businessId]);
-  if (old) removeFile(old);
+  if (old) removeFile(old, req.tenant.businessId);
   res.json({ success: true, data: { logo_url: null } });
 };

@@ -13,6 +13,7 @@ import { toRupees } from '../utils/money.js';
 import { getPoints } from '../modules/points.js';
 import { pointsCard } from './points.controller.js';
 import { createSalonInvoice } from '../modules/salon/pos.js';
+import { discountPolicy } from '../modules/approvals.js';
 import { activeMembership, freeServiceBalance } from '../modules/salon/entitlements.js';
 import { clientContext, whyNot } from '../modules/salon/offers.js';
 import { getSettings } from '../modules/salon/settings.js';
@@ -142,7 +143,8 @@ const run = async (req, res, dryRun) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const out = await createSalonInvoice(client, req.tenant, req.auth.userId, req.body || {}, { dryRun });
+    // a quote shows what the bill would be and asks nothing; the sale itself holds a bill discount above the cap for a manager's PIN
+    const out = await createSalonInvoice(client, req.tenant, req.auth.userId, dryRun ? (req.body || {}) : { ...(req.body || {}), discountPolicy: discountPolicy(req, req.body?.approval, { lines: false }) }, { dryRun });
     if (dryRun) {
       await client.query('ROLLBACK');
       return ok(res, summarise(out));

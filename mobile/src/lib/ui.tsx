@@ -2,6 +2,7 @@ import { ActivityIndicator, Pressable, Pressable as P2, ScrollView as S2, StyleS
 import { ago } from './ranges.ts';
 import { t, tx } from './i18n.ts';
 import type { ReactNode } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 
 export const color = { brand: '#0b57ff', ink: '#0f172a', soft: '#475569', line: '#e2e8f0', bg: '#f8fafc', card: '#ffffff', danger: '#b91c1c', ok: '#047857', warn: '#92400e' };
 
@@ -40,7 +41,7 @@ export const Chips = <T extends string>({ items, value, onChange }: { items: { i
   <S2 horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 4 }} style={{ flexGrow: 0 }}>
     {items.map((i) => (
       <P2 key={i.id} accessibilityRole="button" accessibilityState={{ selected: value === i.id }} onPress={() => onChange(i.id)}
-        style={{ minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderRadius: 22, backgroundColor: value === i.id ? color.brand : color.card, borderWidth: 1, borderColor: value === i.id ? color.brand : color.line }}>
+        style={{ minHeight: 48, paddingHorizontal: 16, justifyContent: 'center', borderRadius: 22, backgroundColor: value === i.id ? color.brand : color.card, borderWidth: 1, borderColor: value === i.id ? color.brand : color.line }}>
         <T2 style={{ color: value === i.id ? '#fff' : color.ink, fontWeight: '600' }}>{t(i.label)}</T2>
       </P2>
     ))}
@@ -57,9 +58,10 @@ export const Stat = ({ label, value, note, tone }: { label: string; value: strin
 );
 
 /** A label on the left and a value on the right, in a list. */
-export const Line = ({ left, right, sub, onPress }: { left: string; right?: string; sub?: string; onPress?: () => void }) => (
+export const Line = ({ left, right, sub, onPress, icon }: { left: string; right?: string; sub?: string; onPress?: () => void; icon?: React.ComponentProps<typeof Ionicons>['name'] }) => (
   <P2 disabled={!onPress} onPress={onPress} accessibilityRole={onPress ? 'button' : undefined} android_ripple={onPress ? { color: '#0b57ff22' } : undefined}
     style={({ pressed }) => ({ minHeight: 56, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: pressed ? '#eaf1ff' : color.card, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 })}>
+    {icon ? <V2 style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#eaf1ff', alignItems: 'center', justifyContent: 'center' }}><Ionicons name={icon} size={20} color={color.brand} /></V2> : null}
     <V2 style={{ flex: 1 }}>
       <T2 style={{ fontSize: 16, color: color.ink }}>{t(left)}</T2>
       {sub ? <T2 style={{ color: color.soft, fontSize: 13 }}>{t(sub)}</T2> : null}

@@ -273,8 +273,8 @@ export const Signup = () => {
           <Field id="phone" label="Mobile number (optional)" hint="For account recovery and bill delivery.">
             <Input id="phone" type="tel" inputMode="tel" value={form.phone} onChange={set('phone')} autoComplete="tel" />
           </Field>
-          <Field id="password" label="Password" hint="At least 8 characters.">
-            <PasswordInput id="password" value={form.password} onChange={set('password')} autoComplete="new-password" minLength={8} required />
+          <Field id="password" label="Password" hint="At least 10 characters.">
+            <PasswordInput id="password" value={form.password} onChange={set('password')} autoComplete="new-password" minLength={10} required />
           </Field>
         </fieldset>
 
@@ -508,11 +508,11 @@ export const ForgotPassword = () => {
           <Field id="code" label="Code">
             <CodeField id="code" value={code} onChange={(e) => setCode(e.target.value)} />
           </Field>
-          <Field id="password" label="New password" hint="At least 8 characters.">
-            <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={8} required />
+          <Field id="password" label="New password" hint="At least 10 characters.">
+            <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={10} required />
           </Field>
           <Field id="confirm" label="Confirm new password" error={mismatch}>
-            <PasswordInput id="confirm" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" minLength={8} required />
+            <PasswordInput id="confirm" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" minLength={10} required />
           </Field>
           <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? 'Saving…' : 'Set new password'}</Button>
           <button type="button" className="text-small font-medium text-brand-600 hover:text-brand-700" onClick={resend}>Resend code</button>

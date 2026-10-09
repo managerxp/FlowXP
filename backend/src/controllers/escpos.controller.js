@@ -3,6 +3,7 @@
  * hands them to the print agent on the till computer; the server never talks to a printer itself.
  */
 import pool from '../config/database.js';
+import { recordAudit } from '../modules/events.js';
 import { COLS, drawerBytes, kotSlips, receiptBytes, testPage } from '../modules/escpos.js';
 import * as invoices from './invoices.controller.js';
 import * as kitchen from './kitchen.controller.js';
@@ -50,6 +51,7 @@ export const test = async (req, res) => {
 };
 
 /* GET /api/print/drawer — just the cash-drawer kick */
-export const drawer = (_req, res) => {
+export const drawer = (req, res) => {
+  recordAudit(req, { action: 'drawer.opened', resource_type: 'business', resource_id: req.tenant.businessId });   // opening it without a sale should leave a trace
   res.json({ success: true, data: { data: b64(drawerBytes()) } });
 };

@@ -7,10 +7,15 @@
  * one place the conversion happens, so it happens the same way everywhere.
  */
 
+/** A value the caller sent that cannot be used. Anything that lets one escape reaches the server's last-resort handler, which answers 400 (not 500). */
+export class InputError extends Error {
+  constructor(message) { super(message); this.name = 'InputError'; this.status = 400; }
+}
+
 /** "199.5" | 199.5 -> 19950. Throws on anything that is not a finite number. */
 export const toPaise = (rupees) => {
   const n = Number(rupees);
-  if (!Number.isFinite(n)) throw new Error('Amount must be a number');
+  if (!Number.isFinite(n)) throw new InputError('Amount must be a number');
   // Round rather than truncate: 19949.999999999996 from float arithmetic
   // upstream must not become one paisa short.
   return Math.round(n * 100);
@@ -22,7 +27,7 @@ export const toRupees = (paise) => Math.round(Number(paise || 0)) / 100;
 /** A quantity from the client: must be a positive finite number. */
 export const toQuantity = (value) => {
   const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) throw new Error('Quantity must be a positive number');
+  if (!Number.isFinite(n) || n <= 0) throw new InputError('Quantity must be a positive number');
   return n;
 };
 

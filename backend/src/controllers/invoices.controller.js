@@ -10,6 +10,7 @@
  * for a sale where the stock update failed, or lose stock for an invoice that
  * was never actually created.
  */
+import { OFFLINE_SQL, REVIEW_SQL } from '../utils/offlineNote.js';
 import { onInvoiceCancelled } from '../modules/salon/hooks.js';
 import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
@@ -20,6 +21,7 @@ import { isRetail } from '../modules/retailSettings.js';
 import { describe as describeCard, getProgram, isLive, progressFor, voidForInvoice } from '../modules/loyalty.js';
 import { businessToday } from '../utils/dates.js';
 import { branchFilter } from '../utils/scope.js';
+import { ApprovalError, discountPolicy, ensureApproved, needsApproval } from '../modules/approvals.js';
 import { asInvoice, BillingError, createInvoiceInTransaction, paymentReference, paymentStatus, recordInvoiceCreated } from '../modules/billing.js';
 import { insertOrderItems, nextNumber, OrderItemsError, sendKotCore } from './orders.controller.js';
 
@@ -95,6 +97,7 @@ export const create = async (req, res) => {
       customerId: body.customer_id,
       items: body.items,
       discount: body.discount,
+      discountPolicy: discountPolicy(req, body.approval),   // a typed-in discount above the cap needs a manager's PIN
       notes: body.notes,
       payment: body.payment,
       payments: body.payments,
@@ -124,7 +127,7 @@ export const create = async (req, res) => {
       if (again) return sendReplay(res, again);
     }
     if (error instanceof BillingError || error instanceof OrderItemsError) {
-      return res.status(error.status).json({ success: false, message: error.message });
+      return res.status(error.status).json({ success: false, message: error.message, ...(error.code ? { code: error.code, data: error.data } : {}) });
     }
     if (error.message?.includes('positive number') || error.message?.includes('must be a number')) {
       return res.status(400).json({ success: false, message: error.message });
@@ -142,12 +145,14 @@ export const create = async (req, res) => {
 const isDay = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v));
 
 export const list = async (req, res) => {
-  const { from, to, customer_id, status, payment_status, search, owing } = req.query;
+  const { from, to, customer_id, status, payment_status, search, owing, review } = req.query;
   if ((from && !isDay(from)) || (to && !isDay(to))) return res.status(400).json({ success: false, message: 'Enter valid dates' });
   const clauses = [];
   const values = [req.tenant.businessId];
   // still owed: an issued bill with something left to pay
   if (owing === 'true') clauses.push(`i.status = 'ISSUED' AND i.balance_due_paise > 0`);
+  // taken offline on a phone and the server wants a person to look at it (short stock, a price that changed, over a credit limit)
+  if (review === 'true') clauses.push(`${REVIEW_SQL('i.notes')} AND i.status = 'ISSUED'`);
 
   if (from) { values.push(from); clauses.push(`i.invoice_date >= $${values.length}`); }
   if (to) { values.push(to); clauses.push(`i.invoice_date <= $${values.length}`); }
@@ -190,14 +195,16 @@ export const summary = async (req, res) => {
             COUNT(*) FILTER (WHERE status = 'ISSUED' AND balance_due_paise > 0)::int AS owing,
             COUNT(*) FILTER (WHERE status = 'ISSUED' AND payment_status = 'PAID')::int AS paid_bills,
             COUNT(*) FILTER (WHERE status = 'CANCELLED')::int AS cancelled,
-            COALESCE(SUM(total_paise) FILTER (WHERE status = 'CANCELLED'), 0) AS cancelled_value
+            COALESCE(SUM(total_paise) FILTER (WHERE status = 'CANCELLED'), 0) AS cancelled_value,
+            COUNT(*) FILTER (WHERE status = 'ISSUED' AND ${OFFLINE_SQL('notes')})::int AS offline,
+            COUNT(*) FILTER (WHERE status = 'ISSUED' AND ${REVIEW_SQL('notes')})::int AS to_check
      FROM invoices WHERE business_id = $1 ${range.map((c) => `AND ${c}`).join(' ')}${scope}`, values);
   const r = rows[0];
   res.json({
     success: true,
     data: {
       bills: r.bills, billed: toRupees(r.billed), paid: toRupees(r.paid), refunded: toRupees(r.refunded), due: toRupees(r.due),
-      owing: r.owing, paid_bills: r.paid_bills, cancelled: r.cancelled, cancelled_value: toRupees(r.cancelled_value),
+      owing: r.owing, paid_bills: r.paid_bills, cancelled: r.cancelled, cancelled_value: toRupees(r.cancelled_value), offline: r.offline, to_check: r.to_check,
       average: r.bills ? toRupees(Math.round(Number(r.billed) / r.bills)) : 0
     }
   });
@@ -361,6 +368,12 @@ export const cancel = async (req, res) => {
     );
     if (!rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ success: false, message: 'Not found' }); }
     if (rows[0].status === 'CANCELLED') { await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: 'Already cancelled' }); }
+    // cancelling a bill needs a manager's PIN (and a reason) from anyone who does not hold the approvals right
+    if (req.tenant.cancelNeedsApproval && needsApproval(req.tenant)) {
+      const reason = String(req.body?.reason ?? '').trim();
+      if (reason.length < 3) { await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: 'Say why the bill is being cancelled.' }); }
+      await ensureApproved(req, req.body?.approval, { kind: 'CANCEL_BILL', message: 'Cancelling a bill needs a manager\'s PIN.', detail: { invoice_id: Number(req.params.id), reason } });
+    }
     if (Number(rows[0].credited_paise) > 0) { await client.query('ROLLBACK'); return res.status(409).json({ success: false, message: 'This invoice has credit notes, so it can’t be cancelled. Issue a credit note for the rest instead.' }); }
 
     /* Stock comes back; money already collected does not — reversing a
@@ -396,11 +409,12 @@ export const cancel = async (req, res) => {
     await client.query(`UPDATE invoices SET status = 'CANCELLED' WHERE invoice_id = $1`, [req.params.id]);
     await client.query('COMMIT');
 
-    recordAudit(req, { action: 'invoice.cancelled', resource_type: 'invoice', resource_id: req.params.id });
+    recordAudit(req, { action: 'invoice.cancelled', resource_type: 'invoice', resource_id: req.params.id, metadata: req.body?.reason ? { reason: String(req.body.reason).trim().slice(0, 200) } : {} });
     res.json({ success: true });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     if (error.name === 'SalonError') return res.status(error.status).json({ success: false, message: error.message });
+    if (error instanceof ApprovalError) return res.status(error.status).json({ success: false, message: error.message, code: error.code, data: error.data });
     console.error('[invoices] cancel failed:', error.message);
     res.status(500).json({ success: false, message: 'Could not cancel the invoice' });
   } finally {

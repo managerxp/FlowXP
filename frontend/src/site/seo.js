@@ -36,6 +36,7 @@ const PAGES = {
   '/pricing': ['Pricing and plans', 'FlowXP plans for single shops and multi-branch businesses. Every plan starts with a 7-day free trial, no card needed.'],
   '/about': ['About FlowXP and ManagerXP', 'FlowXP is made by ManagerXP, building billing and business software for Indian shops, restaurants and distributors.'],
   '/contact': ['Contact sales and support', 'Talk to the FlowXP team about sales, setup or support.'],
+  '/delete-account': ['Delete your account', 'How to delete your FlowXP account, and what happens to your information.'],
   '/privacy': ['Privacy policy', 'How FlowXP collects, uses and protects your data.'],
   '/terms': ['Terms of service', 'The terms for using FlowXP.'],
   '/cookies': ['Cookie policy', 'FlowXP uses no advertising or tracking cookies. What it keeps in your browser, and why.']

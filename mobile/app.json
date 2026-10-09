@@ -20,7 +20,8 @@
       "package": "com.flowxp.app",
       "versionCode": 1,
       "permissions": [
-        "CAMERA"
+        "CAMERA",
+        "POST_NOTIFICATIONS"
       ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
@@ -38,6 +39,14 @@
       "expo-secure-store",
       "expo-sqlite",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "FlowXP records where a field visit happened, only if your business turns this on.",
+          "isAndroidBackgroundLocationEnabled": false,
+          "isIosBackgroundLocationEnabled": false
+        }
+      ],
+      [
         "expo-camera",
         {
           "cameraPermission": "FlowXP uses the camera to scan product barcodes.",
@@ -52,6 +61,13 @@
           "imageWidth": 200
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#0b57ff"
+        }
+      ],
       "expo-font",
       [
         "expo-build-properties",
@@ -63,10 +79,6 @@
           }
         }
       ]
-    ],
-    "scheme": "flowxp",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    }
+    ]
   }
 }

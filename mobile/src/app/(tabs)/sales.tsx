@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { FlatList, RefreshControl, Text, TextInput, View } from 'react-native';
+import { memo, useEffect, useState } from 'react';
+import { RefreshControl, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, useSession } from '../../lib/session.ts';
@@ -9,13 +9,25 @@ import type { InvoiceRow, InvoiceSummary } from '../../lib/types.ts';
 import { rupees, toPaise } from '../../lib/money.ts';
 import { useSyncState } from '../../lib/sync.ts';
 import { WaitingList } from '../../lib/WaitingList.tsx';
-import { Page } from '../../lib/responsive.tsx';
+import { Page, ColumnList } from '../../lib/responsive.tsx';
 import { markDone } from '../../lib/learn.tsx';
 import { Chips, Empty, Failed, Line, Loading, SavedNote, Stat, Title, color, s } from '../../lib/ui.tsx';
 
 const money = (r: number) => rupees(toPaise(r));
 type Tab = 'bills' | 'phone';
 const STATUS: Record<string, { label: string; tone: string }> = { PAID: { label: 'Paid', tone: color.ok }, PARTIAL: { label: 'Part paid', tone: color.warn }, UNPAID: { label: 'Unpaid', tone: color.danger } };
+
+const BillRow = memo(({ i }: { i: InvoiceRow }) => {
+  const st = STATUS[i.payment_status] ?? { label: i.payment_status, tone: color.soft };
+  return (
+    <Line
+    left={i.invoice_number} right={money(i.total)}
+    sub={`${i.status === 'CANCELLED' ? 'Cancelled · ' : st.label !== 'Paid' ? `${st.label} · ` : ''}${i.customer_name ?? i.table_name ?? 'Walk-in'} · ${new Date(i.created_at).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+    onPress={() => router.push({ pathname: '/receipt', params: { id: String(i.invoice_id) } })}
+  />
+  );
+});
+const renderBill = ({ item }: { item: InvoiceRow }) => <BillRow i={item} />;
 
 /* Every bill, searchable, for a day or a few weeks; and the sales still on this phone. */
 export default function Sales() {
@@ -37,7 +49,7 @@ export default function Sales() {
 
   return (
     <SafeAreaView style={s.screen} edges={['top']}>
-      <Page>
+      <Page grid>
         <View style={{ padding: 16, paddingBottom: 8 }}><Title>Bills</Title></View>
         <Chips<Tab> items={[{ id: 'bills', label: 'All bills' }, { id: 'phone', label: `Waiting to send${sync.pending + sync.failed ? ` (${sync.pending + sync.failed})` : ''}` }]} value={tab} onChange={setTab} />
         {tab === 'phone' ? <WaitingList /> : (
@@ -56,21 +68,12 @@ export default function Sales() {
               </View>
             ) : null}
             {bills.error && !bills.data ? <Failed message={bills.error} onRetry={() => { void bills.refresh(); }} /> : null}
-            <FlatList
+            <ColumnList
               style={{ flex: 1 }} data={bills.data ?? []} keyExtractor={(i) => String(i.invoice_id)}
               refreshControl={<RefreshControl refreshing={bills.busy} onRefresh={() => { void bills.refresh(); void summary.refresh(); }} />}
               ListEmptyComponent={bills.busy ? <Loading what="Loading bills" /> : <Empty>{search ? 'No bill matches that. Check the spelling, or choose a longer period above.' : 'No bills in this period yet. Choose a longer period above, or make a bill on Sell.'}</Empty>}
               ListFooterComponent={bills.data && bills.data.length >= 200 ? <Empty>Showing the latest 200 bills. Search, or choose a shorter period, to find others.</Empty> : null}
-              renderItem={({ item: i }) => {
-                const st = STATUS[i.payment_status] ?? { label: i.payment_status, tone: color.soft };
-                return (
-                  <Line
-                    left={i.invoice_number} right={money(i.total)}
-                    sub={`${i.status === 'CANCELLED' ? 'Cancelled · ' : st.label !== 'Paid' ? `${st.label} · ` : ''}${i.customer_name ?? i.table_name ?? 'Walk-in'} · ${new Date(i.created_at).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
-                    onPress={() => router.push({ pathname: '/receipt', params: { id: String(i.invoice_id) } })}
-                  />
-                );
-              }}
+              renderItem={renderBill}
             />
           </>
         )}

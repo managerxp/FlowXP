@@ -113,7 +113,7 @@ const NAV_GROUPS = [
     items: [
       { to: '/app/pharmacy/pos', label: 'Billing', icon: ReceiptText, types: PHARMACY, permission: 'billing' },
       { to: '/app/pharmacy/products', label: 'Products', icon: Package, types: PHARMACY, anyPermission: ['products', 'inventory', 'billing', 'purchases'] },
-      { to: '/app/pharmacy/inventory', label: 'Inventory', icon: Boxes, types: PHARMACY, anyPermission: ['inventory', 'purchases', 'billing'] },
+      { to: '/app/pharmacy/inventory', label: 'Inventory', icon: Boxes, types: PHARMACY, permission: 'inventory' },
       { to: '/app/pharmacy/grn', label: 'Goods receipts', icon: PackageCheck, types: PHARMACY, anyPermission: ['purchases', 'inventory'] }
     ]
   },
@@ -144,10 +144,9 @@ const NAV_GROUPS = [
   {
     label: 'Customers',
     items: [
-      // every signed-in team member may look a customer up (billing/loyalty need this) — reading
-      // customers has no permission gate server-side. Editing needs 'customers' and is rejected
-      // there if not; CustomersPage does not yet hide its own Edit/Add buttons for a role without it.
-      { to: '/app/customers', label: 'Customers', icon: UserRound, notTypes: NOT_SALON_OR_WHOLESALE },
+      // Looking a customer up is for anyone who bills or manages customers (the server's rule: customers or billing), so a cook has no link
+      // to a page that would only say "no access". Editing needs 'customers' and is rejected there if not.
+      { to: '/app/customers', label: 'Customers', icon: UserRound, anyPermission: ['customers', 'billing'], notTypes: NOT_SALON_OR_WHOLESALE },
       { to: '/app/offers', label: 'Offers', icon: Tag, types: [...RETAIL, ...RESTAURANT_TYPES], anyPermission: ['products', 'settings'], more: true },
       { to: '/app/loyalty', label: 'Loyalty & coupons', icon: Gift, roles: ['OWNER', 'ADMIN'], feature: 'loyalty', more: true },
       { to: '/app/messaging', label: 'Messaging', icon: MessageSquare, roles: ['OWNER', 'ADMIN'], feature: 'messaging', more: true },

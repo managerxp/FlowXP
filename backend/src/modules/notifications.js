@@ -11,16 +11,23 @@
 import pool from '../config/database.js';
 import { hasPermission } from '../middleware/auth.js';
 import { enqueue } from './jobs.js';
+import { pushToUsers } from './push.js';
 
-/* category -> the permission a person needs to receive it, and whether email defaults on. */
+/* category -> the permission (or any one of several) a person needs to receive it, and whether it goes to their phone unless they switch that off. */
 export const CATEGORIES = {
-  stock:        { label: 'Stock & purchasing', permission: 'inventory', description: 'Items about to run out, and what to order.' },
-  leakage:      { label: 'Revenue leakage',    permission: 'settings',  description: 'Unusual discounts, cancellations, refunds and wastage.' },
-  kitchen:      { label: 'Kitchen delays',     permission: 'reports',   description: 'An order that is taking much longer than it should.' },
-  sales:        { label: 'Daily summary',      permission: 'reports',   description: 'How the day went, each evening.' },
-  integrations: { label: 'Integrations',       permission: 'settings',  description: 'A delivery platform order that could not be received.' },
-  account:      { label: 'Account',            permission: 'settings',  description: 'Your trial and subscription.' }
+  stock:        { label: 'Stock & purchasing', permission: 'inventory', push: true,  description: 'Items about to run out, and what to order.' },
+  leakage:      { label: 'Revenue leakage',    permission: 'settings',  push: true,  description: 'Unusual discounts, cancellations, refunds and wastage.' },
+  kitchen:      { label: 'Kitchen delays',     permission: 'reports',   push: true,  description: 'An order that is taking much longer than it should.' },
+  sales:        { label: 'Daily summary',      permission: 'reports',   push: false, description: 'How the day went, each evening.' },
+  integrations: { label: 'Integrations',       permission: 'settings',  push: true,  description: 'A delivery platform order that could not be received.' },
+  account:      { label: 'Account',            permission: 'settings',  push: false, description: 'Your trial and subscription.' },
+  // what happens on the floor, minute to minute: phone only, never kept in the inbox
+  orders:       { label: 'New orders',         permission: ['billing', 'kitchen'], push: true, description: 'A guest or a delivery app has sent an order that needs accepting or cooking.' },
+  ready:        { label: 'Order ready',        permission: 'billing',   push: true,  description: 'A dish for your table is ready to take out.' },
+  bookings:     { label: 'New bookings',       permission: 'appointments', push: true, description: 'A client has booked online.' }
 };
+
+const allowed = (spec, who) => [].concat(spec.permission).some((p) => hasPermission(who, p));
 
 const SEVERITIES = ['informational', 'warning', 'critical', 'positive'];
 
@@ -35,29 +42,34 @@ export const recipientsFor = async (businessId, category, db = pool, branchId = 
   if (!spec) throw new Error(`Unknown notification category: ${category}`);
   const { rows } = await db.query(
     `SELECT bu.user_id, bu.role, bu.permissions, u.email, u.name,
-            COALESCE(np.in_app, TRUE) AS in_app, COALESCE(np.email, FALSE) AS email_on
+            COALESCE(np.in_app, TRUE) AS in_app, COALESCE(np.email, FALSE) AS email_on, COALESCE(np.push, $4::boolean) AS push_on
      FROM business_users bu
      JOIN users u ON u.user_id = bu.user_id
      LEFT JOIN notification_preferences np ON np.business_id = bu.business_id AND np.user_id = bu.user_id AND np.category = $2
      WHERE bu.business_id = $1 AND bu.status = 'ACTIVE'
        AND (bu.branch_id IS NULL OR (SELECT COUNT(*) FROM branches WHERE business_id = $1 AND status = 'ACTIVE') <= 1 OR bu.branch_id = $3::int)`,
-    [businessId, category, branchId]
+    [businessId, category, branchId, spec.push]
   );
-  return rows.filter((r) => hasPermission({ role: r.role, permissions: r.permissions }, spec.permission));
+  return rows.filter((r) => allowed(spec, { role: r.role, permissions: r.permissions }));
 };
 
 /**
  * Notify everyone who should hear about `category`. Returns how many people
  * were newly notified (0 when it was already sent for this dedupeKey).
  */
-export const notify = async (businessId, { category, type, severity = 'informational', title, body = null, link = null, dedupeKey = null, metadata = {}, branchId = null }, db = pool) => {
+export const notify = async (businessId, { category, type, severity = 'informational', title, body = null, link = null, dedupeKey = null, metadata = {}, branchId = null, userIds = null, channels = {}, route = null, urgent = false }, db = pool) => {
   if (!SEVERITIES.includes(severity)) throw new Error(`Unknown severity: ${severity}`);
   let sent = 0;
+  const phones = [];
   for (const person of await recipientsFor(businessId, category, db, branchId)) {
-    if (!person.in_app && !person.email_on) continue;
+    if (userIds && !userIds.includes(person.user_id)) continue;
+    const inApp = channels.inApp !== false && person.in_app;
+    const email = channels.email !== false && person.email_on;
+    const push = channels.push !== false && person.push_on;
+    if (!inApp && !email && !push) continue;
 
     let created = true;
-    if (person.in_app) {
+    if (inApp) {
       const { rowCount } = await db.query(
         `INSERT INTO notifications (business_id, user_id, category, type, severity, title, body, link, dedupe_key, metadata)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (business_id, user_id, dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING`,
@@ -68,10 +80,13 @@ export const notify = async (businessId, { category, type, severity = 'informati
     if (!created) continue;   // already told this person about this, for this period
     sent++;
 
-    if (person.email_on && person.email) {
+    if (email && person.email) {
       await enqueue('email', { to: person.email, name: person.name, subject: `FlowXP: ${title}`, title, body, link }, { db });
     }
+    if (push) phones.push(person.user_id);
   }
+  // one job for everyone's phones; the app opens `route` (a screen it knows) when the notification is tapped
+  if (phones.length) await pushToUsers(phones, { title, body, urgent, data: { route: route || null, category, business_id: businessId } }, db);
   return sent;
 };
 
@@ -100,10 +115,10 @@ export const markAllRead = async (businessId, userId) =>
 
 /** The categories a person can receive, with their current choices. */
 export const preferencesFor = async (tenant, userId) => {
-  const saved = new Map((await pool.query(`SELECT category, in_app, email FROM notification_preferences WHERE business_id = $1 AND user_id = $2`, [tenant.businessId, userId])).rows.map((r) => [r.category, r]));
+  const saved = new Map((await pool.query(`SELECT category, in_app, email, push FROM notification_preferences WHERE business_id = $1 AND user_id = $2`, [tenant.businessId, userId])).rows.map((r) => [r.category, r]));
   return Object.entries(CATEGORIES)
-    .filter(([, spec]) => hasPermission(tenant, spec.permission))
-    .map(([category, spec]) => ({ category, label: spec.label, description: spec.description, in_app: saved.get(category)?.in_app ?? true, email: saved.get(category)?.email ?? false }));
+    .filter(([, spec]) => allowed(spec, tenant))
+    .map(([category, spec]) => ({ category, label: spec.label, description: spec.description, in_app: saved.get(category)?.in_app ?? true, email: saved.get(category)?.email ?? false, push: saved.get(category)?.push ?? spec.push }));
 };
 
 export const savePreferences = async (tenant, userId, choices) => {
@@ -111,9 +126,9 @@ export const savePreferences = async (tenant, userId, choices) => {
   for (const c of choices) {
     if (!allowed.has(c.category)) continue;
     await pool.query(
-      `INSERT INTO notification_preferences (business_id, user_id, category, in_app, email) VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (business_id, user_id, category) DO UPDATE SET in_app = EXCLUDED.in_app, email = EXCLUDED.email`,
-      [tenant.businessId, userId, c.category, Boolean(c.in_app), Boolean(c.email)]
+      `INSERT INTO notification_preferences (business_id, user_id, category, in_app, email, push) VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (business_id, user_id, category) DO UPDATE SET in_app = EXCLUDED.in_app, email = EXCLUDED.email, push = COALESCE(EXCLUDED.push, notification_preferences.push)`,
+      [tenant.businessId, userId, c.category, Boolean(c.in_app), Boolean(c.email), typeof c.push === 'boolean' ? c.push : null]
     );
   }
 };

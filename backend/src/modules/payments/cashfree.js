@@ -95,9 +95,18 @@ export const createPaymentLink = (args) => provider(args);
  * against the raw request bytes (not the re-serialised JSON, which is not guaranteed
  * to match byte-for-byte) — see server.js's express.json `verify` callback.
  */
+const FRESH_MS = 15 * 60 * 1000;
+/** A signed event is only good for a few minutes, so a captured one cannot be replayed later. Cashfree sends epoch milliseconds (seconds in some versions). */
+export const isFresh = (timestamp, now = Date.now()) => {
+  const n = Number(timestamp);
+  if (!Number.isFinite(n) || n <= 0) return true;   // not a number we can read: the signature still has to match
+  const ms = n < 1e11 ? n * 1000 : n;
+  return Math.abs(now - ms) <= FRESH_MS;
+};
+
 export const verifyWebhookSignature = async (rawBody, timestamp, signature) => {
   const cfg = await resolveConfig();
-  if (!cfg.secretKey || !timestamp || !signature) return false;
+  if (!cfg.secretKey || !timestamp || !signature || !isFresh(timestamp)) return false;
   const expected = crypto.createHmac('sha256', cfg.secretKey)
     .update(timestamp + rawBody)
     .digest('base64');

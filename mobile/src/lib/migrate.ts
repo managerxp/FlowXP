@@ -9,7 +9,8 @@ export type Step = { to: number; name: string; up: string[] };
 
 export const STEPS: Step[] = [
   { to: 2, name: 'outbox remembers when it last tried', up: [`ALTER TABLE outbox ADD COLUMN last_try INTEGER`, `CREATE INDEX IF NOT EXISTS idx_outbox_taken ON outbox (taken_at)`] },
-  { to: 3, name: 'index for the bills list by invoice', up: [`CREATE INDEX IF NOT EXISTS idx_outbox_invoice ON outbox (invoice_id)`] }
+  { to: 3, name: 'index for the bills list by invoice', up: [`CREATE INDEX IF NOT EXISTS idx_outbox_invoice ON outbox (invoice_id)`] },
+  { to: 4, name: 'outbox remembers which till a sale belongs to (pharmacy bills go to the pharmacy till)', up: [`ALTER TABLE outbox ADD COLUMN path TEXT`] }
 ];
 export const LATEST = STEPS[STEPS.length - 1].to;
 

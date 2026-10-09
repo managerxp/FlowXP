@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireAuth, withBusiness, requirePermission, requirePlanFeature } from '../middleware/auth.js';
+import { idempotent } from '../middleware/idempotency.js';
 import * as suppliers from '../controllers/suppliers.controller.js';
 
 const router = Router();
@@ -10,7 +11,7 @@ const write = [requireAuth, withBusiness({ requireActive: true }), feature, requ
 router.get('/', ...authed, suppliers.list);
 router.get('/:id', ...authed, suppliers.get);
 router.get('/:id/purchases', ...authed, suppliers.purchaseHistory);
-router.post('/', ...write, suppliers.create);
+router.post('/', ...write, idempotent(), suppliers.create);
 router.patch('/:id', ...write, suppliers.update);
 
 export default router;

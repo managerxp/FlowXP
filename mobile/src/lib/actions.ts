@@ -22,9 +22,15 @@ export const SCHEMA = `
 `;
 
 export const MAX_ACTIONS = 200;
+
+/** Another device changed the same thing while this phone was offline: the change is parked until a person chooses which version to keep. */
+export class ConflictError extends Error {
+  server: number;
+  constructor(server: number) { super('Something changed on another device.'); this.name = 'ConflictError'; this.server = server; }
+}
 const KEEP_SENT_MS = 3 * 24 * 3600 * 1000;
 
-export type Action = { n: number; id: string; label: string; method: string; path: string; body: Record<string, unknown>; created_at: number; state: 'pending' | 'failed' | 'sent'; error: string | null };
+export type Action = { n: number; id: string; label: string; method: string; path: string; body: Record<string, unknown>; created_at: number; state: 'pending' | 'failed' | 'sent' | 'conflict'; error: string | null };
 type Row = Omit<Action, 'body'> & { body: string };
 const asAction = (r: Row): Action => ({ ...r, body: JSON.parse(r.body) });
 export type FlushedActions = { sent: number; failed: number; stopped: null | 'offline' | 'server' | 'auth' };
@@ -44,9 +50,17 @@ export const createActions = (db: Db, { now = () => Date.now() }: { now?: () => 
     counts: async () => {
       const rows = await db.all<{ state: string; n: number }>(`SELECT state, COUNT(*) AS n FROM actions GROUP BY state`);
       const of = (s: string) => Number(rows.find((r) => r.state === s)?.n ?? 0);
-      return { pending: of('pending'), failed: of('failed') };
+      return { pending: of('pending'), failed: of('failed') + of('conflict') };   // a conflict needs a decision, like a refused change
     },
     retry: (id: string) => db.run(`UPDATE actions SET state = 'pending', error = NULL WHERE id = ? AND state = 'failed'`, [id]),
+    /** The person chose. "mine": send this phone's change as it is, whatever the server has now. "server": drop this phone's change (the caller shows the server's value). */
+    resolve: async (id: string, keep: 'mine' | 'server'): Promise<void> => {
+      if (keep === 'server') { await db.run(`DELETE FROM actions WHERE id = ? AND state = 'conflict'`, [id]); return; }
+      const row = (await db.all<Row>(`SELECT * FROM actions WHERE id = ? AND state = 'conflict'`, [id]))[0];
+      if (!row) return;
+      const { _check, _conflict, ...clean } = JSON.parse(row.body) as Record<string, unknown>; void _check; void _conflict;
+      await db.run(`UPDATE actions SET state = 'pending', error = NULL, body = ? WHERE id = ?`, [JSON.stringify(clean), id]);
+    },
     discard: (id: string) => db.run(`DELETE FROM actions WHERE id = ? AND state = 'failed'`, [id]),
 
     flush: (send: (a: Action) => Promise<void>): Promise<FlushedActions> => {
@@ -56,6 +70,10 @@ export const createActions = (db: Db, { now = () => Date.now() }: { now?: () => 
         for (const a of (await db.all<Row>(`SELECT * FROM actions WHERE state = 'pending' ORDER BY n`)).map(asAction)) {
           try { await send(a); await db.run(`UPDATE actions SET state = 'sent', error = NULL WHERE id = ?`, [a.id]); sent++; }
           catch (e) {
+            if (e instanceof ConflictError) {
+              const body = { ...a.body, _conflict: { server: e.server } };
+              await db.run(`UPDATE actions SET state = 'conflict', error = ?, body = ? WHERE id = ?`, [e.message, JSON.stringify(body), a.id]); failed++; continue;
+            }
             if (e instanceof NetworkError) { stopped = 'offline'; break; }
             if (e instanceof ApiError) {
               if (e.status === 401) { stopped = 'auth'; break; }

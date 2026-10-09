@@ -1,6 +1,6 @@
 # FlowXP security review and production checklist
 
-Reviewed 2026-09-26. Scope: the API, the web app, uploads, sign-in. Not a penetration test; get one before taking real payments at scale.
+Reviewed 2026-09-26; full end-to-end audit with live attack tests on 2026-10-08: see `SECURITY_AUDIT.md`. Scope: the API, the web app, uploads, sign-in. Not a penetration test; get one before taking real payments at scale.
 
 ## What is in place
 - **Passwords**: bcrypt; a dummy hash is compared for unknown emails so response time does not reveal which emails exist; reset tokens are single-use and expire.

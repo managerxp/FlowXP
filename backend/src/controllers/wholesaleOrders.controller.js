@@ -11,7 +11,8 @@
 import { fieldContext } from '../modules/distributor/field.js';
 import { evaluateSchemes } from '../modules/distributor/schemes.js';
 import pool from '../config/database.js';
-import { toRupees } from '../utils/money.js';
+import { toPaise, toRupees } from '../utils/money.js';
+import { REVIEW_SQL, offlineInfo } from '../utils/offlineNote.js';
 import { hasPermission } from '../middleware/auth.js';
 import { checkCredit, creditPosition } from '../modules/wholesale/credit.js';
 import { availability, lockProducts } from '../modules/wholesale/stock.js';
@@ -40,7 +41,7 @@ const headerShape = (o) => ({
   salesperson_id: o.salesperson_id, salesperson: o.salesperson_name, payment_terms_days: o.payment_terms_days, expected_delivery: o.expected_delivery,
   shipping_address: o.shipping_address, shipping_charge: rupees(o.shipping_charge_paise), shipping_tax_rate: Number(o.shipping_tax_rate), discount: rupees(Number(o.discount_paise) - Number(o.scheme_discount_paise || 0)), scheme_discount: rupees(o.scheme_discount_paise || 0),
   subtotal: rupees(o.subtotal_paise), tax: rupees(o.tax_paise), total: rupees(o.total_paise), customer_po: o.customer_po, notes: o.notes, credit_note: o.credit_note,
-  approval_needed: o.approval_needed, created_by: o.created_by_name, created_at: o.created_at, confirmed_at: o.confirmed_at, cancelled_at: o.cancelled_at, cancel_reason: o.cancel_reason,
+  ...offlineInfo(o.notes), approval_needed: o.approval_needed, created_by: o.created_by_name, created_at: o.created_at, confirmed_at: o.confirmed_at, cancelled_at: o.cancelled_at, cancel_reason: o.cancel_reason,
   territory_id: o.territory_id ?? null, beat_id: o.beat_id ?? null, visit_id: o.visit_id ?? null, source: o.source ?? 'OFFICE', reject_reason: o.reject_reason ?? null
 });
 
@@ -93,9 +94,12 @@ const list = async (req, res) => {
     if (wanted.some((s) => !STATUSES.includes(s))) throw new WholesaleError(400, 'Unknown status');
     values.push(wanted); where.push(`o.status = ANY($${values.length}::text[])`);
   }
+  if (req.query.review === '1') where.push(`${REVIEW_SQL('o.notes')} AND o.status NOT IN ('CANCELLED','REJECTED')`);   // taken offline by a rep, and the server wants a person to look at it
   if (req.query.open === '1') { values.push(OPEN_STATUSES); where.push(`o.status = ANY($${values.length}::text[])`); }
   // orders with reserved stock nobody has picked yet — what the warehouse board's "to pick" count shows
-  if (req.query.pickable === '1') where.push(`o.status IN ('CONFIRMED', 'PARTIALLY_FULFILLED') AND EXISTS (SELECT 1 FROM wholesale_sales_order_items pi WHERE pi.order_id = o.order_id AND pi.reserved_base - (pi.picked_base - pi.shipped_base) > 0.0005)`);
+  // someone who only works the warehouse sees the orders waiting to be picked, not every order
+  const onlyPickable = !hasPermission(req.tenant, 'sales_orders');
+  if (req.query.pickable === '1' || onlyPickable) where.push(`o.status IN ('CONFIRMED', 'PARTIALLY_FULFILLED') AND EXISTS (SELECT 1 FROM wholesale_sales_order_items pi WHERE pi.order_id = o.order_id AND pi.reserved_base - (pi.picked_base - pi.shipped_base) > 0.0005)`);
   if (req.query.customer_id) { values.push(Number(req.query.customer_id) || 0); where.push(`o.customer_id = $${values.length}`); }
   if (req.query.salesperson_id) { values.push(Number(req.query.salesperson_id) || 0); where.push(`o.salesperson_id = $${values.length}`); }
   if (req.query.branch_id) { values.push(Number(req.query.branch_id) || 0); where.push(`o.branch_id = $${values.length}`); }
@@ -242,24 +246,55 @@ const saveLines = async (client, req, order, b, customer, settings) => {
   return { lines, est, approval };
 };
 
-/* POST /orders { customer_id, lines, submit?: true, ...header } */
+/* The key a phone sent with an order, kept on the order itself so a replay after the 48-hour duplicate guard has forgotten it still returns the same order. */
+const keyOf = (req) => req.get?.('Idempotency-Key') || req.headers?.['idempotency-key'] || null;
+const isOffline = (req) => req.get?.('X-Offline-Sale') === '1' || req.headers?.['x-offline-sale'] === '1';
+const replayOf = async (req) => {
+  const key = keyOf(req);
+  if (!key) return null;
+  const row = (await pool.query(`SELECT order_id FROM wholesale_sales_orders WHERE business_id = $1 AND client_key = $2`, [req.tenant.businessId, key])).rows[0];
+  return row ? row.order_id : null;
+};
+
+/* POST /orders { customer_id, lines, submit?: true, expected_total?, ...header }
+   An order a rep took with no signal arrives later with X-Offline-Sale: 1. It is recorded as the rep entered it (credit and stock are decided when the
+   office confirms it, as for any order), and the total the retailer was shown is compared with the server's price; a difference is written on the order. */
 const create = async (req, res) => {
   const b = req.body || {};
+  const earlierId = await replayOf(req).catch(() => null);
+  if (earlierId) { res.set('Idempotent-Replay', 'true'); return ok(res, await fullOrder(pool, req.tenant.businessId, await loadOrder(pool, req.tenant.businessId, earlierId)), 201); }
   const customer = await getCustomer(req, int(b.customer_id, 'Customer', { min: 1, required: true }));
   const branchId = await pickBranch(req, b.branch_id);
   const settings = await getSettings(pool, req.tenant.businessId);
   const h = await headerFields(req, b, customer, settings);
-  const orderId = await withTransaction(async (client) => {
+  let orderId;
+  try {
+  orderId = await withTransaction(async (client) => {
     const number = await nextNumber(client, req.tenant.businessId, 'SO', settings.order_prefix);
-    const cols = { ...h, ...(await fieldContext(req, b, customer)), branch_id: branchId, customer_id: customer.customer_id, order_number: number, status: bool(b.submit) ? 'PENDING' : 'DRAFT', created_by: req.auth.userId };
+    const cols = { ...h, ...(await fieldContext(req, b, customer)), branch_id: branchId, customer_id: customer.customer_id, order_number: number, status: bool(b.submit) ? 'PENDING' : 'DRAFT', created_by: req.auth.userId, client_key: keyOf(req) };
     const keys = Object.keys(cols);
     const row = (await client.query(`INSERT INTO wholesale_sales_orders (business_id, ${keys.join(', ')}) VALUES ($1, ${keys.map((_, i) => `$${i + 2}`).join(', ')}) RETURNING *`, [req.tenant.businessId, ...keys.map((k) => cols[k])])).rows[0];
     await saveLines(client, req, row, b, customer, settings);
     return row.order_id;
   });
-  const o = await loadOrder(pool, req.tenant.businessId, orderId);
-  audit(req, 'wholesale.order_created', 'sales_order', orderId, null, { number: o.order_number, customer: o.customer_name, total: rupees(o.total_paise), status: o.status });
-  ok(res, await fullOrder(pool, req.tenant.businessId, o), 201);
+  } catch (error) {
+    if (error.code === '23505' && String(error.constraint) === 'uq_wholesale_orders_client_key') {   // the same order arrived twice at once
+      const again = await replayOf(req);
+      if (again) { res.set('Idempotent-Replay', 'true'); return ok(res, await fullOrder(pool, req.tenant.businessId, await loadOrder(pool, req.tenant.businessId, again)), 201); }
+    }
+    throw error;
+  }
+  let o = await loadOrder(pool, req.tenant.businessId, orderId);
+  const review = [];
+  if (isOffline(req)) {
+    // only a price HIGHER than what the shop was shown matters: a lower one (their price list, an offer) is good news and not worth the office's time
+    if (b.expected_total != null && Number(o.total_paise) - toPaise(b.expected_total) > 100) review.push(`the phone showed ₹${b.expected_total}, the server priced it at ₹${rupees(o.total_paise)}`);
+    const note = `Taken offline${review.length ? `. Check: ${review.join('; ')}` : ''}`;
+    await pool.query(`UPDATE wholesale_sales_orders SET notes = LEFT(COALESCE(NULLIF(notes, '') || ' | ', '') || $2, 1000) WHERE order_id = $1`, [orderId, note]);
+    o = await loadOrder(pool, req.tenant.businessId, orderId);
+  }
+  audit(req, 'wholesale.order_created', 'sales_order', orderId, null, { number: o.order_number, customer: o.customer_name, total: rupees(o.total_paise), status: o.status, ...(isOffline(req) ? { offline: true, review } : {}) });
+  ok(res, { ...(await fullOrder(pool, req.tenant.businessId, o)), review }, 201);
 };
 
 /* PUT /orders/:id — a draft or pending order freely; a confirmed one only while nothing has been picked or shipped */

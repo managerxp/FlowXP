@@ -17,6 +17,7 @@ import pool from '../config/database.js';
 import { recordAudit, recordEvent } from '../modules/events.js';
 import { toPaise, toRupees } from '../utils/money.js';
 import { asInvoice, BillingError, createInvoiceInTransaction, recordInvoiceCreated } from '../modules/billing.js';
+import { discountPolicy } from '../modules/approvals.js';
 import { hasPermission } from '../middleware/auth.js';
 import { TabError, takeItems, unbilledCount } from '../modules/tabs.js';
 import { ModifierError, outletSettingsFor, resolveModifiers } from '../modules/menu.js';
@@ -63,7 +64,8 @@ export const insertOrderItems = async (client, businessId, orderId, rawItems) =>
   const orderBranch = (await client.query(`SELECT branch_id FROM orders WHERE order_id = $1`, [orderId])).rows[0]?.branch_id;
   const outletSettings = await outletSettingsFor(client, orderBranch, [...new Set(rawItems.filter((r) => r.product_id).map((r) => Number(r.product_id)))]);
   for (const raw of rawItems) {
-    const quantity = Number(raw.quantity) || 1;
+    const quantity = raw.quantity == null || raw.quantity === '' ? 1 : Number(raw.quantity);
+    if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 1000) throw new OrderItemsError('Each item needs a quantity above zero');
     let description, unitPricePaise, productId = null, modifiers = [], stationId = null, expectedMinutes = defaultMinutes;
 
     if (raw.product_id) {
@@ -707,6 +709,7 @@ export const bill = async (req, res) => {
         // to matter.
       })),
       discount: body.discount,
+      discountPolicy: discountPolicy(req, body.approval, { lines: false }),   // a typed-in discount above the cap needs a manager's PIN
       couponCode: body.coupon_code,
       applyPromotions: body.apply_promotions === true,
       redeemPoints: body.redeem_points,
@@ -731,7 +734,7 @@ export const bill = async (req, res) => {
     res.status(201).json({ success: true, data: { ...invoice, order_closed: remaining === 0, remaining_items: remaining } });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
-    if (error instanceof BillingError || error instanceof TabError) return res.status(error.status).json({ success: false, message: error.message });
+    if (error instanceof BillingError || error instanceof TabError) return res.status(error.status).json({ success: false, message: error.message, ...(error.code ? { code: error.code, data: error.data } : {}) });
     console.error('[orders] bill failed:', error.message);
     res.status(500).json({ success: false, message: 'Could not bill the order' });
   } finally {

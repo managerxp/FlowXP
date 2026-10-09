@@ -19,7 +19,7 @@ export const FAQ = [
   },
   {
     q: 'Can I use it on my phone?',
-    a: 'Yes. The whole product works in a mobile browser and installs to your home screen. A dedicated mobile app is on the roadmap.'
+    a: 'Yes. The whole product works in a mobile browser and installs to your home screen. An Android app is being tested with real shops: it keeps billing with no signal, runs tables and the kitchen screen, and speaks English and Hindi. It is not on the Play Store yet.'
   },
   {
     q: 'Is my data separate from other businesses?',

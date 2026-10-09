@@ -8,8 +8,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Minus, Plus, X } from 'lucide-react';
 import { api } from '../../lib/api.js';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
+import { withApproval } from '../../lib/approval.js';
 import { PAYMENT_METHODS, money, useDebounced } from '../../lib/pharmacy.js';
-import { Alert, Button, PageHeader, Select, useToast } from '../../components/ui.jsx';
+import { Alert, Button, PageHeader, Select, useToast, useDialog } from '../../components/ui.jsx';
 import { BatchSelect, CustomerPicker, NumberField, ProductPicker } from './parts.jsx';
 
 let seq = 0;
@@ -40,6 +41,7 @@ const CartLine = ({ l, onChange, onRemove }) => (
 const PharmacyPos = () => {
   const toast = useToast();
   const idem = useIdempotencyKey();
+  const dialog = useDialog();
   const searchRef = useRef(null);
   const [cart, setCart] = useState([]);
   const [customer, setCustomer] = useState(null);
@@ -106,7 +108,7 @@ const PharmacyPos = () => {
     try { body = { ...buildBody(), payments: payments() }; } catch (e) { toast.error(e.message); return; }
     setSaving(true);
     try {
-      const result = await api('/pharmacy/pos/invoices', { method: 'POST', body, idempotencyKey: idem.get() });
+      const result = await withApproval(dialog, (approval) => api('/pharmacy/pos/invoices', { method: 'POST', body: approval ? { ...body, approval } : body, idempotencyKey: idem.get() }), idem.settle);
       idem.settle(null);
       setDone(result);
     } catch (e) { idem.settle(e); toast.error(e.message); } finally { setSaving(false); }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, FlatList, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api.ts';
@@ -11,7 +11,7 @@ import { fromSnapshot, type HeldRow } from '../lib/held.ts';
 import { clearSale, saleStore, setCustomer } from '../lib/sale.ts';
 import { noOffers } from '../lib/offers.ts';
 import { rupees, toPaise } from '../lib/money.ts';
-import { Page } from '../lib/responsive.tsx';
+import { Page, ColumnList } from '../lib/responsive.tsx';
 import { Button, Empty, ErrorText, Failed, Loading, SavedNote, Title, color, s } from '../lib/ui.tsx';
 
 /* Bills put on hold: this outlet's (shared with its other tills) and any kept on this phone. Resume one to put it back on the till. */
@@ -60,7 +60,7 @@ export default function Held() {
 
   return (
     <SafeAreaView style={s.screen}>
-      <Page>
+      <Page grid>
         <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Title>Bills on hold</Title>
           <Button title="Back" kind="quiet" onPress={() => goBack()} />
@@ -69,7 +69,7 @@ export default function Held() {
         {server.error && !server.data ? <Failed message={server.error} onRetry={() => { void server.refresh(); }} /> : null}
         <View style={{ paddingHorizontal: 16 }}><ErrorText>{problem}</ErrorText></View>
         {server.busy && !server.data && !local.length ? <Loading what="Loading held bills" /> : null}
-        <FlatList
+        <ColumnList
           style={{ flex: 1 }} data={rows} keyExtractor={(r) => String(r.hold_id)} refreshing={server.busy} onRefresh={() => { void server.refresh(); loadLocal(); }}
           ListEmptyComponent={server.data || local.length === 0 ? <Empty>No bills on hold. Hold one from the till when a customer steps away.</Empty> : null}
           renderItem={({ item: r }) => (

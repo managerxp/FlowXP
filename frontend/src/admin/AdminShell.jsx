@@ -14,6 +14,7 @@ const NAV = [
   { to: '/superadmin/plans', label: 'Plans' },
   { to: '/superadmin/features', label: 'Features' },
   { to: '/superadmin/addons', label: 'Add-ons' },
+  { to: '/superadmin/deletions', label: 'Deletions' },
   { to: '/superadmin/settings', label: 'Settings' },
   { to: '/superadmin/security', label: 'Security' }
 ];

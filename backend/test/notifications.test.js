@@ -110,7 +110,7 @@ test('a notification is sent once per dedupe key, to each eligible person', { sk
 
 test('preferences: in-app can be switched off, and email is opt-in and queued, not sent inline', { skip }, async () => {
   const tenant = (name) => ({ businessId: biz, role: people[name].role, permissions: {} });
-  await N.savePreferences(tenant('manager'), people.manager.id, [{ category: 'stock', in_app: false, email: false }]);
+  await N.savePreferences(tenant('manager'), people.manager.id, [{ category: 'stock', in_app: false, email: false, push: false }]);
   await N.savePreferences(tenant('owner'), people.owner.id, [{ category: 'stock', in_app: true, email: true }]);
   await N.savePreferences(tenant('cashier'), people.cashier.id, [{ category: 'stock', in_app: true, email: true }]);   // not allowed: ignored
 
@@ -122,13 +122,17 @@ test('preferences: in-app can be switched off, and email is opt-in and queued, n
   const { rows } = await pool.query(`SELECT payload FROM jobs WHERE type = 'email' ORDER BY job_id DESC LIMIT 1`);
   assert.equal(rows[0].payload.to, 'owner@n.test');
 
-  assert.equal((await N.preferencesFor(tenant('cashier'), people.cashier.id)).length, 0);     // a cashier has nothing to configure
+  assert.deepEqual((await N.preferencesFor(tenant('cashier'), people.cashier.id)).map((p) => p.category).sort(), ['orders', 'ready']);   // a cashier hears only about the floor: no stock, no money
   const ownerPrefs = await N.preferencesFor(tenant('owner'), people.owner.id);
   assert.equal(ownerPrefs.find((p) => p.category === 'stock').email, true);
 });
 
 test('queued email is delivered by the worker, and a failing job retries then gives up', { skip }, async () => {
+  // Delivery goes to a stand-in, not the real mailer: the mail server settings are one shared row that platformSettings.test.js points at a made-up host while this runs.
+  const delivered = [];
+  J.registerHandler('email', async (payload) => { delivered.push(payload.to); });
   assert.ok(await J.runDueJobs() >= 1);
+  assert.ok(delivered.length >= 1, 'the worker handed the queued email to the mailer');
   assert.equal(Number((await pool.query(`SELECT COUNT(*) AS n FROM jobs WHERE type = 'email' AND status <> 'DONE'`)).rows[0].n), 0);
 
   J.registerHandler('flaky', async () => { throw new Error('mail server down'); });

@@ -4,11 +4,13 @@
  * credit notes, and the next thing to do with it. Taking a payment can use the
  * UPI QR (components/UpiCollect.jsx) when the business has a UPI ID.
  */
+import { OfflineNotice } from '../../components/OfflineFlag.jsx';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, FileText, MessageCircle, Printer, Receipt, Wallet } from 'lucide-react';
 import { api, formatCurrency } from '../../lib/api.js';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
+import { withApproval } from '../../lib/approval.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { getDevicePrefs, openDrawer, openPrint, printReceipt } from '../../lib/printing.js';
 import CreditNoteModal from '../../components/CreditNoteModal.jsx';
@@ -175,7 +177,13 @@ const InvoiceDetail = () => {
     const paidNote = invoice.amount_paid - invoice.refunded > 0 ? ` ${formatCurrency(invoice.amount_paid - invoice.refunded)} was paid on it and is not refunded automatically; record a refund if you give it back.` : '';
     if (!(await dialog.confirm({ title: `Cancel ${invoice.invoice_number}?`, body: `Stock comes back and it stops counting as a sale.${paidNote}`, confirmLabel: 'Cancel invoice', cancelLabel: 'Keep invoice', danger: true }))) return;
     setActionError('');
-    try { await api(`/invoices/${id}/cancel`, { method: 'POST' }); toast.success(`${invoice.invoice_number} cancelled`); load(); }
+    // staff without the approvals right say why, and a manager enters their PIN (the server asks for it; see lib/approval.js)
+    let reason = '';
+    if (business?.approval?.needed && business?.approval?.cancel_needs_approval) {
+      reason = await dialog.prompt({ title: 'Why is this bill being cancelled?', label: 'Reason', required: true, confirmLabel: 'Continue' });
+      if (reason == null) return;
+    }
+    try { await withApproval(dialog, (approval) => api(`/invoices/${id}/cancel`, { method: 'POST', body: { ...(reason ? { reason } : {}), ...(approval ? { approval } : {}) } })); toast.success(`${invoice.invoice_number} cancelled`); load(); }
     catch (caught) { setActionError(caught.message); }
   };
 
@@ -295,7 +303,9 @@ const InvoiceDetail = () => {
             {due > 0 && <Line label="Balance due" value={formatCurrency(due)} tone="font-semibold text-warning" />}
           </div>
 
-          {invoice.notes && <p className="mt-6 border-t border-line pt-4 text-small text-ink-700">{invoice.notes}</p>}
+          {/* the office's own notice, never printed on the customer's bill */}
+          <div className="mt-6 print:hidden"><OfflineNotice offline={invoice.offline} review={invoice.review} /></div>
+          {(() => { const shown = invoice.offline ? String(invoice.notes || '').split(' | Taken offline')[0].replace(/^Taken offline.*$/, '') : invoice.notes; return shown ? <p className="border-t border-line pt-4 text-small text-ink-700">{shown}</p> : null; })()}
           <p className="mt-8 text-center text-caption text-ink-400">Thank you{business?.name ? ` for choosing ${business.name}` : ''}.</p>
         </article>
 

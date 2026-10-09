@@ -1,4 +1,5 @@
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from '../../lib/session.ts';
@@ -12,8 +13,9 @@ import { GettingStarted, useLearning } from '../../lib/learn.tsx';
 import { shouldOfferTour } from '../../lib/onboarding.ts';
 import { KITCHEN_TYPES } from '../../lib/cart.ts';
 import { t } from '../../lib/i18n.ts';
+import { allowed } from '../../lib/access.ts';
 import { useEffect } from 'react';
-import { Button, Empty, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Stat, Title, color, s } from '../../lib/ui.tsx';
+import { Button, Empty, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
 
 const hour = () => { const h = new Date().getHours(); return t(h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'); };
 const money = (rupeesValue: number) => rupees(toPaise(rupeesValue));
@@ -35,6 +37,28 @@ const Bars = ({ days }: { days: { date: string; total: number }[] }) => {
   );
 };
 
+
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+/* A small figure you can tap: it opens the page behind it. */
+const Tile = ({ label, value, note, tone, go }: { label: string; value: string; note?: string; tone?: string; go?: () => void }) => (
+  <Pressable accessibilityRole={go ? 'button' : 'text'} accessibilityLabel={`${t(label)}: ${value}${note ? `, ${t(note)}` : ''}`} onPress={go} disabled={!go}
+    style={({ pressed }) => [s.card, { width: '48.5%', minHeight: 76, padding: 12, justifyContent: 'center', gap: 2 }, pressed && { backgroundColor: '#eaf1ff' }]}>
+    <Text style={{ color: color.soft, fontSize: 13 }}>{t(label)}</Text>
+    <Text style={{ color: tone ?? color.ink, fontSize: 22, fontWeight: '700' }}>{value}</Text>
+    {note ? <Text style={{ color: color.soft, fontSize: 12 }}>{t(note)}</Text> : null}
+  </Pressable>
+);
+
+/* A quick action: an icon and a word, one tap. */
+const Quick = ({ icon, label, go }: { icon: IconName; label: string; go: () => void }) => (
+  <Pressable accessibilityRole="button" accessibilityLabel={t(label)} onPress={go} android_ripple={{ color: '#0b57ff22' }}
+    style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, borderRadius: 24, backgroundColor: color.card, borderWidth: 1, borderColor: color.line }}>
+    <Ionicons name={icon} size={20} color={color.brand} />
+    <Text style={{ color: color.ink, fontWeight: '600' }}>{t(label)}</Text>
+  </Pressable>
+);
+
 export default function Home() {
   const session = useSession();
   const business = currentBusiness(session);
@@ -42,6 +66,17 @@ export default function Home() {
   const { data, savedAt, error, busy, refresh } = useLoad<Dashboard>(`dash:${session.businessId}:${session.branchId}`, () => api.get<Dashboard>('/dashboard'));
   const learning = useLearning();
   const food = KITCHEN_TYPES.includes(business?.business_type ?? '');
+  const pharmacy = business?.business_type === 'PHARMACY';
+  const several = session.businesses.flatMap((b) => b.outlets).length > 1;
+  const canBill = allowed(business, 'billing', 'sales_orders', 'fulfilment', 'field_sales', 'collections', 'appointments', 'dispensing', 'vehicles');
+  // the few things this person does most, only the ones they are allowed to do
+  const quick: { icon: IconName; label: string; go: () => void }[] = [
+    ...(food && canBill ? [{ icon: 'grid-outline' as IconName, label: business?.business_type === 'CLOUD_KITCHEN' ? 'Take an order' : 'Open a table', go: () => router.navigate('/tables') }] : []),
+    ...(food && allowed(business, 'billing', 'kitchen') ? [{ icon: 'restaurant-outline' as IconName, label: 'Kitchen screen', go: () => router.push('/kitchen') }] : []),
+    ...(allowed(business, 'products') ? [{ icon: 'add-circle-outline' as IconName, label: pharmacy ? 'Add medicine' : 'Add product', go: () => router.push(pharmacy ? '/medicine/new' : '/product/new') }] : []),
+    ...(allowed(business, 'expenses') ? [{ icon: 'wallet-outline' as IconName, label: 'Add expense', go: () => router.push('/expenses') }] : []),
+    ...(allowed(business, 'inventory', 'purchases') ? [{ icon: 'download-outline' as IconName, label: 'Receive stock', go: () => router.push('/suppliers') }] : [])
+  ].slice(0, 4);
   // the first time, offer the one-minute tour by itself (it can be skipped, and is never shown again once seen or skipped)
   useEffect(() => { if (learning.ready && shouldOfferTour(learning.kept) && session.businessId != null) router.push('/welcome'); }, [learning.ready]);   // eslint-disable-line react-hooks/exhaustive-deps
   const m = data?.metrics ?? null;
@@ -51,28 +86,45 @@ export default function Home() {
     <SafeAreaView style={s.screen} edges={['top']}>
       <Page max={900}>
         <ScrollView refreshControl={<RefreshControl refreshing={busy} onRefresh={() => { void refresh(); }} />} contentContainerStyle={{ paddingBottom: 24 }}>
-          <View style={{ padding: 16, gap: 4 }}>
+          <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 2 }}>
             <Soft>{hour()}, {session.user?.name?.split(' ')[0]}</Soft>
             <Title>{business?.name}</Title>
-            <Soft>{outlet?.name}</Soft>
+            {several ? (
+              <Pressable accessibilityRole="button" accessibilityLabel={`${t('Switch outlet')}: ${outlet?.name}`} onPress={() => router.push('/choose')} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start' }}>
+                <Text style={{ color: color.soft, fontSize: 15 }}>{outlet?.name}</Text><Ionicons name="chevron-down" size={18} color={color.soft} />
+              </Pressable>
+            ) : <Soft>{outlet?.name}</Soft>}
             <SyncBadge />
           </View>
           <SavedNote at={savedAt} />
           {error && !data ? <Failed message={error} onRetry={() => { void refresh(); }} /> : null}
 
-          <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16 }}>
-            <Button title="New bill" onPress={() => router.push('/sell')} style={{ flex: 1 }} />
-            <Button title="Scan" kind="quiet" onPress={() => router.push('/scan')} />
-          </View>
+          {canBill ? (
+            <View style={{ gap: 8, paddingHorizontal: 16 }}>
+              <Button title="New bill" onPress={() => router.push('/sell')} style={{ minHeight: 60 }} />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {food ? null : <Button title="Scan" kind="quiet" onPress={() => router.push('/scan')} style={{ flex: 1 }} />}
+                <Button title="Bills" kind="quiet" onPress={() => router.navigate('/sales')} style={{ flex: 1 }} />
+              </View>
+            </View>
+          ) : null}
+          {quick.length ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 12 }} style={{ flexGrow: 0 }}>
+              {quick.map((q) => <Quick key={q.label} {...q} />)}
+            </ScrollView>
+          ) : null}
 
           <GettingStarted food={food} />
           {m ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 16 }}>
-              <Stat label="Today's sales" value={money(m.today_sales)} note={change === null ? undefined : `${change >= 0 ? '+' : ''}${change}% vs yesterday`} tone={change !== null && change < 0 ? color.danger : undefined} />
-              <Stat label="Bills today" value={String(m.today_invoice_count)} note={`Yesterday ${money(m.yesterday_sales)}`} />
-              <Stat label="Still to be paid" value={money(m.outstanding)} tone={m.outstanding > 0 ? color.warn : undefined} />
-              <Stat label="Low on stock" value={String(m.low_stock_count)} tone={m.low_stock_count > 0 ? color.danger : undefined} note={m.low_stock_count ? 'See Products' : undefined} />
-            </View>
+            <>
+              <SectionTitle>{"Today's business"}</SectionTitle>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16 }}>
+                <Tile label="Today's sales" value={money(m.today_sales)} note={change === null ? undefined : `${change >= 0 ? '+' : ''}${change}% vs yesterday`} tone={change !== null && change < 0 ? color.danger : undefined} go={() => router.navigate('/sales')} />
+                <Tile label="Bills today" value={String(m.today_invoice_count)} note={`Yesterday ${money(m.yesterday_sales)}`} go={() => router.navigate('/sales')} />
+                <Tile label="Still to be paid" value={money(m.outstanding)} tone={m.outstanding > 0 ? color.warn : undefined} go={() => router.push('/customers')} />
+                <Tile label="Low on stock" value={String(m.low_stock_count)} tone={m.low_stock_count > 0 ? color.danger : undefined} note={m.low_stock_count ? 'See what to order' : undefined} go={() => router.push('/stock')} />
+              </View>
+            </>
           ) : data ? <Empty>Today's figures are shown to people allowed to see reports.</Empty> : null}
 
           {data?.sales ? (

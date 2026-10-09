@@ -15,6 +15,7 @@
  * with the HTTP status already attached, so either caller can translate them
  * the same way.
  */
+import { offlineInfo } from '../utils/offlineNote.js';
 import { recordAudit, recordEvent } from './events.js';
 import { computeLineTax, isInterState, sumLines } from './tax.js';
 import { toPaise, toQuantity, toRupees } from '../utils/money.js';
@@ -99,7 +100,8 @@ export const asInvoice = (row) => ({
   credited: toRupees(row.credited_paise || 0),
   payment_status: row.payment_status,
   status: row.status,
-  notes: row.notes
+  notes: row.notes,
+  ...offlineInfo(row.notes)
 });
 
 /**
@@ -154,7 +156,9 @@ export const plannedPayments = (input, totalPaise) => {
     const asked = input.payment.amount === 'FULL' ? totalPaise : toPaise(input.payment.amount);
     if (asked < 0) throw new BillingError(400, 'Payment amount cannot be negative');
     const amountPaise = Math.min(asked, totalPaise);
-    return amountPaise > 0 ? [{ method: input.payment.method || 'CASH', amountPaise, reference: paymentReference(input.payment.reference_number) }] : [];
+    const method = String(input.payment.method || 'CASH').toUpperCase();
+    if (!PAYMENT_METHODS.includes(method)) throw new BillingError(400, `Unknown payment method: ${input.payment.method}`);
+    return amountPaise > 0 ? [{ method, amountPaise, reference: paymentReference(input.payment.reference_number) }] : [];
   }
   return [];
 };
@@ -216,9 +220,12 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   const recipes = await loadRecipes(client, tenant.businessId, [...new Set([...productIds, ...componentIds])], tenant.branchId);
 
   const lines = [];
+  let typedDiscountPaise = 0; let typedGrossPaise = 0;   // what a person typed in as a discount, against what it comes off (see modules/approvals.js)
   const overrideIds = new Set();   // ingredients a line named by hand (consumption_actual) — must all exist
   for (const raw of items) {
     const quantity = toQuantity(raw.quantity);
+    if (quantity > 1000000) throw new BillingError(400, 'That quantity is too large');
+    let overrideCutPaise = 0;
     let description, unitPricePaise, taxRate, product = null, modifiers = [], consumption = [], stockFactor = 1;
 
     if (raw.product_id) {
@@ -236,6 +243,9 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       }
       description = raw.description || product.name;
       unitPricePaise = raw.unit_price != null ? toPaise(raw.unit_price) : (here?.price_paise ?? product.selling_price_paise);
+      if (unitPricePaise < 0) throw new BillingError(400, 'The price cannot be negative');
+      // a price typed in below the catalogue price is a discount: it counts against the cap like one (a till that never types a price is unaffected)
+      if (raw.unit_price != null) overrideCutPaise = Math.max(0, Number(here?.price_paise ?? product.selling_price_paise) - unitPricePaise);
       taxRate = Number(product.tax_rate);
 
       /* From an order, modifiers arrive already snapshotted and priced into
@@ -281,10 +291,16 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       }
       description = String(raw.description).trim();
       unitPricePaise = toPaise(raw.unit_price);
+      if (unitPricePaise < 0) throw new BillingError(400, 'The price cannot be negative');
       taxRate = Number(raw.tax_rate) || 0;
+      if (taxRate < 0 || taxRate > 100) throw new BillingError(400, 'The GST rate must be from 0 to 100');
     }
 
     let discountPaise = raw.discount != null ? toPaise(raw.discount) : 0;
+    if (input.discountPolicy?.lines) { typedDiscountPaise += discountPaise + Math.round(overrideCutPaise * quantity); typedGrossPaise += Math.round(quantity * (unitPricePaise + overrideCutPaise)); }
+    // a discount comes off the line: never below nothing (it would raise the price) and never more than the line is worth (it would record a discount that was never given)
+    if (discountPaise < 0) throw new BillingError(400, 'A discount cannot be negative');
+    if (discountPaise > Math.round(quantity * unitPricePaise)) throw new BillingError(400, 'The discount cannot be more than the price of the item');
     // The reward item is free (up to the reward quantity) on the visit that earns it — once per bill.
     if (loyalty?.progress.reward_ready && !loyalty.applied && product && product.product_id === program.reward_product_id) {
       const freeQty = Math.min(quantity, program.reward_quantity);
@@ -343,7 +359,15 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   }
 
   const totals = sumLines(lines);
-  let invoiceDiscountPaise = input.discount != null ? Math.max(0, toPaise(input.discount)) : 0;
+  let invoiceDiscountPaise = input.discount != null ? toPaise(input.discount) : 0;
+  if (input.discountPolicy && invoiceDiscountPaise > 0) {
+    // the bill's own discount counts against what the lines come to (before tax), together with any typed on the lines; one question, with everything typed in
+    typedDiscountPaise += invoiceDiscountPaise;
+    if (!input.discountPolicy.lines) typedGrossPaise = lines.reduce((s, l) => s + Math.round(l.quantity * l.unitPricePaise), 0);
+  }
+  if (input.discountPolicy && typedDiscountPaise > 0) await input.discountPolicy.check({ discountPaise: typedDiscountPaise, grossPaise: typedGrossPaise });
+  if (invoiceDiscountPaise < 0) throw new BillingError(400, 'A discount cannot be negative');
+  if (invoiceDiscountPaise > totals.total_paise) throw new BillingError(400, 'The discount cannot be more than the bill');
 
   // A coupon comes off what is left after any discount given by hand.
   let coupon = null;
@@ -525,7 +549,10 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
 /** Fire the audit/analytics side-effects a successful bill produces. Called
     after COMMIT — never inside the transaction, since these never roll back. */
 export const recordInvoiceCreated = (req, invoice) => {
-  recordAudit(req, { action: 'invoice.created', resource_type: 'invoice', resource_id: invoice.invoice_id, metadata: { total: invoice.total } });
+  // A sale the phone says it took without a connection is dated by the phone and may leave stock below zero, and any signed-in user can send the header
+  // that asks for that, so each one is written down as such: who, which day they claimed, and for how much.
+  const offline = req.get?.('X-Offline-Sale') === '1' || req.headers?.['x-offline-sale'] === '1';
+  recordAudit(req, { action: 'invoice.created', resource_type: 'invoice', resource_id: invoice.invoice_id, metadata: { total: invoice.total, ...(offline ? { offline: true, claimed_date: req.get?.('X-Sale-Date') || req.headers?.['x-sale-date'] || null } : {}) } });
   recordEvent('invoice_created', { userId: req.auth.userId, businessId: req.tenant.businessId, properties: { total: invoice.total } });
   afterBill(req.tenant.businessId, invoice.invoice_id);   // the customer's copy and loyalty nudge, when messaging is on
 };

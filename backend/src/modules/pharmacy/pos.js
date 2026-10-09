@@ -57,7 +57,16 @@ export const createPharmacySale = async (client, tenant, userId, input, { dryRun
   }
   const outlet = (await client.query(`SELECT state FROM branches WHERE branch_id = $1 AND business_id = $2`, [tenant.branchId, tenant.businessId])).rows[0];
   const interState = isInterState(outlet?.state || business.state, customer?.state);
-  const date = input.invoiceDate ? String(input.invoiceDate).slice(0, 10) : await today(client, tenant.businessId);
+  // A sale the phone took with no connection (the medicine is already handed over) is recorded, never refused for stock, and dated the day it was
+  // taken if that is believable (within the last 7 days, not later than tomorrow); anything else is a wrong phone clock and is dated today.
+  const offline = input.offline === true;
+  const flags = [];
+  const todayDate = await today(client, tenant.businessId);
+  let date = input.invoiceDate ? String(input.invoiceDate).slice(0, 10) : todayDate;
+  if (offline) {
+    const age = /^\d{4}-\d{2}-\d{2}$/.test(String(input.saleDay ?? '')) ? (Date.parse(todayDate) - Date.parse(input.saleDay)) / 86400000 : NaN;
+    date = age >= -1 && age <= 7 ? input.saleDay : todayDate;
+  }
 
   // lock every product row FIRST, in one call sorted by id — the chain that makes two cashiers selling the
   // last unit of the same product never both succeed (see modules/pharmacy/stock.js's header note)
@@ -66,6 +75,7 @@ export const createPharmacySale = async (client, tenant, userId, input, { dryRun
   const tracked = await batchTracked(client, tenant.businessId, ids);
 
   const lines = [];
+  let typedDiscountPaise = 0; let typedGrossPaise = 0;
   for (const raw of items) {
     const quantity = toQuantity(raw.quantity);
     if (!(quantity > 0)) throw new PharmacyError(400, 'Each line needs a quantity above zero');
@@ -73,9 +83,17 @@ export const createPharmacySale = async (client, tenant, userId, input, { dryRun
     if (!product) throw new PharmacyError(400, `Product ${raw.product_id} not found`);
     if (product.status !== 'ACTIVE') throw new PharmacyError(400, `${product.name} is archived`);
     const tr = tracked.get(product.product_id) || {};
+    // a prescription medicine is sold only after the prescription has been checked (the till says so in the request); this holds offline too
+    if (!dryRun && tr.prescription_required && input.prescription_checked !== true) throw new PharmacyError(400, `${product.name} needs a prescription: check it before selling`, { code: 'PRESCRIPTION_NOT_CHECKED' });
     const unitPricePaise = raw.unit_price != null ? toPaise(raw.unit_price) : Number(product.selling_price_paise);
     const taxRate = Number(product.tax_rate);
     const discountPaise = raw.discount != null ? toPaise(raw.discount) : 0;
+    if (unitPricePaise < 0) throw new PharmacyError(400, 'The price cannot be negative');
+    if (discountPaise < 0) throw new PharmacyError(400, 'A discount cannot be negative');
+    if (discountPaise > Math.round(quantity * unitPricePaise)) throw new PharmacyError(400, 'The discount cannot be more than the price of the item');
+    // what was typed in (a discount, or a price below the shelf price) against what is being sold, for the manager-approval cap (modules/approvals.js)
+    typedDiscountPaise += discountPaise + Math.round(Math.max(0, Number(product.selling_price_paise) - unitPricePaise) * quantity);
+    typedGrossPaise += Math.round(quantity * Math.max(Number(product.selling_price_paise), unitPricePaise));
 
     let pickedBatches = [];
     if (product.track_inventory && (tr.batch_tracking || tr.expiry_tracking)) {
@@ -87,13 +105,15 @@ export const createPharmacySale = async (client, tenant, userId, input, { dryRun
         pickedBatches = [{ batch_id: batch.batch_id, qty: quantity }];
       } else {
         const { allocations, unbatched } = await allocateBatches(client, { branchId: tenant.branchId, productId: product.product_id, qty: quantity, fefo: settings.fefo, today: date });
-        if (unbatched > 1e-9 && settings.negative_stock === 'BLOCK') throw new PharmacyError(409, `Not enough stock for ${product.name} (short by ${unbatched})`);
+        if (unbatched > 1e-9 && settings.negative_stock === 'BLOCK' && !offline) throw new PharmacyError(409, `Not enough stock for ${product.name} (short by ${unbatched})`);
+        if (unbatched > 1e-9 && offline) flags.push(`${product.name}: ${unbatched} more sold than the batches held`);
         pickedBatches = allocations;
       }
     } else if (product.track_inventory && !input.allowNegativeStock) {
       const row = await lockBranchStock(client, tenant.branchId, product.product_id);
       const available = q3(Number(row.quantity) - Number(row.reserved_qty));
-      if (available < quantity - 1e-9 && settings.negative_stock === 'BLOCK') throw new PharmacyError(409, `Not enough stock for ${product.name} (${available} left here)`);
+      if (available < quantity - 1e-9 && settings.negative_stock === 'BLOCK' && !offline) throw new PharmacyError(409, `Not enough stock for ${product.name} (${available} left here)`);
+      if (available < quantity - 1e-9 && offline) flags.push(`${product.name}: ${q3(quantity - Math.max(0, available))} more sold than the shelf held`);
     }
 
     const tax = computeLineTax({ quantity, unitPricePaise, discountPaise, taxRatePercent: business.gst_enabled ? taxRate : 0, gstEnabled: business.gst_enabled, interState });
@@ -102,8 +122,17 @@ export const createPharmacySale = async (client, tenant, userId, input, { dryRun
 
   const invoiceDiscountPaise = input.discount != null ? toPaise(input.discount) : 0;
   const totals = sumLines(lines.map((l) => l.tax));
+  if (invoiceDiscountPaise < 0) throw new PharmacyError(400, 'A discount cannot be negative');
+  if (invoiceDiscountPaise > totals.total_paise) throw new PharmacyError(400, 'The discount cannot be more than the bill');
+  if (input.discountPolicy && typedDiscountPaise + invoiceDiscountPaise > 0) await input.discountPolicy.check({ discountPaise: typedDiscountPaise + invoiceDiscountPaise, grossPaise: typedGrossPaise });
   totals.discount_paise = lines.reduce((s, l) => s + l.discountPaise, 0) + invoiceDiscountPaise;
   totals.total_paise = Math.max(0, totals.total_paise - invoiceDiscountPaise);
+
+  // the phone showed the customer a total; if the server's price (changed since the phone last synced) comes to something else, say so for review
+  if (offline && input.expected_total != null && Math.abs(toPaise(input.expected_total) - totals.total_paise) > 100) {
+    flags.push(`the phone showed ₹${input.expected_total}, the server priced it at ₹${toRupees(totals.total_paise)}`);
+  }
+  const billNotes = [input.notes || null, offline ? `Taken offline${flags.length ? `. Check: ${flags.join('; ')}` : ''}` : null].filter(Boolean).join(' | ') || null;
 
   const plan = plannedPayments(input, totals.total_paise);
   const paidPaise = plan.reduce((s, p) => s + p.amountPaise, 0);
@@ -125,9 +154,9 @@ export const createPharmacySale = async (client, tenant, userId, input, { dryRun
 
   const invoiceNumber = await nextInvoiceNumber(client, tenant.businessId, tenant.branchId);
   const invoice = (await client.query(
-    `INSERT INTO invoices (business_id, branch_id, customer_id, invoice_number, invoice_date, subtotal_paise, discount_paise, cgst_paise, sgst_paise, igst_paise, tax_paise, total_paise, amount_paid_paise, balance_due_paise, payment_status, status, notes, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'ISSUED',$16,$17) RETURNING *`,
-    [tenant.businessId, tenant.branchId, customer?.customer_id ?? null, invoiceNumber, date, totals.subtotal_paise, totals.discount_paise, totals.cgst_paise, totals.sgst_paise, totals.igst_paise, totals.tax_paise, totals.total_paise, paidPaise, Math.max(0, totals.total_paise - paidPaise), paymentStatus(totals.total_paise, paidPaise), input.notes || null, userId])).rows[0];
+    `INSERT INTO invoices (business_id, branch_id, customer_id, invoice_number, invoice_date, subtotal_paise, discount_paise, cgst_paise, sgst_paise, igst_paise, tax_paise, total_paise, amount_paid_paise, balance_due_paise, payment_status, status, notes, created_by, client_key)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'ISSUED',$16,$17,$18) RETURNING *`,
+    [tenant.businessId, tenant.branchId, customer?.customer_id ?? null, invoiceNumber, date, totals.subtotal_paise, totals.discount_paise, totals.cgst_paise, totals.sgst_paise, totals.igst_paise, totals.tax_paise, totals.total_paise, paidPaise, Math.max(0, totals.total_paise - paidPaise), paymentStatus(totals.total_paise, paidPaise), billNotes, userId, input.clientKey || null])).rows[0];
 
   for (const l of lines) {
     await client.query(
@@ -151,6 +180,7 @@ export const createPharmacySale = async (client, tenant, userId, input, { dryRun
       total: toRupees(totals.total_paise), amount_paid: toRupees(paidPaise), balance_due: toRupees(Math.max(0, totals.total_paise - paidPaise)),
       payment_status: invoice.payment_status
     },
+    review: flags,
     lines: lines.map((l) => ({
       product_id: l.product.product_id, name: l.product.name, quantity: l.quantity, unit_price: toRupees(l.unitPricePaise),
       discount: toRupees(l.discountPaise), tax: toRupees(l.tax.tax_paise), line_total: toRupees(l.tax.line_total_paise),

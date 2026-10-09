@@ -23,6 +23,7 @@ export const PERMISSION_INFO = {
   payments:  { label: 'Payments', description: 'See all payments and record standalone ones.' },
   expenses:  { label: 'Expenses', description: 'Record and edit operating expenses.' },
   refunds:   { label: 'Refunds', description: 'Refund money on an invoice.' },
+  approvals: { label: 'Approve cancellations and large discounts', description: 'Allow a bill to be cancelled, or a discount above the business\'s limit, by entering a PIN at the till. Set your PIN in Security.' },
   reports:   { label: 'Reports and profit', description: 'Sales, profitability, forecasts and kitchen performance.' },
   gst:       { label: 'GST reports', description: 'GST summaries and HSN breakdowns.' },
   export:    { label: 'Export data', description: 'Download the activity log as a file.' },
@@ -52,6 +53,12 @@ export const PERMISSIONS = Object.keys(PERMISSION_INFO);
 export const roleDefaults = (role) => {
   const base = ROLE_PERMISSIONS[role] || [];
   return Object.fromEntries(PERMISSIONS.map((p) => [p, base.includes('*') || base.includes(p)]));
+};
+
+/** What one person can actually do, as a plain {permission: true/false} map: the role's defaults with their own overrides on top. The mobile app uses it to show only what a person may use. */
+export const effectivePermissions = (role, overrides = {}) => {
+  const defaults = roleDefaults(role);
+  return Object.fromEntries(PERMISSIONS.map((key) => [key, typeof overrides?.[key] === 'boolean' ? overrides[key] : defaults[key]]));
 };
 
 /** The full picture for one person: default, override and the result. */

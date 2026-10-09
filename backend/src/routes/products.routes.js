@@ -22,7 +22,8 @@ router.delete('/categories/:id', ...write, categories.remove);
 router.get('/products', ...authed, read, products.list);
 router.get('/products/barcode/:barcode', ...authed, read, products.findByBarcode);
 router.get('/products/lookup/:code', ...authed, read, products.lookup);
-router.get('/products/pos-catalog', ...authed, read, products.posCatalog);
+// a field rep (sales_orders) keeps the catalogue on the phone too, to take an order with no signal; a warehouse worker (fulfilment) to scan items while picking
+router.get('/products/pos-catalog', ...authed, requireAnyPermission('products', 'billing', 'sales_orders', 'fulfilment'), products.posCatalog);
 router.post('/products/quick', requireAuth, withBusiness({ requireActive: true }), requirePermission('billing'), requirePermission('product_quick_add'), requireOutlet, idempotent(), products.quickCreate);
 router.get('/products/:id', ...authed, read, products.get);
 router.get('/products/:id/identifiers', ...authed, read, identity.identifiers);

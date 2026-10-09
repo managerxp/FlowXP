@@ -39,7 +39,9 @@ app.use((req, res, next) => {
   res.on('finish', () => {
     if (req.path === '/health' || req.path === '/ready') return;
     if (!config.isProduction && res.statusCode < 400) return;   // quiet in development unless something is wrong
-    console.log(JSON.stringify({ t: new Date().toISOString(), id, method: req.method, path: req.path, status: res.statusCode, ms: Math.round(Number(process.hrtime.bigint() - started) / 1e6) }));
+    // the route's pattern (/public/menu/:token), never the real address: links to a menu, a bill or a webhook carry a secret that must not sit in a log file
+    const where = req.route ? `${req.baseUrl}${typeof req.route.path === 'string' ? req.route.path : ''}` : '(no route)';
+    console.log(JSON.stringify({ t: new Date().toISOString(), id, method: req.method, path: where, status: res.statusCode, ms: Math.round(Number(process.hrtime.bigint() - started) / 1e6) }));
   });
   next();
 });
@@ -80,6 +82,9 @@ app.use((req, res, next) => {
 /* verify stashes the raw bytes for webhook signature checks (Cashfree signs
    the raw body; the re-serialised JSON is not guaranteed to match it byte for byte). */
 app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
+/* A NUL character cannot be stored in a text column (the database refuses the whole request), and no honest customer name, note or address contains one. Dropped from every string in the body. */
+const dropNul = (v) => (typeof v === 'string' ? v.replaceAll(String.fromCharCode(0), '') : Array.isArray(v) ? v.map(dropNul) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, dropNul(x)])) : v);
+app.use((req, _res, next) => { if (req.body && typeof req.body === 'object') req.body = dropNul(req.body); next(); });
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 /* /health: the process is up (a container restarts if this fails).
@@ -108,6 +113,9 @@ app.use((error, _req, res, _next) => {
   // a body that isn't valid JSON, or is too large, is the caller's mistake
   if (error?.type === 'entity.parse.failed') return res.status(400).json({ success: false, message: 'That request was not valid JSON' });
   if (error?.type === 'entity.too.large') return res.status(413).json({ success: false, message: 'That request is too large' });
+  if (error?.name === 'InputError') return res.status(400).json({ success: false, message: error.message });
+  // text the database cannot hold (a stray byte, an unsupported character) is the caller's input too
+  if (['22021', '22P05'].includes(error?.code)) return res.status(400).json({ success: false, message: 'One of the values contains a character that cannot be saved' });
   console.error('[server] unhandled:', error);
   res.status(500).json({ success: false, message: 'Something went wrong' });
 });
@@ -124,7 +132,7 @@ const start = async () => {
   const server = app.listen(config.port, () => {
     console.log(`[server] FlowXP API on http://localhost:${config.port}`);
   });
-  if (process.env.WORKER_ENABLED !== 'false') startWorker();
+  if (process.env.WORKER_ENABLED !== 'false') startWorker(Number(process.env.WORKER_INTERVAL_MS) || 30000);
 
   /* Finish in-flight requests before dying, so a deploy does not truncate
      someone's invoice mid-write. */

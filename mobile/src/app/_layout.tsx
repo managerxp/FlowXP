@@ -2,8 +2,10 @@ import { useEffect } from 'react';
 import { Text, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { restoreSession } from '../lib/session.ts';
+import { restoreSession, useSession } from '../lib/session.ts';
+import { installAlerts, syncAlerts } from '../lib/push.ts';
 import { installCrashReporting, reportError } from '../lib/crash.ts';
+import { installLocation } from '../lib/locate.ts';
 import { Button, color } from '../lib/ui.tsx';
 import { loadLanguage } from '../lib/lang.tsx';
 import { t, useLang } from '../lib/i18n.ts';
@@ -26,7 +28,10 @@ export const unstable_settings = { initialRouteName: 'index' };
 
 export default function Layout() {
   const lang = useLang();
-  useEffect(() => { installCrashReporting(); void loadLanguage(); void restoreSession(); }, []);
+  const { ready, token } = useSession();
+  // once someone is signed in: keep this phone on the list for alerts, or ask once
+  useEffect(() => { if (ready && token) void syncAlerts(); }, [ready, token]);
+  useEffect(() => { installCrashReporting(); installLocation(); installAlerts(); void loadLanguage(); void restoreSession(); }, []);
   return (
     <>
       <StatusBar style="dark" />

@@ -44,8 +44,10 @@ export const takeSale = async (
 /* What the outbox sends for one queued sale: the SAME body as the first attempt (the server's duplicate guard compares bodies), with the
    fact that it was taken offline, and the day, in headers. */
 export const sendEntry = (api: Api) => async (e: Entry) => {
-  const invoice = await api.post<{ invoice_id: number; invoice_number: string }>('/invoices', e.body, {
+  const out = await api.post<{ invoice_id?: number; invoice_number?: string; invoice?: { invoice_id: number; invoice_number: string }; review?: string[] }>(e.path || '/invoices', e.body, {
     idempotencyKey: e.id, headers: { 'X-Offline-Sale': '1', 'X-Sale-Date': dayOf(e.taken_at) }
   });
-  return { invoice_id: invoice.invoice_id, invoice_number: invoice.invoice_number };
+  // the pharmacy till answers { invoice, review }, the ordinary till answers the invoice itself
+  const invoice = out.invoice ?? { invoice_id: out.invoice_id!, invoice_number: out.invoice_number! };
+  return { invoice_id: invoice.invoice_id, invoice_number: invoice.invoice_number, review: out.review?.length ? `Check: ${out.review.join('; ')}` : null };
 };

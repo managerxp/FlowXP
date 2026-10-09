@@ -19,6 +19,10 @@ export type Product = {
   product_id: number; name: string; sku: string | null; barcodes: string[]; unit: string | null;
   selling_price: number; mrp: number | null; tax_rate: number; track_inventory: boolean; current_stock: number | null;
   category_name: string | null; is_available: boolean; modifier_group_ids: number[];
+  /** Only a pharmacy's medicines: what it is, and whether it needs a prescription or keeps batches and use-by dates. */
+  /** Only a wholesaler's products: the wholesale price, the minimum order and the carton sizes. */
+  wholesale?: { wholesale_price: number | null; moq: number; sale_unit: string | null; units: { unit_name: string; factor: number }[] } | null;
+  pharmacy?: { manufacturer: string | null; strength: string | null; dosage_form: string | null; salt_composition: string | null; schedule_class: string | null; prescription_required: boolean; batch_tracking: boolean; expiry_tracking: boolean } | null;
 };
 
 export const SCHEMA = `
@@ -43,10 +47,10 @@ const putCustomer = (db: Db, c: LocalCustomer) => db.run(`INSERT OR REPLACE INTO
    the server prices the sale, so the bill is right either way. */
 /* Bump this when what the phone keeps changes shape (or what the server sends changes meaning): every phone then downloads the catalogue
    once more. 2 = ingredients and packaging are no longer in the product list. */
-const COPY_VERSION = '3';   // 3 = customers are kept on the phone too
+const COPY_VERSION = '5';   // 3 = customers are kept on the phone too; 4 = a pharmacy's medicines carry their details; 5 = a wholesaler's products carry their wholesale details
 const GROUPS_FRESH_MS = 10 * 60 * 1000;
 
-const textOf = (p: Product) => `${p.name} ${p.sku || ''} ${(p.barcodes || []).join(' ')} ${p.category_name || ''}`.toLowerCase();
+const textOf = (p: Product) => `${p.name} ${p.sku || ''} ${(p.barcodes || []).join(' ')} ${p.category_name || ''} ${p.pharmacy?.salt_composition || ''} ${p.pharmacy?.manufacturer || ''}`.toLowerCase();
 const like = (w: string) => `%${w.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
 type Change = { entity: 'product' | 'category' | 'customer'; op: 'upsert' | 'delete'; id: number; row?: Product & LocalCustomer };

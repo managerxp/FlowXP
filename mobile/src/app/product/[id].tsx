@@ -4,8 +4,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, NetworkError, newKey } from '../../lib/api.ts';
 import { useScope } from '../../lib/local.ts';
-import { api, useSession } from '../../lib/session.ts';
+import { api, currentBusiness, useSession } from '../../lib/session.ts';
 import { refreshCounts, syncAll } from '../../lib/sync.ts';
+import { withCheck } from '../../lib/conflicts.ts';
 import { goBack } from '../../lib/nav.ts';
 import { useLoad } from '../../lib/useLoad.ts';
 import type { ProductFull } from '../../lib/types.ts';
@@ -52,7 +53,8 @@ export default function ProductDetail() {
     catch (e) {
       if (!(e instanceof NetworkError) || !scope) throw e;
       // no internet: keep the change on this phone, show it on the till at once, and send it later
-      const kept = await scope.actions.add({ id: newKey(), label: `Price of ${p?.name ?? 'item'} to ${v}`, method: 'PATCH', path: `/products/${id}`, body });
+      // remember the price this phone saw, so a change made on another device in the meantime is noticed rather than overwritten
+      const kept = await scope.actions.add({ id: newKey(), label: `Price of ${p?.name ?? 'item'} to ${v}`, method: 'PATCH', path: `/products/${id}`, body: p ? withCheck(body, { kind: 'price', product_id: Number(id), seen: p.selling_price, mine: v }) : body });
       if (!kept) throw new Error('Too many changes are waiting on this phone. Connect to the internet so they can be sent.');
       await scope.catalog.setLocal(Number(id), { selling_price: v }); await refreshCounts();
       setPrice(''); setMessage('No internet. The new price is saved on this phone and used on new bills. It will be sent when you are online.');
@@ -97,6 +99,8 @@ export default function ProductDetail() {
               {p.purchase_price > 0 ? <Line left="Cost price" right={money(p.purchase_price)} /> : null}
               {p.track_inventory ? <Line left="In stock here" right={`${qty(p.current_stock)} ${p.unit ?? ''}`} sub={`Reorder level ${qty(p.min_stock)}`} /> : <Line left="Stock" right="Not counted" />}
               {p.barcode ? <Line left="Barcode" right={p.barcode} /> : null}
+
+              {currentBusiness(session)?.business_type === 'PHARMACY' ? <View style={{ paddingHorizontal: 16, paddingTop: 12 }}><Button title="Edit medicine details" onPress={() => router.push({ pathname: '/medicine/[id]', params: { id: String(id) } })} /></View> : null}
 
               <SectionTitle>Change the price</SectionTitle>
               <View style={{ paddingHorizontal: 16, gap: 8 }}>

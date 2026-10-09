@@ -11,15 +11,17 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import pool from '../config/database.js';
-import { requireAuth, withBusiness, requireOwner, requirePermission, clearSessionCookie } from '../middleware/auth.js';
+import { requireAuth, withBusiness, requireOwner, requirePermission, requireAnyPermission, clearSessionCookie } from '../middleware/auth.js';
 import * as auth from '../controllers/auth.controller.js';
 import * as oauth from '../controllers/oauth.controller.js';
 import * as security from '../controllers/security.controller.js';
+import * as approvals from '../controllers/approvals.controller.js';
 import * as business from '../controllers/business.controller.js';
 import * as dashboard from '../controllers/dashboard.controller.js';
 import * as siteAssistant from '../controllers/siteAssistant.controller.js';
 import * as webhooks from '../controllers/webhooks.controller.js';
 import * as contact from '../controllers/contact.controller.js';
+import * as deletion from '../controllers/accountDeletion.controller.js';
 import productsRoutes from './products.routes.js';
 import menuRoutes from './menu.routes.js';
 import brandsRoutes from './brands.routes.js';
@@ -91,6 +93,7 @@ const loginLimiter = limiter(20, 15, 'Too many attempts. Try again in a few minu
 const signupLimiter = limiter(5, 60, 'Too many accounts created from here. Try again later.');
 const resetLimiter = limiter(5, 60, 'Too many reset requests. Try again later.');
 const contactLimiter = limiter(5, 60, 'Too many messages sent. Try again later.');
+const deletionLimiter = limiter(5, 60, 'Too many requests from here. Try again later.');
 /* The website chat calls the AI provider, which costs money per message: generous for a person, tight for a script. */
 const appErrorLimiter = limiter(30, 15, 'Too many reports from here.');
 const assistantLimiter = limiter(30, 15, 'Too many questions in a short time. Try again in a few minutes.');
@@ -109,6 +112,9 @@ router.post('/auth/resend-email-otp', loginLimiter, auth.resendEmailOtp);
 router.post('/auth/forgot-password', resetLimiter, auth.forgotPassword);
 router.post('/auth/reset-password', resetLimiter, auth.resetPassword);
 router.post('/contact', contactLimiter, contact.send);
+// deleting an account: yourself when signed in, or a request when you cannot sign in (nothing is deleted from the public one until support has checked who is asking)
+router.post('/auth/delete-account', requireAuth, loginLimiter, deletion.deleteMe);
+router.post('/public/account-deletion', deletionLimiter, deletion.publicRequest);
 router.post('/public/assistant', assistantLimiter, siteAssistant.ask);
 
 /* The public pricing page reads this. Prices live in the database so they can
@@ -148,6 +154,12 @@ router.post('/auth/2fa/recovery-codes', requireAuth, loginLimiter, security.newC
 router.post('/auth/change-password', requireAuth, loginLimiter, security.changePassword);
 router.post('/auth/sign-out-everywhere', requireAuth, security.signOutEverywhere);
 router.get('/auth/login-history', requireAuth, security.loginHistory);
+/* Manager approval: a manager's PIN lets a cashier cancel a bill or give a large discount (modules/approvals.js). */
+router.get('/auth/approval-pin', requireAuth, approvals.pinStatus);
+router.put('/auth/approval-pin', requireAuth, loginLimiter, approvals.setPin);
+router.delete('/auth/approval-pin', requireAuth, loginLimiter, approvals.clearPin);
+router.get('/approvals', requireAuth, withBusiness(), requireAnyPermission('billing', 'settings'), approvals.get);
+router.put('/approvals', requireAuth, withBusiness({ requireActive: true }), requirePermission('settings'), approvals.update);
 router.get('/security/team', requireAuth, withBusiness(), requirePermission('settings'), security.team);
 router.put('/security/policy', requireAuth, withBusiness({ requireActive: true }), requireOwner, security.setPolicy);
 router.post('/businesses', requireAuth, business.createBusiness);

@@ -31,7 +31,8 @@ export const SCHEMA = `
     attempts INTEGER NOT NULL DEFAULT 0,
     error TEXT,
     invoice_id INTEGER,
-    invoice_number TEXT
+    invoice_number TEXT,
+    path TEXT                           -- where it is sent (null = the ordinary till, /invoices)
   );
   CREATE INDEX IF NOT EXISTS idx_outbox_state ON outbox (state, n);
 `;
@@ -39,12 +40,12 @@ export const SCHEMA = `
 export type Preview = { lines: { name: string; quantity: number; unitPricePaise: number }[]; subtotalPaise: number; taxPaise: number; totalPaise: number; method: string };
 export type Entry = {
   n: number; id: string; local_no: string; body: Record<string, unknown>; preview: Preview; taken_at: number;
-  state: 'pending' | 'failed' | 'sent'; attempts: number; error: string | null; invoice_id: number | null; invoice_number: string | null;
+  state: 'pending' | 'failed' | 'sent'; attempts: number; error: string | null; invoice_id: number | null; invoice_number: string | null; path: string | null;
 };
 type Row = Omit<Entry, 'body' | 'preview'> & { body: string; preview: string };
 const entry = (r: Row): Entry => ({ ...r, body: JSON.parse(r.body), preview: JSON.parse(r.preview) });
 
-export type Sent = { invoice_id: number; invoice_number: string };
+export type Sent = { invoice_id: number; invoice_number: string; review?: string | null };
 export type Flushed = { sent: number; failed: number; stopped: null | 'offline' | 'server' | 'auth' };
 
 const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -72,12 +73,12 @@ export const createOutbox = (db: Db, { now = () => Date.now() }: { now?: () => n
 
   return {
     /** Keep a sale for later. Resolves to null when the queue is full. The same id twice is still one sale. */
-    add: async ({ id, body, preview }: { id: string; body: Record<string, unknown>; preview: Preview }): Promise<Entry | null> => {
+    add: async ({ id, body, preview, path = null }: { id: string; body: Record<string, unknown>; preview: Preview; path?: string | null }): Promise<Entry | null> => {
       const existing = (await db.all<Row>(`SELECT * FROM outbox WHERE id = ?`, [id]))[0];
       if (existing) return entry(existing);
       if ((await unsent()) >= MAX_UNSENT) return null;
       const localNo = await nextLocalNo();
-      await db.run(`INSERT INTO outbox (id, local_no, body, preview, taken_at) VALUES (?,?,?,?,?)`, [id, localNo, JSON.stringify(body), JSON.stringify(preview), now()]);
+      await db.run(`INSERT INTO outbox (id, local_no, body, preview, taken_at, path) VALUES (?,?,?,?,?,?)`, [id, localNo, JSON.stringify(body), JSON.stringify(preview), now(), path]);
       return entry((await db.all<Row>(`SELECT * FROM outbox WHERE id = ?`, [id]))[0]);
     },
 
@@ -109,7 +110,8 @@ export const createOutbox = (db: Db, { now = () => Date.now() }: { now?: () => n
           await db.run(`UPDATE outbox SET attempts = attempts + 1 WHERE id = ?`, [e.id]);
           try {
             const result = await send(e);
-            await db.run(`UPDATE outbox SET state = 'sent', error = NULL, invoice_id = ?, invoice_number = ? WHERE id = ?`, [result.invoice_id, result.invoice_number, e.id]);
+            // a sale the server accepted but wants a person to look at (short stock, a price that changed) keeps that note on the sent entry
+            await db.run(`UPDATE outbox SET state = 'sent', error = ?, invoice_id = ?, invoice_number = ? WHERE id = ?`, [result.review || null, result.invoice_id, result.invoice_number, e.id]);
             sent++;
           } catch (error) {
             if (error instanceof NetworkError) { stopped = 'offline'; break; }

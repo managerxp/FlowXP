@@ -26,6 +26,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChefHat, CheckCircle2, ClipboardList, CloudOff, Minus, PackagePlus, Pause, Plus, Printer, ScanLine, Search, Split, Trash2, UserRound, X } from 'lucide-react';
 import { api, formatCurrency, NetworkError } from '../../lib/api.js';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
+import { withApproval } from '../../lib/approval.js';
 import ModifierPicker, { needsChoices, useModifierGroups } from '../../components/ModifierPicker.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Alert, Button, Input, Modal, Select, humanize, useToast, useDialog } from '../../components/ui.jsx';
@@ -637,7 +638,7 @@ const BillingPage = () => {
           const kot = await api(`/orders/${orderId}/kot`, { method: 'POST', body: {} });
           if (getDevicePrefs().autoPrintKot) printKotSlip(kot.kot_id);
         }
-        invoice = await api(`/orders/${orderId}/bill`, { method: 'POST', idempotencyKey: idem.get(), body: { ...extras, ...pay, ...(offersOn ? { apply_promotions: true } : {}) } });
+        invoice = await withApproval(dialog, (approval) => api(`/orders/${orderId}/bill`, { method: 'POST', idempotencyKey: idem.get(), body: { ...extras, ...pay, ...(offersOn ? { apply_promotions: true } : {}), ...(approval ? { approval } : {}) } }), idem.settle);
         loadOpenOrders();
       } else {
       const items = cart.map((l) => l.custom
@@ -655,7 +656,7 @@ const BillingPage = () => {
       };
       // the QR step records the UPI payment once the customer has paid
       const body = { ...payload, ...pay, ...(sending ? { send_to_kitchen: true } : {}) };
-      invoice = await api('/invoices', { method: 'POST', idempotencyKey: idem.get(), body });
+      invoice = await withApproval(dialog, (approval) => api('/invoices', { method: 'POST', idempotencyKey: idem.get(), body: approval ? { ...body, approval } : body }), idem.settle);
       if (invoice.order && getDevicePrefs().autoPrintKot) printKotSlip(invoice.order.kot_id);
       }
       idem.settle();

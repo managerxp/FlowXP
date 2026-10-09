@@ -39,6 +39,8 @@ export const fakeServer = (products: Product[] = [], { pageSize = 1000 }: { page
     hang: false,                         // never answers (until the request's signal aborts)
     sales: [] as Sale[],
     calls: [] as string[],
+    visits: new Set<string>(),            // the visits the field server has been told about, by the phone's own reference
+    review: [] as string[],               // what the pharmacy till says a person should check on an offline sale
     lostReplies: 0,                      // the next N sales are made but the reply never arrives (signal dropped just after)
     groups: [] as unknown[],             // GET /modifier-groups
     groupsDown: false,                   // that one call fails
@@ -75,10 +77,21 @@ export const fakeServer = (products: Product[] = [], { pageSize = 1000 }: { page
         if (state.lostReplies > 0) { state.lostReplies--; throw new TypeError('Network request failed'); }
         return json(201, { success: true, data: {} });
       }
+      if (/^\/products\/\d+$/.test(url) && (init.method ?? 'GET') === 'GET') { const p = state.products.get(Number(url.split('/')[2])); return p ? json(200, { success: true, data: p }) : json(404, { success: false, message: 'Not found' }); }
       if (/^\/products\/\d+$/.test(url) && init.method === 'PATCH') {
         const id = Number(url.split('/')[2]); const b = JSON.parse(String(init.body)); const p = state.products.get(id);
         if (!p) return json(404, { success: false, message: 'Not found' });
         state.applied.push({ path: url, body: b, key: headers['Idempotency-Key'] }); state.products.set(id, { ...p, selling_price: b.selling_price }); touch(id); return json(200, { success: true, data: {} });
+      }
+      if (init.method === 'POST' && (['/distributor/visits', '/wholesale/orders', '/wholesale/receipts'].includes(url) || /^\/distributor\/vehicles\/\d+\/sell$/.test(url))) {
+        const key = headers['Idempotency-Key']; const b = JSON.parse(String(init.body));
+        if (url !== '/distributor/visits' && b.visit_ref && !state.visits.has(b.visit_ref)) return json(400, { success: false, message: 'That visit was not found' });
+        const refusal = state.refuse.get(key);
+        if (refusal) return json(refusal.status, { success: false, message: refusal.message });
+        if (!state.applied.some((a) => a.key === key)) { state.applied.push({ path: url, body: b, key, headers } as never); if (url === '/distributor/visits') state.visits.add(b.client_ref); }
+        const n = state.applied.findIndex((a) => a.key === key) + 1;
+        if (state.lostReplies > 0) { state.lostReplies--; throw new TypeError('Network request failed'); }
+        return json(201, { success: true, data: /\/sell$/.test(url) ? { order_id: n, invoice_id: n, invoice_number: `INV-${n}`, review: state.review } : url === '/distributor/visits' ? { visit_id: n } : url === '/wholesale/orders' ? { order_id: n, order_number: `SO-${n}` } : { receipt_id: n, receipt_number: `RC-${n}`, allocated: b.amount, advance: 0 } });
       }
       if (url === '/modifier-groups') return state.groupsDown ? json(500, { success: false, message: 'boom' }) : json(200, { success: true, data: state.groups });
       if (url === '/retail/promotions/preview') {
@@ -112,19 +125,21 @@ export const fakeServer = (products: Product[] = [], { pageSize = 1000 }: { page
         const more = raw.length === limit;
         return json(200, { success: true, data: { changes, next: more ? raw[raw.length - 1].seq : Math.max(head(), raw.length ? raw[raw.length - 1].seq : since), has_more: more } });
       }
-      if (url === '/invoices' && init.method === 'POST') {
+      if ((url === '/invoices' || url === '/pharmacy/pos/invoices') && init.method === 'POST') {
+        const pharmacy = url === '/pharmacy/pos/invoices';
         const key = headers['Idempotency-Key'];
         const body = JSON.parse(String(init.body));
         const before = state.sales.find((s) => s.key === key);
         if (before) {
           if (JSON.stringify(before.body) !== JSON.stringify(body)) return json(422, { success: false, message: 'This Idempotency-Key was already used for a different request' });
-          return json(201, { success: true, data: { invoice_id: before.invoice_id, invoice_number: before.invoice_number } });
+          return json(201, { success: true, data: pharmacy ? { invoice: { invoice_id: before.invoice_id, invoice_number: before.invoice_number }, review: [] } : { invoice_id: before.invoice_id, invoice_number: before.invoice_number } });
         }
         const refusal = state.refuse.get(key);
         if (refusal) return json(refusal.status, { success: false, message: refusal.message });
         const sale: Sale = { invoice_id: state.sales.length + 1, invoice_number: `INV-${String(state.sales.length + 1).padStart(4, '0')}`, key, headers, body };
         state.sales.push(sale);
         if (state.lostReplies > 0) { state.lostReplies--; throw new TypeError('Network request failed'); }
+        if (pharmacy) return json(201, { success: true, data: { invoice: { invoice_id: sale.invoice_id, invoice_number: sale.invoice_number }, review: state.review } });
         const kitchen = body.send_to_kitchen === true && headers['X-Offline-Sale'] !== '1';
         return json(201, { success: true, data: { invoice_id: sale.invoice_id, invoice_number: sale.invoice_number, ...(kitchen ? { order: { order_number: `ORD-${String(sale.invoice_id).padStart(4, '0')}` } } : {}) } });
       }

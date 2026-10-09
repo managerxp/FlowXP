@@ -67,7 +67,7 @@ export const loadVehicle = async (client, { businessId, vehicle, items, userId, 
 };
 
 /** Take `qty` base units of a product off the van, soonest expiry first, skipping expired batches. Returns [{ stock_id, batch_id, qty }]. */
-export const takeFromVehicle = async (client, { vehicleId, productId, qty, today, productName = 'that product' }) => {
+export const takeFromVehicle = async (client, { vehicleId, productId, qty, today, productName = 'that product', allowShort = false }) => {
   const rows = (await client.query(
     `SELECT s.stock_id, s.batch_id, s.qty_base FROM dist_vehicle_stock s LEFT JOIN wholesale_batches b ON b.batch_id = s.batch_id
      WHERE s.vehicle_id = $1 AND s.product_id = $2 AND s.qty_base > 0 AND (b.expiry_date IS NULL OR b.expiry_date >= $3::date)
@@ -79,8 +79,9 @@ export const takeFromVehicle = async (client, { vehicleId, productId, qty, today
     taken.push({ stock_id: r.stock_id, batch_id: r.batch_id, qty: q3(take) });
     left = q3(left - take);
   }
-  if (left > 1e-9) throw new WholesaleError(409, `Only ${q3(qty - left)} of ${productName} is on this van`);
-  return taken;
+  // a sale made with no signal is already done: take what the van holds and say how much more was sold than the system knew of
+  if (left > 1e-9 && !allowShort) throw new WholesaleError(409, `Only ${q3(qty - left)} of ${productName} is on this van`);
+  return Object.assign(taken, { short: left > 1e-9 ? q3(left) : 0 });
 };
 
 /** Record that `taken` left the van in a sale. */

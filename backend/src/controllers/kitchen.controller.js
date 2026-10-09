@@ -6,6 +6,7 @@
  * station on the client so a single poll serves every screen in the kitchen.
  */
 import pool from '../config/database.js';
+import { notify } from '../modules/notifications.js';
 import { componentLabels, loadCombos } from '../modules/combos.js';
 import { stationScope } from '../modules/stations.js';
 import { recordAudit } from '../modules/events.js';
@@ -115,6 +116,23 @@ export const printableKot = async (req, res) => {
   });
 };
 
+/* When the last dish still cooking on an order is ready, the person who took it hears on their phone: the waiter the table is given to, else whoever opened the order.
+   Fire and forget: a push problem must never hold up the kitchen screen. */
+const tellWaiters = async (businessId, orderIds) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT o.order_id, o.branch_id, o.order_number, o.order_type, COALESCE(o.waiter_user_id, o.created_by) AS who, t.name AS table_name
+       FROM orders o LEFT JOIN dining_tables t ON t.table_id = o.table_id
+       WHERE o.business_id = $1 AND o.order_id = ANY($2::int[]) AND o.status NOT IN ('BILLED','CANCELLED')
+         AND NOT EXISTS (SELECT 1 FROM order_items i WHERE i.order_id = o.order_id AND i.status = 'PREPARING' AND i.sent_at IS NOT NULL)`,
+      [businessId, orderIds]);
+    for (const o of rows) {
+      if (!o.who) continue;
+      await notify(businessId, { category: 'ready', type: 'order_ready', title: `${o.table_name || o.order_number}: ready`, body: 'Everything is ready to take out.', branchId: o.branch_id, userIds: [o.who], channels: { inApp: false, email: false }, urgent: true, route: '/tables' });
+    }
+  } catch (error) { console.error('[push] ready alert failed:', error.message); }
+};
+
 /* POST /api/kitchen/advance { item_ids, status } — move lines through the pass */
 export const advance = async (req, res) => {
   const { item_ids: ids, status } = req.body || {};
@@ -133,6 +151,7 @@ export const advance = async (req, res) => {
     values
   );
   if (!rows.length) return bad(res, 'Nothing to update', 404);
+  if (status === 'READY') tellWaiters(req.tenant.businessId, [...new Set(rows.map((r) => r.order_id))]);
   res.json({ success: true, data: { updated: rows.length } });
 };
 

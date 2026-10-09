@@ -440,6 +440,23 @@ const Dashboard = () => {
   const restaurant = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE', 'RACING'].includes(business.business_type);
   const firstName = String(user?.name || '').split(' ')[0];
 
+  // Waiters and kitchen staff are sent no takings at all (the server leaves the figures out): a greeting and the way to their work.
+  if (!m) {
+    return (
+      <div className="mx-auto flex max-w-3xl flex-col gap-4">
+        <DashboardHeader
+          title={`${greeting()}${firstName ? `, ${firstName}` : ''}`}
+          lead={`${business.name}${activeOutlet?.name ? ` · ${activeOutlet.name}` : ''}`}
+          action={<>
+            {restaurant && <Button to="/app/orders" variant="secondary">Orders</Button>}
+            <Button to="/app/billing"><Plus aria-hidden="true" className="h-4 w-4" />New sale</Button>
+          </>}
+        />
+        {!setup.complete && <Setup setup={setup} />}
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:gap-5 [&>*:first-child]:mb-1">
       <DashboardHeader

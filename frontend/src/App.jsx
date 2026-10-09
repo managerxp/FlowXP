@@ -27,6 +27,7 @@ import { Button, EmptyState, PageLoader } from './components/ui.jsx';
 
 /* The legal pages are long text almost nobody opens on their first visit;
    keeping them out of the entry bundle keeps the landing page fast. */
+const DeleteAccountPage = lazy(() => import('./site/DeleteAccountPage.jsx'));
 const Privacy = lazy(() => import('./site/Legal.jsx').then((m) => ({ default: m.Privacy })));
 const Terms = lazy(() => import('./site/Legal.jsx').then((m) => ({ default: m.Terms })));
 const CookiePolicy = lazy(() => import('./site/Legal.jsx').then((m) => ({ default: m.Cookies })));
@@ -41,6 +42,7 @@ const AdminBusinessDetail = lazy(() => import('./admin/AdminBusinessDetail.jsx')
 const AdminPlans = lazy(() => import('./admin/AdminPlans.jsx'));
 const AdminFeatures = lazy(() => import('./admin/AdminFeatures.jsx'));
 const AdminAddons = lazy(() => import('./admin/AdminAddons.jsx'));
+const AdminDeletions = lazy(() => import('./admin/AdminDeletions.jsx'));
 const AdminSettings = lazy(() => import('./admin/AdminSettings.jsx'));
 const AdminSecurity = lazy(() => import('./admin/AdminSecurity.jsx'));
 
@@ -212,6 +214,7 @@ const App = () => (
       <Route path="integrations" element={<SiteIntegrations />} />
       <Route path="about" element={<AboutPage />} />
       <Route path="contact" element={<ContactPage />} />
+      <Route path="delete-account" element={<Suspense fallback={<PageLoader />}><DeleteAccountPage /></Suspense>} />
       <Route path="pricing" element={<Pricing />} />
       <Route path="privacy" element={<Suspense fallback={<PageLoader />}><Privacy /></Suspense>} />
       <Route path="terms" element={<Suspense fallback={<PageLoader />}><Terms /></Suspense>} />
@@ -379,6 +382,7 @@ const App = () => (
         <Route path="plans" element={<AdminPlans />} />
         <Route path="features" element={<AdminFeatures />} />
         <Route path="addons" element={<AdminAddons />} />
+        <Route path="deletions" element={<AdminDeletions />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="security" element={<AdminSecurity />} />
       </Route>

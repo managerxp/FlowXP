@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, Share, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
@@ -9,6 +10,7 @@ import { useSyncState } from '../lib/sync.ts';
 import { pendingReceiptText, receiptText, type Invoice } from '../lib/receipt.ts';
 import type { Entry } from '../lib/outbox.ts';
 import { rupees } from '../lib/money.ts';
+import { Page } from '../lib/responsive.tsx';
 import { Button, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
 
 /* The bill as FlowXP made it (its number, GST and round-off), or, for a sale still waiting to be sent, the provisional receipt, plainly
@@ -39,15 +41,20 @@ export default function Receipt() {
   const waiting = !invoice && pending && pending.state !== 'sent';
   return (
     <SafeAreaView style={s.screen}>
+      <Page max={560}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
-        <Title>{waiting ? 'Bill saved on this phone' : 'Bill made'}</Title>
+        <View accessibilityLiveRegion="polite" style={{ alignItems: 'center', gap: 4, paddingVertical: 8 }}>
+          <Ionicons name={waiting ? 'cloud-offline-outline' : 'checkmark-circle'} size={56} color={waiting ? color.warn : color.ok} />
+          <Title>{waiting ? 'Bill saved on this phone' : 'Payment received'}</Title>
+          {invoice ? <Text style={{ fontSize: 32, fontWeight: '800', color: color.ink }}>{rupees(Math.round(invoice.total * 100))}</Text> : null}
+        </View>
         {invoice?.order_number ? (
           <View style={[s.card, { alignItems: 'center' }]}>
             <Soft>Token to call out</Soft>
             <Text accessibilityRole="header" style={{ fontSize: 40, fontWeight: '800', color: color.ink }}>{invoice.order_number}</Text>
           </View>
         ) : null}
-        {invoice ? <Soft>{invoice.invoice_number} · {rupees(Math.round(invoice.total * 100))} paid</Soft> : null}
+        {invoice ? <Soft style={{ textAlign: 'center' }}>{`Bill ${invoice.invoice_number}`}</Soft> : null}
         {waiting ? <Soft>{pending.state === 'failed' ? 'FlowXP could not accept this bill. Open Bills, then Waiting to send, to see why.' : 'No internet right now. It will be sent by itself, and gets its real bill number then. You do not need to do anything.'}</Soft> : null}
         {change ? <Text style={{ fontSize: 20, fontWeight: '700', color: color.ok }}>Give back {rupees(Number(change))}</Text> : null}
         {!invoice && !pending && !error ? <ActivityIndicator /> : null}
@@ -57,8 +64,10 @@ export default function Receipt() {
         <Button title={invoice?.table_name ? 'Back to the tables' : 'Next customer: new bill'} onPress={() => router.replace(invoice?.table_name ? '/tables' : '/sell')} />
         {text ? <Button title="Print the bill" kind="quiet" onPress={() => { setPrintError(''); void kvGet('paper').then((p) => printReceipt(text, p === '80' ? '80' : '58')).catch((e: Error) => setPrintError(e.message)); }} /> : null}
         <ErrorText>{printError}</ErrorText>
-        {text ? <Button title="Share the bill" kind="quiet" onPress={() => { void Share.share({ message: text }); }} /> : null}
+        {text ? <Button title="Send the bill" kind="quiet" onPress={() => { void Share.share({ message: text }); }} /> : null}
+        {invoice ? <Button title="Return items" kind="quiet" onPress={() => router.push(['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type ?? '') ? { pathname: '/return-sale', params: { invoice: String(invoiceId) } } : { pathname: '/return', params: { id: String(invoiceId) } })} /> : null}
       </ScrollView>
+      </Page>
     </SafeAreaView>
   );
 }

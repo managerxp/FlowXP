@@ -15,7 +15,7 @@ export const SyncBadge = () => {
   else if (sync.stopped === 'offline') { text = t('No internet. You can keep billing'); tone = color.soft; }
   else if (sync.stopped === 'server') { text = t('FlowXP is not answering. You can keep billing'); tone = color.soft; }
   return (
-    <Pressable accessibilityRole="button" onPress={() => router.push('/waiting')} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, minHeight: 44 }}>
+    <Pressable accessibilityRole="button" onPress={() => router.push('/waiting')} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, minHeight: 48 }}>
       <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: tone }} />
       <Text style={{ color: tone, fontWeight: '600', flex: 1 }}>{text}</Text>
       {sync.busy ? <ActivityIndicator size="small" /> : <Text style={{ color: color.brand, fontWeight: '600' }}>{t('See')}</Text>}

@@ -2,6 +2,7 @@
  * One sales order: where it stands, what is reserved / picked / shipped / back-ordered line by line, the shipments and
  * invoices it produced, and the actions each stage allows (confirm, reserve, pick, cancel, close, print).
  */
+import { OfflineNotice } from '../../components/OfflineFlag.jsx';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ClipboardList, Pencil, Printer } from 'lucide-react';
@@ -186,6 +187,7 @@ const OrderDetail = () => {
             </dl>
             <p className="mt-2 text-caption text-ink-500">An estimate at order prices. Each shipment is invoiced when it is dispatched.</p>
           </Panel>
+          <OfflineNotice offline={o.offline} review={o.review} />
           {o.notes && <Panel title="Notes"><p className="whitespace-pre-line text-small text-ink-700">{o.notes}</p></Panel>}
           <p className="px-1 text-caption text-ink-500">Created by {o.created_by || '—'} on {longDate(o.created_at)}{o.confirmed_at ? ` · confirmed ${longDate(o.confirmed_at)}` : ''}{o.cancelled_at ? ` · cancelled ${longDate(o.cancelled_at)}${o.cancel_reason ? ` (${o.cancel_reason})` : ''}` : ''}</p>
         </aside>

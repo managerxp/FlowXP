@@ -15,6 +15,9 @@ import { hasPermission } from '../middleware/auth.js';
 
 const TREND_DAYS = 14;
 
+/* Money figures are for people who handle money or run the business. A waiter (takes orders) or a cook never needs the day's takings, so they get none. */
+export const seesRevenue = (tenant) => ['reports', 'payments', 'customers', 'purchases', 'settings'].some((p) => hasPermission(tenant, p));
+
 /*
  * The parts of the dashboard that are really a sales report: the last two
  * weeks by day, this week's best sellers and the latest bills. Only for people
@@ -154,6 +157,7 @@ export const getDashboard = async (req, res) => {
       )
     ]);
 
+    const money = seesRevenue(req.tenant);
     const detail = hasPermission(req.tenant, 'reports') ? await salesDetail(businessId, todayDate, branchSql, scoped ? [scopeId] : []) : null;
 
     const counts = { products: productCount.rows[0].n, customers: customerCount.rows[0].n, invoices: invoiceCount.rows[0].n };
@@ -178,8 +182,8 @@ export const getDashboard = async (req, res) => {
           total_count: requiredSteps.length
         },
         counts,
-        metrics_available: true,
-        metrics: {
+        metrics_available: money,
+        metrics: !money ? null : {
           today: todayDate,
           today_sales: toRupees(today.rows[0].total_paise),
           today_invoice_count: today.rows[0].invoice_count,

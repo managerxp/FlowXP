@@ -7,7 +7,8 @@
  * It makes one real sale in that business, so point it at a demo or test business only.
  */
 import { createApi, newKey, type Session } from '../src/lib/api.ts';
-import { createCatalog } from '../src/lib/catalog.ts';
+import { SCHEMA as CATALOG_SCHEMA, createCatalog } from '../src/lib/catalog.ts';
+import { nodeDb } from '../test/helpers.ts';
 import { addProduct, emptyCart, saleBody, totals } from '../src/lib/cart.ts';
 import { receiptText, type Invoice } from '../src/lib/receipt.ts';
 import { rupees } from '../src/lib/money.ts';
@@ -25,14 +26,14 @@ const business = me.businesses[0]; const outlet = business.outlets[0];
 session.businessId = business.business_id; session.branchId = outlet.branch_id;
 say(`signed in: ${business.name} / ${outlet.name} `);
 
-const catalog = createCatalog();
+const db = nodeDb(); await db.exec(CATALOG_SCHEMA); const catalog = createCatalog(db);
 const t0 = performance.now();
-await catalog.load(api);
-say(`catalogue: ${catalog.size()} products in ${Math.round(performance.now() - t0)} ms, sync position ${catalog.head()}`);
+await catalog.sync(api);
+say(`catalogue: ${await catalog.count()} products in ${Math.round(performance.now() - t0)} ms`);
 
-const plain = catalog.search('', 500).filter((p) => p.is_available && !p.modifier_group_ids.length && !p.track_inventory).slice(0, 2);
+const plain = (await catalog.search('', 500)).filter((p) => p.is_available && !p.modifier_group_ids.length && !p.track_inventory).slice(0, 2);
 if (plain.length < 1) throw new Error('No product without options to sell in this business.');
-say(`search "${plain[0].name.split(' ')[0]}": ${catalog.search(plain[0].name.split(' ')[0]).length} hits`);
+say(`search "${plain[0].name.split(' ')[0]}": ${(await catalog.search(plain[0].name.split(' ')[0])).length} hits`);
 let cart = emptyCart(); plain.forEach((p, i) => { cart = addProduct(cart, p, i + 1); });
 const preview = totals(cart);
 say(`cart preview: ${rupees(preview.totalPaise)} (${preview.itemCount} items)`);

@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, Text, View } from 'react-native';
+import { Alert, Linking, ScrollView, Text, View } from 'react-native';
 import { goBack } from '../lib/nav.ts';
 import { router } from 'expo-router';
-import * as Updates from 'expo-updates';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_URL, currentBusiness, signOut, useSession } from '../lib/session.ts';
 import { kvGet, kvSet, useScope } from '../lib/local.ts';
 import { refreshCounts, syncAll, useSyncState } from '../lib/sync.ts';
 import { appVersion, reportError } from '../lib/crash.ts';
 import { printReceipt, type Paper } from '../lib/print.ts';
+import { Page } from '../lib/responsive.tsx';
 import { Button, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
 import { LanguagePicker } from '../lib/lang.tsx';
 import { t } from '../lib/i18n.ts';
+import { readChoice, turnOff, turnOn } from '../lib/push.ts';
+import type { AlertChoice } from '../lib/alerts.ts';
 
 const Row = ({ label, value }: { label: string; value: string }) => (
   <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, gap: 12 }}>
@@ -30,23 +32,22 @@ export default function Settings() {
   const [paper, setPaper] = useState<Paper>('58');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [alerts, setAlerts] = useState<AlertChoice>('unasked');
+  const [blocked, setBlocked] = useState(false);
 
+  useEffect(() => { void readChoice().then(setAlerts); }, []);
   useEffect(() => { void scope?.outbox.device().then(setDevice); }, [scope]);
   useEffect(() => { void kvGet('paper').then((v) => { if (v === '80') setPaper('80'); }); }, []);
 
   const choosePaper = (p: Paper) => { setPaper(p); void kvSet('paper', p); };
   const say = (m: string, e = '') => { setMessage(m); setError(e); };
-
-  const checkUpdate = async () => {
-    if (!Updates.isEnabled) return say('', 'Updates are not switched on in this build.');
-    try {
-      say('Checking…');
-      const found = await Updates.checkForUpdateAsync();
-      if (!found.isAvailable) return say('You have the latest version.');
-      await Updates.fetchUpdateAsync();
-      Alert.alert('Update ready', 'Restart FlowXP to use the new version. Bills waiting to send are kept.', [{ text: 'Later' }, { text: 'Restart now', onPress: () => { void Updates.reloadAsync(); } }]);
-      say('An update is ready.');
-    } catch (e) { say('', e instanceof Error ? e.message : 'Could not check for updates'); }
+  const toggleAlerts = async () => {
+    if (alerts === 'on') { await turnOff(); setAlerts('off'); setBlocked(false); say(t('Alerts are off on this phone.')); return; }
+    const result = await turnOn();
+    setBlocked(result === 'blocked');
+    if (result === 'on') { setAlerts('on'); say(t('Alerts are on. Choose which ones on the FlowXP website, under Notifications.')); }
+    else if (result === 'blocked') say('', t("Alerts are blocked for FlowXP in this phone's settings."));
+    else say('', t('Alerts are not available on this phone or in this build of the app.'));
   };
 
   const clearData = () => {
@@ -67,6 +68,7 @@ export default function Settings() {
 
   return (
     <SafeAreaView style={s.screen}>
+      <Page>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
         <Title>Settings</Title>
         <View style={s.card}>
@@ -91,16 +93,23 @@ export default function Settings() {
         <Button title="Print a test receipt" kind="quiet" onPress={() => { printReceipt(TEST_RECEIPT, paper).catch((e: Error) => say('', e.message)); }} />
         <Soft>Printing uses the phone's own print system, so it works with any printer the phone can reach (Wi-Fi, USB, or Bluetooth through the printer maker's app).</Soft>
 
+        <Text style={{ fontWeight: '700', color: color.ink }}>{t('Alerts on this phone')}</Text>
+        <Soft>{t('A new order, a dish ready for your table, stock running out. Choose which ones on the FlowXP website, under Notifications.')}</Soft>
+        <Button title={alerts === 'on' ? t('Turn alerts off') : t('Turn alerts on')} kind={alerts === 'on' ? 'quiet' : 'primary'} onPress={() => { void toggleAlerts(); }} />
+        {blocked ? <Button title={t("Open this phone's settings")} kind="quiet" onPress={() => { void Linking.openSettings(); }} /> : null}
+
         <Button title="Send waiting bills now" kind="quiet" onPress={() => { void syncAll(); }} busy={sync.busy} />
         <Button title="Refresh the product list" kind="quiet" onPress={() => { void (async () => { if (!scope) return; say('Refreshing…'); try { await scope.catalog.rebuild(); await syncAll(); say('The product list was refreshed.'); } catch (e) { say('', e instanceof Error ? e.message : 'Could not refresh'); } })(); }} busy={sync.busy} />
-        <Button title="Check for an update" kind="quiet" onPress={() => { void checkUpdate(); }} />
         <Button title="Send a test report to FlowXP" kind="quiet" onPress={() => { void reportError(new Error(`Test report from ${device || 'a phone'}`), '/settings').then((r) => say(r === 'sent' ? 'Report sent.' : r === 'queued' ? 'No connection: the report will be sent later.' : 'Already sent a moment ago.')); }} />
         <Button title="Clear this phone's data" kind="danger" onPress={clearData} />
         <ErrorText>{error}</ErrorText>
         {message ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok }}>{message}</Text> : null}
         <Button title="Sign out" kind="quiet" onPress={leave} />
+        <Button title={t('Delete my account')} kind="quiet" onPress={() => { void Linking.openURL('https://flowxp.in/delete-account'); }} />
+        <Soft>{t('Opens the FlowXP website, where you can delete your account or ask us to. Your business keeps its bills.')}</Soft>
         <Button title="Back" onPress={() => goBack()} />
       </ScrollView>
+      </Page>
     </SafeAreaView>
   );
 }

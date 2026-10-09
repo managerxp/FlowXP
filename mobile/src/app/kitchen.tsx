@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, Vibration, View } from 'react-native';
+import { Pressable, ScrollView, Text, useWindowDimensions, Vibration, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useKeepAwake } from 'expo-keep-awake';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -45,6 +45,9 @@ export default function Kitchen() {
   const [problem, setProblem] = useState('');
   const [undo, setUndo] = useState<Undo | null>(null);
   const [alertOn, setAlertOn] = useState(true);
+  const [bigPref, setBigPref] = useState<boolean | null>(null);
+  const big = bigPref ?? false;   // large text is a choice: the starting view fits as many tickets as possible
+  const z = big ? 1.2 : 0.85;
   const [flash, setFlash] = useState('');
   const [gone, setGone] = useState<Set<number>>(new Set());
   const seen = useRef<Seen | null>(null);
@@ -52,6 +55,7 @@ export default function Kitchen() {
 
   useEffect(() => {
     void kvGet('kitchen_alert').then((v) => { if (v === 'off') setAlertOn(false); });
+    void kvGet('kitchen_big').then((v) => { if (v === 'on' || v === 'off') setBigPref(v === 'on'); });
     void kvGet('kitchen_gone').then((v) => { try { setGone(new Set(JSON.parse(v || '[]') as number[])); } catch { /* none kept */ } });
   }, []);
 
@@ -101,6 +105,7 @@ export default function Kitchen() {
     catch (e) { setProblem(e instanceof Error ? e.message : 'Could not rush that'); }
   };
   const dismiss = (item: KItem) => setGone((g) => { const next = new Set(g).add(item.order_item_id); void kvSet('kitchen_gone', JSON.stringify([...next].slice(-200))); return next; });
+  const toggleBig = () => { const next = !big; setBigPref(next); void kvSet('kitchen_big', next ? 'on' : 'off'); };
   const toggleAlert = () => { const next = !alertOn; setAlertOn(next); void kvSet('kitchen_alert', next ? 'on' : 'off'); if (next) Vibration.vibrate(150); };
 
   /* ── one ticket ─────────────────────────────────────────────────────── */
@@ -116,10 +121,10 @@ export default function Kitchen() {
     const waiting = c === 'ready' && live.length ? Math.max(...live.map((i) => minutesSince(i.ready_at || i.sent_at, now))) : 0;
     const away = t.table_name == null;
     return (
-      <View accessibilityLabel={`${title}, ${notice ? 'do not make' : making ? tone.label : c}`} style={{ borderRadius: 14, borderWidth: rushed ? 3 : 1, borderColor: rushed || worst === 'late' ? color.danger : color.line, backgroundColor: color.card, overflow: 'hidden', marginBottom: 12 }}>
-        <View style={{ padding: 12, backgroundColor: rushed ? '#fef2f2' : making ? tone.head : c === 'ready' ? '#ecfdf5' : '#f1f5f9', gap: 2 }}>
+      <View accessibilityLabel={`${title}, ${notice ? 'do not make' : making ? tone.label : c}`} style={{ borderRadius: 12, borderWidth: rushed ? 3 : 1, borderColor: rushed || worst === 'late' ? color.danger : color.line, backgroundColor: color.card, overflow: 'hidden', marginBottom: 8 }}>
+        <View style={{ paddingHorizontal: 10, paddingVertical: 7, backgroundColor: rushed ? '#fef2f2' : making ? tone.head : c === 'ready' ? '#ecfdf5' : '#f1f5f9', gap: 2 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: color.ink, flexShrink: 1 }}>{title}</Text>
+            <Text style={{ fontSize: 17 * z, fontWeight: '800', color: color.ink, flexShrink: 1 }}>{title}</Text>
             {rushed ? <Text style={{ backgroundColor: color.danger, color: '#fff', fontWeight: '800', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>RUSH</Text> : null}
           </View>
           <Text style={{ color: color.soft }}>{t.table_name ? `${t.order_number} · ` : ''}{clock(t.sent_at)}{t.brand_name ? ` · ${t.brand_name}` : ''}{t.kot_number ? ` · ${t.kot_number}` : ''}</Text>
@@ -131,34 +136,34 @@ export default function Kitchen() {
           const u = urgencyOf(elapsed, i.expected_minutes);
           const due = c === 'making' && !i.cancelled ? dueText(elapsed, i.expected_minutes) : null;
           return (
-            <View key={i.order_item_id} style={{ paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: i.cancelled ? '#fef2f2' : color.card, gap: 6 }}>
+            <View key={i.order_item_id} style={{ paddingHorizontal: 10, paddingVertical: 6, borderTopWidth: 1, borderColor: color.line, backgroundColor: i.cancelled ? '#fef2f2' : color.card, gap: 4 }}>
               <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-                <Text style={{ fontSize: 24, fontWeight: '800', color: i.cancelled ? color.danger : color.ink, minWidth: 36 }}>{qty(i.quantity)}×</Text>
+                <Text style={{ fontSize: 18 * z, fontWeight: '800', color: i.cancelled ? color.danger : color.ink, minWidth: 30 * z }}>{qty(i.quantity)}×</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 18, fontWeight: '600', color: i.cancelled ? color.danger : color.ink, textDecorationLine: i.cancelled ? 'line-through' : 'none' }}>{i.description}</Text>
-                  {i.modifiers.length ? <Text style={{ fontSize: 15, color: color.soft }}>{i.modifiers.map((m) => m.name).join(' · ')}</Text> : null}
+                  <Text style={{ fontSize: 15 * z, fontWeight: '600', color: i.cancelled ? color.danger : color.ink, textDecorationLine: i.cancelled ? 'line-through' : 'none' }}>{i.description}</Text>
+                  {i.modifiers.length ? <Text style={{ fontSize: 13 * z, color: color.soft }}>{i.modifiers.map((m) => m.name).join(' · ')}</Text> : null}
                   {i.combo?.length ? <Text style={{ fontSize: 14, color: color.soft }}>{i.combo.join(' + ')}</Text> : null}
-                  {i.kitchen_notes ? <Text style={{ fontSize: 15, fontWeight: '700', color: color.warn }}>Note: {i.kitchen_notes}</Text> : null}
+                  {i.kitchen_notes ? <Text style={{ fontSize: 15 * z, fontWeight: '700', color: color.warn }}>Note: {i.kitchen_notes}</Text> : null}
                   {i.cancelled ? <Text style={{ color: color.danger, fontWeight: '700' }}>Cancelled. Do not make.</Text> : null}
                 </View>
-                {due ? <Text style={{ fontWeight: u === 'ok' ? '400' : '700', color: TONE[u].text }}>{due}</Text> : null}
+                {due ? <Text style={{ fontWeight: u === 'ok' ? '400' : '700', color: TONE[u].text, fontSize: 13 }}>{due}</Text> : null}
+                {c === 'making' && !i.cancelled && live.length > 1 ? <Button title="Ready" kind="quiet" onPress={() => { void advance([i], 'READY', `${title}: ${i.description} ready`); }} style={{ minHeight: 48, paddingHorizontal: 14 }} /> : null}
               </View>
-              {c === 'making' && !i.cancelled ? <Button title={`${qty(i.quantity)} ${i.description} ready`} kind="quiet" onPress={() => { void advance([i], 'READY', `${title}: ${i.description} ready`); }} style={{ minHeight: 52 }} /> : null}
-              {i.cancelled ? <Button title="Got it" kind="danger" onPress={() => dismiss(i)} style={{ minHeight: 52 }} /> : null}
+              {i.cancelled ? <Button title="Got it" kind="danger" onPress={() => dismiss(i)} style={{ minHeight: Math.max(48, 52 * z) }} /> : null}
             </View>
           );
         })}
         {live.length > 0 && c !== 'served' ? (
-          <View style={{ flexDirection: 'row', gap: 8, padding: 12, borderTopWidth: 1, borderColor: color.line }}>
+          <View style={{ flexDirection: 'row', gap: 8, padding: 8, borderTopWidth: 1, borderColor: color.line }}>
             {c === 'making' ? (
               <>
-                {!rushed ? <Button title="Rush" kind="danger" onPress={() => { void rush(t); }} style={{ minHeight: 56 }} /> : null}
-                <Button title={live.length > 1 ? 'All ready' : 'Ready'} onPress={() => { void advance(live, 'READY', `${title} ready`); }} style={{ flex: 1, minHeight: 56 }} />
+                {!rushed ? <Button title="Rush" kind="danger" onPress={() => { void rush(t); }} style={{ minHeight: Math.max(48, 56 * z) }} /> : null}
+                <Button title={live.length > 1 ? 'All ready' : 'Ready'} onPress={() => { void advance(live, 'READY', `${title} ready`); }} style={{ flex: 1, minHeight: Math.max(48, 56 * z) }} />
               </>
             ) : (
               <>
-                <Button title="Back" kind="quiet" onPress={() => { void advance(live, 'PREPARING', `${title} back to the kitchen`); }} style={{ minHeight: 56 }} />
-                <Button title={away ? 'Handed over' : 'Served'} onPress={() => { void advance(live, 'SERVED', `${title} ${away ? 'handed over' : 'served'}`); }} style={{ flex: 1, minHeight: 56, backgroundColor: color.ok }} />
+                <Button title="Back" kind="quiet" onPress={() => { void advance(live, 'PREPARING', `${title} back to the kitchen`); }} style={{ minHeight: Math.max(48, 56 * z) }} />
+                <Button title={away ? 'Handed over' : 'Served'} onPress={() => { void advance(live, 'SERVED', `${title} ${away ? 'handed over' : 'served'}`); }} style={{ flex: 1, minHeight: Math.max(48, 56 * z), backgroundColor: color.ok }} />
               </>
             )}
           </View>
@@ -167,12 +172,22 @@ export default function Kitchen() {
     );
   };
 
-  const List = ({ c }: { c: Column }) => (
-    <View>
-      {sorted[c].length === 0 ? <Soft style={{ padding: 24, textAlign: 'center' }}>{c === 'making' ? 'Nothing to make. All clear.' : c === 'ready' ? 'Nothing waiting to go out.' : 'Nothing served in the last two hours.'}</Soft> : null}
-      {sorted[c].map((t) => <Ticket key={`${c}-${t.order_id}`} t={t} c={c} />)}
-    </View>
-  );
+  // on a tablet the tickets to make sit side by side (as many as fit), so the whole board is visible without scrolling far
+  const { width } = useWindowDimensions();
+  const cols = Math.max(1, Math.min(4, Math.floor((wide ? width * 0.6 : width - 24) / (big ? 340 : 270))));
+  const List = ({ c }: { c: Column }) => {
+    const grid = c === 'making' || !wide ? cols : 1;
+    return (
+      <View>
+        {sorted[c].length === 0 ? <Soft style={{ padding: 24, textAlign: 'center' }}>{c === 'making' ? 'Nothing to make. All clear.' : c === 'ready' ? 'Nothing waiting to go out.' : 'Nothing served in the last two hours.'}</Soft> : null}
+        <View style={grid > 1 ? { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 } : undefined}>
+          {sorted[c].map((t) => (grid > 1
+            ? <View key={`${c}-${t.order_id}`} style={{ width: `${100 / grid}%`, paddingHorizontal: 4 }}><Ticket t={t} c={c} /></View>
+            : <Ticket key={`${c}-${t.order_id}`} t={t} c={c} />))}
+        </View>
+      </View>
+    );
+  };
 
   const Cook = rows.length ? (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 12, paddingVertical: 8 }} style={{ flexGrow: 0 }} accessibilityLabel="Cook now">
@@ -193,16 +208,17 @@ export default function Kitchen() {
       <View style={{ paddingHorizontal: 12, paddingTop: 8, gap: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <View style={{ flex: 1 }}><Title>Kitchen</Title><Soft>{business?.name} · tap a dish when it is done</Soft></View>
+          <Button title={big ? 'Normal text' : 'Large text'} kind="quiet" onPress={toggleBig} />
           <Button title={alertOn ? 'Buzz on' : 'Buzz off'} kind="quiet" onPress={toggleAlert} />
           {kitchenOnly ? <Button title="Sign out" kind="quiet" onPress={() => { void signOut().then(() => router.replace('/login')); }} /> : <Button title="Back" kind="quiet" onPress={() => goBack()} />}
         </View>
         {flash ? <Text accessibilityLiveRegion="assertive" style={{ backgroundColor: color.brand, color: '#fff', fontWeight: '800', fontSize: 18, textAlign: 'center', padding: 10, borderRadius: 10 }}>{flash}</Text> : null}
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+        {!big ? <View style={{ flexDirection: 'row', gap: 8 }}>
           <View style={[s.card, { flex: 1, padding: 10 }]}><Soft>To make</Soft><Text style={{ fontSize: 24, fontWeight: '800', color: color.ink }}>{stats.tickets}</Text><Soft>{stats.dishes ? `${stats.dishes} dishes` : 'All clear'}</Soft></View>
           <View style={[s.card, { flex: 1, padding: 10 }]}><Soft>Late</Soft><Text style={{ fontSize: 24, fontWeight: '800', color: stats.lateTickets ? color.danger : color.ok }}>{stats.lateTickets}</Text><Soft>{stats.lateTickets ? 'past time' : 'Nothing late'}</Soft></View>
           <View style={[s.card, { flex: 1, padding: 10 }]}><Soft>Oldest</Soft><Text style={{ fontSize: 24, fontWeight: '800', color: color.ink }}>{stats.tickets ? span(stats.oldest) : '–'}</Text><Soft>since sent</Soft></View>
           <View style={[s.card, { flex: 1, padding: 10 }]}><Soft>Ready</Soft><Text style={{ fontSize: 24, fontWeight: '800', color: stats.longestWait >= 5 ? color.warn : color.ink }}>{stats.readyTickets}</Text><Soft>{stats.readyTickets ? `longest ${span(stats.longestWait)}` : 'none waiting'}</Soft></View>
-        </View>
+        </View> : null}
         {stations.length > 1 ? <Chips items={stations} value={station} onChange={setStation} /> : null}
         {!wide ? <Chips<Column> items={COLUMNS.filter((x) => x.id !== 'served' || showServed).map((x) => ({ id: x.id, label: `${x.label} ${counts[x.id]}` }))} value={col} onChange={setCol} /> : null}
         <SavedNote at={data.savedAt} />
@@ -216,7 +232,7 @@ export default function Kitchen() {
       {data.data ? (
         wide ? (
           <View style={{ flex: 1, flexDirection: 'row', gap: 12, paddingHorizontal: 12 }}>
-            <ScrollView style={{ flex: 3 }}><Text style={colTitle}>To make · {counts.making}</Text><List c="making" /></ScrollView>
+            <ScrollView style={{ flex: cols > 1 ? 3 : 2 }}><Text style={colTitle}>To make · {counts.making}</Text><List c="making" /></ScrollView>
             <ScrollView style={{ flex: 2 }}>
               <Text style={colTitle}>Ready to serve · {counts.ready}</Text><List c="ready" />
               {showServed ? <><Text style={colTitle}>Served · {counts.served}</Text><List c="served" /></> : null}
@@ -231,7 +247,7 @@ export default function Kitchen() {
         {undo ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: color.ink, padding: 12, borderRadius: 12 }}>
             <Text style={{ color: '#fff', flex: 1 }}>{undo.label}</Text>
-            <Pressable accessibilityRole="button" onPress={() => { void undoLast(); }} style={{ minHeight: 44, minWidth: 64, justifyContent: 'center' }}><Text style={{ color: '#93c5fd', fontWeight: '800', fontSize: 16 }}>UNDO</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => { void undoLast(); }} style={{ minHeight: 48, minWidth: 64, justifyContent: 'center' }}><Text style={{ color: '#93c5fd', fontWeight: '800', fontSize: 16 }}>UNDO</Text></Pressable>
           </View>
         ) : null}
         <Button title={showServed ? 'Hide served' : `Show served${counts.served ? ` (${counts.served})` : ''}`} kind="quiet" onPress={() => { setShowServed((v) => !v); if (showServed && col === 'served') setCol('making'); }} />

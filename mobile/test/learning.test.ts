@@ -34,7 +34,7 @@ test('a hint shows until it is dismissed, then never again; each hint is short e
 test('the checklist is ticked by what was done, differs for a café, and finishes by itself', () => {
   const retail = checklist(empty(), false); const food = checklist(empty(), true);
   assert.deepEqual(retail.map((s) => s.id), ['bill', 'scan', 'hold', 'bills']);
-  assert.deepEqual(food.map((s) => s.id), ['bill', 'scan', 'table', 'kitchen', 'bills']);
+  assert.deepEqual(food.map((s) => s.id), ['bill', 'table', 'kitchen', 'bills'], 'a restaurant menu is tapped, so there is no scanning step');
   assert.deepEqual(progress(retail), { done: 0, total: 4, complete: false });
   let kept = mark(empty(), 'first_bill');
   assert.deepEqual(checklist(kept, false).filter((s) => s.done).map((s) => s.id), ['bill']);

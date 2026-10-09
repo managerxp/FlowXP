@@ -114,8 +114,18 @@ const cleanPlan = (list, total) => {
  *   no allocations and allocate 'OLDEST' (the default): oldest invoices first; the rest stays as an advance
  *   allocate 'NONE': all of it is an advance
  */
+const keyOf = (req) => req.get?.('Idempotency-Key') || req.headers?.['idempotency-key'] || null;
+/* A receipt a rep took with no signal can arrive days later: the key it came with is kept on the receipt, so the same key again returns the same receipt. */
+const earlierReceipt = async (req) => {
+  const key = keyOf(req);
+  if (!key) return null;
+  return (await pool.query(`SELECT receipt_id FROM wholesale_receipts WHERE business_id = $1 AND client_key = $2`, [req.tenant.businessId, key])).rows[0]?.receipt_id ?? null;
+};
+
 const create = async (req, res) => {
   const b = req.body || {};
+  const earlier = await earlierReceipt(req).catch(() => null);
+  if (earlier) { res.set('Idempotent-Replay', 'true'); return ok(res, await detail(req.tenant.businessId, earlier), 201); }
   const customerId = int(b.customer_id, 'Customer', { min: 1, required: true });
   const method = oneOf(b.method, 'Payment method', METHODS, { required: true });
   const amount = Math.round(Number(b.amount) * 100);
@@ -137,9 +147,9 @@ const create = async (req, res) => {
     const date = isoDate(b.receipt_date, 'Receipt date') || await today(client, req.tenant.businessId);
     const number = await nextNumber(client, req.tenant.businessId, 'RC', 'RC');
     const receipt = (await client.query(
-      `INSERT INTO wholesale_receipts (business_id, branch_id, customer_id, receipt_number, receipt_date, method, reference, cheque_date, bank, amount_paise, notes, created_by, visit_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-      [req.tenant.businessId, req.tenant.branchId, customerId, number, date, method, reference, isoDate(b.cheque_date, 'Cheque date'), text(b.bank, 'Bank', { max: 80 }), amount, text(b.notes, 'Notes', { max: 300 }), req.auth.userId, visitId])).rows[0];
+      `INSERT INTO wholesale_receipts (business_id, branch_id, customer_id, receipt_number, receipt_date, method, reference, cheque_date, bank, amount_paise, notes, created_by, visit_id, client_key)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+      [req.tenant.businessId, req.tenant.branchId, customerId, number, date, method, reference, isoDate(b.cheque_date, 'Cheque date'), text(b.bank, 'Bank', { max: 80 }), amount, text(b.notes, 'Notes', { max: 300 }), req.auth.userId, visitId, keyOf(req)])).rows[0];
     let plan = cleanPlan(b.allocations, amount);
     if (!plan.length && String(b.allocate || 'OLDEST').toUpperCase() !== 'NONE') plan = await oldestFirst(client, req.tenant.businessId, customerId, amount);
     const done = plan.length ? await allocate(client, req, receipt, plan) : 0;

@@ -274,7 +274,7 @@ export const createSalonInvoice = async (client, tenant, userId, input, { dryRun
   });
 
   const invoice = await createInvoiceInTransaction(client, tenant, userId, {
-    customerId, items: coreItems, discount: input.discount, notes: input.notes || null, couponCode: input.coupon_code || null,
+    customerId, items: coreItems, discount: input.discount, discountPolicy: input.discountPolicy, notes: input.notes || null, couponCode: input.coupon_code || null,
     redeemPoints: input.redeem_points || null, payments: enginePayments(input, giftCards, settings),
     taxInclusive: settings.tax_inclusive,
     earnPoints: ({ lines, finalTotalPaise, state, cfg }) => earnedPoints({

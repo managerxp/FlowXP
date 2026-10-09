@@ -1,4 +1,5 @@
 /* The glue between the learning logic (onboarding.ts) and the screens: one shared state, loaded from the phone, and the small components. */
+import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -31,7 +32,7 @@ export const Hint = ({ id }: { id: HintId }) => {
         <Text style={{ fontWeight: '700', color: color.ink, flex: 1 }}>{t(h.title)}</Text>
       </View>
       <Text style={{ color: color.ink, lineHeight: 21 }}>{t(h.body)}</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${t('Got it')}: ${t(h.title)}`} onPress={() => dismissHint(id)} style={{ minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${t('Got it')}: ${t(h.title)}`} onPress={() => dismissHint(id)} style={{ minHeight: 48, justifyContent: 'center', alignSelf: 'flex-start' }}>
         <Text style={{ color: color.brand, fontWeight: '700' }}>{t('Got it')}</Text>
       </Pressable>
     </View>
@@ -41,20 +42,22 @@ export const Hint = ({ id }: { id: HintId }) => {
 /** Home: what to try first, ticked from what has really been done. Goes away by itself when finished, or with Hide. */
 export const GettingStarted = ({ food }: { food: boolean }) => {
   const { kept, ready } = useLearning();
+  const [all, setAll] = useState(false);
   if (!ready) return null;
   const steps = checklist(kept, food);
   const p = progress(steps);
   if (kept.flags.includes('checklist_hidden') || p.complete) return null;
+  const shown = all ? steps : steps.filter((st) => !st.done).slice(0, 1);
   return (
-    <View style={[s.card, { marginHorizontal: 16, marginTop: 12, gap: 4 }]}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text accessibilityRole="header" style={{ fontSize: 17, fontWeight: '700', color: color.ink }}>{t('Getting started')}</Text>
+    <View style={[s.card, { marginHorizontal: 16, marginTop: 12, gap: 2 }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${t('Finish setting up FlowXP')}, ${t('{done} of {total}', { done: p.done, total: p.total })}`} onPress={() => setAll((v) => !v)} style={{ minHeight: 48, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text accessibilityRole="header" style={{ fontSize: 16, fontWeight: '700', color: color.ink }}>{t('Finish setting up FlowXP')}</Text>
         <Text style={{ color: color.soft }}>{t('{done} of {total}', { done: p.done, total: p.total })}</Text>
-      </View>
-      <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: p.total, now: p.done }} style={{ height: 6, borderRadius: 3, backgroundColor: color.line, overflow: 'hidden', marginVertical: 6 }}>
+      </Pressable>
+      <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: p.total, now: p.done }} style={{ height: 6, borderRadius: 3, backgroundColor: color.line, overflow: 'hidden', marginBottom: 4 }}>
         <View style={{ width: `${(p.done / p.total) * 100}%`, height: 6, backgroundColor: color.ok }} />
       </View>
-      {steps.map((st) => (
+      {shown.map((st) => (
         <Pressable key={st.id} accessibilityRole="button" accessibilityLabel={`${t(st.label)}${st.done ? ', ✓' : ''}`} onPress={() => router.push(st.go as never)} style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Ionicons name={st.done ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={st.done ? color.ok : color.soft} />
           <View style={{ flex: 1 }}>
@@ -64,9 +67,10 @@ export const GettingStarted = ({ food }: { food: boolean }) => {
           {!st.done ? <Ionicons name="chevron-forward" size={20} color={color.soft} /> : null}
         </Pressable>
       ))}
-      <Pressable accessibilityRole="button" onPress={() => markDone('checklist_hidden')} style={{ minHeight: 44, justifyContent: 'center' }}>
-        <Text style={{ color: color.soft }}>{t('Hide this. You can bring it back from Help.')}</Text>
-      </Pressable>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Pressable accessibilityRole="button" onPress={() => setAll((v) => !v)} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: color.brand, fontWeight: '600' }}>{t(all ? 'Show less' : 'Show all steps')}</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => markDone('checklist_hidden')} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: color.soft }}>{t('Hide')}</Text></Pressable>
+      </View>
     </View>
   );
 };

@@ -86,14 +86,14 @@ const app = JSON.parse(readFileSync(new URL('../app.json', import.meta.url), 'ut
 const eas = JSON.parse(readFileSync(new URL('../eas.json', import.meta.url), 'utf8'));
 const png = (path: string) => { const b = readFileSync(new URL(`../${path.replace('./', '')}`, import.meta.url)); return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) }; };
 
-test('the app asks for the camera and nothing else, and has one identity on both stores', () => {
+test('the app asks for the camera (and, while open and only if the business turns it on, the location), and has one identity on both stores', () => {
   assert.equal(app.android.package, 'com.flowxp.app'); assert.equal(app.ios.bundleIdentifier, 'com.flowxp.app'); assert.equal(app.name, 'FlowXP');
-  assert.deepEqual(app.android.permissions, ['CAMERA']);
+  assert.deepEqual(app.android.permissions, ['CAMERA', 'POST_NOTIFICATIONS']);   // the camera for barcodes; notifications for order alerts (Android 13 asks the person)
   for (const p of ['RECORD_AUDIO', 'READ_EXTERNAL_STORAGE', 'WRITE_EXTERNAL_STORAGE']) assert.ok(app.android.blockedPermissions.includes(`android.permission.${p}`), `${p} blocked`);
   const camera = app.plugins.find((p: unknown) => Array.isArray(p) && p[0] === 'expo-camera');
   assert.equal(camera[1].recordAudioAndroid, false, 'the camera plugin does not ask for the microphone'); assert.match(camera[1].cameraPermission, /barcode/);
   assert.match(app.version, /^\d+\.\d+\.\d+$/); assert.ok(Number.isInteger(app.android.versionCode) && app.android.versionCode >= 1);
-  assert.deepEqual(app.runtimeVersion, { policy: 'appVersion' }, 'an update only reaches builds with the same app version');
+  assert.equal(app.runtimeVersion, undefined, 'no over-the-air updates: the app changes only through the store'); assert.equal(app.scheme, undefined, 'no custom link opens the app');
 });
 
 test('the icons exist at the sizes the stores need', () => {
@@ -108,4 +108,12 @@ test('the build profiles: a test build (apk) for the preview, a store build (aab
   assert.equal(eas.submit.production.android.releaseStatus, 'draft', 'a submitted build waits for a person to press release');
   assert.equal(JSON.stringify(eas).includes('BEGIN'), false, 'no key in the config');
   assert.ok(readFileSync(new URL('../.gitignore', import.meta.url), 'utf8').includes('play-service-account.json'), 'the Play key can never be committed');
+});
+
+test('the phone\'s location is asked for only while the app is open, never in the background', () => {
+  const plugin = (app.plugins as unknown[]).find((p) => Array.isArray(p) && p[0] === 'expo-location') as [string, Record<string, unknown>] | undefined;
+  assert.ok(plugin, 'expo-location is configured');
+  assert.equal(plugin[1].isAndroidBackgroundLocationEnabled, false);
+  assert.equal(plugin[1].isIosBackgroundLocationEnabled, false);
+  assert.match(String(plugin[1].locationWhenInUsePermission), /only if your business turns this on/);
 });

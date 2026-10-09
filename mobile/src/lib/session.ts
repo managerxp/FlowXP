@@ -13,7 +13,7 @@ const KEY = 'flowxp.session';
 export type Outlet = { branch_id: number; name: string; is_primary: boolean };
 export type Business = {
   business_id: number; name: string; business_type: string; currency: string; role: string; upi_vpa: string | null;
-  permissions: Record<string, boolean>; branch_id: number | null; outlets: Outlet[];
+  permissions: Record<string, boolean>; effective_permissions?: Record<string, boolean>; branch_id: number | null; outlets: Outlet[];
 };
 export type User = { user_id: number; name: string; email: string };
 type State = { ready: boolean; token: string | null; user: User | null; businesses: Business[]; businessId: number | null; branchId: number | null };
@@ -72,7 +72,17 @@ export const chooseOutlet = async (businessId: number, branchId: number) => {
 };
 
 /* Sign out ends the session and forgets who it was, but keeps the outlet's database: unsent sales are real money, sent after the next sign-in. */
+const signOutHooks: (() => Promise<void>)[] = [];
+/** Something to do just before a sign-out, while the session still works (taking this phone off the alerts list). Failures are ignored: signing out always completes. */
+export const onSignOut = (fn: () => Promise<void>) => { signOutHooks.push(fn); };
+
+let leaving = false;
 export const signOut = async () => {
+  // the hooks call the server, and a refused call signs out again: only the first sign-out runs them
+  if (sessionStore.get().token && !leaving) {
+    leaving = true;
+    try { await Promise.race([Promise.allSettled(signOutHooks.map((f) => f())), new Promise((r) => setTimeout(r, 3000))]); } finally { leaving = false; }
+  }
   closeScope();
   sessionStore.set({ token: null, user: null, businesses: [], businessId: null, branchId: null });
   await SecureStore.deleteItemAsync(KEY).catch(() => {});

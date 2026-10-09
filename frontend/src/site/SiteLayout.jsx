@@ -139,6 +139,7 @@ const FOOTER_GROUPS = [
   ]},
   { heading: 'Legal', links: [
     { to: '/privacy', label: 'Privacy' },
+    { to: '/delete-account', label: 'Delete your account' },
     { to: '/terms', label: 'Terms' },
     { to: '/cookies', label: 'Cookies' }
   ]}

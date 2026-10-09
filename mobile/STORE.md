@@ -55,22 +55,27 @@ Utility / business app. No violence, sexual content, gambling, user-generated co
 | Question | Answer |
 |---|---|
 | Does the app collect or share user data? | Collects: yes. Shares with third parties: no. (FlowXP's own servers are the app's backend, not a third party.) |
-| Personal info | Name, email address, phone number (account); the business's customers' names and phone numbers, only if a sale is linked to a customer (not in this version of the app). |
+| Personal info | Name, email address, phone number (account); the business's customers' and suppliers' names, phone numbers and what they owe (entered by the business). |
 | Financial info | Purchase history: the bills made in the app. No card numbers are collected or stored: card payments are recorded as "paid by card" with an optional slip number. |
+| Device or other IDs | The phone's notification address (a code Expo's push service gives this install), kept on FlowXP's servers with the person's account so alerts reach their phone. Collected only if the person turns alerts on; removed when they turn them off or sign out. Used only to send FlowXP's own alerts: no ads, not shared, not sold. |
 | App activity / diagnostics | Crash and error reports: the error text, screen, app version, OS version and a 3-letter phone code. No name, email or business. |
 | Photos and videos | No. The camera is used live to read barcodes; nothing is saved or uploaded. |
 | Data encrypted in transit | Yes (HTTPS). |
-| Can users request data deletion? | Yes, through FlowXP support and the account settings on flowxp.in. |
+| Can users request data deletion? | Yes. Web link for the form: https://flowxp.in/delete-account (also reachable from Settings in the app). Signed-in people can delete their own account from Security on the website; others can ask, and support confirms by email before deleting. The business keeps its own bills and records. |
 | Data collection is | Required for the app to work (sign-in and sales); crash reports are not optional in this version. |
+| Location | Approximate and precise location, only for field-sales staff in a business that has switched on visit places, only while the app is open, only at the moment a visit is recorded. It is stored with that visit on FlowXP's servers so the business can see where visits happened. Not shared, not used for ads, not collected in the background. The person can say no and keep working. |
 | Ads / tracking | None. |
+| Flow AI (an optional assistant) | When a person asks Flow AI a question, the question and figures from the business's own records go from FlowXP's server to an AI service provider to write the answer. The provider acts for FlowXP and does not use it for ads. State this in the privacy policy before submitting; the business can switch it off. |
 
 ## Permissions in the build
 
-Camera only (to scan barcodes). The microphone, storage and overlay permissions are blocked in the configuration. A test (`test/release.test.ts`) fails if that changes.
+Notifications (Android 13 and later asks the person; the app asks once, in its own words first). Camera (to scan barcodes) and location while the app is open (only for field sales, and only if the business turns on "record where visits happen" on the website: until then the app never asks). There is no background location. The microphone, storage and overlay permissions are blocked in the configuration. A test (`test/release.test.ts`) fails if that changes.
 
 ## What only you can do
 
-1. **Expo account**, then in `mobile/`: `npx eas-cli@latest login`, `npx eas-cli@latest init` (creates the project id), `npx eas-cli@latest update:configure` (adds the updates URL to `app.json`).
+0. **Phone alerts need Firebase** (Google's service that actually delivers them to Android; Expo passes ours to it). Once: (a) create a Firebase project and add an Android app with package `com.flowxp.app`; (b) in `mobile/`, run `npx eas-cli init` (this adds the project id the app reads); (c) Firebase > Project settings > Service accounts > generate a private key, then `npx eas-cli credentials` > Android > Google Service Account Key for Push Notifications (FCM V1) > upload it; (d) download `google-services.json` from Firebase into `mobile/` and add `"googleServicesFile": "./google-services.json"` under `android` in `app.json` (it is safe to commit, but not before the file exists, or the build fails). Without these the app still works; alerts just say "not available in this build". On the server nothing is needed (`PUSH_ENABLED=true` is the default); `EXPO_ACCESS_TOKEN` only if you turn on "enhanced push security" in Expo.
+
+1. **Expo account**, then in `mobile/`: `npx eas-cli@latest login`, `npx eas-cli@latest init` (creates the project id).
 2. **Google Play Console developer account** (a one-time fee, identity checks that can take days). Create the app with the package name `com.flowxp.app`.
 3. **Play service-account key** for uploads: save as `mobile/play-service-account.json` (already ignored by git).
 4. **First build to test**: `npx eas-cli@latest build --platform android --profile preview` gives an installable `.apk`. Try it on real phones (camera, airplane-mode drill, printer) before the store build.
@@ -78,9 +83,9 @@ Camera only (to scan barcodes). The microphone, storage and overlay permissions 
 6. **Production server**: `https://flowxp.in` must be live with HTTPS, the migrations (up to 0076) applied, and `ADMIN_REQUIRE_2FA` on. The profiles point the app at `https://flowxp.in`.
 7. Take the screenshots, fill in the store listing from this file, submit the data-safety form and content rating.
 
-## Shipping a fix without the store (over-the-air)
+## Shipping a fix
 
-A change to the app's JavaScript can reach phones without a new store release: `npx eas-cli@latest update --channel production --message "what changed"`. It reaches only builds with the same app `version` (the runtime version policy), and is picked up the next time the app opens (Settings > Check for an update does it at once). A change that adds a native library needs a new store build.
+Every change goes out as a new store build (raise the version, build, submit). Over-the-air updates were removed on 2026-10-09 (`expo-updates` is no longer installed, and the app has no `flowxp://` link), so a store release is the only way a phone gets new code. The channels in `eas.json` are left over and do nothing.
 
 ## Before every release
 

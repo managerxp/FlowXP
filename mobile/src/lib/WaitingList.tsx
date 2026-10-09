@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Alert, FlatList, Pressable, Text, View } from 'react-native';
+import { Alert, FlatList, Modal, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useScope } from './local.ts';
 import type { Entry } from './outbox.ts';
 import type { Action } from './actions.ts';
 import { refreshCounts, syncAll, useSyncState } from './sync.ts';
-import { rupees } from './money.ts';
+import { rupees, toPaise } from './money.ts';
+import { conflictText, split } from './conflicts.ts';
 import { Button, Soft, color } from './ui.tsx';
 import { t } from './i18n.ts';
 
@@ -20,11 +21,37 @@ export const WaitingList = () => {
   const load = () => { void scope?.outbox.list().then(setEntries); void scope?.actions.list().then(setChanges); };
   useEffect(load, [scope, sync.pending, sync.failed, sync.changesPending, sync.changesFailed, sync.busy]);   // eslint-disable-line react-hooks/exhaustive-deps
 
+  // a change another device got to first: ask which version to keep (once per visit; "Decide later" leaves it on the list)
+  const conflicts = changes.filter((c) => c.state === 'conflict');
+  const [later, setLater] = useState<string[]>([]);
+  const asking = conflicts.find((c) => !later.includes(c.id)) ?? null;
+  const mineOf = (c: Action): number => Number(c.body.selling_price ?? 0);
+  const keep = async (c: Action, which: 'mine' | 'server') => {
+    const server = split(c.body).server ?? 0;
+    await scope!.actions.resolve(c.id, which);
+    if (which === 'server') { const pid = Number(c.path.split('/')[2]); await scope!.catalog.setLocal(pid, { selling_price: server }); }
+    await refreshCounts(); load();
+    if (which === 'mine') void syncAll();
+  };
   const act = async (fn: () => Promise<void>) => { await fn(); await refreshCounts(); load(); };
   const open = (e: Entry) => router.push(e.invoice_id ? { pathname: '/receipt', params: { id: String(e.invoice_id) } } : { pathname: '/receipt', params: { local: e.id } });
 
+  const q = asking ? conflictText(asking.label, mineOf(asking), split(asking.body).server ?? 0, (n) => rupees(toPaise(n)), t) : null;
   return (
     <View style={{ flex: 1 }}>
+      <Modal visible={Boolean(asking)} transparent animationType="fade" onRequestClose={() => asking && setLater((l) => [...l, asking.id])}>
+        <View style={{ flex: 1, backgroundColor: '#0f172a99', justifyContent: 'center', padding: 24 }}>
+          {asking && q ? (
+            <View accessibilityViewIsModal style={{ backgroundColor: color.card, borderRadius: 16, padding: 18, gap: 12 }}>
+              <Text accessibilityRole="header" style={{ fontSize: 18, fontWeight: '700', color: color.ink }}>{q.title}</Text>
+              <Text style={{ fontSize: 16, color: color.ink, lineHeight: 23 }}>{q.body}</Text>
+              <Button title={q.keepMine} onPress={() => { void keep(asking, 'mine'); }} />
+              <Button title={q.keepServer} kind="quiet" onPress={() => { void keep(asking, 'server'); }} />
+              <Button title="Decide later" kind="quiet" onPress={() => setLater((l) => [...l, asking.id])} />
+            </View>
+          ) : null}
+        </View>
+      </Modal>
       <View style={{ padding: 16, gap: 8 }}>
         <Soft>{sync.pending} waiting · {sync.failed} need a decision{sync.stopped ? ` · ${WHY[sync.stopped]}` : ''}</Soft>
         <Button title="Send now" onPress={() => { void syncAll(); }} busy={sync.busy} />
@@ -36,8 +63,9 @@ export const WaitingList = () => {
             {changes.filter((c) => c.state !== 'sent').map((c) => (
               <View key={c.id} style={{ paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: color.card, gap: 4 }}>
                 <Text style={{ color: color.ink, fontWeight: '600' }}>{c.label}</Text>
-                <Text style={{ color: c.state === 'failed' ? color.danger : color.warn, fontWeight: '600' }}>{c.state === 'failed' ? 'FlowXP could not accept it' : 'Waiting to send'}</Text>
-                {c.error ? <Text style={{ color: color.danger }}>{c.error}</Text> : null}
+                <Text style={{ color: c.state === 'pending' ? color.warn : color.danger, fontWeight: '600' }}>{c.state === 'conflict' ? 'Changed on another device: you decide' : c.state === 'failed' ? 'FlowXP could not accept it' : 'Waiting to send'}</Text>
+                {c.error && c.state !== 'conflict' ? <Text style={{ color: color.danger }}>{c.error}</Text> : null}
+                {c.state === 'conflict' ? <Button title="Choose which to keep" kind="quiet" onPress={() => setLater((l) => l.filter((x) => x !== c.id))} /> : null}
                 {c.state === 'failed' ? (
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     <Button title="Try again" kind="quiet" onPress={() => { void scope!.actions.retry(c.id).then(() => syncAll()); }} style={{ flex: 1 }} />
@@ -52,7 +80,7 @@ export const WaitingList = () => {
         data={entries} keyExtractor={(e) => e.id}
         ListEmptyComponent={<Soft style={{ padding: 16 }}>No bills have been made on this phone yet.</Soft>}
         renderItem={({ item: e }) => (
-          <Pressable onPress={() => open(e)} style={{ paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderColor: color.line, backgroundColor: color.card, gap: 4 }}>
+          <Pressable accessibilityRole="button" onPress={() => open(e)} style={{ paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderColor: color.line, backgroundColor: color.card, gap: 4 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ fontWeight: '600', color: color.ink }}>{e.invoice_number || e.local_no}</Text>
               <Text style={{ fontWeight: '600', color: color.ink }}>{rupees(e.preview.totalPaise)}</Text>

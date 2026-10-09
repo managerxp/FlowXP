@@ -40,9 +40,10 @@ export type Step = { id: string; label: string; why: string; done: boolean; go: 
 /** The checklist for this kind of business, with each step ticked from what the person has actually done. */
 export const checklist = (kept: Kept, food: boolean): Step[] => {
   const has = (f: Flag) => kept.flags.includes(f);
+  // a restaurant's menu is tapped, not scanned: no scanning step for it
   const steps: Step[] = [
     { id: 'bill', label: 'Make your first bill', why: 'Tap items, then Take payment.', done: has('first_bill'), go: '/sell' },
-    { id: 'scan', label: 'Scan a barcode', why: 'Point the camera at a product to add it.', done: has('first_scan'), go: '/scan' }
+    ...(food ? [] : [{ id: 'scan', label: 'Scan a barcode', why: 'Point the camera at a product to add it.', done: has('first_scan'), go: '/scan' }])
   ];
   if (food) {
     steps.push({ id: 'table', label: 'Open a table', why: 'Tap a free table to start an order.', done: has('first_table'), go: '/tables' });
@@ -67,5 +68,5 @@ export const tour = (food: boolean): Slide[] => [
   { icon: 'cloud-offline-outline', title: 'No internet? Keep selling', lines: ['Bills are saved on this phone.', 'They are sent by themselves when the signal returns.'] },
   food
     ? { icon: 'restaurant-outline', title: 'Tables and the kitchen', lines: ['Open a table, add items, send to the kitchen.', 'Cooks tap a dish when it is ready. You see it here.'] }
-    : { icon: 'cube-outline', title: 'Everything else is under More', lines: ['Products, customers, stock and reports.', 'Help is always at the top of More.'] }
+    : { icon: 'cube-outline', title: 'Everything else is under More', lines: ['Products, customers, stock and reports.', 'Help is at the bottom of More.'] }
 ];

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../../lib/api.ts';
@@ -8,7 +8,9 @@ import { useScope } from '../../lib/local.ts';
 import { goBack } from '../../lib/nav.ts';
 import { useSyncState } from '../../lib/sync.ts';
 import type { Product } from '../../lib/catalog.ts';
-import { rupees, toPaise } from '../../lib/money.ts';
+import { qty, rupees, toPaise } from '../../lib/money.ts';
+import { useLoad } from '../../lib/useLoad.ts';
+import { itemName, liveItems, type Order } from '../../lib/orders.ts';
 import { Page, useWide } from '../../lib/responsive.tsx';
 import { Button, Chips, ErrorText, Soft, Title, color, s } from '../../lib/ui.tsx';
 
@@ -24,6 +26,8 @@ export default function AddToOrder() {
   const [category, setCategory] = useState('__first__');
   const [tiles, setTiles] = useState<Product[]>([]);
   const [added, setAdded] = useState<Record<number, number>>({});
+  const order = useLoad<Order>(`order-add:${id}`, () => api.get<Order>(`/orders/${id}`));   // what is on the order, shown beside the menu on a tablet
+  const [flash, setFlash] = useState<number | null>(null);   // the product just tapped lights up for a moment
   const [problem, setProblem] = useState('');
   // what was added in this visit: product -> its order line and quantity, so a second tap raises the quantity instead of making a second line
   const lines = useRef(new Map<number, { itemId: number; qty: number }>());
@@ -54,6 +58,8 @@ export default function AddToOrder() {
           lines.current.set(p.product_id, { itemId: made[0].order_item_id, qty: 1 });
         }
         setAdded((a) => ({ ...a, [p.product_id]: lines.current.get(p.product_id)!.qty }));
+        setFlash(p.product_id); setTimeout(() => setFlash((f) => (f === p.product_id ? null : f)), 1400);
+        void order.refresh();
       } catch (e) {
         // an item that has since been sent to the kitchen cannot be raised: the next tap makes a new line
         lines.current.delete(p.product_id);
@@ -72,19 +78,59 @@ export default function AddToOrder() {
 
   const cols = wide ? 3 : 2;
   const total = Object.values(added).reduce((a, n) => a + n, 0);
-  const tile = ({ item }: { item: Product }) => (
-    <Pressable
-      accessibilityRole="button" accessibilityLabel={`${item.name}, ${rupees(toPaise(item.selling_price))}`} onPress={() => pick(item)}
-      style={({ pressed }) => [{ flex: 1 / cols, minHeight: 84, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: added[item.product_id] ? color.brand : color.line, backgroundColor: item.is_available ? color.card : '#f1f5f9', justifyContent: 'space-between' }, pressed && { backgroundColor: '#eaf1ff' }]}
-    >
-      <Text numberOfLines={2} style={{ fontSize: 15, fontWeight: '600', color: item.is_available ? color.ink : color.soft }}>{item.name}</Text>
-      <Text style={{ color: color.soft }}>{item.is_available ? rupees(toPaise(item.selling_price)) : 'Not available'}{item.modifier_group_ids.length ? ' · options' : ''}{added[item.product_id] ? ` · added ${added[item.product_id]}` : ''}</Text>
-    </Pressable>
+  const tile = ({ item }: { item: Product }) => {
+    const n = added[item.product_id] ?? 0;
+    return (
+      <Pressable
+        accessibilityRole="button" accessibilityLabel={`${item.name}, ${rupees(toPaise(item.selling_price))}${n ? `, ${n} added` : ''}`} onPress={() => pick(item)}
+        style={({ pressed }) => [{ flex: 1 / cols, minHeight: 84, padding: 10, borderRadius: 12, borderWidth: n ? 2 : 1, borderColor: n ? color.brand : color.line, backgroundColor: n ? '#eaf1ff' : item.is_available ? color.card : '#f1f5f9', justifyContent: 'space-between' }, pressed && { backgroundColor: '#dbe7ff' }]}
+      >
+        {n ? <View style={{ position: 'absolute', top: 6, right: 6, minWidth: 26, height: 26, borderRadius: 13, paddingHorizontal: 6, backgroundColor: color.brand, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>{n}</Text></View> : null}
+        <Text numberOfLines={2} style={{ fontSize: 15, fontWeight: '600', color: item.is_available ? color.ink : color.soft, paddingRight: n ? 28 : 0 }}>{item.name}</Text>
+        <Text style={{ color: color.soft }}>{item.is_available ? rupees(toPaise(item.selling_price)) : 'Not available'}{item.modifier_group_ids.length ? ' · options' : ''}</Text>
+      </Pressable>
+    );
+  };
+
+  // beside the menu on a tablet: everything on this order so far, the line just changed lit
+  const onOrder = order.data ? liveItems(order.data) : [];
+  const stripRef = useRef<ScrollView>(null);
+  useEffect(() => { if (onOrder.length) setTimeout(() => stripRef.current?.scrollToEnd({ animated: true }), 60); }, [onOrder.length]);
+  const Strip = onOrder.length ? (
+    <View accessibilityLabel="On this order" style={{ borderTopWidth: 1, borderColor: color.line, backgroundColor: '#f1f5f9' }}>
+      <ScrollView ref={stripRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, padding: 8 }}>
+        {onOrder.map((i) => (
+          <View key={i.order_item_id} style={{ minHeight: 48, paddingHorizontal: 12, justifyContent: 'center', borderRadius: 24, borderWidth: i.product_id != null && i.product_id === flash ? 2 : 1, borderColor: i.product_id != null && i.product_id === flash ? color.brand : color.line, backgroundColor: i.product_id != null && i.product_id === flash ? '#dbe7ff' : color.card }}>
+            <Text style={{ color: color.ink, fontWeight: '600' }}>{qty(i.quantity)}× {itemName(i)}</Text>
+          </View>
+        ))}
+      </ScrollView>
+    </View>
+  ) : null;
+  const Panel = (
+    <View style={{ flex: 2, borderLeftWidth: 1, borderColor: color.line, backgroundColor: color.card }}>
+      <Text accessibilityRole="header" style={{ padding: 12, fontWeight: '700', color: color.ink }}>{order.data?.table_name ? `On ${order.data.table_name}` : 'On this order'}{onOrder.length ? ` · ${onOrder.length}` : ''}</Text>
+      <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
+        {onOrder.length === 0 ? <Soft style={{ padding: 16 }}>Nothing yet. Tap an item on the menu.</Soft> : null}
+        {onOrder.map((i) => (
+          <View key={i.order_item_id} style={{ paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: i.product_id != null && i.product_id === flash ? '#dbe7ff' : color.card, flexDirection: 'row', gap: 8 }}>
+            <Text style={{ minWidth: 30, fontWeight: '800', color: color.ink }}>{qty(i.quantity)}×</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: color.ink, fontSize: 15 }}>{itemName(i)}</Text>
+              <Soft>{i.status === 'PENDING' ? 'Not sent to the kitchen yet' : i.status === 'PREPARING' ? 'Cooking' : i.status === 'READY' ? 'Ready' : 'Served'}</Soft>
+            </View>
+            <Text style={{ color: color.ink, fontWeight: '600' }}>{rupees(toPaise(i.unit_price * i.quantity))}</Text>
+          </View>
+        ))}
+      </ScrollView>
+    </View>
   );
 
   return (
     <SafeAreaView style={s.screen}>
-      <Page max={1000}>
+      <Page max={wide ? 1200 : 1000}>
+        <View style={{ flex: 1, flexDirection: 'row' }}>
+        <View style={{ flex: 3 }}>
         <View style={{ padding: 16, gap: 8 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Title>Add items</Title>
@@ -99,7 +145,12 @@ export default function AddToOrder() {
           contentContainerStyle={{ padding: 8 }} columnWrapperStyle={{ gap: 8 }} ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
           ListEmptyComponent={<Soft style={{ padding: 16 }}>{sync.products === 0 ? 'No menu on this phone yet. Open Sell once with a connection.' : 'Nothing found.'}</Soft>}
           renderItem={tile}
+          extraData={flash}
         />
+          {wide ? null : Strip}
+        </View>
+        {wide ? Panel : null}
+        </View>
       </Page>
     </SafeAreaView>
   );
