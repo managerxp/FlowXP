@@ -17,7 +17,7 @@ import {
   History, Landmark, LayoutDashboard, LayoutGrid, Lock, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
   Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X, Warehouse, PackageCheck, Undo2, HandCoins, ChartBar, ShoppingBag, Tags,
-  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass
+  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass, BedDouble, Moon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Avatar, Button, EmptyState, Logo, PageLoader, useToast } from '../components/ui.jsx';
@@ -27,7 +27,7 @@ import NotificationBell from '../components/NotificationBell.jsx';
 import { InstallButton, OfflineStatus } from '../components/OfflineStatus.jsx';
 import CommandPalette from '../components/CommandPalette.jsx';
 import IncomingDeliveryAlert from '../components/IncomingDeliveryAlert.jsx';
-import { PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
+import { HOTEL_TYPES, PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
 
 /*
  * The sidebar, grouped by the job rather than listed alphabetically: that
@@ -44,6 +44,7 @@ import { PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from 
 const DINE_IN_TYPES = RESTAURANT_TYPES.filter((t) => t !== 'CLOUD_KITCHEN');
 
 const SALON = ['SALON'];
+const HOTEL = HOTEL_TYPES;
 const WHOLESALE = WHOLESALE_TYPES;
 const PHARMACY = PHARMACY_TYPES;
 const RETAIL = RETAIL_TYPES;
@@ -106,6 +107,19 @@ const NAV_GROUPS = [
       { to: '/app/salon/memberships', label: 'Memberships & offers', icon: BadgePercent, types: SALON, permission: 'products' },
       { to: '/app/salon/team', label: 'Team & commission', icon: Users, types: SALON, anyPermission: ['staff_commission', 'appointments'] },
       { to: '/app/salon/stock', label: 'Stock & alerts', icon: Boxes, types: SALON, anyPermission: ['inventory', 'reports'] }
+    ]
+  },
+  {
+    label: 'Hotel',
+    items: [
+      { to: '/app/hotel/bookings', label: 'Bookings', icon: ClipboardList, types: HOTEL, anyPermission: ['front_desk', 'night_audit'] },
+      { to: '/app/hotel/calendar', label: 'Calendar', icon: CalendarDays, types: HOTEL, anyPermission: ['front_desk', 'night_audit', 'housekeeping'] },
+      { to: '/app/hotel/rooms', label: 'Rooms & housekeeping', icon: BedDouble, types: HOTEL, anyPermission: ['housekeeping', 'front_desk', 'night_audit'] },
+      { to: '/app/hotel/banquet', label: 'Banquet', icon: CalendarClock, types: HOTEL, anyPermission: ['banquet', 'front_desk'] },
+      { to: '/app/hotel/staff', label: 'Staff', icon: Users, types: HOTEL, anyPermission: ['hr', 'payroll'] },
+      { to: '/app/hotel/night-audit', label: 'Night audit', icon: Moon, types: HOTEL, permission: 'night_audit' },
+      { to: '/app/hotel/reports', label: 'Hotel reports', icon: ChartColumn, types: HOTEL, anyPermission: ['reports', 'night_audit', 'front_desk'] },
+      { to: '/app/hotel/setup', label: 'Rooms & rates', icon: Settings, types: HOTEL, permission: 'hotel_setup' }
     ]
   },
   {

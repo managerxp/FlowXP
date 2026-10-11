@@ -13,6 +13,7 @@ import { Check, Download } from 'lucide-react';
 import { api, downloadFile, formatCurrency } from '../lib/api.js';
 import { localISO } from '../lib/dates.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { stateTaxName } from '../lib/gstNames.js';
 import { RESTAURANT_TYPES, platformName } from '../lib/business.js';
 import { Alert, Button, Input, StatCard } from '../components/ui.jsx';
 
@@ -300,6 +301,7 @@ const CustomersReport = ({ d, period }) => (
 );
 
 const GstReport = ({ d }) => {
+  const { business } = useAuth();
   const [error, setError] = useState('');
   return (
     <div className="space-y-5">
@@ -307,7 +309,7 @@ const GstReport = ({ d }) => {
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
         <Tile label="Taxable value" value={formatCurrency(d.taxable_value)} />
         <Tile label="CGST" value={formatCurrency(d.cgst)} />
-        <Tile label="SGST" value={formatCurrency(d.sgst)} />
+        <Tile label={stateTaxName(business?.state)} value={formatCurrency(d.sgst)} />
         <Tile label="IGST" value={formatCurrency(d.igst)} />
         <Tile label="Total GST" value={formatCurrency(d.total_tax)} />
       </div>

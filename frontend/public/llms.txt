@@ -5,7 +5,7 @@
 Key facts:
 
 - Built for India: prices in rupees (₹), GST bills, GSTR-1 JSON and GSTR-3B figures, e-invoice and e-way bill files, UPI, cash, card, bank transfer and credit (pay later) on the same bill.
-- One system for several kinds of business. When a business signs up it picks its trade, and FlowXP switches on the tools for it: restaurants and cafés, cloud kitchens, wholesalers, distributors (field sales), salons and spas, and pharmacies. Retail shops and supermarkets use the core billing, barcode scanning and stock.
+- One system for several kinds of business. When a business signs up it picks its trade, and FlowXP switches on the tools for it: restaurants and cafés, cloud kitchens, hotels and resorts, retail shops and supermarkets, wholesalers, distributors (field sales), salons and spas, and pharmacies.
 - Several outlets or branches under one login, each with its own stock, prices, staff and invoice numbers, compared side by side.
 - Roles and permissions for owners, managers, cashiers, waiters, kitchen staff and field staff; staff see only what their role allows. Owners can turn on two-step login.
 - Flow AI only reads the business's own records, cannot change prices, bills or stock, and says when a figure is an estimate.
@@ -27,6 +27,8 @@ Key facts:
 - [Restaurants](https://flowxp.in/industries/restaurant): counter billing, tables and table QR ordering, kitchen display, menu with options, recipes and food cost, reservations, loyalty
 - [Cafés and bakeries](https://flowxp.in/industries/cafe): a fast counter with order numbers, size, milk and sugar options on drinks, a barista screen, recipes and stock, a visit card, offers by day and hour, GST
 - [Cloud kitchens](https://flowxp.in/industries/cloud-kitchen): delivery orders, several brands from one kitchen, payouts and profit after platform fees
+- [Hotels and resorts](https://flowxp.in/industries/hotel): bookings, calendar, check-in and check-out into a GST invoice, housekeeping, night audit, the standard hotel reports, banquet and events, staff and payroll sheet
+- [Retail and supermarkets](https://flowxp.in/industries/retail): barcode billing, loose items by weight, products with MRP and margin, expiry batches sold soonest-first, receiving by scan, stock counts, offers, returns and GST
 - [Wholesale](https://flowxp.in/industries/wholesale): sales orders, credit limits, batches and expiry, warehouse and delivery, purchasing, receivables and payables
 - [Distribution](https://flowxp.in/industries/distributor): principals and brands, territories and beats, field sales on a phone, schemes, vans, targets
 - [Salons and spas](https://flowxp.in/industries/salon): appointments, online booking, services, staff commission, memberships and packages, product stock

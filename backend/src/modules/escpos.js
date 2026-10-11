@@ -8,6 +8,8 @@
  * browser receipt.
  */
 
+import { taxName } from './gst/states.js';
+
 const ESC = 0x1b; const GS = 0x1d; const LF = 0x0a;
 
 /** Strip what a printer's default code page can't show. */
@@ -101,7 +103,7 @@ export const receiptBytes = ({ business, settings = {}, invoice }, { cols = 48, 
   j.rule();
 
   j.pair('Subtotal', money(invoice.subtotal));
-  for (const [label, v] of [['CGST', invoice.cgst], ['SGST', invoice.sgst], ['IGST', invoice.igst]]) if (v > 0) j.pair(label, money(v));
+  for (const [label, v] of [['CGST', invoice.cgst], [taxName(outlet?.state || business.state), invoice.sgst], ['IGST', invoice.igst]]) if (v > 0) j.pair(label, money(v));
   const hand = invoice.discount - invoice.coupon_discount;
   if (hand > 0) j.pair('Discount', `-${money(hand)}`);
   if (invoice.coupon_discount > 0) j.pair(`Coupon ${invoice.coupon_code}`, `-${money(invoice.coupon_discount)}`);

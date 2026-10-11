@@ -87,7 +87,7 @@ const IncomingDeliveryAlert = () => {
   const ringTimer = useRef(null);
 
   // Only restaurants/cafés ever get a delivery order, and only someone who could act on it needs to see this.
-  const eligible = business && ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE', 'RACING'].includes(business.business_type) && can('billing');
+  const eligible = business && ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'GAMING_CAFE', 'RACING'].includes(business.business_type) && can('billing');
 
   const load = () => api('/orders/pending-deliveries').then(setOrders).catch(() => {});
   useEffect(() => {

@@ -2,13 +2,12 @@ import { useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { api, useSession } from '../lib/session.ts';
-import { goBack } from '../lib/nav.ts';
-import { useLoad } from '../lib/useLoad.ts';
-import { clientLine, type Segment, type SalonClient } from '../lib/salon.ts';
-import { rupees, toPaise } from '../lib/money.ts';
-import { Page, ColumnList } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, Failed, Line, Loading, SavedNote, Soft, Title, s } from '../lib/ui.tsx';
+import { api, useSession } from '../../lib/session.ts';
+import { useLoad } from '../../lib/useLoad.ts';
+import { clientLine, type Segment, type SalonClient } from '../../lib/salon.ts';
+import { rupees, toPaise } from '../../lib/money.ts';
+import { Page, ColumnList } from '../../lib/responsive.tsx';
+import { Button, Chips, Empty, Failed, Line, Loading, SavedNote, Soft, Title, s } from '../../lib/ui.tsx';
 
 /* The salon's clients: visits, last visit, what they have (membership, points), and groups like new, regular or gone quiet. */
 export default function SalonClients() {
@@ -27,7 +26,6 @@ export default function SalonClients() {
         <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <View style={{ flex: 1 }}><Title>Clients</Title><Soft>{segs.data ? `${segs.data.total} clients` : 'Everyone who has visited'}</Soft></View>
           <Button title="Add" onPress={() => router.push('/customers')} />
-          <Button title="Back" kind="quiet" onPress={() => goBack()} />
         </View>
         <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
           <TextInput style={s.input} value={text} onChangeText={setText} placeholder="Search by name or phone" autoCorrect={false} accessibilityLabel="Search clients" />

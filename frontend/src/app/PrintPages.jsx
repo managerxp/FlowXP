@@ -8,6 +8,7 @@
  * FlowXP. Opened with ?auto=1 the page prints itself once its data has loaded.
  */
 import { useEffect, useState } from 'react';
+import { stateTaxName } from '../lib/gstNames.js';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { api, formatCurrency } from '../lib/api.js';
@@ -94,7 +95,7 @@ export const ReceiptPage = () => {
   const outlet = invoice.outlet;
   const gstin = (outlet?.gstin || biz.gstin);
   const address = [outlet?.address || biz.address, outlet?.city || biz.city].filter(Boolean).join(', ');
-  const taxRows = [['CGST', invoice.cgst], ['SGST', invoice.sgst], ['IGST', invoice.igst]].filter(([, v]) => v > 0);
+  const taxRows = [['CGST', invoice.cgst], [stateTaxName(outlet?.state || biz.state), invoice.sgst], ['IGST', invoice.igst]].filter(([, v]) => v > 0);
   const handDiscount = invoice.discount - invoice.coupon_discount;
 
   return (
@@ -261,7 +262,7 @@ export const CreditNotePage = () => {
         <Rule />
         <Row left="Taxable value" right={note.subtotal.toFixed(2)} />
         {note.cgst > 0 && <Row left="CGST reversed" right={note.cgst.toFixed(2)} />}
-        {note.sgst > 0 && <Row left="SGST reversed" right={note.sgst.toFixed(2)} />}
+        {note.sgst > 0 && <Row left={`${stateTaxName(biz?.state)} reversed`} right={note.sgst.toFixed(2)} />}
         {note.igst > 0 && <Row left="IGST reversed" right={note.igst.toFixed(2)} />}
         {note.discount_share > 0 && <Row left="Less bill discount" right={`-${note.discount_share.toFixed(2)}`} />}
         <Rule />

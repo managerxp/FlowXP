@@ -125,7 +125,7 @@ export default function Pay() {
   const controls = (
     <>
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        {HOWS.map((h) => <Button key={h.id} title={h.label} kind={how === h.id ? 'primary' : 'quiet'} onPress={() => { setHow(h.id); setError(''); }} style={{ flex: 1 }} />)}
+        {HOWS.map((h) => <Button key={h.id} title={h.label} selected={how === h.id} onPress={() => { setHow(h.id); setError(''); }} style={{ flex: 1 }} />)}
       </View>
       {how === 'PART' ? (
         <View style={{ gap: 8 }}>
@@ -141,7 +141,7 @@ export default function Pay() {
         <>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {METHODS.map((m) => (
-              <Button key={m.id} title={m.label} kind={method === m.id ? 'primary' : 'quiet'} onPress={() => { setMethod(m.id); void kvSet('last_method', m.id); }} style={{ flex: 1 }} />
+              <Button key={m.id} title={m.label} selected={method === m.id} onPress={() => { setMethod(m.id); void kvSet('last_method', m.id); }} style={{ flex: 1 }} />
             ))}
           </View>
 
@@ -149,7 +149,7 @@ export default function Pay() {
             <View style={{ gap: 8 }}>
               <Soft>Cash received (optional)</Soft>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {cashSuggestions(total).map((p, i) => <Button key={p} title={i === 0 ? 'Exact' : rupees(p)} kind={toPaise(given || '0') === p ? 'primary' : 'quiet'} onPress={() => setGiven(String(p / 100))} style={{ minWidth: 88 }} />)}
+                {cashSuggestions(total).map((p, i) => <Button key={p} title={i === 0 ? 'Exact' : rupees(p)} selected={toPaise(given || '0') === p} onPress={() => setGiven(String(p / 100))} style={{ minWidth: 88 }} />)}
               </View>
               <TextInput style={s.input} value={given} onChangeText={setGiven} keyboardType="decimal-pad" placeholder={rupees(total)} accessibilityLabel="Cash received" />
               {change > 0 ? <Text style={{ fontSize: 18, fontWeight: '700', color: color.ok }}>Give back {rupees(change)}</Text> : null}

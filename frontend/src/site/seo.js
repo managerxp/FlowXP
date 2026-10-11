@@ -13,13 +13,15 @@ const BRAND = 'FlowXP';
 
 /* Page titles and search phrases per industry. */
 const INDUSTRY_TITLE = {
-  restaurant: 'Restaurant billing software', cafe: 'Café and bakery billing software', 'cloud-kitchen': 'Cloud kitchen software', wholesale: 'Wholesale billing software',
+  restaurant: 'Restaurant billing software', cafe: 'Café and bakery billing software', 'cloud-kitchen': 'Cloud kitchen software', retail: 'Retail and supermarket billing software', hotel: 'Hotel and resort management software', wholesale: 'Wholesale billing software',
   distributor: 'Distribution and field sales software', salon: 'Salon billing software', pharmacy: 'Pharmacy billing software'
 };
 const INDUSTRY_SEARCH = {
   restaurant: 'Restaurant billing software with POS, table QR ordering, kitchen display, recipes and GST.',
   cafe: 'Café and bakery billing software with a fast counter, size, milk and sugar options, a barista screen, recipes, a visit card and GST.',
   'cloud-kitchen': 'Cloud kitchen software for delivery orders, several brands, recipes, payouts and GST.',
+  hotel: 'Hotel management software with bookings, front desk, housekeeping, night audit, GST invoices, banquet, staff and the standard hotel reports.',
+  retail: 'Retail and supermarket billing software with barcode scanning, expiry tracking, stock counts, offers, returns and GST.',
   wholesale: 'Wholesale billing and inventory software with credit limits, batches, purchase orders and GST.',
   distributor: 'Distribution software for field sales, beats, schemes, van stock and collections.',
   salon: 'Salon billing software with appointments, staff commission, memberships and product stock.',
@@ -29,7 +31,7 @@ const INDUSTRY_SEARCH = {
 const PAGES = {
   '/': ['AI billing, inventory and GST software for Indian businesses', 'FlowXP is billing and POS software for shops, restaurants, salons, pharmacies and wholesalers. Billing, stock and GST in one place, with a daily note on what is selling and what needs you.'],
   '/features': ['Billing, inventory, GST and reports in one place', 'GST billing, payments, stock, purchases, customers, reports and roles in one system. See every FlowXP feature with real screens.'],
-  '/industries': ['Billing software for your kind of business', 'FlowXP for restaurants, cloud kitchens, wholesalers, distributors, salons and pharmacies, each with the tools that trade needs.'],
+  '/industries': ['Billing software for your kind of business', 'FlowXP for restaurants, cafés, cloud kitchens, hotels, supermarkets and shops, wholesalers, distributors, salons and pharmacies, each with the tools that trade needs.'],
   '/ai': ['Flow AI, the AI manager in your billing software', 'Ask your business a question in plain words. Flow AI answers from your own sales, stock and payments, and says when a figure is an estimate.'],
   '/integrations': ['Printers, scanners and GST integrations', 'FlowXP works with receipt printers, barcode scanners, cash drawers and GST portal files. WhatsApp and SMS are coming soon. None are needed to start billing.'],
   '/pricing': ['Pricing and plans', 'FlowXP plans for single shops and multi-branch businesses. Every plan starts with a 7-day free trial, no card needed.'],

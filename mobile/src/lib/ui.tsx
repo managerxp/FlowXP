@@ -6,14 +6,18 @@ import { Ionicons } from '@expo/vector-icons';
 
 export const color = { brand: '#0b57ff', ink: '#0f172a', soft: '#475569', line: '#e2e8f0', bg: '#f8fafc', card: '#ffffff', danger: '#b91c1c', ok: '#047857', warn: '#92400e' };
 
-export const Button = ({ title, onPress, kind = 'primary', busy = false, disabled = false, style }: { title: string; onPress: () => void; kind?: 'primary' | 'quiet' | 'danger'; busy?: boolean; disabled?: boolean; style?: ViewStyle }) => (
-  <Pressable
-    accessibilityRole="button" accessibilityState={{ disabled: busy || disabled, busy }} onPress={onPress} disabled={busy || disabled} android_ripple={{ color: '#ffffff33' }}
-    style={({ pressed }) => [s.button, kind === 'primary' && s.primary, kind === 'quiet' && s.quiet, kind === 'danger' && s.dangerBtn, (disabled || busy) && { opacity: 0.5 }, pressed && { transform: [{ scale: 0.98 }] }, style]}
-  >
-    {busy ? <ActivityIndicator color={kind === 'primary' ? '#fff' : color.brand} /> : <Text style={[s.buttonText, kind !== 'primary' && { color: kind === 'danger' ? color.danger : color.brand }]}>{t(title)}</Text>}
-  </Pressable>
-);
+/** `selected` is for a choice among options (a payment method, a paper size): the chosen one is solid blue with a tick, the others are outlined, so it reads without relying on colour alone. */
+export const Button = ({ title, onPress, kind: asked = 'primary', busy = false, disabled = false, selected, style }: { title: string; onPress: () => void; kind?: 'primary' | 'quiet' | 'danger'; busy?: boolean; disabled?: boolean; selected?: boolean; style?: ViewStyle }) => {
+  const kind = selected === undefined ? asked : selected ? 'primary' : 'quiet';
+  return (
+    <Pressable
+      accessibilityRole="button" accessibilityState={{ disabled: busy || disabled, busy, ...(selected === undefined ? {} : { selected }) }} onPress={onPress} disabled={busy || disabled} android_ripple={{ color: '#ffffff33' }}
+      style={({ pressed }) => [s.button, kind === 'primary' && s.primary, kind === 'quiet' && s.quiet, kind === 'danger' && s.dangerBtn, (disabled || busy) && { opacity: 0.5 }, pressed && { transform: [{ scale: 0.98 }] }, style]}
+    >
+      {busy ? <ActivityIndicator color={kind === 'primary' ? '#fff' : color.brand} /> : <Text style={[s.buttonText, kind !== 'primary' && { color: kind === 'danger' ? color.danger : color.brand }]}>{selected ? '✓ ' : ''}{t(title)}</Text>}
+    </Pressable>
+  );
+};
 
 export const Screen = ({ children, pad = true }: { children: ReactNode; pad?: boolean }) => <View style={[s.screen, pad && { padding: 16 }]}>{children}</View>;
 export const Title = ({ children }: { children: ReactNode }) => <Text accessibilityRole="header" style={s.title}>{tx(children)}</Text>;
@@ -27,7 +31,7 @@ export const s = StyleSheet.create({
   error: { color: color.danger, fontSize: 14, marginVertical: 6 },
   button: { minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
   primary: { backgroundColor: color.brand },
-  quiet: { backgroundColor: '#eaf1ff' },
+  quiet: { backgroundColor: '#eaf1ff', borderWidth: 1, borderColor: '#b9ceff' },
   dangerBtn: { backgroundColor: '#fee2e2' },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   input: { minHeight: 48, borderWidth: 1, borderColor: color.line, borderRadius: 12, paddingHorizontal: 14, fontSize: 16, backgroundColor: color.card, color: color.ink },
@@ -58,9 +62,9 @@ export const Stat = ({ label, value, note, tone }: { label: string; value: strin
 );
 
 /** A label on the left and a value on the right, in a list. */
-export const Line = ({ left, right, sub, onPress, icon }: { left: string; right?: string; sub?: string; onPress?: () => void; icon?: React.ComponentProps<typeof Ionicons>['name'] }) => (
-  <P2 disabled={!onPress} onPress={onPress} accessibilityRole={onPress ? 'button' : undefined} android_ripple={onPress ? { color: '#0b57ff22' } : undefined}
-    style={({ pressed }) => ({ minHeight: 56, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: pressed ? '#eaf1ff' : color.card, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 })}>
+export const Line = ({ left, right, sub, onPress, icon, selected }: { left: string; right?: string; sub?: string; onPress?: () => void; icon?: React.ComponentProps<typeof Ionicons>['name']; selected?: boolean }) => (
+  <P2 disabled={!onPress} onPress={onPress} accessibilityRole={onPress ? 'button' : undefined} accessibilityState={selected === undefined ? undefined : { selected }} android_ripple={onPress ? { color: '#0b57ff22' } : undefined}
+    style={({ pressed }) => ({ minHeight: 56, paddingLeft: 11, paddingRight: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: pressed || selected ? '#dbe7ff' : color.card, borderLeftWidth: 5, borderLeftColor: selected ? color.brand : 'transparent', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 })}>
     {icon ? <V2 style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#eaf1ff', alignItems: 'center', justifyContent: 'center' }}><Ionicons name={icon} size={20} color={color.brand} /></V2> : null}
     <V2 style={{ flex: 1 }}>
       <T2 style={{ fontSize: 16, color: color.ink }}>{t(left)}</T2>

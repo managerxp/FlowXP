@@ -60,4 +60,4 @@ export const upiLink = (vpa: string, name: string, totalPaise: number, note: str
   `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(name)}&am=${(totalPaise / 100).toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
 
 /** The shops that make food to order: their counter sale can go to the kitchen (or barista) screen and comes back with a token. */
-export const KITCHEN_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN'];
+export const KITCHEN_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL'];   // a hotel's restaurant works like any other; the rooms and front desk are on the website

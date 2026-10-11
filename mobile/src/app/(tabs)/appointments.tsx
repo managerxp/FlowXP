@@ -2,15 +2,14 @@ import { useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ApiError } from '../lib/api.ts';
-import { api, useSession } from '../lib/session.ts';
-import { goBack } from '../lib/nav.ts';
-import { useLoad } from '../lib/useLoad.ts';
-import { APPOINTMENT_LABEL, NEXT, canBill, canCancel, canNoShow, type Appointment } from '../lib/salon.ts';
-import { clock } from '../lib/floor.ts';
-import { rupees, toPaise } from '../lib/money.ts';
-import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Failed, Loading, SavedNote, Soft, Title, color, s } from '../lib/ui.tsx';
+import { ApiError } from '../../lib/api.ts';
+import { api, useSession } from '../../lib/session.ts';
+import { useLoad } from '../../lib/useLoad.ts';
+import { APPOINTMENT_LABEL, NEXT, canBill, canCancel, canNoShow, type Appointment } from '../../lib/salon.ts';
+import { clock } from '../../lib/floor.ts';
+import { rupees, toPaise } from '../../lib/money.ts';
+import { Page } from '../../lib/responsive.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Loading, SavedNote, Soft, Title, color, s } from '../../lib/ui.tsx';
 
 type Day = 'today' | 'tomorrow';
 const dayText = (d: Day) => { const x = new Date(); if (d === 'tomorrow') x.setDate(x.getDate() + 1); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
@@ -39,7 +38,6 @@ export default function Appointments() {
         <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <View style={{ flex: 1 }}><Title>Appointments</Title><Soft>Who is booked, and who has arrived</Soft></View>
           <Button title="New" onPress={() => router.push('/appointment-new')} />
-          <Button title="Back" kind="quiet" onPress={() => goBack()} />
         </View>
         <Chips<Day> items={[{ id: 'today', label: 'Today' }, { id: 'tomorrow', label: 'Tomorrow' }]} value={day} onChange={setDay} />
         <SavedNote at={list.savedAt} />

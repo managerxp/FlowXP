@@ -15,18 +15,20 @@ const ROLES = {
   RECEPTIONIST: 'Receptionist', STYLIST: 'Stylist', ACCOUNTANT: 'Accountant',
   SALES_MANAGER: 'Sales manager', SALES_EXECUTIVE: 'Sales executive', WAREHOUSE_MANAGER: 'Warehouse manager', WAREHOUSE_STAFF: 'Warehouse staff', PURCHASE_MANAGER: 'Purchase manager',
   DISTRIBUTOR_ADMIN: 'Distributor admin', FIELD_SALES: 'Field sales rep', COLLECTION_EXECUTIVE: 'Collection executive', DELIVERY_MANAGER: 'Delivery manager',
-  PHARMACIST: 'Pharmacist', SALES_STAFF: 'Sales staff', GRN_MANAGER: 'GRN manager', AUDITOR: 'Auditor'
+  PHARMACIST: 'Pharmacist', SALES_STAFF: 'Sales staff', GRN_MANAGER: 'GRN manager', AUDITOR: 'Auditor',
+  FRONT_DESK: 'Front desk', HOUSEKEEPER: 'Housekeeper', HOUSEKEEPING_SUPERVISOR: 'Housekeeping supervisor', NIGHT_AUDITOR: 'Night auditor'
 };
 /* Roles that only make sense for one kind of business: a salon has no kitchen, a restaurant has no stylists. */
 const SALON_ONLY = ['RECEPTIONIST', 'STYLIST'];
 const WHOLESALE_ONLY = ['SALES_MANAGER', 'SALES_EXECUTIVE', 'WAREHOUSE_MANAGER', 'WAREHOUSE_STAFF', 'PURCHASE_MANAGER', 'DISTRIBUTOR_ADMIN', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'DELIVERY_MANAGER'];
 const PHARMACY_ONLY = ['PHARMACIST', 'SALES_STAFF', 'GRN_MANAGER', 'AUDITOR'];
+const HOTEL_ONLY = ['FRONT_DESK', 'HOUSEKEEPER', 'HOUSEKEEPING_SUPERVISOR', 'NIGHT_AUDITOR'];
 const NOT_FOR_SALON = ['WAITER', 'KITCHEN', 'DELIVERY'];
 const NOT_FOR_WHOLESALE = ['WAITER', 'KITCHEN'];
 const NOT_FOR_PHARMACY = ['WAITER', 'KITCHEN', 'DELIVERY'];
 const DISTRIBUTOR_ONLY = ['DISTRIBUTOR_ADMIN', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'DELIVERY_MANAGER'];   // only where the distributor features are on
 const GROUP_ROLES = ['OWNER', 'ADMIN'];
-const FLOOR_ROLES = ['CASHIER', 'WAITER', 'KITCHEN', 'STAFF', 'DELIVERY', 'RECEPTIONIST', 'STYLIST', 'ACCOUNTANT', 'WAREHOUSE_STAFF', 'SALES_EXECUTIVE', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'PHARMACIST', 'SALES_STAFF', 'GRN_MANAGER', 'AUDITOR'];
+const FLOOR_ROLES = ['FRONT_DESK', 'HOUSEKEEPER', 'HOUSEKEEPING_SUPERVISOR', 'NIGHT_AUDITOR', 'CASHIER', 'WAITER', 'KITCHEN', 'STAFF', 'DELIVERY', 'RECEPTIONIST', 'STYLIST', 'ACCOUNTANT', 'WAREHOUSE_STAFF', 'SALES_EXECUTIVE', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'PHARMACIST', 'SALES_STAFF', 'GRN_MANAGER', 'AUDITOR'];
 const ROLE_HELP = {
   OWNER: 'Everything, including billing and staff.', ADMIN: 'Runs the business day to day; can’t manage owners.',
   MANAGER: 'Reports, stock, buying and refunds.', CASHIER: 'Bills sales and takes payments.', WAITER: 'Takes and bills orders.',
@@ -35,6 +37,10 @@ const ROLE_HELP = {
   RECEPTIONIST: 'Books appointments, bills clients and looks after the client book.',
   STYLIST: 'Sees their own appointments and moves clients through the service. No billing or money.',
   ACCOUNTANT: 'Billing records, payments, expenses, GST and reports. Cannot change the catalogue or the team.',
+  FRONT_DESK: 'Hotel bookings, check-in and check-out, the guest bill and payments. Can mark rooms clean or dirty.',
+  HOUSEKEEPER: 'Sees the rooms and marks them clean, dirty or out of order. Nothing else.',
+  HOUSEKEEPING_SUPERVISOR: 'Housekeeping, and can set up rooms and rates.',
+  NIGHT_AUDITOR: 'Closes the hotel’s day, takes payments and reads the hotel reports.',
   SALES_MANAGER: 'Orders, customers, pricing, receipts, returns and sales reports. Can cancel orders and override a credit hold.',
   SALES_EXECUTIVE: 'Takes orders for their own customers. Cannot change prices or see the books.',
   WAREHOUSE_MANAGER: 'Stock, goods receipts, transfers, picking and dispatch.',
@@ -189,11 +195,13 @@ const StaffPage = () => {
   const salon = business?.business_type === 'SALON';
   const wholesale = ['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type);
   const pharmacy = business?.business_type === 'PHARMACY';
+  const hotel = business?.business_type === 'HOTEL';
   const roles = Object.keys(ROLES).filter((r) => (isOwner || !GROUP_ROLES.includes(r)) && (
-    salon ? !NOT_FOR_SALON.includes(r) && !WHOLESALE_ONLY.includes(r) && !PHARMACY_ONLY.includes(r)
-    : wholesale ? !NOT_FOR_WHOLESALE.includes(r) && !SALON_ONLY.includes(r) && !PHARMACY_ONLY.includes(r) && (business?.distributor_enabled || !DISTRIBUTOR_ONLY.includes(r))
-    : pharmacy ? !NOT_FOR_PHARMACY.includes(r) && !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r)
-    : !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r) && !PHARMACY_ONLY.includes(r)
+    salon ? !NOT_FOR_SALON.includes(r) && !WHOLESALE_ONLY.includes(r) && !PHARMACY_ONLY.includes(r) && !HOTEL_ONLY.includes(r)
+    : hotel ? !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r) && !PHARMACY_ONLY.includes(r)
+    : wholesale ? !NOT_FOR_WHOLESALE.includes(r) && !SALON_ONLY.includes(r) && !PHARMACY_ONLY.includes(r) && !HOTEL_ONLY.includes(r) && (business?.distributor_enabled || !DISTRIBUTOR_ONLY.includes(r))
+    : pharmacy ? !NOT_FOR_PHARMACY.includes(r) && !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r) && !HOTEL_ONLY.includes(r)
+    : !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r) && !PHARMACY_ONLY.includes(r) && !HOTEL_ONLY.includes(r)
   ));
 
   const load = () => api('/staff').then(setPeople).catch((e) => setError(e.status === 403 ? 'Managing staff is for owners and admins.' : e.message));

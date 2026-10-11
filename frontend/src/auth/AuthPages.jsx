@@ -17,7 +17,7 @@ import { Check, Shot } from '../site/parts.jsx';
    The API validates against it. A mismatch here is a 400 the
    user cannot fix, so the two lists must be changed together. */
 const BUSINESS_TYPES = [
-  ['RESTAURANT', 'Restaurant'], ['CAFE', 'Café'], ['CLOUD_KITCHEN', 'Cloud kitchen'], ['RETAIL', 'Retail'],
+  ['RESTAURANT', 'Restaurant'], ['CAFE', 'Café'], ['CLOUD_KITCHEN', 'Cloud kitchen'], ['HOTEL', 'Hotel and restaurant'], ['RETAIL', 'Retail'],
   ['SUPERMARKET', 'Supermarket'], ['PHARMACY', 'Pharmacy'], ['SALON', 'Salon'],
   ['WHOLESALE', 'Wholesale'], ['DISTRIBUTOR', 'Distributor']
 ];

@@ -51,7 +51,7 @@ router.post('/invoice-import/learn', ...write, invoiceImport.learn);
 
 /* Offers: the owner manages them (products or settings permission); the till only asks which are on and what a cart gets. */
 /* Offers work for shops and for restaurants and cafes (the counter and the table bill both apply them). */
-const OFFER_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE', 'RACING'];
+const OFFER_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'GAMING_CAFE', 'RACING'];
 const offersTypes = (req, res, next) => (isRetail(req.tenant) || OFFER_TYPES.includes(req.tenant?.businessType) ? next() : res.status(404).json({ success: false, message: 'Not found' }));
 const till = [requireAuth, withBusiness(), offersTypes, requirePermission('billing')];
 const offersRead = [requireAuth, withBusiness(), offersTypes, requireAnyPermission('products', 'settings')];

@@ -27,7 +27,13 @@ export default function TabsLayout() {
   const diningRoom = business?.business_type !== 'CLOUD_KITCHEN';   // a cloud kitchen has no tables: the same tab holds its takeaway and delivery orders
   // only the places this person may use: someone who cannot make bills does not get Sell, Tables or Bills
   const noSell = !allowed(business, 'billing', 'sales_orders', 'fulfilment', 'field_sales', 'collections', 'appointments', 'dispensing', 'vehicles');
-  const hidden = [...(food ? ['products'] : ['tables']), ...(noSell ? ['sell', 'tables', 'sales'] : []), ...(!allowed(business, 'products', 'inventory') ? ['products'] : [])];
+  // a salon works from its appointments and clients: both get a place in the sidebar; the phone's bar holds five, so there Clients stays in More and Products makes room
+  const salon = business?.business_type === 'SALON';
+  const hidden = [
+    ...(food ? ['products'] : ['tables']), ...(noSell ? ['sell', 'tables', 'sales'] : []), ...(!allowed(business, 'products', 'inventory') ? ['products'] : []),
+    ...(salon && allowed(business, 'appointments') ? [] : ['appointments']), ...(salon ? [] : ['salon-clients']),
+    ...(salon && !wide ? ['products', 'salon-clients'] : [])
+  ];
   return (
     <Tabs
       tabBar={wide ? (p) => <Rail {...(p as unknown as Omit<RailProps, 'hidden'>)} hidden={hidden} /> : undefined}
@@ -43,6 +49,8 @@ export default function TabsLayout() {
       <Tabs.Screen name="home" options={tab('Home', 'home-outline', 'home')} />
       <Tabs.Screen name="sell" options={{ ...tab('Sell', 'cart-outline', 'cart'), href: noSell ? null : undefined }} />
       <Tabs.Screen name="tables" options={{ ...tab(diningRoom ? 'Tables' : 'Orders', 'grid-outline', 'grid'), href: food && !noSell ? undefined : null }} />
+      <Tabs.Screen name="appointments" options={{ ...tab('Appointments', 'calendar-outline', 'calendar'), tabBarLabelStyle: { fontSize: 11, fontWeight: '600' }, href: hidden.includes('appointments') ? null : undefined }} />
+      <Tabs.Screen name="salon-clients" options={{ ...tab('Clients', 'heart-outline', 'heart'), href: hidden.includes('salon-clients') ? null : undefined }} />
       <Tabs.Screen name="sales" options={{ ...tab('Bills', 'receipt-outline', 'receipt'), tabBarBadge: waiting > 0 ? waiting : undefined, href: noSell ? null : undefined }} />
       <Tabs.Screen name="products" options={{ ...tab('Products', 'cube-outline', 'cube'), href: hidden.includes('products') ? null : undefined }} />
       <Tabs.Screen name="more" options={tab('More', 'menu-outline', 'menu')} />

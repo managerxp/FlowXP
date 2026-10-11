@@ -153,6 +153,20 @@ const SalonTeam = lazy(() => import('./app/salon/SalonTeam.jsx'));
 const SalonStock = lazy(() => import('./app/salon/SalonStock.jsx'));
 const SalonReports = lazy(() => import('./app/salon/SalonReports.jsx'));
 const SalonSettings = lazy(() => import('./app/salon/SalonSettings.jsx'));
+/* The hotel module (business type HOTEL). Its screens live in app/hotel/ and load only for a hotel. */
+const HotelDashboard = lazy(() => import('./app/hotel/HotelDashboard.jsx'));
+const HotelBookings = lazy(() => import('./app/hotel/HotelBookings.jsx'));
+const HotelBookingDetail = lazy(() => import('./app/hotel/BookingDetail.jsx'));
+const HotelCalendar = lazy(() => import('./app/hotel/HotelCalendar.jsx'));
+const HotelRooms = lazy(() => import('./app/hotel/HotelRooms.jsx'));
+const HotelNightAudit = lazy(() => import('./app/hotel/HotelNightAudit.jsx'));
+const HotelReports = lazy(() => import('./app/hotel/HotelReports.jsx'));
+const HotelSetup = lazy(() => import('./app/hotel/HotelSetup.jsx'));
+const BanquetEvents = lazy(() => import('./app/hotel/BanquetEvents.jsx'));
+const BanquetEventDetail = lazy(() => import('./app/hotel/EventDetail.jsx'));
+const BanquetCalendar = lazy(() => import('./app/hotel/BanquetCalendar.jsx'));
+const BanquetPrint = lazy(() => import('./app/hotel/BanquetPrint.jsx'));
+const HotelStaff = lazy(() => import('./app/hotel/HotelStaff.jsx'));
 
 /* The pharmacy module (business type PHARMACY). Its screens live in app/pharmacy/ and load only for a pharmacy. */
 const PharmacyDashboard = lazy(() => import('./app/pharmacy/PharmacyDashboard.jsx'));
@@ -188,6 +202,7 @@ const RequireAuth = ({ children }) => {
 const HomeRoute = () => {
   const { business } = useAuth();
   if (business?.business_type === 'SALON') return <SalonDashboard />;
+  if (business?.business_type === 'HOTEL') return <HotelDashboard />;
   if (business?.business_type === 'PHARMACY') return <PharmacyDashboard />;
   if (['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type)) return business?.distributor_enabled ? <DistributorDashboard /> : <WholesaleDashboard />;
   return <Dashboard />;
@@ -318,6 +333,18 @@ const App = () => (
       <Route path="distributor/vehicles/:id" element={<DistributorVehicleDetail />} />
       <Route path="distributor/field" element={<DistributorField />} />
 
+      <Route path="hotel/bookings" element={<HotelBookings />} />
+      <Route path="hotel/bookings/:id" element={<HotelBookingDetail />} />
+      <Route path="hotel/calendar" element={<HotelCalendar />} />
+      <Route path="hotel/rooms" element={<HotelRooms />} />
+      <Route path="hotel/night-audit" element={<HotelNightAudit />} />
+      <Route path="hotel/reports" element={<HotelReports />} />
+      <Route path="hotel/setup" element={<HotelSetup />} />
+      <Route path="hotel/staff" element={<HotelStaff />} />
+      <Route path="hotel/banquet" element={<BanquetEvents />} />
+      <Route path="hotel/banquet/calendar" element={<BanquetCalendar />} />
+      <Route path="hotel/banquet/events/:id" element={<BanquetEventDetail />} />
+      <Route path="hotel/banquet/events/:id/print" element={<BanquetPrint />} />
       <Route path="salon/pos" element={<SalonPos />} />
       <Route path="salon/appointments" element={<SalonAppointments />} />
       <Route path="salon/clients" element={<SalonClients />} />

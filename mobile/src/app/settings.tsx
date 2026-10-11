@@ -89,8 +89,8 @@ export default function Settings() {
         <UpiSettings />
         <Text style={{ fontWeight: '700', color: color.ink }}>{t('Receipt paper width')}</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Button title="58 mm" kind={paper === '58' ? 'primary' : 'quiet'} onPress={() => choosePaper('58')} style={{ flex: 1 }} />
-          <Button title="80 mm" kind={paper === '80' ? 'primary' : 'quiet'} onPress={() => choosePaper('80')} style={{ flex: 1 }} />
+          <Button title="58 mm" selected={paper === '58'} onPress={() => choosePaper('58')} style={{ flex: 1 }} />
+          <Button title="80 mm" selected={paper === '80'} onPress={() => choosePaper('80')} style={{ flex: 1 }} />
         </View>
         <PrinterSettings paper={paper} />
 

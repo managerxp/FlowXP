@@ -20,8 +20,8 @@ const groups = async (id) => (await pool.query(
   `SELECT g.name, g.is_variant, g.min_select, g.max_select, array_agg(m.name ORDER BY m.sort_order) AS options
    FROM modifier_groups g JOIN modifiers m USING (group_id) WHERE g.business_id = $1 GROUP BY g.group_id ORDER BY g.sort_order`, [id])).rows;
 
-test('food businesses are the restaurant family only', () => {
-  assert.deepEqual(FOOD_TYPES, ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN']);
+test('food businesses are the restaurant family and a hotel with a restaurant', () => {
+  assert.deepEqual(FOOD_TYPES, ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL']);
 });
 
 test('a new restaurant gets Spice level (pick one), Veg extras and Non-veg extras (optional)', { skip }, async () => {

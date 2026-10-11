@@ -84,7 +84,7 @@ const buildChecklist = (business, counts) => [
   },
   {
     key: 'first_product',
-    label: business.business_type && ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE', 'RACING'].includes(business.business_type) ? 'Add your menu (take a photo of it)' : 'Add your first product',
+    label: business.business_type && ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'GAMING_CAFE', 'RACING'].includes(business.business_type) ? 'Add your menu (take a photo of it)' : 'Add your first product',
     done: counts.products > 0,
     href: '/app/products'
   },

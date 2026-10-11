@@ -50,7 +50,7 @@ export default function More() {
       { left: 'Bills on hold', sub: 'Resume or discard', icon: 'pause-circle-outline', go: '/held' }
     ] },
     { title: 'Stock and buying', items: [
-      { left: 'Products', sub: 'The menu: prices, stock, add an item', icon: 'cube-outline', go: '/products', show: food },
+      { left: 'Products', sub: 'The menu: prices, stock, add an item', icon: 'cube-outline', go: '/products', show: food || salon },
       { left: 'Stock', sub: 'What is running low, and fix a count', icon: 'layers-outline', go: '/stock', show: can('inventory') },
       { left: 'Use-by dates', sub: 'What is expiring, and what has expired', icon: 'time-outline', go: '/expiry', show: retail },
       { left: 'Batches and use-by dates', sub: 'What is expiring, hold back or recall a batch', icon: 'time-outline', go: '/pharmacy-batches', show: pharmacy },
@@ -97,7 +97,7 @@ export default function More() {
             return items.length ? (
               <View key={g.title}>
                 <SectionTitle>{g.title}</SectionTitle>
-                <Rows>{items.map((i) => <Line key={i.left} icon={i.icon} left={i.left} sub={i.sub} onPress={() => (i.go === '/products' ? router.navigate('/products') : router.push(i.go as never))} />)}</Rows>
+                <Rows>{items.map((i) => <Line key={i.left} icon={i.icon} left={i.left} sub={i.sub} onPress={() => (['/products', '/appointments', '/salon-clients'].includes(i.go) ? router.navigate(i.go as never) : router.push(i.go as never))} />)}</Rows>
               </View>
             ) : null;
           })}

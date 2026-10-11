@@ -36,8 +36,8 @@ export default function PrinterSettings({ paper }: { paper: Paper }) {
         ? t('Printing straight to your thermal printer through the RawBT app.')
         : t("Printing with the phone's print screen: it works with any printer the phone can reach (Wi-Fi, USB, or Bluetooth through the printer maker's app).")}</Soft>
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        <Button title={t('Phone print screen')} kind={mode === 'system' ? 'primary' : 'quiet'} onPress={() => { void choose('system'); }} style={{ flex: 1 }} />
-        <Button title={t('Thermal printer (RawBT)')} kind={mode === 'rawbt' ? 'primary' : 'quiet'} onPress={() => { void choose('rawbt'); }} style={{ flex: 1 }} />
+        <Button title={t('Phone print screen')} selected={mode === 'system'} onPress={() => { void choose('system'); }} style={{ flex: 1 }} />
+        <Button title={t('Thermal printer (RawBT)')} selected={mode === 'rawbt'} onPress={() => { void choose('rawbt'); }} style={{ flex: 1 }} />
       </View>
       {mode === 'rawbt' ? <Soft>{t('One time: install the free RawBT app, switch your printer on, and connect it inside RawBT (Bluetooth or USB). After that, FlowXP prints to it with no questions.')}</Soft> : null}
       <Button title={t('Get the RawBT app')} kind="quiet" onPress={() => { void getRawBT(); }} />

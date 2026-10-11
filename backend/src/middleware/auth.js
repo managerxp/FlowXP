@@ -36,13 +36,21 @@ export const ROLE_PERMISSIONS = {
   ADMIN:   ['billing', 'products', 'inventory', 'barcode_reassign', 'product_quick_add', 'purchases', 'customers', 'suppliers',
             'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds',
             'appointments', 'staff_commission', 'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
-            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing', 'approvals'],
+            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing', 'approvals', 'front_desk', 'housekeeping', 'night_audit', 'hotel_setup', 'banquet', 'hr', 'payroll'],
   MANAGER: ['billing', 'products', 'inventory', 'barcode_reassign', 'product_quick_add', 'purchases', 'customers', 'suppliers',
             'payments', 'expenses', 'reports', 'ai', 'refunds', 'appointments', 'staff_commission',
             'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
-            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing', 'approvals'],
+            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing', 'approvals', 'front_desk', 'housekeeping', 'night_audit', 'hotel_setup', 'banquet', 'hr', 'payroll'],
   CASHIER: ['billing', 'customers', 'payments'],
   STAFF:   ['billing'],
+  // Hotel roles. The front desk runs bookings, check-in and the guest bill; housekeeping sees and updates room status only; the night
+  // auditor closes the day and reads the reports; the supervisor can also set up rooms. Banquet and staff-management roles come with those modules.
+  FRONT_DESK: ['front_desk', 'housekeeping', 'customers', 'payments'],
+  HOUSEKEEPER: ['housekeeping'],
+  HOUSEKEEPING_SUPERVISOR: ['housekeeping', 'hotel_setup'],
+  NIGHT_AUDITOR: ['night_audit', 'front_desk', 'housekeeping', 'payments', 'reports'],
+  BANQUET_MANAGER: ['banquet', 'customers', 'payments', 'reports'],
+  HR_MANAGER: ['hr', 'payroll', 'reports'],
   // Restaurant floor roles. WAITER can take and bill orders like STAFF; KITCHEN
   // sees and advances tickets only; INVENTORY_MANAGER runs stock and buying.
   WAITER:  ['billing'],

@@ -60,6 +60,7 @@ import locationsRoutes from './locations.routes.js';
 import { uploadLogo } from '../middleware/upload.js';
 import publicOrderingRoutes from './publicOrdering.routes.js';
 import salonRoutes from './salon.routes.js';
+import hotelRoutes from './hotel.routes.js';
 import wholesaleRoutes from './wholesale.routes.js';
 import distributorRoutes from './distributor.routes.js';
 import pharmacyRoutes from './pharmacy.routes.js';
@@ -229,6 +230,7 @@ router.use('/menu-import', menuImportRoutes);
 router.use('/distributor', distributorRoutes);   // the distributor layer: principals, territories, beats, schemes, targets, field sales, vans
 router.use('/wholesale', wholesaleRoutes);   // the wholesale / distribution module (WHOLESALE and DISTRIBUTOR businesses only)
 router.use('/salon', salonRoutes);          // the salon module (salon businesses only)
+router.use('/hotel', hotelRoutes);          // the hotel module (HOTEL businesses only): front office, housekeeping, folio, night audit, reports
 router.use('/pharmacy', pharmacyRoutes);    // the pharmacy module (PHARMACY businesses only)
 router.use('/retail', retailRoutes);        // supermarket / retail settings (SUPERMARKET and RETAIL businesses only)
 

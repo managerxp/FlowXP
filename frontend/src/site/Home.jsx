@@ -164,28 +164,42 @@ const OneBill = () => (
 
 const BUSINESSES = [
   {
-    key: 'retail', label: 'Shops and retail',
-    title: 'For shops, supermarkets and pharmacies',
-    body: 'Scan barcodes, bill fast at the counter, and always know what is on the shelf and what to reorder.',
-    points: ['Barcode billing with GST on every line', 'Stock that updates with every sale and purchase', 'Low-stock alerts and purchase orders to suppliers', 'Customer credit and dues, with reminders', 'Returns and credit notes that fix stock and GST'],
-    src: '/product/inventory-main.webp', alt: 'FlowXP inventory screen with stock value, items below their reorder point, wastage and a list of products.'
+    key: 'retail', label: 'Shops and supermarkets', to: '/industries/retail',
+    title: 'For shops and supermarkets',
+    body: 'Scan barcodes, bill fast at the counter, and always know what is on the shelf, what is running low and what is about to expire.',
+    points: ['Barcode billing with GST on every line', 'Dairy and bread sold soonest-expiry first', 'Receive deliveries and count shelves by scanning', 'Offers the till applies by itself', 'Returns and credit notes that fix stock and GST'],
+    src: '/product/retail-billing.webp', alt: 'FlowXP supermarket billing with eight items on the bill, an offer taking money off the milk and the bread, and payment methods.'
   },
   {
-    key: 'food', label: 'Restaurants and cafés',
+    key: 'food', label: 'Restaurants and cafés', to: '/industries/restaurant',
     title: 'For restaurants, cafés and cloud kitchens',
     body: 'Take orders at the table, by QR or at the counter. The kitchen sees them at once and the bill is always right.',
     points: ['Tables, waiters and table QR ordering', 'Kitchen screen or kitchen printer, by station', 'Recipes, so each dish uses up its ingredients', 'Split bills, service types and multiple outlets', 'Profit by dish, not just sales'],
     src: '/product/kitchen-main.webp', alt: 'FlowXP kitchen display with six open orders by table, the dishes, and minutes since each was sent.'
   },
   {
-    key: 'services', label: 'Salons and services',
+    key: 'services', label: 'Salons and services', to: '/industries/salon',
     title: 'For salons, clinics and service businesses',
     body: 'Bill services and products on one GST invoice, remember your regulars, and bring them back with offers.',
-    points: ['Services and products on the same bill', 'Customer history and visit counts', 'Loyalty points and coupons', 'Staff logins with the right permissions', 'Appointments and staff scheduling: coming soon'],
-    src: '/product/pos-main.webp', alt: 'FlowXP billing screen with items, quantities, GST and a Charge button.'
+    points: ['Services and products on the same bill', 'Customer history and visit counts', 'Loyalty points and coupons', 'Staff logins with the right permissions', 'Appointments, staff commission and memberships'],
+    src: '/product/salon-pos.webp', alt: 'FlowXP salon billing with services and the team member doing each, a client on the bill and payment methods.'
   },
   {
-    key: 'wholesale', label: 'Wholesale and distribution',
+    key: 'hotel', label: 'Hotels and resorts', to: '/industries/hotel',
+    title: 'For hotels, resorts and guest houses',
+    body: 'Take bookings, check guests in and out, keep one bill for the room, the restaurant and the extras, and close the day with night audit.',
+    points: ['Calendar of every room, with no double booking', 'Guest bill with GST by slab, UTGST in union territories', 'Housekeeping status for every room', 'Banquet halls and events with an event order', 'Occupancy, ADR and RevPAR reports'],
+    src: '/product/hotel-frontdesk.webp', alt: 'FlowXP front desk for a hotel with arrivals, departures, guests staying, occupancy and rooms to clean.'
+  },
+  {
+    key: 'pharmacy', label: 'Pharmacies', to: '/industries/pharmacy',
+    title: 'For pharmacies and medical stores',
+    body: 'Receive stock with its batch and expiry date, and the till sells the soonest-expiring batch first.',
+    points: ['Every batch tracked, expired batches never sold', 'Prescription-required medicines marked', 'Goods receipts from the supplier', 'Quarantine, recall or block a batch', 'GST at each product’s rate'],
+    src: '/product/pharmacy-pos.webp', alt: 'FlowXP pharmacy billing with three medicines on the bill, each with the earliest-expiry batch picked automatically.'
+  },
+  {
+    key: 'wholesale', label: 'Wholesale and distribution', to: '/industries/wholesale',
     title: 'For wholesalers and distributors',
     body: 'Buy from suppliers, sell on credit, and keep track of who owes you and whom you owe.',
     points: ['Purchase orders, partial deliveries and back-orders', 'Supplier price lists and debit notes', 'Customer credit, dues and outstanding reports', 'Stock transfers between branches or godowns', 'E-way bill and e-invoice files'],
@@ -242,6 +256,7 @@ const ForYourBusiness = () => {
             <ul className="mt-6 space-y-3">
               {b.points.map((p) => <li key={p} className="flex gap-3 text-body text-ink-700"><Check />{p}</li>)}
             </ul>
+            <div className="mt-6"><TextLink to={b.to}>See every feature, with screens</TextLink></div>
           </div>
           <div className="lg:col-span-7">
             <Shot src={b.src} alt={b.alt} />

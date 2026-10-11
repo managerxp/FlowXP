@@ -93,7 +93,7 @@ export default function NewAppointment() {
               {catalog.busy && !cat ? <Loading /> : null}
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16 }}>
                 {(cat?.services ?? []).map((x) => (
-                  <Button key={x.service_id} title={`${x.name} · ${x.duration_min} min`} kind={picked.includes(x.service_id) ? 'primary' : 'quiet'} onPress={() => toggle(x.service_id)} />
+                  <Button key={x.service_id} title={`${x.name} · ${x.duration_min} min`} selected={picked.includes(x.service_id)} onPress={() => toggle(x.service_id)} />
                 ))}
               </View>
               {picked.length ? <Soft style={{ padding: 16 }}>{`${mins} minutes · ${rupees(total)} before GST`}</Soft> : null}
@@ -114,7 +114,7 @@ export default function NewAppointment() {
           {!looking && serviceIds.length === 0 ? <Empty>Choose a service to see free times.</Empty> : null}
           {!looking && avail && avail.slots.length === 0 ? <Empty>Nobody is free on this day for these services. Try another day or team member.</Empty> : null}
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16 }}>
-            {(avail?.slots ?? []).map((sl) => <Button key={sl.time} title={sl.time} kind={time === sl.time ? 'primary' : 'quiet'} onPress={() => setTime(sl.time)} />)}
+            {(avail?.slots ?? []).map((sl) => <Button key={sl.time} title={sl.time} selected={time === sl.time} onPress={() => setTime(sl.time)} />)}
           </View>
           {time && who.length ? <Soft style={{ padding: 16 }}>{`Free at ${time}: ${who.map((w) => w.name).join(', ')}`}</Soft> : null}
 

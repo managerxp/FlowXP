@@ -13,7 +13,7 @@ export default function PayHowPicker({ how, onHow, nowText, onNow, plan, owes, t
   return (
     <View style={{ gap: 8 }}>
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        {choices.map((c) => <Button key={c.id} title={c.label} kind={how === c.id ? 'primary' : 'quiet'} onPress={() => onHow(c.id)} style={{ flex: 1 }} />)}
+        {choices.map((c) => <Button key={c.id} title={c.label} selected={how === c.id} onPress={() => onHow(c.id)} style={{ flex: 1 }} />)}
       </View>
       {how === 'PART' ? (
         <View style={{ gap: 8 }}>

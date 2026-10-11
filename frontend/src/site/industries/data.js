@@ -13,15 +13,17 @@
 import restaurant from './content/restaurant.js';
 import cafe from './content/cafe.js';
 import cloudKitchen from './content/cloud-kitchen.js';
+import hotel from './content/hotel.js';
+import retail from './content/retail.js';
 import wholesale from './content/wholesale.js';
 import distributor from './content/distributor.js';
 import salon from './content/salon.js';
 import pharmacy from './content/pharmacy.js';
 
-export const READY = [restaurant, cafe, cloudKitchen, wholesale, distributor, salon, pharmacy];
+export const READY = [restaurant, cafe, cloudKitchen, hotel, retail, wholesale, distributor, salon, pharmacy];
 
 /* Old and alternative addresses that still work. */
-export const ALIASES = { cafes: 'cafe', 'coffee-shop': 'cafe', bakery: 'cafe', 'cafe-and-restaurant': 'restaurant', restaurants: 'restaurant', 'cloud-kitchens': 'cloud-kitchen', distribution: 'distributor', pharmacies: 'pharmacy', salons: 'salon' };
+export const ALIASES = { cafes: 'cafe', 'coffee-shop': 'cafe', bakery: 'cafe', 'cafe-and-restaurant': 'restaurant', restaurants: 'restaurant', 'cloud-kitchens': 'cloud-kitchen', distribution: 'distributor', pharmacies: 'pharmacy', salons: 'salon', hotels: 'hotel', resort: 'hotel', resorts: 'hotel', lodge: 'hotel', guesthouse: 'hotel', 'guest-house': 'hotel', 'hotel-and-restaurant': 'hotel', supermarket: 'retail', supermarkets: 'retail', grocery: 'retail', kirana: 'retail', shops: 'retail', shop: 'retail', stores: 'retail' };
 
 /* The same on every page: what sits underneath whichever trade you choose. */
 export const UNDERNEATH = [
@@ -37,7 +39,5 @@ export const UNDERNEATH = [
    vertical needed, so no caveat either. */
 export const CORE = [
   { title: 'Groups with several outlets', body: 'One owner login sees every outlet; each one keeps its own stock, staff and invoice numbers.', big: true },
-  { title: 'Retail shops', body: 'Barcode billing, stock and GST for the counter.' },
-  { title: 'Supermarkets', body: 'Fast barcode billing and stock across counters.' },
-  { title: 'Bakeries and sweet shops', body: 'Counter billing, recipes and daily wastage.' }
+  { title: 'Bakeries and sweet shops', body: 'Counter billing, recipes and daily wastage. The café page shows the counter in full.', big: true }
 ];

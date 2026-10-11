@@ -5,7 +5,7 @@
  * add-ons like an extra shot. Prices are a starting point the owner can edit.
  * A business that already has option groups is left alone, so this never doubles up or overrides its own setup.
  */
-export const FOOD_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN'];
+export const FOOD_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL'];
 
 const RESTAURANT_GROUPS = [
   { name: 'Spice level', variant: true, options: [['Mild', 0], ['Medium', 0], ['Hot', 0]] },

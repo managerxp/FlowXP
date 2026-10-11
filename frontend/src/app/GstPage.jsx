@@ -5,6 +5,8 @@
  */
 import { useEffect, useState } from 'react';
 import { api, downloadFile, formatCurrency } from '../lib/api.js';
+import { useAuth } from '../context/AuthContext.jsx';
+import { stateTaxName } from '../lib/gstNames.js';
 import { Alert, Badge, Button, Card, Field, Input, ListState, PageHeader, Select, Table, Td, Th, Thead, Tr, useToast, StatCard } from '../components/ui.jsx';
 
 const monthNow = () => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };   // last month: what is usually being filed
@@ -47,6 +49,7 @@ const Row = ({ label, cgst, sgst, igst, taxable, strong }) => (
 );
 
 const Gstr3b = ({ period, gstin }) => {
+  const { business } = useAuth();
   const [d, setD] = useState(null);
   const [error, setError] = useState('');
   useEffect(() => { setD(null); setError(''); api(`/gst/gstr3b?period=${period}&gstin=${gstin}`).then(setD).catch((e) => setError(e.message)); }, [period, gstin]);
@@ -54,7 +57,7 @@ const Gstr3b = ({ period, gstin }) => {
   return (
     <div className="space-y-4">
       <Table>
-        <Thead><Th></Th><Th className="text-right">Taxable value</Th><Th className="text-right">IGST</Th><Th className="text-right">CGST</Th><Th className="text-right">SGST</Th></Thead>
+        <Thead><Th></Th><Th className="text-right">Taxable value</Th><Th className="text-right">IGST</Th><Th className="text-right">CGST</Th><Th className="text-right">{stateTaxName(business?.state)}</Th></Thead>
         <tbody>
           <Row label="3.1(a) Outward taxable supplies (net of credit notes)" {...d.outward_taxable} />
           <Row label="3.1(c) Nil-rated, exempt" taxable={d.outward_nil_or_exempt.taxable} />

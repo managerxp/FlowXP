@@ -35,6 +35,7 @@ import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, set
 import { queueSale } from '../../lib/offline.js';
 import { RESTAURANT_TYPES, RETAIL_TYPES } from '../../lib/business.js';
 import UpiCollect from '../../components/UpiCollect.jsx';
+import RoomChargePicker from '../../components/RoomChargePicker.jsx';
 import BarcodeScanner from '../../components/BarcodeScanner.jsx';
 import QuickProductModal from '../../components/QuickProductModal.jsx';
 import { catalogInfo, loadCatalog, localLookup, localSearch, subscribeCatalog, syncCatalog, upsertLocal } from '../../lib/posCatalog.js';
@@ -43,6 +44,7 @@ import { catalogInfo, loadCatalog, localLookup, localSearch, subscribeCatalog, s
 const METHODS = [
   ['CASH', 'Cash'], ['UPI', 'UPI'], ['CARD', 'Card'], ['BANK_TRANSFER', 'Bank'], ['OTHER', 'Other'], ['LATER', 'Pay later']
 ];
+const ROOM_METHOD = ['ROOM', 'To room'];   // a hotel only: the bill goes on an in-house guest's folio
 const SPLIT_METHODS = METHODS.filter(([value]) => value !== 'LATER');
 const TILE_LIMIT = 60;
 const clock = (ts) => new Date(ts).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
@@ -180,7 +182,7 @@ const Done = ({ confirmation, change, onNew, onView }) => {
             <p>It will be billed automatically when the connection is back, and gets its invoice number then. Hand over a written note for now{confirmation.toKitchen ? ', and tell the kitchen yourself: it was not sent to the kitchen screen' : ''}.</p>
           ) : (
             <>
-              <p>{confirmation.payment_status === 'PAID' ? 'Paid in full.'
+              <p>{confirmation.room_label ? `Charged to ${confirmation.room_label}. Paid at check-out.` : confirmation.payment_status === 'PAID' ? 'Paid in full.'
                 : confirmation.payment_status === 'PARTIAL' ? `Part paid. ${formatCurrency(confirmation.balance_due)} still due.`
                 : `Not paid yet. ${formatCurrency(confirmation.balance_due ?? confirmation.total)} due.`}</p>
               {confirmation.payments_taken?.length > 1 && (
@@ -317,6 +319,7 @@ const BillingPage = () => {
   const [invoiceDiscount, setInvoiceDiscount] = useState('');
   const [notes, setNotes] = useState('');
   const [method, setMethod] = useState('CASH');
+  const [room, setRoom] = useState(null);   // the in-house guest a bill is charged to
   const [received, setReceived] = useState('');         // cash handed over, or a part payment
   const [cardRef, setCardRef] = useState('');           // the card machine's approval code, to match the settlement later
   const [error, setError] = useState('');
@@ -576,7 +579,8 @@ const BillingPage = () => {
     : [];
 
   /* What is being paid now, and what that means for the cashier. */
-  const payLater = method === 'LATER';
+  const toRoom = method === 'ROOM';
+  const payLater = method === 'LATER' || toRoom;   // neither takes money at the till
   const amount = received === '' ? null : Number(received);
   const cashChange = method === 'CASH' && amount != null && amount > totals.total ? amount - totals.total : 0;
   const partial = !payLater && amount != null && amount < totals.total;
@@ -598,7 +602,7 @@ const BillingPage = () => {
 
   const resetSale = () => {
     setCart([]); setCustomerId(''); setCustomerName(''); setCard(null); setPointsInfo(null); setRedeem(''); setCustomerOpen(false); setInvoiceDiscount(''); setCouponCode(''); setCouponInfo(null); setCouponError('');
-    setNotes(''); setExtrasOpen(false); setReceived(''); setCardRef(''); setMethod('CASH'); setConfirmation(null); setChange(0); setError(''); setQuery('');
+    setNotes(''); setExtrasOpen(false); setReceived(''); setCardRef(''); setMethod('CASH'); setRoom(null); setConfirmation(null); setChange(0); setError(''); setQuery('');
     setSplit(false); setParts([]); setHoldOpen(false); setHoldLabel(''); setCollecting(null);
     setOrderId(null); setOrder(null); setExchange(null); setPromo({});
     setTimeout(() => searchRef.current?.focus(), 0);
@@ -613,6 +617,7 @@ const BillingPage = () => {
       if (l.custom && (!l.name.trim() || !l.unit_price)) { setError('Every custom item needs a description and a price'); return; }
       if (!Number(l.quantity)) { setError(`Set a quantity for ${l.name || 'the custom item'}, or remove it`); return; }
     }
+    if (toRoom && !room) { setError('Choose the guest whose room this is charged to'); return; }
     if (split) {
       if (parts.slice(0, -1).some((p) => !(Number(p.amount) > 0))) { setError('Enter an amount for each part of the split. Leave only the last one blank for the rest.'); return; }
       if (fixedParts + (lastFixed || 0) > totals.total + 0.005) { setError(`The parts add up to ${formatCurrency(fixedParts + (lastFixed || 0))}, more than the bill.`); return; }
@@ -629,7 +634,8 @@ const BillingPage = () => {
         discount: Number(invoiceDiscount) || undefined,
         coupon_code: couponCode.trim() || undefined,
         redeem_points: Number(redeem) > 0 ? Number(redeem) : undefined,
-        notes: notes || undefined
+        notes: notes || undefined,
+        charge_to_booking_id: toRoom ? room.booking_id : undefined
       };
       let invoice;
       if (orderMode) {
@@ -660,16 +666,17 @@ const BillingPage = () => {
       if (invoice.order && getDevicePrefs().autoPrintKot) printKotSlip(invoice.order.kot_id);
       }
       idem.settle();
+      if (toRoom) toast.success(`Charged to ${room.label}`);
       if (upiQr) { setCollecting({ invoice, amount: partial ? amount : undefined }); return; }
       // from the saved total: round-off and freebies can move it from the estimate
       setChange(!split && method === 'CASH' && amount != null ? Math.max(0, Math.round((amount - invoice.total) * 100) / 100) : 0);
-      setConfirmation(invoice);
+      setConfirmation(toRoom ? { ...invoice, room_label: room.label } : invoice);
       const cash = split ? parts.some((p) => p.method === 'CASH') : method === 'CASH' && !payLater;
       if (getDevicePrefs().autoPrintReceipt) printReceipt(invoice.invoice_id, { cash });
       else if (cash && getDevicePrefs().openDrawer) openDrawer();
     } catch (caught) {
       // No connection: keep the sale on this device and send it when the connection is back (see lib/offlineQueue.js)
-      if (caught instanceof NetworkError && payload) {
+      if (caught instanceof NetworkError && payload && !toRoom) {   // a room charge needs the hotel's live list of guests, so it is never queued
         const saved = queueSale({ label: `${formatCurrency(totals.total)} · ${cart.length} item${cart.length === 1 ? '' : 's'}`, body: payload, idempotencyKey: idem.get() });
         if (saved) { idem.settle(); setConfirmation({ offline: true, total: totals.total, toKitchen: sending }); setBusy(false); return; }
         setError('Too many sales are waiting to sync. Reconnect before taking more.');
@@ -815,6 +822,7 @@ const BillingPage = () => {
   const itemCount = billLines.reduce((s, l) => s + Number(l.quantity || 0), 0);
   const chargeLabel = busy ? 'Charging…'
     : split ? (splitDue > 0 ? `Take ${formatCurrency(totals.total - splitDue)} · ${formatCurrency(splitDue)} due` : `Charge ${formatCurrency(totals.total)} · split ${parts.length} ways`)
+    : toRoom ? (room ? `Charge ${formatCurrency(totals.total)} to ${room.label}` : 'Choose a room')
     : payLater ? `Save bill · ${formatCurrency(totals.total)} unpaid`
     : upiQr ? `Show UPI QR · ${formatCurrency(partial ? amount : totals.total)}`
     : partial ? `Take ${formatCurrency(amount)} · ${formatCurrency(totals.total - amount)} due`
@@ -1120,7 +1128,7 @@ const BillingPage = () => {
           ) : (
           <>
           <div role="radiogroup" aria-label="How is it paid?" className="pos-gap pos-methods mt-2 grid grid-cols-3 gap-1">
-            {METHODS.map(([value, label]) => (
+            {(business?.business_type === 'HOTEL' ? [...METHODS, ROOM_METHOD] : METHODS).map(([value, label]) => (
               <button key={value} type="button" role="radio" aria-checked={method === value} onClick={() => { setMethod(value); setReceived(''); }}
                       className={`pos-method h-8 rounded-lg border text-caption font-semibold transition-colors duration-(--duration-fast) pointer-coarse:h-11 ${method === value ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>
                 {label}
@@ -1128,7 +1136,9 @@ const BillingPage = () => {
             ))}
           </div>
 
-          {payLater ? (
+          {toRoom ? (
+            <RoomChargePicker value={room} onChange={setRoom} />
+          ) : payLater ? (
             <p className={`mt-3 text-caption ${customerId ? 'text-ink-500' : 'text-warning'}`}>
               {customerId ? `Saved as unpaid on ${customerName}'s account.` : 'Saved as unpaid. Add a customer so you know who owes it.'}
             </p>

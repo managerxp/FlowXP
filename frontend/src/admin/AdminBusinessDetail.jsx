@@ -14,7 +14,7 @@ const LINK_STATUS_TONE = { PENDING: 'neutral', PAID: 'success', EXPIRED: 'danger
 // Mirrors backend/src/utils/validate.js's BUSINESS_TYPES — same duplication auth/AuthPages.jsx
 // already accepts there, since the two lists must be changed together either way.
 const BUSINESS_TYPES = [
-  ['RESTAURANT', 'Restaurant'], ['CAFE', 'Café'], ['CLOUD_KITCHEN', 'Cloud kitchen'], ['RETAIL', 'Retail'],
+  ['RESTAURANT', 'Restaurant'], ['CAFE', 'Café'], ['CLOUD_KITCHEN', 'Cloud kitchen'], ['HOTEL', 'Hotel and restaurant'], ['RETAIL', 'Retail'],
   ['SUPERMARKET', 'Supermarket'], ['PHARMACY', 'Pharmacy'], ['SALON', 'Salon'],
   ['SERVICES', 'Services'], ['ELECTRONICS', 'Electronics'], ['CLOTHING', 'Clothing'],
   ['GAMING_CAFE', 'Gaming café'], ['RACING', 'Racing'], ['WHOLESALE', 'Wholesale'],

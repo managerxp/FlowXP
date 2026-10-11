@@ -154,16 +154,17 @@ export function SalonTill() {
                 <>
                   {cat.categories.length > 1 ? <Chips items={[{ id: 'all', label: 'All' }, ...cat.categories.map((c) => ({ id: String(c.category_id), label: c.name }))]} value={category} onChange={setCategory} /> : null}
                   {picking && staff ? (
-                    <View style={{ margin: 16, padding: 12, gap: 8, borderRadius: 12, borderWidth: 1, borderColor: color.brand, backgroundColor: '#eaf1ff' }}>
-                      <Text style={{ fontWeight: '700', color: color.ink }}>Who is doing {picking.name}?</Text>
+                    <View style={{ margin: 16, padding: 12, gap: 8, borderRadius: 12, borderWidth: 2, borderColor: color.brand, backgroundColor: color.card }}>
+                      <Text style={{ fontWeight: '700', color: color.ink, fontSize: 16 }}>Who is doing {picking.name}?</Text>
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                         {[...staff.qualified, ...staff.others].map((st) => <Button key={st.staff_id} title={st.name} kind={staff.qualified.includes(st) ? 'primary' : 'quiet'} onPress={() => chooseStaff(st.staff_id)} />)}
                       </View>
+                      {staff.qualified.length && staff.others.length ? <Soft>Blue buttons are trained for this service.</Soft> : null}
                       {cat.staff.length === 0 ? <Soft>No team members are set up for this outlet. Add them on the FlowXP website under Team.</Soft> : null}
                       <Button title="Cancel" kind="quiet" onPress={() => setPicking(null)} />
                     </View>
                   ) : null}
-                  {services.map((x) => <Line key={x.service_id} left={x.name} sub={`${x.duration_min} min`} right={rupees(toPaise(x.price))} onPress={() => setPicking(x)} />)}
+                  {services.map((x) => <Line key={x.service_id} left={x.name} sub={`${x.duration_min} min`} right={rupees(toPaise(x.price))} selected={picking?.service_id === x.service_id} onPress={() => setPicking(x)} />)}
                   {services.length === 0 ? <Empty>No service matches.</Empty> : null}
                 </>
               ) : null}

@@ -23,6 +23,8 @@ import { businessToday } from '../utils/dates.js';
 import { branchFilter } from '../utils/scope.js';
 import { ApprovalError, discountPolicy, ensureApproved, needsApproval } from '../modules/approvals.js';
 import { asInvoice, BillingError, createInvoiceInTransaction, paymentReference, paymentStatus, recordInvoiceCreated } from '../modules/billing.js';
+import { HotelError } from '../modules/hotel/common.js';
+import { postInvoiceToRoom, roomGuestCustomer } from '../modules/hotel/roomCharge.js';
 import { insertOrderItems, nextNumber, OrderItemsError, sendKotCore } from './orders.controller.js';
 
 /* ==========================================================================
@@ -32,7 +34,7 @@ import { insertOrderItems, nextNumber, OrderItemsError, sendKotCore } from './or
    modules/billing.js, shared with orders.controller.js's bill() so a KOT tab
    converts to an invoice through the identical logic a direct POS sale uses.
    ========================================================================== */
-const KITCHEN_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE', 'RACING'];
+const KITCHEN_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'GAMING_CAFE', 'RACING'];
 
 /* A sale already made under this Idempotency-Key, answered as the original was. idempotency_keys forgets after 48 hours; the
    key is also kept on the invoice, so a phone that was offline for days and replays its sale still gets the same bill back. */
@@ -68,6 +70,9 @@ export const create = async (req, res) => {
   const toKitchen = body.send_to_kitchen === true && !isOffline(req);
   if (toKitchen && !KITCHEN_TYPES.includes(req.tenant.businessType)) return res.status(400).json({ success: false, message: 'Kitchen tickets are only for restaurants and cafés' });
   if (toKitchen && !Array.isArray(body.items)) return res.status(400).json({ success: false, message: 'Add at least one item' });
+  // a hotel's restaurant bill can be put on an in-house guest's room instead of being paid at the till
+  const roomBookingId = body.charge_to_booking_id ? Number(body.charge_to_booking_id) : null;
+  if (roomBookingId && req.tenant.businessType !== 'HOTEL') return res.status(400).json({ success: false, message: 'Charge to room is only for hotels' });
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -92,15 +97,16 @@ export const create = async (req, res) => {
       counterOrder.kot_number = sent.kot.kot_number;
     }
 
+    const roomCustomerId = roomBookingId ? await roomGuestCustomer(client, req.tenant, roomBookingId) : null;
     const invoice = await createInvoiceInTransaction(client, req.tenant, req.auth.userId, {
       orderId: counterOrder?.order_id,
-      customerId: body.customer_id,
+      customerId: roomCustomerId ?? body.customer_id,
       items: body.items,
       discount: body.discount,
       discountPolicy: discountPolicy(req, body.approval),   // a typed-in discount above the cap needs a manager's PIN
       notes: body.notes,
-      payment: body.payment,
-      payments: body.payments,
+      payment: roomBookingId ? undefined : body.payment,
+      payments: roomBookingId ? undefined : body.payments,
       couponCode: body.coupon_code,
       redeemPoints: body.redeem_points,
       applyPromotions: body.apply_promotions === true,
@@ -116,6 +122,8 @@ export const create = async (req, res) => {
       await client.query(`UPDATE orders SET status = 'BILLED', invoice_id = $1, updated_at = CURRENT_TIMESTAMP WHERE order_id = $2`, [invoice.invoice_id, counterOrder.order_id]);
     }
 
+    if (roomBookingId) await postInvoiceToRoom(client, req.tenant, req.auth.userId, { bookingId: roomBookingId, invoiceId: invoice.invoice_id });
+
     await client.query('COMMIT');
     recordInvoiceCreated(req, invoice);
     if (counterOrder) recordAudit(req, { action: 'order.counter_sale', resource_type: 'order', resource_id: counterOrder.order_id, metadata: { invoice_id: invoice.invoice_id, kot_number: counterOrder.kot_number } });
@@ -126,7 +134,7 @@ export const create = async (req, res) => {
       const again = await replayOf(req).catch(() => null);
       if (again) return sendReplay(res, again);
     }
-    if (error instanceof BillingError || error instanceof OrderItemsError) {
+    if (error instanceof BillingError || error instanceof OrderItemsError || error instanceof HotelError) {
       return res.status(error.status).json({ success: false, message: error.message, ...(error.code ? { code: error.code, data: error.data } : {}) });
     }
     if (error.message?.includes('positive number') || error.message?.includes('must be a number')) {

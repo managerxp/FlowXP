@@ -40,7 +40,7 @@ const IndustriesPage = () => (
       visual={<Shot src="/product/kitchen-main.webp" eager alt="FlowXP kitchen display with open orders by table, the dishes and minutes since sent." />}
     />
 
-    <Section title="Seven kinds of business, built in detail." lead="Each has its own screens, tuned for how that trade actually runs. Open one to see every feature, with the real screens.">
+    <Section title="Nine kinds of business, built in detail." lead="Each has its own screens, tuned for how that trade actually runs. Open one to see every feature, with the real screens.">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-12">
         {READY.map((k, i) => <IndustryCard key={k.slug} slug={k.slug} label={k.label} blurb={k.blurb} hero={k.hero} i={i} />)}
       </div>

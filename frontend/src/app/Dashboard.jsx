@@ -437,7 +437,7 @@ const Dashboard = () => {
   if (!data) return <Loading />;
 
   const { setup, metrics: m, sales } = data;
-  const restaurant = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE', 'RACING'].includes(business.business_type);
+  const restaurant = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'GAMING_CAFE', 'RACING'].includes(business.business_type);
   const firstName = String(user?.name || '').split(' ')[0];
 
   // Waiters and kitchen staff are sent no takings at all (the server leaves the figures out): a greeting and the way to their work.

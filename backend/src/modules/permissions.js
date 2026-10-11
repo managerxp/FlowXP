@@ -43,6 +43,13 @@ export const PERMISSION_INFO = {
   collections: { label: 'Collections', description: 'Record payments collected from retailers and allocate them to invoices.' },
   prescriptions: { label: 'Prescriptions', description: 'Create, review and approve prescriptions.' },
   dispensing:    { label: 'Dispensing', description: 'Select batches and dispense medicines against a prescription.' },
+  front_desk:   { label: 'Hotel front desk', description: 'Hotel bookings, check-in and check-out, guests, the guest bill and payments.' },
+  housekeeping: { label: 'Housekeeping', description: 'See room status and mark rooms clean, dirty or out of order.' },
+  night_audit:  { label: 'Night audit', description: 'Close the day at the hotel: post the night’s room charges and move the date on.' },
+  hr:           { label: 'Staff records and roster', description: 'Staff records, departments and shifts, the roster, attendance and leave. Does not show what anyone is paid.' },
+  payroll:      { label: 'Salaries and payroll', description: 'See and set salaries, and make, adjust and finalise the monthly payroll sheet.' },
+  banquet:      { label: 'Banquet and events', description: 'Banquet enquiries, hall bookings, event orders, charges and payments for events.' },
+  hotel_setup:  { label: 'Hotel set-up', description: 'Room types, rooms, rates, seasonal rates and hotel settings.' },
   ai:        { label: 'Flow AI', description: 'Ask the AI assistant about the business.' },
   settings:  { label: 'Settings and team', description: 'Business settings, outlets, staff, loyalty, coupons, leakage checks and the activity log.' }
 };

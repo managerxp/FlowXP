@@ -12,6 +12,7 @@ import { api, formatCurrency } from '../../lib/api.js';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
 import { withApproval } from '../../lib/approval.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { stateTaxName } from '../../lib/gstNames.js';
 import { getDevicePrefs, openDrawer, openPrint, printReceipt } from '../../lib/printing.js';
 import CreditNoteModal from '../../components/CreditNoteModal.jsx';
 import EWayBillModal from '../../components/EWayBillModal.jsx';
@@ -290,7 +291,7 @@ const InvoiceDetail = () => {
           <div className="ml-auto mt-4 max-w-xs space-y-1.5 border-t border-line pt-4">
             <Line label="Subtotal" value={formatCurrency(invoice.subtotal)} />
             {invoice.cgst > 0 && <Line label="CGST" value={formatCurrency(invoice.cgst)} tone="text-ink-500" />}
-            {invoice.sgst > 0 && <Line label="SGST" value={formatCurrency(invoice.sgst)} tone="text-ink-500" />}
+            {invoice.sgst > 0 && <Line label={stateTaxName(invoice.outlet?.state || business?.state)} value={formatCurrency(invoice.sgst)} tone="text-ink-500" />}
             {invoice.igst > 0 && <Line label="IGST" value={formatCurrency(invoice.igst)} tone="text-ink-500" />}
             {invoice.discount - invoice.coupon_discount > 0 && <Line label="Discount" value={`−${formatCurrency(invoice.discount - invoice.coupon_discount)}`} />}
             {invoice.coupon_discount > 0 && <Line label={`Coupon ${invoice.coupon_code}`} value={`−${formatCurrency(invoice.coupon_discount)}`} />}
