@@ -96,15 +96,15 @@ const IndustriesMenu = () => {
       </button>
       {open && (
         <div className="absolute left-0 top-full z-50 pt-2">
-          <div id="industries-panel" className="menu-panel w-[38rem] rounded-(--radius-panel) border border-line bg-surface p-2 shadow-lg">
+          <div id="industries-panel" className="menu-panel w-[38rem] max-h-[calc(100vh-5rem)] overflow-y-auto rounded-(--radius-panel) border border-line bg-surface p-2 shadow-lg">
             <ul className="grid grid-cols-2 gap-1">
               {READY.map((k) => (
                 <li key={k.slug}>
-                  <Link to={`/industries/${k.slug}`} className="group flex h-full gap-3 rounded-xl p-3 transition-colors duration-(--duration-fast) hover:bg-surface-2 focus-visible:bg-surface-2">
+                  <Link to={`/industries/${k.slug}`} className="group flex h-full gap-3 rounded-xl p-2.5 transition-colors duration-(--duration-fast) hover:bg-surface-2 focus-visible:bg-surface-2">
                     <IconTile slug={k.slug} />
                     <span className="min-w-0">
                       <span className="block text-sm font-semibold text-ink-900">{k.label}</span>
-                      <span className="mt-0.5 block text-[13px] leading-snug text-ink-500">{k.blurb}</span>
+                      <span className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-ink-500">{k.blurb}</span>
                     </span>
                   </Link>
                 </li>
