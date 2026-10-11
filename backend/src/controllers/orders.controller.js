@@ -17,6 +17,7 @@ import pool from '../config/database.js';
 import { recordAudit, recordEvent } from '../modules/events.js';
 import { toPaise, toRupees } from '../utils/money.js';
 import { asInvoice, BillingError, createInvoiceInTransaction, recordInvoiceCreated } from '../modules/billing.js';
+import { discountPolicy } from '../modules/approvals.js';
 import { hasPermission } from '../middleware/auth.js';
 import { TabError, takeItems, unbilledCount } from '../modules/tabs.js';
 import { ModifierError, outletSettingsFor, resolveModifiers } from '../modules/menu.js';
@@ -26,6 +27,8 @@ import { isEligibleWaiter } from '../modules/waiters.js';
 import { eligibleRiders, isEligibleRider } from '../modules/riders.js';
 import { resolveStation } from '../modules/stations.js';
 import { getAdapter } from '../modules/delivery/registry.js';
+import { HotelError } from '../modules/hotel/common.js';
+import { postInvoiceToRoom, roomGuestCustomer } from '../modules/hotel/roomCharge.js';
 
 const OPEN_STATUSES = ['PENDING_ACCEPT', 'OPEN', 'PREPARING', 'READY', 'SERVED'];
 
@@ -63,7 +66,8 @@ export const insertOrderItems = async (client, businessId, orderId, rawItems) =>
   const orderBranch = (await client.query(`SELECT branch_id FROM orders WHERE order_id = $1`, [orderId])).rows[0]?.branch_id;
   const outletSettings = await outletSettingsFor(client, orderBranch, [...new Set(rawItems.filter((r) => r.product_id).map((r) => Number(r.product_id)))]);
   for (const raw of rawItems) {
-    const quantity = Number(raw.quantity) || 1;
+    const quantity = raw.quantity == null || raw.quantity === '' ? 1 : Number(raw.quantity);
+    if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 1000) throw new OrderItemsError('Each item needs a quantity above zero');
     let description, unitPricePaise, productId = null, modifiers = [], stationId = null, expectedMinutes = defaultMinutes;
 
     if (raw.product_id) {
@@ -661,6 +665,9 @@ export const cancelOrder = async (req, res) => {
    ========================================================================== */
 export const bill = async (req, res) => {
   const body = req.body || {};
+  // a hotel's restaurant bill can be put on an in-house guest's room instead of being paid at the table
+  const roomBookingId = body.charge_to_booking_id ? Number(body.charge_to_booking_id) : null;
+  if (roomBookingId && req.tenant.businessType !== 'HOTEL') return res.status(400).json({ success: false, message: 'Charge to room is only for hotels' });
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -687,8 +694,10 @@ export const bill = async (req, res) => {
     if (!items.length) { await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: 'This order has no items left to bill' }); }
 
     // The sale, its stock and its payment belong to the order's outlet, not to whichever outlet the biller is viewing.
-    const invoice = await createInvoiceInTransaction(client, { ...req.tenant, branchId: order.branch_id ?? req.tenant.branchId }, req.auth.userId, {
-      customerId: order.customer_id,
+    const billTenant = { ...req.tenant, branchId: order.branch_id ?? req.tenant.branchId };
+    const roomCustomerId = roomBookingId ? await roomGuestCustomer(client, billTenant, roomBookingId) : null;
+    const invoice = await createInvoiceInTransaction(client, billTenant, req.auth.userId, {
+      customerId: roomCustomerId ?? order.customer_id,
       orderId: order.order_id,
       items: items.map((i) => ({
         product_id: i.product_id,
@@ -707,12 +716,15 @@ export const bill = async (req, res) => {
         // to matter.
       })),
       discount: body.discount,
+      discountPolicy: discountPolicy(req, body.approval, { lines: false }),   // a typed-in discount above the cap needs a manager's PIN
       couponCode: body.coupon_code,
+      applyPromotions: body.apply_promotions === true,
       redeemPoints: body.redeem_points,
       notes: body.notes || order.notes,
-      payment: body.payment,
-      payments: body.payments
+      payment: roomBookingId ? undefined : body.payment,
+      payments: roomBookingId ? undefined : body.payments
     });
+    if (roomBookingId) await postInvoiceToRoom(client, billTenant, req.auth.userId, { bookingId: roomBookingId, invoiceId: invoice.invoice_id });
 
     await client.query(`UPDATE order_items SET invoice_id = $1 WHERE order_item_id = ANY($2::int[])`, [invoice.invoice_id, items.map((i) => i.order_item_id)]);
     const remaining = await unbilledCount(client, order.order_id);
@@ -730,7 +742,7 @@ export const bill = async (req, res) => {
     res.status(201).json({ success: true, data: { ...invoice, order_closed: remaining === 0, remaining_items: remaining } });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
-    if (error instanceof BillingError || error instanceof TabError) return res.status(error.status).json({ success: false, message: error.message });
+    if (error instanceof BillingError || error instanceof TabError || error instanceof HotelError) return res.status(error.status).json({ success: false, message: error.message, ...(error.code ? { code: error.code, data: error.data } : {}) });
     console.error('[orders] bill failed:', error.message);
     res.status(500).json({ success: false, message: 'Could not bill the order' });
   } finally {

@@ -36,13 +36,21 @@ export const ROLE_PERMISSIONS = {
   ADMIN:   ['billing', 'products', 'inventory', 'barcode_reassign', 'product_quick_add', 'purchases', 'customers', 'suppliers',
             'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds',
             'appointments', 'staff_commission', 'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
-            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing'],
+            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing', 'approvals', 'front_desk', 'housekeeping', 'night_audit', 'hotel_setup', 'banquet', 'hr', 'payroll'],
   MANAGER: ['billing', 'products', 'inventory', 'barcode_reassign', 'product_quick_add', 'purchases', 'customers', 'suppliers',
             'payments', 'expenses', 'reports', 'ai', 'refunds', 'appointments', 'staff_commission',
             'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
-            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing'],
+            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing', 'approvals', 'front_desk', 'housekeeping', 'night_audit', 'hotel_setup', 'banquet', 'hr', 'payroll'],
   CASHIER: ['billing', 'customers', 'payments'],
   STAFF:   ['billing'],
+  // Hotel roles. The front desk runs bookings, check-in and the guest bill; housekeeping sees and updates room status only; the night
+  // auditor closes the day and reads the reports; the supervisor can also set up rooms. Banquet and staff-management roles come with those modules.
+  FRONT_DESK: ['front_desk', 'housekeeping', 'customers', 'payments'],
+  HOUSEKEEPER: ['housekeeping'],
+  HOUSEKEEPING_SUPERVISOR: ['housekeeping', 'hotel_setup'],
+  NIGHT_AUDITOR: ['night_audit', 'front_desk', 'housekeeping', 'payments', 'reports'],
+  BANQUET_MANAGER: ['banquet', 'customers', 'payments', 'reports'],
+  HR_MANAGER: ['hr', 'payroll', 'reports'],
   // Restaurant floor roles. WAITER can take and bill orders like STAFF; KITCHEN
   // sees and advances tickets only; INVENTORY_MANAGER runs stock and buying.
   WAITER:  ['billing'],
@@ -61,7 +69,7 @@ export const ROLE_PERMISSIONS = {
   ACCOUNTANT: ['billing', 'payments', 'expenses', 'gst', 'reports', 'export', 'refunds', 'collections'],
   // Wholesale roles. Sales people take and manage orders; warehouse people pick, pack, receive and count; the
   // purchase manager buys and approves; the accountant (above) owns money, GST and reports.
-  SALES_MANAGER: ['billing', 'customers', 'payments', 'reports', 'refunds', 'sales_orders', 'sales_cancel', 'pricing', 'export', 'territories', 'schemes', 'targets', 'field_sales', 'collections'],
+  SALES_MANAGER: ['billing', 'customers', 'payments', 'reports', 'refunds', 'approvals', 'sales_orders', 'sales_cancel', 'pricing', 'export', 'territories', 'schemes', 'targets', 'field_sales', 'collections'],
   SALES_EXECUTIVE: ['billing', 'customers', 'sales_orders', 'field_sales'],
   WAREHOUSE_MANAGER: ['inventory', 'purchases', 'fulfilment', 'suppliers', 'vehicles'],
   WAREHOUSE_STAFF: ['fulfilment'],
@@ -71,7 +79,7 @@ export const ROLE_PERMISSIONS = {
   FIELD_SALES: ['customers', 'sales_orders', 'field_sales', 'collections'],
   COLLECTION_EXECUTIVE: ['customers', 'collections', 'field_sales'],
   DELIVERY_MANAGER: ['fulfilment', 'vehicles', 'inventory'],
-  DISTRIBUTOR_ADMIN: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers', 'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds',
+  DISTRIBUTOR_ADMIN: ['approvals', 'billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers', 'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds',
             'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve', 'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections'],
   // Pharmacy roles. A pharmacist sells, views stock and dispenses against a prescription, but does not approve
   // adjustments or edit the medicine master; sales staff is narrower still (no inventory at all — product lookups
@@ -224,7 +232,7 @@ export const requireAuth = async (req, res, next) => {
               b.name, b.business_type, b.status AS business_status,
               b.subscription_status, b.plan_code, b.billing_cycle,
               b.trial_started_at, b.trial_ends_at, b.next_billing_date,
-              b.currency, b.onboarding_step, b.gst_enabled, b.require_2fa_admins, b.upi_vpa,
+              b.currency, b.onboarding_step, b.gst_enabled, b.require_2fa_admins, b.upi_vpa, b.discount_cap_pct, b.cancel_needs_approval,
               -- feature_flags come from the business's PINNED plan version, not the plan's current
               -- (possibly since-changed) values — see modules/planFeatures.js and migration 0038.
               COALESCE(pv.feature_flags, p.feature_flags, '{}'::jsonb) AS feature_flags,
@@ -353,6 +361,9 @@ export const withBusiness = (options = {}) => async (req, res, next) => {
     onboardingStep: membership.onboarding_step,
     role: membership.role,
     permissions: membership.permissions || {},
+    // manager approval (modules/approvals.js): the biggest typed-in discount staff may give alone, and whether cancelling a bill needs a manager's PIN
+    discountCapPct: Number(membership.discount_cap_pct ?? 100),
+    cancelNeedsApproval: membership.cancel_needs_approval !== false,
     /* branchId: the outlet new records belong to (always a real outlet).
        scopeBranchId: the outlet reads are limited to; null = every outlet, which
        only a group user can have. pinned: this user belongs to one outlet. */

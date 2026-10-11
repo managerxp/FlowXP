@@ -244,3 +244,18 @@ test('a logo is stored, replaced and removed, and shows in the receipt settings'
   assert.equal('logo_url' in after, false);
   assert.equal(business.cleanReceiptSettings({ show_logo: false }).settings.show_logo, false);
 });
+
+test('a UPI payment being taken prints a QR for exactly that amount, even when the balance QR is switched off', () => {
+  const qrOf = (out) => /upi:\/\/pay\?[^\x00-\x1f]*/.exec(textOf(out))?.[0] ?? null;
+  // the setting that shows the balance QR is off: no QR unless a UPI payment is being taken
+  assert.equal(qrOf(receiptBytes({ business: business1, settings: { show_upi_qr: false }, invoice: invoice() })), null);
+  const part = qrOf(receiptBytes({ business: business1, settings: { show_upi_qr: false }, invoice: invoice() }, { upi: 100 }));
+  assert.match(part, /am=100\.00/, 'a part payment: the QR is for what is being collected');
+  assert.match(part, /pa=spice%40upi/);
+  assert.match(textOf(receiptBytes({ business: business1, settings: {}, invoice: invoice() }, { upi: 100 })), /Scan to pay Rs\.100\.00 by UPI/);
+  // more than is owed is cut down to what is owed; nothing owed means no QR at all
+  assert.match(qrOf(receiptBytes({ business: business1, settings: {}, invoice: invoice() }, { upi: 9999 })), /am=375\.00/);
+  assert.equal(qrOf(receiptBytes({ business: business1, settings: {}, invoice: invoice({ balance_due: 0 }) }, { upi: 100 })), null);
+  // with no amount given, the balance QR works as before
+  assert.match(qrOf(receiptBytes({ business: business1, settings: {}, invoice: invoice() })), /am=375\.00/);
+});

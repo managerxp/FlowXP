@@ -5,12 +5,13 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bike, Plus, Search, ShoppingBag, Store, UtensilsCrossed } from 'lucide-react';
+import { Bike, Plus, Search, ShoppingBag, Store, Truck, UtensilsCrossed } from 'lucide-react';
 import { api, formatCurrency } from '../../lib/api.js';
 import { localISO } from '../../lib/dates.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { platformName } from '../../lib/business.js';
 import { Alert, Button, Input, StatCard } from '../../components/ui.jsx';
+import { OfflineChip } from '../../components/OfflineFlag.jsx';
 
 const d0 = (iso) => new Date(`${iso}T00:00`);
 const plusDays = (iso, n) => { const d = d0(iso); d.setDate(d.getDate() + n); return localISO(d); };
@@ -25,7 +26,7 @@ const periodFor = (key, custom) => {
   const from = custom.from || today; const to = custom.to && custom.to >= from ? custom.to : from;
   return { from, to, label: 'in these dates' };
 };
-const TABS = [['all', 'All'], ['owing', 'Still owed'], ['paid', 'Paid'], ['cancelled', 'Cancelled']];
+const TABS = [['all', 'All'], ['owing', 'Still owed'], ['paid', 'Paid'], ['cancelled', 'Cancelled'], ['check', 'Needs a look']];
 const dayLabel = (iso) => {
   const today = localISO();
   if (iso === today) return 'Today';
@@ -39,6 +40,7 @@ const Source = ({ inv }) => {
   const [Icon, text] = inv.order_type === 'DINE_IN' ? [UtensilsCrossed, inv.table_name ? `Table ${inv.table_name}` : 'Dine-in']
     : inv.order_type === 'TAKEAWAY' ? [ShoppingBag, 'Takeaway']
     : inv.order_type === 'DELIVERY' ? [Bike, inv.platform ? platformName(inv.platform) : 'Delivery']
+    : String(inv.notes || '').startsWith('Van sale') ? [Truck, 'Van']
     : [Store, 'Counter'];
   return <span className="inline-flex items-center gap-1"><Icon aria-hidden="true" className="h-3 w-3" />{text}</span>;
 };
@@ -73,6 +75,7 @@ const InvoicesPage = () => {
     if (tab === 'owing') list.set('owing', 'true');
     if (tab === 'paid') { list.set('status', 'ISSUED'); list.set('payment_status', 'PAID'); }
     if (tab === 'cancelled') list.set('status', 'CANCELLED');
+    if (tab === 'check') list.set('review', 'true');   // taken offline on a phone, and the server wants a person to look at it
     if (query) list.set('search', query);
     let live = true;
     setRows(null);
@@ -128,9 +131,9 @@ const InvoicesPage = () => {
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div role="tablist" aria-label="Show" className="flex gap-1 border-b border-line">
-          {TABS.map(([k, label]) => (
+          {TABS.filter(([k]) => k !== 'check' || summary?.offline > 0 || tab === 'check').map(([k, label]) => (
             <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-                    className={`-mb-px border-b-2 px-3 py-2 text-small font-medium ${tab === k ? 'border-brand-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'}`}>{label}</button>
+                    className={`-mb-px border-b-2 px-3 py-2 text-small font-medium ${tab === k ? 'border-brand-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'}`}>{label}{k === 'check' && summary?.to_check > 0 ? ` (${summary.to_check})` : ''}</button>
           ))}
         </div>
         <label className="relative min-w-[14rem] flex-1">
@@ -144,7 +147,7 @@ const InvoicesPage = () => {
       {rows?.length === 0 && (
         <div className="rounded-(--radius-card) border border-dashed border-line-strong p-10 text-center">
           <p className="text-body font-medium text-ink-900">
-            {query ? 'No bills match.' : tab === 'owing' ? `Nothing is owed on bills raised ${period.label}.` : tab === 'cancelled' ? `No bills cancelled ${period.label}.` : tab === 'paid' ? `No paid bills ${period.label}.` : `No bills ${period.label}.`}
+            {query ? 'No bills match.' : tab === 'owing' ? `Nothing is owed on bills raised ${period.label}.` : tab === 'check' ? `Nothing to check ${period.label}. Every bill made offline was accepted as it was.` : tab === 'cancelled' ? `No bills cancelled ${period.label}.` : tab === 'paid' ? `No paid bills ${period.label}.` : `No bills ${period.label}.`}
           </p>
           {tab === 'owing' && periodKey !== 'all' && !query && <button type="button" onClick={() => setPeriodKey('all')} className="mt-2 text-small font-medium text-brand-700">Check every bill, any date</button>}
           {tab === 'all' && !query && <p className="mt-1 text-small text-ink-500"><Link to="/app/billing" className="font-medium text-brand-700">Start a sale</Link> and it shows here.</p>}
@@ -167,12 +170,14 @@ const InvoicesPage = () => {
                         <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                           <span className={`text-small font-semibold ${cancelled ? 'text-ink-400 line-through' : 'text-ink-900'}`}>{inv.invoice_number}</span>
                           <StateChip inv={inv} />
+                          <OfflineChip offline={inv.offline} review={inv.review} />
                         </span>
                         <span className="flex flex-wrap gap-x-2 text-caption text-ink-500">
                           <span className="truncate">{inv.customer_name || 'Walk-in customer'}</span>
                           <span aria-hidden="true">·</span><Source inv={inv} />
                           {time(inv.created_at) && <><span aria-hidden="true">·</span><span>{time(inv.created_at)}</span></>}
                         </span>
+                        {inv.review && <span className="block truncate text-caption text-warning">Check: {inv.review}</span>}
                       </span>
                       <span className="shrink-0 text-right">
                         <span className={`tabular block text-small font-semibold ${cancelled ? 'text-ink-400' : 'text-ink-900'}`}>{formatCurrency(inv.total)}</span>

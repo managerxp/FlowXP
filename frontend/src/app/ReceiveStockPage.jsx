@@ -5,9 +5,10 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Minus, Plus, ScanLine, Search, Trash2, X } from 'lucide-react';
+import { ArrowLeft, FileText, Minus, Plus, ScanLine, Search, Trash2, X } from 'lucide-react';
 import BarcodeScanner from '../components/BarcodeScanner.jsx';
 import QuickProductModal from '../components/QuickProductModal.jsx';
+import SupplierBillImport from '../components/SupplierBillImport.jsx';
 import { api, formatCurrency } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useIdempotencyKey } from '../lib/idempotency.js';
@@ -31,6 +32,10 @@ const ReceiveStockPage = () => {
   const [cats, setCats] = useState([]);
   const [supplier, setSupplier] = useState('');
   const [bill, setBill] = useState('');
+  const [billDate, setBillDate] = useState('');
+  const [importing, setImporting] = useState(false);     // the supplier-bill reader is open
+  const [allowDup, setAllowDup] = useState(false);       // the person confirmed this bill number is a different delivery
+  const [dupBill, setDupBill] = useState(false);         // the server says this supplier's bill number is already recorded
   const [paid, setPaid] = useState('');
   const [showPay, setShowPay] = useState(false);
   const [method, setMethod] = useState('CASH');
@@ -62,6 +67,19 @@ const ReceiveStockPage = () => {
         ? { ...l, cost: l.cost === '' ? String(d.purchase_price ?? '') : l.cost, tax_rate: l.tax_rate === '' ? String(d.tax_rate ?? 0) : l.tax_rate, track_expiry: Boolean(d.track_expiry), unit: d.unit || l.unit, loaded: true } : l)))).catch(() => {});
     }
     return known;
+  };
+  /* The lines of a bill the person has checked in the reader: the quantity, cost, GST and expiry come from the bill,
+     and what was matched is remembered on each line so it can be learned once the stock is received. */
+  const useBill = (r) => {
+    setImporting(false);
+    if (r.supplier_id) setSupplier(String(r.supplier_id));
+    if (r.invoice_no) setBill(r.invoice_no);
+    setBillDate(r.invoice_date || '');
+    setAllowDup(Boolean(r.allow_duplicate)); setDupBill(false);
+    for (const l of r.lines) {
+      add(l.product, l.qty);
+      patch(l.product.product_id, { cost: l.cost === '' ? '' : String(l.cost), tax_rate: l.tax_rate === '' ? '' : String(l.tax_rate), ...(l.expiry ? { expiry: l.expiry } : {}), ...(l.batch ? { batch: l.batch } : {}), learn: l.learn });
+    }
   };
   const patch = (id, change) => setLines((ls) => ls.map((l) => (l.product_id === id ? { ...l, ...change } : l)));
   const remove = (id) => setLines((ls) => ls.filter((l) => l.product_id !== id));
@@ -106,14 +124,18 @@ const ReceiveStockPage = () => {
         method: 'POST', idempotencyKey: idem.get(),
         body: {
           supplier_id: supplier ? Number(supplier) : undefined, notes: bill.trim() ? `Supplier bill ${bill.trim()}` : undefined,
+          supplier_invoice_no: bill.trim() || undefined, supplier_invoice_date: billDate || undefined, ...(allowDup ? { allow_duplicate_bill: true } : {}),
           items: lines.map((l) => ({ product_id: l.product_id, quantity: num(l.qty), unit_cost: num(l.cost), tax_rate: num(l.tax_rate), ...(l.track_expiry ? { expiry_date: l.expiry, batch_no: l.batch.trim() || undefined } : {}) })),
           ...(num(paid) > 0 ? { payment: { amount: num(paid), method } } : {})
         }
       });
       idem.settle();
+      // what the person matched on the bill is remembered, so the same wording or code is found next time (best effort)
+      const pairs = lines.filter((l) => l.learn).map((l) => l.learn);
+      if (pairs.length) api('/retail/invoice-import/learn', { method: 'POST', body: { supplier_id: supplier ? Number(supplier) : undefined, pairs } }).catch(() => {});
       toast.success(`${lines.length} item${lines.length === 1 ? '' : 's'} received${po.po_number ? ` (${po.po_number})` : ''}`);
       navigate('/app/stock');
-    } catch (e) { idem.settle(e); setError(e.message); setBusy(false); }
+    } catch (e) { idem.settle(e); setError(e.message); setDupBill(e.code === 'DUPLICATE_BILL'); setBusy(false); }
   };
 
   if (!can('inventory')) return <Alert>You do not have access to receive stock.</Alert>;
@@ -122,7 +144,7 @@ const ReceiveStockPage = () => {
     <div>
       <Link to="/app/stock" className="mb-3 inline-flex min-h-11 items-center gap-1.5 text-small font-medium text-ink-500 hover:text-ink-900"><ArrowLeft aria-hidden="true" className="h-4 w-4" />Stock center</Link>
       <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Receive stock</h1>
-      <p className="mt-1 max-w-2xl text-sm text-ink-500">Scan what arrived. The stock goes on the shelf when you press Receive, and the cost you enter becomes the product’s cost.</p>
+      <p className="mt-1 max-w-2xl text-sm text-ink-500">Scan what arrived, or read the supplier’s bill. The stock goes on the shelf when you press Receive, and the cost you enter becomes the product’s cost.</p>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:max-w-3xl">
         <Field id="rc-supplier" label="Supplier"><Select id="rc-supplier" value={supplier} onChange={(e) => setSupplier(e.target.value)}><option value="">No supplier</option>{suppliers.map((s) => <option key={s.supplier_id} value={s.supplier_id}>{s.name}</option>)}</Select></Field>
@@ -131,6 +153,7 @@ const ReceiveStockPage = () => {
 
       <div className="mt-5 flex flex-wrap items-start gap-3">
         <Button size="lg" className="min-h-12" onClick={() => setScanning(true)}><ScanLine aria-hidden="true" className="h-5 w-5" />Scan items</Button>
+        <Button size="lg" variant="secondary" className="min-h-12" onClick={() => setImporting(true)}><FileText aria-hidden="true" className="h-5 w-5" />Read a supplier bill</Button>
         <div className="relative min-w-60 flex-1">
           {pending && (
             <p className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-brand-50 px-3 py-2 text-small text-brand-700">
@@ -208,6 +231,7 @@ const ReceiveStockPage = () => {
           {(error || missingExpiry.length > 0) && (
             <div className="mx-auto mt-2 max-w-5xl">
               <Alert>{error}</Alert>
+              {dupBill && <button type="button" onClick={() => { setAllowDup(true); setDupBill(false); setError(''); }} className="mt-1 text-small font-medium text-brand-600 hover:underline">It is a different delivery: allow it, then press Receive again</button>}
               {!error && <p className="text-caption text-warning">Add the expiry date for {missingExpiry.map((l) => l.name).join(', ')}.</p>}
             </div>
           )}
@@ -222,6 +246,7 @@ const ReceiveStockPage = () => {
           onCreate={(code) => { setScanning(false); setCreating({ barcode: code }); }}
         />
       )}
+      {importing && <SupplierBillImport suppliers={suppliers} categories={cats} search={localSearch} onClose={() => setImporting(false)} onUse={useBill} />}
       {creating && (
         <QuickProductModal
           barcode={creating.barcode} categories={cats}

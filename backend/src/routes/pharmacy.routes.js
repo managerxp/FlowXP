@@ -29,7 +29,7 @@ const once = idempotent();
 router.get('/products', ...read, any('billing', 'products', 'inventory'), catalog.list);
 router.get('/products/lookup', ...read, any('billing', 'products', 'inventory', 'purchases'), catalog.lookup);
 router.get('/products/:id', ...read, any('billing', 'products', 'inventory'), catalog.get);
-router.post('/products', ...write, can('products'), catalog.create);
+router.post('/products', ...write, can('products'), once, catalog.create);
 router.put('/products/:id', ...write, can('products'), catalog.update);
 router.get('/categories', ...read, catalog.categories);
 router.post('/categories', ...write, can('products'), catalog.createCategory);

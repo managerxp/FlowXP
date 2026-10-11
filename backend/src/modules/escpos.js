@@ -8,6 +8,8 @@
  * browser receipt.
  */
 
+import { taxName } from './gst/states.js';
+
 const ESC = 0x1b; const GS = 0x1d; const LF = 0x0a;
 
 /** Strip what a printer's default code page can't show. */
@@ -72,7 +74,8 @@ const stamp = (iso) => (iso ? new Date(iso).toLocaleString('en-IN', { day: '2-di
  * @param r { business, settings, invoice }  the same data the browser receipt shows (see invoices.get)
  * @param opts { cols, drawer, cut }
  */
-export const receiptBytes = ({ business, settings = {}, invoice }, { cols = 48, drawer = false, cut = true } = {}) => {
+/* `upi` (rupees) is an amount being collected by UPI right now: the QR is printed for exactly that, even when the receipt setting that shows the balance QR is off. */
+export const receiptBytes = ({ business, settings = {}, invoice }, { cols = 48, drawer = false, cut = true, upi: upiAmount = null } = {}) => {
   const j = new Job(cols);
   const outlet = invoice.outlet;
   const gstin = outlet?.gstin || business.gstin;
@@ -100,7 +103,7 @@ export const receiptBytes = ({ business, settings = {}, invoice }, { cols = 48, 
   j.rule();
 
   j.pair('Subtotal', money(invoice.subtotal));
-  for (const [label, v] of [['CGST', invoice.cgst], ['SGST', invoice.sgst], ['IGST', invoice.igst]]) if (v > 0) j.pair(label, money(v));
+  for (const [label, v] of [['CGST', invoice.cgst], [taxName(outlet?.state || business.state), invoice.sgst], ['IGST', invoice.igst]]) if (v > 0) j.pair(label, money(v));
   const hand = invoice.discount - invoice.coupon_discount;
   if (hand > 0) j.pair('Discount', `-${money(hand)}`);
   if (invoice.coupon_discount > 0) j.pair(`Coupon ${invoice.coupon_code}`, `-${money(invoice.coupon_discount)}`);
@@ -114,9 +117,12 @@ export const receiptBytes = ({ business, settings = {}, invoice }, { cols = 48, 
   const due = invoice.status === 'ISSUED' && invoice.balance_due > 0;
   if (due) j.bold(true).pair('BALANCE DUE', money(invoice.balance_due)).bold(false);
 
-  if (due && business.upi_vpa && settings.show_upi_qr !== false) {
-    const upi = `upi://pay?pa=${encodeURIComponent(business.upi_vpa)}&pn=${encodeURIComponent(business.name)}&am=${money(invoice.balance_due)}&cu=INR&tn=${encodeURIComponent(invoice.invoice_number)}`;
-    j.align('center').feed(1).qr(upi, 5).line('Scan to pay the balance').align('left');
+  // the amount to put in the QR: what is being collected now (never more than is owed), else the whole balance when the receipt setting allows it
+  const collecting = upiAmount != null && Number(upiAmount) > 0 ? Math.min(Number(upiAmount), invoice.balance_due) : null;
+  if (due && business.upi_vpa && (collecting != null || settings.show_upi_qr !== false)) {
+    const amount = collecting ?? invoice.balance_due;
+    const upi = `upi://pay?pa=${encodeURIComponent(business.upi_vpa)}&pn=${encodeURIComponent(business.name)}&am=${money(amount)}&cu=INR&tn=${encodeURIComponent(invoice.invoice_number)}`;
+    j.align('center').feed(1).qr(upi, 5).line(collecting != null ? `Scan to pay Rs.${money(amount)} by UPI` : 'Scan to pay the balance').align('left');
   }
   if (settings.show_loyalty !== false && invoice.loyalty_message) j.rule().align('center').wrap(`* ${invoice.loyalty_message}`).align('left');
   if (invoice.points_earned > 0) j.align('center').line(`Points earned: ${invoice.points_earned}`).align('left');

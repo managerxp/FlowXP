@@ -55,7 +55,7 @@ const tenantFor = async (email) => {
 
 const getSubscription = async (businessId) => {
   const res = fakeRes();
-  await business.getSubscription({ tenant: { businessId } }, res);
+  await business.getSubscription({ tenant: { businessId, role: 'OWNER', permissions: {} } }, res);
   return res.body.data;
 };
 

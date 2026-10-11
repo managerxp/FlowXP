@@ -48,8 +48,8 @@ const ListPanel = ({ title, groups }) => (
 const ALSO = [
   { title: 'Several businesses, one login', body: 'Switch between them from the same account; each keeps its own stock, staff and invoice numbers.', big: true },
   { title: 'Branches and outlets', body: 'Own stock, staff and invoice series, one owner view.' },
-  { title: 'Works offline', body: 'Bills are saved on the device and sent when the internet is back.' },
-  { title: 'Phone app', body: 'Install FlowXP on Android or iPhone from the browser.' },
+  { title: 'Works offline', body: 'Bills are saved on the device and sent once when the internet is back, never twice. Prices, stock counts and customer lookup work offline too in the Android app.' },
+  { title: 'Phone app', body: 'Install FlowXP from the browser today. The Android app, with tables, a kitchen screen and Hindi, is in testing.' },
   { title: 'Thermal printing', body: '58 and 80 mm receipts and kitchen tickets, silent if you like.' },
   { title: 'Cash drawer', body: 'Opens when a cash bill prints.' },
   { title: 'Export', body: 'Reports and the GST register download as CSV.' },
@@ -61,7 +61,7 @@ const ProductPage = () => (
     <PageHero
       title="Everything you need to sell, stock and file GST."
       lead="Billing, payments, stock, purchases, GST, customers, reports and your team, in one place that your staff can learn in an afternoon. The pictures on this page are the real screens."
-      points={['Nothing to install: it runs in the browser', 'Works on the laptop, tablet or phone you have', 'Every change is recorded with who made it']}
+      points={['Nothing to install: it runs in the browser', 'Works on the laptop, tablet or phone you have (Android app in testing)', 'Every change is recorded with who made it']}
       visual={<Shot src="/product/pos.webp" size={FULL} eager alt="The FlowXP billing screen with six items on a ₹1,315 bill, GST worked out and a Charge button." />}
     />
     <JumpBar />

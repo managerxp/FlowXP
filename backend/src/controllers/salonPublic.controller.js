@@ -9,6 +9,7 @@
  * about anyone but the person booking.
  */
 import pool from '../config/database.js';
+import { notify } from '../modules/notifications.js';
 import { toRupees } from '../utils/money.js';
 import { effectiveFeatureFlags, hasPlanFeature } from '../modules/planFeatures.js';
 import { getSettings } from '../modules/salon/settings.js';
@@ -91,6 +92,7 @@ export const availability = async (req, res) => {
 };
 
 const MAX_OPEN_PER_PHONE = 3;
+const MAX_ONLINE_PER_PHONE_PER_DAY = 4;
 
 /* POST /api/public/salon/:slug/appointments { name, phone, start_at, services: [{ service_id, staff_id? }], notes?, branch_id? } */
 export const book = async (req, res) => {
@@ -113,6 +115,14 @@ export const book = async (req, res) => {
        AND RIGHT(regexp_replace(COALESCE(a.guest_phone, c.phone, ''), '\\D', '', 'g'), 10) = $2`, [g.biz.business_id, last10])).rows[0].n);
   if (open >= MAX_OPEN_PER_PHONE) return fail(res, 429, `You already have ${open} upcoming online bookings. Please call the salon to add more.`);
 
+  // The confirmation goes to this number at the salon's cost, and anyone can type anyone's number: so a number can only be booked a few times a day
+  // across every salon, whether or not those bookings were cancelled. Counts guest bookings; a signed-in client's number is on their record instead.
+  const today = Number((await pool.query(
+    `SELECT COUNT(*) AS n FROM salon_appointments
+     WHERE source = 'ONLINE' AND created_at > now() - interval '24 hours'
+       AND RIGHT(regexp_replace(COALESCE(guest_phone, ''), '[^0-9]', '', 'g'), 10) = $1`, [last10])).rows[0].n);
+  if (today >= MAX_ONLINE_PER_PHONE_PER_DAY) return fail(res, 429, 'That number has had several bookings today. Please call the salon.');
+
   const out = capture();
   await appointments.create(asFrontDesk(g.biz, g.outlet, {
     body: { guest_name: name, guest_phone: ph, start_at: b.start_at, source: 'ONLINE', notes: text(b.notes, 'Notes', { max: 300 }) || undefined,
@@ -120,6 +130,8 @@ export const book = async (req, res) => {
   }), out);
   if (out.code >= 400) return res.status(out.code).json(out.body);
   const a = out.body.data;
+  notify(g.biz.business_id, { category: 'bookings', type: 'online_booking', title: 'New online booking', body: `${name} · ${new Date(a.start_at).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: g.biz.timezone || 'Asia/Kolkata' })}`, branchId: g.outlet.branch_id, channels: { inApp: false, email: false }, route: '/appointments' })
+    .catch((e) => console.error('[push] booking alert failed:', e.message));
   // only what the person who booked needs: never the name or details of a client the number happened to match
   res.status(201).json({ success: true, data: {
     appointment_id: a.appointment_id, status: a.status, start_at: a.start_at, end_at: a.end_at, total: a.total,

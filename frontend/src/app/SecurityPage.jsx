@@ -144,7 +144,7 @@ const Password = () => {
       <h2 className="text-base font-bold text-ink-900">Password and devices</h2>
       <form onSubmit={save} className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <Field id="pw-cur" label="Current password"><Input id="pw-cur" type="password" value={form.current_password} onChange={(e) => setForm((f) => ({ ...f, current_password: e.target.value }))} autoComplete="current-password" required /></Field>
-        <Field id="pw-new" label="New password" hint="At least 8 characters"><Input id="pw-new" type="password" value={form.new_password} onChange={(e) => setForm((f) => ({ ...f, new_password: e.target.value }))} autoComplete="new-password" required /></Field>
+        <Field id="pw-new" label="New password" hint="At least 10 characters"><Input id="pw-new" type="password" value={form.new_password} onChange={(e) => setForm((f) => ({ ...f, new_password: e.target.value }))} autoComplete="new-password" required /></Field>
         <Button type="submit" disabled={busy}>Change</Button>
       </form>
       <Alert>{error}</Alert>
@@ -190,8 +190,101 @@ const Team = () => {
   );
 };
 
+const ApprovalPin = () => {
+  const toast = useToast();
+  const [s, setS] = useState(null);
+  const [form, setForm] = useState({ password: '', pin: '' });
+  const [error, setError] = useState('');
+  const load = () => api('/auth/approval-pin').then(setS).catch((e) => setError(e.message));
+  useEffect(() => { load(); }, []);
+  if (!s?.can_approve) return null;
+  const call = async (method, body, done) => { setError(''); try { await api('/auth/approval-pin', { method, body }); setForm({ password: '', pin: '' }); toast.success(done); load(); } catch (caught) { setError(caught.message); } };
+  return (
+    <Card className="p-5">
+      <h2 className="text-base font-bold text-ink-900">Your approval PIN</h2>
+      <p className="mt-1 text-sm text-ink-500">Staff at the till ask for this PIN to cancel a bill or give a large discount. {s.has_pin ? 'You have a PIN set.' : 'You have not set one yet, so nobody can ask you.'}</p>
+      <form onSubmit={(e) => { e.preventDefault(); call('PUT', form, 'PIN saved'); }} className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <Field id="ap-pw" label="Your password"><Input id="ap-pw" type="password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} autoComplete="current-password" required /></Field>
+        <Field id="ap-pin" label={s.has_pin ? 'New PIN' : 'PIN'} hint="4 to 8 digits"><Input id="ap-pin" type="password" inputMode="numeric" value={form.pin} onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value.replace(/\D/g, '') }))} autoComplete="off" maxLength={8} required /></Field>
+        <Button type="submit">{s.has_pin ? 'Change PIN' : 'Set PIN'}</Button>
+      </form>
+      {s.has_pin && <Button variant="secondary" size="sm" className="mt-2" disabled={!form.password} onClick={() => call('DELETE', { password: form.password }, 'PIN removed')}>Remove PIN (enter your password above)</Button>}
+      <Alert>{error}</Alert>
+    </Card>
+  );
+};
+
+const ApprovalRules = () => {
+  const toast = useToast();
+  const [d, setD] = useState(null);
+  const [cap, setCap] = useState('');
+  const [error, setError] = useState('');
+  const load = () => api('/approvals').then((r) => { setD(r); setCap(String(r.discount_cap_pct)); }).catch((e) => setError(e.message));
+  useEffect(() => { load(); }, []);
+  if (!d) return <ListState loading={!error} error={error} />;
+  const save = async (body, done) => { setError(''); try { await api('/approvals', { method: 'PUT', body }); toast.success(done); load(); } catch (caught) { setError(caught.message); } };
+  return (
+    <Card className="p-5">
+      <h2 className="text-base font-bold text-ink-900">Manager approval at the till</h2>
+      <p className="mt-1 text-sm text-ink-500">Owners, admins and managers are never held back. Everyone else needs one of them to type in their PIN.</p>
+      <form onSubmit={(e) => { e.preventDefault(); save({ discount_cap_pct: Number(cap) }, 'Discount limit saved'); }} className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+        <Field id="ap-cap" label="Biggest discount staff may give alone (%)" hint="Of the bill, for discounts typed in at the till. Offers you set up are not counted."><Input id="ap-cap" type="number" min="0" max="100" step="0.5" value={cap} onChange={(e) => setCap(e.target.value)} required /></Field>
+        <Button type="submit">Save</Button>
+      </form>
+      <label className="mt-4 flex items-start gap-3 text-sm">
+        <input type="checkbox" className="mt-1" checked={d.cancel_needs_approval} onChange={(e) => save({ cancel_needs_approval: e.target.checked }, e.target.checked ? 'Cancelling a bill now needs a PIN' : 'Cancelling a bill is free again')} />
+        <span><span className="font-medium text-ink-900">Cancelling a bill needs a manager's PIN</span><span className="block text-xs text-ink-500">Staff also have to say why.</span></span>
+      </label>
+      <h3 className="mb-2 mt-5 text-sm font-semibold text-ink-900">Who can approve</h3>
+      {d.approvers?.length ? <Table>
+        <Thead><Th>Person</Th><Th>Role</Th><Th>PIN</Th></Thead>
+        <tbody>{d.approvers.map((m) => <Tr key={m.user_id}><Td>{m.name}</Td><Td className="text-xs">{m.role}</Td><Td>{m.has_pin ? <Badge tone="success">Set</Badge> : <Badge tone="neutral">Not set</Badge>}</Td></Tr>)}</tbody>
+      </Table> : <p className="text-sm text-ink-400">Nobody yet.</p>}
+      <Alert>{error}</Alert>
+    </Card>
+  );
+};
+
+const DeleteAccount = () => {
+  const { signOut } = useAuth();
+  const dialog = useDialog();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ password: '', code: '' });
+  const [error, setError] = useState('');
+  const [held, setHeld] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!(await dialog.confirm({ title: 'Delete your account?', body: 'This cannot be undone. Your name, email, phone and sign-ins are erased. The business keeps its bills and records.', confirmLabel: 'Delete my account', danger: true }))) return;
+    setBusy(true); setError(''); setHeld('');
+    try {
+      await api('/auth/delete-account', { method: 'POST', body: { password: form.password, ...(form.code ? { code: form.code.trim(), recovery_code: form.code.trim().length > 6 ? form.code.trim() : undefined } : {}) } });
+      signOut();
+      window.location.assign('/delete-account?done=1');
+    } catch (caught) {
+      // the only owner of a business: nothing was deleted, and the request is with support
+      if (caught.code === 'OWNS_BUSINESS') setHeld(caught.message); else setError(caught.message);
+    } finally { setBusy(false); }
+  };
+  return (
+    <Card className="p-5">
+      <h2 className="text-base font-bold text-ink-900">Delete my account</h2>
+      <p className="mt-1 text-sm text-ink-500">Erases your name, email, phone and sign-ins from FlowXP. The business keeps its bills and records. <a href="/delete-account" className="font-medium text-brand-600 hover:text-brand-700">What is kept?</a></p>
+      {!open ? <Button variant="secondary" size="sm" className="mt-3" onClick={() => setOpen(true)}>Delete my account…</Button> : (
+        <form onSubmit={submit} className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+          <Field id="del-pw" label="Your password"><Input id="del-pw" type="password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} autoComplete="current-password" required /></Field>
+          <Field id="del-code" label="Two-step code" hint="Only if you use two-step verification"><Input id="del-code" inputMode="numeric" value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} autoComplete="one-time-code" /></Field>
+          <Button type="submit" variant="danger" loading={busy}>Delete</Button>
+        </form>
+      )}
+      <Alert>{error}</Alert>
+      {held && <p role="status" className="mt-3 rounded-lg bg-amber-500/10 p-3 text-sm text-ink-900">{held}</p>}
+    </Card>
+  );
+};
+
 const SecurityPage = () => {
-  const { business } = useAuth();
+  const { business, can } = useAuth();
   const [history, setHistory] = useState(null);
   const [error, setError] = useState('');
   useEffect(() => { api('/auth/login-history').then(setHistory).catch((e) => setError(e.message)); }, []);
@@ -201,6 +294,8 @@ const SecurityPage = () => {
       <div><h1 className="text-h3 font-semibold text-ink-900">Security</h1><p className="mt-1 text-sm text-ink-500">Keep your account and your business safe.</p></div>
       <TwoFactor />
       <Password />
+      <ApprovalPin />
+      {can?.('settings') && <ApprovalRules />}
       <Card className="p-5">
         <h2 className="text-base font-bold text-ink-900">Your recent sign-ins</h2>
         <p className="mb-3 text-xs text-ink-500">If you see one you don't recognise, change your password and sign out everywhere.</p>
@@ -208,6 +303,7 @@ const SecurityPage = () => {
         {history ? <Events rows={history} /> : <ListState loading={!error} />}
       </Card>
       {canSeeTeam && <Team />}
+      <DeleteAccount />
     </div>
   );
 };

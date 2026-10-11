@@ -3,6 +3,7 @@
  * hands them to the print agent on the till computer; the server never talks to a printer itself.
  */
 import pool from '../config/database.js';
+import { recordAudit } from '../modules/events.js';
 import { COLS, drawerBytes, kotSlips, receiptBytes, testPage } from '../modules/escpos.js';
 import * as invoices from './invoices.controller.js';
 import * as kitchen from './kitchen.controller.js';
@@ -24,14 +25,14 @@ const width = async (req) => {
 
 const b64 = (bytes) => bytes.toString('base64');
 
-/* GET /api/invoices/:id/escpos?cols=&drawer=1 */
+/* GET /api/invoices/:id/escpos?cols=&drawer=1&upi=<rupees> — upi: print the QR for exactly that amount (the UPI payment being taken) */
 export const receipt = async (req, res) => {
   const got = await capture(invoices.get, req);
   if (got.status !== 200) return res.status(got.status).json(got.body);
   const business = (await pool.query(
     `SELECT name, gstin, address, city, phone, gst_enabled, upi_vpa, receipt_settings FROM businesses WHERE business_id = $1`, [req.tenant.businessId])).rows[0];
   const bytes = receiptBytes({ business, settings: business.receipt_settings || {}, invoice: got.body.data },
-    { cols: await width(req), drawer: req.query.drawer === '1' });
+    { cols: await width(req), drawer: req.query.drawer === '1', upi: req.query.upi != null ? Number(req.query.upi) : null });
   res.json({ success: true, data: { data: b64(bytes), bytes: bytes.length } });
 };
 
@@ -50,6 +51,7 @@ export const test = async (req, res) => {
 };
 
 /* GET /api/print/drawer — just the cash-drawer kick */
-export const drawer = (_req, res) => {
+export const drawer = (req, res) => {
+  recordAudit(req, { action: 'drawer.opened', resource_type: 'business', resource_id: req.tenant.businessId });   // opening it without a sale should leave a trace
   res.json({ success: true, data: { data: b64(drawerBytes()) } });
 };

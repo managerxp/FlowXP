@@ -22,6 +22,7 @@ if (missing.length) {
 if (process.env.NODE_ENV === 'production') {
   const problems = [];
   if (process.env.JWT_SECRET.length < 32) problems.push('JWT_SECRET must be at least 32 characters');
+  if (process.env.ENCRYPTION_KEY && process.env.ENCRYPTION_KEY.length < 32) problems.push('ENCRYPTION_KEY must be at least 32 characters');
   if (!(process.env.APP_ORIGIN || '').startsWith('https://')) problems.push('APP_ORIGIN must be the public https address of the app');
   if ((process.env.STORAGE_DRIVER || 'local').toLowerCase() === 's3') {
     for (const key of ['S3_ENDPOINT', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY']) if (!process.env[key]) problems.push(`${key} is required when STORAGE_DRIVER=s3`);
@@ -44,6 +45,14 @@ export const config = {
   isProduction: process.env.NODE_ENV === 'production',
   databaseUrl: process.env.DATABASE_URL,
   jwtSecret: process.env.JWT_SECRET,
+  // Optional. Keeps stored secrets (2FA, payment and messaging keys) on a key of their own, so rotating JWT_SECRET to sign everyone out does not break them.
+  encryptionKey: process.env.ENCRYPTION_KEY || '',
+  /* Phone notifications go through Expo's push service. PUSH_ENABLED=false switches them off; EXPO_PUSH_URL lets a test point at a stand-in; EXPO_ACCESS_TOKEN only if the Expo project has push security on. */
+  push: {
+    enabled: String(process.env.PUSH_ENABLED ?? 'true').toLowerCase() !== 'false',
+    url: process.env.EXPO_PUSH_URL || 'https://exp.host/--/api/v2/push/send',
+    accessToken: process.env.EXPO_ACCESS_TOKEN || ''
+  },
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   appOrigin: process.env.APP_ORIGIN || 'http://localhost:5173',
   trialDays: Number(process.env.TRIAL_DAYS || 7),

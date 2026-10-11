@@ -4,9 +4,15 @@ on:
     branches: [main, master]
   pull_request:
 
+# A newer push cancels the older run instead of queueing behind it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 20   # full suite takes ~7 min locally; a hang fails fast instead of burning 6h
     services:
       postgres:
         image: postgres:16-alpine
@@ -33,6 +39,7 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: frontend

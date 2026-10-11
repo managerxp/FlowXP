@@ -11,15 +11,17 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import pool from '../config/database.js';
-import { requireAuth, withBusiness, requireOwner, requirePermission, clearSessionCookie } from '../middleware/auth.js';
+import { requireAuth, withBusiness, requireOwner, requirePermission, requireAnyPermission, clearSessionCookie } from '../middleware/auth.js';
 import * as auth from '../controllers/auth.controller.js';
 import * as oauth from '../controllers/oauth.controller.js';
 import * as security from '../controllers/security.controller.js';
+import * as approvals from '../controllers/approvals.controller.js';
 import * as business from '../controllers/business.controller.js';
 import * as dashboard from '../controllers/dashboard.controller.js';
 import * as siteAssistant from '../controllers/siteAssistant.controller.js';
 import * as webhooks from '../controllers/webhooks.controller.js';
 import * as contact from '../controllers/contact.controller.js';
+import * as deletion from '../controllers/accountDeletion.controller.js';
 import productsRoutes from './products.routes.js';
 import menuRoutes from './menu.routes.js';
 import brandsRoutes from './brands.routes.js';
@@ -58,10 +60,13 @@ import locationsRoutes from './locations.routes.js';
 import { uploadLogo } from '../middleware/upload.js';
 import publicOrderingRoutes from './publicOrdering.routes.js';
 import salonRoutes from './salon.routes.js';
+import hotelRoutes from './hotel.routes.js';
 import wholesaleRoutes from './wholesale.routes.js';
 import distributorRoutes from './distributor.routes.js';
 import pharmacyRoutes from './pharmacy.routes.js';
 import retailRoutes from './retail.routes.js';
+import syncRoutes from './sync.routes.js';
+import * as appErrors from '../controllers/appErrors.controller.js';
 
 const router = Router();
 
@@ -89,11 +94,14 @@ const loginLimiter = limiter(20, 15, 'Too many attempts. Try again in a few minu
 const signupLimiter = limiter(5, 60, 'Too many accounts created from here. Try again later.');
 const resetLimiter = limiter(5, 60, 'Too many reset requests. Try again later.');
 const contactLimiter = limiter(5, 60, 'Too many messages sent. Try again later.');
+const deletionLimiter = limiter(5, 60, 'Too many requests from here. Try again later.');
 /* The website chat calls the AI provider, which costs money per message: generous for a person, tight for a script. */
+const appErrorLimiter = limiter(30, 15, 'Too many reports from here.');
 const assistantLimiter = limiter(30, 15, 'Too many questions in a short time. Try again in a few minutes.');
 
 /* ── Public ─────────────────────────────────────────────────────────────── */
 
+router.post('/app-errors', appErrorLimiter, appErrors.report);   // the mobile app's crash reports (no sign-in: a crash can come first)
 router.post('/auth/signup', signupLimiter, auth.signup);
 router.post('/auth/login', loginLimiter, auth.login);
 router.post('/auth/login/2fa', loginLimiter, auth.loginTwoFactor);
@@ -105,6 +113,9 @@ router.post('/auth/resend-email-otp', loginLimiter, auth.resendEmailOtp);
 router.post('/auth/forgot-password', resetLimiter, auth.forgotPassword);
 router.post('/auth/reset-password', resetLimiter, auth.resetPassword);
 router.post('/contact', contactLimiter, contact.send);
+// deleting an account: yourself when signed in, or a request when you cannot sign in (nothing is deleted from the public one until support has checked who is asking)
+router.post('/auth/delete-account', requireAuth, loginLimiter, deletion.deleteMe);
+router.post('/public/account-deletion', deletionLimiter, deletion.publicRequest);
 router.post('/public/assistant', assistantLimiter, siteAssistant.ask);
 
 /* The public pricing page reads this. Prices live in the database so they can
@@ -144,6 +155,12 @@ router.post('/auth/2fa/recovery-codes', requireAuth, loginLimiter, security.newC
 router.post('/auth/change-password', requireAuth, loginLimiter, security.changePassword);
 router.post('/auth/sign-out-everywhere', requireAuth, security.signOutEverywhere);
 router.get('/auth/login-history', requireAuth, security.loginHistory);
+/* Manager approval: a manager's PIN lets a cashier cancel a bill or give a large discount (modules/approvals.js). */
+router.get('/auth/approval-pin', requireAuth, approvals.pinStatus);
+router.put('/auth/approval-pin', requireAuth, loginLimiter, approvals.setPin);
+router.delete('/auth/approval-pin', requireAuth, loginLimiter, approvals.clearPin);
+router.get('/approvals', requireAuth, withBusiness(), requireAnyPermission('billing', 'settings'), approvals.get);
+router.put('/approvals', requireAuth, withBusiness({ requireActive: true }), requirePermission('settings'), approvals.update);
 router.get('/security/team', requireAuth, withBusiness(), requirePermission('settings'), security.team);
 router.put('/security/policy', requireAuth, withBusiness({ requireActive: true }), requireOwner, security.setPolicy);
 router.post('/businesses', requireAuth, business.createBusiness);
@@ -191,6 +208,7 @@ router.use('/', brandsRoutes);             // /brands
 router.use('/', settlementsRoutes);        // /settlements (aggregator statement import + reconciliation)
 router.use('/customers', customersRoutes);
 router.use('/suppliers', suppliersRoutes);
+router.use('/sync', syncRoutes);            // /sync/head, /sync/changes (the mobile app's catalogue copy)
 router.use('/invoices', invoicesRoutes);
 router.use('/payments', paymentsRoutes);
 router.use('/inventory', inventoryRoutes);
@@ -212,6 +230,7 @@ router.use('/menu-import', menuImportRoutes);
 router.use('/distributor', distributorRoutes);   // the distributor layer: principals, territories, beats, schemes, targets, field sales, vans
 router.use('/wholesale', wholesaleRoutes);   // the wholesale / distribution module (WHOLESALE and DISTRIBUTOR businesses only)
 router.use('/salon', salonRoutes);          // the salon module (salon businesses only)
+router.use('/hotel', hotelRoutes);          // the hotel module (HOTEL businesses only): front office, housekeeping, folio, night audit, reports
 router.use('/pharmacy', pharmacyRoutes);    // the pharmacy module (PHARMACY businesses only)
 router.use('/retail', retailRoutes);        // supermarket / retail settings (SUPERMARKET and RETAIL businesses only)
 

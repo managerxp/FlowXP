@@ -3,6 +3,7 @@
  * to the signed-in user inside the current business — no endpoint here can
  * read anyone else's.
  */
+import { registerDevice, removeDevice } from '../modules/push.js';
 import { list, markAllRead, markRead, preferencesFor, savePreferences, unreadCount } from '../modules/notifications.js';
 
 /* GET /api/notifications?unread=true&limit=30&before=<id> */
@@ -42,4 +43,17 @@ export const putPreferences = async (req, res) => {
   if (!Array.isArray(choices)) return res.status(400).json({ success: false, message: 'Send a list of preferences' });
   await savePreferences(req.tenant, req.auth.userId, choices);
   res.json({ success: true, data: await preferencesFor(req.tenant, req.auth.userId) });
+};
+
+/* POST /api/notifications/devices { token, platform } — the phone app says where to send this person's notifications */
+export const addDevice = async (req, res) => {
+  const out = await registerDevice(req.auth.userId, req.body?.token, req.body?.platform);
+  if (!out.ok) return res.status(400).json({ success: false, message: out.message });
+  res.status(201).json({ success: true });
+};
+
+/* DELETE /api/notifications/devices { token } — on sign-out, or when the person switches phone notifications off */
+export const dropDevice = async (req, res) => {
+  await removeDevice(req.auth.userId, req.body?.token);
+  res.json({ success: true });
 };

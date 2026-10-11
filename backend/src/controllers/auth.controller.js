@@ -13,12 +13,13 @@ import pool from '../config/database.js';
 import { readChallenge, signChallenge, signToken, setSessionCookie } from '../middleware/auth.js';
 import { alertNewDevice, decryptSecret, lockedMinutes, recordLogin, recoveryCodesLeft, useRecoveryCode, verifyTotp } from '../modules/security.js';
 import { newTrialWindow, subscriptionSummary } from '../modules/subscription.js';
+import { effectivePermissions } from '../modules/permissions.js';
 import { recordAudit, recordEvent } from '../modules/events.js';
 import { sendEmailOtp, sendPasswordReset } from '../modules/mailer.js';
 import { emailProblem } from '../utils/emailCheck.js';
 import { addDefaultOptionGroups, FOOD_TYPES } from '../modules/defaultOptions.js';
 import {
-  checkBusinessType, checkEmail, checkName, checkPassword, checkPhone,
+  checkSignupType, checkEmail, checkName, checkPassword, checkPhone,
   firstError, normaliseEmail
 } from '../utils/validate.js';
 
@@ -72,7 +73,7 @@ export const signup = async (req, res) => {
     checkPhone(phone),
     checkPassword(password),
     checkName(business_name, 'Business name'),
-    checkBusinessType(business_type),
+    checkSignupType(business_type),
     // Checked here too, not only by the signup form's disabled button — a
     // direct API call must not be able to create an account without it.
     acceptedTerms ? null : 'You must agree to the Terms and Privacy Policy to create an account'
@@ -139,7 +140,7 @@ export const signup = async (req, res) => {
       [business.business_id]
     );
 
-    if (FOOD_TYPES.includes(business.business_type)) await addDefaultOptionGroups(client, business.business_id);
+    if (FOOD_TYPES.includes(business.business_type)) await addDefaultOptionGroups(client, business.business_id, business.business_type);
 
     await client.query(
       `INSERT INTO business_users (business_id, user_id, role, branch_id, status)
@@ -404,7 +405,8 @@ export const resendEmailOtp = async (req, res) => {
 export const me = async (req, res) => {
   // a fresh cookie on every app start: the session slides forward while it is in use (same token_version, so
   // sign-out-everywhere still ends it), and a browser that sent the old Authorization header gets its cookie here
-  setSessionCookie(res, signToken(req.auth.user));
+  const refreshed = signToken(req.auth.user);
+  setSessionCookie(res, refreshed);
   // Outlets per business, so the app can offer an outlet switcher. A pinned user sees only their own.
   const outlets = (await pool.query(
     `SELECT business_id, branch_id, name, is_primary FROM branches WHERE status = 'ACTIVE' AND business_id = ANY($1::int[]) ORDER BY is_primary DESC, branch_id`,
@@ -413,6 +415,9 @@ export const me = async (req, res) => {
   res.json({
     success: true,
     data: {
+      // the mobile app signs in with a Bearer token (no cookie jar) and slides it forward here; a browser never gets the token in
+      // a response its scripts can read, which is the point of the httpOnly cookie
+      ...(req.authVia === 'header' ? { token: refreshed } : {}),
       user: { ...publicUser(req.auth.user), two_factor_enabled: Boolean(req.auth.user.totp_enabled) },
       businesses: req.memberships.map((m) => ({
         business_id: m.business_id,
@@ -429,6 +434,10 @@ export const me = async (req, res) => {
         // this person's own permission overrides, so the app can show a sidebar
         // and screens that match what they can actually do, not just their role
         permissions: m.permissions || {},
+        // what this person can actually do (role defaults with their overrides applied): the mobile app shows only that
+        effective_permissions: effectivePermissions(m.role, m.permissions || {}),
+        // what a till must know to ask for a manager's PIN when one is needed
+        approval: { needed: effectivePermissions(m.role, m.permissions || {}).approvals !== true, discount_cap_pct: Number(m.discount_cap_pct ?? 100), cancel_needs_approval: m.cancel_needs_approval !== false },
         branch_id: m.branch_id,
         outlets: outlets.filter((o) => o.business_id === m.business_id && (m.branch_id == null || o.branch_id === m.branch_id))
           .map((o) => ({ branch_id: o.branch_id, name: o.name, is_primary: o.is_primary })),

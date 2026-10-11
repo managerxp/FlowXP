@@ -17,7 +17,7 @@ test.after(cleanup);
 const fakeRes = () => ({ code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } });
 const signupBody = (overrides = {}) => ({
   name: 'Priya', email: 'priya-signup-test@flowxp.test', phone: '9000000001',
-  password: 'password123', business_name: 'Priya Retail', business_type: 'RETAIL',
+  password: 'rosewood-lamp-7', business_name: 'Priya Retail', business_type: 'RETAIL',
   accepted_terms: true, ...overrides
 });
 const call = (body) => { const res = fakeRes(); return auth.signup({ body, headers: {}, ip: '127.0.0.1' }, res).then(() => res); };

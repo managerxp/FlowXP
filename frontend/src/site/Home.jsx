@@ -164,28 +164,42 @@ const OneBill = () => (
 
 const BUSINESSES = [
   {
-    key: 'retail', label: 'Shops and retail',
-    title: 'For shops, supermarkets and pharmacies',
-    body: 'Scan barcodes, bill fast at the counter, and always know what is on the shelf and what to reorder.',
-    points: ['Barcode billing with GST on every line', 'Stock that updates with every sale and purchase', 'Low-stock alerts and purchase orders to suppliers', 'Customer credit and dues, with reminders', 'Returns and credit notes that fix stock and GST'],
-    src: '/product/inventory-main.webp', alt: 'FlowXP inventory screen with stock value, items below their reorder point, wastage and a list of products.'
+    key: 'retail', label: 'Shops and supermarkets', to: '/industries/retail',
+    title: 'For shops and supermarkets',
+    body: 'Scan barcodes, bill fast at the counter, and always know what is on the shelf, what is running low and what is about to expire.',
+    points: ['Barcode billing with GST on every line', 'Dairy and bread sold soonest-expiry first', 'Receive deliveries and count shelves by scanning', 'Offers the till applies by itself', 'Returns and credit notes that fix stock and GST'],
+    src: '/product/retail-billing.webp', alt: 'FlowXP supermarket billing with eight items on the bill, an offer taking money off the milk and the bread, and payment methods.'
   },
   {
-    key: 'food', label: 'Restaurants and cafés',
+    key: 'food', label: 'Restaurants and cafés', to: '/industries/restaurant',
     title: 'For restaurants, cafés and cloud kitchens',
     body: 'Take orders at the table, by QR or at the counter. The kitchen sees them at once and the bill is always right.',
     points: ['Tables, waiters and table QR ordering', 'Kitchen screen or kitchen printer, by station', 'Recipes, so each dish uses up its ingredients', 'Split bills, service types and multiple outlets', 'Profit by dish, not just sales'],
     src: '/product/kitchen-main.webp', alt: 'FlowXP kitchen display with six open orders by table, the dishes, and minutes since each was sent.'
   },
   {
-    key: 'services', label: 'Salons and services',
+    key: 'services', label: 'Salons and services', to: '/industries/salon',
     title: 'For salons, clinics and service businesses',
     body: 'Bill services and products on one GST invoice, remember your regulars, and bring them back with offers.',
-    points: ['Services and products on the same bill', 'Customer history and visit counts', 'Loyalty points and coupons', 'Staff logins with the right permissions', 'Appointments and staff scheduling: coming soon'],
-    src: '/product/pos-main.webp', alt: 'FlowXP billing screen with items, quantities, GST and a Charge button.'
+    points: ['Services and products on the same bill', 'Customer history and visit counts', 'Loyalty points and coupons', 'Staff logins with the right permissions', 'Appointments, staff commission and memberships'],
+    src: '/product/salon-pos.webp', alt: 'FlowXP salon billing with services and the team member doing each, a client on the bill and payment methods.'
   },
   {
-    key: 'wholesale', label: 'Wholesale and distribution',
+    key: 'hotel', label: 'Hotels and resorts', to: '/industries/hotel',
+    title: 'For hotels, resorts and guest houses',
+    body: 'Take bookings, check guests in and out, keep one bill for the room, the restaurant and the extras, and close the day with night audit.',
+    points: ['Calendar of every room, with no double booking', 'Guest bill with GST by slab, UTGST in union territories', 'Housekeeping status for every room', 'Banquet halls and events with an event order', 'Occupancy, ADR and RevPAR reports'],
+    src: '/product/hotel-frontdesk.webp', alt: 'FlowXP front desk for a hotel with arrivals, departures, guests staying, occupancy and rooms to clean.'
+  },
+  {
+    key: 'pharmacy', label: 'Pharmacies', to: '/industries/pharmacy',
+    title: 'For pharmacies and medical stores',
+    body: 'Receive stock with its batch and expiry date, and the till sells the soonest-expiring batch first.',
+    points: ['Every batch tracked, expired batches never sold', 'Prescription-required medicines marked', 'Goods receipts from the supplier', 'Quarantine, recall or block a batch', 'GST at each product’s rate'],
+    src: '/product/pharmacy-pos.webp', alt: 'FlowXP pharmacy billing with three medicines on the bill, each with the earliest-expiry batch picked automatically.'
+  },
+  {
+    key: 'wholesale', label: 'Wholesale and distribution', to: '/industries/wholesale',
     title: 'For wholesalers and distributors',
     body: 'Buy from suppliers, sell on credit, and keep track of who owes you and whom you owe.',
     points: ['Purchase orders, partial deliveries and back-orders', 'Supplier price lists and debit notes', 'Customer credit, dues and outstanding reports', 'Stock transfers between branches or godowns', 'E-way bill and e-invoice files'],
@@ -242,6 +256,7 @@ const ForYourBusiness = () => {
             <ul className="mt-6 space-y-3">
               {b.points.map((p) => <li key={p} className="flex gap-3 text-body text-ink-700"><Check />{p}</li>)}
             </ul>
+            <div className="mt-6"><TextLink to={b.to}>See every feature, with screens</TextLink></div>
           </div>
           <div className="lg:col-span-7">
             <Shot src={b.src} alt={b.alt} />
@@ -480,7 +495,7 @@ const WORKS_WITH = [
   { title: 'Works offline', body: 'Keep billing when the internet drops.' },
   { title: 'Receipt printers', body: '58 and 80 mm thermal printers.' },
   { title: 'Barcode scanners', body: 'Any USB or Bluetooth scanner.' },
-  { title: 'Phone app', body: 'Install on Android or iPhone from the browser.' }
+  { title: 'Phone app', body: 'Install from the browser today. Android app in testing.' }
 ];
 
 const WorksWith = () => {
@@ -516,6 +531,41 @@ const WorksWith = () => {
     </Section>
   );
 };
+
+/* ── 9b. The Android app ──────────────────────────────────────────────── */
+
+/* Only what the app does today. It is in testing, not on the Play Store, so the section says so
+   and offers no download button. */
+const APP_POINTS = [
+  ['Bills are never lost.', 'With no signal, bills wait on the phone and go out once when the internet is back. A bill is never made twice.'],
+  ['Tables and the kitchen.', 'Open a table, send the order, and the cook sees it on a large kitchen screen and taps each dish when it is done.'],
+  ['Customers and stock on the phone.', 'Find a customer, change a price or count stock with no signal. The change is sent later, in order.'],
+  ['English and Hindi.', 'Short plain words, big buttons, and a tour for someone who has never used billing software.']
+];
+
+const PhoneApp = () => (
+  <Section id="app" className="border-t border-line">
+    <div className="grid gap-x-12 gap-y-10 lg:grid-cols-12">
+      <Reveal className="lg:col-span-5">
+        <p className="inline-flex rounded-full bg-surface-3 px-2.5 py-0.5 text-caption font-medium text-ink-500">Android app: in testing</p>
+        <H2>The counter in your pocket, even with no signal.</H2>
+        <p className="mt-4 text-lead text-ink-500">
+          The FlowXP app is built for the phone or tablet at the counter. Today it works in any mobile browser;
+          the Android app is being tested with real shops and is not on the Play Store yet.
+        </p>
+        <div className="mt-8"><TextLink to="/contact">Ask to join the test</TextLink></div>
+      </Reveal>
+      <ul className="grid gap-6 sm:grid-cols-2 lg:col-span-7 lg:pt-2">
+        {APP_POINTS.map(([title, body], i) => (
+          <Reveal as="li" key={title} index={i} className="border-t border-line pt-4">
+            <h3 className="text-body font-semibold text-ink-900">{title}</h3>
+            <p className="mt-1.5 text-small text-ink-500">{body}</p>
+          </Reveal>
+        ))}
+      </ul>
+    </div>
+  </Section>
+);
 
 /* ── 10. Built so nothing gets lost ───────────────────────────────────── */
 
@@ -584,6 +634,7 @@ const Home = () => (
     <Bento />
     <BeforeAfter />
     <WorksWith />
+    <PhoneApp />
     <Trust />
     <PricingSection />
     <Faq />

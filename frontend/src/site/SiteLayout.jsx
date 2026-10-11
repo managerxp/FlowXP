@@ -8,7 +8,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { ArrowRight, ChevronDown, CookingPot, Pill, Scissors, Store, Truck, UtensilsCrossed, Warehouse } from 'lucide-react';
+import { ArrowRight, BedDouble, ChevronDown, Coffee, CookingPot, Pill, Scissors, ShoppingBasket, Store, Truck, UtensilsCrossed, Warehouse } from 'lucide-react';
 import { Button, Container, Logo } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { READY } from './industries/data.js';
@@ -48,7 +48,7 @@ const itemClass = (active, open = false) =>
   `after:absolute after:inset-x-3.5 after:bottom-1 after:h-0.5 after:rounded-full after:bg-brand-500 after:transition-opacity after:duration-(--duration-fast) ` +
   `${active ? 'text-ink-900 after:opacity-100' : 'text-ink-500 after:opacity-0 hover:bg-surface-2 hover:text-ink-900'} ${open ? 'bg-surface-2 text-ink-900' : ''}`;
 
-const ICONS = { restaurant: UtensilsCrossed, 'cloud-kitchen': CookingPot, wholesale: Warehouse, distributor: Truck, salon: Scissors, pharmacy: Pill };
+const ICONS = { restaurant: UtensilsCrossed, cafe: Coffee, 'cloud-kitchen': CookingPot, hotel: BedDouble, retail: ShoppingBasket, wholesale: Warehouse, distributor: Truck, salon: Scissors, pharmacy: Pill };
 const IconTile = ({ slug, className = '' }) => {
   const Icon = ICONS[slug] || Store;
   return <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600 ${className}`}><Icon aria-hidden="true" className="h-[18px] w-[18px]" strokeWidth={1.75} /></span>;
@@ -111,7 +111,7 @@ const IndustriesMenu = () => {
               ))}
             </ul>
             <div className="mt-1 flex items-center justify-between gap-3 rounded-xl bg-surface-2 px-4 py-2.5 text-sm">
-              <Link to="/industries/coming-soon" className="text-ink-500 transition-colors hover:text-ink-900">More industries coming soon</Link>
+              <span className="text-ink-500">Built for these trades</span>
               <Link to="/industries" className="inline-flex items-center gap-1.5 font-semibold text-brand-600 transition-colors hover:text-brand-700">All industries<ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
             </div>
           </div>
@@ -139,6 +139,7 @@ const FOOTER_GROUPS = [
   ]},
   { heading: 'Legal', links: [
     { to: '/privacy', label: 'Privacy' },
+    { to: '/delete-account', label: 'Delete your account' },
     { to: '/terms', label: 'Terms' },
     { to: '/cookies', label: 'Cookies' }
   ]}

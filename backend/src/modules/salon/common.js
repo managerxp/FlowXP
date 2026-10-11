@@ -25,7 +25,7 @@ export const wrap = (fn) => async (req, res, next) => {
     await fn(req, res, next);
   } catch (error) {
     if (CLIENT_ERRORS.has(error?.name) && Number.isInteger(error.status)) {
-      return res.status(error.status).json({ success: false, message: error.message });
+      return res.status(error.status).json({ success: false, message: error.message, ...(typeof error.code === 'string' && error.code.startsWith('APPROVAL_') ? { code: error.code, data: error.data } : {}) });
     }
     // a malformed id or value in the URL / body is the caller's mistake, not a server fault
     if (error?.code === '22P02') return res.status(404).json({ success: false, message: 'Not found' });

@@ -26,6 +26,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChefHat, CheckCircle2, ClipboardList, CloudOff, Minus, PackagePlus, Pause, Plus, Printer, ScanLine, Search, Split, Trash2, UserRound, X } from 'lucide-react';
 import { api, formatCurrency, NetworkError } from '../../lib/api.js';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
+import { withApproval } from '../../lib/approval.js';
 import ModifierPicker, { needsChoices, useModifierGroups } from '../../components/ModifierPicker.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Alert, Button, Input, Modal, Select, humanize, useToast, useDialog } from '../../components/ui.jsx';
@@ -34,6 +35,7 @@ import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, set
 import { queueSale } from '../../lib/offline.js';
 import { RESTAURANT_TYPES, RETAIL_TYPES } from '../../lib/business.js';
 import UpiCollect from '../../components/UpiCollect.jsx';
+import RoomChargePicker from '../../components/RoomChargePicker.jsx';
 import BarcodeScanner from '../../components/BarcodeScanner.jsx';
 import QuickProductModal from '../../components/QuickProductModal.jsx';
 import { catalogInfo, loadCatalog, localLookup, localSearch, subscribeCatalog, syncCatalog, upsertLocal } from '../../lib/posCatalog.js';
@@ -42,6 +44,7 @@ import { catalogInfo, loadCatalog, localLookup, localSearch, subscribeCatalog, s
 const METHODS = [
   ['CASH', 'Cash'], ['UPI', 'UPI'], ['CARD', 'Card'], ['BANK_TRANSFER', 'Bank'], ['OTHER', 'Other'], ['LATER', 'Pay later']
 ];
+const ROOM_METHOD = ['ROOM', 'To room'];   // a hotel only: the bill goes on an in-house guest's folio
 const SPLIT_METHODS = METHODS.filter(([value]) => value !== 'LATER');
 const TILE_LIMIT = 60;
 const clock = (ts) => new Date(ts).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
@@ -95,7 +98,7 @@ const Stepper = ({ value, onChange, label }) => (
   </div>
 );
 
-const BillLine = ({ line, onChange, onRemove, selected = false, onSelect }) => {
+const BillLine = ({ line, onChange, onRemove, selected = false, onSelect, offer = null }) => {
   const [discountOpen, setDiscountOpen] = useState(Boolean(line.discount));
   const label = line.name || 'custom item';
   return (
@@ -116,6 +119,7 @@ const BillLine = ({ line, onChange, onRemove, selected = false, onSelect }) => {
           <p className="tabular mt-0.5 text-caption text-ink-500">
             {formatCurrency(line.unit_price)} each
             {line.discount > 0 && <span className="text-success"> · {formatCurrency(line.discount)} off</span>}
+            {offer && <span className="ml-1 rounded-full bg-success/10 px-1.5 py-0.5 font-semibold text-success">{offer.name}: −{formatCurrency(offer.discount)}</span>}
             {!discountOpen && <button type="button" onClick={() => setDiscountOpen(true)} className="ml-2 font-medium text-brand-600 hover:text-brand-700 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:px-1">Discount</button>}
           </p>
           {line.track_inventory && Number(line.quantity) > Number(line.current_stock) && (
@@ -132,7 +136,7 @@ const BillLine = ({ line, onChange, onRemove, selected = false, onSelect }) => {
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <p className="tabular text-small font-semibold text-ink-900">{formatCurrency(lineTotal(line))}</p>
+          <p className="tabular text-small font-semibold text-ink-900">{formatCurrency(lineTotal(line) - (offer?.discount || 0))}</p>
           <div className="flex items-center gap-1">
             <Stepper value={line.quantity} label={label} onChange={(q) => onChange({ quantity: q })} />
             <button type="button" onClick={onRemove} aria-label={`Remove ${label}`} className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-400 hover:bg-danger/5 hover:text-danger pointer-coarse:h-11 pointer-coarse:w-11"><Trash2 className="h-4 w-4" /></button>
@@ -178,7 +182,7 @@ const Done = ({ confirmation, change, onNew, onView }) => {
             <p>It will be billed automatically when the connection is back, and gets its invoice number then. Hand over a written note for now{confirmation.toKitchen ? ', and tell the kitchen yourself: it was not sent to the kitchen screen' : ''}.</p>
           ) : (
             <>
-              <p>{confirmation.payment_status === 'PAID' ? 'Paid in full.'
+              <p>{confirmation.room_label ? `Charged to ${confirmation.room_label}. Paid at check-out.` : confirmation.payment_status === 'PAID' ? 'Paid in full.'
                 : confirmation.payment_status === 'PARTIAL' ? `Part paid. ${formatCurrency(confirmation.balance_due)} still due.`
                 : `Not paid yet. ${formatCurrency(confirmation.balance_due ?? confirmation.total)} due.`}</p>
               {confirmation.payments_taken?.length > 1 && (
@@ -315,6 +319,7 @@ const BillingPage = () => {
   const [invoiceDiscount, setInvoiceDiscount] = useState('');
   const [notes, setNotes] = useState('');
   const [method, setMethod] = useState('CASH');
+  const [room, setRoom] = useState(null);   // the in-house guest a bill is charged to
   const [received, setReceived] = useState('');         // cash handed over, or a part payment
   const [cardRef, setCardRef] = useState('');           // the card machine's approval code, to match the settlement later
   const [error, setError] = useState('');
@@ -342,6 +347,20 @@ const BillingPage = () => {
 
   // supermarkets and shops: scanning, quick products, keyboard lines, server-side search and an offline catalogue
   const retail = RETAIL_TYPES.includes(business?.business_type);
+  /* Offers (retail): the server prices them when the bill is made; this asks it for the same figures as the cart changes,
+     so the cashier and the customer see what each offer took off before charging. */
+  const [promoCount, setPromoCount] = useState(0);
+  const [promo, setPromo] = useState({});               // cart line key -> { name, discount }
+  /* An exchange: the credit from a return, spent on this bill as a payment (see Returns). */
+  const [exchange, setExchange] = useState(null);       // { cn_id, cn_number, available }
+  const [creditNo, setCreditNo] = useState('');
+  const [creditError, setCreditError] = useState('');
+  /* A credit note from any outlet of the business, typed in from the slip the customer brought. */
+  const useCreditNote = () => api(`/credit-notes/by-number/${encodeURIComponent(creditNo.trim())}`)
+    .then((cn) => { if (cn.credit_left > 0) { setExchange({ cn_id: cn.cn_id, cn_number: cn.cn_number, available: cn.credit_left }); setCreditNo(''); setCreditError(''); } else setCreditError(`${cn.cn_number} has no credit left.`); })
+    .catch((e) => setCreditError(e.message));
+  const offersOn = retail || RESTAURANT_TYPES.includes(business?.business_type);   // shops and restaurants both have offers
+  useEffect(() => { if (offersOn) api('/retail/promotions/active').then((d) => setPromoCount(d.count || 0)).catch(() => {}); }, [offersOn]);
   const [scanning, setScanning] = useState(false);
   const [quickFor, setQuickFor] = useState(null);       // the barcode being made into a product ('' = none scanned)
   const [resumeScan, setResumeScan] = useState(false);  // go back to the camera after making the product
@@ -488,12 +507,27 @@ const BillingPage = () => {
   const updateLine = (key, patch) => setCart((c) => c.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   const removeLine = (key) => setCart((c) => c.filter((l) => l.key !== key));
 
+  useEffect(() => {
+    if (!offersOn || !promoCount) { setPromo({}); return undefined; }
+    const lines = billLines.filter((l) => l.product_id && Number(l.quantity) > 0);
+    if (!lines.length) { setPromo({}); return undefined; }
+    const t = setTimeout(() => {
+      api('/retail/promotions/preview', { method: 'POST', body: { customer_id: customerId || undefined, lines: lines.map((l) => ({ product_id: l.product_id, quantity: l.quantity, unit_price: l.unit_price, discount: l.discount || undefined })) } })
+        .then((d) => setPromo(Object.fromEntries(d.lines.map((r) => [lines[r.index].key, { name: r.name, discount: r.discount }]))))
+        .catch(() => setPromo({}));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [offersOn, promoCount, billLines, customerId]);
+
   /* Display-only totals — see the file header. */
   const totals = useMemo(() => {
     const gstEnabled = Boolean(business?.gst_enabled);
     let subtotal = 0, tax = 0;
+    let offers = 0;
     for (const l of billLines) {
-      const gross = lineTotal(l);
+      const off = promo[l.key]?.discount || 0;
+      offers += off;
+      const gross = lineTotal(l) - off;
       subtotal += gross;
       tax += gstEnabled ? gross * (Number(l.tax_rate || 0) / 100) : 0;
     }
@@ -504,8 +538,10 @@ const BillingPage = () => {
     // the loyalty reward: billing makes up to reward_quantity of the reward item free (tax and all)
     const rewardLine = card?.reward_ready ? billLines.find((l) => l.product_id === card.reward_product_id) : null;
     const rewardOff = rewardLine ? Math.min(Number(rewardLine.quantity), card.reward_quantity || 1) * rewardLine.unit_price * (1 + (gstEnabled ? Number(rewardLine.tax_rate || 0) / 100 : 0)) : 0;
-    return { subtotal, tax, discount, coupon, pointsOff, rewardOff, before, total: Math.max(0, before - coupon - pointsOff - rewardOff), gstEnabled };
-  }, [billLines, invoiceDiscount, couponInfo, pointsInfo, redeem, business?.gst_enabled, card]);
+    // the credit from a return pays part of this bill; what is left is what the customer hands over
+    const exchangeOff = exchange ? Math.min(exchange.available, Math.max(0, before - coupon - pointsOff - rewardOff)) : 0;
+    return { subtotal, tax, discount, coupon, pointsOff, rewardOff, offers, exchangeOff, before, total: Math.max(0, before - coupon - pointsOff - rewardOff - exchangeOff), gstEnabled };
+  }, [billLines, invoiceDiscount, couponInfo, pointsInfo, redeem, business?.gst_enabled, card, promo, exchange]);
 
   // A checked coupon was checked against a particular bill; changing the bill means checking again.
   useEffect(() => { setCouponInfo(null); setCouponError(''); }, [billLines, invoiceDiscount, customerId]);
@@ -531,7 +567,9 @@ const BillingPage = () => {
   useEffect(() => {
     const id = params.get('customer');
     const order = params.get('order');
-    if (!id && !order) return;
+    const credit = params.get('exchange');
+    if (credit) api(`/credit-notes/${credit}`).then((cn) => { if (cn.credit_left > 0) setExchange({ cn_id: cn.cn_id, cn_number: cn.cn_number, available: cn.credit_left }); else setError(`${cn.cn_number} has no credit left to use.`); }).catch((e) => setError(e.message));
+    if (!id && !order && !credit) return;
     if (id) api(`/customers/${id}`).then(pickCustomer).catch(() => {});
     if (order) setOrderId(Number(order));
     setParams({}, { replace: true });
@@ -541,7 +579,8 @@ const BillingPage = () => {
     : [];
 
   /* What is being paid now, and what that means for the cashier. */
-  const payLater = method === 'LATER';
+  const toRoom = method === 'ROOM';
+  const payLater = method === 'LATER' || toRoom;   // neither takes money at the till
   const amount = received === '' ? null : Number(received);
   const cashChange = method === 'CASH' && amount != null && amount > totals.total ? amount - totals.total : 0;
   const partial = !payLater && amount != null && amount < totals.total;
@@ -563,9 +602,9 @@ const BillingPage = () => {
 
   const resetSale = () => {
     setCart([]); setCustomerId(''); setCustomerName(''); setCard(null); setPointsInfo(null); setRedeem(''); setCustomerOpen(false); setInvoiceDiscount(''); setCouponCode(''); setCouponInfo(null); setCouponError('');
-    setNotes(''); setExtrasOpen(false); setReceived(''); setCardRef(''); setMethod('CASH'); setConfirmation(null); setChange(0); setError(''); setQuery('');
+    setNotes(''); setExtrasOpen(false); setReceived(''); setCardRef(''); setMethod('CASH'); setRoom(null); setConfirmation(null); setChange(0); setError(''); setQuery('');
     setSplit(false); setParts([]); setHoldOpen(false); setHoldLabel(''); setCollecting(null);
-    setOrderId(null); setOrder(null);
+    setOrderId(null); setOrder(null); setExchange(null); setPromo({});
     setTimeout(() => searchRef.current?.focus(), 0);
   };
 
@@ -578,6 +617,7 @@ const BillingPage = () => {
       if (l.custom && (!l.name.trim() || !l.unit_price)) { setError('Every custom item needs a description and a price'); return; }
       if (!Number(l.quantity)) { setError(`Set a quantity for ${l.name || 'the custom item'}, or remove it`); return; }
     }
+    if (toRoom && !room) { setError('Choose the guest whose room this is charged to'); return; }
     if (split) {
       if (parts.slice(0, -1).some((p) => !(Number(p.amount) > 0))) { setError('Enter an amount for each part of the split. Leave only the last one blank for the rest.'); return; }
       if (fixedParts + (lastFixed || 0) > totals.total + 0.005) { setError(`The parts add up to ${formatCurrency(fixedParts + (lastFixed || 0))}, more than the bill.`); return; }
@@ -594,7 +634,8 @@ const BillingPage = () => {
         discount: Number(invoiceDiscount) || undefined,
         coupon_code: couponCode.trim() || undefined,
         redeem_points: Number(redeem) > 0 ? Number(redeem) : undefined,
-        notes: notes || undefined
+        notes: notes || undefined,
+        charge_to_booking_id: toRoom ? room.booking_id : undefined
       };
       let invoice;
       if (orderMode) {
@@ -603,7 +644,7 @@ const BillingPage = () => {
           const kot = await api(`/orders/${orderId}/kot`, { method: 'POST', body: {} });
           if (getDevicePrefs().autoPrintKot) printKotSlip(kot.kot_id);
         }
-        invoice = await api(`/orders/${orderId}/bill`, { method: 'POST', idempotencyKey: idem.get(), body: { ...extras, ...pay } });
+        invoice = await withApproval(dialog, (approval) => api(`/orders/${orderId}/bill`, { method: 'POST', idempotencyKey: idem.get(), body: { ...extras, ...pay, ...(offersOn ? { apply_promotions: true } : {}), ...(approval ? { approval } : {}) } }), idem.settle);
         loadOpenOrders();
       } else {
       const items = cart.map((l) => l.custom
@@ -614,25 +655,28 @@ const BillingPage = () => {
       payload = {
         customer_id: customerId || undefined,
         items,
+        ...(offersOn ? { apply_promotions: true } : {}),
+        ...(exchange ? { exchange_credit_note_id: exchange.cn_id } : {}),
         ...extras,
         ...(split ? pay : { payment: payLater ? undefined : { method, amount: amount ?? 'FULL', ...cardSlip(method, cardRef) } })
       };
       // the QR step records the UPI payment once the customer has paid
       const body = { ...payload, ...pay, ...(sending ? { send_to_kitchen: true } : {}) };
-      invoice = await api('/invoices', { method: 'POST', idempotencyKey: idem.get(), body });
+      invoice = await withApproval(dialog, (approval) => api('/invoices', { method: 'POST', idempotencyKey: idem.get(), body: approval ? { ...body, approval } : body }), idem.settle);
       if (invoice.order && getDevicePrefs().autoPrintKot) printKotSlip(invoice.order.kot_id);
       }
       idem.settle();
+      if (toRoom) toast.success(`Charged to ${room.label}`);
       if (upiQr) { setCollecting({ invoice, amount: partial ? amount : undefined }); return; }
       // from the saved total: round-off and freebies can move it from the estimate
       setChange(!split && method === 'CASH' && amount != null ? Math.max(0, Math.round((amount - invoice.total) * 100) / 100) : 0);
-      setConfirmation(invoice);
+      setConfirmation(toRoom ? { ...invoice, room_label: room.label } : invoice);
       const cash = split ? parts.some((p) => p.method === 'CASH') : method === 'CASH' && !payLater;
       if (getDevicePrefs().autoPrintReceipt) printReceipt(invoice.invoice_id, { cash });
       else if (cash && getDevicePrefs().openDrawer) openDrawer();
     } catch (caught) {
       // No connection: keep the sale on this device and send it when the connection is back (see lib/offlineQueue.js)
-      if (caught instanceof NetworkError && payload) {
+      if (caught instanceof NetworkError && payload && !toRoom) {   // a room charge needs the hotel's live list of guests, so it is never queued
         const saved = queueSale({ label: `${formatCurrency(totals.total)} · ${cart.length} item${cart.length === 1 ? '' : 's'}`, body: payload, idempotencyKey: idem.get() });
         if (saved) { idem.settle(); setConfirmation({ offline: true, total: totals.total, toKitchen: sending }); setBusy(false); return; }
         setError('Too many sales are waiting to sync. Reconnect before taking more.');
@@ -778,6 +822,7 @@ const BillingPage = () => {
   const itemCount = billLines.reduce((s, l) => s + Number(l.quantity || 0), 0);
   const chargeLabel = busy ? 'Charging…'
     : split ? (splitDue > 0 ? `Take ${formatCurrency(totals.total - splitDue)} · ${formatCurrency(splitDue)} due` : `Charge ${formatCurrency(totals.total)} · split ${parts.length} ways`)
+    : toRoom ? (room ? `Charge ${formatCurrency(totals.total)} to ${room.label}` : 'Choose a room')
     : payLater ? `Save bill · ${formatCurrency(totals.total)} unpaid`
     : upiQr ? `Show UPI QR · ${formatCurrency(partial ? amount : totals.total)}`
     : partial ? `Take ${formatCurrency(amount)} · ${formatCurrency(totals.total - amount)} due`
@@ -969,6 +1014,13 @@ const BillingPage = () => {
           </div>
         )}
 
+        {exchange && (
+          <div className="flex items-center justify-between gap-2 border-b border-line bg-brand-50 px-4 py-2 text-caption text-brand-700">
+            <span><strong className="font-semibold">Exchange:</strong> {formatCurrency(exchange.available)} of credit from {exchange.cn_number} pays for these items.</span>
+            <button type="button" onClick={() => setExchange(null)} className="font-semibold hover:underline">Remove</button>
+          </div>
+        )}
+
         {/* Lines */}
         <div className="min-h-[96px] flex-1 overflow-y-auto px-4">
           {orderMode ? (
@@ -984,7 +1036,7 @@ const BillingPage = () => {
             </div>
           ) : (
             <ul className="divide-y divide-line">
-              {cart.map((l) => <BillLine key={l.key} line={l} selected={retail && l.key === selKey} onSelect={() => setSelKey(l.key)} onChange={(patch) => updateLine(l.key, patch)} onRemove={() => removeLine(l.key)} />)}
+              {cart.map((l) => <BillLine key={l.key} line={l} offer={promo[l.key] || null} selected={retail && l.key === selKey} onSelect={() => setSelKey(l.key)} onChange={(patch) => updateLine(l.key, patch)} onRemove={() => removeLine(l.key)} />)}
             </ul>
           )}
         </div>
@@ -1007,6 +1059,13 @@ const BillingPage = () => {
                   <div className="w-36"><Input type="number" min="0" step="0.01" placeholder="₹ off the bill" id="bill-discount" aria-label="Discount on the whole bill in rupees" value={invoiceDiscount} onChange={(e) => setInvoiceDiscount(e.target.value)} className="!py-2" /></div>
                   <Input placeholder="Note on the bill (optional)" aria-label="Note on the bill" value={notes} onChange={(e) => setNotes(e.target.value)} className="!py-2" />
                 </div>
+                {retail && !exchange && (
+                  <div className="flex gap-2">
+                    <Input placeholder="Exchange credit: the credit note number" aria-label="Credit note number for an exchange" value={creditNo} onChange={(e) => { setCreditNo(e.target.value.toUpperCase()); setCreditError(''); }} className="!py-2" />
+                    <Button type="button" variant="secondary" size="md" disabled={!creditNo.trim()} onClick={useCreditNote}>Use</Button>
+                  </div>
+                )}
+                {creditError && <p className="text-caption text-danger" role="alert">{creditError}</p>}
               </div>
             ) : (
               <button type="button" onClick={() => setExtrasOpen(true)} className="inline-flex min-h-7 items-center text-caption font-semibold text-brand-600 hover:text-brand-700 pointer-coarse:min-h-11">+ Discount, coupon or note</button>
@@ -1020,6 +1079,8 @@ const BillingPage = () => {
             {totals.coupon > 0 && <div className="flex justify-between text-success"><dt>Coupon {couponInfo.code}</dt><dd>−{formatCurrency(totals.coupon)}</dd></div>}
             {totals.pointsOff > 0 && <div className="flex justify-between text-success"><dt>Points ({redeem})</dt><dd>−{formatCurrency(totals.pointsOff)}</dd></div>}
             {totals.rewardOff > 0 && <div className="flex justify-between text-success"><dt>Free {card.reward_item} (loyalty)</dt><dd>−{formatCurrency(totals.rewardOff)}</dd></div>}
+            {totals.offers > 0 && <div className="flex justify-between text-success"><dt>Offers (already off the lines)</dt><dd>−{formatCurrency(totals.offers)}</dd></div>}
+            {totals.exchangeOff > 0 && <div className="flex justify-between text-success"><dt>Exchange credit {exchange.cn_number}</dt><dd>−{formatCurrency(totals.exchangeOff)}</dd></div>}
             <div className="flex items-baseline justify-between pt-1">
               <dt className="text-small font-semibold text-ink-900">Total</dt>
               <dd className="text-[22px] font-semibold leading-none tracking-tight text-ink-900">{formatCurrency(totals.total)}</dd>
@@ -1067,7 +1128,7 @@ const BillingPage = () => {
           ) : (
           <>
           <div role="radiogroup" aria-label="How is it paid?" className="pos-gap pos-methods mt-2 grid grid-cols-3 gap-1">
-            {METHODS.map(([value, label]) => (
+            {(business?.business_type === 'HOTEL' ? [...METHODS, ROOM_METHOD] : METHODS).map(([value, label]) => (
               <button key={value} type="button" role="radio" aria-checked={method === value} onClick={() => { setMethod(value); setReceived(''); }}
                       className={`pos-method h-8 rounded-lg border text-caption font-semibold transition-colors duration-(--duration-fast) pointer-coarse:h-11 ${method === value ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>
                 {label}
@@ -1075,7 +1136,9 @@ const BillingPage = () => {
             ))}
           </div>
 
-          {payLater ? (
+          {toRoom ? (
+            <RoomChargePicker value={room} onChange={setRoom} />
+          ) : payLater ? (
             <p className={`mt-3 text-caption ${customerId ? 'text-ink-500' : 'text-warning'}`}>
               {customerId ? `Saved as unpaid on ${customerName}'s account.` : 'Saved as unpaid. Add a customer so you know who owes it.'}
             </p>

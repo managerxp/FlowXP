@@ -83,7 +83,7 @@ const NOT_FOOD = ['reservations', 'integrations', 'qr_ordering', 'multi_brand', 
 const SHOP_OFF = [...NOT_FOOD, ...SALON_KEYS, 'wholesale_orders', 'wholesale_fulfilment', 'wholesale_pricing'];
 const FOOD_OFF = [...SALON_KEYS, ...WHOLESALE_KEYS];
 export const INDUSTRY_OFF = {
-  RESTAURANT: FOOD_OFF, CAFE: FOOD_OFF, GAMING_CAFE: FOOD_OFF, RACING: FOOD_OFF,
+  RESTAURANT: FOOD_OFF, CAFE: FOOD_OFF, GAMING_CAFE: FOOD_OFF, RACING: FOOD_OFF, HOTEL: FOOD_OFF,
   CLOUD_KITCHEN: [...FOOD_OFF, 'reservations', 'qr_ordering', 'tables'],           // no dining room
   SALON: [...NOT_FOOD, ...WHOLESALE_KEYS],                                          // appointments, not table bookings
   RETAIL: SHOP_OFF, SUPERMARKET: SHOP_OFF, PHARMACY: SHOP_OFF,                      // these keep batches and expiry

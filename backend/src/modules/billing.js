@@ -15,6 +15,7 @@
  * with the HTTP status already attached, so either caller can translate them
  * the same way.
  */
+import { offlineInfo } from '../utils/offlineNote.js';
 import { recordAudit, recordEvent } from './events.js';
 import { computeLineTax, isInterState, sumLines } from './tax.js';
 import { toPaise, toQuantity, toRupees } from '../utils/money.js';
@@ -22,6 +23,8 @@ import { ModifierError, modifierLabel, outletSettingsFor, resolveModifiers } fro
 import { moveStock, stockAt } from './stock.js';
 import { takeBatchesForSale } from './retailStock.js';
 import { isRetail } from './retailSettings.js';
+import { activePromotions, priceLines } from './promotions.js';
+import { businessNow } from '../utils/dates.js';
 import { getProgram, isLive, progressFor, recordEvent as recordLoyalty } from './loyalty.js';
 import { CouponError, validateCoupon } from './coupons.js';
 import { consumptionPerUnit, loadRecipes } from './recipes.js';
@@ -97,7 +100,8 @@ export const asInvoice = (row) => ({
   credited: toRupees(row.credited_paise || 0),
   payment_status: row.payment_status,
   status: row.status,
-  notes: row.notes
+  notes: row.notes,
+  ...offlineInfo(row.notes)
 });
 
 /**
@@ -152,7 +156,9 @@ export const plannedPayments = (input, totalPaise) => {
     const asked = input.payment.amount === 'FULL' ? totalPaise : toPaise(input.payment.amount);
     if (asked < 0) throw new BillingError(400, 'Payment amount cannot be negative');
     const amountPaise = Math.min(asked, totalPaise);
-    return amountPaise > 0 ? [{ method: input.payment.method || 'CASH', amountPaise, reference: paymentReference(input.payment.reference_number) }] : [];
+    const method = String(input.payment.method || 'CASH').toUpperCase();
+    if (!PAYMENT_METHODS.includes(method)) throw new BillingError(400, `Unknown payment method: ${input.payment.method}`);
+    return amountPaise > 0 ? [{ method, amountPaise, reference: paymentReference(input.payment.reference_number) }] : [];
   }
   return [];
 };
@@ -198,7 +204,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   const products = new Map();
   if (productIds.length) {
     const { rows } = await client.query(
-      `SELECT product_id, name, selling_price_paise, purchase_price_paise, tax_rate, track_inventory, current_stock, status
+      `SELECT product_id, name, selling_price_paise, purchase_price_paise, tax_rate, track_inventory, current_stock, status, category_id
        FROM products WHERE business_id = $1 AND product_id = ANY($2::int[]) ORDER BY product_id FOR UPDATE`,
       [tenant.businessId, productIds]
     );
@@ -214,9 +220,12 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   const recipes = await loadRecipes(client, tenant.businessId, [...new Set([...productIds, ...componentIds])], tenant.branchId);
 
   const lines = [];
+  let typedDiscountPaise = 0; let typedGrossPaise = 0;   // what a person typed in as a discount, against what it comes off (see modules/approvals.js)
   const overrideIds = new Set();   // ingredients a line named by hand (consumption_actual) — must all exist
   for (const raw of items) {
     const quantity = toQuantity(raw.quantity);
+    if (quantity > 1000000) throw new BillingError(400, 'That quantity is too large');
+    let overrideCutPaise = 0;
     let description, unitPricePaise, taxRate, product = null, modifiers = [], consumption = [], stockFactor = 1;
 
     if (raw.product_id) {
@@ -234,6 +243,9 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       }
       description = raw.description || product.name;
       unitPricePaise = raw.unit_price != null ? toPaise(raw.unit_price) : (here?.price_paise ?? product.selling_price_paise);
+      if (unitPricePaise < 0) throw new BillingError(400, 'The price cannot be negative');
+      // a price typed in below the catalogue price is a discount: it counts against the cap like one (a till that never types a price is unaffected)
+      if (raw.unit_price != null) overrideCutPaise = Math.max(0, Number(here?.price_paise ?? product.selling_price_paise) - unitPricePaise);
       taxRate = Number(product.tax_rate);
 
       /* From an order, modifiers arrive already snapshotted and priced into
@@ -279,10 +291,16 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       }
       description = String(raw.description).trim();
       unitPricePaise = toPaise(raw.unit_price);
+      if (unitPricePaise < 0) throw new BillingError(400, 'The price cannot be negative');
       taxRate = Number(raw.tax_rate) || 0;
+      if (taxRate < 0 || taxRate > 100) throw new BillingError(400, 'The GST rate must be from 0 to 100');
     }
 
     let discountPaise = raw.discount != null ? toPaise(raw.discount) : 0;
+    if (input.discountPolicy?.lines) { typedDiscountPaise += discountPaise + Math.round(overrideCutPaise * quantity); typedGrossPaise += Math.round(quantity * (unitPricePaise + overrideCutPaise)); }
+    // a discount comes off the line: never below nothing (it would raise the price) and never more than the line is worth (it would record a discount that was never given)
+    if (discountPaise < 0) throw new BillingError(400, 'A discount cannot be negative');
+    if (discountPaise > Math.round(quantity * unitPricePaise)) throw new BillingError(400, 'The discount cannot be more than the price of the item');
     // The reward item is free (up to the reward quantity) on the visit that earns it — once per bill.
     if (loyalty?.progress.reward_ready && !loyalty.applied && product && product.product_id === program.reward_product_id) {
       const freeQty = Math.min(quantity, program.reward_quantity);
@@ -296,11 +314,29 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     });
 
     lines.push({
-      product_id: product?.product_id || null, description, quantity, unitPricePaise,
+      product_id: product?.product_id || null, categoryId: product?.category_id ?? null, description, quantity, unitPricePaise,
       discountPaise, taxRate, trackInventory: Boolean(product?.track_inventory), modifiers, consumption,
       unitName: raw.unit_name ? String(raw.unit_name).slice(0, 24) : null, stockFactor,
       fallbackCostPaise: product ? Math.round(Number(product.purchase_price_paise) * stockFactor) : 0, ...tax
     });
+  }
+
+  /* Offers: when the till asks for them (a retail till does), every product line is priced by the offers that are on today.
+     The saving is a line discount taken BEFORE tax, so GST follows what was actually charged. */
+  if (input.applyPromotions === true) {
+    const promos = await activePromotions(client, tenant.businessId, await businessNow(tenant.businessId, client));
+    if (promos.length) {
+      const cut = priceLines(promos, lines.map((l, index) => ({ index, product_id: l.product_id, category_id: l.categoryId, quantity: l.quantity, unitPricePaise: l.unitPricePaise, discountPaise: l.discountPaise })), { hasCustomer: Boolean(customer) });
+      for (const [index, r] of cut) {
+        const line = lines[index];
+        line.discountPaise += r.discountPaise;
+        line.promo = { id: r.promo_id, discountPaise: r.discountPaise };
+        Object.assign(line, computeLineTax({
+          quantity: line.quantity, unitPricePaise: line.unitPricePaise, discountPaise: line.discountPaise, taxRatePercent: line.taxRate,
+          gstEnabled: business.gst_enabled, interState, inclusive: input.taxInclusive === true
+        }));
+      }
+    }
   }
 
   /* Ingredient stock this sale uses, locked in id order so two tills billing
@@ -323,7 +359,15 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   }
 
   const totals = sumLines(lines);
-  let invoiceDiscountPaise = input.discount != null ? Math.max(0, toPaise(input.discount)) : 0;
+  let invoiceDiscountPaise = input.discount != null ? toPaise(input.discount) : 0;
+  if (input.discountPolicy && invoiceDiscountPaise > 0) {
+    // the bill's own discount counts against what the lines come to (before tax), together with any typed on the lines; one question, with everything typed in
+    typedDiscountPaise += invoiceDiscountPaise;
+    if (!input.discountPolicy.lines) typedGrossPaise = lines.reduce((s, l) => s + Math.round(l.quantity * l.unitPricePaise), 0);
+  }
+  if (input.discountPolicy && typedDiscountPaise > 0) await input.discountPolicy.check({ discountPaise: typedDiscountPaise, grossPaise: typedGrossPaise });
+  if (invoiceDiscountPaise < 0) throw new BillingError(400, 'A discount cannot be negative');
+  if (invoiceDiscountPaise > totals.total_paise) throw new BillingError(400, 'The discount cannot be more than the bill');
 
   // A coupon comes off what is left after any discount given by hand.
   let coupon = null;
@@ -366,7 +410,22 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     ? (typeof input.earnPoints === 'function' ? Math.max(0, Math.floor(input.earnPoints({ lines, finalTotalPaise, state: pointsState, cfg: pts }))) : earnFor(pts, pointsState, finalTotalPaise))
     : 0;
 
-  const takenPayments = plannedPayments(input, finalTotalPaise);
+  /* An exchange: the credit from a return (a credit note) is spent on this bill as a payment, never as a discount, because the
+     return already took that revenue off the old sale. What the credit does not cover is paid the usual way. */
+  let creditTaken = null;
+  if (input.exchangeCreditNoteId) {
+    const cn = (await client.query(
+      `SELECT cn_id, cn_number, total_paise, settled_balance_paise, refunded_paise, credit_used_paise FROM credit_notes WHERE cn_id = $1 AND business_id = $2 FOR UPDATE`,
+      [input.exchangeCreditNoteId, tenant.businessId])).rows[0];
+    if (!cn) throw new BillingError(400, 'That credit note was not found');
+    const available = Number(cn.total_paise) - Number(cn.settled_balance_paise) - Number(cn.refunded_paise) - Number(cn.credit_used_paise);
+    if (available <= 0) throw new BillingError(400, `${cn.cn_number} has no credit left to use`);
+    creditTaken = { cn, amountPaise: Math.min(available, finalTotalPaise) };
+  }
+  const takenPayments = [
+    ...(creditTaken && creditTaken.amountPaise > 0 ? [{ method: 'OTHER', amountPaise: creditTaken.amountPaise, reference: paymentReference(`Exchange ${creditTaken.cn.cn_number}`) }] : []),
+    ...plannedPayments(input, finalTotalPaise - (creditTaken?.amountPaise || 0))
+  ];
   const paidPaise = takenPayments.reduce((s, p) => s + p.amountPaise, 0);
   const balancePaise = finalTotalPaise - paidPaise;
 
@@ -377,25 +436,26 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
        (business_id, branch_id, customer_id, invoice_number, invoice_date,
         subtotal_paise, discount_paise, cgst_paise, sgst_paise, igst_paise, tax_paise, total_paise,
         amount_paid_paise, balance_due_paise, payment_status, notes, created_by, order_id,
-        coupon_code, coupon_discount_paise, loyalty_discount_paise, round_off_paise)
-     VALUES ($1,$2,$3,$4,COALESCE($5::date,(CURRENT_TIMESTAMP AT TIME ZONE $18)::date),$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$19,$20,$21,$22,$23)
+        coupon_code, coupon_discount_paise, loyalty_discount_paise, round_off_paise, client_key)
+     VALUES ($1,$2,$3,$4,COALESCE($5::date,(CURRENT_TIMESTAMP AT TIME ZONE $18)::date),$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$19,$20,$21,$22,$23,$24)
      RETURNING *`,
     [
       tenant.businessId, tenant.branchId, customer?.customer_id || null, invoiceNumber, input.invoiceDate || null,
       totals.subtotal_paise, invoiceDiscountPaise, totals.cgst_paise, totals.sgst_paise, totals.igst_paise, totals.tax_paise, finalTotalPaise,
       paidPaise, Math.max(0, balancePaise), paymentStatus(finalTotalPaise, paidPaise), input.notes || null, userId,
       business.timezone || 'Asia/Kolkata', input.orderId || null,
-      coupon ? coupon.coupon.code : null, coupon ? coupon.discountPaise : 0, loyalty?.applied ? loyalty.applied.amountPaise : 0, roundOffPaise
+      coupon ? coupon.coupon.code : null, coupon ? coupon.discountPaise : 0, loyalty?.applied ? loyalty.applied.amountPaise : 0, roundOffPaise, input.clientKey || null
     ]
   )).rows[0];
 
   for (const line of lines) {
     await client.query(
       `INSERT INTO invoice_items
-         (invoice_id, product_id, description, quantity, unit_price_paise, discount_paise, tax_rate, tax_amount_paise, line_total_paise, modifiers, unit_cost_paise, unit_name, unit_factor)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+         (invoice_id, product_id, description, quantity, unit_price_paise, discount_paise, tax_rate, tax_amount_paise, line_total_paise, modifiers, unit_cost_paise, unit_name, unit_factor, promo_id, promo_discount_paise)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
       [invoice.invoice_id, line.product_id, line.description, line.quantity, line.unitPricePaise,
-       line.discountPaise, line.taxRate, line.tax_paise, line.line_total_paise, JSON.stringify(line.modifiers), line.unitCostPaise, line.unitName, line.stockFactor]
+       line.discountPaise, line.taxRate, line.tax_paise, line.line_total_paise, JSON.stringify(line.modifiers), line.unitCostPaise, line.unitName, line.stockFactor,
+       line.promo?.id ?? null, line.promo?.discountPaise ?? 0]
     );
 
     // stockHandledElsewhere: the goods are not in this outlet's stock (a distributor's van holds them), so selling them here must not take them out of it
@@ -463,6 +523,10 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     }
   }
 
+  if (creditTaken && creditTaken.amountPaise > 0) {
+    await client.query(`UPDATE credit_notes SET credit_used_paise = credit_used_paise + $2 WHERE cn_id = $1`, [creditTaken.cn.cn_id, creditTaken.amountPaise]);
+  }
+
   for (const p of takenPayments) {
     await client.query(
       `INSERT INTO payments (business_id, branch_id, invoice_id, customer_id, payment_method, amount_paise, reference_number, notes, created_by)
@@ -485,7 +549,10 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
 /** Fire the audit/analytics side-effects a successful bill produces. Called
     after COMMIT — never inside the transaction, since these never roll back. */
 export const recordInvoiceCreated = (req, invoice) => {
-  recordAudit(req, { action: 'invoice.created', resource_type: 'invoice', resource_id: invoice.invoice_id, metadata: { total: invoice.total } });
+  // A sale the phone says it took without a connection is dated by the phone and may leave stock below zero, and any signed-in user can send the header
+  // that asks for that, so each one is written down as such: who, which day they claimed, and for how much.
+  const offline = req.get?.('X-Offline-Sale') === '1' || req.headers?.['x-offline-sale'] === '1';
+  recordAudit(req, { action: 'invoice.created', resource_type: 'invoice', resource_id: invoice.invoice_id, metadata: { total: invoice.total, ...(offline ? { offline: true, claimed_date: req.get?.('X-Sale-Date') || req.headers?.['x-sale-date'] || null } : {}) } });
   recordEvent('invoice_created', { userId: req.auth.userId, businessId: req.tenant.businessId, properties: { total: invoice.total } });
   afterBill(req.tenant.businessId, invoice.invoice_id);   // the customer's copy and loyalty nudge, when messaging is on
 };

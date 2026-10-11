@@ -15,7 +15,6 @@ import Home from './site/Home.jsx';
 import ProductPage from './site/ProductPage.jsx';
 import IndustriesPage from './site/IndustriesPage.jsx';
 import IndustryDetail from './site/industries/IndustryDetail.jsx';
-import ComingSoonPage from './site/industries/ComingSoon.jsx';
 import SiteIntegrations from './site/IntegrationsPage.jsx';
 import AboutPage from './site/AboutPage.jsx';
 import ContactPage from './site/ContactPage.jsx';
@@ -27,6 +26,7 @@ import { Button, EmptyState, PageLoader } from './components/ui.jsx';
 
 /* The legal pages are long text almost nobody opens on their first visit;
    keeping them out of the entry bundle keeps the landing page fast. */
+const DeleteAccountPage = lazy(() => import('./site/DeleteAccountPage.jsx'));
 const Privacy = lazy(() => import('./site/Legal.jsx').then((m) => ({ default: m.Privacy })));
 const Terms = lazy(() => import('./site/Legal.jsx').then((m) => ({ default: m.Terms })));
 const CookiePolicy = lazy(() => import('./site/Legal.jsx').then((m) => ({ default: m.Cookies })));
@@ -41,6 +41,7 @@ const AdminBusinessDetail = lazy(() => import('./admin/AdminBusinessDetail.jsx')
 const AdminPlans = lazy(() => import('./admin/AdminPlans.jsx'));
 const AdminFeatures = lazy(() => import('./admin/AdminFeatures.jsx'));
 const AdminAddons = lazy(() => import('./admin/AdminAddons.jsx'));
+const AdminDeletions = lazy(() => import('./admin/AdminDeletions.jsx'));
 const AdminSettings = lazy(() => import('./admin/AdminSettings.jsx'));
 const AdminSecurity = lazy(() => import('./admin/AdminSecurity.jsx'));
 
@@ -76,6 +77,8 @@ const SuppliersPage = lazy(() => import('./app/SuppliersPage.jsx'));
 const InventoryPage = lazy(() => import('./app/InventoryPage.jsx'));
 const RetailStockPage = lazy(() => import('./app/RetailStockPage.jsx'));
 const ReceiveStockPage = lazy(() => import('./app/ReceiveStockPage.jsx'));
+const ReturnsPage = lazy(() => import('./app/ReturnsPage.jsx'));
+const OffersPage = lazy(() => import('./app/OffersPage.jsx'));
 const StockCountPage = lazy(() => import('./app/StockCountPage.jsx'));
 const ExpensesPage = lazy(() => import('./app/ExpensesPage.jsx'));
 const PurchasesPage = lazy(() => import('./app/PurchasesPage.jsx'));
@@ -150,6 +153,20 @@ const SalonTeam = lazy(() => import('./app/salon/SalonTeam.jsx'));
 const SalonStock = lazy(() => import('./app/salon/SalonStock.jsx'));
 const SalonReports = lazy(() => import('./app/salon/SalonReports.jsx'));
 const SalonSettings = lazy(() => import('./app/salon/SalonSettings.jsx'));
+/* The hotel module (business type HOTEL). Its screens live in app/hotel/ and load only for a hotel. */
+const HotelDashboard = lazy(() => import('./app/hotel/HotelDashboard.jsx'));
+const HotelBookings = lazy(() => import('./app/hotel/HotelBookings.jsx'));
+const HotelBookingDetail = lazy(() => import('./app/hotel/BookingDetail.jsx'));
+const HotelCalendar = lazy(() => import('./app/hotel/HotelCalendar.jsx'));
+const HotelRooms = lazy(() => import('./app/hotel/HotelRooms.jsx'));
+const HotelNightAudit = lazy(() => import('./app/hotel/HotelNightAudit.jsx'));
+const HotelReports = lazy(() => import('./app/hotel/HotelReports.jsx'));
+const HotelSetup = lazy(() => import('./app/hotel/HotelSetup.jsx'));
+const BanquetEvents = lazy(() => import('./app/hotel/BanquetEvents.jsx'));
+const BanquetEventDetail = lazy(() => import('./app/hotel/EventDetail.jsx'));
+const BanquetCalendar = lazy(() => import('./app/hotel/BanquetCalendar.jsx'));
+const BanquetPrint = lazy(() => import('./app/hotel/BanquetPrint.jsx'));
+const HotelStaff = lazy(() => import('./app/hotel/HotelStaff.jsx'));
 
 /* The pharmacy module (business type PHARMACY). Its screens live in app/pharmacy/ and load only for a pharmacy. */
 const PharmacyDashboard = lazy(() => import('./app/pharmacy/PharmacyDashboard.jsx'));
@@ -185,6 +202,7 @@ const RequireAuth = ({ children }) => {
 const HomeRoute = () => {
   const { business } = useAuth();
   if (business?.business_type === 'SALON') return <SalonDashboard />;
+  if (business?.business_type === 'HOTEL') return <HotelDashboard />;
   if (business?.business_type === 'PHARMACY') return <PharmacyDashboard />;
   if (['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type)) return business?.distributor_enabled ? <DistributorDashboard /> : <WholesaleDashboard />;
   return <Dashboard />;
@@ -204,12 +222,12 @@ const App = () => (
       <Route index element={<Home />} />
       <Route path="features" element={<ProductPage />} />
       <Route path="industries" element={<IndustriesPage />} />
-      <Route path="industries/coming-soon" element={<ComingSoonPage />} />
       <Route path="industries/:slug" element={<IndustryDetail />} />
       <Route path="ai" element={<AIPage />} />
       <Route path="integrations" element={<SiteIntegrations />} />
       <Route path="about" element={<AboutPage />} />
       <Route path="contact" element={<ContactPage />} />
+      <Route path="delete-account" element={<Suspense fallback={<PageLoader />}><DeleteAccountPage /></Suspense>} />
       <Route path="pricing" element={<Pricing />} />
       <Route path="privacy" element={<Suspense fallback={<PageLoader />}><Privacy /></Suspense>} />
       <Route path="terms" element={<Suspense fallback={<PageLoader />}><Terms /></Suspense>} />
@@ -256,6 +274,8 @@ const App = () => (
       <Route path="inventory" element={<InventoryPage />} />
       <Route path="stock" element={<RetailStockPage />} />
       <Route path="stock/receive" element={<ReceiveStockPage />} />
+      <Route path="returns" element={<ReturnsPage />} />
+      <Route path="offers" element={<OffersPage />} />
       <Route path="stock/counts/:id" element={<StockCountPage />} />
       <Route path="purchases" element={<PurchasesPage />} />
       <Route path="expenses" element={<ExpensesPage />} />
@@ -313,6 +333,18 @@ const App = () => (
       <Route path="distributor/vehicles/:id" element={<DistributorVehicleDetail />} />
       <Route path="distributor/field" element={<DistributorField />} />
 
+      <Route path="hotel/bookings" element={<HotelBookings />} />
+      <Route path="hotel/bookings/:id" element={<HotelBookingDetail />} />
+      <Route path="hotel/calendar" element={<HotelCalendar />} />
+      <Route path="hotel/rooms" element={<HotelRooms />} />
+      <Route path="hotel/night-audit" element={<HotelNightAudit />} />
+      <Route path="hotel/reports" element={<HotelReports />} />
+      <Route path="hotel/setup" element={<HotelSetup />} />
+      <Route path="hotel/staff" element={<HotelStaff />} />
+      <Route path="hotel/banquet" element={<BanquetEvents />} />
+      <Route path="hotel/banquet/calendar" element={<BanquetCalendar />} />
+      <Route path="hotel/banquet/events/:id" element={<BanquetEventDetail />} />
+      <Route path="hotel/banquet/events/:id/print" element={<BanquetPrint />} />
       <Route path="salon/pos" element={<SalonPos />} />
       <Route path="salon/appointments" element={<SalonAppointments />} />
       <Route path="salon/clients" element={<SalonClients />} />
@@ -375,6 +407,7 @@ const App = () => (
         <Route path="plans" element={<AdminPlans />} />
         <Route path="features" element={<AdminFeatures />} />
         <Route path="addons" element={<AdminAddons />} />
+        <Route path="deletions" element={<AdminDeletions />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="security" element={<AdminSecurity />} />
       </Route>

@@ -87,7 +87,8 @@ router.put('/customers/:id/credit-limit', ...write, can('payments'), parties.set
 
 /* ── sales orders ─────────────────────────────────────────────────────────── */
 const orderGate = [feature('wholesale_orders')];
-router.get('/orders', ...read, can('sales_orders'), ...orderGate, orders.list);
+// the warehouse (fulfilment) may list the orders waiting to be picked; the controller shows it nothing else
+router.get('/orders', ...read, any('sales_orders', 'fulfilment'), ...orderGate, orders.list);
 router.get('/backorders', ...read, any('sales_orders', 'fulfilment'), ...orderGate, orders.backorders);
 router.post('/orders/preview', ...read, can('sales_orders'), ...orderGate, orders.preview);
 router.post('/orders', ...write, can('sales_orders'), ...orderGate, once, orders.create);
@@ -119,7 +120,7 @@ router.post('/deliveries/:id/status', ...write, can('fulfilment'), ...fulfilGate
 
 /* ── warehouses, stock, batches, transfers ────────────────────────────────── */
 const batchGate = [feature('wholesale_batches')];
-router.get('/warehouses', ...read, any('inventory', 'fulfilment', 'sales_orders', 'purchases'), inventory.listWarehouses);
+router.get('/warehouses', ...read, any('inventory', 'fulfilment', 'sales_orders', 'purchases', 'reports'), inventory.listWarehouses);   // reports: the report filters name warehouses
 router.put('/warehouses/:id', ...write, can('inventory'), inventory.updateWarehouse);
 router.get('/warehouses/:id/locations', ...read, any('inventory', 'fulfilment'), inventory.listLocations);
 router.post('/warehouses/:id/locations', ...write, can('inventory'), inventory.createLocation);

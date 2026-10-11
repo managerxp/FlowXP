@@ -10,6 +10,7 @@ const read = [requireAuth, withBusiness(), requirePermission('billing')];
 router.get('/invoices/:id/credit-notes/options', ...read, notes.options);
 router.post('/invoices/:id/credit-notes', requireAuth, withBusiness({ requireActive: true }), requirePermission('refunds'), idempotent(), notes.create);
 router.get('/credit-notes', ...read, notes.list);
+router.get('/credit-notes/by-number/:number', ...read, notes.byNumber);   // before /:id; any outlet of the business, for an exchange
 router.get('/credit-notes/:id', ...read, notes.get);
 
 export default router;

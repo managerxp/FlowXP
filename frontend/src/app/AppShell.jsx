@@ -13,11 +13,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
-  ArrowLeftRight, BadgePercent, Boxes, CalendarClock, CalendarDays, ChartColumn, ChartLine, ChefHat, ChevronDown, ClipboardList, FileText, Gift,
+  ArrowLeftRight, BadgePercent, Tag, Boxes, CalendarClock, CalendarDays, ChartColumn, ChartLine, ChefHat, ChevronDown, ClipboardList, FileText, Gift,
   History, Landmark, LayoutDashboard, LayoutGrid, Lock, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
   Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X, Warehouse, PackageCheck, Undo2, HandCoins, ChartBar, ShoppingBag, Tags,
-  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass
+  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass, BedDouble, Moon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Avatar, Button, EmptyState, Logo, PageLoader, useToast } from '../components/ui.jsx';
@@ -27,7 +27,7 @@ import NotificationBell from '../components/NotificationBell.jsx';
 import { InstallButton, OfflineStatus } from '../components/OfflineStatus.jsx';
 import CommandPalette from '../components/CommandPalette.jsx';
 import IncomingDeliveryAlert from '../components/IncomingDeliveryAlert.jsx';
-import { PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
+import { HOTEL_TYPES, PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
 
 /*
  * The sidebar, grouped by the job rather than listed alphabetically: that
@@ -44,6 +44,7 @@ import { PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from 
 const DINE_IN_TYPES = RESTAURANT_TYPES.filter((t) => t !== 'CLOUD_KITCHEN');
 
 const SALON = ['SALON'];
+const HOTEL = HOTEL_TYPES;
 const WHOLESALE = WHOLESALE_TYPES;
 const PHARMACY = PHARMACY_TYPES;
 const RETAIL = RETAIL_TYPES;
@@ -65,6 +66,7 @@ const NAV_GROUPS = [
     label: 'Sell',
     items: [
       { to: '/app/billing', label: 'Billing', icon: ReceiptText, end: true, permission: 'billing', notTypes: [...SALON, ...PHARMACY] },
+      { to: '/app/returns', label: 'Returns', icon: Undo2, types: RETAIL, permission: 'refunds' },
       { to: '/app/billing/invoices', label: 'Invoices', icon: FileText, permission: 'billing', more: true },
       { to: '/app/orders', label: 'Orders', icon: ClipboardList, types: RESTAURANT_TYPES, anyPermission: ['billing', 'kitchen'] },
       { to: '/app/payments', label: 'Payments', icon: Wallet, permission: 'payments', more: true }
@@ -108,11 +110,24 @@ const NAV_GROUPS = [
     ]
   },
   {
+    label: 'Hotel',
+    items: [
+      { to: '/app/hotel/bookings', label: 'Bookings', icon: ClipboardList, types: HOTEL, anyPermission: ['front_desk', 'night_audit'] },
+      { to: '/app/hotel/calendar', label: 'Calendar', icon: CalendarDays, types: HOTEL, anyPermission: ['front_desk', 'night_audit', 'housekeeping'] },
+      { to: '/app/hotel/rooms', label: 'Rooms & housekeeping', icon: BedDouble, types: HOTEL, anyPermission: ['housekeeping', 'front_desk', 'night_audit'] },
+      { to: '/app/hotel/banquet', label: 'Banquet', icon: CalendarClock, types: HOTEL, anyPermission: ['banquet', 'front_desk'] },
+      { to: '/app/hotel/staff', label: 'Staff', icon: Users, types: HOTEL, anyPermission: ['hr', 'payroll'] },
+      { to: '/app/hotel/night-audit', label: 'Night audit', icon: Moon, types: HOTEL, permission: 'night_audit' },
+      { to: '/app/hotel/reports', label: 'Hotel reports', icon: ChartColumn, types: HOTEL, anyPermission: ['reports', 'night_audit', 'front_desk'] },
+      { to: '/app/hotel/setup', label: 'Rooms & rates', icon: Settings, types: HOTEL, permission: 'hotel_setup' }
+    ]
+  },
+  {
     label: 'Pharmacy',
     items: [
       { to: '/app/pharmacy/pos', label: 'Billing', icon: ReceiptText, types: PHARMACY, permission: 'billing' },
       { to: '/app/pharmacy/products', label: 'Products', icon: Package, types: PHARMACY, anyPermission: ['products', 'inventory', 'billing', 'purchases'] },
-      { to: '/app/pharmacy/inventory', label: 'Inventory', icon: Boxes, types: PHARMACY, anyPermission: ['inventory', 'purchases', 'billing'] },
+      { to: '/app/pharmacy/inventory', label: 'Inventory', icon: Boxes, types: PHARMACY, permission: 'inventory' },
       { to: '/app/pharmacy/grn', label: 'Goods receipts', icon: PackageCheck, types: PHARMACY, anyPermission: ['purchases', 'inventory'] }
     ]
   },
@@ -143,10 +158,10 @@ const NAV_GROUPS = [
   {
     label: 'Customers',
     items: [
-      // every signed-in team member may look a customer up (billing/loyalty need this) — reading
-      // customers has no permission gate server-side. Editing needs 'customers' and is rejected
-      // there if not; CustomersPage does not yet hide its own Edit/Add buttons for a role without it.
-      { to: '/app/customers', label: 'Customers', icon: UserRound, notTypes: NOT_SALON_OR_WHOLESALE },
+      // Looking a customer up is for anyone who bills or manages customers (the server's rule: customers or billing), so a cook has no link
+      // to a page that would only say "no access". Editing needs 'customers' and is rejected there if not.
+      { to: '/app/customers', label: 'Customers', icon: UserRound, anyPermission: ['customers', 'billing'], notTypes: NOT_SALON_OR_WHOLESALE },
+      { to: '/app/offers', label: 'Offers', icon: Tag, types: [...RETAIL, ...RESTAURANT_TYPES], anyPermission: ['products', 'settings'], more: true },
       { to: '/app/loyalty', label: 'Loyalty & coupons', icon: Gift, roles: ['OWNER', 'ADMIN'], feature: 'loyalty', more: true },
       { to: '/app/messaging', label: 'Messaging', icon: MessageSquare, roles: ['OWNER', 'ADMIN'], feature: 'messaging', more: true },
       { to: '/app/reviews', label: 'Reviews', icon: Star, roles: ['OWNER', 'ADMIN'], permission: 'settings', feature: 'reviews', more: true }

@@ -18,7 +18,7 @@ router.get('/riders', ...authed, deliveryFeature, orders.listRiders);      // be
 router.get('/pending-deliveries', ...authed, orders.pendingDeliveries);   // before /:id, or "pending-deliveries" would match as an id
 router.get('/:id', ...authed, orders.get);
 router.post('/', ...write, requireOutlet, idempotent(), orders.create);
-router.post('/:id/items', ...write, orders.addItems);
+router.post('/:id/items', ...write, idempotent(), orders.addItems);
 router.patch('/:id/items/:itemId', ...kitchenWrite, orders.updateItem);
 router.post('/:id/kot', ...write, orders.sendKot);
 router.post('/:id/accept', ...write, idempotent(), orders.acceptDelivery);

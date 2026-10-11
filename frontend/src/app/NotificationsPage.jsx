@@ -36,19 +36,20 @@ const Preferences = () => {
       <h2 className="text-sm font-semibold text-ink-900">What to tell me about</h2>
       <div className="mt-3 overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="text-xs text-ink-400"><tr><th className="py-2 font-semibold">Topic</th><th className="w-20 py-2 text-center font-semibold">In app</th><th className="w-20 py-2 text-center font-semibold">Email</th></tr></thead>
+          <thead className="text-xs text-ink-400"><tr><th className="py-2 font-semibold">Topic</th><th className="w-20 py-2 text-center font-semibold">In app</th><th className="w-20 py-2 text-center font-semibold">Email</th><th className="w-20 py-2 text-center font-semibold">Phone</th></tr></thead>
           <tbody>
             {prefs.map((p) => (
               <tr key={p.category} className="border-t border-line">
                 <td className="py-3"><p className="font-medium text-ink-900">{p.label}</p><p className="text-xs text-ink-500">{p.description}</p></td>
                 <td className="text-center"><Toggle checked={p.in_app} onChange={(e) => change(p.category, 'in_app', e.target.checked)} label={`${p.label} in the app`} /></td>
                 <td className="text-center"><Toggle checked={p.email} onChange={(e) => change(p.category, 'email', e.target.checked)} label={`${p.label} by email`} /></td>
+                <td className="text-center"><Toggle checked={p.push} onChange={(e) => change(p.category, 'push', e.target.checked)} label={`${p.label} on my phone`} /></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-xs text-ink-400">Email goes to the address you sign in with. Notifications are never sent to customers.</p>
+      <p className="mt-3 text-xs text-ink-400">Email goes to the address you sign in with. Phone alerts go to the FlowXP app on the phones you are signed in on. Notifications are never sent to customers.</p>
     </Card>
   );
 };

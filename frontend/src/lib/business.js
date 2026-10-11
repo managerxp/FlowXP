@@ -1,5 +1,8 @@
 /* Business types that run a kitchen: they get orders, tables, modifiers, recipes. */
-export const RESTAURANT_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE', 'RACING'];
+export const RESTAURANT_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'GAMING_CAFE', 'RACING'];
+
+/* Hotels (with a restaurant): the hotel module (rooms, bookings, front desk, housekeeping, night audit, reports) on top of the restaurant screens. */
+export const HOTEL_TYPES = ['HOTEL'];
 
 /* Delivery platforms as their own brands write them. */
 export const PLATFORM_LABEL = { ZOMATO: 'Zomato', SWIGGY: 'Swiggy', ONDC: 'ONDC', MAGICPIN: 'Magicpin' };

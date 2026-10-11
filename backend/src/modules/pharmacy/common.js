@@ -16,7 +16,7 @@ export class PharmacyError extends Error {
   constructor(status, message, extra = {}) { super(message); this.name = 'PharmacyError'; this.status = status; Object.assign(this, extra); }
 }
 
-const CLIENT_ERRORS = new Set(['SalonError', 'PharmacyError']);
+const CLIENT_ERRORS = new Set(['SalonError', 'PharmacyError', 'BillingError']);   // BillingError: a manager's PIN is needed (modules/approvals.js)
 
 export const wrap = (fn) => async (req, res, next) => {
   try {

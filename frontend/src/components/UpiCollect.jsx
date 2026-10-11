@@ -13,7 +13,7 @@ import QRCode from 'qrcode';
 import { Printer, Smartphone } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
-import { printReceipt } from '../lib/printing.js';
+import { printReceipt, silentPrinting } from '../lib/printing.js';
 import { Alert, Button, Field, Input, Modal } from './ui.jsx';
 
 export const upiLink = ({ vpa, payee, amount, note }) =>
@@ -28,6 +28,8 @@ const UpiCollect = ({ invoice, amount, vpa, payee, onPaid, onLater }) => {
   const [reference, setReference] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // With silent printing set up, the bill prints by itself the moment this opens, with a QR for exactly what is being collected. A browser print tab needs a click, so there it is the button below.
+  useEffect(() => { if (silentPrinting()) printReceipt(invoice.invoice_id, { upi: due }); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { QRCode.toDataURL(link, { width: 480, margin: 1, errorCorrectionLevel: 'M' }).then(setQr).catch(() => setQr('')); }, [link]);
 
   const received = async () => {
@@ -53,7 +55,7 @@ const UpiCollect = ({ invoice, amount, vpa, payee, onPaid, onLater }) => {
         <p className="mt-3 text-small text-ink-700">Paying <span className="font-semibold text-ink-900">{vpa}</span></p>
         <p className="mt-1 flex items-center justify-center gap-1.5 text-caption text-ink-500"><Smartphone aria-hidden="true" className="h-3.5 w-3.5" />Any UPI app: GPay, PhonePe, Paytm, BHIM or a bank app</p>
         {/* The bill is saved and unpaid, so the printed copy carries this same QR for the exact amount due. */}
-        <Button variant="secondary" size="sm" className="mt-3" onClick={() => printReceipt(invoice.invoice_id)}><Printer aria-hidden="true" className="h-4 w-4" />Print bill with this QR</Button>
+        <Button variant={silentPrinting() ? 'secondary' : 'primary'} size="sm" className="mt-3" onClick={() => printReceipt(invoice.invoice_id, { upi: due })}><Printer aria-hidden="true" className="h-4 w-4" />Print bill with this QR</Button>
       </div>
 
       <div className="mt-5 rounded-lg bg-surface-2 px-3.5 py-3 text-small text-ink-700">

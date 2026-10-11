@@ -1,5 +1,8 @@
 # FlowXP brain
 
+> **Moving to another laptop or starting a new session: read `HANDOFF.md` first** (setup, how to run, current status, next steps). Mobile app: `MOBILE.md`, readiness report: `MOBILE_AUDIT.md`.
+
+
 One file to remember the whole product: what it is, how it is built, the rules the code follows, what exists, and
 what is left. Read this first in a new session. `documentation.md` has the long per-feature detail (API, schema,
 edge cases); this file is the map and the memory. Keep it current: update the status tables when a feature ships.
@@ -758,6 +761,149 @@ Everything below is in the repo and covered by tests (backend 904 passing at the
 - **Still the owner's to do before launch:** production `.env` (NODE_ENV, APP_ORIGIN https, JWT_SECRET, real super admin, Cashfree PRODUCTION
   keys), DNS + certbot, a real email provider, scheduled and off-server backups, 2FA on the super admin, a Gemini spend cap, optional Google keys.
 
+## 4d. Retail / supermarket Phase 4: supplier bill import (2026-10-06)
+
+Read a photographed or PDF supplier bill, match its lines to products, and feed the checked lines into Receive stock. Always reviewed:
+nothing is received until the person presses Receive (the existing `POST /api/purchases`); automation levels beyond "always review" are not built.
+
+- `modules/ai/invoiceScan.js`: one forced tool (`record_supplier_bill`): supplier, bill number/date/total, lines (description, barcode, supplier
+  code, qty, rate, GST, amount, batch, expiry). `normaliseBill` cleans it (a rate worked out from amount is flagged unsure). Images and PDFs
+  (`uploadBillFiles`, `looksLikeBillFile`: a PDF must start `%PDF-`); files held in memory only, one request, counted in `ai_usage`.
+- `modules/invoiceMatch.js`: matching order barcode, then this supplier's code (or a code saved for no supplier), then learned wording
+  (`product_aliases`), then a name guess (shared words, sizes count double, >= 0.6 preselected, >= 0.34 suggested). `matchSupplier`,
+  `findDuplicateBill`.
+- `controllers/invoiceImport.controller.js` + `/api/retail/invoice-import/{scan,check,learn}` (retail businesses only, `inventory`
+  permission, 10 scans / 10 min / person). `scan` returns a draft with `duplicate_of` and `total_mismatch`; `learn` runs after Receive:
+  alias (source SUPPLIER), supplier code (a correction moves a code to the product the person picked), a barcode only if nobody has it;
+  another business's product ids write nothing.
+- `POST /api/purchases` now stores `supplier_invoice_no` / `supplier_invoice_date` and refuses the same supplier's same bill number
+  (409 `DUPLICATE_BILL`) unless `allow_duplicate_bill: true`.
+- Frontend: `components/SupplierBillImport.jsx` (pick, reading, review: per line match chip, change/find/new product, qty/cost/GST/expiry, repeated-bill
+  and total-mismatch banners) opened from `app/ReceiveStockPage.jsx` ("Read a supplier bill"); checked lines become the page's lines, and what was matched is
+  sent to `/learn` after a successful Receive. Tests: `invoiceimport.test.js` (13). Not tried against a real Gemini read of a real bill yet.
+- Phase 5 still to do: returns/exchanges at the till, promotions, pricing rules, a retail dashboard, performance tests.
+
+## 4e. Retail / supermarket Phase 5: offers, returns and exchanges, retail dashboard (2026-10-06)
+
+- **Offers** (`migrations/0071`, `modules/promotions.js`, `controllers/promotions.controller.js`, `/api/retail/promotions*`): PERCENT_OFF (optional minimum
+  quantity), BUY_X_GET_Y, BUNDLE_PRICE, for one product or one category, optional dates, optional "customers only". `priceLines` is pure: per product
+  the single best offer wins (never stacked), the saving is spread over that product's lines to the paisa and capped at what the line still costs.
+  `createInvoiceInTransaction` applies them when `input.applyPromotions === true` (the retail till sends `apply_promotions: true`; nothing else does),
+  as an extra line discount BEFORE tax, recorded on `invoice_items.promo_id/promo_discount_paise`. The till shows them via `POST /retail/promotions/preview`
+  (same rules, debounced) as an "Offers" row and a chip on each line. UI: `app/OffersPage.jsx` (`/app/offers`).
+- **Returns and exchanges**: `app/ReturnsPage.jsx` (`/app/returns`, `refunds` permission) finds a bill (number, name, phone) and opens the existing
+  `CreditNoteModal` (GST reversed exactly, stock back). "Keep as credit" leaves the credit on the note (`credit_left` in `asCreditNote`); "Start the
+  exchange sale" opens the till with `?exchange=<cn_id>`. The credit is spent as a PAYMENT (method OTHER, reference "Exchange CN-xxxx"), never as a
+  discount (the return already took that revenue off the old sale), recorded in `credit_notes.credit_used_paise`; it cannot be spent twice and a smaller
+  exchange leaves the rest. Server: `input.exchangeCreditNoteId` in `modules/billing.js`.
+- **Retail dashboard**: `RetailPanel` in `app/Dashboard.jsx` (stock at cost and shelf value, out, low, expiring, expired: tiles link to the stock center with
+  `?status=`; offers and returns today from `GET /api/retail/today`).
+- **Performance** (`scripts/perf-phase5.js`, 100,000 products, p50 / p95): price a 300-line cart with 100 offers 0.6 / 1.9 ms; cart preview endpoint 6.5 / 9.2 ms;
+  a 40-line bill with offers 100 / 141 ms; match 200 supplier-bill lines 294 / 305 ms; find a bill by number 2.7 / 3.3 ms. `scripts/perf-retail.js` covers the
+  product lookups.
+- Tests: `promotions.test.js` (11), `offers2.test.js` (10).
+- **Offers, second round** (`migrations/0072`): weekdays (`days_of_week`, 0 = Sunday) and hours (`start_time`/`end_time` in the business's own clock, an end before
+  the start runs overnight; `businessNow()` in `utils/dates.js`); `MIX_BUNDLE` = N units from a SET of products (`promotion_products`) for one price, made from
+  the cheapest eligible units first and only on units no other offer has cut; offers also work in the restaurant family (routes allow shops and restaurants,
+  the counter bill and `POST /orders/:id/bill` send `apply_promotions`, Offers is under More for restaurants); an exchange credit can be typed in by number at
+  ANY outlet (`GET /credit-notes/by-number/:number`, business-scoped, returns only number and credit left).
+- **Caching** (`utils/cache.js`, in-process, TTL + single-flight + drop by prefix; fine while the API is one PM2 process, otherwise each instance keeps its own
+  copy for at most the TTL): active offers 60 s per business and day (cleared by every offer write; weekday and hour are checked on every call so an offer starts
+  and stops on time); the retail dashboard figures (`/retail/summary`, `/retail/today`) 30 s per business and outlet. The stock center itself, bills and till
+  lookups are never cached. Browser side: `lib/useSwr.js` (sessionStorage, keyed by business and outlet) shows the last answer at once then refreshes: used by the
+  retail dashboard panel and the Offers list. Measured on 100,000 products: active offers 2.5 ms from the database, 0.0 kept; dashboard figures 54 ms, 0.0 kept.
+- Not built: mixed-product "buy A get B free", offers that need a minimum bill value, a refund screen separate from credit notes, caching across several API instances.
+
+## 4f. Café defaults and café page (2026-10-07)
+
+- `modules/defaultOptions.js` now picks the set by type: RESTAURANT/CLOUD_KITCHEN keep Spice level + Veg/Non-veg extras; CAFE gets Size (Small 0, Regular +20, Large +40),
+  Milk (full cream, toned, oat +40, almond +50, soy +40), Sugar (one choice each) and Add-ons (extra shot, syrup, whipped cream, drizzle; optional, up to 3).
+  Signup passes the business type. `migrations/0073` swaps an existing café's three untouched restaurant defaults for the café set, only when none is used by a dish
+  (a café with its own groups, or dishes using them, is untouched). Tests in `defaultoptions.test.js`.
+- Website: `site/industries/content/cafe.js` is a real page at `/industries/cafe` (aliases `cafes`, `coffee-shop`, `bakery`); the restaurant page is now restaurants only;
+  seo, sitemap, llms.txt and the nav icon updated. Its screenshots are the real screens of the demo café.
+- Demo café: `cd backend && npm run seed:cafe` (script `scripts/seed-cafe.js`) builds "Brew & Bloom Café" (login cafe@flowxp.test / demo1234, dev DB only): café option groups with
+  stock usage, 28 menu items with recipes, three stations (Coffee Bar, Cold Bar, Bakery & Kitchen), tables, a visit card, two offers (weekday happy hour, any 2 bakes for ₹180) and
+  30 days of bills made through the real billing engine. Screenshots are `frontend/public/product/cafe-*.webp` (11 files; QR is a phone shot, `phone: true` in cafe.js).
+
+## 4g. Mobile app, phase 0 (2026-10-07): backend foundations (plan in `MOBILE.md`)
+
+- Migration `0074_mobile_sync`: `invoices.client_key` (unique per business) and `sync_log` + `sync_state` with one trigger function on products, barcodes, outlet price,
+  outlet stock, categories, customers. Pruned after 30 days (`sync_state.floor_seq` records how far).
+- `POST /api/invoices`: the Idempotency-Key is also kept on the invoice; a replay (even after the 48 h key table forgot it) or two at once returns the same invoice.
+  `offline: true` in the body records the sale even if stock is short. Other sale routes (restaurant bill-an-order, held bills) are not covered yet.
+- `GET /api/auth/me`: a Bearer caller gets a fresh `token` (sliding session); a cookie caller never does. No separate mobile login.
+- `GET /api/sync/head`, `GET /api/sync/changes?since&limit` (`sync.controller.js`, permission billing, needs a chosen outlet): current rows, collapsed, paged, `409 RESYNC`.
+  `products.controller.js` exports `posRowsByIds`; pos-catalog and the deltas share one row shape.
+- Tests: `test/sync.test.js` (11). Not yet synced: offers; not yet built: any app code (phase 1 is the React Native till).
+
+## 4h. Mobile app, phase 1 (2026-10-07): the online till (`mobile/`)
+
+- Expo SDK 57 + Expo Router (routes in `src/app`), logic in `src/lib` (api, catalog, cart, sale, session, receipt, money) with `npm test` (node --test, strip-types).
+  Screens: login, choose (business+outlet in one list), till, scan (modal), pay, receipt. State is a tiny `createStore` (no library); token in expo-secure-store.
+- The app shows a PREVIEW total (price x qty + GST); the server's invoice is what the receipt shows (offers like "any 2 bakes" make the two differ).
+- Backend fix made on the way: `pos-catalog` now sends `modifier_group_ids` (migration 0075 makes changing them a sync change). Without it the app thought café drinks had no options.
+- Needs `.npmrc legacy-peer-deps=true` (an optional react-native-worklets peer conflict). `npm run e2e` makes ONE real sale in the business it points at.
+- Not run on a real phone or emulator yet (none available here). Next: phase 2 (SQLite catalogue + outbox + offline sale).
+
+## 4i. Mobile app, phase 2 (2026-10-07): offline billing
+
+- `src/lib`: `db.ts` (Db interface: expo-sqlite on the phone, Node's SQLite in tests), `catalog.ts` (SQLite copy + delta sync), `outbox.ts` (unsent sales),
+  `till.ts` (`takeSale`: online or queue; `sendEntry`), `local.ts` (per business+outlet database, app kv), `sync.ts` (badge state + auto sync), `receipt.ts` (+ pending receipt).
+- Server: `invoices.create` reads `X-Offline-Sale: 1` and `X-Sale-Date` (body `offline` / `invoice_date` still work); offline sales are never refused for stock; the sale day is
+  believed within 7 days (else today). Headers, not body, so a queued retry's body equals the first attempt's (the 48 h guard compares bodies).
+- A refusal while ONLINE is shown to the cashier and never queued; only "could not reach the server" queues.
+- Tests: `mobile/test/offline.test.ts` + `helpers.ts` (fake server with switches: down, status, hang, lostReplies), `npm run e2e:offline` makes 3 real sales in the demo business.
+- Not run on a real phone. Next: phase 3 (café/restaurant counter: options, token numbers, offers preview, orders/held bills with the sale key).
+
+## 4j. Mobile app, phase 3 (2026-10-07): the café counter
+
+- `lib/options.ts` (pure picker rules), `lib/offers.ts` (`previewOffers`), `lib/cart.ts` (lines keyed by product + sorted option ids; `totals(cart, offers)` takes the offer off
+  BEFORE GST; `saleBody` adds `modifier_ids` and `send_to_kitchen`), catalog `groups` table + `groupsFor`/`byId`, `app/options.tsx` modal, kitchen switch and offer line on the till, token on the receipt.
+- Server: `invoices.create` ignores `send_to_kitchen` for an offline sale (header `X-Offline-Sale`). The queued body still equals the first attempt (it includes the kitchen flag).
+- Tests: `mobile/test/counter.test.ts`, `npm run e2e:cafe` (makes 2 real sales in the demo café), backend `sync.test.js` now 15.
+- Left for later: table orders / open orders, held bills, customer lookup and visit card, combos, split payments, receipt printer.
+
+## 4k. Mobile app, phase 4 (2026-10-07): polish and release prep
+
+- Backend: migration `0076_app_errors`, `appErrors.controller.js` (`POST /api/app-errors` public + limiter 30/15 min; `GET /api/admin/app-errors` grouped), `test/apperrors.test.js`.
+- Mobile: `lib/report.ts` (pure reporter: dedupe 1/min per message, queue of 20) + `lib/crash.ts` (wiring, global handler), `lib/print.ts` (expo-print, 58/80 mm), `app/settings.tsx`,
+  root `ErrorBoundary` in `_layout.tsx`, outbox `device()`/`forgetSent()`, `catalog.clear()` also clears groups. `app.json`/`eas.json`/`store/`/`STORE.md`/icons.
+- `npm run release:check` = typecheck + tests + expo-doctor + android export. Tests: `mobile/test/release.test.ts` also checks the permissions, icon sizes and build profiles.
+- The updates URL, EAS project id, Play key and screenshots are the owner's (see `mobile/STORE.md`). The app is still untested on a real phone: `MOBILE.md` has the checklist.
+
+## 4l. Mobile app pages (2026-10-07)
+
+- Routes: `app/(tabs)/{home,sell,sales,products,more}.tsx`; stack screens `customers`, `customer/[id]`, `product/[id]`, `product/new`, `stock`, `reports`, `waiting`, `settings`, `pay`, `receipt`, `options`, `scan`.
+- Shared: `lib/useLoad.ts` + `cache.ts` (last answer kept per business/outlet/query), `ranges.ts`, `responsive.tsx` (`useWide` at 768, `Page` max width), `ui.tsx` (Chips, Stat, Line, Loading, Failed, SavedNote, Empty), `capture.ts` (scan a barcode for a form), `SyncBadge`, `WaitingList`.
+- Catalogue additions: `categories()`, `search(text, limit, category, offset)` (uses SQLite `json_extract`).
+- `expo-font` must stay installed (the icons need it; expo-doctor flags it). `app.json` orientation is `default`.
+- Backend: idempotency on `POST /products` and `POST /customers`.
+
+## 4m. Mobile: table orders and held bills (2026-10-07)
+
+- `lib/orders.ts` (floor/order types, `tableState`, `orderTotals`, `byZone`), `lib/held.ts` (snapshot in the website till's shape, `fromSnapshot`, phone-only holds in SQLite, `holdBill`), scope now has `held`.
+- Screens: `(tabs)/tables.tsx` (food businesses only; Products tab hidden for them), `order/[id].tsx`, `order/add.tsx`, `held.tsx`; `options.tsx?order=` adds to an order, `pay.tsx?order=` bills an order, `customers.tsx?pick=order-ID` sets an order's customer.
+- Backend: `POST /orders/:id/items` now honors the Idempotency-Key. Tests: `mobile/test/orders.test.ts`, `npm run e2e:orders`.
+
+## 4n. Mobile: kitchen screen (2026-10-07)
+
+- `lib/kitchen.ts` (pure: `urgencyOf`, `sortTickets` per station, `cookNow`, `statsOf`, `alertFor`, same rules as the website's KitchenDisplay.jsx), `app/kitchen.tsx` (polls 8 s, ticks 15 s, `expo-keep-awake`, `Vibration` for alerts, undo 7 s).
+- Routes used: `GET /kitchen/tickets`, `POST /kitchen/advance`, `POST /kitchen/orders/:id/rush`. A KITCHEN-role user is sent straight there from `index.tsx`.
+- `mobile/test/kitchen.test.ts`, `npm run e2e:kitchen`. No backend change. Not done: audio alert, station/routing setup, performance report.
+
+## 4o. Fixes from the first real-phone run (2026-10-07)
+
+- "database is locked" on a real phone: the full catalogue download held one long exclusive transaction while the screen read the same file. Now the phone's database is WAL with `busy_timeout` 5 s
+  (`openOnPhone`, and each `tx` sets its own), the download is written to side tables (`products_next`, `barcodes_next`) in small steps and swapped in one short transaction, and a non-network,
+  non-server sync error is reported as a phone-storage problem (it used to say "FlowXP is not answering").
+- `pos-catalog` and the sync deltas no longer send INGREDIENT or PACKAGING products (a menu full of Rs 0 "Almond Milk" and "Bread Slices"). `COPY_VERSION` in `catalog.ts` makes every phone with an
+  older copy download once more; bump it whenever what the phone keeps changes meaning. Tests: `sync.test.js` (16), `offline.test.ts` (versioned re-download).
+
+## 4p. Pending (2026-10-07)
+
+See `HANDOFF.md` section 9 (waiting on the owner, not built in the mobile app, before the Play Store, launch tasks) and `MOBILE_AUDIT.md`. Nothing from the mobile work is committed yet.
+
 ## 5. Working rules for future sessions
 
 - **Test every feature** in `backend/test/<feature>.test.js`; run the full `npm test` and `npx vite build` before reporting. Real DB, throwaway
@@ -820,3 +966,7 @@ settings entry in section 4.
 - Legal (owner, 2026-09-28): `frontend/src/site/Legal.jsx`'s Privacy Policy and Terms of Service are now the owner's real, final text (ManagerXP Private Limited), replacing the earlier honest-draft placeholder — not engineering-authored, so treat it as content to keep in sync with whatever the owner supplies next, not to rewrite. Signup (`POST /auth/signup`) now refuses to create an account unless `accepted_terms` is true, checked server-side (not just a disabled button) so a direct API call can't skip it; `users.terms_accepted_at` (migration 0035) records when. `Signup`'s form has a required checkbox above the submit button, linking to `/terms`/`/privacy` in a new tab; the button stays disabled until it's ticked.
 - Website positioning (owner, 2026-09-26): FlowXP is **AI-powered billing for every kind of business** (shops, restaurants, salons, wholesalers, services), not restaurant-only. Hero: "Billing software that tells you what to do next." AI = insights that separate what happened / what needs a look / what to do next. Reference site for layout: reefsentinel.com. /ai (AI Manager, in the top nav) describes only real AI features (forecast, reorder suggestions, leakage, profitability, read-only Flow AI chat via ai/tools.js, menu-from-photo, alerts) and never shows an invented AI answer; shared marketing pieces live in src/site/parts.jsx (Shot, PageHero, FeatureRow, CellGrid, Node/Connector, FinalCta, Tag). Each public page is its own component: Home, ProductPage (/features), IndustriesPage, AIPage, IntegrationsPage (imported as SiteIntegrations in App.jsx; the app has its own IntegrationsPage), Pricing, AboutPage, ContactPage (mailto, no form), Legal. content.js now only holds the shared FAQ. Screens that would show customer phone numbers (customers, loyalty) are not used as marketing screenshots.
 - Owner's target: finish the restaurant vertical, then the mobile app, then salon/retail/wholesale/general billing on the same core.
+
+
+## 4q. Offline-first pattern (2026-10-08)
+`OFFLINE_FIRST.md` is the rule book: local SQLite copy + queue on the phone, server stays the authority and re-validates everything, offline sales are recorded (never refused for stock) and flagged for review. Done for the general till and pharmacy; salon, wholesale, distributor are online-only.

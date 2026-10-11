@@ -68,7 +68,7 @@ const CreditNoteModal = ({ invoice, onClose, onIssued }) => {
             <div className="grid gap-4 sm:grid-cols-2">
               <Field id="cn-settle" label="What happens to the money">
                 <Select id="cn-settle" value={settle} onChange={(e) => setSettle(e.target.value)}>
-                  <option value="none">Just the credit note (no money moves)</option>
+                  <option value="none">Keep it as credit (for an exchange, or paid back later)</option>
                   <option value="refund">Pay back what was already paid</option>
                 </Select>
               </Field>

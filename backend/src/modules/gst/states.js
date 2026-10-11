@@ -17,6 +17,12 @@ const ALIASES = {
   'andaman & nicobar islands': 'andaman and nicobar islands', 'a&n islands': 'andaman and nicobar islands'
 };
 
+/* The union territories with no legislature of their own charge UTGST where a state charges SGST: Chandigarh, Dadra and Nagar Haveli and Daman and Diu,
+   Lakshadweep, the Andaman and Nicobar Islands and Ladakh. (Delhi, Puducherry and Jammu and Kashmir have a legislature and charge SGST.) The amount is kept
+   in the same place as SGST and filed in the same column; only the name on the bill and the reports changes. */
+const UTGST_CODES = new Set(['04', '26', '31', '35', '38']);
+export const taxName = (state) => (UTGST_CODES.has(stateCode(state)) ? 'UTGST' : 'SGST');
+
 export const stateName = (code) => Object.entries(STATE_CODES).find(([, c]) => c === code)?.[0] ?? null;
 
 const clean = (v) => String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' ');

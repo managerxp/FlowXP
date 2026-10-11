@@ -106,8 +106,16 @@ export const storageDriver = () => driver().name;
 /** Store a file; returns the URL to keep. `key` is a relative path like products/12/34-1700000000.jpg. */
 export const putFile = ({ key, buffer, contentType }) => driver().put({ key, buffer, contentType });
 
-/** Best-effort delete of a previously stored URL (a failed cleanup must never fail the request). */
-export const removeFile = async (url) => {
+/** Is this stored address inside this business's own folder (products/<id>/ or logos/<id>/)? A photo or logo address can be typed into some fields, so what a business asks to delete is only ever its own. */
+export const isOwnFile = (url, businessId) => {
+  if (!url || !Number.isInteger(Number(businessId))) return false;
+  const path = String(url).split('?')[0];
+  return new RegExp(`(^|/)(products|logos)/${Number(businessId)}/[^/]+$`).test(path) && !path.includes('..');
+};
+
+/** Best-effort delete of a previously stored URL (a failed cleanup must never fail the request). With a business id, anything outside that business's own folder is left alone. */
+export const removeFile = async (url, businessId) => {
+  if (businessId !== undefined && !isOwnFile(url, businessId)) return;
   try { await driver().remove(url); } catch (error) { console.error('[storage] remove failed:', error.message); }
 };
 

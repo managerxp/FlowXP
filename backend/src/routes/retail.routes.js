@@ -10,6 +10,11 @@ import { requireAnyPermission, requireAuth, requireOutlet, requirePermission, wi
 import { idempotent } from '../middleware/idempotency.js';
 import * as identity from '../controllers/productIdentity.controller.js';
 import * as stock from '../controllers/retailStock.controller.js';
+import * as invoiceImport from '../controllers/invoiceImport.controller.js';
+import * as promotions from '../controllers/promotions.controller.js';
+import * as retailDashboard from '../controllers/retailDashboard.controller.js';
+import rateLimit from 'express-rate-limit';
+import { uploadBillFiles } from '../middleware/upload.js';
 import { isRetail } from '../modules/retailSettings.js';
 
 const router = Router();
@@ -32,6 +37,33 @@ router.get('/counts/:id', ...read, stock.getCount);
 router.post('/counts/:id/items', ...write, idempotent(), stock.countItems);
 router.post('/counts/:id/apply', ...write, idempotent(), stock.finishCount);
 router.post('/counts/:id/cancel', ...write, stock.dropCount);
+
+/* Supplier bills: reading one costs an AI request, so a person is limited on top of the plan's monthly allowance. */
+const billScanLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false,
+  keyGenerator: (req) => `u${req.auth?.userId ?? req.ip}`,
+  message: { success: false, message: 'Too many bills read in a short time. Try again in a few minutes.' }
+});
+router.post('/invoice-import/scan', ...write, billScanLimiter, uploadBillFiles, invoiceImport.scan,
+  (error, _req, res, _next) => res.status(400).json({ success: false, message: error.message || 'Could not read that file' }));
+router.get('/invoice-import/check', ...read, invoiceImport.check);
+router.post('/invoice-import/learn', ...write, invoiceImport.learn);
+
+/* Offers: the owner manages them (products or settings permission); the till only asks which are on and what a cart gets. */
+/* Offers work for shops and for restaurants and cafes (the counter and the table bill both apply them). */
+const OFFER_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'GAMING_CAFE', 'RACING'];
+const offersTypes = (req, res, next) => (isRetail(req.tenant) || OFFER_TYPES.includes(req.tenant?.businessType) ? next() : res.status(404).json({ success: false, message: 'Not found' }));
+const till = [requireAuth, withBusiness(), offersTypes, requirePermission('billing')];
+const offersRead = [requireAuth, withBusiness(), offersTypes, requireAnyPermission('products', 'settings')];
+const offersWrite = [requireAuth, withBusiness({ requireActive: true }), offersTypes, requireAnyPermission('products', 'settings')];
+router.get('/summary', requireAuth, withBusiness(), retailOnly, requireAnyPermission('reports', 'inventory', 'billing'), retailDashboard.summary);
+router.get('/today', requireAuth, withBusiness(), retailOnly, requireAnyPermission('reports', 'inventory', 'billing'), retailDashboard.today);
+router.get('/promotions/active', ...till, promotions.active);
+router.post('/promotions/preview', ...till, promotions.preview);
+router.get('/promotions', ...offersRead, promotions.list);
+router.post('/promotions', ...offersWrite, promotions.create);
+router.put('/promotions/:id', ...offersWrite, promotions.update);
+router.delete('/promotions/:id', ...offersWrite, promotions.remove);
 
 router.post('/import/products', ...write, requirePermission('products'), requireOutlet, stock.importProductRows);
 router.post('/import/stock', ...write, requireOutlet, stock.importStockRows);

@@ -13,14 +13,13 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Button, Field, Input, Logo } from '../components/ui.jsx';
 import { Check, Shot } from '../site/parts.jsx';
 
-/* Mirrors the list the API validates against. A mismatch here is a 400 the
+/* Mirrors SIGNUP_TYPES in the API (backend/src/utils/validate.js): only the businesses FlowXP is built for. Older accounts of other types keep working.
+   The API validates against it. A mismatch here is a 400 the
    user cannot fix, so the two lists must be changed together. */
 const BUSINESS_TYPES = [
-  ['RESTAURANT', 'Restaurant'], ['CAFE', 'Café'], ['CLOUD_KITCHEN', 'Cloud kitchen'], ['RETAIL', 'Retail'],
+  ['RESTAURANT', 'Restaurant'], ['CAFE', 'Café'], ['CLOUD_KITCHEN', 'Cloud kitchen'], ['HOTEL', 'Hotel and restaurant'], ['RETAIL', 'Retail'],
   ['SUPERMARKET', 'Supermarket'], ['PHARMACY', 'Pharmacy'], ['SALON', 'Salon'],
-  ['SERVICES', 'Services'], ['ELECTRONICS', 'Electronics'], ['CLOTHING', 'Clothing'],
-  ['GAMING_CAFE', 'Gaming café'], ['RACING', 'Racing'], ['WHOLESALE', 'Wholesale'],
-  ['DISTRIBUTOR', 'Distributor'], ['OTHER', 'Other']
+  ['WHOLESALE', 'Wholesale'], ['DISTRIBUTOR', 'Distributor']
 ];
 
 /* Why a first-time visitor can trust this screen, shown beside the form. */
@@ -273,8 +272,8 @@ export const Signup = () => {
           <Field id="phone" label="Mobile number (optional)" hint="For account recovery and bill delivery.">
             <Input id="phone" type="tel" inputMode="tel" value={form.phone} onChange={set('phone')} autoComplete="tel" />
           </Field>
-          <Field id="password" label="Password" hint="At least 8 characters.">
-            <PasswordInput id="password" value={form.password} onChange={set('password')} autoComplete="new-password" minLength={8} required />
+          <Field id="password" label="Password" hint="At least 10 characters.">
+            <PasswordInput id="password" value={form.password} onChange={set('password')} autoComplete="new-password" minLength={10} required />
           </Field>
         </fieldset>
 
@@ -508,11 +507,11 @@ export const ForgotPassword = () => {
           <Field id="code" label="Code">
             <CodeField id="code" value={code} onChange={(e) => setCode(e.target.value)} />
           </Field>
-          <Field id="password" label="New password" hint="At least 8 characters.">
-            <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={8} required />
+          <Field id="password" label="New password" hint="At least 10 characters.">
+            <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={10} required />
           </Field>
           <Field id="confirm" label="Confirm new password" error={mismatch}>
-            <PasswordInput id="confirm" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" minLength={8} required />
+            <PasswordInput id="confirm" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" minLength={10} required />
           </Field>
           <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? 'Saving…' : 'Set new password'}</Button>
           <button type="button" className="text-small font-medium text-brand-600 hover:text-brand-700" onClick={resend}>Resend code</button>

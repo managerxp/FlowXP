@@ -18,6 +18,7 @@ import { api, formatCurrency } from '../lib/api.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import UpiCollect from '../components/UpiCollect.jsx';
+import RoomChargePicker from '../components/RoomChargePicker.jsx';
 import FoodMark from '../components/FoodMark.jsx';
 import { LoyaltyCard, MobileLookup, PointsPanel, RewardHint } from '../components/LoyaltyCard.jsx';
 import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, setDevicePref } from '../lib/printing.js';
@@ -391,6 +392,7 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
   const [brands, setBrands] = useState([]);
   const [riders, setRiders] = useState([]);
   const [method, setMethod] = useState('CASH');
+  const [room, setRoom] = useState(null);   // the in-house guest a bill is charged to (a hotel's restaurant)
   const [received, setReceived] = useState('');
   const [done, setDone] = useState(null);         // the invoice, once billed
   const [collecting, setCollecting] = useState(null);   // billed, waiting for its UPI payment
@@ -464,7 +466,8 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
   const subtotal = open.reduce((sum, i) => sum + Number(i.line_total), 0);
   const gst = open.reduce((sum, i) => sum + withTax(i, i.line_total), 0) - subtotal;
   const total = Math.max(0, Math.round((subtotal + gst - rewardOff) * 100) / 100);
-  const payLater = method === 'LATER';
+  const toRoom = method === 'ROOM';
+  const payLater = method === 'LATER' || toRoom;   // neither takes money at the table
   const amount = received === '' ? null : Number(received);
   const partial = !payLater && amount != null && amount < total;
   const change = method === 'CASH' && amount != null && amount > total ? amount - total : 0;
@@ -472,6 +475,7 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
   const upiQr = method === 'UPI' && Boolean(business?.upi_vpa);
 
   const billOrder = async () => {
+    if (toRoom && !room) { setError('Choose the guest whose room this is charged to'); return; }
     setBusy(true); setError('');
     try {
       const invoice = await api(`/orders/${orderId}/bill`, {
@@ -479,10 +483,12 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
         body: {
           coupon_code: couponCode.trim() || undefined,
           redeem_points: Number(redeem) > 0 ? Number(redeem) : undefined,
+          charge_to_booking_id: toRoom ? room.booking_id : undefined,
           payment: payLater || upiQr ? undefined : { method, amount: amount ?? 'FULL' }
         }
       });
       billKey.settle();
+      if (toRoom) toast.success(`Charged to ${room.label}`);
       if (upiQr) { setCollecting({ invoice, amount: partial ? amount : undefined }); onChanged(); return; }
       const cash = method === 'CASH' && !payLater;
       if (getDevicePrefs().autoPrintReceipt) printReceipt(invoice.invoice_id, { cash });
@@ -749,11 +755,12 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
           </div>
 
           <div role="radiogroup" aria-label="How is it paid?" className="mt-3 grid grid-cols-3 gap-1.5">
-            {METHODS.map(([value, label]) => (
+            {(business?.business_type === 'HOTEL' ? [...METHODS, ['ROOM', 'To room']] : METHODS).map(([value, label]) => (
               <button key={value} type="button" role="radio" aria-checked={method === value} onClick={() => { setMethod(value); setReceived(''); }}
                       className={`h-9 rounded-lg border text-small font-medium ${method === value ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>{label}</button>
             ))}
           </div>
+          {toRoom && <RoomChargePicker value={room} onChange={setRoom} />}
           {!payLater && (
             <div className="mt-2 flex items-center gap-3">
               <div className="w-32"><Input type="number" min="0" step="0.01" value={received} onChange={(e) => setReceived(e.target.value)} placeholder={total.toFixed(2)} aria-label={method === 'CASH' ? 'Cash received' : 'Amount paid now'} className="!py-1.5 text-right" /></div>
@@ -766,7 +773,7 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
           )}
           {pendingCount > 0 && <p className="mt-2 text-caption text-warning">{pendingCount} item{pendingCount === 1 ? ' has' : 's have'} not been sent to the kitchen yet.</p>}
           <Button onClick={billOrder} disabled={busy || total === 0} size="lg" className="mt-3 h-11 w-full">
-            {busy ? 'Working…' : payLater ? `Save bill · ${formatCurrency(total)} unpaid` : upiQr ? `Bill and show UPI QR · ${formatCurrency(partial ? amount : total)}` : partial ? `Take ${formatCurrency(amount)} · rest due` : `${billedCount ? 'Bill the rest' : 'Bill'} · ${formatCurrency(total)}`}
+            {busy ? 'Working…' : toRoom ? (room ? `Charge ${formatCurrency(total)} to ${room.label}` : 'Choose a room') : payLater ? `Save bill · ${formatCurrency(total)} unpaid` : upiQr ? `Bill and show UPI QR · ${formatCurrency(partial ? amount : total)}` : partial ? `Take ${formatCurrency(amount)} · rest due` : `${billedCount ? 'Bill the rest' : 'Bill'} · ${formatCurrency(total)}`}
           </Button>
         </div>
       )}

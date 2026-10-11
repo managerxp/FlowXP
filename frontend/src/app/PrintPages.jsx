@@ -8,6 +8,7 @@
  * FlowXP. Opened with ?auto=1 the page prints itself once its data has loaded.
  */
 import { useEffect, useState } from 'react';
+import { stateTaxName } from '../lib/gstNames.js';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { api, formatCurrency } from '../lib/api.js';
@@ -80,8 +81,11 @@ export const ReceiptPage = () => {
 
   const s = biz?.receipt_settings;
   const unpaid = invoice && invoice.status === 'ISSUED' && invoice.balance_due > 0;
-  const upi = biz?.upi_vpa && s?.show_upi_qr && unpaid
-    ? `upi://pay?pa=${encodeURIComponent(biz.upi_vpa)}&pn=${encodeURIComponent(biz.name)}&am=${invoice.balance_due.toFixed(2)}&cu=INR&tn=${encodeURIComponent(invoice.invoice_number)}` : null;
+  // ?upi=<rupees> is a UPI payment being taken now: the QR is for exactly that (never more than is owed), even if the receipt setting for the balance QR is off
+  const asked = Number(new URLSearchParams(window.location.search).get('upi')) || null;
+  const upiAmount = asked && unpaid ? Math.min(asked, invoice.balance_due) : null;
+  const upi = biz?.upi_vpa && unpaid && (upiAmount || s?.show_upi_qr)
+    ? `upi://pay?pa=${encodeURIComponent(biz.upi_vpa)}&pn=${encodeURIComponent(biz.name)}&am=${(upiAmount ?? invoice.balance_due).toFixed(2)}&cu=INR&tn=${encodeURIComponent(invoice.invoice_number)}` : null;
   useEffect(() => { if (upi) QRCode.toDataURL(upi, { width: 160, margin: 1 }).then(setQr); else setQr(''); }, [upi]);
   usePrintOnLoad(Boolean(invoice && biz && (!upi || qr)));
 
@@ -91,7 +95,7 @@ export const ReceiptPage = () => {
   const outlet = invoice.outlet;
   const gstin = (outlet?.gstin || biz.gstin);
   const address = [outlet?.address || biz.address, outlet?.city || biz.city].filter(Boolean).join(', ');
-  const taxRows = [['CGST', invoice.cgst], ['SGST', invoice.sgst], ['IGST', invoice.igst]].filter(([, v]) => v > 0);
+  const taxRows = [['CGST', invoice.cgst], [stateTaxName(outlet?.state || biz.state), invoice.sgst], ['IGST', invoice.igst]].filter(([, v]) => v > 0);
   const handDiscount = invoice.discount - invoice.coupon_discount;
 
   return (
@@ -138,7 +142,7 @@ export const ReceiptPage = () => {
         {invoice.refunded > 0 && <Row left="Refunded" right={`-${invoice.refunded.toFixed(2)}`} />}
         {unpaid && <Row left="BALANCE DUE" right={invoice.balance_due.toFixed(2)} bold />}
         {qr && (
-          <div className="mt-2 text-center"><img src={qr} alt="UPI payment QR" className="mx-auto h-28 w-28" /><p>Scan to pay the balance</p></div>
+          <div className="mt-2 text-center"><img src={qr} alt="UPI payment QR" className="mx-auto h-28 w-28" /><p>{upiAmount ? `Scan to pay ₹${upiAmount.toFixed(2)} by UPI` : 'Scan to pay the balance'}</p></div>
         )}
         {s.show_loyalty && invoice.loyalty_message && <><Rule /><p className="text-center">★ {invoice.loyalty_message}</p></>}
         {s.footer && <><Rule /><p className="whitespace-pre-line text-center">{s.footer}</p></>}
@@ -258,7 +262,7 @@ export const CreditNotePage = () => {
         <Rule />
         <Row left="Taxable value" right={note.subtotal.toFixed(2)} />
         {note.cgst > 0 && <Row left="CGST reversed" right={note.cgst.toFixed(2)} />}
-        {note.sgst > 0 && <Row left="SGST reversed" right={note.sgst.toFixed(2)} />}
+        {note.sgst > 0 && <Row left={`${stateTaxName(biz?.state)} reversed`} right={note.sgst.toFixed(2)} />}
         {note.igst > 0 && <Row left="IGST reversed" right={note.igst.toFixed(2)} />}
         {note.discount_share > 0 && <Row left="Less bill discount" right={`-${note.discount_share.toFixed(2)}`} />}
         <Rule />

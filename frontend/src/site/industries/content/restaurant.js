@@ -1,16 +1,16 @@
-/* Restaurants and cafés: one page, because it is one product (a café is a restaurant with a counter). Every point names
+/* Restaurants (cafés have their own page, cafe.js, on the same screens). Every point names
    something with a screen in the app; the screenshots are the real screens of the seeded demo business. */
 const p = (name) => `/product/${name}.webp`;
 
 export default {
   slug: 'restaurant',
-  label: 'Restaurants & cafés',
+  label: 'Restaurants',
   short: 'Restaurants',
-  blurb: 'Tables, QR ordering, the kitchen and the bill, working as one. For restaurants, cafés and food counters.',
+  blurb: 'Tables, QR ordering, the kitchen and the bill, working as one. For restaurants and food counters. Running a café? See the café page.',
   title: 'Tables, kitchen and bill, working as one.',
-  lead: 'For restaurants, cafés, bakeries and food counters. A guest orders at the table or the counter, the kitchen sees it at once, and the bill always matches what was served.',
+  lead: 'For restaurants and food counters. A guest orders at the table or the counter, the kitchen sees it at once, and the bill always matches what was served.',
   hero: { src: p('restaurant-kitchen'), alt: 'FlowXP kitchen display with tickets by table, the dishes still to make, their timers and a rush order flagged.' },
-  heroPoints: ['Choose Restaurant or Café when you sign up and these tools switch on', 'Works on a counter PC, a tablet and a phone', '7-day free trial, no card'],
+  heroPoints: ['Choose Restaurant when you sign up and these tools switch on', 'Works on a counter PC, a tablet and a phone', '7-day free trial, no card'],
   modules: [
     {
       id: 'billing', title: 'A fast counter for every kind of sale',
@@ -113,7 +113,7 @@ export default {
     'An app in the Play Store or App Store. Install FlowXP from the browser on any phone or tablet today.'
   ],
   faq: [
-    ['Is this for a café or bakery too?', 'Yes. A café is a restaurant with a counter, and the same screens cover it: counter billing, a menu, recipes and stock, and tables and QR ordering if you want them. Choose Café when you sign up.'],
+    ['Is this for a café or bakery too?', 'Yes, and there is a page made for it: it covers the counter, drinks with size, milk and sugar, and the barista screen. Choose Café when you sign up.'],
     ['Do I need special hardware?', 'No. Any 58 or 80 mm receipt printer works through the browser, and a barcode scanner that types into a box works with no setup. A tablet or an old PC is enough for the kitchen screen.'],
     ['What if the internet goes down?', 'Billing keeps working on the device and the sales are sent when it reconnects. Tables, orders and the kitchen screen need a connection.'],
     ['Does it handle GST?', 'Yes. Bills carry GST, credit notes reverse it exactly, and the GSTR-1 file, GSTR-3B figures and e-invoice or e-way bill files are prepared for you to upload. Nothing is sent to the government for you.'],

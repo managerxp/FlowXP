@@ -47,7 +47,7 @@ router.put('/categories/:id', ...write, can('products'), catalog.updateCategory)
 router.delete('/categories/:id', ...write, can('products'), catalog.removeCategory);
 
 router.get('/services', ...read, any('products', 'billing', 'appointments'), catalog.listServices);
-router.post('/services', ...write, can('products'), catalog.createService);
+router.post('/services', ...write, can('products'), idempotent(), catalog.createService);
 router.get('/services/:id', ...read, any('products', 'billing', 'appointments'), catalog.getService);
 router.put('/services/:id', ...write, can('products'), catalog.updateService);
 router.post('/services/:id/archive', ...write, can('products'), catalog.archiveService);
@@ -72,7 +72,7 @@ const appts = [feature('salon_appointments'), can('appointments')];
 router.get('/appointments', ...read, ...appts, appointments.list);
 router.get('/appointments/:id', ...read, ...appts, appointments.get);
 router.get('/appointments/:id/cart', ...read, ...appts, notStylist, appointments.cart);
-router.post('/appointments', ...write, ...appts, notStylist, requireOutlet, appointments.create);
+router.post('/appointments', ...write, ...appts, notStylist, requireOutlet, idempotent(), appointments.create);
 router.put('/appointments/:id', ...write, ...appts, notStylist, requireOutlet, appointments.reschedule);
 router.post('/appointments/:id/status', ...write, ...appts, appointments.setStatus);
 router.get('/schedule', ...read, ...appts, appointments.schedule);
@@ -83,11 +83,11 @@ const seeClients = any('customers', 'billing', 'appointments');
 router.get('/clients', ...read, seeClients, clients.list);
 router.get('/clients/segments', ...read, any('customers', 'billing'), clients.segments);
 router.get('/clients/lookup', ...read, any('customers', 'billing', 'appointments'), clients.lookup);
-router.post('/clients', ...write, can('customers'), clients.create);
+router.post('/clients', ...write, can('customers'), idempotent(), clients.create);
 router.get('/clients/:id', ...read, seeClients, clients.get);
 router.put('/clients/:id', ...write, can('customers'), clients.update);
 router.get('/clients/:id/timeline', ...read, seeClients, clients.timeline);
-router.post('/clients/:id/notes', ...write, any('customers', 'appointments'), clients.addNote);
+router.post('/clients/:id/notes', ...write, any('customers', 'appointments'), idempotent(), clients.addNote);
 
 /* ── the till ─────────────────────────────────────────────────────────────── */
 router.get('/pos/catalog', ...read, can('billing'), pos.catalog);
@@ -99,14 +99,14 @@ router.get('/invoices/:id/lines', ...read, can('billing'), pos.invoiceLines);
 
 /* ── memberships, packages, gift cards, offers ────────────────────────────── */
 router.get('/membership-plans', ...read, any('products', 'billing'), feature('salon_memberships'), plans.listPlans);
-router.post('/membership-plans', ...write, can('products'), feature('salon_memberships'), plans.createPlan);
+router.post('/membership-plans', ...write, can('products'), feature('salon_memberships'), idempotent(), plans.createPlan);
 router.put('/membership-plans/:id', ...write, can('products'), feature('salon_memberships'), plans.updatePlan);
 router.get('/memberships', ...read, any('customers', 'billing', 'products'), feature('salon_memberships'), plans.listMemberships);
 router.get('/memberships/:id/usage', ...read, any('customers', 'billing', 'products'), feature('salon_memberships'), plans.membershipUsage);
 router.post('/memberships/:id/cancel', ...write, can('refunds'), feature('salon_memberships'), plans.cancelMembership);
 
 router.get('/packages', ...read, any('products', 'billing'), feature('salon_packages'), plans.listPackages);
-router.post('/packages', ...write, can('products'), feature('salon_packages'), plans.createPackage);
+router.post('/packages', ...write, can('products'), feature('salon_packages'), idempotent(), plans.createPackage);
 router.put('/packages/:id', ...write, can('products'), feature('salon_packages'), plans.updatePackage);
 router.get('/client-packages', ...read, any('customers', 'billing', 'products'), feature('salon_packages'), plans.listClientPackages);
 router.put('/client-packages/:id', ...write, can('refunds'), feature('salon_packages'), plans.adjustClientPackage);

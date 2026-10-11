@@ -276,7 +276,8 @@ const RetailStockPage = () => {
   const { can, outletId } = useAuth();
   const [params, setParams] = useSearchParams();
   const tab = TABS.some(([k]) => k === params.get('tab')) ? params.get('tab') : 'stock';
-  const [status, setStatus] = useState('all');
+  // the dashboard's shelf tiles link here with ?status=low (or out, expiring, expired)
+  const [status, setStatus] = useState(() => { const s = new URLSearchParams(window.location.search).get('status'); return STATUS.some(([v]) => v === s) ? s : 'all'; });
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);

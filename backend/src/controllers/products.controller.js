@@ -7,6 +7,7 @@
  * writes to current_stock directly. This file never does.
  */
 import pool from '../config/database.js';
+import { hasPermission } from '../middleware/auth.js';
 import { recordAudit } from '../modules/events.js';
 import { toPaise, toRupees } from '../utils/money.js';
 import { checkName, firstError } from '../utils/validate.js';
@@ -84,6 +85,12 @@ const withCosts = async (rows, tenant) => {
     return { ...r, cost_source: recipe?.length ? 'recipe' : 'purchase', unit_cost_paise: costPaise, margin_pct: m.gross_margin_pct };
   });
 };
+
+/* What the shop paid, and the margin it implies, is for people who buy, stock, price or report: a waiter or cashier's list carries the selling price only. */
+export const seesCost = (tenant) => ['products', 'inventory', 'purchases', 'reports'].some((p) => hasPermission(tenant, p));
+const COST_FIELDS = ['purchase_price', 'unit_cost', 'margin_pct', 'cost_source'];
+export const withoutCost = (product) => { const out = { ...product }; for (const f of COST_FIELDS) delete out[f]; return out; };
+const reading = (tenant) => (seesCost(tenant) ? asProduct : (row) => withoutCost(asProduct(row)));
 
 const asProduct = (row) => ({
   product_id: row.product_id,
@@ -168,7 +175,7 @@ export const list = async (req, res) => {
     `${SELECT} ${clauses.map((c) => `AND ${c}`).join(' ')} ORDER BY p.name, p.product_id${limit ? ` LIMIT ${limit} OFFSET ${offset}` : ''}`,
     values
   );
-  res.json({ success: true, data: (await withCosts(await forOutlet(rows, req.tenant), req.tenant)).map(asProduct) });
+  res.json({ success: true, data: (await withCosts(await forOutlet(rows, req.tenant), req.tenant)).map(reading(req.tenant)) });
 };
 
 /* One product by id or, given a barcode, by scan — the billing screen's two
@@ -176,7 +183,7 @@ export const list = async (req, res) => {
 export const get = async (req, res) => {
   const { rows } = await pool.query(`${SELECT} AND p.product_id = $2`, [req.tenant.businessId, req.params.id]);
   if (!rows.length) return res.status(404).json({ success: false, message: 'Not found' });
-  res.json({ success: true, data: asProduct((await withCosts(await forOutlet(rows, req.tenant), req.tenant))[0]) });
+  res.json({ success: true, data: reading(req.tenant)((await withCosts(await forOutlet(rows, req.tenant), req.tenant))[0]) });
 };
 
 export const findByBarcode = async (req, res) => {
@@ -185,7 +192,7 @@ export const findByBarcode = async (req, res) => {
     [req.tenant.businessId, String(req.params.barcode).trim()]
   );
   if (!rows.length) return res.status(404).json({ success: false, message: 'No product with that barcode' });
-  res.json({ success: true, data: asProduct((await forOutlet(rows, req.tenant))[0]) });
+  res.json({ success: true, data: reading(req.tenant)((await forOutlet(rows, req.tenant))[0]) });
 };
 
 /* GET /api/products/lookup/:code — a scan or typed code that may be a barcode, SKU, ERP code or supplier code. One
@@ -195,7 +202,7 @@ export const lookup = async (req, res) => {
   if (!found.length) return fail(res, 404, 'No product with that code');
   const { rows } = await pool.query(`${SELECT} AND p.product_id = ANY($2::int[])`, [req.tenant.businessId, found.map((m) => m.product_id)]);
   const how = new Map(found.map((m) => [m.product_id, m.matched_on]));
-  const data = (await forOutlet(rows, req.tenant)).map((r) => ({ ...asProduct(r), matched_on: how.get(r.product_id) }));
+  const data = (await forOutlet(rows, req.tenant)).map((r) => ({ ...reading(req.tenant)(r), matched_on: how.get(r.product_id) }));
   res.json({ success: true, data, ambiguous: data.length > 1 });
 };
 
@@ -345,26 +352,64 @@ export const create = async (req, res) => {
    a whole supermarket (barcode -> product, name search) and keep scanning with no connection. Prices and stock follow
    the outlet being worked in, like the list.
    ========================================================================== */
+const POS_SELECT = `SELECT p.*, c.name AS category_name,
+            COALESCE((SELECT array_agg(b.barcode ORDER BY b.barcode_id) FROM product_barcodes b WHERE b.product_id = p.product_id), '{}') AS barcodes,
+            COALESCE((SELECT array_agg(pg.group_id ORDER BY pg.group_id) FROM product_modifier_groups pg WHERE pg.product_id = p.product_id), '{}') AS modifier_group_ids
+     FROM products p LEFT JOIN categories c ON c.category_id = p.category_id`;
+
+/** Catalogue rows as the till keeps them (this outlet's price and stock), for the pos-catalog pages and the sync deltas alike. */
+const posShape = async (rows, tenant) => {
+  const shaped = await forOutlet(rows, tenant);
+  const barcodes = new Map(rows.map((r) => [r.product_id, r.barcodes]));
+  // a pharmacy's phone also keeps what a medicine is (strength, maker, salt) and whether it needs a prescription or tracks batches and expiry
+  const details = new Map();
+  const wholesale = new Map();
+  if (['WHOLESALE', 'DISTRIBUTOR'].includes(tenant.businessType) && rows.length) {
+    const ids = rows.map((r) => r.product_id);
+    const d = await pool.query(`SELECT product_id, wholesale_price_paise, moq, sale_unit FROM wholesale_item_details WHERE business_id = $1 AND product_id = ANY($2::int[])`, [tenant.businessId, ids]);
+    const u = await pool.query(`SELECT product_id, unit_name, factor FROM wholesale_product_units WHERE business_id = $1 AND product_id = ANY($2::int[]) ORDER BY factor`, [tenant.businessId, ids]);
+    for (const x of d.rows) wholesale.set(x.product_id, { wholesale_price: x.wholesale_price_paise == null ? null : toRupees(x.wholesale_price_paise), moq: Number(x.moq), sale_unit: x.sale_unit, units: [] });
+    for (const x of u.rows) { if (!wholesale.has(x.product_id)) wholesale.set(x.product_id, { wholesale_price: null, moq: 1, sale_unit: null, units: [] }); wholesale.get(x.product_id).units.push({ unit_name: x.unit_name, factor: Number(x.factor) }); }
+  }
+  if (tenant.businessType === 'PHARMACY' && rows.length) {
+    const found = await pool.query(
+      `SELECT product_id, manufacturer, strength, dosage_form, salt_composition, schedule_class, prescription_required, batch_tracking, expiry_tracking
+       FROM pharmacy_item_details WHERE business_id = $1 AND product_id = ANY($2::int[])`, [tenant.businessId, rows.map((r) => r.product_id)]);
+    for (const d of found.rows) details.set(d.product_id, d);
+  }
+  return shaped.map((r) => {
+    const p = asProduct(r);
+    const d = details.get(r.product_id);
+    return {
+      product_id: p.product_id, name: p.name, sku: p.sku, barcodes: barcodes.get(r.product_id), unit: p.unit, selling_price: p.selling_price, mrp: p.mrp, tax_rate: p.tax_rate,
+      track_inventory: p.track_inventory, current_stock: p.current_stock, category_name: p.category_name, is_quick: p.is_quick, is_available: p.is_available, modifier_group_ids: p.modifier_group_ids,
+      ...(['WHOLESALE', 'DISTRIBUTOR'].includes(tenant.businessType) ? { wholesale: wholesale.get(r.product_id) ?? null } : {}),
+      ...(tenant.businessType === 'PHARMACY' ? {
+        pharmacy: d ? {
+          manufacturer: d.manufacturer, strength: d.strength, dosage_form: d.dosage_form, salt_composition: d.salt_composition, schedule_class: d.schedule_class,
+          prescription_required: Boolean(d.prescription_required), batch_tracking: Boolean(d.batch_tracking), expiry_tracking: Boolean(d.expiry_tracking)
+        } : null
+      } : {})
+    };
+  });
+};
+
+/** The sellable products among these ids, shaped for the till. Archived, services and other businesses' ids are simply absent. */
+export const posRowsByIds = async (tenant, ids) => {
+  if (!ids.length) return [];
+  const { rows } = await pool.query(
+    `${POS_SELECT} WHERE p.business_id = $1 AND p.status = 'ACTIVE' AND p.kind NOT IN ('SERVICE','INGREDIENT','PACKAGING') AND p.product_id = ANY($2::int[]) ORDER BY p.product_id`, [tenant.businessId, ids]);
+  return posShape(rows, tenant);
+};
+
 export const posCatalog = async (req, res) => {
   const after = Math.max(0, Math.trunc(Number(req.query.after)) || 0);
   const limit = Math.min(Math.max(Math.trunc(Number(req.query.limit)) || 1000, 1), 2000);
   const { rows } = await pool.query(
-    `SELECT p.*, c.name AS category_name,
-            COALESCE((SELECT array_agg(b.barcode ORDER BY b.barcode_id) FROM product_barcodes b WHERE b.product_id = p.product_id), '{}') AS barcodes
-     FROM products p LEFT JOIN categories c ON c.category_id = p.category_id
-     WHERE p.business_id = $1 AND p.status = 'ACTIVE' AND p.kind <> 'SERVICE' AND p.product_id > $2
+    `${POS_SELECT} WHERE p.business_id = $1 AND p.status = 'ACTIVE' AND p.kind NOT IN ('SERVICE','INGREDIENT','PACKAGING') AND p.product_id > $2
      ORDER BY p.product_id LIMIT ${limit}`, [req.tenant.businessId, after]
   );
-  const shaped = await forOutlet(rows, req.tenant);
-  const barcodes = new Map(rows.map((r) => [r.product_id, r.barcodes]));
-  const data = shaped.map((r) => {
-    const p = asProduct(r);
-    return {
-      product_id: p.product_id, name: p.name, sku: p.sku, barcodes: barcodes.get(r.product_id), unit: p.unit, selling_price: p.selling_price, mrp: p.mrp, tax_rate: p.tax_rate,
-      track_inventory: p.track_inventory, current_stock: p.current_stock, category_name: p.category_name, is_quick: p.is_quick, is_available: p.is_available, modifier_group_ids: p.modifier_group_ids
-    };
-  });
-  res.json({ success: true, data, meta: { next_after: rows.length === limit ? rows[rows.length - 1].product_id : null } });
+  res.json({ success: true, data: await posShape(rows, req.tenant), meta: { next_after: rows.length === limit ? rows[rows.length - 1].product_id : null } });
 };
 
 /* ==========================================================================
@@ -514,7 +559,7 @@ export const uploadImage = async (req, res) => {
     return res.status(502).json({ success: false, message: 'Could not save the photo. Try again in a moment.' });
   }
   await pool.query(`UPDATE products SET image_url = $1, updated_at = CURRENT_TIMESTAMP WHERE business_id = $2 AND product_id = $3`, [imageUrl, req.tenant.businessId, req.params.id]);
-  if (own.rows[0].image_url) removeFile(own.rows[0].image_url);   // the replaced photo, best effort
+  if (own.rows[0].image_url) removeFile(own.rows[0].image_url, req.tenant.businessId);   // the replaced photo, best effort
 
   recordAudit(req, { action: 'product.image_uploaded', resource_type: 'product', resource_id: req.params.id });
   const { rows: full } = await pool.query(`${SELECT} AND p.product_id = $2`, [req.tenant.businessId, req.params.id]);

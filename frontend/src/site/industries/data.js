@@ -1,6 +1,6 @@
 /*
  * What each industry page says, kept in one place so the hub, the detail
- * pages, the navigation and the coming-soon page all read from the same facts.
+ * pages and the navigation read from the same facts.
  *
  * READY: a built vertical with its own screens in the app. Each lives in
  * content/<slug>.js: the modules (a heading, what it does, the points, and the
@@ -9,19 +9,21 @@
  * route and a permission in the app, not a roadmap item.
  * CORE: everything else the core billing/stock/GST engine already serves
  * well, with no dedicated vertical needed.
- * SOON: named gaps, a feature the trade needs that is not built yet.
  */
 import restaurant from './content/restaurant.js';
+import cafe from './content/cafe.js';
 import cloudKitchen from './content/cloud-kitchen.js';
+import hotel from './content/hotel.js';
+import retail from './content/retail.js';
 import wholesale from './content/wholesale.js';
 import distributor from './content/distributor.js';
 import salon from './content/salon.js';
 import pharmacy from './content/pharmacy.js';
 
-export const READY = [restaurant, cloudKitchen, wholesale, distributor, salon, pharmacy];
+export const READY = [restaurant, cafe, cloudKitchen, hotel, retail, wholesale, distributor, salon, pharmacy];
 
-/* Old addresses that still work. The café page was merged into the restaurant page. */
-export const ALIASES = { cafe: 'restaurant', cafes: 'restaurant', 'cafe-and-restaurant': 'restaurant', 'cloud-kitchens': 'cloud-kitchen', distribution: 'distributor', pharmacies: 'pharmacy', salons: 'salon' };
+/* Old and alternative addresses that still work. */
+export const ALIASES = { cafes: 'cafe', 'coffee-shop': 'cafe', bakery: 'cafe', 'cafe-and-restaurant': 'restaurant', restaurants: 'restaurant', 'cloud-kitchens': 'cloud-kitchen', distribution: 'distributor', pharmacies: 'pharmacy', salons: 'salon', hotels: 'hotel', resort: 'hotel', resorts: 'hotel', lodge: 'hotel', guesthouse: 'hotel', 'guest-house': 'hotel', 'hotel-and-restaurant': 'hotel', supermarket: 'retail', supermarkets: 'retail', grocery: 'retail', kirana: 'retail', shops: 'retail', shop: 'retail', stores: 'retail' };
 
 /* The same on every page: what sits underneath whichever trade you choose. */
 export const UNDERNEATH = [
@@ -37,15 +39,5 @@ export const UNDERNEATH = [
    vertical needed, so no caveat either. */
 export const CORE = [
   { title: 'Groups with several outlets', body: 'One owner login sees every outlet; each one keeps its own stock, staff and invoice numbers.', big: true },
-  { title: 'Retail shops', body: 'Barcode billing, stock and GST for the counter.' },
-  { title: 'Supermarkets', body: 'Fast barcode billing and stock across counters.' },
-  { title: 'Bakeries and sweet shops', body: 'Counter billing, recipes and daily wastage.' },
-  { title: 'Gaming cafés and play zones', body: 'Bill time packages, snacks and memberships as items.' }
-];
-
-/* A real, named gap for each — what is missing, not just "not yet". */
-export const SOON = [
-  { title: 'Clothing and footwear', body: 'Billing, stock and loyalty work today. Size and colour variants are next.' },
-  { title: 'Electronics and mobiles', body: 'Billing, stock and customer credit work today. Serial number tracking per unit is next.' },
-  { title: 'Racing and simulator zones', body: 'Time-based billing and packages, the way gaming cafés already work, is next.' }
+  { title: 'Bakeries and sweet shops', body: 'Counter billing, recipes and daily wastage. The café page shows the counter in full.', big: true }
 ];

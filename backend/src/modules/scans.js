@@ -204,7 +204,7 @@ export const scanAccount = async (businessId) => {
 
 /* ── scheduling ───────────────────────────────────────────────────────────── */
 
-const RESTAURANT = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE', 'RACING'];
+const RESTAURANT = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'GAMING_CAFE', 'RACING'];
 
 export const localHour = (timezone, now = new Date()) => Number(new Intl.DateTimeFormat('en-GB', { timeZone: timezone, hour: 'numeric', hour12: false }).format(now)) % 24;
 
