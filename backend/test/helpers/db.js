@@ -21,6 +21,9 @@ export const setupTestDb = async () => {
     await admin.query(`CREATE DATABASE ${dbName}`);
   } catch (error) {
     skip = `no Postgres available (${error.message})`;
+    // A client that never connected queues queries forever, so cleanup must not touch it.
+    admin?.end().catch(() => {});
+    admin = null;
   }
 
   process.env.DATABASE_URL = url.toString();

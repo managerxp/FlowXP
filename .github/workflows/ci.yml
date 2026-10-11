@@ -12,12 +12,13 @@ concurrency:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    timeout-minutes: 20   # full suite takes ~7 min locally; a hang fails fast instead of burning 6h
+    timeout-minutes: 30   # full suite takes ~7 min on 8 cores; a hang fails fast instead of burning 6h
     services:
       postgres:
         image: postgres:16-alpine
         env:
           POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: flowxp   # the test helper connects here before creating its throwaway databases
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
