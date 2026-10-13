@@ -7,6 +7,9 @@ import { api, signedIn } from '../lib/session.ts';
 import { kvGet, kvSet } from '../lib/local.ts';
 import { Button, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
 import { LanguagePicker } from '../lib/lang.tsx';
+import { EmailCode } from '../lib/EmailCode.tsx';
+import { Logo } from '../lib/Logo.tsx';
+import { PRIVACY_URL, TERMS_URL } from '../lib/account.ts';
 import { t } from '../lib/i18n.ts';
 
 type LoginReply = { token?: string; requires_2fa?: boolean; requires_email_otp?: boolean; challenge?: string };
@@ -17,6 +20,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
   const [challenge, setChallenge] = useState<string | null>(null);
+  const [mailChallenge, setMailChallenge] = useState<string | null>(null);   // an account whose email is not confirmed yet
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -37,7 +41,7 @@ export default function Login() {
       } else {
         const reply = await api.post<LoginReply>('/auth/login', { email: email.trim(), password }, { signIn: true });
         if (reply.requires_2fa && reply.challenge) { setChallenge(reply.challenge); return; }
-        if (reply.requires_email_otp) { setError('Confirm your email first. Open flowxp.in on any device, sign in there, and enter the code we email you. Then come back here.'); return; }
+        if (reply.requires_email_otp && reply.challenge) { setMailChallenge(reply.challenge); return; }
         await finish(reply);
       }
     } catch (e) {
@@ -49,8 +53,8 @@ export default function Login() {
     <SafeAreaView style={s.screen}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20, gap: 12, maxWidth: 480, width: '100%', alignSelf: 'center' }} keyboardShouldPersistTaps="handled">
-          <LanguagePicker compact />
-          <Title>FlowXP</Title>
+          {mailChallenge ? <EmailCode challenge={mailChallenge} email={email.trim()} onVerified={async (token) => { await finish({ token }); }} onBack={() => setMailChallenge(null)} /> : <>
+          <Logo width={220} />
           <Soft>{challenge ? t('Open your authenticator app and type the 6-digit code for FlowXP. Lost your phone? Type a recovery code instead.') : t('Sign in with the email and password you use on flowxp.in.')}</Soft>
           {challenge ? (
             <TextInput style={s.input} value={code} onChangeText={setCode} placeholder={t('6-digit code')} keyboardType="number-pad" autoFocus accessibilityLabel="Six-digit code" onSubmitEditing={submit} />
@@ -68,11 +72,18 @@ export default function Login() {
           <ErrorText>{error}</ErrorText>
           <Button title={challenge ? 'Continue' : 'Sign in'} onPress={submit} busy={busy} disabled={challenge ? !code : !email.trim() || !password} />
           {challenge ? <Button title="Back" kind="quiet" onPress={() => { setChallenge(null); setCode(''); setError(''); }} /> : (
-            <Pressable accessibilityRole="link" onPress={() => { void Linking.openURL('https://flowxp.in/forgot-password'); }} style={{ minHeight: 48, justifyContent: 'center', alignItems: 'center' }}>
+            <Pressable accessibilityRole="link" onPress={() => router.push('/forgot')} style={{ minHeight: 48, justifyContent: 'center', alignItems: 'center' }}>
               <Text style={{ color: color.brand, fontWeight: '600' }}>{t('Forgot your password?')}</Text>
             </Pressable>
           )}
+          {!challenge ? <Button title="Start your 7-day free trial" kind="quiet" onPress={() => router.push('/signup')} /> : null}
           <Text style={{ color: color.soft, fontSize: 13, textAlign: 'center' }}>{t('Your sign-in stays on this phone, in its secure storage.')}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 20 }}>
+            <Pressable accessibilityRole="link" onPress={() => { void Linking.openURL(PRIVACY_URL); }} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: color.soft, textDecorationLine: 'underline' }}>Privacy Policy</Text></Pressable>
+            <Pressable accessibilityRole="link" onPress={() => { void Linking.openURL(TERMS_URL); }} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: color.soft, textDecorationLine: 'underline' }}>Terms</Text></Pressable>
+          </View>
+          <LanguagePicker compact />
+          </>}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

@@ -102,10 +102,12 @@ const contactLimiter = limiter(5, 60, 'Too many messages sent. Try again later.'
 const deletionLimiter = limiter(5, 60, 'Too many requests from here. Try again later.');
 /* The website chat calls the AI provider, which costs money per message: generous for a person, tight for a script. */
 const appErrorLimiter = limiter(30, 15, 'Too many reports from here.');
+const appReportLimiter = limiter(10, 15, 'You have sent a few reports already. Please wait a little before sending another.');
 const assistantLimiter = limiter(30, 15, 'Too many questions in a short time. Try again in a few minutes.');
 
 /* ── Public ─────────────────────────────────────────────────────────────── */
 
+router.post('/app-reports', requireAuth, appReportLimiter, appErrors.create);   // what a signed-in person types under "Report a problem"
 router.post('/app-errors', appErrorLimiter, appErrors.report);   // the mobile app's crash reports (no sign-in: a crash can come first)
 router.post('/auth/signup', signupLimiter, auth.signup);
 router.post('/auth/login', loginLimiter, auth.login);

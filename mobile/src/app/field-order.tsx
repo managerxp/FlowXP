@@ -10,7 +10,7 @@ import { useSale } from '../lib/sale.ts';
 import { dayOf } from '../lib/till.ts';
 import { refreshCounts, syncAll } from '../lib/sync.ts';
 import type { Product } from '../lib/catalog.ts';
-import { addFLine, dropFLine, ensureVisit, estimateOrder, fieldOrderBody, fieldOrderProblem, pieceRupees, sendOrQueue, setFQty, setFUnit, unitFactor, type FLine } from '../lib/field.ts';
+import { addFLine, dropFLine, ensureVisit, estimateOrder, loadKnownPrices, rememberShopPrices, fieldOrderBody, fieldOrderProblem, pieceRupees, sendOrQueue, setFQty, setFUnit, unitFactor, type FLine, type KnownPrices } from '../lib/field.ts';
 import { creditText, previewBody, shortLines, type WPreview } from '../lib/wholesale.ts';
 import { qty, rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
@@ -29,6 +29,7 @@ export default function FieldOrder() {
   const [found, setFound] = useState<Product[]>([]);
   const [lines, setLines] = useState<FLine[]>([]);
   const [preview, setPreview] = useState<WPreview | null>(null);
+  const [known, setKnown] = useState<KnownPrices>({});
   const [po, setPo] = useState('');
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
@@ -50,13 +51,14 @@ export default function FieldOrder() {
     let live = true;
     const t = setTimeout(() => {
       const wl = lines.map((l) => ({ key: l.key, product: { product_id: l.product.product_id } as never, unit_name: l.unit_name, quantity: l.quantity }));
-      void api.post<WPreview>('/wholesale/orders/preview', previewBody(customer.id, wl), { timeoutMs: 6000 }).then((p) => { if (live) setPreview(p); }).catch(() => { if (live) setPreview(null); });
+      void api.post<WPreview>('/wholesale/orders/preview', previewBody(customer.id, wl), { timeoutMs: 6000 }).then((p) => { if (live) { setPreview(p); void rememberShopPrices({ get: kvGet, set: kvSet }, customer.id, lines, p).then(setKnown); } }).catch(() => { if (live) setPreview(null); });
     }, 500);
     return () => { live = false; clearTimeout(t); };
   }, [lines, customer?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const edit = (next: FLine[]) => { setLines(next); changed(); };
-  const est = estimateOrder(lines);
+  useEffect(() => { if (customer) void loadKnownPrices({ get: kvGet, set: kvSet }, customer.id).then(setKnown); else setKnown({}); }, [customer?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const est = estimateOrder(lines, known);
   const bad = !customer ? 'Choose the shop first' : fieldOrderProblem(lines);
   const credit = preview ? creditText(preview.credit) : null;
   const short = shortLines(preview);

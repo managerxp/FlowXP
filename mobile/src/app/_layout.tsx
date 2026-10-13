@@ -1,8 +1,11 @@
 import { useEffect } from 'react';
 import { Text, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { restoreSession, useSession } from '../lib/session.ts';
+import { OfflineBar } from '../lib/OfflineBar.tsx';
+import { Logo } from '../lib/Logo.tsx';
+import { flushBugReports } from '../lib/bugsend.ts';
 import { installAlerts, syncAlerts } from '../lib/push.ts';
 import { installCrashReporting, reportError } from '../lib/crash.ts';
 import { installLocation } from '../lib/locate.ts';
@@ -16,9 +19,11 @@ export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Pro
   useEffect(() => { void reportError(error, undefined, false); }, [error]);
   return (
     <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 12, backgroundColor: color.bg }}>
+      <Logo width={160} />
       <Text accessibilityRole="header" style={{ fontSize: 22, fontWeight: '700', color: color.ink }}>Something went wrong</Text>
       <Text style={{ color: color.soft }}>Your bills are safe on this phone. Tap Try again. If it keeps happening, tell FlowXP: this problem has already been reported.</Text>
       <Button title="Try again" onPress={() => { void retry(); }} />
+      <Button title="Report a problem" kind="quiet" onPress={() => router.push('/report')} />
     </View>
   );
 }
@@ -30,11 +35,12 @@ export default function Layout() {
   const lang = useLang();
   const { ready, token } = useSession();
   // once someone is signed in: keep this phone on the list for alerts, or ask once
-  useEffect(() => { if (ready && token) void syncAlerts(); }, [ready, token]);
+  useEffect(() => { if (ready && token) { void syncAlerts(); void flushBugReports(); } }, [ready, token]);
   useEffect(() => { installCrashReporting(); installLocation(); installAlerts(); void loadLanguage(); void restoreSession(); }, []);
   return (
     <>
       <StatusBar style="dark" />
+      <OfflineBar />
       {/* a new language re-draws every screen: the key makes the whole stack start again, so nothing keeps the old words */}
       <Stack key={lang} screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />

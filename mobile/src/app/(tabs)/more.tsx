@@ -96,6 +96,7 @@ export default function More() {
     { title: 'This phone', items: [
       { left: 'Bills waiting to send', sub: 'Made without internet, and recent', icon: 'cloud-upload-outline', go: '/waiting' },
       { left: 'Settings', sub: 'Printer, updates, this phone', icon: 'settings-outline', go: '/settings' },
+      { left: 'Report a problem', sub: 'Tell FlowXP something went wrong', icon: 'bug-outline', go: '/report' },
       { left: 'Switch outlet', sub: outlet?.name ?? '', icon: 'swap-vertical-outline', go: '/choose', show: several }
     ] }
   ];

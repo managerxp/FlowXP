@@ -17,7 +17,7 @@ export class NetworkError extends TypeError {
 export type Session = { token: string | null; businessId: number | null; branchId: number | null };
 export type Envelope<T> = { success: boolean; data: T; message?: string; code?: string; meta?: Record<string, unknown> };
 
-export type ApiOptions = { baseUrl: string; getSession: () => Session; onToken?: (token: string) => void; onUnauthorized?: () => void; fetchImpl?: typeof fetch };
+export type ApiOptions = { baseUrl: string; getSession: () => Session; onToken?: (token: string) => void; onUnauthorized?: () => void; onNetwork?: (reachable: boolean) => void; fetchImpl?: typeof fetch };
 export type CallOptions = { method?: string; body?: unknown; idempotencyKey?: string; businessId?: number | null; signIn?: boolean; timeoutMs?: number; headers?: Record<string, string> };
 
 /** A new id for one user action (one sale). Random enough that two phones never collide; the server keeps it per business. */
@@ -26,7 +26,7 @@ export const newKey = (): string => {
   return `m-${Date.now().toString(36)}-${chunk()}${chunk()}${chunk()}`;
 };
 
-export const createApi = ({ baseUrl, getSession, onToken, onUnauthorized, fetchImpl }: ApiOptions) => {
+export const createApi = ({ baseUrl, getSession, onToken, onUnauthorized, onNetwork, fetchImpl }: ApiOptions) => {
   const call = async <T>(path: string, { method = 'GET', body, idempotencyKey, businessId, signIn = false, timeoutMs = 30000, headers: extra }: CallOptions = {}): Promise<Envelope<T>> => {
     const session = getSession();
     const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-Requested-With': 'FlowXP' };
@@ -43,7 +43,8 @@ export const createApi = ({ baseUrl, getSession, onToken, onUnauthorized, fetchI
     let response: Response;
     try {
       response = await (fetchImpl ?? fetch)(`${baseUrl}/api${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: abort.signal });
-    } catch { throw new NetworkError(); } finally { clearTimeout(timer); }
+    } catch { onNetwork?.(false); throw new NetworkError(); } finally { clearTimeout(timer); }
+    onNetwork?.(true);
 
     let json: Envelope<T> | null = null;
     try { json = (await response.json()) as Envelope<T>; } catch { /* not JSON: a proxy error page */ }

@@ -1,5 +1,6 @@
 import { ActivityIndicator, Pressable, Pressable as P2, ScrollView as S2, StyleSheet, Text, Text as T2, View, View as V2, type ViewStyle } from 'react-native';
 import { ago } from './ranges.ts';
+import { isOfflineMessage } from './net.ts';
 import { t, tx } from './i18n.ts';
 import type { ReactNode } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -90,7 +91,14 @@ export const Loading = ({ what = 'Loading' }: { what?: string }) => (
 );
 
 /** Something failed: what happened, in the server's words, and a way to try again. */
-export const Failed = ({ message, onRetry }: { message: string; onRetry?: () => void }) => (
+export const Failed = ({ message, onRetry }: { message: string; onRetry?: () => void }) => isOfflineMessage(message) ? (
+  <V2 accessibilityRole="alert" style={[s.card, { margin: 16, gap: 10, alignItems: 'center', borderColor: '#fde68a', backgroundColor: '#fffbeb' }]}>
+    <Ionicons name="cloud-offline-outline" size={40} color="#92400e" />
+    <T2 style={{ color: '#92400e', fontWeight: '700', fontSize: 18 }}>{t('No internet')}</T2>
+    <T2 style={{ color: color.ink, textAlign: 'center' }}>{t('This needs a connection. Check your Wi-Fi or mobile data, then try again. Bills you make are saved on this phone and sent later.')}</T2>
+    {onRetry ? <Button title="Try again" onPress={onRetry} /> : null}
+  </V2>
+) : (
   <V2 accessibilityRole="alert" style={[s.card, { margin: 16, gap: 10, borderColor: '#fecaca', backgroundColor: '#fef2f2' }]}>
     <T2 style={{ color: color.danger, fontWeight: '600' }}>{message}</T2>
     {onRetry ? <Button title="Try again" kind="quiet" onPress={onRetry} /> : null}

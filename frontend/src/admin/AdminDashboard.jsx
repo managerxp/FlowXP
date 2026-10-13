@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { adminApi } from '../lib/adminApi.js';
 import { formatCurrency } from '../lib/api.js';
+import LaunchChecks from './LaunchChecks.jsx';
 import { PageHeader, Card, SkeletonCards, Alert, StatCard } from '../components/ui.jsx';
 
 const Stat = (props) => <StatCard size="lg" {...props} />;
@@ -60,6 +61,7 @@ const AdminDashboard = () => {
   return (
     <div>
       <PageHeader title="Overview" lead="Every FlowXP tenant, at a glance." />
+      <LaunchChecks />
 
       {error && <Alert>{error}</Alert>}
 

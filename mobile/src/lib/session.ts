@@ -4,6 +4,7 @@
  */
 import * as SecureStore from 'expo-secure-store';
 import { createApi, type Session } from './api.ts';
+import { reportNetwork } from './net.ts';
 import { createStore, useStore } from './store.ts';
 import { closeScope, kvGet, kvSet, openScope } from './local.ts';
 
@@ -30,7 +31,8 @@ export const api = createApi({
   baseUrl: API_URL,
   getSession: () => sessionStore.get(),
   onToken: (token) => { sessionStore.set({ token }); save(); },
-  onUnauthorized: () => { void signOut(); }
+  onUnauthorized: () => { void signOut(); },
+  onNetwork: reportNetwork
 });
 
 /** Read what the keystore remembers, and slide the session forward if the server is reachable. Offline, the saved session is kept as it is. */

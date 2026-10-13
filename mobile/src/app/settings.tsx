@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Linking, ScrollView, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { goBack } from '../lib/nav.ts';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +16,7 @@ import { LanguagePicker } from '../lib/lang.tsx';
 import { t } from '../lib/i18n.ts';
 import { readChoice, turnOff, turnOn } from '../lib/push.ts';
 import type { AlertChoice } from '../lib/alerts.ts';
+import { PRIVACY_URL, TERMS_URL } from '../lib/account.ts';
 
 const Row = ({ label, value }: { label: string; value: string }) => (
   <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, gap: 12 }}>
@@ -84,8 +85,6 @@ export default function Settings() {
           <Row label="Server" value={API_URL} />
         </View>
 
-        <Text style={{ fontWeight: '700', color: color.ink }}>{t('Language')}</Text>
-        <LanguagePicker />
         <UpiSettings />
         <Text style={{ fontWeight: '700', color: color.ink }}>{t('Receipt paper width')}</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -101,13 +100,20 @@ export default function Settings() {
 
         <Button title="Send waiting bills now" kind="quiet" onPress={() => { void syncAll(); }} busy={sync.busy} />
         <Button title="Refresh the product list" kind="quiet" onPress={() => { void (async () => { if (!scope) return; say('Refreshing…'); try { await scope.catalog.rebuild(); await syncAll(); say('The product list was refreshed.'); } catch (e) { say('', e instanceof Error ? e.message : 'Could not refresh'); } })(); }} busy={sync.busy} />
+        <Button title="Report a problem" kind="quiet" onPress={() => router.push('/report')} />
         <Button title="Send a test report to FlowXP" kind="quiet" onPress={() => { void reportError(new Error(`Test report from ${device || 'a phone'}`), '/settings').then((r) => say(r === 'sent' ? 'Report sent.' : r === 'queued' ? 'No connection: the report will be sent later.' : 'Already sent a moment ago.')); }} />
         <Button title="Clear this phone's data" kind="danger" onPress={clearData} />
         <ErrorText>{error}</ErrorText>
         {message ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok }}>{message}</Text> : null}
         <Button title="Sign out" kind="quiet" onPress={leave} />
-        <Button title={t('Delete my account')} kind="quiet" onPress={() => { void Linking.openURL('https://flowxp.in/delete-account'); }} />
-        <Soft>{t('Opens the FlowXP website, where you can delete your account or ask us to. Your business keeps its bills.')}</Soft>
+        <Button title={t('Delete my account')} kind="quiet" onPress={() => router.push('/delete-account')} />
+        <Soft>{t('Deletes your account here in the app. Your business keeps its bills.')}</Soft>
+        <View style={{ flexDirection: 'row', gap: 20 }}>
+          <Pressable accessibilityRole="link" onPress={() => { void Linking.openURL(PRIVACY_URL); }} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: color.brand, fontWeight: '600' }}>Privacy Policy</Text></Pressable>
+          <Pressable accessibilityRole="link" onPress={() => { void Linking.openURL(TERMS_URL); }} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: color.brand, fontWeight: '600' }}>Terms</Text></Pressable>
+        </View>
+        <Text style={{ fontWeight: '700', color: color.ink }}>{t('Language')}</Text>
+        <LanguagePicker />
         <Button title="Back" onPress={() => goBack()} />
       </ScrollView>
       </Page>

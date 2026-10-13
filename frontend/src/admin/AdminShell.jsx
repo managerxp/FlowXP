@@ -3,7 +3,8 @@
  * app/AppShell.jsx: same "guard once here, not per-page" reasoning, far
  * fewer nav items since there's no business context to switch between.
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { adminApi } from '../lib/adminApi.js';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAdminAuth } from './AdminAuthContext.jsx';
 import { Button, Logo, PageLoader } from '../components/ui.jsx';
@@ -11,10 +12,13 @@ import { Button, Logo, PageLoader } from '../components/ui.jsx';
 const NAV = [
   { to: '/superadmin', label: 'Overview', end: true },
   { to: '/superadmin/businesses', label: 'Businesses' },
+  { to: '/superadmin/users', label: 'People' },
+  { to: '/superadmin/activity', label: 'Activity' },
   { to: '/superadmin/plans', label: 'Plans' },
   { to: '/superadmin/features', label: 'Features' },
   { to: '/superadmin/addons', label: 'Add-ons' },
   { to: '/superadmin/deletions', label: 'Deletions' },
+  { to: '/superadmin/bugs', label: 'Bugs', badge: true },
   { to: '/superadmin/settings', label: 'Settings' },
   { to: '/superadmin/security', label: 'Security' }
 ];
@@ -22,6 +26,14 @@ const NAV = [
 const AdminShell = () => {
   const { admin, loading, signOut } = useAdminAuth();
   const location = useLocation();
+  const [fresh, setFresh] = useState(0);   // new bug reports and new crashes, for the badge
+  useEffect(() => {
+    if (!admin) return undefined;
+    const load = () => adminApi('/bug-summary').then((s) => setFresh((s?.new_reports || 0) + (s?.new_crashes || 0))).catch(() => {});
+    load();
+    const t = setInterval(load, 60000);
+    return () => clearInterval(t);
+  }, [admin, location.pathname]);
   useEffect(() => { const m = document.createElement('meta'); m.name = 'robots'; m.content = 'noindex, nofollow'; document.head.appendChild(m); return () => m.remove(); }, []);
 
   if (loading) {
@@ -56,7 +68,7 @@ const AdminShell = () => {
         <nav className="space-y-0.5 px-3 pb-6">
           {NAV.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
-              {item.label}
+              {item.label}{item.badge && fresh > 0 ? <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-semibold text-white">{fresh}</span> : null}
             </NavLink>
           ))}
         </nav>

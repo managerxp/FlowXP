@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SCHEMA as CATALOG_SCHEMA, createCatalog } from '../src/lib/catalog.ts';
 import { SCHEMA as ACTIONS_SCHEMA, createActions } from '../src/lib/actions.ts';
-import { addFLine, dropFLine, ensureVisit, estimateOrder, fieldOrderBody, fieldOrderProblem, fieldReceiptBody, routeShops, sendOrQueue, setFQty, setFUnit, visitBody, visitedHere, type FieldToday, type KV } from '../src/lib/field.ts';
+import { addFLine, dropFLine, ensureVisit, estimateOrder, loadKnownPrices, rememberShopPrices, fieldOrderBody, fieldOrderProblem, fieldReceiptBody, routeShops, sendOrQueue, setFQty, setFUnit, visitBody, visitedHere, type FieldToday, type KV } from '../src/lib/field.ts';
 import { fakeServer, nodeDb, P } from './helpers.ts';
 
 const mem = (): KV & { data: Map<string, string> } => { const data = new Map<string, string>(); return { data, get: async (k) => data.get(k) ?? null, set: async (k, v) => { data.set(k, v); } }; };
@@ -114,4 +114,31 @@ test('the route is a flat list in visiting order with each shop\'s beat', () => 
   const t = { beats: [{ beat_id: 1, name: 'Monday north', customers: [{ seq: 1, customer_id: 5 }, { seq: 2, customer_id: 6 }] }, { beat_id: 2, name: 'Monday south', customers: [{ seq: 1, customer_id: 7 }] }] } as unknown as FieldToday;
   assert.deepEqual(routeShops(t).map((x) => [x.customer_id, x.beat]), [[5, 'Monday north'], [6, 'Monday north'], [7, 'Monday south']]);
   assert.deepEqual(routeShops(null), []);
+});
+
+test('with no signal an order is estimated at the own last price of the shop, per piece, and an unknown shop falls back to the shelf price', async () => {
+  const wholesale = { wholesale_price: 40, moq: 6, units: [{ unit_name: 'Carton', factor: 12 }] };
+  const server = fakeServer([P(1, 'Soap', 50, { tax_rate: 18, wholesale } as never), P(2, 'Tea', 100, { tax_rate: 5 })]);
+  const { catalog } = await open(); await catalog.sync(server.api);
+  const soap = (await catalog.search('soap', 5))[0]; const tea = (await catalog.search('tea', 5))[0];
+  const kv = mem();
+  assert.deepEqual(await loadKnownPrices(kv, 7), {}, 'nothing known yet');
+  // the server priced 2 cartons at 499.2 each (41.6 a piece: this shop is on a dearer tier) and gave 1 free
+  let l = setFUnit(setFQty(addFLine([], soap), addFLine([], soap)[0].key, '2'), addFLine([], soap)[0].key, 'Carton');
+  l = [{ ...addFLine([], soap)[0], unit_name: 'Carton', quantity: '2' }];
+  const known = await rememberShopPrices(kv, 7, l, { lines: [{ product_id: 1, price: 499.2 }, { product_id: 1, price: 0, is_free: true }] });
+  assert.equal(known.p1, 41.6);
+  assert.deepEqual(await loadKnownPrices(kv, 7), known, 'kept on the phone');
+  assert.deepEqual(await loadKnownPrices(kv, 8), {}, 'another shop has its own prices');
+  const six = setFQty(addFLine([], soap), addFLine([], soap)[0].key, '6');
+  assert.equal(estimateOrder(six).subtotalPaise, 24000, 'the shelf price without it');
+  assert.equal(estimateOrder(six, known).subtotalPaise, 24960, 'the price of the shop with it: 6 at 41.60');
+  assert.equal(estimateOrder(addFLine([], tea), known).subtotalPaise, 10000, 'a product never priced for this shop uses the shelf price');
+  assert.equal(estimateOrder(l, known).subtotalPaise, 99840, '2 cartons of 12 at 41.60 a piece');
+  // bounded: the oldest prices drop out
+  const many = Array.from({ length: 450 }, (_, i) => ({ product_id: 1000 + i, price: 1 }));
+  const lines = many.map((m) => ({ key: String(m.product_id), product: { product_id: m.product_id, wholesale: null } as never, unit_name: null, quantity: '1' }));
+  const kept = await rememberShopPrices(kv, 7, lines, { lines: many });
+  assert.equal(Object.keys(kept).length, 400);
+  assert.ok(kept.p1449 === 1 && kept.p1 === undefined, 'the newest stay, the oldest are gone');
 });

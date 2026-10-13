@@ -222,6 +222,10 @@ export const listBusinesses = async (req, res) => {
       params.push(status);
       where.push(`b.status = $${params.length}`);
     }
+    const type = String(req.query.type || '').trim().toUpperCase();
+    if (type && BUSINESS_TYPES.includes(type)) { params.push(type); where.push(`b.business_type = $${params.length}`); }
+    const sub = String(req.query.subscription_status || '').trim().toUpperCase();
+    if (sub && SUBSCRIPTION_STATUSES.includes(sub)) { params.push(sub); where.push(`b.subscription_status = $${params.length}`); }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
     const countResult = await pool.query(
@@ -465,7 +469,7 @@ const SUBSCRIPTION_ACTIONS = [
   'admin.business_plan_changed', 'admin.business_status_changed', 'admin.plan_version_created',
   'admin.feature_override_set', 'admin.feature_override_removed',
   'admin.payment_link_created', 'subscription.payment_received',
-  'admin.addon_link_created', 'subscription.addon_activated'
+  'admin.addon_link_created', 'subscription.addon_activated', 'admin.trial_extended'
 ];
 
 export const businessHistory = async (req, res) => {
