@@ -388,6 +388,8 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
   const [redeem, setRedeem] = useState('');
   const [changingCustomer, setChangingCustomer] = useState(false);
   const [card, setCard] = useState(null);
+  const [wallet, setWallet] = useState(null);   // a gaming lounge: the attached player's prepaid balance, in rupees
+  const [useWallet, setUseWallet] = useState(true);
   const [waiters, setWaiters] = useState([]);
   const [brands, setBrands] = useState([]);
   const [riders, setRiders] = useState([]);
@@ -413,6 +415,11 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
     if (!order?.customer_id) { setCard(null); setPointsInfo(null); return; }
     api(`/loyalty/customers/${order.customer_id}`).then((d) => { setCard(d.loyalty); setPointsInfo(d.points); }).catch(() => { setCard(null); setPointsInfo(null); });
   }, [order?.customer_id]);
+
+  useEffect(() => {
+    if (business?.business_type !== 'GAMING_CAFE' || !hasFeature('gaming_wallet') || !order?.customer_id) { setWallet(null); return; }
+    api(`/gaming/players/${order.customer_id}/wallet?limit=1`, { withMeta: true }).then((r) => setWallet(r.meta?.balance ?? 0)).catch(() => setWallet(null));
+  }, [order?.customer_id, order?.status, business?.business_type]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const q = query.trim().toLowerCase();
   const results = useMemo(() => (q ? products.filter((p) => p.is_available !== false && (p.name.toLowerCase().includes(q) || p.sku?.toLowerCase() === q || p.barcode?.toLowerCase() === q)).slice(0, 8) : []), [products, q]);
@@ -468,6 +475,9 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
   const total = Math.max(0, Math.round((subtotal + gst - rewardOff) * 100) / 100);
   const toRoom = method === 'ROOM';
   const payLater = method === 'LATER' || toRoom;   // neither takes money at the table
+  // a lounge player's prepaid balance pays first; whatever it does not cover goes the way the buttons below say
+  const walletPart = wallet > 0 && useWallet && !toRoom ? Math.min(wallet, total) : 0;
+  const walletAll = walletPart > 0 && walletPart >= total;
   const amount = received === '' ? null : Number(received);
   const partial = !payLater && amount != null && amount < total;
   const change = method === 'CASH' && amount != null && amount > total ? amount - total : 0;
@@ -484,7 +494,9 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
           coupon_code: couponCode.trim() || undefined,
           redeem_points: Number(redeem) > 0 ? Number(redeem) : undefined,
           charge_to_booking_id: toRoom ? room.booking_id : undefined,
-          payment: payLater || upiQr ? undefined : { method, amount: amount ?? 'FULL' }
+          ...(walletPart > 0
+            ? (walletAll ? { payment: { method: 'WALLET', amount: 'FULL' } } : { payments: [{ method: 'WALLET', amount: walletPart }, ...(payLater ? [] : [{ method, amount: 'REST' }])] })
+            : { payment: payLater || upiQr ? undefined : { method, amount: amount ?? 'FULL' } })
         }
       });
       billKey.settle();
@@ -761,7 +773,13 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
             ))}
           </div>
           {toRoom && <RoomChargePicker value={room} onChange={setRoom} />}
-          {!payLater && (
+          {wallet > 0 && !toRoom && (
+            <label className="mt-2 flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2 text-small text-brand-700">
+              <input type="checkbox" checked={useWallet} onChange={(e) => setUseWallet(e.target.checked)} />
+              Pay {formatCurrency(Math.min(wallet, total))} from the wallet ({formatCurrency(wallet)} available){!walletAll && !payLater ? `, the rest by ${(METHODS.find(([v]) => v === method) || [])[1] || method}` : ''}
+            </label>
+          )}
+          {!payLater && !walletAll && (
             <div className="mt-2 flex items-center gap-3">
               <div className="w-32"><Input type="number" min="0" step="0.01" value={received} onChange={(e) => setReceived(e.target.value)} placeholder={total.toFixed(2)} aria-label={method === 'CASH' ? 'Cash received' : 'Amount paid now'} className="!py-1.5 text-right" /></div>
               <p className="tabular text-caption text-ink-500">

@@ -18,8 +18,8 @@ import { Check, Shot } from '../site/parts.jsx';
    user cannot fix, so the two lists must be changed together. */
 const BUSINESS_TYPES = [
   ['RESTAURANT', 'Restaurant'], ['CAFE', 'Café'], ['CLOUD_KITCHEN', 'Cloud kitchen'], ['HOTEL', 'Hotel and restaurant'], ['RETAIL', 'Retail'],
-  ['SUPERMARKET', 'Supermarket'], ['PHARMACY', 'Pharmacy'], ['SALON', 'Salon'],
-  ['WHOLESALE', 'Wholesale'], ['DISTRIBUTOR', 'Distributor']
+  ['SUPERMARKET', 'Supermarket'], ['PHARMACY', 'Pharmacy'], ['SALON', 'Salon'], ['GYM', 'Gym'], ['GAMING_CAFE', 'Gaming lounge (PS5, pool, snooker)'], ['AUTO_PARTS', 'Auto spare parts (car and bike)'],
+  ['WHOLESALE', 'Wholesale and distribution']
 ];
 
 /* Why a first-time visitor can trust this screen, shown beside the form. */

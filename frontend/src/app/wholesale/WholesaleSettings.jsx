@@ -37,15 +37,15 @@ const General = () => {
     const body = { credit_policy: f.credit_policy, block_when_overdue: f.block_when_overdue, overdue_grace_days: Number(f.overdue_grace_days), default_payment_terms_days: Number(f.default_payment_terms_days), default_price_list_id: f.default_price_list_id === '' ? null : Number(f.default_price_list_id),
       negative_stock: f.negative_stock, reserve_on_confirm: f.reserve_on_confirm, fefo: f.fefo, expiry_alert_days: days, order_approval_over: f.order_approval_over === '' ? null : Number(f.order_approval_over), slow_moving_days: Number(f.slow_moving_days), dead_stock_days: Number(f.dead_stock_days),
       order_prefix: f.order_prefix, invoice_footer: f.invoice_footer || null, notifications: f.notifications,
-      distributor_enabled: f.distributor_enabled, scheme_stacking: f.scheme_stacking, visit_location: f.visit_location, field_collections: f.field_collections, credit_manager_override: f.credit_manager_override };
+      scheme_stacking: f.scheme_stacking, visit_location: f.visit_location, field_collections: f.field_collections, credit_manager_override: f.credit_manager_override };
     const r = await run(() => api('/wholesale/settings', { method: 'PUT', body }), 'Settings saved');
     if (r) { reload(); refresh(); }   // the menu follows the Distributor switch
   };
   return (
     <div className="space-y-6">
-      <Panel title="Wholesale + Distributor" lead="Principals, territories and beats, schemes with free quantity, targets and commission, field sales and vans — on top of everything a wholesaler has">
+      <Panel title="Distributor tools" lead="Principals, territories and beats, schemes with free quantity, targets and commission, field sales and vans — on top of everything a wholesaler has">
         <div className="space-y-4">
-          <Toggle id="s-dist" checked={f.distributor_enabled} disabled={f.distributor_locked} onChange={(v) => setF((x) => ({ ...x, distributor_enabled: v }))} label="Run this business as a distributor" hint={f.distributor_locked ? 'This is a distributor business, so these features are always on' : 'Adds the Distributor menu. Nothing about your existing wholesale work changes.'} />
+          <Toggle id="s-dist" checked={f.distributor_enabled} disabled={f.distributor_locked} onChange={(v) => setF((x) => ({ ...x, distributor_enabled: v }))} label="Distributor tools" hint={f.distributor_enabled ? 'On for this business. FlowXP support sets this; ask them if you need it changed.' : 'Off. Wholesale only. If you run field sales, beats, schemes or vans, ask FlowXP support to switch the distributor tools on.'} />
           {f.distributor_enabled && (
             <div className="grid gap-4 sm:grid-cols-2">
               <Field id="s-stack" label="When several schemes fit an order" hint="A scheme can also be marked stackable on its own"><Select id="s-stack" value={f.scheme_stacking} onChange={set('scheme_stacking')}><option value="BEST">Give the best one only</option><option value="ALL">Give all of them</option></Select></Field>

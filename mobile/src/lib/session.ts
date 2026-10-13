@@ -12,7 +12,7 @@ const KEY = 'flowxp.session';
 
 export type Outlet = { branch_id: number; name: string; is_primary: boolean };
 export type Business = {
-  business_id: number; name: string; business_type: string; currency: string; role: string; upi_vpa: string | null;
+  business_id: number; name: string; business_type: string; distributor_enabled?: boolean; currency: string; role: string; upi_vpa: string | null;
   permissions: Record<string, boolean>; effective_permissions?: Record<string, boolean>; branch_id: number | null; outlets: Outlet[];
 };
 export type User = { user_id: number; name: string; email: string };

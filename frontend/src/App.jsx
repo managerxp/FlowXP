@@ -153,6 +153,39 @@ const SalonTeam = lazy(() => import('./app/salon/SalonTeam.jsx'));
 const SalonStock = lazy(() => import('./app/salon/SalonStock.jsx'));
 const SalonReports = lazy(() => import('./app/salon/SalonReports.jsx'));
 const SalonSettings = lazy(() => import('./app/salon/SalonSettings.jsx'));
+/* The gym module (business type GYM). Its screens live in app/gym/ and load only for a gym. */
+const GymDashboard = lazy(() => import('./app/gym/GymDashboard.jsx'));
+const GymReception = lazy(() => import('./app/gym/GymReception.jsx'));
+const GymMembers = lazy(() => import('./app/gym/GymMembers.jsx'));
+const GymMemberDetail = lazy(() => import('./app/gym/MemberDetail.jsx'));
+const GymCardPrint = lazy(() => import('./app/gym/CardPrint.jsx'));
+const GymPlans = lazy(() => import('./app/gym/GymPlans.jsx'));
+const GymAttendance = lazy(() => import('./app/gym/GymAttendance.jsx'));
+const GymSettings = lazy(() => import('./app/gym/GymSettings.jsx'));
+const GymClasses = lazy(() => import('./app/gym/GymClasses.jsx'));
+const GymRewards = lazy(() => import('./app/gym/GymRewards.jsx'));
+/* The spare parts module (business type AUTO_PARTS). Its screens live in app/autoparts/ and load only for a parts shop. */
+const PartsHome = lazy(() => import('./app/autoparts/PartsHome.jsx'));
+const PartsCatalogue = lazy(() => import('./app/autoparts/PartsCatalogue.jsx'));
+const PartsVehicles = lazy(() => import('./app/autoparts/PartsVehicles.jsx'));
+const PartsWarehouse = lazy(() => import('./app/autoparts/PartsWarehouse.jsx'));
+const PartsReceive = lazy(() => import('./app/autoparts/PartsReceive.jsx'));
+const PartsTrade = lazy(() => import('./app/autoparts/PartsTrade.jsx'));
+const PartsReports = lazy(() => import('./app/autoparts/PartsReports.jsx'));
+const LocationLabels = lazy(() => import('./app/autoparts/LocationLabels.jsx'));
+
+/* The gaming lounge module (business type GAMING_CAFE). Its screens live in app/gaming/ and load only for a lounge. */
+const GamingBoard = lazy(() => import('./app/gaming/GamingBoard.jsx'));
+const GamingSessions = lazy(() => import('./app/gaming/GamingSessions.jsx'));
+const GamingSetup = lazy(() => import('./app/gaming/GamingSetup.jsx'));
+const GamingPlayers = lazy(() => import('./app/gaming/GamingPlayers.jsx'));
+const GamingDashboard = lazy(() => import('./app/gaming/GamingDashboard.jsx'));
+const GamingReports = lazy(() => import('./app/gaming/GamingReports.jsx'));
+const GamingBookings = lazy(() => import('./app/gaming/GamingBookings.jsx'));
+const GamingTournaments = lazy(() => import('./app/gaming/GamingTournaments.jsx'));
+/* What a member opens on their own phone (the gym's page, and the page the entrance QR opens). No login, no app chrome. */
+const GymPortal = lazy(() => import('./public/GymPortal.jsx'));
+
 /* The hotel module (business type HOTEL). Its screens live in app/hotel/ and load only for a hotel. */
 const HotelDashboard = lazy(() => import('./app/hotel/HotelDashboard.jsx'));
 const HotelBookings = lazy(() => import('./app/hotel/HotelBookings.jsx'));
@@ -203,6 +236,9 @@ const HomeRoute = () => {
   const { business } = useAuth();
   if (business?.business_type === 'SALON') return <SalonDashboard />;
   if (business?.business_type === 'HOTEL') return <HotelDashboard />;
+  if (business?.business_type === 'GYM') return <GymDashboard />;
+  if (business?.business_type === 'GAMING_CAFE') return <GamingDashboard />;
+  if (business?.business_type === 'AUTO_PARTS') return <PartsHome />;
   if (business?.business_type === 'PHARMACY') return <PharmacyDashboard />;
   if (['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type)) return business?.distributor_enabled ? <DistributorDashboard /> : <WholesaleDashboard />;
   return <Dashboard />;
@@ -333,6 +369,31 @@ const App = () => (
       <Route path="distributor/vehicles/:id" element={<DistributorVehicleDetail />} />
       <Route path="distributor/field" element={<DistributorField />} />
 
+      <Route path="parts" element={<PartsHome />} />
+      <Route path="parts/catalogue" element={<PartsCatalogue />} />
+      <Route path="parts/vehicles" element={<PartsVehicles />} />
+      <Route path="parts/warehouse" element={<PartsWarehouse />} />
+      <Route path="parts/receive" element={<PartsReceive />} />
+      <Route path="parts/trade" element={<PartsTrade />} />
+      <Route path="parts/reports" element={<PartsReports />} />
+      <Route path="parts/labels" element={<LocationLabels />} />
+      <Route path="gaming" element={<GamingBoard />} />
+      <Route path="gaming/sessions" element={<GamingSessions />} />
+      <Route path="gaming/setup" element={<GamingSetup />} />
+      <Route path="gaming/players" element={<GamingPlayers />} />
+      <Route path="gaming/bookings" element={<GamingBookings />} />
+      <Route path="gaming/reports" element={<GamingReports />} />
+      <Route path="gaming/tournaments" element={<GamingTournaments />} />
+      <Route path="gym/reception" element={<GymReception />} />
+      <Route path="gym/members" element={<GymMembers />} />
+      <Route path="gym/members/:id" element={<GymMemberDetail />} />
+      <Route path="gym/members/:id/card" element={<GymCardPrint />} />
+      <Route path="gym/plans" element={<GymPlans />} />
+      <Route path="gym/attendance" element={<GymAttendance />} />
+      <Route path="gym/settings" element={<GymSettings />} />
+      <Route path="gym/classes" element={<GymClasses />} />
+      <Route path="gym/rewards" element={<GymRewards />} />
+
       <Route path="hotel/bookings" element={<HotelBookings />} />
       <Route path="hotel/bookings/:id" element={<HotelBookingDetail />} />
       <Route path="hotel/calendar" element={<HotelCalendar />} />
@@ -369,6 +430,8 @@ const App = () => (
         chrome at all. The first bare page in this app; see
         public/CustomerMenu.jsx. */}
     <Route path="book/:slug" element={<Suspense fallback={<PageLoader />}><SalonBooking /></Suspense>} />
+    <Route path="gym/in/:token" element={<Suspense fallback={<PageLoader />}><GymPortal /></Suspense>} />
+    <Route path="gym/:slug" element={<Suspense fallback={<PageLoader />}><GymPortal /></Suspense>} />
     <Route path="bill/:token" element={<Suspense fallback={<PageLoader />}><BillPage /></Suspense>} />
     <Route
       path="order/:token"

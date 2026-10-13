@@ -19,7 +19,7 @@ import { toPaise, toRupees } from '../utils/money.js';
 import { asInvoice, BillingError, createInvoiceInTransaction, recordInvoiceCreated } from '../modules/billing.js';
 import { discountPolicy } from '../modules/approvals.js';
 import { hasPermission } from '../middleware/auth.js';
-import { TabError, takeItems, unbilledCount } from '../modules/tabs.js';
+import { TabError, assertNoLiveSession, takeItems, unbilledCount } from '../modules/tabs.js';
 import { ModifierError, outletSettingsFor, resolveModifiers } from '../modules/menu.js';
 import { branchFilter } from '../utils/scope.js';
 import { comboBlocker, loadCombos } from '../modules/combos.js';
@@ -637,6 +637,7 @@ export const cancelOrder = async (req, res) => {
       scope
     )).rows[0];
     if (!order) { await client.query('ROLLBACK'); return res.status(404).json({ success: false, message: 'Not found, or already closed' }); }
+    await assertNoLiveSession(client, [order.order_id]);
 
     await client.query(`UPDATE order_items SET status = 'CANCELLED', cancelled_at = CURRENT_TIMESTAMP WHERE order_id = $1 AND invoice_id IS NULL AND status NOT IN ('SERVED','CANCELLED')`, [order.order_id]);
     // If part of the tab was already billed, cancelling the rest closes it as billed, not cancelled.
@@ -650,6 +651,7 @@ export const cancelOrder = async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
+    if (error instanceof TabError) return res.status(error.status).json({ success: false, message: error.message });
     throw error;
   } finally {
     client.release();
@@ -681,6 +683,7 @@ export const bill = async (req, res) => {
     if (order.status === 'BILLED') { await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: 'Already billed' }); }
     if (order.status === 'CANCELLED') { await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: 'This order was cancelled' }); }
     if (order.status === 'MERGED') { await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: 'This order was merged into another' }); }
+    await assertNoLiveSession(client, [order.order_id]);
 
     /* Everything still unpaid, or — to split the bill — just the items the caller
        picked (with a quantity, for part of a line). A billed item is never billed twice. */

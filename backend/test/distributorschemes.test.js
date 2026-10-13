@@ -12,6 +12,9 @@ import { addCustomer, addProduct, dayFromNow, invoiceRow, makeInvoice, makeWhole
 
 const { pool, skip, cleanup } = await setupTestDb();
 const { runMigrations } = await import('../src/config/migrate.js');
+const admin = await import('../src/controllers/admin.controller.js');
+/** What the FlowXP team does in the Super Admin: switch the distributor tools on or off for one business. */
+const setDistributor = async (w, on) => { const res = { code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } }; await admin.updateBusinessPlan({ params: { id: w.businessId }, body: { distributor_enabled: on }, auth: { userId: null } }, res); assert.equal(res.code, 200, JSON.stringify(res.body)); return res; };
 const schemes = (await import('../src/controllers/distributorSchemes.controller.js')).default;
 const territories = (await import('../src/controllers/distributorTerritories.controller.js')).default;
 const orders = (await import('../src/controllers/wholesaleOrders.controller.js')).default;
@@ -233,7 +236,7 @@ t('schemes switch off for a wholesaler who has not turned the distributor featur
   const c = await addCustomer(pool, w, { name: 'R' });
   await scheme(w, { name: 'Buy 10 get 1', kind: 'BUY_X_GET_Y', buy_scope: 'PRODUCT', buy_scope_id: p, buy_min_qty: 10, free_qty: 1 });
   assert.equal(freeOf(await draft(w, c, [{ product_id: p, quantity: 20 }])).length, 0);
-  await w.call(parties.updateSettings, { body: { distributor_enabled: true } });
+  await setDistributor(w, true);
   assert.equal(freeOf(await draft(w, c, [{ product_id: p, quantity: 20 }])).length, 1);
 });
 

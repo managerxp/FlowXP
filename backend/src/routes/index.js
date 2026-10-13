@@ -61,6 +61,11 @@ import { uploadLogo } from '../middleware/upload.js';
 import publicOrderingRoutes from './publicOrdering.routes.js';
 import salonRoutes from './salon.routes.js';
 import hotelRoutes from './hotel.routes.js';
+import gymRoutes from './gym.routes.js';
+import gamingRoutes from './gaming.routes.js';
+import autopartsRoutes from './autoparts.routes.js';
+import gymPublicRoutes from './gymPublic.routes.js';
+import gymDeviceRoutes from './gymDevice.routes.js';
 import wholesaleRoutes from './wholesale.routes.js';
 import distributorRoutes from './distributor.routes.js';
 import pharmacyRoutes from './pharmacy.routes.js';
@@ -230,6 +235,11 @@ router.use('/menu-import', menuImportRoutes);
 router.use('/distributor', distributorRoutes);   // the distributor layer: principals, territories, beats, schemes, targets, field sales, vans
 router.use('/wholesale', wholesaleRoutes);   // the wholesale / distribution module (WHOLESALE and DISTRIBUTOR businesses only)
 router.use('/salon', salonRoutes);          // the salon module (salon businesses only)
+router.use('/device/v1', gymDeviceRoutes);   // gate and reader devices: signed requests, no staff session (see GYM_DEVICES.md)
+router.use('/public/gym', gymPublicRoutes);   // a gym's public page, its entrance QR page and the signed-in member's own endpoints
+router.use('/autoparts', autopartsRoutes);   // the automotive spare parts module (AUTO_PARTS businesses only): parts catalogue, fitment, racks and bins, receiving, counts
+router.use('/gaming', gamingRoutes);        // the gaming lounge module (GAMING_CAFE businesses only): stations, timed sessions, rates, wallet, bookings
+router.use('/gym', gymRoutes);              // the gym module (GYM businesses only): members, memberships, QR cards, reception scanning, attendance
 router.use('/hotel', hotelRoutes);          // the hotel module (HOTEL businesses only): front office, housekeeping, folio, night audit, reports
 router.use('/pharmacy', pharmacyRoutes);    // the pharmacy module (PHARMACY businesses only)
 router.use('/retail', retailRoutes);        // supermarket / retail settings (SUPERMARKET and RETAIL businesses only)

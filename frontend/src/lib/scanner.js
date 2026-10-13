@@ -13,6 +13,11 @@ const FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'it
 export const hasNativeDetector = () => typeof window !== 'undefined' && 'BarcodeDetector' in window;
 export const cameraAvailable = () => typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia);
 
+/** The cameras this device has (labels appear once the camera has been allowed). A desk with a webcam and a laptop camera can pick one. */
+export const listCameras = async () => {
+  try { return (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput').map((d, i) => ({ id: d.deviceId, label: d.label || `Camera ${i + 1}` })); } catch { return []; }
+};
+
 /** Why the camera could not start, in terms the screen can explain. */
 export const cameraProblem = (error) => {
   if (!cameraAvailable()) return 'none';
@@ -23,10 +28,11 @@ export const cameraProblem = (error) => {
   return 'error';
 };
 
-export const startScanner = async ({ video, onCode }) => {
+/** kind: 'barcode' (the default: EAN, UPC, Code 128 ...) or 'qr' (a membership card or a phone pass). */
+export const startScanner = async ({ video, onCode, kind = 'barcode', deviceId = null }) => {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: false,
-    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+    video: { ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } }), width: { ideal: 1280 }, height: { ideal: 720 } }
   });
   video.srcObject = stream;
   video.setAttribute('playsinline', '');
@@ -45,7 +51,8 @@ export const startScanner = async ({ video, onCode }) => {
   try {
     if (hasNativeDetector()) {
       const supported = await window.BarcodeDetector.getSupportedFormats();
-      const detector = new window.BarcodeDetector({ formats: FORMATS.filter((f) => supported.includes(f)) });
+      const wanted = kind === 'qr' ? ['qr_code'] : FORMATS;
+      const detector = new window.BarcodeDetector({ formats: wanted.filter((f) => supported.includes(f)) });
       (async () => {
         while (!stopped) {
           try { for (const b of await detector.detect(video)) onCode(b.rawValue); } catch { /* a frame that could not be read */ }
@@ -59,7 +66,7 @@ export const startScanner = async ({ video, onCode }) => {
     const { BarcodeFormat, BinaryBitmap, DecodeHintType, HybridBinarizer, MultiFormatReader, RGBLuminanceSource } = await import('@zxing/library');
     const reader = new MultiFormatReader();
     reader.setHints(new Map([
-      [DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.ITF]],
+      [DecodeHintType.POSSIBLE_FORMATS, kind === 'qr' ? [BarcodeFormat.QR_CODE] : [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.ITF]],
       [DecodeHintType.TRY_HARDER, true]
     ]));
     const canvas = document.createElement('canvas');

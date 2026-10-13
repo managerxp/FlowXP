@@ -9,7 +9,7 @@ import { Button, Container } from '../components/ui.jsx';
 
 const PLACES = [
   { to: '/features', icon: LayoutGrid, title: 'Product', body: 'Billing, stock, GST and reports' },
-  { to: '/industries', icon: Blocks, title: 'Industries', body: 'Restaurants, pharmacies, salons and more' },
+  { to: '/industries', icon: Blocks, title: 'Industries', body: 'Restaurants, pharmacies, salons, gyms, gaming lounges and more' },
   { to: '/ai', icon: Sparkles, title: 'Flow AI', body: 'Ask your business a question' },
   { to: '/pricing', icon: BadgeIndianRupee, title: 'Pricing', body: 'Plans and the free trial' },
   { to: '/contact', icon: MessageCircle, title: 'Contact', body: 'Talk to the FlowXP team' }

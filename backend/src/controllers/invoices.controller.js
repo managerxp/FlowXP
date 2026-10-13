@@ -12,6 +12,8 @@
  */
 import { OFFLINE_SQL, REVIEW_SQL } from '../utils/offlineNote.js';
 import { onInvoiceCancelled } from '../modules/salon/hooks.js';
+import { onInvoiceCancelled as onGymInvoiceCancelled, onInvoicePaid as onGymInvoicePaid } from '../modules/gym/memberships.js';
+import { returnWalletForCancelled } from '../modules/gaming/wallet.js';
 import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
 import { toPaise, toRupees } from '../utils/money.js';
@@ -116,6 +118,15 @@ export const create = async (req, res) => {
       // a sale the phone already made at the counter is never refused for stock: the goods have gone, so it is recorded and the shelf shows the shortfall
       allowNegativeStock: isOffline(req)
     });
+
+    // a parts counter that sold offline: say so on the bill, and flag any part the sale left below zero so someone checks the shelf
+    if (isOffline(req) && req.tenant.businessType === 'AUTO_PARTS') {
+      const short = (await client.query(
+        `SELECT p.name, bs.quantity FROM invoice_items ii JOIN products p ON p.product_id = ii.product_id JOIN branch_stock bs ON bs.product_id = ii.product_id AND bs.branch_id = $2
+         WHERE ii.invoice_id = $1 AND bs.quantity < 0`, [invoice.invoice_id, req.tenant.branchId])).rows;
+      const note = `Taken offline${short.length ? `. Check: ${short.map((r) => `${r.name} is now ${Number(r.quantity)} in stock, check the shelf`).join('; ')}` : ''}`;
+      await client.query(`UPDATE invoices SET notes = CASE WHEN notes IS NULL OR notes = '' THEN $2 ELSE notes || ' | ' || $2 END WHERE invoice_id = $1`, [invoice.invoice_id, note]);
+    }
 
     if (counterOrder) {
       await client.query(`UPDATE order_items SET invoice_id = $1 WHERE order_id = $2`, [invoice.invoice_id, counterOrder.order_id]);
@@ -348,6 +359,8 @@ export const addPayment = async (req, res) => {
       `UPDATE invoices SET amount_paid_paise = $1, balance_due_paise = $2, payment_status = $3 WHERE invoice_id = $4`,
       [newPaid, newBalance, paymentStatus(Number(invoice.total_paise), newPaid), invoice.invoice_id]
     );
+    // a gym membership paid off by this payment earns its reward points now
+    if (req.tenant.businessType === 'GYM' && newBalance <= 0) await onGymInvoicePaid(client, { businessId: req.tenant.businessId, invoiceId: invoice.invoice_id });
 
     await client.query('COMMIT');
     recordAudit(req, { action: 'payment.recorded', resource_type: 'invoice', resource_id: invoice.invoice_id, metadata: { amount: toRupees(amountPaise) } });
@@ -413,6 +426,8 @@ export const cancel = async (req, res) => {
     if (isRetail(req.tenant)) await restoreBatches(client, { businessId: req.tenant.businessId, invoiceId: Number(req.params.id) });   // expiry batches get their stock back too
     await voidForInvoice(client, req.tenant.businessId, req.params.id);   // the loyalty stamp and coupon use come back
     // a salon bill also hands back package visits and gift card money, and withdraws what it sold (or refuses if that was used)
+    if (req.tenant.businessType === 'GYM') await onGymInvoiceCancelled(client, { businessId: req.tenant.businessId, invoiceId: Number(req.params.id), userId: req.auth.userId });
+    if (req.tenant.businessType === 'GAMING_CAFE') await returnWalletForCancelled(client, { businessId: req.tenant.businessId, invoiceId: Number(req.params.id), userId: req.auth.userId });   // what the wallet paid goes back to it
     if (req.tenant.businessType === 'SALON') await onInvoiceCancelled(client, { businessId: req.tenant.businessId, invoiceId: Number(req.params.id), userId: req.auth.userId });
     await client.query(`UPDATE invoices SET status = 'CANCELLED' WHERE invoice_id = $1`, [req.params.id]);
     await client.query('COMMIT');

@@ -31,12 +31,15 @@ import { consumptionPerUnit, loadRecipes } from './recipes.js';
 import { comboBlocker, comboConsumption, loadCombos } from './combos.js';
 import { afterBill } from './messaging/index.js';
 import { PointsError, addEntry, earnFor, getPoints, redemption, standing, tierFor } from './points.js';
+import { spend as spendWallet } from './gaming/wallet.js';
+import { checkCredit as partsCredit, fulfilForSale, reservedMap, tradePrices } from './autoparts/sales.js';
 
 export class BillingError extends Error {
-  constructor(status, message) {
+  constructor(status, message, extra = {}) {
     super(message);
     this.name = 'BillingError';
     this.status = status;
+    if (extra.code) this.code = extra.code;
   }
 }
 
@@ -66,7 +69,7 @@ export const nextInvoiceNumber = async (client, businessId, branchId) => {
     return `${own.invoice_prefix}-${String(own.invoice_next_number).padStart(4, '0')}`;
   }
   const { rows } = await client.query(
-    `SELECT invoice_prefix, invoice_next_number FROM businesses WHERE business_id = $1 FOR UPDATE`,
+    `SELECT invoice_prefix, invoice_next_number FROM businesses WHERE business_id = $1 FOR NO KEY UPDATE`,
     [businessId]
   );
   const { invoice_prefix: prefix, invoice_next_number: n } = rows[0];
@@ -213,6 +216,10 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   // What each dish/item has at THIS outlet (the products row only holds the business total).
   const outletStock = await stockAt(client, tenant.branchId, productIds);
   const outletSettings = await outletSettingsFor(client, tenant.branchId, productIds);
+  // a parts shop: stock held for customers is not for sale to others, and a customer on a trade price list pays that price
+  const isParts = tenant.businessType === 'AUTO_PARTS';
+  const held = isParts ? await reservedMap(client, tenant.branchId, productIds, customer?.customer_id ?? null) : null;
+  const trade = isParts && customer ? await tradePrices(client, tenant.businessId, customer.customer_id, productIds) : new Map();
 
   // Combos sell as one line but use up their components (stock and recipes).
   const combos = await loadCombos(client, tenant.businessId, productIds);
@@ -237,12 +244,16 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       // a line sold in a larger unit (a carton of 24 boxes) moves `unit_factor` times as much stock as its quantity
       const factor = raw.unit_factor != null ? Number(raw.unit_factor) : 1;
       if (!Number.isFinite(factor) || factor <= 0) throw new BillingError(400, 'The unit conversion must be above zero');
+      if (isParts && factor !== 1) throw new BillingError(400, `${product.name}: parts are sold by the piece`);
       stockFactor = factor;
-      if (product.track_inventory && !input.allowNegativeStock && outletStock.get(product.product_id) < quantity * factor - 1e-9) {
-        throw new BillingError(409, `Not enough stock for ${product.name} (${outletStock.get(product.product_id)} left here)`);
+      const free = held ? outletStock.get(product.product_id) - Math.max(0, held.get(product.product_id).reserved - held.get(product.product_id).own) : outletStock.get(product.product_id);
+      if (product.track_inventory && !input.allowNegativeStock && free < quantity * factor - 1e-9) {
+        throw new BillingError(409, held
+          ? `Not enough stock for ${product.name} (${Math.max(0, Math.round(free * 1000) / 1000)} free to sell here${held.get(product.product_id).reserved > held.get(product.product_id).own ? ', the rest is held for other customers' : ''})`
+          : `Not enough stock for ${product.name} (${outletStock.get(product.product_id)} left here)`);
       }
       description = raw.description || product.name;
-      unitPricePaise = raw.unit_price != null ? toPaise(raw.unit_price) : (here?.price_paise ?? product.selling_price_paise);
+      unitPricePaise = raw.unit_price != null ? toPaise(raw.unit_price) : (trade.get(product.product_id) ?? here?.price_paise ?? product.selling_price_paise);
       if (unitPricePaise < 0) throw new BillingError(400, 'The price cannot be negative');
       // a price typed in below the catalogue price is a discount: it counts against the cap like one (a till that never types a price is unaffected)
       if (raw.unit_price != null) overrideCutPaise = Math.max(0, Number(here?.price_paise ?? product.selling_price_paise) - unitPricePaise);
@@ -428,6 +439,11 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   ];
   const paidPaise = takenPayments.reduce((s, p) => s + p.amountPaise, 0);
   const balancePaise = finalTotalPaise - paidPaise;
+  if (isParts && customer && balancePaise > 0) {
+    // a garage account: the part of the bill left unpaid is credit, and the customer's limit applies (WARN is shown by the till beforehand, BLOCK is refused here)
+    const credit = await partsCredit(client, tenant.businessId, customer.customer_id, balancePaise);
+    if (credit.level === 'BLOCK' && !input.creditOverride) throw new BillingError(409, credit.reasons[0], { code: 'CREDIT_LIMIT' });
+  }
 
   const invoiceNumber = await nextInvoiceNumber(client, tenant.businessId, tenant.branchId);
 
@@ -461,6 +477,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     // stockHandledElsewhere: the goods are not in this outlet's stock (a distributor's van holds them), so selling them here must not take them out of it
     if (line.trackInventory && !input.stockHandledElsewhere) {
       const stockQty = Math.round(line.quantity * line.stockFactor * 1000) / 1000;
+      if (isParts && customer) await fulfilForSale(client, { branchId: tenant.branchId, customerId: customer.customer_id, productId: line.product_id, qty: stockQty });
       await moveStock(client, { businessId: tenant.businessId, branchId: tenant.branchId, productId: line.product_id, delta: -stockQty });
       await client.query(
         `INSERT INTO inventory_transactions (business_id, branch_id, product_id, transaction_type, quantity, reference_type, reference_id, created_by)
@@ -528,11 +545,20 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   }
 
   for (const p of takenPayments) {
-    await client.query(
+    const paymentId = (await client.query(
       `INSERT INTO payments (business_id, branch_id, invoice_id, customer_id, payment_method, amount_paise, reference_number, notes, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING payment_id`,
       [tenant.businessId, tenant.branchId, invoice.invoice_id, customer?.customer_id || null, p.method, p.amountPaise, p.reference, null, userId]
-    );
+    )).rows[0].payment_id;
+    // a gaming lounge's WALLET payment is the player's prepaid balance: it comes off the wallet in this same transaction, or the bill is refused
+    if (p.method === 'WALLET' && tenant.businessType === 'GAMING_CAFE') {
+      try {
+        await spendWallet(client, { businessId: tenant.businessId, customerId: customer?.customer_id || null, amountPaise: p.amountPaise, invoiceId: invoice.invoice_id, paymentId, userId });
+      } catch (error) {
+        if (error?.name === 'GamingError') throw new BillingError(error.status, error.message);
+        throw error;
+      }
+    }
   }
 
   return {

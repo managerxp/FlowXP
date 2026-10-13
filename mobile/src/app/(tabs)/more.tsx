@@ -4,7 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { currentBusiness, signOut, useSession } from '../../lib/session.ts';
 import { KITCHEN_TYPES } from '../../lib/cart.ts';
-import { RETAIL_TYPES, WHOLESALE_TYPES } from '../../lib/retail.ts';
+import { RETAIL_TYPES, isDistributor, isWholesale } from '../../lib/retail.ts';
+import { HOTEL_TYPES } from '../../lib/hotel.ts';
+import { AUTO_PARTS_TYPES } from '../../lib/parts.ts';
+import { GAMING_TYPES } from '../../lib/gaming.ts';
+import { GYM_TYPES } from '../../lib/gym.ts';
 import { allowed } from '../../lib/access.ts';
 import { useSyncState } from '../../lib/sync.ts';
 import { appVersion } from '../../lib/crash.ts';
@@ -24,8 +28,13 @@ export default function More() {
   const outlet = business?.outlets.find((o) => o.branch_id === session.branchId);
   const several = (session.businesses.flatMap((b) => b.outlets).length) > 1;
   const food = KITCHEN_TYPES.includes(type);
-  const wholesale = WHOLESALE_TYPES.includes(type);
+  const wholesale = isWholesale(business);
+  const distributor = isDistributor(business);
   const retail = RETAIL_TYPES.includes(type);
+  const hotel = HOTEL_TYPES.includes(type);
+  const parts = AUTO_PARTS_TYPES.includes(type);
+  const gaming = GAMING_TYPES.includes(type);
+  const gym = GYM_TYPES.includes(type);
   const salon = type === 'SALON';
   const pharmacy = type === 'PHARMACY';
   const can = (...k: string[]) => allowed(business, ...k);
@@ -39,18 +48,27 @@ export default function More() {
 
   const groups: { title: string; items: Item[] }[] = [
     { title: 'Sell', items: [
+      { left: 'Lounge board', sub: 'Every station with its timer: start, pause, stop, take payment', icon: 'game-controller-outline', go: '/gaming', show: gaming && can('gaming_desk', 'gaming_setup') },
+      { left: 'Gym front desk', sub: 'Let members in: scan a pass or find them', icon: 'barbell-outline', go: '/gym', show: gym && can('gym_desk') },
+      { left: 'Find a part', sub: 'By name, barcode or any part number: price, stock and shelf', icon: 'search-outline', go: '/parts', show: parts && can('billing', 'parts_catalog', 'warehouse', 'inventory') },
+      { left: 'Parts for a vehicle', sub: 'What fits a car or bike, each marked verified or not', icon: 'car-outline', go: '/parts-vehicle', show: parts && can('billing', 'parts_catalog', 'warehouse') },
+      { left: 'Front desk', sub: 'Arrivals, who is in the house, rooms and guest bills', icon: 'bed-outline', go: '/hotel', show: hotel && can('front_desk', 'housekeeping') },
+      { left: 'New online orders', sub: 'Zomato, Swiggy, QR and website orders waiting to be accepted', icon: 'notifications-outline', go: '/incoming', show: food && can('billing', 'kitchen') },
+      { left: 'Deliveries', sub: 'Open deliveries, their riders and where each has got to', icon: 'bicycle-outline', go: '/deliveries', show: food && can('billing', 'kitchen') },
       { left: 'Kitchen screen', sub: 'What to make, what is ready to serve', icon: 'restaurant-outline', go: '/kitchen', show: food },
       { left: 'Bookings and waiting', sub: 'Tables booked, guests waiting for one', icon: 'calendar-outline', go: '/reservations', show: food },
       { left: 'Appointments', sub: 'Who is booked, who has arrived', icon: 'calendar-outline', go: '/appointments', show: salon },
       { left: 'Orders', sub: 'What customers have ordered', icon: 'clipboard-outline', go: '/wholesale-orders', show: wholesale },
       { left: 'Collect payment', sub: 'A customer pays what they owe', icon: 'cash-outline', go: '/collect', show: wholesale },
       { left: 'Returns', sub: 'Goods a shop sent back, and goods sent back to a supplier', icon: 'return-down-back-outline', go: '/returns', show: wholesale },
-      { left: 'My route', sub: "Today's shops, orders and payments in the field", icon: 'navigate-outline', go: '/field', show: wholesale },
-      { left: 'My van', sub: 'What you carry, and sell from it', icon: 'bus-outline', go: '/van', show: wholesale },
+      { left: 'My route', sub: "Today's shops, orders and payments in the field", icon: 'navigate-outline', go: '/field', show: distributor },
+      { left: 'My van', sub: 'What you carry, and sell from it', icon: 'bus-outline', go: '/van', show: distributor },
       { left: 'Bills on hold', sub: 'Resume or discard', icon: 'pause-circle-outline', go: '/held' }
     ] },
     { title: 'Stock and buying', items: [
       { left: 'Products', sub: 'The menu: prices, stock, add an item', icon: 'cube-outline', go: '/products', show: food || salon },
+      { left: 'Racks and bins', sub: 'Look in a bin, put stock away, move it between bins', icon: 'file-tray-stacked-outline', go: '/parts-warehouse', show: parts && can('warehouse', 'grn', 'stock_count') },
+      { left: 'Receive parts', sub: 'A delivery: accepted, damaged and rejected counted apart', icon: 'download-outline', go: '/parts-receive', show: parts && can('grn') },
       { left: 'Stock', sub: 'What is running low, and fix a count', icon: 'layers-outline', go: '/stock', show: can('inventory') },
       { left: 'Use-by dates', sub: 'What is expiring, and what has expired', icon: 'time-outline', go: '/expiry', show: retail },
       { left: 'Batches and use-by dates', sub: 'What is expiring, hold back or recall a batch', icon: 'time-outline', go: '/pharmacy-batches', show: pharmacy },

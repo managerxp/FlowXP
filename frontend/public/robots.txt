@@ -9,6 +9,7 @@ Disallow: /superadmin/
 Disallow: /order/
 Disallow: /bill/
 Disallow: /book/
+Disallow: /gym/
 Disallow: /login
 Disallow: /signup
 Disallow: /forgot-password

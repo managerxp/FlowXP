@@ -8,13 +8,13 @@ For wholesale basics see [WHOLESALE.md](WHOLESALE.md).
 
 ## 1. Business type
 
-Settings → Wholesale settings → **Wholesale + Distributor** turns the module on (`wholesale_settings.distributor_enabled`).
+Since 2026-10-12 wholesale and distribution is **one signup choice** (`WHOLESALE`, shown as "Wholesale and distribution"). The FlowXP team decides whether a business gets the distributor tools: **Super Admin → the business → Distributor tools** (`PATCH /api/admin/businesses/:id/plan` with `distributor_enabled`, stored in `wholesale_settings.distributor_enabled`). The owner sees the state in Wholesale settings but cannot change it (`distributor_locked`). `DISTRIBUTOR` stays a valid stored type for older businesses (always on); moving one to `WHOLESALE` in the Super Admin keeps the tools on.
 
 | Business | What is shown |
 |---|---|
 | Wholesale (`WHOLESALE`) | The wholesale module only. Nothing below appears. |
 | Distributor (`DISTRIBUTOR`) | Wholesale plus the **Distributor** menu, dashboard and reports. |
-| Wholesale + Distributor | A `WHOLESALE` business with the switch on: the same as Distributor. |
+| Wholesale and distribution, tools on | A `WHOLESALE` business with the switch on: the same as Distributor. |
 
 Switching it off hides the menu, the dashboard and the distributor reports; data is kept. Every `/api/distributor/*`
 route answers 404 while it is off, and distributor reports are absent from the report catalogue.

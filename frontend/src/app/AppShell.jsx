@@ -17,7 +17,7 @@ import {
   History, Landmark, LayoutDashboard, LayoutGrid, Lock, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
   Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X, Warehouse, PackageCheck, Undo2, HandCoins, ChartBar, ShoppingBag, Tags,
-  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass, BedDouble, Moon
+  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass, BedDouble, Moon, DoorOpen, UsersRound, CalendarCheck, Dumbbell, Gamepad2, Timer, Trophy
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Avatar, Button, EmptyState, Logo, PageLoader, useToast } from '../components/ui.jsx';
@@ -27,7 +27,7 @@ import NotificationBell from '../components/NotificationBell.jsx';
 import { InstallButton, OfflineStatus } from '../components/OfflineStatus.jsx';
 import CommandPalette from '../components/CommandPalette.jsx';
 import IncomingDeliveryAlert from '../components/IncomingDeliveryAlert.jsx';
-import { HOTEL_TYPES, PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
+import { AUTO_PARTS_TYPES, GAMING_TYPES, GYM_TYPES, HOTEL_TYPES, PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
 
 /*
  * The sidebar, grouped by the job rather than listed alphabetically: that
@@ -45,6 +45,9 @@ const DINE_IN_TYPES = RESTAURANT_TYPES.filter((t) => t !== 'CLOUD_KITCHEN');
 
 const SALON = ['SALON'];
 const HOTEL = HOTEL_TYPES;
+const GYM = GYM_TYPES;
+const GAMING = GAMING_TYPES;
+const PARTS = AUTO_PARTS_TYPES;
 const WHOLESALE = WHOLESALE_TYPES;
 const PHARMACY = PHARMACY_TYPES;
 const RETAIL = RETAIL_TYPES;
@@ -107,6 +110,42 @@ const NAV_GROUPS = [
       { to: '/app/salon/memberships', label: 'Memberships & offers', icon: BadgePercent, types: SALON, permission: 'products' },
       { to: '/app/salon/team', label: 'Team & commission', icon: Users, types: SALON, anyPermission: ['staff_commission', 'appointments'] },
       { to: '/app/salon/stock', label: 'Stock & alerts', icon: Boxes, types: SALON, anyPermission: ['inventory', 'reports'] }
+    ]
+  },
+  {
+    label: 'Spare parts',
+    items: [
+      { to: '/app/parts', label: 'Overview', icon: LayoutDashboard, end: true, types: PARTS, anyPermission: ['reports', 'inventory', 'warehouse', 'valuation', 'grn'], feature: 'ap_catalog' },
+      { to: '/app/parts/catalogue', label: 'Parts', icon: Package, types: PARTS, anyPermission: ['billing', 'parts_catalog', 'warehouse', 'grn', 'stock_count', 'inventory'], feature: 'ap_catalog' },
+      { to: '/app/parts/vehicles', label: 'Vehicles', icon: Truck, types: PARTS, anyPermission: ['billing', 'parts_catalog', 'warehouse'], feature: 'ap_catalog' },
+      { to: '/app/parts/warehouse', label: 'Racks and bins', icon: Warehouse, types: PARTS, anyPermission: ['warehouse', 'grn', 'stock_count'], feature: 'ap_racks' },
+      { to: '/app/parts/receive', label: 'Receive parts', icon: PackageCheck, types: PARTS, anyPermission: ['grn', 'purchases'], feature: 'ap_grn' },
+      { to: '/app/parts/trade', label: 'Trade and accounts', icon: HandCoins, types: PARTS, anyPermission: ['billing', 'price_change', 'returns_process'], feature: 'ap_catalog' },
+      { to: '/app/parts/reports', label: 'Parts reports', icon: ChartBar, types: PARTS, anyPermission: ['reports', 'valuation', 'inventory'], feature: 'ap_intelligence' }
+    ]
+  },
+  {
+    label: 'Gaming',
+    items: [
+      { to: '/app/gaming', label: 'Board', icon: Gamepad2, end: true, types: GAMING, anyPermission: ['gaming_desk', 'gaming_setup'], feature: 'gaming_stations' },
+      { to: '/app/gaming/sessions', label: 'Sessions', icon: Timer, types: GAMING, anyPermission: ['gaming_desk', 'gaming_setup'], feature: 'gaming_stations' },
+      { to: '/app/gaming/bookings', label: 'Bookings', icon: CalendarDays, types: GAMING, anyPermission: ['gaming_desk', 'gaming_setup'], feature: 'gaming_bookings' },
+      { to: '/app/gaming/players', label: 'Players and wallet', icon: UsersRound, types: GAMING, anyPermission: ['gaming_desk', 'gaming_setup'], feature: 'gaming_stations' },
+      { to: '/app/gaming/tournaments', label: 'Tournaments', icon: Trophy, types: GAMING, anyPermission: ['gaming_desk', 'gaming_setup'], feature: 'gaming_tournaments' },
+      { to: '/app/gaming/reports', label: 'Gaming reports', icon: ChartBar, types: GAMING, anyPermission: ['gaming_setup', 'reports'], feature: 'gaming_stations' },
+      { to: '/app/gaming/setup', label: 'Stations and rates', icon: Tag, types: GAMING, permission: 'gaming_setup', feature: 'gaming_stations' }
+    ]
+  },
+  {
+    label: 'Gym',
+    items: [
+      { to: '/app/gym/reception', label: 'Front desk', icon: DoorOpen, types: GYM, permission: 'gym_desk', feature: 'gym_access' },
+      { to: '/app/gym/members', label: 'Members', icon: UsersRound, types: GYM, anyPermission: ['gym_desk', 'gym_members', 'gym_setup', 'gym_trainer'] },
+      { to: '/app/gym/plans', label: 'Plans', icon: Tag, types: GYM, anyPermission: ['gym_desk', 'gym_setup'] },
+      { to: '/app/gym/classes', label: 'Classes', icon: Dumbbell, types: GYM, anyPermission: ['gym_desk', 'gym_trainer', 'gym_setup'], feature: 'gym_classes' },
+      { to: '/app/gym/rewards', label: 'Rewards', icon: Gift, types: GYM, anyPermission: ['gym_desk', 'gym_setup'], feature: 'gym_rewards' },
+      { to: '/app/gym/attendance', label: 'Attendance', icon: CalendarCheck, types: GYM, anyPermission: ['gym_desk', 'gym_setup', 'gym_trainer'], feature: 'gym_access' },
+      { to: '/app/gym/settings', label: 'Gym settings', icon: Settings, types: GYM, permission: 'gym_setup' }
     ]
   },
   {

@@ -192,6 +192,27 @@ const BUSINESSES = [
     src: '/product/hotel-frontdesk.webp', alt: 'FlowXP front desk for a hotel with arrivals, departures, guests staying, occupancy and rooms to clean.'
   },
   {
+    key: 'gym', label: 'Gyms and studios', to: '/industries/gym',
+    title: 'For gyms, fitness studios and yoga centres',
+    body: 'Sell memberships on a GST invoice, check members in by QR, and see who is coming and who has gone quiet.',
+    points: ['Card or phone QR at the front desk, with the reason when someone is turned away', 'Freeze, renew and change plans, with payment rules you choose', 'Classes with a waitlist, trainers and workout plans', 'Reward points and referrals', 'A page for the member on their own phone, no app to install'],
+    src: '/product/gym-reception.webp', alt: 'FlowXP gym front desk with who is in the gym now, visits today and a member found by name with a Check in button.'
+  },
+  {
+    key: 'gaming', label: 'Gaming lounges', to: '/industries/gaming',
+    title: 'For PS5 lounges, game rooms and pool halls',
+    body: 'A timer on every station that prices the time exactly, with the food and drink on the same bill.',
+    points: ['A live board with a timer on every PS5, room and table', 'Rates by players, per minute or per frame, with peak and happy hours', 'Food and drink ordered for a station on its own tab', 'Prepaid wallets, hour packs and bookings', 'Time and snacks on one GST invoice'],
+    src: '/product/gaming-board.webp', alt: 'FlowXP gaming board with a timer on each PS5, room and pool table and the food and drink on its tab.'
+  },
+  {
+    key: 'auto-parts', label: 'Auto spare parts', to: '/industries/auto-parts',
+    title: 'For spare parts shops and their warehouses',
+    body: 'Find a part by any number, know which bin it is in, and sell to garages on trade prices and credit.',
+    points: ['OEM and any part number, with or without dashes', 'Vehicle fitment you record, never assumed', 'Racks and bins with QR labels, always agreeing with stock', 'Receiving with accepted, damaged and rejected counted apart', 'Trade prices, credit limits and parts held for a customer'],
+    src: '/product/parts-vehicles.webp', alt: 'FlowXP vehicle search for a Swift with each part labelled as verified or not verified.'
+  },
+  {
     key: 'pharmacy', label: 'Pharmacies', to: '/industries/pharmacy',
     title: 'For pharmacies and medical stores',
     body: 'Receive stock with its batch and expiry date, and the till sells the soonest-expiring batch first.',
@@ -202,7 +223,7 @@ const BUSINESSES = [
     key: 'wholesale', label: 'Wholesale and distribution', to: '/industries/wholesale',
     title: 'For wholesalers and distributors',
     body: 'Buy from suppliers, sell on credit, and keep track of who owes you and whom you owe.',
-    points: ['Purchase orders, partial deliveries and back-orders', 'Supplier price lists and debit notes', 'Customer credit, dues and outstanding reports', 'Stock transfers between branches or godowns', 'E-way bill and e-invoice files'],
+    points: ['Purchase orders, partial deliveries and back-orders', 'Supplier price lists and debit notes', 'Customer credit, dues and outstanding reports', 'Stock transfers between branches or godowns', 'E-way bill and e-invoice files', 'For distributors: field sales on a phone, beats, schemes and vans'],
     src: '/product/profit-main.webp', alt: 'FlowXP profitability report with revenue, costs, margin and daily revenue.'
   }
 ];

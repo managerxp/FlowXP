@@ -12,6 +12,7 @@
  */
 import { getPlatformSettingMasked, setPlatformSetting } from '../modules/platformSettings.js';
 import { recordAudit } from '../modules/events.js';
+import config from '../config/env.js';
 
 // Selectable today; a provider not in this list has no adapter yet; picking it would
 // silently do nothing, so it's refused rather than pretended to work.
@@ -33,7 +34,7 @@ export const getPaymentGateway = async (req, res) => {
   const setting = await getPlatformSettingMasked('payment_gateway');
   res.json({
     success: true,
-    data: setting?.value || { provider: 'cashfree', cashfreeAppId: '', cashfreeSecretKey: '', cashfreeEnv: 'SANDBOX' },
+    data: setting?.value || { provider: 'cashfree', cashfreeAppId: '', cashfreeSecretKey: '', cashfreeEnv: config.cashfree.env },
     availableProviders: PAYMENT_PROVIDERS
   });
 };

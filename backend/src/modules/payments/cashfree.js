@@ -29,7 +29,7 @@ const resolveConfig = async () => {
   return {
     appId: db?.cashfreeAppId || config.cashfree.appId,
     secretKey: db?.cashfreeSecretKey || config.cashfree.secretKey,
-    env: (db?.cashfreeEnv || config.cashfree.env || 'SANDBOX').toUpperCase()
+    env: (db?.cashfreeEnv || config.cashfree.env).toUpperCase()
   };
 };
 
@@ -38,6 +38,10 @@ const request = async (path, body) => {
   if (!cfg.appId || !cfg.secretKey) {
     throw new CashfreeError('Cashfree is not set up yet — add its App ID and Secret Key in Settings → Payment gateway.');
   }
+  // Sandbox and production keys are not interchangeable; Cashfree's own answer ("authentication failed") hides which one is wrong.
+  const testKeys = /test/i.test(cfg.appId) || /_test_/i.test(cfg.secretKey);
+  if (cfg.env === 'PRODUCTION' && testKeys) throw new CashfreeError('Environment is PRODUCTION but the App ID / Secret Key are Cashfree TEST keys - save the live keys in Settings > Payment gateway.');
+  if (cfg.env === 'SANDBOX' && !testKeys) throw new CashfreeError('Environment is SANDBOX but the keys look like live keys - set the environment to Production in Settings > Payment gateway.');
   const baseUrl = cfg.env === 'PRODUCTION' ? 'https://api.cashfree.com/pg' : 'https://sandbox.cashfree.com/pg';
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -54,7 +58,11 @@ const request = async (path, body) => {
       body: JSON.stringify(body)
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new CashfreeError(data?.message || 'Cashfree refused the request');
+    if (!response.ok) {
+      console.error(`[cashfree] ${path} -> ${response.status}`, JSON.stringify(data));   // the real reason (IP not whitelisted, not activated...) lives in code/type
+      const detail = [data?.code, data?.type].filter(Boolean).join(' / ');
+      throw new CashfreeError(`${data?.message || 'Cashfree refused the request'}${detail ? ` (${detail})` : ''}`);
+    }
     return data;
   } catch (error) {
     if (error instanceof CashfreeError) throw error;

@@ -15,10 +15,10 @@ const LINK_STATUS_TONE = { PENDING: 'neutral', PAID: 'success', EXPIRED: 'danger
 // already accepts there, since the two lists must be changed together either way.
 const BUSINESS_TYPES = [
   ['RESTAURANT', 'Restaurant'], ['CAFE', 'Café'], ['CLOUD_KITCHEN', 'Cloud kitchen'], ['HOTEL', 'Hotel and restaurant'], ['RETAIL', 'Retail'],
-  ['SUPERMARKET', 'Supermarket'], ['PHARMACY', 'Pharmacy'], ['SALON', 'Salon'],
+  ['SUPERMARKET', 'Supermarket'], ['PHARMACY', 'Pharmacy'], ['SALON', 'Salon'], ['GYM', 'Gym'],
   ['SERVICES', 'Services'], ['ELECTRONICS', 'Electronics'], ['CLOTHING', 'Clothing'],
-  ['GAMING_CAFE', 'Gaming café'], ['RACING', 'Racing'], ['WHOLESALE', 'Wholesale'],
-  ['DISTRIBUTOR', 'Distributor'], ['OTHER', 'Other']
+  ['GAMING_CAFE', 'Gaming café'], ['AUTO_PARTS', 'Auto spare parts'], ['RACING', 'Racing'], ['WHOLESALE', 'Wholesale and distribution'],
+  ['DISTRIBUTOR', 'Distributor (older type, same as wholesale and distribution)'], ['OTHER', 'Other']
 ];
 const SUBSCRIPTION_STATUSES = ['TRIAL', 'ACTIVE', 'EXPIRED', 'CANCELLED', 'SUSPENDED'];
 
@@ -36,13 +36,16 @@ const PlanAndType = ({ business, businessId, onSaved }) => {
   const [planCode, setPlanCode] = useState(business.plan_code);
   const [subscriptionStatus, setSubscriptionStatus] = useState(business.subscription_status_raw);
   const [businessType, setBusinessType] = useState(business.business_type);
+  const [distributor, setDistributor] = useState(Boolean(business.distributor_enabled));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => { adminApi('/plans').then(setPlans).catch((err) => setError(err.message)); }, []);
 
+  const isWholesale = ['WHOLESALE', 'DISTRIBUTOR'].includes(businessType);
   const dirty = planCode !== business.plan_code || businessType !== business.business_type
-    || subscriptionStatus !== business.subscription_status_raw;
+    || subscriptionStatus !== business.subscription_status_raw
+    || (isWholesale && distributor !== Boolean(business.distributor_enabled));
 
   const save = async () => {
     setSaving(true);
@@ -50,7 +53,7 @@ const PlanAndType = ({ business, businessId, onSaved }) => {
     try {
       await adminApi(`/businesses/${businessId}/plan`, {
         method: 'PATCH',
-        body: { plan_code: planCode, subscription_status: subscriptionStatus, business_type: businessType }
+        body: { plan_code: planCode, subscription_status: subscriptionStatus, business_type: businessType, ...(isWholesale ? { distributor_enabled: distributor } : {}) }
       });
       toast.success('Saved');
       await onSaved();
@@ -80,13 +83,22 @@ const PlanAndType = ({ business, businessId, onSaved }) => {
         </Field>
         <Field id="bt-type" label="Business type">
           <Select id="bt-type" value={businessType} onChange={(e) => setBusinessType(e.target.value)}>
-            {BUSINESS_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            {BUSINESS_TYPES.filter(([value]) => value !== 'DISTRIBUTOR' || business.business_type === 'DISTRIBUTOR').map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </Select>
         </Field>
         <div className="flex items-end">
           <Button className="w-full" disabled={!dirty || saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</Button>
         </div>
       </div>
+      {isWholesale && (
+        <label htmlFor="bt-dist" className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-line p-3">
+          <input id="bt-dist" type="checkbox" className="mt-1 h-4 w-4" checked={distributor} onChange={(e) => setDistributor(e.target.checked)} />
+          <span>
+            <span className="block text-sm font-semibold text-ink-900">Distributor tools</span>
+            <span className="block text-sm text-ink-500">Off: wholesale only. On: adds principals, territories and beats, field sales, schemes, targets, commission and vans. The owner sees this but cannot change it.</span>
+          </span>
+        </label>
+      )}
       <p className="mt-3 text-xs text-ink-400">
         Which features this plan and business type actually include is set on the <Link to="/superadmin/features" className="text-brand-600 hover:underline">Features</Link> page.
       </p>

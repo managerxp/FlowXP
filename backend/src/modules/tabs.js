@@ -21,8 +21,18 @@ export const OPEN_STATUSES = ['OPEN', 'PREPARING', 'READY', 'SERVED'];
 export const stageOf = (status) => OPEN_STATUSES.indexOf(status);
 export const earlierStage = (a, b) => (stageOf(a) <= stageOf(b) ? a : b);
 
+/**
+ * A gaming station's tab belongs to its running session: it cannot be billed, cancelled, moved or merged until the session is stopped, or the
+ * time that is still running would be left off the bill. (Food and drink can be added to it as usual.)
+ */
+export const assertNoLiveSession = async (client, orderIds) => {
+  const live = (await client.query(`SELECT 1 FROM gaming_sessions WHERE order_id = ANY($1::int[]) AND status IN ('RUNNING','PAUSED') LIMIT 1`, [orderIds])).rowCount;
+  if (live) throw new TabError(409, 'A gaming session is still running on this tab. Stop it first');
+};
+
 /** Lock orders in id order (so two staff merging the same pair can't deadlock) and return them by id. */
 export const lockOrders = async (client, businessId, ids, scopeBranchId = null) => {
+  await assertNoLiveSession(client, ids);
   const { rows } = await client.query(
     `SELECT * FROM orders WHERE business_id = $1 AND order_id = ANY($2::int[])${scopeBranchId != null ? ' AND branch_id = $3' : ''} ORDER BY order_id FOR UPDATE`,
     scopeBranchId != null ? [businessId, ids, scopeBranchId] : [businessId, ids]

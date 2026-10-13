@@ -13,16 +13,19 @@
  * a plain refund on its own only moves money.
  */
 import { onCreditNote } from '../modules/salon/hooks.js';
+import { onCreditNote as onGymCreditNote } from '../modules/gym/memberships.js';
 import pool from '../config/database.js';
 import { reverseForCredit } from '../modules/points.js';
 import { recordAudit } from '../modules/events.js';
 import { moveStock } from '../modules/stock.js';
+import { parseReturn, recordReturns } from '../modules/autoparts/returns.js';
 import { restoreBatches } from '../modules/retailStock.js';
 import { isRetail } from '../modules/retailSettings.js';
+import { refundToWallet } from '../modules/gaming/wallet.js';
 import { branchFilter } from '../utils/scope.js';
 import { toQuantity, toRupees } from '../utils/money.js';
 
-const METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER'];
+const METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER', 'WALLET'];   // WALLET (back to the player's prepaid balance) is for a gaming lounge only
 const bad = (res, message, status = 400) => res.status(status).json({ success: false, message });
 
 export class NoteError extends Error { constructor(status, message) { super(message); this.name = 'NoteError'; this.status = status; } }
@@ -52,6 +55,12 @@ export const issueCreditNote = async (client, req) => {
   if (!Array.isArray(body.items) || !body.items.length) throw new NoteError(400, 'Choose at least one item');
   const method = body.refund?.method ? String(body.refund.method).toUpperCase() : null;
   if (method && !METHODS.includes(method)) throw new NoteError(400, 'Unknown refund method');
+  if (method === 'WALLET' && req.tenant.businessType !== 'GAMING_CAFE') throw new NoteError(400, 'Unknown refund method');
+  // a parts shop says why the part came back and what becomes of it
+  let ret = null;
+  if (req.tenant.businessType === 'AUTO_PARTS') {
+    try { ret = await parseReturn(client, req.tenant, body); } catch (error) { if (error.name === 'PartsError') throw new NoteError(error.status, error.message); throw error; }
+  }
   const scope = [req.tenant.businessId, req.params.id];
   const invoice = (await client.query(
     `SELECT * FROM invoices WHERE business_id = $1 AND invoice_id = $2${branchFilter(req.tenant, 'branch_id', scope)} FOR UPDATE`, scope
@@ -124,7 +133,7 @@ export const issueCreditNote = async (client, req) => {
   )).rows[0];
 
   for (const p of picked) {
-    const restock = Boolean(body.restock) && p.line.track_inventory && p.line.product_id;
+    const restock = (ret ? ret.disposition === 'RESTOCK' : Boolean(body.restock)) && p.line.track_inventory && p.line.product_id;
     await client.query(
       `INSERT INTO credit_note_items (cn_id, invoice_item_id, product_id, description, quantity, tax_rate, tax_amount_paise, line_total_paise, restocked)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
@@ -143,11 +152,17 @@ export const issueCreditNote = async (client, req) => {
     }
   }
 
+  if (ret) await recordReturns(client, { tenant: req.tenant, userId: req.auth.userId, note, invoice, picked, ret });
+
   if (refund > 0) {
     await client.query(
       `INSERT INTO refunds (business_id, invoice_id, amount_paise, method, reason, created_by, credit_note_id) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
       [req.tenant.businessId, invoice.invoice_id, refund, method, `${cnNumber}: ${reason}`, req.auth.userId, note.cn_id]
     );
+    if (method === 'WALLET') {
+      try { await refundToWallet(client, { businessId: req.tenant.businessId, customerId: invoice.customer_id, amountPaise: refund, invoiceId: invoice.invoice_id, creditNoteId: note.cn_id, userId: req.auth.userId }); }
+      catch (error) { if (error?.name === 'GamingError') throw new NoteError(error.status, error.message); throw error; }
+    }
   }
   const newBalance = Number(invoice.balance_due_paise) - fromBalance;
   await client.query(
@@ -160,6 +175,7 @@ export const issueCreditNote = async (client, req) => {
   // the customer gives back a share of the points that bill earned
   await reverseForCredit(client, { businessId: req.tenant.businessId, invoiceId: invoice.invoice_id, creditedTotalPaise: Number(invoice.credited_paise) + total, createdBy: req.auth.userId });
   // a salon bill: commission shrinks with the credited share; a package / membership / gift card credited in full is withdrawn
+  if (req.tenant.businessType === 'GYM') await onGymCreditNote(client, { businessId: req.tenant.businessId, invoiceId: invoice.invoice_id, userId: req.auth.userId });
   if (req.tenant.businessType === 'SALON') await onCreditNote(client, { businessId: req.tenant.businessId, invoiceId: invoice.invoice_id, userId: req.auth.userId });
 
   return { note, invoice, total, refund, leftover, picked };

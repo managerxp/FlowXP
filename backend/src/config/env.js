@@ -135,7 +135,7 @@ export const config = {
   cashfree: {
     appId: process.env.CASHFREE_APP_ID || '',
     secretKey: process.env.CASHFREE_SECRET_KEY || '',
-    env: (process.env.CASHFREE_ENV || 'SANDBOX').toUpperCase() // SANDBOX | PRODUCTION
+    env: (process.env.CASHFREE_ENV || (process.env.NODE_ENV === 'production' ? 'PRODUCTION' : 'SANDBOX')).toUpperCase() // SANDBOX | PRODUCTION
   },
   mail: {
     host: process.env.SMTP_HOST || '',

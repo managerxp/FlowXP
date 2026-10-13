@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, FlatList, Modal, Platform, Pressable, ScrollV
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from '../../lib/session.ts';
+import { isWholesale } from '../../lib/retail.ts';
 import { kvGet, kvSet, useScope } from '../../lib/local.ts';
 import { bump, parseUsage, popular, trim, type Usage } from '../../lib/billing.ts';
 import { startAutoSync, syncAll, useSyncState } from '../../lib/sync.ts';
@@ -287,7 +288,7 @@ export default function Sell() {
   if (business?.business_type === 'SALON') return <SalonTill />;
   if (business?.business_type === 'PHARMACY') return <PharmacyTill />;
 
-  if (business?.business_type === 'WHOLESALE' || business?.business_type === 'DISTRIBUTOR') return <WholesaleHome />;
+  if (isWholesale(business)) return <WholesaleHome />;
 
   if (wide) {
     return (

@@ -15,7 +15,8 @@ import { refreshCounts, syncAll } from '../lib/sync.ts';
 import { takeSale } from '../lib/till.ts';
 import { clearSale, keyForSale, useSale } from '../lib/sale.ts';
 import { markDone } from '../lib/learn.tsx';
-import { KITCHEN_TYPES, totals, upiLink } from '../lib/cart.ts';
+import { KITCHEN_TYPES, saleBody, totals, upiLink } from '../lib/cart.ts';
+import { HOTEL_TYPES, roomChargeBody, roomGuestLine, type RoomGuest } from '../lib/hotel.ts';
 import { qty, rupees, toPaise } from '../lib/money.ts';
 import { t } from '../lib/i18n.ts';
 import { Page, useWide } from '../lib/responsive.tsx';
@@ -49,6 +50,24 @@ export default function Pay() {
   const [reference, setReference] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // a hotel's restaurant: the bill can go onto an in-house guest's room instead of being paid here (online only: it is posted to a live folio)
+  const hotel = HOTEL_TYPES.includes(business?.business_type ?? '');
+  const [onRoom, setOnRoom] = useState(false);
+  const [guestText, setGuestText] = useState('');
+  const guests = useLoad<RoomGuest[]>(`room-guests:${session.businessId}:${session.branchId}:${guestText}`, async () => (await api.get<RoomGuest[] | { rows: RoomGuest[] }>(`/hotel/room-charge/guests?q=${encodeURIComponent(guestText.trim())}`) as RoomGuest[]), hotel && onRoom);
+  const roomKey = useRef(newKey());
+  const chargeToRoom = async (g: RoomGuest) => {
+    setBusy(true); setError('');
+    try {
+      const invoice = orderId
+        ? await api.post<{ invoice_id: number }>(`/orders/${orderId}/bill`, roomChargeBody({ apply_promotions: true }, g.booking_id), { idempotencyKey: roomKey.current })
+        : await api.post<{ invoice_id: number }>('/invoices', roomChargeBody(saleBody(cart, { method: 'CASH', payNowPaise: 0 }, { kitchen: toKitchen, customerId: null }), g.booking_id), { idempotencyKey: roomKey.current });
+      if (!orderId) clearSale();
+      router.replace({ pathname: '/receipt', params: { id: String(invoice.invoice_id) } });
+    } catch (e) {
+      setError(e instanceof NetworkError ? 'No internet. Charging a room needs a connection, and nothing was charged. Tap again when it is back.' : e instanceof ApiError ? e.message : 'Could not charge the room');
+    } finally { setBusy(false); }
+  };
 
   const hasCustomer = orderId ? Boolean(order.data?.customer_id) : Boolean(customer);
   const owes = (orderId ? order.data?.customer_name : customer?.name) || t('the customer');
@@ -127,7 +146,18 @@ export default function Pay() {
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {HOWS.map((h) => <Button key={h.id} title={h.label} selected={how === h.id} onPress={() => { setHow(h.id); setError(''); }} style={{ flex: 1 }} />)}
       </View>
-      {how === 'PART' ? (
+      {hotel ? <Button title={onRoom ? 'Pay here instead' : 'Charge to a room'} kind="quiet" onPress={() => { setOnRoom(!onRoom); setError(''); }} disabled={busy} /> : null}
+      {hotel && onRoom ? (
+        <View style={{ gap: 8 }}>
+          <Soft>The bill goes on the guest's room bill and is paid when they check out.</Soft>
+          <TextInput style={s.input} value={guestText} onChangeText={setGuestText} placeholder="Guest name or room number" accessibilityLabel="Find a guest" />
+          {guests.busy && !guests.data ? <Loading /> : null}
+          {guests.data && guests.data.length === 0 ? <Soft>No guest is checked in{guestText ? ' with that name or room' : ''}.</Soft> : null}
+          {(guests.data ?? []).map((g) => <Button key={g.booking_id} title={`Charge ${rupees(total)} to ${roomGuestLine(g)}`} kind="quiet" onPress={() => { void chargeToRoom(g); }} busy={busy} disabled={total <= 0} />)}
+          <ErrorText>{error}</ErrorText>
+        </View>
+      ) : null}
+      {how === 'PART' && !onRoom ? (
         <View style={{ gap: 8 }}>
           <Soft>{t('How much is being paid now?')}</Soft>
           <TextInput style={s.input} value={nowText} onChangeText={setNowText} keyboardType="decimal-pad" placeholder="0" accessibilityLabel={t('Paying now')} />

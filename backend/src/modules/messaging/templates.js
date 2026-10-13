@@ -136,6 +136,47 @@ export const TEMPLATES = {
     name: 'flowxp_review_reply', promo: false,
     vars: ['name', 'business', 'reply'],
     text: (p) => `Hi ${p.name}, ${p.business}: ${p.reply}`
+  },
+  // Gym. Kinds stay within the messages.kind column (24 characters). The sign-in code is never stored in the messages table.
+  GYM_OTP: {
+    name: 'flowxp_gym_otp', promo: false,
+    vars: ['business', 'code'],
+    text: (p) => `${p.code} is your ${p.business} sign-in code. It works for 10 minutes. Do not share it with anyone.`
+  },
+  GYM_WELCOME: {
+    name: 'flowxp_gym_welcome', promo: false,
+    vars: ['name', 'business', 'code'],
+    text: (p) => `Welcome to ${p.business}, ${p.name}! Your member code is ${p.code}.`
+  },
+  GYM_EXPIRY: {
+    name: 'flowxp_gym_expiry', promo: false,
+    vars: ['name', 'business', 'plan', 'date'],
+    text: (p) => `Hi ${p.name}, your ${p.plan} membership at ${p.business} ends on ${p.date}. Renew at the desk to keep training without a break.`
+  },
+  GYM_EXPIRED: {
+    name: 'flowxp_gym_expired', promo: false,
+    vars: ['name', 'business', 'plan', 'date'],
+    text: (p) => `Hi ${p.name}, your ${p.plan} membership at ${p.business} ended on ${p.date}. Renew at the desk when you are ready to come back.`
+  },
+  GYM_PAYMENT_DUE: {
+    name: 'flowxp_gym_payment_due', promo: false,
+    vars: ['name', 'business', 'plan', 'amount'],
+    text: (p) => `Hi ${p.name}, ${p.amount} is still due on your ${p.plan} membership at ${p.business}. Please pay at the desk to keep your access.`
+  },
+  GYM_CLASS: {
+    name: 'flowxp_gym_class', promo: false,
+    vars: ['name', 'business', 'class', 'when'],
+    text: (p) => `Hi ${p.name}, a reminder: ${p.class} at ${p.business} on ${p.when}.`
+  },
+  GYM_REWARD: {
+    name: 'flowxp_gym_reward', promo: false,
+    vars: ['name', 'business', 'points'],
+    text: (p) => `Hi ${p.name}, you now have ${p.points} reward points at ${p.business}. Ask at the desk what they can get you.`
+  },
+  GYM_INACTIVE: {
+    name: 'flowxp_gym_inactive', promo: true,
+    vars: ['name', 'business', 'days'],
+    text: (p) => `Hi ${p.name}, we have not seen you at ${p.business} for ${p.days} days. We would love to have you back! Reply STOP to opt out.`
   }
 };
 

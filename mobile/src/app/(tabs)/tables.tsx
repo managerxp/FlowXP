@@ -30,6 +30,7 @@ export default function Tables() {
   const diningRoom = currentBusiness(session)?.business_type !== 'CLOUD_KITCHEN';
   const floor = useLoad<TableRow[]>(`floor:${scopeKey}`, () => (diningRoom ? api.get<TableRow[]>('/tables') : Promise.resolve([])));
   const open = useLoad<Order[]>(`open-orders:${scopeKey}`, () => api.get<Order[]>('/orders?open_only=true'));
+  const waiting = useLoad<{ order_id: number }[]>(`incoming-count:${scopeKey}`, () => api.get<{ order_id: number }[]>('/orders/pending-deliveries'));
   const [busy, setBusy] = useState<number | 'new' | null>(null);
   const [problem, setProblem] = useState('');
   const [zone, setZone] = useState<string | null>(null);
@@ -39,7 +40,7 @@ export default function Tables() {
   useFocusEffect(useCallback(() => { setFocused(true); return () => setFocused(false); }, []));
   useEffect(() => {
     if (!focused) return;
-    const t = setInterval(() => { void floor.refresh(); void open.refresh(); }, 15000);
+    const t = setInterval(() => { void floor.refresh(); void open.refresh(); void waiting.refresh(); }, 15000);
     return () => clearInterval(t);
   }, [focused]);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -123,6 +124,13 @@ export default function Tables() {
               </View>
             </View>
           ))}
+
+          {waiting.data && waiting.data.length > 0 ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={`${waiting.data.length} new online orders waiting`} onPress={() => router.push('/incoming')} style={{ margin: 16, minHeight: 56, borderRadius: 12, backgroundColor: color.danger, paddingHorizontal: 16, justifyContent: 'center' }}>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>{waiting.data.length === 1 ? '1 new online order is waiting' : `${waiting.data.length} new online orders are waiting`}</Text>
+              <Text style={{ color: '#fff' }}>Tap to accept or turn down</Text>
+            </Pressable>
+          ) : null}
 
           {away.length ? (
             <>
