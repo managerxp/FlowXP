@@ -18,6 +18,7 @@ import { periodCosts, profitability } from '../profitability.js';
 import { addDays, buildInventoryForecast, loadDaily, predictDay } from '../forecast.js';
 import { performance as kitchenPerformance } from '../kitchen.js';
 import { currentFindings } from '../leakage.js';
+import { REPORT_TOOLS } from './reportTools.js';
 
 const rupees = (paise) => Math.round(Number(paise) || 0) / 100;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -252,7 +253,8 @@ export const TOOLS = [
         recent_comments: recent.rows.map((r) => ({ rating: r.rating, comment: r.comment, date: r.created_at }))
       };
     }
-  }
+  },
+  ...REPORT_TOOLS
 ];
 
 const byName = new Map(TOOLS.map((t) => [t.name, t]));

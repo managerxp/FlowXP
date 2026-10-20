@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Badge, Button, Field, Input, Modal, Select, useToast, useDialog } from './ui.jsx';
 import DebitNoteModal from './DebitNoteModal.jsx';
 
@@ -27,6 +28,9 @@ const PurchaseOrderModal = ({ poId, products, suppliers, prefill, initialMode = 
   const [supplierId, setSupplierId] = useState(prefill?.supplier_id ? String(prefill.supplier_id) : '');
   const [expected, setExpected] = useState('');
   const [notes, setNotes] = useState('');
+  const [reverse, setReverse] = useState(false);
+  const { business } = useAuth();
+  const canReverse = Boolean(business?.gst_enabled && business?.gst_options?.reverse_charge);
   const [lines, setLines] = useState(() => (prefill?.items?.length
     ? prefill.items.map((i) => ({ ...emptyLine(), product_id: String(i.product_id), description: i.name, quantity: String(i.quantity), unit_cost: String(i.unit_cost ?? '') }))
     : [emptyLine()]));
@@ -54,7 +58,7 @@ const PurchaseOrderModal = ({ poId, products, suppliers, prefill, initialMode = 
 
   const fill = (d) => {
     savedId.current = d.po_id;
-    setPo(d); setSupplierId(d.supplier_id ? String(d.supplier_id) : ''); setExpected(d.expected_date || ''); setNotes(d.notes || '');
+    setPo(d); setSupplierId(d.supplier_id ? String(d.supplier_id) : ''); setExpected(d.expected_date || ''); setNotes(d.notes || ''); setReverse(Boolean(d.reverse_charge));
     setLines(d.items.map((i) => ({ item_id: i.item_id, product_id: i.product_id ? String(i.product_id) : '', description: i.description, quantity: String(i.quantity), unit_cost: String(i.unit_cost), tax_rate: String(i.tax_rate) })));
     // a delivery: by default whatever is still owed, at the price on the order
     setRecv(d.items.map((i) => ({ item_id: i.item_id, description: i.description, ordered: i.quantity, before: i.received_quantity ?? 0, quantity: String(i.outstanding ?? i.quantity), unit_cost: String(i.unit_cost) })));
@@ -68,7 +72,7 @@ const PurchaseOrderModal = ({ poId, products, suppliers, prefill, initialMode = 
   };
 
   const payload = () => ({
-    supplier_id: supplierId || null, notes: notes || null, expected_date: expected || null,
+    supplier_id: supplierId || null, notes: notes || null, expected_date: expected || null, ...(canReverse || reverse ? { reverse_charge: reverse } : {}),
     items: lines.filter((l) => l.quantity && l.unit_cost !== '').map((l) => ({ product_id: l.product_id ? Number(l.product_id) : null, description: l.description || undefined, quantity: Number(l.quantity), unit_cost: Number(l.unit_cost), tax_rate: Number(l.tax_rate) || 0 }))
   });
 
@@ -167,6 +171,12 @@ const PurchaseOrderModal = ({ poId, products, suppliers, prefill, initialMode = 
               {!locked && <Button type="button" variant="secondary" size="sm" onClick={() => setLines((ls) => [...ls, emptyLine()])}>Add line</Button>}
             </div>
             <Field id="po-notes" label="Note for the supplier" hint="Optional"><Input id="po-notes" value={notes} onChange={(e) => setNotes(e.target.value)} disabled={locked} /></Field>
+            {(canReverse || reverse) && (
+              <label htmlFor="po-rcm" className="flex cursor-pointer items-start gap-3 sm:col-span-2">
+                <input id="po-rcm" type="checkbox" checked={reverse} disabled={locked} onChange={(e) => setReverse(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-(--color-brand-500)" />
+                <span><span className="block text-small font-medium text-ink-900">Tax payable on reverse charge</span><span className="block text-caption text-ink-500">You owe the supplier the taxable value only. The GST is yours to pay, and to claim back.</span></span>
+              </label>
+            )}
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
               <p className="text-lg font-bold text-ink-900">Total {formatCurrency(locked ? po.total : orderedTotal)}</p>

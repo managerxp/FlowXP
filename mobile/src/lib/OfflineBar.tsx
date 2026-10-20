@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_URL } from './session.ts';
 import { PROBE_EVERY_MS, offlineFor, reportNetwork, useOnline, netStore } from './net.ts';
 import { useStore } from './store.ts';
+import { color } from './theme.ts';
 
 /* Shown over every screen while the server cannot be reached. Bills made now are kept on the phone and sent when the signal is back. While it shows, the app checks again every few
    seconds, so it goes away by itself; tapping it checks at once. */
@@ -27,10 +28,10 @@ export function OfflineBar() {
 
   if (online) return null;
   return (
-    <SafeAreaView edges={['top']} style={{ backgroundColor: '#92400e' }}>
+    <SafeAreaView edges={['top']} style={{ backgroundColor: color.warn }}>
       <Pressable accessibilityRole="button" accessibilityLabel="No internet. Tap to check again." onPress={() => { void probe(); }} style={{ minHeight: 48, paddingHorizontal: 16, paddingVertical: 8, justifyContent: 'center' }}>
         <Text accessibilityLiveRegion="polite" style={{ color: '#fff', fontWeight: '700' }}>{checking ? 'Checking the connection…' : `No internet${since ? ` (${offlineFor(since, now)})` : ''}`}</Text>
-        <Text style={{ color: '#fde68a', fontSize: 13 }}>Bills are saved on this phone and sent when it is back. Tap to check again.</Text>
+        <Text style={{ color: color.warnLine, fontSize: 13 }}>Bills are saved on this phone and sent when it is back. Tap to check again.</Text>
       </Pressable>
     </SafeAreaView>
   );

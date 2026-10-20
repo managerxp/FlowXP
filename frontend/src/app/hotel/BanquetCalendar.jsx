@@ -6,10 +6,12 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { addDays, hhmm, isWeekend, monthDay, qs, shortDay, useLoad } from '../../lib/hotel.js';
 import { Button, ListState, PageHeader } from '../../components/ui.jsx';
 import EventForm from './EventForm.jsx';
+import { useT } from '../../i18n/useT.js';
 
 const DAYS = 28;
 
 export default function BanquetCalendar() {
+  const tr = useT();
   const nav = useNavigate();
   const { can } = useAuth();
   const dash = useLoad('/hotel/dashboard');
@@ -25,17 +27,17 @@ export default function BanquetCalendar() {
 
   return (
     <div>
-      <PageHeader title="Hall calendar" lead="Which hall is booked or held on which day."
-        action={<>{can('banquet') && <Button onClick={() => setOpen(true)}>New event</Button>}
-          <Button variant="secondary" size="sm" onClick={() => setFrom(addDays(start, -14))} aria-label="Earlier"><ChevronLeft aria-hidden="true" className="h-4 w-4" /></Button>
-          <Button variant="secondary" size="sm" onClick={() => setFrom(null)}>Today</Button>
-          <Button variant="secondary" size="sm" onClick={() => setFrom(addDays(start, 14))} aria-label="Later"><ChevronRight aria-hidden="true" className="h-4 w-4" /></Button></>} />
-      <ListState loading={cal.loading && !c} error={cal.error} empty={c && !c.halls.length} emptyLabel="Add your halls in Rooms & rates, on the Banquet tab." />
+      <PageHeader title={tr('Hall calendar')} lead={tr('Which hall is booked or held on which day.')}
+        action={<>{can('banquet') && <Button onClick={() => setOpen(true)}>{tr('New event')}</Button>}
+          <Button variant="secondary" size="sm" onClick={() => setFrom(addDays(start, -14))} aria-label={tr('Earlier')}><ChevronLeft aria-hidden="true" className="h-4 w-4" /></Button>
+          <Button variant="secondary" size="sm" onClick={() => setFrom(null)}>{tr('Today')}</Button>
+          <Button variant="secondary" size="sm" onClick={() => setFrom(addDays(start, 14))} aria-label={tr('Later')}><ChevronRight aria-hidden="true" className="h-4 w-4" /></Button></>} />
+      <ListState loading={cal.loading && !c} error={cal.error} empty={c && !c.halls.length} emptyLabel={tr('Add your halls in Rooms & rates, on the Banquet tab.')} />
       {c && c.halls.length > 0 && (
         <div className="overflow-x-auto rounded-(--radius-card) border border-line bg-surface">
           <div className="min-w-[72rem]">
             <div style={grid} className="border-b border-line bg-surface-2 text-caption font-medium text-ink-500">
-              <div className="px-3 py-2">{monthDay(start)} to {monthDay(days[days.length - 1])}</div>
+              <div className="px-3 py-2">{tr('{{monthDay}} to {{monthDay2}}', { monthDay: monthDay(start), monthDay2: monthDay(days[days.length - 1]) })}</div>
               {days.map((d) => <div key={d} className={`border-l border-line px-0.5 py-2 text-center ${d === today ? 'bg-brand-50 text-brand-700' : isWeekend(d) ? 'bg-surface-3/60' : ''}`}>{shortDay(d)}</div>)}
             </div>
             {c.halls.map((h) => {
@@ -62,7 +64,7 @@ export default function BanquetCalendar() {
           </div>
         </div>
       )}
-      <p className="mt-3 text-caption text-ink-500"><span className="mr-4"><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-brand-500" />Confirmed</span><span className="mr-4"><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-warning" />Held for now</span><span><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-ink-500" />Done</span></p>
+      <p className="mt-3 text-caption text-ink-500"><span className="mr-4"><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-brand-500" />{tr('Confirmed')}</span><span className="mr-4"><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-warning" />{tr('Held for now')}</span><span><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-ink-500" />{tr('Done')}</span></p>
       {open && <EventForm onClose={() => setOpen(false)} onSaved={(saved) => { setOpen(false); nav(`/app/hotel/banquet/events/${saved.event_id}`); }} />}
     </div>
   );

@@ -5,7 +5,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
 import { kvGet, useScope } from '../lib/local.ts';
-import { printReceipt } from '../lib/print.ts';
+import { printReceipt, type Paper } from '../lib/print.ts';
+import { canEway } from '../lib/ewayBill.ts';
+import { billSentText, canSendBill, type BillSent } from '../lib/messaging.ts';
+import { printTaxInvoice, shareBillOnWhatsApp, shareReceiptPdf, shareTaxInvoicePdf } from '../lib/share.ts';
+import { usesTaxInvoice, type TaxInvoice } from '../lib/taxInvoice.ts';
+import { COLUMNS } from '../lib/escpos.ts';
 import { t } from '../lib/i18n.ts';
 import { useSyncState } from '../lib/sync.ts';
 import { pendingReceiptText, receiptText, type Invoice } from '../lib/receipt.ts';
@@ -25,9 +30,14 @@ export default function Receipt() {
   const business = currentBusiness(session);
   const [pending, setPending] = useState<Entry | null>(null);
   const [invoiceId, setInvoiceId] = useState<string | undefined>(id);
-  const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [invoice, setInvoice] = useState<(Invoice & Pick<TaxInvoice, 'invoice_print'>) | null>(null);
   const [error, setError] = useState('');
   const [printError, setPrintError] = useState('');
+  const [shareError, setShareError] = useState('');
+  const [sentNote, setSentNote] = useState('');
+  const [sending, setSending] = useState(false);
+  const [paper, setPaper] = useState<Paper>('58');
+  useEffect(() => { void kvGet('paper').then((p) => setPaper(p === '80' ? '80' : '58')); }, []);
 
   // a queued sale: read it from the phone; once it has been sent it has an invoice, and we show that instead
   useEffect(() => {
@@ -35,13 +45,13 @@ export default function Receipt() {
     void scope.outbox.get(local).then((e) => { setPending(e); if (e?.invoice_id) setInvoiceId(String(e.invoice_id)); });
   }, [local, scope, sync.pending, sync.failed, sync.busy]);
 
-  const load = () => { if (!invoiceId) return; setError(''); api.get<Invoice>(`/invoices/${invoiceId}`).then(setInvoice).catch((e: Error) => setError(e.message)); };
+  const load = () => { if (!invoiceId) return; setError(''); api.get<Invoice & Pick<TaxInvoice, 'invoice_print'>>(`/invoices/${invoiceId}`).then(setInvoice).catch((e: Error) => setError(e.message)); };
   useEffect(load, [invoiceId]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const name = business?.name || 'FlowXP';
   // a bill with money still owed carries a UPI QR code for exactly that amount, so the customer can settle it by scanning the paper
   const owed = invoice && invoice.balance_due > 0 ? toPaise(invoice.balance_due) : 0;
-  const text = invoice ? receiptText(invoice, name) : pending ? pendingReceiptText(pending, name) : '';
+  const text = invoice ? receiptText(invoice, name, COLUMNS[paper]) : pending ? pendingReceiptText(pending, name, COLUMNS[paper]) : '';
   const waiting = !invoice && pending && pending.state !== 'sent';
   return (
     <SafeAreaView style={s.screen}>
@@ -69,6 +79,19 @@ export default function Receipt() {
         {text ? <Button title="Print the bill" kind="quiet" onPress={() => { setPrintError(''); void kvGet('paper').then((p) => printReceipt(text, p === '80' ? '80' : '58', owed && business?.upi_vpa ? { qr: upiPayLink(business.upi_vpa, business.name, owed) } : {})).then((how) => { if (how === 'fallback') setPrintError(t("Could not reach the printer, so the bill went to the phone's print screen instead.")); }).catch((e: Error) => setPrintError(e.message)); }} /> : null}
         <ErrorText>{printError}</ErrorText>
         {text ? <Button title="Send the bill" kind="quiet" onPress={() => { void Share.share({ message: text }); }} /> : null}
+        {invoice && canSendBill(invoice.customer_phone) ? <Button title="Send the bill from FlowXP" onPress={() => { setShareError(''); setSentNote(''); setSending(true); api.post<BillSent>('/messaging/send-bill', { invoice_id: invoice.invoice_id }).then((m) => setSentNote(billSentText(m))).catch((e: Error) => setShareError(e.message)).finally(() => setSending(false)); }} busy={sending} /> : null}
+        {sentNote ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok }}>{sentNote}</Text> : null}
+        {invoice && canEway(business?.role, Boolean(invoice.customer_gstin)) ? <Button title={invoice.eway_bill_no ? t('E-way bill {number}', { number: invoice.eway_bill_no }) : 'E-way bill'} kind="quiet" onPress={() => router.push({ pathname: '/eway-bill', params: { id: String(invoice.invoice_id) } })} /> : null}
+        {invoice ? <Button title="Send on WhatsApp (with link)" kind="quiet" onPress={() => { setShareError(''); shareBillOnWhatsApp(api, invoice.invoice_id).catch((e: Error) => setShareError(e.message)); }} /> : null}
+        {text ? <Button title="Share as PDF" kind="quiet" onPress={() => { setShareError(''); shareReceiptPdf(text, paper).catch((e: Error) => setShareError(e.message)); }} /> : null}
+        {invoice && usesTaxInvoice(invoice, business?.business_type) ? (
+          <>
+            <Button title="Share tax invoice (PDF)" kind="quiet" onPress={() => { setShareError(''); shareTaxInvoicePdf(api, invoice.invoice_id).catch((e: Error) => setShareError(e.message)); }} />
+            <Button title="Print tax invoice" kind="quiet" onPress={() => { setShareError(''); printTaxInvoice(api, invoice.invoice_id).catch((e: Error) => setShareError(e.message)); }} />
+            <Button title="Edit invoice details" kind="quiet" onPress={() => router.push({ pathname: '/invoice-details', params: { id: String(invoice.invoice_id) } })} />
+          </>
+        ) : null}
+        <ErrorText>{shareError}</ErrorText>
         {invoice ? <Button title="Return items" kind="quiet" onPress={() => router.push(['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type ?? '') ? { pathname: '/return-sale', params: { invoice: String(invoiceId) } } : { pathname: '/return', params: { id: String(invoiceId) } })} /> : null}
       </ScrollView>
       </Page>

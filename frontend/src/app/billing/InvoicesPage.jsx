@@ -12,21 +12,22 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { platformName } from '../../lib/business.js';
 import { Alert, Button, Input, StatCard } from '../../components/ui.jsx';
 import { OfflineChip } from '../../components/OfflineFlag.jsx';
+import { useT, T } from '../../i18n/useT.js';
 
 const d0 = (iso) => new Date(`${iso}T00:00`);
 const plusDays = (iso, n) => { const d = d0(iso); d.setDate(d.getDate() + n); return localISO(d); };
-const PERIODS = [['today', 'Today'], ['yesterday', 'Yesterday'], ['7d', 'Last 7 days'], ['month', 'This month'], ['all', 'All time'], ['custom', 'Pick dates']];
+const PERIODS = [['today', T('Today')], ['yesterday', T('Yesterday')], ['7d', 'Last 7 days'], ['month', T('This month')], ['all', T('All time')], ['custom', T('Pick dates')]];
 const periodFor = (key, custom) => {
   const today = localISO(); const now = new Date();
   if (key === 'today') return { from: today, to: today, label: 'today' };
   if (key === 'yesterday') { const y = plusDays(today, -1); return { from: y, to: y, label: 'yesterday' }; }
-  if (key === '7d') return { from: plusDays(today, -6), to: today, label: 'in the last 7 days' };
+  if (key === '7d') return { from: plusDays(today, -6), to: today, label: T('in the last 7 days') };
   if (key === 'month') return { from: localISO(new Date(now.getFullYear(), now.getMonth(), 1)), to: today, label: `in ${now.toLocaleDateString([], { month: 'long' })}` };
-  if (key === 'all') return { from: null, to: null, label: 'so far' };
+  if (key === 'all') return { from: null, to: null, label: T('so far') };
   const from = custom.from || today; const to = custom.to && custom.to >= from ? custom.to : from;
-  return { from, to, label: 'in these dates' };
+  return { from, to, label: T('in these dates') };
 };
-const TABS = [['all', 'All'], ['owing', 'Still owed'], ['paid', 'Paid'], ['cancelled', 'Cancelled'], ['check', 'Needs a look']];
+const TABS = [['all', T('All')], ['owing', T('Still owed')], ['paid', T('Paid')], ['cancelled', T('Cancelled')], ['check', T('Needs a look')]];
 const dayLabel = (iso) => {
   const today = localISO();
   if (iso === today) return 'Today';
@@ -37,23 +38,26 @@ const time = (ts) => (ts ? new Date(ts).toLocaleTimeString([], { hour: 'numeric'
 
 /* Where the sale came from: the counter, or an order and its table. */
 const Source = ({ inv }) => {
+  const tr = useT();
   const [Icon, text] = inv.order_type === 'DINE_IN' ? [UtensilsCrossed, inv.table_name ? `Table ${inv.table_name}` : 'Dine-in']
     : inv.order_type === 'TAKEAWAY' ? [ShoppingBag, 'Takeaway']
     : inv.order_type === 'DELIVERY' ? [Bike, inv.platform ? platformName(inv.platform) : 'Delivery']
     : String(inv.notes || '').startsWith('Van sale') ? [Truck, 'Van']
     : [Store, 'Counter'];
-  return <span className="inline-flex items-center gap-1"><Icon aria-hidden="true" className="h-3 w-3" />{text}</span>;
+  return <span className="inline-flex items-center gap-1"><Icon aria-hidden="true" className="h-3 w-3" />{tr(text)}</span>;
 };
 
 const StateChip = ({ inv }) => {
-  if (inv.status === 'CANCELLED') return <span className="rounded bg-surface-2 px-1.5 py-0.5 text-caption font-semibold text-ink-500">Cancelled</span>;
-  if (inv.payment_status === 'PAID') return <span className="rounded bg-success/10 px-1.5 py-0.5 text-caption font-semibold text-success">{inv.refunded > 0 ? 'Paid · refunded' : 'Paid'}</span>;
-  return <span className="rounded bg-warning/10 px-1.5 py-0.5 text-caption font-semibold text-warning">{inv.payment_status === 'PARTIAL' ? 'Part paid' : 'Unpaid'}</span>;
+  const tr = useT();
+  if (inv.status === 'CANCELLED') return <span className="rounded bg-surface-2 px-1.5 py-0.5 text-caption font-semibold text-ink-500">{tr('Cancelled')}</span>;
+  if (inv.payment_status === 'PAID') return <span className="rounded bg-success/10 px-1.5 py-0.5 text-caption font-semibold text-success">{inv.refunded > 0 ? tr('Paid · refunded') : tr('Paid')}</span>;
+  return <span className="rounded bg-warning/10 px-1.5 py-0.5 text-caption font-semibold text-warning">{inv.payment_status === 'PARTIAL' ? tr('Part paid') : tr('Unpaid')}</span>;
 };
 
 const Tile = StatCard;
 
 const InvoicesPage = () => {
+  const tr = useT();
   const navigate = useNavigate();
   const { outletId } = useAuth();
   const [periodKey, setPeriodKey] = useState('today');
@@ -95,27 +99,27 @@ const InvoicesPage = () => {
     <div className="mx-auto max-w-6xl">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-h3 font-semibold text-ink-900">Invoices</h1>
-          <p className="mt-1 text-small text-ink-500">Every bill raised, what has been paid, and what is still owed.</p>
+          <h1 className="text-h3 font-semibold text-ink-900">{tr('Invoices')}</h1>
+          <p className="mt-1 text-small text-ink-500">{tr('Every bill raised, what has been paid, and what is still owed.')}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" to="/app/billing/credit-notes">Credit notes</Button>
-          <Button to="/app/billing"><Plus aria-hidden="true" className="h-4 w-4" />New sale</Button>
+          <Button variant="secondary" to="/app/billing/credit-notes">{tr('Credit notes')}</Button>
+          <Button to="/app/billing"><Plus aria-hidden="true" className="h-4 w-4" />{tr('New sale')}</Button>
         </div>
       </div>
 
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        <div role="group" aria-label="Period" className="flex gap-1 overflow-x-auto rounded-lg border border-line bg-surface-2 p-1">
+        <div role="group" aria-label={tr('Period')} className="flex gap-1 overflow-x-auto rounded-lg border border-line bg-surface-2 p-1">
           {PERIODS.map(([k, label]) => (
             <button key={k} type="button" aria-pressed={periodKey === k} onClick={() => setPeriodKey(k)}
-                    className={`shrink-0 rounded-md px-3 py-1.5 text-small font-medium ${periodKey === k ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-900'}`}>{label}</button>
+                    className={`shrink-0 rounded-md px-3 py-1.5 text-small font-medium ${periodKey === k ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-900'}`}>{tr(label)}</button>
           ))}
         </div>
         {periodKey === 'custom' && (
           <div className="flex items-center gap-2">
-            <Input type="date" aria-label="From" value={custom.from} max={localISO()} onChange={(e) => e.target.value && setCustom((c) => ({ ...c, from: e.target.value }))} className="!w-auto" />
-            <span className="text-small text-ink-500">to</span>
-            <Input type="date" aria-label="To" value={custom.to} min={custom.from} max={localISO()} onChange={(e) => e.target.value && setCustom((c) => ({ ...c, to: e.target.value }))} className="!w-auto" />
+            <Input type="date" aria-label={tr('From')} value={custom.from} max={localISO()} onChange={(e) => e.target.value && setCustom((c) => ({ ...c, from: e.target.value }))} className="!w-auto" />
+            <span className="text-small text-ink-500">{tr('to')}</span>
+            <Input type="date" aria-label={tr('To')} value={custom.to} min={custom.from} max={localISO()} onChange={(e) => e.target.value && setCustom((c) => ({ ...c, to: e.target.value }))} className="!w-auto" />
           </div>
         )}
       </div>
@@ -123,23 +127,23 @@ const InvoicesPage = () => {
       <Alert>{error}</Alert>
 
       <div className="mb-6 grid grid-cols-2 gap-2 lg:grid-cols-4">
-        <Tile label="Billed" value={summary ? formatCurrency(summary.billed) : '—'} note={summary ? `${summary.bills} bill${summary.bills === 1 ? '' : 's'} ${period.label}${summary.bills ? ` · ${formatCurrency(summary.average)} each` : ''}` : undefined} onClick={() => setTab('all')} pressed={tab === 'all'} />
-        <Tile label="Paid so far" value={summary ? formatCurrency(summary.paid) : '—'} note={summary?.refunded > 0 ? `${formatCurrency(summary.refunded)} refunded` : summary ? `${summary.paid_bills} paid in full` : undefined} onClick={() => setTab('paid')} pressed={tab === 'paid'} />
-        <Tile label="Still owed" value={summary ? formatCurrency(summary.due) : '—'} tone={summary?.due > 0 ? 'text-warning' : undefined} note={summary ? `on ${summary.owing} bill${summary.owing === 1 ? '' : 's'}` : undefined} onClick={() => setTab('owing')} pressed={tab === 'owing'} />
-        <Tile label="Cancelled" value={summary ? summary.cancelled : '—'} note={summary?.cancelled ? `${formatCurrency(summary.cancelled_value)}, not counted` : 'none'} onClick={() => setTab('cancelled')} pressed={tab === 'cancelled'} />
+        <Tile label={tr('Billed')} value={summary ? formatCurrency(summary.billed) : '—'} note={summary ? `${summary.bills} bill${summary.bills === 1 ? '' : 's'} ${period.label}${summary.bills ? ` · ${formatCurrency(summary.average)} each` : ''}` : undefined} onClick={() => setTab('all')} pressed={tab === 'all'} />
+        <Tile label={tr('Paid so far')} value={summary ? formatCurrency(summary.paid) : '—'} note={summary?.refunded > 0 ? `${formatCurrency(summary.refunded)} refunded` : summary ? `${summary.paid_bills} paid in full` : undefined} onClick={() => setTab('paid')} pressed={tab === 'paid'} />
+        <Tile label={tr('Still owed')} value={summary ? formatCurrency(summary.due) : '—'} tone={summary?.due > 0 ? 'text-warning' : undefined} note={summary ? `on ${summary.owing} bill${summary.owing === 1 ? '' : 's'}` : undefined} onClick={() => setTab('owing')} pressed={tab === 'owing'} />
+        <Tile label={tr('Cancelled')} value={summary ? summary.cancelled : '—'} note={summary?.cancelled ? `${formatCurrency(summary.cancelled_value)}, not counted` : 'none'} onClick={() => setTab('cancelled')} pressed={tab === 'cancelled'} />
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div role="tablist" aria-label="Show" className="flex gap-1 border-b border-line">
+        <div role="tablist" aria-label={tr('Show')} className="flex gap-1 border-b border-line">
           {TABS.filter(([k]) => k !== 'check' || summary?.offline > 0 || tab === 'check').map(([k, label]) => (
             <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-                    className={`-mb-px border-b-2 px-3 py-2 text-small font-medium ${tab === k ? 'border-brand-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'}`}>{label}{k === 'check' && summary?.to_check > 0 ? ` (${summary.to_check})` : ''}</button>
+                    className={`-mb-px border-b-2 px-3 py-2 text-small font-medium ${tab === k ? 'border-brand-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'}`}>{tr(label)}{k === 'check' && summary?.to_check > 0 ? ` (${summary.to_check})` : ''}</button>
           ))}
         </div>
         <label className="relative min-w-[14rem] flex-1">
           <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-          <span className="sr-only">Search bills</span>
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Bill number, customer or mobile" className="!pl-9" />
+          <span className="sr-only">{tr('Search bills')}</span>
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tr('Bill number, customer or mobile')} className="!pl-9" />
         </label>
       </div>
 
@@ -147,10 +151,10 @@ const InvoicesPage = () => {
       {rows?.length === 0 && (
         <div className="rounded-(--radius-card) border border-dashed border-line-strong p-10 text-center">
           <p className="text-body font-medium text-ink-900">
-            {query ? 'No bills match.' : tab === 'owing' ? `Nothing is owed on bills raised ${period.label}.` : tab === 'check' ? `Nothing to check ${period.label}. Every bill made offline was accepted as it was.` : tab === 'cancelled' ? `No bills cancelled ${period.label}.` : tab === 'paid' ? `No paid bills ${period.label}.` : `No bills ${period.label}.`}
+            {query ? tr('No bills match.') : tab === 'owing' ? `Nothing is owed on bills raised ${period.label}.` : tab === 'check' ? `Nothing to check ${period.label}. Every bill made offline was accepted as it was.` : tab === 'cancelled' ? `No bills cancelled ${period.label}.` : tab === 'paid' ? `No paid bills ${period.label}.` : `No bills ${period.label}.`}
           </p>
-          {tab === 'owing' && periodKey !== 'all' && !query && <button type="button" onClick={() => setPeriodKey('all')} className="mt-2 text-small font-medium text-brand-700">Check every bill, any date</button>}
-          {tab === 'all' && !query && <p className="mt-1 text-small text-ink-500"><Link to="/app/billing" className="font-medium text-brand-700">Start a sale</Link> and it shows here.</p>}
+          {tab === 'owing' && periodKey !== 'all' && !query && <button type="button" onClick={() => setPeriodKey('all')} className="mt-2 text-small font-medium text-brand-700">{tr('Check every bill, any date')}</button>}
+          {tab === 'all' && !query && <p className="mt-1 text-small text-ink-500"><Link to="/app/billing" className="font-medium text-brand-700">{tr('Start a sale')}</Link> {tr('and it shows here.')}</p>}
         </div>
       )}
       <div className="space-y-5">
@@ -177,11 +181,11 @@ const InvoicesPage = () => {
                           <span aria-hidden="true">·</span><Source inv={inv} />
                           {time(inv.created_at) && <><span aria-hidden="true">·</span><span>{time(inv.created_at)}</span></>}
                         </span>
-                        {inv.review && <span className="block truncate text-caption text-warning">Check: {inv.review}</span>}
+                        {inv.review && <span className="block truncate text-caption text-warning">{tr('Check: {{review}}', { review: inv.review })}</span>}
                       </span>
                       <span className="shrink-0 text-right">
                         <span className={`tabular block text-small font-semibold ${cancelled ? 'text-ink-400' : 'text-ink-900'}`}>{formatCurrency(inv.total)}</span>
-                        {!cancelled && inv.balance_due > 0 && <span className="tabular block text-caption font-medium text-warning">{formatCurrency(inv.balance_due)} due</span>}
+                        {!cancelled && inv.balance_due > 0 && <span className="tabular block text-caption font-medium text-warning">{tr('{{formatCurrency}} due', { formatCurrency: formatCurrency(inv.balance_due) })}</span>}
                       </span>
                     </button>
                   </li>
@@ -191,7 +195,7 @@ const InvoicesPage = () => {
           </div>
         ))}
       </div>
-      {rows?.length === 200 && <p className="mt-3 text-caption text-ink-500">Showing the latest 200. The figures above count every bill in the period.</p>}
+      {rows?.length === 200 && <p className="mt-3 text-caption text-ink-500">{tr('Showing the latest 200. The figures above count every bill in the period.')}</p>}
     </div>
   );
 };

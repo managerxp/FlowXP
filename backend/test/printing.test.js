@@ -6,6 +6,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setupTestDb } from './helpers/db.js';
+import { cleanInvoicePrint, INVOICE_PRINT_DEFAULTS, withDefaults } from '../src/modules/invoicePrint.js';
+import { cleanPrinter, cleanRouting, pickPrinter } from '../src/modules/printers.js';
 
 const { pool, skip, cleanup } = await setupTestDb();
 const { runMigrations } = await import('../src/config/migrate.js');
@@ -20,12 +22,36 @@ const fakeRes = () => ({ code: 200, body: null, status(c) { this.code = c; retur
 
 /* ── settings ───────────────────────────────────────────────────────────── */
 
+test('invoice print settings are checked, ordered and filled with defaults', () => {
+  const ok = cleanInvoicePrint({ layout: 'tally', paper: 'A5', text_size: 'large', accent: '#1d4ed8', copies: ['Duplicate for Transporter', 'Original for Recipient'], signature_text: '  For the firm  ', show: { hsn: false, bank: true, evil: true, terms: 'yes' }, junk: 1 });
+  assert.deepEqual(ok.settings, { layout: 'tally', paper: 'A5', text_size: 'large', accent: '#1d4ed8', copies: ['Original for Recipient', 'Duplicate for Transporter'], signature_text: 'For the firm', show: { hsn: false, bank: true, terms: false } });
+  assert.match(cleanInvoicePrint({ paper: 'Legal' }).error, /Paper size/);
+  assert.match(cleanInvoicePrint({ accent: '#123456' }).error, /Colour/);
+  assert.match(cleanInvoicePrint({ copies: ['Original for Recipient', 'Original for Recipient'] }).error, /Copies/);
+  assert.match(cleanInvoicePrint({ copies: ['Fourth'] }).error, /Copies/);
+  assert.match(cleanInvoicePrint({ declaration: 'x'.repeat(401) }).error, /too long/);
+  assert.ok(cleanInvoicePrint('x').error);
+  // a partial stored object is laid over the defaults
+  const merged = withDefaults({ paper: 'A5', show: { hsn: false } });
+  assert.equal(merged.paper, 'A5'); assert.equal(merged.show.hsn, false); assert.equal(merged.show.bank, true); assert.deepEqual(merged.copies, []);
+  assert.match(business.cleanReceiptSettings({ invoice_print: { paper: 'Legal' } }).error, /Paper size/);
+  assert.equal(business.cleanReceiptSettings({ invoice_print: { paper: 'A5' } }).settings.invoice_print.paper, 'A5');
+});
+
 test('receipt settings are checked, and unknown keys are dropped', () => {
   const ok = business.cleanReceiptSettings({ paper_width: '58', footer: '  See you soon  ', show_gstin: false, evil: 'x', show_upi_qr: 'yes' });
   assert.deepEqual(ok.settings, { paper_width: 58, footer: 'See you soon', show_gstin: false, show_upi_qr: false });
   assert.match(business.cleanReceiptSettings({ paper_width: 72 }).error, /58 or 80/);
   assert.match(business.cleanReceiptSettings({ footer: 'x'.repeat(201) }).error, /too long/);
   assert.ok(business.cleanReceiptSettings([]).error);
+  const tax = business.cleanReceiptSettings({ pan: 'acbfs2635j', bank_ifsc: 'sbin0017178', bank_account: '39485051498', terms: ' Goods once sold are not returned ' });
+  assert.deepEqual(tax.settings, { pan: 'ACBFS2635J', bank_ifsc: 'SBIN0017178', bank_account: '39485051498', terms: 'Goods once sold are not returned' });
+  assert.match(business.cleanReceiptSettings({ pan: '12345' }).error, /PAN is not valid/);
+  assert.match(business.cleanReceiptSettings({ bank_ifsc: 'SBIN1017178' }).error, /IFSC/);
+  assert.equal(business.cleanReceiptSettings({ pan: '' }).settings.pan, '', 'empty clears it');
+  assert.deepEqual(business.cleanReceiptSettings({ auto_cut: false, copies: '2', extra_lines: 0 }).settings, { auto_cut: false, copies: 2, extra_lines: 0 });
+  assert.match(business.cleanReceiptSettings({ copies: 9 }).error, /Copies/);
+  assert.match(business.cleanReceiptSettings({ extra_lines: -1 }).error, /Blank lines/);
   assert.ok(business.cleanReceiptSettings(null).error);
 });
 
@@ -111,8 +137,77 @@ test('saving one receipt option keeps the others, and the defaults fill the gaps
   assert.equal((await patch({ footer: 'Thanks!' })).code, 200);
   assert.equal((await patch({ paper_width: 99 })).code, 400);
   const shown = (await call(business.getCurrent)).body.data.receipt_settings;
-  assert.deepEqual(shown, { paper_width: 58, footer: 'Thanks!', show_gstin: true, show_upi_qr: true, show_loyalty: true, show_logo: true, logo_url: null });
+  assert.deepEqual(shown, { paper_width: 58, footer: 'Thanks!', show_gstin: true, show_upi_qr: true, show_loyalty: true, show_logo: true, logo_url: null, auto_cut: true, copies: 1, extra_lines: 3, invoice_print: INVOICE_PRINT_DEFAULTS });
   assert.equal((await patch({ show_upi_qr: false })).code, 200);
   assert.equal((await call(business.getCurrent)).body.data.receipt_settings.show_upi_qr, false);
   assert.equal((await call(business.getCurrent)).body.data.receipt_settings.paper_width, 58, 'still 58 mm');
+});
+
+test('tax-invoice print details are trimmed, bounded and only the known fields', async () => {
+  const { cleanPrintExtra } = await import('../src/controllers/invoices.controller.js');
+  assert.deepEqual(cleanPrintExtra({ destination: ' Tushnabad ', payment_terms: 'UPI', evil: 'x' }).details, { destination: 'Tushnabad', payment_terms: 'UPI' });
+  assert.match(cleanPrintExtra({ consignee_name: 'x'.repeat(161) }).error, /too long/);
+  assert.ok(cleanPrintExtra([]).error);
+});
+
+test('tax-invoice details entered at billing are saved with the new invoice, and a bad one refuses the sale', { skip }, async () => {
+  const product = (await pool.query(`INSERT INTO products (business_id, name, kind, selling_price_paise, tax_rate, track_inventory) VALUES ($1,'Brake pad','DISH',8000,18,FALSE) RETURNING product_id`, [biz])).rows[0].product_id;
+  const made = await call(invoices.create, { body: { items: [{ product_id: product, quantity: 1 }], payment: { amount: 'FULL' }, print_details: { destination: ' Pune ', consignee_name: 'Ravi Motors', evil: 'x' } } });
+  assert.equal(made.code, 201);
+  const shown = (await call(invoices.get, { params: { id: made.body.data.invoice_id } })).body.data;
+  assert.deepEqual(shown.print_extra, { destination: 'Pune', consignee_name: 'Ravi Motors' });
+  const bad = await call(invoices.create, { body: { items: [{ product_id: product, quantity: 1 }], payment: { amount: 'FULL' }, print_details: { destination: 'x'.repeat(121) } } });
+  assert.equal(bad.code, 400);
+});
+
+/* ── printers and routing ───────────────────────────────────────────────── */
+
+test('a printer is checked and its address made ready for the agent', () => {
+  const ok = (i, o) => cleanPrinter(i, o).printer;
+  assert.deepEqual(ok({ name: ' Kitchen ', connection: 'NETWORK', address: '192.168.1.50' }), { name: 'Kitchen', connection: 'NETWORK', address: 'tcp://192.168.1.50:9100', paper_width: 80 });
+  assert.equal(ok({ name: 'Bar', connection: 'NETWORK', address: 'tcp://10.0.0.9:9200', paper_width: 58 }).address, 'tcp://10.0.0.9:9200');
+  assert.equal(ok({ name: 'Counter', connection: 'USB', address: 'share://localhost/POS80' }).address, 'share://localhost/POS80');
+  assert.equal(ok({ name: 'Dialog', connection: 'BROWSER', address: 'ignored' }).address, '');
+  assert.match(cleanPrinter({ name: '', connection: 'USB', address: 'lp://x' }).error, /name/);
+  assert.match(cleanPrinter({ name: 'A', connection: 'WIFI', address: 'x' }).error, /connected/);
+  assert.match(cleanPrinter({ name: 'A', connection: 'USB', address: 'POS80' }).error, /share:\/\//);
+  assert.match(cleanPrinter({ name: 'A', connection: 'NETWORK', address: '' }).error, /address/);
+  assert.match(cleanPrinter({ name: 'A', connection: 'USB', address: 'lp://x', paper_width: 72 }).error, /58 or 80/);
+  assert.deepEqual(cleanPrinter({ is_active: false }, { partial: true }).printer, { is_active: false }, 'an edit checks only what it sends');
+  assert.deepEqual(cleanRouting({ receipt: '3', takeaway: 'x', stations: { 5: 7, bad: 1 }, evil: 1 }).routing, { receipt: 3, takeaway: null, drawer: null, kot: null, stations: { 5: 7 } });
+  // fallbacks: takeaway and drawer fall back to the receipt printer, a station to the kitchen default
+  const list = [1, 2, 3].map((n) => ({ printer_id: n, is_active: true })); const routing = { receipt: 1, kot: 2, stations: { 9: 3 } };
+  assert.equal(pickPrinter(routing, list, 'takeaway').printer_id, 1); assert.equal(pickPrinter(routing, list, 'drawer').printer_id, 1);
+  assert.equal(pickPrinter(routing, list, 'kot', 9).printer_id, 3); assert.equal(pickPrinter(routing, list, 'kot', 4).printer_id, 2);
+  assert.equal(pickPrinter({}, list, 'receipt'), null); assert.equal(pickPrinter(routing, [{ printer_id: 1, is_active: false }], 'receipt'), null);
+});
+
+test('each station\'s slip goes to its own printer, and a bill to the routed one', { skip }, async () => {
+  const printersApi = await import('../src/controllers/printers.controller.js');
+  const escpos = await import('../src/controllers/escpos.controller.js');
+  const make = async (body) => (await call(printersApi.create, { body })).body.data.printer_id;
+  const counter = await make({ name: 'Counter', connection: 'USB', address: 'share://localhost/POS80' });
+  const tandoor = await make({ name: 'Tandoor printer', connection: 'NETWORK', address: '192.168.1.60', paper_width: 58 });
+  const kitchen = await make({ name: 'Kitchen', connection: 'NETWORK', address: '192.168.1.61' });
+  assert.equal((await call(printersApi.create, { body: { name: 'counter', connection: 'BROWSER' } })).code, 409, 'names are unique, ignoring case');
+  assert.equal((await call(printersApi.create, { body: { name: 'X', connection: 'USB', address: 'nope' } })).code, 400);
+
+  // nothing routed yet: the device's own addresses apply (no target)
+  const before = await call(escpos.kot, { params: { id: kot } });
+  assert.ok(before.body.data.slips.every((s) => s.target === null));
+
+  assert.equal((await call(printersApi.saveRouting, { body: { receipt: counter, kot: kitchen, stations: { [stationTandoor]: tandoor } } })).code, 200);
+  const after = (await call(escpos.kot, { params: { id: kot } })).body.data.slips;
+  assert.equal(after.find((s) => s.station_id === stationTandoor).target, 'tcp://192.168.1.60:9100', 'the tandoor slip goes to the tandoor printer');
+  assert.equal(after.find((s) => s.station_id === stationCurry).target, 'tcp://192.168.1.61:9100', 'the curry slip to the kitchen default');
+  assert.notEqual(after.find((s) => s.station_id === stationTandoor).data, '');
+  const test58 = (await call(escpos.test, { body: {} })).body.data; assert.equal(test58.target, 'share://localhost/POS80');
+  assert.equal((await call(escpos.test, { body: {} , t: {} })).body.data.printer, 'Counter');
+  assert.equal((await call(escpos.drawer)).body.data.target, 'share://localhost/POS80', 'the drawer follows the receipt printer');
+
+  // a printer from another business cannot be routed to
+  assert.equal((await call(printersApi.saveRouting, { body: { receipt: 99999 } })).code, 400);
+  // deleting a routed printer falls back instead of breaking the print
+  assert.equal((await call(printersApi.remove, { params: { id: tandoor } })).code, 200);
+  assert.equal((await call(escpos.kot, { params: { id: kot } })).body.data.slips.find((s) => s.station_id === stationTandoor).target, 'tcp://192.168.1.61:9100');
 });

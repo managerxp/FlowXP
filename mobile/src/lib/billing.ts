@@ -1,3 +1,4 @@
+import type { GstView, Levies } from './gst.ts';
 import { lineName, linePricePaise, totals, type Cart } from './cart.ts';
 import { itemName, liveItems, orderTotals, type Order } from './orders.ts';
 import { toPaise } from './money.ts';
@@ -40,11 +41,11 @@ export const cashSuggestions = (totalPaise: number): number[] => {
 /* ── the bill, as the pay screen lists it (the same for the till's bill and for a table's order) ── */
 
 export type SummaryRow = { name: string; qty: number; paise: number };
-export type Summary = { rows: SummaryRow[]; items: number; subtotalPaise: number; offersPaise: number; taxPaise: number; totalPaise: number };
+export type Summary = { rows: SummaryRow[]; items: number; subtotalPaise: number; offersPaise: number; taxPaise: number; cessPaise?: number; tcsPaise?: number; tdsPaise?: number; totalPaise: number };
 
-export const cartSummary = (cart: Cart, offers: Map<string, number> = new Map()): Summary => {
-  const t = totals(cart, offers);
-  return { rows: cart.lines.map((l) => ({ name: lineName(l), qty: l.quantity, paise: Math.round(linePricePaise(l) * l.quantity) })), items: t.itemCount, subtotalPaise: t.subtotalPaise, offersPaise: t.offersPaise, taxPaise: t.taxPaise, totalPaise: t.totalPaise };
+export const cartSummary = (cart: Cart, offers: Map<string, number> = new Map(), gst?: GstView, levies?: Levies): Summary => {
+  const t = totals(cart, offers, gst, levies);
+  return { rows: cart.lines.map((l) => ({ name: lineName(l), qty: l.quantity, paise: Math.round(linePricePaise(l) * l.quantity) })), items: t.itemCount, subtotalPaise: t.subtotalPaise, offersPaise: t.offersPaise, taxPaise: t.taxPaise, cessPaise: t.cessPaise, tcsPaise: t.tcsPaise, tdsPaise: t.tdsPaise, totalPaise: t.totalPaise };
 };
 
 export const orderSummary = (o: Order): Summary => {

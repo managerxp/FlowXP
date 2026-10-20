@@ -3,19 +3,25 @@ const p = (name) => `/product/${name}.webp`;
 
 export default {
   slug: 'auto-parts',
-  label: 'Auto spare parts',
+  label: 'Automobile / Hardware',
   short: 'Auto parts',
-  blurb: 'Part numbers, vehicle fitment and rack and bin locations, on the same stock and bills.',
-  title: 'Find the part. Find the shelf. Bill it.',
-  lead: 'For car, bike and scooter spare parts shops and their warehouses. Search by OEM or any part number, see which vehicles a part is recorded to fit, know which bin it is in, receive deliveries with damaged and rejected counted apart, and sell to garages on trade prices and credit.',
+  blurb: 'Find any part, know which shelf it is on, run your workshop, and bill it all in one place.',
+  title: 'Find the part. Fix the vehicle. Bill it.',
+  lead: 'For car, bike and scooter spare parts shops, hardware counters and workshops. Type any part number and the part comes up. See where it sits on the shelf. Open a job card when a bike or car comes in for servicing, add the parts and labour, and make the bill. Sell to garages on credit.',
   hero: { src: p('parts-catalogue'), alt: 'FlowXP parts catalogue with each part, its OEM and manufacturer number, type, price and stock.' },
-  heroPoints: ['Choose Auto spare parts when you sign up and these tools switch on', 'Works on a counter PC, a tablet and a phone', '7-day free trial, no card'],
+  heroPoints: ['Choose Auto spare parts when you sign up and these tools switch on', 'Bring your items from Tally, Vyapar or Excel', 'Works on a counter PC, a tablet and a phone', '7-day free trial, no card'],
   modules: [
     {
       id: 'catalogue', title: 'Every part with every number it is known by',
       body: 'A part has its SKU and barcode, the OEM number, the manufacturer number and any alternates or old numbers. Type or scan any of them, with or without dashes and spaces, and the part comes up.',
       points: ['OEM, manufacturer, alternate, supplier and replaced-by numbers on one part', 'OEM, aftermarket, refurbished and used kept apart', 'Car, bike, scooter, truck and bus parts', 'Reorder level, maximum stock and preferred supplier', 'Parts that look like the same part twice are listed for you to check; nothing is merged for you', 'The same product, price, GST and stock as the rest of FlowXP, so billing and reports need nothing extra'],
       shots: [{ src: p('parts-catalogue'), alt: 'FlowXP parts catalogue with each part, its OEM and manufacturer number, type, price and stock.' }, { src: p('parts-detail'), alt: 'FlowXP part with its vehicles: each with fitment shown as verified or not verified.' }]
+    },
+    {
+      id: 'workshop', title: 'Servicing: job cards for bikes and cars',
+      body: 'When a vehicle comes in for service, open a job card with its number and what the owner complained about. Add the spare parts used and the labour, and the card becomes the bill when the work is done.',
+      points: ['One card per vehicle visit, with the registration number, the owner and the odometer reading', 'Parts are held for the job, so one on a job cannot be sold to someone else, and they leave stock when the job is billed', 'Labour added as a line, with GST like any other charge', 'Status from open to in progress, waiting for parts, ready and billed; a cancelled job gives the parts back', 'See which vehicles are waiting, which are ready for pick-up and which services are due again', 'Staff attendance, shifts and monthly payroll for your mechanics and counter staff, in the same place'],
+      shots: []
     },
     {
       id: 'fitment', title: 'Fitment that is never assumed',
@@ -46,7 +52,13 @@ export default {
       body: 'See what sells fast, what has sat for months, how old the stock is, what to buy and how each supplier performs. Every suggestion shows the rule behind it, and none of them changes anything.',
       points: ['Fast, slow and dead stock with the rules stated', 'Stock age by days since it last arrived', 'What to buy: sales speed against lead time and safety days, less what is on hand and on order, capped by the maximum stock', 'Parts often bought together', 'Supplier damaged and rejected share, order fill and days to deliver', 'Stock value at cost and at selling price, and how full the racks are', 'Every list downloads as a spreadsheet'],
       shots: [{ src: p('parts-reorder'), alt: 'FlowXP what to buy list with each part, its supplier, the suggested quantity and the reason.' }, { src: p('parts-movers'), alt: 'FlowXP fast, slow and dead stock with units sold and what the stock is worth at cost.' }]
-    }
+    },
+    {
+      id: 'setup', title: 'Easy to start, safe to keep',
+      body: 'You do not type your stock in again. Export your item list from Tally, Vyapar, Busy, Marg, Zoho or Excel and import the file. The usual column names are recognised, and every row is checked before anything is saved.',
+      points: ['Import products and opening stock from CSV or Excel, and update prices later the same way', 'Import your customers and garages from a file too', 'A step-by-step first-day guide on the website, nine small steps', 'Download a backup of all your records whenever you like', 'Restore a backup: it adds only what is missing and never changes or removes what you already have', 'Preview the restore first; nothing changes until you confirm'],
+      shots: []
+    },
   ],
   included: [
     { group: 'Catalogue', items: ['OEM and any part numbers', 'Search with or without dashes', 'OEM, aftermarket, refurbished, used', 'Reorder level and maximum stock', 'Duplicate part check'] },
@@ -54,6 +66,8 @@ export default {
     { group: 'Warehouse', items: ['Warehouse to bin, your own names', 'QR and barcode labels', 'Put away and bin to bin moves', 'Pick bin and bin limits', 'Shelf quantity always agrees with stock'] },
     { group: 'Receiving', items: ['Accepted, damaged, rejected', 'Put away on receipt', 'No duplicate supplier invoice', 'Cancel a receipt', 'Supplier claims'] },
     { group: 'Selling', items: ['The FlowXP till with GST and split payment', 'Trade price lists', 'Credit limits for garages', 'Holds for customers', 'Returns with a reason and what became of the part'] },
+    { group: 'Workshop', items: ['Job cards for each vehicle', 'Spare parts and labour on one bill', 'Services due again', 'Mechanic attendance and shifts', 'Monthly payroll'] },
+    { group: 'Start and keep', items: ['Import from Tally, Vyapar, Busy, Marg, Zoho, Excel', 'Checked before saved', 'Download a backup', 'Restore only what is missing'] },
     { group: 'Control', items: ['Storekeeper and parts counter roles', 'A manager approves stock count differences', 'Activity log of stock and price changes', 'Several outlets under one login', 'Two-step login'] }
   ],
   notYet: [
@@ -63,10 +77,14 @@ export default {
     'Moving stock between outlets with the bin chosen on both sides. The existing outlet transfer moves the stock; the receiving outlet puts it away.',
     'Stock ageing by batch layer. Ageing is by the last receipt.',
     'Serial numbers and warranty tracking for each unit.',
-    'VIN lookup, job cards and labour. This is a parts shop, not a workshop system.',
+    'VIN lookup, or a service history by chassis number. A job card holds the registration number you type.',
+    'Importing old bills and ledgers from Tally or other tools. Items and stock come across; past bills stay in the old tool.',
     'Working offline for racks, receiving and counts. Billing keeps working offline; the rest needs a connection.'
   ],
   faq: [
+    ['Can I bring my items from Tally or Vyapar?', 'Yes. Export your item list to Excel or CSV and import it. Names, codes, prices, GST, HSN and stock are recognised. Old bills and ledgers do not come across. The setup guide has the steps.'],
+    ['Can I run my servicing on FlowXP?', 'Yes. Open a job card for each vehicle, add parts and labour, and turn it into a bill. Parts are held for the job and leave stock when it is billed. Mechanic attendance and payroll are included.'],
+    ['What if I lose my data or set up wrongly?', 'Download a backup file. If you ever need it, restore adds back only what is missing and never changes what you have.'],
     ['Does FlowXP know which parts fit which car?', 'No. It has no vehicle database. You record or import fitment, and every record is verified, not verified, or does not fit. A part with no record is shown as having no fitment on record.'],
     ['Can I scan an OEM number at the counter?', 'Yes. Any part number you have recorded, with or without dashes and spaces, finds the part in the catalogue and in the till search.'],
     ['How does the bin quantity stay right?', 'The stock total is kept by the same stock ledger every bill and receipt uses. Bins hold part of it, never more than the total, and anything left over shows as waiting for a bin. When stock leaves, it is taken from the shelves first.'],

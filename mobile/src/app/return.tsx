@@ -68,7 +68,7 @@ export default function Return() {
                 {lines.map((l) => {
                   const n = chosen[l.item_id] ?? 0;
                   return (
-                    <View key={l.item_id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 60, paddingHorizontal: 16, borderTopWidth: 1, borderColor: color.line, backgroundColor: n ? '#eaf1ff' : color.card }}>
+                    <View key={l.item_id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 60, paddingHorizontal: 16, borderTopWidth: 1, borderColor: color.line, backgroundColor: n ? color.tint : color.card }}>
                       <View style={{ flex: 1 }}><Text style={{ fontSize: 16, color: color.ink }}>{l.description}</Text><Soft>{qty(l.remaining)} can still be returned · {rupees(toPaise(l.unit_total))} each</Soft></View>
                       <Button title="−" kind="quiet" onPress={() => bump(l.item_id, l.remaining, -1)} disabled={n === 0} />
                       <Text style={{ minWidth: 24, textAlign: 'center', fontWeight: '700', color: color.ink }}>{n}</Text>

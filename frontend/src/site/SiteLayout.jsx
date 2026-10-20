@@ -8,6 +8,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowRight, BedDouble, ChevronDown, Coffee, CookingPot, Dumbbell, Gamepad2, Pill, Scissors, Wrench, ShoppingBasket, Store, UtensilsCrossed, Warehouse } from 'lucide-react';
 import { Button, Container, Logo } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -19,20 +20,22 @@ import CookieNotice from './CookieNotice.jsx';
 /* Everything but Industries is a plain link; Industries opens a menu of
    the built verticals instead (see IndustriesMenu), so it is handled
    separately in both the desktop nav and the mobile panel below. */
-const NAV = [
-  { to: '/features', label: 'Product' },
-  { to: '/ai', label: 'AI Manager' },
-  { to: '/integrations', label: 'Integrations' },
-  { to: '/pricing', label: 'Pricing' },
-  { to: '/about', label: 'About' }
+const NAV = [   // text: site:header.<key>
+  { to: '/features', key: 'product' },
+  { to: '/ai', key: 'aiManager' },
+  { to: '/integrations', key: 'integrations' },
+  { to: '/guide', key: 'guide' },
+  { to: '/pricing', key: 'pricing' },
+  { to: '/about', key: 'about' }
 ];
 
 /* The logo goes home, and when you are already on the home page it scrolls back to the top (a link to the page you are
    on does nothing by itself). The header's and the footer's logo are both this. */
 const HomeLink = ({ className = '', children }) => {
+  const { t } = useTranslation('site');
   const { pathname } = useLocation();
   return (
-    <Link to="/" aria-label="FlowXP home" className={className}
+    <Link to="/" aria-label={t('header.homeAria')} className={className}
           onClick={() => { if (pathname === '/') window.scrollTo({ top: 0, behavior: 'smooth' }); }}>{children}</Link>
   );
 };
@@ -58,6 +61,7 @@ const IconTile = ({ slug, className = '' }) => {
    click or Enter/Space, and closes on Escape, an outside click, focus leaving, or a route change. The panel hangs
    inside the same wrapper as the button with a padded top, so there is no dead gap to fall through. */
 const IndustriesMenu = () => {
+  const { t } = useTranslation('site');
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const timer = useRef(null);
@@ -111,7 +115,7 @@ const IndustriesMenu = () => {
               ))}
             </ul>
             <div className="mt-1 flex items-center justify-between gap-3 rounded-xl bg-surface-2 px-4 py-2.5 text-sm">
-              <span className="text-ink-500">Built for these trades</span>
+              <span className="text-ink-500">{t('header.builtFor')}</span>
               <Link to="/industries" className="inline-flex items-center gap-1.5 font-semibold text-brand-600 transition-colors hover:text-brand-700">All industries<ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
             </div>
           </div>
@@ -121,27 +125,28 @@ const IndustriesMenu = () => {
   );
 };
 
-const FOOTER_GROUPS = [
-  { heading: 'Product', links: [
-    { to: '/features', label: 'Features' },
-    { to: '/industries', label: 'Who it is for' },
-    { to: '/ai', label: 'AI Manager' },
-    { to: '/integrations', label: 'Integrations' },
-    { to: '/pricing', label: 'Pricing' }
+const FOOTER_GROUPS = [   // text: site:footer.<heading> and site:footer.<key>
+  { heading: 'product', links: [
+    { to: '/features', key: 'features' },
+    { to: '/industries', key: 'whoFor' },
+    { to: '/ai', key: 'aiManager' },
+    { to: '/integrations', key: 'integrations' },
+    { to: '/guide', key: 'guide' },
+    { to: '/pricing', key: 'pricing' }
   ]},
-  { heading: 'Company', links: [
-    { to: '/about', label: 'About ManagerXP' },
-    { to: '/contact', label: 'Contact' }
+  { heading: 'company', links: [
+    { to: '/about', key: 'about' },
+    { to: '/contact', key: 'contact' }
   ]},
-  { heading: 'Get started', links: [
-    { to: '/signup', label: 'Start free trial' },
-    { to: '/login', label: 'Log in' }
+  { heading: 'getStarted', links: [
+    { to: '/signup', key: 'startTrial' },
+    { to: '/login', key: 'login' }
   ]},
-  { heading: 'Legal', links: [
-    { to: '/privacy', label: 'Privacy' },
-    { to: '/delete-account', label: 'Delete your account' },
-    { to: '/terms', label: 'Terms' },
-    { to: '/cookies', label: 'Cookies' }
+  { heading: 'legal', links: [
+    { to: '/privacy', key: 'privacy' },
+    { to: '/delete-account', key: 'deleteAccount' },
+    { to: '/terms', key: 'terms' },
+    { to: '/cookies', key: 'cookies' }
   ]}
 ];
 
@@ -156,6 +161,7 @@ const MenuGlyph = ({ open }) => (
 const mobileItem = (active) => `flex min-h-12 items-center border-b border-line text-base font-medium ${active ? 'text-ink-900' : 'text-ink-700'}`;
 
 const Header = () => {
+  const { t } = useTranslation('site');
   const [open, setOpen] = useState(false);
   const [industries, setIndustries] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -175,21 +181,21 @@ const Header = () => {
       <Container className="flex h-16 items-center justify-between gap-6">
         <HomeLink className="shrink-0"><Logo /></HomeLink>
 
-        <nav aria-label="Main" className="hidden flex-1 items-center gap-0.5 lg:flex">
-          <NavLink to="/features" className={({ isActive }) => itemClass(isActive)}>Product</NavLink>
+        <nav aria-label={t('header.mainAria')} className="hidden flex-1 items-center gap-0.5 lg:flex">
+          <NavLink to="/features" className={({ isActive }) => itemClass(isActive)}>{t('header.product')}</NavLink>
           <IndustriesMenu />
           {NAV.slice(1).map((item) => (
-            <NavLink key={item.to} to={item.to} className={({ isActive }) => itemClass(isActive)}>{item.label}</NavLink>
+            <NavLink key={item.to} to={item.to} className={({ isActive }) => itemClass(isActive)}>{t(`header.${item.key}`)}</NavLink>
           ))}
         </nav>
 
         <div className="hidden items-center gap-2 lg:flex">
           {user ? (
-            <Button to="/app" size="sm">Open FlowXP</Button>
+            <Button to="/app" size="sm">{t('header.openApp')}</Button>
           ) : (
             <>
-              <Button to="/login" variant="ghost" size="sm">Log in</Button>
-              <Button to="/signup" size="sm">Start free trial</Button>
+              <Button to="/login" variant="ghost" size="sm">{t('header.login')}</Button>
+              <Button to="/signup" size="sm">{t('header.startTrial')}</Button>
             </>
           )}
         </div>
@@ -199,7 +205,7 @@ const Header = () => {
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-controls="site-menu"
-          aria-label={open ? 'Close menu' : 'Open menu'}
+          aria-label={open ? t('header.closeMenu') : t('header.openMenu')}
           className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-700 hover:bg-surface-2 lg:hidden"
         >
           <MenuGlyph open={open} />
@@ -209,10 +215,10 @@ const Header = () => {
       {open && (
         <div id="site-menu" className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-line bg-page lg:hidden">
           <Container className="flex flex-col py-2">
-            <NavLink to="/features" className={({ isActive }) => mobileItem(isActive)}>Product</NavLink>
+            <NavLink to="/features" className={({ isActive }) => mobileItem(isActive)}>{t('header.product')}</NavLink>
             <div className="border-b border-line">
               <button type="button" onClick={() => setIndustries((v) => !v)} aria-expanded={industries} aria-controls="site-menu-industries" className={`${mobileItem(location.pathname.startsWith('/industries'))} w-full justify-between border-b-0`}>
-                Industries <Chevron open={industries} />
+                {t('header.industries')} <Chevron open={industries} />
               </button>
               {industries && (
                 <ul id="site-menu-industries" className="grid grid-cols-1 gap-1 pb-3 sm:grid-cols-2">
@@ -229,15 +235,15 @@ const Header = () => {
               )}
             </div>
             {NAV.slice(1).map((item) => (
-              <NavLink key={item.to} to={item.to} className={({ isActive }) => mobileItem(isActive)}>{item.label}</NavLink>
+              <NavLink key={item.to} to={item.to} className={({ isActive }) => mobileItem(isActive)}>{t(`header.${item.key}`)}</NavLink>
             ))}
             <div className="mt-3 flex gap-2 pb-3">
               {user ? (
-                <Button to="/app" className="min-h-11 flex-1">Open FlowXP</Button>
+                <Button to="/app" className="min-h-11 flex-1">{t('header.openApp')}</Button>
               ) : (
                 <>
-                  <Button to="/login" variant="secondary" className="min-h-11 flex-1">Log in</Button>
-                  <Button to="/signup" className="min-h-11 flex-1">Start free trial</Button>
+                  <Button to="/login" variant="secondary" className="min-h-11 flex-1">{t('header.login')}</Button>
+                  <Button to="/signup" className="min-h-11 flex-1">{t('header.startTrial')}</Button>
                 </>
               )}
             </div>
@@ -248,25 +254,27 @@ const Header = () => {
   );
 };
 
-const Footer = () => (
+const Footer = () => {
+  const { t } = useTranslation('site');
+  return (
   <footer className="site-footer mx-2 rounded-t-[2rem] bg-brand-50 sm:mx-3">
     <Container className="py-14">
       <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-6">
         <div className="lg:col-span-2">
           <HomeLink className="inline-block"><Logo showTagline /></HomeLink>
           <p className="mt-5 max-w-xs text-sm leading-relaxed text-ink-500">
-            FlowXP is made by ManagerXP, the team behind the counters and back offices of businesses across India.
+            {t('footer.blurb')}
           </p>
         </div>
 
         {FOOTER_GROUPS.map((group) => (
           <div key={group.heading}>
-            <h3 className="mb-3 text-sm font-medium text-ink-900">{group.heading}</h3>
+            <h3 className="mb-3 text-sm font-medium text-ink-900">{t(`footer.${group.heading}`)}</h3>
             <ul className="space-y-2.5">
               {group.links.map((link) => (
                 <li key={link.to}>
                   <Link to={link.to} className="group relative inline-block text-sm text-ink-500 transition-colors duration-(--duration-fast) hover:text-ink-900">
-                    {link.label}
+                    {t(`footer.${link.key}`)}
                     <span aria-hidden="true" className="absolute -bottom-0.5 left-0 h-px w-0 bg-current transition-[width] duration-(--duration-normal) ease-(--ease-standard) group-hover:w-full" />
                   </Link>
                 </li>
@@ -277,12 +285,13 @@ const Footer = () => (
       </div>
 
       <div className="mt-12 flex flex-col gap-2 border-t border-brand-100 pt-6 text-xs text-ink-500 sm:flex-row sm:items-center sm:justify-between">
-        <p>© {new Date().getFullYear()} ManagerXP. All rights reserved.</p>
-        <p>Made in India for Indian businesses. Prices in ₹, GST built in.</p>
+        <p>© {new Date().getFullYear()} ManagerXP. {t('footer.rights')}</p>
+        <p>{t('footer.madeIn')}</p>
       </div>
     </Container>
   </footer>
-);
+  );
+};
 
 const SiteLayout = () => {
   const { pathname } = useLocation();

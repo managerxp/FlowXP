@@ -23,7 +23,7 @@ export const IMPORTS = {
     columns: ['Name', 'SKU', 'Barcode', 'Category', 'Brand', 'Unit', 'MRP', 'Selling Price', 'Purchase Price', 'Tax Rate', 'HSN', 'Min Stock', 'Opening Stock', 'Track Expiry', 'Batch No', 'Expiry Date', 'ERP Code', 'Aliases'],
     sample: ['Tata Salt 1kg', '', '8904043901015', 'Staples', 'Tata', 'pc', '28', '27', '22', '0', '2501', '10', '48', 'no', '', '', '', 'namak | salt'],
     modes: [{ value: 'create', label: 'Add new products only' }, { value: 'upsert', label: 'Add new products and update ones I already have' }],
-    accepts: ['product', 'product_name', 'item', 'item_name', 'price', 'sale_price', 'cost', 'cost_price', 'gst', 'gst_rate', 'ean', 'upc', 'reorder_level', 'stock', 'qty', 'batch', 'expiry', 'mfd', 'uom', 'group', 'department'],
+    accepts: ['product', 'product_name', 'item', 'item_name', 'price', 'sale_price', 'cost', 'cost_price', 'gst', 'gst_rate', 'ean', 'upc', 'reorder_level', 'stock', 'qty', 'batch', 'expiry', 'mfd', 'uom', 'group', 'department', 'print_name', 'stock_item', 'particulars', 'part_no', 'part_number', 'item_no', 'usage_unit', 'base_unit', 'units', 'sales_price', 'selling_rate', 'cost_rate', 'gst_percent', 'tax_percentage', 'intra_state_tax_percentage', 'hsn/sac', 'hsn_sac_code', 'minimum_stock_quantity', 'min_stock_qty', 'current_stock_quantity', 'current_stock', 'closing_balance', 'closing_stock', 'opening_balance'],
     hint: 'Leave SKU empty and FlowXP makes one. Products are matched by barcode, then SKU, then ERP code. Opening stock is for new products only.'
   },
   stock: {

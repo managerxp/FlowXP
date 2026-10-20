@@ -1,3 +1,4 @@
+import { formatDate } from '../../lib/display.ts';
 import { useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -49,15 +50,15 @@ export default function SalonClient() {
               <Button title="Bill" onPress={bill} style={{ flex: 1 }} />
               <Button title="Book" kind="quiet" onPress={book} style={{ flex: 1 }} />
             </View>
-            <Soft style={{ padding: 16 }}>{`${c.visits} visit${c.visits === 1 ? '' : 's'}${c.last_visit ? ` · last ${String(c.last_visit).slice(0, 10)}` : ''}${c.total_spent != null ? ` · spent ${rupees(toPaise(c.total_spent))}` : ''}${c.outstanding ? ` · owes ${rupees(toPaise(c.outstanding))}` : ''}`}</Soft>
+            <Soft style={{ padding: 16 }}>{`${c.visits} visit${c.visits === 1 ? '' : 's'}${c.last_visit ? ` · last ${formatDate(c.last_visit)}` : ''}${c.total_spent != null ? ` · spent ${rupees(toPaise(c.total_spent))}` : ''}${c.outstanding ? ` · owes ${rupees(toPaise(c.outstanding))}` : ''}`}</Soft>
             {c.allergies ? <Text style={{ paddingHorizontal: 16, color: color.danger, fontWeight: '700' }}>Allergies: {c.allergies}</Text> : null}
             {c.favorite_staff_name ? <Soft style={{ paddingHorizontal: 16, paddingTop: 4 }}>{`Usually sees ${c.favorite_staff_name}`}</Soft> : null}
             {c.labels.length ? <Soft style={{ paddingHorizontal: 16, paddingTop: 4 }}>{c.labels.join(' · ')}</Soft> : null}
 
             {c.memberships.some((m) => m.active) || c.packages.some((p) => p.active) || c.gift_cards.length || c.loyalty ? <SectionTitle>What they have</SectionTitle> : null}
-            {c.memberships.filter((m) => m.active).map((m) => <Line key={m.membership_id} left={m.plan_name} sub={`Member until ${String(m.expiry_date).slice(0, 10)}`} />)}
-            {c.packages.filter((p) => p.active).map((p) => <Line key={p.cp_id} left={p.name} sub={`${(p.items ?? []).map((i) => `${i.remaining} of ${i.total} ${i.name}`).join(', ')} · until ${String(p.expiry_date).slice(0, 10)}`} />)}
-            {c.gift_cards.filter((g) => g.status === 'ACTIVE' && g.balance > 0).map((g) => <Line key={g.code} left={`Gift card ${g.code}`} sub={g.expires_on ? `Until ${String(g.expires_on).slice(0, 10)}` : 'No expiry'} right={rupees(toPaise(g.balance))} />)}
+            {c.memberships.filter((m) => m.active).map((m) => <Line key={m.membership_id} left={m.plan_name} sub={`Member until ${formatDate(m.expiry_date)}`} />)}
+            {c.packages.filter((p) => p.active).map((p) => <Line key={p.cp_id} left={p.name} sub={`${(p.items ?? []).map((i) => `${i.remaining} of ${i.total} ${i.name}`).join(', ')} · until ${formatDate(p.expiry_date)}`} />)}
+            {c.gift_cards.filter((g) => g.status === 'ACTIVE' && g.balance > 0).map((g) => <Line key={g.code} left={`Gift card ${g.code}`} sub={g.expires_on ? `Until ${formatDate(g.expires_on)}` : 'No expiry'} right={rupees(toPaise(g.balance))} />)}
             {c.loyalty ? <Line left="Points" sub={`${c.loyalty.tier ? `${c.loyalty.tier} · ` : ''}${c.loyalty.expiring_soon ? `${c.loyalty.expiring_soon} expire soon` : 'Spend them at the till'}`} right={String(c.loyalty.available)} /> : null}
 
             <SectionTitle>Notes</SectionTitle>
@@ -66,10 +67,10 @@ export default function SalonClient() {
               <ErrorText>{problem}</ErrorText>
               <Button title="Save note" kind="quiet" onPress={() => { void addNote(); }} busy={busy} disabled={!note.trim()} />
             </View>
-            {c.notes.map((n) => <Line key={n.note_id} left={n.body} sub={`${n.author ?? 'Team'} · ${String(n.created_at).slice(0, 10)}`} />)}
+            {c.notes.map((n) => <Line key={n.note_id} left={n.body} sub={`${n.author ?? 'Team'} · ${formatDate(n.created_at)}`} />)}
 
             <SectionTitle>History</SectionTitle>
-            {(timeline.data ?? []).map((r, i) => <Line key={`${r.type}${i}`} left={timelineText(r)} sub={String(r.at).slice(0, 10)} right={r.amount != null && r.type !== 'points' ? rupees(toPaise(r.amount)) : undefined} />)}
+            {(timeline.data ?? []).map((r, i) => <Line key={`${r.type}${i}`} left={timelineText(r)} sub={formatDate(r.at)} right={r.amount != null && r.type !== 'points' ? rupees(toPaise(r.amount)) : undefined} />)}
             {timeline.data && timeline.data.length === 0 ? <Soft style={{ padding: 16 }}>Nothing yet.</Soft> : null}
           </ScrollView>
         ) : null}

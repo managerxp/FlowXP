@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { DAYS, KIND_LABEL, qs, rs, useLoad } from '../../lib/gaming.js';
 import { ListState, PageHeader, StatCard, Table, Td, Th, Thead, Tr } from '../../components/ui.jsx';
 import { Chips, Panel } from '../salon/parts.jsx';
+import { useT } from '../../i18n/useT.js';
 
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const ago = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return ymd(d); };
@@ -12,6 +13,7 @@ const HOURS = Array.from({ length: 16 }, (_, i) => 9 + i);
 const dayName = Object.fromEntries(DAYS);
 
 export default function GamingReports() {
+  const tr = useT();
   const { business } = useAuth();
   const [preset, setPreset] = useState('30');
   const days = PRESETS.find(([k]) => k === preset)[2];
@@ -27,22 +29,22 @@ export default function GamingReports() {
 
   return (
     <div>
-      <PageHeader title="Gaming reports" lead={`${business?.name || ''}: time and food and drink, from the tabs that were billed.`} />
-      <div className="mb-5"><Chips label="Period" value={preset} onChange={setPreset} options={PRESETS.map(([value, label]) => ({ value, label }))} /></div>
+      <PageHeader title={tr('Gaming reports')} lead={`${business?.name || ''}: time and food and drink, from the tabs that were billed.`} />
+      <div className="mb-5"><Chips label={tr('Period')} value={preset} onChange={setPreset} options={PRESETS.map(([value, label]) => ({ value, label }))} /></div>
       <ListState loading={summary.loading && !s} error={summary.error} />
       {s && (
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatCard size="lg" label="Billed (before GST)" value={rs(s.total)} note={`${s.bills} bill${s.bills === 1 ? '' : 's'}, average ${rs(s.average_bill)}`} />
-            <StatCard size="lg" label="Time" value={rs(s.gaming)} tone="brand" note={`${s.hours_played} hours in ${s.sessions} sessions`} />
-            <StatCard size="lg" label="Food and drink" value={rs(s.fnb)} note={`${s.fnb_share_pct}% of the total`} />
-            <StatCard size="lg" label="Average session" value={`${s.average_session_minutes} min`} note={`${s.players} named players`} />
+            <StatCard size="lg" label={tr('Billed (before GST)')} value={rs(s.total)} note={`${s.bills} bill${s.bills === 1 ? '' : 's'}, average ${rs(s.average_bill)}`} />
+            <StatCard size="lg" label={tr('Time')} value={rs(s.gaming)} tone="brand" note={`${s.hours_played} hours in ${s.sessions} sessions`} />
+            <StatCard size="lg" label={tr('Food and drink')} value={rs(s.fnb)} note={`${s.fnb_share_pct}% of the total`} />
+            <StatCard size="lg" label={tr('Average session')} value={`${s.average_session_minutes} min`} note={`${s.players} named players`} />
           </div>
-          <Panel title="By station" lead="Use is played time against a 12-hour day, on the days the station was used">
-            <ListState loading={stations.loading && !stations.data} error={stations.error} empty={stations.data && !stations.data.length} emptyLabel="No stations" />
+          <Panel title={tr('By station')} lead={tr('Use is played time against a 12-hour day, on the days the station was used')}>
+            <ListState loading={stations.loading && !stations.data} error={stations.error} empty={stations.data && !stations.data.length} emptyLabel={tr('No stations')} />
             {stations.data?.length > 0 && (
               <Table>
-                <Thead><Th>Station</Th><Th className="text-right">Sessions</Th><Th className="text-right">Hours</Th><Th className="text-right">Use</Th><Th className="text-right">Time</Th><Th className="text-right">Food and drink</Th><Th className="text-right">Total</Th></Thead>
+                <Thead><Th>{tr('Station')}</Th><Th className="text-right">{tr('Sessions')}</Th><Th className="text-right">{tr('Hours')}</Th><Th className="text-right">{tr('Use')}</Th><Th className="text-right">{tr('Time')}</Th><Th className="text-right">{tr('Food and drink')}</Th><Th className="text-right">{tr('Total')}</Th></Thead>
                 <tbody>
                   {stations.data.map((r) => (
                     <Tr key={r.station_id}>
@@ -57,9 +59,9 @@ export default function GamingReports() {
             )}
           </Panel>
           <div className="grid gap-5 lg:grid-cols-3">
-            <Panel title="Busy hours" lead="Sessions started, by day and hour" className="lg:col-span-2">
+            <Panel title={tr('Busy hours')} lead={tr('Sessions started, by day and hour')} className="lg:col-span-2">
               <div className="overflow-x-auto">
-                <table className="text-caption" aria-label="Sessions started by day and hour">
+                <table className="text-caption" aria-label={tr('Sessions started by day and hour')}>
                   <thead><tr><th className="pr-2" />{HOURS.map((h) => <th key={h} className="px-0.5 pb-1 text-center font-normal text-ink-400">{h > 12 ? h - 12 : h}</th>)}</tr></thead>
                   <tbody>
                     {DAYS.map(([dow]) => (
@@ -76,8 +78,8 @@ export default function GamingReports() {
               </div>
               {heat.data?.peak && <p className="mt-3 text-small text-ink-500">Busiest: {dayName[heat.data.peak.dow]} around {heat.data.peak.hour > 12 ? heat.data.peak.hour - 12 : heat.data.peak.hour} {heat.data.peak.hour >= 12 ? 'pm' : 'am'}.</p>}
             </Panel>
-            <Panel title="Most played">
-              {(games.data || []).length === 0 ? <p className="text-small text-ink-500">Note the game when you start a session to see this.</p> : (
+            <Panel title={tr('Most played')}>
+              {(games.data || []).length === 0 ? <p className="text-small text-ink-500">{tr('Note the game when you start a session to see this.')}</p> : (
                 <ul className="divide-y divide-line text-small">
                   {games.data.map((g) => <li key={g.name} className="flex items-center justify-between py-2"><span className="font-medium text-ink-900">{g.name}</span><span className="tabular text-ink-500">{g.sessions} · {g.hours} h</span></li>)}
                 </ul>

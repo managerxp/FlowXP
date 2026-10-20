@@ -27,7 +27,7 @@ export const loadInvoices = async (db, businessId, { ids = null, from = null, to
      ORDER BY i.invoice_date, i.invoice_id`, [businessId, ids, from, to, gstin])).rows;
   if (!rows.length) return [];
   const lines = (await db.query(
-    `SELECT ii.invoice_id, ii.item_id, ii.description, ii.quantity, ii.unit_price_paise, ii.discount_paise, ii.tax_rate, ii.tax_amount_paise, ii.line_total_paise, p.hsn_sac, p.unit
+    `SELECT ii.invoice_id, ii.item_id, ii.description, ii.quantity, ii.unit_price_paise, ii.discount_paise, ii.tax_rate, ii.tax_amount_paise, ii.line_total_paise, COALESCE(ii.hsn_sac, p.hsn_sac) AS hsn_sac, p.unit
      FROM invoice_items ii LEFT JOIN products p ON p.product_id = ii.product_id WHERE ii.invoice_id = ANY($1::int[]) ORDER BY ii.item_id`, [rows.map((r) => r.invoice_id)])).rows;
   return rows.map((r) => ({ ...r, lines: lines.filter((l) => l.invoice_id === r.invoice_id) }));
 };

@@ -46,7 +46,7 @@ test('a person is offered only the tools their role can open', () => {
   const manager = names(tenantOf('MANAGER'));
   assert.ok(manager.includes('sales_summary') && manager.includes('stock_status'));
   assert.ok(!manager.includes('leakage_findings') && !manager.includes('loyalty_and_coupons'), 'settings-level tools stay with owners and admins');
-  assert.deepEqual(names(tenantOf('INVENTORY_MANAGER')), ['stock_status', 'wastage_summary']);
+  assert.deepEqual(names(tenantOf('INVENTORY_MANAGER')), ['item_movement', 'low_stock_list', 'stock_status', 'stock_value', 'wastage_summary'], 'stock tools only: no sales or profit');
   // pinned to one outlet: no group-wide views
   const pinned = names(tenantOf('ADMIN', { pinned: true }));
   assert.ok(!pinned.includes('leakage_findings') && !pinned.includes('outlet_comparison') && !pinned.includes('loyalty_and_coupons'));

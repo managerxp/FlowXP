@@ -132,6 +132,11 @@ export const TEMPLATES = {
     vars: ['name', 'business', 'order', 'status'],
     text: (p) => `Hi ${p.name}, update on your order ${p.order} from ${p.business}: ${p.status}.`
   },
+  BALANCE_DUE: {
+    name: 'flowxp_balance_due', promo: false,
+    vars: ['name', 'business', 'amount', 'bills'],
+    text: (p) => `Hi ${p.name}, a gentle reminder from ${p.business}: ${p.amount} is due on your account. Unpaid: ${p.bills}. Please pay when you can. Thank you!`
+  },
   REVIEW_REPLY: {
     name: 'flowxp_review_reply', promo: false,
     vars: ['name', 'business', 'reply'],

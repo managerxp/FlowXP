@@ -1,3 +1,4 @@
+import { formatDate } from '../../lib/display.ts';
 import { useState } from 'react';
 import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -143,7 +144,7 @@ Check in anyway?`, [{ text: 'Wait', style: 'cancel' }, { text: 'Check in anyway'
               {folio.data ? (
                 <>
                   {folio.data.charges.filter((c) => !c.voided_at).map((c) => <Line key={c.charge_id} left={c.description} sub={`${c.department.toLowerCase().replace('_', ' ')}${c.room_no ? ` · room ${c.room_no}` : ''}${b.status === 'CHECKED_IN' ? ' · tap to void' : ''}`} right={paise(Number(c.amount_paise) + Number(c.tax_paise))} onPress={b.status === 'CHECKED_IN' ? () => { reset(); setVoiding(c.charge_id); setMode('void'); } : undefined} />)}
-                  {folio.data.payments.map((p) => <Line key={`p${p.fp_id}`} left={`${p.kind === 'REFUND' ? 'Refund' : p.kind === 'ADVANCE' ? 'Advance' : 'Payment'} · ${PAY_LABEL[p.method] ?? p.method}`} sub={String(p.pay_date).slice(0, 10)} right={`${p.kind === 'REFUND' ? '-' : ''}${paise(p.amount_paise)}`} />)}
+                  {folio.data.payments.map((p) => <Line key={`p${p.fp_id}`} left={`${p.kind === 'REFUND' ? 'Refund' : p.kind === 'ADVANCE' ? 'Advance' : 'Payment'} · ${PAY_LABEL[p.method] ?? p.method}`} sub={formatDate(p.pay_date)} right={`${p.kind === 'REFUND' ? '-' : ''}${paise(p.amount_paise)}`} />)}
                   {t ? (
                     <View style={{ padding: 16, gap: 2 }}>
                       <Text style={{ color: color.ink }}>{`Charges ${paise(t.charges_paise)} · paid ${paise(t.paid_paise)}`}</Text>

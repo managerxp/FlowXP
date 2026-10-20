@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { dateText, money, pct, qs, qty, saveCsv, todayIn, useLoad, addDays } from '../../lib/wholesale.js';
 import { Alert, Button, Field, ListState, PageHeader, Select, Table, Td, Th, Thead, Tr } from '../../components/ui.jsx';
 import { DateRange, Panel, WarehouseSelect } from './parts.jsx';
+import { useT, T } from '../../i18n/useT.js';
 
 const cellText = (type, v) => {
   if (v == null || v === '') return '';
@@ -21,6 +22,7 @@ const cellText = (type, v) => {
 const rawText = (type, v) => (v == null ? '' : v);
 
 const WholesaleReports = () => {
+  const tr = useT();
   const { can } = useAuth();
   const [params, setParams] = useSearchParams();
   const catalogue = useLoad('/wholesale/reports');
@@ -48,12 +50,12 @@ const WholesaleReports = () => {
   return (
     <div>
       <style>{`@media print { .no-print { display: none !important; } main { padding: 0 !important; } }`}</style>
-      <div className="no-print"><PageHeader title="Reports" lead="Sales, purchases, stock and money, worked out live from your records." /></div>
+      <div className="no-print"><PageHeader title={tr('Reports')} lead={tr('Sales, purchases, stock and money, worked out live from your records.')} /></div>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-        <nav aria-label="Reports" className="no-print space-y-4 lg:sticky lg:top-4 lg:self-start">
+        <nav aria-label={tr('Reports')} className="no-print space-y-4 lg:sticky lg:top-4 lg:self-start">
           {Object.entries(groups).map(([name, items]) => (
             <div key={name}><p className="mb-1 px-2 text-caption font-semibold uppercase tracking-wide text-ink-500">{name}</p>
-              <ul>{items.map((r) => <li key={r.key}><button type="button" onClick={() => setParams({ r: r.key }, { replace: true })} className={`block w-full rounded-lg px-2.5 py-1.5 text-left text-small ${key === r.key ? 'bg-brand-50 font-semibold text-brand-700' : 'text-ink-700 hover:bg-surface-2'}`}>{r.label}</button></li>)}</ul></div>
+              <ul>{items.map((r) => <li key={r.key}><button type="button" onClick={() => setParams({ r: r.key }, { replace: true })} className={`block w-full rounded-lg px-2.5 py-1.5 text-left text-small ${key === r.key ? 'bg-brand-50 font-semibold text-brand-700' : 'text-ink-700 hover:bg-surface-2'}`}>{tr(r.label)}</button></li>)}</ul></div>
           ))}
         </nav>
         <div className="min-w-0 space-y-4">
@@ -61,25 +63,25 @@ const WholesaleReports = () => {
           {def && (
             <>
               <div className="no-print space-y-3">
-                <p className="text-small text-ink-500">{def.description}</p>
+                <p className="text-small text-ink-500">{tr(def.description)}</p>
                 <div className="flex flex-wrap items-end gap-3">
-                  {def.period ? <DateRange from={from} to={to} onChange={(a, b) => { setFrom(a); setTo(b); }} /> : ['receivables_ageing', 'payables_ageing'].includes(key) ? <Field id="rp-to" label="As of"><input id="rp-to" type="date" value={to} max={today} onChange={(e) => setTo(e.target.value)} className="rounded-(--radius-control) border border-line-strong bg-surface px-3 py-2 text-sm" /></Field> : null}
+                  {def.period ? <DateRange from={from} to={to} onChange={(a, b) => { setFrom(a); setTo(b); }} /> : ['receivables_ageing', 'payables_ageing'].includes(key) ? <Field id="rp-to" label={tr('As of')}><input id="rp-to" type="date" value={to} max={today} onChange={(e) => setTo(e.target.value)} className="rounded-(--radius-control) border border-line-strong bg-surface px-3 py-2 text-sm" /></Field> : null}
                   {!['receivables_ageing', 'payables_ageing', 'customer_outstanding', 'supplier_outstanding', 'collections'].includes(key) && <WarehouseSelect allowAll value={warehouse} onChange={setWarehouse} id="rp-wh" />}
-                  {def.filters?.includes('group') && <Field id="rp-group" label="Group by"><Select id="rp-group" value={group} onChange={(e) => setGroup(e.target.value)}><option value="day">Day</option><option value="week">Week</option><option value="month">Month</option></Select></Field>}
-                  {def.filters?.includes('category_id') && <Field id="rp-cat" label="Category"><Select id="rp-cat" value={category} onChange={(e) => setCategory(e.target.value)}><option value="">All</option>{(cats.data || []).map((c) => <option key={c.category_id} value={c.category_id}>{c.name}</option>)}</Select></Field>}
-                  {def.filters?.includes('level') && <Field id="rp-level" label="Level"><Select id="rp-level" value={level} onChange={(e) => setLevel(e.target.value)}><option value="REGION">Region</option><option value="TERRITORY">Territory</option><option value="AREA">Area</option></Select></Field>}
-                  {def.filters?.includes('by') && <Field id="rp-by" label="Break down by"><Select id="rp-by" value={by} onChange={(e) => setBy(e.target.value)}>{[['product', 'Product'], ['brand', 'Brand'], ['principal', 'Principal'], ['customer', 'Customer'], ['salesperson', 'Salesperson'], ['territory', 'Territory'], ['category', 'Category']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>}
-                  {def.filters?.includes('principal_id') && <Field id="rp-prin" label="Principal"><Select id="rp-prin" value={principal} onChange={(e) => setPrincipal(e.target.value)}><option value="">All</option>{(principals.data || []).map((x) => <option key={x.principal_id} value={x.principal_id}>{x.name}</option>)}</Select></Field>}
-                  {def.filters?.includes('salesperson_id') && <Field id="rp-sp" label="Salesperson"><Select id="rp-sp" value={salesperson} onChange={(e) => setSalesperson(e.target.value)}><option value="">All</option>{(people.data || []).map((p) => <option key={p.salesperson_id} value={p.salesperson_id}>{p.name}</option>)}</Select></Field>}
-                  <div className="ml-auto flex gap-2 pb-0.5">{rep && can('export') && <Button variant="secondary" onClick={exportCsv}><Download aria-hidden="true" className="h-4 w-4" />CSV</Button>}{rep && <Button variant="secondary" onClick={() => window.print()}><Printer aria-hidden="true" className="h-4 w-4" />Print</Button>}</div>
+                  {def.filters?.includes('group') && <Field id="rp-group" label={tr('Group by')}><Select id="rp-group" value={group} onChange={(e) => setGroup(e.target.value)}><option value="day">{tr('Day')}</option><option value="week">{tr('Week')}</option><option value="month">{tr('Month')}</option></Select></Field>}
+                  {def.filters?.includes('category_id') && <Field id="rp-cat" label={tr('Category')}><Select id="rp-cat" value={category} onChange={(e) => setCategory(e.target.value)}><option value="">{tr('All')}</option>{(cats.data || []).map((c) => <option key={c.category_id} value={c.category_id}>{c.name}</option>)}</Select></Field>}
+                  {def.filters?.includes('level') && <Field id="rp-level" label={tr('Level')}><Select id="rp-level" value={level} onChange={(e) => setLevel(e.target.value)}><option value="REGION">{tr('Region')}</option><option value="TERRITORY">{tr('Territory')}</option><option value="AREA">{tr('Area')}</option></Select></Field>}
+                  {def.filters?.includes('by') && <Field id="rp-by" label={tr('Break down by')}><Select id="rp-by" value={by} onChange={(e) => setBy(e.target.value)}>{[['product', T('Product')], ['brand', T('Brand')], ['principal', T('Principal')], ['customer', T('Customer')], ['salesperson', T('Salesperson')], ['territory', T('Territory')], ['category', T('Category')]].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>}
+                  {def.filters?.includes('principal_id') && <Field id="rp-prin" label={tr('Principal')}><Select id="rp-prin" value={principal} onChange={(e) => setPrincipal(e.target.value)}><option value="">{tr('All')}</option>{(principals.data || []).map((x) => <option key={x.principal_id} value={x.principal_id}>{x.name}</option>)}</Select></Field>}
+                  {def.filters?.includes('salesperson_id') && <Field id="rp-sp" label={tr('Salesperson')}><Select id="rp-sp" value={salesperson} onChange={(e) => setSalesperson(e.target.value)}><option value="">{tr('All')}</option>{(people.data || []).map((p) => <option key={p.salesperson_id} value={p.salesperson_id}>{p.name}</option>)}</Select></Field>}
+                  <div className="ml-auto flex gap-2 pb-0.5">{rep && can('export') && <Button variant="secondary" onClick={exportCsv}><Download aria-hidden="true" className="h-4 w-4" />{tr('CSV')}</Button>}{rep && <Button variant="secondary" onClick={() => window.print()}><Printer aria-hidden="true" className="h-4 w-4" />{tr('Print')}</Button>}</div>
                 </div>
               </div>
-              <h2 className="hidden text-lg font-semibold print:block">{def.label}{def.period ? ` · ${dateText(from, { day: 'numeric', month: 'short', year: 'numeric' })} to ${dateText(to, { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}</h2>
-              <ListState loading={loading && !rep} error={error} empty={rep?.rows.length === 0} emptyLabel="No data" emptyBody="There is nothing to show for these filters." />
+              <h2 className="hidden text-lg font-semibold print:block">{tr(def.label)}{def.period ? ` · ${dateText(from, { day: 'numeric', month: 'short', year: 'numeric' })} to ${dateText(to, { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}</h2>
+              <ListState loading={loading && !rep} error={error} empty={rep?.rows.length === 0} emptyLabel={tr('No data')} emptyBody="There is nothing to show for these filters." />
               {rep && rep.rows.length > 0 && (
                 <>
                   <Table>
-                    <Thead>{rep.columns.map((c) => <Th key={c.key} className={['money', 'number', 'percent'].includes(c.type) ? 'text-right' : ''}>{c.label}</Th>)}</Thead>
+                    <Thead>{rep.columns.map((c) => <Th key={c.key} className={['money', 'number', 'percent'].includes(c.type) ? 'text-right' : ''}>{tr(c.label)}</Th>)}</Thead>
                     <tbody>
                       {rep.rows.map((r, i) => <Tr key={i}>{rep.columns.map((c) => <Td key={c.key} className={['money', 'number', 'percent'].includes(c.type) ? 'text-right tabular' : ''}>{cellText(c.type, r[c.key])}</Td>)}</Tr>)}
                       {rep.totals && <Tr>{rep.columns.map((c) => <Td key={c.key} className={`font-semibold ${['money', 'number', 'percent'].includes(c.type) ? 'text-right tabular' : ''}`}>{cellText(c.type, rep.totals[c.key])}</Td>)}</Tr>}
@@ -90,7 +92,7 @@ const WholesaleReports = () => {
               )}
             </>
           )}
-          {!def && !catalogue.loading && !catalogue.error && <Alert>That report does not exist.</Alert>}
+          {!def && !catalogue.loading && !catalogue.error && <Alert>{tr('That report does not exist.')}</Alert>}
         </div>
       </div>
     </div>

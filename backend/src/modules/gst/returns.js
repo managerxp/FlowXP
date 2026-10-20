@@ -23,7 +23,7 @@ export const loadDocs = async (db, { businessId, gstin, from, to }) => {
             cu.gstin AS buyer_gstin, cu.name AS buyer_name, cu.state AS buyer_state, cu.pincode AS buyer_pincode, cu.address AS buyer_address,
             COALESCE(br.gstin, b.gstin) AS seller_gstin, COALESCE(br.state, b.state) AS seller_state,
             ii.item_id, ii.description, ii.quantity, ii.unit_price_paise, ii.discount_paise AS line_discount, ii.tax_rate, ii.tax_amount_paise, ii.line_total_paise,
-            p.hsn_sac, p.unit
+            COALESCE(ii.hsn_sac, p.hsn_sac) AS hsn_sac, p.unit
      FROM invoices i JOIN invoice_items ii ON ii.invoice_id = i.invoice_id JOIN businesses b ON b.business_id = i.business_id
      LEFT JOIN branches br ON br.branch_id = i.branch_id LEFT JOIN customers cu ON cu.customer_id = i.customer_id LEFT JOIN products p ON p.product_id = ii.product_id
      WHERE i.business_id = $1 AND i.status = 'ISSUED' AND i.invoice_date BETWEEN $2 AND $3 AND COALESCE(br.gstin, b.gstin) = $4
@@ -33,7 +33,7 @@ export const loadDocs = async (db, { businessId, gstin, from, to }) => {
     `SELECT c.cn_id, c.cn_number, c.cn_date::text AS date, c.total_paise, (c.igst_paise > 0) AS inter, i.invoice_number AS orig_number, i.invoice_date::text AS orig_date, i.total_paise AS orig_total,
             cu.gstin AS buyer_gstin, cu.name AS buyer_name, cu.state AS buyer_state,
             COALESCE(br.gstin, b.gstin) AS seller_gstin, COALESCE(br.state, b.state) AS seller_state,
-            ci.description, ci.quantity, ci.tax_rate, ci.tax_amount_paise, ci.line_total_paise, p.hsn_sac, p.unit
+            ci.description, ci.quantity, ci.tax_rate, ci.tax_amount_paise, ci.line_total_paise, COALESCE(ci.hsn_sac, p.hsn_sac) AS hsn_sac, p.unit
      FROM credit_notes c JOIN credit_note_items ci ON ci.cn_id = c.cn_id JOIN invoices i ON i.invoice_id = c.invoice_id JOIN businesses b ON b.business_id = c.business_id
      LEFT JOIN branches br ON br.branch_id = i.branch_id LEFT JOIN customers cu ON cu.customer_id = i.customer_id LEFT JOIN products p ON p.product_id = ci.product_id
      WHERE c.business_id = $1 AND c.cn_date BETWEEN $2 AND $3 AND COALESCE(br.gstin, b.gstin) = $4
@@ -251,19 +251,28 @@ export const buildGstr3b = ({ shaped, purchases, debits, gstin, fp }) => {
     }
   }
   const itc = { eligible: 0, ineligible: 0 };
-  for (const p of purchases) (isGstin(p.gstin) ? (itc.eligible += Number(p.tax_paise)) : (itc.ineligible += Number(p.tax_paise)));
+  /* Purchases on reverse charge (3.1(d)): the buyer pays the tax in cash and may claim it back (4A(3)) whether or not the supplier has a GSTIN. */
+  const rcm = { taxable: 0, tax: 0 };
+  for (const p of purchases) {
+    if (p.reverse_charge) { rcm.taxable += Number(p.subtotal_paise); rcm.tax += Number(p.tax_paise); itc.eligible += Number(p.tax_paise); continue; }
+    (isGstin(p.gstin) ? (itc.eligible += Number(p.tax_paise)) : (itc.ineligible += Number(p.tax_paise)));
+  }
   for (const d of debits) if (isGstin(d.gstin)) itc.eligible -= Number(d.tax_paise);
   const half = Math.floor(itc.eligible / 2);
   const credit = { igst: 0, cgst: half, sgst: itc.eligible - half };
   const payable = { igst: Math.max(0, taxed.igst - credit.igst), cgst: Math.max(0, taxed.cgst - credit.cgst), sgst: Math.max(0, taxed.sgst - credit.sgst) };
   const fmt = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, rs(v)]));
+  const rcmHalf = Math.floor(rcm.tax / 2);
+  const rcmTax = { taxable: rcm.taxable, igst: 0, cgst: rcmHalf, sgst: rcm.tax - rcmHalf };
   return {
     gstin, period: fp,
     outward_taxable: fmt(taxed), outward_nil_or_exempt: fmt({ taxable: nil.taxable }),
     inter_state_to_unregistered: [...inter].map(([pos, v]) => ({ pos, ...fmt(v) })),
     itc: { eligible: rs(itc.eligible), ineligible: rs(itc.ineligible), cgst: rs(credit.cgst), sgst: rs(credit.sgst), igst: rs(credit.igst) },
     tax_payable_in_cash: fmt(payable),
-    notes: ['Outward figures are net of credit notes issued in the period.', 'Input credit assumes purchases were made inside your own state and only counts suppliers that have a GSTIN.', 'Set-off of credit against liability follows the portal\'s own order; check the figures before you file.']
+    reverse_charge_inward: fmt(rcmTax),
+    total_cash_with_reverse_charge: fmt({ igst: payable.igst, cgst: payable.cgst + rcmTax.cgst, sgst: payable.sgst + rcmTax.sgst }),
+    notes: ['Outward figures are net of credit notes issued in the period.', 'Input credit assumes purchases were made inside your own state and only counts suppliers that have a GSTIN, except purchases on reverse charge, which always count.', 'Set-off of credit against liability follows the portal\'s own order; check the figures before you file.']
   };
 };
 

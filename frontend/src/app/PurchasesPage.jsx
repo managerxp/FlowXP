@@ -16,9 +16,11 @@ import DebitNoteModal from '../components/DebitNoteModal.jsx';
 import { api, formatCurrency } from '../lib/api.js';
 import { localISO } from '../lib/dates.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Button, Field, Input, Modal, Select, useToast, useDialog, EmptyState } from '../components/ui.jsx';
+import { useT, T } from '../i18n/useT.js';
 
-const METHODS = [['CASH', 'Cash'], ['UPI', 'UPI'], ['BANK_TRANSFER', 'Bank'], ['CARD', 'Card'], ['OTHER', 'Other']];
+const METHODS = [['CASH', T('Cash')], ['UPI', 'UPI'], ['BANK_TRANSFER', T('Bank')], ['CARD', T('Card')], ['OTHER', T('Other')]];
 const METHOD_LABEL = { ...Object.fromEntries(METHODS), CREDIT: 'Credit' };
 const qty = (n) => Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 3 });
 const day = (d) => (d ? new Date(String(d).length === 10 ? `${d}T00:00` : d).toLocaleDateString([], { day: 'numeric', month: 'short' }) : null);
@@ -48,6 +50,7 @@ const whenLine = (po) => {
 /* ── Pay a supplier ───────────────────────────────────────────────────── */
 
 const PayModal = ({ po, onClose, onPaid }) => {
+  const tr = useT();
   const idem = useIdempotencyKey();
   const toast = useToast();
   const [amount, setAmount] = useState(String(po.balance_due));
@@ -72,22 +75,22 @@ const PayModal = ({ po, onClose, onPaid }) => {
   return (
     <Modal title={`Pay ${po.supplier_name || 'supplier'}`} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
-        <p className="tabular -mt-2 text-small text-ink-500">{po.po_number} · {formatCurrency(po.balance_due)} still owed</p>
+        <p className="tabular -mt-2 text-small text-ink-500">{tr('{{po_number}} · {{formatCurrency}} still owed', { po_number: po.po_number, formatCurrency: formatCurrency(po.balance_due) })}</p>
         <Alert>{error}</Alert>
-        <Field id="pay-amount" label="Amount (₹)">
+        <Field id="pay-amount" label={tr('Amount (₹)')}>
           <Input id="pay-amount" type="number" min="0.01" step="0.01" max={po.balance_due} value={amount} onChange={(e) => setAmount(e.target.value)} required autoFocus />
         </Field>
-        <div role="radiogroup" aria-label="Paid by" className="grid grid-cols-5 gap-1.5">
+        <div role="radiogroup" aria-label={tr('Paid by')} className="grid grid-cols-5 gap-1.5">
           {METHODS.map(([v, label]) => (
             <button key={v} type="button" role="radio" aria-checked={method === v} onClick={() => setMethod(v)}
-                    className={`h-9 rounded-lg border text-small font-medium ${method === v ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>{label}</button>
+                    className={`h-9 rounded-lg border text-small font-medium ${method === v ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>{tr(label)}</button>
           ))}
         </div>
-        {method !== 'CASH' && <Field id="pay-ref" label="Reference (optional)" hint="UTR, cheque or transaction number"><Input id="pay-ref" value={ref} onChange={(e) => setRef(e.target.value)} /></Field>}
-        <p className="tabular text-small text-ink-500">{left > 0 ? `${formatCurrency(left)} will still be owed.` : 'This clears the order.'}</p>
+        {method !== 'CASH' && <Field id="pay-ref" label={tr('Reference (optional)')} hint={tr('UTR, cheque or transaction number')}><Input id="pay-ref" value={ref} onChange={(e) => setRef(e.target.value)} /></Field>}
+        <p className="tabular text-small text-ink-500">{left > 0 ? `${formatCurrency(left)} will still be owed.` : tr('This clears the order.')}</p>
         <div className="flex justify-end gap-2 border-t border-line pt-4">
-          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Record payment'}</Button>
+          <Button type="button" variant="ghost" onClick={onClose}>{tr('Cancel')}</Button>
+          <Button type="submit" disabled={busy}>{busy ? tr('Saving…') : tr('Record payment')}</Button>
         </div>
       </form>
     </Modal>
@@ -99,11 +102,15 @@ const PayModal = ({ po, onClose, onPaid }) => {
 const emptyLine = () => ({ key: Math.random(), product_id: '', description: '', quantity: '1', unit_cost: '', tax_rate: '0' });
 
 const PurchaseForm = ({ products, suppliers, onSaved, onClose }) => {
+  const tr = useT();
   const idem = useIdempotencyKey();
   const [supplierId, setSupplierId] = useState('');
   const [lines, setLines] = useState([emptyLine()]);
   const [paidNow, setPaidNow] = useState('');
   const [method, setMethod] = useState('CASH');
+  const [reverse, setReverse] = useState(false);
+  const { business } = useAuth();
+  const canReverse = Boolean(business?.gst_enabled && business?.gst_options?.reverse_charge);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -113,7 +120,7 @@ const PurchaseForm = ({ products, suppliers, onSaved, onClose }) => {
     setLine(key, { product_id: productId, description: p?.name || '', unit_cost: p?.purchase_price ? String(p.purchase_price) : '', tax_rate: String(p?.tax_rate ?? 0) });
   };
   const lineTotal = (l) => { const g = Number(l.quantity || 0) * Number(l.unit_cost || 0); return g + g * (Number(l.tax_rate || 0) / 100); };
-  const total = lines.reduce((s, l) => s + lineTotal(l), 0);
+  const total = lines.reduce((s, l) => s + (reverse && canReverse ? Number(l.quantity || 0) * Number(l.unit_cost || 0) : lineTotal(l)), 0);
   const unitOf = (l) => products.find((p) => String(p.product_id) === l.product_id)?.unit;
 
   const submit = async (e) => {
@@ -127,7 +134,7 @@ const PurchaseForm = ({ products, suppliers, onSaved, onClose }) => {
       if (!items.length) throw new Error('Add at least one item with a quantity and a cost');
       const po = await api('/purchases', {
         method: 'POST', idempotencyKey: idem.get(),
-        body: { supplier_id: supplierId || null, items, payment: paidNow ? { amount: Number(paidNow), method } : undefined }
+        body: { supplier_id: supplierId || null, items, reverse_charge: canReverse && reverse ? true : undefined, payment: paidNow ? { amount: Number(paidNow), method } : undefined }
       });
       idem.settle();
       onSaved(po);
@@ -136,53 +143,60 @@ const PurchaseForm = ({ products, suppliers, onSaved, onClose }) => {
   };
 
   return (
-    <Modal title="Record a purchase" onClose={onClose} wide>
+    <Modal title={tr('Record a purchase')} onClose={onClose} wide>
       <form onSubmit={submit} className="space-y-5">
         <p className="-mt-2 text-small text-ink-500">For goods that have already arrived. Stock goes up now; to order first, use New order.</p>
         <Alert>{error}</Alert>
-        <Field id="rp-supplier" label="Supplier (optional)">
+        <Field id="rp-supplier" label={tr('Supplier (optional)')}>
           <Select id="rp-supplier" value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
-            <option value="">No supplier on file</option>
+            <option value="">{tr('No supplier on file')}</option>
             {suppliers.map((s) => <option key={s.supplier_id} value={s.supplier_id}>{s.name}</option>)}
           </Select>
         </Field>
 
         <div>
           <div className="hidden grid-cols-[minmax(0,1fr)_5.5rem_6.5rem_4.5rem_6rem_2rem] gap-2 pb-1.5 text-caption font-medium text-ink-500 sm:grid">
-            <span>Item</span><span>Quantity</span><span>Cost each ₹</span><span>GST %</span><span className="text-right">Line</span><span />
+            <span>{tr('Item')}</span><span>{tr('Quantity')}</span><span>{tr('Cost each ₹')}</span><span>{tr('GST %')}</span><span className="text-right">{tr('Line')}</span><span />
           </div>
           <div className="space-y-2">
             {lines.map((l) => (
               <div key={l.key} className="grid grid-cols-[minmax(0,1fr)_5.5rem_6.5rem_4.5rem_6rem_2rem] items-center gap-2 max-sm:grid-cols-3 max-sm:rounded-lg max-sm:border max-sm:border-line max-sm:p-2">
                 <div className="flex min-w-0 gap-2 max-sm:col-span-3">
-                  <Select aria-label="Item" value={l.product_id} onChange={(e) => pick(l.key, e.target.value)} className="min-w-0">
-                    <option value="">Something not in your list…</option>
+                  <Select aria-label={tr('Item')} value={l.product_id} onChange={(e) => pick(l.key, e.target.value)} className="min-w-0">
+                    <option value="">{tr('Something not in your list…')}</option>
                     {products.map((p) => <option key={p.product_id} value={p.product_id}>{p.name}</option>)}
                   </Select>
-                  {!l.product_id && <Input aria-label="Description" placeholder="What is it?" value={l.description} onChange={(e) => setLine(l.key, { description: e.target.value })} className="min-w-0" />}
+                  {!l.product_id && <Input aria-label={tr('Description')} placeholder={tr('What is it?')} value={l.description} onChange={(e) => setLine(l.key, { description: e.target.value })} className="min-w-0" />}
                 </div>
-                <Input aria-label="Quantity" type="number" min="0.001" step="0.001" value={l.quantity} onChange={(e) => setLine(l.key, { quantity: e.target.value })} placeholder={unitOf(l) || 'Qty'} />
-                <Input aria-label="Cost each" type="number" min="0" step="0.01" value={l.unit_cost} onChange={(e) => setLine(l.key, { unit_cost: e.target.value })} placeholder="₹" />
-                <Input aria-label="GST percent" type="number" min="0" step="0.01" value={l.tax_rate} onChange={(e) => setLine(l.key, { tax_rate: e.target.value })} />
+                <Input aria-label={tr('Quantity')} type="number" min="0.001" step="0.001" value={l.quantity} onChange={(e) => setLine(l.key, { quantity: e.target.value })} placeholder={unitOf(l) || 'Qty'} />
+                <Input aria-label={tr('Cost each')} type="number" min="0" step="0.01" value={l.unit_cost} onChange={(e) => setLine(l.key, { unit_cost: e.target.value })} placeholder="₹" />
+                <Input aria-label={tr('GST percent')} type="number" min="0" step="0.01" value={l.tax_rate} onChange={(e) => setLine(l.key, { tax_rate: e.target.value })} />
                 <span className="tabular text-right text-small font-medium text-ink-900 max-sm:hidden">{formatCurrency(lineTotal(l))}</span>
                 <button type="button" onClick={() => setLines((ls) => (ls.length > 1 ? ls.filter((x) => x.key !== l.key) : [emptyLine()]))}
-                        aria-label="Remove line" className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-400 hover:bg-surface-2 hover:text-danger max-sm:hidden"><Trash2 className="h-4 w-4" /></button>
+                        aria-label={tr('Remove line')} className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-400 hover:bg-surface-2 hover:text-danger max-sm:hidden"><Trash2 className="h-4 w-4" /></button>
               </div>
             ))}
           </div>
-          <Button type="button" variant="ghost" size="sm" className="mt-2" onClick={() => setLines((ls) => [...ls, emptyLine()])}><Plus aria-hidden="true" className="h-4 w-4" />Add a line</Button>
+          <Button type="button" variant="ghost" size="sm" className="mt-2" onClick={() => setLines((ls) => [...ls, emptyLine()])}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add a line')}</Button>
         </div>
+
+        {canReverse && (
+          <label htmlFor="rp-rcm" className="flex cursor-pointer items-start gap-3">
+            <input id="rp-rcm" type="checkbox" checked={reverse} onChange={(e) => setReverse(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-(--color-brand-500)" />
+            <span><span className="block text-small font-medium text-ink-900">{tr('Tax payable on reverse charge')}</span><span className="block text-caption text-ink-500">{tr('You owe the supplier the taxable value only. The GST is yours to pay, and to claim back.')}</span></span>
+          </label>
+        )}
 
         <div className="flex flex-wrap items-end justify-between gap-4 border-t border-line pt-4">
           <div className="flex items-end gap-2">
-            <div className="w-36"><Field id="rp-paid" label="Paid now (₹)" hint="Blank = on credit"><Input id="rp-paid" type="number" min="0" step="0.01" value={paidNow} onChange={(e) => setPaidNow(e.target.value)} /></Field></div>
-            {paidNow && <div className="w-28"><Field id="rp-method" label="By"><Select id="rp-method" value={method} onChange={(e) => setMethod(e.target.value)}>{METHODS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}</Select></Field></div>}
+            <div className="w-36"><Field id="rp-paid" label={tr('Paid now (₹)')} hint="Blank = on credit"><Input id="rp-paid" type="number" min="0" step="0.01" value={paidNow} onChange={(e) => setPaidNow(e.target.value)} /></Field></div>
+            {paidNow && <div className="w-28"><Field id="rp-method" label={tr('By')}><Select id="rp-method" value={method} onChange={(e) => setMethod(e.target.value)}>{METHODS.map(([v, label]) => <option key={v} value={v}>{tr(label)}</option>)}</Select></Field></div>}
           </div>
-          <p className="tabular text-right"><span className="block text-caption text-ink-500">Total, with GST</span><span className="text-title font-semibold text-ink-900">{formatCurrency(total)}</span></p>
+          <p className="tabular text-right"><span className="block text-caption text-ink-500">{tr('Total, with GST')}</span><span className="text-title font-semibold text-ink-900">{formatCurrency(total)}</span></p>
         </div>
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Record and add to stock'}</Button>
+          <Button type="button" variant="ghost" onClick={onClose}>{tr('Cancel')}</Button>
+          <Button type="submit" disabled={busy}>{busy ? tr('Saving…') : tr('Record and add to stock')}</Button>
         </div>
       </form>
     </Modal>
@@ -192,7 +206,8 @@ const PurchaseForm = ({ products, suppliers, onSaved, onClose }) => {
 /* ── One order ────────────────────────────────────────────────────────── */
 
 const Steps = ({ po }) => {
-  if (po.status === 'CANCELLED') return <p className="text-small font-medium text-ink-500">This order was cancelled. Nothing was received from it.</p>;
+  const tr = useT();
+  if (po.status === 'CANCELLED') return <p className="text-small font-medium text-ink-500">{tr('This order was cancelled. Nothing was received from it.')}</p>;
   const steps = [
     ['Drafted', po.created_at || po.po_date, true],
     ['Ordered', po.ordered_at, Boolean(po.ordered_at) || ['PARTIAL', 'RECEIVED'].includes(po.status)],
@@ -204,7 +219,7 @@ const Steps = ({ po }) => {
       {steps.map(([label, at, done], i) => (
         <li key={label} className="min-w-0">
           <span aria-hidden="true" className={`block h-1 rounded-full ${done ? 'bg-brand-500' : 'bg-surface-3'}`} />
-          <span className={`mt-1.5 flex items-center gap-1 text-caption font-medium ${done ? 'text-ink-900' : 'text-ink-400'}`}>{done && <Check aria-hidden="true" className="h-3 w-3 text-brand-600" />}{label}</span>
+          <span className={`mt-1.5 flex items-center gap-1 text-caption font-medium ${done ? 'text-ink-900' : 'text-ink-400'}`}>{done && <Check aria-hidden="true" className="h-3 w-3 text-brand-600" />}{tr(label)}</span>
           <span className="block text-caption text-ink-500">{done && at ? day(at) : i === 2 && po.expected_date && !done ? `due ${day(po.expected_date)}` : ' '}</span>
         </li>
       ))}
@@ -212,14 +227,18 @@ const Steps = ({ po }) => {
   );
 };
 
-const Money = ({ label, value, strong, tone }) => (
+const Money = ({ label, value, strong, tone }) => {
+  const tr = useT();
+  return (
   <div className="flex justify-between gap-3">
-    <dt className={strong ? 'font-semibold text-ink-900' : 'text-ink-500'}>{label}</dt>
+    <dt className={strong ? 'font-semibold text-ink-900' : 'text-ink-500'}>{tr(label)}</dt>
     <dd className={`tabular ${strong ? `text-body font-semibold ${tone || 'text-ink-900'}` : 'text-ink-900'}`}>{value}</dd>
   </div>
 );
+};
 
 const OrderPanel = ({ poId, refreshKey, onAction, onChanged, onBack }) => {
+  const tr = useT();
   const dialog = useDialog();
   const toast = useToast();
   const [po, setPo] = useState(null);
@@ -228,7 +247,7 @@ const OrderPanel = ({ poId, refreshKey, onAction, onChanged, onBack }) => {
   useEffect(() => { setPo(null); setError(''); load(); }, [poId, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const act = async (confirmText, path, done) => {
-    if (!(await dialog.confirm({ title: confirmText, confirmLabel: 'Continue' }))) return;
+    if (!(await dialog.confirm({ title: confirmText, confirmLabel: tr('Continue') }))) return;
     setError('');
     try { await api(`/purchases/${poId}/${path}`, { method: 'POST' }); toast.success(done); onChanged(); load(); }
     catch (caught) { setError(caught.message); }
@@ -242,31 +261,31 @@ const OrderPanel = ({ poId, refreshKey, onAction, onChanged, onBack }) => {
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-line p-4 sm:p-6">
-        <button type="button" onClick={onBack} className="mb-3 flex items-center gap-1.5 text-small font-medium text-ink-500 hover:text-ink-900 xl:hidden"><ArrowLeft className="h-4 w-4" />All purchases</button>
+        <button type="button" onClick={onBack} className="mb-3 flex items-center gap-1.5 text-small font-medium text-ink-500 hover:text-ink-900 xl:hidden"><ArrowLeft className="h-4 w-4" />{tr('All purchases')}</button>
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-title font-semibold text-ink-900">{po.po_number}</h2>
-          <Chip tone={tone}>{label}</Chip>
-          {po.source === 'FORECAST' && <Chip><Sparkles aria-hidden="true" className="h-3 w-3" />From forecast</Chip>}
+          <Chip tone={tone}>{tr(label)}</Chip>
+          {po.source === 'FORECAST' && <Chip><Sparkles aria-hidden="true" className="h-3 w-3" />{tr('From forecast')}</Chip>}
         </div>
         <p className="mt-0.5 text-small text-ink-500">{po.supplier_name || 'No supplier on file'}</p>
         <div className="mt-4"><Steps po={po} /></div>
 
         <div className="mt-4 flex flex-wrap gap-2">
           {po.status === 'DRAFT' && <>
-            <Button size="sm" onClick={() => onAction('edit')}><Truck aria-hidden="true" className="h-4 w-4" />Review and send</Button>
-            <Button size="sm" variant="ghost" onClick={() => act('Cancel this draft? Nothing has been ordered or received.', 'cancel', 'Order cancelled')}>Cancel order</Button>
+            <Button size="sm" onClick={() => onAction('edit')}><Truck aria-hidden="true" className="h-4 w-4" />{tr('Review and send')}</Button>
+            <Button size="sm" variant="ghost" onClick={() => act('Cancel this draft? Nothing has been ordered or received.', 'cancel', 'Order cancelled')}>{tr('Cancel order')}</Button>
           </>}
           {po.status === 'ORDERED' && <>
-            <Button size="sm" onClick={() => onAction('receive')}><PackageCheck aria-hidden="true" className="h-4 w-4" />Goods arrived</Button>
-            <Button size="sm" variant="secondary" onClick={() => onAction('edit')}>Edit or resend</Button>
-            <Button size="sm" variant="ghost" onClick={() => act('Cancel this order? Nothing has been received, so stock is unaffected.', 'cancel', 'Order cancelled')}>Cancel order</Button>
+            <Button size="sm" onClick={() => onAction('receive')}><PackageCheck aria-hidden="true" className="h-4 w-4" />{tr('Goods arrived')}</Button>
+            <Button size="sm" variant="secondary" onClick={() => onAction('edit')}>{tr('Edit or resend')}</Button>
+            <Button size="sm" variant="ghost" onClick={() => act('Cancel this order? Nothing has been received, so stock is unaffected.', 'cancel', 'Order cancelled')}>{tr('Cancel order')}</Button>
           </>}
           {po.status === 'PARTIAL' && <>
-            <Button size="sm" onClick={() => onAction('receive')}><PackageCheck aria-hidden="true" className="h-4 w-4" />Rest arrived</Button>
-            <Button size="sm" variant="secondary" onClick={() => act('Close this order as short? The rest is not coming, and nothing more will be expected.', 'close-short', 'Order closed')}>Rest isn't coming</Button>
+            <Button size="sm" onClick={() => onAction('receive')}><PackageCheck aria-hidden="true" className="h-4 w-4" />{tr('Rest arrived')}</Button>
+            <Button size="sm" variant="secondary" onClick={() => act('Close this order as short? The rest is not coming, and nothing more will be expected.', 'close-short', 'Order closed')}>{tr('Rest isn\'t coming')}</Button>
           </>}
-          {owes(po) && <Button size="sm" variant={po.status === 'RECEIVED' ? 'primary' : 'secondary'} onClick={() => onAction('pay', po)}><Wallet aria-hidden="true" className="h-4 w-4" />Pay supplier</Button>}
-          {arrived && <Button size="sm" variant="secondary" onClick={() => onAction('return', po)}>Return or price correction</Button>}
+          {owes(po) && <Button size="sm" variant={po.status === 'RECEIVED' ? 'primary' : 'secondary'} onClick={() => onAction('pay', po)}><Wallet aria-hidden="true" className="h-4 w-4" />{tr('Pay supplier')}</Button>}
+          {arrived && <Button size="sm" variant="secondary" onClick={() => onAction('return', po)}>{tr('Return or price correction')}</Button>}
         </div>
       </div>
 
@@ -275,13 +294,13 @@ const OrderPanel = ({ poId, refreshKey, onAction, onChanged, onBack }) => {
         {daysLate(po) > 0 && <p className="rounded-lg bg-danger/10 px-3 py-2 text-small font-medium text-danger">Expected {day(po.expected_date)}, {daysLate(po)} day{daysLate(po) === 1 ? '' : 's'} ago. Worth a call to {po.supplier_name || 'the supplier'}.</p>}
         {toCome.length > 0 && (
           <div className="rounded-lg border border-warning/40 bg-warning/5 px-3.5 py-3 text-small">
-            <p className="font-semibold text-ink-900">Still to come</p>
+            <p className="font-semibold text-ink-900">{tr('Still to come')}</p>
             <p className="mt-0.5 text-ink-700">{toCome.map((i) => `${qty(i.outstanding)} ${i.description}`).join(', ')}</p>
           </div>
         )}
 
-        <section aria-label="Items">
-          <h3 className="mb-2 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">Items</h3>
+        <section aria-label={tr('Items')}>
+          <h3 className="mb-2 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">{tr('Items')}</h3>
           <ul className="divide-y divide-line overflow-hidden rounded-(--radius-card) border border-line bg-surface">
             {po.items.map((i) => {
               const got = i.received_quantity;
@@ -289,9 +308,9 @@ const OrderPanel = ({ poId, refreshKey, onAction, onChanged, onBack }) => {
               return (
                 <li key={i.item_id} className="flex items-start justify-between gap-3 px-4 py-2.5">
                   <span className="min-w-0">
-                    <span className="block truncate text-small font-medium text-ink-900">{i.description}</span>
+                    <span className="block truncate text-small font-medium text-ink-900">{tr(i.description)}</span>
                     <span className="tabular block text-caption text-ink-500">
-                      {arrived ? <>{qty(got ?? 0)} of {qty(i.quantity)} came{short && <span className="font-medium text-warning"> · short</span>}</> : <>{qty(i.quantity)} ordered</>}
+                      {arrived ? <>{qty(got ?? 0)} of {qty(i.quantity)} came{short && <span className="font-medium text-warning"> {tr('· short')}</span>}</> : <>{tr('{{qty}} ordered', { qty: qty(i.quantity) })}</>}
                       {' · '}{formatCurrency(i.unit_cost)} each{i.tax_rate > 0 && ` + ${i.tax_rate}% GST`}
                     </span>
                   </span>
@@ -302,19 +321,19 @@ const OrderPanel = ({ poId, refreshKey, onAction, onChanged, onBack }) => {
           </ul>
         </section>
 
-        <section aria-label="Money">
+        <section aria-label={tr('Money')}>
           <dl className="space-y-1.5 text-small">
-            {po.tax > 0 && <><Money label="Before GST" value={formatCurrency(po.subtotal)} /><Money label="GST" value={formatCurrency(po.tax)} /></>}
-            <Money label={arrived ? 'Total' : 'Order total'} value={formatCurrency(po.total)} strong />
-            {po.debited > 0 && <Money label="Returned or credited" value={`−${formatCurrency(po.debited)}`} />}
-            {arrived && <><Money label="Paid" value={formatCurrency(po.amount_paid)} /><Money label="Still owed" value={formatCurrency(po.balance_due)} strong tone={po.balance_due > 0 ? 'text-warning' : 'text-success'} /></>}
+            {po.tax > 0 && <><Money label={tr('Before GST')} value={formatCurrency(po.subtotal)} /><Money label={po.reverse_charge ? tr('GST you pay yourself (reverse charge)') : tr('GST')} value={formatCurrency(po.tax)} /></>}
+            <Money label={arrived ? tr('Total') : tr('Order total')} value={formatCurrency(po.total)} strong />
+            {po.debited > 0 && <Money label={tr('Returned or credited')} value={`−${formatCurrency(po.debited)}`} />}
+            {arrived && <><Money label={tr('Paid')} value={formatCurrency(po.amount_paid)} /><Money label={tr('Still owed')} value={formatCurrency(po.balance_due)} strong tone={po.balance_due > 0 ? 'text-warning' : 'text-success'} /></>}
           </dl>
           {!arrived && po.status !== 'CANCELLED' && <p className="mt-2 text-caption text-ink-500">Nothing is owed until the goods arrive; the bill follows what actually came.</p>}
         </section>
 
         {po.payments.length > 0 && (
-          <section aria-label="Payments">
-            <h3 className="mb-2 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">Payments</h3>
+          <section aria-label={tr('Payments')}>
+            <h3 className="mb-2 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">{tr('Payments')}</h3>
             <ul className="divide-y divide-line overflow-hidden rounded-(--radius-card) border border-line bg-surface text-small">
               {po.payments.map((p) => (
                 <li key={p.payment_id} className="flex justify-between gap-3 px-4 py-2.5">
@@ -326,7 +345,7 @@ const OrderPanel = ({ poId, refreshKey, onAction, onChanged, onBack }) => {
           </section>
         )}
 
-        {po.notes && <section aria-label="Note"><h3 className="mb-1 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">Note</h3><p className="text-small text-ink-700">{po.notes}</p></section>}
+        {po.notes && <section aria-label={tr('Note')}><h3 className="mb-1 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">{tr('Note')}</h3><p className="text-small text-ink-700">{po.notes}</p></section>}
       </div>
     </div>
   );
@@ -335,6 +354,7 @@ const OrderPanel = ({ poId, refreshKey, onAction, onChanged, onBack }) => {
 /* ── The screen ───────────────────────────────────────────────────────── */
 
 const OrderRow = ({ po, active, onOpen }) => {
+  const tr = useT();
   const [label, tone] = statusOf(po);
   return (
     <li>
@@ -343,14 +363,14 @@ const OrderRow = ({ po, active, onOpen }) => {
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <span className="truncate text-small font-semibold text-ink-900">{po.supplier_name || 'No supplier'}</span>
-            <Chip tone={tone}>{label}</Chip>
-            {po.source === 'FORECAST' && <Sparkles aria-label="From the stock forecast" className="h-3.5 w-3.5 text-ink-400" />}
+            <Chip tone={tone}>{tr(label)}</Chip>
+            {po.source === 'FORECAST' && <Sparkles aria-label={tr('From the stock forecast')} className="h-3.5 w-3.5 text-ink-400" />}
           </span>
           <span className="block truncate text-caption text-ink-500">{po.po_number} · {whenLine(po)}</span>
         </span>
         <span className="shrink-0 text-right">
           <span className="tabular block text-small font-semibold text-ink-900">{formatCurrency(po.total)}</span>
-          {owes(po) && <span className="tabular block text-caption font-medium text-warning">{formatCurrency(po.balance_due)} to pay</span>}
+          {owes(po) && <span className="tabular block text-caption font-medium text-warning">{tr('{{formatCurrency}} to pay', { formatCurrency: formatCurrency(po.balance_due) })}</span>}
         </span>
       </button>
     </li>
@@ -358,12 +378,13 @@ const OrderRow = ({ po, active, onOpen }) => {
 };
 
 const VIEWS = [
-  ['receive', 'To receive'],
-  ['pay', 'To pay'],
-  ['all', 'All']
+  ['receive', T('To receive')],
+  ['pay', T('To pay')],
+  ['all', T('All')]
 ];
 
 const PurchasesPage = () => {
+  const tr = useT();
   const toast = useToast();
   const location = useLocation();
   const prefill = location.state?.prefill;
@@ -406,29 +427,29 @@ const PurchasesPage = () => {
 
   return (
     <div className="-m-4 grid grid-cols-1 sm:-m-6 lg:-m-8 xl:h-[calc(100vh-3.5rem)] xl:grid-cols-[minmax(0,1fr)_460px]">
-      <section aria-label="Purchase list" className={`min-w-0 p-4 sm:p-6 lg:p-8 xl:block xl:overflow-y-auto ${selectedId ? 'hidden' : 'block'}`}>
+      <section aria-label={tr('Purchase list')} className={`min-w-0 p-4 sm:p-6 lg:p-8 xl:block xl:overflow-y-auto ${selectedId ? 'hidden' : 'block'}`}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-h3 font-semibold text-ink-900">Purchases</h1>
+            <h1 className="text-h3 font-semibold text-ink-900">{tr('Purchases')}</h1>
             <p className="tabular mt-1 text-small text-ink-500">
               {openRows ? <>
                 {openRows.length} order{openRows.length === 1 ? '' : 's'} to receive
-                {late > 0 && <> · <span className="font-semibold text-danger">{late} late</span></>}
-                {owed > 0 && <> · <span className="font-medium text-warning">{formatCurrency(owed)} to pay suppliers</span></>}
-              </> : 'Orders on their way, and what you owe suppliers.'}
+                {late > 0 && <> · <span className="font-semibold text-danger">{tr('{{late}} late', { late })}</span></>}
+                {owed > 0 && <> · <span className="font-medium text-warning">{tr('{{formatCurrency}} to pay suppliers', { formatCurrency: formatCurrency(owed) })}</span></>}
+              </> : tr('Orders on their way, and what you owe suppliers.')}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => setModal({ kind: 'record' })}>Record a purchase</Button>
-            <Button onClick={() => setModal({ kind: 'order' })}><Plus aria-hidden="true" className="h-4 w-4" />New order</Button>
+            <Button variant="secondary" onClick={() => setModal({ kind: 'record' })}>{tr('Record a purchase')}</Button>
+            <Button onClick={() => setModal({ kind: 'order' })}><Plus aria-hidden="true" className="h-4 w-4" />{tr('New order')}</Button>
           </div>
         </div>
 
-        <div role="tablist" aria-label="Show" className="mt-5 flex gap-1 border-b border-line">
+        <div role="tablist" aria-label={tr('Show')} className="mt-5 flex gap-1 border-b border-line">
           {VIEWS.map(([id, text]) => (
             <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => setView(id)}
                     className={`-mb-px border-b-2 px-3 py-2 text-small font-medium ${view === id ? 'border-brand-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'}`}>
-              {text} <span className={`tabular ml-0.5 ${view === id ? 'text-brand-700' : 'text-ink-400'}`}>{counts[id]}</span>
+              {tr(text)} <span className={`tabular ml-0.5 ${view === id ? 'text-brand-700' : 'text-ink-400'}`}>{counts[id]}</span>
             </button>
           ))}
         </div>
@@ -436,12 +457,12 @@ const PurchasesPage = () => {
         <div className="mt-4 flex flex-wrap gap-2">
           <label className="relative min-w-[12rem] flex-1">
             <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-            <span className="sr-only">Search purchases</span>
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Order number or supplier" className="!pl-9" />
+            <span className="sr-only">{tr('Search purchases')}</span>
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tr('Order number or supplier')} className="!pl-9" />
           </label>
           {suppliers.length > 1 && (
-            <Select aria-label="Supplier" value={supplier} onChange={(e) => setSupplier(e.target.value)} className="!w-auto">
-              <option value="">All suppliers</option>
+            <Select aria-label={tr('Supplier')} value={supplier} onChange={(e) => setSupplier(e.target.value)} className="!w-auto">
+              <option value="">{tr('All suppliers')}</option>
               {suppliers.map((s) => <option key={s.supplier_id} value={s.supplier_id}>{s.name}</option>)}
             </Select>
           )}
@@ -453,9 +474,9 @@ const PurchasesPage = () => {
           {source && shown.length === 0 && (
             <div className="rounded-(--radius-card) border border-dashed border-line-strong p-8 text-center">
               <p className="text-small font-medium text-ink-900">
-                {q || supplier ? 'Nothing matches.' : view === 'receive' ? 'Nothing on its way.' : view === 'pay' ? 'Nothing owed to suppliers.' : 'No purchases yet.'}
+                {q || supplier ? tr('Nothing matches.') : view === 'receive' ? tr('Nothing on its way.') : view === 'pay' ? tr('Nothing owed to suppliers.') : tr('No purchases yet.')}
               </p>
-              {view === 'receive' && !q && !supplier && <p className="mt-1 text-small text-ink-500">Start a new order, or let the <Link to="/app/forecast" className="font-medium text-brand-700">stock forecast</Link> draft them for you.</p>}
+              {view === 'receive' && !q && !supplier && <p className="mt-1 text-small text-ink-500">{tr('Start a new order, or let the')} <Link to="/app/forecast" className="font-medium text-brand-700">{tr('stock forecast')}</Link> {tr('draft them for you.')}</p>}
             </div>
           )}
           {shown.length > 0 && (
@@ -463,16 +484,16 @@ const PurchasesPage = () => {
               {shown.map((po) => <OrderRow key={po.po_id} po={po} active={po.po_id === selectedId} onOpen={() => open(po.po_id)} />)}
             </ul>
           )}
-          <p className="mt-4 text-caption text-ink-500">Sent goods back or were overcharged? <Link to="/app/debit-notes" className="font-medium text-brand-700">See debit notes</Link>.</p>
+          <p className="mt-4 text-caption text-ink-500">{tr('Sent goods back or were overcharged?')} <Link to="/app/debit-notes" className="font-medium text-brand-700">{tr('See debit notes')}</Link>.</p>
         </div>
       </section>
 
-      <section aria-label="Selected purchase" className={`min-h-0 min-w-0 flex-col border-line bg-surface xl:flex xl:border-l ${selectedId ? 'flex min-h-[calc(100vh-3.5rem)] xl:min-h-0' : 'hidden'}`}>
+      <section aria-label={tr('Selected purchase')} className={`min-h-0 min-w-0 flex-col border-line bg-surface xl:flex xl:border-l ${selectedId ? 'flex min-h-[calc(100vh-3.5rem)] xl:min-h-0' : 'hidden'}`}>
         {selectedId ? (
           <OrderPanel key={selectedId} poId={selectedId} refreshKey={refreshKey} onChanged={load} onBack={() => open(null)}
                       onAction={(kind, po) => setModal(kind === 'edit' ? { kind: 'order', id: selectedId } : kind === 'receive' ? { kind: 'receive', id: selectedId } : { kind, po })} />
         ) : (
-          <EmptyState compact icon={ShoppingCart} className="h-full justify-center" title="Pick an order" body="See what's on it, receive it, or pay for it." />
+          <EmptyState compact icon={ShoppingCart} className="h-full justify-center" title={tr('Pick an order')} body={tr('See what\'s on it, receive it, or pay for it.')} />
         )}
       </section>
 

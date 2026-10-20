@@ -17,7 +17,15 @@ test('every default names a real feature', () => {
 test('a restaurant keeps its floor and kitchen features and loses salon and wholesale ones', () => {
   const f = flags('RESTAURANT');
   for (const key of ['tables', 'kitchen', 'reservations', 'qr_ordering', 'integrations', 'multi_brand', 'delivery_fleet', 'loyalty', 'ai']) assert.ok(on(f, key), key);
-  for (const key of ['salon_appointments', 'salon_gift_cards', 'wholesale_orders', 'wholesale_batches']) assert.ok(!on(f, key), key);
+  for (const key of ['salon_appointments', 'salon_gift_cards', 'wholesale_batches']) assert.ok(!on(f, key), key);
+});
+
+test('sales orders and delivery challans are on for every kind of business; price lists stay with the wholesale types', () => {
+  for (const type of Object.keys(INDUSTRY_OFF)) {
+    assert.ok(on(flags(type), 'wholesale_orders') && on(flags(type), 'wholesale_fulfilment'), `${type}: orders and deliveries`);
+  }
+  for (const type of ['RETAIL', 'SUPERMARKET', 'PHARMACY', 'RESTAURANT', 'SALON']) assert.ok(!on(flags(type), 'wholesale_pricing'), `${type}: price lists stay off`);
+  assert.ok(on(flags('WHOLESALE'), 'wholesale_pricing'));
 });
 
 test('a cloud kitchen has a kitchen but no dining room', () => {
@@ -29,7 +37,7 @@ test('a cloud kitchen has a kitchen but no dining room', () => {
 test('a salon has appointments and memberships, not table bookings, the kitchen or delivery', () => {
   const f = flags('SALON');
   for (const key of ['salon_appointments', 'salon_memberships', 'salon_packages', 'salon_gift_cards', 'salon_commission', 'salon_automation', 'loyalty', 'messaging']) assert.ok(on(f, key), key);
-  for (const key of ['reservations', 'tables', 'kitchen', 'qr_ordering', 'integrations', 'multi_brand', 'delivery_fleet', 'wholesale_orders']) assert.ok(!on(f, key), key);
+  for (const key of ['reservations', 'tables', 'kitchen', 'qr_ordering', 'integrations', 'multi_brand', 'delivery_fleet']) assert.ok(!on(f, key), key);
 });
 
 test('a pharmacy and a supermarket keep batches and expiry; electronics does not', () => {
@@ -37,7 +45,7 @@ test('a pharmacy and a supermarket keep batches and expiry; electronics does not
   assert.ok(!on(flags('ELECTRONICS'), 'wholesale_batches'));
   for (const type of ['PHARMACY', 'SUPERMARKET', 'RETAIL']) {
     const f = flags(type);
-    for (const key of ['kitchen', 'tables', 'reservations', 'salon_appointments', 'wholesale_orders']) assert.ok(!on(f, key), `${type}: ${key}`);
+    for (const key of ['kitchen', 'tables', 'reservations', 'salon_appointments']) assert.ok(!on(f, key), `${type}: ${key}`);
     assert.ok(on(f, 'purchases') && on(f, 'auto_sku') && on(f, 'ai'));
   }
 });

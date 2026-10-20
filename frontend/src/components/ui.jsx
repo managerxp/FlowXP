@@ -23,7 +23,7 @@ export const Logo = ({ className = '', showTagline = false }) => {
       {broken ? (
         <span className="text-xl font-bold tracking-tight text-ink-900">Flow<span className="text-brand-500">XP</span></span>
       ) : (
-        <img src="/logo.png" alt="FlowXP" className={`${height} w-auto object-contain object-left`} onError={() => setBroken(true)} />
+        <img src="/logo.png" alt="FlowXP" className={`logo-img ${height} w-auto object-contain object-left`} onError={() => setBroken(true)} />
       )}
       {showTagline && (
         <span className="mt-2 text-xs text-ink-500">AI billing, stock and GST for every business</span>

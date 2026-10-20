@@ -12,6 +12,7 @@ const read = requireAnyPermission('customers', 'billing');
 router.get('/', ...authed, read, customers.list);
 router.get('/:id', ...authed, read, customers.get);
 router.get('/:id/invoices', ...authed, read, customers.invoiceHistory);
+router.post('/import', ...write, customers.importRows);
 router.post('/', ...write, idempotent(), customers.create);
 router.patch('/:id', ...write, customers.update);
 

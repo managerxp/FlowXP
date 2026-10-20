@@ -5,6 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../../lib/api.ts';
 import { api, currentBusiness, useSession } from '../../lib/session.ts';
 import { KITCHEN_TYPES } from '../../lib/cart.ts';
+import { gstView } from '../../lib/gst.ts';
+import { t } from '../../lib/i18n.ts';
 import { syncAll } from '../../lib/sync.ts';
 import { goBack } from '../../lib/nav.ts';
 import { setCaptured, useCaptured } from '../../lib/capture.ts';
@@ -22,6 +24,8 @@ export default function NewProduct() {
   const [price, setPrice] = useState('');
   const [mrp, setMrp] = useState('');
   const [gst, setGst] = useState('5');
+  const cessOn = gstView(currentBusiness(useSession())).cess;   // the owner switched cess on (website: GST options)
+  const [cess, setCess] = useState('');
   const [unit, setUnit] = useState('pc');
   const [barcode, setBarcode] = useState('');
   const [count, setCount] = useState(false);
@@ -45,7 +49,7 @@ export default function NewProduct() {
       await api.call('/products', {
         method: 'POST', idempotencyKey: key,
         body: {
-          name: name.trim(), selling_price: Number(price), tax_rate: Number(gst), unit: unit.trim() || 'pc',
+          name: name.trim(), selling_price: Number(price), tax_rate: Number(gst), ...(cessOn && Number(cess) > 0 ? { cess_rate: Number(cess) } : {}), unit: unit.trim() || 'pc',
           ...(mrp.trim() ? { mrp: Number(mrp) } : {}), ...(barcode.trim() ? { barcode: barcode.trim() } : {}),
           ...(categoryId !== '0' ? { category_id: Number(categoryId) } : {}),
           track_inventory: count, ...(count && stock.trim() ? { opening_stock: Number(stock) } : {})
@@ -67,6 +71,7 @@ export default function NewProduct() {
           <TextInput style={s.input} value={mrp} onChangeText={setMrp} keyboardType="decimal-pad" placeholder="MRP (optional)" accessibilityLabel="MRP" />
           <Soft>GST rate</Soft>
           <Chips items={GST.map((g) => ({ id: g, label: `${g}%` }))} value={gst} onChange={setGst} />
+          {cessOn ? <TextInput style={s.input} value={cess} onChangeText={setCess} keyboardType="decimal-pad" placeholder={t('Cess % (optional)')} accessibilityLabel={t('Cess %')} /> : null}
           <TextInput style={s.input} value={unit} onChangeText={setUnit} placeholder="Unit (pc, kg, litre)" accessibilityLabel="Unit" autoCapitalize="none" />
           {food ? null : (
             <View style={{ flexDirection: 'row', gap: 8 }}>

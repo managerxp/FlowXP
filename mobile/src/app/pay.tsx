@@ -4,6 +4,7 @@ import { goBack } from '../lib/nav.ts';
 import { router, useLocalSearchParams } from 'expo-router';
 import { payRequestLines, upiPayLink } from '../lib/upiBill.ts';
 import { printReceipt } from '../lib/print.ts';
+import { COLUMNS } from '../lib/escpos.ts';
 import { kvGet, kvSet, useScope } from '../lib/local.ts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, NetworkError, newKey } from '../lib/api.ts';
@@ -19,6 +20,8 @@ import { KITCHEN_TYPES, saleBody, totals, upiLink } from '../lib/cart.ts';
 import { HOTEL_TYPES, roomChargeBody, roomGuestLine, type RoomGuest } from '../lib/hotel.ts';
 import { qty, rupees, toPaise } from '../lib/money.ts';
 import { t } from '../lib/i18n.ts';
+import { gstView, type Levies } from '../lib/gst.ts';
+import { DETAIL_FIELDS, detailsBody } from '../lib/taxInvoice.ts';
 import { Page, useWide } from '../lib/responsive.tsx';
 import { Button, ErrorText, Loading, Soft, Title, color, s } from '../lib/ui.tsx';
 
@@ -32,13 +35,20 @@ export default function Pay() {
   const business = currentBusiness(session);
   const scope = useScope();
   const { cart, kitchen, offers, customer } = useSale();
-  const sum = totals(cart, offers.byKey);
+  const gst = gstView(business);
+  const [levies, setLevies] = useState<Levies>({});   // TCS, TDS, reverse charge ticked on this bill (only offered when the owner enabled them)
+  // a hardware shop's GST tax invoice: consignee, delivery and dispatch details taken with the bill (the website's "Tax invoice details")
+  const [details, setDetails] = useState<Record<string, string>>({});
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const sum = totals(cart, offers.byKey, gst, levies);
   // billing a table's order instead of the till's bill: the order is on the server and the server prices it
   const { order: orderId } = useLocalSearchParams<{ order?: string }>();
+  const taxDetails = business?.business_type === 'AUTO_PARTS' && !orderId;
   const order = useLoad<Order>(`order:${session.businessId}:${session.branchId}:${orderId}`, () => api.get<Order>(`/orders/${orderId}`), Boolean(orderId));
   const orderKey = useRef(newKey());   // one key for billing this order: a retry after a dropped signal returns the same invoice
   const ot = order.data ? orderTotals(order.data) : null;
-  const total = orderId ? (ot?.totalPaise ?? 0) : sum.totalPaise;
+  // what the customer pays now: a table's order is priced by the server; at the till the bill less any TDS the customer holds back (the server records that as paid)
+  const total = orderId ? (ot?.totalPaise ?? 0) : sum.totalPaise - sum.tdsPaise;
   const lineCount = orderId ? (ot?.lines ?? 0) : cart.lines.length;
   const toKitchen = kitchen && KITCHEN_TYPES.includes(business?.business_type ?? '');
   const [method, setMethod] = useState<Method>('CASH');
@@ -92,7 +102,7 @@ export default function Pay() {
     try {
       // the same key for every attempt at THIS sale: if the first one reached the server before the signal dropped, a retry returns that invoice.
       // With no signal the sale is kept on the phone and sent later, with that same key.
-      const taken = await takeSale({ api, outbox: scope.outbox, cart, method, reference: reference.trim() || undefined, key: keyForSale(), kitchen: toKitchen, customerId: customer?.id ?? null, payNowPaise: plan.payNowPaise });
+      const taken = await takeSale({ api, outbox: scope.outbox, cart, method, reference: reference.trim() || undefined, key: keyForSale(), kitchen: toKitchen, customerId: customer?.id ?? null, payNowPaise: plan.payNowPaise, gst, levies, printDetails: taxDetails ? detailsBody(details) : null });
       if (taken.kind === 'full') { setError('Too many bills are waiting on this phone. Connect to the internet so they can be sent, then make this bill again.'); return; }
       clearSale(); markDone('first_bill');
       if (taken.kind === 'queued') {
@@ -117,8 +127,8 @@ export default function Pay() {
     setPrinting(true); setPrintNote(''); setPrintProblem('');
     try {
       const now = plan.payNowPaise ?? total;
-      const lines = payRequestLines({ businessName: business?.name || 'FlowXP', title: orderId && order.data ? (order.data.table_name ?? order.data.order_number) : null, customer: customer?.name ?? null, summary, totalPaise: total, payNowPaise: plan.payNowPaise });
       const paper = (await kvGet('paper')) === '80' ? '80' : '58';
+      const lines = payRequestLines({ width: COLUMNS[paper], businessName: business?.name || 'FlowXP', title: orderId && order.data ? (order.data.table_name ?? order.data.order_number) : null, customer: customer?.name ?? null, summary, totalPaise: total, payNowPaise: plan.payNowPaise });
       const how = await printReceipt(lines.join('\n'), paper, { qr: upiPayLink(vpa, business?.name || 'FlowXP', now) });
       setPrintNote(how === 'fallback' ? t("Could not use the thermal printer, so the bill went to the phone's print screen.") : t('Printed. Give it to the customer to scan, then confirm the money has arrived.'));
     } catch (e) { setPrintProblem(e instanceof Error ? e.message : t('Could not print.')); } finally { setPrinting(false); }
@@ -141,8 +151,34 @@ export default function Pay() {
   const confirmTitle = how === 'LATER' ? t('Save the bill, {amount} unpaid', { amount: rupees(total) })
     : how === 'PART' ? (plan.ok ? t('Take {now} now, {rest} stays due', { now: rupees(plan.payNowPaise ?? 0), rest: rupees(plan.balancePaise) }) : t('Take part payment'))
     : method === 'CASH' ? 'Cash received, make the bill' : method === 'UPI' ? 'Money received, make the bill' : 'Card paid, make the bill';
+  const levyOptions = !orderId ? ([
+    gst.tcs ? ['tcs', t('Collect TCS ({rate}%)', { rate: gst.tcsRate })] : null,
+    gst.tds ? ['tds', t('Customer deducts TDS ({rate}%)', { rate: gst.tdsRate })] : null,
+    gst.reverseCharge ? ['reverse_charge', t('Tax payable on reverse charge')] : null
+  ].filter(Boolean) as [keyof Levies, string][]) : [];
   const controls = (
     <>
+      {taxDetails ? (
+        <View style={{ gap: 8 }}>
+          <Button title="Tax invoice details: consignee, delivery, dispatch" kind="quiet" selected={detailsOpen} onPress={() => setDetailsOpen(!detailsOpen)} />
+          {detailsOpen ? (
+            <View style={[s.card, { gap: 8 }]}>
+              <Soft>{t("Printed on the Tally-style invoice. Blank buyer fields use the customer's record; a blank consignee means the same as the buyer.")}</Soft>
+              {DETAIL_FIELDS.map(([k, label, big]) => (
+                <View key={k} style={{ gap: 2 }}>
+                  <Text style={{ color: color.soft, fontSize: 13 }}>{label}</Text>
+                  <TextInput style={[s.input, big ? { minHeight: 56, textAlignVertical: 'top' } : null]} multiline={big} maxLength={big ? 300 : 200} value={details[k] ?? ''} onChangeText={(v) => setDetails((o) => ({ ...o, [k]: v }))} accessibilityLabel={label} />
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+      {levyOptions.length ? (
+        <View style={{ gap: 8 }}>
+          {levyOptions.map(([k, label]) => <Button key={k} title={label} kind="quiet" selected={Boolean(levies[k])} onPress={() => setLevies((o) => ({ ...o, [k]: !o[k] }))} />)}
+        </View>
+      ) : null}
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {HOWS.map((h) => <Button key={h.id} title={h.label} selected={how === h.id} onPress={() => { setHow(h.id); setError(''); }} style={{ flex: 1 }} />)}
       </View>
@@ -202,7 +238,7 @@ export default function Pay() {
       <Button title={confirmTitle} onPress={confirm} busy={busy} disabled={lineCount === 0 || (Boolean(orderId) && !order.data)} />
     </>
   );
-  const summary = orderId ? (order.data ? orderSummary(order.data) : null) : cartSummary(cart, offers.byKey);
+  const summary = orderId ? (order.data ? orderSummary(order.data) : null) : cartSummary(cart, offers.byKey, gst, levies);
 
   /* The bill on one side, the way to pay on the other, so a tablet shows both at once. A phone shows the amount, then the way to pay. */
   const Summary = summary ? (
@@ -220,7 +256,11 @@ export default function Pay() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Soft>Items</Soft><Soft>{rupees(summary.subtotalPaise)}</Soft></View>
         {summary.offersPaise > 0 ? <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ color: color.ok, fontWeight: '600' }}>{t('Offer')}{offers.names.length && !orderId ? `: ${offers.names.join(', ')}` : ''}</Text><Text style={{ color: color.ok, fontWeight: '600' }}>−{rupees(summary.offersPaise)}</Text></View> : null}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Soft>GST</Soft><Soft>{rupees(summary.taxPaise)}</Soft></View>
+        {summary.cessPaise ? <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Soft>{t('Cess')}</Soft><Soft>{rupees(summary.cessPaise)}</Soft></View> : null}
+        {summary.tcsPaise ? <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Soft>TCS</Soft><Soft>{rupees(summary.tcsPaise)}</Soft></View> : null}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 6 }}><Text style={{ fontSize: 18, fontWeight: '700', color: color.ink }}>{t('Total')}</Text><Text style={{ fontSize: 18, fontWeight: '700', color: color.ink }}>≈ {rupees(summary.totalPaise)}</Text></View>
+        {summary.tdsPaise ? <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Soft>{t('TDS held back by the customer')}</Soft><Soft>−{rupees(summary.tdsPaise)}</Soft></View> : null}
+        {summary.tdsPaise ? <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ fontWeight: '700', color: color.ink }}>{t('Customer pays')}</Text><Text style={{ fontWeight: '700', color: color.ink }}>≈ {rupees(summary.totalPaise - summary.tdsPaise)}</Text></View> : null}
       </View>
     </View>
   ) : <Loading what="Loading the bill" />;

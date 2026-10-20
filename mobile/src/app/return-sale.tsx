@@ -1,3 +1,4 @@
+import { formatDate } from '../lib/display.ts';
 import { useRef, useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -64,7 +65,7 @@ export default function ReturnSale() {
             {bills.error && !bills.data ? <Failed message={bills.error} onRetry={() => { void bills.refresh(); }} /> : null}
             {bills.busy && !bills.data ? <Loading /> : null}
             {bills.data && bills.data.length === 0 ? <Empty>This shop has no bills yet.</Empty> : null}
-            {(bills.data ?? []).filter((b) => b.status !== 'CANCELLED').map((b) => <Line key={b.invoice_id} left={b.invoice_number} sub={`${String(b.invoice_date).slice(0, 10)}${b.balance_due > 0 ? ` · ${money(b.balance_due)} still owed` : ' · paid'}`} right={money(b.total)} onPress={() => setInvoiceId(b.invoice_id)} />)}
+            {(bills.data ?? []).filter((b) => b.status !== 'CANCELLED').map((b) => <Line key={b.invoice_id} left={b.invoice_number} sub={`${formatDate(b.invoice_date)}${b.balance_due > 0 ? ` · ${money(b.balance_due)} still owed` : ' · paid'}`} right={money(b.total)} onPress={() => setInvoiceId(b.invoice_id)} />)}
           </ScrollView>
         ) : (
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
@@ -78,7 +79,7 @@ export default function ReturnSale() {
                 <Chips<Reason> items={REASONS.map((r) => ({ id: r, label: REASON_LABEL[r] }))} value={reason ?? ('' as Reason)} onChange={(r) => { setLines(withReason(shown, reason, r)); setReason(r); key.current = newKey(); }} />
                 <SectionTitle>How many of each?</SectionTitle>
                 {shown.map((l) => (
-                  <View key={l.item.item_id} style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: Number(l.qty) > 0 ? '#eaf1ff' : color.card }}>
+                  <View key={l.item.item_id} style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: Number(l.qty) > 0 ? color.tint : color.card }}>
                     <Text style={{ fontSize: 16, color: color.ink }}>{l.item.description}</Text>
                     <Soft>{`${l.item.returnable} ${l.item.unit_name ?? ''} can still be returned · ${money(l.item.unit_price)} each`}</Soft>
                     <TextInput style={[s.input, { width: 120 }]} value={l.qty} onChangeText={(v) => edit(l.item.item_id, { qty: v })} keyboardType="decimal-pad" placeholder="0" accessibilityLabel={`How many ${l.item.description} are coming back`} />

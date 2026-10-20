@@ -19,6 +19,8 @@ export const CATEGORIES = {
   leakage:      { label: 'Revenue leakage',    permission: 'settings',  push: true,  description: 'Unusual discounts, cancellations, refunds and wastage.' },
   kitchen:      { label: 'Kitchen delays',     permission: 'reports',   push: true,  description: 'An order that is taking much longer than it should.' },
   sales:        { label: 'Daily summary',      permission: 'reports',   push: false, description: 'How the day went, each evening.' },
+  weekly:       { label: 'Weekly summary',     permission: 'reports',   push: false, description: 'How last week went, every Monday morning.' },
+  unusual:      { label: 'Unusual numbers',    permission: 'reports',   push: true,  description: 'A sudden drop or spike in sales, margin, discounts or expenses, or items sold below cost.' },
   integrations: { label: 'Integrations',       permission: 'settings',  push: true,  description: 'A delivery platform order that could not be received.' },
   account:      { label: 'Account',            permission: 'settings',  push: false, description: 'Your trial and subscription.' },
   // what happens on the floor, minute to minute: phone only, never kept in the inbox

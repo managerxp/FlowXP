@@ -35,6 +35,7 @@ const PAGES = {
   '/industries': ['Billing software for your kind of business', 'FlowXP for restaurants, cafés, cloud kitchens, hotels, supermarkets and shops, wholesalers and distributors, salons, gyms, gaming lounges, auto spare parts shops and pharmacies, each with the tools that trade needs.'],
   '/ai': ['Flow AI, the AI manager in your billing software', 'Ask your business a question in plain words. Flow AI answers from your own sales, stock and payments, and says when a figure is an estimate.'],
   '/integrations': ['Printers, scanners and GST integrations', 'FlowXP works with receipt printers, barcode scanners, cash drawers and GST portal files. WhatsApp and SMS are coming soon. None are needed to start billing.'],
+  '/guide': ['Setup guide and import from Tally, Vyapar, Busy', 'First-day setup in nine steps, and how to bring your items and stock into FlowXP from Tally, Vyapar, Busy, Marg, Zoho or a spreadsheet.'],
   '/pricing': ['Pricing and plans', 'FlowXP plans for single shops and multi-branch businesses. Every plan starts with a 7-day free trial, no card needed.'],
   '/about': ['About FlowXP and ManagerXP', 'FlowXP is made by ManagerXP, building billing and business software for Indian shops, restaurants and distributors.'],
   '/contact': ['Contact sales and support', 'Talk to the FlowXP team about sales, setup or support.'],

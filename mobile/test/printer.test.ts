@@ -95,3 +95,22 @@ test('the bill printed for UPI shows what to pay, and says what the code is for'
   assert.match(text, /TO PAY\s+₹420/); assert.match(text, /Offer\s+-₹30/); assert.match(text, /Scan to pay ₹420(\.00)? by UPI/);
   assert.ok(lines.every((l) => l.length <= 32 || !l.includes('  ')), 'lines fit the paper');
 });
+
+import { receiptText, type Invoice } from '../src/lib/receipt.ts';
+
+test('copies repeat the receipt, extra lines and cut follow the settings, and the drawer opens once', () => {
+  const one = escposBytes('x', '58', { drawer: true });
+  const two = escposBytes('x', '58', { drawer: true, copies: 2 });
+  assert.equal([...two].filter((b, i, a) => b === 0x1b && a[i + 1] === 0x70).length, 1, 'one drawer pulse for two copies');
+  assert.equal(two.length, one.length + escposBytes('x', '58').length, 'the second copy is a whole receipt');
+  assert.equal(escposBytes('x', '58', { extraLines: 0, cut: false }).at(-1), 0x0a);
+  assert.equal(escposBytes('x', '58', { extraLines: 8 }).filter((b) => b === 0x0a).length, 1 + 8, 'the text line plus eight blank lines');
+  assert.equal(escposBytes('x', '58', { copies: 99 }).length, escposBytes('x', '58', { copies: 5 }).length, 'at most five copies');
+});
+
+test('an 80 mm receipt is laid out 48 characters wide, a 58 mm one 32', () => {
+  const inv = { invoice_id: 1, invoice_number: 'INV-1', invoice_date: '2026-10-14', subtotal: 100, discount: 0, tax: 5, round_off: 0, total: 105, amount_paid: 105, balance_due: 0, items: [{ description: 'Tea', quantity: 1, unit_price: 100, discount: 0, tax_rate: 5, line_total: 100 }], payments: [{ method: 'CASH', amount: 105 }] } as Invoice;
+  const widest = (w: number) => Math.max(...receiptText(inv, 'Shop', w).split('\n').map((l) => l.length));
+  assert.equal(widest(32), 32);
+  assert.equal(widest(48), 48);
+});

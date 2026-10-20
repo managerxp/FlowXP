@@ -16,6 +16,7 @@ import { beep, cameraProblem, listCameras, soundOn, startScanner, vibrate } from
 import { Alert, Avatar, Badge, Button, Input, PageHeader, Select, StatCard, useDialog } from '../../components/ui.jsx';
 import { Segmented } from '../salon/parts.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { T, useT } from '../../i18n/useT.js';
 
 const SHOW_MS = 8000;
 const initials = (name) => String(name || '').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
@@ -26,6 +27,7 @@ const TONE_CLASS = {
 
 /* The camera, as a panel on this page. */
 const CameraPanel = ({ onCode, onClose }) => {
+  const tr = useT();
   const video = useRef(null);
   const handler = useRef(onCode); handler.current = onCode;
   const gate = useMemo(() => createScanGate({ presentGapMs: 2500, minGapMs: 600 }), []);
@@ -61,20 +63,20 @@ const CameraPanel = ({ onCode, onClose }) => {
           <CameraOff aria-hidden="true" className="h-10 w-10 text-white/70" />
           <p className="text-body font-semibold">{PROBLEMS[problem][0]}</p>
           <p className="max-w-sm text-small text-white/75">{PROBLEMS[problem][1]}</p>
-          <div className="flex gap-2"><Button size="sm" variant="secondary" onClick={() => { setProblem(null); setDeviceId(deviceId); }}>Try again</Button><Button size="sm" variant="secondary" onClick={onClose}>Close</Button></div>
+          <div className="flex gap-2"><Button size="sm" variant="secondary" onClick={() => { setProblem(null); setDeviceId(deviceId); }}>{tr('Try again')}</Button><Button size="sm" variant="secondary" onClick={onClose}>{tr('Close')}</Button></div>
         </div>
       ) : (
         <div className="relative">
-          <video ref={video} muted playsInline aria-label="Camera view: hold the QR code inside the frame" className="aspect-[4/3] w-full object-cover" />
+          <video ref={video} muted playsInline aria-label={tr('Camera view: hold the QR code inside the frame')} className="aspect-[4/3] w-full object-cover" />
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 flex items-center justify-center"><div className="h-2/3 w-2/3 max-w-72 rounded-2xl border-2 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" /></div>
           <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-black/55 p-2">
             {cameras.length > 1 ? (
-              <Select aria-label="Camera" value={deviceId || ''} onChange={(e) => setDeviceId(e.target.value || null)} className="max-w-56 text-small">
-                <option value="">Default camera</option>
-                {cameras.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+              <Select aria-label={tr('Camera')} value={deviceId || ''} onChange={(e) => setDeviceId(e.target.value || null)} className="max-w-56 text-small">
+                <option value="">{tr('Default camera')}</option>
+                {cameras.map((c) => <option key={c.id} value={c.id}>{tr(c.label)}</option>)}
               </Select>
-            ) : <span className="px-2 text-caption text-white/80">Hold the QR inside the frame</span>}
-            <Button size="sm" variant="secondary" onClick={onClose}>Close camera</Button>
+            ) : <span className="px-2 text-caption text-white/80">{tr('Hold the QR inside the frame')}</span>}
+            <Button size="sm" variant="secondary" onClick={onClose}>{tr('Close camera')}</Button>
           </div>
         </div>
       )}
@@ -84,6 +86,7 @@ const CameraPanel = ({ onCode, onClose }) => {
 
 /* What came back from the server, for the person at the desk. */
 const ResultCard = ({ result, onConfirm, onDismiss, busy }) => {
+  const tr = useT();
   const info = REASON[result.reason] || { tone: 'neutral', title: result.reason, next: '' };
   const m = result.member; const ms = result.membership;
   const needsConfirm = result.reason === 'VERIFICATION_REQUIRED' && m;
@@ -94,12 +97,12 @@ const ResultCard = ({ result, onConfirm, onDismiss, busy }) => {
           {result.decision === 'APPROVED' ? <Check className="h-7 w-7 text-success" /> : needsConfirm ? <ShieldCheck className="h-7 w-7" /> : <X className="h-7 w-7" />}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-h3 font-semibold leading-tight">{info.title}</p>
+          <p className="text-h3 font-semibold leading-tight">{tr(info.title)}</p>
           {result.message && result.message !== info.title && <p className="mt-0.5 text-small opacity-90">{result.message}</p>}
           {info.next && <p className="mt-1 text-small opacity-90">{info.next}</p>}
-          {result.in_grace && <p className="mt-1 text-small font-medium">The membership has run out but is inside its grace days.</p>}
+          {result.in_grace && <p className="mt-1 text-small font-medium">{tr('The membership has run out but is inside its grace days.')}</p>}
         </div>
-        <button type="button" onClick={onDismiss} aria-label="Clear this result" className="rounded-md p-1 opacity-70 hover:opacity-100"><X aria-hidden="true" className="h-5 w-5" /></button>
+        <button type="button" onClick={onDismiss} aria-label={tr('Clear this result')} className="rounded-md p-1 opacity-70 hover:opacity-100"><X aria-hidden="true" className="h-5 w-5" /></button>
       </div>
       {m && (
         <div className="mt-4 flex items-center gap-3 rounded-(--radius-card) bg-surface p-3 text-ink-900">
@@ -113,8 +116,8 @@ const ResultCard = ({ result, onConfirm, onDismiss, busy }) => {
       )}
       {needsConfirm && (
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button onClick={onConfirm} loading={busy}><ShieldCheck aria-hidden="true" className="h-4 w-4" />It is them: let in</Button>
-          <Button variant="secondary" onClick={onDismiss}>Not them</Button>
+          <Button onClick={onConfirm} loading={busy}><ShieldCheck aria-hidden="true" className="h-4 w-4" />{tr('It is them: let in')}</Button>
+          <Button variant="secondary" onClick={onDismiss}>{tr('Not them')}</Button>
         </div>
       )}
     </div>
@@ -122,6 +125,7 @@ const ResultCard = ({ result, onConfirm, onDismiss, busy }) => {
 };
 
 export default function GymReception() {
+  const tr = useT();
   const { outletId } = useAuth();
   const dialog = useDialog();
   const [mode, setMode] = useState('scan');          // scan | find
@@ -168,7 +172,7 @@ export default function GymReception() {
       record({ ...out, code: again ? body.code : undefined, _body: body, _path: path }, label);
     } catch (e) {
       if (e.status === 503) { keys.current.delete(sig); record({ decision: 'DENIED', reason: 'SERVICE_UNAVAILABLE', message: e.message, action: body.action }, label); }
-      else if (e instanceof TypeError) setError('No connection to FlowXP. Nobody can be checked in until it is back. Try again.');
+      else if (e instanceof TypeError) setError(tr('No connection to FlowXP. Nobody can be checked in until it is back. Try again.'));
       else { keys.current.delete(sig); setError(e.message); }
     } finally { setBusy(false); }
   };
@@ -183,7 +187,7 @@ export default function GymReception() {
   const pick = async (member) => {
     const ok = await dialog.confirm({
       title: `Is this ${member.name}?`, body: `Look at who is in front of you. Check them in as ${member.name} (${member.member_code}) only if it is them.`,
-      confirmLabel: action === 'IN' ? 'Yes, check in' : 'Yes, check out', cancelLabel: 'Not sure'
+      confirmLabel: action === 'IN' ? 'Yes, check in' : 'Yes, check out', cancelLabel: tr('Not sure')
     });
     if (ok) submit('/gym/access/manual', { member_id: member.member_id, action, confirm: true }, 'Lookup');
   };
@@ -191,22 +195,22 @@ export default function GymReception() {
   const d = dash.data;
   return (
     <div>
-      <PageHeader title="Front desk" lead="Put members through the door. Every check-in uses the same rule as the phone and the gates."
-        action={<Button to="/app/gym/members" variant="secondary"><UserRound aria-hidden="true" className="h-4 w-4" />Members</Button>} />
-      {outletId == null && settings.data?.branches?.length > 1 && <Alert>Choose an outlet at the top of the screen. The front desk works for one outlet at a time.</Alert>}
+      <PageHeader title={tr('Front desk')} lead={tr('Put members through the door. Every check-in uses the same rule as the phone and the gates.')}
+        action={<Button to="/app/gym/members" variant="secondary"><UserRound aria-hidden="true" className="h-4 w-4" />{tr('Members')}</Button>} />
+      {outletId == null && settings.data?.branches?.length > 1 && <Alert>{tr('Choose an outlet at the top of the screen. The front desk works for one outlet at a time.')}</Alert>}
 
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard label="In the gym now" value={d ? d.visits.open_now : '–'} note={checkout ? 'Checked in, not out yet' : 'Check-out is off, so this is every visit today'} />
-        <StatCard label="Visits today" value={d ? d.visits.today : '–'} note={d ? `${d.visits.today_unique} different members` : ''} />
-        <StatCard label="Turned away today" value={d ? d.denied_today.reduce((s, x) => s + x.n, 0) : '–'} tone={d?.denied_today?.length ? 'warning' : undefined} note={d?.denied_today?.[0] ? `Mostly: ${(REASON[d.denied_today[0].reason_code]?.title || '').toLowerCase()}` : ''} />
-        <StatCard label="Today's member code" value={code.data?.code ?? '–'} note={code.data ? 'For members checking in on their phone' : 'Phone check-in is not on for this gym'} />
+        <StatCard label={tr('In the gym now')} value={d ? d.visits.open_now : '–'} note={checkout ? 'Checked in, not out yet' : 'Check-out is off, so this is every visit today'} />
+        <StatCard label={tr('Visits today')} value={d ? d.visits.today : '–'} note={d ? `${d.visits.today_unique} different members` : ''} />
+        <StatCard label={tr('Turned away today')} value={d ? d.denied_today.reduce((s, x) => s + x.n, 0) : '–'} tone={d?.denied_today?.length ? 'warning' : undefined} note={d?.denied_today?.[0] ? `Mostly: ${(REASON[d.denied_today[0].reason_code]?.title || '').toLowerCase()}` : ''} />
+        <StatCard label={tr('Today\'s member code')} value={code.data?.code ?? '–'} note={code.data ? 'For members checking in on their phone' : 'Phone check-in is not on for this gym'} />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <Segmented label="How to check in" value={mode} onChange={setMode} options={[{ value: 'scan', label: 'Scan a card or phone' }, { value: 'find', label: 'Find a member' }]} />
-            {checkout && <Segmented label="Coming or going" value={action} onChange={setAction} options={[{ value: 'IN', label: 'Check in' }, { value: 'OUT', label: 'Check out' }]} />}
+            <Segmented label={tr('How to check in')} value={mode} onChange={setMode} options={[{ value: 'scan', label: T('Scan a card or phone') }, { value: 'find', label: T('Find a member') }]} />
+            {checkout && <Segmented label={tr('Coming or going')} value={action} onChange={setAction} options={[{ value: 'IN', label: T('Check in') }, { value: 'OUT', label: T('Check out') }]} />}
           </div>
 
           {mode === 'scan' ? (
@@ -214,11 +218,11 @@ export default function GymReception() {
               <form onSubmit={onSubmit} className="flex gap-2">
                 <div className="relative flex-1">
                   <ScanLine aria-hidden="true" className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-ink-400" />
-                  <Input ref={input} aria-label="Scan a card or phone pass" placeholder="Scan with the scanner, or paste a code here" autoComplete="off" autoCapitalize="off" spellCheck="false"
+                  <Input ref={input} aria-label={tr('Scan a card or phone pass')} placeholder={tr('Scan with the scanner, or paste a code here')} autoComplete="off" autoCapitalize="off" spellCheck="false"
                          value={text} onChange={(e) => setText(e.target.value)} className="h-12 pl-9" />
                 </div>
-                <Button type="submit" size="lg" loading={busy} disabled={!text.trim()}>Check</Button>
-                <Button type="button" variant={camera ? 'primary' : 'secondary'} size="lg" onClick={() => setCamera((c) => !c)} aria-pressed={camera}><Camera aria-hidden="true" className="h-4 w-4" /><span className="hidden sm:inline">{camera ? 'Camera on' : 'Camera'}</span></Button>
+                <Button type="submit" size="lg" loading={busy} disabled={!text.trim()}>{tr('Check')}</Button>
+                <Button type="button" variant={camera ? 'primary' : 'secondary'} size="lg" onClick={() => setCamera((c) => !c)} aria-pressed={camera}><Camera aria-hidden="true" className="h-4 w-4" /><span className="hidden sm:inline">{camera ? tr('Camera on') : tr('Camera')}</span></Button>
               </form>
               {camera && <CameraPanel onCode={scan} onClose={() => setCamera(false)} />}
             </>
@@ -226,7 +230,7 @@ export default function GymReception() {
             <div>
               <div className="relative">
                 <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-ink-400" />
-                <Input aria-label="Find a member" autoFocus placeholder="Name, phone or member number" value={lookup} onChange={(e) => setLookup(e.target.value)} className="h-12 pl-9" />
+                <Input aria-label={tr('Find a member')} autoFocus placeholder={tr('Name, phone or member number')} value={lookup} onChange={(e) => setLookup(e.target.value)} className="h-12 pl-9" />
               </div>
               <ul className="mt-2 divide-y divide-line rounded-(--radius-card) border border-line bg-surface">
                 {(found.data || []).map((m) => (
@@ -234,11 +238,11 @@ export default function GymReception() {
                     <Avatar name={m.name} />
                     <div className="min-w-0 flex-1"><p className="truncate font-medium text-ink-900">{m.name}</p><p className="text-caption text-ink-500">{m.member_code} · {m.plan_name || 'No plan'}{m.expires_on ? ` · to ${longDate(m.expires_on)}` : ''}</p></div>
                     <Badge tone={MEMBER_STATE[m.state]?.tone}>{MEMBER_STATE[m.state]?.label}</Badge>
-                    <Button size="sm" onClick={() => pick(m)} loading={busy}><DoorOpen aria-hidden="true" className="h-4 w-4" />{action === 'IN' ? 'Check in' : 'Check out'}</Button>
+                    <Button size="sm" onClick={() => pick(m)} loading={busy}><DoorOpen aria-hidden="true" className="h-4 w-4" />{action === 'IN' ? tr('Check in') : tr('Check out')}</Button>
                   </li>
                 ))}
-                {q.trim().length >= 2 && !found.loading && !(found.data || []).length && <li className="px-4 py-6 text-center text-small text-ink-500">No member matches. <a className="text-brand-600 hover:underline" href="/app/gym/members?new=1">Add one</a></li>}
-                {q.trim().length < 2 && <li className="px-4 py-6 text-center text-small text-ink-500">Type at least two letters or digits.</li>}
+                {q.trim().length >= 2 && !found.loading && !(found.data || []).length && <li className="px-4 py-6 text-center text-small text-ink-500">No member matches. <a className="text-brand-600 hover:underline" href="/app/gym/members?new=1">{tr('Add one')}</a></li>}
+                {q.trim().length < 2 && <li className="px-4 py-6 text-center text-small text-ink-500">{tr('Type at least two letters or digits.')}</li>}
               </ul>
             </div>
           )}
@@ -250,9 +254,9 @@ export default function GymReception() {
           )}
         </div>
 
-        <aside aria-label="Recent entries" className="rounded-(--radius-card) border border-line bg-surface p-4">
-          <h2 className="text-small font-semibold text-ink-900">This session</h2>
-          {recent.length === 0 ? <p className="mt-2 text-small text-ink-500">Nothing yet. The first scan appears here.</p> : (
+        <aside aria-label={tr('Recent entries')} className="rounded-(--radius-card) border border-line bg-surface p-4">
+          <h2 className="text-small font-semibold text-ink-900">{tr('This session')}</h2>
+          {recent.length === 0 ? <p className="mt-2 text-small text-ink-500">{tr('Nothing yet. The first scan appears here.')}</p> : (
             <ul className="mt-2 space-y-2">
               {recent.map((r) => (
                 <li key={r.at} className="flex items-center gap-2 text-small">

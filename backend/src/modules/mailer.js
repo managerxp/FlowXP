@@ -76,13 +76,13 @@ export const deliverMail = async ({ to, subject, text, html }) => {
   await sendWithRetry(built.transport, { from: built.from, to, subject, text, html, attachments: withLogo(html) });
 };
 
-export const sendMail = async ({ to, subject, text, html, replyTo }) => {
+export const sendMail = async ({ to, subject, text, html, replyTo, attachments }) => {
   const built = await buildTransport();
   if (!built) {
     console.log(`\n[mail:dev] to=${to}\n[mail:dev] subject=${subject}\n${text}\n`);
     return;
   }
-  const message = { from: built.from, to, subject, text, html, replyTo, attachments: withLogo(html) };
+  const message = { from: built.from, to, subject, text, html, replyTo, attachments: [...(withLogo(html) || []), ...(attachments || [])] };
   const started = Date.now();
   try {
     const info = await sendWithRetry(built.transport, message);

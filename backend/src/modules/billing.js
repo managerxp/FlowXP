@@ -15,6 +15,7 @@
  * with the HTTP status already attached, so either caller can translate them
  * the same way.
  */
+import { cessOn, levyOn, withGstDefaults } from './gstOptions.js';
 import { offlineInfo } from '../utils/offlineNote.js';
 import { recordAudit, recordEvent } from './events.js';
 import { computeLineTax, isInterState, sumLines } from './tax.js';
@@ -89,6 +90,11 @@ export const asInvoice = (row) => ({
   sgst: toRupees(row.sgst_paise),
   igst: toRupees(row.igst_paise),
   tax: toRupees(row.tax_paise),
+  cess: toRupees(row.cess_paise || 0),
+  tcs: toRupees(row.tcs_paise || 0),
+  tds: toRupees(row.tds_paise || 0),
+  reverse_charge: Boolean(row.reverse_charge),
+  bill_of_supply: Boolean(row.bill_of_supply),
   total: toRupees(row.total_paise),
   amount_paid: toRupees(row.amount_paid_paise),
   balance_due: toRupees(row.balance_due_paise),
@@ -166,14 +172,26 @@ export const plannedPayments = (input, totalPaise) => {
   return [];
 };
 
+/* compensation cess on a line's taxable value, added to the line (the GST figures stay as they were) */
+const withCess = (tax, rate) => {
+  const cess = cessOn(tax.taxable_paise, rate, true);
+  return { ...tax, cess_paise: cess, line_total_paise: tax.line_total_paise + cess };
+};
+
 export const createInvoiceInTransaction = async (client, tenant, userId, input) => {
   const items = Array.isArray(input.items) ? input.items : [];
   if (!items.length) throw new BillingError(400, 'Add at least one item');
 
   const business = (await client.query(
-    `SELECT gst_enabled, state, currency, timezone, round_off_enabled FROM businesses WHERE business_id = $1`,
+    `SELECT gst_enabled, state, currency, timezone, round_off_enabled, gst_settings FROM businesses WHERE business_id = $1`,
     [tenant.businessId]
   )).rows[0];
+
+  // the GST options the owner switched on (modules/gstOptions.js); composite and cess only apply to a registered business
+  const gstOpts = withGstDefaults(business.gst_settings);
+  const composite = Boolean(business.gst_enabled && gstOpts.composite);
+  const taxOn = Boolean(business.gst_enabled) && !composite;   // a composite dealer charges no tax: its bills are Bills of Supply
+  const cessOpt = taxOn && gstOpts.cess;
 
   let customer = null;
   if (input.customerId) {
@@ -207,7 +225,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   const products = new Map();
   if (productIds.length) {
     const { rows } = await client.query(
-      `SELECT product_id, name, selling_price_paise, purchase_price_paise, tax_rate, track_inventory, current_stock, status, category_id
+      `SELECT product_id, name, selling_price_paise, purchase_price_paise, tax_rate, cess_rate, track_inventory, current_stock, status, category_id
        FROM products WHERE business_id = $1 AND product_id = ANY($2::int[]) ORDER BY product_id FOR UPDATE`,
       [tenant.businessId, productIds]
     );
@@ -319,14 +337,15 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       const free = Math.min(Math.round(freeQty * unitPricePaise), Math.max(0, gross - discountPaise));
       if (free > 0) { discountPaise += free; loyalty.applied = { amountPaise: free, item: product.name }; }
     }
-    const tax = computeLineTax({
+    const cessRate = cessOpt && product ? Number(product.cess_rate) : 0;
+    const tax = withCess(computeLineTax({
       quantity, unitPricePaise, discountPaise, taxRatePercent: taxRate,
-      gstEnabled: business.gst_enabled, interState, inclusive: input.taxInclusive === true
-    });
+      gstEnabled: taxOn, interState, inclusive: input.taxInclusive === true
+    }), cessRate);
 
     lines.push({
       product_id: product?.product_id || null, categoryId: product?.category_id ?? null, description, quantity, unitPricePaise,
-      discountPaise, taxRate, trackInventory: Boolean(product?.track_inventory), modifiers, consumption,
+      discountPaise, taxRate, cessRate, trackInventory: Boolean(product?.track_inventory), modifiers, consumption,
       unitName: raw.unit_name ? String(raw.unit_name).slice(0, 24) : null, stockFactor,
       fallbackCostPaise: product ? Math.round(Number(product.purchase_price_paise) * stockFactor) : 0, ...tax
     });
@@ -342,10 +361,10 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
         const line = lines[index];
         line.discountPaise += r.discountPaise;
         line.promo = { id: r.promo_id, discountPaise: r.discountPaise };
-        Object.assign(line, computeLineTax({
+        Object.assign(line, withCess(computeLineTax({
           quantity: line.quantity, unitPricePaise: line.unitPricePaise, discountPaise: line.discountPaise, taxRatePercent: line.taxRate,
-          gstEnabled: business.gst_enabled, interState, inclusive: input.taxInclusive === true
-        }));
+          gstEnabled: taxOn, interState, inclusive: input.taxInclusive === true
+        }), line.cessRate));
       }
     }
   }
@@ -408,6 +427,13 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     invoiceDiscountPaise += pointsDiscountPaise;
   }
   let finalTotalPaise = Math.max(0, totals.total_paise - invoiceDiscountPaise);
+  /* TCS is added to the bill and TDS is held back by the customer: each is a share of the bill's taxable value (after the bill's own discount).
+     Only when the owner switched the option on AND the till asks for it on this bill. */
+  const taxableAfterDiscount = Math.max(0, totals.subtotal_paise - invoiceDiscountPaise);
+  const tcsPaise = business.gst_enabled && gstOpts.tcs && input.tcs === true ? levyOn(taxableAfterDiscount, gstOpts.tcs_rate) : 0;
+  const tdsPaise = business.gst_enabled && gstOpts.tds && input.tds === true ? levyOn(taxableAfterDiscount, gstOpts.tds_rate) : 0;
+  finalTotalPaise += tcsPaise;
+  const cessPaise = lines.reduce((sum, l) => sum + (l.cess_paise || 0), 0);
   // Cash round-off: the bill is rounded to the nearest rupee; the difference is kept on the invoice (never taxed).
   let roundOffPaise = 0;
   if (business.round_off_enabled && finalTotalPaise > 0) {
@@ -434,8 +460,9 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     creditTaken = { cn, amountPaise: Math.min(available, finalTotalPaise) };
   }
   const takenPayments = [
+    ...(tdsPaise > 0 ? [{ method: 'OTHER', amountPaise: Math.min(tdsPaise, finalTotalPaise), reference: paymentReference('TDS deducted by customer') }] : []),
     ...(creditTaken && creditTaken.amountPaise > 0 ? [{ method: 'OTHER', amountPaise: creditTaken.amountPaise, reference: paymentReference(`Exchange ${creditTaken.cn.cn_number}`) }] : []),
-    ...plannedPayments(input, finalTotalPaise - (creditTaken?.amountPaise || 0))
+    ...plannedPayments(input, finalTotalPaise - (creditTaken?.amountPaise || 0) - Math.min(tdsPaise, finalTotalPaise))
   ];
   const paidPaise = takenPayments.reduce((s, p) => s + p.amountPaise, 0);
   const balancePaise = finalTotalPaise - paidPaise;
@@ -464,14 +491,20 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     ]
   )).rows[0];
 
+  if (cessPaise || tcsPaise || tdsPaise || composite || (gstOpts.reverse_charge && input.reverseCharge === true)) {
+    await client.query(`UPDATE invoices SET cess_paise = $2, tcs_paise = $3, tds_paise = $4, reverse_charge = $5, bill_of_supply = $6 WHERE invoice_id = $1`,
+      [invoice.invoice_id, cessPaise, tcsPaise, tdsPaise, Boolean(business.gst_enabled && gstOpts.reverse_charge && input.reverseCharge === true), composite]);
+    Object.assign(invoice, { cess_paise: cessPaise, tcs_paise: tcsPaise, tds_paise: tdsPaise, reverse_charge: Boolean(business.gst_enabled && gstOpts.reverse_charge && input.reverseCharge === true), bill_of_supply: composite });
+  }
+
   for (const line of lines) {
     await client.query(
       `INSERT INTO invoice_items
-         (invoice_id, product_id, description, quantity, unit_price_paise, discount_paise, tax_rate, tax_amount_paise, line_total_paise, modifiers, unit_cost_paise, unit_name, unit_factor, promo_id, promo_discount_paise)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+         (invoice_id, product_id, description, quantity, unit_price_paise, discount_paise, tax_rate, tax_amount_paise, line_total_paise, modifiers, unit_cost_paise, unit_name, unit_factor, promo_id, promo_discount_paise, cess_paise)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
       [invoice.invoice_id, line.product_id, line.description, line.quantity, line.unitPricePaise,
        line.discountPaise, line.taxRate, line.tax_paise, line.line_total_paise, JSON.stringify(line.modifiers), line.unitCostPaise, line.unitName, line.stockFactor,
-       line.promo?.id ?? null, line.promo?.discountPaise ?? 0]
+       line.promo?.id ?? null, line.promo?.discountPaise ?? 0, line.cess_paise || 0]
     );
 
     // stockHandledElsewhere: the goods are not in this outlet's stock (a distributor's van holds them), so selling them here must not take them out of it

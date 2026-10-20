@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { addDays, isWeekend, monthDay, qs, shortDay, useLoad } from '../../lib/hotel.js';
 import { Button, ListState, PageHeader } from '../../components/ui.jsx';
 import BookingForm from './BookingForm.jsx';
+import { useT } from '../../i18n/useT.js';
 
 const DAYS = 14;
 const NAME_W = '9.5rem';
@@ -39,6 +40,7 @@ const Bar = ({ s, from, days, onOpen, row = 1 }) => {
 };
 
 export default function HotelCalendar() {
+  const tr = useT();
   const nav = useNavigate();
   const { can } = useAuth();
   const dash = useLoad('/hotel/dashboard');
@@ -67,18 +69,18 @@ export default function HotelCalendar() {
 
   return (
     <div>
-      <PageHeader title="Calendar" lead="Rooms down the side, days across. Click a day to make a booking."
+      <PageHeader title={tr('Calendar')} lead={tr('Rooms down the side, days across. Click a day to make a booking.')}
         action={<>
-          <Button variant="secondary" size="sm" onClick={() => setFrom(addDays(start, -7))} aria-label="Earlier"><ChevronLeft aria-hidden="true" className="h-4 w-4" /></Button>
-          <Button variant="secondary" size="sm" onClick={() => setFrom(null)}>Today</Button>
-          <Button variant="secondary" size="sm" onClick={() => setFrom(addDays(start, 7))} aria-label="Later"><ChevronRight aria-hidden="true" className="h-4 w-4" /></Button>
+          <Button variant="secondary" size="sm" onClick={() => setFrom(addDays(start, -7))} aria-label={tr('Earlier')}><ChevronLeft aria-hidden="true" className="h-4 w-4" /></Button>
+          <Button variant="secondary" size="sm" onClick={() => setFrom(null)}>{tr('Today')}</Button>
+          <Button variant="secondary" size="sm" onClick={() => setFrom(addDays(start, 7))} aria-label={tr('Later')}><ChevronRight aria-hidden="true" className="h-4 w-4" /></Button>
         </>} />
       <ListState loading={chart.loading && !c} error={chart.error} />
       {c && (
         <div className="overflow-x-auto rounded-(--radius-card) border border-line bg-surface">
           <div className="min-w-[56rem]">
             <div style={grid} className="sticky top-0 z-20 border-b border-line bg-surface-2 text-caption font-medium text-ink-500">
-              <div className="px-3 py-2">{monthDay(start)} to {monthDay(days[days.length - 1])}</div>
+              <div className="px-3 py-2">{tr('{{monthDay}} to {{monthDay2}}', { monthDay: monthDay(start), monthDay2: monthDay(days[days.length - 1]) })}</div>
               {days.map((d) => <div key={d} className={`border-l border-line px-1 py-2 text-center ${d === today ? 'bg-brand-50 text-brand-700' : isWeekend(d) ? 'bg-surface-3/60' : ''}`}>{shortDay(d)}</div>)}
             </div>
             {byType.map((g) => (
@@ -86,9 +88,9 @@ export default function HotelCalendar() {
                 <div className="border-b border-line bg-surface-2 px-3 py-1.5 text-caption font-semibold uppercase tracking-wide text-ink-500">{g.name}</div>
                 {g.rooms.map((r) => (
                   <div key={r.room_id} style={grid} className="relative border-b border-line">
-                    <div className="flex items-center justify-between gap-2 px-3 py-2 text-small font-medium text-ink-900">{r.room_no}{r.hk_status === 'OUT_OF_ORDER' && <span className="text-caption font-normal text-danger">out of order</span>}</div>
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 text-small font-medium text-ink-900">{r.room_no}{r.hk_status === 'OUT_OF_ORDER' && <span className="text-caption font-normal text-danger">{tr('out of order')}</span>}</div>
                     {days.map((d, i) => (
-                      <button key={d} type="button" disabled={!can('front_desk') || d < today} aria-label={`Book room ${r.room_no} from ${monthDay(d)}`}
+                      <button key={d} type="button" disabled={!can('front_desk') || d < today} aria-label={tr('Book room {{room_no}} from {{monthDay}}', { room_no: r.room_no, monthDay: monthDay(d) })}
                               onClick={() => setBooking({ arrival: d, room_type_id: r.room_type_id, room_id: r.room_id })} style={{ gridColumn: i + 2, gridRow: 1 }}
                               className={`border-l border-line ${d === today ? 'bg-brand-50/60' : isWeekend(d) ? 'bg-surface-3/40' : ''} hover:bg-brand-50 disabled:hover:bg-transparent`} />
                     ))}
@@ -104,7 +106,7 @@ export default function HotelCalendar() {
                   <div className="border-b border-line bg-warning/5">
                     {Array.from({ length: g.unassigned.count }, (_, lane) => (
                       <div key={lane} style={grid} className="relative">
-                        <div className="px-3 py-2 text-caption font-medium text-warning">{lane === 0 ? 'Room not chosen yet' : ''}</div>
+                        <div className="px-3 py-2 text-caption font-medium text-warning">{lane === 0 ? tr('Room not chosen yet') : ''}</div>
                         {days.map((d, i) => <div key={d} style={{ gridColumn: i + 2, gridRow: 1 }} className="border-l border-line" />)}
                         {g.unassigned.rows.filter((s) => s.lane === lane).map((s) => <Bar key={s.rr_id} s={s} from={start} days={days} onOpen={open} />)}
                       </div>
@@ -113,11 +115,11 @@ export default function HotelCalendar() {
                 )}
               </div>
             ))}
-            {!byType.length && <p className="p-6 text-small text-ink-500">Add room types and rooms in Set-up first.</p>}
+            {!byType.length && <p className="p-6 text-small text-ink-500">{tr('Add room types and rooms in Set-up first.')}</p>}
           </div>
         </div>
       )}
-      <p className="mt-3 text-caption text-ink-500"><span className="mr-4"><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-success" />In the hotel</span><span className="mr-4"><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-brand-500" />Booked</span><span><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-ink-400/40" />Out of sale</span></p>
+      <p className="mt-3 text-caption text-ink-500"><span className="mr-4"><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-success" />{tr('In the hotel')}</span><span className="mr-4"><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-brand-500" />{tr('Booked')}</span><span><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-ink-400/40" />{tr('Out of sale')}</span></p>
       {booking && <BookingForm businessDate={today} initial={booking} onClose={() => setBooking(null)} onSaved={(saved) => { setBooking(null); chart.reload(); nav(`/app/hotel/bookings/${saved.booking_id}`); }} />}
     </div>
   );

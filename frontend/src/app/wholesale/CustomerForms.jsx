@@ -9,6 +9,7 @@ import { Alert, Button, Field, Input, Modal, Select, Textarea, useToast } from '
 import { useAuth } from '../../context/AuthContext.jsx';
 import { TerritorySelect } from '../distributor/parts.jsx';
 import { NumberField, Segmented } from './parts.jsx';
+import { T, useT } from '../../i18n/useT.js';
 
 const blank = { name: '', customer_type: 'RETAILER', contact_person: '', phone: '', email: '', gstin: '', pan: '', billing_address: '', city: '', state: '', pincode: '', shipping_address: '', shipping_city: '', shipping_state: '', shipping_pincode: '',
   credit_limit: '', payment_terms_days: '', salesperson_id: '', territory_id: '', price_list_id: '', default_discount_pct: '', opening_balance: '', credit_policy: '', notes: '' };
@@ -16,6 +17,7 @@ const blank = { name: '', customer_type: 'RETAILER', contact_person: '', phone: 
 const fromCustomer = (c) => ({ ...blank, ...Object.fromEntries(Object.keys(blank).map((k) => [k, c[k] ?? ''])), billing_address: c.billing_address ?? c.address ?? '', credit_limit: c.credit_limit || '', default_discount_pct: c.default_discount_pct || '', opening_balance: c.opening_balance || '' });
 
 export const CustomerForm = ({ customer, onClose, onSaved }) => {
+  const tr = useT();
   const toast = useToast();
   const { business } = useAuth();
   const editing = Boolean(customer?.customer_id);
@@ -44,56 +46,56 @@ export const CustomerForm = ({ customer, onClose, onSaved }) => {
     };
     try {
       const saved = await api(editing ? `/wholesale/customers/${customer.customer_id}` : '/wholesale/customers', { method: editing ? 'PUT' : 'POST', body });
-      toast.success(editing ? 'Customer updated' : `${saved.name} added`);
+      toast.success(editing ? tr('Customer updated') : `${saved.name} added`);
       onSaved(saved);
     } catch (err) { setError(err.message); setTab('details'); } finally { setBusy(false); }
   };
 
   return (
-    <Modal title={editing ? 'Edit customer' : 'Add a customer'} onClose={onClose} wide>
+    <Modal title={editing ? tr('Edit customer') : tr('Add a customer')} onClose={onClose} wide>
       <form onSubmit={submit} className="space-y-5">
         <Alert>{error}</Alert>
-        <Segmented label="Section" value={tab} onChange={setTab} options={[{ value: 'details', label: 'Details' }, { value: 'address', label: 'Addresses' }, { value: 'credit', label: 'Credit & pricing' }]} />
+        <Segmented label={tr('Section')} value={tab} onChange={setTab} options={[{ value: 'details', label: T('Details') }, { value: 'address', label: T('Addresses') }, { value: 'credit', label: T('Credit & pricing') }]} />
         {tab === 'details' && (
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2"><Field id="cf-name" label="Business name"><Input id="cf-name" value={f.name} onChange={set('name')} required autoFocus maxLength={160} /></Field></div>
-            <Field id="cf-type" label="Customer type"><Select id="cf-type" value={f.customer_type} onChange={set('customer_type')}>{Object.entries(CUSTOMER_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
-            <Field id="cf-contact" label="Contact person"><Input id="cf-contact" value={f.contact_person} onChange={set('contact_person')} /></Field>
-            <Field id="cf-phone" label="Mobile"><Input id="cf-phone" type="tel" inputMode="tel" value={f.phone} onChange={set('phone')} /></Field>
-            <Field id="cf-email" label="Email"><Input id="cf-email" type="email" value={f.email} onChange={set('email')} /></Field>
-            <Field id="cf-gstin" label="GSTIN" hint="15 characters"><Input id="cf-gstin" value={f.gstin} onChange={(e) => setF((x) => ({ ...x, gstin: e.target.value.toUpperCase() }))} maxLength={15} /></Field>
-            <Field id="cf-pan" label="PAN"><Input id="cf-pan" value={f.pan} onChange={(e) => setF((x) => ({ ...x, pan: e.target.value.toUpperCase() }))} maxLength={10} /></Field>
-            <div className="sm:col-span-2"><Field id="cf-notes" label="Internal notes"><Textarea id="cf-notes" rows={2} value={f.notes} onChange={set('notes')} /></Field></div>
+            <div className="sm:col-span-2"><Field id="cf-name" label={tr('Business name')}><Input id="cf-name" value={f.name} onChange={set('name')} required autoFocus maxLength={160} /></Field></div>
+            <Field id="cf-type" label={tr('Customer type')}><Select id="cf-type" value={f.customer_type} onChange={set('customer_type')}>{Object.entries(CUSTOMER_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
+            <Field id="cf-contact" label={tr('Contact person')}><Input id="cf-contact" value={f.contact_person} onChange={set('contact_person')} /></Field>
+            <Field id="cf-phone" label={tr('Mobile')}><Input id="cf-phone" type="tel" inputMode="tel" value={f.phone} onChange={set('phone')} /></Field>
+            <Field id="cf-email" label={tr('Email')}><Input id="cf-email" type="email" value={f.email} onChange={set('email')} /></Field>
+            <Field id="cf-gstin" label={tr('GSTIN')} hint={tr('15 characters')}><Input id="cf-gstin" value={f.gstin} onChange={(e) => setF((x) => ({ ...x, gstin: e.target.value.toUpperCase() }))} maxLength={15} /></Field>
+            <Field id="cf-pan" label={tr('PAN')}><Input id="cf-pan" value={f.pan} onChange={(e) => setF((x) => ({ ...x, pan: e.target.value.toUpperCase() }))} maxLength={10} /></Field>
+            <div className="sm:col-span-2"><Field id="cf-notes" label={tr('Internal notes')}><Textarea id="cf-notes" rows={2} value={f.notes} onChange={set('notes')} /></Field></div>
           </div>
         )}
         {tab === 'address' && (
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2"><Field id="cf-bill" label="Billing address"><Textarea id="cf-bill" rows={2} value={f.billing_address} onChange={set('billing_address')} /></Field></div>
-            <Field id="cf-city" label="City"><Input id="cf-city" value={f.city} onChange={set('city')} /></Field>
-            <Field id="cf-state" label="State" hint="Decides CGST + SGST or IGST on invoices"><Input id="cf-state" value={f.state} onChange={set('state')} /></Field>
-            <Field id="cf-pin" label="Pincode"><Input id="cf-pin" inputMode="numeric" value={f.pincode} onChange={set('pincode')} maxLength={6} /></Field>
-            <label className="flex items-center gap-2 self-end pb-2.5 text-small text-ink-700 sm:col-span-2"><input type="checkbox" checked={sameShip} onChange={(e) => setSameShip(e.target.checked)} className="h-4 w-4 accent-(--color-brand-500)" />Ship to the billing address</label>
+            <div className="sm:col-span-2"><Field id="cf-bill" label={tr('Billing address')}><Textarea id="cf-bill" rows={2} value={f.billing_address} onChange={set('billing_address')} /></Field></div>
+            <Field id="cf-city" label={tr('City')}><Input id="cf-city" value={f.city} onChange={set('city')} /></Field>
+            <Field id="cf-state" label={tr('State')} hint={tr('Decides CGST + SGST or IGST on invoices')}><Input id="cf-state" value={f.state} onChange={set('state')} /></Field>
+            <Field id="cf-pin" label={tr('Pincode')}><Input id="cf-pin" inputMode="numeric" value={f.pincode} onChange={set('pincode')} maxLength={6} /></Field>
+            <label className="flex items-center gap-2 self-end pb-2.5 text-small text-ink-700 sm:col-span-2"><input type="checkbox" checked={sameShip} onChange={(e) => setSameShip(e.target.checked)} className="h-4 w-4 accent-(--color-brand-500)" />{tr('Ship to the billing address')}</label>
             {!sameShip && <>
-              <div className="sm:col-span-2"><Field id="cf-ship" label="Shipping address"><Textarea id="cf-ship" rows={2} value={f.shipping_address} onChange={set('shipping_address')} /></Field></div>
-              <Field id="cf-scity" label="Shipping city"><Input id="cf-scity" value={f.shipping_city} onChange={set('shipping_city')} /></Field>
-              <Field id="cf-sstate" label="Shipping state"><Input id="cf-sstate" value={f.shipping_state} onChange={set('shipping_state')} /></Field>
-              <Field id="cf-spin" label="Shipping pincode"><Input id="cf-spin" inputMode="numeric" value={f.shipping_pincode} onChange={set('shipping_pincode')} maxLength={6} /></Field>
+              <div className="sm:col-span-2"><Field id="cf-ship" label={tr('Shipping address')}><Textarea id="cf-ship" rows={2} value={f.shipping_address} onChange={set('shipping_address')} /></Field></div>
+              <Field id="cf-scity" label={tr('Shipping city')}><Input id="cf-scity" value={f.shipping_city} onChange={set('shipping_city')} /></Field>
+              <Field id="cf-sstate" label={tr('Shipping state')}><Input id="cf-sstate" value={f.shipping_state} onChange={set('shipping_state')} /></Field>
+              <Field id="cf-spin" label={tr('Shipping pincode')}><Input id="cf-spin" inputMode="numeric" value={f.shipping_pincode} onChange={set('shipping_pincode')} maxLength={6} /></Field>
             </>}
           </div>
         )}
         {tab === 'credit' && (
           <div className="grid gap-4 sm:grid-cols-2">
-            <NumberField id="cf-limit" label="Credit limit" prefix="₹" hint="0 means no limit" value={f.credit_limit} onChange={set('credit_limit')} />
-            <NumberField id="cf-terms" label="Payment terms" suffix="days" step={1} hint="Blank uses your default" value={f.payment_terms_days} onChange={set('payment_terms_days')} />
-            <Field id="cf-policy" label="When over the limit" hint="Blank follows your wholesale settings"><Select id="cf-policy" value={f.credit_policy} onChange={set('credit_policy')}><option value="">Business default</option><option value="OFF">Allow</option><option value="WARN">Warn</option><option value="BLOCK">Block</option></Select></Field>
-            <Field id="cf-sp" label="Salesperson"><Select id="cf-sp" value={f.salesperson_id} onChange={set('salesperson_id')}><option value="">None</option>{people.map((p) => <option key={p.salesperson_id} value={p.salesperson_id}>{p.name}</option>)}</Select></Field>
-            {business?.distributor_enabled && <TerritorySelect id="cf-terr" value={f.territory_id} onChange={(v) => setF((x) => ({ ...x, territory_id: v }))} hint="Drives territory pricing, targets and beats" levels={['AREA', 'TERRITORY']} />}
-            <Field id="cf-pl" label="Price list" hint="Blank uses the list for their type"><Select id="cf-pl" value={f.price_list_id} onChange={set('price_list_id')}><option value="">Default</option>{lists.map((l) => <option key={l.list_id} value={l.list_id}>{l.name}</option>)}</Select></Field>
-            <NumberField id="cf-disc" label="Standing discount" suffix="%" hint="Off list prices, not off negotiated prices" value={f.default_discount_pct} onChange={set('default_discount_pct')} />
-            <NumberField id="cf-open" label="Opening balance" prefix="₹" hint="What they owed when you started (negative if you owe them)" min={-100000000} value={f.opening_balance} onChange={set('opening_balance')} />
+            <NumberField id="cf-limit" label={tr('Credit limit')} prefix="₹" hint={tr('0 means no limit')} value={f.credit_limit} onChange={set('credit_limit')} />
+            <NumberField id="cf-terms" label={tr('Payment terms')} suffix="days" step={1} hint={tr('Blank uses your default')} value={f.payment_terms_days} onChange={set('payment_terms_days')} />
+            <Field id="cf-policy" label={tr('When over the limit')} hint={tr('Blank follows your wholesale settings')}><Select id="cf-policy" value={f.credit_policy} onChange={set('credit_policy')}><option value="">{tr('Business default')}</option><option value="OFF">{tr('Allow')}</option><option value="WARN">{tr('Warn')}</option><option value="BLOCK">{tr('Block')}</option></Select></Field>
+            <Field id="cf-sp" label={tr('Salesperson')}><Select id="cf-sp" value={f.salesperson_id} onChange={set('salesperson_id')}><option value="">{tr('None')}</option>{people.map((p) => <option key={p.salesperson_id} value={p.salesperson_id}>{p.name}</option>)}</Select></Field>
+            {business?.distributor_enabled && <TerritorySelect id="cf-terr" value={f.territory_id} onChange={(v) => setF((x) => ({ ...x, territory_id: v }))} hint={tr('Drives territory pricing, targets and beats')} levels={['AREA', 'TERRITORY']} />}
+            <Field id="cf-pl" label={tr('Price list')} hint={tr('Blank uses the list for their type')}><Select id="cf-pl" value={f.price_list_id} onChange={set('price_list_id')}><option value="">{tr('Default')}</option>{lists.map((l) => <option key={l.list_id} value={l.list_id}>{l.name}</option>)}</Select></Field>
+            <NumberField id="cf-disc" label={tr('Standing discount')} suffix="%" hint={tr('Off list prices, not off negotiated prices')} value={f.default_discount_pct} onChange={set('default_discount_pct')} />
+            <NumberField id="cf-open" label={tr('Opening balance')} prefix="₹" hint={tr('What they owed when you started (negative if you owe them)')} min={-100000000} value={f.opening_balance} onChange={set('opening_balance')} />
           </div>
         )}
-        <div className="flex justify-end gap-2 border-t border-line pt-4"><Button type="button" variant="ghost" onClick={onClose}>Cancel</Button><Button type="submit" loading={busy}>{editing ? 'Save changes' : 'Add customer'}</Button></div>
+        <div className="flex justify-end gap-2 border-t border-line pt-4"><Button type="button" variant="ghost" onClick={onClose}>{tr('Cancel')}</Button><Button type="submit" loading={busy}>{editing ? tr('Save changes') : tr('Add customer')}</Button></div>
       </form>
     </Modal>
   );
@@ -101,24 +103,25 @@ export const CustomerForm = ({ customer, onClose, onSaved }) => {
 
 /** Two fields, for adding a customer in the middle of taking an order. */
 export const QuickCustomerModal = ({ onClose, onSaved }) => {
+  const tr = useT();
   const toast = useToast();
   const [f, setF] = useState({ name: '', phone: '', gstin: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setError('');
-    try { const made = await api('/wholesale/customers', { method: 'POST', body: { name: f.name, phone: f.phone || null, gstin: f.gstin || null, customer_type: 'RETAILER' } }); toast.success(`${made.name} added`); onSaved(made); }
+    try { const made = await api('/wholesale/customers', { method: 'POST', body: { name: f.name, phone: f.phone || null, gstin: f.gstin || null, customer_type: 'RETAILER' } }); toast.success(tr('{{made_name}} added', { made_name: made.name })); onSaved(made); }
     catch (err) { setError(err.message); } finally { setBusy(false); }
   };
   return (
-    <Modal title="Add a customer" onClose={onClose}>
+    <Modal title={tr('Add a customer')} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
         <Alert>{error}</Alert>
-        <Field id="qc-name" label="Business name"><Input id="qc-name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required autoFocus /></Field>
-        <Field id="qc-phone" label="Mobile"><Input id="qc-phone" type="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
-        <Field id="qc-gst" label="GSTIN" hint="Optional"><Input id="qc-gst" value={f.gstin} onChange={(e) => setF({ ...f, gstin: e.target.value.toUpperCase() })} maxLength={15} /></Field>
-        <p className="text-caption text-ink-500">You can add addresses, credit and prices later from the customer’s page.</p>
-        <div className="flex justify-end gap-2 border-t border-line pt-4"><Button type="button" variant="ghost" onClick={onClose}>Cancel</Button><Button type="submit" loading={busy}>Add customer</Button></div>
+        <Field id="qc-name" label={tr('Business name')}><Input id="qc-name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required autoFocus /></Field>
+        <Field id="qc-phone" label={tr('Mobile')}><Input id="qc-phone" type="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
+        <Field id="qc-gst" label={tr('GSTIN')} hint={tr('Optional')}><Input id="qc-gst" value={f.gstin} onChange={(e) => setF({ ...f, gstin: e.target.value.toUpperCase() })} maxLength={15} /></Field>
+        <p className="text-caption text-ink-500">{tr('You can add addresses, credit and prices later from the customer’s page.')}</p>
+        <div className="flex justify-end gap-2 border-t border-line pt-4"><Button type="button" variant="ghost" onClick={onClose}>{tr('Cancel')}</Button><Button type="submit" loading={busy}>{tr('Add customer')}</Button></div>
       </form>
     </Modal>
   );

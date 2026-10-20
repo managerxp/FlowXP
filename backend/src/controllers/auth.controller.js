@@ -7,6 +7,7 @@
  * business, or a business with no owner, is a support ticket that has to be
  * fixed by hand in psql.
  */
+import { withGstDefaults } from '../modules/gstOptions.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import pool from '../config/database.js';
@@ -18,6 +19,7 @@ import { recordAudit, recordEvent } from '../modules/events.js';
 import { sendEmailOtp, sendPasswordReset } from '../modules/mailer.js';
 import { emailProblem } from '../utils/emailCheck.js';
 import { addDefaultOptionGroups, FOOD_TYPES } from '../modules/defaultOptions.js';
+import { cleanLocale } from '../utils/locales.js';
 import {
   checkSignupType, checkEmail, checkName, checkPassword, checkPhone,
   firstError, normaliseEmail
@@ -58,7 +60,8 @@ const publicUser = (user) => ({
   name: user.name,
   email: user.email,
   phone: user.phone,
-  email_verified: user.email_verified
+  email_verified: user.email_verified,
+  language: user.language ?? null   // the person's own choice; null = never chose
 });
 
 /* ==========================================================================
@@ -402,6 +405,16 @@ export const resendEmailOtp = async (req, res) => {
 /* ==========================================================================
    GET /api/auth/me
    ========================================================================== */
+/* PATCH /api/auth/language { language } — this person's own display language, or null to go back to the business default.
+   Touches nothing but users.language: never currency, timezone, tax or a business setting. */
+export const setLanguage = async (req, res) => {
+  const raw = req.body?.language;
+  const language = cleanLocale(raw);
+  if (raw != null && raw !== '' && !language) return res.status(400).json({ success: false, message: 'Choose one of the supported languages' });
+  await pool.query(`UPDATE users SET language = $1 WHERE user_id = $2`, [language, req.auth.userId]);
+  res.json({ success: true, data: { language } });
+};
+
 export const me = async (req, res) => {
   // a fresh cookie on every app start: the session slides forward while it is in use (same token_version, so
   // sign-out-everywhere still ends it), and a browser that sent the old Authorization header gets its cookie here
@@ -426,8 +439,10 @@ export const me = async (req, res) => {
         currency: m.currency,
         onboarding_step: m.onboarding_step,
         gst_enabled: m.gst_enabled,
+        gst_options: withGstDefaults(m.gst_settings),   // the GST options switched on (composite, cess, TCS, TDS, reverse charge)
         // a distributor, or a wholesaler who switched the distributor features on: the app shows the Distributor menu
         distributor_enabled: Boolean(m.distributor_enabled),
+        default_language: m.default_language ?? null,   // what this business's staff see until they choose their own
         upi_vpa: m.upi_vpa || null,   // the till shows a UPI QR for this ID
         two_factor_required: Boolean(m.require_2fa_admins) && ['OWNER', 'ADMIN'].includes(m.role),
         role: m.role,

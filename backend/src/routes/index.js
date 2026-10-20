@@ -8,10 +8,10 @@
  * this file is now just the mount point for those, plus the handful of routes
  * that never fit anywhere else.
  */
-import { Router } from 'express';
+import express, { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import pool from '../config/database.js';
-import { requireAuth, withBusiness, requireOwner, requirePermission, requireAnyPermission, clearSessionCookie } from '../middleware/auth.js';
+import { requireAuth, withBusiness, requireOwner, requirePermission, requireAnyPermission, requirePlanFeature, clearSessionCookie } from '../middleware/auth.js';
 import * as auth from '../controllers/auth.controller.js';
 import * as oauth from '../controllers/oauth.controller.js';
 import * as security from '../controllers/security.controller.js';
@@ -151,6 +151,7 @@ router.post('/webhooks/cashfree', webhooks.cashfree);
 /* ── Signed in, no business needed ──────────────────────────────────────── */
 
 router.get('/auth/me', requireAuth, auth.me);
+router.patch('/auth/language', requireAuth, auth.setLanguage);
 
 /* Account security. These only need a signed-in person (not a business), so an owner whose business requires
    two-step verification can still reach them to set it up. Password and code checks share the login limiter. */
@@ -190,6 +191,8 @@ router.post('/auth/logout', (req, res) => {
 
 router.get('/businesses/current', requireAuth, withBusiness(), business.getCurrent);
 router.patch('/businesses/current', requireAuth, withBusiness({ requireActive: true }), requireOwner, business.updateCurrent);
+router.get('/businesses/current/backup', requireAuth, withBusiness(), requireOwner, business.downloadBackup);
+router.post('/businesses/current/restore', requireAuth, withBusiness({ requireActive: true }), requireOwner, requirePlanFeature('backup_restore'), express.raw({ type: '*/*', limit: '60mb' }), business.restoreBackup);
 router.post('/businesses/current/logo', requireAuth, withBusiness({ requireActive: true }), requireOwner, uploadLogo, business.uploadLogo);
 router.delete('/businesses/current/logo', requireAuth, withBusiness({ requireActive: true }), requireOwner, business.removeLogo);
 router.get('/businesses/current/subscription', requireAuth, withBusiness(), business.getSubscription);

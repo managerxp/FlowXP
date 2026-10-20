@@ -8,10 +8,12 @@ import { api } from '../../lib/api.js';
 import { PAYMENT_METHODS, RETURN_REASONS, dateText, money, qty, useLoad } from '../../lib/wholesale.js';
 import { Alert, Button, Field, Input, ListState, Modal, Select, Table, Td, Th, Thead, Tr } from '../../components/ui.jsx';
 import { useAction } from './parts.jsx';
+import { useT } from '../../i18n/useT.js';
 
 const DISPOSITIONS = { RESTOCK: 'Back on the shelf', DAMAGED: 'Damaged (hold aside)', EXPIRED: 'Expired (hold aside)', NONE: 'Not physically returned' };
 
 export const SalesReturnModal = ({ invoiceId, onClose, onDone }) => {
+  const tr = useT();
   const { data: inv, loading, error } = useLoad(`/wholesale/invoices/${invoiceId}/returnable`);
   const [rows, setRows] = useState({});
   const [reason, setReason] = useState('DAMAGED');
@@ -27,38 +29,38 @@ export const SalesReturnModal = ({ invoiceId, onClose, onDone }) => {
     if (out) onDone(out);
   };
   return (
-    <Modal title={inv ? `Return against ${inv.invoice_number}` : 'Return'} onClose={onClose} wide>
+    <Modal title={inv ? `Return against ${inv.invoice_number}` : tr('Return')} onClose={onClose} wide>
       <Alert>{error}</Alert>
       <ListState loading={loading && !inv} />
       {inv && (
         <div className="space-y-4">
-          {inv.status === 'CANCELLED' && <Alert>This invoice was cancelled and cannot be returned against.</Alert>}
+          {inv.status === 'CANCELLED' && <Alert>{tr('This invoice was cancelled and cannot be returned against.')}</Alert>}
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="sr-reason" label="Reason"><Select id="sr-reason" value={reason} onChange={(e) => setReason(e.target.value)}>{Object.entries(RETURN_REASONS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
-            <Field id="sr-notes" label="Notes"><Input id="sr-notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={300} /></Field>
+            <Field id="sr-reason" label={tr('Reason')}><Select id="sr-reason" value={reason} onChange={(e) => setReason(e.target.value)}>{Object.entries(RETURN_REASONS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
+            <Field id="sr-notes" label={tr('Notes')}><Input id="sr-notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={300} /></Field>
           </div>
           <Table>
-            <Thead><Th>Item</Th><Th className="text-right">Can return</Th><Th className="text-right">Return</Th><Th>The goods are</Th></Thead>
+            <Thead><Th>{tr('Item')}</Th><Th className="text-right">{tr('Can return')}</Th><Th className="text-right">{tr('Return')}</Th><Th>{tr('The goods are')}</Th></Thead>
             <tbody>
               {inv.items.map((i) => {
                 const r = rows[i.item_id] || {};
                 return (
                   <Tr key={i.item_id}>
-                    <Td><span className="font-medium">{i.description}</span><span className="block text-caption text-ink-500">{money(i.unit_price)} per {i.unit_name || 'unit'}{i.tax_rate ? ` + ${i.tax_rate}% GST` : ''}</span></Td>
+                    <Td><span className="font-medium">{tr(i.description)}</span><span className="block text-caption text-ink-500">{money(i.unit_price)} per {i.unit_name || 'unit'}{i.tax_rate ? ` + ${i.tax_rate}% GST` : ''}</span></Td>
                     <Td className="text-right tabular">{qty(i.returnable)} {i.unit_name}</Td>
-                    <Td className="text-right"><div className="ml-auto w-24"><Input aria-label={`Return quantity of ${i.description}`} type="number" min="0" max={i.returnable} step="any" disabled={i.returnable <= 0} value={r.quantity ?? ''} onChange={(e) => set(i.item_id, { quantity: e.target.value })} className="text-right" /></div></Td>
-                    <Td>{Number(r.quantity) > 0 && <div className="flex flex-wrap gap-2"><div className="w-48"><Select aria-label="What happens to the goods" value={r.disposition ?? 'RESTOCK'} onChange={(e) => set(i.item_id, { disposition: e.target.value })}>{Object.entries(DISPOSITIONS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></div>
-                      {(r.disposition ?? 'RESTOCK') === 'RESTOCK' && i.batches.length > 1 && <div className="w-48"><Select aria-label="Batch" value={r.batch_id ?? ''} onChange={(e) => set(i.item_id, { batch_id: e.target.value })}><option value="">Which batch?</option>{i.batches.map((b) => <option key={b.batch_id} value={b.batch_id}>{b.batch_no}{b.expiry_date ? ` · exp ${dateText(b.expiry_date, { day: 'numeric', month: 'short', year: '2-digit' })}` : ''}</option>)}</Select></div>}</div>}</Td>
+                    <Td className="text-right"><div className="ml-auto w-24"><Input aria-label={tr('Return quantity of {{description}}', { description: i.description })} type="number" min="0" max={i.returnable} step="any" disabled={i.returnable <= 0} value={r.quantity ?? ''} onChange={(e) => set(i.item_id, { quantity: e.target.value })} className="text-right" /></div></Td>
+                    <Td>{Number(r.quantity) > 0 && <div className="flex flex-wrap gap-2"><div className="w-48"><Select aria-label={tr('What happens to the goods')} value={r.disposition ?? 'RESTOCK'} onChange={(e) => set(i.item_id, { disposition: e.target.value })}>{Object.entries(DISPOSITIONS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></div>
+                      {(r.disposition ?? 'RESTOCK') === 'RESTOCK' && i.batches.length > 1 && <div className="w-48"><Select aria-label={tr('Batch')} value={r.batch_id ?? ''} onChange={(e) => set(i.item_id, { batch_id: e.target.value })}><option value="">{tr('Which batch?')}</option>{i.batches.map((b) => <option key={b.batch_id} value={b.batch_id}>{b.batch_no}{b.expiry_date ? ` · exp ${dateText(b.expiry_date, { day: 'numeric', month: 'short', year: '2-digit' })}` : ''}</option>)}</Select></div>}</div>}</Td>
                   </Tr>
                 );
               })}
             </tbody>
           </Table>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-lg bg-surface-2 px-4 py-3 text-small"><p className="text-caption text-ink-500">Credit note (estimate, exact amount is worked out when saved)</p><p className="tabular text-title font-semibold">{money(Math.round(estimate * 100) / 100)}</p><p className="text-caption text-ink-500">It first reduces what the customer still owes on the invoice ({money(inv.balance_due)}).</p></div>
-            <Field id="sr-refund" label="Refund any excess now" hint="Only if they have already paid more than they now owe"><Select id="sr-refund" value={refund} onChange={(e) => setRefund(e.target.value)}><option value="">No — keep it as credit</option>{Object.entries(PAYMENT_METHODS).filter(([k]) => k !== 'CHEQUE').map(([k, v]) => <option key={k} value={k}>Refund by {v.toLowerCase()}</option>)}</Select></Field>
+            <div className="rounded-lg bg-surface-2 px-4 py-3 text-small"><p className="text-caption text-ink-500">{tr('Credit note (estimate, exact amount is worked out when saved)')}</p><p className="tabular text-title font-semibold">{money(Math.round(estimate * 100) / 100)}</p><p className="text-caption text-ink-500">{tr('It first reduces what the customer still owes on the invoice ({{money}}).', { money: money(inv.balance_due) })}</p></div>
+            <Field id="sr-refund" label={tr('Refund any excess now')} hint={tr('Only if they have already paid more than they now owe')}><Select id="sr-refund" value={refund} onChange={(e) => setRefund(e.target.value)}><option value="">{tr('No — keep it as credit')}</option>{Object.entries(PAYMENT_METHODS).filter(([k]) => k !== 'CHEQUE').map(([k, v]) => <option key={k} value={k}>{tr('Refund by {{v}}', { v: v.toLowerCase() })}</option>)}</Select></Field>
           </div>
-          <div className="flex justify-end gap-2 border-t border-line pt-4"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={submit} loading={busy} disabled={!lines.length || inv.status === 'CANCELLED'}>Issue credit note</Button></div>
+          <div className="flex justify-end gap-2 border-t border-line pt-4"><Button variant="ghost" onClick={onClose}>{tr('Cancel')}</Button><Button onClick={submit} loading={busy} disabled={!lines.length || inv.status === 'CANCELLED'}>{tr('Issue credit note')}</Button></div>
         </div>
       )}
     </Modal>
@@ -66,6 +68,7 @@ export const SalesReturnModal = ({ invoiceId, onClose, onDone }) => {
 };
 
 export const PurchaseReturnModal = ({ poId, onClose, onDone }) => {
+  const tr = useT();
   const { data: po, loading, error } = useLoad(`/wholesale/purchase-orders/${poId}`);
   const opts = useLoad(`/wholesale/purchase-orders/${poId}/debit-notes/options`);
   const [rows, setRows] = useState({});
@@ -79,20 +82,20 @@ export const PurchaseReturnModal = ({ poId, onClose, onDone }) => {
     if (out) onDone(out);
   };
   return (
-    <Modal title={po ? `Return goods from ${po.po_number}` : 'Return'} onClose={onClose} wide>
+    <Modal title={po ? `Return goods from ${po.po_number}` : tr('Return')} onClose={onClose} wide>
       <Alert>{error || opts.error}</Alert>
       <ListState loading={(loading || opts.loading) && !opts.data} />
       {opts.data && (
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="pr-reason" label="Reason"><Select id="pr-reason" value={reason} onChange={(e) => setReason(e.target.value)}>{Object.entries(RETURN_REASONS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
-            <Field id="pr-notes" label="Notes for the supplier"><Input id="pr-notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={300} /></Field>
+            <Field id="pr-reason" label={tr('Reason')}><Select id="pr-reason" value={reason} onChange={(e) => setReason(e.target.value)}>{Object.entries(RETURN_REASONS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
+            <Field id="pr-notes" label={tr('Notes for the supplier')}><Input id="pr-notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={300} /></Field>
           </div>
-          <Table><Thead><Th>Item</Th><Th className="text-right">Received</Th><Th className="text-right">Already returned</Th><Th className="text-right">Return</Th></Thead>
-            <tbody>{opts.data.items.map((i) => <Tr key={i.item_id}><Td><span className="font-medium">{i.description}</span><span className="block text-caption text-ink-500">{money(i.unit_cost)} each{i.tax_rate ? ` + ${i.tax_rate}% GST` : ''}</span></Td><Td className="text-right tabular">{qty(i.received)}</Td><Td className="text-right tabular">{i.returned ? qty(i.returned) : '—'}</Td>
-              <Td className="text-right"><div className="ml-auto w-24"><Input aria-label={`Return quantity of ${i.description}`} type="number" min="0" max={i.returnable} step="any" disabled={i.returnable <= 0} value={rows[i.item_id] ?? ''} onChange={(e) => setRows({ ...rows, [i.item_id]: e.target.value })} className="text-right" /></div></Td></Tr>)}</tbody></Table>
-          <div className="rounded-lg bg-surface-2 px-4 py-3 text-small"><p className="text-caption text-ink-500">Debit note value</p><p className="tabular text-title font-semibold">{money(Math.round(total * 100) / 100)}</p><p className="text-caption text-ink-500">It reduces what you owe this supplier. The goods leave your stock (oldest batch first unless you name one).</p></div>
-          <div className="flex justify-end gap-2 border-t border-line pt-4"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={submit} loading={busy} disabled={!lines.length}>Issue debit note</Button></div>
+          <Table><Thead><Th>{tr('Item')}</Th><Th className="text-right">{tr('Received')}</Th><Th className="text-right">{tr('Already returned')}</Th><Th className="text-right">{tr('Return')}</Th></Thead>
+            <tbody>{opts.data.items.map((i) => <Tr key={i.item_id}><Td><span className="font-medium">{tr(i.description)}</span><span className="block text-caption text-ink-500">{money(i.unit_cost)} each{i.tax_rate ? ` + ${i.tax_rate}% GST` : ''}</span></Td><Td className="text-right tabular">{qty(i.received)}</Td><Td className="text-right tabular">{i.returned ? qty(i.returned) : '—'}</Td>
+              <Td className="text-right"><div className="ml-auto w-24"><Input aria-label={tr('Return quantity of {{description}}', { description: i.description })} type="number" min="0" max={i.returnable} step="any" disabled={i.returnable <= 0} value={rows[i.item_id] ?? ''} onChange={(e) => setRows({ ...rows, [i.item_id]: e.target.value })} className="text-right" /></div></Td></Tr>)}</tbody></Table>
+          <div className="rounded-lg bg-surface-2 px-4 py-3 text-small"><p className="text-caption text-ink-500">{tr('Debit note value')}</p><p className="tabular text-title font-semibold">{money(Math.round(total * 100) / 100)}</p><p className="text-caption text-ink-500">{tr('It reduces what you owe this supplier. The goods leave your stock (oldest batch first unless you name one).')}</p></div>
+          <div className="flex justify-end gap-2 border-t border-line pt-4"><Button variant="ghost" onClick={onClose}>{tr('Cancel')}</Button><Button onClick={submit} loading={busy} disabled={!lines.length}>{tr('Issue debit note')}</Button></div>
         </div>
       )}
     </Modal>

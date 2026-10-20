@@ -89,7 +89,7 @@ export default function PriceListScreen() {
 
             <SectionTitle>Add or change a price</SectionTitle>
             {draft ? (
-              <View style={{ padding: 16, gap: 10, backgroundColor: '#eaf1ff' }}>
+              <View style={{ padding: 16, gap: 10, backgroundColor: color.tint }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: color.ink }}>{draft.name}</Text>
                 <Soft>Sold by</Soft>
                 <Chips items={units.map((u, i) => ({ id: i === 0 ? '' : u, label: u }))} value={draft.unit_name ?? ''} onChange={(u) => edit({ unit_name: u || null })} />

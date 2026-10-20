@@ -1,3 +1,4 @@
+import { formatDate } from '../lib/display.ts';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
@@ -39,7 +40,7 @@ export default function Returns() {
           style={{ flex: 1, marginTop: 8 }} data={list.data ?? []} keyExtractor={(r) => String(r.return_id)} refreshing={list.busy} onRefresh={() => { void list.refresh(); }}
           ListEmptyComponent={list.data ? <Empty>No returns here yet.</Empty> : null}
           renderItem={({ item: r }) => (
-            <Line left={`${r.return_number} · ${r.customer ?? r.supplier ?? ''}`} sub={`${String(r.created_at).slice(0, 10)} · ${REASON_LABEL[r.reason]} · ${r.invoice_number ?? r.po_number ?? ''}${r.cn_number ? ` · ${r.cn_number}` : r.dn_number ? ` · ${r.dn_number}` : ''}`}
+            <Line left={`${r.return_number} · ${r.customer ?? r.supplier ?? ''}`} sub={`${formatDate(r.created_at)} · ${REASON_LABEL[r.reason]} · ${r.invoice_number ?? r.po_number ?? ''}${r.cn_number ? ` · ${r.cn_number}` : r.dn_number ? ` · ${r.dn_number}` : ''}`}
               right={money(r.cn_total ?? r.dn_total ?? 0)} onPress={() => router.push({ pathname: '/wh-return/[id]', params: { id: String(r.return_id) } })} />
           )}
         />

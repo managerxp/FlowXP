@@ -28,6 +28,11 @@ const router = Router();
 
 const read = [requireAuth, withBusiness(), wholesaleOnly];
 const write = [requireAuth, withBusiness({ requireActive: true }), wholesaleOnly];
+/* Sales orders and deliveries (challans) are for every kind of business, not only wholesalers: the order, fulfilment, customer, salesperson and
+   product-lookup routes below use readAll / writeAll (signed in and active, no wholesale-only gate); each is still behind its own permission and its
+   plan feature (wholesale_orders, wholesale_fulfilment), which an admin can switch off per plan, business type or business. */
+const readAll = [requireAuth, withBusiness()];
+const writeAll = [requireAuth, withBusiness({ requireActive: true })];
 const any = (...p) => requireAnyPermission(...p);
 const can = (p) => requirePermission(p);
 const feature = (f) => requirePlanFeature(f);
@@ -43,20 +48,20 @@ router.post('/import/products', ...write, can('products'), importer.importProduc
 router.post('/import/customers', ...write, can('customers'), importer.importCustomers);
 router.post('/import/suppliers', ...write, can('suppliers'), importer.importSuppliers);
 router.post('/products/bulk', ...write, can('products'), importer.bulkProducts);
-router.post('/customers/bulk', ...write, can('customers'), importer.bulkCustomers);
+router.post('/customers/bulk', ...writeAll, can('customers'), importer.bulkCustomers);
 
 /* ── settings ─────────────────────────────────────────────────────────────── */
 router.get('/settings', ...read, parties.getSettings);
 router.put('/settings', ...write, can('settings'), parties.updateSettings);
 
 /* ── products, categories, units ──────────────────────────────────────────── */
-router.get('/products', ...read, any('products', 'inventory', 'billing', 'sales_orders', 'purchases'), catalog.list);
-router.get('/products/lookup', ...read, any('products', 'inventory', 'billing', 'sales_orders', 'purchases', 'fulfilment'), catalog.lookup);
+router.get('/products', ...readAll, any('products', 'inventory', 'billing', 'sales_orders', 'purchases'), catalog.list);
+router.get('/products/lookup', ...readAll, any('products', 'inventory', 'billing', 'sales_orders', 'purchases', 'fulfilment'), catalog.lookup);
 router.post('/products', ...write, can('products'), catalog.create);
 router.post('/products/bulk-price', ...write, can('pricing'), catalog.bulkUpdate);
-router.get('/products/:id', ...read, any('products', 'inventory', 'billing', 'sales_orders', 'purchases'), catalog.get);
+router.get('/products/:id', ...readAll, any('products', 'inventory', 'billing', 'sales_orders', 'purchases'), catalog.get);
 router.put('/products/:id', ...write, can('products'), catalog.update);
-router.get('/categories', ...read, any('products', 'inventory', 'billing', 'sales_orders'), catalog.categories);
+router.get('/categories', ...readAll, any('products', 'inventory', 'billing', 'sales_orders'), catalog.categories);
 router.post('/categories', ...write, can('products'), catalog.createCategory);
 router.put('/categories/:id', ...write, can('products'), catalog.renameCategory);
 
@@ -67,62 +72,62 @@ router.put('/price-lists/:id', ...write, can('pricing'), feature('wholesale_pric
 router.get('/price-lists/:id/items', ...read, any('pricing', 'sales_orders'), feature('wholesale_pricing'), catalog.listItems);
 router.put('/price-lists/:id/items', ...write, can('pricing'), feature('wholesale_pricing'), catalog.setItems);
 router.delete('/price-lists/:id/items/:itemId', ...write, can('pricing'), feature('wholesale_pricing'), catalog.removeItem);
-router.get('/customers/:id/prices', ...read, any('pricing', 'sales_orders'), feature('wholesale_pricing'), catalog.customerPrices);
-router.put('/customers/:id/prices', ...write, can('pricing'), feature('wholesale_pricing'), catalog.setCustomerPrices);
-router.delete('/customers/:id/prices/:priceId', ...write, can('pricing'), feature('wholesale_pricing'), catalog.removeCustomerPrice);
-router.post('/pricing/quote', ...read, any('sales_orders', 'billing', 'pricing'), catalog.quote);
+router.get('/customers/:id/prices', ...readAll, any('pricing', 'sales_orders'), feature('wholesale_pricing'), catalog.customerPrices);
+router.put('/customers/:id/prices', ...writeAll, can('pricing'), feature('wholesale_pricing'), catalog.setCustomerPrices);
+router.delete('/customers/:id/prices/:priceId', ...writeAll, can('pricing'), feature('wholesale_pricing'), catalog.removeCustomerPrice);
+router.post('/pricing/quote', ...readAll, any('sales_orders', 'billing', 'pricing'), catalog.quote);
 
 /* ── customers ────────────────────────────────────────────────────────────── */
-router.get('/customers', ...read, any('customers', 'sales_orders', 'billing'), parties.listCustomers);
-router.post('/customers', ...write, any('customers', 'sales_orders'), parties.createCustomer);
-router.get('/customers/:id', ...read, any('customers', 'sales_orders', 'billing'), parties.getCustomer);
-router.put('/customers/:id', ...write, can('customers'), parties.updateCustomer);
-router.post('/customers/:id/archive', ...write, can('customers'), parties.archiveCustomer);
-router.post('/customers/:id/restore', ...write, can('customers'), parties.restoreCustomer);
-router.get('/customers/:id/ledger', ...read, any('payments', 'reports', 'customers'), parties.customerLedger);
-router.get('/customers/:id/ageing', ...read, any('payments', 'reports', 'customers'), parties.customerAgeing);
-router.get('/customers/:id/invoices', ...read, any('payments', 'billing', 'customers'), parties.customerInvoices);
-router.get('/customers/:id/credit', ...read, any('customers', 'sales_orders', 'payments'), parties.customerCredit);
-router.put('/customers/:id/credit-limit', ...write, can('payments'), parties.setCreditLimit);
+router.get('/customers', ...readAll, any('customers', 'sales_orders', 'billing'), parties.listCustomers);
+router.post('/customers', ...writeAll, any('customers', 'sales_orders'), parties.createCustomer);
+router.get('/customers/:id', ...readAll, any('customers', 'sales_orders', 'billing'), parties.getCustomer);
+router.put('/customers/:id', ...writeAll, can('customers'), parties.updateCustomer);
+router.post('/customers/:id/archive', ...writeAll, can('customers'), parties.archiveCustomer);
+router.post('/customers/:id/restore', ...writeAll, can('customers'), parties.restoreCustomer);
+router.get('/customers/:id/ledger', ...readAll, any('payments', 'reports', 'customers'), parties.customerLedger);
+router.get('/customers/:id/ageing', ...readAll, any('payments', 'reports', 'customers'), parties.customerAgeing);
+router.get('/customers/:id/invoices', ...readAll, any('payments', 'billing', 'customers'), parties.customerInvoices);
+router.get('/customers/:id/credit', ...readAll, any('customers', 'sales_orders', 'payments'), parties.customerCredit);
+router.put('/customers/:id/credit-limit', ...writeAll, can('payments'), parties.setCreditLimit);
 
 /* ── sales orders ─────────────────────────────────────────────────────────── */
 const orderGate = [feature('wholesale_orders')];
 // the warehouse (fulfilment) may list the orders waiting to be picked; the controller shows it nothing else
-router.get('/orders', ...read, any('sales_orders', 'fulfilment'), ...orderGate, orders.list);
-router.get('/backorders', ...read, any('sales_orders', 'fulfilment'), ...orderGate, orders.backorders);
-router.post('/orders/preview', ...read, can('sales_orders'), ...orderGate, orders.preview);
-router.post('/orders', ...write, can('sales_orders'), ...orderGate, once, orders.create);
-router.get('/orders/:id', ...read, any('sales_orders', 'fulfilment'), ...orderGate, orders.get);
-router.put('/orders/:id', ...write, can('sales_orders'), ...orderGate, orders.update);
-router.post('/orders/:id/submit', ...write, can('sales_orders'), ...orderGate, once, orders.submit);
-router.post('/orders/:id/confirm', ...write, can('sales_orders'), ...orderGate, once, orders.confirm);
-router.post('/orders/:id/reserve', ...write, any('sales_orders', 'fulfilment'), ...orderGate, once, orders.reserve);
-router.post('/orders/:id/cancel', ...write, can('sales_orders'), ...orderGate, once, orders.cancel);
-router.post('/orders/:id/reject', ...write, can('sales_cancel'), ...orderGate, once, orders.reject);
-router.post('/orders/:id/close', ...write, can('sales_cancel'), ...orderGate, once, orders.close);
+router.get('/orders', ...readAll, any('sales_orders', 'fulfilment'), ...orderGate, orders.list);
+router.get('/backorders', ...readAll, any('sales_orders', 'fulfilment'), ...orderGate, orders.backorders);
+router.post('/orders/preview', ...readAll, can('sales_orders'), ...orderGate, orders.preview);
+router.post('/orders', ...writeAll, can('sales_orders'), ...orderGate, once, orders.create);
+router.get('/orders/:id', ...readAll, any('sales_orders', 'fulfilment'), ...orderGate, orders.get);
+router.put('/orders/:id', ...writeAll, can('sales_orders'), ...orderGate, orders.update);
+router.post('/orders/:id/submit', ...writeAll, can('sales_orders'), ...orderGate, once, orders.submit);
+router.post('/orders/:id/confirm', ...writeAll, can('sales_orders'), ...orderGate, once, orders.confirm);
+router.post('/orders/:id/reserve', ...writeAll, any('sales_orders', 'fulfilment'), ...orderGate, once, orders.reserve);
+router.post('/orders/:id/cancel', ...writeAll, can('sales_orders'), ...orderGate, once, orders.cancel);
+router.post('/orders/:id/reject', ...writeAll, can('sales_cancel'), ...orderGate, once, orders.reject);
+router.post('/orders/:id/close', ...writeAll, can('sales_cancel'), ...orderGate, once, orders.close);
 
 /* ── warehouse fulfilment: pick → pack → dispatch → deliver ──────────────── */
 const fulfilGate = [feature('wholesale_fulfilment')];
-router.get('/fulfilment/summary', ...read, can('fulfilment'), ...fulfilGate, fulfilment.summary);
-router.post('/orders/:id/pick-lists', ...write, can('fulfilment'), ...fulfilGate, once, fulfilment.createPick);
-router.get('/pick-lists', ...read, can('fulfilment'), ...fulfilGate, fulfilment.listPicks);
-router.get('/pick-lists/:id', ...read, can('fulfilment'), ...fulfilGate, fulfilment.getPick);
-router.post('/pick-lists/:id/start', ...write, can('fulfilment'), ...fulfilGate, fulfilment.startPick);
-router.post('/pick-lists/:id/pick', ...write, can('fulfilment'), ...fulfilGate, once, fulfilment.recordPick);
-router.post('/pick-lists/:id/pack', ...write, can('fulfilment'), ...fulfilGate, once, fulfilment.pack);
-router.post('/pick-lists/:id/cancel', ...write, can('fulfilment'), ...fulfilGate, once, fulfilment.cancelPick);
-router.post('/pick-lists/:id/dispatch', ...write, can('fulfilment'), ...fulfilGate, once, fulfilment.dispatch);
-router.get('/deliveries', ...read, any('fulfilment', 'billing'), ...fulfilGate, fulfilment.listDeliveries);
-router.get('/deliveries/:id', ...read, any('fulfilment', 'billing'), ...fulfilGate, fulfilment.getDelivery);
-router.get('/deliveries/:id/challan', ...read, any('fulfilment', 'billing'), ...fulfilGate, fulfilment.challan);
-router.put('/deliveries/:id', ...write, can('fulfilment'), ...fulfilGate, fulfilment.updateDelivery);
-router.post('/deliveries/:id/status', ...write, can('fulfilment'), ...fulfilGate, once, fulfilment.setDeliveryStatus);
+router.get('/fulfilment/summary', ...readAll, can('fulfilment'), ...fulfilGate, fulfilment.summary);
+router.post('/orders/:id/pick-lists', ...writeAll, can('fulfilment'), ...fulfilGate, once, fulfilment.createPick);
+router.get('/pick-lists', ...readAll, can('fulfilment'), ...fulfilGate, fulfilment.listPicks);
+router.get('/pick-lists/:id', ...readAll, can('fulfilment'), ...fulfilGate, fulfilment.getPick);
+router.post('/pick-lists/:id/start', ...writeAll, can('fulfilment'), ...fulfilGate, fulfilment.startPick);
+router.post('/pick-lists/:id/pick', ...writeAll, can('fulfilment'), ...fulfilGate, once, fulfilment.recordPick);
+router.post('/pick-lists/:id/pack', ...writeAll, can('fulfilment'), ...fulfilGate, once, fulfilment.pack);
+router.post('/pick-lists/:id/cancel', ...writeAll, can('fulfilment'), ...fulfilGate, once, fulfilment.cancelPick);
+router.post('/pick-lists/:id/dispatch', ...writeAll, can('fulfilment'), ...fulfilGate, once, fulfilment.dispatch);
+router.get('/deliveries', ...readAll, any('fulfilment', 'billing'), ...fulfilGate, fulfilment.listDeliveries);
+router.get('/deliveries/:id', ...readAll, any('fulfilment', 'billing'), ...fulfilGate, fulfilment.getDelivery);
+router.get('/deliveries/:id/challan', ...readAll, any('fulfilment', 'billing'), ...fulfilGate, fulfilment.challan);
+router.put('/deliveries/:id', ...writeAll, can('fulfilment'), ...fulfilGate, fulfilment.updateDelivery);
+router.post('/deliveries/:id/status', ...writeAll, can('fulfilment'), ...fulfilGate, once, fulfilment.setDeliveryStatus);
 
 /* ── warehouses, stock, batches, transfers ────────────────────────────────── */
 const batchGate = [feature('wholesale_batches')];
-router.get('/warehouses', ...read, any('inventory', 'fulfilment', 'sales_orders', 'purchases', 'reports'), inventory.listWarehouses);   // reports: the report filters name warehouses
+router.get('/warehouses', ...readAll, any('inventory', 'fulfilment', 'sales_orders', 'purchases', 'reports'), inventory.listWarehouses);   // reports: the report filters name warehouses
 router.put('/warehouses/:id', ...write, can('inventory'), inventory.updateWarehouse);
-router.get('/warehouses/:id/locations', ...read, any('inventory', 'fulfilment'), inventory.listLocations);
+router.get('/warehouses/:id/locations', ...readAll, any('inventory', 'fulfilment'), inventory.listLocations);
 router.post('/warehouses/:id/locations', ...write, can('inventory'), inventory.createLocation);
 router.put('/locations/:id', ...write, can('inventory'), inventory.updateLocation);
 router.put('/products/:id/bin', ...write, can('inventory'), inventory.assignBin);
@@ -165,7 +170,7 @@ router.get('/receipts/:id', ...read, any('payments', 'reports', 'collections'), 
 router.post('/receipts/:id/allocate', ...write, any('payments', 'collections'), once, money.allocateLater);
 router.post('/receipts/:id/reverse', ...write, can('refunds'), once, money.reverse);
 router.post('/refunds', ...write, can('refunds'), once, money.refund);
-router.get('/customers/:id/open-invoices', ...read, any('payments', 'billing', 'customers', 'collections'), money.openInvoices);
+router.get('/customers/:id/open-invoices', ...readAll, any('payments', 'billing', 'customers', 'collections'), money.openInvoices);
 
 /* ── returns (credit notes and debit notes) ───────────────────────────────── */
 router.get('/returns', ...read, any('refunds', 'inventory', 'purchases', 'reports'), returns.list);
@@ -186,9 +191,9 @@ router.get('/suppliers/:id/ledger', ...read, any('payments', 'reports', 'supplie
 router.post('/ledger-adjustments', ...write, can('payments'), once, parties.adjustLedger);
 
 /* ── salespeople ──────────────────────────────────────────────────────────── */
-router.get('/salespeople', ...read, any('customers', 'sales_orders', 'reports', 'settings'), parties.listSalespeople);
-router.post('/salespeople', ...write, can('settings'), parties.createSalesperson);
-router.put('/salespeople/:id', ...write, can('settings'), parties.updateSalesperson);
-router.get('/salespeople/:id/performance', ...read, any('reports', 'settings'), parties.salespersonPerformance);
+router.get('/salespeople', ...readAll, any('customers', 'sales_orders', 'reports', 'settings'), parties.listSalespeople);
+router.post('/salespeople', ...writeAll, can('settings'), parties.createSalesperson);
+router.put('/salespeople/:id', ...writeAll, can('settings'), parties.updateSalesperson);
+router.get('/salespeople/:id/performance', ...readAll, any('reports', 'settings'), parties.salespersonPerformance);
 
 export default router;

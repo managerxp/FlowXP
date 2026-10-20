@@ -1,0 +1,146 @@
+/*
+ * Auto parts workshop: job cards (a vehicle in for service, its parts held for the customer, labour, one bill) and the staff and payroll a workshop needs.
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { setupTestDb } from './helpers/db.js';
+import { addPart, makeShop } from './helpers/autoparts.js';
+
+const { pool, skip, cleanup } = await setupTestDb();
+const { runMigrations } = await import('../src/config/migrate.js');
+const jobs = (await import('../src/controllers/autopartsJobcards.controller.js')).default;
+const staff = (await import('../src/controllers/hotelStaff.controller.js')).default;
+const { estimateOf } = await import('../src/modules/autoparts/jobcards.js');
+
+test.after(cleanup);
+
+test('the estimate on a card: parts and labour before tax, the tax, the total', () => {
+  const e = estimateOf([{ kind: 'PART', quantity: 2, unit_price_paise: 100000, tax_rate: 18 }, { kind: 'LABOUR', quantity: 1, unit_price_paise: 50000, tax_rate: 18 }]);
+  assert.deepEqual(e, { parts_paise: 200000, labour_paise: 50000, tax_paise: 45000, total_paise: 295000 });
+});
+
+let S; let tenant; let customer; let pad; let oil; let mechanic;
+const call = (handler, extra, t = tenant) => S.call(handler, extra, t);
+const okBody = (res, code = 200) => { assert.equal(res.code, code, JSON.stringify(res.body)); assert.equal(res.body.success, true); return res.body.data; };
+const stockRow = async (id) => (await pool.query(`SELECT quantity, reserved_qty FROM branch_stock WHERE branch_id = $1 AND product_id = $2`, [S.branchId, id])).rows[0];
+const open = (extra = {}) => call(jobs.create, { body: { customer_id: customer, vehicle_reg: 'ka01 ab 1234', vehicle_type: 'CAR', complaint: 'Brake noise', ...extra } });
+
+test('setup', { skip }, async () => {
+  await runMigrations(pool);
+  S = await makeShop(pool, 'jc');
+  tenant = S.tenantFor();
+  customer = (await pool.query(`INSERT INTO customers (business_id, name, phone) VALUES ($1,'Anil Kumar','9000000010') RETURNING customer_id`, [S.businessId])).rows[0].customer_id;
+  pad = await addPart(pool, S, { name: 'Brake pad set', stock: 5, price: 1000 });
+  oil = await addPart(pool, S, { name: 'Engine oil 1L', stock: 1, price: 400 });
+});
+
+test('staff: a mechanic is an employee; attendance and payroll work for a parts shop', { skip }, async () => {
+  const e = okBody(await call(staff.saveEmployee, { body: { name: 'Raju Mechanic', designation: 'Mechanic', salary: 18000, pay_type: 'MONTHLY', joined_on: '2026-01-01' } }), 201);
+  mechanic = e.employee_id;
+  assert.equal(e.salary, 18000);
+  const noPay = await call(staff.listEmployees, { query: {} }, S.tenantFor('PARTS_COUNTER'));
+  assert.equal(noPay.code, 200);
+  assert.ok(noPay.body.data.every((x) => x.salary_paise === undefined && x.salary === undefined), 'a counter person never sees a salary');
+  const month = '2026-09';
+  okBody(await call(staff.markAttendance, { body: { date: '2026-09-02', entries: [{ employee_id: mechanic, status: 'PRESENT' }] } }));
+  const run = okBody(await call(staff.generate, { body: { month } }));
+  assert.equal(run.month, month);
+  const slip = run.slips.find((p) => p.employee_id === mechanic);
+  assert.ok(slip && slip.net_pay_paise >= 0, 'a payslip is made from attendance');
+  const today = (await call(staff.attendanceDay, { query: {} }));
+  assert.equal(today.code, 200, 'the staff screens start on the shop\'s own date, not a hotel\'s');
+});
+
+test('a job card: open, hold parts, labour, shortage, fitment, re-quantity, ready, bill', { skip }, async () => {
+  const j = okBody(await open({ mechanic_id: mechanic, odometer_km: 42000 }), 201);
+  assert.equal(j.job_no, 'JC-0001'); assert.equal(j.status, 'OPEN'); assert.equal(j.vehicle_reg, 'KA01 AB 1234'); assert.equal(j.mechanic_name, 'Raju Mechanic');
+  const id = j.job_id;
+
+  let g = okBody(await call(jobs.lineAdd, { params: { id }, body: { kind: 'PART', product_id: pad, quantity: 2 } }), 201);
+  assert.equal(g.lines[0].held, true); assert.equal(g.lines[0].unit_price_paise, 100000);
+  assert.equal((await stockRow(pad)).reserved_qty, '2.000', 'the parts are held for the customer');
+  g = okBody(await call(jobs.lineAdd, { params: { id }, body: { kind: 'LABOUR', description: 'Fit brake pads', unit_price: 500 } }), 201);
+  assert.equal(g.estimate.total_paise, 295000, '2 pads and labour with 18% GST');
+
+  const short = await call(jobs.lineAdd, { params: { id }, body: { kind: 'PART', product_id: oil, quantity: 3 } });
+  assert.equal(short.code, 409); assert.match(short.body.message, /free to hold/);
+  g = okBody(await call(jobs.lineAdd, { params: { id }, body: { kind: 'PART', product_id: oil, quantity: 3, allow_short: true } }), 201);
+  const oilLine = g.lines.find((l) => l.product_id === oil);
+  assert.equal(oilLine.held, false, 'a part the shop lacks is quoted but not held');
+
+  // fitment: the part is recorded as not fitting this vehicle model
+  const make = (await pool.query(`INSERT INTO vehicle_makes (business_id, name, vehicle_type) VALUES ($1,'Maruti','CAR') RETURNING make_id`, [S.businessId])).rows[0].make_id;
+  const model = (await pool.query(`INSERT INTO vehicle_models (business_id, make_id, name) VALUES ($1,$2,'Swift') RETURNING model_id`, [S.businessId, make])).rows[0].model_id;
+  await pool.query(`INSERT INTO part_fitment (business_id, product_id, model_id, status) VALUES ($1,$2,$3,'NOT_FIT')`, [S.businessId, pad, model]);
+  g = okBody(await call(jobs.update, { params: { id }, body: { model_id: model } }));
+  assert.equal(g.model, 'Swift'); assert.equal(g.make, 'Maruti');
+  assert.equal(g.lines.find((l) => l.product_id === pad).fitment, 'NOT_FIT', 'a part marked as not fitting is flagged on the card');
+  assert.equal(g.lines.find((l) => l.product_id === oil).fitment, 'UNKNOWN');
+
+  g = okBody(await call(jobs.lineUpdate, { params: { id: g.lines.find((l) => l.product_id === pad).line_id }, body: { quantity: 3 } }));
+  assert.equal((await stockRow(pad)).reserved_qty, '3.000', 'changing the quantity changes the hold');
+  g = okBody(await call(jobs.lineRemove, { params: { id: oilLine.line_id } }));
+  assert.equal(g.lines.length, 2);
+
+  g = okBody(await call(jobs.status, { params: { id }, body: { status: 'READY' } }));
+  assert.equal(g.status, 'READY'); assert.ok(g.ready_at);
+
+  const billed = okBody(await call(jobs.bill, { params: { id }, body: { payment: { amount: 'FULL', method: 'CASH' } } }), 201);
+  assert.equal(billed.job.status, 'BILLED'); assert.ok(billed.job.invoice_id);
+  assert.equal(billed.invoice.total, 4130, '3 pads 3000 + labour 500, plus 18% GST');
+  const after = await stockRow(pad);
+  assert.equal(after.quantity, '2.000', 'billing took 3 of 5'); assert.equal(after.reserved_qty, '0.000', 'and used the hold up');
+  const res = (await pool.query(`SELECT status FROM part_reservations WHERE business_id = $1`, [S.businessId])).rows;
+  assert.ok(res.every((r) => r.status !== 'OPEN'), 'no hold is left open');
+  assert.ok(res.some((r) => r.status === 'FULFILLED'), 'billing used the hold up');
+
+  const late = await call(jobs.lineAdd, { params: { id }, body: { kind: 'LABOUR', description: 'More', unit_price: 100 } });
+  assert.equal(late.code, 409, 'a billed card is closed');
+  assert.equal((await call(jobs.status, { params: { id }, body: { status: 'CANCELLED' } })).code, 409);
+  assert.equal(okBody(await call(jobs.get, { params: { id } })).invoice_id, billed.job.invoice_id);
+});
+
+test('cancelling a card gives every held part back; a lower price needs the price change right', { skip }, async () => {
+  const before = await stockRow(pad);
+  const j = okBody(await open({ vehicle_reg: 'MH12 XY 9999', complaint: 'Service' }), 201);
+  assert.equal(j.job_no, 'JC-0002');
+  okBody(await call(jobs.lineAdd, { params: { id: j.job_id }, body: { kind: 'PART', product_id: pad, quantity: 1 } }), 201);
+  assert.equal((await stockRow(pad)).reserved_qty, '1.000');
+  const counter = S.tenantFor('PARTS_COUNTER');
+  const cheap = await call(jobs.lineAdd, { params: { id: j.job_id }, body: { kind: 'PART', product_id: pad, quantity: 1, unit_price: 100 } }, counter);
+  assert.equal(cheap.code, 403, 'the counter cannot undercut the list price');
+  const cancelled = okBody(await call(jobs.status, { params: { id: j.job_id }, body: { status: 'CANCELLED' } }));
+  assert.equal(cancelled.status, 'CANCELLED');
+  const now = await stockRow(pad);
+  assert.equal(now.reserved_qty, before.reserved_qty, 'the hold is released'); assert.equal(now.quantity, before.quantity);
+});
+
+test('history and reminders: earlier visits of the same vehicle, and services that are due', { skip }, async () => {
+  const list = okBody(await call(jobs.list, { query: { reg: 'ka01ab1234', status: 'ALL' } }));
+  assert.equal(list.length, 1); assert.equal(list[0].status, 'BILLED');
+  const next = okBody(await open({ vehicle_reg: 'KA01 AB 1234' }), 201);
+  assert.equal(next.earlier_visits, 1, 'the card knows the vehicle has been here before');
+  await pool.query(`UPDATE job_cards SET next_service_on = CURRENT_DATE + 5, status = 'BILLED', billed_at = now() WHERE job_id = $1`, [next.job_id]);
+  const due = okBody(await call(jobs.due, { query: { days: '14' } }));
+  assert.equal(due.length, 1); assert.equal(due[0].vehicle_reg, 'KA01 AB 1234'); assert.equal(due[0].overdue, false); assert.equal(due[0].customer_name, 'Anil Kumar');
+  const live = okBody(await call(jobs.list, { query: {} }));
+  assert.ok(live.every((x) => ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS', 'READY'].includes(x.status)), 'the default list is the work in hand');
+});
+
+test('another shop never sees this shop\'s cards, and a card needs a real customer and registration', { skip }, async () => {
+  const other = await makeShop(pool, 'jc2');
+  const list = await other.call(jobs.list, { query: { status: 'ALL' } });
+  assert.deepEqual(list.body.data, []);
+  const first = okBody(await call(jobs.list, { query: { status: 'ALL' } }))[0];
+  assert.equal((await other.call(jobs.get, { params: { id: first.job_id } })).code, 404);
+  assert.equal((await call(jobs.create, { body: { customer_id: 999999, vehicle_reg: 'KA01AB1' } })).code, 400);
+  assert.equal((await call(jobs.create, { body: { customer_id: customer, vehicle_reg: '!!' } })).code, 400);
+});
+
+test('a new workshop starts with workshop departments and shifts, not a hotel\'s', { skip }, async () => {
+  const shop = await makeShop(pool, 'jc3');
+  const d = (await shop.call(staff.departments, {})).body.data.map((x) => x.name);
+  assert.deepEqual(d, ['Accounts', 'Management', 'Parts counter', 'Stores', 'Workshop']);
+  const s = (await shop.call(staff.shifts, {})).body.data.map((x) => x.name);
+  assert.deepEqual(s.sort(), ['Day', 'Late']);
+});

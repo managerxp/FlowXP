@@ -68,7 +68,7 @@ export default function Options() {
                   <Pressable
                     key={m.modifier_id} accessibilityRole="button" accessibilityState={{ selected: on }}
                     onPress={() => setChosen((c) => toggle(g, c, m.modifier_id))}
-                    style={{ minHeight: 48, paddingHorizontal: 14, justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: on ? color.brand : color.line, backgroundColor: on ? '#eaf1ff' : color.card }}
+                    style={{ minHeight: 48, paddingHorizontal: 14, justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: on ? color.brand : color.line, backgroundColor: on ? color.tint : color.card }}
                   >
                     <Text style={{ color: on ? color.brand : color.ink, fontWeight: on ? '700' : '400' }}>{m.name}{m.price_delta ? `  ${delta(m.price_delta)}` : ''}</Text>
                   </Pressable>

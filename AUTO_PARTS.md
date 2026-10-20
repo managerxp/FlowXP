@@ -60,9 +60,25 @@ Receive parts, Trade and accounts (holds, price lists, garage accounts, supplier
 
 `backend/test/autoparts{Catalog,Warehouse,Receiving,Sales,Returns,Reports}.test.js` (real Postgres per file). Performance: `node scripts/perf-autoparts.js 10000,100000`.
 
+## Workshop: job cards, staff and payroll (migration 0109; plan features `ap_jobcards`, `ap_staff`)
+
+A vehicle in for service gets a **job card** (`job_cards`, `job_card_lines`; `modules/autoparts/jobcards.js`, `/api/autoparts/jobcards`). It names the customer, the vehicle (registration, make and model from the shop's own list, odometer), the complaint, the
+mechanic (an `hr_employees` row) and a promised date, and moves OPEN > IN_PROGRESS > WAITING_PARTS > READY > BILLED (or CANCELLED). **Parts** put on a card are *held* for its customer (the existing reservations), so the counter cannot sell them; a part
+the shop lacks can be quoted with `allow_short`, unheld. Each part line shows its fitment for the card's vehicle (VERIFIED, UNVERIFIED, NOT_FIT, UNKNOWN); a NOT_FIT part is flagged, never hidden. **Labour** is a typed line with the shop's labour GST rate
+(`autoparts_settings.labour_tax_rate`, 18). A price below the list price needs `price_change`. **Billing** (`POST /jobcards/:id/bill`) makes one ordinary invoice through `createInvoiceInTransaction` for the same customer, so billing uses the holds up and takes the
+stock, GST, payments, credit limits and returns work as at the counter; a card never moves stock itself, and cancelling releases every hold. `GET /jobcards?reg=` is a vehicle's history, `GET /jobcards/due` the services whose next date is near (the ones to phone).
+
+**Staff and payroll** reuse the hotel engine (`controllers/hotelStaff.controller.js`, `modules/hotel/staff.js`, tables `hr_*`) mounted at `/api/autoparts/staff/*` (no housekeeping routes). A mechanic is an employee; `hr` covers records, roster, attendance and leave, `payroll` covers pay
+(a person with only `hr` never sees a salary). The screens start on the real calendar day (a hotel's date moves with its night audit) and a new workshop starts with Workshop, Parts counter, Stores, Accounts and Management departments and Day / Late shifts. The sheet is a payroll SHEET:
+salary, days worked, overtime, allowances and deductions; it does not work out PF, ESI, professional tax or TDS. Web: Job cards and Staff under "Spare parts" (`/app/parts/jobs`, `/app/parts/staff`, the staff pages shared with the hotel through `lib/staffBase.js`). Phone: More > Job cards, More > Staff.
+Tests: `backend/test/autopartsJobcards.test.js`.
+
 ## Not built (said plainly)
 
-- No vehicle or fitment database; no VIN lookup; no job cards or labour.
+- Job cards: no printed job card or estimate document, no photos of the vehicle, no customer approval step, no mechanic time tracking or labour commission, no checklist templates per service type, no warranty on a job.
+- Reminders for a due service are a list to phone, not an automatic message.
+
+- No vehicle or fitment database; no VIN lookup. (Job cards and labour now exist: see "Workshop" below.)
 - The billing till has no vehicle picker: it searches by name, SKU, barcode and any part number (OEM numbers included). "Find parts for a vehicle" is its own screen.
 - Per-bin stock counts, and inter-outlet transfers with a bin chosen at both ends: the retail count and outlet transfer move the stock (and shelves are trimmed automatically); the receiving outlet puts the stock away.
 - Per-part trade prices have an API (`PUT /price-lists/:id/items/:pid`) but no screen yet.

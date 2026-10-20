@@ -53,17 +53,25 @@ export const qrBytes = (data: string, paper: Paper): number[] => {
   ];
 };
 
-/** Initialise, the lines, an optional QR code, a few blank lines to feed the paper past the tear bar, and a partial cut. `drawer` also opens a cash drawer wired to the printer. */
-export const escposBytes = (text: string, paper: Paper, { cut = true, drawer = false, qr }: { cut?: boolean; drawer?: boolean; qr?: string } = {}): Uint8Array => {
-  const bytes: number[] = [ESC, 0x40];                 // initialise
-  if (drawer) bytes.push(ESC, 0x70, 0x00, 0x19, 0xfa);   // pulse pin 2
-  for (const raw of printable(text).split('\n')) {
-    for (const line of fitLine(raw, COLUMNS[paper])) { for (const ch of line) bytes.push(ch.charCodeAt(0)); bytes.push(LF); }
-  }
-  if (qr) bytes.push(LF, ...qrBytes(qr, paper));
-  bytes.push(LF, LF, LF);
-  if (cut) bytes.push(GS, 0x56, 0x01);                 // partial cut (printers without a cutter ignore it)
-  return Uint8Array.from(bytes);
+/** Initialise, the lines, an optional QR code, `extraLines` blank lines to feed the paper past the tear bar, and a partial cut. `drawer` also opens a cash drawer wired to the printer (once, however many copies). `copies` prints the whole receipt that many times. */
+export type EscposOptions = { cut?: boolean; drawer?: boolean; qr?: string; extraLines?: number; copies?: number };
+export const escposBytes = (text: string, paper: Paper, { cut = true, drawer = false, qr, extraLines = 3, copies = 1 }: EscposOptions = {}): Uint8Array => {
+  const feed = Math.max(0, Math.min(10, Math.round(extraLines)));
+  const one = (withDrawer: boolean): number[] => {
+    const bytes: number[] = [ESC, 0x40];                 // initialise
+    if (withDrawer) bytes.push(ESC, 0x70, 0x00, 0x19, 0xfa);   // pulse pin 2
+    for (const raw of printable(text).split('\n')) {
+      for (const line of fitLine(raw, COLUMNS[paper])) { for (const ch of line) bytes.push(ch.charCodeAt(0)); bytes.push(LF); }
+    }
+    if (qr) bytes.push(LF, ...qrBytes(qr, paper));
+    for (let i = 0; i < feed; i++) bytes.push(LF);
+    if (cut) bytes.push(GS, 0x56, 0x01);                 // partial cut (printers without a cutter ignore it)
+    return bytes;
+  };
+  const n = Math.max(1, Math.min(5, Math.round(copies)));
+  const all: number[] = [];
+  for (let i = 0; i < n; i++) all.push(...one(drawer && i === 0));
+  return Uint8Array.from(all);
 };
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';

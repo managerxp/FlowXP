@@ -83,7 +83,7 @@ export default function AddToOrder() {
     return (
       <Pressable
         accessibilityRole="button" accessibilityLabel={`${item.name}, ${rupees(toPaise(item.selling_price))}${n ? `, ${n} added` : ''}`} onPress={() => pick(item)}
-        style={({ pressed }) => [{ flex: 1 / cols, minHeight: 84, padding: 10, borderRadius: 12, borderWidth: n ? 2 : 1, borderColor: n ? color.brand : color.line, backgroundColor: n ? '#eaf1ff' : item.is_available ? color.card : '#f1f5f9', justifyContent: 'space-between' }, pressed && { backgroundColor: '#dbe7ff' }]}
+        style={({ pressed }) => [{ flex: 1 / cols, minHeight: 84, padding: 10, borderRadius: 12, borderWidth: n ? 2 : 1, borderColor: n ? color.brand : color.line, backgroundColor: n ? color.tint : item.is_available ? color.card : color.wash, justifyContent: 'space-between' }, pressed && { backgroundColor: color.press }]}
       >
         {n ? <View style={{ position: 'absolute', top: 6, right: 6, minWidth: 26, height: 26, borderRadius: 13, paddingHorizontal: 6, backgroundColor: color.brand, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>{n}</Text></View> : null}
         <Text numberOfLines={2} style={{ fontSize: 15, fontWeight: '600', color: item.is_available ? color.ink : color.soft, paddingRight: n ? 28 : 0 }}>{item.name}</Text>
@@ -97,10 +97,10 @@ export default function AddToOrder() {
   const stripRef = useRef<ScrollView>(null);
   useEffect(() => { if (onOrder.length) setTimeout(() => stripRef.current?.scrollToEnd({ animated: true }), 60); }, [onOrder.length]);
   const Strip = onOrder.length ? (
-    <View accessibilityLabel="On this order" style={{ borderTopWidth: 1, borderColor: color.line, backgroundColor: '#f1f5f9' }}>
+    <View accessibilityLabel="On this order" style={{ borderTopWidth: 1, borderColor: color.line, backgroundColor: color.wash }}>
       <ScrollView ref={stripRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, padding: 8 }}>
         {onOrder.map((i) => (
-          <View key={i.order_item_id} style={{ minHeight: 48, paddingHorizontal: 12, justifyContent: 'center', borderRadius: 24, borderWidth: i.product_id != null && i.product_id === flash ? 2 : 1, borderColor: i.product_id != null && i.product_id === flash ? color.brand : color.line, backgroundColor: i.product_id != null && i.product_id === flash ? '#dbe7ff' : color.card }}>
+          <View key={i.order_item_id} style={{ minHeight: 48, paddingHorizontal: 12, justifyContent: 'center', borderRadius: 24, borderWidth: i.product_id != null && i.product_id === flash ? 2 : 1, borderColor: i.product_id != null && i.product_id === flash ? color.brand : color.line, backgroundColor: i.product_id != null && i.product_id === flash ? color.press : color.card }}>
             <Text style={{ color: color.ink, fontWeight: '600' }}>{qty(i.quantity)}× {itemName(i)}</Text>
           </View>
         ))}
@@ -113,7 +113,7 @@ export default function AddToOrder() {
       <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
         {onOrder.length === 0 ? <Soft style={{ padding: 16 }}>Nothing yet. Tap an item on the menu.</Soft> : null}
         {onOrder.map((i) => (
-          <View key={i.order_item_id} style={{ paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: i.product_id != null && i.product_id === flash ? '#dbe7ff' : color.card, flexDirection: 'row', gap: 8 }}>
+          <View key={i.order_item_id} style={{ paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: i.product_id != null && i.product_id === flash ? color.press : color.card, flexDirection: 'row', gap: 8 }}>
             <Text style={{ minWidth: 30, fontWeight: '800', color: color.ink }}>{qty(i.quantity)}×</Text>
             <View style={{ flex: 1 }}>
               <Text style={{ color: color.ink, fontSize: 15 }}>{itemName(i)}</Text>

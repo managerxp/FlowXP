@@ -12,33 +12,38 @@ import { withApproval } from '../../lib/approval.js';
 import { PAYMENT_METHODS, money, useDebounced } from '../../lib/pharmacy.js';
 import { Alert, Button, PageHeader, Select, useToast, useDialog } from '../../components/ui.jsx';
 import { BatchSelect, CustomerPicker, NumberField, ProductPicker } from './parts.jsx';
+import { useT } from '../../i18n/useT.js';
 
 let seq = 0;
 const num = (v) => (v === '' || v == null ? 0 : Number(v));
 
-const CartLine = ({ l, onChange, onRemove }) => (
+const CartLine = ({ l, onChange, onRemove }) => {
+  const tr = useT();
+  return (
   <div className="rounded-(--radius-card) border border-line p-3">
     <div className="flex items-start justify-between gap-2">
       <div className="min-w-0">
         <p className="truncate font-medium text-ink-900">{l.name}</p>
         <p className="text-caption text-ink-500">{money(l.selling_price)} / {l.unit}</p>
       </div>
-      <button type="button" aria-label={`Remove ${l.name}`} onClick={onRemove} className="shrink-0 rounded-lg p-1.5 text-ink-400 hover:bg-surface-2 hover:text-danger"><X className="h-4 w-4" /></button>
+      <button type="button" aria-label={tr('Remove {{l_name}}', { l_name: l.name })} onClick={onRemove} className="shrink-0 rounded-lg p-1.5 text-ink-400 hover:bg-surface-2 hover:text-danger"><X className="h-4 w-4" /></button>
     </div>
     <div className="mt-2 flex flex-wrap items-center gap-3">
       <div className="flex items-center gap-1">
-        <button type="button" aria-label="Decrease quantity" onClick={() => onChange({ quantity: String(Math.max(0, num(l.quantity) - 1)) })} className="flex h-7 w-7 items-center justify-center rounded-lg border border-line hover:bg-surface-2"><Minus className="h-3.5 w-3.5" /></button>
-        <input aria-label="Quantity" value={l.quantity} onChange={(e) => onChange({ quantity: e.target.value })} inputMode="decimal" className="h-7 w-14 rounded-lg border border-line text-center text-small tabular" />
-        <button type="button" aria-label="Increase quantity" onClick={() => onChange({ quantity: String(num(l.quantity) + 1) })} className="flex h-7 w-7 items-center justify-center rounded-lg border border-line hover:bg-surface-2"><Plus className="h-3.5 w-3.5" /></button>
+        <button type="button" aria-label={tr('Decrease quantity')} onClick={() => onChange({ quantity: String(Math.max(0, num(l.quantity) - 1)) })} className="flex h-7 w-7 items-center justify-center rounded-lg border border-line hover:bg-surface-2"><Minus className="h-3.5 w-3.5" /></button>
+        <input aria-label={tr('Quantity')} value={l.quantity} onChange={(e) => onChange({ quantity: e.target.value })} inputMode="decimal" className="h-7 w-14 rounded-lg border border-line text-center text-small tabular" />
+        <button type="button" aria-label={tr('Increase quantity')} onClick={() => onChange({ quantity: String(num(l.quantity) + 1) })} className="flex h-7 w-7 items-center justify-center rounded-lg border border-line hover:bg-surface-2"><Plus className="h-3.5 w-3.5" /></button>
       </div>
-      <input aria-label="Discount" placeholder="Discount ₹" value={l.discount} onChange={(e) => onChange({ discount: e.target.value })} inputMode="decimal" className="h-7 w-24 rounded-lg border border-line px-2 text-small" />
+      <input aria-label={tr('Discount')} placeholder={tr('Discount ₹')} value={l.discount} onChange={(e) => onChange({ discount: e.target.value })} inputMode="decimal" className="h-7 w-24 rounded-lg border border-line px-2 text-small" />
       {l.line_total != null && <span className="ml-auto tabular text-small font-semibold text-ink-900">{money(l.line_total)}</span>}
     </div>
     {l.batch_tracking && <div className="mt-2"><BatchSelect productId={l.product_id} value={l.batch_id} onChange={(v) => onChange({ batch_id: v })} id={`batch-${l.key}`} /></div>}
   </div>
 );
+};
 
 const PharmacyPos = () => {
+  const tr = useT();
   const toast = useToast();
   const idem = useIdempotencyKey();
   const dialog = useDialog();
@@ -118,20 +123,20 @@ const PharmacyPos = () => {
     return (
       <div className="mx-auto max-w-md py-16 text-center">
         <p className="text-h3 font-semibold text-ink-900">{done.invoice.invoice_number}</p>
-        <p className="mt-2 text-lead text-ink-500">{money(done.invoice.total)} charged.</p>
-        <Button className="mt-6" onClick={reset}>New sale</Button>
+        <p className="mt-2 text-lead text-ink-500">{tr('{{money}} charged.', { money: money(done.invoice.total) })}</p>
+        <Button className="mt-6" onClick={reset}>{tr('New sale')}</Button>
       </div>
     );
   }
 
   return (
     <div>
-      <PageHeader title="Billing" lead="Sell from the shelf, batch-aware and FEFO by default." />
+      <PageHeader title={tr('Billing')} lead={tr('Sell from the shelf, batch-aware and FEFO by default.')} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div>
-          <ProductPicker onPick={add} inputRef={searchRef} autoFocus placeholder="Search or scan a product" />
+          <ProductPicker onPick={add} inputRef={searchRef} autoFocus placeholder={tr('Search or scan a product')} />
           {cart.length === 0 ? (
-            <p className="py-16 text-center text-small text-ink-400">Nothing on the bill yet. Search a product to add it.</p>
+            <p className="py-16 text-center text-small text-ink-400">{tr('Nothing on the bill yet. Search a product to add it.')}</p>
           ) : (
             <div className="mt-4 space-y-3">
               {cart.map((l) => <CartLine key={l.key} l={{ ...l, line_total: lineOf(l.product_id)?.line_total }} onChange={(p) => update(l.key, p)} onRemove={() => remove(l.key)} />)}
@@ -142,24 +147,24 @@ const PharmacyPos = () => {
           <CustomerPicker value={customer} onChange={setCustomer} />
           <Alert>{quoteError}</Alert>
           <div className="space-y-1.5 border-t border-line pt-3 text-small">
-            <div className="flex justify-between text-ink-500"><span>Subtotal</span><span className="tabular">{money(quote?.invoice?.subtotal)}</span></div>
-            {num(quote?.invoice?.discount) > 0 && <div className="flex justify-between text-ink-500"><span>Discount</span><span className="tabular">−{money(quote.invoice.discount)}</span></div>}
-            <div className="flex justify-between text-ink-500"><span>GST</span><span className="tabular">{money(quote?.invoice?.tax)}</span></div>
-            <div className="flex justify-between text-title font-semibold text-ink-900"><span>Total</span><span className="tabular">{fresh ? money(total) : quoting ? '…' : money(total)}</span></div>
+            <div className="flex justify-between text-ink-500"><span>{tr('Subtotal')}</span><span className="tabular">{money(quote?.invoice?.subtotal)}</span></div>
+            {num(quote?.invoice?.discount) > 0 && <div className="flex justify-between text-ink-500"><span>{tr('Discount')}</span><span className="tabular">−{money(quote.invoice.discount)}</span></div>}
+            <div className="flex justify-between text-ink-500"><span>{tr('GST')}</span><span className="tabular">{money(quote?.invoice?.tax)}</span></div>
+            <div className="flex justify-between text-title font-semibold text-ink-900"><span>{tr('Total')}</span><span className="tabular">{fresh ? money(total) : quoting ? '…' : money(total)}</span></div>
           </div>
-          <NumberField id="pos-disc" label="Bill discount" prefix="₹" value={invDiscount} onChange={setInvDiscount} />
+          <NumberField id="pos-disc" label={tr('Bill discount')} prefix="₹" value={invDiscount} onChange={setInvDiscount} />
           <div className="space-y-2 border-t border-line pt-3">
             <label className="flex items-center gap-2 text-small"><input type="checkbox" checked={payLater} onChange={(e) => setPayLater(e.target.checked)} className="h-4 w-4 accent-(--color-brand-500)" disabled={!customer} />Pay later{!customer && ' (choose a customer first)'}</label>
             {!payLater && rows.map((r, i) => (
               <div key={i} className="flex gap-2">
-                <Select aria-label="Payment method" value={r.method} onChange={(e) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, method: e.target.value } : x)))} className="w-auto">{Object.entries(PAYMENT_METHODS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select>
-                <input aria-label="Amount" placeholder="the rest" value={r.amount} onChange={(e) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))} inputMode="decimal" className="h-9 w-28 rounded-(--radius-control) border border-line px-2 text-small" />
-                {rows.length > 1 && <button type="button" aria-label="Remove payment" onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))} className="rounded-lg p-1.5 text-ink-400 hover:bg-surface-2"><X className="h-4 w-4" /></button>}
+                <Select aria-label={tr('Payment method')} value={r.method} onChange={(e) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, method: e.target.value } : x)))} className="w-auto">{Object.entries(PAYMENT_METHODS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select>
+                <input aria-label={tr('Amount')} placeholder={tr('the rest')} value={r.amount} onChange={(e) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))} inputMode="decimal" className="h-9 w-28 rounded-(--radius-control) border border-line px-2 text-small" />
+                {rows.length > 1 && <button type="button" aria-label={tr('Remove payment')} onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))} className="rounded-lg p-1.5 text-ink-400 hover:bg-surface-2"><X className="h-4 w-4" /></button>}
               </div>
             ))}
-            {!payLater && rows.length < 3 && <button type="button" onClick={() => setRows((rs) => [...rs, { method: 'CASH', amount: '' }])} className="text-small font-medium text-brand-600 hover:text-brand-700">+ Split payment</button>}
+            {!payLater && rows.length < 3 && <button type="button" onClick={() => setRows((rs) => [...rs, { method: 'CASH', amount: '' }])} className="text-small font-medium text-brand-600 hover:text-brand-700">{tr('+ Split payment')}</button>}
           </div>
-          <Button className="w-full" size="lg" onClick={charge} loading={saving} disabled={!cart.length || !fresh}>Charge {money(total)}</Button>
+          <Button className="w-full" size="lg" onClick={charge} loading={saving} disabled={!cart.length || !fresh}>{tr('Charge {{money}}', { money: money(total) })}</Button>
         </div>
       </div>
     </div>

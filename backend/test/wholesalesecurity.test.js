@@ -36,10 +36,21 @@ const find = (method, path) => { const r = routes.find((x) => x.method === metho
 let W;
 test('setup', { skip }, async () => { await runMigrations(pool); W = await makeWholesaler(pool, 'sec', { branches: 2 }); });
 
-test('every wholesale route is wholesale-only and sits behind sign-in and a tenant', { skip }, () => {
+/* The routes deliberately open to every kind of business: sales orders and deliveries, and the lookups their screens use. Written out here on
+   purpose, so opening another route is a visible decision with a failing test, not a quiet edit to the router. */
+const OPEN_PREFIXES = ['orders', 'backorders', 'fulfilment', 'pick-lists', 'deliveries', 'customers', 'salespeople'];
+const OPEN_GET_PREFIXES = ['products', 'categories', 'warehouses', 'locations'];
+const openToAll = (r) => OPEN_PREFIXES.includes(r.path.split('/')[1]) || (r.method === 'GET' && OPEN_GET_PREFIXES.includes(r.path.split('/')[1])) || (r.method === 'POST' && r.path === '/pricing/quote');
+
+test('every wholesale route is wholesale-only, except the sales-order and delivery ones opened to every business; all sit behind sign-in, a tenant and a permission', { skip }, () => {
   assert.ok(routes.length > 120, `the router has its routes (${routes.length})`);
-  for (const r of routes) assert.ok(r.stack.slice(0, 3).includes(wholesaleOnly), `${r.method} ${r.path} is wholesale-only`);
-  // every route has at least one gate beyond that: a permission
+  const open = routes.filter(openToAll);
+  assert.ok(open.length > 40 && open.length < 70, `the open set is the one written above (${open.length})`);
+  for (const r of routes) {
+    if (openToAll(r)) assert.ok(!r.stack.includes(wholesaleOnly), `${r.method} ${r.path} is open to every business`);
+    else assert.ok(r.stack.slice(0, 3).includes(wholesaleOnly), `${r.method} ${r.path} is wholesale-only`);
+  }
+  // every route, open or not, has a permission gate beyond sign-in and the tenant (the open ones have no wholesale-only gate to count)
   for (const r of routes) assert.ok(r.stack.length >= 4, `${r.method} ${r.path} has a permission gate`);
 });
 

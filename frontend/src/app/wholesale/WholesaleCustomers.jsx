@@ -11,8 +11,10 @@ import { CUSTOMER_TYPES, fetchAll, money, qs, saveCsv, useDebounced, useLoad } f
 import { Badge, Button, Input, ListState, Modal, PageHeader, Select, Table, Td, Th, Thead, Tr, Field, useDialog, useToast } from '../../components/ui.jsx';
 import { Chips, CsvImportModal, Pager, Toolbar } from './parts.jsx';
 import { CustomerForm } from './CustomerForms.jsx';
+import { useT, T } from '../../i18n/useT.js';
 
 const BulkModal = ({ ids, onClose, onDone }) => {
+  const tr = useT();
   const toast = useToast();
   const people = useLoad('/wholesale/salespeople');
   const lists = useLoad('/wholesale/price-lists');
@@ -29,19 +31,20 @@ const BulkModal = ({ ids, onClose, onDone }) => {
     <Modal title={`Change ${ids.length} customer${ids.length === 1 ? '' : 's'}`} onClose={onClose}>
       <div className="space-y-4">
         {error && <p role="alert" className="rounded-lg bg-danger/5 px-3 py-2 text-small text-danger">{error}</p>}
-        <Field id="b-act" label="What to change"><Select id="b-act" value={action} onChange={(e) => { setAction(e.target.value); setValue(''); }}>
-          <option value="ASSIGN_SALESPERSON">Assign a salesperson</option><option value="SET_PRICE_LIST">Put on a price list</option><option value="SET_TERMS">Set payment terms</option><option value="SET_TYPE">Set the customer type</option><option value="ARCHIVE">Archive</option></Select></Field>
-        {action === 'ASSIGN_SALESPERSON' && <Field id="b-v" label="Salesperson"><Select id="b-v" value={value} onChange={(e) => setValue(e.target.value)}><option value="">No salesperson</option>{(people.data || []).map((p) => <option key={p.salesperson_id} value={p.salesperson_id}>{p.name}</option>)}</Select></Field>}
-        {action === 'SET_PRICE_LIST' && <Field id="b-v" label="Price list"><Select id="b-v" value={value} onChange={(e) => setValue(e.target.value)}><option value="">Default</option>{(lists.data || []).filter((l) => l.kind === 'STANDARD').map((l) => <option key={l.list_id} value={l.list_id}>{l.name}</option>)}</Select></Field>}
-        {action === 'SET_TERMS' && <Field id="b-v" label="Payment terms (days)"><Input id="b-v" type="number" min="0" max="365" value={value} onChange={(e) => setValue(e.target.value)} /></Field>}
-        {action === 'SET_TYPE' && <Field id="b-v" label="Type"><Select id="b-v" value={value} onChange={(e) => setValue(e.target.value)}><option value="">Choose…</option>{Object.entries(CUSTOMER_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>}
-        <div className="flex justify-end gap-2 border-t border-line pt-4"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={go} loading={busy} variant={action === 'ARCHIVE' ? 'danger' : 'primary'} disabled={(action === 'SET_TERMS' || action === 'SET_TYPE') && value === ''}>Apply</Button></div>
+        <Field id="b-act" label={tr('What to change')}><Select id="b-act" value={action} onChange={(e) => { setAction(e.target.value); setValue(''); }}>
+          <option value="ASSIGN_SALESPERSON">{tr('Assign a salesperson')}</option><option value="SET_PRICE_LIST">{tr('Put on a price list')}</option><option value="SET_TERMS">{tr('Set payment terms')}</option><option value="SET_TYPE">{tr('Set the customer type')}</option><option value="ARCHIVE">{tr('Archive')}</option></Select></Field>
+        {action === 'ASSIGN_SALESPERSON' && <Field id="b-v" label={tr('Salesperson')}><Select id="b-v" value={value} onChange={(e) => setValue(e.target.value)}><option value="">{tr('No salesperson')}</option>{(people.data || []).map((p) => <option key={p.salesperson_id} value={p.salesperson_id}>{p.name}</option>)}</Select></Field>}
+        {action === 'SET_PRICE_LIST' && <Field id="b-v" label={tr('Price list')}><Select id="b-v" value={value} onChange={(e) => setValue(e.target.value)}><option value="">{tr('Default')}</option>{(lists.data || []).filter((l) => l.kind === 'STANDARD').map((l) => <option key={l.list_id} value={l.list_id}>{l.name}</option>)}</Select></Field>}
+        {action === 'SET_TERMS' && <Field id="b-v" label={tr('Payment terms (days)')}><Input id="b-v" type="number" min="0" max="365" value={value} onChange={(e) => setValue(e.target.value)} /></Field>}
+        {action === 'SET_TYPE' && <Field id="b-v" label={tr('Type')}><Select id="b-v" value={value} onChange={(e) => setValue(e.target.value)}><option value="">{tr('Choose…')}</option>{Object.entries(CUSTOMER_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>}
+        <div className="flex justify-end gap-2 border-t border-line pt-4"><Button variant="ghost" onClick={onClose}>{tr('Cancel')}</Button><Button onClick={go} loading={busy} variant={action === 'ARCHIVE' ? 'danger' : 'primary'} disabled={(action === 'SET_TERMS' || action === 'SET_TYPE') && value === ''}>{tr('Apply')}</Button></div>
       </div>
     </Modal>
   );
 };
 
 const WholesaleCustomers = () => {
+  const tr = useT();
   const { can } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
@@ -67,39 +70,39 @@ const WholesaleCustomers = () => {
     try {
       const rows = await fetchAll(`/wholesale/customers${qs({ q: term, type, salesperson_id: salesperson, status: view === 'archived' ? 'ARCHIVED' : undefined })}`);
       saveCsv(`customers-${new Date().toISOString().slice(0, 10)}.csv`, [
-        { key: 'name', label: 'Name' }, { key: 'customer_type', label: 'Type' }, { key: 'contact_person', label: 'Contact' }, { key: 'phone', label: 'Phone' }, { key: 'email', label: 'Email' }, { key: 'gstin', label: 'GSTIN' }, { key: 'pan', label: 'PAN' },
-        { key: 'billing_address', label: 'Address' }, { key: 'city', label: 'City' }, { key: 'state', label: 'State' }, { key: 'pincode', label: 'Pincode' }, { key: 'payment_terms_days', label: 'Terms (days)' }, { key: 'credit_limit', label: 'Credit limit' },
-        { key: 'outstanding', label: 'Outstanding' }, { key: 'overdue', label: 'Overdue' }, { key: 'salesperson', label: 'Salesperson' }, { key: 'price_list', label: 'Price list' }
+        { key: 'name', label: T('Name') }, { key: 'customer_type', label: T('Type') }, { key: 'contact_person', label: T('Contact') }, { key: 'phone', label: T('Phone') }, { key: 'email', label: T('Email') }, { key: 'gstin', label: T('GSTIN') }, { key: 'pan', label: T('PAN') },
+        { key: 'billing_address', label: T('Address') }, { key: 'city', label: T('City') }, { key: 'state', label: T('State') }, { key: 'pincode', label: T('Pincode') }, { key: 'payment_terms_days', label: T('Terms (days)') }, { key: 'credit_limit', label: T('Credit limit') },
+        { key: 'outstanding', label: T('Outstanding') }, { key: 'overdue', label: T('Overdue') }, { key: 'salesperson', label: T('Salesperson') }, { key: 'price_list', label: T('Price list') }
       ], rows);
     } catch (e) { toast.error(e.message); }
   };
 
   return (
     <div>
-      <PageHeader title="Customers" lead="Retailers, dealers and businesses you sell to, with their terms, credit and balances."
+      <PageHeader title={tr('Customers')} lead={tr('Retailers, dealers and businesses you sell to, with their terms, credit and balances.')}
                   action={<>
-                    {can('export') && <Button variant="secondary" onClick={exportCsv}><Download aria-hidden="true" className="h-4 w-4" />Export</Button>}
-                    {canEdit && <Button variant="secondary" onClick={() => setImporting(true)}><Upload aria-hidden="true" className="h-4 w-4" />Import</Button>}
-                    {canEdit && <Button onClick={() => setAdding(true)}><Plus aria-hidden="true" className="h-4 w-4" />Add customer</Button>}
+                    {can('export') && <Button variant="secondary" onClick={exportCsv}><Download aria-hidden="true" className="h-4 w-4" />{tr('Export')}</Button>}
+                    {canEdit && <Button variant="secondary" onClick={() => setImporting(true)}><Upload aria-hidden="true" className="h-4 w-4" />{tr('Import')}</Button>}
+                    {canEdit && <Button onClick={() => setAdding(true)}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add customer')}</Button>}
                   </>} />
       <Toolbar>
-        <div className="w-full sm:w-72"><Input type="search" placeholder="Name, phone, GSTIN or contact" aria-label="Search customers" value={q} onChange={(e) => { setQ(e.target.value); setOffset(0); }} /></div>
-        <div className="w-40"><Select aria-label="Customer type" value={type} onChange={(e) => { setType(e.target.value); setOffset(0); }}><option value="">All types</option>{Object.entries(CUSTOMER_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></div>
-        {(people.data || []).length > 0 && <div className="w-44"><Select aria-label="Salesperson" value={salesperson} onChange={(e) => { setSalesperson(e.target.value); setOffset(0); }}><option value="">All salespeople</option>{people.data.map((p) => <option key={p.salesperson_id} value={p.salesperson_id}>{p.name}</option>)}</Select></div>}
+        <div className="w-full sm:w-72"><Input type="search" placeholder={tr('Name, phone, GSTIN or contact')} aria-label={tr('Search customers')} value={q} onChange={(e) => { setQ(e.target.value); setOffset(0); }} /></div>
+        <div className="w-40"><Select aria-label={tr('Customer type')} value={type} onChange={(e) => { setType(e.target.value); setOffset(0); }}><option value="">{tr('All types')}</option>{Object.entries(CUSTOMER_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></div>
+        {(people.data || []).length > 0 && <div className="w-44"><Select aria-label={tr('Salesperson')} value={salesperson} onChange={(e) => { setSalesperson(e.target.value); setOffset(0); }}><option value="">{tr('All salespeople')}</option>{people.data.map((p) => <option key={p.salesperson_id} value={p.salesperson_id}>{p.name}</option>)}</Select></div>}
       </Toolbar>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <Chips label="View" value={view} onChange={(v) => { setView(v); setOffset(0); setPicked(new Set()); }} options={[{ value: '', label: 'Active' }, { value: 'balance', label: 'Owing money' }, { value: 'overdue', label: 'Overdue' }, { value: 'archived', label: 'Archived' }]} />
-        {picked.size > 0 && canEdit && <span className="flex items-center gap-2 text-small"><span className="text-ink-500">{picked.size} selected</span><Button size="sm" variant="secondary" onClick={() => setBulk(true)}>Change…</Button><Button size="sm" variant="ghost" onClick={() => setPicked(new Set())}>Clear</Button></span>}
+        <Chips label={tr('View')} value={view} onChange={(v) => { setView(v); setOffset(0); setPicked(new Set()); }} options={[{ value: '', label: T('Active') }, { value: 'balance', label: T('Owing money') }, { value: 'overdue', label: T('Overdue') }, { value: 'archived', label: T('Archived') }]} />
+        {picked.size > 0 && canEdit && <span className="flex items-center gap-2 text-small"><span className="text-ink-500">{tr('{{picked_size}} selected', { picked_size: picked.size })}</span><Button size="sm" variant="secondary" onClick={() => setBulk(true)}>{tr('Change…')}</Button><Button size="sm" variant="ghost" onClick={() => setPicked(new Set())}>{tr('Clear')}</Button></span>}
       </div>
-      <ListState loading={loading && !data} error={error} empty={data?.length === 0} emptyIcon={UserRound} emptyLabel="No customers here" emptyBody={term || type || view ? 'Nothing matches those filters.' : 'Add your first customer, or import a list.'} emptyAction={canEdit && !term && !view ? <Button onClick={() => setAdding(true)}>Add customer</Button> : undefined} />
+      <ListState loading={loading && !data} error={error} empty={data?.length === 0} emptyIcon={UserRound} emptyLabel={tr('No customers here')} emptyBody={term || type || view ? 'Nothing matches those filters.' : 'Add your first customer, or import a list.'} emptyAction={canEdit && !term && !view ? <Button onClick={() => setAdding(true)}>{tr('Add customer')}</Button> : undefined} />
       {data?.length > 0 && (
         <>
           <Table>
-            <Thead>{canEdit && <Th className="w-8"><span className="sr-only">Select</span></Th>}<Th>Customer</Th><Th>Type</Th><Th>Salesperson</Th><Th className="text-right">Terms</Th><Th className="text-right">Credit limit</Th><Th className="text-right">Owes</Th><Th className="text-right">Overdue</Th></Thead>
+            <Thead>{canEdit && <Th className="w-8"><span className="sr-only">{tr('Select')}</span></Th>}<Th>{tr('Customer')}</Th><Th>{tr('Type')}</Th><Th>{tr('Salesperson')}</Th><Th className="text-right">{tr('Terms')}</Th><Th className="text-right">{tr('Credit limit')}</Th><Th className="text-right">{tr('Owes')}</Th><Th className="text-right">{tr('Overdue')}</Th></Thead>
             <tbody>
               {data.map((c) => (
                 <Tr key={c.customer_id} onClick={() => navigate(`/app/wholesale/customers/${c.customer_id}`)}>
-                  {canEdit && <Td><input type="checkbox" aria-label={`Select ${c.name}`} checked={picked.has(c.customer_id)} onClick={(e) => e.stopPropagation()} onChange={() => toggle(c.customer_id)} className="h-4 w-4 accent-(--color-brand-500)" /></Td>}
+                  {canEdit && <Td><input type="checkbox" aria-label={tr('Select {{c_name}}', { c_name: c.name })} checked={picked.has(c.customer_id)} onClick={(e) => e.stopPropagation()} onChange={() => toggle(c.customer_id)} className="h-4 w-4 accent-(--color-brand-500)" /></Td>}
                   <Td><span className="font-medium text-ink-900">{c.name}</span><span className="block text-caption text-ink-500">{[c.phone, c.city || c.state].filter(Boolean).join(' · ')}</span></Td>
                   <Td><Badge tone="neutral">{CUSTOMER_TYPES[c.customer_type] || c.customer_type}</Badge></Td><Td className="text-ink-500">{c.salesperson || '—'}</Td>
                   <Td className="text-right tabular">{c.payment_terms_days != null ? `${c.payment_terms_days} d` : '—'}</Td><Td className="text-right tabular">{c.credit_limit ? money(c.credit_limit) : '—'}</Td>
@@ -113,7 +116,7 @@ const WholesaleCustomers = () => {
         </>
       )}
       {adding && <CustomerForm onClose={() => setAdding(false)} onSaved={(c) => navigate(`/app/wholesale/customers/${c.customer_id}`)} />}
-      {importing && <CsvImportModal kind="customers" title="Import customers" allowUpdate={false} onClose={() => setImporting(false)} onDone={() => { setImporting(false); setStamp((n) => n + 1); }} />}
+      {importing && <CsvImportModal kind="customers" title={tr('Import customers')} allowUpdate={false} onClose={() => setImporting(false)} onDone={() => { setImporting(false); setStamp((n) => n + 1); }} />}
       {bulk && <BulkModal ids={[...picked]} onClose={() => setBulk(false)} onDone={() => { setBulk(false); setPicked(new Set()); setStamp((n) => n + 1); }} />}
     </div>
   );

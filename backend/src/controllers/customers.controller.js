@@ -159,3 +159,64 @@ export const update = async (req, res) => {
   const { rows: full } = await pool.query(`${SELECT} AND c.customer_id = $2 ${GROUP}`, [req.tenant.businessId, req.params.id]);
   res.json({ success: true, data: asCustomer(full[0]) });
 };
+
+/* ── import from a spreadsheet ───────────────────────────────────────────────────────────────
+ * POST /api/customers/import { rows, apply? }. Checked row by row first (nothing written); applied only when every row is good, in one
+ * transaction. A person already here (same phone, or same name when the row has no phone) is skipped, never changed or doubled.
+ * No opening balance: what a customer owes is the sum of their unpaid bills, so it cannot be typed in. */
+const COLS = {
+  name: ['name', 'customer', 'customer_name', 'party', 'party_name', 'ledger', 'ledger_name', 'account_name'],
+  phone: ['phone', 'mobile', 'mobile_no', 'mobile_number', 'phone_no', 'contact_no', 'contact_number'],
+  email: ['email', 'email_id', 'e-mail'],
+  gstin: ['gstin', 'gst_no', 'gst_number', 'gstin/uin', 'gst_in'],
+  address: ['address', 'billing_address', 'address_line_1'],
+  state: ['state', 'place_of_supply'],
+  pincode: ['pincode', 'pin', 'pin_code', 'zip', 'postal_code'],
+  credit_limit: ['credit_limit', 'credit_limit_amount']
+};
+const MAX_IMPORT_ROWS = 5000;
+const key = (k) => String(k).trim().toLowerCase().replace(/[\s-]+/g, '_');
+const field = (r, f) => { for (const c of COLS[f]) { const v = r[c]; if (v != null && String(v).trim() !== '') return String(v).trim(); } return ''; };
+
+export const importRows = async (req, res) => {
+  const { rows, apply } = req.body || {};
+  if (!Array.isArray(rows) || !rows.length) return res.status(400).json({ success: false, message: 'The file has no rows' });
+  if (rows.length > MAX_IMPORT_ROWS) return res.status(400).json({ success: false, message: `Import up to ${MAX_IMPORT_ROWS.toLocaleString('en-IN')} rows at a time` });
+  const bid = req.tenant.businessId;
+  const digits = (p) => String(p || '').replace(/\D/g, '').slice(-10);
+  const have = (await pool.query(`SELECT lower(name) AS name, phone FROM customers WHERE business_id = $1`, [bid])).rows;
+  const phones = new Set(have.map((c) => digits(c.phone)).filter(Boolean));
+  const names = new Set(have.filter((c) => !c.phone).map((c) => c.name));
+  const errors = []; const fresh = []; let already = 0;
+  rows.forEach((raw, i) => {
+    const r = Object.fromEntries(Object.entries(raw || {}).map(([k, v]) => [key(k), v]));
+    const c = Object.fromEntries(Object.keys(COLS).map((f) => [f, field(r, f)]));
+    const credit = c.credit_limit === '' ? 0 : Number(String(c.credit_limit).replace(/[₹,\s]/g, ''));
+    const problem = firstError([
+      checkName(c.name, 'Name'), checkPhone(c.phone), c.email ? checkEmail(c.email) : null, checkGstin(c.gstin),
+      c.pincode && !/^[1-9]\d{5}$/.test(c.pincode) ? 'A pincode is 6 digits' : null,
+      !Number.isFinite(credit) || credit < 0 ? 'Credit limit is not an amount' : null
+    ]);
+    if (problem) { errors.push({ row: i + 2, message: problem }); return; }
+    const pk = digits(c.phone); const nk = c.name.toLowerCase();
+    if (pk ? phones.has(pk) : names.has(nk)) { already += 1; return; }
+    if (pk) phones.add(pk); else names.add(nk);
+    fresh.push({ ...c, credit: Math.round(credit * 100) });
+  });
+  const out = { rows: rows.length, to_create: fresh.length, already_here: already, total_errors: errors.length, errors: errors.slice(0, 50), applied: false, created: 0 };
+  if (apply !== true) return res.json({ success: true, data: out });
+  if (errors.length) return res.status(422).json({ success: false, message: `${errors.length} row${errors.length === 1 ? ' has' : 's have'} a problem. Nothing was imported.`, data: { errors: out.errors, total_errors: out.total_errors } });
+  const db = await pool.connect();
+  try {
+    await db.query('BEGIN');
+    for (const c of fresh) {
+      await db.query(
+        `INSERT INTO customers (business_id, name, phone, email, address, state, gstin, credit_limit_paise, pincode) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [bid, c.name, c.phone || null, c.email ? c.email.toLowerCase() : null, c.address || null, c.state || null, c.gstin ? c.gstin.toUpperCase() : null, c.credit, c.pincode || null]
+      );
+    }
+    await db.query('COMMIT');
+  } catch (e) { await db.query('ROLLBACK'); throw e; } finally { db.release(); }
+  recordAudit(req, { action: 'customer.imported', resource_type: 'customer', metadata: { rows: rows.length, created: fresh.length } });
+  res.json({ success: true, data: { ...out, applied: true, created: fresh.length } });
+};

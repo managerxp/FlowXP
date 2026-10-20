@@ -206,7 +206,7 @@ const BUSINESSES = [
     src: '/product/gaming-board.webp', alt: 'FlowXP gaming board with a timer on each PS5, room and pool table and the food and drink on its tab.'
   },
   {
-    key: 'auto-parts', label: 'Auto spare parts', to: '/industries/auto-parts',
+    key: 'auto-parts', label: 'Automobile / Hardware', to: '/industries/auto-parts',
     title: 'For spare parts shops and their warehouses',
     body: 'Find a part by any number, know which bin it is in, and sell to garages on trade prices and credit.',
     points: ['OEM and any part number, with or without dashes', 'Vehicle fitment you record, never assumed', 'Racks and bins with QR labels, always agreeing with stock', 'Receiving with accepted, damaged and rejected counted apart', 'Trade prices, credit limits and parts held for a customer'],

@@ -1,3 +1,4 @@
+import { formatDate } from '../../lib/display.ts';
 import { useRef, useState } from 'react';
 import { Linking, ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -12,6 +13,8 @@ import { setCustomer } from '../../lib/sale.ts';
 import type { Customer } from '../../lib/types.ts';
 import { rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
+import { canRemind, reminderSentText, type BillSent } from '../../lib/messaging.ts';
+import { remindOnWhatsApp } from '../../lib/share.ts';
 import { Button, Chips, Empty, ErrorText, Failed, Line, SavedNote, SectionTitle, Soft, Stat, Title, color, s } from '../../lib/ui.tsx';
 
 const money = (r: number) => rupees(toPaise(r));
@@ -32,6 +35,9 @@ export default function CustomerDetail() {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState('');
   const [done, setDone] = useState('');
+  const [reminding, setReminding] = useState(false);
+  const [remindNote, setRemindNote] = useState('');
+  const [remindError, setRemindError] = useState('');
   const key = useRef(newKey());   // one key per payment: a double tap takes it once
   const owing = (bills.data ?? []).filter((b) => b.status !== 'CANCELLED' && b.balance_due > 0);
   const start = (b: Bill) => { setPaying(b); setAmount(String(b.balance_due)); setReference(''); setProblem(''); setDone(''); key.current = newKey(); };
@@ -68,16 +74,24 @@ export default function CustomerDetail() {
                 <Button title="Start a bill" onPress={() => { setCustomer({ id: c.customer_id, name: c.name, phone: c.phone }); router.navigate('/sell'); }} style={{ flex: 1 }} />
                 {c.phone ? <Button title="Call" kind="quiet" onPress={() => { void Linking.openURL(`tel:${c.phone}`); }} /> : null}
               </View>
+              {canRemind(c.phone, c.outstanding_balance) ? (
+                <View style={{ gap: 8, paddingHorizontal: 16, paddingBottom: 8 }}>
+                  <Button title="Send a reminder from FlowXP" onPress={() => { setRemindNote(''); setRemindError(''); setReminding(true); api.post<BillSent>('/messaging/send-balance', { customer_id: c.customer_id }).then((m) => setRemindNote(reminderSentText(m))).catch((e: Error) => setRemindError(e.message)).finally(() => setReminding(false)); }} busy={reminding} />
+                  <Button title="Remind on WhatsApp" kind="quiet" onPress={() => { setRemindError(''); remindOnWhatsApp(api, c.customer_id).catch((e: Error) => setRemindError(e.message)); }} />
+                  {remindNote ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok }}>{remindNote}</Text> : null}
+                  <ErrorText>{remindError}</ErrorText>
+                </View>
+              ) : null}
               {c.email ? <Line left="Email" right={c.email} /> : null}
               {c.gstin ? <Line left="GSTIN" right={c.gstin} /> : null}
-              {c.last_bill_date ? <Line left="Last bill" right={since(c.last_bill_date)} sub={c.first_bill_date ? `Customer since ${String(c.first_bill_date).slice(0, 10)}` : undefined} /> : null}
+              {c.last_bill_date ? <Line left="Last bill" right={since(c.last_bill_date)} sub={c.first_bill_date ? `Customer since ${formatDate(c.first_bill_date)}` : undefined} /> : null}
             </>
           ) : null}
           {owing.length > 0 || done ? <SectionTitle>Customer dues</SectionTitle> : null}
           {done ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok, fontWeight: '600', paddingHorizontal: 16, paddingBottom: 6 }}>{done}</Text> : null}
-          {owing.map((b) => <Line key={`due-${b.invoice_id}`} icon="cash-outline" left={b.invoice_number} sub={`${String(b.invoice_date).slice(0, 10)} · of ${money(b.total)}`} right={`${money(b.balance_due)} due`} onPress={() => start(b)} />)}
+          {owing.map((b) => <Line key={`due-${b.invoice_id}`} icon="cash-outline" left={b.invoice_number} sub={`${formatDate(b.invoice_date)} · of ${money(b.total)}`} right={`${money(b.balance_due)} due`} onPress={() => start(b)} />)}
           {paying ? (
-            <View style={{ padding: 16, gap: 10, backgroundColor: '#eaf1ff' }}>
+            <View style={{ padding: 16, gap: 10, backgroundColor: color.tint }}>
               <Text style={{ fontSize: 16, fontWeight: '700', color: color.ink }}>{`Payment for ${paying.invoice_number}`}</Text>
               <TextInput style={s.input} value={amount} onChangeText={(v) => { setAmount(v); setProblem(''); }} keyboardType="decimal-pad" accessibilityLabel="Amount paid" placeholder="How much did they pay?" />
               <Chips<PayMethod> items={METHOD_ORDER.map((m) => ({ id: m, label: m === 'UPI' ? 'UPI' : m === 'CASH' ? 'Cash' : 'Card' }))} value={method} onChange={setMethod} />
@@ -92,7 +106,7 @@ export default function CustomerDetail() {
 
           <SectionTitle>Recent bills</SectionTitle>
           {bills.data?.length ? bills.data.map((b) => (
-            <Line key={b.invoice_id} left={b.invoice_number} right={money(b.total)} sub={`${String(b.invoice_date).slice(0, 10)}${b.status === 'CANCELLED' ? ' · Cancelled' : b.balance_due > 0 ? ` · Owes ${money(b.balance_due)}` : ''}`} onPress={() => router.push({ pathname: '/receipt', params: { id: String(b.invoice_id) } })} />
+            <Line key={b.invoice_id} left={b.invoice_number} right={money(b.total)} sub={`${formatDate(b.invoice_date)}${b.status === 'CANCELLED' ? ' · Cancelled' : b.balance_due > 0 ? ` · Owes ${money(b.balance_due)}` : ''}`} onPress={() => router.push({ pathname: '/receipt', params: { id: String(b.invoice_id) } })} />
           )) : <Empty>{bills.busy ? 'Loading…' : 'No bills yet.'}</Empty>}
         </ScrollView>
       </Page>

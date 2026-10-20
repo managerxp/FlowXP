@@ -5,6 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../../lib/api.ts';
 import { api, useSession } from '../../lib/session.ts';
 import { goBack } from '../../lib/nav.ts';
+import { t as tr } from '../../lib/i18n.ts';
+import { readMode } from '../../lib/thermal.ts';
 import { useLoad } from '../../lib/useLoad.ts';
 import { ITEM_LABEL, itemName, orderTotals, type Order, type OrderItem } from '../../lib/orders.ts';
 import { qty, rupees, toPaise } from '../../lib/money.ts';
@@ -12,7 +14,7 @@ import { Page } from '../../lib/responsive.tsx';
 import { Hint } from '../../lib/learn.tsx';
 import { Button, Empty, ErrorText, Failed, Loading, SavedNote, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
 
-const TONE: Record<OrderItem['status'], string> = { PENDING: color.warn, PREPARING: color.brand, READY: color.ok, SERVED: color.soft, CANCELLED: color.danger };
+const TONE: Record<OrderItem['status'], string> = { get PENDING() { return color.warn; }, get PREPARING() { return color.brand; }, get READY() { return color.ok; }, get SERVED() { return color.soft; }, get CANCELLED() { return color.danger; } };
 
 /* One order: what the table has had, what the kitchen has done, and the next step (add, send, serve, bill). */
 export default function OrderScreen() {
@@ -48,8 +50,14 @@ export default function OrderScreen() {
   const cancelItem = (i: OrderItem) => Alert.alert('Cancel this item?', `${itemName(i)} was already sent to the kitchen. It comes off the bill.`, [{ text: 'Keep it', style: 'cancel' }, { text: 'Cancel item', style: 'destructive', onPress: () => { void setStatus(i, 'CANCELLED'); } }]);
 
   const send = () => act('send', async () => {
-    const kot = await api.post<{ kot_number?: string; kot?: { kot_number: string } }>(`/orders/${id}/kot`, {});
-    setNote(`Sent to the kitchen${kot?.kot_number ? `: ${kot.kot_number}` : kot?.kot?.kot_number ? `: ${kot.kot.kot_number}` : ''}.`);
+    const kot = await api.post<{ kot_id?: number; kot_number?: string; kot?: { kot_id?: number; kot_number: string } }>(`/orders/${id}/kot`, {});
+    let note = `Sent to the kitchen${kot?.kot_number ? `: ${kot.kot_number}` : kot?.kot?.kot_number ? `: ${kot.kot.kot_number}` : ''}.`;
+    const kotId = kot?.kot_id ?? kot?.kot?.kot_id;
+    if (kotId && (await readMode()) === 'direct') {   // a kitchen printer on this phone: the ticket prints itself; a failure never undoes the order
+      try { if (await (await import('../../lib/printerLink.ts')).printKitchenDirect(api, kotId)) note += ` ${tr('Kitchen ticket sent to the printer.')}`; }
+      catch { note += ` ${tr('Could not print the kitchen ticket. The order was still sent to the kitchen.')}`; }
+    }
+    setNote(note);
   });
 
   const cancelOrder = () => Alert.alert('Cancel the whole order?', 'Every item comes off and the table is freed. Items already billed stay billed.', [
@@ -129,5 +137,5 @@ export default function OrderScreen() {
   );
 }
 
-const stepper = { width: 48, height: 48, borderRadius: 24, backgroundColor: '#eaf1ff', alignItems: 'center' as const, justifyContent: 'center' as const };
-const stepText = { fontSize: 22, color: color.brand, fontWeight: '600' as const };
+const stepper = { width: 48, height: 48, borderRadius: 24, get backgroundColor() { return color.tint; }, alignItems: 'center' as const, justifyContent: 'center' as const };
+const stepText = { fontSize: 22, get color() { return color.brand; }, fontWeight: '600' as const };

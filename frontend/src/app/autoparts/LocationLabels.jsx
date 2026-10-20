@@ -5,8 +5,10 @@ import QRCode from 'qrcode';
 import { api } from '../../lib/api.js';
 import { barcodeSvg } from '../../lib/barcode.js';
 import { Alert, Button, Field, Input, PageLoader, Select } from '../../components/ui.jsx';
+import { useT } from '../../i18n/useT.js';
 
 export default function LocationLabels() {
+  const tr = useT();
   const [params] = useSearchParams();
   const ids = (params.get('ids') || '').split(',').map(Number).filter(Boolean).slice(0, 80);
   const [labels, setLabels] = useState(null);
@@ -34,14 +36,14 @@ export default function LocationLabels() {
     <div>
       <style>{`@page { size: A4; margin: 10mm; } @media print { html, body { background: #fff !important; } main { padding: 0 !important; background: #fff !important; } .no-print { display: none !important; } }`}</style>
       <div className="no-print mb-5 flex flex-wrap items-end gap-3">
-        <Link to="/app/parts/warehouse" className="self-center text-sm font-semibold text-brand-600">← Back</Link>
-        <Field id="ll-copies" label="Copies of each"><div className="w-24"><Input id="ll-copies" type="number" min="1" max="20" value={copies} onChange={(e) => setCopies(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} /></div></Field>
-        <Field id="ll-size" label="Label size"><Select id="ll-size" value={size} onChange={(e) => setSize(e.target.value)}><option value="small">Small (3 across)</option><option value="medium">Medium (2 across)</option><option value="large">Large (1 across)</option></Select></Field>
+        <Link to="/app/parts/warehouse" className="self-center text-sm font-semibold text-brand-600">{tr('← Back')}</Link>
+        <Field id="ll-copies" label={tr('Copies of each')}><div className="w-24"><Input id="ll-copies" type="number" min="1" max="20" value={copies} onChange={(e) => setCopies(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} /></div></Field>
+        <Field id="ll-size" label={tr('Label size')}><Select id="ll-size" value={size} onChange={(e) => setSize(e.target.value)}><option value="small">{tr('Small (3 across)')}</option><option value="medium">{tr('Medium (2 across)')}</option><option value="large">{tr('Large (1 across)')}</option></Select></Field>
         <Button onClick={() => window.print()} className="ml-auto">Print {all.length} label{all.length === 1 ? '' : 's'}</Button>
       </div>
       <div className={`grid ${cols} gap-2`}>
         {all.map((l) => (
-          <div key={l.key} className="flex break-inside-avoid items-center gap-3 rounded border border-line bg-white p-3 text-ink-900">
+          <div key={l.key} className="light-sheet flex break-inside-avoid items-center gap-3 rounded border border-line bg-white p-3 text-ink-900">
             <img src={l.qr} alt="" className="h-24 w-24 shrink-0" />
             <div className="min-w-0 flex-1">
               <p className="break-words text-xl font-bold leading-tight tracking-wide">{l.code}</p>

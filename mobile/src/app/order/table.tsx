@@ -87,7 +87,7 @@ export default function TableTools() {
                 {lines.length === 0 ? <Empty>Nothing on this order to move.</Empty> : lines.map((i) => {
                   const n = chosen[i.order_item_id] ?? 0;
                   return (
-                    <View key={i.order_item_id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 56, paddingHorizontal: 16, borderTopWidth: 1, borderColor: color.line, backgroundColor: n ? '#eaf1ff' : color.card }}>
+                    <View key={i.order_item_id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 56, paddingHorizontal: 16, borderTopWidth: 1, borderColor: color.line, backgroundColor: n ? color.tint : color.card }}>
                       <View style={{ flex: 1 }}><Text style={{ fontSize: 16, color: color.ink }}>{itemName(i)}</Text><Soft>{qty(i.quantity)} on the table</Soft></View>
                       <Button title="−" kind="quiet" onPress={() => bump(i.order_item_id, i.quantity, -1)} disabled={n === 0} />
                       <Text style={{ minWidth: 24, textAlign: 'center', fontWeight: '700', color: color.ink }}>{n}</Text>

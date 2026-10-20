@@ -28,7 +28,7 @@ import { PharmacyTill } from '../../lib/PharmacyTill.tsx';
 const MenuTile = memo(({ item, n, cols, onPick }: { item: Product; n: number; cols: number; onPick: (p: Product) => void }) => (
   <Pressable
     accessibilityRole="button" accessibilityLabel={`${item.name}, ${rupees(toPaise(item.selling_price))}${n ? `, ${qty(n)} on the bill` : ''}`} onPress={() => onPick(item)}
-    style={({ pressed }) => [{ flex: 1 / cols, minHeight: 84, padding: 10, borderRadius: 12, borderWidth: n ? 2 : 1, borderColor: n ? color.brand : color.line, backgroundColor: n ? '#eaf1ff' : item.is_available ? color.card : '#f1f5f9', justifyContent: 'space-between' }, pressed && { backgroundColor: '#dbe7ff' }]}
+    style={({ pressed }) => [{ flex: 1 / cols, minHeight: 84, padding: 10, borderRadius: 12, borderWidth: n ? 2 : 1, borderColor: n ? color.brand : color.line, backgroundColor: n ? color.tint : item.is_available ? color.card : color.wash, justifyContent: 'space-between' }, pressed && { backgroundColor: color.press }]}
   >
     {n ? <View style={{ position: 'absolute', top: 6, right: 6, minWidth: 26, height: 26, borderRadius: 13, paddingHorizontal: 6, backgroundColor: color.brand, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>{qty(n)}</Text></View> : null}
     <Text numberOfLines={2} style={{ fontSize: 15, fontWeight: '600', color: item.is_available ? color.ink : color.soft, paddingRight: n ? 28 : 0 }}>{item.name}</Text>
@@ -156,7 +156,7 @@ export default function Sell() {
           <Text numberOfLines={1} style={{ fontWeight: '700', fontSize: 17, color: color.ink }}>{outlet?.name}</Text>
         </View>
         <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/customers', params: { pick: '1' } })}
-          style={{ minHeight: 48, paddingHorizontal: 12, justifyContent: 'center', borderRadius: 22, backgroundColor: customer ? '#eaf1ff' : color.card, borderWidth: 1, borderColor: color.line }}>
+          style={{ minHeight: 48, paddingHorizontal: 12, justifyContent: 'center', borderRadius: 22, backgroundColor: customer ? color.tint : color.card, borderWidth: 1, borderColor: color.line }}>
           <Text style={{ color: color.brand, fontWeight: '600' }}>{customer ? customer.name : 'Add customer'}</Text>
         </Pressable>
       </View>
@@ -185,7 +185,7 @@ export default function Sell() {
       style={{ flex: 1 }} keyboardShouldPersistTaps="handled" data={results} keyExtractor={(p) => String(p.product_id)}
       ListEmptyComponent={<Soft style={{ padding: 16 }}>{empty ? 'No products yet.' : 'No product matches.'}</Soft>}
       renderItem={({ item }) => (
-        <Pressable accessibilityRole="button" accessibilityLabel={`${item.name}, ${rupees(toPaise(item.selling_price))}`} onPress={() => pick(item)} style={{ minHeight: 56, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: inBill.get(item.product_id) ? '#eaf1ff' : color.card, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${item.name}, ${rupees(toPaise(item.selling_price))}`} onPress={() => pick(item)} style={{ minHeight: 56, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: inBill.get(item.product_id) ? color.tint : color.card, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View style={{ flex: 1, paddingRight: 8 }}>
             <Text style={{ fontSize: 16, color: color.ink }}>{item.name}{inBill.get(item.product_id) ? `  ·  ${qty(inBill.get(item.product_id) ?? 0)} on the bill` : ''}</Text>
             <Soft>{item.track_inventory ? `about ${qty(item.current_stock ?? 0)} in stock` : item.category_name || ' '}</Soft>
@@ -219,7 +219,7 @@ export default function Sell() {
       ref={billRef} style={{ flex: 1 }} data={cart.lines} keyExtractor={(l) => l.key} extraData={flash}
       ListEmptyComponent={<View style={{ padding: 24, gap: 8, alignItems: 'center' }}><Text style={{ fontSize: 17, fontWeight: '600', color: color.ink }}>{t('This bill is empty')}</Text><Soft style={{ textAlign: 'center' }}>{t('Tap an item on the Menu, search above, or tap Scan to read a barcode.')}</Soft><Button title="Back to the menu" kind="quiet" onPress={() => setView('menu')} /></View>}
       renderItem={({ item: l }) => (
-        <View style={{ paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: l.key === flash ? '#dbe7ff' : color.card, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: l.key === flash ? color.press : color.card, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 16, color: color.ink, fontWeight: l.key === flash ? '700' : '400' }}>{lineName(l)}</Text>
             <Soft>{rupees(linePricePaise(l))} each</Soft>
@@ -235,11 +235,11 @@ export default function Sell() {
 
   // under the menu when the bill is not beside it: every item on the bill, the one just added lit, so a tap is always seen. Tap it to open the bill.
   const Strip = cart.lines.length ? (
-    <View accessibilityLabel="On the bill" style={{ borderTopWidth: 1, borderColor: color.line, backgroundColor: '#f1f5f9' }}>
+    <View accessibilityLabel="On the bill" style={{ borderTopWidth: 1, borderColor: color.line, backgroundColor: color.wash }}>
       <ScrollView ref={stripRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, padding: 8 }}>
         {cart.lines.map((l) => (
           <Pressable key={l.key} accessibilityRole="button" accessibilityLabel={`${qty(l.quantity)} ${lineName(l)} on the bill. Open the bill`} onPress={() => setView('bill')}
-            style={{ minHeight: 48, paddingHorizontal: 12, justifyContent: 'center', borderRadius: 24, borderWidth: l.key === flash ? 2 : 1, borderColor: l.key === flash ? color.brand : color.line, backgroundColor: l.key === flash ? '#dbe7ff' : color.card }}>
+            style={{ minHeight: 48, paddingHorizontal: 12, justifyContent: 'center', borderRadius: 24, borderWidth: l.key === flash ? 2 : 1, borderColor: l.key === flash ? color.brand : color.line, backgroundColor: l.key === flash ? color.press : color.card }}>
             <Text style={{ color: color.ink, fontWeight: l.key === flash ? '800' : '600' }}>{qty(l.quantity)}× {lineName(l)}</Text>
           </Pressable>
         ))}
@@ -323,5 +323,5 @@ export default function Sell() {
   );
 }
 
-const stepper = { width: 48, height: 48, borderRadius: 24, backgroundColor: '#eaf1ff', alignItems: 'center' as const, justifyContent: 'center' as const };
-const stepText = { fontSize: 22, color: color.brand, fontWeight: '600' as const };
+const stepper = { width: 48, height: 48, borderRadius: 24, get backgroundColor() { return color.tint; }, alignItems: 'center' as const, justifyContent: 'center' as const };
+const stepText = { fontSize: 22, get color() { return color.brand; }, fontWeight: '600' as const };

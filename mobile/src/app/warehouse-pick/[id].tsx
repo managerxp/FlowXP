@@ -96,7 +96,7 @@ export default function PickScreen() {
               const editing = next === 'pick';
               const got = editing ? pickedBase(i, typed[i.pick_item_id]) : i.picked_base;
               return (
-                <View key={i.pick_item_id} style={{ padding: 16, gap: 6, borderTopWidth: 1, borderColor: color.line, backgroundColor: ticked.has(i.pick_item_id) ? '#ecfdf5' : color.card }}>
+                <View key={i.pick_item_id} style={{ padding: 16, gap: 6, borderTopWidth: 1, borderColor: color.line, backgroundColor: ticked.has(i.pick_item_id) ? color.okBg : color.card }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 16, fontWeight: '600', color: color.ink }}>{i.product}</Text>

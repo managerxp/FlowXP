@@ -7,6 +7,7 @@ import QRCode from 'qrcode';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Badge, Button, Card, Field, Input, ListState, Table, Td, Th, Thead, Tr, useToast, useDialog } from '../components/ui.jsx';
+import { useT } from '../i18n/useT.js';
 
 const when = (iso) => new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 const OUTCOME = { SUCCESS: ['Signed in', 'success'], BAD_PASSWORD: ['Wrong password', 'danger'], UNKNOWN_USER: ['Unknown address', 'danger'], LOCKED: ['Locked out', 'danger'], TWO_FACTOR_FAILED: ['Wrong code', 'danger'] };
@@ -17,9 +18,11 @@ const deviceName = (ua) => {
   return [browser, os].filter(Boolean).join(' on ') || ua.slice(0, 40);
 };
 
-const Events = ({ rows, showWho }) => (
+const Events = ({ rows, showWho }) => {
+  const tr = useT();
+  return (
   <Table>
-    <Thead><Th>When</Th>{showWho && <Th>Who</Th>}<Th>What</Th><Th>Device</Th><Th>Address</Th></Thead>
+    <Thead><Th>{tr('When')}</Th>{showWho && <Th>{tr('Who')}</Th>}<Th>{tr('What')}</Th><Th>{tr('Device')}</Th><Th>{tr('Address')}</Th></Thead>
     <tbody>
       {rows.map((e) => {
         const [label, tone] = OUTCOME[e.outcome] || [e.outcome, 'neutral'];
@@ -27,7 +30,7 @@ const Events = ({ rows, showWho }) => (
           <Tr key={e.event_id}>
             <Td className="whitespace-nowrap text-xs text-ink-500">{when(e.at)}</Td>
             {showWho && <Td className="text-sm">{e.name || e.email}</Td>}
-            <Td><Badge tone={tone}>{label}</Badge>{e.method === 'RECOVERY' && <span className="ml-1 text-xs text-warning">recovery code</span>}{e.new_device && <span className="ml-1 text-xs font-semibold text-warning">new device</span>}</Td>
+            <Td><Badge tone={tone}>{tr(label)}</Badge>{e.method === 'RECOVERY' && <span className="ml-1 text-xs text-warning">{tr('recovery code')}</span>}{e.new_device && <span className="ml-1 text-xs font-semibold text-warning">{tr('new device')}</span>}</Td>
             <Td className="text-xs text-ink-700">{deviceName(e.device)}</Td>
             <Td className="text-xs text-ink-500">{e.ip || '—'}</Td>
           </Tr>
@@ -36,20 +39,25 @@ const Events = ({ rows, showWho }) => (
     </tbody>
   </Table>
 );
+};
 
-const RecoveryCodes = ({ codes, onDone }) => (
+const RecoveryCodes = ({ codes, onDone }) => {
+  const tr = useT();
+  return (
   <div className="space-y-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
-    <p className="text-sm font-semibold text-ink-900">Save these recovery codes now</p>
-    <p className="text-xs text-ink-700">Each works once if you lose your phone. They are shown only this time. Keep them somewhere safe, not on the same phone.</p>
+    <p className="text-sm font-semibold text-ink-900">{tr('Save these recovery codes now')}</p>
+    <p className="text-xs text-ink-700">{tr('Each works once if you lose your phone. They are shown only this time. Keep them somewhere safe, not on the same phone.')}</p>
     <div className="grid grid-cols-2 gap-x-6 gap-y-1 font-mono text-sm text-ink-900 sm:grid-cols-5">{codes.map((c) => <span key={c}>{c}</span>)}</div>
     <div className="flex gap-2">
-      <Button size="sm" variant="secondary" onClick={() => navigator.clipboard?.writeText(codes.join('\n'))}>Copy</Button>
-      <Button size="sm" onClick={onDone}>I have saved them</Button>
+      <Button size="sm" variant="secondary" onClick={() => navigator.clipboard?.writeText(codes.join('\n'))}>{tr('Copy')}</Button>
+      <Button size="sm" onClick={onDone}>{tr('I have saved them')}</Button>
     </div>
   </div>
 );
+};
 
 const TwoFactor = () => {
+  const tr = useT();
   const dialog = useDialog();
   const toast = useToast();
   const { refresh } = useAuth();
@@ -74,48 +82,48 @@ const TwoFactor = () => {
     const r = await api('/auth/2fa/enable', { method: 'POST', body: { code } });
     setSetup(null); setCode(''); setCodes(r.recovery_codes); load(); refresh();
   });
-  const newCodes = async () => { const pw = await dialog.prompt({ title: 'New recovery codes', body: 'The old codes stop working as soon as new ones are made.', label: 'Your password', type: 'password', autoComplete: 'current-password', confirmLabel: 'Make new codes' }); if (pw) run(async () => { setCodes((await api('/auth/2fa/recovery-codes', { method: 'POST', body: { password: pw } })).recovery_codes); load(); }); };
+  const newCodes = async () => { const pw = await dialog.prompt({ title: tr('New recovery codes'), body: tr('The old codes stop working as soon as new ones are made.'), label: tr('Your password'), type: 'password', autoComplete: 'current-password', confirmLabel: tr('Make new codes') }); if (pw) run(async () => { setCodes((await api('/auth/2fa/recovery-codes', { method: 'POST', body: { password: pw } })).recovery_codes); load(); }); };
   const turnOff = () => run(async () => {
     const isRecovery = code.includes('-');
     const r = await api('/auth/2fa/disable', { method: 'POST', body: { password, ...(isRecovery ? { recovery_code: code } : { code }) } });
-    setOff(false); setPassword(''); setCode(''); toast.success('Two-step verification is off'); load(); refresh();
+    setOff(false); setPassword(''); setCode(''); toast.success(tr('Two-step verification is off')); load(); refresh();
   });
 
   if (!status) return <ListState loading={!error} error={error} />;
   return (
     <Card className="p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-bold text-ink-900">Two-step verification</h2>
-        <Badge tone={status.enabled ? 'success' : 'warning'}>{status.enabled ? 'On' : 'Off'}</Badge>
+        <h2 className="text-base font-bold text-ink-900">{tr('Two-step verification')}</h2>
+        <Badge tone={status.enabled ? 'success' : 'warning'}>{status.enabled ? tr('On') : tr('Off')}</Badge>
       </div>
-      <p className="mt-1 text-sm text-ink-500">After your password, you enter a 6-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator, Authy, 1Password). A stolen password alone is then not enough to get into your business.</p>
-      {status.required && !status.enabled && <p className="mt-3 rounded-lg bg-danger/10 p-3 text-sm text-danger">Your business requires two-step verification for owners and admins. Set it up to continue using FlowXP.</p>}
+      <p className="mt-1 text-sm text-ink-500">{tr('After your password, you enter a 6-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator, Authy, 1Password). A stolen password alone is then not enough to get into your business.')}</p>
+      {status.required && !status.enabled && <p className="mt-3 rounded-lg bg-danger/10 p-3 text-sm text-danger">{tr('Your business requires two-step verification for owners and admins. Set it up to continue using FlowXP.')}</p>}
       <Alert>{error}</Alert>
 
       {codes && <div className="mt-4"><RecoveryCodes codes={codes} onDone={() => setCodes(null)} /></div>}
 
-      {!status.enabled && !setup && !codes && <Button className="mt-4" onClick={start} disabled={busy}>Set up two-step verification</Button>}
+      {!status.enabled && !setup && !codes && <Button className="mt-4" onClick={start} disabled={busy}>{tr('Set up two-step verification')}</Button>}
       {setup && (
         <div className="mt-4 grid gap-5 sm:grid-cols-[200px_1fr]">
-          <img src={setup.qr} alt="QR code to scan with your authenticator app" className="h-[200px] w-[200px] rounded-lg border border-line bg-white" />
+          <img src={setup.qr} alt={tr('QR code to scan with your authenticator app')} className="h-[200px] w-[200px] rounded-lg border border-line bg-white" />
           <div className="space-y-3 text-sm text-ink-700">
             <p><strong>1.</strong> Open your authenticator app and scan this code (or enter the key by hand).</p>
             <p className="break-all rounded bg-surface-2 p-2 font-mono text-xs">{setup.secret}</p>
             <p><strong>2.</strong> Enter the 6-digit code it shows to confirm.</p>
-            <div className="flex gap-2"><Input className="!w-36" inputMode="numeric" maxLength={7} placeholder="123 456" value={code} onChange={(e) => setCode(e.target.value)} aria-label="Code from your app" autoComplete="one-time-code" /><Button onClick={enable} disabled={busy || code.replace(/\s/g, '').length !== 6}>Turn on</Button><Button variant="ghost" onClick={() => setSetup(null)}>Cancel</Button></div>
+            <div className="flex gap-2"><Input className="!w-36" inputMode="numeric" maxLength={7} placeholder="123 456" value={code} onChange={(e) => setCode(e.target.value)} aria-label={tr('Code from your app')} autoComplete="one-time-code" /><Button onClick={enable} disabled={busy || code.replace(/\s/g, '').length !== 6}>{tr('Turn on')}</Button><Button variant="ghost" onClick={() => setSetup(null)}>{tr('Cancel')}</Button></div>
           </div>
         </div>
       )}
 
       {status.enabled && !codes && (
         <div className="mt-4 space-y-3">
-          <p className="text-sm text-ink-700">{status.recovery_codes_left} recovery code{status.recovery_codes_left === 1 ? '' : 's'} left{status.recovery_codes_left <= 2 && <span className="text-warning"> · get new ones soon</span>}.</p>
-          <div className="flex flex-wrap gap-2"><Button variant="secondary" size="sm" onClick={newCodes}>New recovery codes</Button>{!status.required && <Button variant="ghost" size="sm" onClick={() => setOff((v) => !v)}>Turn off…</Button>}</div>
+          <p className="text-sm text-ink-700">{status.recovery_codes_left} recovery code{status.recovery_codes_left === 1 ? '' : 's'} left{status.recovery_codes_left <= 2 && <span className="text-warning"> {tr('· get new ones soon')}</span>}.</p>
+          <div className="flex flex-wrap gap-2"><Button variant="secondary" size="sm" onClick={newCodes}>{tr('New recovery codes')}</Button>{!status.required && <Button variant="ghost" size="sm" onClick={() => setOff((v) => !v)}>{tr('Turn off…')}</Button>}</div>
           {off && (
             <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-              <Field id="off-pw" label="Your password"><Input id="off-pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></Field>
-              <Field id="off-code" label="A code, or a recovery code"><Input id="off-code" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" /></Field>
-              <Button variant="secondary" onClick={turnOff} disabled={busy || !password || !code}>Turn off</Button>
+              <Field id="off-pw" label={tr('Your password')}><Input id="off-pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></Field>
+              <Field id="off-code" label={tr('A code, or a recovery code')}><Input id="off-code" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" /></Field>
+              <Button variant="secondary" onClick={turnOff} disabled={busy || !password || !code}>{tr('Turn off')}</Button>
             </div>
           )}
         </div>
@@ -125,6 +133,7 @@ const TwoFactor = () => {
 };
 
 const Password = () => {
+  const tr = useT();
   const dialog = useDialog();
   const toast = useToast();
   const [form, setForm] = useState({ current_password: '', new_password: '' });
@@ -132,31 +141,32 @@ const Password = () => {
   const [busy, setBusy] = useState(false);
   const save = async (e) => {
     e.preventDefault(); setBusy(true); setError('');
-    try { const r = await api('/auth/change-password', { method: 'POST', body: form }); setForm({ current_password: '', new_password: '' }); toast.success('Password changed. Your other devices were signed out.'); }
+    try { const r = await api('/auth/change-password', { method: 'POST', body: form }); setForm({ current_password: '', new_password: '' }); toast.success(tr('Password changed. Your other devices were signed out.')); }
     catch (caught) { setError(caught.message); } finally { setBusy(false); }
   };
   const out = async () => {
-    if (!(await dialog.confirm({ title: 'Sign out everywhere else?', body: 'Every other device and tab is signed out. You stay signed in here.', confirmLabel: 'Sign out others' }))) return;
-    try { const r = await api('/auth/sign-out-everywhere', { method: 'POST' }); toast.success('Every other device was signed out'); } catch (caught) { setError(caught.message); }
+    if (!(await dialog.confirm({ title: tr('Sign out everywhere else?'), body: tr('Every other device and tab is signed out. You stay signed in here.'), confirmLabel: tr('Sign out others') }))) return;
+    try { const r = await api('/auth/sign-out-everywhere', { method: 'POST' }); toast.success(tr('Every other device was signed out')); } catch (caught) { setError(caught.message); }
   };
   return (
     <Card className="p-5">
-      <h2 className="text-base font-bold text-ink-900">Password and devices</h2>
+      <h2 className="text-base font-bold text-ink-900">{tr('Password and devices')}</h2>
       <form onSubmit={save} className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-        <Field id="pw-cur" label="Current password"><Input id="pw-cur" type="password" value={form.current_password} onChange={(e) => setForm((f) => ({ ...f, current_password: e.target.value }))} autoComplete="current-password" required /></Field>
-        <Field id="pw-new" label="New password" hint="At least 10 characters"><Input id="pw-new" type="password" value={form.new_password} onChange={(e) => setForm((f) => ({ ...f, new_password: e.target.value }))} autoComplete="new-password" required /></Field>
-        <Button type="submit" disabled={busy}>Change</Button>
+        <Field id="pw-cur" label={tr('Current password')}><Input id="pw-cur" type="password" value={form.current_password} onChange={(e) => setForm((f) => ({ ...f, current_password: e.target.value }))} autoComplete="current-password" required /></Field>
+        <Field id="pw-new" label={tr('New password')} hint={tr('At least 10 characters')}><Input id="pw-new" type="password" value={form.new_password} onChange={(e) => setForm((f) => ({ ...f, new_password: e.target.value }))} autoComplete="new-password" required /></Field>
+        <Button type="submit" disabled={busy}>{tr('Change')}</Button>
       </form>
       <Alert>{error}</Alert>
       <div className="mt-4 border-t border-line pt-4">
-        <p className="text-sm text-ink-700">Lost a phone, or used a shared computer? End every other session at once.</p>
-        <Button variant="secondary" size="sm" className="mt-2" onClick={out}>Sign out everywhere else</Button>
+        <p className="text-sm text-ink-700">{tr('Lost a phone, or used a shared computer? End every other session at once.')}</p>
+        <Button variant="secondary" size="sm" className="mt-2" onClick={out}>{tr('Sign out everywhere else')}</Button>
       </div>
     </Card>
   );
 };
 
 const Team = () => {
+  const tr = useT();
   const toast = useToast();
   const { business } = useAuth();
   const [d, setD] = useState(null);
@@ -164,33 +174,34 @@ const Team = () => {
   const load = () => api('/security/team').then(setD).catch((e) => setError(e.message));
   useEffect(() => { load(); }, []);
   if (!d) return <ListState loading={!error} error={error} />;
-  const toggle = async (on) => { setError(''); try { await api('/security/policy', { method: 'PUT', body: { require_2fa_admins: on } }); toast.success(on ? 'Owners and admins must now use two-step verification' : 'Policy switched off'); load(); } catch (caught) { setError(caught.message); } };
+  const toggle = async (on) => { setError(''); try { await api('/security/policy', { method: 'PUT', body: { require_2fa_admins: on } }); toast.success(on ? tr('Owners and admins must now use two-step verification') : tr('Policy switched off')); load(); } catch (caught) { setError(caught.message); } };
   return (
     <Card className="p-5">
-      <h2 className="text-base font-bold text-ink-900">Your team's sign-ins</h2>
+      <h2 className="text-base font-bold text-ink-900">{tr('Your team\'s sign-ins')}</h2>
       <div className="mt-3 grid gap-3 sm:grid-cols-3 text-sm">
-        <p className="rounded-lg bg-surface-2 p-3"><span className="block text-xl font-semibold text-ink-900">{d.summary.failed_7d}</span>failed attempts in the last 7 days</p>
-        <p className="rounded-lg bg-surface-2 p-3"><span className="block text-xl font-semibold text-ink-900">{d.summary.new_devices_7d}</span>sign-ins from new devices</p>
-        <p className={`rounded-lg p-3 ${d.summary.privileged_without_2fa ? 'bg-amber-500/10' : 'bg-surface-2'}`}><span className="block text-xl font-semibold text-ink-900">{d.summary.privileged_without_2fa}</span>owners/admins without two-step</p>
+        <p className="rounded-lg bg-surface-2 p-3"><span className="block text-xl font-semibold text-ink-900">{d.summary.failed_7d}</span>{tr('failed attempts in the last 7 days')}</p>
+        <p className="rounded-lg bg-surface-2 p-3"><span className="block text-xl font-semibold text-ink-900">{d.summary.new_devices_7d}</span>{tr('sign-ins from new devices')}</p>
+        <p className={`rounded-lg p-3 ${d.summary.privileged_without_2fa ? 'bg-amber-500/10' : 'bg-surface-2'}`}><span className="block text-xl font-semibold text-ink-900">{d.summary.privileged_without_2fa}</span>{tr('owners/admins without two-step')}</p>
       </div>
       <Alert>{error}</Alert>
       {business?.role === 'OWNER' && (
         <label className="mt-4 flex items-start gap-3 text-sm">
           <input type="checkbox" className="mt-1" checked={d.require_2fa_admins} onChange={(e) => toggle(e.target.checked)} />
-          <span><span className="font-medium text-ink-900">Require two-step verification for owners and admins</span><span className="block text-xs text-ink-500">Until they set it up, they cannot use the app. Turn on your own first.</span></span>
+          <span><span className="font-medium text-ink-900">{tr('Require two-step verification for owners and admins')}</span><span className="block text-xs text-ink-500">{tr('Until they set it up, they cannot use the app. Turn on your own first.')}</span></span>
         </label>
       )}
       <div className="mt-4"><Table>
-        <Thead><Th>Person</Th><Th>Role</Th><Th>Two-step</Th></Thead>
-        <tbody>{d.members.map((m) => <Tr key={m.user_id}><Td>{m.name}<span className="block text-xs text-ink-400">{m.email}</span></Td><Td className="text-xs">{m.role}</Td><Td>{m.two_factor ? <Badge tone="success">On</Badge> : <Badge tone="neutral">Off</Badge>}</Td></Tr>)}</tbody>
+        <Thead><Th>{tr('Person')}</Th><Th>{tr('Role')}</Th><Th>{tr('Two-step')}</Th></Thead>
+        <tbody>{d.members.map((m) => <Tr key={m.user_id}><Td>{m.name}<span className="block text-xs text-ink-400">{m.email}</span></Td><Td className="text-xs">{m.role}</Td><Td>{m.two_factor ? <Badge tone="success">{tr('On')}</Badge> : <Badge tone="neutral">{tr('Off')}</Badge>}</Td></Tr>)}</tbody>
       </Table></div>
-      <h3 className="mb-2 mt-6 text-sm font-semibold text-ink-900">Recent activity</h3>
-      {d.events.length ? <Events rows={d.events.slice(0, 50)} showWho /> : <p className="text-sm text-ink-400">Nothing yet.</p>}
+      <h3 className="mb-2 mt-6 text-sm font-semibold text-ink-900">{tr('Recent activity')}</h3>
+      {d.events.length ? <Events rows={d.events.slice(0, 50)} showWho /> : <p className="text-sm text-ink-400">{tr('Nothing yet.')}</p>}
     </Card>
   );
 };
 
 const ApprovalPin = () => {
+  const tr = useT();
   const toast = useToast();
   const [s, setS] = useState(null);
   const [form, setForm] = useState({ password: '', pin: '' });
@@ -201,20 +212,21 @@ const ApprovalPin = () => {
   const call = async (method, body, done) => { setError(''); try { await api('/auth/approval-pin', { method, body }); setForm({ password: '', pin: '' }); toast.success(done); load(); } catch (caught) { setError(caught.message); } };
   return (
     <Card className="p-5">
-      <h2 className="text-base font-bold text-ink-900">Your approval PIN</h2>
-      <p className="mt-1 text-sm text-ink-500">Staff at the till ask for this PIN to cancel a bill or give a large discount. {s.has_pin ? 'You have a PIN set.' : 'You have not set one yet, so nobody can ask you.'}</p>
+      <h2 className="text-base font-bold text-ink-900">{tr('Your approval PIN')}</h2>
+      <p className="mt-1 text-sm text-ink-500">Staff at the till ask for this PIN to cancel a bill or give a large discount. {s.has_pin ? tr('You have a PIN set.') : tr('You have not set one yet, so nobody can ask you.')}</p>
       <form onSubmit={(e) => { e.preventDefault(); call('PUT', form, 'PIN saved'); }} className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-        <Field id="ap-pw" label="Your password"><Input id="ap-pw" type="password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} autoComplete="current-password" required /></Field>
-        <Field id="ap-pin" label={s.has_pin ? 'New PIN' : 'PIN'} hint="4 to 8 digits"><Input id="ap-pin" type="password" inputMode="numeric" value={form.pin} onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value.replace(/\D/g, '') }))} autoComplete="off" maxLength={8} required /></Field>
-        <Button type="submit">{s.has_pin ? 'Change PIN' : 'Set PIN'}</Button>
+        <Field id="ap-pw" label={tr('Your password')}><Input id="ap-pw" type="password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} autoComplete="current-password" required /></Field>
+        <Field id="ap-pin" label={s.has_pin ? tr('New PIN') : tr('PIN')} hint={tr('4 to 8 digits')}><Input id="ap-pin" type="password" inputMode="numeric" value={form.pin} onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value.replace(/\D/g, '') }))} autoComplete="off" maxLength={8} required /></Field>
+        <Button type="submit">{s.has_pin ? tr('Change PIN') : tr('Set PIN')}</Button>
       </form>
-      {s.has_pin && <Button variant="secondary" size="sm" className="mt-2" disabled={!form.password} onClick={() => call('DELETE', { password: form.password }, 'PIN removed')}>Remove PIN (enter your password above)</Button>}
+      {s.has_pin && <Button variant="secondary" size="sm" className="mt-2" disabled={!form.password} onClick={() => call('DELETE', { password: form.password }, 'PIN removed')}>{tr('Remove PIN (enter your password above)')}</Button>}
       <Alert>{error}</Alert>
     </Card>
   );
 };
 
 const ApprovalRules = () => {
+  const tr = useT();
   const toast = useToast();
   const [d, setD] = useState(null);
   const [cap, setCap] = useState('');
@@ -225,27 +237,28 @@ const ApprovalRules = () => {
   const save = async (body, done) => { setError(''); try { await api('/approvals', { method: 'PUT', body }); toast.success(done); load(); } catch (caught) { setError(caught.message); } };
   return (
     <Card className="p-5">
-      <h2 className="text-base font-bold text-ink-900">Manager approval at the till</h2>
-      <p className="mt-1 text-sm text-ink-500">Owners, admins and managers are never held back. Everyone else needs one of them to type in their PIN.</p>
+      <h2 className="text-base font-bold text-ink-900">{tr('Manager approval at the till')}</h2>
+      <p className="mt-1 text-sm text-ink-500">{tr('Owners, admins and managers are never held back. Everyone else needs one of them to type in their PIN.')}</p>
       <form onSubmit={(e) => { e.preventDefault(); save({ discount_cap_pct: Number(cap) }, 'Discount limit saved'); }} className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-        <Field id="ap-cap" label="Biggest discount staff may give alone (%)" hint="Of the bill, for discounts typed in at the till. Offers you set up are not counted."><Input id="ap-cap" type="number" min="0" max="100" step="0.5" value={cap} onChange={(e) => setCap(e.target.value)} required /></Field>
-        <Button type="submit">Save</Button>
+        <Field id="ap-cap" label={tr('Biggest discount staff may give alone (%)')} hint={tr('Of the bill, for discounts typed in at the till. Offers you set up are not counted.')}><Input id="ap-cap" type="number" min="0" max="100" step="0.5" value={cap} onChange={(e) => setCap(e.target.value)} required /></Field>
+        <Button type="submit">{tr('Save')}</Button>
       </form>
       <label className="mt-4 flex items-start gap-3 text-sm">
         <input type="checkbox" className="mt-1" checked={d.cancel_needs_approval} onChange={(e) => save({ cancel_needs_approval: e.target.checked }, e.target.checked ? 'Cancelling a bill now needs a PIN' : 'Cancelling a bill is free again')} />
-        <span><span className="font-medium text-ink-900">Cancelling a bill needs a manager's PIN</span><span className="block text-xs text-ink-500">Staff also have to say why.</span></span>
+        <span><span className="font-medium text-ink-900">{tr('Cancelling a bill needs a manager\'s PIN')}</span><span className="block text-xs text-ink-500">{tr('Staff also have to say why.')}</span></span>
       </label>
-      <h3 className="mb-2 mt-5 text-sm font-semibold text-ink-900">Who can approve</h3>
+      <h3 className="mb-2 mt-5 text-sm font-semibold text-ink-900">{tr('Who can approve')}</h3>
       {d.approvers?.length ? <Table>
-        <Thead><Th>Person</Th><Th>Role</Th><Th>PIN</Th></Thead>
-        <tbody>{d.approvers.map((m) => <Tr key={m.user_id}><Td>{m.name}</Td><Td className="text-xs">{m.role}</Td><Td>{m.has_pin ? <Badge tone="success">Set</Badge> : <Badge tone="neutral">Not set</Badge>}</Td></Tr>)}</tbody>
-      </Table> : <p className="text-sm text-ink-400">Nobody yet.</p>}
+        <Thead><Th>{tr('Person')}</Th><Th>{tr('Role')}</Th><Th>{tr('PIN')}</Th></Thead>
+        <tbody>{d.approvers.map((m) => <Tr key={m.user_id}><Td>{m.name}</Td><Td className="text-xs">{m.role}</Td><Td>{m.has_pin ? <Badge tone="success">{tr('Set')}</Badge> : <Badge tone="neutral">{tr('Not set')}</Badge>}</Td></Tr>)}</tbody>
+      </Table> : <p className="text-sm text-ink-400">{tr('Nobody yet.')}</p>}
       <Alert>{error}</Alert>
     </Card>
   );
 };
 
 const DeleteAccount = () => {
+  const tr = useT();
   const { signOut } = useAuth();
   const dialog = useDialog();
   const [open, setOpen] = useState(false);
@@ -255,7 +268,7 @@ const DeleteAccount = () => {
   const [busy, setBusy] = useState(false);
   const submit = async (e) => {
     e.preventDefault();
-    if (!(await dialog.confirm({ title: 'Delete your account?', body: 'This cannot be undone. Your name, email, phone and sign-ins are erased. The business keeps its bills and records.', confirmLabel: 'Delete my account', danger: true }))) return;
+    if (!(await dialog.confirm({ title: tr('Delete your account?'), body: tr('This cannot be undone. Your name, email, phone and sign-ins are erased. The business keeps its bills and records.'), confirmLabel: tr('Delete my account'), danger: true }))) return;
     setBusy(true); setError(''); setHeld('');
     try {
       await api('/auth/delete-account', { method: 'POST', body: { password: form.password, ...(form.code ? { code: form.code.trim(), recovery_code: form.code.trim().length > 6 ? form.code.trim() : undefined } : {}) } });
@@ -268,13 +281,13 @@ const DeleteAccount = () => {
   };
   return (
     <Card className="p-5">
-      <h2 className="text-base font-bold text-ink-900">Delete my account</h2>
-      <p className="mt-1 text-sm text-ink-500">Erases your name, email, phone and sign-ins from FlowXP. The business keeps its bills and records. <a href="/delete-account" className="font-medium text-brand-600 hover:text-brand-700">What is kept?</a></p>
-      {!open ? <Button variant="secondary" size="sm" className="mt-3" onClick={() => setOpen(true)}>Delete my account…</Button> : (
+      <h2 className="text-base font-bold text-ink-900">{tr('Delete my account')}</h2>
+      <p className="mt-1 text-sm text-ink-500">{tr('Erases your name, email, phone and sign-ins from FlowXP. The business keeps its bills and records.')} <a href="/delete-account" className="font-medium text-brand-600 hover:text-brand-700">{tr('What is kept?')}</a></p>
+      {!open ? <Button variant="secondary" size="sm" className="mt-3" onClick={() => setOpen(true)}>{tr('Delete my account…')}</Button> : (
         <form onSubmit={submit} className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-          <Field id="del-pw" label="Your password"><Input id="del-pw" type="password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} autoComplete="current-password" required /></Field>
-          <Field id="del-code" label="Two-step code" hint="Only if you use two-step verification"><Input id="del-code" inputMode="numeric" value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} autoComplete="one-time-code" /></Field>
-          <Button type="submit" variant="danger" loading={busy}>Delete</Button>
+          <Field id="del-pw" label={tr('Your password')}><Input id="del-pw" type="password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} autoComplete="current-password" required /></Field>
+          <Field id="del-code" label={tr('Two-step code')} hint={tr('Only if you use two-step verification')}><Input id="del-code" inputMode="numeric" value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} autoComplete="one-time-code" /></Field>
+          <Button type="submit" variant="danger" loading={busy}>{tr('Delete')}</Button>
         </form>
       )}
       <Alert>{error}</Alert>
@@ -284,6 +297,7 @@ const DeleteAccount = () => {
 };
 
 const SecurityPage = () => {
+  const tr = useT();
   const { business, can } = useAuth();
   const [history, setHistory] = useState(null);
   const [error, setError] = useState('');
@@ -291,14 +305,14 @@ const SecurityPage = () => {
   const canSeeTeam = ['OWNER', 'ADMIN'].includes(business?.role);
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div><h1 className="text-h3 font-semibold text-ink-900">Security</h1><p className="mt-1 text-sm text-ink-500">Keep your account and your business safe.</p></div>
+      <div><h1 className="text-h3 font-semibold text-ink-900">{tr('Security')}</h1><p className="mt-1 text-sm text-ink-500">{tr('Keep your account and your business safe.')}</p></div>
       <TwoFactor />
       <Password />
       <ApprovalPin />
       {can?.('settings') && <ApprovalRules />}
       <Card className="p-5">
-        <h2 className="text-base font-bold text-ink-900">Your recent sign-ins</h2>
-        <p className="mb-3 text-xs text-ink-500">If you see one you don't recognise, change your password and sign out everywhere.</p>
+        <h2 className="text-base font-bold text-ink-900">{tr('Your recent sign-ins')}</h2>
+        <p className="mb-3 text-xs text-ink-500">{tr('If you see one you don\'t recognise, change your password and sign out everywhere.')}</p>
         <Alert>{error}</Alert>
         {history ? <Events rows={history} /> : <ListState loading={!error} />}
       </Card>

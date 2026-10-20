@@ -1,3 +1,4 @@
+import { formatDate } from '../../lib/display.ts';
 import { useRef, useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -53,7 +54,7 @@ export default function DeliveryScreen() {
               {x.invoice_number ? <Soft>{`Bill ${x.invoice_number}${x.invoice_total != null ? ` · ${rupees(toPaise(x.invoice_total))}` : ''}`}</Soft> : null}
               <Soft>{[x.vehicle_no, x.driver_name, x.driver_phone].filter(Boolean).join(' · ') || 'No vehicle or driver yet'}</Soft>
               {x.delivery_address ? <Soft>{x.delivery_address}</Soft> : null}
-              <Soft>{`Sent ${String(x.dispatch_date).slice(0, 10)}${x.expected_date ? ` · expected ${String(x.expected_date).slice(0, 10)}` : ''} · ${x.packages_count} package${x.packages_count === 1 ? '' : 's'}`}</Soft>
+              <Soft>{`Sent ${formatDate(x.dispatch_date)}${x.expected_date ? ` · expected ${formatDate(x.expected_date)}` : ''} · ${x.packages_count} package${x.packages_count === 1 ? '' : 's'}`}</Soft>
               {x.pod_received_by ? <Soft>{`Received by ${x.pod_received_by}`}</Soft> : null}
               {x.failure_reason ? <Text style={{ color: color.danger }}>{x.failure_reason}</Text> : null}
             </View>

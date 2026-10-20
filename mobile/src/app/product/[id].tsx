@@ -95,7 +95,7 @@ export default function ProductDetail() {
           {error && !p ? <Failed message={error} onRetry={() => { void refresh(); }} /> : null}
           {p ? (
             <>
-              <Line left="Selling price" right={money(p.selling_price)} sub={`GST ${p.tax_rate}%${p.mrp ? ` · MRP ${money(p.mrp)}` : ''}`} />
+              <Line left="Selling price" right={money(p.selling_price)} sub={`GST ${p.tax_rate}%${p.cess_rate ? ` · Cess ${p.cess_rate}%` : ""}${p.mrp ? ` · MRP ${money(p.mrp)}` : ''}`} />
               {p.purchase_price > 0 ? <Line left="Cost price" right={money(p.purchase_price)} /> : null}
               {p.track_inventory ? <Line left="In stock here" right={`${qty(p.current_stock)} ${p.unit ?? ''}`} sub={`Reorder level ${qty(p.min_stock)}`} /> : <Line left="Stock" right="Not counted" />}
               {p.barcode ? <Line left="Barcode" right={p.barcode} /> : null}

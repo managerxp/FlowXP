@@ -17,6 +17,8 @@ import { profitability } from './profitability.js';
 import { subscriptionSummary } from './subscription.js';
 import { notify } from './notifications.js';
 import { registerScan } from './jobs.js';
+import { inWeeklyWindow, scanWeekly } from './weeklySummary.js';
+import { scanAnomalies } from './anomalies.js';
 import { addDaysISO, businessToday } from '../utils/dates.js';
 import { toRupees } from '../utils/money.js';
 
@@ -222,7 +224,11 @@ const SCANS = [
   { name: 'leakage', every: 360, restaurantOnly: true, run: scanLeakage },
   { name: 'account', every: 360, restaurantOnly: false, run: scanAccount },
   // After 9:30 pm local, checked often so it goes out soon after close; dedupe keeps it to once a day.
-  { name: 'summary', every: 30, restaurantOnly: true, run: scanSummary, when: (b) => localHour(b.timezone) * 60 + new Date().getMinutes() >= 21 * 60 + 30 }
+  { name: 'summary', every: 30, restaurantOnly: true, run: scanSummary, when: (b) => localHour(b.timezone) * 60 + new Date().getMinutes() >= 21 * 60 + 30 },
+  // Monday (or Tuesday, if the server missed it) from 8 am local, for every kind of business; dedupe keeps it to once a week per person
+  { name: 'weekly', every: 180, restaurantOnly: false, run: scanWeekly, when: (b) => inWeeklyWindow(b.timezone) },
+  // yesterday's numbers against the usual pattern, from 9 am local, for every kind of business; dedupe keeps each alert to once a day
+  { name: 'anomalies', every: 360, restaurantOnly: false, run: scanAnomalies, when: (b) => localHour(b.timezone) >= 9 },
 ];
 
 export const runScheduledScans = async () => {

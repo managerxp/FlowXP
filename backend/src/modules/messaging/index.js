@@ -36,7 +36,7 @@ export const cleanSettings = (input, current) => {
   return { settings: next };
 };
 
-const money = (paise) => `₹${toRupees(paise).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+const money = (paise) => { const v = toRupees(paise); return `₹${v.toLocaleString('en-IN', { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 })}`; };   // ₹200, ₹2,905.60
 const whenText = (date, tz) => new Date(date).toLocaleString('en-IN', { timeZone: tz || 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
 /**
@@ -112,6 +112,71 @@ export const sendBill = async (db, { businessId, invoiceId, phone = null, create
     values: { name: inv.customer_name || 'there', business: inv.business_name, number: inv.invoice_number, total: money(inv.total_paise), link },
     related: { type: 'invoice', id: inv.invoice_id }
   });
+};
+
+/**
+ * What to hand to a share sheet or WhatsApp's own "click to chat" for a bill: the message (with what is still due on the bill and on the
+ * customer's account), the public link, and a wa.me address that opens WhatsApp with the message ready, to the customer's number when the
+ * bill has one. This needs no WhatsApp Business setup: it is the shop's own WhatsApp, sent by a person.
+ */
+export const billShare = async (db, { businessId, invoiceId, phone = null }) => {
+  const inv = (await db.query(
+    `SELECT i.invoice_id, i.invoice_number, i.total_paise, i.balance_due_paise, i.customer_id, c.name AS customer_name, c.phone AS customer_phone, b.name AS business_name
+     FROM invoices i JOIN businesses b ON b.business_id = i.business_id LEFT JOIN customers c ON c.customer_id = i.customer_id
+     WHERE i.invoice_id = $1 AND i.business_id = $2 AND i.status = 'ISSUED'`, [invoiceId, businessId])).rows[0];
+  if (!inv) return { problem: 'Invoice not found', code: 404 };
+  const accountDue = inv.customer_id
+    ? Number((await db.query(`SELECT COALESCE(SUM(balance_due_paise), 0) AS due FROM invoices WHERE business_id = $1 AND customer_id = $2 AND status = 'ISSUED'`, [businessId, inv.customer_id])).rows[0].due)
+    : 0;
+  const link = await shareLink(db, inv.invoice_id);
+  const billDue = Number(inv.balance_due_paise);
+  const text = [
+    `Hi ${inv.customer_name || 'there'}, thank you for visiting ${inv.business_name}! Your bill ${inv.invoice_number} is ${money(inv.total_paise)}.`,
+    billDue > 0 ? `${money(billDue)} is still due on this bill.` : null,
+    accountDue > billDue ? `Total due on your account: ${money(accountDue)}.` : null,
+    `View it here: ${link}`
+  ].filter(Boolean).join(' ');
+  const digits = normalisePhone(phone || inv.customer_phone);
+  const to = digits ? (digits.length === 10 ? `${config.messaging.countryCode}${digits}` : digits) : null;
+  return { link, text, phone: to, wa_url: `https://wa.me/${to || ''}?text=${encodeURIComponent(text)}` };
+};
+
+/**
+ * A payment reminder for a customer who owes money: what is due, the oldest unpaid bills, and a wa.me address that opens WhatsApp on their
+ * number with the message ready (sent by a person from the shop's own WhatsApp; no provider needed). Nothing due means no reminder.
+ */
+export const balanceShare = async (db, { businessId, customerId }) => {
+  const c = (await db.query(
+    `SELECT c.name, c.phone, b.name AS business_name FROM customers c JOIN businesses b ON b.business_id = c.business_id WHERE c.customer_id = $1 AND c.business_id = $2`, [customerId, businessId])).rows[0];
+  if (!c) return { problem: 'Customer not found', code: 404 };
+  const bills = (await db.query(
+    `SELECT invoice_number, invoice_date::text AS date, balance_due_paise FROM invoices
+     WHERE business_id = $1 AND customer_id = $2 AND status = 'ISSUED' AND balance_due_paise > 0 ORDER BY invoice_date, invoice_id`, [businessId, customerId])).rows;
+  const due = bills.reduce((s, b) => s + Number(b.balance_due_paise), 0);
+  if (!due) return { problem: 'Nothing is due from this customer', code: 409 };
+  const listed = bills.slice(0, 5).map((b) => `${b.invoice_number} (${b.date}) ${money(b.balance_due_paise)}`).join(', ');
+  const text = `Hi ${c.name || 'there'}, a gentle reminder from ${c.business_name}: ${money(due)} is due on your account. Unpaid: ${listed}${bills.length > 5 ? ` and ${bills.length - 5} more` : ''}. Please pay when you can. Thank you!`;
+  const digits = normalisePhone(c.phone);
+  const to = digits ? `${config.messaging.countryCode}${digits}` : null;
+  return { due: toRupees(due), text, phone: to, wa_url: `https://wa.me/${to || ''}?text=${encodeURIComponent(text)}` };
+};
+
+/**
+ * The same payment reminder as balanceShare, sent by the messaging service from the business's own WhatsApp/SMS number (a service message: it is
+ * sent whether or not the customer opted out of offers). Returns what send() returns, or { problem, code }.
+ */
+export const sendBalance = async (db, { businessId, customerId, createdBy = null }) => {
+  const c = (await db.query(
+    `SELECT c.name, c.phone, b.name AS business_name FROM customers c JOIN businesses b ON b.business_id = c.business_id WHERE c.customer_id = $1 AND c.business_id = $2`, [customerId, businessId])).rows[0];
+  if (!c) return { problem: 'Customer not found', code: 404 };
+  if (!normalisePhone(c.phone)) return { problem: 'This customer has no mobile number to send to', code: 400 };
+  const bills = (await db.query(
+    `SELECT invoice_number, invoice_date::text AS date, balance_due_paise FROM invoices
+     WHERE business_id = $1 AND customer_id = $2 AND status = 'ISSUED' AND balance_due_paise > 0 ORDER BY invoice_date, invoice_id`, [businessId, customerId])).rows;
+  const due = bills.reduce((s, b) => s + Number(b.balance_due_paise), 0);
+  if (!due) return { problem: 'Nothing is due from this customer', code: 409 };
+  const listed = bills.slice(0, 5).map((b) => `${b.invoice_number} (${b.date}) ${money(b.balance_due_paise)}`).join(', ') + (bills.length > 5 ? ` and ${bills.length - 5} more` : '');
+  return send(db, { businessId, customerId, phone: c.phone, kind: 'BALANCE_DUE', createdBy, values: { name: c.name || 'there', business: c.business_name, amount: money(due), bills: listed }, related: { type: 'customer', id: customerId } });
 };
 
 /* ── campaigns ────────────────────────────────────────────────────────── */

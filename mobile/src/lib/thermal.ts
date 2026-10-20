@@ -1,6 +1,6 @@
 import { Linking } from 'react-native';
 import { kvGet, kvSet } from './local.ts';
-import { escposBytes, toBase64 } from './escpos.ts';
+import { escposBytes, toBase64, type EscposOptions } from './escpos.ts';
 import type { Paper } from './print.ts';
 
 /*
@@ -10,21 +10,34 @@ import type { Paper } from './print.ts';
  *
  * Not yet tried against a real printer: the Settings screen has a test print for that. If RawBT is missing the person is told, and the phone's print screen still works.
  */
-export type PrinterMode = 'system' | 'rawbt';
+export type PrinterMode = 'system' | 'rawbt' | 'direct';
 
 export const RAWBT_STORE = 'market://details?id=ru.a402d.rawbtprinter';
 export const RAWBT_WEB = 'https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter';
 
 const MODE = 'printer_mode';
 
-export const readMode = async (): Promise<PrinterMode> => ((await kvGet(MODE).catch(() => null)) === 'rawbt' ? 'rawbt' : 'system');
+/** How a thermal receipt is printed, kept on this phone: auto-cut after the receipt, copies, blank lines before the cut, and whether the cash drawer opens with each print. */
+export type PrinterPrefs = { cut: boolean; copies: number; extraLines: number; drawer: boolean };
+export const DEFAULT_PREFS: PrinterPrefs = { cut: true, copies: 1, extraLines: 3, drawer: false };
+const PREFS = 'printer_prefs';
+export const readPrefs = async (): Promise<PrinterPrefs> => {
+  try {
+    const raw = JSON.parse((await kvGet(PREFS)) || '{}') as Partial<PrinterPrefs>;
+    const num = (v: unknown, lo: number, hi: number, d: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, Math.round(v))) : d);
+    return { cut: raw.cut !== false, copies: num(raw.copies, 1, 5, 1), extraLines: num(raw.extraLines, 0, 10, 3), drawer: raw.drawer === true };
+  } catch { return DEFAULT_PREFS; }
+};
+export const savePrefs = async (prefs: PrinterPrefs) => { await kvSet(PREFS, JSON.stringify(prefs)).catch(() => {}); };
+
+export const readMode = async (): Promise<PrinterMode> => { const m = await kvGet(MODE).catch(() => null); return m === 'rawbt' || m === 'direct' ? m : 'system'; };
 export const setMode = async (mode: PrinterMode) => { await kvSet(MODE, mode).catch(() => {}); };
 
 /** The link RawBT listens for: the receipt's bytes, base64. */
-export const rawbtUrl = (text: string, paper: Paper, options: { drawer?: boolean; qr?: string } = {}): string => `rawbt:base64,${toBase64(escposBytes(text, paper, options))}`;
+export const rawbtUrl = (text: string, paper: Paper, options: EscposOptions = {}): string => `rawbt:base64,${toBase64(escposBytes(text, paper, options))}`;
 
 /** Hand a receipt to RawBT. Throws a sentence the person can read when RawBT is not there. */
-export const printViaRawBT = async (text: string, paper: Paper, options: { drawer?: boolean; qr?: string } = {}) => {
+export const printViaRawBT = async (text: string, paper: Paper, options: EscposOptions = {}) => {
   try { await Linking.openURL(rawbtUrl(text, paper, options)); }
   catch { throw new Error('The RawBT app is not installed on this phone.'); }
 };

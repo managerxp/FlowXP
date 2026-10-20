@@ -13,8 +13,9 @@ import { ArrowLeft, Mail, MessageCircle, Phone, Plus, Search, Trash2, Truck } fr
 import { api, formatCurrency } from '../lib/api.js';
 import { localISO } from '../lib/dates.js';
 import { Alert, Button, Field, Input, Modal, Select, useToast, useDialog, StatCard, EmptyState } from '../components/ui.jsx';
+import { formatDate } from '../lib/display.js';
 
-const day = (d) => (d ? new Date(`${String(d).slice(0, 10)}T00:00`).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : null);
+const day = (d) => (d ? formatDate(String(d).slice(0, 10)) : null);
 const daysSince = (d) => (d ? Math.round((new Date(`${localISO()}T00:00`) - new Date(`${String(d).slice(0, 10)}T00:00`)) / 86400000) : null);
 const ago = (d) => { const n = daysSince(d); return n == null ? null : n === 0 ? 'today' : n === 1 ? 'yesterday' : n < 30 ? `${n} days ago` : n < 365 ? `${Math.round(n / 30)} mo ago` : `${Math.floor(n / 365)} yr ago`; };
 const initials = (name) => String(name || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();

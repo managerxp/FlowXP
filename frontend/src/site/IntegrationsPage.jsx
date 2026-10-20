@@ -37,7 +37,8 @@ const CONNECTED = [
   { title: 'CSV export', body: 'Reports and the GST register for your accountant or spreadsheet.' },
   { title: 'Phone and tablet', body: 'Install FlowXP from the browser; billing keeps working offline.' },
   { title: 'Payments', body: 'Record cash, UPI, card, bank transfer and credit on every bill.' },
-  { title: 'Photo menu import', body: 'Read items and prices from a photo of your menu or rate card.' }
+  { title: 'Photo menu import', body: 'Read items and prices from a photo of your menu or rate card.' },
+  { title: 'Import from Tally and others', body: 'Bring items and stock from Tally, Vyapar, Busy, Marg, Zoho or Excel. See the setup guide.' }
 ];
 
 const COMING = [

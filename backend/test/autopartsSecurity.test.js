@@ -54,14 +54,14 @@ test('no route is open to a role with no permissions, and every one has auth, a 
 });
 
 test('a plan without the feature is refused on every route that names it', { skip }, async () => {
-  const off = { ap_catalog: false, ap_racks: false, ap_grn: false, ap_pricing: false, ap_intelligence: false };
+  const off = { ap_catalog: false, ap_racks: false, ap_grn: false, ap_pricing: false, ap_intelligence: false, ap_jobcards: false, ap_staff: false };
   let refused = 0;
   for (const r of routes()) { if ((await gate(r, { ...S.tenantFor('OWNER'), planFeatures: off })) === 402) refused += 1; }
   assert.ok(refused >= routes().length - 2, `${refused} of ${routes().length} routes are plan-gated`);
 });
 
 test('the parts features exist for a parts shop and for no other business type', { skip }, async () => {
-  const keys = ['ap_catalog', 'ap_racks', 'ap_grn', 'ap_transfers', 'ap_counts', 'ap_pricing', 'ap_intelligence'];
+  const keys = ['ap_catalog', 'ap_racks', 'ap_grn', 'ap_transfers', 'ap_counts', 'ap_pricing', 'ap_intelligence', 'ap_jobcards', 'ap_staff'];
   const parts = industryDefaults('AUTO_PARTS');
   for (const k of keys) assert.notEqual(parts[k], false, `${k} is on for AUTO_PARTS`);
   for (const t of ['RESTAURANT', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'WHOLESALE', 'SALON', 'GYM', 'GAMING_CAFE', 'HOTEL']) {

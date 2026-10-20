@@ -7,6 +7,11 @@
  * details on Thursday. Every field below is therefore optional at the schema
  * level — the wizard asks for them, it does not withhold the product.
  */
+import { cleanGstSettings, withGstDefaults } from '../modules/gstOptions.js';
+import { cleanInvoicePrint, withDefaults } from '../modules/invoicePrint.js';
+import { backupZip } from '../modules/backup.js';
+import { RestoreError, restoreInto, unzip } from '../modules/restore.js';
+import { businessToday } from '../utils/dates.js';
 import pool from '../config/database.js';
 import { EXT_BY_MIME, putFile, removeFile } from '../modules/storage.js';
 import { looksLikeImage } from '../middleware/upload.js';
@@ -14,6 +19,7 @@ import { subscriptionSummary, newTrialWindow } from '../modules/subscription.js'
 import { recordAudit, recordEvent } from '../modules/events.js';
 import { toRupees } from '../utils/money.js';
 import { hasPermission } from '../middleware/auth.js';
+import { cleanLocale } from '../utils/locales.js';
 import {
   checkBusinessType, checkSignupType, checkEmail, checkGstin, checkName, checkPhone, checkUpiVpa, firstError
 } from '../utils/validate.js';
@@ -137,7 +143,8 @@ export const getCurrent = async (req, res) => {
         invoice_next_number: b.invoice_next_number,
         round_off_enabled: b.round_off_enabled,
         onboarding_step: b.onboarding_step,
-        receipt_settings: { ...RECEIPT_DEFAULTS, ...(b.receipt_settings || {}) },
+        gst_settings: withGstDefaults(b.gst_settings),
+        receipt_settings: { ...RECEIPT_DEFAULTS, ...(b.receipt_settings || {}), invoice_print: withDefaults(b.receipt_settings?.invoice_print) },
         role: req.tenant.role,
         // this person's own permission overrides (not the full role table — the
         // frontend only needs to know its own access, to keep the sidebar and
@@ -176,6 +183,7 @@ const EDITABLE = {
   gstin:                      checkGstin,
   gst_enabled:                () => null,
   currency:                   () => null,
+  default_language:           (v) => (v === null || v === '' || cleanLocale(v) ? null : 'Choose one of the supported languages'),
   timezone:                   () => null,
   financial_year_start_month: (v) =>
     Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= 12
@@ -189,7 +197,7 @@ const EDITABLE = {
 };
 
 /* Receipt printing preferences: every key checked, unknown keys dropped. */
-export const RECEIPT_DEFAULTS = { paper_width: 80, footer: 'Thank you! Visit again.', show_gstin: true, show_upi_qr: true, show_loyalty: true, show_logo: true, logo_url: null };
+export const RECEIPT_DEFAULTS = { paper_width: 80, footer: 'Thank you! Visit again.', show_gstin: true, show_upi_qr: true, show_loyalty: true, show_logo: true, logo_url: null, auto_cut: true, copies: 1, extra_lines: 3 };
 export const cleanReceiptSettings = (input) => {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: 'Receipt settings must be an object' };
   const out = {};
@@ -202,7 +210,31 @@ export const cleanReceiptSettings = (input) => {
     if (footer.length > 200) return { error: 'The footer is too long (200 characters at most)' };
     out.footer = footer;
   }
-  for (const key of ['show_gstin', 'show_upi_qr', 'show_loyalty', 'show_logo']) if (key in input) out[key] = input[key] === true;
+  for (const key of ['show_gstin', 'show_upi_qr', 'show_loyalty', 'show_logo', 'auto_cut']) if (key in input) out[key] = input[key] === true;
+  const whole = (key, lo, hi, what) => {
+    if (!(key in input)) return null;
+    const n = Number(input[key]);
+    if (!Number.isInteger(n) || n < lo || n > hi) return `${what} must be a whole number from ${lo} to ${hi}`;
+    out[key] = n; return null;
+  };
+  /* What a tax invoice prints: PAN, bank details and terms. Optional; an empty value clears it. */
+  const text = (key, max, what, pattern) => {
+    if (!(key in input)) return null;
+    const v = String(input[key] ?? '').trim();
+    if (v.length > max) return `${what} is too long (${max} characters at most)`;
+    if (v && pattern && !pattern.test(v.toUpperCase())) return `${what} is not valid`;
+    out[key] = pattern ? v.toUpperCase() : v; return null;
+  };
+  const badText = text('pan', 10, 'PAN', /^[A-Z]{5}[0-9]{4}[A-Z]$/) || text('bank_name', 80, 'Bank name') || text('bank_account', 24, 'Account number', /^[0-9A-Z -]{4,24}$/)
+    || text('bank_ifsc', 11, 'IFSC code', /^[A-Z]{4}0[A-Z0-9]{6}$/) || text('bank_branch', 80, 'Bank branch') || text('accountant_email', 160, 'The accountant email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/) || text('terms', 1000, 'The terms and conditions');
+  if (badText) return { error: badText };
+  const bad = whole('copies', 1, 5, 'Copies') || whole('extra_lines', 0, 10, 'Blank lines');
+  if (bad) return { error: bad };
+  if ('invoice_print' in input) {
+    const printed = cleanInvoicePrint(input.invoice_print);
+    if (printed.error) return { error: printed.error };
+    out.invoice_print = printed.settings;
+  }
   return { settings: out };
 };
 
@@ -219,11 +251,18 @@ export const updateCurrent = async (req, res) => {
     updates.push(`receipt_settings = receipt_settings || $${values.length}::jsonb`);
   }
 
+  if ('gst_settings' in body) {
+    const { settings, error } = cleanGstSettings(body.gst_settings);
+    if (error) return res.status(400).json({ success: false, message: error });
+    values.push(JSON.stringify(settings));
+    updates.push(`gst_settings = gst_settings || $${values.length}::jsonb`);   // merged, so saving one option never resets the others
+  }
+
   for (const [field, validator] of Object.entries(EDITABLE)) {
     if (!(field in body)) continue;
     const error = validator(body[field]);
     if (error) return res.status(400).json({ success: false, message: error });
-    values.push(field === 'gstin' && body[field] ? String(body[field]).trim().toUpperCase() : body[field]);
+    values.push(field === 'gstin' && body[field] ? String(body[field]).trim().toUpperCase() : field === 'default_language' ? cleanLocale(body[field]) : body[field]);
     updates.push(`${field} = $${values.length}`);
   }
 
@@ -372,4 +411,37 @@ export const removeLogo = async (req, res) => {
   await pool.query("UPDATE businesses SET receipt_settings = receipt_settings - 'logo_url', updated_at = CURRENT_TIMESTAMP WHERE business_id = $1", [req.tenant.businessId]);
   if (old) removeFile(old, req.tenant.businessId);
   res.json({ success: true, data: { logo_url: null } });
+};
+
+/* POST /api/businesses/current/restore  (the backup ZIP as the request body; ?confirm=1 to do it, otherwise a preview that changes nothing)
+   Adds what the backup has and this business does not, and leaves everything that is here alone (see modules/restore.js). The preview and the real run are the same code; the
+   preview rolls back. Owner only. */
+export const restoreBackup = async (req, res) => {
+  const body = req.body;
+  if (!Buffer.isBuffer(body) || !body.length) return res.status(400).json({ success: false, message: 'Choose the backup ZIP file to restore from' });
+  const confirm = req.query.confirm === '1' || req.query.confirm === 'true';
+  const client = await pool.connect();
+  try {
+    const files = unzip(body);
+    await client.query('BEGIN');
+    const report = await restoreInto(client, req.tenant.businessId, files);
+    if (confirm) {
+      await client.query('COMMIT');
+      recordAudit(req, { action: 'business.backup_restored', resource_type: 'business', resource_id: req.tenant.businessId, metadata: { bytes: body.length, source: report.source, totals: report.totals } });
+    } else await client.query('ROLLBACK');
+    res.json({ success: true, data: { applied: confirm, ...report } });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    if (error instanceof RestoreError) return res.status(error.status).json({ success: false, message: error.message });
+    throw error;
+  } finally { client.release(); }
+};
+
+/* GET /api/businesses/current/backup: every record of this business as a ZIP of CSV files (the owner's own copy; see modules/backup.js) */
+export const downloadBackup = async (req, res) => {
+  const bytes = await backupZip(req.tenant.businessId);
+  recordAudit(req, { action: 'business.backup_downloaded', resource_type: 'business', resource_id: req.tenant.businessId, metadata: { bytes: bytes.length } });
+  res.set('Content-Type', 'application/zip');
+  res.set('Content-Disposition', `attachment; filename="flowxp-backup-${await businessToday(req.tenant.businessId)}.zip"`);
+  res.send(bytes);
 };

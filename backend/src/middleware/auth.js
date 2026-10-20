@@ -222,7 +222,7 @@ export const requireAuth = async (req, res, next) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT u.user_id, u.name, u.email, u.phone, u.email_verified, u.is_super_admin, u.token_version, u.totp_enabled
+      `SELECT u.user_id, u.name, u.email, u.phone, u.email_verified, u.is_super_admin, u.token_version, u.totp_enabled, u.language
        FROM users u WHERE u.user_id = $1`,
       [payload.sub]
     );
@@ -242,7 +242,7 @@ export const requireAuth = async (req, res, next) => {
               b.name, b.business_type, b.status AS business_status,
               b.subscription_status, b.plan_code, b.billing_cycle,
               b.trial_started_at, b.trial_ends_at, b.next_billing_date,
-              b.currency, b.onboarding_step, b.gst_enabled, b.require_2fa_admins, b.upi_vpa, b.discount_cap_pct, b.cancel_needs_approval,
+              b.currency, b.onboarding_step, b.gst_enabled, b.gst_settings, b.require_2fa_admins, b.upi_vpa, b.default_language, b.discount_cap_pct, b.cancel_needs_approval,
               -- feature_flags come from the business's PINNED plan version, not the plan's current
               -- (possibly since-changed) values — see modules/planFeatures.js and migration 0038.
               COALESCE(pv.feature_flags, p.feature_flags, '{}'::jsonb) AS feature_flags,

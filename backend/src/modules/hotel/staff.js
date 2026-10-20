@@ -9,17 +9,26 @@
  * deductions are typed by hand while the run is a draft. This is a payroll SHEET: PF, ESI, professional tax and TDS are not worked out.
  */
 import { HotelError, addDaysISO, daysBetween, getProperty } from './common.js';
+import { businessToday } from '../../utils/dates.js';
+
+/** The date the staff screens start on: a hotel's own business date (it moves with the night audit), any other business's calendar day. The same staff engine serves both. */
+export const staffToday = async (db, tenant) => (tenant.businessType === 'HOTEL' ? (await getProperty(db, tenant)).business_date : businessToday(tenant.businessId, db));
 
 export const ATT_STATUS = ['PRESENT', 'ABSENT', 'HALF_DAY', 'LEAVE', 'UNPAID_LEAVE', 'WEEKLY_OFF', 'HOLIDAY'];
 export const LEAVE_KINDS = ['CASUAL', 'SICK', 'PAID', 'UNPAID'];
 const DEFAULT_DEPARTMENTS = ['Front office', 'Housekeeping', 'Food and beverage', 'Kitchen', 'Banquet', 'Maintenance', 'Security', 'Accounts', 'Management'];
 const DEFAULT_SHIFTS = [['Morning', '07:00', '15:00'], ['Evening', '15:00', '23:00'], ['Night', '23:00', '07:00']];
+/* what a new spare parts workshop starts with instead (the lists can be changed freely) */
+const PARTS_DEPARTMENTS = ['Workshop', 'Parts counter', 'Stores', 'Accounts', 'Management'];
+const PARTS_SHIFTS = [['Day', '09:00', '18:00'], ['Late', '12:00', '21:00']];
+const departmentsFor = (tenant) => (tenant.businessType === 'AUTO_PARTS' ? PARTS_DEPARTMENTS : DEFAULT_DEPARTMENTS);
+const shiftsFor = (tenant) => (tenant.businessType === 'AUTO_PARTS' ? PARTS_SHIFTS : DEFAULT_SHIFTS);
 
 /* ── departments and shifts ────────────────────────────────────────────── */
 
 export const listDepartments = async (db, tenant) => {
   const has = (await db.query(`SELECT 1 FROM hr_departments WHERE branch_id = $1 LIMIT 1`, [tenant.branchId])).rowCount;
-  if (!has) for (const n of DEFAULT_DEPARTMENTS) await db.query(`INSERT INTO hr_departments (business_id, branch_id, name) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, [tenant.businessId, tenant.branchId, n]);
+  if (!has) for (const n of departmentsFor(tenant)) await db.query(`INSERT INTO hr_departments (business_id, branch_id, name) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, [tenant.businessId, tenant.branchId, n]);
   return (await db.query(
     `SELECT d.*, (SELECT COUNT(*) FROM hr_employees e WHERE e.dept_id = d.dept_id AND e.status = 'ACTIVE')::int AS people FROM hr_departments d WHERE d.branch_id = $1 AND d.is_active ORDER BY d.name`, [tenant.branchId])).rows;
 };
@@ -42,7 +51,7 @@ export const archiveDepartment = async (db, tenant, id) => {
 
 export const listShifts = async (db, tenant) => {
   const has = (await db.query(`SELECT 1 FROM hr_shifts WHERE branch_id = $1 LIMIT 1`, [tenant.branchId])).rowCount;
-  if (!has) for (const [n, s, e] of DEFAULT_SHIFTS) await db.query(`INSERT INTO hr_shifts (business_id, branch_id, name, start_time, end_time) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`, [tenant.businessId, tenant.branchId, n, s, e]);
+  if (!has) for (const [n, s, e] of shiftsFor(tenant)) await db.query(`INSERT INTO hr_shifts (business_id, branch_id, name, start_time, end_time) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`, [tenant.businessId, tenant.branchId, n, s, e]);
   return (await db.query(`SELECT shift_id, name, start_time::text AS start_time, end_time::text AS end_time FROM hr_shifts WHERE branch_id = $1 AND is_active ORDER BY start_time`, [tenant.branchId])).rows;
 };
 
@@ -272,7 +281,7 @@ export const generatePayroll = async (client, tenant, userId, month, { overtimeF
   else await client.query(`UPDATE hr_payroll_runs SET overtime_factor = $2 WHERE run_id = $1`, [run.run_id, overtimeFactor]);
   run = { ...run, overtime_factor: overtimeFactor };
   const end = monthEnd(month);
-  const today = (await getProperty(client, tenant)).business_date;
+  const today = await staffToday(client, tenant);
   const people = (await client.query(
     `SELECT e.*, e.joined_on::text AS joined_on, e.left_on::text AS left_on FROM hr_employees e WHERE e.branch_id = $1 AND (e.joined_on IS NULL OR e.joined_on <= $3) AND (e.left_on IS NULL OR e.left_on >= $2) AND (e.status = 'ACTIVE' OR e.left_on IS NOT NULL) ORDER BY e.name`, [tenant.branchId, `${month}-01`, end])).rows;
   for (const e of people) {

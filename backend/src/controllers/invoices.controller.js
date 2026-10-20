@@ -15,6 +15,8 @@ import { onInvoiceCancelled } from '../modules/salon/hooks.js';
 import { onInvoiceCancelled as onGymInvoiceCancelled, onInvoicePaid as onGymInvoicePaid } from '../modules/gym/memberships.js';
 import { returnWalletForCancelled } from '../modules/gaming/wallet.js';
 import pool from '../config/database.js';
+import { placeOfSupply } from '../modules/gst/states.js';
+import { withDefaults } from '../modules/invoicePrint.js';
 import { recordAudit } from '../modules/events.js';
 import { toPaise, toRupees } from '../utils/money.js';
 import { moveStock } from '../modules/stock.js';
@@ -107,6 +109,7 @@ export const create = async (req, res) => {
       discount: body.discount,
       discountPolicy: discountPolicy(req, body.approval),   // a typed-in discount above the cap needs a manager's PIN
       notes: body.notes,
+      tcs: body.tcs === true, tds: body.tds === true, reverseCharge: body.reverse_charge === true,   // the GST options the till asked for on this bill (modules/gstOptions.js)
       payment: roomBookingId ? undefined : body.payment,
       payments: roomBookingId ? undefined : body.payments,
       couponCode: body.coupon_code,
@@ -118,6 +121,13 @@ export const create = async (req, res) => {
       // a sale the phone already made at the counter is never refused for stock: the goods have gone, so it is recorded and the shelf shows the shortfall
       allowNegativeStock: isOffline(req)
     });
+
+    // the Tally invoice's consignee / dispatch details entered on the billing screen (same cleaning as the later "Edit invoice details")
+    if (body.print_details && typeof body.print_details === 'object') {
+      const { details, error } = cleanPrintExtra(body.print_details);
+      if (error) throw new BillingError(400, error);
+      if (Object.keys(details).length) await client.query(`UPDATE invoices SET print_extra = print_extra || $2::jsonb WHERE invoice_id = $1`, [invoice.invoice_id, JSON.stringify(details)]);
+    }
 
     // a parts counter that sold offline: say so on the bill, and flag any part the sale left below zero so someone checks the shelf
     if (isOffline(req) && req.tenant.businessType === 'AUTO_PARTS') {
@@ -236,10 +246,10 @@ export const get = async (req, res) => {
   const scopeValues = [req.tenant.businessId, req.params.id];
   const scope = branchFilter(req.tenant, 'i.branch_id', scopeValues);
   const { rows } = await pool.query(
-    `SELECT i.*, c.name AS customer_name, c.phone AS customer_phone, c.gstin AS customer_gstin,
+    `SELECT i.*, c.name AS customer_name, c.phone AS customer_phone, c.gstin AS customer_gstin, c.address AS customer_address, c.state AS customer_state, c.email AS customer_email, b.state AS business_state,
             br.name AS outlet_name, br.address AS outlet_address, br.phone AS outlet_phone, br.gstin AS outlet_gstin, br.city AS outlet_city,
             u.name AS cashier_name, o.order_number, o.platform, o.external_order_number, t.name AS table_name,
-            b.gstin AS business_gstin, b.address AS business_address, b.city AS business_city, b.phone AS business_phone
+            b.receipt_settings AS business_receipt, b.gstin AS business_gstin, b.address AS business_address, b.city AS business_city, b.phone AS business_phone
      FROM invoices i JOIN businesses b ON b.business_id = i.business_id
      LEFT JOIN customers c ON c.customer_id = i.customer_id
      LEFT JOIN branches br ON br.branch_id = i.branch_id LEFT JOIN users u ON u.user_id = i.created_by
@@ -250,8 +260,9 @@ export const get = async (req, res) => {
   if (!rows.length) return res.status(404).json({ success: false, message: 'Not found' });
 
   const items = (await pool.query(
-    `SELECT item_id, product_id, description, quantity, unit_price_paise, discount_paise, tax_rate, tax_amount_paise, line_total_paise, modifiers
-     FROM invoice_items WHERE invoice_id = $1 ORDER BY item_id`,
+    `SELECT ii.item_id, ii.product_id, ii.description, ii.quantity, ii.unit_price_paise, ii.discount_paise, ii.tax_rate, ii.tax_amount_paise, ii.line_total_paise, ii.cess_paise, ii.modifiers,
+            COALESCE(ii.hsn_sac, p.hsn_sac) AS hsn, ii.unit_name AS unit
+     FROM invoice_items ii LEFT JOIN products p ON p.product_id = ii.product_id WHERE ii.invoice_id = $1 ORDER BY ii.item_id`,
     [req.params.id]
   )).rows;
 
@@ -289,8 +300,15 @@ export const get = async (req, res) => {
       platform: rows[0].platform, platform_order_number: rows[0].external_order_number,
       outlet: rows[0].outlet_name ? { name: rows[0].outlet_name, address: rows[0].outlet_address, phone: rows[0].outlet_phone, gstin: rows[0].outlet_gstin, city: rows[0].outlet_city } : null,
       // the seller's details for the printed bill when the outlet has none of its own (as on the receipt)
-      seller: { gstin: rows[0].business_gstin, address: rows[0].business_address, city: rows[0].business_city, phone: rows[0].business_phone },
+      seller: { state: rows[0].business_state, state_code: placeOfSupply(rows[0].outlet_gstin || rows[0].business_gstin, rows[0].business_state), gstin: rows[0].business_gstin, address: rows[0].business_address, city: rows[0].business_city, phone: rows[0].business_phone },
+      print_extra: rows[0].print_extra || {},
+      customer_address: rows[0].customer_address, customer_email: rows[0].customer_email, customer_state: rows[0].customer_state,
+      customer_state_code: placeOfSupply(rows[0].customer_gstin, rows[0].print_extra?.buyer_state ?? rows[0].customer_state),
+      consignee_state_code: placeOfSupply(null, rows[0].print_extra?.consignee_state),
       loyalty_message: loyaltyCard,
+      // what a tax invoice prints besides the bill: PAN, bank details, terms (Business settings > Receipts)
+      invoice_print: withDefaults(rows[0].business_receipt?.invoice_print),
+      print_details: Object.fromEntries(['pan', 'bank_name', 'bank_account', 'bank_ifsc', 'bank_branch', 'terms'].map((k) => [k, rows[0].business_receipt?.[k] || ''])),
       refunds: refunds.map((r) => ({ refund_id: r.refund_id, amount: toRupees(r.amount_paise), method: r.method, reason: r.reason, created_at: r.created_at })),
       customer_phone: rows[0].customer_phone,
       irn: rows[0].irn ?? null,
@@ -301,7 +319,7 @@ export const get = async (req, res) => {
         item_id: i.item_id, product_id: i.product_id, description: i.description,
         modifiers: i.modifiers || [], quantity: Number(i.quantity), unit_price: toRupees(i.unit_price_paise),
         discount: toRupees(i.discount_paise), tax_rate: Number(i.tax_rate),
-        tax_amount: toRupees(i.tax_amount_paise), line_total: toRupees(i.line_total_paise)
+        tax_amount: toRupees(i.tax_amount_paise), cess: toRupees(i.cess_paise || 0), line_total: toRupees(i.line_total_paise), hsn: i.hsn || null, unit: i.unit || null
       })),
       payments: payments.map((p) => ({
         payment_id: p.payment_id, method: p.payment_method, amount: toRupees(p.amount_paise),
@@ -495,3 +513,31 @@ export const refund = async (req, res) => {
     client.release();
   }
 };
+
+/* PATCH /api/invoices/:id/print-details: the free-text fields a tax invoice prints (consignee, delivery, dispatch, payment terms). Merged, so one edit never wipes the others; an empty value clears it. */
+export const PRINT_EXTRA_FIELDS = {
+  consignee_name: 160, consignee_address: 300, consignee_state: 80, buyer_address: 300, buyer_state: 80, buyer_email: 160,
+  delivery_note: 120, reference_no: 120, buyer_order_no: 120, dispatch_doc_no: 120, dispatched_through: 120, destination: 120,
+  terms_of_delivery: 200, payment_terms: 120, other_references: 120
+};
+export const cleanPrintExtra = (input) => {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: 'Details must be an object' };
+  const out = {};
+  for (const [key, max] of Object.entries(PRINT_EXTRA_FIELDS)) {
+    if (!(key in input)) continue;
+    const v = String(input[key] ?? '').trim();
+    if (v.length > max) return { error: `${key.replace(/_/g, ' ')} is too long (${max} characters at most)` };
+    out[key] = v;
+  }
+  return { details: out };
+};
+export const updatePrintDetails = async (req, res) => {
+  const { details, error } = cleanPrintExtra(req.body);
+  if (error) return res.status(400).json({ success: false, message: error });
+  const values = [req.tenant.businessId, req.params.id, JSON.stringify(details)];
+  const scope = branchFilter(req.tenant, 'branch_id', values);
+  const { rowCount } = await pool.query(`UPDATE invoices SET print_extra = print_extra || $3::jsonb WHERE business_id = $1 AND invoice_id = $2${scope}`, values);
+  if (!rowCount) return res.status(404).json({ success: false, message: 'Not found' });
+  res.json({ success: true });
+};
+

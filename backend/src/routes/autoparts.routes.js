@@ -18,6 +18,8 @@ import recv from '../controllers/autopartsReceiving.controller.js';
 import sell from '../controllers/autopartsSales.controller.js';
 import rets from '../controllers/autopartsReturns.controller.js';
 import rep from '../controllers/autopartsReports.controller.js';
+import staff from '../controllers/hotelStaff.controller.js';
+import jobs from '../controllers/autopartsJobcards.controller.js';
 
 const router = Router();
 
@@ -29,6 +31,8 @@ const feature = (f) => requirePlanFeature(f);
 const viewer = any('billing', 'parts_catalog', 'warehouse', 'grn', 'stock_count', 'inventory', 'reports', 'valuation');
 const cat = feature('ap_catalog');
 const racks = feature('ap_racks');
+const staffF = feature('ap_staff');
+const jobF = feature('ap_jobcards');
 
 /* -- catalogue and fitment ---------------------------------------------- */
 router.get('/parts', ...read, viewer, cat, catalog.list);
@@ -112,5 +116,49 @@ router.get('/reports/valuation', ...read, can('valuation'), intelF, rep.valuatio
 router.get('/reports/occupancy', ...read, any('reports', 'warehouse'), racks, rep.occupancy);
 router.get('/parts/:id/together', ...read, viewer, intelF, rep.together);
 router.get('/parts/:id/ledger', ...read, any('reports', 'inventory', 'warehouse', 'valuation'), cat, rep.ledger);
+
+/* -- workshop job cards: a vehicle in for service, its parts and labour, one bill. The counter ('billing') runs them; billing a card is billing. ------------------------- */
+router.get('/jobcards', ...read, can('billing'), jobF, jobs.list);
+router.get('/jobcards/due', ...read, can('billing'), jobF, jobs.due);
+router.get('/jobcards/mechanics', ...read, can('billing'), jobF, jobs.mechanics);
+router.post('/jobcards', ...write, can('billing'), jobF, jobs.create);
+router.get('/jobcards/:id', ...read, can('billing'), jobF, jobs.get);
+router.put('/jobcards/:id', ...write, can('billing'), jobF, jobs.update);
+router.post('/jobcards/:id/status', ...write, can('billing'), jobF, jobs.status);
+router.post('/jobcards/:id/lines', ...write, can('billing'), jobF, jobs.lineAdd);
+router.put('/jobcards/lines/:id', ...write, can('billing'), jobF, jobs.lineUpdate);
+router.delete('/jobcards/lines/:id', ...write, can('billing'), jobF, jobs.lineRemove);
+router.post('/jobcards/:id/bill', ...write, can('billing'), jobF, idempotent(), jobs.bill);
+
+/* -- staff and payroll: the same engine a hotel uses (controllers/hotelStaff.controller.js), without the housekeeping routes. 'hr' covers records, roster, attendance and
+      leave; 'payroll' covers pay. A mechanic is an employee here, and a job card can name one. ------------------------------ */
+const hrAny = any('hr', 'payroll');
+router.get('/staff/headcount', ...read, hrAny, staffF, staff.headcount);
+router.get('/staff/departments', ...read, hrAny, staffF, staff.departments);
+router.post('/staff/departments', ...write, can('hr'), staffF, staff.saveDepartment);
+router.put('/staff/departments/:id', ...write, can('hr'), staffF, staff.saveDepartment);
+router.delete('/staff/departments/:id', ...write, can('hr'), staffF, staff.archiveDepartment);
+router.get('/staff/shifts', ...read, hrAny, staffF, staff.shifts);
+router.post('/staff/shifts', ...write, can('hr'), staffF, staff.saveShift);
+router.put('/staff/shifts/:id', ...write, can('hr'), staffF, staff.saveShift);
+router.delete('/staff/shifts/:id', ...write, can('hr'), staffF, staff.archiveShift);
+router.get('/staff/employees', ...read, hrAny, staffF, staff.listEmployees);
+router.get('/staff/employees/:id', ...read, hrAny, staffF, staff.getEmployee);
+router.post('/staff/employees', ...write, can('hr'), staffF, staff.saveEmployee);
+router.put('/staff/employees/:id', ...write, can('hr'), staffF, staff.saveEmployee);
+router.get('/staff/roster', ...read, hrAny, staffF, staff.roster);
+router.put('/staff/roster', ...write, can('hr'), staffF, staff.setRoster);
+router.post('/staff/roster/copy-week', ...write, can('hr'), staffF, staff.copyWeek);
+router.get('/staff/attendance', ...read, hrAny, staffF, staff.attendanceDay);
+router.put('/staff/attendance', ...write, can('hr'), staffF, staff.markAttendance);
+router.get('/staff/attendance/month', ...read, hrAny, staffF, staff.attendanceMonth);
+router.get('/staff/leaves', ...read, hrAny, staffF, staff.leaves);
+router.post('/staff/leaves', ...write, can('hr'), staffF, staff.requestLeave);
+router.post('/staff/leaves/:id/decide', ...write, can('hr'), staffF, staff.decideLeave);
+router.get('/staff/payroll', ...read, can('payroll'), staffF, staff.runs);
+router.get('/staff/payroll/:month', ...read, can('payroll'), staffF, staff.getRun);
+router.post('/staff/payroll', ...write, can('payroll'), staffF, staff.generate);
+router.put('/staff/payslips/:id', ...write, can('payroll'), staffF, staff.adjustSlip);
+router.post('/staff/payroll/finalize', ...write, can('payroll'), staffF, staff.finalize);
 
 export default router;

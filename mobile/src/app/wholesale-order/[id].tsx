@@ -1,3 +1,4 @@
+import { formatDate } from '../../lib/display.ts';
 import { useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -41,7 +42,7 @@ export default function WholesaleOrder() {
     <SafeAreaView style={s.screen}>
       <Page>
         <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-          <View style={{ flex: 1 }}><Title>{o?.order_number ?? 'Order'}</Title>{o ? <Soft>{`${o.customer} · ${String(o.order_date).slice(0, 10)}`}</Soft> : null}</View>
+          <View style={{ flex: 1 }}><Title>{o?.order_number ?? 'Order'}</Title>{o ? <Soft>{`${o.customer} · ${formatDate(o.order_date)}`}</Soft> : null}</View>
           <Button title="Back" kind="quiet" onPress={() => goBack()} />
         </View>
         {order.busy && !o ? <Loading /> : null}
@@ -53,7 +54,7 @@ export default function WholesaleOrder() {
               <Text style={{ fontSize: 28, fontWeight: '800', color: color.ink }}>{money(o.total)}</Text>
               <Soft>{`Items ${money(o.subtotal)} · GST ${money(o.tax)}`}</Soft>
               {o.customer_po ? <Soft>{`Their PO: ${o.customer_po}`}</Soft> : null}
-              {o.expected_delivery ? <Soft>{`Wanted by ${String(o.expected_delivery).slice(0, 10)}`}</Soft> : null}
+              {o.expected_delivery ? <Soft>{`Wanted by ${formatDate(o.expected_delivery)}`}</Soft> : null}
               {o.notes ? <Soft>{o.notes}</Soft> : null}
               {o.cancel_reason ? <Soft>{`Cancelled: ${o.cancel_reason}`}</Soft> : null}
               {o.reject_reason ? <Soft>{`Turned down: ${o.reject_reason}`}</Soft> : null}

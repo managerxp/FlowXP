@@ -1,0 +1,43 @@
+{
+  "header": {
+    "product": "প্রোডাক্ট",
+    "industries": "শিল্প",
+    "aiManager": "AI ম্যানেজার",
+    "integrations": "ইন্টিগ্রেশন",
+    "guide": "সেটআপ গাইড",
+    "pricing": "মূল্য",
+    "about": "আমাদের সম্পর্কে",
+    "login": "লগ ইন",
+    "startTrial": "বিনামূল্যে ট্রায়াল শুরু করুন",
+    "openApp": "FlowXP খুলুন",
+    "openMenu": "মেনু খুলুন",
+    "closeMenu": "মেনু বন্ধ করুন",
+    "mainAria": "প্রধান",
+    "homeAria": "FlowXP হোম",
+    "builtFor": "এই ব্যবসাগুলির জন্য তৈরি",
+    "allIndustries": "সব শিল্প"
+  },
+  "footer": {
+    "blurb": "FlowXP তৈরি করেছে ManagerXP, ভারতজুড়ে ব্যবসার কাউন্টার ও ব্যাক অফিসের পেছনের দল।",
+    "product": "প্রোডাক্ট",
+    "company": "কোম্পানি",
+    "getStarted": "শুরু করুন",
+    "legal": "আইনি",
+    "features": "বৈশিষ্ট্য",
+    "whoFor": "কাদের জন্য",
+    "aiManager": "AI ম্যানেজার",
+    "integrations": "ইন্টিগ্রেশন",
+    "guide": "সেটআপ গাইড",
+    "pricing": "মূল্য",
+    "about": "ManagerXP সম্পর্কে",
+    "contact": "যোগাযোগ",
+    "startTrial": "বিনামূল্যে ট্রায়াল শুরু করুন",
+    "login": "লগ ইন",
+    "privacy": "গোপনীয়তা",
+    "deleteAccount": "আপনার অ্যাকাউন্ট মুছুন",
+    "terms": "শর্তাবলী",
+    "cookies": "কুকি",
+    "rights": "সর্বস্বত্ব সংরক্ষিত।",
+    "madeIn": "ভারতীয় ব্যবসার জন্য ভারতে তৈরি। দাম ₹-তে, জিএসটি অন্তর্ভুক্ত।"
+  }
+}

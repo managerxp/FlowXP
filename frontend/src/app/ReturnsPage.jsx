@@ -11,10 +11,12 @@ import CreditNoteModal from '../components/CreditNoteModal.jsx';
 import { api, formatCurrency } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Button, Input, StatusBadge, useToast } from '../components/ui.jsx';
+import { useT } from '../i18n/useT.js';
 
 const when = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
 const ReturnsPage = () => {
+  const tr = useT();
   const { can } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
@@ -31,35 +33,35 @@ const ReturnsPage = () => {
   useEffect(() => { find(''); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const t = setTimeout(() => find(query), 300); return () => clearTimeout(t); }, [query]);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!can('refunds')) return <Alert>You do not have access to returns. Ask the owner to allow refunds for your role.</Alert>;
+  if (!can('refunds')) return <Alert>{tr('You do not have access to returns. Ask the owner to allow refunds for your role.')}</Alert>;
 
-  const issued = (note) => { setOpen(null); setDone(note); toast.success(`${note.cn_number} issued for ${formatCurrency(note.total)}`); };
+  const issued = (note) => { setOpen(null); setDone(note); toast.success(tr('{{cn_number}} issued for {{formatCurrency}}', { cn_number: note.cn_number, formatCurrency: formatCurrency(note.total) })); };
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Returns and exchanges</h1>
-      <p className="mt-1 text-sm text-ink-500">Find the bill the customer brought back. Pay the money back, or keep it as credit for something else.</p>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{tr('Returns and exchanges')}</h1>
+      <p className="mt-1 text-sm text-ink-500">{tr('Find the bill the customer brought back. Pay the money back, or keep it as credit for something else.')}</p>
 
       <div className="relative mt-5">
         <Search aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-        <Input autoFocus aria-label="Find a bill" className="min-h-12 pl-10" placeholder="Bill number, customer name or phone" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <Input autoFocus aria-label={tr('Find a bill')} className="min-h-12 pl-10" placeholder={tr('Bill number, customer name or phone')} value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
       <Alert>{error}</Alert>
 
       {done && (
         <div role="status" className="mt-5 rounded-(--radius-card) border border-success/40 bg-success/5 p-4">
-          <p className="font-semibold text-ink-900">{done.cn_number}: {formatCurrency(done.total)} credited</p>
-          <p className="mt-0.5 text-sm text-ink-700">{done.refunded > 0 ? `${formatCurrency(done.refunded)} was paid back.` : 'No money was paid back: the credit is kept.'}{done.credit_left > 0 ? ` ${formatCurrency(done.credit_left)} is available for an exchange.` : ''}</p>
+          <p className="font-semibold text-ink-900">{tr('{{cn_number}}: {{formatCurrency}} credited', { cn_number: done.cn_number, formatCurrency: formatCurrency(done.total) })}</p>
+          <p className="mt-0.5 text-sm text-ink-700">{done.refunded > 0 ? `${formatCurrency(done.refunded)} was paid back.` : tr('No money was paid back: the credit is kept.')}{done.credit_left > 0 ? ` ${formatCurrency(done.credit_left)} is available for an exchange.` : ''}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {done.credit_left > 0 && <Button onClick={() => navigate(`/app/billing?exchange=${done.cn_id}`)}><ArrowLeftRight aria-hidden="true" className="h-4 w-4" />Start the exchange sale</Button>}
-            <Button variant="ghost" onClick={() => setDone(null)}>Done</Button>
+            {done.credit_left > 0 && <Button onClick={() => navigate(`/app/billing?exchange=${done.cn_id}`)}><ArrowLeftRight aria-hidden="true" className="h-4 w-4" />{tr('Start the exchange sale')}</Button>}
+            <Button variant="ghost" onClick={() => setDone(null)}>{tr('Done')}</Button>
           </div>
         </div>
       )}
 
-      <ul className="mt-5 divide-y divide-line overflow-hidden rounded-(--radius-card) border border-line bg-surface" aria-label="Bills">
-        {bills === null && <li className="px-4 py-6 text-sm text-ink-500">Loading…</li>}
-        {bills?.length === 0 && <li className="px-4 py-6 text-sm text-ink-500">No bill matches that.</li>}
+      <ul className="mt-5 divide-y divide-line overflow-hidden rounded-(--radius-card) border border-line bg-surface" aria-label={tr('Bills')}>
+        {bills === null && <li className="px-4 py-6 text-sm text-ink-500">{tr('Loading…')}</li>}
+        {bills?.length === 0 && <li className="px-4 py-6 text-sm text-ink-500">{tr('No bill matches that.')}</li>}
         {bills?.map((b) => (
           <li key={b.invoice_id} className="flex flex-wrap items-center gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">
@@ -68,7 +70,7 @@ const ReturnsPage = () => {
             </div>
             <StatusBadge status={b.status} />
             <p className="tabular w-24 text-right font-semibold text-ink-900">{formatCurrency(b.total)}</p>
-            <Button size="sm" variant="secondary" disabled={b.status !== 'ISSUED'} onClick={() => setOpen(b)}>Return items</Button>
+            <Button size="sm" variant="secondary" disabled={b.status !== 'ISSUED'} onClick={() => setOpen(b)}>{tr('Return items')}</Button>
           </li>
         ))}
       </ul>

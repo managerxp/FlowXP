@@ -7,6 +7,7 @@
  */
 
 import { clearOfflineCaches } from './pwa.js';
+import { getDisplay } from './display.js';
 
 /* The session is a cookie the server sets (flowxp_session: httpOnly, so this code never sees it; the browser sends
    it with every /api request on its own). TOKEN_KEY is only the old place a session token was kept: a browser
@@ -62,7 +63,9 @@ export const api = async (path, { method = 'GET', body, businessId, idempotencyK
   // browser to set itself (multipart/form-data with the boundary it chose),
   // not fixed to application/json.
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
-  const headers = isFormData ? { ...APP_HEADER } : { 'Content-Type': 'application/json', ...APP_HEADER };
+  // A file sent as it is (a backup ZIP to restore) is a Blob: sent untouched, with its own type.
+  const isFile = typeof Blob !== 'undefined' && body instanceof Blob;
+  const headers = isFormData ? { ...APP_HEADER } : isFile ? { 'Content-Type': body.type || 'application/octet-stream', ...APP_HEADER } : { 'Content-Type': 'application/json', ...APP_HEADER };
 
   const token = getToken();   // only a session from before the cookie (see TOKEN_KEY)
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -83,7 +86,7 @@ export const api = async (path, { method = 'GET', body, businessId, idempotencyK
       method,
       headers,
       credentials: 'same-origin',
-      body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body)
+      body: body === undefined ? undefined : isFormData || isFile ? body : JSON.stringify(body)
     });
   } catch {
     throw new NetworkError();
@@ -144,5 +147,6 @@ export const formatCurrency = (amount, currency = 'INR') =>
   new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency,
-    maximumFractionDigits: 2
+    minimumFractionDigits: getDisplay().decimals,   // the decimal places this device chose (2 by default)
+    maximumFractionDigits: getDisplay().decimals
   }).format(amount || 0);

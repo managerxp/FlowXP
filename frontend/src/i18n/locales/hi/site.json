@@ -1,0 +1,43 @@
+{
+  "header": {
+    "product": "प्रोडक्ट",
+    "industries": "उद्योग",
+    "aiManager": "AI मैनेजर",
+    "integrations": "इंटीग्रेशन",
+    "guide": "सेटअप गाइड",
+    "pricing": "मूल्य",
+    "about": "हमारे बारे में",
+    "login": "लॉग इन",
+    "startTrial": "मुफ़्त ट्रायल शुरू करें",
+    "openApp": "FlowXP खोलें",
+    "openMenu": "मेनू खोलें",
+    "closeMenu": "मेनू बंद करें",
+    "mainAria": "मुख्य",
+    "homeAria": "FlowXP होम",
+    "builtFor": "इन व्यवसायों के लिए बना",
+    "allIndustries": "सभी उद्योग"
+  },
+  "footer": {
+    "blurb": "FlowXP को ManagerXP ने बनाया है, जो पूरे भारत के व्यवसायों के काउंटर और बैक ऑफ़िस के पीछे की टीम है।",
+    "product": "प्रोडक्ट",
+    "company": "कंपनी",
+    "getStarted": "शुरू करें",
+    "legal": "कानूनी",
+    "features": "सुविधाएँ",
+    "whoFor": "यह किसके लिए है",
+    "aiManager": "AI मैनेजर",
+    "integrations": "इंटीग्रेशन",
+    "guide": "सेटअप गाइड",
+    "pricing": "मूल्य",
+    "about": "ManagerXP के बारे में",
+    "contact": "संपर्क",
+    "startTrial": "मुफ़्त ट्रायल शुरू करें",
+    "login": "लॉग इन",
+    "privacy": "गोपनीयता",
+    "deleteAccount": "अपना अकाउंट हटाएँ",
+    "terms": "शर्तें",
+    "cookies": "कुकीज़",
+    "rights": "सर्वाधिकार सुरक्षित।",
+    "madeIn": "भारतीय व्यवसायों के लिए भारत में बना। कीमतें ₹ में, जीएसटी शामिल।"
+  }
+}

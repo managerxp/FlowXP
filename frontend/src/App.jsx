@@ -16,6 +16,7 @@ import ProductPage from './site/ProductPage.jsx';
 import IndustriesPage from './site/IndustriesPage.jsx';
 import IndustryDetail from './site/industries/IndustryDetail.jsx';
 import SiteIntegrations from './site/IntegrationsPage.jsx';
+import GuidePage from './site/GuidePage.jsx';
 import AboutPage from './site/AboutPage.jsx';
 import ContactPage from './site/ContactPage.jsx';
 import AIPage from './site/AIPage.jsx';
@@ -176,6 +177,7 @@ const PartsReceive = lazy(() => import('./app/autoparts/PartsReceive.jsx'));
 const PartsTrade = lazy(() => import('./app/autoparts/PartsTrade.jsx'));
 const PartsReports = lazy(() => import('./app/autoparts/PartsReports.jsx'));
 const LocationLabels = lazy(() => import('./app/autoparts/LocationLabels.jsx'));
+const PartsJobCards = lazy(() => import('./app/autoparts/PartsJobCards.jsx'));
 
 /* The gaming lounge module (business type GAMING_CAFE). Its screens live in app/gaming/ and load only for a lounge. */
 const GamingBoard = lazy(() => import('./app/gaming/GamingBoard.jsx'));
@@ -264,6 +266,7 @@ const App = () => (
       <Route path="industries/:slug" element={<IndustryDetail />} />
       <Route path="ai" element={<AIPage />} />
       <Route path="integrations" element={<SiteIntegrations />} />
+      <Route path="guide" element={<GuidePage />} />
       <Route path="about" element={<AboutPage />} />
       <Route path="contact" element={<ContactPage />} />
       <Route path="delete-account" element={<Suspense fallback={<PageLoader />}><DeleteAccountPage /></Suspense>} />
@@ -377,6 +380,8 @@ const App = () => (
       <Route path="parts/vehicles" element={<PartsVehicles />} />
       <Route path="parts/warehouse" element={<PartsWarehouse />} />
       <Route path="parts/receive" element={<PartsReceive />} />
+      <Route path="parts/jobs" element={<PartsJobCards />} />
+      <Route path="parts/staff" element={<HotelStaff />} />
       <Route path="parts/trade" element={<PartsTrade />} />
       <Route path="parts/reports" element={<PartsReports />} />
       <Route path="parts/labels" element={<LocationLabels />} />

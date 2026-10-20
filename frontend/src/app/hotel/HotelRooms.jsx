@@ -9,8 +9,9 @@ import { HK_STATUS, OCCUPANCY, longDate, useLoad } from '../../lib/hotel.js';
 import { Badge, ListState, PageHeader, useToast } from '../../components/ui.jsx';
 import { api } from '../../lib/api.js';
 import { Chips } from '../salon/parts.jsx';
+import { useT, T } from '../../i18n/useT.js';
 
-const FILTERS = [['', 'All'], ['TO_CLEAN', 'To clean'], ['VACANT', 'Ready to sell'], ['OCCUPIED', 'Occupied'], ['DUE_OUT', 'Due out'], ['OUT_OF_ORDER', 'Out of order']];
+const FILTERS = [['', 'All'], ['TO_CLEAN', T('To clean')], ['VACANT', T('Ready to sell')], ['OCCUPIED', T('Occupied')], ['DUE_OUT', T('Due out')], ['OUT_OF_ORDER', T('Out of order')]];
 
 const match = (r, f) => {
   if (!f) return true;
@@ -21,6 +22,7 @@ const match = (r, f) => {
 };
 
 export default function HotelRooms() {
+  const tr = useT();
   const toast = useToast();
   const { can } = useAuth();
   const rack = useLoad('/hotel/rack');
@@ -52,12 +54,12 @@ export default function HotelRooms() {
 
   return (
     <div>
-      <PageHeader title="Rooms and housekeeping" lead={rack.data ? `Where every room stands on ${longDate(rack.data.business_date)}.` : undefined} />
-      <div className="mb-5"><Chips label="Show" options={FILTERS.map(([value, label]) => ({ value, label, count: counts[value] }))} value={filter} onChange={setFilter} /></div>
-      <ListState loading={rack.loading && !rack.data} error={rack.error} empty={!rack.loading && !rooms.length} emptyLabel="Add rooms in Set-up to see them here." />
+      <PageHeader title={tr('Rooms and housekeeping')} lead={rack.data ? `Where every room stands on ${longDate(rack.data.business_date)}.` : undefined} />
+      <div className="mb-5"><Chips label={tr('Show')} options={FILTERS.map(([value, label]) => ({ value, label, count: counts[value] }))} value={filter} onChange={setFilter} /></div>
+      <ListState loading={rack.loading && !rack.data} error={rack.error} empty={!rack.loading && !rooms.length} emptyLabel={tr('Add rooms in Set-up to see them here.')} />
       {floors.map((fl) => (
         <section key={fl || 'none'} className="mb-6">
-          {floors.length > 1 && <h2 className="mb-2 text-caption font-semibold uppercase tracking-wide text-ink-500">{fl ? `Floor ${fl}` : 'Rooms'}</h2>}
+          {floors.length > 1 && <h2 className="mb-2 text-caption font-semibold uppercase tracking-wide text-ink-500">{fl ? `Floor ${fl}` : tr('Rooms')}</h2>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {shown.filter((r) => (r.floor || '') === fl).map((r) => {
               const occ = OCCUPANCY[r.occupancy];
@@ -66,22 +68,22 @@ export default function HotelRooms() {
                 <div key={r.room_id} className={`rounded-(--radius-card) border p-3.5 ${r.hk_status === 'OUT_OF_ORDER' ? 'border-danger/40 bg-danger/5' : occ.cell}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div><p className="text-body font-semibold text-ink-900">{r.room_no}</p><p className="text-caption text-ink-500">{r.room_type}</p></div>
-                    <div className="flex flex-col items-end gap-1"><Badge tone={hk.tone}>{hk.label}</Badge><span className="text-caption text-ink-500">{occ.label}</span></div>
+                    <div className="flex flex-col items-end gap-1"><Badge tone={hk.tone}>{tr(hk.label)}</Badge><span className="text-caption text-ink-500">{tr(occ.label)}</span></div>
                   </div>
                   <div className="mt-2 min-h-9 text-caption">
-                    {r.stay_booking_id ? <Link to={`/app/hotel/bookings/${r.stay_booking_id}`} className="font-medium text-brand-600 hover:underline">{r.stay_guest}{r.stay_vip ? ' (VIP)' : ''}<span className="block font-normal text-ink-500">until {longDate(r.stay_departure)}</span></Link>
+                    {r.stay_booking_id ? <Link to={`/app/hotel/bookings/${r.stay_booking_id}`} className="font-medium text-brand-600 hover:underline">{r.stay_guest}{r.stay_vip ? tr('(VIP)') : ''}<span className="block font-normal text-ink-500">{tr('until {{longDate}}', { longDate: longDate(r.stay_departure) })}</span></Link>
                       : r.next_booking_id ? <Link to={`/app/hotel/bookings/${r.next_booking_id}`} className="text-ink-700 hover:underline">Next: {r.next_guest}<span className="block text-ink-500">{longDate(r.next_arrival)}</span></Link>
-                      : <span className="text-ink-400">No one booked</span>}
+                      : <span className="text-ink-400">{tr('No one booked')}</span>}
                     {r.hk_note && <span className="mt-1 block text-ink-500">{r.hk_note}</span>}
                   </div>
                   {canAssign && (cleaners.data || []).length > 0 && (
-                    <select aria-label={`Who cleans room ${r.room_no}`} value={cleanerOf(r.room_id)} onChange={(e) => assign(r, e.target.value)} className="mt-3 w-full rounded-md border border-line bg-surface px-2 py-1.5 text-caption text-ink-700">
-                      <option value="">Cleaner: not assigned</option>{cleaners.data.map((c) => <option key={c.employee_id} value={c.employee_id}>Cleaner: {c.name}</option>)}
+                    <select aria-label={tr('Who cleans room {{room_no}}', { room_no: r.room_no })} value={cleanerOf(r.room_id)} onChange={(e) => assign(r, e.target.value)} className="mt-3 w-full rounded-md border border-line bg-surface px-2 py-1.5 text-caption text-ink-700">
+                      <option value="">{tr('Cleaner: not assigned')}</option>{cleaners.data.map((c) => <option key={c.employee_id} value={c.employee_id}>{tr('Cleaner: {{c_name}}', { c_name: c.name })}</option>)}
                     </select>
                   )}
                   {(can('housekeeping') || can('front_desk')) && (
-                    <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label={`Set room ${r.room_no}`}>
-                      {[['CLEAN', 'Clean'], ['INSPECTED', 'Inspected'], ['DIRTY', 'Dirty'], ['OUT_OF_ORDER', 'Out of order']].map(([k, l]) => (
+                    <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label={tr('Set room {{room_no}}', { room_no: r.room_no })}>
+                      {[['CLEAN', T('Clean')], ['INSPECTED', T('Inspected')], ['DIRTY', T('Dirty')], ['OUT_OF_ORDER', T('Out of order')]].map(([k, l]) => (
                         <button key={k} type="button" disabled={busy === r.room_id} aria-pressed={r.hk_status === k} onClick={() => setStatus(r, k)}
                                 className={`rounded-full border px-2.5 py-1 text-caption font-medium transition-colors ${r.hk_status === k ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line bg-surface text-ink-700 hover:border-line-strong'} disabled:opacity-50`}>{l}</button>
                       ))}

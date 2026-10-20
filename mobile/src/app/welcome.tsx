@@ -33,7 +33,7 @@ export default function Welcome() {
           </Pressable>
         </View>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 20 }} accessibilityLiveRegion="polite">
-          <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: '#eaf1ff', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: color.tint, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name={slide.icon as never} size={48} color={color.brand} />
           </View>
           <Text accessibilityRole="header" style={{ fontSize: 26, fontWeight: '800', color: color.ink, textAlign: 'center' }}>{t(slide.title)}</Text>

@@ -17,7 +17,7 @@ const BUSINESS_TYPES = [
   ['RESTAURANT', 'Restaurant'], ['CAFE', 'Café'], ['CLOUD_KITCHEN', 'Cloud kitchen'], ['HOTEL', 'Hotel and restaurant'], ['RETAIL', 'Retail'],
   ['SUPERMARKET', 'Supermarket'], ['PHARMACY', 'Pharmacy'], ['SALON', 'Salon'], ['GYM', 'Gym'],
   ['SERVICES', 'Services'], ['ELECTRONICS', 'Electronics'], ['CLOTHING', 'Clothing'],
-  ['GAMING_CAFE', 'Gaming café'], ['AUTO_PARTS', 'Auto spare parts'], ['RACING', 'Racing'], ['WHOLESALE', 'Wholesale and distribution'],
+  ['GAMING_CAFE', 'Gaming café'], ['AUTO_PARTS', 'Automobile / Hardware'], ['RACING', 'Racing'], ['WHOLESALE', 'Wholesale and distribution'],
   ['DISTRIBUTOR', 'Distributor (older type, same as wholesale and distribution)'], ['OTHER', 'Other']
 ];
 const SUBSCRIPTION_STATUSES = ['TRIAL', 'ACTIVE', 'EXPIRED', 'CANCELLED', 'SUSPENDED'];

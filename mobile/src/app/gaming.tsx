@@ -12,7 +12,7 @@ import { ALARMS, KIND_LABEL, STATE_LABEL, clock, countBy, duration, liveCharge, 
 import { Page } from '../lib/responsive.tsx';
 import { Button, Chips, ErrorText, Failed, Loading, SavedNote, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
 
-const EDGE: Record<string, string> = { RUNNING: color.brand, PAUSED: color.warn, TO_BILL: color.danger, RESERVED: color.warn, OUT_OF_SERVICE: color.line, AVAILABLE: color.line };
+const EDGE: Record<string, string> = { get RUNNING() { return color.brand; }, get PAUSED() { return color.warn; }, get TO_BILL() { return color.danger; }, get RESERVED() { return color.warn; }, get OUT_OF_SERVICE() { return color.line; }, get AVAILABLE() { return color.line; } };
 const timeText = (iso: string) => new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
 
 /* The lounge board: every station with its timer, who is playing, what it has cost and the food and drink on its tab. Start, pause, stop, count frames, and take the payment.

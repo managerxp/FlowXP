@@ -18,6 +18,7 @@ import ProductIdentifiers from '../components/ProductIdentifiers.jsx';
 import MenuImportModal from '../components/MenuImportModal.jsx';
 import FoodMark, { FOOD_TYPES } from '../components/FoodMark.jsx';
 import { Alert, Button, Field, Input, Modal, Select, Textarea, useToast, useDialog, EmptyState } from '../components/ui.jsx';
+import { useT } from '../i18n/useT.js';
 
 const KIND_LABELS = { DISH: 'Sold item', INGREDIENT: 'Ingredient', PACKAGING: 'Packaging' };
 const UNITS = ['pc', 'plate', 'kg', 'g', 'litre', 'ml', 'box', 'pack', 'dozen', 'hour', 'service'];
@@ -32,6 +33,7 @@ const emptyForm = {
 
 /* A photo is uploaded the moment it is picked, against a product that already exists (POST /products/:id/image). */
 const ImageUploader = ({ product, onUploaded, large = false }) => {
+  const tr = useT();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const pick = async (e) => {
@@ -51,10 +53,10 @@ const ImageUploader = ({ product, onUploaded, large = false }) => {
         {product.image_url
           ? <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
           : <span className="flex h-full w-full flex-col items-center justify-center gap-1 text-caption text-ink-500"><Camera aria-hidden="true" className="h-5 w-5" />{large && 'Add a photo'}</span>}
-        <span className={`absolute inset-x-0 bottom-0 bg-ink-900/60 px-2 py-1 text-center text-caption font-medium text-white ${product.image_url ? 'opacity-0 group-hover:opacity-100' : 'hidden'}`}>{busy ? 'Uploading…' : 'Change photo'}</span>
-        <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={pick} disabled={busy} aria-label={product.image_url ? 'Change photo' : 'Add a photo'} />
+        <span className={`absolute inset-x-0 bottom-0 bg-ink-900/60 px-2 py-1 text-center text-caption font-medium text-white ${product.image_url ? 'opacity-0 group-hover:opacity-100' : 'hidden'}`}>{busy ? tr('Uploading…') : tr('Change photo')}</span>
+        <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={pick} disabled={busy} aria-label={product.image_url ? tr('Change photo') : tr('Add a photo')} />
       </label>
-      {busy && !product.image_url && <p className="mt-1 text-caption text-ink-500">Uploading…</p>}
+      {busy && !product.image_url && <p className="mt-1 text-caption text-ink-500">{tr('Uploading…')}</p>}
       {error && <p className="mt-1 text-caption text-danger">{error}</p>}
     </div>
   );
@@ -63,23 +65,24 @@ const ImageUploader = ({ product, onUploaded, large = false }) => {
 /* ── Retail product settings ──────────────────────────────────────────── */
 
 const RetailSettings = ({ onClose, onChanged }) => {
+  const tr = useT();
   const toast = useToast();
   const [s, setS] = useState(null);
   const [error, setError] = useState('');
   useEffect(() => { api('/retail/settings').then(setS).catch((e) => setError(e.message)); }, []);
   const save = async (patch) => {
     setError('');
-    try { const next = await api('/retail/settings', { method: 'PUT', body: patch }); setS(next); onChanged(next); toast.success('Saved'); }
+    try { const next = await api('/retail/settings', { method: 'PUT', body: patch }); setS(next); onChanged(next); toast.success(tr('Saved')); }
     catch (caught) { setError(caught.message); }
   };
   const row = (key, title, body, disabled) => (
     <label className="flex items-start gap-3">
       <input type="checkbox" checked={Boolean(s?.[key])} disabled={!s || disabled} onChange={(e) => save({ [key]: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-brand-500)] pointer-coarse:h-5 pointer-coarse:w-5" />
-      <span><span className="block text-small font-medium text-ink-900">{title}</span><span className="block text-caption text-ink-500">{body}</span></span>
+      <span><span className="block text-small font-medium text-ink-900">{tr(title)}</span><span className="block text-caption text-ink-500">{body}</span></span>
     </label>
   );
   return (
-    <Modal title="Product settings" onClose={onClose}>
+    <Modal title={tr('Product settings')} onClose={onClose}>
       <div className="space-y-4">
         <Alert>{error}</Alert>
         {row('auto_sku', 'Make the SKU for me', s && !s.auto_sku_available ? 'Switched off for your plan.' : 'New products get a code like MILK-00001. You never have to invent one.', s && !s.auto_sku_available)}
@@ -92,6 +95,9 @@ const RetailSettings = ({ onClose, onChanged }) => {
 /* ── Add / edit ───────────────────────────────────────────────────────── */
 
 const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail, autoSku, onSaved, onClose, onCreateCategory, onCreateBrand }) => {
+  const tr = useT();
+  const { business: shop } = useAuth();
+  const cessOn = Boolean(shop?.gst_enabled && shop?.gst_options?.cess);   // Settings > GST options
   const [form, setForm] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -132,7 +138,7 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail
         ...(retail && isEdit ? {} : { barcode: form.barcode || null }),
         ...(retail ? { mrp: form.mrp === '' ? null : form.mrp, erp_code: form.erp_code || null } : {}),
         unit: form.unit, selling_price: sold ? form.selling_price : (form.selling_price || 0),
-        purchase_price: form.purchase_price || 0, tax_rate: form.tax_rate, hsn_sac: form.hsn_sac || null,
+        purchase_price: form.purchase_price || 0, tax_rate: form.tax_rate, ...(cessOn ? { cess_rate: Number(form.cess_rate) || 0 } : {}), hsn_sac: form.hsn_sac || null,
         description: form.description || null, food_type: sold ? (form.food_type || null) : null,
         track_inventory: form.track_inventory, min_stock: form.min_stock,
         ...(brands ? { brand_id: form.brand_id || null } : {}),
@@ -154,109 +160,110 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail
   const legend = 'text-caption font-semibold uppercase tracking-[0.12em] text-ink-500';
   const withGst = Number(form.selling_price || 0) * (1 + Number(form.tax_rate || 0) / 100);
   return (
-    <Modal title={isEdit ? `Edit ${initial.name}` : 'Add a product'} onClose={onClose} wide>
+    <Modal title={isEdit ? `Edit ${initial.name}` : tr('Add a product')} onClose={onClose} wide>
       <form onSubmit={submit} className="space-y-6">
         <Alert>{error}</Alert>
         <fieldset className="space-y-4">
-          <legend className={legend}>What it is</legend>
+          <legend className={legend}>{tr('What it is')}</legend>
           <div className={`grid gap-4 ${isRestaurant ? 'sm:grid-cols-[2fr_1fr]' : ''}`}>
-            <Field id="name" label="Name"><Input id="name" value={form.name} onChange={set('name')} required autoFocus /></Field>
+            <Field id="name" label={tr('Name')}><Input id="name" value={form.name} onChange={set('name')} required autoFocus /></Field>
             {isRestaurant && (
-              <Field id="kind" label="Type">
+              <Field id="kind" label={tr('Type')}>
                 <Select id="kind" value={form.kind} onChange={set('kind')}>
-                  <option value="DISH">Something I sell</option>
-                  <option value="INGREDIENT">An ingredient</option>
-                  <option value="PACKAGING">Packaging</option>
+                  <option value="DISH">{tr('Something I sell')}</option>
+                  <option value="INGREDIENT">{tr('An ingredient')}</option>
+                  <option value="PACKAGING">{tr('Packaging')}</option>
                 </Select>
               </Field>
             )}
           </div>
-          {isRestaurant && form.kind !== 'DISH' && <p className="-mt-2 text-caption text-ink-500">{form.kind === 'INGREDIENT' ? 'Bought and stocked, used up by recipes, never sold on its own.' : 'Boxes, bags and cups: stocked like an ingredient.'}</p>}
-          <Field id="category_id" label="Category">
+          {isRestaurant && form.kind !== 'DISH' && <p className="-mt-2 text-caption text-ink-500">{form.kind === 'INGREDIENT' ? tr('Bought and stocked, used up by recipes, never sold on its own.') : tr('Boxes, bags and cups: stocked like an ingredient.')}</p>}
+          <Field id="category_id" label={tr('Category')}>
             {addingCategory ? (
               <div className="flex gap-2">
-                <Input aria-label="New category name" placeholder="e.g. Starters" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} autoFocus
+                <Input aria-label={tr('New category name')} placeholder={tr('e.g. Starters')} value={newCategory} onChange={(e) => setNewCategory(e.target.value)} autoFocus
                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCategory(); } if (e.key === 'Escape') setAddingCategory(false); }} />
-                <Button type="button" variant="secondary" onClick={addCategory}>Add</Button>
-                <Button type="button" variant="ghost" onClick={() => setAddingCategory(false)}>Cancel</Button>
+                <Button type="button" variant="secondary" onClick={addCategory}>{tr('Add')}</Button>
+                <Button type="button" variant="ghost" onClick={() => setAddingCategory(false)}>{tr('Cancel')}</Button>
               </div>
             ) : (
               <div className="flex gap-2">
                 <Select id="category_id" value={form.category_id} onChange={set('category_id')} className="flex-1">
-                  <option value="">No category</option>
+                  <option value="">{tr('No category')}</option>
                   {categories.map((c) => <option key={c.category_id} value={c.category_id}>{c.name}</option>)}
                 </Select>
-                <Button type="button" variant="secondary" onClick={() => setAddingCategory(true)}>New</Button>
+                <Button type="button" variant="secondary" onClick={() => setAddingCategory(true)}>{tr('New')}</Button>
               </div>
             )}
           </Field>
           {brands && (
-            <Field id="brand_id" label="Brand">
+            <Field id="brand_id" label={tr('Brand')}>
               {addingBrand ? (
                 <div className="flex gap-2">
-                  <Input aria-label="New brand name" placeholder="e.g. Biryani Co." value={newBrand} onChange={(e) => setNewBrand(e.target.value)} autoFocus
+                  <Input aria-label={tr('New brand name')} placeholder={tr('e.g. Biryani Co.')} value={newBrand} onChange={(e) => setNewBrand(e.target.value)} autoFocus
                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addBrand(); } if (e.key === 'Escape') setAddingBrand(false); }} />
-                  <Button type="button" variant="secondary" onClick={addBrand}>Add</Button>
-                  <Button type="button" variant="ghost" onClick={() => setAddingBrand(false)}>Cancel</Button>
+                  <Button type="button" variant="secondary" onClick={addBrand}>{tr('Add')}</Button>
+                  <Button type="button" variant="ghost" onClick={() => setAddingBrand(false)}>{tr('Cancel')}</Button>
                 </div>
               ) : (
                 <div className="flex gap-2">
                   <Select id="brand_id" value={form.brand_id || ''} onChange={set('brand_id')} className="flex-1">
-                    <option value="">No specific brand</option>
+                    <option value="">{tr('No specific brand')}</option>
                     {brands.map((b) => <option key={b.brand_id} value={b.brand_id}>{b.name}</option>)}
                   </Select>
-                  <Button type="button" variant="secondary" onClick={() => setAddingBrand(true)}>New</Button>
+                  <Button type="button" variant="secondary" onClick={() => setAddingBrand(true)}>{tr('New')}</Button>
                 </div>
               )}
             </Field>
           )}
           {sold && isRestaurant && (
             <div>
-              <p className="text-small font-medium text-ink-700">Veg or non-veg</p>
-              <div role="radiogroup" aria-label="Veg or non-veg" className="mt-2 flex flex-wrap gap-1.5">
+              <p className="text-small font-medium text-ink-700">{tr('Veg or non-veg')}</p>
+              <div role="radiogroup" aria-label={tr('Veg or non-veg')} className="mt-2 flex flex-wrap gap-1.5">
                 {FOOD_TYPES.map(([v, label]) => (
                   <button key={v || 'none'} type="button" role="radio" aria-checked={(form.food_type || '') === v} onClick={() => setForm((x) => ({ ...x, food_type: v }))}
                           className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-small ${(form.food_type || '') === v ? 'border-brand-500 bg-brand-50 font-medium text-brand-700 ring-1 ring-brand-500' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>
-                    <FoodMark type={v} />{label}
+                    <FoodMark type={v} />{tr(label)}
                   </button>
                 ))}
               </div>
-              <p className="mt-1 text-caption text-ink-500">Shown as the green / red mark on the QR menu.</p>
+              <p className="mt-1 text-caption text-ink-500">{tr('Shown as the green / red mark on the QR menu.')}</p>
             </div>
           )}
-          {sold && <Field id="description" label="Description (optional)" hint="Shown on the QR menu customers order from."><Textarea id="description" value={form.description || ''} onChange={set('description')} rows={2} /></Field>}
+          {sold && <Field id="description" label={tr('Description (optional)')} hint={tr('Shown on the QR menu customers order from.')}><Textarea id="description" value={form.description || ''} onChange={set('description')} rows={2} /></Field>}
         </fieldset>
 
         <fieldset className="space-y-4">
-          <legend className={legend}>Price and GST</legend>
+          <legend className={legend}>{tr('Price and GST')}</legend>
           <div className={`grid gap-4 ${retail ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
-            {sold && <Field id="selling_price" label="Selling price (₹)" hint="Before GST"><Input id="selling_price" type="number" min="0" step="0.01" value={form.selling_price} onChange={set('selling_price')} required /></Field>}
-            {retail && <Field id="mrp" label="MRP (₹)" hint="Printed price, optional"><Input id="mrp" type="number" min="0" step="0.01" value={form.mrp ?? ''} onChange={set('mrp')} /></Field>}
-            <Field id="purchase_price" label={sold ? 'Cost price (₹)' : 'What you pay (₹)'} hint={sold && isRestaurant ? 'For dishes with a recipe, the recipe sets the cost' : `Per ${form.unit}, used for stock value`}>
+            {sold && <Field id="selling_price" label={tr('Selling price (₹)')} hint={tr('Before GST')}><Input id="selling_price" type="number" min="0" step="0.01" value={form.selling_price} onChange={set('selling_price')} required /></Field>}
+            {retail && <Field id="mrp" label={tr('MRP (₹)')} hint={tr('Printed price, optional')}><Input id="mrp" type="number" min="0" step="0.01" value={form.mrp ?? ''} onChange={set('mrp')} /></Field>}
+            <Field id="purchase_price" label={sold ? tr('Cost price (₹)') : tr('What you pay (₹)')} hint={sold && isRestaurant ? tr('For dishes with a recipe, the recipe sets the cost') : `Per ${form.unit}, used for stock value`}>
               <Input id="purchase_price" type="number" min="0" step="0.01" value={form.purchase_price} onChange={set('purchase_price')} />
             </Field>
-            <Field id="tax_rate" label="GST">
+            <Field id="tax_rate" label={tr('GST')}>
               <Select id="tax_rate" value={form.tax_rate} onChange={set('tax_rate')}>{[0, 5, 12, 18, 28].map((r) => <option key={r} value={r}>{r}%</option>)}</Select>
             </Field>
+            {cessOn && <Field id="cess_rate" label={tr('Cess (%)')} hint={tr('Added on top of GST')}><Input id="cess_rate" type="number" min="0" max="100" step="0.01" value={form.cess_rate ?? ''} onChange={set('cess_rate')} /></Field>}
           </div>
           {sold && Number(form.selling_price) > 0 && Number(form.tax_rate) > 0 && <p className="tabular -mt-2 text-caption text-ink-500">{formatCurrency(Number(form.selling_price))} + {form.tax_rate}% GST = {formatCurrency(withGst)} on the bill.</p>}
           <div className={`grid gap-4 ${retail ? 'sm:grid-cols-3' : 'sm:grid-cols-4'}`}>
-            <Field id="unit" label="Sold / counted in"><Select id="unit" value={form.unit} onChange={set('unit')}>{[...new Set([...UNITS, form.unit])].map((u) => <option key={u} value={u}>{u}</option>)}</Select></Field>
-            <Field id="hsn_sac" label="HSN / SAC"><Input id="hsn_sac" value={form.hsn_sac || ''} onChange={set('hsn_sac')} /></Field>
-            {!retail && <Field id="sku" label="SKU"><Input id="sku" value={form.sku || ''} onChange={set('sku')} /></Field>}
-            {(!retail || !isEdit) && <Field id="barcode" label={retail ? 'Barcode (optional)' : 'Barcode'} hint={retail ? 'Scan or type it. Add more later.' : undefined}><Input id="barcode" value={form.barcode || ''} onChange={set('barcode')} /></Field>}
+            <Field id="unit" label={tr('Sold / counted in')}><Select id="unit" value={form.unit} onChange={set('unit')}>{[...new Set([...UNITS, form.unit])].map((u) => <option key={u} value={u}>{u}</option>)}</Select></Field>
+            <Field id="hsn_sac" label={tr('HSN / SAC')}><Input id="hsn_sac" value={form.hsn_sac || ''} onChange={set('hsn_sac')} /></Field>
+            {!retail && <Field id="sku" label={tr('SKU')}><Input id="sku" value={form.sku || ''} onChange={set('sku')} /></Field>}
+            {(!retail || !isEdit) && <Field id="barcode" label={retail ? tr('Barcode (optional)') : tr('Barcode')} hint={retail ? tr('Scan or type it. Add more later.') : undefined}><Input id="barcode" value={form.barcode || ''} onChange={set('barcode')} /></Field>}
           </div>
           {retail && (
             <div className="space-y-3">
               <p className="text-small text-ink-700">
-                <span className="font-medium text-ink-900">SKU: </span>
-                {isEdit ? (initial.sku || 'none') : autoSku ? 'Automatically generated when you save' : 'Add one below, or leave it blank'}
+                <span className="font-medium text-ink-900">{tr('SKU:')} </span>
+                {isEdit ? (initial.sku || 'none') : autoSku ? tr('Automatically generated when you save') : tr('Add one below, or leave it blank')}
               </p>
               <details className="rounded-(--radius-card) border border-line">
-                <summary className="cursor-pointer select-none px-3 py-2 text-small font-medium text-ink-700 pointer-coarse:min-h-11">Advanced details</summary>
+                <summary className="cursor-pointer select-none px-3 py-2 text-small font-medium text-ink-700 pointer-coarse:min-h-11">{tr('Advanced details')}</summary>
                 <div className="grid gap-4 border-t border-line p-3 sm:grid-cols-2">
-                  <Field id="sku" label="Your own SKU (optional)" hint={autoSku ? 'Leave blank and FlowXP keeps its own' : undefined}><Input id="sku" value={form.sku || ''} onChange={set('sku')} placeholder={initial.sku || ''} /></Field>
-                  <Field id="erp_code" label="ERP code (optional)"><Input id="erp_code" value={form.erp_code || ''} onChange={set('erp_code')} /></Field>
+                  <Field id="sku" label={tr('Your own SKU (optional)')} hint={autoSku ? tr('Leave blank and FlowXP keeps its own') : undefined}><Input id="sku" value={form.sku || ''} onChange={set('sku')} placeholder={initial.sku || ''} /></Field>
+                  <Field id="erp_code" label={tr('ERP code (optional)')}><Input id="erp_code" value={form.erp_code || ''} onChange={set('erp_code')} /></Field>
                 </div>
               </details>
             </div>
@@ -265,8 +272,8 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail
 
         {isRestaurant && form.kind === 'DISH' && groups.length > 0 && (
           <fieldset>
-            <legend className={legend}>Options offered</legend>
-            <p className="mt-1 text-caption text-ink-500">Sizes and add-ons the customer picks. <Link to="/app/modifiers" className="font-medium text-brand-700">Manage options</Link></p>
+            <legend className={legend}>{tr('Options offered')}</legend>
+            <p className="mt-1 text-caption text-ink-500">{tr('Sizes and add-ons the customer picks.')} <Link to="/app/modifiers" className="font-medium text-brand-700">{tr('Manage options')}</Link></p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {groups.map((g) => {
                 const on = form.modifier_group_ids.includes(g.group_id);
@@ -281,25 +288,25 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail
         )}
 
         <fieldset className="space-y-3">
-          <legend className={legend}>Stock</legend>
+          <legend className={legend}>{tr('Stock')}</legend>
           <label className="flex items-start gap-3">
             <input type="checkbox" checked={form.track_inventory} onChange={set('track_inventory')} className="mt-1 h-4 w-4 accent-[var(--color-brand-500)]" />
-            <span><span className="block text-small font-medium text-ink-900">Count stock for this</span><span className="block text-caption text-ink-500">Leave off for services, or dishes made to order from ingredients (their recipe uses the ingredients' stock).</span></span>
+            <span><span className="block text-small font-medium text-ink-900">{tr('Count stock for this')}</span><span className="block text-caption text-ink-500">{tr('Leave off for services, or dishes made to order from ingredients (their recipe uses the ingredients\' stock).')}</span></span>
           </label>
           {form.track_inventory && (
             <div className="grid gap-4 sm:grid-cols-3">
-              {!isEdit && <Field id="opening_stock" label={`In stock now (${form.unit})`}><Input id="opening_stock" type="number" min="0" step="0.001" value={form.opening_stock} onChange={set('opening_stock')} /></Field>}
-              <Field id="min_stock" label="Warn me below"><Input id="min_stock" type="number" min="0" step="0.001" value={form.min_stock} onChange={set('min_stock')} /></Field>
-              {isRestaurant && <Field id="lead_time_days" label="Days to deliver" hint="For the stock forecast"><Input id="lead_time_days" type="number" min="0" max="30" step="1" value={form.lead_time_days} onChange={set('lead_time_days')} /></Field>}
+              {!isEdit && <Field id="opening_stock" label={tr('In stock now ({{unit}})', { unit: form.unit })}><Input id="opening_stock" type="number" min="0" step="0.001" value={form.opening_stock} onChange={set('opening_stock')} /></Field>}
+              <Field id="min_stock" label={tr('Warn me below')}><Input id="min_stock" type="number" min="0" step="0.001" value={form.min_stock} onChange={set('min_stock')} /></Field>
+              {isRestaurant && <Field id="lead_time_days" label={tr('Days to deliver')} hint={tr('For the stock forecast')}><Input id="lead_time_days" type="number" min="0" max="30" step="1" value={form.lead_time_days} onChange={set('lead_time_days')} /></Field>}
             </div>
           )}
         </fieldset>
 
         <div className="flex items-center justify-between gap-2 border-t border-line pt-4">
-          <p className="text-caption text-ink-500">{isEdit ? '' : 'Add a photo once it is saved.'}</p>
+          <p className="text-caption text-ink-500">{isEdit ? '' : tr('Add a photo once it is saved.')}</p>
           <div className="flex gap-2">
-            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={busy}>{busy ? 'Saving…' : isEdit ? 'Save changes' : 'Add product'}</Button>
+            <Button type="button" variant="ghost" onClick={onClose}>{tr('Cancel')}</Button>
+            <Button type="submit" disabled={busy}>{busy ? tr('Saving…') : isEdit ? tr('Save changes') : tr('Add product')}</Button>
           </div>
         </div>
       </form>
@@ -311,6 +318,7 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail
 
 /* Per-outlet price and availability for a shared menu item. A blank price means "the shared price". */
 const OutletPrices = ({ dish, onClose }) => {
+  const tr = useT();
   const [rows, setRows] = useState(null);
   const [shared, setShared] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -338,23 +346,23 @@ const OutletPrices = ({ dish, onClose }) => {
   const update = (id, patch) => setRows((rs) => rs.map((r) => (r.branch_id === id ? { ...r, ...patch } : r)));
 
   return (
-    <Modal title={`${dish.name} at each outlet`} onClose={onClose} wide>
+    <Modal title={tr('{{dish_name}} at each outlet', { dish_name: dish.name })} onClose={onClose} wide>
       <Alert>{error}</Alert>
       {!rows ? <div className="h-32 animate-pulse rounded-lg bg-surface-3" /> : (
         <div className="space-y-3">
-          <p className="text-small text-ink-500">Shared price <strong className="tabular text-ink-900">{formatCurrency(shared)}</strong>. Leave an outlet blank to charge that.</p>
+          <p className="text-small text-ink-500">{tr('Shared price')} <strong className="tabular text-ink-900">{formatCurrency(shared)}</strong>{tr('. Leave an outlet blank to charge that.')}</p>
           {rows.map((r) => (
             <div key={r.branch_id} className="grid items-center gap-3 rounded-lg border border-line p-3 sm:grid-cols-[1fr_9rem_auto]">
               <span className="font-medium text-ink-900">{r.name}</span>
-              <Input type="number" min="0" step="0.01" placeholder={String(shared)} value={r.price} onChange={(e) => update(r.branch_id, { price: e.target.value })} aria-label={`Price at ${r.name}`} />
+              <Input type="number" min="0" step="0.01" placeholder={String(shared)} value={r.price} onChange={(e) => update(r.branch_id, { price: e.target.value })} aria-label={tr('Price at {{r_name}}', { r_name: r.name })} />
               <label className="flex items-center gap-2 text-small text-ink-700">
-                <input type="checkbox" checked={r.is_available} onChange={(e) => update(r.branch_id, { is_available: e.target.checked })} className="h-4 w-4 accent-[var(--color-brand-500)]" /> Sold here
+                <input type="checkbox" checked={r.is_available} onChange={(e) => update(r.branch_id, { is_available: e.target.checked })} className="h-4 w-4 accent-[var(--color-brand-500)]" /> {tr('Sold here')}
               </label>
             </div>
           ))}
           <div className="flex justify-end gap-2 border-t border-line pt-4">
-            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</Button>
+            <Button type="button" variant="ghost" onClick={onClose}>{tr('Cancel')}</Button>
+            <Button type="button" disabled={busy} onClick={save}>{busy ? tr('Saving…') : tr('Save')}</Button>
           </div>
         </div>
       )}
@@ -366,6 +374,7 @@ const OutletPrices = ({ dish, onClose }) => {
    out and the dish shows its real cost. Cost here follows the ingredients'
    purchase prices as you type; the server recomputes it on save. */
 const RecipeEditor = ({ dish, onClose }) => {
+  const tr = useT();
   const dialog = useDialog();
   const toast = useToast();
   const { outlets } = useAuth();
@@ -398,51 +407,51 @@ const RecipeEditor = ({ dish, onClose }) => {
         method: 'PUT',
         body: { branch_id: scope === 'default' ? null : Number(scope), ingredients: rows.filter((r) => r.ingredient_id).map((r) => ({ ingredient_id: Number(r.ingredient_id), quantity: Number(r.quantity), wastage_pct: Number(r.wastage_pct) || 0 })) }
       });
-      toast.success('Recipe saved');
+      toast.success(tr('Recipe saved'));
       onClose();
     } catch (caught) { setError(caught.message); }
     finally { setBusy(false); }
   };
   const removeOutletRecipe = async () => {
-    if (!(await dialog.confirm({ title: "Remove this outlet's recipe?", body: 'It will use the default recipe again.', confirmLabel: 'Remove', danger: true }))) return;
+    if (!(await dialog.confirm({ title: tr('Remove this outlet\'s recipe?'), body: tr('It will use the default recipe again.'), confirmLabel: tr('Remove'), danger: true }))) return;
     setBusy(true); setError('');
-    try { await api(`/products/${dish.product_id}/recipe?branch_id=${scope}`, { method: 'DELETE' }); toast.success('Back to the default recipe'); onClose(); }
+    try { await api(`/products/${dish.product_id}/recipe?branch_id=${scope}`, { method: 'DELETE' }); toast.success(tr('Back to the default recipe')); onClose(); }
     catch (caught) { setError(caught.message); }
     finally { setBusy(false); }
   };
 
   return (
-    <Modal title={`Recipe for ${dish.name}`} onClose={onClose} wide>
+    <Modal title={tr('Recipe for {{dish_name}}', { dish_name: dish.name })} onClose={onClose} wide>
       <div className="space-y-4">
         <Alert>{error}</Alert>
         {outlets.length > 1 && (
-          <Field id="recipe-scope" label="Recipe for" hint={scope === 'default' ? 'Used by every outlet that has no recipe of its own.' : ownRecipe ? 'This outlet has its own recipe.' : 'This outlet uses the default recipe. Saving here gives it one of its own.'}>
+          <Field id="recipe-scope" label={tr('Recipe for')} hint={scope === 'default' ? tr('Used by every outlet that has no recipe of its own.') : ownRecipe ? tr('This outlet has its own recipe.') : tr('This outlet uses the default recipe. Saving here gives it one of its own.')}>
             <Select id="recipe-scope" value={scope} onChange={(e) => setScope(e.target.value)}>
-              <option value="default">All outlets (default)</option>
-              {outlets.map((o) => <option key={o.branch_id} value={o.branch_id}>{o.name} only</option>)}
+              <option value="default">{tr('All outlets (default)')}</option>
+              {outlets.map((o) => <option key={o.branch_id} value={o.branch_id}>{tr('{{o_name}} only', { o_name: o.name })}</option>)}
             </Select>
           </Field>
         )}
         {!rows && !error && <div className="h-32 animate-pulse rounded-lg bg-surface-3" />}
-        {ingredients?.length === 0 && <p className="rounded-lg bg-surface-2 p-3 text-small text-ink-700">No ingredients yet. Add products of the type <strong>Ingredient</strong> (with what you pay per unit), then build the recipe here.</p>}
+        {ingredients?.length === 0 && <p className="rounded-lg bg-surface-2 p-3 text-small text-ink-700">{tr('No ingredients yet. Add products of the type')} <strong>{tr('Ingredient')}</strong> {tr('(with what you pay per unit), then build the recipe here.')}</p>}
         {rows && ingredients?.length > 0 && (
           <>
-            <p className="text-caption text-ink-500">Quantities are for <strong>one portion</strong>, in each ingredient's own unit. Waste % covers peeling, trimming and spills.</p>
+            <p className="text-caption text-ink-500">{tr('Quantities are for')} <strong>{tr('one portion')}</strong>{tr(', in each ingredient\'s own unit. Waste % covers peeling, trimming and spills.')}</p>
             <div className="space-y-2">
               {rows.map((r, i) => (
                 <div key={i} className="grid gap-2 sm:grid-cols-[1fr_6rem_6rem_5rem_auto]">
-                  <Select aria-label="Ingredient" value={r.ingredient_id} onChange={(e) => setRow(i, 'ingredient_id', e.target.value)}>
-                    <option value="">Choose ingredient…</option>
+                  <Select aria-label={tr('Ingredient')} value={r.ingredient_id} onChange={(e) => setRow(i, 'ingredient_id', e.target.value)}>
+                    <option value="">{tr('Choose ingredient…')}</option>
                     {ingredients.map((p) => <option key={p.product_id} value={p.product_id}>{p.name} ({p.unit})</option>)}
                   </Select>
-                  <Input aria-label="Quantity" type="number" min="0" step="0.001" placeholder="Qty" value={r.quantity} onChange={(e) => setRow(i, 'quantity', e.target.value)} />
-                  <Input aria-label="Wastage percent" type="number" min="0" max="99" step="0.5" placeholder="Waste %" value={r.wastage_pct} onChange={(e) => setRow(i, 'wastage_pct', e.target.value)} />
+                  <Input aria-label={tr('Quantity')} type="number" min="0" step="0.001" placeholder={tr('Qty')} value={r.quantity} onChange={(e) => setRow(i, 'quantity', e.target.value)} />
+                  <Input aria-label={tr('Wastage percent')} type="number" min="0" max="99" step="0.5" placeholder={tr('Waste %')} value={r.wastage_pct} onChange={(e) => setRow(i, 'wastage_pct', e.target.value)} />
                   <span className="tabular self-center text-right text-caption text-ink-500">{formatCurrency((Number(r.quantity) || 0) * (1 + (Number(r.wastage_pct) || 0) / 100) * price(r.ingredient_id))}</span>
-                  <button type="button" onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))} className="text-caption font-medium text-ink-500 hover:text-danger">Remove</button>
+                  <button type="button" onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))} className="text-caption font-medium text-ink-500 hover:text-danger">{tr('Remove')}</button>
                 </div>
               ))}
             </div>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setRows((rs) => [...rs, { ingredient_id: '', quantity: '', wastage_pct: '0' }])}><Plus aria-hidden="true" className="h-4 w-4" />Add ingredient</Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setRows((rs) => [...rs, { ingredient_id: '', quantity: '', wastage_pct: '0' }])}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add ingredient')}</Button>
           </>
         )}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
@@ -451,9 +460,9 @@ const RecipeEditor = ({ dish, onClose }) => {
             {margin != null && <> · margin <strong className={margin < LOW_MARGIN ? 'text-warning' : 'text-success'}>{margin.toFixed(1)}%</strong> of {formatCurrency(dish.selling_price)}</>}
           </p>
           <div className="flex gap-2">
-            {scope !== 'default' && ownRecipe && <Button type="button" variant="ghost" disabled={busy} onClick={removeOutletRecipe}>Use the default</Button>}
-            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button type="button" disabled={busy || !rows} onClick={save}>{busy ? 'Saving…' : 'Save recipe'}</Button>
+            {scope !== 'default' && ownRecipe && <Button type="button" variant="ghost" disabled={busy} onClick={removeOutletRecipe}>{tr('Use the default')}</Button>}
+            <Button type="button" variant="ghost" onClick={onClose}>{tr('Cancel')}</Button>
+            <Button type="button" disabled={busy || !rows} onClick={save}>{busy ? tr('Saving…') : tr('Save recipe')}</Button>
           </div>
         </div>
       </div>
@@ -464,6 +473,7 @@ const RecipeEditor = ({ dish, onClose }) => {
 /* A combo is a menu item made of other items: one price and one tax rate on the bill, but selling it
    uses up its parts' stock and recipes, so cost and stock stay honest. */
 const ComboEditor = ({ dish, onClose }) => {
+  const tr = useT();
   const toast = useToast();
   const [items, setItems] = useState(null);
   const [rows, setRows] = useState(null);
@@ -488,20 +498,20 @@ const ComboEditor = ({ dish, onClose }) => {
     setBusy(true); setError('');
     try {
       await api(`/products/${dish.product_id}/combo`, { method: 'PUT', body: { components: rows.filter((r) => r.product_id).map((r) => ({ product_id: Number(r.product_id), quantity: Number(r.quantity) || 1 })) } });
-      toast.success('Combo saved');
+      toast.success(tr('Combo saved'));
       onClose();
     } catch (caught) { setError(caught.message); }
     finally { setBusy(false); }
   };
   const remove = async () => {
     setBusy(true); setError('');
-    try { await api(`/products/${dish.product_id}/combo`, { method: 'DELETE' }); toast.success('Back to a single item'); onClose(); }
+    try { await api(`/products/${dish.product_id}/combo`, { method: 'DELETE' }); toast.success(tr('Back to a single item')); onClose(); }
     catch (caught) { setError(caught.message); }
     finally { setBusy(false); }
   };
 
   return (
-    <Modal title={`${dish.name} as a combo`} onClose={onClose} wide>
+    <Modal title={tr('{{dish_name}} as a combo', { dish_name: dish.name })} onClose={onClose} wide>
       <div className="space-y-4">
         <Alert>{error}</Alert>
         {!rows && !error && <div className="h-32 animate-pulse rounded-lg bg-surface-3" />}
@@ -511,17 +521,17 @@ const ComboEditor = ({ dish, onClose }) => {
             <div className="space-y-2">
               {rows.map((r, i) => (
                 <div key={i} className="grid gap-2 sm:grid-cols-[1fr_6rem_6rem_auto]">
-                  <Select aria-label="Item" value={r.product_id} onChange={(e) => setRow(i, 'product_id', e.target.value)}>
-                    <option value="">Choose item…</option>
+                  <Select aria-label={tr('Item')} value={r.product_id} onChange={(e) => setRow(i, 'product_id', e.target.value)}>
+                    <option value="">{tr('Choose item…')}</option>
                     {items?.map((p) => <option key={p.product_id} value={p.product_id}>{p.name}</option>)}
                   </Select>
-                  <Input aria-label="Quantity" type="number" min="0" step="0.5" value={r.quantity} onChange={(e) => setRow(i, 'quantity', e.target.value)} />
+                  <Input aria-label={tr('Quantity')} type="number" min="0" step="0.5" value={r.quantity} onChange={(e) => setRow(i, 'quantity', e.target.value)} />
                   <span className="tabular self-center text-right text-caption text-ink-500">{formatCurrency((Number(r.quantity) || 0) * price(r.product_id))}</span>
-                  <button type="button" onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))} className="text-caption font-medium text-ink-500 hover:text-danger">Remove</button>
+                  <button type="button" onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))} className="text-caption font-medium text-ink-500 hover:text-danger">{tr('Remove')}</button>
                 </div>
               ))}
             </div>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setRows((rs) => [...rs, { product_id: '', quantity: '1' }])}><Plus aria-hidden="true" className="h-4 w-4" />Add item</Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setRows((rs) => [...rs, { product_id: '', quantity: '1' }])}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add item')}</Button>
           </>
         )}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
@@ -530,9 +540,9 @@ const ComboEditor = ({ dish, onClose }) => {
             {separate > 0 && <> · customer saves <strong className={saving > 0 ? 'text-success' : 'text-warning'}>{formatCurrency(Math.max(saving, 0))}</strong>{saving <= 0 && ' (the combo costs more than the parts)'}</>}
           </p>
           <div className="flex gap-2">
-            {dish.is_combo && <Button type="button" variant="ghost" disabled={busy} onClick={remove}>Not a combo</Button>}
-            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button type="button" disabled={busy || !rows} onClick={save}>{busy ? 'Saving…' : 'Save combo'}</Button>
+            {dish.is_combo && <Button type="button" variant="ghost" disabled={busy} onClick={remove}>{tr('Not a combo')}</Button>}
+            <Button type="button" variant="ghost" onClick={onClose}>{tr('Cancel')}</Button>
+            <Button type="button" disabled={busy || !rows} onClick={save}>{busy ? tr('Saving…') : tr('Save combo')}</Button>
           </div>
         </div>
       </div>
@@ -542,11 +552,15 @@ const ComboEditor = ({ dish, onClose }) => {
 
 /* ── One product ──────────────────────────────────────────────────────── */
 
-const Detail = ({ label, children }) => (
-  <div className="flex justify-between gap-4 py-2 text-small"><dt className="text-ink-500">{label}</dt><dd className="text-right text-ink-900">{children}</dd></div>
+const Detail = ({ label, children }) => {
+  const tr = useT();
+  return (
+  <div className="flex justify-between gap-4 py-2 text-small"><dt className="text-ink-500">{tr(label)}</dt><dd className="text-right text-ink-900">{children}</dd></div>
 );
+};
 
 const ProductPanel = ({ product: p, refreshKey, groups, isRestaurant, retail, canEdit, canMove, onChanged, multiOutlet, outletId, onEdit, onAction, onArchive, onRestore, onPhoto, onBack }) => {
+  const tr = useT();
   const [recipe, setRecipe] = useState(null);
   const [combo, setCombo] = useState(null);
   const dish = p.kind === 'DISH';
@@ -567,22 +581,22 @@ const ProductPanel = ({ product: p, refreshKey, groups, isRestaurant, retail, ca
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-line p-4 sm:p-6">
-        <button type="button" onClick={onBack} className="mb-3 flex items-center gap-1.5 text-small font-medium text-ink-500 hover:text-ink-900 xl:hidden"><ArrowLeft className="h-4 w-4" />All products</button>
+        <button type="button" onClick={onBack} className="mb-3 flex items-center gap-1.5 text-small font-medium text-ink-500 hover:text-ink-900 xl:hidden"><ArrowLeft className="h-4 w-4" />{tr('All products')}</button>
         {dish && !archived && <div className="mb-4"><ImageUploader product={p} onUploaded={onPhoto} large /></div>}
         <p className="text-caption font-medium text-ink-500">{[isRestaurant && KIND_LABELS[p.kind], p.category_name].filter(Boolean).join(' · ') || 'No category'}</p>
         <h2 className="mt-0.5 flex items-center gap-2 text-title font-semibold text-ink-900"><FoodMark type={p.food_type} size={16} />{p.name}</h2>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {archived && <span className="rounded bg-surface-2 px-1.5 py-0.5 text-caption font-semibold text-ink-500">Archived</span>}
-          {p.is_combo && <span className="rounded bg-brand-50 px-1.5 py-0.5 text-caption font-semibold text-brand-700">Combo</span>}
-          {p.is_available === false && <span className="rounded bg-warning/10 px-1.5 py-0.5 text-caption font-semibold text-warning">Not sold at this outlet</span>}
-          {p.low_stock && <span className="rounded bg-warning/10 px-1.5 py-0.5 text-caption font-semibold text-warning">Low stock</span>}
+          {archived && <span className="rounded bg-surface-2 px-1.5 py-0.5 text-caption font-semibold text-ink-500">{tr('Archived')}</span>}
+          {p.is_combo && <span className="rounded bg-brand-50 px-1.5 py-0.5 text-caption font-semibold text-brand-700">{tr('Combo')}</span>}
+          {p.is_available === false && <span className="rounded bg-warning/10 px-1.5 py-0.5 text-caption font-semibold text-warning">{tr('Not sold at this outlet')}</span>}
+          {p.low_stock && <span className="rounded bg-warning/10 px-1.5 py-0.5 text-caption font-semibold text-warning">{tr('Low stock')}</span>}
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          {archived ? <Button size="sm" onClick={onRestore}>Bring back</Button> : <>
-            <Button size="sm" onClick={onEdit}>Edit details</Button>
-            {dish && isRestaurant && <Button size="sm" variant="secondary" onClick={() => onAction('recipe')}><ChefHat aria-hidden="true" className="h-4 w-4" />Recipe</Button>}
-            {dish && isRestaurant && <Button size="sm" variant="secondary" onClick={() => onAction('combo')}><Layers aria-hidden="true" className="h-4 w-4" />{p.is_combo ? 'Combo parts' : 'Make a combo'}</Button>}
-            {dish && multiOutlet && <Button size="sm" variant="secondary" onClick={() => onAction('outlets')}>Outlet prices</Button>}
+          {archived ? <Button size="sm" onClick={onRestore}>{tr('Bring back')}</Button> : <>
+            <Button size="sm" onClick={onEdit}>{tr('Edit details')}</Button>
+            {dish && isRestaurant && <Button size="sm" variant="secondary" onClick={() => onAction('recipe')}><ChefHat aria-hidden="true" className="h-4 w-4" />{tr('Recipe')}</Button>}
+            {dish && isRestaurant && <Button size="sm" variant="secondary" onClick={() => onAction('combo')}><Layers aria-hidden="true" className="h-4 w-4" />{p.is_combo ? tr('Combo parts') : tr('Make a combo')}</Button>}
+            {dish && multiOutlet && <Button size="sm" variant="secondary" onClick={() => onAction('outlets')}>{tr('Outlet prices')}</Button>}
           </>}
         </div>
       </div>
@@ -591,27 +605,27 @@ const ProductPanel = ({ product: p, refreshKey, groups, isRestaurant, retail, ca
         {dish && (
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded-(--radius-card) border border-line bg-surface p-3.5">
-              <p className="text-caption text-ink-500">Price{p.price_overridden ? ' at this outlet' : ''}</p>
+              <p className="text-caption text-ink-500">Price{p.price_overridden ? tr('at this outlet') : ''}</p>
               <p className="tabular mt-1 text-title font-semibold text-ink-900">{formatCurrency(p.selling_price)}</p>
-              <p className="tabular mt-0.5 text-caption text-ink-500">{p.tax_rate > 0 ? `${formatCurrency(withGst)} with ${p.tax_rate}% GST` : 'no GST'}{p.price_overridden && ` · shared ${formatCurrency(p.shared_price)}`}</p>
+              <p className="tabular mt-0.5 text-caption text-ink-500">{p.tax_rate > 0 ? `${formatCurrency(withGst)} with ${p.tax_rate}% GST` : tr('no GST')}{p.price_overridden && ` · shared ${formatCurrency(p.shared_price)}`}</p>
             </div>
             <div className="rounded-(--radius-card) border border-line bg-surface p-3.5">
-              <p className="text-caption text-ink-500">Costs you</p>
+              <p className="text-caption text-ink-500">{tr('Costs you')}</p>
               {p.cost_source ? <>
                 <p className="tabular mt-1 text-title font-semibold text-ink-900">{formatCurrency(p.unit_cost)}</p>
-                <p className="tabular mt-0.5 text-caption"><span className={`font-semibold ${lowMargin ? 'text-warning' : 'text-success'}`}>{p.margin_pct}% margin</span> <span className="text-ink-500">· {p.cost_source === 'recipe' ? 'from the recipe' : 'what you pay'}</span></p>
+                <p className="tabular mt-0.5 text-caption"><span className={`font-semibold ${lowMargin ? 'text-warning' : 'text-success'}`}>{tr('{{margin_pct}}% margin', { margin_pct: p.margin_pct })}</span> <span className="text-ink-500">· {p.cost_source === 'recipe' ? tr('from the recipe') : tr('what you pay')}</span></p>
               </> : <>
-                <p className="mt-1 text-title font-semibold text-ink-400">Not known</p>
-                <p className="mt-0.5 text-caption text-ink-500">{isRestaurant ? 'Add a recipe or a cost price' : 'Add a cost price'} to see the margin</p>
+                <p className="mt-1 text-title font-semibold text-ink-400">{tr('Not known')}</p>
+                <p className="mt-0.5 text-caption text-ink-500">{isRestaurant ? tr('Add a recipe or a cost price') : tr('Add a cost price')} to see the margin</p>
               </>}
             </div>
           </div>
         )}
-        {lowMargin && <p className="-mt-3 rounded-lg bg-warning/10 px-3 py-2 text-small text-ink-700">Under {LOW_MARGIN}% is thin: {formatCurrency(p.selling_price - p.unit_cost)} is left of each sale before rent, staff and bills.</p>}
+        {lowMargin && <p className="-mt-3 rounded-lg bg-warning/10 px-3 py-2 text-small text-ink-700">{tr('Under {{LOW_MARGIN}}% is thin: {{formatCurrency}} is left of each sale before rent, staff and bills.', { LOW_MARGIN, formatCurrency: formatCurrency(p.selling_price - p.unit_cost) })}</p>}
 
         {recipe?.ingredients.length > 0 && (
-          <section aria-label="Recipe">
-            <div className="mb-2 flex items-baseline justify-between"><h3 className="text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">One portion uses</h3><button type="button" onClick={() => onAction('recipe')} className="text-caption font-medium text-brand-700">Edit</button></div>
+          <section aria-label={tr('Recipe')}>
+            <div className="mb-2 flex items-baseline justify-between"><h3 className="text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">{tr('One portion uses')}</h3><button type="button" onClick={() => onAction('recipe')} className="text-caption font-medium text-brand-700">{tr('Edit')}</button></div>
             <ul className="divide-y divide-line overflow-hidden rounded-(--radius-card) border border-line bg-surface text-small">
               {recipe.ingredients.map((i) => (
                 <li key={i.ingredient_id} className="flex justify-between gap-3 px-4 py-2.5">
@@ -625,65 +639,65 @@ const ProductPanel = ({ product: p, refreshKey, groups, isRestaurant, retail, ca
         {dish && isRestaurant && !archived && !p.cost_source && recipe && recipe.ingredients.length === 0 && !p.is_combo && (
           <button type="button" onClick={() => onAction('recipe')} className="flex w-full items-start gap-3 rounded-(--radius-card) border border-dashed border-line-strong p-4 text-left hover:border-ink-400">
             <ChefHat aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-ink-500" />
-            <span><span className="block text-small font-medium text-ink-900">Add its recipe</span><span className="block text-caption text-ink-500">Then each sale takes its ingredients out of stock, and you see what one really costs.</span></span>
+            <span><span className="block text-small font-medium text-ink-900">{tr('Add its recipe')}</span><span className="block text-caption text-ink-500">{tr('Then each sale takes its ingredients out of stock, and you see what one really costs.')}</span></span>
           </button>
         )}
 
         {combo?.components.length > 0 && (
-          <section aria-label="Combo parts">
-            <h3 className="mb-2 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">In this combo</h3>
+          <section aria-label={tr('Combo parts')}>
+            <h3 className="mb-2 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">{tr('In this combo')}</h3>
             <ul className="divide-y divide-line overflow-hidden rounded-(--radius-card) border border-line bg-surface text-small">
               {combo.components.map((c) => <li key={c.product_id} className="flex justify-between px-4 py-2.5"><span className="text-ink-900">{qty(c.quantity)} × {c.name}</span><span className="tabular text-ink-500">{formatCurrency(c.price * c.quantity)}</span></li>)}
             </ul>
           </section>
         )}
 
-        <section aria-label="Details">
+        <section aria-label={tr('Details')}>
           <dl className="divide-y divide-line rounded-(--radius-card) border border-line bg-surface px-4">
-            {!dish && <Detail label="What you pay">{formatCurrency(p.purchase_price)} a {p.unit}</Detail>}
+            {!dish && <Detail label={tr('What you pay')}>{formatCurrency(p.purchase_price)} a {p.unit}</Detail>}
             {p.track_inventory && (
-              <Detail label="In stock">
+              <Detail label={tr('In stock')}>
                 <Link to={`/app/inventory?item=${p.product_id}`} className={`font-medium hover:text-brand-700 ${p.low_stock ? 'text-warning' : ''}`}>{qty(p.current_stock)} {p.unit}</Link>
-                {p.min_stock > 0 && <span className="text-ink-500"> · warns below {qty(p.min_stock)}</span>}
+                {p.min_stock > 0 && <span className="text-ink-500">{tr('· warns below {{qty}}', { qty: qty(p.min_stock) })}</span>}
               </Detail>
             )}
-            {!p.track_inventory && <Detail label="Stock">Not counted</Detail>}
-            {dish && isRestaurant && <Detail label="Options">{optionNames.length ? optionNames.join(', ') : <span className="text-ink-500">None</span>}</Detail>}
-            <Detail label="GST">{p.tax_rate}%{p.hsn_sac && <span className="text-ink-500"> · HSN {p.hsn_sac}</span>}</Detail>
-            <Detail label={dish ? 'Sold in' : 'Counted in'}>{p.unit}</Detail>
-            {retail && p.mrp != null && <Detail label="MRP"><span className="tabular">{formatCurrency(p.mrp)}</span></Detail>}
+            {!p.track_inventory && <Detail label={tr('Stock')}>{tr('Not counted')}</Detail>}
+            {dish && isRestaurant && <Detail label={tr('Options')}>{optionNames.length ? optionNames.join(', ') : <span className="text-ink-500">{tr('None')}</span>}</Detail>}
+            <Detail label={tr('GST')}>{p.tax_rate}%{p.hsn_sac && <span className="text-ink-500">{tr('· HSN {{hsn_sac}}', { hsn_sac: p.hsn_sac })}</span>}</Detail>
+            <Detail label={dish ? tr('Sold in') : tr('Counted in')}>{p.unit}</Detail>
+            {retail && p.mrp != null && <Detail label={tr('MRP')}><span className="tabular">{formatCurrency(p.mrp)}</span></Detail>}
             {retail && (
-              <Detail label="Track expiry dates">
+              <Detail label={tr('Track expiry dates')}>
                 {canEdit && !archived ? (
-                  <button type="button" role="switch" aria-checked={Boolean(p.track_expiry)} aria-label="Track expiry dates for this product"
+                  <button type="button" role="switch" aria-checked={Boolean(p.track_expiry)} aria-label={tr('Track expiry dates for this product')}
                           onClick={async () => { await api(`/products/${p.product_id}`, { method: 'PATCH', body: { track_expiry: !p.track_expiry } }).catch(() => {}); onChanged?.(); }}
                           className={`relative h-6 w-11 rounded-full transition-colors pointer-coarse:h-8 pointer-coarse:w-14 ${p.track_expiry ? 'bg-brand-500' : 'bg-line-strong'}`}>
                     <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform pointer-coarse:h-7 pointer-coarse:w-7 ${p.track_expiry ? 'translate-x-5 pointer-coarse:translate-x-6' : ''}`} />
                   </button>
-                ) : (p.track_expiry ? 'On' : 'Off')}
-                <span className="mt-1 block text-caption text-ink-500">Stock is kept in dated batches and sold soonest-expiry first. Expiry dates are asked for when you receive stock.</span>
+                ) : (p.track_expiry ? tr('On') : tr('Off'))}
+                <span className="mt-1 block text-caption text-ink-500">{tr('Stock is kept in dated batches and sold soonest-expiry first. Expiry dates are asked for when you receive stock.')}</span>
               </Detail>
             )}
             {retail && (
-              <Detail label="Quick button at the till">
+              <Detail label={tr('Quick button at the till')}>
                 {canEdit && !archived ? (
-                  <button type="button" role="switch" aria-checked={Boolean(p.is_quick)} aria-label="Show as a quick button at the till"
+                  <button type="button" role="switch" aria-checked={Boolean(p.is_quick)} aria-label={tr('Show as a quick button at the till')}
                           onClick={async () => { await api(`/products/${p.product_id}`, { method: 'PATCH', body: { is_quick: !p.is_quick } }).catch(() => {}); onChanged?.(); }}
                           className={`relative h-6 w-11 rounded-full transition-colors pointer-coarse:h-8 pointer-coarse:w-14 ${p.is_quick ? 'bg-brand-500' : 'bg-line-strong'}`}>
                     <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform pointer-coarse:h-7 pointer-coarse:w-7 ${p.is_quick ? 'translate-x-5 pointer-coarse:translate-x-6' : ''}`} />
                   </button>
-                ) : (p.is_quick ? 'On' : 'Off')}
+                ) : (p.is_quick ? tr('On') : tr('Off'))}
               </Detail>
             )}
-            {!retail && (p.sku || p.barcode) && <Detail label="Codes">{[p.sku && `SKU ${p.sku}`, p.barcode && `barcode ${p.barcode}`].filter(Boolean).join(' · ')}</Detail>}
+            {!retail && (p.sku || p.barcode) && <Detail label={tr('Codes')}>{[p.sku && `SKU ${p.sku}`, p.barcode && `barcode ${p.barcode}`].filter(Boolean).join(' · ')}</Detail>}
           </dl>
         </section>
 
         {retail && <ProductIdentifiers product={p} canEdit={canEdit && !archived} canMove={canMove} onChanged={onChanged} />}
 
-        {p.description && <section aria-label="Description"><h3 className="mb-1 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">On the QR menu</h3><p className="text-small text-ink-700">{p.description}</p></section>}
+        {p.description && <section aria-label={tr('Description')}><h3 className="mb-1 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">{tr('On the QR menu')}</h3><p className="text-small text-ink-700">{tr(p.description)}</p></section>}
 
-        {!archived && <button type="button" onClick={onArchive} className="text-small font-medium text-ink-500 hover:text-danger">Archive {p.name}</button>}
+        {!archived && <button type="button" onClick={onArchive} className="text-small font-medium text-ink-500 hover:text-danger">{tr('Archive {{p_name}}', { p_name: p.name })}</button>}
       </div>
     </div>
   );
@@ -698,6 +712,7 @@ const SORTS = {
 };
 
 const ProductRow = ({ p, active, isRestaurant, onOpen }) => {
+  const tr = useT();
   const dish = p.kind === 'DISH';
   return (
     <li>
@@ -708,18 +723,18 @@ const ProductRow = ({ p, active, isRestaurant, onOpen }) => {
           <span className="flex flex-wrap items-center gap-x-1.5">
             <FoodMark type={p.food_type} size={12} />
             <span className={`truncate text-small font-semibold ${p.status === 'ACTIVE' ? 'text-ink-900' : 'text-ink-500'}`}>{p.name}</span>
-            {p.is_combo && <span className="rounded bg-brand-50 px-1 text-caption font-semibold text-brand-700">Combo</span>}
-            {p.is_available === false && <span className="rounded bg-warning/10 px-1 text-caption font-semibold text-warning">Off here</span>}
+            {p.is_combo && <span className="rounded bg-brand-50 px-1 text-caption font-semibold text-brand-700">{tr('Combo')}</span>}
+            {p.is_available === false && <span className="rounded bg-warning/10 px-1 text-caption font-semibold text-warning">{tr('Off here')}</span>}
           </span>
           <span className="block truncate text-caption text-ink-500">
-            {[p.category_name || 'No category', p.sku, p.track_inventory && <span key="s" className={p.low_stock ? 'font-medium text-warning' : ''}>{qty(p.current_stock)} {p.unit} left</span>].filter(Boolean).reduce((acc, x, i) => (i ? [...acc, ' · ', x] : [x]), [])}
+            {[p.category_name || 'No category', p.sku, p.track_inventory && <span key="s" className={p.low_stock ? 'font-medium text-warning' : ''}>{tr('{{qty}} {{unit}} left', { qty: qty(p.current_stock), unit: p.unit })}</span>].filter(Boolean).reduce((acc, x, i) => (i ? [...acc, ' · ', x] : [x]), [])}
           </span>
         </span>
         <span className="shrink-0 text-right">
           <span className="tabular block text-small font-semibold text-ink-900">{dish ? formatCurrency(p.selling_price) : `${formatCurrency(p.purchase_price)}/${p.unit}`}</span>
           {dish && (p.margin_pct != null
-            ? <span className={`tabular block text-caption font-medium ${p.margin_pct < LOW_MARGIN ? 'text-warning' : 'text-ink-500'}`}>{p.margin_pct}% margin</span>
-            : isRestaurant && <span className="block text-caption text-ink-400">cost not known</span>)}
+            ? <span className={`tabular block text-caption font-medium ${p.margin_pct < LOW_MARGIN ? 'text-warning' : 'text-ink-500'}`}>{tr('{{margin_pct}}% margin', { margin_pct: p.margin_pct })}</span>
+            : isRestaurant && <span className="block text-caption text-ink-400">{tr('cost not known')}</span>)}
         </span>
       </button>
     </li>
@@ -727,6 +742,7 @@ const ProductRow = ({ p, active, isRestaurant, onOpen }) => {
 };
 
 const ProductsPage = () => {
+  const tr = useT();
   const dialog = useDialog();
   const toast = useToast();
   const [params, setParams] = useSearchParams();
@@ -808,41 +824,41 @@ const ProductsPage = () => {
     return created;
   };
   const archive = async (p) => {
-    if (!(await dialog.confirm({ title: `Archive ${p.name}?`, body: 'It stops showing on billing and the QR menu. Its past sales stay, and you can bring it back.', confirmLabel: 'Archive' }))) return;
-    try { await api(`/products/${p.product_id}/archive`, { method: 'POST' }); toast.success(`${p.name} archived`); changed(); }
+    if (!(await dialog.confirm({ title: `Archive ${p.name}?`, body: tr('It stops showing on billing and the QR menu. Its past sales stay, and you can bring it back.'), confirmLabel: tr('Archive') }))) return;
+    try { await api(`/products/${p.product_id}/archive`, { method: 'POST' }); toast.success(tr('{{p_name}} archived', { p_name: p.name })); changed(); }
     catch (caught) { setError(caught.message); }
   };
   const restore = async (p) => {
-    try { await api(`/products/${p.product_id}`, { method: 'PATCH', body: { status: 'ACTIVE' } }); toast.success(`${p.name} is back`); changed(); }
+    try { await api(`/products/${p.product_id}`, { method: 'PATCH', body: { status: 'ACTIVE' } }); toast.success(tr('{{p_name}} is back', { p_name: p.name })); changed(); }
     catch (caught) { setError(caught.message); }
   };
   const formInitial = (p) => ({
     ...p, food_type: p.food_type || '', category_id: p.category_id ? String(p.category_id) : '', brand_id: p.brand_id ? String(p.brand_id) : '', selling_price: String(p.shared_price ?? p.selling_price), purchase_price: String(p.purchase_price),
-    tax_rate: String(p.tax_rate), min_stock: String(p.min_stock), lead_time_days: String(p.lead_time_days ?? 1), sku: p.sku || '', barcode: p.barcode || '', hsn_sac: p.hsn_sac || '', description: p.description || ''
+    tax_rate: String(p.tax_rate), cess_rate: p.cess_rate ? String(p.cess_rate) : '', min_stock: String(p.min_stock), lead_time_days: String(p.lead_time_days ?? 1), sku: p.sku || '', barcode: p.barcode || '', hsn_sac: p.hsn_sac || '', description: p.description || ''
   });
 
   return (
     <div className="-m-4 grid grid-cols-1 sm:-m-6 lg:-m-8 xl:h-[calc(100vh-3.5rem)] xl:grid-cols-[minmax(0,1fr)_440px]">
-      <section aria-label="Product list" className={`min-w-0 p-4 sm:p-6 lg:p-8 xl:block xl:overflow-y-auto ${selectedId ? 'hidden' : 'block'}`}>
+      <section aria-label={tr('Product list')} className={`min-w-0 p-4 sm:p-6 lg:p-8 xl:block xl:overflow-y-auto ${selectedId ? 'hidden' : 'block'}`}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-h3 font-semibold text-ink-900">{isRestaurant ? 'Menu and products' : 'Products'}</h1>
+            <h1 className="text-h3 font-semibold text-ink-900">{isRestaurant ? tr('Menu and products') : tr('Products')}</h1>
             <p className="tabular mt-1 text-small text-ink-500">
-              {products ? <>{active.length} active{isRestaurant && ` · ${dishes.length} on the menu`}{thin > 0 && <> · <span className="font-medium text-warning">{thin} with a thin margin</span></>}</> : 'What you sell and what you stock.'}
+              {products ? <>{active.length} active{isRestaurant && ` · ${dishes.length} on the menu`}{thin > 0 && <> · <span className="font-medium text-warning">{tr('{{thin}} with a thin margin', { thin })}</span></>}</> : tr('What you sell and what you stock.')}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {isRestaurant && <Button variant="secondary" onClick={() => setAction('import')}><Sparkles aria-hidden="true" className="h-4 w-4" />Menu from a photo</Button>}
-            {retail && can('settings') && <Button variant="secondary" onClick={() => setAction('settings')}>Product settings</Button>}
-            <Button onClick={() => setEditing({})}><Plus aria-hidden="true" className="h-4 w-4" />Add product</Button>
+            {isRestaurant && <Button variant="secondary" onClick={() => setAction('import')}><Sparkles aria-hidden="true" className="h-4 w-4" />{tr('Menu from a photo')}</Button>}
+            {retail && can('settings') && <Button variant="secondary" onClick={() => setAction('settings')}>{tr('Product settings')}</Button>}
+            <Button onClick={() => setEditing({})}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add product')}</Button>
           </div>
         </div>
 
-        <div role="tablist" aria-label="Type" className="mt-5 flex gap-1 overflow-x-auto border-b border-line">
+        <div role="tablist" aria-label={tr('Type')} className="mt-5 flex gap-1 overflow-x-auto border-b border-line">
           {tabs.map(([k, label, n]) => (
             <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setCategory(null); setNoCost(false); }}
                     className={`-mb-px shrink-0 border-b-2 px-3 py-2 text-small font-medium ${tab === k ? 'border-brand-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'}`}>
-              {label} <span className={`tabular ml-0.5 ${tab === k ? 'text-brand-700' : 'text-ink-400'}`}>{n}</span>
+              {tr(label)} <span className={`tabular ml-0.5 ${tab === k ? 'text-brand-700' : 'text-ink-400'}`}>{n}</span>
             </button>
           ))}
         </div>
@@ -850,16 +866,16 @@ const ProductsPage = () => {
         <div className="mt-4 flex flex-wrap gap-2">
           <label className="relative min-w-[12rem] flex-1">
             <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-            <span className="sr-only">Search products</span>
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={retail ? 'Name, brand, SKU, barcode or other name' : 'Name, SKU or barcode'} className="!pl-9" />
+            <span className="sr-only">{tr('Search products')}</span>
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={retail ? tr('Name, brand, SKU, barcode or other name') : tr('Name, SKU or barcode')} className="!pl-9" />
           </label>
-          <Select aria-label="Sort by" value={sort} onChange={(e) => setSort(e.target.value)} className="!w-auto">
-            {Object.entries(SORTS).filter(([k]) => k !== 'margin' || tab === 'DISH' || tab === 'all').map(([k, [label]]) => <option key={k} value={k}>{label}</option>)}
+          <Select aria-label={tr('Sort by')} value={sort} onChange={(e) => setSort(e.target.value)} className="!w-auto">
+            {Object.entries(SORTS).filter(([k]) => k !== 'margin' || tab === 'DISH' || tab === 'all').map(([k, [label]]) => <option key={k} value={k}>{tr(label)}</option>)}
           </Select>
         </div>
         {cats.length > 1 && (
-          <div role="group" aria-label="Category" className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
-            <button type="button" onClick={() => setCategory(null)} aria-pressed={!category} className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium ${!category ? 'border-ink-900 bg-ink-900 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>All <span className={`tabular ml-1 ${!category ? 'text-white/70' : 'text-ink-400'}`}>{inTab.length}</span></button>
+          <div role="group" aria-label={tr('Category')} className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+            <button type="button" onClick={() => setCategory(null)} aria-pressed={!category} className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium ${!category ? 'border-ink-900 bg-ink-900 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>{tr('All')} <span className={`tabular ml-1 ${!category ? 'text-white/70' : 'text-ink-400'}`}>{inTab.length}</span></button>
             {cats.map(([name, n]) => (
               <button key={name} type="button" onClick={() => setCategory(category === name ? null : name)} aria-pressed={category === name}
                       className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium ${category === name ? 'border-ink-900 bg-ink-900 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
@@ -872,7 +888,7 @@ const ProductsPage = () => {
           <button type="button" onClick={() => setNoCost((v) => !v)} aria-pressed={noCost}
                   className={`mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-small ${noCost ? 'bg-brand-50 text-brand-700' : 'bg-surface-2 text-ink-700 hover:bg-surface-3'}`}>
             <ChefHat aria-hidden="true" className="h-4 w-4 shrink-0" />
-            {noCost ? 'Showing only items whose cost is not known. Tap to show all.' : `${missingCost} menu item${missingCost === 1 ? ' has' : 's have'} no recipe or cost, so ${missingCost === 1 ? 'its' : 'their'} margin is not known. Show ${missingCost === 1 ? 'it' : 'them'}.`}
+            {noCost ? tr('Showing only items whose cost is not known. Tap to show all.') : `${missingCost} menu item${missingCost === 1 ? ' has' : 's have'} no recipe or cost, so ${missingCost === 1 ? 'its' : 'their'} margin is not known. Show ${missingCost === 1 ? 'it' : 'them'}.`}
           </button>
         )}
 
@@ -881,16 +897,16 @@ const ProductsPage = () => {
           {!products && !error && <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-14 animate-pulse rounded-lg bg-surface-3" />)}</div>}
           {products && active.length === 0 && tab !== 'archived' && (
             <div className="rounded-(--radius-card) border border-dashed border-line-strong p-10 text-center">
-              <p className="text-body font-medium text-ink-900">{isRestaurant ? 'Your menu is empty' : 'No products yet'}</p>
-              <p className="mt-1 text-small text-ink-500">{isRestaurant ? 'Have a printed menu? Take a photo of each page: FlowXP reads the dishes and prices, you check them.' : 'Add what you sell, with its price and GST.'}</p>
+              <p className="text-body font-medium text-ink-900">{isRestaurant ? tr('Your menu is empty') : tr('No products yet')}</p>
+              <p className="mt-1 text-small text-ink-500">{isRestaurant ? tr('Have a printed menu? Take a photo of each page: FlowXP reads the dishes and prices, you check them.') : tr('Add what you sell, with its price and GST.')}</p>
               <div className="mt-4 flex justify-center gap-2">
-                {isRestaurant && <Button onClick={() => setAction('import')}>Menu from a photo</Button>}
-                <Button variant={isRestaurant ? 'secondary' : 'primary'} onClick={() => setEditing({})}>Add one by hand</Button>
+                {isRestaurant && <Button onClick={() => setAction('import')}>{tr('Menu from a photo')}</Button>}
+                <Button variant={isRestaurant ? 'secondary' : 'primary'} onClick={() => setEditing({})}>{tr('Add one by hand')}</Button>
               </div>
             </div>
           )}
-          {products && inTab.length > 0 && shown.length === 0 && <p className="rounded-(--radius-card) border border-dashed border-line-strong p-8 text-center text-small text-ink-500">Nothing matches.</p>}
-          {products && tab === 'archived' && inTab.length === 0 && <p className="rounded-(--radius-card) border border-dashed border-line-strong p-8 text-center text-small text-ink-500">Nothing archived.</p>}
+          {products && inTab.length > 0 && shown.length === 0 && <p className="rounded-(--radius-card) border border-dashed border-line-strong p-8 text-center text-small text-ink-500">{tr('Nothing matches.')}</p>}
+          {products && tab === 'archived' && inTab.length === 0 && <p className="rounded-(--radius-card) border border-dashed border-line-strong p-8 text-center text-small text-ink-500">{tr('Nothing archived.')}</p>}
           {shown.length > 0 && (
             <ul className="divide-y divide-line overflow-hidden rounded-(--radius-card) border border-line bg-surface">
               {shown.map((p) => <ProductRow key={p.product_id} p={p} active={p.product_id === selectedId} isRestaurant={isRestaurant} onOpen={() => open(p.product_id)} />)}
@@ -899,22 +915,22 @@ const ProductsPage = () => {
         </div>
       </section>
 
-      <section aria-label="Selected product" className={`min-h-0 min-w-0 flex-col border-line bg-surface xl:flex xl:border-l ${selectedId ? 'flex min-h-[calc(100vh-3.5rem)] xl:min-h-0' : 'hidden'}`}>
+      <section aria-label={tr('Selected product')} className={`min-h-0 min-w-0 flex-col border-line bg-surface xl:flex xl:border-l ${selectedId ? 'flex min-h-[calc(100vh-3.5rem)] xl:min-h-0' : 'hidden'}`}>
         {selected ? (
           <ProductPanel key={selected.product_id} product={selected} refreshKey={refreshKey} groups={groups} isRestaurant={isRestaurant} retail={retail} canEdit={can('products')} canMove={can('barcode_reassign')} onChanged={changed} multiOutlet={multiOutlet} outletId={outletId}
                         onEdit={() => setEditing(selected)} onAction={setAction} onArchive={() => archive(selected)} onRestore={() => restore(selected)}
-                        onPhoto={() => { toast.success('Photo saved'); load(); }} onBack={() => open(null)} />
+                        onPhoto={() => { toast.success(tr('Photo saved')); load(); }} onBack={() => open(null)} />
         ) : selectedId && products ? (
-          <div className="p-8 text-center text-small text-ink-500">That product isn't here. <button type="button" onClick={() => open(null)} className="font-medium text-brand-700">Back to all</button></div>
+          <div className="p-8 text-center text-small text-ink-500">{tr('That product isn\'t here.')} <button type="button" onClick={() => open(null)} className="font-medium text-brand-700">{tr('Back to all')}</button></div>
         ) : (
-          <EmptyState compact icon={Package} className="h-full justify-center" title="Pick a product" body="See its price, what it costs you, its recipe and stock." />
+          <EmptyState compact icon={Package} className="h-full justify-center" title={tr('Pick a product')} body={tr('See its price, what it costs you, its recipe and stock.')} />
         )}
       </section>
 
       {editing && (
         <ProductForm initial={editing.product_id ? formInitial(editing) : { ...emptyForm, brand_id: '', kind: isRestaurant && ['INGREDIENT', 'PACKAGING'].includes(tab) ? tab : 'DISH' }}
                      categories={categories} groups={groups} brands={brands} isRestaurant={isRestaurant} retail={retail} autoSku={autoSku} onCreateCategory={createCategory} onCreateBrand={createBrand} onClose={() => setEditing(null)}
-                     onSaved={(p, isNew) => { setEditing(null); toast.success(isNew ? `${p.name} added` : 'Saved'); changed(); if (isNew) open(p.product_id); }} />
+                     onSaved={(p, isNew) => { setEditing(null); toast.success(isNew ? `${p.name} added` : tr('Saved')); changed(); if (isNew) open(p.product_id); }} />
       )}
       {action === 'import' && <MenuImportModal onClose={() => setAction(null)} onDone={changed} />}
       {action === 'settings' && <RetailSettings onClose={() => setAction(null)} onChanged={(s) => setAutoSku(Boolean(s.auto_sku_active))} />}

@@ -12,7 +12,7 @@ import { STATE_LABEL, addRecent, deniedTotal, manualBody, memberSub, membersPath
 import { Page } from '../lib/responsive.tsx';
 import { Button, Empty, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
 
-const TONE = { ok: color.ok, warn: color.warn, bad: color.danger, soft: color.soft };
+const TONE = { get ok() { return color.ok; }, get warn() { return color.warn; }, get bad() { return color.danger; }, get soft() { return color.soft; } };
 
 /* The front desk: let a member in by scanning their card or phone pass, or by finding them and checking it is them. The server decides every time; if it cannot be reached, nobody is let in. */
 export default function Gym() {

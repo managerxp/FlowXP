@@ -7,18 +7,23 @@ import { KIND_LABEL, duration, rs, useDebounced, useLoad } from '../../lib/gamin
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Alert, Button, Field, Input, Modal, Select, Textarea } from '../../components/ui.jsx';
 import { Segmented, Tabs, useAction } from '../salon/parts.jsx';
+import { T, useT } from '../../i18n/useT.js';
 
 /* A number with plus and minus, for players. */
-export const Stepper = ({ value, onChange, min = 1, max = 20, label }) => (
-  <div className="inline-flex items-center gap-1" role="group" aria-label={label}>
+export const Stepper = ({ value, onChange, min = 1, max = 20, label }) => {
+  const tr = useT();
+  return (
+  <div className="inline-flex items-center gap-1" role="group" aria-label={tr(label)}>
     <Button type="button" variant="secondary" size="sm" aria-label={`Fewer ${label || ''}`} disabled={value <= min} onClick={() => onChange(value - 1)}><Minus aria-hidden="true" className="h-4 w-4" /></Button>
     <span className="tabular w-10 text-center text-body font-semibold" aria-live="polite">{value}</span>
     <Button type="button" variant="secondary" size="sm" aria-label={`More ${label || ''}`} disabled={value >= max} onClick={() => onChange(value + 1)}><Plus aria-hidden="true" className="h-4 w-4" /></Button>
   </div>
 );
+};
 
 /** Find a player by name, mobile or gamer tag, or add one in two fields. `value` is { customer_id, name, phone } or null. */
 export const PlayerPicker = ({ value, onChange, id = 'player-picker' }) => {
+  const tr = useT();
   const [q, setQ] = useState('');
   const term = useDebounced(q.trim(), 200);
   const [matches, setMatches] = useState([]);
@@ -44,7 +49,7 @@ export const PlayerPicker = ({ value, onChange, id = 'player-picker' }) => {
     return (
       <div className="flex items-center justify-between rounded-(--radius-control) border border-line bg-surface-2 px-3 py-2">
         <div className="min-w-0"><p className="truncate text-small font-medium text-ink-900">{value.name}</p>{value.phone && <p className="text-caption text-ink-500">{value.phone}</p>}</div>
-        <Button type="button" variant="ghost" size="sm" aria-label="Remove player" onClick={() => onChange(null)}><X aria-hidden="true" className="h-4 w-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" aria-label={tr('Remove player')} onClick={() => onChange(null)}><X aria-hidden="true" className="h-4 w-4" /></Button>
       </div>
     );
   }
@@ -57,7 +62,7 @@ export const PlayerPicker = ({ value, onChange, id = 'player-picker' }) => {
     <div ref={box} className="relative">
       <div className="relative">
         <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-        <Input id={id} className="pl-9" value={q} placeholder="Name or mobile (leave blank for a walk-in)" autoComplete="off" onFocus={() => setOpen(true)} onChange={(e) => { setQ(e.target.value); setOpen(true); }} />
+        <Input id={id} className="pl-9" value={q} placeholder={tr('Name or mobile (leave blank for a walk-in)')} autoComplete="off" onFocus={() => setOpen(true)} onChange={(e) => { setQ(e.target.value); setOpen(true); }} />
       </div>
       {open && term && (
         <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-(--radius-card) border border-line bg-surface shadow-lg">
@@ -73,10 +78,10 @@ export const PlayerPicker = ({ value, onChange, id = 'player-picker' }) => {
         </ul>
       )}
       {adding && (
-        <Modal title="Add a player" onClose={() => setAdding(false)} footer={<><Button variant="secondary" onClick={() => setAdding(false)}>Cancel</Button><Button onClick={add} loading={busy} disabled={!draft.name.trim()}>Add player</Button></>}>
+        <Modal title={tr('Add a player')} onClose={() => setAdding(false)} footer={<><Button variant="secondary" onClick={() => setAdding(false)}>{tr('Cancel')}</Button><Button onClick={add} loading={busy} disabled={!draft.name.trim()}>{tr('Add player')}</Button></>}>
           <div className="space-y-4">
-            <Field id="np-name" label="Name"><Input id="np-name" value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} autoFocus /></Field>
-            <Field id="np-phone" label="Mobile" hint="How you find them next time"><Input id="np-phone" type="tel" inputMode="tel" value={draft.phone} onChange={(e) => setDraft((d) => ({ ...d, phone: e.target.value }))} /></Field>
+            <Field id="np-name" label={tr('Name')}><Input id="np-name" value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} autoFocus /></Field>
+            <Field id="np-phone" label={tr('Mobile')} hint={tr('How you find them next time')}><Input id="np-phone" type="tel" inputMode="tel" value={draft.phone} onChange={(e) => setDraft((d) => ({ ...d, phone: e.target.value }))} /></Field>
           </div>
         </Modal>
       )}
@@ -87,6 +92,7 @@ export const PlayerPicker = ({ value, onChange, id = 'player-picker' }) => {
 const ALARMS = [['', 'No alarm'], ['30', '30 minutes'], ['60', '1 hour'], ['90', '1.5 hours'], ['120', '2 hours'], ['180', '3 hours']];
 
 export const StartDialog = ({ station, onClose, onStarted }) => {
+  const tr = useT();
   const bundles = useLoad('/gaming/bundles?kind=SESSION');
   const games = useLoad('/gaming/games');
   const key = useIdempotencyKey();
@@ -118,34 +124,34 @@ export const StartDialog = ({ station, onClose, onStarted }) => {
   }, null);
 
   return (
-    <Modal title={`Start ${station.name}`} onClose={onClose}
-           footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button>{held ? <Button variant="danger" onClick={() => start(true)} loading={busy}>Start anyway</Button> : <Button onClick={() => start(false)} loading={busy} disabled={!ready}>Start timer</Button>}</>}>
+    <Modal title={tr('Start {{station_name}}', { station_name: station.name })} onClose={onClose}
+           footer={<><Button variant="secondary" onClick={onClose}>{tr('Cancel')}</Button>{held ? <Button variant="danger" onClick={() => start(true)} loading={busy}>{tr('Start anyway')}</Button> : <Button onClick={() => start(false)} loading={busy} disabled={!ready}>{tr('Start timer')}</Button>}</>}>
       <div className="space-y-5">
         <Alert>{error}</Alert>
         <p className="text-small text-ink-500">{KIND_LABEL[station.kind]}{station.label ? ` · ${station.label}` : ''} · up to {station.max_players} players</p>
-        <Field id="sd-players" label="How many are playing?"><Stepper value={f.players} onChange={set('players')} max={station.max_players} label="players" /></Field>
-        <Field id="sd-how" label="How are they paying?">
-          <Segmented label="Pay" value={f.how} onChange={set('how')} options={[{ value: 'OPEN', label: 'Pay for time used' }, { value: 'FIXED', label: 'An offer' }, ...(packsOn ? [{ value: 'PACK', label: 'An hour pack' }] : [])]} />
+        <Field id="sd-players" label={tr('How many are playing?')}><Stepper value={f.players} onChange={set('players')} max={station.max_players} label="players" /></Field>
+        <Field id="sd-how" label={tr('How are they paying?')}>
+          <Segmented label={tr('Pay')} value={f.how} onChange={set('how')} options={[{ value: 'OPEN', label: T('Pay for time used') }, { value: 'FIXED', label: T('An offer') }, ...(packsOn ? [{ value: 'PACK', label: T('An hour pack') }] : [])]} />
         </Field>
         {f.how === 'PACK' ? (
-          <Field id="sd-pack" label="Pack" hint={!player ? 'Choose the player below first' : usable.length ? null : 'This player has no pack that works on this station.'}>
-            <Select id="sd-pack" value={f.pack_id} disabled={!player} onChange={(e) => set('pack_id')(e.target.value)}><option value="">Choose a pack</option>{usable.map((x) => <option key={x.pass_id} value={x.pass_id}>{x.name}: {duration(x.minutes_left * 60)} left{x.expires_on ? `, until ${x.expires_on}` : ''}</option>)}</Select>
+          <Field id="sd-pack" label={tr('Pack')} hint={!player ? tr('Choose the player below first') : usable.length ? null : tr('This player has no pack that works on this station.')}>
+            <Select id="sd-pack" value={f.pack_id} disabled={!player} onChange={(e) => set('pack_id')(e.target.value)}><option value="">{tr('Choose a pack')}</option>{usable.map((x) => <option key={x.pass_id} value={x.pass_id}>{x.name}: {duration(x.minutes_left * 60)} left{x.expires_on ? `, until ${x.expires_on}` : ''}</option>)}</Select>
           </Field>
         ) : f.how === 'FIXED' ? (
-          <Field id="sd-bundle" label="Offer" hint={mine.length ? null : 'No offer fits this station. Add one under Rates and offers.'}>
+          <Field id="sd-bundle" label={tr('Offer')} hint={mine.length ? null : tr('No offer fits this station. Add one under Rates and offers.')}>
             <Select id="sd-bundle" value={f.bundle_id} onChange={(e) => set('bundle_id')(e.target.value)}>
-              <option value="">Choose an offer</option>
+              <option value="">{tr('Choose an offer')}</option>
               {mine.map((b) => <option key={b.bundle_id} value={b.bundle_id}>{b.name}: {duration(b.minutes * 60)} for {rs(b.price)}{b.players > 1 ? ` (${b.players} players)` : ''}</option>)}
             </Select>
           </Field>
         ) : (
-          <Field id="sd-alarm" label="Alarm" hint="Optional. The board warns before this time is up; it does not stop anything."><Select id="sd-alarm" value={f.alarm} onChange={(e) => set('alarm')(e.target.value)}>{ALARMS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
+          <Field id="sd-alarm" label={tr('Alarm')} hint="Optional. The board warns before this time is up; it does not stop anything."><Select id="sd-alarm" value={f.alarm} onChange={(e) => set('alarm')(e.target.value)}>{ALARMS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
         )}
-        <Field id="player-picker" label="Player (optional)"><PlayerPicker value={player} onChange={setPlayer} /></Field>
+        <Field id="player-picker" label={tr('Player (optional)')}><PlayerPicker value={player} onChange={setPlayer} /></Field>
         {(games.data || []).length > 0 && (
-          <Field id="sd-game" label="Game (optional)"><Select id="sd-game" value={f.game_id} onChange={(e) => set('game_id')(e.target.value)}><option value="">Not noted</option>{games.data.map((g) => <option key={g.game_id} value={g.game_id}>{g.name}</option>)}</Select></Field>
+          <Field id="sd-game" label={tr('Game (optional)')}><Select id="sd-game" value={f.game_id} onChange={(e) => set('game_id')(e.target.value)}><option value="">{tr('Not noted')}</option>{games.data.map((g) => <option key={g.game_id} value={g.game_id}>{g.name}</option>)}</Select></Field>
         )}
-        <Field id="sd-note" label="Note (optional)"><Input id="sd-note" value={f.note} onChange={(e) => set('note')(e.target.value)} maxLength={200} /></Field>
+        <Field id="sd-note" label={tr('Note (optional)')}><Input id="sd-note" value={f.note} onChange={(e) => set('note')(e.target.value)} maxLength={200} /></Field>
       </div>
     </Modal>
   );
@@ -153,6 +159,7 @@ export const StartDialog = ({ station, onClose, onStarted }) => {
 
 /* Everything you change while it runs: players, time, moving it, and who or what it is for. */
 export const ManageDialog = ({ session, station, stations, onClose, onChanged }) => {
+  const tr = useT();
   const [tab, setTab] = useState('players');
   const [busy, run] = useAction();
   const [players, setPlayers] = useState(session.players);
@@ -168,43 +175,43 @@ export const ManageDialog = ({ session, station, stations, onClose, onChanged })
   const post = (path, body, ok) => run(async () => { const s = await api(`/gaming/sessions/${session.session_id}${path}`, { method: path ? 'POST' : 'PUT', body }); onChanged(s); onClose(); return s; }, ok);
 
   return (
-    <Modal title={`${station.name}: manage`} onClose={onClose}>
-      <Tabs value={tab} onChange={setTab} tabs={[{ key: 'players', label: 'Players' }, { key: 'time', label: 'Time' }, { key: 'move', label: 'Move' }, { key: 'details', label: 'Details' }]} />
+    <Modal title={tr('{{station_name}}: manage', { station_name: station.name })} onClose={onClose}>
+      <Tabs value={tab} onChange={setTab} tabs={[{ key: 'players', label: T('Players') }, { key: 'time', label: T('Time') }, { key: 'move', label: T('Move') }, { key: 'details', label: T('Details') }]} />
       {tab === 'players' && (
         <div className="space-y-4">
           <p className="text-small text-ink-500">The time so far is priced for the old number; from now on, for the new one.</p>
           <Stepper value={players} onChange={setPlayers} max={station.max_players} label="players" />
-          <Button onClick={() => post('/players', { players }, 'Players changed')} loading={busy} disabled={players === session.players}>Change to {players}</Button>
+          <Button onClick={() => post('/players', { players }, 'Players changed')} loading={busy} disabled={players === session.players}>{tr('Change to {{players}}', { players })}</Button>
         </div>
       )}
       {tab === 'time' && (session.mode === 'FIXED' ? (
         <div className="space-y-4">
-          <p className="text-small text-ink-500">Add another offer. Its time is added and its price is added to the bill.</p>
-          <Field id="md-bundle" label="Offer to add"><Select id="md-bundle" value={bundleId} onChange={(e) => setBundleId(e.target.value)}><option value="">Choose an offer</option>{(bundles.data || []).filter((b) => !b.kinds || b.kinds.includes(station.kind)).map((b) => <option key={b.bundle_id} value={b.bundle_id}>{b.name}: {duration(b.minutes * 60)} for {rs(b.price)}</option>)}</Select></Field>
-          <Button onClick={() => post('/extend', { bundle_id: Number(bundleId) }, 'Time added')} loading={busy} disabled={!bundleId}>Add this offer</Button>
+          <p className="text-small text-ink-500">{tr('Add another offer. Its time is added and its price is added to the bill.')}</p>
+          <Field id="md-bundle" label={tr('Offer to add')}><Select id="md-bundle" value={bundleId} onChange={(e) => setBundleId(e.target.value)}><option value="">{tr('Choose an offer')}</option>{(bundles.data || []).filter((b) => !b.kinds || b.kinds.includes(station.kind)).map((b) => <option key={b.bundle_id} value={b.bundle_id}>{tr('{{b_name}}: {{duration}} for {{rs}}', { b_name: b.name, duration: duration(b.minutes * 60), rs: rs(b.price) })}</option>)}</Select></Field>
+          <Button onClick={() => post('/extend', { bundle_id: Number(bundleId) }, 'Time added')} loading={busy} disabled={!bundleId}>{tr('Add this offer')}</Button>
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-small text-ink-500">Move the alarm out. The time is still billed as it is used.</p>
-          <Field id="md-min" label="Add minutes"><Select id="md-min" value={minutes} onChange={(e) => setMinutes(e.target.value)}>{['15', '30', '60', '90', '120'].map((m) => <option key={m} value={m}>{m} minutes</option>)}</Select></Field>
-          <Button onClick={() => post('/extend', { minutes: Number(minutes) }, 'Alarm moved')} loading={busy}>Add {minutes} minutes</Button>
+          <p className="text-small text-ink-500">{tr('Move the alarm out. The time is still billed as it is used.')}</p>
+          <Field id="md-min" label={tr('Add minutes')}><Select id="md-min" value={minutes} onChange={(e) => setMinutes(e.target.value)}>{['15', '30', '60', '90', '120'].map((m) => <option key={m} value={m}>{tr('{{m}} minutes', { m })}</option>)}</Select></Field>
+          <Button onClick={() => post('/extend', { minutes: Number(minutes) }, 'Alarm moved')} loading={busy}>{tr('Add {{minutes}} minutes', { minutes })}</Button>
         </div>
       ))}
       {tab === 'move' && (
         <div className="space-y-4">
           <p className="text-small text-ink-500">The session and its food and drink move together. Time already played is priced at this station; the rest at the new one.</p>
           {free.length ? (
-            <Field id="md-move" label="Move to"><Select id="md-move" value={moveTo} onChange={(e) => setMoveTo(e.target.value)}><option value="">Choose a free station</option>{free.map((s) => <option key={s.station_id} value={s.station_id}>{s.name} ({KIND_LABEL[s.kind]})</option>)}</Select></Field>
-          ) : <p className="rounded-(--radius-control) bg-surface-2 px-3.5 py-2.5 text-small text-ink-500">No other station is free right now.</p>}
-          <Button onClick={() => post('/transfer', { station_id: Number(moveTo) }, 'Moved')} loading={busy} disabled={!moveTo}>Move</Button>
+            <Field id="md-move" label={tr('Move to')}><Select id="md-move" value={moveTo} onChange={(e) => setMoveTo(e.target.value)}><option value="">{tr('Choose a free station')}</option>{free.map((s) => <option key={s.station_id} value={s.station_id}>{s.name} ({KIND_LABEL[s.kind]})</option>)}</Select></Field>
+          ) : <p className="rounded-(--radius-control) bg-surface-2 px-3.5 py-2.5 text-small text-ink-500">{tr('No other station is free right now.')}</p>}
+          <Button onClick={() => post('/transfer', { station_id: Number(moveTo) }, 'Moved')} loading={busy} disabled={!moveTo}>{tr('Move')}</Button>
         </div>
       )}
       {tab === 'details' && (
         <div className="space-y-4">
-          <Field id="player-picker" label="Player"><PlayerPicker value={player} onChange={setPlayer} /></Field>
-          {(games.data || []).length > 0 && <Field id="md-game" label="Game"><Select id="md-game" value={gameId} onChange={(e) => setGameId(e.target.value)}><option value="">Not noted</option>{games.data.map((g) => <option key={g.game_id} value={g.game_id}>{g.name}</option>)}</Select></Field>}
-          <Field id="md-note" label="Note"><Textarea id="md-note" rows={2} value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} /></Field>
-          <Button onClick={() => post('', { note, game_id: gameId || null, customer_id: player?.customer_id ?? null }, 'Saved')} loading={busy}>Save</Button>
+          <Field id="player-picker" label={tr('Player')}><PlayerPicker value={player} onChange={setPlayer} /></Field>
+          {(games.data || []).length > 0 && <Field id="md-game" label={tr('Game')}><Select id="md-game" value={gameId} onChange={(e) => setGameId(e.target.value)}><option value="">{tr('Not noted')}</option>{games.data.map((g) => <option key={g.game_id} value={g.game_id}>{g.name}</option>)}</Select></Field>}
+          <Field id="md-note" label={tr('Note')}><Textarea id="md-note" rows={2} value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} /></Field>
+          <Button onClick={() => post('', { note, game_id: gameId || null, customer_id: player?.customer_id ?? null }, 'Saved')} loading={busy}>{tr('Save')}</Button>
         </div>
       )}
     </Modal>
@@ -213,6 +220,7 @@ export const ManageDialog = ({ session, station, stations, onClose, onChanged })
 
 /* Stop and bill, or call the whole thing off. */
 export const StopDialog = ({ session, station, charge, elapsed, onClose, onStopped }) => {
+  const tr = useT();
   const key = useIdempotencyKey();
   const [busy, run] = useAction();
   const [voiding, setVoiding] = useState(false);
@@ -228,24 +236,24 @@ export const StopDialog = ({ session, station, charge, elapsed, onClose, onStopp
   }, null);
   return (
     <Modal title={voiding ? `Cancel ${station.name}` : `Stop ${station.name}`} onClose={onClose}
-           footer={<><Button variant="secondary" onClick={onClose}>Not yet</Button><Button variant={voiding ? 'danger' : 'primary'} onClick={stop} loading={busy} disabled={voiding && !reason.trim()}>{voiding ? 'Cancel the session' : 'Stop the timer'}</Button></>}>
+           footer={<><Button variant="secondary" onClick={onClose}>{tr('Not yet')}</Button><Button variant={voiding ? 'danger' : 'primary'} onClick={stop} loading={busy} disabled={voiding && !reason.trim()}>{voiding ? tr('Cancel the session') : tr('Stop the timer')}</Button></>}>
       <div className="space-y-4">
         <Alert>{error}</Alert>
         {voiding ? (
           <>
-            <p className="text-small text-ink-500">Use this when a session was started by mistake. Nothing is charged and nothing goes on the bill. It is kept on record with your reason.</p>
-            <Field id="st-reason" label="Reason"><Input id="st-reason" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} autoFocus /></Field>
+            <p className="text-small text-ink-500">{tr('Use this when a session was started by mistake. Nothing is charged and nothing goes on the bill. It is kept on record with your reason.')}</p>
+            <Field id="st-reason" label={tr('Reason')}><Input id="st-reason" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} autoFocus /></Field>
           </>
         ) : (
           <>
             <dl className="grid grid-cols-2 gap-3 rounded-(--radius-card) bg-surface-2 p-4 text-small">
-              <div><dt className="text-ink-500">Time played</dt><dd className="tabular text-h3 font-semibold text-ink-900">{duration(elapsed)}</dd></div>
-              <div><dt className="text-ink-500">Charge so far</dt><dd className="tabular text-h3 font-semibold text-ink-900">{rs(charge)}</dd></div>
+              <div><dt className="text-ink-500">{tr('Time played')}</dt><dd className="tabular text-h3 font-semibold text-ink-900">{duration(elapsed)}</dd></div>
+              <div><dt className="text-ink-500">{tr('Charge so far')}</dt><dd className="tabular text-h3 font-semibold text-ink-900">{rs(charge)}</dd></div>
             </dl>
-            <p className="text-small text-ink-500">The time goes onto the station&apos;s bill with any food and drink. You take payment next. The exact charge is worked out when you stop.</p>
+            <p className="text-small text-ink-500">{tr('The time goes onto the station\'s bill with any food and drink. You take payment next. The exact charge is worked out when you stop.')}stop.</p>
           </>
         )}
-        <button type="button" className="text-small font-medium text-brand-700 hover:underline" onClick={() => setVoiding((v) => !v)}>{voiding ? 'Stop and bill instead' : 'Started by mistake? Cancel it with no charge'}</button>
+        <button type="button" className="text-small font-medium text-brand-700 hover:underline" onClick={() => setVoiding((v) => !v)}>{voiding ? tr('Stop and bill instead') : tr('Started by mistake? Cancel it with no charge')}</button>
       </div>
     </Modal>
   );

@@ -10,6 +10,9 @@ import { appVersion, reportError } from '../lib/crash.ts';
 import type { Paper } from '../lib/print.ts';
 import PrinterSettings from '../lib/PrinterSettings.tsx';
 import UpiSettings from '../lib/UpiSettings.tsx';
+import DisplaySettings from '../lib/DisplaySettings.tsx';
+import BackupSettings from '../lib/BackupSettings.tsx';
+import { canBackUp } from '../lib/backup.ts';
 import { Page } from '../lib/responsive.tsx';
 import { Button, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
 import { LanguagePicker } from '../lib/lang.tsx';
@@ -114,6 +117,8 @@ export default function Settings() {
         </View>
         <Text style={{ fontWeight: '700', color: color.ink }}>{t('Language')}</Text>
         <LanguagePicker />
+        <DisplaySettings />
+        {canBackUp(business?.role) ? <BackupSettings /> : null}
         <Button title="Back" onPress={() => goBack()} />
       </ScrollView>
       </Page>

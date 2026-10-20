@@ -62,14 +62,14 @@ test('the same drink with different options is a different line; the same option
 
 test('the preview prices the options in: Large oat latte is 160 + 40 + 40 = 240, plus 5% GST', () => {
   const cart = addProduct(emptyCart(), latte, 2, picked(GROUPS, { 1: [13], 2: [23], 3: [] }));
-  assert.deepEqual(totals(cart), { itemCount: 2, subtotalPaise: 48000, offersPaise: 0, taxPaise: 2400, totalPaise: 50400 });
+  assert.deepEqual(totals(cart), { itemCount: 2, subtotalPaise: 48000, offersPaise: 0, taxPaise: 2400, cessPaise: 0, tcsPaise: 0, tdsPaise: 0, totalPaise: 50400 });
 });
 
 test('offers come off before GST, line by line, and never below zero', () => {
   const cart = addProduct(addProduct(emptyCart(), muffin, 2), latte, 1, picked(GROUPS, { 1: [11], 2: [21], 3: [] }));
   const offers = new Map([[cart.lines[0].key, 4000], [cart.lines[1].key, 99999999]]);
   // muffins 22000 - 4000 = 18000 (+5% = 900); latte 16000 - 16000 = 0
-  assert.deepEqual(totals(cart, offers), { itemCount: 3, subtotalPaise: 38000, offersPaise: 20000, taxPaise: 900, totalPaise: 18900 });
+  assert.deepEqual(totals(cart, offers), { itemCount: 3, subtotalPaise: 38000, offersPaise: 20000, taxPaise: 900, cessPaise: 0, tcsPaise: 0, tdsPaise: 0, totalPaise: 18900 });
 });
 
 test('the sale body carries option ids, the kitchen flag only when asked, and no prices', () => {

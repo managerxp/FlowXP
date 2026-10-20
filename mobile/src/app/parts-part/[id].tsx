@@ -9,7 +9,7 @@ import { CLASS_LABEL, FIT_LABEL, partSub, pickOrder, stockText, vehicleText, yea
 import { Page } from '../../lib/responsive.tsx';
 import { Button, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
 
-const TONE = { VERIFIED: color.ok, UNVERIFIED: color.warn, NOT_FIT: color.danger, UNKNOWN: color.soft } as Record<string, string>;
+const TONE = { get VERIFIED() { return color.ok; }, get UNVERIFIED() { return color.warn; }, get NOT_FIT() { return color.danger; }, get UNKNOWN() { return color.soft; } } as Record<string, string>;
 
 /* One part: price and stock, the bins it is in, the numbers it is known by, and the vehicles it is recorded to fit (never assumed). */
 export default function PartPage() {

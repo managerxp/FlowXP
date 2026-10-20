@@ -13,7 +13,7 @@ import { Button, Chips, Empty, ErrorText, Failed, Loading, SavedNote, Soft, Titl
 
 type Day = 'today' | 'tomorrow';
 const dayText = (d: Day) => { const x = new Date(); if (d === 'tomorrow') x.setDate(x.getDate() + 1); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
-const TONE: Record<Appointment['status'], string> = { BOOKED: color.warn, CONFIRMED: color.brand, CHECKED_IN: color.ok, IN_SERVICE: color.ok, COMPLETED: color.soft, CANCELLED: color.danger, NO_SHOW: color.danger };
+const TONE: Record<Appointment['status'], string> = { get BOOKED() { return color.warn; }, get CONFIRMED() { return color.brand; }, get CHECKED_IN() { return color.ok; }, get IN_SERVICE() { return color.ok; }, get COMPLETED() { return color.soft; }, get CANCELLED() { return color.danger; }, get NO_SHOW() { return color.danger; } };
 
 /* The front desk: who is booked, who has arrived, who is in the chair. Bill a visit straight from here. Booking new appointments is on the FlowXP website for now. */
 export default function Appointments() {

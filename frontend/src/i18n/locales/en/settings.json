@@ -1,0 +1,13 @@
+{
+  "language": {
+    "title": "Language",
+    "mine": "My language",
+    "mineHint": "Used on every screen you open, on all your devices. It does not change anyone else's.",
+    "useDefault": "Use the business default",
+    "business": "Default language for staff",
+    "businessHint": "What your staff see until they choose their own language. Currency, tax, dates and amounts on bills do not change.",
+    "noDefault": "No default (follow each person's device)",
+    "saved": "Language saved",
+    "machineNote": "This language is machine-translated and has not yet been checked by a native speaker. Tell us if a word looks wrong."
+  }
+}

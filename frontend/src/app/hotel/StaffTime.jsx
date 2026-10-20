@@ -1,14 +1,16 @@
 /* The two time screens of Staff: the weekly roster (who works which shift) and daily attendance (who actually turned up). */
 import { useMemo, useState } from 'react';
 import { useToast, Button, Input, ListState, Select } from '../../components/ui.jsx';
-import { api } from '../../lib/api.js';
-import { addDays, longDate, qs, shortDay, timeText, useLoad } from '../../lib/hotel.js';
+import { staffApi as api, useStaffLoad as useLoad } from '../../lib/staffBase.js';
+import { addDays, longDate, qs, shortDay, timeText } from '../../lib/hotel.js';
 import { weekStart } from '../../lib/salon.js';
 import { useAction } from '../salon/parts.jsx';
+import { useT, T } from '../../i18n/useT.js';
 
 /* ── roster ────────────────────────────────────────────────────────────── */
 
 export const Roster = () => {
+  const tr = useT();
   const toast = useToast();
   const dash = useLoad('/hotel/dashboard');
   const [from, setFrom] = useState(null);
@@ -43,24 +45,24 @@ export const Roster = () => {
   };
   const copyNext = async () => {
     const out = await run(() => api('/hotel/staff/roster/copy-week', { method: 'POST', body: { from: start, to: addDays(start, 7) } }), 'Copied to next week');
-    if (out) toast.success(`${out.changed} entries copied`);
+    if (out) toast.success(tr('{{changed}} entries copied', { changed: out.changed }));
   };
 
   if (!d) return <ListState loading={r.loading || dash.loading} error={r.error || dash.error} />;
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Button variant="secondary" size="sm" onClick={() => { setEdits({}); setFrom(addDays(start, -7)); }}>Earlier week</Button>
-        <span className="text-small font-medium text-ink-900">{longDate(start)} to {longDate(addDays(start, 6))}</span>
-        <Button variant="secondary" size="sm" onClick={() => { setEdits({}); setFrom(addDays(start, 7)); }}>Later week</Button>
-        <Select aria-label="Department" value={dept} onChange={(e) => { setDept(e.target.value); setEdits({}); }} className="max-w-48"><option value="">All departments</option>{(depts.data || []).map((x) => <option key={x.dept_id} value={x.dept_id}>{x.name}</option>)}</Select>
-        <div className="ml-auto flex flex-wrap gap-2"><Button variant="secondary" size="sm" onClick={fillUsual}>Fill from usual shifts</Button><Button variant="secondary" size="sm" onClick={copyNext} loading={busy}>Copy to next week</Button><Button size="sm" onClick={save} disabled={!dirty} loading={busy}>{dirty ? `Save ${dirty} change${dirty === 1 ? '' : 's'}` : 'Save'}</Button></div>
+        <Button variant="secondary" size="sm" onClick={() => { setEdits({}); setFrom(addDays(start, -7)); }}>{tr('Earlier week')}</Button>
+        <span className="text-small font-medium text-ink-900">{tr('{{longDate}} to {{longDate2}}', { longDate: longDate(start), longDate2: longDate(addDays(start, 6)) })}</span>
+        <Button variant="secondary" size="sm" onClick={() => { setEdits({}); setFrom(addDays(start, 7)); }}>{tr('Later week')}</Button>
+        <Select aria-label={tr('Department')} value={dept} onChange={(e) => { setDept(e.target.value); setEdits({}); }} className="max-w-48"><option value="">{tr('All departments')}</option>{(depts.data || []).map((x) => <option key={x.dept_id} value={x.dept_id}>{x.name}</option>)}</Select>
+        <div className="ml-auto flex flex-wrap gap-2"><Button variant="secondary" size="sm" onClick={fillUsual}>{tr('Fill from usual shifts')}</Button><Button variant="secondary" size="sm" onClick={copyNext} loading={busy}>{tr('Copy to next week')}</Button><Button size="sm" onClick={save} disabled={!dirty} loading={busy}>{dirty ? `Save ${dirty} change${dirty === 1 ? '' : 's'}` : tr('Save')}</Button></div>
       </div>
-      <ListState empty={!d.employees.length} emptyLabel="Add people first, on the People tab." />
+      <ListState empty={!d.employees.length} emptyLabel={tr('Add people first, on the People tab.')} />
       {d.employees.length > 0 && (
         <div className="overflow-x-auto rounded-(--radius-card) border border-line bg-surface">
           <table className="min-w-full text-small">
-            <thead><tr className="border-b border-line bg-surface-2 text-caption text-ink-500"><th className="px-3 py-2 text-left font-medium">Person</th>{days.map((x) => <th key={x} className="px-1 py-2 text-center font-medium">{shortDay(x)}</th>)}</tr></thead>
+            <thead><tr className="border-b border-line bg-surface-2 text-caption text-ink-500"><th className="px-3 py-2 text-left font-medium">{tr('Person')}</th>{days.map((x) => <th key={x} className="px-1 py-2 text-center font-medium">{shortDay(x)}</th>)}</tr></thead>
             <tbody>{d.employees.map((e) => (
               <tr key={e.employee_id} className="border-b border-line last:border-0">
                 <td className="whitespace-nowrap px-3 py-1.5"><span className="font-medium text-ink-900">{e.name}</span><span className="block text-caption text-ink-500">{e.department || e.designation || ''}</span></td>
@@ -69,10 +71,10 @@ export const Roster = () => {
                   const wd = new Date(`${date}T00:00:00Z`).getUTCDay();
                   return (
                     <td key={date} className={`px-1 py-1 ${e.weekly_off === wd ? 'bg-surface-3/50' : ''}`}>
-                      {lv ? <span className="block rounded-md bg-warning/10 px-2 py-1.5 text-center text-caption text-warning">Leave</span> : (
+                      {lv ? <span className="block rounded-md bg-warning/10 px-2 py-1.5 text-center text-caption text-warning">{tr('Leave')}</span> : (
                         <select aria-label={`${e.name}, ${shortDay(date)}`} value={valueOf(e.employee_id, date)} onChange={(ev) => setCell(e.employee_id, date, ev.target.value)}
                                 className={`w-full min-w-24 rounded-md border px-1.5 py-1.5 text-caption ${`${e.employee_id}|${date}` in edits ? 'border-brand-500 bg-brand-50' : 'border-line bg-surface'}`}>
-                          <option value="">—</option><option value="OFF">Off</option>{d.shifts.map((s) => <option key={s.shift_id} value={s.shift_id}>{s.name}</option>)}
+                          <option value="">—</option><option value="OFF">{tr('Off')}</option>{d.shifts.map((s) => <option key={s.shift_id} value={s.shift_id}>{s.name}</option>)}
                         </select>)}
                     </td>
                   );
@@ -81,17 +83,18 @@ export const Roster = () => {
           </table>
         </div>
       )}
-      <p className="text-caption text-ink-500">Shaded days are the person's usual weekly off. “—” means nothing is planned yet.</p>
+      <p className="text-caption text-ink-500">{tr('Shaded days are the person\'s usual weekly off. “—” means nothing is planned yet.')}</p>
     </div>
   );
 };
 
 /* ── attendance ────────────────────────────────────────────────────────── */
 
-const STATUSES = [['', 'Not marked'], ['PRESENT', 'Present'], ['ABSENT', 'Absent'], ['HALF_DAY', 'Half day'], ['LEAVE', 'Paid leave'], ['UNPAID_LEAVE', 'Unpaid leave'], ['WEEKLY_OFF', 'Weekly off'], ['HOLIDAY', 'Holiday']];
+const STATUSES = [['', 'Not marked'], ['PRESENT', T('Present')], ['ABSENT', T('Absent')], ['HALF_DAY', T('Half day')], ['LEAVE', T('Paid leave')], ['UNPAID_LEAVE', T('Unpaid leave')], ['WEEKLY_OFF', T('Weekly off')], ['HOLIDAY', T('Holiday')]];
 const TONE = { PRESENT: 'text-success', ABSENT: 'text-danger', HALF_DAY: 'text-warning', LEAVE: 'text-brand-600', UNPAID_LEAVE: 'text-ink-700', WEEKLY_OFF: 'text-ink-500', HOLIDAY: 'text-ink-500' };
 
 export const Attendance = () => {
+  const tr = useT();
   const dash = useLoad('/hotel/dashboard');
   const [date, setDate] = useState('');
   const [edits, setEdits] = useState({});
@@ -118,14 +121,14 @@ export const Attendance = () => {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
-        <div className="w-44"><label htmlFor="at-d" className="mb-1.5 block text-sm font-medium text-ink-700">Day</label><Input id="at-d" type="date" value={day} onChange={(e) => { setEdits({}); setDate(e.target.value); }} /></div>
-        <div className="ml-auto flex gap-2"><Button variant="secondary" size="sm" onClick={markAllPresent}>Mark everyone present</Button><Button size="sm" onClick={save} disabled={!dirty} loading={busy}>{dirty ? `Save ${dirty}` : 'Save'}</Button></div>
+        <div className="w-44"><label htmlFor="at-d" className="mb-1.5 block text-sm font-medium text-ink-700">{tr('Day')}</label><Input id="at-d" type="date" value={day} onChange={(e) => { setEdits({}); setDate(e.target.value); }} /></div>
+        <div className="ml-auto flex gap-2"><Button variant="secondary" size="sm" onClick={markAllPresent}>{tr('Mark everyone present')}</Button><Button size="sm" onClick={save} disabled={!dirty} loading={busy}>{dirty ? `Save ${dirty}` : tr('Save')}</Button></div>
       </div>
-      <ListState error={r.error} empty={r.data && !rows.length} emptyLabel="Nobody is on the books for this day." />
+      <ListState error={r.error} empty={r.data && !rows.length} emptyLabel={tr('Nobody is on the books for this day.')} />
       {rows.length > 0 && (
         <div className="overflow-x-auto rounded-(--radius-card) border border-line bg-surface">
           <table className="min-w-full text-small">
-            <thead><tr className="border-b border-line bg-surface-2 text-caption text-ink-500"><th className="px-3 py-2 text-left font-medium">Person</th><th className="px-3 py-2 text-left font-medium">Rostered</th><th className="px-3 py-2 text-left font-medium">Status</th><th className="px-3 py-2 text-left font-medium">Overtime (hours)</th></tr></thead>
+            <thead><tr className="border-b border-line bg-surface-2 text-caption text-ink-500"><th className="px-3 py-2 text-left font-medium">{tr('Person')}</th><th className="px-3 py-2 text-left font-medium">{tr('Rostered')}</th><th className="px-3 py-2 text-left font-medium">{tr('Status')}</th><th className="px-3 py-2 text-left font-medium">{tr('Overtime (hours)')}</th></tr></thead>
             <tbody>{rows.map((row) => {
               const v = get(row);
               const hint = row.leave_kind ? 'On approved leave' : row.weekly_off_today ? 'Weekly off' : row.rostered_off ? 'Off on the roster' : null;
@@ -133,15 +136,15 @@ export const Attendance = () => {
                 <tr key={row.employee_id} className="border-b border-line last:border-0">
                   <td className="px-3 py-2"><span className="font-medium text-ink-900">{row.name}</span><span className="block text-caption text-ink-500">{row.department || row.designation || ''}</span></td>
                   <td className="px-3 py-2 text-ink-500">{row.rostered_shift ? `${row.rostered_shift}, ${timeText(row.shift_start)} to ${timeText(row.shift_end)}` : hint || '—'}</td>
-                  <td className="px-3 py-2"><select aria-label={`${row.name}: status`} value={v.status} onChange={(e) => set(row.employee_id, { status: e.target.value })} className={`rounded-md border px-2 py-1.5 ${row.employee_id in edits ? 'border-brand-500 bg-brand-50' : 'border-line bg-surface'} ${TONE[v.status] || ''}`}>{STATUSES.map(([c, l]) => <option key={c} value={c}>{l}</option>)}</select></td>
-                  <td className="px-3 py-2"><input aria-label={`${row.name}: overtime hours`} type="number" min="0" step="0.5" value={v.overtime} onChange={(e) => set(row.employee_id, { overtime: e.target.value })} className="w-20 rounded-md border border-line bg-surface px-2 py-1.5" /></td>
+                  <td className="px-3 py-2"><select aria-label={tr('{{row_name}}: status', { row_name: row.name })} value={v.status} onChange={(e) => set(row.employee_id, { status: e.target.value })} className={`rounded-md border px-2 py-1.5 ${row.employee_id in edits ? 'border-brand-500 bg-brand-50' : 'border-line bg-surface'} ${TONE[v.status] || ''}`}>{STATUSES.map(([c, l]) => <option key={c} value={c}>{l}</option>)}</select></td>
+                  <td className="px-3 py-2"><input aria-label={tr('{{row_name}}: overtime hours', { row_name: row.name })} type="number" min="0" step="0.5" value={v.overtime} onChange={(e) => set(row.employee_id, { overtime: e.target.value })} className="w-20 rounded-md border border-line bg-surface px-2 py-1.5" /></td>
                 </tr>
               );
             })}</tbody>
           </table>
         </div>
       )}
-      <p className="text-caption text-ink-500">A day left “Not marked” is paid as present in payroll, and flagged so it can be settled first. A person's usual weekly off needs no mark.</p>
+      <p className="text-caption text-ink-500">{tr('A day left “Not marked” is paid as present in payroll, and flagged so it can be settled first. A person\'s usual weekly off needs no mark.')}</p>
     </div>
   );
 };

@@ -60,6 +60,10 @@ export const PLAN_FEATURES = [
   ['ap_counts', 'Rack and bin counts', 'Counting stock by bin, with differences approved before they change stock'],
   ['ap_pricing', 'Trade pricing and credit', 'Price lists for garages and workshops, credit limits and reservations'],
   ['ap_intelligence', 'Parts intelligence', 'Fast, slow and dead stock, ageing, reorder suggestions and supplier performance'],
+  ['ap_jobcards', 'Workshop job cards', 'Vehicles in for service: complaint, spare parts used and labour, status, and one bill when the job is done'],
+  ['ap_staff', 'Staff and payroll', 'Mechanics and counter staff: records, roster, attendance, leave and the monthly payroll sheet'],
+  // Backup and restore (all business types). Missing key = on.
+  ['backup_restore', 'Restore from a backup', 'Put the records of a downloaded backup back, adding only what is missing and never changing what is there'],
   // Supermarket / retail. Missing key = on.
   ['auto_sku', 'Automatic SKU', 'FlowXP makes each new product\'s SKU (MILK-00001), so nobody has to invent one']
 ];
@@ -98,12 +102,15 @@ export const hasPlanFeature = (tenant, feature) => tenant?.planFeatures?.[featur
  * (OTHER) have no defaults, so everything stays on for them.
  */
 const SALON_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('salon_'));
-const WHOLESALE_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('wholesale_'));
+// Sales orders and delivery challans are for every kind of business (an admin can still switch them off for a plan, a business type or one business);
+// the rest of the wholesale tools (price lists, batches) stay with wholesalers and the shops that use them.
+const SHARED_ORDER_KEYS = ['wholesale_orders', 'wholesale_fulfilment'];
+const WHOLESALE_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('wholesale_') && !SHARED_ORDER_KEYS.includes(k));
 const GYM_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('gym_'));
 const GAMING_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('gaming_'));
 const AP_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('ap_'));
 const NOT_FOOD = ['reservations', 'integrations', 'qr_ordering', 'multi_brand', 'delivery_fleet', 'tables', 'kitchen'];
-const SHOP_OFF = [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, 'wholesale_orders', 'wholesale_fulfilment', 'wholesale_pricing'];
+const SHOP_OFF = [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, 'wholesale_pricing'];
 const FOOD_OFF = [...SALON_KEYS, ...WHOLESALE_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS];
 export const INDUSTRY_OFF = {
   RESTAURANT: FOOD_OFF, CAFE: FOOD_OFF, RACING: FOOD_OFF, HOTEL: FOOD_OFF,

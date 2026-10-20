@@ -15,24 +15,26 @@ import { money, priceSourceText, qty, todayIn, useDebounced } from '../../lib/wh
 import { Alert, Button, Field, Input, Modal, PageHeader, Select, Skeleton, Textarea, useToast } from '../../components/ui.jsx';
 import { CustomerPicker, NumberField, Panel, ProductPicker, WarehouseSelect } from './parts.jsx';
 import { QuickCustomerModal } from './CustomerForms.jsx';
+import { useT } from '../../i18n/useT.js';
 
 let seq = 0;
 const newKey = () => `l${++seq}`;
 
 /* A credit block the person may override (managers) or must stop at (everyone else). */
 const CreditStop = ({ info, canOverride, onClose, onOverride }) => {
+  const tr = useT();
   const [reason, setReason] = useState('');
   return (
-    <Modal title="Credit limit reached" onClose={onClose}>
+    <Modal title={tr('Credit limit reached')} onClose={onClose}>
       <div className="space-y-4">
         <ul className="space-y-1 text-small text-ink-900">{info.reasons.map((r) => <li key={r} className="flex gap-2"><TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-danger" />{r}</li>)}</ul>
         {canOverride ? (
           <>
-            <Field id="override-reason" label="Reason for allowing it" hint="Recorded with the order"><Input id="override-reason" value={reason} onChange={(e) => setReason(e.target.value)} autoFocus /></Field>
-            <div className="flex justify-end gap-2 border-t border-line pt-4"><Button variant="ghost" onClick={onClose}>Not now</Button><Button variant="danger" onClick={() => onOverride(reason)}>Confirm anyway</Button></div>
+            <Field id="override-reason" label={tr('Reason for allowing it')} hint={tr('Recorded with the order')}><Input id="override-reason" value={reason} onChange={(e) => setReason(e.target.value)} autoFocus /></Field>
+            <div className="flex justify-end gap-2 border-t border-line pt-4"><Button variant="ghost" onClick={onClose}>{tr('Not now')}</Button><Button variant="danger" onClick={() => onOverride(reason)}>{tr('Confirm anyway')}</Button></div>
           </>
         ) : (
-          <><p className="text-small text-ink-500">Ask a sales manager to confirm this order, or collect a payment from the customer first.</p><div className="flex justify-end border-t border-line pt-4"><Button variant="secondary" onClick={onClose}>OK</Button></div></>
+          <><p className="text-small text-ink-500">{tr('Ask a sales manager to confirm this order, or collect a payment from the customer first.')}</p><div className="flex justify-end border-t border-line pt-4"><Button variant="secondary" onClick={onClose}>{tr('OK')}</Button></div></>
         )}
       </div>
     </Modal>
@@ -40,6 +42,7 @@ const CreditStop = ({ info, canOverride, onClose, onOverride }) => {
 };
 
 const OrderEditor = () => {
+  const tr = useT();
   const { id } = useParams();
   const editing = Boolean(id);
   const { can } = useAuth();
@@ -131,8 +134,8 @@ const OrderEditor = () => {
   const priced = (i) => preview?.lines?.[i];
 
   const save = async ({ submit = false, confirm = false, override } = {}) => {
-    if (!customer) { setError('Choose a customer.'); return; }
-    if (!lines.length) { setError('Add at least one product.'); return; }
+    if (!customer) { setError(tr('Choose a customer.')); return; }
+    if (!lines.length) { setError(tr('Add at least one product.')); return; }
     setBusy(true); setError('');
     try {
       const saved = editing
@@ -142,7 +145,7 @@ const OrderEditor = () => {
       if (confirm && ['DRAFT', 'PENDING'].includes(saved.status)) {
         try { finalOrder = await api(`/wholesale/orders/${saved.order_id}/confirm`, { method: 'POST', body: override ? { credit_override: true, reason: override } : {} }); }
         catch (e) {
-          if (e.code === 'CREDIT_BLOCK') { setCreditStop({ reasons: e.data?.reasons || [e.message], orderId: saved.order_id }); toast.success(`Saved as ${saved.order_number}`); setBusy(false); return; }
+          if (e.code === 'CREDIT_BLOCK') { setCreditStop({ reasons: e.data?.reasons || [e.message], orderId: saved.order_id }); toast.success(tr('Saved as {{order_number}}', { order_number: saved.order_number })); setBusy(false); return; }
           throw e;
         }
       } else if (submit && editing && saved.status === 'DRAFT') finalOrder = await api(`/wholesale/orders/${saved.order_id}/submit`, { method: 'POST' });
@@ -155,11 +158,11 @@ const OrderEditor = () => {
     setBusy(true);
     try {
       const o = await api(`/wholesale/orders/${creditStop.orderId}/confirm`, { method: 'POST', body: { credit_override: true, reason } });
-      toast.success(`${o.order_number} confirmed`); navigate(`/app/wholesale/orders/${o.order_id}`);
+      toast.success(tr('{{order_number}} confirmed', { order_number: o.order_number })); navigate(`/app/wholesale/orders/${o.order_id}`);
     } catch (e) { setError(e.message); setCreditStop(null); } finally { setBusy(false); }
   };
 
-  if (loadError) return <div><PageHeader title="Edit order" /><Alert>{loadError}</Alert><Button to="/app/wholesale/orders" variant="secondary">Back to orders</Button></div>;
+  if (loadError) return <div><PageHeader title={tr('Edit order')} /><Alert>{loadError}</Alert><Button to="/app/wholesale/orders" variant="secondary">{tr('Back to orders')}</Button></div>;
   if (!loaded) return <div className="space-y-3"><Skeleton className="h-10 w-64" /><Skeleton className="h-64" /></div>;
 
   const credit = preview?.credit;
@@ -167,29 +170,29 @@ const OrderEditor = () => {
 
   return (
     <div>
-      <PageHeader title={editing ? 'Edit order' : 'New sales order'} lead={editing && lockLines ? 'Changing a confirmed order releases and re-reserves its stock.' : 'Add products, check the price and stock, then save or confirm.'} />
+      <PageHeader title={editing ? tr('Edit order') : tr('New sales order')} lead={editing && lockLines ? tr('Changing a confirmed order releases and re-reserves its stock.') : tr('Add products, check the price and stock, then save or confirm.')} />
       <Alert>{error}</Alert>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-6">
-          <Panel title="Customer">
+          <Panel title={tr('Customer')}>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-2"><CustomerPicker value={customer} onChange={chooseCustomer} disabled={editing} onAdd={() => setAddingCustomer(true)} /></div>
-              <WarehouseSelect value={warehouse} onChange={setWarehouse} label="Ship from" id="ord-wh" />
-              <Field id="ord-date" label="Order date"><Input id="ord-date" type="date" value={head.order_date} onChange={(e) => setHead({ ...head, order_date: e.target.value })} /></Field>
-              <Field id="ord-po" label="Customer PO number"><Input id="ord-po" value={head.customer_po} onChange={(e) => setHead({ ...head, customer_po: e.target.value })} maxLength={40} /></Field>
-              <Field id="ord-exp" label="Expected delivery"><Input id="ord-exp" type="date" value={head.expected_delivery} onChange={(e) => setHead({ ...head, expected_delivery: e.target.value })} /></Field>
-              <NumberField id="ord-terms" label="Payment terms" suffix="days" min={0} step={1} value={head.payment_terms_days} onChange={(v) => setHead({ ...head, payment_terms_days: v })} />
-              <Field id="ord-sp" label="Salesperson"><Select id="ord-sp" value={head.salesperson_id} onChange={(e) => setHead({ ...head, salesperson_id: e.target.value })}><option value="">None</option>{people.map((p) => <option key={p.salesperson_id} value={p.salesperson_id}>{p.name}</option>)}</Select></Field>
-              <div className="md:col-span-2"><Field id="ord-ship" label="Shipping address"><Textarea id="ord-ship" rows={2} value={head.shipping_address} onChange={(e) => setHead({ ...head, shipping_address: e.target.value })} maxLength={400} /></Field></div>
+              <WarehouseSelect value={warehouse} onChange={setWarehouse} label={tr('Ship from')} id="ord-wh" />
+              <Field id="ord-date" label={tr('Order date')}><Input id="ord-date" type="date" value={head.order_date} onChange={(e) => setHead({ ...head, order_date: e.target.value })} /></Field>
+              <Field id="ord-po" label={tr('Customer PO number')}><Input id="ord-po" value={head.customer_po} onChange={(e) => setHead({ ...head, customer_po: e.target.value })} maxLength={40} /></Field>
+              <Field id="ord-exp" label={tr('Expected delivery')}><Input id="ord-exp" type="date" value={head.expected_delivery} onChange={(e) => setHead({ ...head, expected_delivery: e.target.value })} /></Field>
+              <NumberField id="ord-terms" label={tr('Payment terms')} suffix="days" min={0} step={1} value={head.payment_terms_days} onChange={(v) => setHead({ ...head, payment_terms_days: v })} />
+              <Field id="ord-sp" label={tr('Salesperson')}><Select id="ord-sp" value={head.salesperson_id} onChange={(e) => setHead({ ...head, salesperson_id: e.target.value })}><option value="">{tr('None')}</option>{people.map((p) => <option key={p.salesperson_id} value={p.salesperson_id}>{p.name}</option>)}</Select></Field>
+              <div className="md:col-span-2"><Field id="ord-ship" label={tr('Shipping address')}><Textarea id="ord-ship" rows={2} value={head.shipping_address} onChange={(e) => setHead({ ...head, shipping_address: e.target.value })} maxLength={400} /></Field></div>
             </div>
           </Panel>
 
-          <Panel title="Products" lead="Scan a barcode (a carton barcode picks the carton) or search by name">
+          <Panel title={tr('Products')} lead={tr('Scan a barcode (a carton barcode picks the carton) or search by name')}>
             <ProductPicker onPick={addProduct} autoFocus={!editing} inputRef={priceRef} />
-            {lines.length === 0 ? <p className="py-8 text-center text-small text-ink-400">No products yet.</p> : (
+            {lines.length === 0 ? <p className="py-8 text-center text-small text-ink-400">{tr('No products yet.')}</p> : (
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full min-w-[720px] text-small">
-                  <thead className="text-left text-caption font-semibold uppercase tracking-wide text-ink-500"><tr><th className="pb-2 pr-3">Product</th><th className="pb-2 pr-3">Unit</th><th className="pb-2 pr-3 text-right">Qty</th><th className="pb-2 pr-3 text-right">Price</th>{privileged && <th className="pb-2 pr-3 text-right">Disc %</th>}<th className="pb-2 pr-3 text-right">Amount</th><th className="pb-2"><span className="sr-only">Remove</span></th></tr></thead>
+                  <thead className="text-left text-caption font-semibold uppercase tracking-wide text-ink-500"><tr><th className="pb-2 pr-3">{tr('Product')}</th><th className="pb-2 pr-3">{tr('Unit')}</th><th className="pb-2 pr-3 text-right">{tr('Qty')}</th><th className="pb-2 pr-3 text-right">{tr('Price')}</th>{privileged && <th className="pb-2 pr-3 text-right">{tr('Disc %')}</th>}<th className="pb-2 pr-3 text-right">{tr('Amount')}</th><th className="pb-2"><span className="sr-only">{tr('Remove')}</span></th></tr></thead>
                   <tbody className="divide-y divide-line">
                     {lines.map((l, i) => {
                       const p = priced(i);
@@ -197,14 +200,14 @@ const OrderEditor = () => {
                         <tr key={l.key} className="align-top">
                           <td className="py-2 pr-3"><span className="block font-medium text-ink-900">{l.name}</span>
                             {p && <span className="block text-caption text-ink-500">{priceSourceText(p.price_source)}{p.available != null && <> · <span className={p.short > 0 ? 'font-medium text-warning' : ''}>{qty(p.available)} in stock{p.short > 0 ? `, ${qty(p.short)} short` : ''}</span></>}</span>}</td>
-                          <td className="py-2 pr-3"><div className="w-28"><Select aria-label={`Unit for ${l.name}`} value={l.unit_name} onChange={(e) => patch(l.key, { unit_name: e.target.value })}>{l.units.map((u) => <option key={u.unit_name} value={u.unit_name}>{u.unit_name}{u.factor !== 1 ? ` (${u.factor} ${l.base_unit})` : ''}</option>)}</Select></div></td>
-                          <td className="py-2 pr-3"><div className="ml-auto w-24"><Input id={`qty-${l.product_id}`} aria-label={`Quantity of ${l.name}`} type="number" inputMode="decimal" min="0" step="any" value={l.quantity} onChange={(e) => patch(l.key, { quantity: e.target.value })} className="text-right" /></div></td>
+                          <td className="py-2 pr-3"><div className="w-28"><Select aria-label={tr('Unit for {{l_name}}', { l_name: l.name })} value={l.unit_name} onChange={(e) => patch(l.key, { unit_name: e.target.value })}>{l.units.map((u) => <option key={u.unit_name} value={u.unit_name}>{u.unit_name}{u.factor !== 1 ? ` (${u.factor} ${l.base_unit})` : ''}</option>)}</Select></div></td>
+                          <td className="py-2 pr-3"><div className="ml-auto w-24"><Input id={`qty-${l.product_id}`} aria-label={tr('Quantity of {{l_name}}', { l_name: l.name })} type="number" inputMode="decimal" min="0" step="any" value={l.quantity} onChange={(e) => patch(l.key, { quantity: e.target.value })} className="text-right" /></div></td>
                           <td className="py-2 pr-3 text-right">{privileged
-                            ? <div className="ml-auto w-28"><Input aria-label={`Price of ${l.name}`} type="number" inputMode="decimal" min="0" step="any" value={l.price} placeholder={p ? String(p.price) : ''} onChange={(e) => patch(l.key, { price: e.target.value })} className="text-right" /></div>
+                            ? <div className="ml-auto w-28"><Input aria-label={tr('Price of {{l_name}}', { l_name: l.name })} type="number" inputMode="decimal" min="0" step="any" value={l.price} placeholder={p ? String(p.price) : ''} onChange={(e) => patch(l.key, { price: e.target.value })} className="text-right" /></div>
                             : <span className="tabular">{p ? money(p.price) : '—'}</span>}</td>
-                          {privileged && <td className="py-2 pr-3"><div className="ml-auto w-20"><Input aria-label={`Discount on ${l.name}`} type="number" inputMode="decimal" min="0" max="100" step="any" value={l.discount_pct} onChange={(e) => patch(l.key, { discount_pct: e.target.value })} className="text-right" /></div></td>}
+                          {privileged && <td className="py-2 pr-3"><div className="ml-auto w-20"><Input aria-label={tr('Discount on {{l_name}}', { l_name: l.name })} type="number" inputMode="decimal" min="0" max="100" step="any" value={l.discount_pct} onChange={(e) => patch(l.key, { discount_pct: e.target.value })} className="text-right" /></div></td>}
                           <td className="tabular py-2 pr-3 text-right font-medium">{p ? money(p.line_total) : '—'}</td>
-                          <td className="py-2 text-right"><button type="button" onClick={() => remove(l.key)} aria-label={`Remove ${l.name}`} className="rounded-lg p-1.5 text-ink-400 hover:bg-surface-2 hover:text-danger"><X className="h-4 w-4" /></button></td>
+                          <td className="py-2 text-right"><button type="button" onClick={() => remove(l.key)} aria-label={tr('Remove {{l_name}}', { l_name: l.name })} className="rounded-lg p-1.5 text-ink-400 hover:bg-surface-2 hover:text-danger"><X className="h-4 w-4" /></button></td>
                         </tr>
                       );
                     })}
@@ -215,58 +218,58 @@ const OrderEditor = () => {
             {previewError && <p role="alert" className="mt-3 rounded-lg bg-danger/5 px-3 py-2 text-small text-danger">{previewError}</p>}
           </Panel>
 
-          <Panel title="Charges and notes">
+          <Panel title={tr('Charges and notes')}>
             <div className="grid gap-4 sm:grid-cols-3">
-              <NumberField id="ord-ship-ch" label="Shipping charge" prefix="₹" value={head.shipping_charge} onChange={(v) => setHead({ ...head, shipping_charge: v })} />
-              <NumberField id="ord-ship-tax" label="GST on shipping" suffix="%" value={head.shipping_tax_rate} onChange={(v) => setHead({ ...head, shipping_tax_rate: v })} />
-              <NumberField id="ord-disc" label="Order discount" prefix="₹" hint="Taken off the total" value={head.discount} onChange={(v) => setHead({ ...head, discount: v })} />
-              <div className="sm:col-span-3"><Field id="ord-notes" label="Notes"><Textarea id="ord-notes" rows={2} value={head.notes} onChange={(e) => setHead({ ...head, notes: e.target.value })} maxLength={1000} /></Field></div>
+              <NumberField id="ord-ship-ch" label={tr('Shipping charge')} prefix="₹" value={head.shipping_charge} onChange={(v) => setHead({ ...head, shipping_charge: v })} />
+              <NumberField id="ord-ship-tax" label={tr('GST on shipping')} suffix="%" value={head.shipping_tax_rate} onChange={(v) => setHead({ ...head, shipping_tax_rate: v })} />
+              <NumberField id="ord-disc" label={tr('Order discount')} prefix="₹" hint={tr('Taken off the total')} value={head.discount} onChange={(v) => setHead({ ...head, discount: v })} />
+              <div className="sm:col-span-3"><Field id="ord-notes" label={tr('Notes')}><Textarea id="ord-notes" rows={2} value={head.notes} onChange={(e) => setHead({ ...head, notes: e.target.value })} maxLength={1000} /></Field></div>
             </div>
           </Panel>
         </div>
 
         <aside className="space-y-4 xl:sticky xl:top-4 xl:self-start">
-          <Panel title="Summary">
-            {!preview ? <p className="text-small text-ink-500">{customer ? (lines.length ? 'Working out the total…' : 'Add products to see the total.') : 'Choose a customer to start.'}</p> : (
+          <Panel title={tr('Summary')}>
+            {!preview ? <p className="text-small text-ink-500">{customer ? (lines.length ? tr('Working out the total…') : tr('Add products to see the total.')) : tr('Choose a customer to start.')}</p> : (
               <dl className="space-y-2 text-small">
-                <div className="flex justify-between"><dt className="text-ink-500">Before GST</dt><dd className="tabular">{money(preview.subtotal)}</dd></div>
-                <div className="flex justify-between"><dt className="text-ink-500">GST {preview.inter_state ? '(IGST)' : '(CGST + SGST)'}</dt><dd className="tabular">{money(preview.tax)}</dd></div>
-                <div className="flex justify-between border-t border-line pt-2 text-body font-semibold"><dt>Order total</dt><dd className="tabular">{money(preview.total)}</dd></div>
+                <div className="flex justify-between"><dt className="text-ink-500">{tr('Before GST')}</dt><dd className="tabular">{money(preview.subtotal)}</dd></div>
+                <div className="flex justify-between"><dt className="text-ink-500">GST {preview.inter_state ? tr('(IGST)') : tr('(CGST + SGST)')}</dt><dd className="tabular">{money(preview.tax)}</dd></div>
+                <div className="flex justify-between border-t border-line pt-2 text-body font-semibold"><dt>{tr('Order total')}</dt><dd className="tabular">{money(preview.total)}</dd></div>
               </dl>
             )}
             {preview?.lines.some((l) => l.is_free) && (
               <div className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-caption text-brand-800">
-                <p className="font-semibold">Offers applied</p>
+                <p className="font-semibold">{tr('Offers applied')}</p>
                 <ul className="mt-1 space-y-0.5">{preview.schemes.map((a) => <li key={a.scheme_id}>• {a.scheme}{a.free_base ? ` — ${qty(a.free_base)} free` : ''}{a.discount ? ` — ${money(a.discount)} off` : ''}</li>)}</ul>
               </div>
             )}
             {preview?.scheme_hints?.length > 0 && <ul className="mt-3 space-y-1 rounded-lg bg-surface-2 px-3 py-2 text-caption text-ink-700">{preview.scheme_hints.map((h, i) => <li key={i}>💡 {h.message || h}</li>)}</ul>}
-            {preview?.lines.some((l) => l.short > 0) && <p className="mt-3 rounded-lg bg-warning/10 px-3 py-2 text-caption text-warning">Some lines are short of stock. They will be back-ordered and filled when goods arrive.</p>}
-            {preview?.approval_needed && <p className="mt-3 rounded-lg bg-warning/10 px-3 py-2 text-caption text-warning">This order is over the approval limit. A sales manager has to confirm it.</p>}
+            {preview?.lines.some((l) => l.short > 0) && <p className="mt-3 rounded-lg bg-warning/10 px-3 py-2 text-caption text-warning">{tr('Some lines are short of stock. They will be back-ordered and filled when goods arrive.')}</p>}
+            {preview?.approval_needed && <p className="mt-3 rounded-lg bg-warning/10 px-3 py-2 text-caption text-warning">{tr('This order is over the approval limit. A sales manager has to confirm it.')}</p>}
           </Panel>
           {credit && (
-            <Panel title="Customer credit">
+            <Panel title={tr('Customer credit')}>
               <dl className="space-y-1.5 text-small">
-                <div className="flex justify-between"><dt className="text-ink-500">Limit</dt><dd className="tabular">{credit.limit ? money(credit.limit) : 'No limit'}</dd></div>
-                <div className="flex justify-between"><dt className="text-ink-500">Owes now</dt><dd className="tabular">{money(credit.outstanding)}</dd></div>
-                {credit.available != null && <div className="flex justify-between"><dt className="text-ink-500">Available</dt><dd className={`tabular ${credit.available < 0 ? 'font-semibold text-danger' : ''}`}>{money(credit.available)}</dd></div>}
+                <div className="flex justify-between"><dt className="text-ink-500">{tr('Limit')}</dt><dd className="tabular">{credit.limit ? money(credit.limit) : tr('No limit')}</dd></div>
+                <div className="flex justify-between"><dt className="text-ink-500">{tr('Owes now')}</dt><dd className="tabular">{money(credit.outstanding)}</dd></div>
+                {credit.available != null && <div className="flex justify-between"><dt className="text-ink-500">{tr('Available')}</dt><dd className={`tabular ${credit.available < 0 ? 'font-semibold text-danger' : ''}`}>{money(credit.available)}</dd></div>}
               </dl>
               {credit.reasons.length > 0 && <ul className="mt-3 space-y-1">{credit.reasons.map((r) => <li key={r} className={`flex gap-2 rounded-lg px-3 py-2 text-caption ${credit.level === 'BLOCK' ? 'bg-danger/5 text-danger' : 'bg-warning/10 text-warning'}`}><TriangleAlert aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />{r}</li>)}</ul>}
-              {credit.level === 'BLOCK' && <p className="mt-2 text-caption text-ink-500">This order can be saved but not confirmed{can('sales_cancel') ? ' without a manager override.' : ' until payment arrives.'}</p>}
+              {credit.level === 'BLOCK' && <p className="mt-2 text-caption text-ink-500">This order can be saved but not confirmed{can('sales_cancel') ? tr('without a manager override.') : tr('until payment arrives.')}</p>}
             </Panel>
           )}
           <div className="flex flex-col gap-2">
             {editing ? (
-              <Button onClick={() => save({})} loading={busy}>Save changes</Button>
+              <Button onClick={() => save({})} loading={busy}>{tr('Save changes')}</Button>
             ) : (
               <>
-                <Button onClick={() => save({ confirm: true })} loading={busy} disabled={!preview || preview.approval_needed && !can('sales_cancel')}>Confirm order</Button>
-                <Button variant="secondary" onClick={() => save({ submit: true })} loading={busy} disabled={!customer || !lines.length}>Submit for approval</Button>
-                <Button variant="ghost" onClick={() => save({})} loading={busy} disabled={!customer || !lines.length}>Save as draft</Button>
+                <Button onClick={() => save({ confirm: true })} loading={busy} disabled={!preview || preview.approval_needed && !can('sales_cancel')}>{tr('Confirm order')}</Button>
+                <Button variant="secondary" onClick={() => save({ submit: true })} loading={busy} disabled={!customer || !lines.length}>{tr('Submit for approval')}</Button>
+                <Button variant="ghost" onClick={() => save({})} loading={busy} disabled={!customer || !lines.length}>{tr('Save as draft')}</Button>
               </>
             )}
-            {editing && status === 'DRAFT' && <Button variant="secondary" onClick={() => save({ submit: true })} loading={busy}>Save and submit</Button>}
-            <Button variant="ghost" onClick={() => navigate(editing ? `/app/wholesale/orders/${id}` : '/app/wholesale/orders')}>Cancel</Button>
+            {editing && status === 'DRAFT' && <Button variant="secondary" onClick={() => save({ submit: true })} loading={busy}>{tr('Save and submit')}</Button>}
+            <Button variant="ghost" onClick={() => navigate(editing ? `/app/wholesale/orders/${id}` : '/app/wholesale/orders')}>{tr('Cancel')}</Button>
           </div>
         </aside>
       </div>

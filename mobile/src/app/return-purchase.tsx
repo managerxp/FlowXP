@@ -1,3 +1,4 @@
+import { formatDate } from '../lib/display.ts';
 import { useRef, useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
@@ -57,7 +58,7 @@ export default function ReturnPurchase() {
             {orders.error && !orders.data ? <Failed message={orders.error} onRetry={() => { void orders.refresh(); }} /> : null}
             {orders.busy && !orders.data ? <Loading /> : null}
             {orders.data && orders.data.length === 0 ? <Empty>No order has had goods delivered yet.</Empty> : null}
-            {(orders.data ?? []).map((o) => <Line key={o.po_id} left={`${o.po_number} · ${o.supplier}`} sub={`${String(o.po_date).slice(0, 10)}${o.balance > 0 ? ` · you owe ${money(o.balance)}` : ''}`} right={money(o.total)} onPress={() => setPoId(o.po_id)} />)}
+            {(orders.data ?? []).map((o) => <Line key={o.po_id} left={`${o.po_number} · ${o.supplier}`} sub={`${formatDate(o.po_date)}${o.balance > 0 ? ` · you owe ${money(o.balance)}` : ''}`} right={money(o.total)} onPress={() => setPoId(o.po_id)} />)}
           </ScrollView>
         ) : (
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
@@ -70,7 +71,7 @@ export default function ReturnPurchase() {
                 <Chips<Reason> items={REASONS.filter((r) => r !== 'CUSTOMER_REJECTION').map((r) => ({ id: r, label: REASON_LABEL[r] }))} value={reason ?? ('' as Reason)} onChange={(r) => { setReason(r); key.current = newKey(); }} />
                 <SectionTitle>How many of each go back?</SectionTitle>
                 {shown.map((l) => (
-                  <View key={l.item.item_id} style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: Number(l.qty) > 0 ? '#eaf1ff' : color.card }}>
+                  <View key={l.item.item_id} style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: Number(l.qty) > 0 ? color.tint : color.card }}>
                     <Text style={{ fontSize: 16, color: color.ink }}>{l.item.description}</Text>
                     <Soft>{`${qty(l.item.received)} ${l.item.unit_name} arrived on this order`}</Soft>
                     <TextInput style={[s.input, { width: 120 }]} value={l.qty} onChangeText={(v) => { setLines(editP(shown, l.item.item_id, v)); key.current = newKey(); setProblem(''); }} keyboardType="decimal-pad" placeholder="0" accessibilityLabel={`How many ${l.item.description} go back`} />
