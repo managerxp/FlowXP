@@ -2403,7 +2403,6 @@
   "No purchase orders here": "ఇక్కడ కొనుగోలు ఆర్డర్లు లేవు",
   "No purchase orders yet": "ఇంకా కొనుగోలు ఆర్డర్లు లేవు",
   "No purchases yet.": "ఇంకా కొనుగోళ్లు లేవు.",
-  "No racks or bins yet. Add your warehouse, then the zones, racks and bins inside it.": "ఇంకా ర్యాక్‌లు లేదా బిన్‌లు లేవు. మీ గిడ్డంగిని జోడించండి, ఆపై దానిలో జోన్లు, ర్యాక్‌లు, బిన్‌లు.",
   "No rates yet": "ఇంకా రేట్లు లేవు",
   "No receipts yet": "ఇంకా రసీదులు లేవు",
   "No receipts yet.": "ఇంకా రసీదులు లేవు.",
@@ -4864,5 +4863,15 @@
   "Check what would be added": "ఏమి జోడించబడుతుందో చూడండి",
   "Restore what is missing": "లేనిదాన్ని పునరుద్ధరించండి",
   "This is only a check. Nothing has been changed yet.": "ఇది కేవలం తనిఖీ మాత్రమే. ఇంకా ఏదీ మార్చలేదు.",
-  "Customers already here (same phone, or same name when there is no phone) are skipped. What a customer owes comes from their unpaid bills, so it is not imported.": "ఇప్పటికే ఇక్కడ ఉన్న కస్టమర్లను (అదే ఫోన్, ఫోన్ లేకపోతే అదే పేరు) వదిలేస్తాం. కస్టమర్ ఇవ్వాల్సినది వారి చెల్లించని బిల్లుల నుండి వస్తుంది, కాబట్టి అది దిగుమతి కాదు."
+  "Customers already here (same phone, or same name when there is no phone) are skipped. What a customer owes comes from their unpaid bills, so it is not imported.": "ఇప్పటికే ఇక్కడ ఉన్న కస్టమర్లను (అదే ఫోన్, ఫోన్ లేకపోతే అదే పేరు) వదిలేస్తాం. కస్టమర్ ఇవ్వాల్సినది వారి చెల్లించని బిల్లుల నుండి వస్తుంది, కాబట్టి అది దిగుమతి కాదు.",
+  "Set up my racks": "నా రాక్‌లను సెటప్ చేయండి",
+  "Set up my racks in one step": "ఒకే దశలో నా రాక్‌లను సెటప్ చేయండి",
+  "Tell us how many racks and bins you have. We name them for you (R01, R02 ... and bins A, B, C ...). You can change it later.": "మీకు ఎన్ని రాక్‌లు, బిన్‌లు ఉన్నాయో చెప్పండి. పేర్లు మేము పెడతాం (R01, R02 ... బిన్‌లు A, B, C ...). తర్వాత మార్చవచ్చు.",
+  "Ask the owner or manager to set up the racks.": "రాక్‌లను సెటప్ చేయమని యజమాని లేదా మేనేజర్‌ను అడగండి.",
+  "Name of your store or godown": "మీ దుకాణం లేదా గోడౌన్ పేరు",
+  "How many racks": "ఎన్ని రాక్‌లు",
+  "Bins in each rack": "ప్రతి రాక్‌లో బిన్‌లు",
+  "A bin is one small place on a rack where a part sits.": "బిన్ అంటే రాక్‌పై ఒక భాగం ఉంచే చిన్న స్థలం.",
+  "Create racks and bins": "రాక్‌లు, బిన్‌లు సృష్టించండి",
+  "This makes {{racks}} racks and {{total}} bins. The first bin will be called {{code}}.": "ఇది {{racks}} రాక్‌లు, {{total}} బిన్‌లు సృష్టిస్తుంది. మొదటి బిన్ పేరు {{code}}."
 }

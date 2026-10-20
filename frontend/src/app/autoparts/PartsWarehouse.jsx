@@ -52,6 +52,41 @@ const AddLocation = ({ parent, names, onClose, onSaved }) => {
   );
 };
 
+/* The easy way to lay out a shop: say how many racks and how many bins in each, and the names (R01, R02 ... and bins A, B, C ...) are made for you. */
+const QuickRacks = ({ onClose, onSaved }) => {
+  const tr = useT();
+  const [f, setF] = useState({ store: 'Main store', racks: '5', bins: '4' });
+  const [error, setError] = useState('');
+  const [busy, run] = useAction();
+  const racks = Number(f.racks); const bins = Number(f.bins);
+  const code = f.store.trim().replace(/[^A-Za-z0-9]+/g, '').slice(0, 8).toUpperCase() || 'MAIN';
+  const ok = f.store.trim() && racks >= 1 && racks <= 40 && bins >= 1 && bins <= 26;
+  const save = () => run(async () => {
+    setError('');
+    try {
+      const root = await api('/autoparts/locations', { method: 'POST', body: { segment: code, name: f.store.trim(), loc_type: 'WAREHOUSE', can_store: false } });
+      const made = await api('/autoparts/locations/bulk', { method: 'POST', body: { parent_id: root.location_id, count: racks, prefix: 'R', loc_type: 'RACK', can_store: false } });
+      for (const rack of made) await api('/autoparts/locations/bulk', { method: 'POST', body: { parent_id: rack.location_id, count: bins, prefix: '', letters: true, loc_type: 'BIN', can_store: true } });
+      onSaved();
+    } catch (e) { setError(e.message); }
+  }, null);
+  return (
+    <Modal title={tr('Set up my racks')} onClose={onClose}
+      footer={<><Button variant="secondary" onClick={onClose}>{tr('Cancel')}</Button><Button onClick={save} loading={busy} disabled={!ok}>{tr('Create racks and bins')}</Button></>}>
+      <div className="space-y-4">
+        <p className="text-small text-ink-500">{tr('Tell us how many racks and bins you have. We name them for you (R01, R02 ... and bins A, B, C ...). You can change it later.')}</p>
+        <Alert>{error}</Alert>
+        <Field id="qr-store" label={tr('Name of your store or godown')}><Input id="qr-store" value={f.store} onChange={(e) => setF((x) => ({ ...x, store: e.target.value }))} /></Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <NumberField id="qr-racks" label={tr('How many racks')} value={f.racks} min={1} step={1} onChange={(v) => setF((x) => ({ ...x, racks: v }))} />
+          <NumberField id="qr-bins" label={tr('Bins in each rack')} hint={tr('A bin is one small place on a rack where a part sits.')} value={f.bins} min={1} step={1} onChange={(v) => setF((x) => ({ ...x, bins: v }))} />
+        </div>
+        {ok && <p className="rounded-lg bg-brand-50 px-3 py-2 text-small text-brand-700">{tr('This makes {{racks}} racks and {{total}} bins. The first bin will be called {{code}}.', { racks, total: racks * bins, code: `${code}-R01-A` })}</p>}
+      </div>
+    </Modal>
+  );
+};
+
 const LocationDetail = ({ id, onClose }) => {
   const tr = useT();
   const d = useLoad(`/autoparts/locations/${id}`);
@@ -80,7 +115,7 @@ const Layout = ({ canEdit }) => {
   const tr = useT();
   const tree = useLoad('/autoparts/locations');
   const settings = useLoad('/autoparts/warehouse/settings');
-  const [adding, setAdding] = useState(null); const [open, setOpen] = useState(null);
+  const [adding, setAdding] = useState(null); const [open, setOpen] = useState(null); const [quick, setQuick] = useState(false);
   const [scan, setScan] = useState('');
   const [busy, run] = useAction();
   const rows = tree.data || [];
@@ -99,7 +134,12 @@ const Layout = ({ canEdit }) => {
           {canEdit && <Button onClick={() => setAdding({ parent: null })}><Plus aria-hidden="true" className="h-4 w-4" /> Add {names[0] || 'warehouse'}</Button>}
         </span>
       </div>
-      <ListState loading={tree.loading && !tree.data} error={tree.error} empty={tree.data && rows.length === 0} emptyLabel={tr('No racks or bins yet. Add your warehouse, then the zones, racks and bins inside it.')} />
+      <ListState loading={tree.loading && !tree.data} error={tree.error} />
+      {tree.data && rows.length === 0 && (
+        <Panel title={tr('Set up my racks in one step')} lead={tr('Tell us how many racks and bins you have. We name them for you (R01, R02 ... and bins A, B, C ...). You can change it later.')}>
+          {canEdit ? <Button onClick={() => setQuick(true)}><Plus aria-hidden="true" className="h-4 w-4" /> {tr('Set up my racks')}</Button> : <p className="text-small text-ink-500">{tr('Ask the owner or manager to set up the racks.')}</p>}
+        </Panel>
+      )}
       {rows.length > 0 && (
         <Panel className="!p-0">
           <Table>
@@ -108,7 +148,7 @@ const Layout = ({ canEdit }) => {
               {rows.map((l) => (
                 <Tr key={l.location_id}>
                   <Td><button type="button" onClick={() => setOpen(l.location_id)} className="text-left" style={{ paddingLeft: `${(l.level - 1) * 18}px` }}>
-                    <span className="font-medium">{l.segment}</span> <span className="text-caption text-ink-500">{typeLabel(names, l.loc_type)}{l.name && l.name !== l.segment ? ` · ${l.name}` : ''}</span>
+                    <span className="font-medium">{l.segment}</span> <span className="text-caption text-ink-500">{typeLabel(names, l.loc_type)}{l.name && l.name !== l.segment && l.name.toLowerCase() !== `${typeLabel(names, l.loc_type)} ${l.segment}`.toLowerCase() ? ` · ${l.name}` : ''}{l.can_store ? ` · ${l.code}` : ''}</span>
                     {l.over_capacity && <Badge tone="danger"> {tr('over limit')}</Badge>}</button></Td>
                   <Td className="tabular text-right">{n3(l.qty)}</Td><Td className="tabular text-right">{l.parts}</Td>
                   <Td className="tabular text-right">{l.fill_pct != null ? `${l.fill_pct}%` : ''}</Td>
@@ -120,6 +160,7 @@ const Layout = ({ canEdit }) => {
           </Table>
         </Panel>
       )}
+      {quick && <QuickRacks onClose={() => setQuick(false)} onSaved={() => { setQuick(false); tree.reload(); }} />}
       {adding && <AddLocation parent={adding.parent} names={names} onClose={() => setAdding(null)} onSaved={() => { setAdding(null); tree.reload(); }} />}
       {open && <LocationDetail id={open} onClose={() => setOpen(null)} />}
     </div>

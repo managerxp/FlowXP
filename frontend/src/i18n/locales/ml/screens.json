@@ -2403,7 +2403,6 @@
   "No purchase orders here": "ഇവിടെ പർച്ചേസ് ഓർഡറുകളില്ല",
   "No purchase orders yet": "പർച്ചേസ് ഓർഡറുകൾ ഇതുവരെ ഇല്ല",
   "No purchases yet.": "ഇതുവരെ വാങ്ങലുകളില്ല.",
-  "No racks or bins yet. Add your warehouse, then the zones, racks and bins inside it.": "റാക്കുകളോ ബിന്നുകളോ ഇതുവരെ ഇല്ല. നിങ്ങളുടെ വെയർഹൗസ് ചേർക്കുക, പിന്നെ അതിനുള്ളിലെ സോണുകൾ, റാക്കുകൾ, ബിന്നുകൾ.",
   "No rates yet": "നിരക്കുകൾ ഇതുവരെ ഇല്ല",
   "No receipts yet": "രസീതുകൾ ഇതുവരെ ഇല്ല",
   "No receipts yet.": "രസീതുകൾ ഇതുവരെ ഇല്ല.",
@@ -4864,5 +4863,15 @@
   "Check what would be added": "എന്ത് ചേർക്കുമെന്ന് പരിശോധിക്കുക",
   "Restore what is missing": "ഇല്ലാത്തത് തിരികെ കൊണ്ടുവരിക",
   "This is only a check. Nothing has been changed yet.": "ഇത് ഒരു പരിശോധന മാത്രമാണ്. ഇതുവരെ ഒന്നും മാറ്റിയിട്ടില്ല.",
-  "Customers already here (same phone, or same name when there is no phone) are skipped. What a customer owes comes from their unpaid bills, so it is not imported.": "ഇതിനകം ഇവിടെ ഉള്ള ഉപഭോക്താക്കളെ (അതേ ഫോൺ, ഫോൺ ഇല്ലെങ്കിൽ അതേ പേര്) ഒഴിവാക്കും. ഉപഭോക്താവ് നൽകാനുള്ളത് അവരുടെ അടയ്ക്കാത്ത ബില്ലുകളിൽ നിന്നാണ്, അതിനാൽ അത് ഇറക്കുമതി ചെയ്യില്ല."
+  "Customers already here (same phone, or same name when there is no phone) are skipped. What a customer owes comes from their unpaid bills, so it is not imported.": "ഇതിനകം ഇവിടെ ഉള്ള ഉപഭോക്താക്കളെ (അതേ ഫോൺ, ഫോൺ ഇല്ലെങ്കിൽ അതേ പേര്) ഒഴിവാക്കും. ഉപഭോക്താവ് നൽകാനുള്ളത് അവരുടെ അടയ്ക്കാത്ത ബില്ലുകളിൽ നിന്നാണ്, അതിനാൽ അത് ഇറക്കുമതി ചെയ്യില്ല.",
+  "Set up my racks": "എന്റെ റാക്കുകൾ സജ്ജമാക്കുക",
+  "Set up my racks in one step": "ഒറ്റ ഘട്ടത്തിൽ എന്റെ റാക്കുകൾ സജ്ജമാക്കുക",
+  "Tell us how many racks and bins you have. We name them for you (R01, R02 ... and bins A, B, C ...). You can change it later.": "നിങ്ങൾക്ക് എത്ര റാക്കുകളും ബിന്നുകളും ഉണ്ടെന്ന് പറയുക. പേരുകൾ ഞങ്ങൾ ഇടും (R01, R02 ... ബിന്നുകൾ A, B, C ...). പിന്നീട് മാറ്റാം.",
+  "Ask the owner or manager to set up the racks.": "റാക്കുകൾ സജ്ജമാക്കാൻ ഉടമയോടോ മാനേജരോടോ ആവശ്യപ്പെടുക.",
+  "Name of your store or godown": "നിങ്ങളുടെ കടയുടെ അല്ലെങ്കിൽ ഗോഡൗണിന്റെ പേര്",
+  "How many racks": "എത്ര റാക്കുകൾ",
+  "Bins in each rack": "ഓരോ റാക്കിലും ബിന്നുകൾ",
+  "A bin is one small place on a rack where a part sits.": "റാക്കിൽ ഒരു പാർട്ട് വയ്ക്കുന്ന ചെറിയ സ്ഥലമാണ് ബിൻ.",
+  "Create racks and bins": "റാക്കുകളും ബിന്നുകളും ഉണ്ടാക്കുക",
+  "This makes {{racks}} racks and {{total}} bins. The first bin will be called {{code}}.": "ഇത് {{racks}} റാക്കുകളും {{total}} ബിന്നുകളും ഉണ്ടാക്കും. ആദ്യ ബിന്നിന്റെ പേര് {{code}} ആയിരിക്കും."
 }

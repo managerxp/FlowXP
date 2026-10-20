@@ -30,6 +30,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary.jsx';
 import NotificationBell from '../components/NotificationBell.jsx';
 import { InstallButton, OfflineStatus } from '../components/OfflineStatus.jsx';
 import CommandPalette from '../components/CommandPalette.jsx';
+import GuideHelper from '../components/GuideHelper.jsx';
 import IncomingDeliveryAlert from '../components/IncomingDeliveryAlert.jsx';
 import { AUTO_PARTS_TYPES, GAMING_TYPES, GYM_TYPES, HOTEL_TYPES, PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
 
@@ -645,6 +646,7 @@ const AppShell = () => {
       </div>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} items={paletteItems} />
+      <GuideHelper items={paletteItems} />
     </div>
   );
 };

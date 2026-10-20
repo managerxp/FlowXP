@@ -2403,7 +2403,6 @@
   "No purchase orders here": "இங்கே கொள்முதல் ஆர்டர்கள் இல்லை",
   "No purchase orders yet": "கொள்முதல் ஆர்டர்கள் இன்னும் இல்லை",
   "No purchases yet.": "இன்னும் கொள்முதல்கள் இல்லை.",
-  "No racks or bins yet. Add your warehouse, then the zones, racks and bins inside it.": "ரேக்குகள் அல்லது தொட்டிகள் இன்னும் இல்லை. உங்கள் கிடங்கைச் சேர்த்து, பிறகு அதன் உள்ளே மண்டலங்கள், ரேக்குகள், தொட்டிகளைச் சேர்க்கவும்.",
   "No rates yet": "கட்டணங்கள் இன்னும் இல்லை",
   "No receipts yet": "ரசீதுகள் இன்னும் இல்லை",
   "No receipts yet.": "ரசீதுகள் இன்னும் இல்லை.",
@@ -4864,5 +4863,15 @@
   "Check what would be added": "என்ன சேர்க்கப்படும் எனச் சரிபார்க்கவும்",
   "Restore what is missing": "விடுபட்டதை மீட்கவும்",
   "This is only a check. Nothing has been changed yet.": "இது ஒரு சரிபார்ப்பு மட்டுமே. இன்னும் எதுவும் மாற்றப்படவில்லை.",
-  "Customers already here (same phone, or same name when there is no phone) are skipped. What a customer owes comes from their unpaid bills, so it is not imported.": "ஏற்கனவே இங்கே உள்ள வாடிக்கையாளர்கள் (அதே தொலைபேசி, தொலைபேசி இல்லையெனில் அதே பெயர்) தவிர்க்கப்படுவார்கள். வாடிக்கையாளர் தர வேண்டியது அவர்களின் செலுத்தப்படாத பில்களிலிருந்து வருகிறது, எனவே அது இறக்குமதி ஆகாது."
+  "Customers already here (same phone, or same name when there is no phone) are skipped. What a customer owes comes from their unpaid bills, so it is not imported.": "ஏற்கனவே இங்கே உள்ள வாடிக்கையாளர்கள் (அதே தொலைபேசி, தொலைபேசி இல்லையெனில் அதே பெயர்) தவிர்க்கப்படுவார்கள். வாடிக்கையாளர் தர வேண்டியது அவர்களின் செலுத்தப்படாத பில்களிலிருந்து வருகிறது, எனவே அது இறக்குமதி ஆகாது.",
+  "Set up my racks": "என் ரேக்குகளை அமை",
+  "Set up my racks in one step": "ஒரே படியில் என் ரேக்குகளை அமை",
+  "Tell us how many racks and bins you have. We name them for you (R01, R02 ... and bins A, B, C ...). You can change it later.": "உங்களிடம் எத்தனை ரேக்குகளும் பின்களும் உள்ளன என்று சொல்லுங்கள். பெயர்களை நாங்கள் இடுவோம் (R01, R02 ... பின்கள் A, B, C ...). பின்னர் மாற்றலாம்.",
+  "Ask the owner or manager to set up the racks.": "ரேக்குகளை அமைக்க உரிமையாளர் அல்லது மேலாளரிடம் கேளுங்கள்.",
+  "Name of your store or godown": "உங்கள் கடை அல்லது கிடங்கின் பெயர்",
+  "How many racks": "எத்தனை ரேக்குகள்",
+  "Bins in each rack": "ஒவ்வொரு ரேக்கிலும் பின்கள்",
+  "A bin is one small place on a rack where a part sits.": "பின் என்பது ரேக்கில் ஒரு பாகம் வைக்கப்படும் சிறிய இடம்.",
+  "Create racks and bins": "ரேக்குகளையும் பின்களையும் உருவாக்கு",
+  "This makes {{racks}} racks and {{total}} bins. The first bin will be called {{code}}.": "இது {{racks}} ரேக்குகளையும் {{total}} பின்களையும் உருவாக்கும். முதல் பின்னின் பெயர் {{code}}."
 }

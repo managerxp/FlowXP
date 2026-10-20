@@ -2403,7 +2403,6 @@
   "No purchase orders here": "ಇಲ್ಲಿ ಖರೀದಿ ಆರ್ಡರ್‌ಗಳಿಲ್ಲ",
   "No purchase orders yet": "ಇನ್ನೂ ಖರೀದಿ ಆರ್ಡರ್‌ಗಳಿಲ್ಲ",
   "No purchases yet.": "ಇನ್ನೂ ಖರೀದಿಗಳಿಲ್ಲ.",
-  "No racks or bins yet. Add your warehouse, then the zones, racks and bins inside it.": "ಇನ್ನೂ ರ್ಯಾಕ್‌ಗಳು ಅಥವಾ ಬಿನ್‌ಗಳಿಲ್ಲ. ನಿಮ್ಮ ಗೋದಾಮು ಸೇರಿಸಿ, ನಂತರ ಅದರೊಳಗೆ ವಲಯಗಳು, ರ್ಯಾಕ್‌ಗಳು ಮತ್ತು ಬಿನ್‌ಗಳು.",
   "No rates yet": "ಇನ್ನೂ ದರಗಳಿಲ್ಲ",
   "No receipts yet": "ಇನ್ನೂ ರಸೀದಿಗಳಿಲ್ಲ",
   "No receipts yet.": "ಇನ್ನೂ ರಸೀದಿಗಳಿಲ್ಲ.",
@@ -4864,5 +4863,15 @@
   "Check what would be added": "ಏನು ಸೇರಿಸಲಾಗುತ್ತದೆ ಎಂದು ಪರಿಶೀಲಿಸಿ",
   "Restore what is missing": "ಇಲ್ಲದಿರುವುದನ್ನು ಮರುಸ್ಥಾಪಿಸಿ",
   "This is only a check. Nothing has been changed yet.": "ಇದು ಕೇವಲ ಪರಿಶೀಲನೆ. ಇನ್ನೂ ಏನೂ ಬದಲಾಗಿಲ್ಲ.",
-  "Customers already here (same phone, or same name when there is no phone) are skipped. What a customer owes comes from their unpaid bills, so it is not imported.": "ಈಗಾಗಲೇ ಇಲ್ಲಿರುವ ಗ್ರಾಹಕರನ್ನು (ಅದೇ ಫೋನ್, ಫೋನ್ ಇಲ್ಲದಿದ್ದರೆ ಅದೇ ಹೆಸರು) ಬಿಟ್ಟುಬಿಡಲಾಗುತ್ತದೆ. ಗ್ರಾಹಕರು ಕೊಡಬೇಕಾದದ್ದು ಅವರ ಪಾವತಿಸದ ಬಿಲ್‌ಗಳಿಂದ ಬರುತ್ತದೆ, ಆದ್ದರಿಂದ ಅದನ್ನು ಆಮದು ಮಾಡುವುದಿಲ್ಲ."
+  "Customers already here (same phone, or same name when there is no phone) are skipped. What a customer owes comes from their unpaid bills, so it is not imported.": "ಈಗಾಗಲೇ ಇಲ್ಲಿರುವ ಗ್ರಾಹಕರನ್ನು (ಅದೇ ಫೋನ್, ಫೋನ್ ಇಲ್ಲದಿದ್ದರೆ ಅದೇ ಹೆಸರು) ಬಿಟ್ಟುಬಿಡಲಾಗುತ್ತದೆ. ಗ್ರಾಹಕರು ಕೊಡಬೇಕಾದದ್ದು ಅವರ ಪಾವತಿಸದ ಬಿಲ್‌ಗಳಿಂದ ಬರುತ್ತದೆ, ಆದ್ದರಿಂದ ಅದನ್ನು ಆಮದು ಮಾಡುವುದಿಲ್ಲ.",
+  "Set up my racks": "ನನ್ನ ರ‍್ಯಾಕ್‌ಗಳನ್ನು ಸಿದ್ಧಪಡಿಸಿ",
+  "Set up my racks in one step": "ಒಂದೇ ಹಂತದಲ್ಲಿ ನನ್ನ ರ‍್ಯಾಕ್‌ಗಳನ್ನು ಸಿದ್ಧಪಡಿಸಿ",
+  "Tell us how many racks and bins you have. We name them for you (R01, R02 ... and bins A, B, C ...). You can change it later.": "ನಿಮ್ಮಲ್ಲಿ ಎಷ್ಟು ರ‍್ಯಾಕ್‌ಗಳು ಮತ್ತು ಬಿನ್‌ಗಳಿವೆ ಎಂದು ಹೇಳಿ. ಹೆಸರುಗಳನ್ನು ನಾವು ಇಡುತ್ತೇವೆ (R01, R02 ... ಬಿನ್‌ಗಳು A, B, C ...). ನಂತರ ಬದಲಾಯಿಸಬಹುದು.",
+  "Ask the owner or manager to set up the racks.": "ರ‍್ಯಾಕ್‌ಗಳನ್ನು ಸಿದ್ಧಪಡಿಸಲು ಮಾಲೀಕರು ಅಥವಾ ಮ್ಯಾನೇಜರ್‌ರನ್ನು ಕೇಳಿ.",
+  "Name of your store or godown": "ನಿಮ್ಮ ಅಂಗಡಿ ಅಥವಾ ಗೋದಾಮಿನ ಹೆಸರು",
+  "How many racks": "ಎಷ್ಟು ರ‍್ಯಾಕ್‌ಗಳು",
+  "Bins in each rack": "ಪ್ರತಿ ರ‍್ಯಾಕ್‌ನಲ್ಲಿ ಬಿನ್‌ಗಳು",
+  "A bin is one small place on a rack where a part sits.": "ಬಿನ್ ಎಂದರೆ ರ‍್ಯಾಕ್‌ನಲ್ಲಿ ಒಂದು ಭಾಗ ಇಡುವ ಚಿಕ್ಕ ಜಾಗ.",
+  "Create racks and bins": "ರ‍್ಯಾಕ್‌ಗಳು ಮತ್ತು ಬಿನ್‌ಗಳನ್ನು ರಚಿಸಿ",
+  "This makes {{racks}} racks and {{total}} bins. The first bin will be called {{code}}.": "ಇದು {{racks}} ರ‍್ಯಾಕ್‌ಗಳು ಮತ್ತು {{total}} ಬಿನ್‌ಗಳನ್ನು ರಚಿಸುತ್ತದೆ. ಮೊದಲ ಬಿನ್ ಹೆಸರು {{code}}."
 }

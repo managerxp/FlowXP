@@ -2403,7 +2403,6 @@
   "No purchase orders here": "यहाँ कोई ख़रीद ऑर्डर नहीं",
   "No purchase orders yet": "अभी कोई ख़रीद ऑर्डर नहीं",
   "No purchases yet.": "अभी कोई खरीदारी नहीं।",
-  "No racks or bins yet. Add your warehouse, then the zones, racks and bins inside it.": "अभी कोई रैक या बिन नहीं। अपना गोदाम जोड़ें, फिर उसके अंदर ज़ोन, रैक और बिन।",
   "No rates yet": "अभी कोई दर नहीं",
   "No receipts yet": "अभी कोई रसीद नहीं",
   "No receipts yet.": "अभी कोई रसीद नहीं।",
@@ -4864,5 +4863,15 @@
   "Check what would be added": "देखें क्या जोड़ा जाएगा",
   "Restore what is missing": "जो गायब है उसे वापस लाएँ",
   "This is only a check. Nothing has been changed yet.": "यह सिर्फ़ जाँच है। अभी कुछ नहीं बदला है।",
-  "Customers already here (same phone, or same name when there is no phone) are skipped. What a customer owes comes from their unpaid bills, so it is not imported.": "जो ग्राहक पहले से यहाँ हैं (वही फ़ोन, या फ़ोन न होने पर वही नाम) छोड़ दिए जाते हैं। ग्राहक पर कितना बकाया है यह उनके बिना चुकाए बिलों से आता है, इसलिए वह आयात नहीं होता।"
+  "Customers already here (same phone, or same name when there is no phone) are skipped. What a customer owes comes from their unpaid bills, so it is not imported.": "जो ग्राहक पहले से यहाँ हैं (वही फ़ोन, या फ़ोन न होने पर वही नाम) छोड़ दिए जाते हैं। ग्राहक पर कितना बकाया है यह उनके बिना चुकाए बिलों से आता है, इसलिए वह आयात नहीं होता।",
+  "Set up my racks": "मेरे रैक बनाएँ",
+  "Set up my racks in one step": "एक ही बार में मेरे रैक बनाएँ",
+  "Tell us how many racks and bins you have. We name them for you (R01, R02 ... and bins A, B, C ...). You can change it later.": "बताइए आपके पास कितने रैक और बिन हैं। नाम हम रख देंगे (R01, R02 ... और बिन A, B, C ...)। बाद में बदल सकते हैं।",
+  "Ask the owner or manager to set up the racks.": "मालिक या मैनेजर से रैक बनाने को कहें।",
+  "Name of your store or godown": "आपकी दुकान या गोदाम का नाम",
+  "How many racks": "कितने रैक",
+  "Bins in each rack": "हर रैक में कितने बिन",
+  "A bin is one small place on a rack where a part sits.": "बिन रैक पर वह छोटी जगह है जहाँ पुर्जा रखा जाता है।",
+  "Create racks and bins": "रैक और बिन बनाएँ",
+  "This makes {{racks}} racks and {{total}} bins. The first bin will be called {{code}}.": "इससे {{racks}} रैक और {{total}} बिन बनेंगे। पहले बिन का नाम {{code}} होगा।"
 }
