@@ -1,3 +1,4 @@
+import { formatDate } from '../../lib/display.ts';
 import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -70,14 +71,14 @@ export default function WholesaleCustomer() {
 
             <SectionTitle>Bills not yet paid</SectionTitle>
             {open.data && open.data.invoices.length === 0 ? <Soft style={{ padding: 16 }}>Nothing is owed.</Soft> : null}
-            {(open.data?.invoices ?? []).map((i) => <Line key={i.invoice_id} left={i.invoice_number} sub={`${String(i.invoice_date).slice(0, 10)} · due ${String(i.due_date).slice(0, 10)}${i.days_overdue > 0 ? ` · ${i.days_overdue} days late` : ''}`} right={money(i.balance)} />)}
+            {(open.data?.invoices ?? []).map((i) => <Line key={i.invoice_id} left={i.invoice_number} sub={`${formatDate(i.invoice_date)} · due ${formatDate(i.due_date)}${i.days_overdue > 0 ? ` · ${i.days_overdue} days late` : ''}`} right={money(i.balance)} />)}
 
             <SectionTitle>Latest orders</SectionTitle>
             {orders.data && orders.data.length === 0 ? <Soft style={{ padding: 16 }}>No orders yet.</Soft> : null}
-            {(orders.data ?? []).map((o) => <Line key={o.order_id} left={o.order_number} sub={`${String(o.order_date).slice(0, 10)} · ${o.status.toLowerCase().replace(/_/g, ' ')}`} right={money(o.total)} onPress={() => router.push({ pathname: '/wholesale-order/[id]', params: { id: String(o.order_id) } })} />)}
+            {(orders.data ?? []).map((o) => <Line key={o.order_id} left={o.order_number} sub={`${formatDate(o.order_date)} · ${o.status.toLowerCase().replace(/_/g, ' ')}`} right={money(o.total)} onPress={() => router.push({ pathname: '/wholesale-order/[id]', params: { id: String(o.order_id) } })} />)}
 
             <SectionTitle>Account statement</SectionTitle>
-            {(ledger.data?.lines ?? []).slice(-12).reverse().map((l, i) => <Line key={i} left={ledgerText(l)} sub={String(l.date).slice(0, 10)} right={l.debit > 0 ? `+${money(l.debit)}` : `−${money(l.credit)}`} />)}
+            {(ledger.data?.lines ?? []).slice(-12).reverse().map((l, i) => <Line key={i} left={ledgerText(l)} sub={formatDate(l.date)} right={l.debit > 0 ? `+${money(l.debit)}` : `−${money(l.credit)}`} />)}
           </ScrollView>
         ) : null}
       </Page>

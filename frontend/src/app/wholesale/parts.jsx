@@ -10,24 +10,27 @@ import { api } from '../../lib/api.js';
 import { CSV_TEMPLATES, addDays, downloadTemplate, money, todayIn, useDebounced, useWarehouses } from '../../lib/wholesale.js';
 import { readTable } from '../../lib/spreadsheet.js';
 import { Alert, Badge, Button, Field, Input, Modal, Select, useToast } from '../../components/ui.jsx';
+import { useT } from '../../i18n/useT.js';
 
 export { Chips, Money, NumberField, Pager, Panel, Pill, Segmented, SelectField, Tabs, Toggle, Toolbar, useAction } from '../salon/parts.jsx';
 
 /* ── status ───────────────────────────────────────────────────────────────── */
 
 export const StatusPill = ({ map, status }) => {
+  const tr = useT();
   const s = map[status] || { label: String(status || '').replace(/_/g, ' ').toLowerCase(), tone: 'neutral' };
-  return <Badge tone={s.tone}>{s.label}</Badge>;
+  return <Badge tone={s.tone}>{tr(s.label)}</Badge>;
 };
 
 /* ── charts ───────────────────────────────────────────────────────────────── */
 
 /* Vertical bars, one per item; `format` shapes the tooltip. */
 export const Bars = ({ data, valueKey = 'value', labelKey = 'label', format = money, height = 'h-36', tone = 'bg-brand-400', label = 'Chart', every = 1 }) => {
+  const tr = useT();
   const max = Math.max(1, ...data.map((d) => Number(d[valueKey]) || 0));
   return (
     <figure>
-      <div className={`flex ${height} items-end gap-1`} role="img" aria-label={label}>
+      <div className={`flex ${height} items-end gap-1`} role="img" aria-label={tr(label)}>
         {data.map((d, i) => {
           const v = Number(d[valueKey]) || 0;
           return (
@@ -67,6 +70,7 @@ export const RankBars = ({ rows, valueKey = 'value', labelKey = 'label', sub, fo
 
 /* A single proportional strip: how a total splits (ageing). */
 export const StackStrip = ({ parts, format = money }) => {
+  const tr = useT();
   const total = parts.reduce((s, p) => s + (Number(p.value) || 0), 0);
   return (
     <div>
@@ -74,7 +78,7 @@ export const StackStrip = ({ parts, format = money }) => {
         {total > 0 && parts.map((p) => Number(p.value) > 0 && <div key={p.label} className={p.tone} style={{ width: `${(p.value / total) * 100}%` }} title={`${p.label}: ${format(p.value)}`} />)}
       </div>
       <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-caption sm:grid-cols-5">
-        {parts.map((p) => <li key={p.label}><span className="flex items-center gap-1.5 text-ink-500"><span className={`h-2.5 w-2.5 rounded-sm ${p.tone}`} />{p.label}</span><span className="tabular text-small font-semibold text-ink-900">{format(p.value)}</span></li>)}
+        {parts.map((p) => <li key={p.label}><span className="flex items-center gap-1.5 text-ink-500"><span className={`h-2.5 w-2.5 rounded-sm ${p.tone}`} />{tr(p.label)}</span><span className="tabular text-small font-semibold text-ink-900">{format(p.value)}</span></li>)}
       </ul>
     </div>
   );
@@ -87,6 +91,7 @@ export const StackStrip = ({ parts, format = money }) => {
  * receives the choice. With `onEnter(term, rows)` the Enter key can short-circuit (a scanned barcode).
  */
 export const SearchPicker = ({ id, placeholder, search, render, onPick, onEnter, footer, minChars = 2, autoFocus, inputRef, clearOnPick = true, disabled }) => {
+  const tr = useT();
   const [q, setQ] = useState('');
   const term = useDebounced(q.trim(), 180);
   const [rows, setRows] = useState([]);
@@ -124,12 +129,12 @@ export const SearchPicker = ({ id, placeholder, search, render, onPick, onEnter,
   return (
     <div className="relative" ref={box}>
       <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-      <Input id={id} ref={inputRef} type="search" autoComplete="off" value={q} disabled={disabled} autoFocus={autoFocus} placeholder={placeholder} aria-label={placeholder} className="pl-9"
+      <Input id={id} ref={inputRef} type="search" autoComplete="off" value={q} disabled={disabled} autoFocus={autoFocus} placeholder={tr(placeholder)} aria-label={tr(placeholder)} className="pl-9"
              onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onKeyDown={onKey} />
       {open && q.trim().length >= minChars && (
         <div className="absolute inset-x-0 top-full z-30 mt-1 max-h-72 overflow-y-auto rounded-(--radius-card) border border-line bg-surface p-1 shadow-lg">
-          {busy && rows.length === 0 && <p className="px-3 py-2 text-small text-ink-500">Searching…</p>}
-          {!busy && rows.length === 0 && <p className="px-3 py-2 text-small text-ink-500">No match.</p>}
+          {busy && rows.length === 0 && <p className="px-3 py-2 text-small text-ink-500">{tr('Searching…')}</p>}
+          {!busy && rows.length === 0 && <p className="px-3 py-2 text-small text-ink-500">{tr('No match.')}</p>}
           {rows.map((r, i) => <button key={r.customer_id ?? r.supplier_id ?? r.product_id ?? i} type="button" onClick={() => pick(r)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-surface-2">{render(r)}</button>)}
           {footer}
         </div>
@@ -139,39 +144,46 @@ export const SearchPicker = ({ id, placeholder, search, render, onPick, onEnter,
 };
 
 /** Shows the chosen party with a change button; `value` is { id, name, ... } or null. */
-const Chosen = ({ title, sub, onClear }) => (
+const Chosen = ({ title, sub, onClear }) => {
+  const tr = useT();
+  return (
   <div className="flex items-center gap-3 rounded-(--radius-control) border border-line bg-surface-2 px-3 py-2">
     <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-caption font-semibold text-brand-700">{String(title).slice(0, 1).toUpperCase()}</span>
-    <span className="min-w-0 flex-1"><span className="block truncate text-small font-semibold text-ink-900">{title}</span>{sub && <span className="block truncate text-caption text-ink-500">{sub}</span>}</span>
-    {onClear && <button type="button" onClick={onClear} aria-label="Change" className="rounded-lg p-1.5 text-ink-400 hover:bg-surface hover:text-ink-900"><X className="h-4 w-4" /></button>}
+    <span className="min-w-0 flex-1"><span className="block truncate text-small font-semibold text-ink-900">{tr(title)}</span>{sub && <span className="block truncate text-caption text-ink-500">{tr(sub)}</span>}</span>
+    {onClear && <button type="button" onClick={onClear} aria-label={tr('Change')} className="rounded-lg p-1.5 text-ink-400 hover:bg-surface hover:text-ink-900"><X className="h-4 w-4" /></button>}
   </div>
 );
+};
 
 export const CustomerPicker = ({ value, onChange, placeholder = 'Find a customer by name, phone or GSTIN', disabled, id = 'customer-picker', onAdd }) => {
+  const tr = useT();
   if (value) {
     return <Chosen title={value.name} sub={[value.customer_type, value.phone, value.gstin].filter(Boolean).join(' · ')} onClear={disabled ? null : () => onChange(null)} />;
   }
   return (
-    <SearchPicker id={id} placeholder={placeholder} minChars={1} disabled={disabled}
+    <SearchPicker id={id} placeholder={tr(placeholder)} minChars={1} disabled={disabled}
                   search={(t) => api(`/wholesale/customers?q=${encodeURIComponent(t)}&limit=8`)}
                   onPick={onChange}
                   render={(c) => <span className="min-w-0 flex-1"><span className="block truncate text-small font-medium text-ink-900">{c.name}</span><span className="block truncate text-caption text-ink-500">{[c.customer_type, c.phone, c.gstin].filter(Boolean).join(' · ')}</span></span>}
-                  footer={onAdd && <button type="button" onClick={onAdd} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-small font-medium text-brand-700 hover:bg-brand-50"><Plus className="h-4 w-4" />Add a new customer</button>} />
+                  footer={onAdd && <button type="button" onClick={onAdd} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-small font-medium text-brand-700 hover:bg-brand-50"><Plus className="h-4 w-4" />{tr('Add a new customer')}</button>} />
   );
 };
 
 export const SupplierPicker = ({ value, onChange, placeholder = 'Find a supplier', disabled, id = 'supplier-picker' }) => {
+  const tr = useT();
   if (value) return <Chosen title={value.name} sub={[value.phone, value.gstin].filter(Boolean).join(' · ')} onClear={disabled ? null : () => onChange(null)} />;
   return (
-    <SearchPicker id={id} placeholder={placeholder} minChars={1} disabled={disabled}
+    <SearchPicker id={id} placeholder={tr(placeholder)} minChars={1} disabled={disabled}
                   search={(t) => api(`/wholesale/suppliers?q=${encodeURIComponent(t)}&limit=8`)} onPick={onChange}
                   render={(s) => <span className="min-w-0 flex-1"><span className="block truncate text-small font-medium text-ink-900">{s.name}</span><span className="block truncate text-caption text-ink-500">{[s.phone, s.gstin].filter(Boolean).join(' · ')}</span></span>} />
   );
 };
 
 /** Pick a product by name, SKU or barcode (a scanner "types" the code and presses Enter). onPick gets the product, plus matched_unit when a carton barcode was scanned. */
-export const ProductPicker = ({ onPick, placeholder = 'Scan a barcode or search products', inputRef, autoFocus, disabled }) => (
-  <SearchPicker id="product-picker" placeholder={placeholder} minChars={1} inputRef={inputRef} autoFocus={autoFocus} disabled={disabled}
+export const ProductPicker = ({ onPick, placeholder = 'Scan a barcode or search products', inputRef, autoFocus, disabled }) => {
+  const tr = useT();
+  return (
+  <SearchPicker id="product-picker" placeholder={tr(placeholder)} minChars={1} inputRef={inputRef} autoFocus={autoFocus} disabled={disabled}
                 search={(t) => api(`/wholesale/products/lookup?q=${encodeURIComponent(t)}`)} onPick={onPick}
                 onEnter={async (typed, rows) => { const exact = rows.find((r) => r.barcode === typed || r.sku === typed || r.matched_unit); if (exact) { onPick(exact); return true; } return false; }}
                 render={(p) => (
@@ -181,16 +193,18 @@ export const ProductPicker = ({ onPick, placeholder = 'Scan a barcode or search 
                   </>
                 )} />
 );
+};
 
 /** A warehouse chooser; with a single warehouse it renders nothing but still reports it. */
 export const WarehouseSelect = ({ value, onChange, allowAll = false, label = 'Warehouse', id = 'warehouse', required, className = '' }) => {
+  const tr = useT();
   const rows = useWarehouses();
   useEffect(() => { if (rows?.length && !allowAll && !value) onChange(String(rows[0].branch_id)); }, [rows]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!rows || (rows.length <= 1 && !allowAll)) return null;
   return (
-    <Field id={id} label={label}>
+    <Field id={id} label={tr(label)}>
       <Select id={id} value={value ?? ''} required={required} onChange={(e) => onChange(e.target.value)} className={className}>
-        {allowAll && <option value="">All warehouses</option>}
+        {allowAll && <option value="">{tr('All warehouses')}</option>}
         {rows.map((w) => <option key={w.branch_id} value={w.branch_id}>{w.name}</option>)}
       </Select>
     </Field>
@@ -205,13 +219,14 @@ const PRESETS = [
 ];
 
 export const DateRange = ({ from, to, onChange }) => {
+  const tr = useT();
   const today = todayIn();
   return (
     <div className="flex flex-wrap items-end gap-2">
-      <Field id="dr-from" label="From"><Input id="dr-from" type="date" value={from} max={to} onChange={(e) => onChange(e.target.value, to)} /></Field>
-      <Field id="dr-to" label="To"><Input id="dr-to" type="date" value={to} min={from} max={today} onChange={(e) => onChange(from, e.target.value)} /></Field>
+      <Field id="dr-from" label={tr('From')}><Input id="dr-from" type="date" value={from} max={to} onChange={(e) => onChange(e.target.value, to)} /></Field>
+      <Field id="dr-to" label={tr('To')}><Input id="dr-to" type="date" value={to} min={from} max={today} onChange={(e) => onChange(from, e.target.value)} /></Field>
       <div className="flex flex-wrap gap-1.5 pb-1">
-        {PRESETS.map(([k, label, fn]) => <button key={k} type="button" onClick={() => onChange(...fn(today))} className="rounded-full border border-line bg-surface px-2.5 py-1 text-caption font-medium text-ink-700 hover:border-line-strong">{label}</button>)}
+        {PRESETS.map(([k, label, fn]) => <button key={k} type="button" onClick={() => onChange(...fn(today))} className="rounded-full border border-line bg-surface px-2.5 py-1 text-caption font-medium text-ink-700 hover:border-line-strong">{tr(label)}</button>)}
       </div>
     </div>
   );
@@ -224,6 +239,7 @@ export const DateRange = ({ from, to, onChange }) => {
  * then import. `kind` is products | customers | suppliers.
  */
 export const CsvImportModal = ({ kind, title, onClose, onDone, allowUpdate = true, endpoint, template, extra, modes, initialMode, children }) => {
+  const tr = useT();
   const toast = useToast();
   const tpl = template || CSV_TEMPLATES[kind];
   const url = endpoint || `/wholesale/import/${kind}`;
@@ -247,9 +263,9 @@ export const CsvImportModal = ({ kind, title, onClose, onDone, allowUpdate = tru
     setFileName(file.name); setRows(null); setCheck(null); setError('');
     try {
       const parsed = await readTable(file);
-      if (!parsed.length) { setError('That file has no rows. The first line must be the column names.'); return; }
+      if (!parsed.length) { setError(tr('That file has no rows. The first line must be the column names.')); return; }
       setRows(parsed); await dryRun(parsed, mode);
-    } catch { setError('Could not read that file. Use a CSV (comma separated) or an Excel .xlsx file, with the column names in the first row.'); }
+    } catch { setError(tr('Could not read that file. Use a CSV (comma separated) or an Excel .xlsx file, with the column names in the first row.')); }
   };
 
   const apply = async () => {
@@ -264,37 +280,37 @@ export const CsvImportModal = ({ kind, title, onClose, onDone, allowUpdate = tru
 
   const bad = check?.total_errors > 0;
   return (
-    <Modal title={title} onClose={onClose} wide footer={null}>
+    <Modal title={tr(title)} onClose={onClose} wide footer={null}>
       <div className="space-y-4">
-        <p className="text-small text-ink-500">Use a CSV or Excel (.xlsx) file whose first row is the column names. <button type="button" onClick={() => downloadTemplate(template || kind)} className="font-semibold text-brand-600 hover:underline"><Download aria-hidden="true" className="mr-1 inline h-3.5 w-3.5" />Download a template</button></p>
+        <p className="text-small text-ink-500">Use a CSV or Excel (.xlsx) file whose first row is the column names. <button type="button" onClick={() => downloadTemplate(template || kind)} className="font-semibold text-brand-600 hover:underline"><Download aria-hidden="true" className="mr-1 inline h-3.5 w-3.5" />{tr('Download a template')}</button></p>
         {children}
-        {modes && <Field id="imp-mode" label="What the file means"><Select id="imp-mode" value={mode} onChange={(e) => { setMode(e.target.value); if (rows) dryRun(rows, e.target.value); }}>{modes.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}</Select></Field>}
+        {modes && <Field id="imp-mode" label={tr('What the file means')}><Select id="imp-mode" value={mode} onChange={(e) => { setMode(e.target.value); if (rows) dryRun(rows, e.target.value); }}>{modes.map((m) => <option key={m.value} value={m.value}>{tr(m.label)}</option>)}</Select></Field>}
         <label className="flex cursor-pointer items-center gap-3 rounded-(--radius-card) border border-dashed border-line-strong bg-surface-2 px-4 py-5 hover:border-brand-500">
           <Upload aria-hidden="true" className="h-5 w-5 text-ink-400" />
-          <span className="text-small text-ink-700">{fileName ? <><strong className="font-semibold text-ink-900">{fileName}</strong> · {rows?.length ?? 0} rows</> : 'Choose a CSV or Excel file'}</span>
+          <span className="text-small text-ink-700">{fileName ? <><strong className="font-semibold text-ink-900">{fileName}</strong> · {rows?.length ?? 0} rows</> : tr('Choose a CSV or Excel file')}</span>
           <input type="file" accept=".csv,text/csv,.xlsx" className="sr-only" onChange={(e) => onFile(e.target.files?.[0])} />
         </label>
         {allowUpdate && (
           <label className="flex items-center gap-2 text-small text-ink-700">
             <input type="checkbox" checked={mode === 'upsert'} onChange={(e) => { const m = e.target.checked ? 'upsert' : 'create'; setMode(m); if (rows) dryRun(rows, m); }} className="h-4 w-4 accent-(--color-brand-500)" />
-            Update items that already exist (matched by SKU)
+           {tr('Update items that already exist (matched by SKU)')})
           </label>
         )}
         <Alert>{error}</Alert>
-        {unknown.length > 0 && <p className="rounded-lg bg-warning/10 px-3 py-2 text-caption text-warning">These columns are not recognised and will be ignored: {unknown.join(', ')}</p>}
+        {unknown.length > 0 && <p className="rounded-lg bg-warning/10 px-3 py-2 text-caption text-warning">{tr('These columns are not recognised and will be ignored: {{v}}', { v: unknown.join(', ') })}</p>}
         {check && (
           <div className={`rounded-(--radius-card) border px-4 py-3 text-small ${bad ? 'border-danger/30 bg-danger/5' : 'border-success/30 bg-success/5'}`}>
-            {bad ? <p className="font-semibold text-danger">{check.total_errors} row{check.total_errors === 1 ? ' has' : 's have'} a problem. Fix them in the file and choose it again.</p>
+            {bad ? <p className="font-semibold text-danger">{check.total_errors} row{check.total_errors === 1 ? ' has' : tr('s have')} a problem. Fix them in the file and choose it again.</p>
               : <p className="flex items-center gap-2 font-semibold text-success"><Check aria-hidden="true" className="h-4 w-4" />Ready: {[check.to_create && `${check.to_create} to add`, check.to_update && `${check.to_update} to ${check.to_create === undefined ? 'change' : 'update'}`].filter(Boolean).join(', ') || 'nothing to change'}.</p>}
             {bad && (
               <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto text-caption text-ink-700">
-                {check.errors.map((e, i) => <li key={i}><strong className="font-semibold">Row {e.row}:</strong> {e.message}</li>)}
+                {check.errors.map((e, i) => <li key={i}><strong className="font-semibold">{tr('Row {{row}}:', { row: e.row })}</strong> {e.message}</li>)}
               </ul>
             )}
           </div>
         )}
         <div className="flex justify-end gap-2 border-t border-line pt-4">
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose}>{tr('Cancel')}</Button>
           <Button onClick={apply} loading={busy} disabled={!rows || !check || bad}>Import {rows ? `${rows.length} rows` : ''}</Button>
         </div>
       </div>

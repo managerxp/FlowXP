@@ -1,3 +1,4 @@
+import { formatDate } from '../../lib/display.ts';
 import { useRef, useState } from 'react';
 import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -45,7 +46,7 @@ export default function TransferScreen() {
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
             <View style={{ paddingHorizontal: 16, gap: 4 }}>
               <Text style={{ fontSize: 18, fontWeight: '700', color: x.status === 'RECEIVED' ? color.ok : x.status === 'CANCELLED' ? color.danger : color.ink }}>{STATUS_LABEL[x.status]}</Text>
-              <Soft>{[x.vehicle_no ? `Vehicle ${x.vehicle_no}` : null, x.dispatched_at ? `sent ${String(x.dispatched_at).slice(0, 10)}` : null, x.received_at ? `received ${String(x.received_at).slice(0, 10)}` : null, x.notes].filter(Boolean).join(' · ')}</Soft>
+              <Soft>{[x.vehicle_no ? `Vehicle ${x.vehicle_no}` : null, x.dispatched_at ? `sent ${formatDate(x.dispatched_at)}` : null, x.received_at ? `received ${formatDate(x.received_at)}` : null, x.notes].filter(Boolean).join(' · ')}</Soft>
             </View>
 
             {!receiving ? (
@@ -69,7 +70,7 @@ export default function TransferScreen() {
                 <SectionTitle>What arrived?</SectionTitle>
                 <Soft style={{ paddingHorizontal: 16 }}>Everything is filled in as arrived in good condition. Change only what is different.</Soft>
                 {receiving.map((l) => (
-                  <View key={l.item.item_id} style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: shortBy(l) > 0 || Number(l.damaged) > 0 ? '#fff7ed' : color.card, marginTop: 8 }}>
+                  <View key={l.item.item_id} style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: shortBy(l) > 0 || Number(l.damaged) > 0 ? color.warnBg : color.card, marginTop: 8 }}>
                     <Text style={{ fontSize: 16, color: color.ink }}>{l.item.product}</Text>
                     <Soft>{`${qty(l.item.qty_base)} ${l.item.unit ?? ''} were sent`}</Soft>
                     <View style={{ flexDirection: 'row', gap: 12 }}>

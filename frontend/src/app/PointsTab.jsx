@@ -107,6 +107,15 @@ const PointsTab = () => {
         <label className="flex items-center gap-3 text-sm font-medium text-ink-900">
           <input type="checkbox" checked={form.is_enabled} onChange={(e) => setForm((f) => ({ ...f, is_enabled: e.target.checked }))} /> Loyalty points are on
         </label>
+        <div className="rounded-(--radius-card) border border-brand-100 bg-brand-50 p-4 text-small text-ink-700">
+          <p className="font-semibold text-ink-900">How it works for your customer</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>A {formatCurrency(1000)} bill earns <strong>{Math.floor(Number(form.earn_per_100) * 10) || 0} points</strong>.</li>
+            <li>100 points are worth <strong>{formatCurrency(Number(form.point_value) * 100 || 0)}</strong> off a later bill.</li>
+            <li>They can spend points once they have <strong>{form.min_redeem_points || 0}</strong>, and points can pay up to <strong>{form.max_redeem_pct || 0}%</strong> of one bill.</li>
+          </ul>
+          <p className="mt-2 text-caption text-ink-500">Change the numbers below and this updates. Most shops keep the starting numbers.</p>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="earn" label={`Points earned per ${formatCurrency(100)} paid`} hint={`A ${formatCurrency(500)} bill earns ${example} points.`}><Input id="earn" type="number" step="0.5" min="0.5" value={form.earn_per_100} onChange={set('earn_per_100')} /></Field>
           <Field id="val" label="One point is worth (in rupees)" hint="What a customer saves per point spent."><Input id="val" type="number" step="0.25" min="0.01" value={form.point_value} onChange={set('point_value')} /></Field>

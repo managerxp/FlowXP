@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { PRODUCT_TYPES, money, qs, qty, useDebounced, useLoad } from '../../lib/pharmacy.js';
 import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Textarea, Th, Thead, Tr, useDialog, useToast } from '../../components/ui.jsx';
 import { Chips, NumberField, Pager, Segmented, Toggle, Toolbar } from './parts.jsx';
+import { T, useT } from '../../i18n/useT.js';
 
 const blank = {
   name: '', sku: '', barcode: '', unit: 'pcs', category_id: '', description: '', hsn_sac: '', tax_rate: '12',
@@ -23,6 +24,7 @@ const fromProduct = (p) => ({ ...blank, ...Object.fromEntries(Object.keys(blank)
   tax_rate: String(p.tax_rate ?? ''), category_id: p.category_id ?? '', warranty_months: p.warranty_months ?? '' });
 
 const ProductForm = ({ product, onClose, onSaved }) => {
+  const tr = useT();
   const toast = useToast();
   const dialog = useDialog();
   const editing = Boolean(product?.product_id);
@@ -34,7 +36,7 @@ const ProductForm = ({ product, onClose, onSaved }) => {
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e?.target ? e.target.value : e }));
 
   const addCategory = async () => {
-    const name = await dialog.prompt({ title: 'New category', label: 'Category name', confirmLabel: 'Add category' });
+    const name = await dialog.prompt({ title: tr('New category'), label: tr('Category name'), confirmLabel: tr('Add category') });
     if (!name?.trim()) return;
     try { const c = await api('/pharmacy/categories', { method: 'POST', body: { name: name.trim() } }); cats.reload(); setF((x) => ({ ...x, category_id: c.category_id })); }
     catch (e) { toast.error(e.message); }
@@ -55,64 +57,65 @@ const ProductForm = ({ product, onClose, onSaved }) => {
     };
     try {
       const saved = await api(editing ? `/pharmacy/products/${product.product_id}` : '/pharmacy/products', { method: editing ? 'PUT' : 'POST', body });
-      toast.success(editing ? 'Product updated' : `${saved.name} added`); onSaved(saved);
+      toast.success(editing ? tr('Product updated') : `${saved.name} added`); onSaved(saved);
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   };
 
   return (
-    <Modal title={editing ? 'Edit product' : 'Add a product'} onClose={onClose} wide>
+    <Modal title={editing ? tr('Edit product') : tr('Add a product')} onClose={onClose} wide>
       <form onSubmit={submit} className="space-y-5">
         <Alert>{error}</Alert>
-        <Segmented label="Section" value={tab} onChange={setTab} options={[{ value: 'basics', label: 'Basics' }, { value: 'pharmacy', label: 'Pharmacy details' }, { value: 'stock', label: 'Pricing & stock' }]} />
+        <Segmented label={tr('Section')} value={tab} onChange={setTab} options={[{ value: 'basics', label: T('Basics') }, { value: 'pharmacy', label: T('Pharmacy details') }, { value: 'stock', label: T('Pricing & stock') }]} />
         {tab === 'basics' && (
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2"><Field id="pf-name" label="Product name"><Input id="pf-name" value={f.name} onChange={set('name')} required autoFocus maxLength={160} /></Field></div>
-            <Field id="pf-sku" label="SKU"><Input id="pf-sku" value={f.sku} onChange={set('sku')} maxLength={64} /></Field>
-            <Field id="pf-barcode" label="Barcode"><Input id="pf-barcode" value={f.barcode} onChange={set('barcode')} maxLength={64} /></Field>
-            <Field id="pf-cat" label="Category"><div className="flex gap-2"><Select id="pf-cat" value={f.category_id} onChange={set('category_id')}><option value="">None</option>{(cats.data || []).map((c) => <option key={c.category_id} value={c.category_id}>{c.name}</option>)}</Select><Button type="button" variant="secondary" onClick={addCategory} aria-label="Add a category"><Plus className="h-4 w-4" /></Button></div></Field>
-            <Field id="pf-unit" label="Unit"><Input id="pf-unit" value={f.unit} onChange={set('unit')} required maxLength={24} /></Field>
-            <Field id="pf-hsn" label="HSN/SAC code"><Input id="pf-hsn" value={f.hsn_sac} onChange={set('hsn_sac')} maxLength={16} /></Field>
-            <NumberField id="pf-tax" label="GST rate" suffix="%" value={f.tax_rate} onChange={set('tax_rate')} />
-            <div className="sm:col-span-2"><Field id="pf-desc" label="Description"><Textarea id="pf-desc" rows={2} value={f.description} onChange={set('description')} maxLength={1000} /></Field></div>
+            <div className="sm:col-span-2"><Field id="pf-name" label={tr('Product name')}><Input id="pf-name" value={f.name} onChange={set('name')} required autoFocus maxLength={160} /></Field></div>
+            <Field id="pf-sku" label={tr('SKU')}><Input id="pf-sku" value={f.sku} onChange={set('sku')} maxLength={64} /></Field>
+            <Field id="pf-barcode" label={tr('Barcode')}><Input id="pf-barcode" value={f.barcode} onChange={set('barcode')} maxLength={64} /></Field>
+            <Field id="pf-cat" label={tr('Category')}><div className="flex gap-2"><Select id="pf-cat" value={f.category_id} onChange={set('category_id')}><option value="">{tr('None')}</option>{(cats.data || []).map((c) => <option key={c.category_id} value={c.category_id}>{c.name}</option>)}</Select><Button type="button" variant="secondary" onClick={addCategory} aria-label={tr('Add a category')}><Plus className="h-4 w-4" /></Button></div></Field>
+            <Field id="pf-unit" label={tr('Unit')}><Input id="pf-unit" value={f.unit} onChange={set('unit')} required maxLength={24} /></Field>
+            <Field id="pf-hsn" label={tr('HSN/SAC code')}><Input id="pf-hsn" value={f.hsn_sac} onChange={set('hsn_sac')} maxLength={16} /></Field>
+            <NumberField id="pf-tax" label={tr('GST rate')} suffix="%" value={f.tax_rate} onChange={set('tax_rate')} />
+            <div className="sm:col-span-2"><Field id="pf-desc" label={tr('Description')}><Textarea id="pf-desc" rows={2} value={f.description} onChange={set('description')} maxLength={1000} /></Field></div>
           </div>
         )}
         {tab === 'pharmacy' && (
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="pf-type" label="Product type"><Select id="pf-type" value={f.product_type} onChange={set('product_type')}>{Object.entries(PRODUCT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
-            <Field id="pf-mfr" label="Manufacturer"><Input id="pf-mfr" value={f.manufacturer} onChange={set('manufacturer')} maxLength={120} /></Field>
-            <Field id="pf-strength" label="Strength" hint="500mg, 10ml..."><Input id="pf-strength" value={f.strength} onChange={set('strength')} maxLength={40} /></Field>
-            <Field id="pf-dosage" label="Dosage form" hint="Tablet, syrup, injection..."><Input id="pf-dosage" value={f.dosage_form} onChange={set('dosage_form')} maxLength={40} /></Field>
-            <Field id="pf-schedule" label="Schedule" hint="H, H1, X..."><Input id="pf-schedule" value={f.schedule_class} onChange={set('schedule_class')} maxLength={8} /></Field>
-            <div className="sm:col-span-2"><Field id="pf-salt" label="Salt composition"><Input id="pf-salt" value={f.salt_composition} onChange={set('salt_composition')} maxLength={300} /></Field></div>
+            <Field id="pf-type" label={tr('Product type')}><Select id="pf-type" value={f.product_type} onChange={set('product_type')}>{Object.entries(PRODUCT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
+            <Field id="pf-mfr" label={tr('Manufacturer')}><Input id="pf-mfr" value={f.manufacturer} onChange={set('manufacturer')} maxLength={120} /></Field>
+            <Field id="pf-strength" label={tr('Strength')} hint={tr('500mg, 10ml...')}><Input id="pf-strength" value={f.strength} onChange={set('strength')} maxLength={40} /></Field>
+            <Field id="pf-dosage" label={tr('Dosage form')} hint={tr('Tablet, syrup, injection...')}><Input id="pf-dosage" value={f.dosage_form} onChange={set('dosage_form')} maxLength={40} /></Field>
+            <Field id="pf-schedule" label={tr('Schedule')} hint="H, H1, X..."><Input id="pf-schedule" value={f.schedule_class} onChange={set('schedule_class')} maxLength={8} /></Field>
+            <div className="sm:col-span-2"><Field id="pf-salt" label={tr('Salt composition')}><Input id="pf-salt" value={f.salt_composition} onChange={set('salt_composition')} maxLength={300} /></Field></div>
             <div className="sm:col-span-2 space-y-3 border-t border-line pt-4">
-              <Toggle id="pf-batch" checked={f.batch_tracking} onChange={(v) => setF((x) => ({ ...x, batch_tracking: v }))} label="Batch tracked" hint="Stock is received and sold against batch numbers" />
-              <Toggle id="pf-expiry" checked={f.expiry_tracking} onChange={(v) => setF((x) => ({ ...x, expiry_tracking: v, batch_tracking: v || x.batch_tracking }))} label="Expiry tracked" hint="Every batch needs an expiry date" />
-              <Toggle id="pf-fefo" checked={f.fefo_required} onChange={(v) => setF((x) => ({ ...x, fefo_required: v }))} label="First-expiry-first-out" hint="Selling picks the soonest-expiring batch automatically" />
-              <Toggle id="pf-serial" checked={f.serial_tracking} onChange={(v) => setF((x) => ({ ...x, serial_tracking: v }))} label="Serial tracked" hint="One serial number per unit (devices, equipment)" />
-              <Toggle id="pf-rx" checked={f.prescription_required} onChange={(v) => setF((x) => ({ ...x, prescription_required: v }))} label="Prescription required" />
-              <Toggle id="pf-warranty" checked={f.warranty_applicable} onChange={(v) => setF((x) => ({ ...x, warranty_applicable: v }))} label="Carries a warranty" />
-              {f.warranty_applicable && <NumberField id="pf-warranty-m" label="Warranty length" suffix="months" min={1} step={1} value={f.warranty_months} onChange={set('warranty_months')} />}
-              <Toggle id="pf-service" checked={f.service_trackable} onChange={(v) => setF((x) => ({ ...x, service_trackable: v }))} label="Service history tracked" />
+              <Toggle id="pf-batch" checked={f.batch_tracking} onChange={(v) => setF((x) => ({ ...x, batch_tracking: v }))} label={tr('Batch tracked')} hint={tr('Stock is received and sold against batch numbers')} />
+              <Toggle id="pf-expiry" checked={f.expiry_tracking} onChange={(v) => setF((x) => ({ ...x, expiry_tracking: v, batch_tracking: v || x.batch_tracking }))} label={tr('Expiry tracked')} hint={tr('Every batch needs an expiry date')} />
+              <Toggle id="pf-fefo" checked={f.fefo_required} onChange={(v) => setF((x) => ({ ...x, fefo_required: v }))} label={tr('First-expiry-first-out')} hint={tr('Selling picks the soonest-expiring batch automatically')} />
+              <Toggle id="pf-serial" checked={f.serial_tracking} onChange={(v) => setF((x) => ({ ...x, serial_tracking: v }))} label={tr('Serial tracked')} hint={tr('One serial number per unit (devices, equipment)')} />
+              <Toggle id="pf-rx" checked={f.prescription_required} onChange={(v) => setF((x) => ({ ...x, prescription_required: v }))} label={tr('Prescription required')} />
+              <Toggle id="pf-warranty" checked={f.warranty_applicable} onChange={(v) => setF((x) => ({ ...x, warranty_applicable: v }))} label={tr('Carries a warranty')} />
+              {f.warranty_applicable && <NumberField id="pf-warranty-m" label={tr('Warranty length')} suffix="months" min={1} step={1} value={f.warranty_months} onChange={set('warranty_months')} />}
+              <Toggle id="pf-service" checked={f.service_trackable} onChange={(v) => setF((x) => ({ ...x, service_trackable: v }))} label={tr('Service history tracked')} />
             </div>
           </div>
         )}
         {tab === 'stock' && (
           <div className="grid gap-4 sm:grid-cols-2">
-            <NumberField id="pf-mrp" label="MRP" prefix="₹" value={f.mrp} onChange={set('mrp')} />
-            <NumberField id="pf-sell" label="Selling price" prefix="₹" required value={f.selling_price} onChange={set('selling_price')} />
-            <NumberField id="pf-cost" label="Purchase price" prefix="₹" value={f.purchase_price} onChange={set('purchase_price')} />
-            <NumberField id="pf-reorder" label="Reorder level" value={f.reorder_level} onChange={set('reorder_level')} />
-            <Field id="pf-status" label="Status"><Select id="pf-status" value={f.status} onChange={set('status')}><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></Select></Field>
-            <Toggle id="pf-track" checked={f.track_inventory} onChange={(v) => setF((x) => ({ ...x, track_inventory: v }))} label="Track stock for this product" />
+            <NumberField id="pf-mrp" label={tr('MRP')} prefix="₹" value={f.mrp} onChange={set('mrp')} />
+            <NumberField id="pf-sell" label={tr('Selling price')} prefix="₹" required value={f.selling_price} onChange={set('selling_price')} />
+            <NumberField id="pf-cost" label={tr('Purchase price')} prefix="₹" value={f.purchase_price} onChange={set('purchase_price')} />
+            <NumberField id="pf-reorder" label={tr('Reorder level')} value={f.reorder_level} onChange={set('reorder_level')} />
+            <Field id="pf-status" label={tr('Status')}><Select id="pf-status" value={f.status} onChange={set('status')}><option value="ACTIVE">{tr('Active')}</option><option value="ARCHIVED">{tr('Archived')}</option></Select></Field>
+            <Toggle id="pf-track" checked={f.track_inventory} onChange={(v) => setF((x) => ({ ...x, track_inventory: v }))} label={tr('Track stock for this product')} />
           </div>
         )}
-        <div className="flex justify-end gap-2 border-t border-line pt-4"><Button type="button" variant="ghost" onClick={onClose}>Cancel</Button><Button type="submit" loading={busy}>{editing ? 'Save changes' : 'Add product'}</Button></div>
+        <div className="flex justify-end gap-2 border-t border-line pt-4"><Button type="button" variant="ghost" onClick={onClose}>{tr('Cancel')}</Button><Button type="submit" loading={busy}>{editing ? tr('Save changes') : tr('Add product')}</Button></div>
       </form>
     </Modal>
   );
 };
 
 const PharmacyProducts = () => {
+  const tr = useT();
   const { can } = useAuth();
   const [q, setQ] = useState('');
   const [type, setType] = useState('');
@@ -126,25 +129,25 @@ const PharmacyProducts = () => {
 
   return (
     <div>
-      <PageHeader title="Products" lead="Medicines, devices and everything else on your shelf."
-                  action={canEdit && <Button onClick={() => setAdding(true)}><Plus aria-hidden="true" className="h-4 w-4" />Add product</Button>} />
+      <PageHeader title={tr('Products')} lead={tr('Medicines, devices and everything else on your shelf.')}
+                  action={canEdit && <Button onClick={() => setAdding(true)}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add product')}</Button>} />
       <Toolbar>
-        <div className="w-full sm:w-72"><Input type="search" placeholder="Name, SKU, barcode, manufacturer or salt" aria-label="Search products" value={q} onChange={(e) => { setQ(e.target.value); setOffset(0); }} /></div>
-        <Chips label="Type" value={type} onChange={(v) => { setType(v); setOffset(0); }} options={[{ value: '', label: 'All types' }, ...Object.entries(PRODUCT_TYPES).map(([k, v]) => ({ value: k, label: v }))]} />
+        <div className="w-full sm:w-72"><Input type="search" placeholder={tr('Name, SKU, barcode, manufacturer or salt')} aria-label={tr('Search products')} value={q} onChange={(e) => { setQ(e.target.value); setOffset(0); }} /></div>
+        <Chips label={tr('Type')} value={type} onChange={(v) => { setType(v); setOffset(0); }} options={[{ value: '', label: T('All types') }, ...Object.entries(PRODUCT_TYPES).map(([k, v]) => ({ value: k, label: v }))]} />
       </Toolbar>
-      <ListState loading={loading && !data} error={error} empty={data?.length === 0} emptyIcon={PillIcon} emptyLabel="No products yet"
+      <ListState loading={loading && !data} error={error} empty={data?.length === 0} emptyIcon={PillIcon} emptyLabel={tr('No products yet')}
                  emptyBody={term ? 'Nothing matches that search.' : 'Add what you stock and sell.'}
-                 emptyAction={canEdit && !term ? <Button onClick={() => setAdding(true)}>Add product</Button> : undefined} />
+                 emptyAction={canEdit && !term ? <Button onClick={() => setAdding(true)}>{tr('Add product')}</Button> : undefined} />
       {data?.length > 0 && (
         <>
-          <Table><Thead><Th>Product</Th><Th>Type</Th><Th className="text-right">Price</Th><Th className="text-right">Stock</Th><Th>Tracking</Th></Thead>
+          <Table><Thead><Th>{tr('Product')}</Th><Th>{tr('Type')}</Th><Th className="text-right">{tr('Price')}</Th><Th className="text-right">{tr('Stock')}</Th><Th>{tr('Tracking')}</Th></Thead>
             <tbody>{data.map((p) => (
               <Tr key={p.product_id} onClick={() => setEditing(p)}>
                 <Td><span className="font-medium">{p.name}</span><span className="block text-caption text-ink-500">{[p.sku, p.manufacturer, p.strength].filter(Boolean).join(' · ')}</span></Td>
                 <Td className="text-ink-500">{PRODUCT_TYPES[p.product_type] || p.product_type}</Td>
                 <Td className="text-right tabular">{money(p.selling_price)}</Td>
                 <Td className={`text-right tabular ${p.low ? 'font-semibold text-warning' : ''}`}>{p.track_inventory ? `${qty(p.available)} ${p.unit}` : '—'}</Td>
-                <Td><div className="flex flex-wrap gap-1">{p.batch_tracking && <Badge tone="brand">Batch</Badge>}{p.expiry_tracking && <Badge tone="brand">Expiry</Badge>}{p.prescription_required && <Badge tone="warning">Rx</Badge>}{p.status === 'ARCHIVED' && <Badge>Archived</Badge>}</div></Td>
+                <Td><div className="flex flex-wrap gap-1">{p.batch_tracking && <Badge tone="brand">{tr('Batch')}</Badge>}{p.expiry_tracking && <Badge tone="brand">{tr('Expiry')}</Badge>}{p.prescription_required && <Badge tone="warning">{tr('Rx')}</Badge>}{p.status === 'ARCHIVED' && <Badge>{tr('Archived')}</Badge>}</div></Td>
               </Tr>
             ))}</tbody>
           </Table>

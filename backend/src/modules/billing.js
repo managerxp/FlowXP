@@ -15,6 +15,7 @@
  * with the HTTP status already attached, so either caller can translate them
  * the same way.
  */
+import { cessOn, levyOn, withGstDefaults } from './gstOptions.js';
 import { offlineInfo } from '../utils/offlineNote.js';
 import { recordAudit, recordEvent } from './events.js';
 import { computeLineTax, isInterState, sumLines } from './tax.js';
@@ -31,12 +32,15 @@ import { consumptionPerUnit, loadRecipes } from './recipes.js';
 import { comboBlocker, comboConsumption, loadCombos } from './combos.js';
 import { afterBill } from './messaging/index.js';
 import { PointsError, addEntry, earnFor, getPoints, redemption, standing, tierFor } from './points.js';
+import { spend as spendWallet } from './gaming/wallet.js';
+import { checkCredit as partsCredit, fulfilForSale, reservedMap, tradePrices } from './autoparts/sales.js';
 
 export class BillingError extends Error {
-  constructor(status, message) {
+  constructor(status, message, extra = {}) {
     super(message);
     this.name = 'BillingError';
     this.status = status;
+    if (extra.code) this.code = extra.code;
   }
 }
 
@@ -66,7 +70,7 @@ export const nextInvoiceNumber = async (client, businessId, branchId) => {
     return `${own.invoice_prefix}-${String(own.invoice_next_number).padStart(4, '0')}`;
   }
   const { rows } = await client.query(
-    `SELECT invoice_prefix, invoice_next_number FROM businesses WHERE business_id = $1 FOR UPDATE`,
+    `SELECT invoice_prefix, invoice_next_number FROM businesses WHERE business_id = $1 FOR NO KEY UPDATE`,
     [businessId]
   );
   const { invoice_prefix: prefix, invoice_next_number: n } = rows[0];
@@ -86,6 +90,11 @@ export const asInvoice = (row) => ({
   sgst: toRupees(row.sgst_paise),
   igst: toRupees(row.igst_paise),
   tax: toRupees(row.tax_paise),
+  cess: toRupees(row.cess_paise || 0),
+  tcs: toRupees(row.tcs_paise || 0),
+  tds: toRupees(row.tds_paise || 0),
+  reverse_charge: Boolean(row.reverse_charge),
+  bill_of_supply: Boolean(row.bill_of_supply),
   total: toRupees(row.total_paise),
   amount_paid: toRupees(row.amount_paid_paise),
   balance_due: toRupees(row.balance_due_paise),
@@ -163,14 +172,26 @@ export const plannedPayments = (input, totalPaise) => {
   return [];
 };
 
+/* compensation cess on a line's taxable value, added to the line (the GST figures stay as they were) */
+const withCess = (tax, rate) => {
+  const cess = cessOn(tax.taxable_paise, rate, true);
+  return { ...tax, cess_paise: cess, line_total_paise: tax.line_total_paise + cess };
+};
+
 export const createInvoiceInTransaction = async (client, tenant, userId, input) => {
   const items = Array.isArray(input.items) ? input.items : [];
   if (!items.length) throw new BillingError(400, 'Add at least one item');
 
   const business = (await client.query(
-    `SELECT gst_enabled, state, currency, timezone, round_off_enabled FROM businesses WHERE business_id = $1`,
+    `SELECT gst_enabled, state, currency, timezone, round_off_enabled, gst_settings FROM businesses WHERE business_id = $1`,
     [tenant.businessId]
   )).rows[0];
+
+  // the GST options the owner switched on (modules/gstOptions.js); composite and cess only apply to a registered business
+  const gstOpts = withGstDefaults(business.gst_settings);
+  const composite = Boolean(business.gst_enabled && gstOpts.composite);
+  const taxOn = Boolean(business.gst_enabled) && !composite;   // a composite dealer charges no tax: its bills are Bills of Supply
+  const cessOpt = taxOn && gstOpts.cess;
 
   let customer = null;
   if (input.customerId) {
@@ -204,7 +225,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   const products = new Map();
   if (productIds.length) {
     const { rows } = await client.query(
-      `SELECT product_id, name, selling_price_paise, purchase_price_paise, tax_rate, track_inventory, current_stock, status, category_id
+      `SELECT product_id, name, selling_price_paise, purchase_price_paise, tax_rate, cess_rate, track_inventory, current_stock, status, category_id
        FROM products WHERE business_id = $1 AND product_id = ANY($2::int[]) ORDER BY product_id FOR UPDATE`,
       [tenant.businessId, productIds]
     );
@@ -213,6 +234,10 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   // What each dish/item has at THIS outlet (the products row only holds the business total).
   const outletStock = await stockAt(client, tenant.branchId, productIds);
   const outletSettings = await outletSettingsFor(client, tenant.branchId, productIds);
+  // a parts shop: stock held for customers is not for sale to others, and a customer on a trade price list pays that price
+  const isParts = tenant.businessType === 'AUTO_PARTS';
+  const held = isParts ? await reservedMap(client, tenant.branchId, productIds, customer?.customer_id ?? null) : null;
+  const trade = isParts && customer ? await tradePrices(client, tenant.businessId, customer.customer_id, productIds) : new Map();
 
   // Combos sell as one line but use up their components (stock and recipes).
   const combos = await loadCombos(client, tenant.businessId, productIds);
@@ -237,12 +262,16 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       // a line sold in a larger unit (a carton of 24 boxes) moves `unit_factor` times as much stock as its quantity
       const factor = raw.unit_factor != null ? Number(raw.unit_factor) : 1;
       if (!Number.isFinite(factor) || factor <= 0) throw new BillingError(400, 'The unit conversion must be above zero');
+      if (isParts && factor !== 1) throw new BillingError(400, `${product.name}: parts are sold by the piece`);
       stockFactor = factor;
-      if (product.track_inventory && !input.allowNegativeStock && outletStock.get(product.product_id) < quantity * factor - 1e-9) {
-        throw new BillingError(409, `Not enough stock for ${product.name} (${outletStock.get(product.product_id)} left here)`);
+      const free = held ? outletStock.get(product.product_id) - Math.max(0, held.get(product.product_id).reserved - held.get(product.product_id).own) : outletStock.get(product.product_id);
+      if (product.track_inventory && !input.allowNegativeStock && free < quantity * factor - 1e-9) {
+        throw new BillingError(409, held
+          ? `Not enough stock for ${product.name} (${Math.max(0, Math.round(free * 1000) / 1000)} free to sell here${held.get(product.product_id).reserved > held.get(product.product_id).own ? ', the rest is held for other customers' : ''})`
+          : `Not enough stock for ${product.name} (${outletStock.get(product.product_id)} left here)`);
       }
       description = raw.description || product.name;
-      unitPricePaise = raw.unit_price != null ? toPaise(raw.unit_price) : (here?.price_paise ?? product.selling_price_paise);
+      unitPricePaise = raw.unit_price != null ? toPaise(raw.unit_price) : (trade.get(product.product_id) ?? here?.price_paise ?? product.selling_price_paise);
       if (unitPricePaise < 0) throw new BillingError(400, 'The price cannot be negative');
       // a price typed in below the catalogue price is a discount: it counts against the cap like one (a till that never types a price is unaffected)
       if (raw.unit_price != null) overrideCutPaise = Math.max(0, Number(here?.price_paise ?? product.selling_price_paise) - unitPricePaise);
@@ -308,14 +337,15 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       const free = Math.min(Math.round(freeQty * unitPricePaise), Math.max(0, gross - discountPaise));
       if (free > 0) { discountPaise += free; loyalty.applied = { amountPaise: free, item: product.name }; }
     }
-    const tax = computeLineTax({
+    const cessRate = cessOpt && product ? Number(product.cess_rate) : 0;
+    const tax = withCess(computeLineTax({
       quantity, unitPricePaise, discountPaise, taxRatePercent: taxRate,
-      gstEnabled: business.gst_enabled, interState, inclusive: input.taxInclusive === true
-    });
+      gstEnabled: taxOn, interState, inclusive: input.taxInclusive === true
+    }), cessRate);
 
     lines.push({
       product_id: product?.product_id || null, categoryId: product?.category_id ?? null, description, quantity, unitPricePaise,
-      discountPaise, taxRate, trackInventory: Boolean(product?.track_inventory), modifiers, consumption,
+      discountPaise, taxRate, cessRate, trackInventory: Boolean(product?.track_inventory), modifiers, consumption,
       unitName: raw.unit_name ? String(raw.unit_name).slice(0, 24) : null, stockFactor,
       fallbackCostPaise: product ? Math.round(Number(product.purchase_price_paise) * stockFactor) : 0, ...tax
     });
@@ -331,10 +361,10 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
         const line = lines[index];
         line.discountPaise += r.discountPaise;
         line.promo = { id: r.promo_id, discountPaise: r.discountPaise };
-        Object.assign(line, computeLineTax({
+        Object.assign(line, withCess(computeLineTax({
           quantity: line.quantity, unitPricePaise: line.unitPricePaise, discountPaise: line.discountPaise, taxRatePercent: line.taxRate,
-          gstEnabled: business.gst_enabled, interState, inclusive: input.taxInclusive === true
-        }));
+          gstEnabled: taxOn, interState, inclusive: input.taxInclusive === true
+        }), line.cessRate));
       }
     }
   }
@@ -397,6 +427,13 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     invoiceDiscountPaise += pointsDiscountPaise;
   }
   let finalTotalPaise = Math.max(0, totals.total_paise - invoiceDiscountPaise);
+  /* TCS is added to the bill and TDS is held back by the customer: each is a share of the bill's taxable value (after the bill's own discount).
+     Only when the owner switched the option on AND the till asks for it on this bill. */
+  const taxableAfterDiscount = Math.max(0, totals.subtotal_paise - invoiceDiscountPaise);
+  const tcsPaise = business.gst_enabled && gstOpts.tcs && input.tcs === true ? levyOn(taxableAfterDiscount, gstOpts.tcs_rate) : 0;
+  const tdsPaise = business.gst_enabled && gstOpts.tds && input.tds === true ? levyOn(taxableAfterDiscount, gstOpts.tds_rate) : 0;
+  finalTotalPaise += tcsPaise;
+  const cessPaise = lines.reduce((sum, l) => sum + (l.cess_paise || 0), 0);
   // Cash round-off: the bill is rounded to the nearest rupee; the difference is kept on the invoice (never taxed).
   let roundOffPaise = 0;
   if (business.round_off_enabled && finalTotalPaise > 0) {
@@ -423,11 +460,17 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     creditTaken = { cn, amountPaise: Math.min(available, finalTotalPaise) };
   }
   const takenPayments = [
+    ...(tdsPaise > 0 ? [{ method: 'OTHER', amountPaise: Math.min(tdsPaise, finalTotalPaise), reference: paymentReference('TDS deducted by customer') }] : []),
     ...(creditTaken && creditTaken.amountPaise > 0 ? [{ method: 'OTHER', amountPaise: creditTaken.amountPaise, reference: paymentReference(`Exchange ${creditTaken.cn.cn_number}`) }] : []),
-    ...plannedPayments(input, finalTotalPaise - (creditTaken?.amountPaise || 0))
+    ...plannedPayments(input, finalTotalPaise - (creditTaken?.amountPaise || 0) - Math.min(tdsPaise, finalTotalPaise))
   ];
   const paidPaise = takenPayments.reduce((s, p) => s + p.amountPaise, 0);
   const balancePaise = finalTotalPaise - paidPaise;
+  if (isParts && customer && balancePaise > 0) {
+    // a garage account: the part of the bill left unpaid is credit, and the customer's limit applies (WARN is shown by the till beforehand, BLOCK is refused here)
+    const credit = await partsCredit(client, tenant.businessId, customer.customer_id, balancePaise);
+    if (credit.level === 'BLOCK' && !input.creditOverride) throw new BillingError(409, credit.reasons[0], { code: 'CREDIT_LIMIT' });
+  }
 
   const invoiceNumber = await nextInvoiceNumber(client, tenant.businessId, tenant.branchId);
 
@@ -448,19 +491,26 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     ]
   )).rows[0];
 
+  if (cessPaise || tcsPaise || tdsPaise || composite || (gstOpts.reverse_charge && input.reverseCharge === true)) {
+    await client.query(`UPDATE invoices SET cess_paise = $2, tcs_paise = $3, tds_paise = $4, reverse_charge = $5, bill_of_supply = $6 WHERE invoice_id = $1`,
+      [invoice.invoice_id, cessPaise, tcsPaise, tdsPaise, Boolean(business.gst_enabled && gstOpts.reverse_charge && input.reverseCharge === true), composite]);
+    Object.assign(invoice, { cess_paise: cessPaise, tcs_paise: tcsPaise, tds_paise: tdsPaise, reverse_charge: Boolean(business.gst_enabled && gstOpts.reverse_charge && input.reverseCharge === true), bill_of_supply: composite });
+  }
+
   for (const line of lines) {
     await client.query(
       `INSERT INTO invoice_items
-         (invoice_id, product_id, description, quantity, unit_price_paise, discount_paise, tax_rate, tax_amount_paise, line_total_paise, modifiers, unit_cost_paise, unit_name, unit_factor, promo_id, promo_discount_paise)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+         (invoice_id, product_id, description, quantity, unit_price_paise, discount_paise, tax_rate, tax_amount_paise, line_total_paise, modifiers, unit_cost_paise, unit_name, unit_factor, promo_id, promo_discount_paise, cess_paise)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
       [invoice.invoice_id, line.product_id, line.description, line.quantity, line.unitPricePaise,
        line.discountPaise, line.taxRate, line.tax_paise, line.line_total_paise, JSON.stringify(line.modifiers), line.unitCostPaise, line.unitName, line.stockFactor,
-       line.promo?.id ?? null, line.promo?.discountPaise ?? 0]
+       line.promo?.id ?? null, line.promo?.discountPaise ?? 0, line.cess_paise || 0]
     );
 
     // stockHandledElsewhere: the goods are not in this outlet's stock (a distributor's van holds them), so selling them here must not take them out of it
     if (line.trackInventory && !input.stockHandledElsewhere) {
       const stockQty = Math.round(line.quantity * line.stockFactor * 1000) / 1000;
+      if (isParts && customer) await fulfilForSale(client, { branchId: tenant.branchId, customerId: customer.customer_id, productId: line.product_id, qty: stockQty });
       await moveStock(client, { businessId: tenant.businessId, branchId: tenant.branchId, productId: line.product_id, delta: -stockQty });
       await client.query(
         `INSERT INTO inventory_transactions (business_id, branch_id, product_id, transaction_type, quantity, reference_type, reference_id, created_by)
@@ -528,11 +578,20 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   }
 
   for (const p of takenPayments) {
-    await client.query(
+    const paymentId = (await client.query(
       `INSERT INTO payments (business_id, branch_id, invoice_id, customer_id, payment_method, amount_paise, reference_number, notes, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING payment_id`,
       [tenant.businessId, tenant.branchId, invoice.invoice_id, customer?.customer_id || null, p.method, p.amountPaise, p.reference, null, userId]
-    );
+    )).rows[0].payment_id;
+    // a gaming lounge's WALLET payment is the player's prepaid balance: it comes off the wallet in this same transaction, or the bill is refused
+    if (p.method === 'WALLET' && tenant.businessType === 'GAMING_CAFE') {
+      try {
+        await spendWallet(client, { businessId: tenant.businessId, customerId: customer?.customer_id || null, amountPaise: p.amountPaise, invoiceId: invoice.invoice_id, paymentId, userId });
+      } catch (error) {
+        if (error?.name === 'GamingError') throw new BillingError(error.status, error.message);
+        throw error;
+      }
+    }
   }
 
   return {

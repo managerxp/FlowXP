@@ -19,8 +19,8 @@ const POLL_MS = 8000;
 const UNDO_MS = 7000;
 const TONE: Record<Urgency, { bar: string; text: string; head: string; label: string }> = {
   ok: { bar: color.ok, text: color.ink, head: color.card, label: 'On time' },
-  warning: { bar: color.warn, text: color.warn, head: '#fffbeb', label: 'Nearly due' },
-  late: { bar: color.danger, text: color.danger, head: '#fef2f2', label: 'Late' }
+  warning: { bar: color.warn, text: color.warn, head: color.warnBg, label: 'Nearly due' },
+  late: { bar: color.danger, text: color.danger, head: color.dangerBg, label: 'Late' }
 };
 const COLUMNS: { id: Column; label: string }[] = [{ id: 'making', label: 'To make' }, { id: 'ready', label: 'Ready' }, { id: 'served', label: 'Served' }];
 const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -122,7 +122,7 @@ export default function Kitchen() {
     const away = t.table_name == null;
     return (
       <View accessibilityLabel={`${title}, ${notice ? 'do not make' : making ? tone.label : c}`} style={{ borderRadius: 12, borderWidth: rushed ? 3 : 1, borderColor: rushed || worst === 'late' ? color.danger : color.line, backgroundColor: color.card, overflow: 'hidden', marginBottom: 8 }}>
-        <View style={{ paddingHorizontal: 10, paddingVertical: 7, backgroundColor: rushed ? '#fef2f2' : making ? tone.head : c === 'ready' ? '#ecfdf5' : '#f1f5f9', gap: 2 }}>
+        <View style={{ paddingHorizontal: 10, paddingVertical: 7, backgroundColor: rushed ? color.dangerBg : making ? tone.head : c === 'ready' ? color.okBg : color.wash, gap: 2 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
             <Text style={{ fontSize: 17 * z, fontWeight: '800', color: color.ink, flexShrink: 1 }}>{title}</Text>
             {rushed ? <Text style={{ backgroundColor: color.danger, color: '#fff', fontWeight: '800', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>RUSH</Text> : null}
@@ -136,7 +136,7 @@ export default function Kitchen() {
           const u = urgencyOf(elapsed, i.expected_minutes);
           const due = c === 'making' && !i.cancelled ? dueText(elapsed, i.expected_minutes) : null;
           return (
-            <View key={i.order_item_id} style={{ paddingHorizontal: 10, paddingVertical: 6, borderTopWidth: 1, borderColor: color.line, backgroundColor: i.cancelled ? '#fef2f2' : color.card, gap: 4 }}>
+            <View key={i.order_item_id} style={{ paddingHorizontal: 10, paddingVertical: 6, borderTopWidth: 1, borderColor: color.line, backgroundColor: i.cancelled ? color.dangerBg : color.card, gap: 4 }}>
               <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
                 <Text style={{ fontSize: 18 * z, fontWeight: '800', color: i.cancelled ? color.danger : color.ink, minWidth: 30 * z }}>{qty(i.quantity)}×</Text>
                 <View style={{ flex: 1 }}>
@@ -256,4 +256,4 @@ export default function Kitchen() {
   );
 }
 
-const colTitle = { fontSize: 16, fontWeight: '700' as const, color: color.ink, paddingVertical: 8 };
+const colTitle = { fontSize: 16, fontWeight: '700' as const, get color() { return color.ink; }, paddingVertical: 8 };

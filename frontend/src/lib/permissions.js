@@ -11,13 +11,21 @@ export const ROLE_PERMISSIONS = {
   ADMIN: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
     'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds', 'appointments', 'staff_commission',
     'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
-    'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing', 'approvals', 'front_desk', 'housekeeping', 'night_audit', 'hotel_setup'],
+    'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing', 'approvals', 'front_desk', 'housekeeping', 'night_audit', 'hotel_setup', 'gym_desk', 'gym_members', 'gym_setup', 'gym_trainer', 'gaming_desk', 'gaming_setup', 'parts_catalog', 'warehouse', 'grn', 'stock_approve', 'stock_count', 'returns_process', 'price_change', 'valuation', 'warehouse_settings'],
   MANAGER: ['billing', 'products', 'inventory', 'purchases', 'customers', 'suppliers',
     'payments', 'expenses', 'reports', 'ai', 'refunds', 'appointments', 'staff_commission',
     'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
-    'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing', 'approvals', 'front_desk', 'housekeeping', 'night_audit', 'hotel_setup'],
+    'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing', 'approvals', 'front_desk', 'housekeeping', 'night_audit', 'hotel_setup', 'gym_desk', 'gym_members', 'gym_setup', 'gym_trainer', 'gaming_desk', 'gaming_setup', 'parts_catalog', 'warehouse', 'grn', 'stock_approve', 'stock_count', 'returns_process', 'price_change', 'valuation', 'warehouse_settings'],
   CASHIER: ['billing', 'customers', 'payments'],
   STAFF: ['billing'],
+  // Gym roles (see backend/src/middleware/auth.js)
+  GYM_RECEPTIONIST: ['gym_desk', 'gym_members', 'customers', 'billing', 'payments'],
+  TRAINER: ['gym_trainer'],
+  // Gaming lounge role (see backend/src/middleware/auth.js)
+  GAMING_ATTENDANT: ['gaming_desk', 'customers', 'billing', 'payments'],
+  // Auto spare parts: the storekeeper receives, puts away, moves and counts; the counter sells and looks parts up by vehicle or part number.
+  STOREKEEPER: ['warehouse', 'grn', 'stock_count', 'inventory', 'suppliers'],
+  PARTS_COUNTER: ['billing', 'customers', 'payments'],
   // Hotel roles (see backend/src/middleware/auth.js)
   FRONT_DESK: ['front_desk', 'housekeeping', 'customers', 'payments'],
   HOUSEKEEPER: ['housekeeping'],

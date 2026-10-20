@@ -17,8 +17,8 @@ export class NetworkError extends TypeError {
 export type Session = { token: string | null; businessId: number | null; branchId: number | null };
 export type Envelope<T> = { success: boolean; data: T; message?: string; code?: string; meta?: Record<string, unknown> };
 
-export type ApiOptions = { baseUrl: string; getSession: () => Session; onToken?: (token: string) => void; onUnauthorized?: () => void; fetchImpl?: typeof fetch };
-export type CallOptions = { method?: string; body?: unknown; idempotencyKey?: string; businessId?: number | null; signIn?: boolean; timeoutMs?: number; headers?: Record<string, string> };
+export type ApiOptions = { baseUrl: string; getSession: () => Session; onToken?: (token: string) => void; onUnauthorized?: () => void; onNetwork?: (reachable: boolean) => void; fetchImpl?: typeof fetch };
+export type CallOptions = { method?: string; body?: unknown; idempotencyKey?: string; businessId?: number | null; signIn?: boolean; timeoutMs?: number; headers?: Record<string, string>; raw?: { body: Blob; type: string } };
 
 /** A new id for one user action (one sale). Random enough that two phones never collide; the server keeps it per business. */
 export const newKey = (): string => {
@@ -26,8 +26,8 @@ export const newKey = (): string => {
   return `m-${Date.now().toString(36)}-${chunk()}${chunk()}${chunk()}`;
 };
 
-export const createApi = ({ baseUrl, getSession, onToken, onUnauthorized, fetchImpl }: ApiOptions) => {
-  const call = async <T>(path: string, { method = 'GET', body, idempotencyKey, businessId, signIn = false, timeoutMs = 30000, headers: extra }: CallOptions = {}): Promise<Envelope<T>> => {
+export const createApi = ({ baseUrl, getSession, onToken, onUnauthorized, onNetwork, fetchImpl }: ApiOptions) => {
+  const call = async <T>(path: string, { method = 'GET', body, idempotencyKey, businessId, signIn = false, timeoutMs = 30000, headers: extra, raw }: CallOptions = {}): Promise<Envelope<T>> => {
     const session = getSession();
     const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-Requested-With': 'FlowXP' };
     if (session.token) headers.Authorization = `Bearer ${session.token}`;
@@ -36,14 +36,16 @@ export const createApi = ({ baseUrl, getSession, onToken, onUnauthorized, fetchI
     if (session.branchId != null) headers['X-Branch-Id'] = String(session.branchId);
     if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
     if (extra) Object.assign(headers, extra);
+    if (raw) headers['Content-Type'] = raw.type;   // a file sent as it is (a backup ZIP to restore)
 
     // a signal so weak the request hangs is the same as no signal: give up after timeoutMs (a till must not freeze on a bad connection)
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(), timeoutMs);
     let response: Response;
     try {
-      response = await (fetchImpl ?? fetch)(`${baseUrl}/api${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: abort.signal });
-    } catch { throw new NetworkError(); } finally { clearTimeout(timer); }
+      response = await (fetchImpl ?? fetch)(`${baseUrl}/api${path}`, { method, headers, body: raw ? raw.body : body === undefined ? undefined : JSON.stringify(body), signal: abort.signal });
+    } catch { onNetwork?.(false); throw new NetworkError(); } finally { clearTimeout(timer); }
+    onNetwork?.(true);
 
     let json: Envelope<T> | null = null;
     try { json = (await response.json()) as Envelope<T>; } catch { /* not JSON: a proxy error page */ }

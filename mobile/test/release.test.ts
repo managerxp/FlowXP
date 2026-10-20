@@ -56,8 +56,8 @@ test('the printed receipt is escaped text in a monospace block sized to the pape
   assert.ok(small.html.includes('Tea &lt;b&gt;&amp; Biscuit&lt;/b&gt;') && !small.html.includes('<b>'), 'text cannot become markup');
   assert.ok(small.html.includes('₹100.00') && small.html.includes('white-space: pre'));
   assert.ok(big.width > small.width); assert.equal(small.width, 164); assert.equal(big.width, 227);
-  // 32 characters of a monospace font (about 0.6 em each) must fit the paper width
-  for (const [paper, r] of [['58', small], ['80', big]] as const) { const px = Number(/font-size: ([\d.]+)px/.exec(r.html)![1]); assert.ok(32 * 0.6 * px <= r.width, `${paper} mm: 32 columns fit`); assert.ok(32 * 0.6 * px > r.width * 0.9, `${paper} mm: and fill the paper`); }
+  // the paper's columns (32 on 58 mm, 48 on 80 mm) of a monospace font (about 0.6 em each) must fit the paper width
+  for (const [paper, r] of [['58', small], ['80', big]] as const) { const px = Number(/font-size: ([\d.]+)px/.exec(r.html)![1]); const cols = paper === '58' ? 32 : 48; assert.ok(cols * 0.6 * px <= r.width + 0.01, `${paper} mm: ${cols} columns fit`); assert.ok(cols * 0.6 * px > r.width * 0.9, `${paper} mm: and fill the paper`); }
 });
 
 /* ── clearing a phone ───────────────────────────────────────────────────── */

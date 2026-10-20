@@ -24,7 +24,7 @@ const StockRowView = memo(({ r, onOpen }: { r: StockRow; onOpen: (r: StockRow) =
   const st = statusOf(r); const look = LOOK[st];
   return (
               <Pressable accessibilityRole="button" accessibilityLabel={`${r.name}, ${STATUS_LABEL[st]}, ${qty(r.current_stock)} ${r.unit ?? ''}`} onPress={() => onOpen(r)} android_ripple={{ color: '#0b57ff22' }}
-                style={({ pressed }) => ({ minHeight: 64, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: pressed ? '#eaf1ff' : color.card, flexDirection: 'row', alignItems: 'center', gap: 12 })}>
+                style={({ pressed }) => ({ minHeight: 64, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: pressed ? color.tint : color.card, flexDirection: 'row', alignItems: 'center', gap: 12 })}>
                 <Ionicons name={look.icon} size={26} color={look.tone} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 16, color: color.ink }}>{r.name}</Text>

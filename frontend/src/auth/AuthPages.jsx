@@ -6,6 +6,8 @@
  * of form plumbing, and the copies would drift.
  */
 import { useEffect, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+import LanguageSelect from '../i18n/LanguageSelect.jsx';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api.js';
 import { suggestEmail } from '../lib/emailTypos.js';
@@ -16,27 +18,17 @@ import { Check, Shot } from '../site/parts.jsx';
 /* Mirrors SIGNUP_TYPES in the API (backend/src/utils/validate.js): only the businesses FlowXP is built for. Older accounts of other types keep working.
    The API validates against it. A mismatch here is a 400 the
    user cannot fix, so the two lists must be changed together. */
-const BUSINESS_TYPES = [
-  ['RESTAURANT', 'Restaurant'], ['CAFE', 'Café'], ['CLOUD_KITCHEN', 'Cloud kitchen'], ['HOTEL', 'Hotel and restaurant'], ['RETAIL', 'Retail'],
-  ['SUPERMARKET', 'Supermarket'], ['PHARMACY', 'Pharmacy'], ['SALON', 'Salon'],
-  ['WHOLESALE', 'Wholesale'], ['DISTRIBUTOR', 'Distributor']
-];
+const BUSINESS_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'GYM', 'GAMING_CAFE', 'AUTO_PARTS', 'WHOLESALE'];   // labels: auth:types.<CODE>
 
 /* Why a first-time visitor can trust this screen, shown beside the form. */
-const ASIDES = {
+const ASIDES = {   // text: auth:aside.<name>.title / p1..p3 / alt
   signup: {
-    title: 'Your first GST bill in a few minutes.',
-    points: ['Seven days free, with every feature on', 'No credit card, no sales call', 'Your data stays yours, even if you stop paying'],
-    src: '/product/pos-main.webp',
-    alt: 'The FlowXP billing screen with items, GST and a Charge button.'
+    src: '/product/pos-main.webp'
   },
   /* Invoices, not a restaurant-only screen like the kitchen display: every
      business type signs in here, and every one of them raises bills. */
   login: {
-    title: 'Your bills, stock and insights are waiting.',
-    points: ['Keeps billing when the internet drops', 'Two-step login keeps your account safe', 'Staff see only what their role allows'],
-    src: '/product/invoices-main.webp',
-    alt: 'The FlowXP invoices list: bill numbers, customers, totals and payment status.'
+    src: '/product/invoices-main.webp'
   }
 };
 
@@ -56,13 +48,17 @@ const ASIDES = {
  * looks like a layout bug, not a design.
  */
 const AuthLayout = ({ title, lead, children, footer, aside = 'login', top }) => {
+  const { t } = useTranslation('auth');
   const side = ASIDES[aside];
   return (
     <div className="grid min-h-full bg-surface lg:grid-cols-2">
       <div className="flex flex-col px-5 py-5 sm:px-10 sm:py-6">
         <div className="flex min-h-10 flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <Link to="/" aria-label="FlowXP home"><Logo /></Link>
-          {top && <p className="text-small text-ink-500">{top}</p>}
+          <Link to="/" aria-label={t('layout.homeAria')}><Logo /></Link>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {top && <p className="text-small text-ink-500">{top}</p>}
+            <LanguageSelect compact />
+          </div>
         </div>
 
         <main className="flex justify-center pb-12 pt-10 sm:pt-16 lg:flex-1 lg:items-center">
@@ -76,22 +72,22 @@ const AuthLayout = ({ title, lead, children, footer, aside = 'login', top }) => 
 
         <p className="border-t border-line pt-5 text-caption text-ink-500 lg:mt-auto lg:border-0 lg:pt-0">
           © {new Date().getFullYear()} ManagerXP ·{' '}
-          <Link to="/privacy" className="hover:text-ink-900">Privacy</Link> ·{' '}
-          <Link to="/terms" className="hover:text-ink-900">Terms</Link>
+          <Link to="/privacy" className="hover:text-ink-900">{t('layout.privacy')}</Link> ·{' '}
+          <Link to="/terms" className="hover:text-ink-900">{t('layout.terms')}</Link>
         </p>
       </div>
 
-      <aside aria-label="About FlowXP" className="hidden border-l border-line bg-brand-50 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:justify-center lg:self-start lg:overflow-hidden lg:px-12 xl:px-16">
+      <aside aria-label={t('layout.asideAria')} className="hidden border-l border-line bg-brand-50 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:justify-center lg:self-start lg:overflow-hidden lg:px-12 xl:px-16">
         <div className="w-full max-w-xl">
           <div className="rise" style={{ '--d': '160ms' }}>
-            <p className="text-h3 font-semibold text-ink-900">{side.title}</p>
+            <p className="text-h3 font-semibold text-ink-900">{t(`aside.${aside}.title`)}</p>
             <ul className="mt-5 space-y-2.5">
-              {side.points.map((p) => (
-                <li key={p} className="flex gap-2.5 text-body text-ink-700"><Check />{p}</li>
+              {['p1', 'p2', 'p3'].map((p) => (
+                <li key={p} className="flex gap-2.5 text-body text-ink-700"><Check />{t(`aside.${aside}.${p}`)}</li>
               ))}
             </ul>
           </div>
-          <Shot src={side.src} alt={side.alt} eager className="rise mt-10" style={{ '--d': '320ms' }} />
+          <Shot src={side.src} alt={t(`aside.${aside}.alt`)} eager className="rise mt-10" style={{ '--d': '320ms' }} />
         </div>
       </aside>
     </div>
@@ -101,13 +97,14 @@ const AuthLayout = ({ title, lead, children, footer, aside = 'login', top }) => 
 /* A password box with a Show / Hide switch, so a mistyped password on a
    phone keyboard can be checked before submitting. */
 const PasswordInput = ({ id, ...rest }) => {
+  const { t } = useTranslation('auth');
   const [shown, setShown] = useState(false);
   return (
     <div className="relative">
       <Input id={id} type={shown ? 'text' : 'password'} className="pr-16" {...rest} />
       <button type="button" onClick={() => setShown((v) => !v)} aria-controls={id} aria-pressed={shown}
               className="absolute inset-y-0 right-0 px-3 text-small font-medium text-brand-600 hover:text-brand-700">
-        {shown ? 'Hide' : 'Show'}
+        {shown ? t('password.hide') : t('password.show')}
       </button>
     </div>
   );
@@ -124,6 +121,7 @@ const CodeField = (props) => (
  * message on failure. Written once rather than in each of the four.
  */
 const useSubmit = () => {
+  const { t } = useTranslation('errors');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -134,7 +132,7 @@ const useSubmit = () => {
     try {
       await action();
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not reach FlowXP. Check your connection.');
+      setError(caught instanceof ApiError ? caught.message : t('network'));
     } finally {
       setBusy(false);
     }
@@ -163,6 +161,8 @@ const useFinishAuth = () => {
 const RESEND_WAIT_S = 30;
 
 const EmailCodeStep = ({ challenge: initialChallenge, email, aside, onDone, onBack }) => {
+  const { t } = useTranslation('auth');
+  const { t: te } = useTranslation('errors');
   const { busy, error, submit } = useSubmit();
   const [code, setCode] = useState('');
   const [challenge, setChallenge] = useState(initialChallenge);   // renewed by every resend
@@ -190,8 +190,8 @@ const EmailCodeStep = ({ challenge: initialChallenge, email, aside, onDone, onBa
     } catch (caught) {
       // say what happened: an expired sign-up session or the rate limit looked like "the button does nothing"
       setResendError(caught instanceof ApiError
-        ? (caught.status === 401 ? 'This page has been open too long. Go back and sign in again to get a new code.' : caught.message)
-        : 'Could not reach FlowXP. Check your connection and try again.');
+        ? (caught.status === 401 ? te('pageTooOld') : caught.message)
+        : te('networkRetry'));
     } finally {
       setResending(false);
     }
@@ -200,20 +200,20 @@ const EmailCodeStep = ({ challenge: initialChallenge, email, aside, onDone, onBa
   return (
     <AuthLayout
       aside={aside}
-      title="Check your email"
-      lead={email ? <>We sent a 6-digit code to <strong className="font-semibold text-ink-900 [overflow-wrap:anywhere]">{email}</strong>. It expires in 10 minutes.</> : 'Enter the 6-digit code we just sent you. It expires in 10 minutes.'}
-      footer={onBack && <button type="button" className="font-medium text-brand-600 hover:text-brand-700" onClick={onBack}>{email ? 'Wrong email? Go back' : '← Back'}</button>}
+      title={t('emailCode.title')}
+      lead={email ? <Trans t={t} i18nKey="emailCode.lead" values={{ email }} components={{ strong: <strong className="font-semibold text-ink-900 [overflow-wrap:anywhere]" /> }} /> : t('emailCode.leadNoEmail')}
+      footer={onBack && <button type="button" className="font-medium text-brand-600 hover:text-brand-700" onClick={onBack}>{email ? t('emailCode.wrongEmail') : t('emailCode.back')}</button>}
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <Alert>{error || resendError}</Alert>
-        {resent && <p role="status" className="rounded-lg border border-success/30 bg-success/10 px-3.5 py-2.5 text-sm text-success">A new code is on its way. It can take a minute; check your spam folder too.</p>}
-        <Field id="code" label="Code">
+        {resent && <p role="status" className="rounded-lg border border-success/30 bg-success/10 px-3.5 py-2.5 text-sm text-success">{t('emailCode.resent')}</p>}
+        <Field id="code" label={t('emailCode.code')}>
           <CodeField id="code" value={code} onChange={(e) => setCode(e.target.value)} />
         </Field>
-        <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? 'Checking…' : 'Verify and continue'}</Button>
+        <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? t('emailCode.checking') : t('emailCode.verify')}</Button>
         <button type="button" disabled={resending || wait > 0} aria-disabled={resending || wait > 0}
                 className="text-small font-medium text-brand-600 hover:text-brand-700 disabled:cursor-not-allowed disabled:text-ink-400 disabled:hover:text-ink-400" onClick={resend}>
-          {resending ? 'Sending…' : wait > 0 ? `Resend code in ${wait}s` : 'Resend code'}
+          {resending ? t('emailCode.sending') : wait > 0 ? t('emailCode.resendIn', { s: wait }) : t('emailCode.resend')}
         </button>
       </form>
     </AuthLayout>
@@ -224,6 +224,7 @@ const EmailCodeStep = ({ challenge: initialChallenge, email, aside, onDone, onBa
    Signup
    ========================================================================== */
 export const Signup = () => {
+  const { t } = useTranslation('auth');
   const finish = useFinishAuth();
   const { busy, error, submit } = useSubmit();
   const [form, setForm] = useState({
@@ -247,52 +248,52 @@ export const Signup = () => {
   return (
     <AuthLayout
       aside="signup"
-      top={<>Have an account? <Link to="/login" className="font-medium text-brand-600 hover:text-brand-700">Sign in</Link></>}
-      title="Start your free trial"
-      lead="Seven days free. No card, no sales call. It takes about a minute."
+      top={<Trans t={t} i18nKey="signup.haveAccount" components={{ link: <Link to="/login" className="font-medium text-brand-600 hover:text-brand-700" /> }} />}
+      title={t('signup.title')}
+      lead={t('signup.lead')}
     >
       <form onSubmit={onSubmit} className="space-y-8">
         <Alert>{error}</Alert>
 
         <fieldset className="space-y-4">
-          <legend className="mb-4 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">About you</legend>
-          <Field id="name" label="Your name">
+          <legend className="mb-4 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">{t('signup.aboutYou')}</legend>
+          <Field id="name" label={t('signup.name')}>
             <Input id="name" value={form.name} onChange={set('name')} autoComplete="name" required />
           </Field>
-          <Field id="email" label="Email" hint="We send a 6-digit code here to confirm it is yours.">
+          <Field id="email" label={t('signup.email')} hint={t('signup.emailHint')}>
             <Input id="email" type="email" value={form.email} onChange={set('email')} autoComplete="email" inputMode="email" autoCapitalize="none" spellCheck={false} required
                    aria-describedby={emailSuggestion ? 'email-suggestion' : undefined} />
             {emailSuggestion && (
               <p id="email-suggestion" role="status" className="mt-1.5 rounded-lg bg-warning/10 px-3 py-2 text-small text-ink-700">
-                Did you mean <strong className="font-semibold text-ink-900">{emailSuggestion}</strong>?{' '}
-                <button type="button" onClick={() => setForm((f) => ({ ...f, email: emailSuggestion }))} className="font-medium text-brand-600 underline underline-offset-2 hover:text-brand-700">Use it</button>
+                <Trans t={t} i18nKey="signup.didYouMean" values={{ email: emailSuggestion }} components={{ strong: <strong className="font-semibold text-ink-900" /> }} />{' '}
+                <button type="button" onClick={() => setForm((f) => ({ ...f, email: emailSuggestion }))} className="font-medium text-brand-600 underline underline-offset-2 hover:text-brand-700">{t('signup.useIt')}</button>
               </p>
             )}
           </Field>
-          <Field id="phone" label="Mobile number (optional)" hint="For account recovery and bill delivery.">
+          <Field id="phone" label={t('signup.phone')} hint={t('signup.phoneHint')}>
             <Input id="phone" type="tel" inputMode="tel" value={form.phone} onChange={set('phone')} autoComplete="tel" />
           </Field>
-          <Field id="password" label="Password" hint="At least 10 characters.">
+          <Field id="password" label={t('signup.password')} hint={t('signup.passwordHint')}>
             <PasswordInput id="password" value={form.password} onChange={set('password')} autoComplete="new-password" minLength={10} required />
           </Field>
         </fieldset>
 
         <fieldset className="space-y-4">
-          <legend className="mb-4 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">Your business</legend>
-          <Field id="business_name" label="Business name">
+          <legend className="mb-4 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">{t('signup.yourBusiness')}</legend>
+          <Field id="business_name" label={t('signup.businessName')}>
             <Input id="business_name" value={form.business_name} onChange={set('business_name')} autoComplete="organization" required />
           </Field>
           <div role="radiogroup" aria-labelledby="type-label" aria-describedby="type-hint">
-            <p id="type-label" className="text-sm font-medium text-ink-700">What kind of business is it?</p>
-            <p id="type-hint" className="mt-1 text-xs text-ink-500">FlowXP switches on the tools this kind of business needs.</p>
+            <p id="type-label" className="text-sm font-medium text-ink-700">{t('signup.kindQ')}</p>
+            <p id="type-hint" className="mt-1 text-xs text-ink-500">{t('signup.kindHint')}</p>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {BUSINESS_TYPES.map(([value, label]) => (
+              {BUSINESS_TYPES.map((value) => (
                 <label
                   key={value}
                   className={`flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2.5 text-center text-small font-medium transition-colors duration-(--duration-fast) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-500 ${form.business_type === value ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}
                 >
                   <input type="radio" name="business_type" value={value} checked={form.business_type === value} onChange={set('business_type')} required className="sr-only" />
-                  {label}
+                  {t(`types.${value}`)}
                 </label>
               ))}
             </div>
@@ -309,13 +310,11 @@ export const Signup = () => {
               className="mt-0.5 h-4 w-4 shrink-0 rounded border-line-strong text-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
             />
             <span>
-              I agree to the{' '}
-              <Link to="/terms" target="_blank" className="underline hover:text-ink-900">Terms</Link> and{' '}
-              <Link to="/privacy" target="_blank" className="underline hover:text-ink-900">Privacy policy</Link>.
+              <Trans t={t} i18nKey="signup.agree" components={{ terms: <Link to="/terms" target="_blank" className="underline hover:text-ink-900" />, privacy: <Link to="/privacy" target="_blank" className="underline hover:text-ink-900" /> }} />
             </span>
           </label>
-          <Button type="submit" size="lg" className="w-full" disabled={busy || !agreed} title={agreed ? undefined : 'Agree to the Terms and Privacy policy first'}>
-            {busy ? 'Creating your account…' : 'Start free trial'}
+          <Button type="submit" size="lg" className="w-full" disabled={busy || !agreed} title={agreed ? undefined : t('signup.agreeFirst')}>
+            {busy ? t('signup.creating') : t('signup.submit')}
           </Button>
         </div>
       </form>
@@ -328,15 +327,7 @@ export const Signup = () => {
    ========================================================================== */
 
 /* What the page says when "Continue with Google" sent the person back without signing them in (?oauth=<reason>). */
-const GOOGLE_PROBLEMS = {
-  no_account: 'There is no FlowXP account for that Google address. Sign in with the email you signed up with, or start a free trial.',
-  verify_first: 'Finish verifying your email first: sign in once with your password and enter the code we email you. Then Google works too.',
-  unverified_google: 'Google has not verified that email address, so we cannot use it to sign you in.',
-  not_allowed: 'That account does not sign in this way.',
-  cancelled: 'Google sign-in was cancelled.',
-  unavailable: 'Google sign-in is not available right now. Use your password instead.',
-  failed: 'Google sign-in did not work. Please try again, or use your password.'
-};
+const GOOGLE_PROBLEMS = ['no_account', 'verify_first', 'unverified_google', 'not_allowed', 'cancelled', 'unavailable', 'failed'];   // text: auth:google.<reason>
 
 const GoogleLogo = () => (
   <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]">
@@ -348,6 +339,7 @@ const GoogleLogo = () => (
 );
 
 export const Login = () => {
+  const { t } = useTranslation('auth');
   const finish = useFinishAuth();
   const [params] = useSearchParams();
   const justReset = params.get('reset') === '1';
@@ -358,7 +350,8 @@ export const Login = () => {
   const [code, setCode] = useState('');
   const [useRecovery, setUseRecovery] = useState(false);
   const [googleOn, setGoogleOn] = useState(false);     // the server has Google sign-in set up
-  const googleProblem = GOOGLE_PROBLEMS[params.get('oauth')] || '';
+  const googleReason = GOOGLE_PROBLEMS.includes(params.get('oauth')) ? params.get('oauth') : '';
+  const googleProblem = googleReason ? t(`google.${googleReason}`) : '';
 
   useEffect(() => { api('/auth/oauth/providers').then((p) => setGoogleOn(Boolean(p?.google))).catch(() => {}); }, []);
   // An account with an authenticator app comes back from Google with its two-step challenge in the URL fragment.
@@ -388,17 +381,17 @@ export const Login = () => {
 
   if (second) {
     return (
-      <AuthLayout title="Enter your code" lead={useRecovery ? 'Enter one of your recovery codes.' : 'Open your authenticator app and enter the 6-digit code.'}
-        footer={<button type="button" className="font-medium text-brand-600 hover:text-brand-700" onClick={() => { setSecond(null); setCode(''); setUseRecovery(false); }}>← Back to sign in</button>}>
+      <AuthLayout title={t('twofa.title')} lead={useRecovery ? t('twofa.leadRecovery') : t('twofa.leadApp')}
+        footer={<button type="button" className="font-medium text-brand-600 hover:text-brand-700" onClick={() => { setSecond(null); setCode(''); setUseRecovery(false); }}>{t('twofa.back')}</button>}>
         <form onSubmit={onCode} className="space-y-4">
           <Alert>{error}</Alert>
-          <Field id="code" label={useRecovery ? 'Recovery code' : 'Code'}>
+          <Field id="code" label={useRecovery ? t('twofa.recoveryCode') : t('emailCode.code')}>
             {useRecovery
               ? <Input id="code" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" autoFocus required placeholder="xxxxx-xxxxx" maxLength={24} />
               : <CodeField id="code" value={code} onChange={(e) => setCode(e.target.value)} />}
           </Field>
-          <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? 'Checking…' : 'Sign in'}</Button>
-          <button type="button" className="text-small font-medium text-brand-600 hover:text-brand-700" onClick={() => { setUseRecovery((v) => !v); setCode(''); }}>{useRecovery ? 'Use my authenticator app instead' : 'I lost my phone: use a recovery code'}</button>
+          <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? t('emailCode.checking') : t('login.submit')}</Button>
+          <button type="button" className="text-small font-medium text-brand-600 hover:text-brand-700" onClick={() => { setUseRecovery((v) => !v); setCode(''); }}>{useRecovery ? t('twofa.useApp') : t('twofa.useRecovery')}</button>
         </form>
       </AuthLayout>
     );
@@ -406,44 +399,44 @@ export const Login = () => {
 
   return (
     <AuthLayout
-      title="Sign in to FlowXP"
-      lead="Welcome back. Use the email you signed up with."
-      top={<>New here? <Link to="/signup" className="font-medium text-brand-600 hover:text-brand-700">Start free trial</Link></>}
+      title={t('login.title')}
+      lead={t('login.lead')}
+      top={<Trans t={t} i18nKey="login.newHere" components={{ link: <Link to="/signup" className="font-medium text-brand-600 hover:text-brand-700" /> }} />}
     >
       <form onSubmit={onSubmit} className="space-y-4">
         {googleProblem && !error && <Alert>{googleProblem}</Alert>}
         {justReset && !error && (
           <p role="status" className="rounded-lg border border-success/30 bg-success/10 px-3.5 py-2.5 text-sm text-success">
-            Your password was changed. Sign in with the new one.
+            {t('login.reset')}
           </p>
         )}
         <Alert>{error}</Alert>
 
-        <Field id="email" label="Email">
+        <Field id="email" label={t('login.email')}>
           <Input id="email" type="email" value={form.email} onChange={set('email')} autoComplete="email" autoFocus required />
         </Field>
 
-        <Field id="password" label="Password">
+        <Field id="password" label={t('login.password')}>
           <PasswordInput id="password" value={form.password} onChange={set('password')} autoComplete="current-password" required />
         </Field>
 
         <div className="flex justify-end">
-          <Link to="/forgot-password" className="text-small font-medium text-brand-600 hover:text-brand-700">Forgot password?</Link>
+          <Link to="/forgot-password" className="text-small font-medium text-brand-600 hover:text-brand-700">{t('login.forgot')}</Link>
         </div>
 
         <Button type="submit" size="lg" className="w-full" disabled={busy}>
-          {busy ? 'Signing you in…' : 'Sign in'}
+          {busy ? t('login.signingIn') : t('login.submit')}
         </Button>
       </form>
 
       {googleOn && (
         <>
-          <div className="my-5 flex items-center gap-3 text-caption text-ink-400" aria-hidden="true"><span className="h-px flex-1 bg-line" />or<span className="h-px flex-1 bg-line" /></div>
+          <div className="my-5 flex items-center gap-3 text-caption text-ink-400" aria-hidden="true"><span className="h-px flex-1 bg-line" />{t('login.or')}<span className="h-px flex-1 bg-line" /></div>
           {/* A full page navigation, not an API call: the browser goes to Google and comes back signed in. */}
           <a href="/api/auth/google/start" className="flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-line-strong bg-surface text-body font-medium text-ink-900 transition-colors hover:bg-surface-2 active:scale-[0.99]">
-            <GoogleLogo />Continue with Google
+            <GoogleLogo />{t('login.google')}
           </a>
-          <p className="mt-2 text-center text-caption text-ink-500">For accounts you have already created. New here? Start a free trial above.</p>
+          <p className="mt-2 text-center text-caption text-ink-500">{t('login.googleNote')}</p>
         </>
       )}
     </AuthLayout>
@@ -457,6 +450,8 @@ export const Login = () => {
    for a "reset-password" page that a code-based flow never navigates to.
    ========================================================================== */
 export const ForgotPassword = () => {
+  const { t } = useTranslation('auth');
+  const { t: te } = useTranslation('errors');
   const navigate = useNavigate();
   const { busy, error, submit } = useSubmit();
   const [email, setEmail] = useState('');
@@ -476,7 +471,7 @@ export const ForgotPassword = () => {
   const resend = async () => {
     setResent(false); setResendError('');
     try { await api('/auth/forgot-password', { method: 'POST', body: { email } }); setResent(true); }
-    catch (caught) { setResendError(caught instanceof ApiError ? caught.message : 'Could not reach FlowXP. Check your connection and try again.'); }
+    catch (caught) { setResendError(caught instanceof ApiError ? caught.message : te('networkRetry')); }
   };
 
   const onReset = (event) => {
@@ -484,7 +479,7 @@ export const ForgotPassword = () => {
     // compare two strings is a round trip to tell the user something the browser already knows.
     if (password !== confirm) {
       event.preventDefault();
-      setMismatch('Both passwords must match');
+      setMismatch(t('forgot.mismatch'));
       return;
     }
     setMismatch('');
@@ -497,24 +492,24 @@ export const ForgotPassword = () => {
   if (sent) {
     return (
       <AuthLayout
-        title="Enter your code"
-        lead={`If ${email} has a FlowXP account, a code is on its way. It expires in 10 minutes.`}
-        footer={<button type="button" className="font-medium text-brand-600 hover:text-brand-700" onClick={() => { setSent(false); setCode(''); setPassword(''); setConfirm(''); }}>← Use a different email</button>}
+        title={t('twofa.title')}
+        lead={t('forgot.sentLead', { email })}
+        footer={<button type="button" className="font-medium text-brand-600 hover:text-brand-700" onClick={() => { setSent(false); setCode(''); setPassword(''); setConfirm(''); }}>{t('forgot.differentEmail')}</button>}
       >
         <form onSubmit={onReset} className="space-y-4">
           <Alert>{error || resendError}</Alert>
-          {resent && <p role="status" className="rounded-lg border border-success/30 bg-success/10 px-3.5 py-2.5 text-sm text-success">A new code is on its way. It can take a minute; check your spam folder too.</p>}
-          <Field id="code" label="Code">
+          {resent && <p role="status" className="rounded-lg border border-success/30 bg-success/10 px-3.5 py-2.5 text-sm text-success">{t('emailCode.resent')}</p>}
+          <Field id="code" label={t('emailCode.code')}>
             <CodeField id="code" value={code} onChange={(e) => setCode(e.target.value)} />
           </Field>
-          <Field id="password" label="New password" hint="At least 10 characters.">
+          <Field id="password" label={t('forgot.newPassword')} hint={t('signup.passwordHint')}>
             <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={10} required />
           </Field>
-          <Field id="confirm" label="Confirm new password" error={mismatch}>
+          <Field id="confirm" label={t('forgot.confirm')} error={mismatch}>
             <PasswordInput id="confirm" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" minLength={10} required />
           </Field>
-          <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? 'Saving…' : 'Set new password'}</Button>
-          <button type="button" className="text-small font-medium text-brand-600 hover:text-brand-700" onClick={resend}>Resend code</button>
+          <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? t('forgot.saving') : t('forgot.setNew')}</Button>
+          <button type="button" className="text-small font-medium text-brand-600 hover:text-brand-700" onClick={resend}>{t('emailCode.resend')}</button>
         </form>
       </AuthLayout>
     );
@@ -522,18 +517,18 @@ export const ForgotPassword = () => {
 
   return (
     <AuthLayout
-      title="Reset your password"
-      lead="We will email you a 6-digit code to reset it with."
-      footer={<Link to="/login" className="font-medium text-brand-600 hover:text-brand-700">← Back to sign in</Link>}
+      title={t('forgot.title')}
+      lead={t('forgot.lead')}
+      footer={<Link to="/login" className="font-medium text-brand-600 hover:text-brand-700">{t('forgot.back')}</Link>}
     >
       <form onSubmit={onRequest} className="space-y-4">
         <Alert>{error}</Alert>
-        <Field id="email" label="Email">
+        <Field id="email" label={t('forgot.email')}>
           <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                  autoComplete="email" autoFocus required />
         </Field>
         <Button type="submit" size="lg" className="w-full" disabled={busy}>
-          {busy ? 'Sending…' : 'Send code'}
+          {busy ? t('forgot.sending') : t('forgot.send')}
         </Button>
       </form>
     </AuthLayout>

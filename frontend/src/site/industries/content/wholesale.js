@@ -1,16 +1,19 @@
-/* Wholesale: orders to dispatch, credit, buying and stock across warehouses. Screenshots are the real screens of the seeded
-   demo wholesaler (Sunrise Distributors). */
+/* Wholesale and distribution, one page. The wholesale engine (below) comes first; the field-sales tools a distributor adds on top of it live in
+   distributor.js and are appended at the end of this file. In the app they are one business type with a switch the FlowXP team sets for each
+   business. Screenshots are the real screens of the seeded demo wholesaler (Sunrise Distributors). */
+import distribution from './distributor.js';
+
 const p = (name) => `/product/${name}.webp`;
 
-export default {
+const wholesale = {
   slug: 'wholesale',
-  label: 'Wholesale',
+  label: 'Wholesale and distribution',
   short: 'Wholesale',
-  blurb: 'Buy in bulk, sell on credit, fulfil in parts, and always know what is owed.',
-  title: 'Buy in bulk, sell on credit, know what is owed.',
-  lead: 'For wholesalers, dealers and stockists. Take orders, pick and dispatch them from the right warehouse, keep each customer’s credit and each supplier’s bill in view, and file GST from the same bills.',
+  blurb: 'Buy in bulk, sell on credit, fulfil in parts, and add a field team, schemes and vans when you distribute.',
+  title: 'Buy in bulk, sell on credit, and run a field team on top.',
+  lead: 'For wholesalers, dealers, stockists and distributors. Take orders, pick and dispatch them from the right warehouse, keep each customer’s credit and each supplier’s bill in view, and file GST from the same bills. Distributors add principals, territories and beats, trade schemes, targets, commission and vans.',
   hero: { src: p('wholesale-orders'), alt: 'FlowXP sales orders listing each order with its customer, salesperson, status and total.' },
-  heroPoints: ['Choose Wholesale when you sign up and these tools switch on', 'Works at a desk, a warehouse counter and on a phone', '7-day free trial, no card'],
+  heroPoints: ['Choose Wholesale and distribution when you sign up and these tools switch on', 'The field-sales tools are switched on for the businesses that need them', '7-day free trial, no card'],
   modules: [
     {
       id: 'orders', title: 'From a customer’s order to a dispatched invoice',
@@ -93,7 +96,20 @@ export default {
     ['Can I bring in my products and customers?', 'Yes. Products, customers and suppliers can be imported from a CSV file. Each import is checked first and nothing is saved until every row is good, with the spreadsheet row named for any problem.'],
     ['Does it work with more than one warehouse?', 'Yes. Each warehouse has its own stock and bins, and orders reserve stock at the warehouse they ship from. Move stock between warehouses with a transfer.'],
     ['How does credit control work?', 'Each customer has terms and a limit. When an order would take them over, you choose what happens: warn, or block until a manager overrides. You can also hold orders from customers who have overdue invoices.'],
-    ['Can my salespeople take orders on their phones?', 'Yes. Salespeople can take orders and collect payments from a phone and see only their own customers. If you run a field sales team with beats, targets and schemes, see Distribution.'],
+    ['Can my salespeople take orders on their phones?', 'Yes. Salespeople can take orders and collect payments from a phone and see only their own customers. If you run a field sales team with beats, targets and schemes, the distribution tools further down this page are for that.'],
     ['Does it handle GST?', 'Yes. Invoices carry GST, returns reverse it exactly, and the GSTR-1 file, GSTR-3B figures and e-invoice or e-way bill files are prepared for you to upload. Nothing is sent to the government for you.']
   ]
+};
+
+/* The distribution half, shown after the wholesale half. Ids that exist on both sides are renamed so the page links stay unique. */
+const RENAMED = { reports: 'distreports' };
+const distModules = distribution.modules.filter((m) => m.id !== 'base').map((m) => ({ ...m, id: RENAMED[m.id] ?? m.id }));
+
+export default {
+  ...wholesale,
+  hero: wholesale.hero,
+  modules: [...wholesale.modules, ...distModules],
+  included: [...wholesale.included, ...distribution.included.filter((g) => g.group !== 'Wholesale underneath').map((g) => ({ ...g, group: `Distribution: ${g.group.toLowerCase()}` }))],
+  notYet: [...wholesale.notYet, ...distribution.notYet.filter((t) => !wholesale.notYet.includes(t))],
+  faq: [...wholesale.faq.filter((q) => !q[0].startsWith('Does it handle GST')), ...distribution.faq.filter((q) => !q[0].startsWith('Do I need Wholesale') && !q[0].startsWith('Does it handle GST')), ['Do I need the distribution tools?', 'No. Wholesale works on its own. If you also run a field sales team with beats, schemes and vans, we switch the distribution tools on for your business and a Distributor menu appears. Everything in wholesale stays available.'], wholesale.faq.find((q) => q[0].startsWith('Does it handle GST'))]
 };

@@ -14,6 +14,7 @@ import { sendMail } from '../modules/mailer.js';
 import { buildInventoryForecast } from '../modules/forecast.js';
 import { moveStock } from '../modules/stock.js';
 import { computeLineTax, isInterState, sumLines } from '../modules/tax.js';
+import { purchaseReverseCharge, purchaseTotal } from '../modules/gstOptions.js';
 import { branchFilter } from '../utils/scope.js';
 import { addDaysISO, businessToday } from '../utils/dates.js';
 import { toPaise, toQuantity, toRupees } from '../utils/money.js';
@@ -84,17 +85,20 @@ const checkSupplier = async (client, businessId, supplierId) => {
 const validDate = (v) => (v == null || v === '' ? null : /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : (() => { throw new OrderError(400, 'Expected date must be a date'); })());
 
 /** Create an open (DRAFT) order. Shared by the endpoint and the forecast. */
-const createOpenOrder = async (client, { tenant, userId, supplierId, items, notes, expectedDate, source = 'MANUAL', businessId = tenant.businessId }) => {
+const createOpenOrder = async (client, { tenant, userId, supplierId, items, notes, expectedDate, source = 'MANUAL', businessId = tenant.businessId, reverseCharge = false }) => {
   const business = await businessOf(client, businessId);
   const supplier = await checkSupplier(client, businessId, supplierId);
   const lines = await prepareLines(client, businessId, business, items, supplier?.supplier_id ?? null);
   const totals = sumLines(lines);
+  const rcm = await purchaseReverseCharge(client, businessId, reverseCharge);
+  if (rcm.problem) throw new OrderError(400, rcm.problem);
+  totals.total_paise = purchaseTotal(totals.subtotal_paise, totals.tax_paise, rcm.on);
   const poNumber = await nextPoNumber(client, businessId);
   const po = (await client.query(
     `INSERT INTO purchase_orders (business_id, branch_id, supplier_id, po_number, po_date, subtotal_paise, tax_paise, total_paise, balance_due_paise,
-                                  payment_status, status, source, expected_date, notes, created_by)
-     VALUES ($1,$2,$3,$4,CURRENT_DATE,$5,$6,$7,$7,'UNPAID','DRAFT',$8,$9,$10,$11) RETURNING *`,
-    [businessId, tenant.branchId, supplier?.supplier_id ?? null, poNumber, totals.subtotal_paise, totals.tax_paise, totals.total_paise, source, expectedDate, notes || null, userId]
+                                  payment_status, status, source, expected_date, notes, created_by, reverse_charge)
+     VALUES ($1,$2,$3,$4,CURRENT_DATE,$5,$6,$7,$7,'UNPAID','DRAFT',$8,$9,$10,$11,$12) RETURNING *`,
+    [businessId, tenant.branchId, supplier?.supplier_id ?? null, poNumber, totals.subtotal_paise, totals.tax_paise, totals.total_paise, source, expectedDate, notes || null, userId, rcm.on]
   )).rows[0];
   await insertLines(client, po.po_id, lines);
   return { ...po, supplier_name: supplier?.name ?? null };
@@ -107,7 +111,7 @@ export const createDraft = async (req, res) => {
     await client.query('BEGIN');
     const po = await createOpenOrder(client, {
       tenant: req.tenant, userId: req.auth.userId, supplierId: req.body?.supplier_id, items: req.body?.items,
-      notes: req.body?.notes, expectedDate: validDate(req.body?.expected_date), source: req.body?.source === 'FORECAST' ? 'FORECAST' : 'MANUAL'
+      notes: req.body?.notes, expectedDate: validDate(req.body?.expected_date), source: req.body?.source === 'FORECAST' ? 'FORECAST' : 'MANUAL', reverseCharge: req.body?.reverse_charge === true
     });
     await client.query('COMMIT');
     recordAudit(req, { action: 'purchase_order.drafted', resource_type: 'purchase_order', resource_id: po.po_id, metadata: { total: toRupees(po.total_paise), source: po.source } });
@@ -168,17 +172,24 @@ export const update = async (req, res) => {
     const business = await businessOf(client, req.tenant.businessId);
     const supplier = 'supplier_id' in body ? await checkSupplier(client, req.tenant.businessId, body.supplier_id) : null;
     let totals = { subtotal_paise: po.subtotal_paise, tax_paise: po.tax_paise, total_paise: po.total_paise };
+    let reverse = Boolean(po.reverse_charge);
+    if ('reverse_charge' in body) {
+      const rcm = await purchaseReverseCharge(client, req.tenant.businessId, body.reverse_charge === true);
+      if (rcm.problem) throw new OrderError(400, rcm.problem);
+      reverse = rcm.on;
+    }
     if ('items' in body) {
       const lines = await prepareLines(client, req.tenant.businessId, business, body.items, 'supplier_id' in body ? (supplier?.supplier_id ?? null) : po.supplier_id);
       totals = sumLines(lines);
       await client.query(`DELETE FROM purchase_order_items WHERE po_id = $1`, [po.po_id]);
       await insertLines(client, po.po_id, lines);
     }
+    totals.total_paise = purchaseTotal(totals.subtotal_paise, totals.tax_paise, reverse);
     const { rows } = await client.query(
-      `UPDATE purchase_orders SET supplier_id = $2, notes = $3, expected_date = $4, subtotal_paise = $5, tax_paise = $6, total_paise = $7, balance_due_paise = $7
+      `UPDATE purchase_orders SET supplier_id = $2, notes = $3, expected_date = $4, subtotal_paise = $5, tax_paise = $6, total_paise = $7, balance_due_paise = $7, reverse_charge = $8
        WHERE po_id = $1 RETURNING *`,
       [po.po_id, 'supplier_id' in body ? (supplier?.supplier_id ?? null) : po.supplier_id, 'notes' in body ? (body.notes || null) : po.notes,
-        'expected_date' in body ? validDate(body.expected_date) : po.expected_date, totals.subtotal_paise, totals.tax_paise, totals.total_paise]
+        'expected_date' in body ? validDate(body.expected_date) : po.expected_date, totals.subtotal_paise, totals.tax_paise, totals.total_paise, reverse]
     );
     await client.query('COMMIT');
     recordAudit(req, { action: 'purchase_order.updated', resource_type: 'purchase_order', resource_id: po.po_id });
@@ -318,7 +329,7 @@ export const receive = async (req, res) => {
     const totals = (await client.query(
       `SELECT COALESCE(SUM(line_total_paise - tax_amount_paise), 0) AS sub, COALESCE(SUM(tax_amount_paise), 0) AS tax, COALESCE(SUM(line_total_paise), 0) AS total
        FROM purchase_order_items WHERE po_id = $1 AND received_quantity IS NOT NULL`, [po.po_id])).rows[0];
-    const total = Number(totals.total);
+    const total = purchaseTotal(totals.sub, totals.tax, po.reverse_charge);
     const amountPaid = Number(po.amount_paid_paise) + paid;
     const balance = Math.max(0, total - Number(po.debited_paise) - amountPaid);
     const { rows } = await client.query(

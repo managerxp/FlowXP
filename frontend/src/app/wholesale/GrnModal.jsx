@@ -11,10 +11,12 @@ import { PAYMENT_METHODS, money, qty, todayIn, useLoad } from '../../lib/wholesa
 import { Alert, Button, Field, Input, Modal, Select, Textarea, useToast } from '../../components/ui.jsx';
 import { NumberField, ProductPicker, SupplierPicker, Toggle, WarehouseSelect } from './parts.jsx';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
+import { useT } from '../../i18n/useT.js';
 
 let seq = 0;
 
 const GrnModal = ({ poId = null, onClose, onDone }) => {
+  const tr = useT();
   const toast = useToast();
   const key = useIdempotencyKey();
   const po = useLoad(poId ? `/wholesale/purchase-orders/${poId}` : null);
@@ -65,48 +67,48 @@ const GrnModal = ({ poId = null, onClose, onDone }) => {
   const ready = lines.some((l) => Number(l.received) > 0) && (poId || supplier);
 
   return (
-    <Modal title={poId ? `Receive goods · ${po.data?.po_number || ''}` : 'Receive goods without an order'} onClose={onClose} wide>
+    <Modal title={poId ? `Receive goods · ${po.data?.po_number || ''}` : tr('Receive goods without an order')} onClose={onClose} wide>
       <div className="space-y-4">
         <Alert>{error || po.error}</Alert>
-        {direct && <div className="grid gap-4 sm:grid-cols-2"><Field id="g-sup" label="Supplier"><SupplierPicker value={supplier} onChange={setSupplier} id="g-sup" /></Field><WarehouseSelect value={warehouse} onChange={setWarehouse} label="Receive into" id="g-wh" /></div>}
+        {direct && <div className="grid gap-4 sm:grid-cols-2"><Field id="g-sup" label={tr('Supplier')}><SupplierPicker value={supplier} onChange={setSupplier} id="g-sup" /></Field><WarehouseSelect value={warehouse} onChange={setWarehouse} label={tr('Receive into')} id="g-wh" /></div>}
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field id="g-inv" label="Supplier invoice number"><Input id="g-inv" value={f.supplier_invoice_no} onChange={set('supplier_invoice_no')} maxLength={40} /></Field>
-          <Field id="g-invd" label="Supplier invoice date"><Input id="g-invd" type="date" value={f.supplier_invoice_date} max={todayIn()} onChange={set('supplier_invoice_date')} /></Field>
-          <Field id="g-date" label="Received on"><Input id="g-date" type="date" value={f.grn_date} max={todayIn()} onChange={set('grn_date')} /></Field>
+          <Field id="g-inv" label={tr('Supplier invoice number')}><Input id="g-inv" value={f.supplier_invoice_no} onChange={set('supplier_invoice_no')} maxLength={40} /></Field>
+          <Field id="g-invd" label={tr('Supplier invoice date')}><Input id="g-invd" type="date" value={f.supplier_invoice_date} max={todayIn()} onChange={set('supplier_invoice_date')} /></Field>
+          <Field id="g-date" label={tr('Received on')}><Input id="g-date" type="date" value={f.grn_date} max={todayIn()} onChange={set('grn_date')} /></Field>
         </div>
-        {direct && <ProductPicker onPick={addProduct} placeholder="Scan or search a product to add" />}
-        {lines.length === 0 ? <p className="py-6 text-center text-small text-ink-400">{po.loading ? 'Loading…' : poId ? 'Everything on this order has already been received.' : 'Add the products that arrived.'}</p> : (
+        {direct && <ProductPicker onPick={addProduct} placeholder={tr('Scan or search a product to add')} />}
+        {lines.length === 0 ? <p className="py-6 text-center text-small text-ink-400">{po.loading ? tr('Loading…') : poId ? tr('Everything on this order has already been received.') : tr('Add the products that arrived.')}</p> : (
           <div className="space-y-3">
             {lines.map((l) => (
               <div key={l.key} className="rounded-(--radius-card) border border-line p-4">
                 <div className="mb-3 flex items-start justify-between gap-3"><div><p className="font-medium text-ink-900">{l.name}</p><p className="text-caption text-ink-500">{l.unit_name}{l.factor !== 1 ? ` = ${l.factor} ${l.base_unit}` : ''}{l.outstanding != null ? ` · ${qty(l.outstanding)} still due` : ''}</p></div>
-                  {direct && <button type="button" aria-label={`Remove ${l.name}`} onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} className="rounded-lg p-1.5 text-ink-400 hover:bg-surface-2 hover:text-danger"><X className="h-4 w-4" /></button>}</div>
+                  {direct && <button type="button" aria-label={tr('Remove {{l_name}}', { l_name: l.name })} onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} className="rounded-lg p-1.5 text-ink-400 hover:bg-surface-2 hover:text-danger"><X className="h-4 w-4" /></button>}</div>
                 <div className="grid gap-3 sm:grid-cols-4">
-                  <NumberField id={`r-${l.key}`} label="Received" suffix={l.unit_name} min={0} value={l.received} onChange={(v) => patch(l.key, { received: v })} />
-                  <NumberField id={`d-${l.key}`} label="Damaged" suffix={l.unit_name} min={0} value={l.damaged} onChange={(v) => patch(l.key, { damaged: v })} />
-                  <div className="self-end pb-2.5 text-small"><span className="text-caption text-ink-500">Accepted</span><br /><strong className="tabular">{qty(accepted(l))} {l.unit_name}</strong>{l.factor !== 1 && <span className="text-caption text-ink-500"> = {qty(accepted(l) * l.factor)} {l.base_unit}</span>}</div>
-                  <NumberField id={`c-${l.key}`} label="Cost per unit" prefix="₹" value={l.unit_cost} onChange={(v) => patch(l.key, { unit_cost: v })} />
+                  <NumberField id={`r-${l.key}`} label={tr('Received')} suffix={l.unit_name} min={0} value={l.received} onChange={(v) => patch(l.key, { received: v })} />
+                  <NumberField id={`d-${l.key}`} label={tr('Damaged')} suffix={l.unit_name} min={0} value={l.damaged} onChange={(v) => patch(l.key, { damaged: v })} />
+                  <div className="self-end pb-2.5 text-small"><span className="text-caption text-ink-500">{tr('Accepted')}</span><br /><strong className="tabular">{qty(accepted(l))} {l.unit_name}</strong>{l.factor !== 1 && <span className="text-caption text-ink-500"> = {qty(accepted(l) * l.factor)} {l.base_unit}</span>}</div>
+                  <NumberField id={`c-${l.key}`} label={tr('Cost per unit')} prefix="₹" value={l.unit_cost} onChange={(v) => patch(l.key, { unit_cost: v })} />
                 </div>
                 {(l.batch_tracking || l.expiry_tracking) && (
                   <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                    <Field id={`b-${l.key}`} label="Batch number"><Input id={`b-${l.key}`} value={l.batch_no} onChange={(e) => patch(l.key, { batch_no: e.target.value })} maxLength={40} /></Field>
-                    <Field id={`m-${l.key}`} label="Manufactured"><Input id={`m-${l.key}`} type="date" value={l.mfg_date} onChange={(e) => patch(l.key, { mfg_date: e.target.value })} /></Field>
-                    {l.expiry_tracking && <Field id={`e-${l.key}`} label="Expiry date"><Input id={`e-${l.key}`} type="date" min={todayIn()} value={l.expiry_date} onChange={(e) => patch(l.key, { expiry_date: e.target.value })} /></Field>}
+                    <Field id={`b-${l.key}`} label={tr('Batch number')}><Input id={`b-${l.key}`} value={l.batch_no} onChange={(e) => patch(l.key, { batch_no: e.target.value })} maxLength={40} /></Field>
+                    <Field id={`m-${l.key}`} label={tr('Manufactured')}><Input id={`m-${l.key}`} type="date" value={l.mfg_date} onChange={(e) => patch(l.key, { mfg_date: e.target.value })} /></Field>
+                    {l.expiry_tracking && <Field id={`e-${l.key}`} label={tr('Expiry date')}><Input id={`e-${l.key}`} type="date" min={todayIn()} value={l.expiry_date} onChange={(e) => patch(l.key, { expiry_date: e.target.value })} /></Field>}
                   </div>
                 )}
-                {l.serial_tracking && <div className="mt-3"><Field id={`s-${l.key}`} label="Serial numbers" hint="One per line, one for each unit accepted"><Textarea id={`s-${l.key}`} rows={2} value={l.serials} onChange={(e) => patch(l.key, { serials: e.target.value })} /></Field></div>}
+                {l.serial_tracking && <div className="mt-3"><Field id={`s-${l.key}`} label={tr('Serial numbers')} hint={tr('One per line, one for each unit accepted')}><Textarea id={`s-${l.key}`} rows={2} value={l.serials} onChange={(e) => patch(l.key, { serials: e.target.value })} /></Field></div>}
               </div>
             ))}
           </div>
         )}
         <div className="grid gap-4 sm:grid-cols-3">
-          <NumberField id="g-pay" label="Pay the supplier now" prefix="₹" hint="Optional" value={f.pay} onChange={set('pay')} />
-          {Number(f.pay) > 0 && <><Field id="g-method" label="Method"><Select id="g-method" value={f.method} onChange={set('method')}>{Object.entries(PAYMENT_METHODS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field><Field id="g-ref" label="Reference"><Input id="g-ref" value={f.reference} onChange={set('reference')} /></Field></>}
+          <NumberField id="g-pay" label={tr('Pay the supplier now')} prefix="₹" hint={tr('Optional')} value={f.pay} onChange={set('pay')} />
+          {Number(f.pay) > 0 && <><Field id="g-method" label={tr('Method')}><Select id="g-method" value={f.method} onChange={set('method')}>{Object.entries(PAYMENT_METHODS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field><Field id="g-ref" label={tr('Reference')}><Input id="g-ref" value={f.reference} onChange={set('reference')} /></Field></>}
         </div>
-        {poId && <div className="space-y-2"><Toggle id="g-excess" checked={f.allow_excess} onChange={(v) => setF((x) => ({ ...x, allow_excess: v }))} label="Accept more than ordered" hint="Otherwise a line cannot go above what is still due" /><Toggle id="g-close" checked={f.close_po} onChange={(v) => setF((x) => ({ ...x, close_po: v }))} label="This is the last delivery" hint="Close the order even if some lines are short" /></div>}
-        <Field id="g-notes" label="Notes"><Input id="g-notes" value={f.notes} onChange={set('notes')} maxLength={300} /></Field>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4"><p className="text-small text-ink-500">Accepted value before GST: <strong className="tabular text-ink-900">{money(Math.round(total * 100) / 100)}</strong></p>
-          <div className="flex gap-2"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={submit} loading={busy} disabled={!ready}>Post goods receipt</Button></div></div>
+        {poId && <div className="space-y-2"><Toggle id="g-excess" checked={f.allow_excess} onChange={(v) => setF((x) => ({ ...x, allow_excess: v }))} label={tr('Accept more than ordered')} hint={tr('Otherwise a line cannot go above what is still due')} /><Toggle id="g-close" checked={f.close_po} onChange={(v) => setF((x) => ({ ...x, close_po: v }))} label={tr('This is the last delivery')} hint={tr('Close the order even if some lines are short')} /></div>}
+        <Field id="g-notes" label={tr('Notes')}><Input id="g-notes" value={f.notes} onChange={set('notes')} maxLength={300} /></Field>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4"><p className="text-small text-ink-500">{tr('Accepted value before GST:')} <strong className="tabular text-ink-900">{money(Math.round(total * 100) / 100)}</strong></p>
+          <div className="flex gap-2"><Button variant="ghost" onClick={onClose}>{tr('Cancel')}</Button><Button onClick={submit} loading={busy} disabled={!ready}>{tr('Post goods receipt')}</Button></div></div>
       </div>
     </Modal>
   );

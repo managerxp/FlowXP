@@ -43,7 +43,7 @@ type IconName = React.ComponentProps<typeof Ionicons>['name'];
 /* A small figure you can tap: it opens the page behind it. */
 const Tile = ({ label, value, note, tone, go }: { label: string; value: string; note?: string; tone?: string; go?: () => void }) => (
   <Pressable accessibilityRole={go ? 'button' : 'text'} accessibilityLabel={`${t(label)}: ${value}${note ? `, ${t(note)}` : ''}`} onPress={go} disabled={!go}
-    style={({ pressed }) => [s.card, { width: '48.5%', minHeight: 76, padding: 12, justifyContent: 'center', gap: 2 }, pressed && { backgroundColor: '#eaf1ff' }]}>
+    style={({ pressed }) => [s.card, { width: '48.5%', minHeight: 76, padding: 12, justifyContent: 'center', gap: 2 }, pressed && { backgroundColor: color.tint }]}>
     <Text style={{ color: color.soft, fontSize: 13 }}>{t(label)}</Text>
     <Text style={{ color: tone ?? color.ink, fontSize: 22, fontWeight: '700' }}>{value}</Text>
     {note ? <Text style={{ color: color.soft, fontSize: 12 }}>{t(note)}</Text> : null}

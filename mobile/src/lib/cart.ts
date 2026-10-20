@@ -6,6 +6,7 @@
 import { toPaise } from './money.ts';
 import type { Product } from './catalog.ts';
 import type { Picked } from './options.ts';
+import { leviesBody, type GstView, type Levies } from './gst.ts';
 
 /** `key` tells lines apart: the same drink with different options is a different line. */
 export type Line = { key: string; product: Product; quantity: number; modifierIds: number[]; modifierNames: string[]; deltaPaise: number };
@@ -30,29 +31,40 @@ export const setQuantity = (cart: Cart, key: string, quantity: number): Cart => 
   lines: quantity > 0 ? cart.lines.map((l) => (l.key === key ? { ...l, quantity } : l)) : cart.lines.filter((l) => l.key !== key)
 });
 
-export type Totals = { itemCount: number; subtotalPaise: number; offersPaise: number; taxPaise: number; totalPaise: number };
+/** `cessPaise`, `tcsPaise` are inside `totalPaise`; `tdsPaise` is NOT: it is what the customer holds back, so they pay `totalPaise - tdsPaise` (the server records it as paid). */
+export type Totals = { itemCount: number; subtotalPaise: number; offersPaise: number; taxPaise: number; cessPaise: number; tcsPaise: number; tdsPaise: number; totalPaise: number };
 
-/** `offers`: what the server said each line saves, in paise, by line key. An offer is taken off BEFORE GST, as the server does. */
-export const totals = (cart: Cart, offers: Map<string, number> = new Map()): Totals => {
-  let subtotal = 0; let saved = 0; let tax = 0; let count = 0;
+/**
+ * `offers`: what the server said each line saves, in paise, by line key. An offer is taken off BEFORE GST, as the server does.
+ * `gst` + `levies`: the business's GST options and what was ticked on this bill (cess, TCS, TDS, composite). Without `gst` the bill is previewed as it always was.
+ */
+export const totals = (cart: Cart, offers: Map<string, number> = new Map(), gst?: GstView, levies?: Levies): Totals => {
+  let subtotal = 0; let saved = 0; let tax = 0; let cess = 0; let count = 0;
+  const taxOn = gst ? gst.on && !gst.composite : true;   // a composite dealer charges no tax; a business not registered charges none either
   for (const l of cart.lines) {
     const line = Math.round(linePricePaise(l) * l.quantity);
     const off = Math.min(line, offers.get(l.key) ?? 0);
     subtotal += line; saved += off;
-    tax += Math.round((line - off) * (l.product.tax_rate / 100));
+    if (taxOn) tax += Math.round((line - off) * (l.product.tax_rate / 100));
+    if (taxOn && gst?.cess) cess += Math.round((line - off) * ((l.product.cess_rate ?? 0) / 100));
     count += l.quantity;
   }
-  return { itemCount: count, subtotalPaise: subtotal, offersPaise: saved, taxPaise: tax, totalPaise: subtotal - saved + tax };
+  const taxable = Math.max(0, subtotal - saved);
+  const tcs = gst?.tcs && levies?.tcs ? Math.round(taxable * gst.tcsRate / 100) : 0;
+  const tds = gst?.tds && levies?.tds ? Math.round(taxable * gst.tdsRate / 100) : 0;
+  return { itemCount: count, subtotalPaise: subtotal, offersPaise: saved, taxPaise: tax, cessPaise: cess, tcsPaise: tcs, tdsPaise: tds, totalPaise: subtotal - saved + tax + cess + tcs };
 };
 
 /** What POST /invoices takes: ids, quantities and chosen option ids only. The server prices every line itself. */
 /** `payNowPaise`: undefined = the whole bill; 0 = nothing now (the bill is left unpaid, the customer's credit); else what is taken now and the rest is owed. */
-export const saleBody = (cart: Cart, payment: { method: string; reference?: string; payNowPaise?: number | null }, { kitchen = false, customerId }: { kitchen?: boolean; customerId?: number | null } = {}) => ({
+export const saleBody = (cart: Cart, payment: { method: string; reference?: string; payNowPaise?: number | null }, { kitchen = false, customerId, levies, gst, printDetails }: { kitchen?: boolean; customerId?: number | null; levies?: Levies; gst?: GstView; /** consignee / dispatch details for the GST tax invoice (hardware shops); see lib/taxInvoice.ts */ printDetails?: Record<string, string> | null } = {}) => ({
   items: cart.lines.map((l) => ({ product_id: l.product.product_id, quantity: l.quantity, ...(l.modifierIds.length ? { modifier_ids: l.modifierIds } : {}) })),
   ...(payment.payNowPaise === 0 ? {} : { payment: { method: payment.method, amount: payment.payNowPaise ? payment.payNowPaise / 100 : 'FULL', ...(payment.reference ? { reference_number: payment.reference } : {}) } }),
   apply_promotions: true,
   ...(customerId ? { customer_id: customerId } : {}),
-  ...(kitchen ? { send_to_kitchen: true } : {})
+  ...(kitchen ? { send_to_kitchen: true } : {}),
+  ...leviesBody(levies, gst),   // TCS, TDS, reverse charge: only the ticks that count
+  ...(printDetails ? { print_details: printDetails } : {})
 });
 
 /** A UPI payment link for the customer's phone to scan: the business's UPI ID, the amount, and the bill as the note. */
@@ -60,4 +72,4 @@ export const upiLink = (vpa: string, name: string, totalPaise: number, note: str
   `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(name)}&am=${(totalPaise / 100).toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
 
 /** The shops that make food to order: their counter sale can go to the kitchen (or barista) screen and comes back with a token. */
-export const KITCHEN_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL'];   // a hotel's restaurant works like any other; the rooms and front desk are on the website
+export const KITCHEN_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'GAMING_CAFE'];   // a hotel's restaurant works like any other; the rooms and front desk are on the website

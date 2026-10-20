@@ -118,7 +118,7 @@ export const gstr3b = async (req, res) => {
   if (!ctx) return;
   const data = await loadDocs(pool, { businessId: req.tenant.businessId, gstin: ctx.gstin, ...range });
   const purchases = (await pool.query(
-    `SELECT po.tax_paise, s.gstin FROM purchase_orders po JOIN businesses b ON b.business_id = po.business_id LEFT JOIN branches br ON br.branch_id = po.branch_id LEFT JOIN suppliers s ON s.supplier_id = po.supplier_id
+    `SELECT po.tax_paise, po.subtotal_paise, po.reverse_charge, s.gstin FROM purchase_orders po JOIN businesses b ON b.business_id = po.business_id LEFT JOIN branches br ON br.branch_id = po.branch_id LEFT JOIN suppliers s ON s.supplier_id = po.supplier_id
      WHERE po.business_id = $1 AND po.status IN ('RECEIVED','PARTIAL') AND po.po_date BETWEEN $2 AND $3 AND COALESCE(br.gstin, b.gstin) = $4`, [req.tenant.businessId, range.from, range.to, ctx.gstin])).rows;
   const debits = (await pool.query(
     `SELECT n.tax_paise, s.gstin FROM debit_notes n JOIN businesses b ON b.business_id = n.business_id LEFT JOIN branches br ON br.branch_id = n.branch_id LEFT JOIN suppliers s ON s.supplier_id = n.supplier_id

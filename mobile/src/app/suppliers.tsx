@@ -8,6 +8,7 @@ import { goBack } from '../lib/nav.ts';
 import { useLoad } from '../lib/useLoad.ts';
 import type { Supplier } from '../lib/buying.ts';
 import { rupees, toPaise } from '../lib/money.ts';
+import { WHOLESALE_TYPES } from '../lib/retail.ts';
 import { Page, ColumnList } from '../lib/responsive.tsx';
 import { Button, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Title, color, s } from '../lib/ui.tsx';
 
@@ -16,7 +17,7 @@ export default function Suppliers() {
   const list = useLoad<Supplier[]>('suppliers', () => api.get<Supplier[]>('/suppliers'));
   const type = currentBusiness(useSession())?.business_type ?? '';
   const pharmacy = type === 'PHARMACY';
-  const wholesale = type === 'WHOLESALE' || type === 'DISTRIBUTOR';
+  const wholesale = WHOLESALE_TYPES.includes(type);
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');

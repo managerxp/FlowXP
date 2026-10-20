@@ -1,0 +1,286 @@
+/* Racks and bins: the layout (warehouse, zone, aisle, rack, shelf, bin: the names are the shop's own), what is in each place, putting received stock away, moving it between bins, and the shop's settings. */
+import { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Plus, Printer } from 'lucide-react';
+import { api } from '../../lib/api.js';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { n3, qs, useDebounced, useLoad } from '../../lib/autoparts.js';
+import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Th, Thead, Tr } from '../../components/ui.jsx';
+import { NumberField, Panel, Tabs, Toggle, useAction } from '../salon/parts.jsx';
+import { T, useT } from '../../i18n/useT.js';
+
+const KINDS = ['WAREHOUSE', 'ZONE', 'AISLE', 'RACK', 'SHELF', 'BIN'];
+const typeLabel = (names, type) => (KINDS.includes(type) && names[KINDS.indexOf(type)]) || type.toLowerCase();
+
+const AddLocation = ({ parent, names, onClose, onSaved }) => {
+  const tr = useT();
+  const level = parent ? parent.level + 1 : 1;
+  const [f, setF] = useState({ segment: '', name: '', bulk: false, count: '4', prefix: '', letters: false, can_store: level >= 4, capacity: '' });
+  const [error, setError] = useState('');
+  const [busy, run] = useAction();
+  const save = () => run(async () => {
+    setError('');
+    const body = { parent_id: parent?.location_id, loc_type: f.can_store ? 'BIN' : undefined, can_store: f.can_store, capacity_units: f.capacity || undefined };
+    try {
+      if (f.bulk) await api('/autoparts/locations/bulk', { method: 'POST', body: { ...body, count: Number(f.count), prefix: f.prefix, letters: f.letters } });
+      else await api('/autoparts/locations', { method: 'POST', body: { ...body, segment: f.segment, name: f.name || undefined } });
+      onSaved();
+    } catch (e) { setError(e.message); }
+  }, null);
+  return (
+    <Modal title={parent ? `Add a place inside ${parent.code}` : `Add a ${(names[0] || 'warehouse').toLowerCase()}`} onClose={onClose}
+      footer={<><Button variant="secondary" onClick={onClose}>{tr('Cancel')}</Button><Button onClick={save} loading={busy} disabled={f.bulk ? !f.count : !f.segment.trim()}>{tr('Add')}</Button></>}>
+      <div className="space-y-4">
+        <Alert>{error}</Alert>
+        <Toggle id="al-bulk" checked={f.bulk} onChange={(v) => setF((x) => ({ ...x, bulk: v }))} label={tr('Add several at once')} hint={tr('R01, R02, R03 ... or A, B, C ...')} />
+        {f.bulk ? (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field id="al-prefix" label={tr('Starts with')}><Input id="al-prefix" value={f.prefix} onChange={(e) => setF((x) => ({ ...x, prefix: e.target.value }))} placeholder="R" /></Field>
+            <NumberField id="al-count" label={tr('How many')} value={f.count} min={1} step={1} onChange={(v) => setF((x) => ({ ...x, count: v }))} />
+            <Toggle id="al-letters" checked={f.letters} onChange={(v) => setF((x) => ({ ...x, letters: v }))} label={tr('Use letters')} />
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field id="al-seg" label={tr('Code')} hint={tr('Short, like R12 or B07. The full code is built from the places above it.')}><Input id="al-seg" value={f.segment} onChange={(e) => setF((x) => ({ ...x, segment: e.target.value }))} autoFocus /></Field>
+            <Field id="al-name" label={tr('Name (optional)')}><Input id="al-name" value={f.name} onChange={(e) => setF((x) => ({ ...x, name: e.target.value }))} /></Field>
+          </div>
+        )}
+        <Toggle id="al-store" checked={f.can_store} onChange={(v) => setF((x) => ({ ...x, can_store: v }))} label={tr('Stock is kept here')} hint={tr('Bins and shelves hold stock. Warehouses, zones, aisles and racks only group them.')} />
+        {f.can_store && <NumberField id="al-cap" label={tr('Most units it should hold (optional)')} value={f.capacity} onChange={(v) => setF((x) => ({ ...x, capacity: v }))} />}
+      </div>
+    </Modal>
+  );
+};
+
+/* The easy way to lay out a shop: say how many racks and how many bins in each, and the names (R01, R02 ... and bins A, B, C ...) are made for you. */
+const QuickRacks = ({ onClose, onSaved }) => {
+  const tr = useT();
+  const [f, setF] = useState({ store: 'Main store', racks: '5', bins: '4' });
+  const [error, setError] = useState('');
+  const [busy, run] = useAction();
+  const racks = Number(f.racks); const bins = Number(f.bins);
+  const code = f.store.trim().replace(/[^A-Za-z0-9]+/g, '').slice(0, 8).toUpperCase() || 'MAIN';
+  const ok = f.store.trim() && racks >= 1 && racks <= 40 && bins >= 1 && bins <= 26;
+  const save = () => run(async () => {
+    setError('');
+    try {
+      const root = await api('/autoparts/locations', { method: 'POST', body: { segment: code, name: f.store.trim(), loc_type: 'WAREHOUSE', can_store: false } });
+      const made = await api('/autoparts/locations/bulk', { method: 'POST', body: { parent_id: root.location_id, count: racks, prefix: 'R', loc_type: 'RACK', can_store: false } });
+      for (const rack of made) await api('/autoparts/locations/bulk', { method: 'POST', body: { parent_id: rack.location_id, count: bins, prefix: '', letters: true, loc_type: 'BIN', can_store: true } });
+      onSaved();
+    } catch (e) { setError(e.message); }
+  }, null);
+  return (
+    <Modal title={tr('Set up my racks')} onClose={onClose}
+      footer={<><Button variant="secondary" onClick={onClose}>{tr('Cancel')}</Button><Button onClick={save} loading={busy} disabled={!ok}>{tr('Create racks and bins')}</Button></>}>
+      <div className="space-y-4">
+        <p className="text-small text-ink-500">{tr('Tell us how many racks and bins you have. We name them for you (R01, R02 ... and bins A, B, C ...). You can change it later.')}</p>
+        <Alert>{error}</Alert>
+        <Field id="qr-store" label={tr('Name of your store or godown')}><Input id="qr-store" value={f.store} onChange={(e) => setF((x) => ({ ...x, store: e.target.value }))} /></Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <NumberField id="qr-racks" label={tr('How many racks')} value={f.racks} min={1} step={1} onChange={(v) => setF((x) => ({ ...x, racks: v }))} />
+          <NumberField id="qr-bins" label={tr('Bins in each rack')} hint={tr('A bin is one small place on a rack where a part sits.')} value={f.bins} min={1} step={1} onChange={(v) => setF((x) => ({ ...x, bins: v }))} />
+        </div>
+        {ok && <p className="rounded-lg bg-brand-50 px-3 py-2 text-small text-brand-700">{tr('This makes {{racks}} racks and {{total}} bins. The first bin will be called {{code}}.', { racks, total: racks * bins, code: `${code}-R01-A` })}</p>}
+      </div>
+    </Modal>
+  );
+};
+
+const LocationDetail = ({ id, onClose }) => {
+  const tr = useT();
+  const d = useLoad(`/autoparts/locations/${id}`);
+  const x = d.data;
+  return (
+    <Modal title={x ? x.code : tr('Location')} onClose={onClose} wide>
+      <ListState loading={d.loading && !x} error={d.error} />
+      {x && (
+        <div className="space-y-4">
+          <p className="text-small text-ink-700">{x.path.map((p) => p.code).join('  ›  ')}</p>
+          <div className="flex flex-wrap gap-2">{x.can_store && <Badge tone="brand">{tr('Holds stock')}</Badge>}{x.capacity_units != null && <Badge>{tr('Limit {{n3}} units', { n3: n3(x.capacity_units) })}</Badge>}{!x.is_active && <Badge tone="danger">{tr('Switched off')}</Badge>}
+            <Link to={`/app/parts/labels?ids=${x.location_id}`} className="text-small font-semibold text-brand-600">{tr('Print label')}</Link></div>
+          {x.parts.length === 0 ? <p className="text-small text-ink-500">{tr('Nothing is stored here.')}</p> : (
+            <Table>
+              <Thead><Th>{tr('Part')}</Th><Th>{tr('Bin')}</Th><Th className="text-right">{tr('Quantity')}</Th><Th className="text-right">{tr('Held')}</Th></Thead>
+              <tbody>{x.parts.map((p, i) => (<Tr key={i}><Td>{p.name}<span className="block text-caption text-ink-500">{p.sku}</span></Td><Td className="text-small">{p.location_code}{p.is_primary && ' (pick bin)'}</Td><Td className="tabular text-right">{n3(p.qty)}</Td><Td className="tabular text-right">{n3(p.reserved_qty)}</Td></Tr>))}</tbody>
+            </Table>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+};
+
+const Layout = ({ canEdit }) => {
+  const tr = useT();
+  const tree = useLoad('/autoparts/locations');
+  const settings = useLoad('/autoparts/warehouse/settings');
+  const [adding, setAdding] = useState(null); const [open, setOpen] = useState(null); const [quick, setQuick] = useState(false);
+  const [scan, setScan] = useState('');
+  const [busy, run] = useAction();
+  const rows = tree.data || [];
+  const names = settings.data?.level_names || [];
+  const lookup = () => run(async () => { const r = await api(`/autoparts/locations/scan${qs({ code: scan })}`); if (r) setOpen(r.location_id); else throw new Error('No location has that code'); setScan(''); }, null);
+  const off = (l) => run(async () => { await api(`/autoparts/locations/${l.location_id}`, { method: 'PUT', body: { is_active: false } }); tree.reload(); }, 'Switched off');
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); if (scan.trim()) lookup(); }}>
+          <Field id="ly-scan" label={tr('Scan or type a rack / bin code')}><Input id="ly-scan" value={scan} onChange={(e) => setScan(e.target.value)} placeholder={tr('WH-A-R12-B07')} /></Field>
+          <Button type="submit" variant="secondary" loading={busy}>{tr('Find')}</Button>
+        </form>
+        <span className="flex gap-2">
+          {rows.length > 0 && <Link to={`/app/parts/labels?ids=${rows.filter((r) => r.can_store).map((r) => r.location_id).slice(0, 80).join(',')}`}><Button variant="secondary"><Printer aria-hidden="true" className="h-4 w-4" /> {tr('Print bin labels')}</Button></Link>}
+          {canEdit && <Button onClick={() => setAdding({ parent: null })}><Plus aria-hidden="true" className="h-4 w-4" /> Add {names[0] || 'warehouse'}</Button>}
+        </span>
+      </div>
+      <ListState loading={tree.loading && !tree.data} error={tree.error} />
+      {tree.data && rows.length === 0 && (
+        <Panel title={tr('Set up my racks in one step')} lead={tr('Tell us how many racks and bins you have. We name them for you (R01, R02 ... and bins A, B, C ...). You can change it later.')}>
+          {canEdit ? <Button onClick={() => setQuick(true)}><Plus aria-hidden="true" className="h-4 w-4" /> {tr('Set up my racks')}</Button> : <p className="text-small text-ink-500">{tr('Ask the owner or manager to set up the racks.')}</p>}
+        </Panel>
+      )}
+      {rows.length > 0 && (
+        <Panel className="!p-0">
+          <Table>
+            <Thead><Th>{tr('Place')}</Th><Th className="text-right">{tr('Units')}</Th><Th className="text-right">{tr('Parts')}</Th><Th className="text-right">{tr('Filled')}</Th><Th /></Thead>
+            <tbody>
+              {rows.map((l) => (
+                <Tr key={l.location_id}>
+                  <Td><button type="button" onClick={() => setOpen(l.location_id)} className="text-left" style={{ paddingLeft: `${(l.level - 1) * 18}px` }}>
+                    <span className="font-medium">{l.segment}</span> <span className="text-caption text-ink-500">{typeLabel(names, l.loc_type)}{l.name && l.name !== l.segment && l.name.toLowerCase() !== `${typeLabel(names, l.loc_type)} ${l.segment}`.toLowerCase() ? ` · ${l.name}` : ''}{l.can_store ? ` · ${l.code}` : ''}</span>
+                    {l.over_capacity && <Badge tone="danger"> {tr('over limit')}</Badge>}</button></Td>
+                  <Td className="tabular text-right">{n3(l.qty)}</Td><Td className="tabular text-right">{l.parts}</Td>
+                  <Td className="tabular text-right">{l.fill_pct != null ? `${l.fill_pct}%` : ''}</Td>
+                  <Td className="text-right">{canEdit && l.level < 6 && !l.can_store && <Button size="sm" variant="ghost" onClick={() => setAdding({ parent: l })}>{tr('Add inside')}</Button>}
+                    {canEdit && l.qty === 0 && <Button size="sm" variant="ghost" onClick={() => off(l)}>{tr('Switch off')}</Button>}</Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        </Panel>
+      )}
+      {quick && <QuickRacks onClose={() => setQuick(false)} onSaved={() => { setQuick(false); tree.reload(); }} />}
+      {adding && <AddLocation parent={adding.parent} names={names} onClose={() => setAdding(null)} onSaved={() => { setAdding(null); tree.reload(); }} />}
+      {open && <LocationDetail id={open} onClose={() => setOpen(null)} />}
+    </div>
+  );
+};
+
+/* ── put away and move ───────────────────────────────────────────────────── */
+const PutAway = ({ canEdit }) => {
+  const tr = useT();
+  const un = useLoad('/autoparts/warehouse/unassigned');
+  const bins = useLoad('/autoparts/locations');
+  const [pick, setPick] = useState(null); const [binId, setBinId] = useState(''); const [qty, setQty] = useState('');
+  const [busy, run] = useAction();
+  const storing = (bins.data || []).filter((l) => l.can_store && l.is_active);
+  const choose = (r) => { setPick(r); setQty(String(r.unassigned)); setBinId(''); };
+  const save = () => run(async () => {
+    const out = await api('/autoparts/warehouse/put-away', { method: 'POST', body: { product_id: pick.product_id, location_id: Number(binId), qty: Number(qty), source_key: `pa-${pick.product_id}-${binId}-${Date.now()}` } });
+    setPick(null); un.reload(); bins.reload();
+    return out;
+  }, 'Put away');
+  return (
+    <div className="space-y-4">
+      <ListState loading={un.loading && !un.data} error={un.error} empty={un.data && un.data.length === 0} emptyLabel={tr('Nothing is waiting. Everything received is on a shelf.')} />
+      {un.data?.length > 0 && (
+        <Panel title={tr('Waiting for a bin')} lead={tr('Received or returned, counted in stock, but not on a shelf yet')} className="!p-0">
+          <Table>
+            <Thead><Th>{tr('Part')}</Th><Th className="text-right">{tr('In stock')}</Th><Th className="text-right">{tr('On shelves')}</Th><Th className="text-right">{tr('Waiting')}</Th><Th /></Thead>
+            <tbody>{un.data.map((r) => (<Tr key={`${r.branch_id}-${r.product_id}`}><Td>{r.name}<span className="block text-caption text-ink-500">{r.sku}</span></Td><Td className="tabular text-right">{n3(r.on_hand)}</Td><Td className="tabular text-right">{n3(r.binned)}</Td><Td className="tabular text-right font-medium">{n3(r.unassigned)}</Td>
+              <Td className="text-right">{canEdit && <Button size="sm" onClick={() => choose(r)}>{tr('Put away')}</Button>}</Td></Tr>))}</tbody>
+          </Table>
+        </Panel>
+      )}
+      {pick && (
+        <Modal title={tr('Put away {{pick_name}}', { pick_name: pick.name })} onClose={() => setPick(null)} footer={<><Button variant="secondary" onClick={() => setPick(null)}>{tr('Cancel')}</Button><Button onClick={save} loading={busy} disabled={!binId || !(Number(qty) > 0)}>{tr('Put away')}</Button></>}>
+          <div className="space-y-4">
+            <Field id="pa-bin" label={tr('Bin')}><Select id="pa-bin" value={binId} onChange={(e) => setBinId(e.target.value)}><option value="">{tr('Choose a bin')}</option>{storing.map((b) => <option key={b.location_id} value={b.location_id}>{b.code}{b.capacity_units ? ` (limit ${n3(b.capacity_units)})` : ''}</option>)}</Select></Field>
+            <NumberField id="pa-qty" label={tr('How many')} hint={tr('{{n3}} are waiting', { n3: n3(pick.unassigned) })} value={qty} onChange={setQty} />
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+};
+
+const MoveStock = () => {
+  const tr = useT();
+  const [term, setTerm] = useState(''); const q = useDebounced(term, 300);
+  const found = useLoad(q.trim().length >= 2 ? `/autoparts/parts/lookup${qs({ q, limit: 6 })}` : null);
+  const [part, setPart] = useState(null);
+  const where = useLoad(part ? `/autoparts/parts/${part.product_id}/locations` : null);
+  const bins = useLoad('/autoparts/locations');
+  const [from, setFrom] = useState(''); const [to, setTo] = useState(''); const [qty, setQty] = useState('');
+  const [busy, run] = useAction();
+  const storing = (bins.data || []).filter((l) => l.can_store && l.is_active);
+  const go = () => run(async () => { await api('/autoparts/warehouse/move', { method: 'POST', body: { product_id: part.product_id, from_location_id: Number(from), to_location_id: Number(to), qty: Number(qty), source_key: `mv-${part.product_id}-${from}-${to}-${Date.now()}` } }); setQty(''); where.reload(); }, 'Moved');
+  return (
+    <Panel title={tr('Move stock between bins')} lead={tr('The stock total does not change, only where it sits.')}>
+      <div className="space-y-4">
+        <Field id="mv-part" label={tr('Part')}><Input id="mv-part" value={term} onChange={(e) => { setTerm(e.target.value); setPart(null); }} placeholder={tr('Scan or type a name, SKU or part number')} /></Field>
+        {!part && found.data?.length > 0 && <ul className="rounded-lg border border-line">{found.data.map((p) => <li key={p.product_id}><button type="button" className="block w-full px-4 py-2 text-left text-small hover:bg-surface-2" onClick={() => { setPart(p); setTerm(p.name); }}>{p.name} <span className="text-ink-400">{p.sku}</span></button></li>)}</ul>}
+        {part && where.data && (
+          <>
+            <p className="text-small text-ink-700">{where.data.bins.length ? where.data.bins.map((b) => `${b.code}: ${n3(b.available)}`).join(' · ') : tr('Not on any shelf.')}</p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field id="mv-from" label={tr('From')}><Select id="mv-from" value={from} onChange={(e) => setFrom(e.target.value)}><option value="">{tr('Choose')}</option>{where.data.bins.map((b) => <option key={b.location_id} value={b.location_id}>{b.code}</option>)}</Select></Field>
+              <Field id="mv-to" label={tr('To')}><Select id="mv-to" value={to} onChange={(e) => setTo(e.target.value)}><option value="">{tr('Choose')}</option>{storing.map((b) => <option key={b.location_id} value={b.location_id}>{b.code}</option>)}</Select></Field>
+              <NumberField id="mv-qty" label={tr('How many')} value={qty} onChange={setQty} />
+            </div>
+            <Button onClick={go} loading={busy} disabled={!from || !to || !(Number(qty) > 0)}>{tr('Move')}</Button>
+          </>
+        )}
+      </div>
+    </Panel>
+  );
+};
+
+const Settings = () => {
+  const tr = useT();
+  const s = useLoad('/autoparts/warehouse/settings');
+  const [f, setF] = useState(null);
+  const [busy, run] = useAction();
+  const cur = f || (s.data && { level_names: s.data.level_names.join(', '), count_auto_units: String(s.data.count_auto_units), safety_days: String(s.data.safety_days), review_days: String(s.data.review_days), dead_days: String(s.data.dead_days), slow_days: String(s.data.slow_days) });
+  if (!cur) return <ListState loading error={s.error} />;
+  const set = (k) => (v) => setF({ ...cur, [k]: v });
+  const save = () => run(async () => {
+    await api('/autoparts/warehouse/settings', { method: 'PUT', body: { level_names: cur.level_names.split(',').map((x) => x.trim()).filter(Boolean), count_auto_units: Number(cur.count_auto_units), safety_days: Number(cur.safety_days), review_days: Number(cur.review_days), dead_days: Number(cur.dead_days), slow_days: Number(cur.slow_days) } });
+    s.reload();
+  }, 'Saved');
+  return (
+    <Panel title={tr('Warehouse settings')}>
+      <div className="max-w-xl space-y-4">
+        <Field id="st-levels" label={tr('Names of the levels, from the top')} hint={tr('Warehouse, Zone, Aisle, Rack, Shelf, Bin is the usual. Use your own words.')}><Input id="st-levels" value={cur.level_names} onChange={(e) => set('level_names')(e.target.value)} /></Field>
+        <NumberField id="st-count" label={tr('Stock count difference anyone may apply')} hint={tr('0 means every difference needs a manager\'s approval')} value={cur.count_auto_units} onChange={set('count_auto_units')} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <NumberField id="st-safety" label={tr('Safety days (reorder)')} value={cur.safety_days} onChange={set('safety_days')} step={1} />
+          <NumberField id="st-review" label={tr('Review days (reorder)')} value={cur.review_days} onChange={set('review_days')} step={1} />
+          <NumberField id="st-slow" label={tr('Slow stock after (days)')} value={cur.slow_days} onChange={set('slow_days')} step={1} />
+          <NumberField id="st-dead" label={tr('Dead stock after (days)')} value={cur.dead_days} onChange={set('dead_days')} step={1} />
+        </div>
+        <Button onClick={save} loading={busy}>{tr('Save')}</Button>
+      </div>
+    </Panel>
+  );
+};
+
+export default function PartsWarehouse() {
+  const tr = useT();
+  const { can } = useAuth();
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('tab') || 'layout';
+  const setTab = (t) => setParams({ tab: t });
+  const canEdit = can('warehouse');
+  return (
+    <div>
+      <PageHeader title={tr('Racks and bins')} lead={tr('Where every part sits, so anyone can find it and the shelf agrees with the stock.')} />
+      <Tabs value={tab} onChange={setTab} tabs={[{ key: 'layout', label: T('Layout') }, { key: 'putaway', label: T('Put away') }, { key: 'move', label: T('Move stock') }, ...(can('warehouse_settings') ? [{ key: 'settings', label: T('Settings') }] : [])]} />
+      {tab === 'layout' && <Layout canEdit={canEdit} />}
+      {tab === 'putaway' && <PutAway canEdit={canEdit} />}
+      {tab === 'move' && canEdit && <MoveStock />}
+      {tab === 'settings' && <Settings />}
+    </div>
+  );
+}

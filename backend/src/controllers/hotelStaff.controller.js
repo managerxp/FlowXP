@@ -7,7 +7,6 @@ import { withTransaction } from '../modules/wholesale/common.js';
 import { HotelError, audit, int, isoDate, like, money, num, ok, oneOf, phone, text, withRupees, wrapAll } from '../modules/hotel/common.js';
 import { hasPermission } from '../middleware/auth.js';
 import * as hr from '../modules/hotel/staff.js';
-import { getProperty } from '../modules/hotel/common.js';
 import { addDaysISO } from '../utils/dates.js';
 
 const out = (res, data, status = 200) => ok(res, withRupees(data), status);
@@ -74,7 +73,7 @@ export default wrapAll({
 
   /* ── roster and attendance ──────────────────────────────────── */
   roster: async (req, res) => {
-    const property = await getProperty(pool, req.tenant);
+    const property = { business_date: await hr.staffToday(pool, req.tenant) };
     const from = isoDate(req.query.from, 'From') || property.business_date; const to = isoDate(req.query.to, 'To') || addDaysISO(from, 6);
     out(res, await hr.getRoster(pool, req.tenant, { from, to, deptId: int(req.query.dept_id, 'Department') }));
   },
@@ -90,7 +89,7 @@ export default wrapAll({
     ok(res, { changed: n });
   },
   attendanceDay: async (req, res) => {
-    const property = await getProperty(pool, req.tenant);
+    const property = { business_date: await hr.staffToday(pool, req.tenant) };
     out(res, await hr.attendanceDay(pool, req.tenant, isoDate(req.query.date, 'Date') || property.business_date));
   },
   markAttendance: async (req, res) => {
@@ -104,11 +103,11 @@ export default wrapAll({
     ok(res, { marked: n });
   },
   attendanceMonth: async (req, res) => {
-    const property = await getProperty(pool, req.tenant);
+    const property = { business_date: await hr.staffToday(pool, req.tenant) };
     out(res, await hr.attendanceMonth(pool, req.tenant, month(req.query.month || property.business_date.slice(0, 7))));
   },
   headcount: async (req, res) => {
-    const property = await getProperty(pool, req.tenant);
+    const property = { business_date: await hr.staffToday(pool, req.tenant) };
     out(res, await hr.headcount(pool, req.tenant, isoDate(req.query.date, 'Date') || property.business_date));
   },
 
@@ -155,12 +154,12 @@ export default wrapAll({
   /* ── who cleans which room ──────────────────────────────────── */
   housekeepers: async (req, res) => out(res, await hr.housekeepers(pool, req.tenant)),
   assignments: async (req, res) => {
-    const property = await getProperty(pool, req.tenant);
+    const property = { business_date: await hr.staffToday(pool, req.tenant) };
     out(res, await hr.listAssignments(pool, req.tenant, isoDate(req.query.date, 'Date') || property.business_date));
   },
   assign: async (req, res) => {
     const b = req.body || {};
-    const property = await getProperty(pool, req.tenant);
+    const property = { business_date: await hr.staffToday(pool, req.tenant) };
     const roomIds = [...new Set((Array.isArray(b.room_ids) ? b.room_ids : []).map((x) => int(x, 'Room', { required: true, min: 1 })))];
     if (!roomIds.length) throw new HotelError(400, 'Choose the rooms');
     const n = await withTransaction((c) => hr.assignRooms(c, req.tenant, { date: isoDate(b.date, 'Date') || property.business_date, employeeId: b.employee_id ? int(b.employee_id, 'Employee', { min: 1 }) : null, roomIds }));

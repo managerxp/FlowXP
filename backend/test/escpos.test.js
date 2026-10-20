@@ -259,3 +259,16 @@ test('a UPI payment being taken prints a QR for exactly that amount, even when t
   // with no amount given, the balance QR works as before
   assert.match(qrOf(receiptBytes({ business: business1, settings: {}, invoice: invoice() })), /am=375\.00/);
 });
+
+test('copies, blank lines and auto-cut follow the receipt settings', () => {
+  const make = (settings, opts = {}) => receiptBytes({ business: business1, settings, invoice: invoice({ balance_due: 0 }) }, { cols: 32, ...opts });
+  const cuts = (b) => b.toString('latin1').split(String.fromCharCode(0x1d, 0x56)).length - 1;
+  assert.equal(cuts(make({})), 1, 'one cut by default');
+  assert.equal(cuts(make({ copies: 3 })), 3, 'three copies, three cuts');
+  assert.equal(cuts(make({ auto_cut: false })), 0, 'no cut when turned off');
+  assert.equal(make({ copies: 2 }).length, make({}).length * 2, 'a copy is the whole receipt');
+  assert.ok(has(make({ extra_lines: 8 }), 0x1b, 0x64, 8, 0x1d, 0x56), 'eight lines are fed just before the cut');
+  assert.ok(has(make({ extra_lines: 0 }), 0x1b, 0x64, 0, 0x1d, 0x56), 'and none when set to none');
+  const withDrawer = make({ copies: 2 }, { drawer: true });
+  assert.equal(withDrawer.toString('latin1').split(String.fromCharCode(0x1b, 0x70)).length - 1, 1, 'the drawer opens once');
+});

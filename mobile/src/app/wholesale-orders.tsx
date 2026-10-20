@@ -1,3 +1,4 @@
+import { formatDate } from '../lib/display.ts';
 import { useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { router } from 'expo-router';
@@ -43,7 +44,7 @@ export default function WholesaleOrders() {
           style={{ flex: 1, marginTop: 8 }} data={list.data ?? []} keyExtractor={(o) => String(o.order_id)} refreshing={list.busy} onRefresh={() => { void list.refresh(); }} keyboardShouldPersistTaps="handled"
           ListEmptyComponent={list.data ? <Empty>No orders here. Tap New to take one.</Empty> : null}
           renderItem={({ item: o }) => (
-            <Line left={`${o.order_number} · ${o.customer}`} sub={`${String(o.order_date).slice(0, 10)} · ${STATUS_LABEL[o.status]}${o.lines ? ` · ${o.lines} products` : ''}`} right={rupees(toPaise(o.total))}
+            <Line left={`${o.order_number} · ${o.customer}`} sub={`${formatDate(o.order_date)} · ${STATUS_LABEL[o.status]}${o.lines ? ` · ${o.lines} products` : ''}`} right={rupees(toPaise(o.total))}
               onPress={() => router.push({ pathname: '/wholesale-order/[id]', params: { id: String(o.order_id) } })} />
           )}
         />

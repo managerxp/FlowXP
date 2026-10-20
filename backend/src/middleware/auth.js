@@ -36,11 +36,11 @@ export const ROLE_PERMISSIONS = {
   ADMIN:   ['billing', 'products', 'inventory', 'barcode_reassign', 'product_quick_add', 'purchases', 'customers', 'suppliers',
             'payments', 'expenses', 'gst', 'reports', 'export', 'ai', 'settings', 'refunds',
             'appointments', 'staff_commission', 'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
-            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing', 'approvals', 'front_desk', 'housekeeping', 'night_audit', 'hotel_setup', 'banquet', 'hr', 'payroll'],
+            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing', 'approvals', 'front_desk', 'housekeeping', 'night_audit', 'hotel_setup', 'banquet', 'hr', 'payroll', 'gym_desk', 'gym_members', 'gym_setup', 'gym_trainer', 'gaming_desk', 'gaming_setup', 'parts_catalog', 'warehouse', 'grn', 'stock_approve', 'stock_count', 'returns_process', 'price_change', 'valuation', 'warehouse_settings'],
   MANAGER: ['billing', 'products', 'inventory', 'barcode_reassign', 'product_quick_add', 'purchases', 'customers', 'suppliers',
             'payments', 'expenses', 'reports', 'ai', 'refunds', 'appointments', 'staff_commission',
             'sales_orders', 'sales_cancel', 'fulfilment', 'pricing', 'purchase_approve',
-            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing', 'approvals', 'front_desk', 'housekeeping', 'night_audit', 'hotel_setup', 'banquet', 'hr', 'payroll'],
+            'principals', 'territories', 'schemes', 'targets', 'vehicles', 'field_sales', 'collections', 'prescriptions', 'dispensing', 'approvals', 'front_desk', 'housekeeping', 'night_audit', 'hotel_setup', 'banquet', 'hr', 'payroll', 'gym_desk', 'gym_members', 'gym_setup', 'gym_trainer', 'gaming_desk', 'gaming_setup', 'parts_catalog', 'warehouse', 'grn', 'stock_approve', 'stock_count', 'returns_process', 'price_change', 'valuation', 'warehouse_settings'],
   CASHIER: ['billing', 'customers', 'payments'],
   STAFF:   ['billing'],
   // Hotel roles. The front desk runs bookings, check-in and the guest bill; housekeeping sees and updates room status only; the night
@@ -51,6 +51,16 @@ export const ROLE_PERMISSIONS = {
   NIGHT_AUDITOR: ['night_audit', 'front_desk', 'housekeeping', 'payments', 'reports'],
   BANQUET_MANAGER: ['banquet', 'customers', 'payments', 'reports'],
   HR_MANAGER: ['hr', 'payroll', 'reports'],
+  // Gym roles. The front desk scans, checks people in, signs members up and sells memberships; a trainer sees members' plans and
+  // restricted health notes and runs classes. Plans, settings, devices and credentials belong to gym_setup (owner, admin, manager).
+  GYM_RECEPTIONIST: ['gym_desk', 'gym_members', 'customers', 'billing', 'payments'],
+  TRAINER: ['gym_trainer'],
+  // Gaming lounge: the attendant runs the board (start, pause, stop, transfer), takes orders for a station's tab and the payment. Stations, rates
+  // and settings belong to gaming_setup (owner, admin, manager).
+  GAMING_ATTENDANT: ['gaming_desk', 'customers', 'billing', 'payments'],
+  // Auto spare parts: the storekeeper receives, puts away, moves and counts; the counter sells and looks parts up by vehicle or part number.
+  STOREKEEPER: ['warehouse', 'grn', 'stock_count', 'inventory', 'suppliers'],
+  PARTS_COUNTER: ['billing', 'customers', 'payments'],
   // Restaurant floor roles. WAITER can take and bill orders like STAFF; KITCHEN
   // sees and advances tickets only; INVENTORY_MANAGER runs stock and buying.
   WAITER:  ['billing'],
@@ -212,7 +222,7 @@ export const requireAuth = async (req, res, next) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT u.user_id, u.name, u.email, u.phone, u.email_verified, u.is_super_admin, u.token_version, u.totp_enabled
+      `SELECT u.user_id, u.name, u.email, u.phone, u.email_verified, u.is_super_admin, u.token_version, u.totp_enabled, u.language
        FROM users u WHERE u.user_id = $1`,
       [payload.sub]
     );
@@ -232,7 +242,7 @@ export const requireAuth = async (req, res, next) => {
               b.name, b.business_type, b.status AS business_status,
               b.subscription_status, b.plan_code, b.billing_cycle,
               b.trial_started_at, b.trial_ends_at, b.next_billing_date,
-              b.currency, b.onboarding_step, b.gst_enabled, b.require_2fa_admins, b.upi_vpa, b.discount_cap_pct, b.cancel_needs_approval,
+              b.currency, b.onboarding_step, b.gst_enabled, b.gst_settings, b.require_2fa_admins, b.upi_vpa, b.default_language, b.discount_cap_pct, b.cancel_needs_approval,
               -- feature_flags come from the business's PINNED plan version, not the plan's current
               -- (possibly since-changed) values — see modules/planFeatures.js and migration 0038.
               COALESCE(pv.feature_flags, p.feature_flags, '{}'::jsonb) AS feature_flags,
@@ -354,6 +364,7 @@ export const withBusiness = (options = {}) => async (req, res, next) => {
 
   req.tenant = {
     businessId: membership.business_id,
+    userId: req.auth?.userId ?? null,
     name: membership.name,
     businessType: membership.business_type,
     currency: membership.currency,

@@ -19,11 +19,14 @@ export const CATEGORIES = {
   leakage:      { label: 'Revenue leakage',    permission: 'settings',  push: true,  description: 'Unusual discounts, cancellations, refunds and wastage.' },
   kitchen:      { label: 'Kitchen delays',     permission: 'reports',   push: true,  description: 'An order that is taking much longer than it should.' },
   sales:        { label: 'Daily summary',      permission: 'reports',   push: false, description: 'How the day went, each evening.' },
+  weekly:       { label: 'Weekly summary',     permission: 'reports',   push: false, description: 'How last week went, every Monday morning.' },
+  unusual:      { label: 'Unusual numbers',    permission: 'reports',   push: true,  description: 'A sudden drop or spike in sales, margin, discounts or expenses, or items sold below cost.' },
   integrations: { label: 'Integrations',       permission: 'settings',  push: true,  description: 'A delivery platform order that could not be received.' },
   account:      { label: 'Account',            permission: 'settings',  push: false, description: 'Your trial and subscription.' },
   // what happens on the floor, minute to minute: phone only, never kept in the inbox
   orders:       { label: 'New orders',         permission: ['billing', 'kitchen'], push: true, description: 'A guest or a delivery app has sent an order that needs accepting or cooking.' },
   ready:        { label: 'Order ready',        permission: 'billing',   push: true,  description: 'A dish for your table is ready to take out.' },
+  gaming:       { label: 'Gaming timers',      permission: 'gaming_desk', push: true, description: 'A station is nearly out of time, or its time is over.' },
   bookings:     { label: 'New bookings',       permission: 'appointments', push: true, description: 'A client has booked online.' }
 };
 

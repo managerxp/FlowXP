@@ -1,3 +1,4 @@
+import { formatDate } from '../lib/display.ts';
 import { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
@@ -13,7 +14,7 @@ import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft
 
 type Tab = 'orders' | 'lists' | 'road';
 const money = (n: number) => rupees(toPaise(n));
-const TONE = { warn: color.warn, ok: color.ok, plain: undefined } as const;
+const TONE = { get warn() { return color.warn; }, get ok() { return color.ok; }, plain: undefined } as const;
 
 /* The warehouse: how many orders wait to be picked, the pick lists in hand, and the deliveries on the road. Start a pick list from an order, then pick, pack and send it out. */
 export default function Warehouse() {
@@ -58,7 +59,7 @@ export default function Warehouse() {
             <>
               <SavedNote at={orders.savedAt} />
               {orders.data && orders.data.length === 0 ? <Empty>No confirmed order is waiting to be picked.</Empty> : null}
-              {(orders.data ?? []).map((o) => <Line key={o.order_id} left={`${o.order_number} · ${o.customer}`} sub={`${String(o.order_date).slice(0, 10)}${o.lines ? ` · ${o.lines} products` : ''} · tap to start a pick list`} right={busy === o.order_id ? '…' : money(o.total)} onPress={busy ? undefined : () => { void startList(o); }} />)}
+              {(orders.data ?? []).map((o) => <Line key={o.order_id} left={`${o.order_number} · ${o.customer}`} sub={`${formatDate(o.order_date)}${o.lines ? ` · ${o.lines} products` : ''} · tap to start a pick list`} right={busy === o.order_id ? '…' : money(o.total)} onPress={busy ? undefined : () => { void startList(o); }} />)}
             </>
           ) : null}
           {tab === 'lists' ? (

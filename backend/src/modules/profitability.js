@@ -73,7 +73,7 @@ export const loadSettings = async (businessId, db = pool) => {
 };
 
 /** Every non-cancelled invoice in a date range, with lines and payments, ready for profitOfInvoice. */
-const loadInvoices = async (businessId, from, to, db = pool, branchId = null) => {
+export const loadInvoices = async (businessId, from, to, db = pool, branchId = null) => {
   const scope = branchId != null ? ' AND i.branch_id = $4' : '';
   const invoices = (await db.query(
     `SELECT i.invoice_id, i.invoice_date, i.subtotal_paise, i.tax_paise, i.discount_paise, (i.refunded_paise - i.cn_refunded_paise + i.credited_paise) AS refunded_paise, i.total_paise,

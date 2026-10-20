@@ -4,18 +4,21 @@
  */
 import * as SecureStore from 'expo-secure-store';
 import { createApi, type Session } from './api.ts';
+import { reportNetwork } from './net.ts';
 import { createStore, useStore } from './store.ts';
 import { closeScope, kvGet, kvSet, openScope } from './local.ts';
+import { applyAccountLanguage } from './langpref.ts';
+import type { GstOptions } from './gst.ts';
 
 export const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:5100').replace(/\/$/, '');   // 10.0.2.2 = the computer, seen from an Android emulator
 const KEY = 'flowxp.session';
 
 export type Outlet = { branch_id: number; name: string; is_primary: boolean };
 export type Business = {
-  business_id: number; name: string; business_type: string; currency: string; role: string; upi_vpa: string | null;
-  permissions: Record<string, boolean>; effective_permissions?: Record<string, boolean>; branch_id: number | null; outlets: Outlet[];
+  business_id: number; name: string; business_type: string; distributor_enabled?: boolean; default_language?: string | null; currency: string; role: string; upi_vpa: string | null;
+  gst_enabled?: boolean; gst_options?: Partial<GstOptions>; permissions: Record<string, boolean>; effective_permissions?: Record<string, boolean>; branch_id: number | null; outlets: Outlet[];
 };
-export type User = { user_id: number; name: string; email: string };
+export type User = { user_id: number; name: string; email: string; language?: string | null };
 type State = { ready: boolean; token: string | null; user: User | null; businesses: Business[]; businessId: number | null; branchId: number | null };
 
 export const sessionStore = createStore<State>({ ready: false, token: null, user: null, businesses: [], businessId: null, branchId: null });
@@ -30,7 +33,8 @@ export const api = createApi({
   baseUrl: API_URL,
   getSession: () => sessionStore.get(),
   onToken: (token) => { sessionStore.set({ token }); save(); },
-  onUnauthorized: () => { void signOut(); }
+  onUnauthorized: () => { void signOut(); },
+  onNetwork: reportNetwork
 });
 
 /** Read what the keystore remembers, and slide the session forward if the server is reachable. Offline, the saved session is kept as it is. */
@@ -61,6 +65,8 @@ export const loadMe = async () => {
   if (!business) sessionStore.set({ businessId: null, branchId: null });
   else if (branchId != null && !business.outlets.some((o) => o.branch_id === branchId)) sessionStore.set({ branchId: null });
   save();
+  // this person's language (their own choice, else the business default, else the phone's): display text only
+  void applyAccountLanguage(me.user, business ?? me.businesses[0] ?? null).catch(() => {});
 };
 
 export const signedIn = async (token: string) => { sessionStore.set({ token }); save(); await loadMe(); };
@@ -88,6 +94,9 @@ export const signOut = async () => {
   await SecureStore.deleteItemAsync(KEY).catch(() => {});
   await kvSet('me', '').catch(() => {});
 };
+
+/** The server rotated this session's token (after a password change, two-step on/off, or "sign out everywhere"): keep the new one, or this phone would be signed out with the rest. */
+export const adoptToken = (token: string | undefined | null) => { if (token) { sessionStore.set({ token }); save(); } };
 
 export const useSession = () => useStore(sessionStore);
 export const currentBusiness = (s: State) => s.businesses.find((b) => b.business_id === s.businessId) ?? null;

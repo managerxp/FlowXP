@@ -14,6 +14,7 @@ import {
 import { Alert, Badge, Button, EmptyState, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Textarea, Th, Thead, Tr, useDialog, useToast } from '../../components/ui.jsx';
 import ClientPicker from './ClientPicker.jsx';
 import { Chips, Segmented, useAction } from './parts.jsx';
+import { useT, T } from '../../i18n/useT.js';
 
 const money = (n) => formatCurrency(n);
 const LIVE = ['BOOKED', 'CONFIRMED', 'CHECKED_IN', 'IN_SERVICE'];
@@ -30,6 +31,7 @@ const servicesText = (a) => a.services.map((s) => s.name).join(', ');
 /* ── booking form ─────────────────────────────────────────────────────────── */
 
 const BookingModal = ({ tz, outlet, initial, onClose, onSaved }) => {
+  const tr = useT();
   const services = useLoad('/salon/services?limit=200', { paged: true });
   const team = useLoad('/salon/staff?bookable=1&limit=200', { paged: true });
   const [client, setClient] = useState(null);
@@ -68,9 +70,9 @@ const BookingModal = ({ tz, outlet, initial, onClose, onSaved }) => {
   const submit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!isGuest && !client && !walkIn) { setError('Choose a client, or switch to a guest with a name and mobile'); return; }
-    if (!picked.length) { setError('Choose at least one service'); return; }
-    if (!walkIn && !time) { setError('Choose a time'); return; }
+    if (!isGuest && !client && !walkIn) { setError(tr('Choose a client, or switch to a guest with a name and mobile')); return; }
+    if (!picked.length) { setError(tr('Choose at least one service')); return; }
+    if (!walkIn && !time) { setError(tr('Choose a time')); return; }
     const body = {
       source, notes: notes.trim() || undefined,
       ...(client && !isGuest ? { customer_id: client.customer_id } : { guest_name: guest.name || 'Walk-in', guest_phone: guest.phone || undefined }),
@@ -83,25 +85,25 @@ const BookingModal = ({ tz, outlet, initial, onClose, onSaved }) => {
 
   const minTime = outlet?.open;
   return (
-    <Modal title={walkIn ? 'Walk-in' : 'New appointment'} onClose={onClose} wide>
+    <Modal title={walkIn ? tr('Walk-in') : tr('New appointment')} onClose={onClose} wide>
       <form onSubmit={submit} className="space-y-5">
         <Alert>{error}</Alert>
         <div className="flex flex-wrap items-center gap-3">
-          <Segmented label="How it was booked" value={source} onChange={setSource} options={[{ value: 'PHONE', label: 'Phone' }, { value: 'WALK_IN', label: 'Walk-in' }, { value: 'ONLINE', label: 'Online' }, { value: 'APP', label: 'App' }]} size="sm" />
-          {walkIn && <span className="text-caption text-ink-500">Starts now, with whoever is free.</span>}
+          <Segmented label={tr('How it was booked')} value={source} onChange={setSource} options={[{ value: 'PHONE', label: T('Phone') }, { value: 'WALK_IN', label: T('Walk-in') }, { value: 'ONLINE', label: T('Online') }, { value: 'APP', label: T('App') }]} size="sm" />
+          {walkIn && <span className="text-caption text-ink-500">{tr('Starts now, with whoever is free.')}</span>}
         </div>
 
         <fieldset className="space-y-2">
-          <legend className="mb-1 text-small font-medium text-ink-700">Client</legend>
+          <legend className="mb-1 text-small font-medium text-ink-700">{tr('Client')}</legend>
           {!isGuest ? <ClientPicker value={client} onChange={setClient} id="appt-client" />
-            : <div className="grid gap-3 sm:grid-cols-2"><Field id="guest-name" label="Guest name"><Input id="guest-name" value={guest.name} onChange={(e) => setGuest((g) => ({ ...g, name: e.target.value }))} /></Field><Field id="guest-phone" label="Guest mobile" hint="A number we know matches that client automatically"><Input id="guest-phone" type="tel" inputMode="tel" value={guest.phone} onChange={(e) => setGuest((g) => ({ ...g, phone: e.target.value }))} /></Field></div>}
-          <button type="button" className="text-caption font-medium text-brand-600" onClick={() => setIsGuest((v) => !v)}>{isGuest ? 'Choose an existing client instead' : 'Book for a guest without adding them as a client'}</button>
+            : <div className="grid gap-3 sm:grid-cols-2"><Field id="guest-name" label={tr('Guest name')}><Input id="guest-name" value={guest.name} onChange={(e) => setGuest((g) => ({ ...g, name: e.target.value }))} /></Field><Field id="guest-phone" label={tr('Guest mobile')} hint={tr('A number we know matches that client automatically')}><Input id="guest-phone" type="tel" inputMode="tel" value={guest.phone} onChange={(e) => setGuest((g) => ({ ...g, phone: e.target.value }))} /></Field></div>}
+          <button type="button" className="text-caption font-medium text-brand-600" onClick={() => setIsGuest((v) => !v)}>{isGuest ? tr('Choose an existing client instead') : tr('Book for a guest without adding them as a client')}</button>
         </fieldset>
 
         <fieldset>
-          <legend className="mb-1 text-small font-medium text-ink-700">Services</legend>
-          <Input type="search" aria-label="Search services" placeholder="Search services" value={q} onChange={(e) => setQ(e.target.value)} className="mb-2" />
-          <ListState loading={services.loading} error={services.error} empty={!services.loading && list.length === 0} emptyLabel="Add services first under Services." />
+          <legend className="mb-1 text-small font-medium text-ink-700">{tr('Services')}</legend>
+          <Input type="search" aria-label={tr('Search services')} placeholder={tr('Search services')} value={q} onChange={(e) => setQ(e.target.value)} className="mb-2" />
+          <ListState loading={services.loading} error={services.error} empty={!services.loading && list.length === 0} emptyLabel={tr('Add services first under Services.')} />
           <div className="grid max-h-44 gap-1.5 overflow-y-auto sm:grid-cols-2">
             {list.filter((s) => s.name.toLowerCase().includes(q.toLowerCase())).map((s) => {
               const on = picked.some((p) => p.service_id === s.service_id);
@@ -109,7 +111,7 @@ const BookingModal = ({ tz, outlet, initial, onClose, onSaved }) => {
                 <button type="button" key={s.service_id} aria-pressed={on} onClick={() => toggle(s.service_id)}
                         className={`flex items-center justify-between gap-2 rounded-(--radius-control) border px-3 py-2 text-left text-small transition-colors ${on ? 'border-brand-500 bg-brand-50' : 'border-line hover:border-line-strong'}`}>
                   <span className="font-medium text-ink-900">{s.name}</span>
-                  <span className="shrink-0 text-caption text-ink-500">{s.duration_min} min · {money(s.price)}</span>
+                  <span className="shrink-0 text-caption text-ink-500">{tr('{{duration_min}} min · {{money}}', { duration_min: s.duration_min, money: money(s.price) })}</span>
                 </button>
               );
             })}
@@ -119,35 +121,35 @@ const BookingModal = ({ tz, outlet, initial, onClose, onSaved }) => {
               {picked.map((p) => (
                 <li key={p.service_id} className="flex flex-wrap items-center gap-2 text-small">
                   <span className="min-w-32 flex-1 font-medium text-ink-900">{byId.get(p.service_id)?.name}</span>
-                  <Select aria-label={`Who does ${byId.get(p.service_id)?.name}`} value={p.staff_id} onChange={(e) => setStaff(p.service_id, e.target.value)} className="!w-auto min-w-40 !py-1.5">
-                    <option value="">Whoever is free</option>
+                  <Select aria-label={tr('Who does {{v}}', { v: byId.get(p.service_id)?.name })} value={p.staff_id} onChange={(e) => setStaff(p.service_id, e.target.value)} className="!w-auto min-w-40 !py-1.5">
+                    <option value="">{tr('Whoever is free')}</option>
                     {staffList.map((s) => <option key={s.staff_id} value={s.staff_id}>{s.name}</option>)}
                   </Select>
                 </li>
               ))}
-              <li className="text-caption text-ink-500">{duration} minutes in all · {money(total)}</li>
+              <li className="text-caption text-ink-500">{tr('{{duration}} minutes in all · {{money}}', { duration, money: money(total) })}</li>
             </ul>
           )}
         </fieldset>
 
         {!walkIn && (
           <fieldset className="space-y-3">
-            <legend className="mb-1 text-small font-medium text-ink-700">When</legend>
+            <legend className="mb-1 text-small font-medium text-ink-700">{tr('When')}</legend>
             <div className="flex flex-wrap items-end gap-3">
-              <Field id="appt-date" label="Date"><Input id="appt-date" type="date" value={date} min={todayIn(tz)} onChange={(e) => { setDate(e.target.value); setTime(''); }} /></Field>
-              <Field id="appt-time" label="Exact time" hint={minTime ? `We open at ${clockText(minTime)}` : undefined}><Input id="appt-time" type="time" value={time} step={(outlet?.slot_minutes || 15) * 60} onChange={(e) => setTime(e.target.value)} /></Field>
+              <Field id="appt-date" label={tr('Date')}><Input id="appt-date" type="date" value={date} min={todayIn(tz)} onChange={(e) => { setDate(e.target.value); setTime(''); }} /></Field>
+              <Field id="appt-time" label={tr('Exact time')} hint={minTime ? `We open at ${clockText(minTime)}` : undefined}><Input id="appt-time" type="time" value={time} step={(outlet?.slot_minutes || 15) * 60} onChange={(e) => setTime(e.target.value)} /></Field>
             </div>
             {picked.length > 0 && slots && (slots.length
-              ? <div><p className="mb-1.5 text-caption text-ink-500">Free times that day</p>
+              ? <div><p className="mb-1.5 text-caption text-ink-500">{tr('Free times that day')}</p>
                 <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto">{slots.map((s) => <button key={s.time} type="button" aria-pressed={time === s.time} title={s.staff.map((x) => x.name).join(', ')} onClick={() => setTime(s.time)} className={`rounded-full border px-3 py-1 text-caption font-medium ${time === s.time ? 'border-brand-500 bg-brand-500 text-white' : 'border-line hover:border-brand-500'}`}>{clockText(s.time)}</button>)}</div></div>
-              : <p className="text-caption text-warning">Nobody is free for {duration} minutes that day. Try another day{sameStaff ? ' or another team member' : ''}.</p>)}
+              : <p className="text-caption text-warning">Nobody is free for {duration} minutes that day. Try another day{sameStaff ? tr('or another team member') : ''}.</p>)}
           </fieldset>
         )}
 
-        <Field id="appt-notes" label="Notes"><Textarea id="appt-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything the stylist should know" /></Field>
+        <Field id="appt-notes" label={tr('Notes')}><Textarea id="appt-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={tr('Anything the stylist should know')} /></Field>
         <div className="flex justify-end gap-2 border-t border-line pt-4">
-          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={busy}>{walkIn ? 'Check in' : 'Book appointment'}</Button>
+          <Button type="button" variant="ghost" onClick={onClose}>{tr('Cancel')}</Button>
+          <Button type="submit" loading={busy}>{walkIn ? tr('Check in') : tr('Book appointment')}</Button>
         </div>
       </form>
     </Modal>
@@ -157,13 +159,14 @@ const BookingModal = ({ tz, outlet, initial, onClose, onSaved }) => {
 /* ── one appointment ──────────────────────────────────────────────────────── */
 
 const NEXT = {
-  BOOKED: [['CONFIRMED', 'Confirm'], ['CHECKED_IN', 'Check in']],
-  CONFIRMED: [['CHECKED_IN', 'Check in']],
-  CHECKED_IN: [['IN_SERVICE', 'Start service']],
+  BOOKED: [['CONFIRMED', T('Confirm')], ['CHECKED_IN', T('Check in')]],
+  CONFIRMED: [['CHECKED_IN', T('Check in')]],
+  CHECKED_IN: [['IN_SERVICE', T('Start service')]],
   IN_SERVICE: []
 };
 
 const DetailModal = ({ id, tz, onClose, onChanged }) => {
+  const tr = useT();
   const { can, business } = useAuth();
   const navigate = useNavigate();
   const dialog = useDialog();
@@ -185,7 +188,7 @@ const DetailModal = ({ id, tz, onClose, onChanged }) => {
     }
   };
   const cancel = async () => {
-    const reason = await dialog.prompt({ title: 'Cancel this appointment?', label: 'Reason', required: false, confirmLabel: 'Cancel appointment', cancelLabel: 'Keep it', danger: true });
+    const reason = await dialog.prompt({ title: tr('Cancel this appointment?'), label: tr('Reason'), required: false, confirmLabel: tr('Cancel appointment'), cancelLabel: tr('Keep it'), danger: true });
     if (reason !== null) setStatus('CANCELLED', reason || undefined);
   };
   const move = async () => {
@@ -199,7 +202,7 @@ const DetailModal = ({ id, tz, onClose, onChanged }) => {
 
   const live = a && LIVE.includes(a.status);
   return (
-    <Modal title={a ? `${a.customer_name || 'Guest'} · ${dateText(localParts(a.start_at, tz).date)}` : 'Appointment'} onClose={onClose}>
+    <Modal title={a ? `${a.customer_name || 'Guest'} · ${dateText(localParts(a.start_at, tz).date)}` : tr('Appointment')} onClose={onClose}>
       <ListState loading={loading} error={error} />
       {a && (
         <div className="space-y-4">
@@ -208,41 +211,41 @@ const DetailModal = ({ id, tz, onClose, onChanged }) => {
             <span className="text-small text-ink-500">{timeText(a.start_at, tz)} – {timeText(a.end_at, tz)}</span>
           </div>
           <p className="text-small text-ink-700">
-            <UserRound aria-hidden="true" className="mr-1.5 inline h-4 w-4 text-ink-400" />{a.customer_name || 'Guest'}{a.customer_phone && ` · ${a.customer_phone}`}{a.is_guest && <Badge tone="neutral"> guest</Badge>}
+            <UserRound aria-hidden="true" className="mr-1.5 inline h-4 w-4 text-ink-400" />{a.customer_name || 'Guest'}{a.customer_phone && ` · ${a.customer_phone}`}{a.is_guest && <Badge tone="neutral"> {tr('guest')}</Badge>}
           </p>
           <ul className="divide-y divide-line rounded-(--radius-card) border border-line">
             {a.services.map((s) => (
               <li key={s.line_id} className="flex flex-wrap items-center gap-3 px-3.5 py-2.5 text-small">
-                <span className="min-w-32 flex-1"><span className="block font-medium text-ink-900">{s.name}</span><span className="text-caption text-ink-500">{timeText(s.start_at, tz)} · {s.duration_min} min</span></span>
+                <span className="min-w-32 flex-1"><span className="block font-medium text-ink-900">{s.name}</span><span className="text-caption text-ink-500">{tr('{{timeText}} · {{duration_min}} min', { timeText: timeText(s.start_at, tz), duration_min: s.duration_min })}</span></span>
                 {live && !stylist && team.data ? (
-                  <Select aria-label={`Who does ${s.name}`} value={s.staff_id} onChange={(e) => changeStaff(s, e.target.value)} className="!w-auto !py-1">
+                  <Select aria-label={tr('Who does {{s_name}}', { s_name: s.name })} value={s.staff_id} onChange={(e) => changeStaff(s, e.target.value)} className="!w-auto !py-1">
                     {team.data.map((t) => <option key={t.staff_id} value={t.staff_id}>{t.name}</option>)}
                   </Select>
                 ) : <span className="text-ink-700">{s.staff_name}</span>}
                 <span className="tabular font-medium text-ink-900">{money(s.price)}</span>
               </li>
             ))}
-            <li className="flex justify-between px-3.5 py-2.5 text-small font-semibold"><span>Total</span><span className="tabular">{money(a.total)}</span></li>
+            <li className="flex justify-between px-3.5 py-2.5 text-small font-semibold"><span>{tr('Total')}</span><span className="tabular">{money(a.total)}</span></li>
           </ul>
           {a.notes && <p className="rounded-(--radius-control) bg-surface-2 px-3 py-2 text-small text-ink-700">{a.notes}</p>}
-          {a.cancel_reason && <p className="text-small text-ink-500">Cancelled: {a.cancel_reason}</p>}
+          {a.cancel_reason && <p className="text-small text-ink-500">{tr('Cancelled: {{cancel_reason}}', { cancel_reason: a.cancel_reason })}</p>}
 
           {moving && (
             <div className="flex flex-wrap items-end gap-3 rounded-(--radius-card) border border-line p-3">
-              <Field id="mv-date" label="Date"><Input id="mv-date" type="date" value={when.date} onChange={(e) => setWhen((w) => ({ ...w, date: e.target.value }))} /></Field>
-              <Field id="mv-time" label="Time"><Input id="mv-time" type="time" value={when.time} onChange={(e) => setWhen((w) => ({ ...w, time: e.target.value }))} /></Field>
-              <Button loading={busy} onClick={move}>Move</Button>
-              <Button variant="ghost" onClick={() => setMoving(false)}>Not now</Button>
+              <Field id="mv-date" label={tr('Date')}><Input id="mv-date" type="date" value={when.date} onChange={(e) => setWhen((w) => ({ ...w, date: e.target.value }))} /></Field>
+              <Field id="mv-time" label={tr('Time')}><Input id="mv-time" type="time" value={when.time} onChange={(e) => setWhen((w) => ({ ...w, time: e.target.value }))} /></Field>
+              <Button loading={busy} onClick={move}>{tr('Move')}</Button>
+              <Button variant="ghost" onClick={() => setMoving(false)}>{tr('Not now')}</Button>
             </div>
           )}
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-line pt-4">
-            {live && (NEXT[a.status] || []).map(([to, label]) => <Button key={to} variant="secondary" loading={busy} onClick={() => setStatus(to)}>{label}</Button>)}
-            {live && !stylist && <Button variant="secondary" onClick={() => setMoving((v) => !v)}><Clock aria-hidden="true" className="h-4 w-4" />Reschedule</Button>}
-            {['BOOKED', 'CONFIRMED'].includes(a.status) && !stylist && <Button variant="ghost" onClick={() => setStatus('NO_SHOW')}>No-show</Button>}
-            {live && !stylist && <Button variant="ghost" className="text-danger" onClick={cancel}>Cancel</Button>}
-            {live && can('billing') && <Button onClick={() => navigate(`/app/salon/pos?appointment=${a.appointment_id}`)}>Take payment</Button>}
-            {a.status === 'COMPLETED' && a.invoice_id && <Button variant="secondary" onClick={() => navigate(`/app/billing/invoices/${a.invoice_id}`)}>View bill</Button>}
+            {live && (NEXT[a.status] || []).map(([to, label]) => <Button key={to} variant="secondary" loading={busy} onClick={() => setStatus(to)}>{tr(label)}</Button>)}
+            {live && !stylist && <Button variant="secondary" onClick={() => setMoving((v) => !v)}><Clock aria-hidden="true" className="h-4 w-4" />{tr('Reschedule')}</Button>}
+            {['BOOKED', 'CONFIRMED'].includes(a.status) && !stylist && <Button variant="ghost" onClick={() => setStatus('NO_SHOW')}>{tr('No-show')}</Button>}
+            {live && !stylist && <Button variant="ghost" className="text-danger" onClick={cancel}>{tr('Cancel')}</Button>}
+            {live && can('billing') && <Button onClick={() => navigate(`/app/salon/pos?appointment=${a.appointment_id}`)}>{tr('Take payment')}</Button>}
+            {a.status === 'COMPLETED' && a.invoice_id && <Button variant="secondary" onClick={() => navigate(`/app/billing/invoices/${a.invoice_id}`)}>{tr('View bill')}</Button>}
           </div>
         </div>
       )}
@@ -253,6 +256,7 @@ const DetailModal = ({ id, tz, onClose, onChanged }) => {
 /* ── day: a column per person ─────────────────────────────────────────────── */
 
 const DayGrid = ({ data, appts, tz, date, onBook, onOpen }) => {
+  const tr = useT();
   const { outlet, staff } = data;
   const open = toMinutes(outlet.open); const close = toMinutes(outlet.close);
   const byId = new Map(appts.map((a) => [a.appointment_id, a]));
@@ -260,8 +264,8 @@ const DayGrid = ({ data, appts, tz, date, onBook, onOpen }) => {
   const now = localParts(Date.now(), tz);
   const height = (close - open) * PX_PER_MIN;
 
-  if (!outlet.open_today) return <EmptyState icon={CalendarDays} title="Closed this day" body="This outlet is not open on this weekday. Change the working days in Salon settings." />;
-  if (!staff.length) return <EmptyState icon={UserRound} title="No team members to book" body="Add team members under Team & commission and mark them bookable." />;
+  if (!outlet.open_today) return <EmptyState icon={CalendarDays} title={tr('Closed this day')} body={tr('This outlet is not open on this weekday. Change the working days in Salon settings.')} />;
+  if (!staff.length) return <EmptyState icon={UserRound} title={tr('No team members to book')} body={tr('Add team members under Team & commission and mark them bookable.')} />;
 
   return (
     <div className="overflow-x-auto rounded-(--radius-card) border border-line bg-surface">
@@ -279,7 +283,7 @@ const DayGrid = ({ data, appts, tz, date, onBook, onOpen }) => {
             <div key={s.staff_id} className="min-w-44 flex-1 border-r border-line last:border-0">
               <div className="flex h-11 flex-col justify-center border-b border-line px-3">
                 <span className="truncate text-small font-semibold text-ink-900">{s.name}</span>
-                <span className="truncate text-[11px] text-ink-500">{s.off ? (s.attendance === 'LEAVE' ? 'On leave' : s.attendance === 'ABSENT' ? 'Absent' : 'Day off') : `${clockText(s.window.start)} – ${clockText(s.window.end)}`}</span>
+                <span className="truncate text-[11px] text-ink-500">{s.off ? (s.attendance === 'LEAVE' ? tr('On leave') : s.attendance === 'ABSENT' ? tr('Absent') : tr('Day off')) : `${clockText(s.window.start)} – ${clockText(s.window.end)}`}</span>
               </div>
               <div className="relative cursor-cell" style={{ height }}
                    onClick={(e) => {
@@ -348,9 +352,11 @@ const WeekView = ({ appts, tz, start, today, onOpen, onDay }) => {
   );
 };
 
-const ListView = ({ appts, tz, onOpen }) => (
+const ListView = ({ appts, tz, onOpen }) => {
+  const tr = useT();
+  return (
   <Table>
-    <Thead><Th>When</Th><Th>Client</Th><Th>Services</Th><Th>With</Th><Th>Status</Th><Th className="text-right">Total</Th></Thead>
+    <Thead><Th>{tr('When')}</Th><Th>{tr('Client')}</Th><Th>{tr('Services')}</Th><Th>{tr('With')}</Th><Th>{tr('Status')}</Th><Th className="text-right">{tr('Total')}</Th></Thead>
     <tbody>
       {appts.map((a) => (
         <Tr key={a.appointment_id} onClick={() => onOpen(a.appointment_id)}>
@@ -365,10 +371,12 @@ const ListView = ({ appts, tz, onOpen }) => (
     </tbody>
   </Table>
 );
+};
 
 /* ── the page ─────────────────────────────────────────────────────────────── */
 
 const SalonAppointments = () => {
+  const tr = useT();
   const { can } = useAuth();
   const [params, setParams] = useSearchParams();
   const view = params.get('view') || 'day';
@@ -401,31 +409,31 @@ const SalonAppointments = () => {
 
   return (
     <div>
-      <PageHeader title="Appointments" lead="Book, move and check clients in. Nobody can be booked twice at the same time."
+      <PageHeader title={tr('Appointments')} lead={tr('Book, move and check clients in. Nobody can be booked twice at the same time.')}
                   action={canBook && <>
-                    <Button variant="secondary" onClick={() => setBooking({ date: today, source: 'WALK_IN' })}><Footprints aria-hidden="true" className="h-4 w-4" />Walk-in</Button>
-                    <Button onClick={() => setBooking({ date })}><Plus aria-hidden="true" className="h-4 w-4" />Book</Button>
+                    <Button variant="secondary" onClick={() => setBooking({ date: today, source: 'WALK_IN' })}><Footprints aria-hidden="true" className="h-4 w-4" />{tr('Walk-in')}</Button>
+                    <Button onClick={() => setBooking({ date })}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Book')}</Button>
                   </>} />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Segmented label="View" value={view} onChange={setView} options={[{ value: 'day', label: 'Day' }, { value: 'week', label: 'Week' }, { value: 'list', label: 'List' }]} />
+        <Segmented label={tr('View')} value={view} onChange={setView} options={[{ value: 'day', label: T('Day') }, { value: 'week', label: T('Week') }, { value: 'list', label: T('List') }]} />
         <div className="flex items-center gap-1">
-          <Button variant="secondary" size="sm" aria-label="Earlier" onClick={() => go(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-          <Button variant="secondary" size="sm" onClick={() => setDate(today)}>Today</Button>
-          <Button variant="secondary" size="sm" aria-label="Later" onClick={() => go(1)}><ChevronRight className="h-4 w-4" /></Button>
+          <Button variant="secondary" size="sm" aria-label={tr('Earlier')} onClick={() => go(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+          <Button variant="secondary" size="sm" onClick={() => setDate(today)}>{tr('Today')}</Button>
+          <Button variant="secondary" size="sm" aria-label={tr('Later')} onClick={() => go(1)}><ChevronRight className="h-4 w-4" /></Button>
         </div>
-        <div className="w-40"><Input type="date" aria-label="Go to a date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} /></div>
+        <div className="w-40"><Input type="date" aria-label={tr('Go to a date')} value={date} onChange={(e) => e.target.value && setDate(e.target.value)} /></div>
         <p className="text-small font-medium text-ink-900">{view === 'week' ? `${dateText(start)} – ${dateText(addDays(start, 6))}` : dateText(date, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         <span className="ml-auto text-caption text-ink-500">{summary.total} appointment{summary.total === 1 ? '' : 's'}{summary.upcoming ? ` · ${summary.upcoming} still to come` : ''}</span>
       </div>
-      {view !== 'day' && <div className="mb-4"><Chips label="Status" value={status} onChange={setStatus} options={[{ value: '', label: 'All' }, ...Object.entries(APPT_STATUS).map(([value, s]) => ({ value, label: s.label }))]} /></div>}
+      {view !== 'day' && <div className="mb-4"><Chips label={tr('Status')} value={status} onChange={setStatus} options={[{ value: '', label: T('All') }, ...Object.entries(APPT_STATUS).map(([value, s]) => ({ value, label: s.label }))]} /></div>}
 
       {schedule.error && <Alert>{schedule.error}</Alert>}
       {view === 'day' && schedule.data && <DayGrid data={schedule.data} appts={appts} tz={tz} date={date} onOpen={setOpenId} onBook={canBook ? (slot) => setBooking({ date, ...slot }) : () => {}} />}
       {view === 'week' && <WeekView appts={appts} tz={tz} start={start} today={today} onOpen={setOpenId} onDay={(d) => { setDate(d); setView('day'); }} />}
       {view === 'list' && (
         <>
-          <ListState loading={list.loading} error={list.error} empty={!list.loading && appts.length === 0} emptyLabel="No appointments in the next two weeks." emptyIcon={CalendarDays} />
+          <ListState loading={list.loading} error={list.error} empty={!list.loading && appts.length === 0} emptyLabel={tr('No appointments in the next two weeks.')} emptyIcon={CalendarDays} />
           {appts.length > 0 && <ListView appts={appts} tz={tz} onOpen={setOpenId} />}
         </>
       )}

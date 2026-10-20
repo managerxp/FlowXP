@@ -40,6 +40,30 @@ export const PLAN_FEATURES = [
   ['wholesale_fulfilment', 'Warehouse fulfilment', 'Pick lists, packing, delivery challans and in-transit transfers'],
   ['wholesale_pricing', 'Wholesale pricing', 'Price lists, customer-specific prices, quantity breaks and promotions'],
   ['wholesale_batches', 'Batches and expiry', 'Batch and serial tracking with first-expiry-first-out and expiry alerts'],
+  // Gym module. Each is its own switch, so a plan can sell the member desk without the self check-in page, classes or gate devices.
+  ['gym_access', 'Gym access control', 'QR cards and phone passes, reception scanning and attendance'],
+  ['gym_self_checkin', 'Member web check-in', 'Members sign in with a phone code, open their pass and check in from their own phone'],
+  ['gym_classes', 'Trainers and classes', 'Class timetable and booking, personal-training packs and workout plans'],
+  ['gym_rewards', 'Gym rewards and referrals', 'Points for visits and renewals, referral rewards, reward catalogue'],
+  ['gym_devices', 'Gate and reader devices', 'QR readers and turnstile controllers that ask FlowXP whether to open'],
+  // Gaming lounge module (PS5 / console lounges, pool and snooker). Separate switches so a plan can sell the timer and board without the wallet,
+  // bookings or tournaments. Food and drink on a station's tab use the existing tables, kitchen and QR ordering features.
+  ['gaming_stations', 'Gaming stations and timer', 'The live board, timed sessions, rates and bundles, billed together with food and drink'],
+  ['gaming_wallet', 'Gaming wallet and packs', 'Prepaid wallet top-ups with bonus, prepaid hour packs and paying a bill from the balance'],
+  ['gaming_bookings', 'Station bookings', 'Reserve a station for a time, with a hold and no-show handling'],
+  ['gaming_tournaments', 'Tournaments', 'Events with an entry fee, registrations, results and prizes'],
+  // Automotive spare parts module. Separate switches so a plan can sell the catalogue and counter without the warehouse tools.
+  ['ap_catalog', 'Parts catalogue and fitment', 'Part numbers, OEM and alternate numbers, and which vehicles each part fits'],
+  ['ap_racks', 'Racks and bins', 'Warehouse layout, bin quantities, put-away and bin-to-bin moves'],
+  ['ap_grn', 'Receiving (GRN)', 'Goods receipts with accepted, damaged and rejected quantities and put-away'],
+  ['ap_transfers', 'Parts transfers', 'Transfers between bins, warehouses and branches with dispatch and receipt'],
+  ['ap_counts', 'Rack and bin counts', 'Counting stock by bin, with differences approved before they change stock'],
+  ['ap_pricing', 'Trade pricing and credit', 'Price lists for garages and workshops, credit limits and reservations'],
+  ['ap_intelligence', 'Parts intelligence', 'Fast, slow and dead stock, ageing, reorder suggestions and supplier performance'],
+  ['ap_jobcards', 'Workshop job cards', 'Vehicles in for service: complaint, spare parts used and labour, status, and one bill when the job is done'],
+  ['ap_staff', 'Staff and payroll', 'Mechanics and counter staff: records, roster, attendance, leave and the monthly payroll sheet'],
+  // Backup and restore (all business types). Missing key = on.
+  ['backup_restore', 'Restore from a backup', 'Put the records of a downloaded backup back, adding only what is missing and never changing what is there'],
   // Supermarket / retail. Missing key = on.
   ['auto_sku', 'Automatic SKU', 'FlowXP makes each new product\'s SKU (MILK-00001), so nobody has to invent one']
 ];
@@ -78,17 +102,26 @@ export const hasPlanFeature = (tenant, feature) => tenant?.planFeatures?.[featur
  * (OTHER) have no defaults, so everything stays on for them.
  */
 const SALON_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('salon_'));
-const WHOLESALE_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('wholesale_'));
+// Sales orders and delivery challans are for every kind of business (an admin can still switch them off for a plan, a business type or one business);
+// the rest of the wholesale tools (price lists, batches) stay with wholesalers and the shops that use them.
+const SHARED_ORDER_KEYS = ['wholesale_orders', 'wholesale_fulfilment'];
+const WHOLESALE_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('wholesale_') && !SHARED_ORDER_KEYS.includes(k));
+const GYM_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('gym_'));
+const GAMING_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('gaming_'));
+const AP_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('ap_'));
 const NOT_FOOD = ['reservations', 'integrations', 'qr_ordering', 'multi_brand', 'delivery_fleet', 'tables', 'kitchen'];
-const SHOP_OFF = [...NOT_FOOD, ...SALON_KEYS, 'wholesale_orders', 'wholesale_fulfilment', 'wholesale_pricing'];
-const FOOD_OFF = [...SALON_KEYS, ...WHOLESALE_KEYS];
+const SHOP_OFF = [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, 'wholesale_pricing'];
+const FOOD_OFF = [...SALON_KEYS, ...WHOLESALE_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS];
 export const INDUSTRY_OFF = {
-  RESTAURANT: FOOD_OFF, CAFE: FOOD_OFF, GAMING_CAFE: FOOD_OFF, RACING: FOOD_OFF, HOTEL: FOOD_OFF,
+  RESTAURANT: FOOD_OFF, CAFE: FOOD_OFF, RACING: FOOD_OFF, HOTEL: FOOD_OFF,
+  GAMING_CAFE: FOOD_OFF.filter((k) => !GAMING_KEYS.includes(k)),                    // a lounge keeps the table floor, kitchen and QR menu for its food and drink
   CLOUD_KITCHEN: [...FOOD_OFF, 'reservations', 'qr_ordering', 'tables'],           // no dining room
-  SALON: [...NOT_FOOD, ...WHOLESALE_KEYS],                                          // appointments, not table bookings
+  SALON: [...NOT_FOOD, ...WHOLESALE_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS],                             // appointments, not table bookings
+  GYM: [...NOT_FOOD, ...SALON_KEYS, ...WHOLESALE_KEYS, ...GAMING_KEYS, ...AP_KEYS, 'integrations'],
+  AUTO_PARTS: SHOP_OFF.filter((k) => !AP_KEYS.includes(k)),                         // a parts shop is a shop: the till, stock center and batches stay; the parts tools are its own             // members and access; the till and loyalty stay
   RETAIL: SHOP_OFF, SUPERMARKET: SHOP_OFF, PHARMACY: SHOP_OFF,                      // these keep batches and expiry
   ELECTRONICS: [...SHOP_OFF, 'wholesale_batches'], CLOTHING: [...SHOP_OFF, 'wholesale_batches'], SERVICES: [...SHOP_OFF, 'wholesale_batches'],
-  WHOLESALE: [...NOT_FOOD, ...SALON_KEYS, 'loyalty'], DISTRIBUTOR: [...NOT_FOOD, ...SALON_KEYS, 'loyalty']
+  WHOLESALE: [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, 'loyalty'], DISTRIBUTOR: [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, 'loyalty']
 };
 
 /** What the industry's own defaults say for this business type, in the same shape as a feature_flags object: { key: false }. */

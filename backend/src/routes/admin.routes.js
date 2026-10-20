@@ -12,6 +12,7 @@ import { idempotent } from '../middleware/idempotency.js';
 import * as admin from '../controllers/admin.controller.js';
 import * as settings from '../controllers/settings.controller.js';
 import * as appErrors from '../controllers/appErrors.controller.js';
+import * as support from '../controllers/adminSupport.controller.js';
 
 const router = Router();
 
@@ -35,6 +36,10 @@ router.get('/deletion-requests', deletion.adminList);
 router.post('/deletion-requests/:id/complete', deletion.adminComplete);
 router.post('/deletion-requests/:id/decline', deletion.adminDecline);
 router.get('/app-errors', appErrors.list);   // crash reports from the mobile app
+router.patch('/app-errors/status', appErrors.setCrashStatus);
+router.get('/bug-reports', appErrors.reports);   // what people typed under "Report a problem"
+router.patch('/bug-reports/:id', appErrors.setReportStatus);
+router.get('/bug-summary', appErrors.summary);
 
 router.get('/me', admin.me);
 router.get('/stats', admin.getStats);
@@ -47,6 +52,18 @@ router.get('/businesses/:id/history', admin.businessHistory);
 router.get('/businesses/:id/overrides', admin.listBusinessOverrides);
 router.post('/businesses/:id/overrides', admin.setBusinessOverride);
 router.delete('/businesses/:id/overrides/:feature', admin.removeBusinessOverride);
+
+router.post('/businesses/:id/extend-trial', support.extendTrial);
+router.get('/businesses/:id/notes', support.listNotes);
+router.post('/businesses/:id/notes', support.addNote);
+router.delete('/businesses/:id/notes/:noteId', support.deleteNote);
+router.get('/users', support.listUsers);
+router.get('/users/:id', support.getUser);
+router.post('/users/:id/sign-out', support.signOutUser);
+router.post('/users/:id/verify-email', support.verifyUserEmail);
+router.post('/users/:id/reset-2fa', support.resetUserTwoFactor);
+router.get('/audit', support.auditLog);
+router.get('/launch-checks', support.launchChecks);
 
 router.get('/plans', admin.listPlans);
 router.patch('/plans/:code', admin.updatePlan);

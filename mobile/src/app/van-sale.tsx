@@ -11,7 +11,7 @@ import { dayOf } from '../lib/till.ts';
 import { refreshCounts, syncAll } from '../lib/sync.ts';
 import { useLoad } from '../lib/useLoad.ts';
 import type { Product } from '../lib/catalog.ts';
-import { addFLine, dropFLine, ensureVisit, estimateOrder, sendOrQueue, setFQty, setFUnit, unitFactor, type FLine } from '../lib/field.ts';
+import { addFLine, dropFLine, ensureVisit, estimateOrder, loadKnownPrices, rememberShopPrices, sendOrQueue, setFQty, setFUnit, unitFactor, type FLine, type KnownPrices } from '../lib/field.ts';
 import { PAY_LABEL, leftOnVan, lineRupees, overVan, pendingOnVan, stockByProduct, vanSaleBody, vanSaleProblem, type PayMode, type VanDetail } from '../lib/van.ts';
 import { creditText, previewBody, type WPreview } from '../lib/wholesale.ts';
 import { qty, rupees, toPaise } from '../lib/money.ts';
@@ -37,6 +37,7 @@ export default function VanSale() {
   const [reference, setReference] = useState('');
   const [paid, setPaid] = useState('');
   const [preview, setPreview] = useState<WPreview | null>(null);
+  const [known, setKnown] = useState<KnownPrices>({});
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState('');
   const [saved, setSaved] = useState('');
@@ -63,7 +64,7 @@ export default function VanSale() {
     let live = true;
     const t = setTimeout(() => {
       const wl = lines.map((l) => ({ key: l.key, product: { product_id: l.product.product_id } as never, unit_name: l.unit_name, quantity: l.quantity }));
-      void api.post<WPreview>('/wholesale/orders/preview', previewBody(customer.id, wl), { timeoutMs: 6000 }).then((p) => { if (live) setPreview(p); }).catch(() => { if (live) setPreview(null); });
+      void api.post<WPreview>('/wholesale/orders/preview', previewBody(customer.id, wl), { timeoutMs: 6000 }).then((p) => { if (live) { setPreview(p); void rememberShopPrices({ get: kvGet, set: kvSet }, customer.id, lines, p).then(setKnown); } }).catch(() => { if (live) setPreview(null); });
     }, 500);
     return () => { live = false; clearTimeout(t); };
   }, [lines, customer?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -71,7 +72,8 @@ export default function VanSale() {
   const left = new Map(stock.map((p) => [p.product_id, leftOnVan(p, pending)]));
   const shown = stock.filter((p) => products.has(p.product_id) && (!text.trim() || p.name.toLowerCase().includes(text.trim().toLowerCase())));
   const over = overVan(lines, left);
-  const est = estimateOrder(lines);
+  useEffect(() => { if (customer) void loadKnownPrices({ get: kvGet, set: kvSet }, customer.id).then(setKnown); else setKnown({}); }, [customer?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const est = estimateOrder(lines, known);
   const total = preview ? preview.total : est.totalPaise / 100;
   const credit = preview ? creditText(preview.credit) : null;
   const bad = vanSaleProblem(customer?.id ?? null, lines, mode, paid, method, reference);

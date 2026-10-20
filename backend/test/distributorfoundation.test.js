@@ -9,6 +9,9 @@ import { addCustomer, addProduct, makeWholesaler } from './helpers/wholesale.js'
 
 const { pool, skip, cleanup } = await setupTestDb();
 const { runMigrations } = await import('../src/config/migrate.js');
+const admin = await import('../src/controllers/admin.controller.js');
+/** What the FlowXP team does in the Super Admin: switch the distributor tools on or off for one business. */
+const setDistributor = async (w, on) => { const res = { code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } }; await admin.updateBusinessPlan({ params: { id: w.businessId }, body: { distributor_enabled: on }, auth: { userId: null } }, res); assert.equal(res.code, 200, JSON.stringify(res.body)); return res; };
 const principals = (await import('../src/controllers/distributorPrincipals.controller.js')).default;
 const territories = (await import('../src/controllers/distributorTerritories.controller.js')).default;
 const parties = (await import('../src/controllers/wholesaleParties.controller.js')).default;
@@ -28,16 +31,43 @@ t('distributor features are on for a DISTRIBUTOR, and off for a WHOLESALE busine
   const wh = await makeWholesaler(pool, 'd2', { type: 'WHOLESALE' });
   assert.equal(await gate(d.tenantFor()), 'open');
   assert.equal(await gate(wh.tenantFor()), 'blocked');
-  const on = await wh.call(parties.updateSettings, { body: { distributor_enabled: true, scheme_stacking: 'ALL' } });
-  assert.equal(on.code, 200, JSON.stringify(on.body));
+  // the owner cannot switch it on: it is the FlowXP team's setting
+  const tried = await wh.call(parties.updateSettings, { body: { distributor_enabled: true, scheme_stacking: 'ALL' } });
+  assert.equal(tried.code, 200, JSON.stringify(tried.body));
+  assert.equal(tried.body.data.distributor_enabled, false);
+  assert.equal(tried.body.data.distributor_locked, true);
+  assert.equal(await gate(wh.tenantFor()), 'blocked');
+  assert.equal(tried.body.data.scheme_stacking, 'ALL', 'the other settings still save');
+  // the FlowXP team switches it on, and off again
+  const on = await setDistributor(wh, true);
   assert.equal(on.body.data.distributor_enabled, true);
   assert.equal(await gate(wh.tenantFor()), 'open');
+  assert.equal((await wh.call(parties.getSettings, {})).body.data.distributor_enabled, true);
+  await setDistributor(wh, false);
+  assert.equal(await gate(wh.tenantFor()), 'blocked');
   // a distributor cannot switch itself off
-  const off = await d.call(parties.updateSettings, { body: { distributor_enabled: false } });
+  const off = await d.call(parties.updateSettings, { body: { distributor_enabled: false, scheme_stacking: 'BEST' } });
   assert.equal(off.body.data.distributor_enabled, true);
   assert.equal(off.body.data.distributor_locked, true);
   const other = await makeWholesaler(pool, 'd3', { type: 'RETAIL' }).catch(() => null);
   if (other) assert.equal(await gate(other.tenantFor()), 'blocked');
+});
+
+t('the Super Admin switch: only for wholesale and distribution, and a DISTRIBUTOR keeps its tools when moved to WHOLESALE', async () => {
+  const send = async (w, body) => { const res = { code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } }; await admin.updateBusinessPlan({ params: { id: w.businessId }, body, auth: { userId: null } }, res); return res; };
+  const shop = await makeWholesaler(pool, 'sw1', { type: 'RETAIL' }).catch(() => null);
+  if (shop) assert.equal((await send(shop, { distributor_enabled: true })).code, 400, 'not for a retail business');
+  const wh = await makeWholesaler(pool, 'sw2', { type: 'WHOLESALE' });
+  assert.equal((await send(wh, { distributor_enabled: 'yes' })).code, 400, 'a real true or false');
+  assert.equal((await send(wh, {})).code, 400, 'nothing to change');
+  const d = await makeWholesaler(pool, 'sw3', { type: 'DISTRIBUTOR' });
+  assert.equal((await send(d, { business_type: 'WHOLESALE' })).code, 200);
+  assert.equal(await gate({ ...d.tenantFor(), businessType: 'WHOLESALE' }), 'open', 'still has the distributor tools after the type is merged into wholesale');
+  assert.equal((await send(d, { distributor_enabled: false })).code, 200);
+  assert.equal(await gate({ ...d.tenantFor(), businessType: 'WHOLESALE' }), 'blocked', 'and the team can switch them off');
+  const detail = { code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } };
+  await admin.getBusiness({ params: { id: wh.businessId } }, detail);
+  assert.equal(detail.body.data.distributor_enabled, false);
 });
 
 t('a principal brings its own supplier, so purchasing and payables work unchanged', async () => {

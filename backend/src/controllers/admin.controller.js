@@ -222,6 +222,10 @@ export const listBusinesses = async (req, res) => {
       params.push(status);
       where.push(`b.status = $${params.length}`);
     }
+    const type = String(req.query.type || '').trim().toUpperCase();
+    if (type && BUSINESS_TYPES.includes(type)) { params.push(type); where.push(`b.business_type = $${params.length}`); }
+    const sub = String(req.query.subscription_status || '').trim().toUpperCase();
+    if (sub && SUBSCRIPTION_STATUSES.includes(sub)) { params.push(sub); where.push(`b.subscription_status = $${params.length}`); }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
     const countResult = await pool.query(
@@ -284,7 +288,7 @@ export const getBusiness = async (req, res) => {
     if (!rows.length) return res.status(404).json({ success: false, message: 'Not found' });
     const business = rows[0];
 
-    const [members, branches, invoices, revenue] = await Promise.all([
+    const [members, branches, invoices, revenue, wholesaleMode] = await Promise.all([
       pool.query(
         `SELECT bu.role, bu.status, u.user_id, u.name, u.email
          FROM business_users bu JOIN users u ON u.user_id = bu.user_id
@@ -293,7 +297,8 @@ export const getBusiness = async (req, res) => {
       ),
       pool.query(`SELECT branch_id, name, is_primary, status FROM branches WHERE business_id = $1`, [businessId]),
       pool.query(`SELECT COUNT(*)::int AS n FROM invoices WHERE business_id = $1 AND status = 'ISSUED'`, [businessId]),
-      pool.query(`SELECT COALESCE(SUM(amount_paise), 0) AS total_paise FROM payments WHERE business_id = $1`, [businessId])
+      pool.query(`SELECT COALESCE(SUM(amount_paise), 0) AS total_paise FROM payments WHERE business_id = $1`, [businessId]),
+      pool.query(`SELECT distributor_enabled FROM wholesale_settings WHERE business_id = $1`, [businessId])
     ]);
 
     res.json({
@@ -302,6 +307,7 @@ export const getBusiness = async (req, res) => {
         business_id: business.business_id,
         name: business.name,
         business_type: business.business_type,
+        distributor_enabled: business.business_type === 'DISTRIBUTOR' || Boolean(wholesaleMode.rows[0]?.distributor_enabled),
         status: business.status,
         plan_code: business.plan_code,
         // the stored column, not subscription.status below (which is the derived, "has the trial
@@ -374,7 +380,7 @@ export const updateBusinessStatus = async (req, res) => {
    ========================================================================== */
 export const updateBusinessPlan = async (req, res) => {
   const businessId = Number(req.params.id);
-  const { plan_code: planCode, subscription_status: subscriptionStatus, business_type: businessType } = req.body || {};
+  const { plan_code: planCode, subscription_status: subscriptionStatus, business_type: businessType, distributor_enabled: distributorEnabled } = req.body || {};
 
   const fields = [];
   const params = [];
@@ -403,17 +409,36 @@ export const updateBusinessPlan = async (req, res) => {
     set('business_type', String(businessType).toUpperCase());
   }
 
-  if (!fields.length) return res.status(400).json({ success: false, message: 'Nothing to update' });
+  // Wholesale and distribution is one business type; this switch says whether the distributor tools (field sales, beats, schemes, vans) are on.
+  if (distributorEnabled != null && typeof distributorEnabled !== 'boolean') return res.status(400).json({ success: false, message: 'distributor_enabled must be true or false' });
 
+  if (!fields.length && distributorEnabled == null) return res.status(400).json({ success: false, message: 'Nothing to update' });
+
+  const client = await pool.connect();
   try {
-    params.push(businessId);
-    const { rows } = await pool.query(
-      `UPDATE businesses SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
-       WHERE business_id = $${params.length}
-       RETURNING business_id, name, plan_code, subscription_status, business_type`,
-      params
-    );
-    if (!rows.length) return res.status(404).json({ success: false, message: 'Not found' });
+    await client.query('BEGIN');
+    const before = (await client.query(`SELECT b.business_type, COALESCE(ws.distributor_enabled, FALSE) AS distributor_enabled FROM businesses b LEFT JOIN wholesale_settings ws ON ws.business_id = b.business_id WHERE b.business_id = $1 FOR UPDATE OF b`, [businessId])).rows[0];
+    if (!before) { await client.query('ROLLBACK'); return res.status(404).json({ success: false, message: 'Not found' }); }
+    const finalType = businessType != null ? String(businessType).toUpperCase() : before.business_type;
+    if (distributorEnabled != null && !['WHOLESALE', 'DISTRIBUTOR'].includes(finalType)) { await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: 'The distributor tools belong to wholesale and distribution businesses' }); }
+    // Moving a DISTRIBUTOR business to WHOLESALE must not quietly drop its distributor tools: they become an explicit setting unless told otherwise.
+    const keepDistributor = distributorEnabled ?? (before.business_type === 'DISTRIBUTOR' && finalType === 'WHOLESALE' ? true : null);
+    let row = { business_id: businessId };
+    if (fields.length) {
+      params.push(businessId);
+      const { rows } = await client.query(
+        `UPDATE businesses SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+         WHERE business_id = $${params.length}
+         RETURNING business_id, name, plan_code, subscription_status, business_type`,
+        params
+      );
+      row = rows[0];
+    }
+    if (keepDistributor != null) {
+      await client.query(`INSERT INTO wholesale_settings (business_id, distributor_enabled) VALUES ($1, $2) ON CONFLICT (business_id) DO UPDATE SET distributor_enabled = EXCLUDED.distributor_enabled`, [businessId, keepDistributor]);
+    }
+    await client.query('COMMIT');
+    const rows = [{ ...row, ...(keepDistributor != null ? { distributor_enabled: keepDistributor } : {}) }];
 
     recordAudit(req, {
       business_id: businessId,
@@ -425,8 +450,11 @@ export const updateBusinessPlan = async (req, res) => {
 
     res.json({ success: true, data: rows[0] });
   } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
     console.error('[admin] update business plan failed:', error.message);
     res.status(500).json({ success: false, message: 'Could not update this business' });
+  } finally {
+    client.release();
   }
 };
 
@@ -441,7 +469,7 @@ const SUBSCRIPTION_ACTIONS = [
   'admin.business_plan_changed', 'admin.business_status_changed', 'admin.plan_version_created',
   'admin.feature_override_set', 'admin.feature_override_removed',
   'admin.payment_link_created', 'subscription.payment_received',
-  'admin.addon_link_created', 'subscription.addon_activated'
+  'admin.addon_link_created', 'subscription.addon_activated', 'admin.trial_extended'
 ];
 
 export const businessHistory = async (req, res) => {

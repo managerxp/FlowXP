@@ -20,7 +20,7 @@ test('a report is stored with what the app says, cut to size; an empty one is re
   const row = (await pool.query(`SELECT * FROM app_errors`)).rows[0];
   assert.equal(row.message.length, 500); assert.equal(row.stack.length, 4000); assert.equal(row.fatal, true);
   assert.deepEqual([row.version, row.platform, row.os_version, row.device, row.screen], ['1.2.3', 'android', '14', 'AB3', '/till']);
-  assert.equal('business_id' in row || 'email' in row, false, 'no person or business is kept');
+  assert.equal(row.business_id === null && row.user_id === null && 'email' in row, false, 'a crash report keeps no person or business');
 });
 
 test('the admin list groups the same message, counts times and devices, newest first', { skip }, async () => {

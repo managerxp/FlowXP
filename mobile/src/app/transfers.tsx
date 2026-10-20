@@ -1,3 +1,4 @@
+import { formatDate } from '../lib/display.ts';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
@@ -32,7 +33,7 @@ export default function Transfers() {
         <ColumnList
           style={{ flex: 1, marginTop: 8 }} data={list.data ?? []} keyExtractor={(t) => String(t.transfer_id)} refreshing={list.busy} onRefresh={() => { void list.refresh(); }}
           ListEmptyComponent={list.data ? <Empty>{show === 'open' ? 'Nothing is being moved right now.' : 'Nothing here.'}</Empty> : null}
-          renderItem={({ item: t }) => <Line left={`${t.transfer_number} · ${STATUS_LABEL[t.status]}`} sub={`${transferText(t)} · ${String(t.created_at).slice(0, 10)}`} onPress={() => router.push({ pathname: '/transfer/[id]', params: { id: String(t.transfer_id) } })} />}
+          renderItem={({ item: t }) => <Line left={`${t.transfer_number} · ${STATUS_LABEL[t.status]}`} sub={`${transferText(t)} · ${formatDate(t.created_at)}`} onPress={() => router.push({ pathname: '/transfer/[id]', params: { id: String(t.transfer_id) } })} />}
         />
       </Page>
     </SafeAreaView>

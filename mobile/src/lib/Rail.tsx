@@ -24,7 +24,7 @@ export function Rail({ state, descriptors, navigation, hidden }: RailProps) {
     return (
       <Pressable key={r.key} accessibilityRole="tab" accessibilityLabel={o.title} accessibilityState={{ selected: on }} onPress={() => navigation.navigate(r.name)}
         android_ripple={{ color: '#0b57ff22', borderless: true }} style={{ alignItems: 'center', gap: 4, paddingVertical: 6, minHeight: 64, width: 88 }}>
-        <View style={{ width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? '#dbe7ff' : 'transparent' }}>
+        <View style={{ width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? color.press : 'transparent' }}>
           {o.tabBarIcon?.({ focused: on, color: on ? color.brand : color.soft, size: 24 })}
           {o.tabBarBadge ? <View style={{ position: 'absolute', top: -2, right: 6, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: color.danger, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{o.tabBarBadge}</Text></View> : null}
         </View>

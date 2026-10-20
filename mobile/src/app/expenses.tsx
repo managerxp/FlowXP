@@ -1,3 +1,4 @@
+import { formatDate } from '../lib/display.ts';
 import { useState } from 'react';
 import { Alert, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -76,7 +77,7 @@ export default function Expenses() {
         <ColumnList
           style={{ flex: 1 }} data={list.data ?? []} keyExtractor={(e) => String(e.expense_id)} refreshing={list.busy} onRefresh={() => { void list.refresh(); }}
           ListEmptyComponent={list.data ? <Empty>No expenses in this time. Tap Add an expense when you pay for something.</Empty> : null}
-          renderItem={({ item: e }) => <Line left={e.category} sub={`${e.expense_date.slice(0, 10)} · ${e.payment_method.replace('_', ' ').toLowerCase()}${e.description ? ` · ${e.description}` : ''}`} right={rupees(toPaise(e.amount))} onPress={() => remove(e)} />}
+          renderItem={({ item: e }) => <Line left={e.category} sub={`${formatDate(e.expense_date)} · ${e.payment_method.replace('_', ' ').toLowerCase()}${e.description ? ` · ${e.description}` : ''}`} right={rupees(toPaise(e.amount))} onPress={() => remove(e)} />}
         />
       </Page>
     </SafeAreaView>

@@ -8,10 +8,10 @@
  * this file is now just the mount point for those, plus the handful of routes
  * that never fit anywhere else.
  */
-import { Router } from 'express';
+import express, { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import pool from '../config/database.js';
-import { requireAuth, withBusiness, requireOwner, requirePermission, requireAnyPermission, clearSessionCookie } from '../middleware/auth.js';
+import { requireAuth, withBusiness, requireOwner, requirePermission, requireAnyPermission, requirePlanFeature, clearSessionCookie } from '../middleware/auth.js';
 import * as auth from '../controllers/auth.controller.js';
 import * as oauth from '../controllers/oauth.controller.js';
 import * as security from '../controllers/security.controller.js';
@@ -61,6 +61,11 @@ import { uploadLogo } from '../middleware/upload.js';
 import publicOrderingRoutes from './publicOrdering.routes.js';
 import salonRoutes from './salon.routes.js';
 import hotelRoutes from './hotel.routes.js';
+import gymRoutes from './gym.routes.js';
+import gamingRoutes from './gaming.routes.js';
+import autopartsRoutes from './autoparts.routes.js';
+import gymPublicRoutes from './gymPublic.routes.js';
+import gymDeviceRoutes from './gymDevice.routes.js';
 import wholesaleRoutes from './wholesale.routes.js';
 import distributorRoutes from './distributor.routes.js';
 import pharmacyRoutes from './pharmacy.routes.js';
@@ -97,10 +102,12 @@ const contactLimiter = limiter(5, 60, 'Too many messages sent. Try again later.'
 const deletionLimiter = limiter(5, 60, 'Too many requests from here. Try again later.');
 /* The website chat calls the AI provider, which costs money per message: generous for a person, tight for a script. */
 const appErrorLimiter = limiter(30, 15, 'Too many reports from here.');
+const appReportLimiter = limiter(10, 15, 'You have sent a few reports already. Please wait a little before sending another.');
 const assistantLimiter = limiter(30, 15, 'Too many questions in a short time. Try again in a few minutes.');
 
 /* ── Public ─────────────────────────────────────────────────────────────── */
 
+router.post('/app-reports', requireAuth, appReportLimiter, appErrors.create);   // what a signed-in person types under "Report a problem"
 router.post('/app-errors', appErrorLimiter, appErrors.report);   // the mobile app's crash reports (no sign-in: a crash can come first)
 router.post('/auth/signup', signupLimiter, auth.signup);
 router.post('/auth/login', loginLimiter, auth.login);
@@ -144,6 +151,7 @@ router.post('/webhooks/cashfree', webhooks.cashfree);
 /* ── Signed in, no business needed ──────────────────────────────────────── */
 
 router.get('/auth/me', requireAuth, auth.me);
+router.patch('/auth/language', requireAuth, auth.setLanguage);
 
 /* Account security. These only need a signed-in person (not a business), so an owner whose business requires
    two-step verification can still reach them to set it up. Password and code checks share the login limiter. */
@@ -183,6 +191,8 @@ router.post('/auth/logout', (req, res) => {
 
 router.get('/businesses/current', requireAuth, withBusiness(), business.getCurrent);
 router.patch('/businesses/current', requireAuth, withBusiness({ requireActive: true }), requireOwner, business.updateCurrent);
+router.get('/businesses/current/backup', requireAuth, withBusiness(), requireOwner, business.downloadBackup);
+router.post('/businesses/current/restore', requireAuth, withBusiness({ requireActive: true }), requireOwner, requirePlanFeature('backup_restore'), express.raw({ type: '*/*', limit: '60mb' }), business.restoreBackup);
 router.post('/businesses/current/logo', requireAuth, withBusiness({ requireActive: true }), requireOwner, uploadLogo, business.uploadLogo);
 router.delete('/businesses/current/logo', requireAuth, withBusiness({ requireActive: true }), requireOwner, business.removeLogo);
 router.get('/businesses/current/subscription', requireAuth, withBusiness(), business.getSubscription);
@@ -230,6 +240,11 @@ router.use('/menu-import', menuImportRoutes);
 router.use('/distributor', distributorRoutes);   // the distributor layer: principals, territories, beats, schemes, targets, field sales, vans
 router.use('/wholesale', wholesaleRoutes);   // the wholesale / distribution module (WHOLESALE and DISTRIBUTOR businesses only)
 router.use('/salon', salonRoutes);          // the salon module (salon businesses only)
+router.use('/device/v1', gymDeviceRoutes);   // gate and reader devices: signed requests, no staff session (see GYM_DEVICES.md)
+router.use('/public/gym', gymPublicRoutes);   // a gym's public page, its entrance QR page and the signed-in member's own endpoints
+router.use('/autoparts', autopartsRoutes);   // the automotive spare parts module (AUTO_PARTS businesses only): parts catalogue, fitment, racks and bins, receiving, counts
+router.use('/gaming', gamingRoutes);        // the gaming lounge module (GAMING_CAFE businesses only): stations, timed sessions, rates, wallet, bookings
+router.use('/gym', gymRoutes);              // the gym module (GYM businesses only): members, memberships, QR cards, reception scanning, attendance
 router.use('/hotel', hotelRoutes);          // the hotel module (HOTEL businesses only): front office, housekeeping, folio, night audit, reports
 router.use('/pharmacy', pharmacyRoutes);    // the pharmacy module (PHARMACY businesses only)
 router.use('/retail', retailRoutes);        // supermarket / retail settings (SUPERMARKET and RETAIL businesses only)

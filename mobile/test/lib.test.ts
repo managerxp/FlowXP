@@ -24,10 +24,10 @@ test('the cart adds, raises, lowers and removes lines, and previews price plus G
   let cart = addProduct(emptyCart(), a); cart = addProduct(cart, a); cart = addProduct(cart, b, 3);
   assert.deepEqual(cart.lines.map((l) => [l.product.product_id, l.quantity]), [[1, 2], [2, 3]]);
   // 2 x 20.00 = 4000 (+5% = 200);  3 x 100.50 = 30150 (+12% = 3618)
-  assert.deepEqual(totals(cart), { itemCount: 5, subtotalPaise: 34150, offersPaise: 0, taxPaise: 3818, totalPaise: 37968 });
+  assert.deepEqual(totals(cart), { itemCount: 5, subtotalPaise: 34150, offersPaise: 0, taxPaise: 3818, cessPaise: 0, tcsPaise: 0, tdsPaise: 0, totalPaise: 37968 });
   cart = setQuantity(cart, '1:', 1); assert.equal(cart.lines[0].quantity, 1);
   cart = setQuantity(cart, '1:', 0); assert.deepEqual(cart.lines.map((l) => l.product.product_id), [2]);
-  assert.deepEqual(totals(emptyCart()), { itemCount: 0, subtotalPaise: 0, offersPaise: 0, taxPaise: 0, totalPaise: 0 });
+  assert.deepEqual(totals(emptyCart()), { itemCount: 0, subtotalPaise: 0, offersPaise: 0, taxPaise: 0, cessPaise: 0, tcsPaise: 0, tdsPaise: 0, totalPaise: 0 });
 });
 
 test('the sale body carries ids and quantities only; the server prices the lines', () => {

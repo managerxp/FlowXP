@@ -20,6 +20,7 @@ const { default: retailRoutes } = await import('../src/routes/retail.routes.js')
 const { default: invoiceRoutes } = await import('../src/routes/invoices.routes.js');
 const { default: purchaseRoutes } = await import('../src/routes/purchases.routes.js');
 const { default: creditNoteRoutes } = await import('../src/routes/creditNotes.routes.js');
+const { default: customerRoutes } = await import('../src/routes/customers.routes.js');
 
 let server; let base;
 test.after(async () => {
@@ -65,6 +66,7 @@ test('setup', { skip }, async () => {
   app.use('/api/purchases', purchaseRoutes);
   app.use('/api', creditNoteRoutes);
   app.use('/api', productRoutes);
+  app.use('/api/customers', customerRoutes);
   app.use((error, _req, res, _next) => { console.error(error); res.status(500).json({ success: false, message: 'boom' }); });
   server = http.createServer(app);
   await new Promise((r) => server.listen(0, r));
@@ -334,6 +336,29 @@ test('an upsert updates only the columns that are filled in, and will not take a
   assert.deepEqual([Number(p.selling_price_paise), Number(p.purchase_price_paise)], [6500, 6000], 'the cost was left alone');
   const clash = await importRows('products', [{ sku: (await pool.query(`SELECT sku FROM products WHERE product_id = $1`, [soap])).rows[0].sku, barcode: '8906001000019', 'Selling Price': '5', name: 'Mixed up' }], 'upsert');
   assert.equal(clash.body.data.total_errors, 1); assert.match(clash.body.data.errors[0].message, /different products/);
+});
+
+test('a file exported from Vyapar, Tally, Busy or Zoho imports with its own column names', { skip }, async () => {
+  const rows = [{ 'Item name': 'Brake Pad Swift', 'Part No': 'BP-SWF-01', 'Sale price': '850', 'Purchase price': '600', 'HSN/SAC': '87083000', 'Current stock quantity': '12', 'Minimum stock quantity': '3', 'Tax rate': '28' }];
+  const dry = await importRows('products', rows, 'create');
+  assert.deepEqual([dry.body.data.to_create, dry.body.data.total_errors], [1, 0]);
+  assert.equal((await importRows('products', rows, 'create', true)).status, 200);
+  const p = (await pool.query(`SELECT * FROM products WHERE name = 'Brake Pad Swift'`)).rows[0];
+  assert.deepEqual([p.sku, Number(p.selling_price_paise), Number(p.purchase_price_paise), p.hsn_sac, await stockOf(p.product_id)], ['BP-SWF-01', 85000, 60000, '87083000', 12]);
+});
+
+test('a customer list from Tally, Vyapar or Busy imports once; people already here are skipped; bad rows stop everything', { skip }, async () => {
+  const send = (rows, apply = false) => call(S.OWNER, 'POST', '/customers/import', { rows, apply });
+  const rows = [{ 'Party Name': 'Ravi Motors', Mobile: '98765 43210', 'GST No': '36ABCDE1234F1Z5', State: 'Telangana' }, { Name: 'Walk-in garage' }];
+  const dry = (await send(rows)).body.data;
+  assert.deepEqual([dry.to_create, dry.already_here, dry.total_errors, dry.applied], [2, 0, 0, false]);
+  assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM customers WHERE name = 'Ravi Motors'`)).rows[0].n, 0, 'a check writes nothing');
+  assert.equal((await send(rows, true)).body.data.created, 2);
+  const again = (await send([{ Name: 'Ravi Motors again', Phone: '9876543210' }, { Name: 'walk-in GARAGE' }], true)).body.data;
+  assert.deepEqual([again.created, again.already_here], [0, 2], 'same phone, or same name with no phone, is not doubled');
+  const bad = await send([{ Name: 'Fine One' }, { Name: 'Bad Phone', Phone: '12' }], true);
+  assert.equal(bad.status, 422); assert.equal(bad.body.data.errors[0].row, 3);
+  assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM customers WHERE name = 'Fine One'`)).rows[0].n, 0, 'nothing imported');
 });
 
 test('a stock import sets what is on the shelf, or adds a delivery, and refuses unknown items', { skip }, async () => {

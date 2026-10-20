@@ -21,7 +21,7 @@ const NAV = {
   settlements: 'Payouts', recipes: 'Recipes', kitchens: 'Kitchens', fulfilment: 'Warehouse', customers: 'Customers', products: 'Products', inventory: 'Inventory',
   purchasing: 'Purchasing', money: 'Money', returns: 'Returns', rules: 'Rules & roles', field: 'Field sales', principals: 'Principals', territories: 'Territories', team: 'Team',
   schemes: 'Schemes', vans: 'Vans', base: 'Wholesale base', appointments: 'Appointments', clients: 'Clients', services: 'Services', memberships: 'Memberships',
-  online: 'Online booking', receiving: 'Receiving', expiry: 'Expiry', dashboard: 'Dashboard'
+  online: 'Online booking', timer: 'Timer board', fnb: 'Food and drink', wallet: 'Wallet and packs', bookings: 'Bookings', events: 'Tournaments', insights: 'Reports', field: 'Field sales', principals: 'Principals', distreports: 'Distribution reports', frontdesk: 'Front desk', members: 'Members', portal: 'Member page', attendance: 'Attendance', classes: 'Classes', rewards: 'Rewards', gates: 'Gates', receiving: 'Receiving', expiry: 'Expiry', dashboard: 'Dashboard'
 };
 const VISIBLE_POINTS = 4;
 
@@ -132,7 +132,7 @@ const Module = ({ m, index }) => {
           <div className="lg:col-span-6 lg:col-start-7"><Points points={m.points} /></div>
         </Reveal>
         <Reveal index={1} className="mt-8 lg:ml-auto lg:w-8/12">
-          <Visual shots={m.shots} />
+          {m.shots.length > 0 && <Visual shots={m.shots} />}
         </Reveal>
       </div>
     );
@@ -144,7 +144,7 @@ const Module = ({ m, index }) => {
         <div className="mt-5"><Points points={m.points} /></div>
       </Reveal>
       <Reveal index={1} className={`lg:col-span-7 ${shape === 1 ? 'lg:order-1' : ''}`}>
-        <Visual shots={m.shots} />
+        {m.shots.length > 0 && <Visual shots={m.shots} />}
       </Reveal>
     </div>
   );

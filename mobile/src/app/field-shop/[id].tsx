@@ -1,3 +1,4 @@
+import { formatDate } from '../../lib/display.ts';
 import { useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -77,15 +78,15 @@ export default function FieldShopScreen() {
 
             <SectionTitle>Bills not yet paid</SectionTitle>
             {x.open_invoices.length === 0 ? <Soft style={{ padding: 16 }}>Nothing is owed.</Soft> : null}
-            {x.open_invoices.map((i) => <Line key={i.invoice_id} left={i.invoice_number} sub={`${String(i.invoice_date).slice(0, 10)}${i.due_date ? ` · due ${String(i.due_date).slice(0, 10)}` : ''}${i.overdue ? ' · late' : ''}`} right={money(i.balance)} />)}
+            {x.open_invoices.map((i) => <Line key={i.invoice_id} left={i.invoice_number} sub={`${formatDate(i.invoice_date)}${i.due_date ? ` · due ${formatDate(i.due_date)}` : ''}${i.overdue ? ' · late' : ''}`} right={money(i.balance)} />)}
 
             <SectionTitle>Last orders</SectionTitle>
             {x.orders.length === 0 ? <Soft style={{ padding: 16 }}>No orders yet.</Soft> : null}
-            {x.orders.map((o) => <Line key={o.order_id} left={o.order_number} sub={`${String(o.order_date).slice(0, 10)} · ${o.status.toLowerCase().replace(/_/g, ' ')}`} right={money(o.total)} />)}
+            {x.orders.map((o) => <Line key={o.order_id} left={o.order_number} sub={`${formatDate(o.order_date)} · ${o.status.toLowerCase().replace(/_/g, ' ')}`} right={money(o.total)} />)}
 
             <SectionTitle>Last visits</SectionTitle>
             {x.visits.length === 0 ? <Soft style={{ padding: 16 }}>No visits yet.</Soft> : null}
-            {x.visits.map((v) => <Line key={v.visit_id} left={`${String(v.visit_date).slice(0, 10)} · ${OUTCOME_LABEL[v.outcome]}`} sub={[v.notes, v.order_value > 0 ? `order ${money(v.order_value)}` : null, v.collection > 0 ? `collected ${money(v.collection)}` : null].filter(Boolean).join(' · ') || undefined} />)}
+            {x.visits.map((v) => <Line key={v.visit_id} left={`${formatDate(v.visit_date)} · ${OUTCOME_LABEL[v.outcome]}`} sub={[v.notes, v.order_value > 0 ? `order ${money(v.order_value)}` : null, v.collection > 0 ? `collected ${money(v.collection)}` : null].filter(Boolean).join(' · ') || undefined} />)}
           </ScrollView>
         ) : null}
       </Page>

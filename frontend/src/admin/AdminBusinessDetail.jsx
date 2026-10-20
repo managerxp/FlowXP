@@ -15,10 +15,10 @@ const LINK_STATUS_TONE = { PENDING: 'neutral', PAID: 'success', EXPIRED: 'danger
 // already accepts there, since the two lists must be changed together either way.
 const BUSINESS_TYPES = [
   ['RESTAURANT', 'Restaurant'], ['CAFE', 'Café'], ['CLOUD_KITCHEN', 'Cloud kitchen'], ['HOTEL', 'Hotel and restaurant'], ['RETAIL', 'Retail'],
-  ['SUPERMARKET', 'Supermarket'], ['PHARMACY', 'Pharmacy'], ['SALON', 'Salon'],
+  ['SUPERMARKET', 'Supermarket'], ['PHARMACY', 'Pharmacy'], ['SALON', 'Salon'], ['GYM', 'Gym'],
   ['SERVICES', 'Services'], ['ELECTRONICS', 'Electronics'], ['CLOTHING', 'Clothing'],
-  ['GAMING_CAFE', 'Gaming café'], ['RACING', 'Racing'], ['WHOLESALE', 'Wholesale'],
-  ['DISTRIBUTOR', 'Distributor'], ['OTHER', 'Other']
+  ['GAMING_CAFE', 'Gaming café'], ['AUTO_PARTS', 'Automobile / Hardware'], ['RACING', 'Racing'], ['WHOLESALE', 'Wholesale and distribution'],
+  ['DISTRIBUTOR', 'Distributor (older type, same as wholesale and distribution)'], ['OTHER', 'Other']
 ];
 const SUBSCRIPTION_STATUSES = ['TRIAL', 'ACTIVE', 'EXPIRED', 'CANCELLED', 'SUSPENDED'];
 
@@ -36,13 +36,16 @@ const PlanAndType = ({ business, businessId, onSaved }) => {
   const [planCode, setPlanCode] = useState(business.plan_code);
   const [subscriptionStatus, setSubscriptionStatus] = useState(business.subscription_status_raw);
   const [businessType, setBusinessType] = useState(business.business_type);
+  const [distributor, setDistributor] = useState(Boolean(business.distributor_enabled));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => { adminApi('/plans').then(setPlans).catch((err) => setError(err.message)); }, []);
 
+  const isWholesale = ['WHOLESALE', 'DISTRIBUTOR'].includes(businessType);
   const dirty = planCode !== business.plan_code || businessType !== business.business_type
-    || subscriptionStatus !== business.subscription_status_raw;
+    || subscriptionStatus !== business.subscription_status_raw
+    || (isWholesale && distributor !== Boolean(business.distributor_enabled));
 
   const save = async () => {
     setSaving(true);
@@ -50,7 +53,7 @@ const PlanAndType = ({ business, businessId, onSaved }) => {
     try {
       await adminApi(`/businesses/${businessId}/plan`, {
         method: 'PATCH',
-        body: { plan_code: planCode, subscription_status: subscriptionStatus, business_type: businessType }
+        body: { plan_code: planCode, subscription_status: subscriptionStatus, business_type: businessType, ...(isWholesale ? { distributor_enabled: distributor } : {}) }
       });
       toast.success('Saved');
       await onSaved();
@@ -80,13 +83,22 @@ const PlanAndType = ({ business, businessId, onSaved }) => {
         </Field>
         <Field id="bt-type" label="Business type">
           <Select id="bt-type" value={businessType} onChange={(e) => setBusinessType(e.target.value)}>
-            {BUSINESS_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            {BUSINESS_TYPES.filter(([value]) => value !== 'DISTRIBUTOR' || business.business_type === 'DISTRIBUTOR').map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </Select>
         </Field>
         <div className="flex items-end">
           <Button className="w-full" disabled={!dirty || saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</Button>
         </div>
       </div>
+      {isWholesale && (
+        <label htmlFor="bt-dist" className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-line p-3">
+          <input id="bt-dist" type="checkbox" className="mt-1 h-4 w-4" checked={distributor} onChange={(e) => setDistributor(e.target.checked)} />
+          <span>
+            <span className="block text-sm font-semibold text-ink-900">Distributor tools</span>
+            <span className="block text-sm text-ink-500">Off: wholesale only. On: adds principals, territories and beats, field sales, schemes, targets, commission and vans. The owner sees this but cannot change it.</span>
+          </span>
+        </label>
+      )}
       <p className="mt-3 text-xs text-ink-400">
         Which features this plan and business type actually include is set on the <Link to="/superadmin/features" className="text-brand-600 hover:underline">Features</Link> page.
       </p>
@@ -441,7 +453,62 @@ const HISTORY_LABEL = {
   'admin.feature_override_set': 'Feature override set',
   'admin.feature_override_removed': 'Feature override removed',
   'admin.payment_link_created': 'Payment link created',
-  'subscription.payment_received': 'Payment received'
+  'subscription.payment_received': 'Payment received',
+  'admin.trial_extended': 'Trial extended',
+  'admin.note_added': 'Support note added'
+};
+
+/* Give a business more trial days, and keep private support notes about them (the business never sees these). */
+const TrialAndNotes = ({ businessId, onChanged }) => {
+  const toast = useToast();
+  const [days, setDays] = useState('7');
+  const [notes, setNotes] = useState(null);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const loadNotes = () => adminApi(`/businesses/${businessId}/notes`).then(setNotes).catch((e) => toast.error(e.message));
+  useEffect(() => { loadNotes(); }, [businessId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const extend = async () => {
+    setBusy(true);
+    try { await adminApi(`/businesses/${businessId}/extend-trial`, { method: 'POST', body: { days: Number(days) } }); toast.success(`Trial extended by ${days} days`); onChanged(); }
+    catch (e) { toast.error(e.message); } finally { setBusy(false); }
+  };
+  const add = async () => {
+    if (!text.trim()) return;
+    setBusy(true);
+    try { await adminApi(`/businesses/${businessId}/notes`, { method: 'POST', body: { note: text.trim() } }); setText(''); await loadNotes(); }
+    catch (e) { toast.error(e.message); } finally { setBusy(false); }
+  };
+  const remove = async (id) => {
+    try { await adminApi(`/businesses/${businessId}/notes/${id}`, { method: 'DELETE' }); await loadNotes(); } catch (e) { toast.error(e.message); }
+  };
+  return (
+    <>
+      <Card>
+        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-ink-400">Extend trial</h2>
+        <p className="mb-3 text-xs text-ink-500">Adds days to the trial end (or starts a fresh trial from today if it already ended) and puts the business back on trial.</p>
+        <div className="flex items-end gap-2">
+          <div className="w-24"><Input type="number" min="1" max="90" value={days} onChange={(e) => setDays(e.target.value)} aria-label="Days to add" /></div>
+          <Button disabled={busy} onClick={extend}>Add days</Button>
+        </div>
+      </Card>
+      <Card className="lg:col-span-2">
+        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-ink-400">Support notes (private)</h2>
+        <div className="flex gap-2">
+          <Input placeholder="e.g. Called, wants the Pro plan after the trial" maxLength={1000} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') add(); }} aria-label="New note" />
+          <Button variant="secondary" disabled={busy || !text.trim()} onClick={add}>Add note</Button>
+        </div>
+        <ul className="mt-3 space-y-2 text-sm">
+          {notes?.length === 0 && <li className="text-ink-500">No notes yet.</li>}
+          {notes?.map((n) => (
+            <li key={n.note_id} className="flex items-start justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2">
+              <span className="min-w-0 [overflow-wrap:anywhere]">{n.note}<span className="block text-xs text-ink-500">{n.author || 'Admin'} · {new Date(n.created_at).toLocaleString()}</span></span>
+              <button type="button" className="text-xs text-danger hover:underline" onClick={() => remove(n.note_id)}>Delete</button>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    </>
+  );
 };
 
 const History = ({ businessId }) => {
@@ -591,6 +658,7 @@ const AdminBusinessDetail = () => {
         <FeatureOverrides businessId={id} />
         <PaymentLinks businessId={id} />
         <BusinessAddons businessId={id} businessType={business.business_type} />
+        <TrialAndNotes businessId={id} onChanged={load} />
         <History businessId={id} />
       </div>
 

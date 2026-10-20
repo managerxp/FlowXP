@@ -163,7 +163,7 @@ export function PharmacyTill() {
                   <Button title="Remove" kind="quiet" onPress={() => edit(removeLine(lines, l.key))} />
                 </View>
                 {choosing?.key === l.key ? (
-                  <View style={{ borderWidth: 1, borderColor: color.brand, borderRadius: 12, backgroundColor: '#eaf1ff', overflow: 'hidden' }}>
+                  <View style={{ borderWidth: 1, borderColor: color.brand, borderRadius: 12, backgroundColor: color.tint, overflow: 'hidden' }}>
                     {choosing.batches.length === 0 ? <Soft style={{ padding: 12 }}>No batch can be sold right now.</Soft> : choosing.batches.map((b) => (
                       <Line key={b.batch_id} left={`Batch ${b.batch_no}`} sub={`${expiryText(b.expiry_date, today())}`} right={`${qty(b.qty_on_hand)} left`} onPress={() => { edit(pickBatch(lines, l.key, b)); setChoosing(null); }} />
                     ))}
@@ -175,7 +175,7 @@ export function PharmacyTill() {
           })}
 
           {rx.length ? (
-            <View style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: '#fff7ed' }}>
+            <View style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: color.warnBg }}>
               <Text style={{ fontWeight: '700', color: color.danger }}>Prescription needed for {rx.map((l) => l.product.name).join(', ')}</Text>
               <TextInput style={s.input} value={doctor} onChangeText={setDoctor} placeholder="Doctor's name (optional)" accessibilityLabel="Doctor name" />
               <TextInput style={s.input} value={patient} onChangeText={setPatient} placeholder="Patient's name (optional)" accessibilityLabel="Patient name" />

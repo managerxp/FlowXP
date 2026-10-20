@@ -11,6 +11,7 @@
 import { moveStock } from './stock.js';
 import { allocateBatches, consumeBatches, returnToBatch } from './wholesale/stock.js';
 import { businessToday } from '../utils/dates.js';
+import { hasPermission } from '../middleware/auth.js';
 
 export class StockError extends Error {
   constructor(status, message, code = null) { super(message); this.status = status; this.code = code; }
@@ -260,6 +261,11 @@ export const applyCount = async (client, { tenant, userId, countId, zeroUncounte
   const lines = (await client.query(
     `SELECT i.product_id, i.counted_qty - i.system_qty AS delta, p.purchase_price_paise FROM stock_count_items i JOIN products p ON p.product_id = i.product_id
      WHERE i.count_id = $1 AND i.counted_qty <> i.system_qty ORDER BY i.product_id FOR UPDATE OF p`, [countId])).rows;
+  if (tenant.businessType === 'AUTO_PARTS' && lines.length && !hasPermission(tenant, 'stock_approve')) {
+    // a parts shop: a difference above the shop's limit (0 = any difference) is applied by someone who may approve stock changes
+    const limit = Number((await client.query(`SELECT count_auto_units FROM autoparts_settings WHERE business_id = $1`, [tenant.businessId])).rows[0]?.count_auto_units ?? 0);
+    if (lines.some((l) => Math.abs(Number(l.delta)) > limit)) throw new StockError(403, 'This count has differences that need a manager to approve. Ask someone with stock approval to apply it');
+  }
   let net = 0; let value = 0;
   for (const l of lines) {
     const delta = q3(l.delta);

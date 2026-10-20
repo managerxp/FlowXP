@@ -14,11 +14,11 @@ import { Button, Empty, ErrorText, Failed, Loading, SavedNote, SectionTitle, Sof
 
 const TONE: Record<TableState, { bg: string; border: string; ink: string }> = {
   free: { bg: color.card, border: color.line, ink: color.ink },
-  reserved: { bg: '#fffbeb', border: '#fcd34d', ink: color.warn },
-  new: { bg: '#eaf1ff', border: color.brand, ink: color.brand },
-  cooking: { bg: '#eaf1ff', border: color.brand, ink: color.brand },
-  ready: { bg: '#ecfdf5', border: '#34d399', ink: color.ok },
-  served: { bg: '#f1f5f9', border: color.soft, ink: color.soft }
+  reserved: { bg: color.warnBg, border: color.warnLine, ink: color.warn },
+  new: { bg: color.tint, border: color.brand, ink: color.brand },
+  cooking: { bg: color.tint, border: color.brand, ink: color.brand },
+  ready: { bg: color.okBg, border: '#34d399', ink: color.ok },
+  served: { bg: color.wash, border: color.soft, ink: color.soft }
 };
 
 /* The floor: every table, free or busy, and what the kitchen has done for each. Tap a free table to open an order, a busy one to carry on. */
@@ -30,6 +30,7 @@ export default function Tables() {
   const diningRoom = currentBusiness(session)?.business_type !== 'CLOUD_KITCHEN';
   const floor = useLoad<TableRow[]>(`floor:${scopeKey}`, () => (diningRoom ? api.get<TableRow[]>('/tables') : Promise.resolve([])));
   const open = useLoad<Order[]>(`open-orders:${scopeKey}`, () => api.get<Order[]>('/orders?open_only=true'));
+  const waiting = useLoad<{ order_id: number }[]>(`incoming-count:${scopeKey}`, () => api.get<{ order_id: number }[]>('/orders/pending-deliveries'));
   const [busy, setBusy] = useState<number | 'new' | null>(null);
   const [problem, setProblem] = useState('');
   const [zone, setZone] = useState<string | null>(null);
@@ -39,7 +40,7 @@ export default function Tables() {
   useFocusEffect(useCallback(() => { setFocused(true); return () => setFocused(false); }, []));
   useEffect(() => {
     if (!focused) return;
-    const t = setInterval(() => { void floor.refresh(); void open.refresh(); }, 15000);
+    const t = setInterval(() => { void floor.refresh(); void open.refresh(); void waiting.refresh(); }, 15000);
     return () => clearInterval(t);
   }, [focused]);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -105,7 +106,7 @@ export default function Tables() {
                     <Pressable
                       key={t.table_id} accessibilityRole="button" accessibilityLabel={`${t.name}, ${STATE_LABEL[st]}${o ? `, ${o.items} items, ${rupees(toPaise(o.estimate))}` : ''}`}
                       onPress={() => { void tap(t); }} disabled={busy !== null}
-                      style={({ pressed }) => ({ width: `${100 / cols - 2}%`, flexGrow: 1, minWidth: 140, minHeight: 100, padding: 12, borderRadius: 14, borderWidth: st === 'free' ? 1 : 2, borderColor: tone.border, backgroundColor: pressed ? '#dbeafe' : tone.bg, justifyContent: 'space-between', opacity: busy !== null && busy !== t.table_id ? 0.6 : 1 })}
+                      style={({ pressed }) => ({ width: `${100 / cols - 2}%`, flexGrow: 1, minWidth: 140, minHeight: 100, padding: 12, borderRadius: 14, borderWidth: st === 'free' ? 1 : 2, borderColor: tone.border, backgroundColor: pressed ? color.tint : tone.bg, justifyContent: 'space-between', opacity: busy !== null && busy !== t.table_id ? 0.6 : 1 })}
                     >
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         <Text style={{ fontSize: 18, fontWeight: '700', color: color.ink }}>{t.name}</Text>
@@ -124,11 +125,18 @@ export default function Tables() {
             </View>
           ))}
 
+          {waiting.data && waiting.data.length > 0 ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={`${waiting.data.length} new online orders waiting`} onPress={() => router.push('/incoming')} style={{ margin: 16, minHeight: 56, borderRadius: 12, backgroundColor: color.danger, paddingHorizontal: 16, justifyContent: 'center' }}>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>{waiting.data.length === 1 ? '1 new online order is waiting' : `${waiting.data.length} new online orders are waiting`}</Text>
+              <Text style={{ color: '#fff' }}>Tap to accept or turn down</Text>
+            </Pressable>
+          ) : null}
+
           {away.length ? (
             <>
               <SectionTitle>Takeaway and delivery, open now</SectionTitle>
               {away.map((o) => (
-                <Pressable key={o.order_id} accessibilityRole="button" onPress={() => go(o.order_id)} style={({ pressed }) => ({ minHeight: 56, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: pressed ? '#eaf1ff' : color.card, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' })}>
+                <Pressable key={o.order_id} accessibilityRole="button" onPress={() => go(o.order_id)} style={({ pressed }) => ({ minHeight: 56, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: pressed ? color.tint : color.card, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' })}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 16, color: color.ink }}>{o.order_number} · {o.order_type === 'DELIVERY' ? 'Delivery' : 'Takeaway'}</Text>
                     <Soft>{o.summary ? `${o.summary.items} items${o.summary.ready ? ` · ${o.summary.ready} ready` : ''}${o.summary.not_sent ? ` · ${o.summary.not_sent} not sent` : ''}` : o.status}{o.customer_name ? ` · ${o.customer_name}` : ''}</Soft>

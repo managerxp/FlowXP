@@ -11,13 +11,17 @@
  * and outlet, "Go to…" (Ctrl K), notifications and the person's menu.
  */
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { navKey } from '../i18n/navKey.js';
+import { applyTheme, clearTheme, setDisplay } from '../lib/display.js';
+import LanguageSelect from '../i18n/LanguageSelect.jsx';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
   ArrowLeftRight, BadgePercent, Tag, Boxes, CalendarClock, CalendarDays, ChartColumn, ChartLine, ChefHat, ChevronDown, ClipboardList, FileText, Gift,
   History, Landmark, LayoutDashboard, LayoutGrid, Lock, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
   Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X, Warehouse, PackageCheck, Undo2, HandCoins, ChartBar, ShoppingBag, Tags,
-  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass, BedDouble, Moon
+  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass, BedDouble, Moon, DoorOpen, UsersRound, CalendarCheck, Dumbbell, Gamepad2, Timer, Trophy, Sun, Wrench
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Avatar, Button, EmptyState, Logo, PageLoader, useToast } from '../components/ui.jsx';
@@ -26,8 +30,9 @@ import { ErrorBoundary } from '../components/ErrorBoundary.jsx';
 import NotificationBell from '../components/NotificationBell.jsx';
 import { InstallButton, OfflineStatus } from '../components/OfflineStatus.jsx';
 import CommandPalette from '../components/CommandPalette.jsx';
+import GuideHelper from '../components/GuideHelper.jsx';
 import IncomingDeliveryAlert from '../components/IncomingDeliveryAlert.jsx';
-import { HOTEL_TYPES, PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
+import { AUTO_PARTS_TYPES, GAMING_TYPES, GYM_TYPES, HOTEL_TYPES, PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
 
 /*
  * The sidebar, grouped by the job rather than listed alphabetically: that
@@ -45,6 +50,9 @@ const DINE_IN_TYPES = RESTAURANT_TYPES.filter((t) => t !== 'CLOUD_KITCHEN');
 
 const SALON = ['SALON'];
 const HOTEL = HOTEL_TYPES;
+const GYM = GYM_TYPES;
+const GAMING = GAMING_TYPES;
+const PARTS = AUTO_PARTS_TYPES;
 const WHOLESALE = WHOLESALE_TYPES;
 const PHARMACY = PHARMACY_TYPES;
 const RETAIL = RETAIL_TYPES;
@@ -69,6 +77,9 @@ const NAV_GROUPS = [
       { to: '/app/returns', label: 'Returns', icon: Undo2, types: RETAIL, permission: 'refunds' },
       { to: '/app/billing/invoices', label: 'Invoices', icon: FileText, permission: 'billing', more: true },
       { to: '/app/orders', label: 'Orders', icon: ClipboardList, types: RESTAURANT_TYPES, anyPermission: ['billing', 'kitchen'] },
+      // sales orders and deliveries are for every kind of business; a wholesaler finds them in the Wholesale group below
+      { to: '/app/wholesale/orders', label: 'Sales orders', icon: ClipboardList, notTypes: WHOLESALE, permission: 'sales_orders', feature: 'wholesale_orders' },
+      { to: '/app/wholesale/fulfilment', label: 'Deliveries', icon: PackageCheck, notTypes: WHOLESALE, permission: 'fulfilment', feature: 'wholesale_fulfilment' },
       { to: '/app/payments', label: 'Payments', icon: Wallet, permission: 'payments', more: true }
     ]
   },
@@ -107,6 +118,44 @@ const NAV_GROUPS = [
       { to: '/app/salon/memberships', label: 'Memberships & offers', icon: BadgePercent, types: SALON, permission: 'products' },
       { to: '/app/salon/team', label: 'Team & commission', icon: Users, types: SALON, anyPermission: ['staff_commission', 'appointments'] },
       { to: '/app/salon/stock', label: 'Stock & alerts', icon: Boxes, types: SALON, anyPermission: ['inventory', 'reports'] }
+    ]
+  },
+  {
+    label: 'Spare parts',
+    items: [
+      { to: '/app/parts', label: 'Overview', icon: LayoutDashboard, end: true, types: PARTS, anyPermission: ['reports', 'inventory', 'warehouse', 'valuation', 'grn'], feature: 'ap_catalog' },
+      { to: '/app/parts/catalogue', label: 'Parts', icon: Package, types: PARTS, anyPermission: ['billing', 'parts_catalog', 'warehouse', 'grn', 'stock_count', 'inventory'], feature: 'ap_catalog' },
+      { to: '/app/parts/vehicles', label: 'Vehicles', icon: Truck, types: PARTS, anyPermission: ['billing', 'parts_catalog', 'warehouse'], feature: 'ap_catalog' },
+      { to: '/app/parts/warehouse', label: 'Racks and bins', icon: Warehouse, types: PARTS, anyPermission: ['warehouse', 'grn', 'stock_count'], feature: 'ap_racks' },
+      { to: '/app/parts/receive', label: 'Receive parts', icon: PackageCheck, types: PARTS, anyPermission: ['grn', 'purchases'], feature: 'ap_grn' },
+      { to: '/app/parts/jobs', label: 'Job cards', icon: Wrench, types: PARTS, anyPermission: ['billing'], feature: 'ap_jobcards' },
+      { to: '/app/parts/staff', label: 'Staff', icon: Users, types: PARTS, anyPermission: ['hr', 'payroll'], feature: 'ap_staff' },
+      { to: '/app/parts/trade', label: 'Trade and accounts', icon: HandCoins, types: PARTS, anyPermission: ['billing', 'price_change', 'returns_process'], feature: 'ap_catalog' },
+      { to: '/app/parts/reports', label: 'Parts reports', icon: ChartBar, types: PARTS, anyPermission: ['reports', 'valuation', 'inventory'], feature: 'ap_intelligence' }
+    ]
+  },
+  {
+    label: 'Gaming',
+    items: [
+      { to: '/app/gaming', label: 'Board', icon: Gamepad2, end: true, types: GAMING, anyPermission: ['gaming_desk', 'gaming_setup'], feature: 'gaming_stations' },
+      { to: '/app/gaming/sessions', label: 'Sessions', icon: Timer, types: GAMING, anyPermission: ['gaming_desk', 'gaming_setup'], feature: 'gaming_stations' },
+      { to: '/app/gaming/bookings', label: 'Bookings', icon: CalendarDays, types: GAMING, anyPermission: ['gaming_desk', 'gaming_setup'], feature: 'gaming_bookings' },
+      { to: '/app/gaming/players', label: 'Players and wallet', icon: UsersRound, types: GAMING, anyPermission: ['gaming_desk', 'gaming_setup'], feature: 'gaming_stations' },
+      { to: '/app/gaming/tournaments', label: 'Tournaments', icon: Trophy, types: GAMING, anyPermission: ['gaming_desk', 'gaming_setup'], feature: 'gaming_tournaments' },
+      { to: '/app/gaming/reports', label: 'Gaming reports', icon: ChartBar, types: GAMING, anyPermission: ['gaming_setup', 'reports'], feature: 'gaming_stations' },
+      { to: '/app/gaming/setup', label: 'Stations and rates', icon: Tag, types: GAMING, permission: 'gaming_setup', feature: 'gaming_stations' }
+    ]
+  },
+  {
+    label: 'Gym',
+    items: [
+      { to: '/app/gym/reception', label: 'Front desk', icon: DoorOpen, types: GYM, permission: 'gym_desk', feature: 'gym_access' },
+      { to: '/app/gym/members', label: 'Members', icon: UsersRound, types: GYM, anyPermission: ['gym_desk', 'gym_members', 'gym_setup', 'gym_trainer'] },
+      { to: '/app/gym/plans', label: 'Plans', icon: Tag, types: GYM, anyPermission: ['gym_desk', 'gym_setup'] },
+      { to: '/app/gym/classes', label: 'Classes', icon: Dumbbell, types: GYM, anyPermission: ['gym_desk', 'gym_trainer', 'gym_setup'], feature: 'gym_classes' },
+      { to: '/app/gym/rewards', label: 'Rewards', icon: Gift, types: GYM, anyPermission: ['gym_desk', 'gym_setup'], feature: 'gym_rewards' },
+      { to: '/app/gym/attendance', label: 'Attendance', icon: CalendarCheck, types: GYM, anyPermission: ['gym_desk', 'gym_setup', 'gym_trainer'], feature: 'gym_access' },
+      { to: '/app/gym/settings', label: 'Gym settings', icon: Settings, types: GYM, permission: 'gym_setup' }
     ]
   },
   {
@@ -209,13 +258,15 @@ const readCollapsed = () => { try { return localStorage.getItem(COLLAPSE_KEY) ==
 
 /* One sidebar link. Collapsed, it shows only the icon and names itself in a tooltip. */
 const NavItem = ({ item, collapsed, onNavigate }) => {
+  const { t } = useTranslation('nav');
+  const label = t(`items.${navKey(item.label)}`);
   const Icon = item.icon;
   return (
     <NavLink
       to={item.to}
       end={item.end}
       onClick={onNavigate}
-      title={collapsed ? item.label : undefined}
+      title={collapsed ? label : undefined}
       className={({ isActive }) =>
         `nav-item group relative flex items-center gap-3 rounded-lg px-2.5 text-small transition-colors duration-(--duration-fast) ${
           isActive ? 'bg-brand-50 font-semibold text-brand-700' : 'text-ink-700 hover:bg-surface-2 hover:text-ink-900'
@@ -226,7 +277,7 @@ const NavItem = ({ item, collapsed, onNavigate }) => {
         <>
           {isActive && <span aria-hidden="true" className="absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-brand-500" />}
           <Icon aria-hidden="true" className={`h-[18px] w-[18px] shrink-0 ${isActive ? 'text-brand-600' : 'text-ink-400 group-hover:text-ink-700'}`} />
-          <span className={collapsed ? 'lg:sr-only' : ''}>{item.label}</span>
+          <span className={collapsed ? 'lg:sr-only' : ''}>{label}</span>
         </>
       )}
     </NavLink>
@@ -234,7 +285,23 @@ const NavItem = ({ item, collapsed, onNavigate }) => {
 };
 
 /* The person's menu in the top bar: who is signed in, and the ways out. */
+/** One tap between the light and the dark screen (this device only; the full choice, including "follow the system", is in Settings > Display). */
+const ThemeToggle = () => {
+  const { t } = useTranslation('nav');
+  const read = () => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+  const [mode, setMode] = useState(read);
+  useEffect(() => { const watch = new MutationObserver(() => setMode(read())); watch.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); return () => watch.disconnect(); }, []);
+  const dark = mode === 'dark';
+  return (
+    <button type="button" onClick={() => setDisplay({ theme: dark ? 'light' : 'dark' })} aria-label={dark ? t('shell.switchToLight') : t('shell.switchToDark')} title={dark ? t('shell.switchToLight') : t('shell.switchToDark')}
+      className="rounded-lg p-2 text-ink-700 hover:bg-surface-2 pointer-coarse:p-3">
+      {dark ? <Sun aria-hidden="true" className="h-5 w-5" /> : <Moon aria-hidden="true" className="h-5 w-5" />}
+    </button>
+  );
+};
+
 const ProfileMenu = ({ user, role, onSignOut }) => {
+  const { t } = useTranslation('nav');
   const [open, setOpen] = useState(false);
   const box = useRef(null);
   useEffect(() => {
@@ -254,7 +321,7 @@ const ProfileMenu = ({ user, role, onSignOut }) => {
         <Avatar name={user.name} size="sm" />
         <span className="hidden max-w-32 truncate text-small font-medium text-ink-900 md:inline">{user.name}</span>
         <ChevronDown aria-hidden="true" className="hidden h-4 w-4 text-ink-400 md:block" />
-        <span className="sr-only md:hidden">Your account</span>
+        <span className="sr-only md:hidden">{t('shell.yourAccount')}</span>
       </button>
       {open && (
         <div role="menu" className="fade-in absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-(--radius-card) border border-line bg-surface shadow-lg">
@@ -265,15 +332,16 @@ const ProfileMenu = ({ user, role, onSignOut }) => {
           </div>
           <div className="p-1.5">
             <Link role="menuitem" to="/app/security" onClick={() => setOpen(false)} className={`${item} text-ink-700 hover:bg-surface-2`}>
-              <Shield aria-hidden="true" className="h-4 w-4 text-ink-400" />Security
+              <Shield aria-hidden="true" className="h-4 w-4 text-ink-400" />{t('items.security')}
             </Link>
             <Link role="menuitem" to="/app/settings" onClick={() => setOpen(false)} className={`${item} text-ink-700 hover:bg-surface-2`}>
-              <Settings aria-hidden="true" className="h-4 w-4 text-ink-400" />Settings
+              <Settings aria-hidden="true" className="h-4 w-4 text-ink-400" />{t('items.settings')}
             </Link>
             <button role="menuitem" type="button" onClick={onSignOut} className={`${item} text-danger hover:bg-danger/5`}>
-              <LogOut aria-hidden="true" className="h-4 w-4" />Sign out
+              <LogOut aria-hidden="true" className="h-4 w-4" />{t('shell.signOut')}
             </button>
           </div>
+          <div className="border-t border-line px-3 py-2.5"><LanguageSelect /></div>
         </div>
       )}
     </div>
@@ -284,16 +352,17 @@ const ProfileMenu = ({ user, role, onSignOut }) => {
    Shown from the start of the trial, not only at the end: a counter someone
    has watched tick down converts better than a wall that appears on day eight. */
 const SubscriptionBanner = ({ subscription }) => {
+  const { t } = useTranslation('nav');
   if (!subscription) return null;
 
   if (subscription.status === 'EXPIRED') {
     return (
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-warning/30 bg-warning/10 px-5 py-2 text-small">
         <p className="text-ink-900">
-          <strong className="font-semibold">Your 7-day FlowXP trial has ended.</strong>{' '}
-          Your data is safe and still readable. Upgrade to start billing again.
+          <strong className="font-semibold">{t('shell.trialEnded')}</strong>{' '}
+          {t('shell.trialEndedBody')}
         </p>
-        <Button to="/app/settings/subscription" size="sm">Upgrade now</Button>
+        <Button to="/app/settings/subscription" size="sm">{t('shell.upgrade')}</Button>
       </div>
     );
   }
@@ -305,16 +374,25 @@ const SubscriptionBanner = ({ subscription }) => {
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-100 bg-brand-50 px-5 py-2 text-small">
       <p className="text-ink-700">
         <strong className="font-semibold text-ink-900">
-          {days} {days === 1 ? 'day' : 'days'} left in your free trial
+          {t('shell.trialLeft', { count: days })}
         </strong>
-        {' '}· no credit card on file
+        {' '}· {t('shell.noCard')}
       </p>
-      <Button to="/app/settings/subscription" size="sm" variant="secondary">See plans</Button>
+      <Button to="/app/settings/subscription" size="sm" variant="secondary">{t('shell.seePlans')}</Button>
     </div>
   );
 };
 
 const AppShell = () => {
+  // this device's theme (lib/display.js); the system choice follows the operating system while the app is open
+  useEffect(() => {
+    applyTheme();
+    const media = window.matchMedia?.('(prefers-color-scheme: dark)');
+    media?.addEventListener?.('change', applyTheme);
+    return () => { media?.removeEventListener?.('change', applyTheme); clearTheme(); };
+  }, []);
+  const { t } = useTranslation('nav');
+  const trNav = (label) => t(`items.${navKey(label)}`);
   const { user, business, businesses, businessId, switchBusiness, signOut, loading, outlets, outletId, canViewAll, switchOutlet, can, hasFeature } = useAuth();
   const location = useLocation();
   const toast = useToast();
@@ -406,8 +484,8 @@ const AppShell = () => {
     && (!item.distributor || business.distributor_enabled);
   const notHere = owner && !blocked && !allItems.filter((i) => i.to === owner.to).some(fits);
   const paletteItems = [
-    ...groups.flatMap((g) => g.items.map((i) => ({ ...i, group: g.label || 'Overview' }))),
-    ...systemItems.map((i) => ({ ...i, group: 'System' }))
+    ...groups.flatMap((g) => g.items.map((i) => ({ ...i, label: trNav(i.label), group: trNav(g.label || 'Overview') }))),
+    ...systemItems.map((i) => ({ ...i, label: trNav(i.label), group: trNav('System') }))
   ];
   const closeNav = () => setNavOpen(false);
 
@@ -423,15 +501,15 @@ const AppShell = () => {
             prints the bill, not the app around it. */}
         {navOpen && <div className="fixed inset-0 z-40 bg-ink-900/30 lg:hidden print:hidden" onClick={closeNav} aria-hidden="true" />}
         <aside
-          aria-label="Main navigation"
+          aria-label={t('shell.mainNav')}
           className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-line bg-surface transition-transform duration-(--duration-moderate) ease-(--ease-standard) lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:translate-x-0 lg:transition-[width] ${navOpen ? 'translate-x-0' : '-translate-x-full'} ${collapsed ? 'lg:w-16' : 'lg:w-60'} print:hidden`}
         >
           <div className={`flex h-14 shrink-0 items-center justify-between border-b border-line px-4 ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}>
-            <Link to="/app" aria-label="FlowXP dashboard" className={collapsed ? 'lg:hidden' : ''}><Logo /></Link>
-            <button type="button" onClick={closeNav} aria-label="Close menu" className="rounded-lg p-1.5 text-ink-500 hover:bg-surface-2 pointer-coarse:p-3 lg:hidden">
+            <Link to="/app" aria-label={t('shell.dashboardAria')} className={collapsed ? 'lg:hidden' : ''}><Logo /></Link>
+            <button type="button" onClick={closeNav} aria-label={t('shell.closeMenu')} className="rounded-lg p-1.5 text-ink-500 hover:bg-surface-2 pointer-coarse:p-3 lg:hidden">
               <X className="h-5 w-5" />
             </button>
-            <button type="button" onClick={toggleCollapsed} aria-label={collapsed ? 'Expand the menu' : 'Collapse the menu'} title={collapsed ? 'Expand the menu' : 'Collapse the menu'}
+            <button type="button" onClick={toggleCollapsed} aria-label={collapsed ? t('shell.expandMenu') : t('shell.collapseMenu')} title={collapsed ? t('shell.expandMenu') : t('shell.collapseMenu')}
                     className="hidden rounded-lg p-1.5 text-ink-400 hover:bg-surface-2 hover:text-ink-700 lg:block">
               {collapsed ? <PanelLeftOpen className="h-[18px] w-[18px]" /> : <PanelLeftClose className="h-[18px] w-[18px]" />}
             </button>
@@ -441,7 +519,7 @@ const AppShell = () => {
             {mainGroups.map((group) => (
               <div key={group.label || 'overview'} className={group.label ? 'nav-group' : ''}>
                 {group.label && (
-                  <p className={`nav-label px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-400 ${collapsed ? 'lg:sr-only' : ''}`}>{group.label}</p>
+                  <p className={`nav-label px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-400 ${collapsed ? 'lg:sr-only' : ''}`}>{trNav(group.label)}</p>
                 )}
                 <div className="space-y-0.5">
                   {group.items.map((item) => <NavItem key={item.to} item={item} collapsed={collapsed} onNavigate={closeNav} />)}
@@ -451,17 +529,17 @@ const AppShell = () => {
             {moreItems.length > 0 && (
               <div ref={moreRef} className="nav-group">
                 <button type="button" onClick={() => { if (showMore) { setMoreOpen(false); setMoreClosedAt(location.pathname); } else { setMoreOpen(true); setMoreClosedAt(null); setTimeout(() => moreRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 30); } }} aria-expanded={showMore} aria-controls="nav-more"
-                        title={collapsed ? 'More' : undefined}
+                        title={collapsed ? trNav('More') : undefined}
                         className={`nav-item flex w-full items-center gap-3 rounded-lg px-2.5 text-small text-ink-700 transition-colors duration-(--duration-fast) hover:bg-surface-2 hover:text-ink-900 ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}>
                   <Ellipsis aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-ink-400" />
-                  <span className={`flex-1 text-left ${collapsed ? 'lg:sr-only' : ''}`}>More</span>
+                  <span className={`flex-1 text-left ${collapsed ? 'lg:sr-only' : ''}`}>{trNav('More')}</span>
                   {!collapsed && <ChevronDown aria-hidden="true" className={`h-4 w-4 text-ink-400 transition-transform duration-(--duration-fast) ${showMore ? 'rotate-180' : ''}`} />}
                 </button>
                 {showMore && (
                   <div id="nav-more" className="fade-in mt-1 border-t border-line pt-0.5">
                     {moreGroups.map((group) => (
                       <div key={group.label} className="nav-group">
-                        <p className={`nav-label px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-400 ${collapsed ? 'lg:sr-only' : ''}`}>{group.label}</p>
+                        <p className={`nav-label px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-400 ${collapsed ? 'lg:sr-only' : ''}`}>{trNav(group.label)}</p>
                         <div className="space-y-0.5">
                           {group.items.map((item) => <NavItem key={item.to} item={item} collapsed={collapsed} onNavigate={closeNav} />)}
                         </div>
@@ -485,7 +563,7 @@ const AppShell = () => {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex min-h-14 items-center gap-2 border-b border-line bg-surface/95 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-sm sm:gap-3 sm:px-5 print:hidden">
-            <button type="button" onClick={() => setNavOpen(true)} aria-label="Open menu" aria-expanded={navOpen}
+            <button type="button" onClick={() => setNavOpen(true)} aria-label={t('shell.openMenu')} aria-expanded={navOpen}
                     className="rounded-lg p-2 text-ink-700 hover:bg-surface-2 pointer-coarse:p-3 lg:hidden">
               <Menu className="h-5 w-5" />
             </button>
@@ -493,7 +571,7 @@ const AppShell = () => {
             {/* Business and outlet: native selects, keyboard-friendly and native on a phone. */}
             {businesses.length > 1 ? (
               <label className="relative min-w-0">
-                <span className="sr-only">Business</span>
+                <span className="sr-only">{t('shell.business')}</span>
                 <Store aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
                 <select value={businessId ?? ''} onChange={(e) => switchBusiness(Number(e.target.value))}
                         className={`${PICKER} max-w-56 font-semibold text-ink-900`}>
@@ -511,12 +589,12 @@ const AppShell = () => {
             {outlets.length > 1 && (
               canViewAll ? (
                 <label className="relative min-w-0">
-                  <span className="sr-only">Outlet</span>
+                  <span className="sr-only">{t('shell.outlet')}</span>
                   <MapPinned aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
                   <select value={outletId ?? ''} onChange={(e) => switchOutlet(e.target.value === 'all' ? 'all' : Number(e.target.value))}
                           className={`${PICKER} max-w-48 font-medium text-ink-700`}>
                     {outlets.map((o) => <option key={o.branch_id} value={o.branch_id}>{o.name}</option>)}
-                    <option value="all">All outlets</option>
+                    <option value="all">{t('shell.allOutlets')}</option>
                   </select>
                   <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
                 </label>
@@ -528,13 +606,14 @@ const AppShell = () => {
             <button type="button" onClick={() => setPaletteOpen(true)}
                     className="ml-auto flex h-9 items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 text-small text-ink-500 hover:border-line-strong pointer-coarse:h-11 md:ml-4 md:w-64 lg:w-80">
               <Search aria-hidden="true" className="h-4 w-4" />
-              <span className="hidden md:inline">Go to…</span>
+              <span className="hidden md:inline">{t('shell.goTo')}</span>
               <kbd className="ml-auto hidden rounded border border-line bg-surface px-1.5 text-[11px] text-ink-500 md:block">Ctrl K</kbd>
-              <span className="sr-only md:hidden">Go to a screen</span>
+              <span className="sr-only md:hidden">{t('shell.goToScreen')}</span>
             </button>
 
             <div className="flex shrink-0 items-center gap-1 sm:gap-1.5 md:ml-auto">
               <InstallButton />
+              <ThemeToggle />
               <NotificationBell />
               <ProfileMenu user={user} role={business.role} onSignOut={signOut} />
             </div>
@@ -547,17 +626,17 @@ const AppShell = () => {
               <EmptyState
                 icon={Lock}
                 className="mx-auto mt-10 max-w-md"
-                title="You don't have access to this"
-                body="Ask an owner or admin if you need it."
-                action={<Button to="/app" variant="secondary" size="sm">Back to Dashboard</Button>}
+                title={t('shell.noAccess')}
+                body={t('shell.noAccessBody')}
+                action={<Button to="/app" variant="secondary" size="sm">{t('shell.backToDashboard')}</Button>}
               />
             ) : notHere ? (
               <EmptyState
                 icon={Compass}
                 className="mx-auto mt-10 max-w-md"
-                title="This screen is for another kind of business"
-                body={`${owner.label} isn't part of how ${business.name} is set up. Everything that applies to it is in the sidebar.`}
-                action={<Button to="/app" variant="secondary" size="sm">Back to Dashboard</Button>}
+                title={t('shell.otherKind')}
+                body={t('shell.otherKindBody', { screen: trNav(owner.label), business: business.name })}
+                action={<Button to="/app" variant="secondary" size="sm">{t('shell.backToDashboard')}</Button>}
               />
             ) : (
               <ErrorBoundary key={`${location.pathname}:${outletId ?? ''}`}><Outlet /></ErrorBoundary>
@@ -567,6 +646,7 @@ const AppShell = () => {
       </div>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} items={paletteItems} />
+      <GuideHelper items={paletteItems} />
     </div>
   );
 };

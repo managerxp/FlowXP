@@ -15,7 +15,7 @@ import { Chips, Empty, Failed, Line, Loading, SavedNote, Stat, Title, color, s }
 
 const money = (r: number) => rupees(toPaise(r));
 type Tab = 'bills' | 'phone';
-const STATUS: Record<string, { label: string; tone: string }> = { PAID: { label: 'Paid', tone: color.ok }, PARTIAL: { label: 'Part paid', tone: color.warn }, UNPAID: { label: 'Unpaid', tone: color.danger } };
+const STATUS: Record<string, { label: string; tone: string }> = { PAID: { label: 'Paid', get tone() { return color.ok; } }, PARTIAL: { label: 'Part paid', get tone() { return color.warn; } }, UNPAID: { label: 'Unpaid', get tone() { return color.danger; } } };
 
 const BillRow = memo(({ i }: { i: InvoiceRow }) => {
   const st = STATUS[i.payment_status] ?? { label: i.payment_status, tone: color.soft };

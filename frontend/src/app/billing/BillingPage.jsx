@@ -28,6 +28,7 @@ import { api, formatCurrency, NetworkError } from '../../lib/api.js';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
 import { withApproval } from '../../lib/approval.js';
 import ModifierPicker, { needsChoices, useModifierGroups } from '../../components/ModifierPicker.jsx';
+import { FIELDS as TALLY_FIELDS } from './TallyInvoice.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Alert, Button, Input, Modal, Select, humanize, useToast, useDialog } from '../../components/ui.jsx';
 import { LoyaltyCard, MobileLookup, PointsPanel, RewardHint } from '../../components/LoyaltyCard.jsx';
@@ -39,10 +40,11 @@ import RoomChargePicker from '../../components/RoomChargePicker.jsx';
 import BarcodeScanner from '../../components/BarcodeScanner.jsx';
 import QuickProductModal from '../../components/QuickProductModal.jsx';
 import { catalogInfo, loadCatalog, localLookup, localSearch, subscribeCatalog, syncCatalog, upsertLocal } from '../../lib/posCatalog.js';
+import { useT, T } from '../../i18n/useT.js';
 
 /* How the bill is paid. "Pay later" records it unpaid (a customer's credit). */
 const METHODS = [
-  ['CASH', 'Cash'], ['UPI', 'UPI'], ['CARD', 'Card'], ['BANK_TRANSFER', 'Bank'], ['OTHER', 'Other'], ['LATER', 'Pay later']
+  ['CASH', T('Cash')], ['UPI', 'UPI'], ['CARD', T('Card')], ['BANK_TRANSFER', T('Bank')], ['OTHER', T('Other')], ['LATER', T('Pay later')]
 ];
 const ROOM_METHOD = ['ROOM', 'To room'];   // a hotel only: the bill goes on an in-house guest's folio
 const SPLIT_METHODS = METHODS.filter(([value]) => value !== 'LATER');
@@ -56,6 +58,7 @@ const matches = (p, q) => p.name.toLowerCase().includes(q) || p.sku?.toLowerCase
 /* ── The item grid ─────────────────────────────────────────────────────── */
 
 const ProductTile = ({ product, inCart, onAdd, highlight = false }) => {
+  const tr = useT();
   const off = product.is_available === false;
   return (
     <button
@@ -68,16 +71,16 @@ const ProductTile = ({ product, inCart, onAdd, highlight = false }) => {
       {inCart > 0 && <span key={inCart} aria-hidden="true" className="tile-added pointer-events-none absolute inset-0 rounded-(--radius-card)" />}
       {inCart > 0 && (
         <span className="tabular absolute right-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[11px] font-semibold text-white">
-          {inCart}<span className="sr-only"> in the bill</span>
+          {inCart}<span className="sr-only"> {tr('in the bill')}</span>
         </span>
       )}
       <span className="line-clamp-2 pr-6 text-small font-medium leading-snug text-ink-900">{product.name}</span>
       <span className="mt-2 flex flex-wrap items-end justify-between gap-x-2 gap-y-0.5">
         <span className="tabular shrink-0 text-small font-semibold text-ink-900">{formatCurrency(product.selling_price)}</span>
         <span className="ml-auto text-right text-[11px] leading-tight text-ink-500">
-          {off ? 'Not available' : product.track_inventory
-            ? <span className={product.low_stock ? 'font-medium text-warning' : ''}>{Number(product.current_stock)} {product.unit} left</span>
-            : product.modifier_group_ids?.length ? 'Options' : ''}
+          {off ? tr('Not available') : product.track_inventory
+            ? <span className={product.low_stock ? 'font-medium text-warning' : ''}>{tr('{{Number}} {{unit}} left', { Number: Number(product.current_stock), unit: product.unit })}</span>
+            : product.modifier_group_ids?.length ? tr('Options') : ''}
         </span>
       </span>
     </button>
@@ -86,19 +89,23 @@ const ProductTile = ({ product, inCart, onAdd, highlight = false }) => {
 
 /* ── One line of the bill ──────────────────────────────────────────────── */
 
-const Stepper = ({ value, onChange, label }) => (
+const Stepper = ({ value, onChange, label }) => {
+  const tr = useT();
+  return (
   <div className="flex items-center rounded-lg border border-line-strong">
-    <button type="button" onClick={() => onChange(Math.max(0, Number(value) - 1))} aria-label={`One less ${label}`} className="flex h-8 w-8 items-center justify-center text-ink-700 hover:bg-surface-2 pointer-coarse:h-11 pointer-coarse:w-11"><Minus className="h-3.5 w-3.5" /></button>
+    <button type="button" onClick={() => onChange(Math.max(0, Number(value) - 1))} aria-label={tr('One less {{label}}', { label })} className="flex h-8 w-8 items-center justify-center text-ink-700 hover:bg-surface-2 pointer-coarse:h-11 pointer-coarse:w-11"><Minus className="h-3.5 w-3.5" /></button>
     <input
-      type="number" min="0" step="any" value={value} aria-label={`Quantity of ${label}`}
+      type="number" min="0" step="any" value={value} aria-label={tr('Quantity of {{label}}', { label })}
       onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
       className="tabular h-8 w-11 border-x border-line bg-transparent text-center text-small font-medium text-ink-900 [appearance:textfield] focus:outline-none pointer-coarse:h-11 [&::-webkit-inner-spin-button]:appearance-none"
     />
-    <button type="button" onClick={() => onChange(Number(value || 0) + 1)} aria-label={`One more ${label}`} className="flex h-8 w-8 items-center justify-center text-ink-700 hover:bg-surface-2 pointer-coarse:h-11 pointer-coarse:w-11"><Plus className="h-3.5 w-3.5" /></button>
+    <button type="button" onClick={() => onChange(Number(value || 0) + 1)} aria-label={tr('One more {{label}}', { label })} className="flex h-8 w-8 items-center justify-center text-ink-700 hover:bg-surface-2 pointer-coarse:h-11 pointer-coarse:w-11"><Plus className="h-3.5 w-3.5" /></button>
   </div>
 );
+};
 
 const BillLine = ({ line, onChange, onRemove, selected = false, onSelect, offer = null }) => {
+  const tr = useT();
   const [discountOpen, setDiscountOpen] = useState(Boolean(line.discount));
   const label = line.name || 'custom item';
   return (
@@ -107,9 +114,9 @@ const BillLine = ({ line, onChange, onRemove, selected = false, onSelect, offer 
         <div className="min-w-0 flex-1">
           {line.custom ? (
             <div className="flex gap-2">
-              <Input placeholder="What is it?" value={line.name} onChange={(e) => onChange({ name: e.target.value })} aria-label="Custom item description" className="!py-1.5" />
+              <Input placeholder={tr('What is it?')} value={line.name} onChange={(e) => onChange({ name: e.target.value })} aria-label={tr('Custom item description')} className="!py-1.5" />
               <div className="w-24 shrink-0">
-                <Input type="number" min="0" step="0.01" placeholder="₹ price" value={line.unit_price || ''} aria-label="Custom item price"
+                <Input type="number" min="0" step="0.01" placeholder={tr('₹ price')} value={line.unit_price || ''} aria-label={tr('Custom item price')}
                        onChange={(e) => onChange({ unit_price: Number(e.target.value) })} className="!py-1.5 text-right" />
               </div>
             </div>
@@ -118,28 +125,28 @@ const BillLine = ({ line, onChange, onRemove, selected = false, onSelect, offer 
           )}
           <p className="tabular mt-0.5 text-caption text-ink-500">
             {formatCurrency(line.unit_price)} each
-            {line.discount > 0 && <span className="text-success"> · {formatCurrency(line.discount)} off</span>}
+            {line.discount > 0 && <span className="text-success">{tr('· {{formatCurrency}} off', { formatCurrency: formatCurrency(line.discount) })}</span>}
             {offer && <span className="ml-1 rounded-full bg-success/10 px-1.5 py-0.5 font-semibold text-success">{offer.name}: −{formatCurrency(offer.discount)}</span>}
-            {!discountOpen && <button type="button" onClick={() => setDiscountOpen(true)} className="ml-2 font-medium text-brand-600 hover:text-brand-700 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:px-1">Discount</button>}
+            {!discountOpen && <button type="button" onClick={() => setDiscountOpen(true)} className="ml-2 font-medium text-brand-600 hover:text-brand-700 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:px-1">{tr('Discount')}</button>}
           </p>
           {line.track_inventory && Number(line.quantity) > Number(line.current_stock) && (
-            <p className="mt-0.5 text-caption font-medium text-danger">Only {Number(line.current_stock)} in stock</p>
+            <p className="mt-0.5 text-caption font-medium text-danger">{tr('Only {{Number}} in stock', { Number: Number(line.current_stock) })}</p>
           )}
           {discountOpen && (
             <div className="mt-2 flex items-center gap-2">
               <div className="w-28">
-                <Input type="number" min="0" step="0.01" placeholder="₹ off this line" aria-label={`Discount on ${label} in rupees`} value={line.discount || ''}
+                <Input type="number" min="0" step="0.01" placeholder={tr('₹ off this line')} aria-label={tr('Discount on {{label}} in rupees', { label })} value={line.discount || ''}
                        onChange={(e) => onChange({ discount: Number(e.target.value) })} className="!py-1.5 text-right" />
               </div>
-              <button type="button" onClick={() => { onChange({ discount: 0 }); setDiscountOpen(false); }} className="text-caption text-ink-500 hover:text-ink-900 pointer-coarse:min-h-11 pointer-coarse:px-2">Remove</button>
+              <button type="button" onClick={() => { onChange({ discount: 0 }); setDiscountOpen(false); }} className="text-caption text-ink-500 hover:text-ink-900 pointer-coarse:min-h-11 pointer-coarse:px-2">{tr('Remove')}</button>
             </div>
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
           <p className="tabular text-small font-semibold text-ink-900">{formatCurrency(lineTotal(line) - (offer?.discount || 0))}</p>
           <div className="flex items-center gap-1">
-            <Stepper value={line.quantity} label={label} onChange={(q) => onChange({ quantity: q })} />
-            <button type="button" onClick={onRemove} aria-label={`Remove ${label}`} className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-400 hover:bg-danger/5 hover:text-danger pointer-coarse:h-11 pointer-coarse:w-11"><Trash2 className="h-4 w-4" /></button>
+            <Stepper value={line.quantity} label={tr(label)} onChange={(q) => onChange({ quantity: q })} />
+            <button type="button" onClick={onRemove} aria-label={tr('Remove {{label}}', { label })} className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-400 hover:bg-danger/5 hover:text-danger pointer-coarse:h-11 pointer-coarse:w-11"><Trash2 className="h-4 w-4" /></button>
           </div>
         </div>
       </div>
@@ -150,6 +157,7 @@ const BillLine = ({ line, onChange, onRemove, selected = false, onSelect, offer 
 /* ── After charging ────────────────────────────────────────────────────── */
 
 const Done = ({ confirmation, change, onNew, onView }) => {
+  const tr = useT();
   const newRef = useRef(null);
   useEffect(() => { newRef.current?.focus(); }, []);
   const offline = confirmation.offline;
@@ -160,51 +168,51 @@ const Done = ({ confirmation, change, onNew, onView }) => {
           ? <CloudOff aria-hidden="true" className="mx-auto h-10 w-10 text-warning" />
           : <CheckCircle2 aria-hidden="true" className="mx-auto h-10 w-10 text-success" />}
         <p className={`mt-3 text-caption font-semibold uppercase tracking-[0.12em] ${offline ? 'text-warning' : 'text-success'}`}>
-          {offline ? 'Saved on this device' : 'Bill saved'}
+          {offline ? tr('Saved on this device') : tr('Bill saved')}
         </p>
-        <h1 className="mt-1 text-h3 font-semibold text-ink-900">{offline ? "You're offline" : confirmation.invoice_number}</h1>
+        <h1 className="mt-1 text-h3 font-semibold text-ink-900">{offline ? tr('You\'re offline') : confirmation.invoice_number}</h1>
         <p className="tabular mt-2 text-[40px] font-semibold leading-none tracking-tight text-ink-900">{formatCurrency(confirmation.total)}</p>
 
         {change > 0 && !offline && (
-          <p className="tabular mt-4 rounded-lg bg-brand-50 px-3 py-2.5 text-body font-semibold text-brand-700">Give back {formatCurrency(change)} change</p>
+          <p className="tabular mt-4 rounded-lg bg-brand-50 px-3 py-2.5 text-body font-semibold text-brand-700">{tr('Give back {{formatCurrency}} change', { formatCurrency: formatCurrency(change) })}</p>
         )}
 
         {confirmation.order && (
           <div className="mt-4 rounded-lg border border-line bg-surface-2 px-4 py-3">
             <p className="flex items-center justify-center gap-1.5 text-caption font-semibold text-success"><ChefHat aria-hidden="true" className="h-4 w-4" />Sent to the kitchen · {confirmation.order.kot_number}</p>
             <p className="tabular mt-1 text-[30px] font-bold leading-none tracking-tight text-ink-900">{confirmation.order.order_number}</p>
-            <p className="mt-1 text-caption text-ink-500">Tell the customer this number, and call it when the order is ready.</p>
+            <p className="mt-1 text-caption text-ink-500">{tr('Tell the customer this number, and call it when the order is ready.')}</p>
           </div>
         )}
 
         <div className="mt-4 space-y-1.5 text-small text-ink-500">
           {offline ? (
-            <p>It will be billed automatically when the connection is back, and gets its invoice number then. Hand over a written note for now{confirmation.toKitchen ? ', and tell the kitchen yourself: it was not sent to the kitchen screen' : ''}.</p>
+            <p>It will be billed automatically when the connection is back, and gets its invoice number then. Hand over a written note for now{confirmation.toKitchen ? tr(', and tell the kitchen yourself: it was not sent to the kitchen screen') : ''}.</p>
           ) : (
             <>
-              <p>{confirmation.room_label ? `Charged to ${confirmation.room_label}. Paid at check-out.` : confirmation.payment_status === 'PAID' ? 'Paid in full.'
+              <p>{confirmation.room_label ? `Charged to ${confirmation.room_label}. Paid at check-out.` : confirmation.payment_status === 'PAID' ? tr('Paid in full.')
                 : confirmation.payment_status === 'PARTIAL' ? `Part paid. ${formatCurrency(confirmation.balance_due)} still due.`
                 : `Not paid yet. ${formatCurrency(confirmation.balance_due ?? confirmation.total)} due.`}</p>
               {confirmation.payments_taken?.length > 1 && (
                 <p className="tabular">{confirmation.payments_taken.map((p) => `${humanize(p.method)} ${formatCurrency(p.amount)}`).join(' + ')}</p>
               )}
-              {confirmation.loyalty_reward && <p className="font-medium text-success">Loyalty reward: {confirmation.loyalty_reward.item} free ({formatCurrency(confirmation.loyalty_reward.amount)} off)</p>}
+              {confirmation.loyalty_reward && <p className="font-medium text-success">{tr('Loyalty reward: {{item}} free ({{formatCurrency}} off)', { item: confirmation.loyalty_reward.item, formatCurrency: formatCurrency(confirmation.loyalty_reward.amount) })}</p>}
               {confirmation.loyalty_points && <p>{confirmation.loyalty_points.redeemed > 0 && `${confirmation.loyalty_points.redeemed} points used (${formatCurrency(confirmation.points_discount)} off). `}Earned {confirmation.loyalty_points.earned} points · balance {confirmation.loyalty_points.balance}{confirmation.loyalty_points.tier ? ` · ${confirmation.loyalty_points.tier}` : ''}</p>}
-              {confirmation.coupon_code && <p>Coupon {confirmation.coupon_code}: {formatCurrency(confirmation.coupon_discount)} off</p>}
+              {confirmation.coupon_code && <p>{tr('Coupon {{coupon_code}}: {{formatCurrency}} off', { coupon_code: confirmation.coupon_code, formatCurrency: formatCurrency(confirmation.coupon_discount) })}</p>}
             </>
           )}
         </div>
 
         <div className="mt-7 grid gap-2">
-          <Button ref={newRef} size="lg" onClick={onNew}>New sale</Button>
+          <Button ref={newRef} size="lg" onClick={onNew}>{tr('New sale')}</Button>
           {!offline && (
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="secondary" onClick={() => printReceipt(confirmation.invoice_id)}><Printer aria-hidden="true" className="h-4 w-4" />Print</Button>
-              <Button variant="secondary" onClick={onView}>View bill</Button>
+              <Button variant="secondary" onClick={() => printReceipt(confirmation.invoice_id)}><Printer aria-hidden="true" className="h-4 w-4" />{tr('Print')}</Button>
+              <Button variant="secondary" onClick={onView}>{tr('View bill')}</Button>
             </div>
           )}
         </div>
-        <p className="mt-4 text-caption text-ink-400">Press Enter for a new sale</p>
+        <p className="mt-4 text-caption text-ink-400">{tr('Press Enter for a new sale')}</p>
       </div>
     </div>
   );
@@ -212,10 +220,12 @@ const Done = ({ confirmation, change, onNew, onView }) => {
 
 /* ── Bills on hold ─────────────────────────────────────────────────────── */
 
-const HeldBills = ({ bills, onResume, onDiscard, onClose }) => (
-  <Modal title="Bills on hold" onClose={onClose} wide>
+const HeldBills = ({ bills, onResume, onDiscard, onClose }) => {
+  const tr = useT();
+  return (
+  <Modal title={tr('Bills on hold')} onClose={onClose} wide>
     {bills.length === 0 ? (
-      <p className="py-6 text-center text-small text-ink-500">No bills on hold at this outlet.</p>
+      <p className="py-6 text-center text-small text-ink-500">{tr('No bills on hold at this outlet.')}</p>
     ) : (
       <ul className="-mx-2 divide-y divide-line">
         {bills.map((h) => (
@@ -226,15 +236,16 @@ const HeldBills = ({ bills, onResume, onDiscard, onClose }) => (
                 {Number(h.item_count)} item{Number(h.item_count) === 1 ? '' : 's'} · about {formatCurrency(h.estimate)} · {clock(h.created_at)}{h.held_by ? ` by ${h.held_by}` : ''}
               </p>
             </div>
-            <Button size="sm" onClick={() => onResume(h)}>Resume</Button>
-            <Button size="sm" variant="ghost" onClick={() => onDiscard(h)} className="text-danger hover:bg-danger/5 hover:text-danger">Discard</Button>
+            <Button size="sm" onClick={() => onResume(h)}>{tr('Resume')}</Button>
+            <Button size="sm" variant="ghost" onClick={() => onDiscard(h)} className="text-danger hover:bg-danger/5 hover:text-danger">{tr('Discard')}</Button>
           </li>
         ))}
       </ul>
     )}
-    <p className="mt-4 text-caption text-ink-500">Held bills are kept for this outlet. Prices, stock and coupons are checked again when you charge.</p>
+    <p className="mt-4 text-caption text-ink-500">{tr('Held bills are kept for this outlet. Prices, stock and coupons are checked again when you charge.')}</p>
   </Modal>
 );
+};
 
 /* ── Open orders, billed from here ─────────────────────────────────────── */
 
@@ -244,10 +255,12 @@ const orderKind = (o) => (o.platform ? humanize(o.platform) : ORDER_KIND[o.order
 const minutesAgo = (iso) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
 const LINE_STATUS = { PENDING: ['Not sent', 'text-warning'], PREPARING: ['Cooking', 'text-brand-700'], READY: ['Ready', 'text-success'], SERVED: ['Served', 'text-ink-500'] };
 
-const OpenOrders = ({ orders, onPick, onClose }) => (
-  <Modal title="Open orders" onClose={onClose} wide>
+const OpenOrders = ({ orders, onPick, onClose }) => {
+  const tr = useT();
+  return (
+  <Modal title={tr('Open orders')} onClose={onClose} wide>
     {orders.length === 0 ? (
-      <p className="py-6 text-center text-small text-ink-500">No open orders at this outlet. Tables, takeaways and QR orders that are not billed yet show here.</p>
+      <p className="py-6 text-center text-small text-ink-500">{tr('No open orders at this outlet. Tables, takeaways and QR orders that are not billed yet show here.')}</p>
     ) : (
       <ul className="-mx-2 divide-y divide-line">
         {orders.map((o) => {
@@ -261,28 +274,30 @@ const OpenOrders = ({ orders, onPick, onClose }) => (
                   <span className="block truncate text-caption text-ink-500">
                     {[orderTitle(o).includes(o.order_number) ? null : o.order_number, `${Number(s.items || 0)} items`, o.customer_name, mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)} h ${mins % 60} min`].filter(Boolean).join(' · ')}
                   </span>
-                  {s.not_sent > 0 && <span className="block text-caption font-medium text-warning">{s.not_sent} not sent to the kitchen</span>}
+                  {s.not_sent > 0 && <span className="block text-caption font-medium text-warning">{tr('{{not_sent}} not sent to the kitchen', { not_sent: s.not_sent })}</span>}
                 </span>
                 <span className="tabular shrink-0 text-small font-semibold text-ink-900">{formatCurrency(s.estimate || 0)}</span>
-                <span className="shrink-0 rounded-md bg-brand-50 px-2 py-1 text-caption font-semibold text-brand-700">Bill</span>
+                <span className="shrink-0 rounded-md bg-brand-50 px-2 py-1 text-caption font-semibold text-brand-700">{tr('Bill')}</span>
               </button>
             </li>
           );
         })}
       </ul>
     )}
-    <p className="mt-4 text-caption text-ink-500">Billing an order here closes that same order, so it is never billed twice.</p>
+    <p className="mt-4 text-caption text-ink-500">{tr('Billing an order here closes that same order, so it is never billed twice.')}</p>
   </Modal>
 );
+};
 
 /* One line of an open order: its kitchen state, and − / + only while it is not sent yet. */
 const OrderBillLine = ({ line, onQty }) => {
+  const tr = useT();
   const [label, tone] = LINE_STATUS[line.status] || ['', ''];
   return (
     <li className="flex items-start gap-3 py-3">
       <div className="min-w-0 flex-1">
         <p className="text-small font-medium leading-snug text-ink-900">{!line.pending && <span className="tabular mr-1">{line.quantity} ×</span>}{line.name}</p>
-        <p className="tabular mt-0.5 text-caption text-ink-500"><span className={`font-semibold ${tone}`}>{label}</span> · {formatCurrency(line.unit_price)} each</p>
+        <p className="tabular mt-0.5 text-caption text-ink-500"><span className={`font-semibold ${tone}`}>{tr(label)}</span> · {formatCurrency(line.unit_price)} each</p>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-2">
         <p className="tabular text-small font-semibold text-ink-900">{formatCurrency(lineTotal(line))}</p>
@@ -295,6 +310,7 @@ const OrderBillLine = ({ line, onQty }) => {
 /* ── The screen ────────────────────────────────────────────────────────── */
 
 const BillingPage = () => {
+  const tr = useT();
   const dialog = useDialog();
   const { business, outletId, can } = useAuth();
   const navigate = useNavigate();
@@ -318,6 +334,10 @@ const BillingPage = () => {
   const [couponError, setCouponError] = useState('');
   const [invoiceDiscount, setInvoiceDiscount] = useState('');
   const [notes, setNotes] = useState('');
+  const [dispatch, setDispatch] = useState({});          // Tally invoice details for this sale (consignee, delivery, dispatch, payment terms); hardware only
+  const tallyBill = business?.business_type === 'AUTO_PARTS';
+  const gstOpt = business?.gst_enabled ? (business.gst_options || {}) : {};   // composite, TCS, TDS, reverse charge as the owner switched them (Settings > GST options)
+  const [levies, setLevies] = useState({});                                    // { tcs, tds, reverse_charge }: ticked on this bill
   const [method, setMethod] = useState('CASH');
   const [room, setRoom] = useState(null);   // the in-house guest a bill is charged to
   const [received, setReceived] = useState('');         // cash handed over, or a part payment
@@ -387,7 +407,7 @@ const BillingPage = () => {
 
   const loadOrder = (id = orderId) => api(`/orders/${id}`).then((o) => {
     if (['BILLED', 'CANCELLED', 'MERGED'].includes(o.status)) { toast.error(`${orderTitle(o)} is already ${o.status === 'BILLED' ? 'billed' : o.status.toLowerCase()}`); setOrderId(null); loadOpenOrders(); return; }
-    if (o.status === 'PENDING_ACCEPT') { toast.error(`${orderTitle(o)} needs to be accepted or rejected first — see Orders`); setOrderId(null); loadOpenOrders(); return; }
+    if (o.status === 'PENDING_ACCEPT') { toast.error(tr('{{orderTitle}} needs to be accepted or rejected first — see Orders', { orderTitle: orderTitle(o) })); setOrderId(null); loadOpenOrders(); return; }
     setOrder(o);
     setCustomerId(o.customer_id || ''); setCustomerName(o.customer_name || '');
   }).catch((e) => { setError(e.message); setOrderId(null); });
@@ -568,7 +588,7 @@ const BillingPage = () => {
     const id = params.get('customer');
     const order = params.get('order');
     const credit = params.get('exchange');
-    if (credit) api(`/credit-notes/${credit}`).then((cn) => { if (cn.credit_left > 0) setExchange({ cn_id: cn.cn_id, cn_number: cn.cn_number, available: cn.credit_left }); else setError(`${cn.cn_number} has no credit left to use.`); }).catch((e) => setError(e.message));
+    if (credit) api(`/credit-notes/${credit}`).then((cn) => { if (cn.credit_left > 0) setExchange({ cn_id: cn.cn_id, cn_number: cn.cn_number, available: cn.credit_left }); else setError(tr('{{cn_number}} has no credit left to use.', { cn_number: cn.cn_number })); }).catch((e) => setError(e.message));
     if (!id && !order && !credit) return;
     if (id) api(`/customers/${id}`).then(pickCustomer).catch(() => {});
     if (order) setOrderId(Number(order));
@@ -602,7 +622,7 @@ const BillingPage = () => {
 
   const resetSale = () => {
     setCart([]); setCustomerId(''); setCustomerName(''); setCard(null); setPointsInfo(null); setRedeem(''); setCustomerOpen(false); setInvoiceDiscount(''); setCouponCode(''); setCouponInfo(null); setCouponError('');
-    setNotes(''); setExtrasOpen(false); setReceived(''); setCardRef(''); setMethod('CASH'); setRoom(null); setConfirmation(null); setChange(0); setError(''); setQuery('');
+    setNotes(''); setDispatch({}); setLevies({}); setExtrasOpen(false); setReceived(''); setCardRef(''); setMethod('CASH'); setRoom(null); setConfirmation(null); setChange(0); setError(''); setQuery('');
     setSplit(false); setParts([]); setHoldOpen(false); setHoldLabel(''); setCollecting(null);
     setOrderId(null); setOrder(null); setExchange(null); setPromo({});
     setTimeout(() => searchRef.current?.focus(), 0);
@@ -612,15 +632,15 @@ const BillingPage = () => {
 
   const charge = async () => {
     setError('');
-    if (!billLines.length) { setError('Add at least one item'); return; }
+    if (!billLines.length) { setError(tr('Add at least one item')); return; }
     for (const l of billLines) {
-      if (l.custom && (!l.name.trim() || !l.unit_price)) { setError('Every custom item needs a description and a price'); return; }
+      if (l.custom && (!l.name.trim() || !l.unit_price)) { setError(tr('Every custom item needs a description and a price')); return; }
       if (!Number(l.quantity)) { setError(`Set a quantity for ${l.name || 'the custom item'}, or remove it`); return; }
     }
-    if (toRoom && !room) { setError('Choose the guest whose room this is charged to'); return; }
+    if (toRoom && !room) { setError(tr('Choose the guest whose room this is charged to')); return; }
     if (split) {
-      if (parts.slice(0, -1).some((p) => !(Number(p.amount) > 0))) { setError('Enter an amount for each part of the split. Leave only the last one blank for the rest.'); return; }
-      if (fixedParts + (lastFixed || 0) > totals.total + 0.005) { setError(`The parts add up to ${formatCurrency(fixedParts + (lastFixed || 0))}, more than the bill.`); return; }
+      if (parts.slice(0, -1).some((p) => !(Number(p.amount) > 0))) { setError(tr('Enter an amount for each part of the split. Leave only the last one blank for the rest.')); return; }
+      if (fixedParts + (lastFixed || 0) > totals.total + 0.005) { setError(tr('The parts add up to {{formatCurrency}}, more than the bill.', { formatCurrency: formatCurrency(fixedParts + (lastFixed || 0)) })); return; }
     }
     setBusy(true);
     let payload = null;
@@ -635,6 +655,8 @@ const BillingPage = () => {
         coupon_code: couponCode.trim() || undefined,
         redeem_points: Number(redeem) > 0 ? Number(redeem) : undefined,
         notes: notes || undefined,
+        tcs: gstOpt.tcs && levies.tcs ? true : undefined, tds: gstOpt.tds && levies.tds ? true : undefined, reverse_charge: gstOpt.reverse_charge && levies.reverse_charge ? true : undefined,
+        print_details: tallyBill && Object.values(dispatch).some((x) => x?.trim()) ? dispatch : undefined,
         charge_to_booking_id: toRoom ? room.booking_id : undefined
       };
       let invoice;
@@ -666,7 +688,7 @@ const BillingPage = () => {
       if (invoice.order && getDevicePrefs().autoPrintKot) printKotSlip(invoice.order.kot_id);
       }
       idem.settle();
-      if (toRoom) toast.success(`Charged to ${room.label}`);
+      if (toRoom) toast.success(tr('Charged to {{label}}', { label: room.label }));
       if (upiQr) { setCollecting({ invoice, amount: partial ? amount : undefined }); return; }
       // from the saved total: round-off and freebies can move it from the estimate
       setChange(!split && method === 'CASH' && amount != null ? Math.max(0, Math.round((amount - invoice.total) * 100) / 100) : 0);
@@ -679,7 +701,7 @@ const BillingPage = () => {
       if (caught instanceof NetworkError && payload && !toRoom) {   // a room charge needs the hotel's live list of guests, so it is never queued
         const saved = queueSale({ label: `${formatCurrency(totals.total)} · ${cart.length} item${cart.length === 1 ? '' : 's'}`, body: payload, idempotencyKey: idem.get() });
         if (saved) { idem.settle(); setConfirmation({ offline: true, total: totals.total, toKitchen: sending }); setBusy(false); return; }
-        setError('Too many sales are waiting to sync. Reconnect before taking more.');
+        setError(tr('Too many sales are waiting to sync. Reconnect before taking more.'));
       } else {
         idem.settle(caught);
         setError(caught.message);
@@ -693,16 +715,16 @@ const BillingPage = () => {
   const snapshot = () => ({
     lines: cart.map((l) => ({ product_id: l.product_id, custom: Boolean(l.custom), name: l.name, unit: l.unit, unit_price: l.unit_price, quantity: l.quantity, discount: l.discount, tax_rate: l.tax_rate, modifier_ids: l.modifier_ids || [], sig: l.sig || '', track_inventory: l.track_inventory, current_stock: l.current_stock })),
     customer_id: customerId || null, customer_name: customerName || null, coupon_code: couponCode.trim() || null,
-    discount: Number(invoiceDiscount) || 0, notes: notes || null
+    discount: Number(invoiceDiscount) || 0, notes: notes || null, print_details: dispatch, levies
   });
   const holdBill = async (label = holdLabel) => {
     try {
       await api('/held-bills', { method: 'POST', body: { label: label.trim() || undefined, bill: snapshot(), estimate: totals.total } });
-      toast.success(label.trim() ? `Held: ${label.trim()}` : 'Bill put on hold');
+      toast.success(label.trim() ? `Held: ${label.trim()}` : tr('Bill put on hold'));
       resetSale(); loadHeld();
       return true;
     } catch (caught) {
-      setError(caught instanceof NetworkError ? "You're offline, so this bill can't be held right now." : caught.message);
+      setError(caught instanceof NetworkError ? tr('You\'re offline, so this bill can\'t be held right now.') : caught.message);
       return false;
     }
   };
@@ -710,7 +732,7 @@ const BillingPage = () => {
   const openOrder = async (o) => {
     if (o.order_id === orderId) { setOrdersOpen(false); loadOrder(o.order_id); return; }   // same id would never refetch after a reset
     if (!orderMode && cart.length) {
-      if (!(await dialog.confirm({ title: 'Hold the current bill?', body: 'It goes on hold so you can bill this order. You can resume it any time.', confirmLabel: 'Hold and continue' }))) return;
+      if (!(await dialog.confirm({ title: tr('Hold the current bill?'), body: tr('It goes on hold so you can bill this order. You can resume it any time.'), confirmLabel: tr('Hold and continue') }))) return;
       if (!(await holdBill('Held while billing an order'))) return;
     }
     resetSale(); setOrdersOpen(false); setOrderId(o.order_id);
@@ -719,7 +741,7 @@ const BillingPage = () => {
   const resume = async (h) => {
     if (orderMode) resetSale();
     else if (cart.length) {
-      if (!(await dialog.confirm({ title: 'Hold the current bill?', body: 'It goes on hold so you can open this one. You can resume it any time.', confirmLabel: 'Hold and continue' }))) return;
+      if (!(await dialog.confirm({ title: tr('Hold the current bill?'), body: tr('It goes on hold so you can open this one. You can resume it any time.'), confirmLabel: tr('Hold and continue') }))) return;
       if (!(await holdBill('Held while resuming another'))) return;
     }
     try {
@@ -727,14 +749,14 @@ const BillingPage = () => {
       const b = got.bill;
       setCart(b.lines.map((l) => ({ ...l, key: keySeq++ })));
       if (b.customer_id) { setCustomerId(b.customer_id); setCustomerName(b.customer_name || 'Customer'); }
-      setCouponCode(b.coupon_code || ''); setInvoiceDiscount(b.discount ? String(b.discount) : ''); setNotes(b.notes || '');
-      setExtrasOpen(Boolean(b.coupon_code || b.discount || b.notes));
+      setCouponCode(b.coupon_code || ''); setInvoiceDiscount(b.discount ? String(b.discount) : ''); setNotes(b.notes || ''); setDispatch(b.print_details || {}); setLevies(b.levies || {});
+      setExtrasOpen(Boolean(b.coupon_code || b.discount || b.notes || Object.values(b.print_details || {}).some(Boolean)));
       setHeldOpen(false); loadHeld();
       toast.success(`Resumed ${h.label || 'the held bill'}`);
     } catch (caught) { toast.error(caught.message); loadHeld(); }
   };
   const discard = async (h) => {
-    if (!(await dialog.confirm({ title: `Discard ${h.label || 'this held bill'}?`, body: 'It cannot be brought back.', confirmLabel: 'Discard', danger: true }))) return;
+    if (!(await dialog.confirm({ title: `Discard ${h.label || 'this held bill'}?`, body: tr('It cannot be brought back.'), confirmLabel: tr('Discard'), danger: true }))) return;
     try { await api(`/held-bills/${h.hold_id}`, { method: 'DELETE' }); } catch (caught) { toast.error(caught.message); }
     loadHeld();
   };
@@ -776,7 +798,7 @@ const BillingPage = () => {
     if (!product) {
       try { product = await api(`/products/barcode/${encodeURIComponent(code)}`); }
       catch (caught) {
-        if (caught instanceof NetworkError) return catalogInfo().ready ? { status: 'unknown' } : { status: 'error', label: "You're offline, and this device has no catalogue yet" };
+        if (caught instanceof NetworkError) return catalogInfo().ready ? { status: 'unknown' } : { status: 'error', label: T('You\'re offline, and this device has no catalogue yet') };
         if (caught.status !== 404) return { status: 'error', label: caught.message };
       }
     }
@@ -802,7 +824,7 @@ const BillingPage = () => {
       // a product's other barcodes, its ERP or supplier code: the server knows them all
       try {
         const found = await api(`/products/lookup/${encodeURIComponent(query.trim())}`);
-        if (found.length > 1) { toast.error('More than one product has that code. Pick one from the list.'); return; }
+        if (found.length > 1) { toast.error(tr('More than one product has that code. Pick one from the list.')); return; }
         pick = found[0];
       } catch { /* not a code: fall through to the name match */ }
     }
@@ -831,7 +853,7 @@ const BillingPage = () => {
   return (
     <div className="-m-4 grid grid-cols-1 gap-0 sm:-m-6 lg:-m-8 lg:h-[calc(100vh-3.5rem)] lg:grid-cols-[minmax(0,1fr)_400px]">
       {/* ── Left: find items ── */}
-      <section aria-label="Items" className="flex min-h-0 min-w-0 flex-col p-4 sm:p-6 lg:overflow-hidden">
+      <section aria-label={tr('Items')} className="flex min-h-0 min-w-0 flex-col p-4 sm:p-6 lg:overflow-hidden">
         <div className="flex items-center gap-3">
           <div className="relative flex-1">
             <Search aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-ink-400" />
@@ -841,23 +863,23 @@ const BillingPage = () => {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={onSearchKey}
               autoFocus
-              placeholder="Search or scan a barcode"
-              aria-label="Search items by name, SKU or barcode. Press Enter to add."
+              placeholder={tr('Search or scan a barcode')}
+              aria-label={tr('Search items by name, SKU or barcode. Press Enter to add.')}
               className="h-12 w-full rounded-lg border border-line-strong bg-surface pl-11 pr-12 text-body text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none"
             />
             {query ? (
-              <button type="button" onClick={() => { setQuery(''); searchRef.current?.focus(); }} aria-label="Clear search" className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-ink-400 hover:bg-surface-2 pointer-coarse:h-11 pointer-coarse:w-11"><X className="h-4 w-4" /></button>
+              <button type="button" onClick={() => { setQuery(''); searchRef.current?.focus(); }} aria-label={tr('Clear search')} className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-ink-400 hover:bg-surface-2 pointer-coarse:h-11 pointer-coarse:w-11"><X className="h-4 w-4" /></button>
             ) : (
               <kbd className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-line px-1.5 text-caption text-ink-400 sm:block">/</kbd>
             )}
           </div>
-          {retail && !orderMode && <Button onClick={() => setScanning(true)} className="h-12 shrink-0"><ScanLine aria-hidden="true" className="h-5 w-5" /><span className="hidden sm:inline">Scan</span><span className="sm:hidden">Scan</span></Button>}
-          {!orderMode && <Button variant="secondary" onClick={addCustomLine} className="h-12 shrink-0"><PackagePlus aria-hidden="true" className="h-4 w-4" /><span className="hidden sm:inline">Custom item</span></Button>}
+          {retail && !orderMode && <Button onClick={() => setScanning(true)} className="h-12 shrink-0"><ScanLine aria-hidden="true" className="h-5 w-5" /><span className="hidden sm:inline">{tr('Scan')}</span><span className="sm:hidden">{tr('Scan')}</span></Button>}
+          {!orderMode && <Button variant="secondary" onClick={addCustomLine} className="h-12 shrink-0"><PackagePlus aria-hidden="true" className="h-4 w-4" /><span className="hidden sm:inline">{tr('Custom item')}</span></Button>}
         </div>
 
         {retail && !query && !orderMode && quick.length > 0 && (
-          <div className="mt-3" role="group" aria-label="Quick products">
-            <p className="mb-1.5 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">Quick</p>
+          <div className="mt-3" role="group" aria-label={tr('Quick products')}>
+            <p className="mb-1.5 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">{tr('Quick')}</p>
             <div className="flex gap-1.5 overflow-x-auto pb-1">
               {quick.map((p) => (
                 <button key={p.product_id} type="button" onClick={() => choose(p)} disabled={p.is_available === false}
@@ -871,11 +893,11 @@ const BillingPage = () => {
         )}
         {retail && (
           <p className="mt-2 text-caption text-ink-500" aria-live="polite">
-            {catalog.ready ? `Works offline: ${catalog.count.toLocaleString('en-IN')} products on this device${catalog.syncing ? ', updating…' : ''}` : catalog.syncing ? 'Getting the catalogue onto this device…' : 'Catalogue not on this device yet'}
+            {catalog.ready ? `Works offline: ${catalog.count.toLocaleString('en-IN')} products on this device${catalog.syncing ? ', updating…' : ''}` : catalog.syncing ? tr('Getting the catalogue onto this device…') : tr('Catalogue not on this device yet')}
           </p>
         )}
         {categories.length > 0 && (
-          <div role="group" aria-label="Categories" className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+          <div role="group" aria-label={tr('Categories')} className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
             {['', ...categories].map((c) => (
               <button key={c || 'all'} type="button" onClick={() => setCategory(c)} aria-pressed={category === c}
                       className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium transition-colors duration-(--duration-fast) pointer-coarse:min-h-11 pointer-coarse:px-4 ${category === c ? 'border-ink-900 bg-ink-900 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
@@ -890,18 +912,18 @@ const BillingPage = () => {
             <div className="grid grid-cols-[repeat(auto-fill,minmax(8.25rem,1fr))] gap-2">{Array.from({ length: 12 }).map((_, i) => <div key={i} className="h-[88px] animate-pulse rounded-(--radius-card) bg-surface-3" />)}</div>
           ) : products.length === 0 ? (
             <div className="rounded-(--radius-card) border border-dashed border-line-strong p-10 text-center">
-              <p className="text-body font-medium text-ink-900">No items to sell yet</p>
-              <p className="mt-1 text-small text-ink-500">Add your products or menu, then bill them here.</p>
-              <Button to="/app/products" className="mt-4">Add products</Button>
+              <p className="text-body font-medium text-ink-900">{tr('No items to sell yet')}</p>
+              <p className="mt-1 text-small text-ink-500">{tr('Add your products or menu, then bill them here.')}</p>
+              <Button to="/app/products" className="mt-4">{tr('Add products')}</Button>
             </div>
           ) : shown.length === 0 ? (
-            <p className="py-10 text-center text-small text-ink-500">Nothing matches “{query}”.{!orderMode && <> <button type="button" onClick={addCustomLine} className="font-medium text-brand-600">Add it as a custom item</button></>}</p>
+            <p className="py-10 text-center text-small text-ink-500">Nothing matches “{query}”.{!orderMode && <> <button type="button" onClick={addCustomLine} className="font-medium text-brand-600">{tr('Add it as a custom item')}</button></>}</p>
           ) : (
             <>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(8.25rem,1fr))] gap-2">
                 {shown.slice(0, TILE_LIMIT).map((p, i) => <ProductTile key={p.product_id} product={p} inCart={inCart.get(p.product_id) || 0} onAdd={choose} highlight={retail && Boolean(query) && i === hi} />)}
               </div>
-              {shown.length > TILE_LIMIT && <p className="mt-3 text-center text-caption text-ink-500">Showing {TILE_LIMIT} of {shown.length}. Search to narrow it down.</p>}
+              {shown.length > TILE_LIMIT && <p className="mt-3 text-center text-caption text-ink-500">{tr('Showing {{TILE_LIMIT}} of {{shown_length}}. Search to narrow it down.', { TILE_LIMIT, shown_length: shown.length })}</p>}
             </>
           )}
         </div>
@@ -923,18 +945,18 @@ const BillingPage = () => {
       )}
 
       {/* ── Right: the bill ── */}
-      <section id="bill" aria-label="Current bill" className="flex min-h-0 min-w-0 scroll-mt-16 flex-col border-t border-line bg-surface pb-20 lg:border-l lg:border-t-0 lg:pb-0">
+      <section id="bill" aria-label={tr('Current bill')} className="flex min-h-0 min-w-0 scroll-mt-16 flex-col border-t border-line bg-surface pb-20 lg:border-l lg:border-t-0 lg:pb-0">
         <div className="border-b border-line px-4 py-2">
           {/* What is being billed: a new counter sale, or an order already open on a table, takeaway or delivery. */}
           {restaurant && (
-            <div role="group" aria-label="What are you billing?" className="mb-2 grid grid-cols-2 gap-0.5 rounded-lg bg-surface-2 p-0.5">
+            <div role="group" aria-label={tr('What are you billing?')} className="mb-2 grid grid-cols-2 gap-0.5 rounded-lg bg-surface-2 p-0.5">
               {[
                 { key: 'counter', active: !orderMode, label: 'Counter sale', onClick: () => { if (orderMode) resetSale(); } },
                 { key: 'order', active: orderMode, label: 'Open order', count: openOrders.length, onClick: () => { loadOpenOrders(); setOrdersOpen(true); } }
               ].map((s) => (
                 <button key={s.key} type="button" aria-pressed={s.active} onClick={s.onClick}
                         className={`flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 text-caption font-semibold transition-colors duration-(--duration-fast) pointer-coarse:min-h-11 ${s.active ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-900'}`}>
-                  {s.label}
+                  {tr(s.label)}
                   {s.count > 0 && <span className="tabular rounded-full bg-ink-900 px-1.5 text-[11px] font-semibold text-white">{s.count}</span>}
                 </button>
               ))}
@@ -942,7 +964,7 @@ const BillingPage = () => {
           )}
           <div className="flex items-center justify-between gap-2">
             <h1 className="flex min-w-0 items-center gap-2 text-body font-semibold text-ink-900">
-              <span className="truncate">{orderMode ? (order ? orderTitle(order) : 'Loading the order…') : 'Bill'}</span>
+              <span className="truncate">{orderMode ? (order ? orderTitle(order) : tr('Loading the order…')) : tr('Bill')}</span>
               {orderMode && order && orderKind(order) && <span className="shrink-0 rounded-md bg-brand-50 px-2 py-0.5 text-caption font-semibold text-brand-700">{orderKind(order)}</span>}
               {itemCount > 0 && <span className="tabular shrink-0 font-normal text-ink-500">· {itemCount} item{itemCount === 1 ? '' : 's'}</span>}
             </h1>
@@ -950,15 +972,15 @@ const BillingPage = () => {
               <div className="flex shrink-0 items-center gap-1">
                 {heldBills.length > 0 && (
                   <button type="button" onClick={() => { loadHeld(); setHeldOpen(true); }} className="flex items-center gap-1.5 rounded-md px-2 py-1 text-small font-medium text-ink-700 hover:bg-surface-2 pointer-coarse:min-h-11 pointer-coarse:px-3">
-                    Resume<span className="tabular rounded-full bg-brand-500 px-1.5 text-[11px] font-semibold text-white">{heldBills.length}</span>
+                   {tr('Resume')}e<span className="tabular rounded-full bg-brand-500 px-1.5 text-[11px] font-semibold text-white">{heldBills.length}</span>
                   </button>
                 )}
                 {cart.length > 0 && (
                   <>
                     <button type="button" onClick={() => setHoldOpen((v) => !v)} aria-expanded={holdOpen} className="flex items-center gap-1 rounded-md px-2 py-1 text-small font-medium text-ink-700 hover:bg-surface-2 pointer-coarse:min-h-11 pointer-coarse:px-3">
-                      <Pause aria-hidden="true" className="h-3.5 w-3.5" />Hold
+                      <Pause aria-hidden="true" className="h-3.5 w-3.5" />{tr('Hold')}
                     </button>
-                    <button type="button" onClick={async () => { if (await dialog.confirm({ title: 'Clear this bill?', body: 'Every item on it is removed.', confirmLabel: 'Clear bill', danger: true })) resetSale(); }} className="rounded-md px-2 py-1 text-small font-medium text-ink-500 hover:text-danger pointer-coarse:min-h-11 pointer-coarse:px-3">Clear</button>
+                    <button type="button" onClick={async () => { if (await dialog.confirm({ title: tr('Clear this bill?'), body: tr('Every item on it is removed.'), confirmLabel: tr('Clear bill'), danger: true })) resetSale(); }} className="rounded-md px-2 py-1 text-small font-medium text-ink-500 hover:text-danger pointer-coarse:min-h-11 pointer-coarse:px-3">{tr('Clear')}</button>
                   </>
                 )}
               </div>
@@ -967,8 +989,8 @@ const BillingPage = () => {
         </div>
         {holdOpen && cart.length > 0 && (
           <form onSubmit={(e) => { e.preventDefault(); holdBill(); }} className="fade-in flex items-center gap-2 border-b border-line bg-surface-2 px-5 py-3">
-            <Input autoFocus placeholder="Name it (optional): Table 4, blue shirt…" value={holdLabel} onChange={(e) => setHoldLabel(e.target.value)} aria-label="Name for the held bill" className="!py-2" />
-            <Button type="submit" size="md">Hold bill</Button>
+            <Input autoFocus placeholder={tr('Name it (optional): Table 4, blue shirt…')} value={holdLabel} onChange={(e) => setHoldLabel(e.target.value)} aria-label={tr('Name for the held bill')} className="!py-2" />
+            <Button type="submit" size="md">{tr('Hold bill')}</Button>
           </form>
         )}
 
@@ -979,7 +1001,7 @@ const BillingPage = () => {
               <div className="flex items-center gap-3">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-50 text-brand-600"><UserRound aria-hidden="true" className="h-4 w-4" /></span>
                 <p className="min-w-0 flex-1 truncate text-small font-medium text-ink-900">{customerName}</p>
-                <button type="button" onClick={clearCustomer} className="text-small font-medium text-ink-500 hover:text-ink-900 pointer-coarse:min-h-11 pointer-coarse:px-2">Change</button>
+                <button type="button" onClick={clearCustomer} className="text-small font-medium text-ink-500 hover:text-ink-900 pointer-coarse:min-h-11 pointer-coarse:px-2">{tr('Change')}</button>
               </div>
               {card && <LoyaltyCard card={card} compact />}
               <RewardHint card={card} items={billLines} total={totals.total} onAdd={() => { const p = (products || []).find((x) => x.product_id === card.reward_product_id); if (p) addProduct(p); }} />
@@ -988,7 +1010,7 @@ const BillingPage = () => {
           ) : customerOpen ? (
             <div className="space-y-2">
               <MobileLookup onPick={(c, loyalty, points) => { pickCustomer(c); setCard(loyalty); setPointsInfo(points); }} />
-              <Input placeholder="Or search by name" value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} aria-label="Search customers by name" />
+              <Input placeholder={tr('Or search by name')} value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} aria-label={tr('Search customers by name')} />
               {filteredCustomers.length > 0 && (
                 <ul className="max-h-40 overflow-y-auto rounded-lg border border-line">
                   {filteredCustomers.map((c) => (
@@ -996,13 +1018,13 @@ const BillingPage = () => {
                   ))}
                 </ul>
               )}
-              <button type="button" onClick={() => setCustomerOpen(false)} className="text-small text-ink-500 hover:text-ink-900 pointer-coarse:min-h-11">Keep as walk-in</button>
+              <button type="button" onClick={() => setCustomerOpen(false)} className="text-small text-ink-500 hover:text-ink-900 pointer-coarse:min-h-11">{tr('Keep as walk-in')}</button>
             </div>
           ) : (
             <button type="button" onClick={() => setCustomerOpen(true)} className="flex min-h-8 w-full items-center gap-2.5 text-left pointer-coarse:min-h-11">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-2 text-ink-500"><UserRound aria-hidden="true" className="h-3.5 w-3.5" /></span>
-              <span className="flex-1 text-caption text-ink-700">Walk-in customer</span>
-              <span className="text-caption font-semibold text-brand-600">Add customer</span>
+              <span className="flex-1 text-caption text-ink-700">{tr('Walk-in customer')}</span>
+              <span className="text-caption font-semibold text-brand-600">{tr('Add customer')}</span>
             </button>
           )}
         </div>
@@ -1010,14 +1032,14 @@ const BillingPage = () => {
         {orderMode && order && (
           <div className="flex items-start gap-2 border-b border-line bg-brand-50 px-5 py-2.5 text-caption text-brand-700">
             <ClipboardList aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <p>Billing open order <span className="font-semibold">{order.order_number}</span>. Items you tap are added to this order. Charging closes it.</p>
+            <p>{tr('Billing open order')} <span className="font-semibold">{order.order_number}</span>{tr('. Items you tap are added to this order. Charging closes it.')}</p>
           </div>
         )}
 
         {exchange && (
           <div className="flex items-center justify-between gap-2 border-b border-line bg-brand-50 px-4 py-2 text-caption text-brand-700">
-            <span><strong className="font-semibold">Exchange:</strong> {formatCurrency(exchange.available)} of credit from {exchange.cn_number} pays for these items.</span>
-            <button type="button" onClick={() => setExchange(null)} className="font-semibold hover:underline">Remove</button>
+            <span><strong className="font-semibold">{tr('Exchange:')}</strong> {formatCurrency(exchange.available)} of credit from {exchange.cn_number} pays for these items.</span>
+            <button type="button" onClick={() => setExchange(null)} className="font-semibold hover:underline">{tr('Remove')}</button>
           </div>
         )}
 
@@ -1025,14 +1047,14 @@ const BillingPage = () => {
         <div className="min-h-[96px] flex-1 overflow-y-auto px-4">
           {orderMode ? (
             orderLines.length === 0 ? (
-              <p className="py-10 text-center text-small text-ink-500">{order ? 'Nothing left to bill on this order. Tap items to add them.' : 'Loading…'}</p>
+              <p className="py-10 text-center text-small text-ink-500">{order ? tr('Nothing left to bill on this order. Tap items to add them.') : tr('Loading…')}</p>
             ) : (
               <ul className="divide-y divide-line">{orderLines.map((l) => <OrderBillLine key={l.key} line={l} onQty={setOrderQty} />)}</ul>
             )
           ) : cart.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center py-6 text-center">
-              <p className="text-caption font-semibold text-ink-700">No items yet</p>
-              <p className="mt-1 text-caption text-ink-500">Tap an item or scan a barcode to start the bill.</p>
+              <p className="text-caption font-semibold text-ink-700">{tr('No items yet')}</p>
+              <p className="mt-1 text-caption text-ink-500">{tr('Tap an item or scan a barcode to start the bill.')}</p>
             </div>
           ) : (
             <ul className="divide-y divide-line">
@@ -1049,40 +1071,60 @@ const BillingPage = () => {
             {extrasOpen ? (
               <div className="mb-3 space-y-2.5 rounded-lg bg-surface-2 p-3">
                 <div className="flex gap-2">
-                  <Input placeholder="Coupon code" value={couponCode} aria-label="Coupon code"
+                  <Input placeholder={tr('Coupon code')} value={couponCode} aria-label={tr('Coupon code')}
                          onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponInfo(null); setCouponError(''); }} className="!py-2" />
-                  <Button type="button" variant="secondary" size="md" onClick={applyCoupon} disabled={!couponCode.trim() || !billLines.length}>Apply</Button>
+                  <Button type="button" variant="secondary" size="md" onClick={applyCoupon} disabled={!couponCode.trim() || !billLines.length}>{tr('Apply')}</Button>
                 </div>
                 {couponInfo && <p className="text-caption font-medium text-success">{couponInfo.code}: {formatCurrency(couponInfo.discount)} off{couponInfo.description ? ` · ${couponInfo.description}` : ''}</p>}
                 {couponError && <p className="text-caption text-danger" role="alert">{couponError}</p>}
                 <div className="flex gap-2">
-                  <div className="w-36"><Input type="number" min="0" step="0.01" placeholder="₹ off the bill" id="bill-discount" aria-label="Discount on the whole bill in rupees" value={invoiceDiscount} onChange={(e) => setInvoiceDiscount(e.target.value)} className="!py-2" /></div>
-                  <Input placeholder="Note on the bill (optional)" aria-label="Note on the bill" value={notes} onChange={(e) => setNotes(e.target.value)} className="!py-2" />
+                  <div className="w-36"><Input type="number" min="0" step="0.01" placeholder={tr('₹ off the bill')} id="bill-discount" aria-label={tr('Discount on the whole bill in rupees')} value={invoiceDiscount} onChange={(e) => setInvoiceDiscount(e.target.value)} className="!py-2" /></div>
+                  <Input placeholder={tr('Note on the bill (optional)')} aria-label={tr('Note on the bill')} value={notes} onChange={(e) => setNotes(e.target.value)} className="!py-2" />
                 </div>
+                {!orderMode && (gstOpt.tcs || gstOpt.tds || gstOpt.reverse_charge) && (
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    {[['tcs', tr('Collect TCS ({{rate}}%)', { rate: gstOpt.tcs_rate })], ['tds', tr('Customer deducts TDS ({{rate}}%)', { rate: gstOpt.tds_rate })], ['reverse_charge', tr('Tax payable on reverse charge')]].filter(([k]) => gstOpt[k]).map(([k, label]) => (
+                      <label key={k} className="flex items-center gap-2 text-small text-ink-700"><input type="checkbox" checked={Boolean(levies[k])} onChange={(e) => setLevies((o) => ({ ...o, [k]: e.target.checked }))} />{label}</label>
+                    ))}
+                  </div>
+                )}
+                {tallyBill && !orderMode && (
+                  <details className="rounded-md border border-line p-2" open={Object.values(dispatch).some(Boolean)}>
+                    <summary className="cursor-pointer text-small font-medium text-ink-700">{tr('Tax invoice details: consignee, delivery, dispatch')}</summary>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      {TALLY_FIELDS.map(([k, label, kind]) => (
+                        <label key={k} className={`text-caption text-ink-500 ${kind === 'area' ? 'sm:col-span-2' : ''}`}>{label}
+                          <Input value={dispatch[k] || ''} maxLength={kind === 'area' ? 300 : 200} onChange={(e) => setDispatch((o) => ({ ...o, [k]: e.target.value }))} className="!py-2" />
+                        </label>
+                      ))}
+                    </div>
+                    <p className="mt-1 text-caption text-ink-500">{tr('Printed on the Tally-style invoice. Blank buyer fields use the customer\'s record; a blank consignee means the same as the buyer.')}</p>
+                  </details>
+                )}
                 {retail && !exchange && (
                   <div className="flex gap-2">
-                    <Input placeholder="Exchange credit: the credit note number" aria-label="Credit note number for an exchange" value={creditNo} onChange={(e) => { setCreditNo(e.target.value.toUpperCase()); setCreditError(''); }} className="!py-2" />
-                    <Button type="button" variant="secondary" size="md" disabled={!creditNo.trim()} onClick={useCreditNote}>Use</Button>
+                    <Input placeholder={tr('Exchange credit: the credit note number')} aria-label={tr('Credit note number for an exchange')} value={creditNo} onChange={(e) => { setCreditNo(e.target.value.toUpperCase()); setCreditError(''); }} className="!py-2" />
+                    <Button type="button" variant="secondary" size="md" disabled={!creditNo.trim()} onClick={useCreditNote}>{tr('Use')}</Button>
                   </div>
                 )}
                 {creditError && <p className="text-caption text-danger" role="alert">{creditError}</p>}
               </div>
             ) : (
-              <button type="button" onClick={() => setExtrasOpen(true)} className="inline-flex min-h-7 items-center text-caption font-semibold text-brand-600 hover:text-brand-700 pointer-coarse:min-h-11">+ Discount, coupon or note</button>
+              <button type="button" onClick={() => setExtrasOpen(true)} className="inline-flex min-h-7 items-center text-caption font-semibold text-brand-600 hover:text-brand-700 pointer-coarse:min-h-11">{tr('+ Discount, coupon or note')}</button>
             )}
           </div>
 
           <dl className="tabular space-y-0.5 text-caption">
-            <div className="flex justify-between text-ink-500"><dt>Subtotal</dt><dd>{formatCurrency(totals.subtotal)}</dd></div>
-            {totals.gstEnabled && <div className="flex justify-between text-ink-500"><dt>GST (estimate)</dt><dd>{formatCurrency(totals.tax)}</dd></div>}
-            {totals.discount > 0 && <div className="flex justify-between text-ink-500"><dt>Discount</dt><dd>−{formatCurrency(totals.discount)}</dd></div>}
-            {totals.coupon > 0 && <div className="flex justify-between text-success"><dt>Coupon {couponInfo.code}</dt><dd>−{formatCurrency(totals.coupon)}</dd></div>}
-            {totals.pointsOff > 0 && <div className="flex justify-between text-success"><dt>Points ({redeem})</dt><dd>−{formatCurrency(totals.pointsOff)}</dd></div>}
-            {totals.rewardOff > 0 && <div className="flex justify-between text-success"><dt>Free {card.reward_item} (loyalty)</dt><dd>−{formatCurrency(totals.rewardOff)}</dd></div>}
-            {totals.offers > 0 && <div className="flex justify-between text-success"><dt>Offers (already off the lines)</dt><dd>−{formatCurrency(totals.offers)}</dd></div>}
-            {totals.exchangeOff > 0 && <div className="flex justify-between text-success"><dt>Exchange credit {exchange.cn_number}</dt><dd>−{formatCurrency(totals.exchangeOff)}</dd></div>}
+            <div className="flex justify-between text-ink-500"><dt>{tr('Subtotal')}</dt><dd>{formatCurrency(totals.subtotal)}</dd></div>
+            {totals.gstEnabled && <div className="flex justify-between text-ink-500"><dt>{tr('GST (estimate)')}</dt><dd>{formatCurrency(totals.tax)}</dd></div>}
+            {totals.discount > 0 && <div className="flex justify-between text-ink-500"><dt>{tr('Discount')}</dt><dd>−{formatCurrency(totals.discount)}</dd></div>}
+            {totals.coupon > 0 && <div className="flex justify-between text-success"><dt>{tr('Coupon {{code}}', { code: couponInfo.code })}</dt><dd>−{formatCurrency(totals.coupon)}</dd></div>}
+            {totals.pointsOff > 0 && <div className="flex justify-between text-success"><dt>{tr('Points ({{redeem}})', { redeem })}</dt><dd>−{formatCurrency(totals.pointsOff)}</dd></div>}
+            {totals.rewardOff > 0 && <div className="flex justify-between text-success"><dt>{tr('Free {{reward_item}} (loyalty)', { reward_item: card.reward_item })}</dt><dd>−{formatCurrency(totals.rewardOff)}</dd></div>}
+            {totals.offers > 0 && <div className="flex justify-between text-success"><dt>{tr('Offers (already off the lines)')}</dt><dd>−{formatCurrency(totals.offers)}</dd></div>}
+            {totals.exchangeOff > 0 && <div className="flex justify-between text-success"><dt>{tr('Exchange credit {{cn_number}}', { cn_number: exchange.cn_number })}</dt><dd>−{formatCurrency(totals.exchangeOff)}</dd></div>}
             <div className="flex items-baseline justify-between pt-1">
-              <dt className="text-small font-semibold text-ink-900">Total</dt>
+              <dt className="text-small font-semibold text-ink-900">{tr('Total')}</dt>
               <dd className="text-[22px] font-semibold leading-none tracking-tight text-ink-900">{formatCurrency(totals.total)}</dd>
             </div>
           </dl>
@@ -1090,8 +1132,8 @@ const BillingPage = () => {
           {split ? (
             <div className="mt-4 space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-small font-semibold text-ink-900">Split payment</p>
-                <button type="button" onClick={stopSplit} className="text-small font-medium text-ink-500 hover:text-ink-900 pointer-coarse:min-h-11 pointer-coarse:px-2">One payment</button>
+                <p className="text-small font-semibold text-ink-900">{tr('Split payment')}</p>
+                <button type="button" onClick={stopSplit} className="text-small font-medium text-ink-500 hover:text-ink-900 pointer-coarse:min-h-11 pointer-coarse:px-2">{tr('One payment')}</button>
               </div>
               {parts.map((p, i) => {
                 const last = i === parts.length - 1;
@@ -1099,39 +1141,39 @@ const BillingPage = () => {
                   <div key={p.key} className="space-y-2">
                   <div className="flex items-center gap-2">
                     <div className="w-32 shrink-0">
-                      <Select value={p.method} onChange={(e) => setPart(p.key, { method: e.target.value })} aria-label={`Part ${i + 1} method`} className="!py-2">
-                        {SPLIT_METHODS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                      <Select value={p.method} onChange={(e) => setPart(p.key, { method: e.target.value })} aria-label={tr('Part {{v}} method', { v: i + 1 })} className="!py-2">
+                        {SPLIT_METHODS.map(([value, label]) => <option key={value} value={value}>{tr(label)}</option>)}
                       </Select>
                     </div>
                     <Input type="number" min="0" step="0.01" value={p.amount} onChange={(e) => setPart(p.key, { amount: e.target.value })}
-                           placeholder={last ? `Rest · ${splitRest.toFixed(2)}` : '₹ amount'} aria-label={`Part ${i + 1} amount${last ? ', blank for the rest' : ''}`} className="!py-2 text-right" />
+                           placeholder={last ? `Rest · ${splitRest.toFixed(2)}` : tr('₹ amount')} aria-label={`Part ${i + 1} amount${last ? ', blank for the rest' : ''}`} className="!py-2 text-right" />
                     {parts.length > 2 && (
-                      <button type="button" onClick={() => setParts((ps) => ps.filter((x) => x.key !== p.key))} aria-label={`Remove part ${i + 1}`} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-400 hover:bg-danger/5 hover:text-danger pointer-coarse:h-11 pointer-coarse:w-11"><X className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => setParts((ps) => ps.filter((x) => x.key !== p.key))} aria-label={tr('Remove part {{v}}', { v: i + 1 })} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-400 hover:bg-danger/5 hover:text-danger pointer-coarse:h-11 pointer-coarse:w-11"><X className="h-4 w-4" /></button>
                     )}
                   </div>
                   {p.method === 'CARD' && (
                     <Input value={p.reference || ''} maxLength={80} onChange={(e) => setPart(p.key, { reference: e.target.value })}
-                           placeholder="Machine approval code (optional)" aria-label={`Part ${i + 1} card machine approval code`} className="!py-2" />
+                           placeholder={tr('Machine approval code (optional)')} aria-label={tr('Part {{v}} card machine approval code', { v: i + 1 })} className="!py-2" />
                   )}
                   </div>
                 );
               })}
               <div className="flex items-center justify-between text-caption">
                 {parts.length < 6
-                  ? <button type="button" onClick={() => setParts((ps) => [...ps, { key: keySeq++, method: 'CARD', amount: '' }])} className="font-medium text-brand-600 hover:text-brand-700 pointer-coarse:min-h-11">+ Add another way</button>
+                  ? <button type="button" onClick={() => setParts((ps) => [...ps, { key: keySeq++, method: 'CARD', amount: '' }])} className="font-medium text-brand-600 hover:text-brand-700 pointer-coarse:min-h-11">{tr('+ Add another way')}</button>
                   : <span />}
                 <span className={`tabular ${fixedParts > totals.total ? 'text-danger' : splitDue > 0 ? 'text-warning' : 'text-ink-500'}`}>
-                  {fixedParts > totals.total ? 'More than the bill' : splitDue > 0 ? `${formatCurrency(splitDue)} stays due` : `Last part: ${formatCurrency(lastFixed ?? splitRest)}`}
+                  {fixedParts > totals.total ? tr('More than the bill') : splitDue > 0 ? `${formatCurrency(splitDue)} stays due` : `Last part: ${formatCurrency(lastFixed ?? splitRest)}`}
                 </span>
               </div>
             </div>
           ) : (
           <>
-          <div role="radiogroup" aria-label="How is it paid?" className="pos-gap pos-methods mt-2 grid grid-cols-3 gap-1">
+          <div role="radiogroup" aria-label={tr('How is it paid?')} className="pos-gap pos-methods mt-2 grid grid-cols-3 gap-1">
             {(business?.business_type === 'HOTEL' ? [...METHODS, ROOM_METHOD] : METHODS).map(([value, label]) => (
               <button key={value} type="button" role="radio" aria-checked={method === value} onClick={() => { setMethod(value); setReceived(''); }}
                       className={`pos-method h-8 rounded-lg border text-caption font-semibold transition-colors duration-(--duration-fast) pointer-coarse:h-11 ${method === value ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>
-                {label}
+                {tr(label)}
               </button>
             ))}
           </div>
@@ -1140,38 +1182,38 @@ const BillingPage = () => {
             <RoomChargePicker value={room} onChange={setRoom} />
           ) : payLater ? (
             <p className={`mt-3 text-caption ${customerId ? 'text-ink-500' : 'text-warning'}`}>
-              {customerId ? `Saved as unpaid on ${customerName}'s account.` : 'Saved as unpaid. Add a customer so you know who owes it.'}
+              {customerId ? `Saved as unpaid on ${customerName}'s account.` : tr('Saved as unpaid. Add a customer so you know who owes it.')}
             </p>
           ) : (
             <div className="mt-3 flex items-center gap-3">
               <div className="w-36">
                 <Input type="number" min="0" step="0.01" value={received} onChange={(e) => setReceived(e.target.value)}
                        placeholder={totals.total ? totals.total.toFixed(2) : '0.00'}
-                       id="pay-received" aria-label={method === 'CASH' ? 'Cash received' : 'Amount paid now'} className="!py-2 text-right pointer-coarse:!py-3" />
+                       id="pay-received" aria-label={method === 'CASH' ? tr('Cash received') : tr('Amount paid now')} className="!py-2 text-right pointer-coarse:!py-3" />
               </div>
               <p className="tabular flex-1 text-caption text-ink-500">
-                {cashChange > 0 ? <span className="text-small font-semibold text-brand-700">Change {formatCurrency(cashChange)}</span>
-                  : partial ? <span className="text-warning">Part payment. {formatCurrency(totals.total - amount)} stays due.</span>
-                  : <span className="pos-hint">{method === 'CASH' ? 'Cash received. Leave blank if exact.' : 'Paid in full. Type less for a part payment.'}</span>}
+                {cashChange > 0 ? <span className="text-small font-semibold text-brand-700">{tr('Change {{formatCurrency}}', { formatCurrency: formatCurrency(cashChange) })}</span>
+                  : partial ? <span className="text-warning">{tr('Part payment. {{formatCurrency}} stays due.', { formatCurrency: formatCurrency(totals.total - amount) })}</span>
+                  : <span className="pos-hint">{method === 'CASH' ? tr('Cash received. Leave blank if exact.') : tr('Paid in full. Type less for a part payment.')}</span>}
               </p>
             </div>
           )}
           {method === 'CARD' && !split && (
             <div className="mt-3">
               <Input value={cardRef} maxLength={80} onChange={(e) => setCardRef(e.target.value)}
-                     placeholder="Machine approval code (optional)" aria-label="Card machine approval code" className="!py-2 pointer-coarse:!py-3" />
-              <p className="pos-hint mt-1 text-caption text-ink-500">From the card machine's slip. It is saved on the bill so you can match your settlement.</p>
+                     placeholder={tr('Machine approval code (optional)')} aria-label={tr('Card machine approval code')} className="!py-2 pointer-coarse:!py-3" />
+              <p className="pos-hint mt-1 text-caption text-ink-500">{tr('From the card machine\'s slip. It is saved on the bill so you can match your settlement.')}</p>
             </div>
           )}
           {method === 'UPI' && !split && (
             <p className="pos-hint mt-2 text-caption text-ink-500">
               {business?.upi_vpa
-                ? <>The bill is saved, then a QR for the exact amount appears for the customer to scan ({business.upi_vpa}).</>
-                : <>To show a UPI QR for each bill, add your UPI ID in <Link to="/app/settings/business" className="font-medium text-brand-700 hover:underline">Business settings</Link>.</>}
+                ? <>{tr('The bill is saved, then a QR for the exact amount appears for the customer to scan ({{upi_vpa}}).', { upi_vpa: business.upi_vpa })}</>
+                : <>{tr('To show a UPI QR for each bill, add your UPI ID in')} <Link to="/app/settings/business" className="font-medium text-brand-700 hover:underline">{tr('Business settings')}</Link>.</>}
             </p>
           )}
           <button type="button" onClick={startSplit} disabled={!billLines.length} className="mt-0.5 flex min-h-7 items-center gap-1.5 text-caption font-semibold text-brand-600 hover:text-brand-700 disabled:opacity-50 pointer-coarse:min-h-11">
-            <Split aria-hidden="true" className="h-3.5 w-3.5" />Split between payment methods
+            <Split aria-hidden="true" className="h-3.5 w-3.5" />{tr('Split between payment methods')}
           </button>
           </>
           )}
@@ -1180,10 +1222,10 @@ const BillingPage = () => {
             <label className="pos-gap mt-2 flex items-start gap-2 rounded-lg border border-line px-2.5 py-1.5">
               <input type="checkbox" checked={toKitchen} onChange={(e) => { setToKitchen(e.target.checked); setDevicePref('posSendToKitchen', e.target.checked); }} className="mt-0.5 h-3.5 w-3.5 accent-[var(--color-brand-500)] pointer-coarse:h-5 pointer-coarse:w-5" />
               <span className="min-w-0">
-                <span className="flex items-center gap-1.5 text-caption font-semibold text-ink-900"><ChefHat aria-hidden="true" className="h-3.5 w-3.5 text-ink-500" />Send to the kitchen</span>
+                <span className="flex items-center gap-1.5 text-caption font-semibold text-ink-900"><ChefHat aria-hidden="true" className="h-3.5 w-3.5 text-ink-500" />{tr('Send to the kitchen')}</span>
                 <span className="pos-hint block text-caption text-ink-500">
                   {orderMode ? `The ${orderLines.filter((l) => l.pending).length} items not sent yet go to the kitchen, then the order is billed.`
-                    : toKitchen ? 'The kitchen screen gets a ticket when you charge, with an order number to call out.' : 'Off: nothing goes to the kitchen (for drinks or packed items served at the counter).'}
+                    : toKitchen ? tr('The kitchen screen gets a ticket when you charge, with an order number to call out.') : tr('Off: nothing goes to the kitchen (for drinks or packed items served at the counter).')}
                 </span>
               </span>
             </label>
@@ -1195,9 +1237,9 @@ const BillingPage = () => {
                         onPaid={finishUpi} onLater={() => finishUpi(collecting.invoice)} />
           )}
           <p className="pos-hint mt-2 hidden text-center text-caption text-ink-400 lg:block">
-            {retail ? 'Ctrl + Enter to charge · / search · F2 customer · F4 discount · F8 payment · + − Del the selected line' : 'Ctrl + Enter to charge · / to search'}
+            {retail ? tr('Ctrl + Enter to charge · / search · F2 customer · F4 discount · F8 payment · + − Del the selected line') : tr('Ctrl + Enter to charge · / to search')}
           </p>
-          <p className="mt-1 text-center text-caption text-ink-400 lg:hidden"><Link to="/app/billing/invoices" className="inline-flex min-h-11 items-center px-3 hover:text-ink-700">See earlier bills</Link></p>
+          <p className="mt-1 text-center text-caption text-ink-400 lg:hidden"><Link to="/app/billing/invoices" className="inline-flex min-h-11 items-center px-3 hover:text-ink-700">{tr('See earlier bills')}</Link></p>
         </div>
       </section>
 
@@ -1208,7 +1250,7 @@ const BillingPage = () => {
             <p className="tabular text-title font-semibold leading-tight text-ink-900">{formatCurrency(totals.total)}</p>
             <p className="text-caption text-ink-500">{itemCount} item{itemCount === 1 ? '' : 's'}</p>
           </div>
-          <Button onClick={() => document.getElementById('bill')?.scrollIntoView({ behavior: 'smooth' })} size="lg">Review and charge</Button>
+          <Button onClick={() => document.getElementById('bill')?.scrollIntoView({ behavior: 'smooth' })} size="lg">{tr('Review and charge')}</Button>
         </div>
       )}
     </div>

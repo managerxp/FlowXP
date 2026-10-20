@@ -119,6 +119,51 @@ body {
 /* a printed bill is on white paper, not the app's page tint */
 @media print { body { background: #fff; } }
 
+/* Dark theme: the same tokens with dark values, set by lib/display.js on the page (data-theme="dark"). Screen only: printing always uses the light
+   values above. A white document sheet (an invoice, a label) sets .light-sheet so its own text stays dark on its white paper. */
+@media screen {
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --color-page: #0a1120;
+    --color-surface: #111a2e;
+    --color-surface-2: #16213a;
+    --color-surface-3: #1e2b49;
+    --color-line: #263554;
+    --color-line-strong: #364a74;
+    --color-ink-900: #e9eefb;
+    --color-ink-700: #c5cfe6;
+    --color-ink-500: #96a6c6;
+    --color-ink-400: #8797b8;
+    --color-brand-50: #11234b;
+    --color-brand-100: #17306a;
+    --color-brand-200: #234a9e;
+    --color-brand-400: #5b93ff;
+    --color-brand-500: #2f6dff;
+    --color-brand-600: #5b93ff;
+    --color-brand-700: #9bbcff;
+    --color-success: #3ddc97;
+    --color-warning: #f5a45d;
+    --color-danger: #ff7b72;
+    --color-info: #6aa7ff;
+  }
+}
+/* ink-900 turns near-white on the dark theme, so a chip or badge filled with it (the selected category, a count) must carry dark text, not white; and the
+   scrollbars take the theme's own line colour instead of the browser's light ones */
+@media screen {
+  :root[data-theme="dark"] .bg-ink-900.text-white { color: var(--color-page); }
+  :root[data-theme="dark"] * { scrollbar-color: var(--color-line-strong) transparent; }
+}
+/* the logo is dark artwork: on the dark theme it sits on a small white chip so it stays visible */
+@media screen { :root[data-theme="dark"] .logo-img { background: #fff; border-radius: 8px; padding: 3px 8px; } }
+.light-sheet {
+  --color-surface: #ffffff; --color-surface-2: #f3f6fa; --color-surface-3: #e9eef5; --color-line: #e3e8ef; --color-line-strong: #cdd5e0;
+  --color-ink-900: #011531; --color-ink-700: #22324d; --color-ink-500: #5a6b87; --color-ink-400: #65758e;
+  --color-brand-500: #0054fa; --color-brand-600: #0046d1; --color-brand-700: #00369f;
+  --color-success: #067647; --color-warning: #b54708; --color-danger: #d92d20;
+  color: var(--color-ink-900);
+}
+
+
 /*
  * Entrances. .rise plays once on load (the hero); .reveal plays once when it
  * scrolls into view (components/Reveal.jsx sets data-shown). Both stagger by

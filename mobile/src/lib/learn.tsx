@@ -26,7 +26,7 @@ export const Hint = ({ id }: { id: HintId }) => {
   if (!ready || !showHint(kept, id)) return null;
   const h = HINTS[id];
   return (
-    <View accessibilityRole="summary" style={{ marginHorizontal: 12, marginVertical: 6, padding: 12, borderRadius: 12, backgroundColor: '#eaf1ff', gap: 6 }}>
+    <View accessibilityRole="summary" style={{ marginHorizontal: 12, marginVertical: 6, padding: 12, borderRadius: 12, backgroundColor: color.tint, gap: 6 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Ionicons name="bulb-outline" size={20} color={color.brand} />
         <Text style={{ fontWeight: '700', color: color.ink, flex: 1 }}>{t(h.title)}</Text>

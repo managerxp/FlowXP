@@ -14,6 +14,7 @@ import { computeLineTax, isInterState, sumLines } from '../modules/tax.js';
 import { toPaise, toRupees, toQuantity } from '../utils/money.js';
 import { moveStock } from '../modules/stock.js';
 import { branchFilter } from '../utils/scope.js';
+import { purchaseReverseCharge, purchaseTotal } from '../modules/gstOptions.js';
 
 const SUPPLIER_PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CHEQUE', 'OTHER'];
 
@@ -41,7 +42,8 @@ export const asPO = (row) => ({
   ordered_at: row.ordered_at,
   received_at: row.received_at,
   created_at: row.created_at,
-  notes: row.notes
+  notes: row.notes,
+  reverse_charge: Boolean(row.reverse_charge)
 });
 
 export const nextPoNumber = async (client, businessId) => {
@@ -132,6 +134,10 @@ export const create = async (req, res) => {
     }
 
     const totals = sumLines(lines);
+    /* Reverse charge: the supplier is owed the taxable value only; the tax is the buyer's own to pay (see modules/gstOptions.js). */
+    const rcm = await purchaseReverseCharge(client, req.tenant.businessId, body.reverse_charge);
+    if (rcm.problem) { await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: rcm.problem }); }
+    totals.total_paise = purchaseTotal(totals.subtotal_paise, totals.tax_paise, rcm.on);
     let paidPaise = 0;
     if (body.payment?.amount != null) {
       paidPaise = toPaise(body.payment.amount);
@@ -143,13 +149,13 @@ export const create = async (req, res) => {
     const po = (await client.query(
       `INSERT INTO purchase_orders
          (business_id, branch_id, supplier_id, po_number, po_date, subtotal_paise, tax_paise, total_paise,
-          amount_paid_paise, balance_due_paise, payment_status, notes, created_by, received_at, supplier_invoice_no, supplier_invoice_date)
-       VALUES ($1,$2,$3,$4,COALESCE($5,CURRENT_DATE),$6,$7,$8,$9,$10,$11,$12,$13,CURRENT_TIMESTAMP,$14,$15)
+          amount_paid_paise, balance_due_paise, payment_status, notes, created_by, received_at, supplier_invoice_no, supplier_invoice_date, reverse_charge)
+       VALUES ($1,$2,$3,$4,COALESCE($5,CURRENT_DATE),$6,$7,$8,$9,$10,$11,$12,$13,CURRENT_TIMESTAMP,$14,$15,$16)
        RETURNING *`,
       [
         req.tenant.businessId, req.tenant.branchId, supplier?.supplier_id || null, poNumber, body.po_date || null,
         totals.subtotal_paise, totals.tax_paise, totals.total_paise, paidPaise, balancePaise,
-        paymentStatus(totals.total_paise, paidPaise), body.notes || null, req.auth.userId, billNo, billDate
+        paymentStatus(totals.total_paise, paidPaise), body.notes || null, req.auth.userId, billNo, billDate, rcm.on
       ]
     )).rows[0];
 

@@ -55,7 +55,7 @@ export default function PharmacyBatches() {
           {list.data && list.data.length === 0 ? <Empty>No batches here.</Empty> : null}
           {list.data && list.data.length ? <SectionTitle>{`${list.data.length} batches`}</SectionTitle> : null}
           {(list.data ?? []).map((b) => (
-            <View key={b.batch_id} style={{ borderTopWidth: 1, borderColor: color.line, backgroundColor: open === b.batch_id ? '#eaf1ff' : color.card }}>
+            <View key={b.batch_id} style={{ borderTopWidth: 1, borderColor: color.line, backgroundColor: open === b.batch_id ? color.tint : color.card }}>
               <Pressable accessibilityRole="button" style={{ padding: 16, gap: 2 }} onPress={() => setOpen(open === b.batch_id ? null : b.batch_id)}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                   <Text style={{ fontSize: 16, fontWeight: '600', color: color.ink, flex: 1 }}>{b.product}</Text>

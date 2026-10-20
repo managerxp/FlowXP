@@ -95,7 +95,8 @@ Off until you set a provider. With `MESSAGING_PROVIDER=log` (the default) nothin
 
 - **WhatsApp (Meta Cloud API):** `MESSAGING_PROVIDER=whatsapp_cloud`, `WHATSAPP_TOKEN` (a permanent system-user token) and `WHATSAPP_PHONE_ID`. Create the seven templates listed in the app (Messaging, Settings, "Show the WhatsApp templates") in Meta Business Manager and wait for approval; until a template is approved its messages fail with Meta's reason, visible in the log.
 - **SMS (Twilio):** `MESSAGING_PROVIDER=twilio`, `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_FROM`. In India, SMS also needs DLT registration of the sender and templates with your operator; Twilio's own docs cover it.
-- Set `APP_ORIGIN` to the public https address: the bill link customers receive is built from it.
+- Set `APP_ORIGIN` to the public https address: the bill link customers receive is built from it, and so is the gym's entrance QR link (`/gym/in/...`).
+- Gyms: members sign in with a code sent by the messaging provider, so set one up (Super Admin > Settings > Messaging) before putting up the entrance QR. Set `ENCRYPTION_KEY`: gate-device secrets are encrypted under it. See `GYM.md`.
 - Each business then turns a channel on under Messaging. Test with one bill to your own number first.
 
 ## 2c. Sign in with Google (optional)

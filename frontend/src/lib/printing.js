@@ -57,49 +57,62 @@ const agent = async (path, { method = 'GET', body, prefs = getDevicePrefs() } = 
 export const agentStatus = (prefs) => agent('/status', { prefs });
 const sendToAgent = (target, data, prefs) => agent('/print', { method: 'POST', body: { target, data }, prefs });
 
-/** Fetch the printer bytes for a receipt/KOT/test page and send them. Throws on any problem. */
-const printJob = async (kind, id, { drawer = false, upi = null, prefs = getDevicePrefs() } = {}) => {
-  const d = drawer ? '?drawer=1' : '';
-  if (kind === 'receipt') return sendToAgent(prefs.receiptTarget, (await api(`/invoices/${id}/escpos${d}${upi ? `${d ? '&' : '?'}upi=${upi}` : ''}`)).data, prefs);
-  if (kind === 'test') return sendToAgent(prefs.receiptTarget, (await api(`/print/test${d}`)).data, prefs);
-  const { slips } = await api(`/kitchen/kots/${id}/escpos`);
-  for (const slip of slips) await sendToAgent(prefs.kotTarget || prefs.receiptTarget, slip.data, prefs);
-};
+/* Where a job goes: the printer the server routed it to (Settings > Printers), else this device's own address for that job, as before.
+   'browser' (a printer set to use the print dialog) and no address at all both mean "use the browser print view". */
+const targetFor = (routed, own) => { const t = routed || own || ''; return t === 'browser' ? '' : t; };
 
 /** Print a receipt: silently when the agent is set up, else the browser print view. `cash` pops the drawer with it. */
 export const printReceipt = async (invoiceId, { cash = false, upi = null } = {}) => {
   const prefs = getDevicePrefs();
   const extra = upi ? `&upi=${upi}` : '';   // `upi` (rupees): the bill carries a QR for exactly that amount
-  if (!agentOn(prefs) || !prefs.receiptTarget) return openPrint('receipt', invoiceId, extra);
-  try { await printJob('receipt', invoiceId, { drawer: cash && prefs.openDrawer, upi, prefs }); }
-  catch (error) { onPrintError(`Receipt not printed: ${error.message}`); openPrint('receipt', invoiceId, extra); }
+  if (!agentOn(prefs)) return openPrint('receipt', invoiceId, extra);
+  try {
+    const d = cash && prefs.openDrawer ? '?drawer=1' : '';
+    const job = await api(`/invoices/${invoiceId}/escpos${d}${upi ? `${d ? '&' : '?'}upi=${upi}` : ''}`);
+    const target = targetFor(job.target, prefs.receiptTarget);
+    if (!target) return openPrint('receipt', invoiceId, extra);
+    await sendToAgent(target, job.data, prefs);
+  } catch (error) { onPrintError(`Receipt not printed: ${error.message}`); openPrint('receipt', invoiceId, extra); }
   return null;
 };
 
 /** Is silent printing set up on this computer? Then a UPI bill can print by itself the moment it is saved (a browser print tab needs a click). */
-export const silentPrinting = () => { const p = getDevicePrefs(); return agentOn(p) && Boolean(p.receiptTarget); };
+export const silentPrinting = () => agentOn(getDevicePrefs());
 
-/** Print a kitchen ticket, one slip per station. */
+/** Print a kitchen ticket, one slip per station, each to the printer its station is routed to. */
 export const printKot = async (kotId) => {
   const prefs = getDevicePrefs();
-  if (!agentOn(prefs) || !(prefs.kotTarget || prefs.receiptTarget)) return openPrint('kot', kotId);
-  try { await printJob('kot', kotId, { prefs }); }
-  catch (error) { onPrintError(`Kitchen ticket not printed: ${error.message}`); openPrint('kot', kotId); }
+  if (!agentOn(prefs)) return openPrint('kot', kotId);
+  try {
+    const { slips } = await api(`/kitchen/kots/${kotId}/escpos`);
+    let browserNeeded = false;
+    for (const slip of slips) {
+      const target = targetFor(slip.target, prefs.kotTarget || prefs.receiptTarget);
+      if (target) await sendToAgent(target, slip.data, prefs); else browserNeeded = true;
+    }
+    if (browserNeeded) openPrint('kot', kotId);   // a station set to the print dialog (or with no printer at all) uses the browser view
+  } catch (error) { onPrintError(`Kitchen ticket not printed: ${error.message}`); openPrint('kot', kotId); }
   return null;
 };
 
 /** Open the cash drawer on its own (a cash payment taken without a receipt). */
 export const openDrawer = async () => {
   const prefs = getDevicePrefs();
-  if (!agentOn(prefs) || !prefs.receiptTarget) return;
-  try { await sendToAgent(prefs.receiptTarget, (await api('/print/drawer')).data, prefs); }
-  catch (error) { onPrintError(`Cash drawer not opened: ${error.message}`); }
+  if (!agentOn(prefs)) return;
+  try {
+    const job = await api('/print/drawer');
+    const target = targetFor(job.target, prefs.receiptTarget);
+    if (target) await sendToAgent(target, job.data, prefs);
+  } catch (error) { onPrintError(`Cash drawer not opened: ${error.message}`); }
 };
 
-/** For the settings screen: run a job with the given (unsaved) settings and report the outcome as text. */
-export const testPrint = async (prefs, { drawer = false } = {}) => {
+/** For the settings screen: send a test page (or open the drawer) with the given (unsaved) agent settings. `printerId` tests that printer from the Printers list. */
+export const testPrint = async (prefs, { drawer = false, printerId = null } = {}) => {
   await agentStatus(prefs);                                  // is it there, and is the token right?
-  await printJob('test', null, { drawer, prefs });
+  const job = await api(`/print/test?${new URLSearchParams({ ...(drawer ? { drawer: '1' } : {}), ...(printerId ? { printer: printerId } : {}) })}`);
+  const target = targetFor(job.target, prefs.receiptTarget);
+  if (!target) throw new Error(printerId ? 'That printer uses the browser print dialog, so there is nothing to test here.' : 'No receipt printer is set up yet.');
+  await sendToAgent(target, job.data, prefs);
 };
 
 /* A short beep, made with the browser's own audio: no sound files to ship. The context is created

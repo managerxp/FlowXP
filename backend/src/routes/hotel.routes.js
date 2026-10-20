@@ -7,6 +7,7 @@
  */
 import { Router } from 'express';
 import { requireAnyPermission, requireAuth, requireOutlet, requirePermission, withBusiness } from '../middleware/auth.js';
+import { idempotent } from '../middleware/idempotency.js';
 import { hotelOnly } from '../modules/hotel/common.js';
 import setup from '../controllers/hotelSetup.controller.js';
 import front from '../controllers/hotelFront.controller.js';
@@ -59,20 +60,20 @@ router.post('/guests', ...write, can('front_desk'), front.saveGuest);
 router.put('/guests/:id', ...write, can('front_desk'), front.saveGuest);
 
 router.get('/bookings', ...read, desk, front.listBookings);
-router.post('/bookings', ...write, can('front_desk'), front.createBooking);
-router.post('/walk-ins', ...write, can('front_desk'), front.walkIn);
+router.post('/bookings', ...write, can('front_desk'), idempotent(), front.createBooking);
+router.post('/walk-ins', ...write, can('front_desk'), idempotent(), front.walkIn);
 router.get('/bookings/:id', ...read, desk, front.getBooking);
 router.post('/bookings/:id/check-in', ...write, can('front_desk'), front.checkIn);
 router.put('/bookings/:id/dates', ...write, can('front_desk'), front.changeDates);
 router.post('/bookings/:id/move-room', ...write, can('front_desk'), front.moveRoom);
 router.post('/bookings/:id/cancel', ...write, can('front_desk'), front.cancel);
 router.post('/bookings/:id/no-show', ...write, can('front_desk'), front.noShow);
-router.post('/bookings/:id/check-out', ...write, can('front_desk'), front.checkOut);
+router.post('/bookings/:id/check-out', ...write, can('front_desk'), idempotent(), front.checkOut);
 
 router.get('/bookings/:id/folio', ...read, desk, front.getFolio);
-router.post('/bookings/:id/charges', ...write, can('front_desk'), front.postCharge);
+router.post('/bookings/:id/charges', ...write, can('front_desk'), idempotent(), front.postCharge);
 router.post('/charges/:id/void', ...write, can('front_desk'), front.voidCharge);
-router.post('/bookings/:id/payments', ...write, can('front_desk'), front.addPayment);
+router.post('/bookings/:id/payments', ...write, can('front_desk'), idempotent(), front.addPayment);
 
 /* ── housekeeping ───────────────────────────────────────────── */
 router.get('/rack', ...read, floor, front.rack);

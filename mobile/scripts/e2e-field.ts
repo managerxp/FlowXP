@@ -11,7 +11,8 @@
 import { createApi, newKey, type Session } from '../src/lib/api.ts';
 import { SCHEMA as CATALOG_SCHEMA, createCatalog } from '../src/lib/catalog.ts';
 import { SCHEMA as ACTIONS_SCHEMA, createActions } from '../src/lib/actions.ts';
-import { addFLine, ensureVisit, estimateOrder, fieldOrderBody, fieldReceiptBody, sendOrQueue, setFQty, type FieldShop, type FieldToday } from '../src/lib/field.ts';
+import { previewBody } from '../src/lib/wholesale.ts';
+import { addFLine, ensureVisit, estimateOrder, rememberShopPrices, fieldOrderBody, fieldReceiptBody, sendOrQueue, setFQty, type FieldShop, type FieldToday } from '../src/lib/field.ts';
 import { nodeDb } from '../test/helpers.ts';
 
 const url = process.env.FLOWXP_URL || 'http://localhost:5100';
@@ -67,7 +68,11 @@ const visit = await ensureVisit(deps, { date: day, customerId: shopId, shopName:
 ok(!visit.sent, 'the visit is kept on the phone');
 let lines = addFLine([], product);
 lines = setFQty(lines, lines[0].key, String(Math.max(Number(lines[0].quantity), product.wholesale!.moq)));
-const est = estimateOrder(lines);
+// while online the phone has already seen this shop's prices (the order screen's preview keeps them), so the estimate offline uses them
+offline = false;
+const learned = await rememberShopPrices(kv, shopId, lines, await rep.api.post<{ lines: { product_id: number; price: number; is_free?: boolean }[] }>('/wholesale/orders/preview', previewBody(shopId, lines.map((l) => ({ key: l.key, product: { product_id: l.product.product_id } as never, unit_name: l.unit_name, quantity: l.quantity }))), {}));
+offline = true;
+const est = estimateOrder(lines, learned);
 const okey = newKey(); const rkey = newKey(); const okey2 = newKey();
 const o1 = await sendOrQueue<{ order_id: number }>(deps, { id: okey, label: 'Order (e2e)', method: 'POST', path: '/wholesale/orders', body: fieldOrderBody(shopId, lines, visit.ref, est.totalPaise / 100, { notes: 'e2e field drill' }) });
 const r1 = await sendOrQueue(deps, { id: rkey, label: 'Payment (e2e)', method: 'POST', path: '/wholesale/receipts', body: fieldReceiptBody(shopId, '100', 'CASH', '', visit.ref, 'e2e field drill') });

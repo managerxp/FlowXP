@@ -7,7 +7,7 @@
  */
 import { hasPlanFeature } from './planFeatures.js';
 
-export const RETAIL_TYPES = ['SUPERMARKET', 'RETAIL'];
+export const RETAIL_TYPES = ['SUPERMARKET', 'RETAIL', 'AUTO_PARTS'];
 export const isRetail = (tenant) => RETAIL_TYPES.includes(tenant?.businessType);
 
 export const DEFAULT_RETAIL_SETTINGS = { auto_sku: true, require_barcode: false };

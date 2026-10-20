@@ -14,9 +14,11 @@ import { api, formatCurrency } from '../lib/api.js';
 import { localISO } from '../lib/dates.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Button, Field, Input, Modal, Select, useToast, useDialog } from '../components/ui.jsx';
+import { useT, T } from '../i18n/useT.js';
+import { formatDate } from '../lib/display.js';
 
 const DEFAULT_CATEGORIES = ['Rent', 'Salary', 'Electricity', 'Gas', 'Water', 'Internet & phone', 'Transport', 'Repairs', 'Marketing', 'Cleaning', 'Other'];
-const METHODS = [['CASH', 'Cash'], ['UPI', 'UPI'], ['BANK_TRANSFER', 'Bank'], ['CARD', 'Card'], ['OTHER', 'Other']];
+const METHODS = [['CASH', T('Cash')], ['UPI', 'UPI'], ['BANK_TRANSFER', T('Bank')], ['CARD', T('Card')], ['OTHER', T('Other')]];
 const METHOD_LABEL = Object.fromEntries(METHODS);
 
 /* ── Periods ───────────────────────────────────────────────────────────── */
@@ -48,7 +50,7 @@ const periodFor = (key, custom) => {
   const days = Math.round((d0(to) - d0(from)) / 86400000) + 1;
   return { from, to, prevFrom: plusDays(from, -days), prevTo: plusDays(from, -1), vs: `the ${days} day${days === 1 ? '' : 's'} before` };
 };
-const PERIODS = [['month', 'This month'], ['last-month', 'Last month'], ['30d', 'Last 30 days'], ['year', 'This year'], ['custom', 'Pick dates']];
+const PERIODS = [['month', T('This month')], ['last-month', T('Last month')], ['30d', 'Last 30 days'], ['year', T('This year')], ['custom', T('Pick dates')]];
 
 const dayLabel = (iso) => {
   const today = localISO();
@@ -60,6 +62,7 @@ const dayLabel = (iso) => {
 /* ── Add / edit ───────────────────────────────────────────────────────── */
 
 const ExpenseForm = ({ expense, known, onSaved, onDeleted, onClose }) => {
+  const tr = useT();
   const dialog = useDialog();
   const toast = useToast();
   const isEdit = Boolean(expense?.expense_id);
@@ -76,13 +79,13 @@ const ExpenseForm = ({ expense, known, onSaved, onDeleted, onClose }) => {
   if (form.category && !chips.includes(form.category)) chips.unshift(form.category);
 
   const save = async (another) => {
-    if (!form.category.trim()) { setError('Choose a category'); return; }
+    if (!form.category.trim()) { setError(tr('Choose a category')); return; }
     setError(''); setBusy(true);
     try {
       const body = { category: form.category.trim(), amount: Number(form.amount), payment_method: form.payment_method, expense_date: form.expense_date, description: form.description.trim() || null };
       await api(isEdit ? `/expenses/${expense.expense_id}` : '/expenses', { method: isEdit ? 'PATCH' : 'POST', body });
       if (another) {
-        toast.success(`${body.category} · ${formatCurrency(body.amount)} saved`);
+        toast.success(tr('{{category}} · {{formatCurrency}} saved', { category: body.category, formatCurrency: formatCurrency(body.amount) }));
         setAdded((n) => n + 1);
         setForm((f) => ({ ...blank, payment_method: f.payment_method, expense_date: f.expense_date }));
         setCustom(false);
@@ -92,51 +95,51 @@ const ExpenseForm = ({ expense, known, onSaved, onDeleted, onClose }) => {
     finally { setBusy(false); }
   };
   const remove = async () => {
-    if (!(await dialog.confirm({ title: 'Delete this expense?', body: `${expense.category} · ${formatCurrency(expense.amount)}. This can't be undone.`, confirmLabel: 'Delete', danger: true }))) return;
+    if (!(await dialog.confirm({ title: tr('Delete this expense?'), body: `${expense.category} · ${formatCurrency(expense.amount)}. This can't be undone.`, confirmLabel: tr('Delete'), danger: true }))) return;
     setBusy(true); setError('');
     try { await api(`/expenses/${expense.expense_id}`, { method: 'DELETE' }); onDeleted(); }
     catch (caught) { setError(caught.message); setBusy(false); }
   };
 
   return (
-    <Modal title={isEdit ? 'Edit expense' : 'Add an expense'} onClose={onClose}>
+    <Modal title={isEdit ? tr('Edit expense') : tr('Add an expense')} onClose={onClose}>
       <form onSubmit={(e) => { e.preventDefault(); save(false); }} className="space-y-5">
         <Alert>{error}</Alert>
-        {added > 0 && <p className="-mt-2 text-caption font-medium text-success">{added} saved. Add the next one.</p>}
-        <Field id="x-amount" label="Amount (₹)">
+        {added > 0 && <p className="-mt-2 text-caption font-medium text-success">{tr('{{added}} saved. Add the next one.', { added })}</p>}
+        <Field id="x-amount" label={tr('Amount (₹)')}>
           <Input id="x-amount" type="number" inputMode="decimal" min="0.01" step="0.01" value={form.amount} onChange={set('amount')} required autoFocus className="!h-12 !text-[22px] font-semibold tabular" />
         </Field>
         <fieldset>
-          <legend className="text-small font-medium text-ink-700">What for</legend>
+          <legend className="text-small font-medium text-ink-700">{tr('What for')}</legend>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {chips.map((c) => (
               <button key={c} type="button" aria-pressed={!custom && form.category === c} onClick={() => { setCustom(false); setForm((f) => ({ ...f, category: c })); }}
                       className={`rounded-lg border px-2.5 py-1.5 text-small ${!custom && form.category === c ? 'border-brand-500 bg-brand-50 font-medium text-brand-700 ring-1 ring-brand-500' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>{c}</button>
             ))}
             <button type="button" aria-pressed={custom} onClick={() => { setCustom(true); setForm((f) => ({ ...f, category: '' })); }}
-                    className={`rounded-lg border border-dashed px-2.5 py-1.5 text-small ${custom ? 'border-brand-500 text-brand-700' : 'border-line-strong text-ink-500 hover:border-ink-400'}`}>+ New</button>
+                    className={`rounded-lg border border-dashed px-2.5 py-1.5 text-small ${custom ? 'border-brand-500 text-brand-700' : 'border-line-strong text-ink-500 hover:border-ink-400'}`}>{tr('+ New')}</button>
           </div>
-          {custom && <Input aria-label="New category" value={form.category} onChange={set('category')} placeholder="e.g. Pest control" maxLength={60} className="mt-2" autoFocus />}
+          {custom && <Input aria-label={tr('New category')} value={form.category} onChange={set('category')} placeholder={tr('e.g. Pest control')} maxLength={60} className="mt-2" autoFocus />}
         </fieldset>
         <div>
-          <p className="text-small font-medium text-ink-700">Paid by</p>
-          <div role="radiogroup" aria-label="Paid by" className="mt-2 grid grid-cols-5 gap-1.5">
+          <p className="text-small font-medium text-ink-700">{tr('Paid by')}</p>
+          <div role="radiogroup" aria-label={tr('Paid by')} className="mt-2 grid grid-cols-5 gap-1.5">
             {METHODS.map(([v, label]) => (
               <button key={v} type="button" role="radio" aria-checked={form.payment_method === v} onClick={() => setForm((f) => ({ ...f, payment_method: v }))}
-                      className={`h-9 rounded-lg border text-small font-medium ${form.payment_method === v ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>{label}</button>
+                      className={`h-9 rounded-lg border text-small font-medium ${form.payment_method === v ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>{tr(label)}</button>
             ))}
           </div>
         </div>
         <div className="grid grid-cols-[9.5rem_1fr] gap-3">
-          <Field id="x-date" label="Date"><Input id="x-date" type="date" value={form.expense_date} max={localISO()} onChange={set('expense_date')} required /></Field>
-          <Field id="x-note" label="Note (optional)"><Input id="x-note" value={form.description} onChange={set('description')} placeholder="e.g. September rent" /></Field>
+          <Field id="x-date" label={tr('Date')}><Input id="x-date" type="date" value={form.expense_date} max={localISO()} onChange={set('expense_date')} required /></Field>
+          <Field id="x-note" label={tr('Note (optional)')}><Input id="x-note" value={form.description} onChange={set('description')} placeholder={tr('e.g. September rent')} /></Field>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4">
-          {isEdit ? <Button type="button" variant="ghost" className="text-danger" onClick={remove} disabled={busy}>Delete</Button> : <span />}
+          {isEdit ? <Button type="button" variant="ghost" className="text-danger" onClick={remove} disabled={busy}>{tr('Delete')}</Button> : <span />}
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="ghost" onClick={onClose}>{added ? 'Done' : 'Cancel'}</Button>
-            {!isEdit && <Button type="button" variant="secondary" onClick={() => document.getElementById('x-amount').form.reportValidity() && save(true)} disabled={busy}>Save & add another</Button>}
-            <Button type="submit" disabled={busy}>{busy ? 'Saving…' : isEdit ? 'Save changes' : 'Save'}</Button>
+            <Button type="button" variant="ghost" onClick={onClose}>{added ? tr('Done') : tr('Cancel')}</Button>
+            {!isEdit && <Button type="button" variant="secondary" onClick={() => document.getElementById('x-amount').form.reportValidity() && save(true)} disabled={busy}>{tr('Save & add another')}</Button>}
+            <Button type="submit" disabled={busy}>{busy ? tr('Saving…') : isEdit ? tr('Save changes') : tr('Save')}</Button>
           </div>
         </div>
       </form>
@@ -147,11 +150,12 @@ const ExpenseForm = ({ expense, known, onSaved, onDeleted, onClose }) => {
 /* ── The screen ───────────────────────────────────────────────────────── */
 
 const Change = ({ now, before, vs }) => {
+  const tr = useT();
   if (!before && !now) return null;
-  if (!before) return <p className="mt-1 text-small text-ink-500">Nothing was logged in {vs}.</p>;
+  if (!before) return <p className="mt-1 text-small text-ink-500">{tr('Nothing was logged in {{vs}}.', { vs })}</p>;
   const diff = now - before;
   const pct = Math.round((Math.abs(diff) / before) * 100);
-  if (Math.abs(diff) < 0.5) return <p className="mt-1 text-small text-ink-500">The same as {vs}.</p>;
+  if (Math.abs(diff) < 0.5) return <p className="mt-1 text-small text-ink-500">{tr('The same as {{vs}}.', { vs })}</p>;
   // spending more is the thing to notice, so it is the one in colour
   return (
     <p className="tabular mt-1 text-small text-ink-500">
@@ -161,6 +165,7 @@ const Change = ({ now, before, vs }) => {
 };
 
 const ExpensesPage = () => {
+  const tr = useT();
   const toast = useToast();
   const { outletId, activeOutlet } = useAuth();
   const allView = outletId === 'all';
@@ -193,30 +198,30 @@ const ExpensesPage = () => {
   }, [rows]);
   const top = summary?.by_category[0]?.total || 1;
   const prevOf = (c) => previous?.by_category.find((x) => x.category === c)?.total || 0;
-  const range = `${d0(period.from).toLocaleDateString([], { day: 'numeric', month: 'short' })} – ${d0(period.to).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  const range = `${d0(period.from).toLocaleDateString([], { day: 'numeric', month: 'short' })} – ${formatDate(period.to)}`;
 
   return (
     <div className="mx-auto max-w-6xl">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-h3 font-semibold text-ink-900">Expenses</h1>
-          <p className="mt-1 text-small text-ink-500">Rent, salaries, bills: what the business spends outside of stock{activeOutlet && !allView ? ` at ${activeOutlet.name}` : allView ? ', across every outlet' : ''}.</p>
+          <h1 className="text-h3 font-semibold text-ink-900">{tr('Expenses')}</h1>
+          <p className="mt-1 text-small text-ink-500">Rent, salaries, bills: what the business spends outside of stock{activeOutlet && !allView ? ` at ${activeOutlet.name}` : allView ? tr(', across every outlet') : ''}.</p>
         </div>
-        <Button onClick={() => setEditing({})} disabled={allView} title={allView ? 'Pick an outlet at the top to add an expense to it' : undefined}><Plus aria-hidden="true" className="h-4 w-4" />Add expense</Button>
+        <Button onClick={() => setEditing({})} disabled={allView} title={allView ? tr('Pick an outlet at the top to add an expense to it') : undefined}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add expense')}</Button>
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-2">
-        <div role="group" aria-label="Period" className="flex gap-1 overflow-x-auto rounded-lg border border-line bg-surface-2 p-1">
+        <div role="group" aria-label={tr('Period')} className="flex gap-1 overflow-x-auto rounded-lg border border-line bg-surface-2 p-1">
           {PERIODS.map(([k, label]) => (
             <button key={k} type="button" aria-pressed={periodKey === k} onClick={() => { setPeriodKey(k); setCategory(null); }}
-                    className={`shrink-0 rounded-md px-3 py-1.5 text-small font-medium ${periodKey === k ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-900'}`}>{label}</button>
+                    className={`shrink-0 rounded-md px-3 py-1.5 text-small font-medium ${periodKey === k ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-900'}`}>{tr(label)}</button>
           ))}
         </div>
         {periodKey === 'custom' && (
           <div className="flex items-center gap-2">
-            <Input type="date" aria-label="From" value={custom.from} max={localISO()} onChange={(e) => e.target.value && setCustom((c) => ({ ...c, from: e.target.value }))} className="!w-auto" />
-            <span className="text-small text-ink-500">to</span>
-            <Input type="date" aria-label="To" value={custom.to} min={custom.from} max={localISO()} onChange={(e) => e.target.value && setCustom((c) => ({ ...c, to: e.target.value }))} className="!w-auto" />
+            <Input type="date" aria-label={tr('From')} value={custom.from} max={localISO()} onChange={(e) => e.target.value && setCustom((c) => ({ ...c, from: e.target.value }))} className="!w-auto" />
+            <span className="text-small text-ink-500">{tr('to')}</span>
+            <Input type="date" aria-label={tr('To')} value={custom.to} min={custom.from} max={localISO()} onChange={(e) => e.target.value && setCustom((c) => ({ ...c, to: e.target.value }))} className="!w-auto" />
           </div>
         )}
       </div>
@@ -224,7 +229,7 @@ const ExpensesPage = () => {
       <Alert>{error}</Alert>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <section aria-label="Summary" className="space-y-4">
+        <section aria-label={tr('Summary')} className="space-y-4">
           <div className="rounded-(--radius-card) border border-line bg-surface p-5">
             <p className="text-caption text-ink-500">Spent, {period.label || range}</p>
             {summary ? <>
@@ -232,14 +237,14 @@ const ExpensesPage = () => {
               <p className="text-small text-ink-500">{summary.count} expense{summary.count === 1 ? '' : 's'}</p>
               {previous && <Change now={summary.total} before={previous.total} vs={period.vs} />}
             </> : <div className="mt-2 h-16 animate-pulse rounded-lg bg-surface-3" />}
-            <p className="mt-3 border-t border-line pt-3 text-caption text-ink-500">See what is left after these on <Link to="/app/profitability" className="font-medium text-brand-700 hover:underline">Profitability</Link>.</p>
+            <p className="mt-3 border-t border-line pt-3 text-caption text-ink-500">{tr('See what is left after these on')} <Link to="/app/profitability" className="font-medium text-brand-700 hover:underline">{tr('Profitability')}</Link>.</p>
           </div>
 
           {summary?.by_category.length > 0 && (
             <div className="rounded-(--radius-card) border border-line bg-surface p-5">
               <div className="mb-3 flex items-baseline justify-between">
-                <h2 className="text-body font-semibold text-ink-900">Where it went</h2>
-                {category && <button type="button" onClick={() => setCategory(null)} className="text-caption font-medium text-brand-700">Show all</button>}
+                <h2 className="text-body font-semibold text-ink-900">{tr('Where it went')}</h2>
+                {category && <button type="button" onClick={() => setCategory(null)} className="text-caption font-medium text-brand-700">{tr('Show all')}</button>}
               </div>
               <ul className="space-y-1">
                 {summary.by_category.map((c) => {
@@ -263,20 +268,20 @@ const ExpensesPage = () => {
                 })}
               </ul>
               {summary.by_method.length > 1 && (
-                <p className="tabular mt-4 border-t border-line pt-3 text-caption text-ink-500">Paid by {summary.by_method.map((m) => `${METHOD_LABEL[m.method] || m.method} ${formatCurrency(m.total)}`).join(' · ')}</p>
+                <p className="tabular mt-4 border-t border-line pt-3 text-caption text-ink-500">{tr('Paid by {{v}}', { v: summary.by_method.map((m) => `${METHOD_LABEL[m.method] || m.method} ${formatCurrency(m.total)}`).join(' · ') })}</p>
               )}
             </div>
           )}
         </section>
 
-        <section aria-label="Expense list">
-          <h2 className="mb-3 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">{category ? `${category}, ${period.label || range}` : 'Every expense'}</h2>
+        <section aria-label={tr('Expense list')}>
+          <h2 className="mb-3 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">{category ? `${category}, ${period.label || range}` : tr('Every expense')}</h2>
           {!rows && !error && <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-14 animate-pulse rounded-lg bg-surface-3" />)}</div>}
           {rows?.length === 0 && (
             <div className="rounded-(--radius-card) border border-dashed border-line-strong p-10 text-center">
               <p className="text-body font-medium text-ink-900">Nothing logged for {period.label || 'these dates'}</p>
-              <p className="mt-1 text-small text-ink-500">Add rent, salaries and bills as you pay them, so profit counts them.</p>
-              {!allView && <Button className="mt-4" onClick={() => setEditing({})}>Add an expense</Button>}
+              <p className="mt-1 text-small text-ink-500">{tr('Add rent, salaries and bills as you pay them, so profit counts them.')}</p>
+              {!allView && <Button className="mt-4" onClick={() => setEditing({})}>{tr('Add an expense')}</Button>}
             </div>
           )}
           <div className="space-y-5">
@@ -299,14 +304,14 @@ const ExpensesPage = () => {
               </div>
             ))}
           </div>
-          {rows?.length === 300 && <p className="mt-3 text-caption text-ink-500">Showing the latest 300. The totals on the left count every expense in the period.</p>}
+          {rows?.length === 300 && <p className="mt-3 text-caption text-ink-500">{tr('Showing the latest 300. The totals on the left count every expense in the period.')}</p>}
         </section>
       </div>
 
       {editing && (
         <ExpenseForm expense={editing.expense_id ? editing : null} known={summary?.categories || []} onClose={() => setEditing(null)}
                      onSaved={(close, msg) => { if (close) { setEditing(null); toast.success(msg); } load(); }}
-                     onDeleted={() => { setEditing(null); toast.success('Expense deleted'); load(); }} />
+                     onDeleted={() => { setEditing(null); toast.success(tr('Expense deleted')); load(); }} />
       )}
     </div>
   );

@@ -114,6 +114,12 @@ export const update = async (req, res) => {
     `SELECT t.branch_id, EXISTS (SELECT 1 FROM orders o WHERE o.table_id = t.table_id AND o.status NOT IN ('BILLED','CANCELLED','MERGED')) AS busy
      FROM dining_tables t WHERE t.table_id = $1 AND t.business_id = $2`, [req.params.id, req.tenant.businessId])).rows[0];
 
+  // a gaming station's table follows the station (its name, zone, size and open/closed); only the waiter is the floor's to change
+  if ((body.name != null || body.zone !== undefined || body.seats !== undefined || body.status) && own
+    && (await pool.query(`SELECT 1 FROM gaming_stations WHERE table_id = $1`, [req.params.id])).rowCount) {
+    return bad(res, 'This table is a gaming station. Change it under Gaming, Stations', 409);
+  }
+
   if (body.name != null) {
     const name = cleanName(body.name);
     if (!name) return bad(res, 'Enter a table name or number');

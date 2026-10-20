@@ -1,7 +1,8 @@
 import { ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { api, useSession } from './session.ts';
+import { api, currentBusiness, useSession } from './session.ts';
+import { isDistributor } from './retail.ts';
 import { setCustomer } from './sale.ts';
 import { useLoad } from './useLoad.ts';
 import { rupees, toPaise } from './money.ts';
@@ -20,6 +21,7 @@ const m = (n: number | undefined) => rupees(toPaise(n ?? 0));
 /* The Sell tab for a wholesale or distribution business: the day's money and orders at a glance, and the four things done most (take an order, collect a payment, see orders, see customers). */
 export function WholesaleHome() {
   const session = useSession();
+  const distributor = isDistributor(currentBusiness(session));
   const dash = useLoad<Dash>(`wholesale-dash:${session.businessId}:${session.branchId}`, () => api.get<Dash>('/wholesale/dashboard'));
   const d = dash.data;
   const fresh = () => setCustomer(null);
@@ -31,10 +33,12 @@ export function WholesaleHome() {
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
           <View style={{ paddingHorizontal: 16, gap: 8 }}>
             <Button title="New order" onPress={() => { fresh(); router.push('/wholesale-order-new'); }} />
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Button title="My route" kind="quiet" onPress={() => router.push('/field')} style={{ flex: 1 }} />
-              <Button title="My van" kind="quiet" onPress={() => router.push('/van')} style={{ flex: 1 }} />
-            </View>
+            {distributor ? (
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Button title="My route" kind="quiet" onPress={() => router.push('/field')} style={{ flex: 1 }} />
+                <Button title="My van" kind="quiet" onPress={() => router.push('/van')} style={{ flex: 1 }} />
+              </View>
+            ) : null}
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <Button title="Warehouse" kind="quiet" onPress={() => router.push('/warehouse')} style={{ flex: 1 }} />
               <Button title="Buying" kind="quiet" onPress={() => router.push('/purchasing')} style={{ flex: 1 }} />

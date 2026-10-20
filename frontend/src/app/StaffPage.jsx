@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Th, Thead, Tr, useToast, PageLoader } from '../components/ui.jsx';
+import { useT, T } from '../i18n/useT.js';
 
 const ROLES = {
   OWNER: 'Owner', ADMIN: 'Admin', MANAGER: 'Manager', CASHIER: 'Cashier', WAITER: 'Waiter',
@@ -16,19 +17,23 @@ const ROLES = {
   SALES_MANAGER: 'Sales manager', SALES_EXECUTIVE: 'Sales executive', WAREHOUSE_MANAGER: 'Warehouse manager', WAREHOUSE_STAFF: 'Warehouse staff', PURCHASE_MANAGER: 'Purchase manager',
   DISTRIBUTOR_ADMIN: 'Distributor admin', FIELD_SALES: 'Field sales rep', COLLECTION_EXECUTIVE: 'Collection executive', DELIVERY_MANAGER: 'Delivery manager',
   PHARMACIST: 'Pharmacist', SALES_STAFF: 'Sales staff', GRN_MANAGER: 'GRN manager', AUDITOR: 'Auditor',
-  FRONT_DESK: 'Front desk', HOUSEKEEPER: 'Housekeeper', HOUSEKEEPING_SUPERVISOR: 'Housekeeping supervisor', NIGHT_AUDITOR: 'Night auditor'
+  FRONT_DESK: 'Front desk', HOUSEKEEPER: 'Housekeeper', HOUSEKEEPING_SUPERVISOR: 'Housekeeping supervisor', NIGHT_AUDITOR: 'Night auditor',
+  GYM_RECEPTIONIST: 'Gym front desk', TRAINER: 'Trainer', GAMING_ATTENDANT: 'Gaming attendant', STOREKEEPER: 'Storekeeper', PARTS_COUNTER: 'Parts counter'
 };
 /* Roles that only make sense for one kind of business: a salon has no kitchen, a restaurant has no stylists. */
 const SALON_ONLY = ['RECEPTIONIST', 'STYLIST'];
 const WHOLESALE_ONLY = ['SALES_MANAGER', 'SALES_EXECUTIVE', 'WAREHOUSE_MANAGER', 'WAREHOUSE_STAFF', 'PURCHASE_MANAGER', 'DISTRIBUTOR_ADMIN', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'DELIVERY_MANAGER'];
 const PHARMACY_ONLY = ['PHARMACIST', 'SALES_STAFF', 'GRN_MANAGER', 'AUDITOR'];
 const HOTEL_ONLY = ['FRONT_DESK', 'HOUSEKEEPER', 'HOUSEKEEPING_SUPERVISOR', 'NIGHT_AUDITOR'];
+const GYM_ONLY = ['GYM_RECEPTIONIST', 'TRAINER'];
+const GAMING_ONLY = ['GAMING_ATTENDANT'];
+const PARTS_ONLY = ['STOREKEEPER', 'PARTS_COUNTER'];
 const NOT_FOR_SALON = ['WAITER', 'KITCHEN', 'DELIVERY'];
 const NOT_FOR_WHOLESALE = ['WAITER', 'KITCHEN'];
 const NOT_FOR_PHARMACY = ['WAITER', 'KITCHEN', 'DELIVERY'];
 const DISTRIBUTOR_ONLY = ['DISTRIBUTOR_ADMIN', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'DELIVERY_MANAGER'];   // only where the distributor features are on
 const GROUP_ROLES = ['OWNER', 'ADMIN'];
-const FLOOR_ROLES = ['FRONT_DESK', 'HOUSEKEEPER', 'HOUSEKEEPING_SUPERVISOR', 'NIGHT_AUDITOR', 'CASHIER', 'WAITER', 'KITCHEN', 'STAFF', 'DELIVERY', 'RECEPTIONIST', 'STYLIST', 'ACCOUNTANT', 'WAREHOUSE_STAFF', 'SALES_EXECUTIVE', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'PHARMACIST', 'SALES_STAFF', 'GRN_MANAGER', 'AUDITOR'];
+const FLOOR_ROLES = ['GYM_RECEPTIONIST', 'TRAINER', 'GAMING_ATTENDANT', 'STOREKEEPER', 'PARTS_COUNTER', 'FRONT_DESK', 'HOUSEKEEPER', 'HOUSEKEEPING_SUPERVISOR', 'NIGHT_AUDITOR', 'CASHIER', 'WAITER', 'KITCHEN', 'STAFF', 'DELIVERY', 'RECEPTIONIST', 'STYLIST', 'ACCOUNTANT', 'WAREHOUSE_STAFF', 'SALES_EXECUTIVE', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'PHARMACIST', 'SALES_STAFF', 'GRN_MANAGER', 'AUDITOR'];
 const ROLE_HELP = {
   OWNER: 'Everything, including billing and staff.', ADMIN: 'Runs the business day to day; can’t manage owners.',
   MANAGER: 'Reports, stock, buying and refunds.', CASHIER: 'Bills sales and takes payments.', WAITER: 'Takes and bills orders.',
@@ -41,6 +46,11 @@ const ROLE_HELP = {
   HOUSEKEEPER: 'Sees the rooms and marks them clean, dirty or out of order. Nothing else.',
   HOUSEKEEPING_SUPERVISOR: 'Housekeeping, and can set up rooms and rates.',
   NIGHT_AUDITOR: 'Closes the hotel’s day, takes payments and reads the hotel reports.',
+  GYM_RECEPTIONIST: 'Scans cards and phones, checks members in, signs members up and sells memberships. Cannot change plans or settings.',
+  STOREKEEPER: 'Receives goods, puts stock away in racks and bins, moves and counts it. Cannot change prices or see margins.',
+  PARTS_COUNTER: 'Sells parts at the counter, looks them up by vehicle or part number, takes payments. Cannot change stock or prices.',
+  GAMING_ATTENDANT: 'Runs the board: starts, pauses, stops and moves sessions, takes orders for a station and the payment. Cannot change stations, rates or settings.',
+  TRAINER: 'Sees members’ plans and their private health notes, and runs classes. No billing or door access.',
   SALES_MANAGER: 'Orders, customers, pricing, receipts, returns and sales reports. Can cancel orders and override a credit hold.',
   SALES_EXECUTIVE: 'Takes orders for their own customers. Cannot change prices or see the books.',
   WAREHOUSE_MANAGER: 'Stock, goods receipts, transfers, picking and dispatch.',
@@ -58,6 +68,7 @@ const ROLE_HELP = {
 
 /* What this person may do: the role's default, with an allow or deny for anything the owner wants different. */
 const PermissionsModal = ({ person, onClose, onSaved }) => {
+  const tr = useT();
   const toast = useToast();
   const [rows, setRows] = useState(null);
   const [choice, setChoice] = useState({});           // key -> 'default' | 'allow' | 'deny'
@@ -78,14 +89,14 @@ const PermissionsModal = ({ person, onClose, onSaved }) => {
     try {
       const permissions = Object.fromEntries(rows.map((p) => [p.key, choice[p.key] === 'allow' ? true : choice[p.key] === 'deny' ? false : null]));
       await api(`/staff/${person.user_id}/permissions`, { method: 'PUT', body: { permissions } });
-      toast.success('Permissions saved. They apply from the next thing this person does.');
+      toast.success(tr('Permissions saved. They apply from the next thing this person does.'));
       onSaved();
     } catch (caught) { setError(caught.message); }
     finally { setBusy(false); }
   };
 
   return (
-    <Modal title={`Permissions — ${person.name}`} onClose={onClose} wide>
+    <Modal title={tr('Permissions — {{person_name}}', { person_name: person.name })} onClose={onClose} wide>
       <p className="mb-4 text-sm text-ink-500">{person.name} is a <strong>{ROLES[person.role]}</strong>. Each row starts from what that role allows; change one only when this person should differ.</p>
       <Alert>{error}</Alert>
       {!rows ? <PageLoader compact /> : (
@@ -93,20 +104,20 @@ const PermissionsModal = ({ person, onClose, onSaved }) => {
           {rows.map((p) => (
             <div key={p.key} className="grid items-center gap-3 rounded-lg border border-line p-3 sm:grid-cols-[1fr_auto]">
               <div>
-                <p className="text-sm font-semibold text-ink-900">{p.label} {effective(p) ? <Badge tone="success">Can</Badge> : <Badge tone="neutral">Can’t</Badge>}{choice[p.key] !== 'default' && <span className="ml-2 text-xs font-semibold text-brand-600">changed</span>}</p>
-                <p className="text-xs text-ink-500">{p.description}</p>
+                <p className="text-sm font-semibold text-ink-900">{tr(p.label)} {effective(p) ? <Badge tone="success">{tr('Can')}</Badge> : <Badge tone="neutral">{tr('Can’t')}</Badge>}{choice[p.key] !== 'default' && <span className="ml-2 text-xs font-semibold text-brand-600">{tr('changed')}</span>}</p>
+                <p className="text-xs text-ink-500">{tr(p.description)}</p>
               </div>
-              <div className="flex overflow-hidden rounded-lg border border-line-strong text-xs font-semibold" role="group" aria-label={p.label}>
-                {[['default', `Role default (${p.role_default ? 'can' : 'can’t'})`], ['allow', 'Allow'], ['deny', 'Deny']].map(([value, label]) => (
+              <div className="flex overflow-hidden rounded-lg border border-line-strong text-xs font-semibold" role="group" aria-label={tr(p.label)}>
+                {[['default', `Role default (${p.role_default ? 'can' : 'can’t'})`], ['allow', T('Allow')], ['deny', T('Deny')]].map(([value, label]) => (
                   <button key={value} type="button" aria-pressed={choice[p.key] === value} onClick={() => setChoice((c) => ({ ...c, [p.key]: value }))}
-                          className={`px-2.5 py-1.5 ${choice[p.key] === value ? (value === 'deny' ? 'bg-danger text-white' : value === 'allow' ? 'bg-success text-white' : 'bg-ink-900 text-white') : 'bg-surface text-ink-700 hover:bg-surface-2'}`}>{label}</button>
+                          className={`px-2.5 py-1.5 ${choice[p.key] === value ? (value === 'deny' ? 'bg-danger text-white' : value === 'allow' ? 'bg-success text-white' : 'bg-ink-900 text-white') : 'bg-surface text-ink-700 hover:bg-surface-2'}`}>{tr(label)}</button>
                 ))}
               </div>
             </div>
           ))}
           <div className="flex justify-end gap-2 pt-3">
-            <Button variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save permissions'}</Button>
+            <Button variant="ghost" onClick={onClose}>{tr('Cancel')}</Button>
+            <Button onClick={save} disabled={busy}>{busy ? tr('Saving…') : tr('Save permissions')}</Button>
           </div>
         </div>
       )}
@@ -115,6 +126,7 @@ const PermissionsModal = ({ person, onClose, onSaved }) => {
 };
 
 const PersonForm = ({ person, roles, outlets, onSaved, onClose }) => {
+  const tr = useT();
   const toast = useToast();
   const [form, setForm] = useState({ name: '', email: '', role: 'CASHIER', branch_id: '', status: 'ACTIVE', ...(person ? { role: person.role, branch_id: person.branch_id ?? '', status: person.status } : {}) });
   const [busy, setBusy] = useState(false);
@@ -139,44 +151,44 @@ const PersonForm = ({ person, roles, outlets, onSaved, onClose }) => {
   };
 
   return (
-    <Modal title={person ? `Edit ${person.name}` : 'Add a person'} onClose={onClose}>
+    <Modal title={person ? `Edit ${person.name}` : tr('Add a person')} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
         <Alert>{error}</Alert>
         {!person && (
           <>
-            <Field id="s-name" label="Name"><Input id="s-name" value={form.name} onChange={set('name')} required autoFocus /></Field>
-            <Field id="s-email" label="Email" hint="They get a link to set their own password."><Input id="s-email" type="email" value={form.email} onChange={set('email')} required /></Field>
+            <Field id="s-name" label={tr('Name')}><Input id="s-name" value={form.name} onChange={set('name')} required autoFocus /></Field>
+            <Field id="s-email" label={tr('Email')} hint={tr('They get a link to set their own password.')}><Input id="s-email" type="email" value={form.email} onChange={set('email')} required /></Field>
           </>
         )}
-        <Field id="s-role" label="Role" hint={ROLE_HELP[form.role]}>
+        <Field id="s-role" label={tr('Role')} hint={ROLE_HELP[form.role]}>
           <Select id="s-role" value={form.role} onChange={set('role')}>
             {roles.map((r) => <option key={r} value={r}>{ROLES[r]}</option>)}
           </Select>
         </Field>
         {groupRole ? (
-          <p className="rounded-lg bg-surface-2 p-3 text-sm text-ink-700">{ROLES[form.role]}s can see every outlet.</p>
+          <p className="rounded-lg bg-surface-2 p-3 text-sm text-ink-700">{tr('{{v}}s can see every outlet.', { v: ROLES[form.role] })}</p>
         ) : (
           outlets.length > 1 && (
-            <Field id="s-outlet" label="Outlet" hint={needsOutlet ? 'They can only see and work in this outlet.' : 'Leave on “Every outlet” for a group-level manager.'}>
+            <Field id="s-outlet" label={tr('Outlet')} hint={needsOutlet ? tr('They can only see and work in this outlet.') : tr('Leave on “Every outlet” for a group-level manager.')}>
               <Select id="s-outlet" value={form.branch_id} onChange={set('branch_id')} required={needsOutlet}>
-                {!needsOutlet && <option value="">Every outlet</option>}
-                {needsOutlet && <option value="" disabled>Choose an outlet…</option>}
+                {!needsOutlet && <option value="">{tr('Every outlet')}</option>}
+                {needsOutlet && <option value="" disabled>{tr('Choose an outlet…')}</option>}
                 {outlets.map((o) => <option key={o.branch_id} value={o.branch_id}>{o.name}</option>)}
               </Select>
             </Field>
           )
         )}
         {person && (
-          <Field id="s-status" label="Access">
+          <Field id="s-status" label={tr('Access')}>
             <Select id="s-status" value={form.status} onChange={set('status')}>
-              <option value="ACTIVE">Active</option>
-              <option value="DISABLED">Disabled — can’t sign in to this business</option>
+              <option value="ACTIVE">{tr('Active')}</option>
+              <option value="DISABLED">{tr('Disabled — can’t sign in to this business')}</option>
             </Select>
           </Field>
         )}
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={busy}>{busy ? 'Saving…' : person ? 'Save changes' : 'Add person'}</Button>
+          <Button type="button" variant="ghost" onClick={onClose}>{tr('Cancel')}</Button>
+          <Button type="submit" disabled={busy}>{busy ? tr('Saving…') : person ? tr('Save changes') : tr('Add person')}</Button>
         </div>
       </form>
     </Modal>
@@ -184,6 +196,7 @@ const PersonForm = ({ person, roles, outlets, onSaved, onClose }) => {
 };
 
 const StaffPage = () => {
+  const tr = useT();
   const { business, outlets } = useAuth();
   const [people, setPeople] = useState(null);
   const [error, setError] = useState('');
@@ -196,35 +209,39 @@ const StaffPage = () => {
   const wholesale = ['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type);
   const pharmacy = business?.business_type === 'PHARMACY';
   const hotel = business?.business_type === 'HOTEL';
-  const roles = Object.keys(ROLES).filter((r) => (isOwner || !GROUP_ROLES.includes(r)) && (
-    salon ? !NOT_FOR_SALON.includes(r) && !WHOLESALE_ONLY.includes(r) && !PHARMACY_ONLY.includes(r) && !HOTEL_ONLY.includes(r)
-    : hotel ? !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r) && !PHARMACY_ONLY.includes(r)
-    : wholesale ? !NOT_FOR_WHOLESALE.includes(r) && !SALON_ONLY.includes(r) && !PHARMACY_ONLY.includes(r) && !HOTEL_ONLY.includes(r) && (business?.distributor_enabled || !DISTRIBUTOR_ONLY.includes(r))
-    : pharmacy ? !NOT_FOR_PHARMACY.includes(r) && !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r) && !HOTEL_ONLY.includes(r)
-    : !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r) && !PHARMACY_ONLY.includes(r) && !HOTEL_ONLY.includes(r)
+  const gym = business?.business_type === 'GYM';
+  const gaming = business?.business_type === 'GAMING_CAFE';
+  const parts = business?.business_type === 'AUTO_PARTS';
+  const roles = Object.keys(ROLES).filter((r) => (isOwner || !GROUP_ROLES.includes(r)) && (gaming || !GAMING_ONLY.includes(r)) && (parts || !PARTS_ONLY.includes(r)) && (
+    gym ? !NOT_FOR_SALON.includes(r) && !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r) && !PHARMACY_ONLY.includes(r) && !HOTEL_ONLY.includes(r)
+    : salon ? !NOT_FOR_SALON.includes(r) && !WHOLESALE_ONLY.includes(r) && !PHARMACY_ONLY.includes(r) && !HOTEL_ONLY.includes(r) && !GYM_ONLY.includes(r)
+    : hotel ? !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r) && !PHARMACY_ONLY.includes(r) && !GYM_ONLY.includes(r)
+    : wholesale ? !NOT_FOR_WHOLESALE.includes(r) && !SALON_ONLY.includes(r) && !PHARMACY_ONLY.includes(r) && !HOTEL_ONLY.includes(r) && !GYM_ONLY.includes(r) && (business?.distributor_enabled || !DISTRIBUTOR_ONLY.includes(r))
+    : pharmacy ? !NOT_FOR_PHARMACY.includes(r) && !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r) && !HOTEL_ONLY.includes(r) && !GYM_ONLY.includes(r)
+    : !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r) && !PHARMACY_ONLY.includes(r) && !HOTEL_ONLY.includes(r) && !GYM_ONLY.includes(r)
   ));
 
-  const load = () => api('/staff').then(setPeople).catch((e) => setError(e.status === 403 ? 'Managing staff is for owners and admins.' : e.message));
+  const load = () => api('/staff').then(setPeople).catch((e) => setError(e.status === 403 ? tr('Managing staff is for owners and admins.') : e.message));
   useEffect(() => { load(); }, []);
 
   return (
     <div>
-      <PageHeader title="Staff" lead="Who can sign in, what they can do, and where." action={<Button onClick={() => setEditing({})}>Add person</Button>} />
+      <PageHeader title={tr('Staff')} lead={tr('Who can sign in, what they can do, and where.')} action={<Button onClick={() => setEditing({})}>{tr('Add person')}</Button>} />
       <Alert>{error}</Alert>
-      <ListState loading={!people && !error} empty={people?.length === 0} emptyLabel="No one yet." />
+      <ListState loading={!people && !error} empty={people?.length === 0} emptyLabel={tr('No one yet.')} />
       {people?.length > 0 && (
         <Table>
-          <Thead><Th>Name</Th><Th>Role</Th><Th>Outlet</Th><Th>Access</Th><Th></Th></Thead>
+          <Thead><Th>{tr('Name')}</Th><Th>{tr('Role')}</Th><Th>{tr('Outlet')}</Th><Th>{tr('Access')}</Th><Th></Th></Thead>
           <tbody>
             {people.map((p) => (
               <Tr key={p.user_id}>
-                <Td><span className="font-medium">{p.name}</span> {p.is_you && <Badge tone="brand">You</Badge>}<br /><span className="text-xs text-ink-400">{p.email}</span></Td>
+                <Td><span className="font-medium">{p.name}</span> {p.is_you && <Badge tone="brand">{tr('You')}</Badge>}<br /><span className="text-xs text-ink-400">{p.email}</span></Td>
                 <Td>{ROLES[p.role] || p.role}</Td>
                 <Td className="text-ink-500">{p.branch_name || 'Every outlet'}</Td>
-                <Td>{p.status === 'ACTIVE' ? <Badge tone="success">Active</Badge> : <Badge tone="neutral">{p.status === 'DISABLED' ? 'Disabled' : 'Invited'}</Badge>}</Td>
+                <Td>{p.status === 'ACTIVE' ? <Badge tone="success">{tr('Active')}</Badge> : <Badge tone="neutral">{p.status === 'DISABLED' ? tr('Disabled') : tr('Invited')}</Badge>}</Td>
                 <Td className="space-x-3 text-right">
                   {isOwner && !p.is_you && p.role !== 'OWNER' && <button onClick={() => setPermsFor(p)} className="text-xs font-semibold text-brand-600">Permissions{p.custom_permissions > 0 && <span className="ml-1 rounded-full bg-brand-50 px-1.5 text-[10px]">{p.custom_permissions}</span>}</button>}
-                  {!p.is_you && (isOwner || !GROUP_ROLES.includes(p.role)) && <button onClick={() => setEditing(p)} className="text-xs font-semibold text-brand-600">Edit</button>}
+                  {!p.is_you && (isOwner || !GROUP_ROLES.includes(p.role)) && <button onClick={() => setEditing(p)} className="text-xs font-semibold text-brand-600">{tr('Edit')}</button>}
                 </Td>
               </Tr>
             ))}

@@ -1,0 +1,43 @@
+{
+  "header": {
+    "product": "Product",
+    "industries": "Industries",
+    "aiManager": "AI Manager",
+    "integrations": "Integrations",
+    "guide": "Setup guide",
+    "pricing": "Pricing",
+    "about": "About",
+    "login": "Log in",
+    "startTrial": "Start free trial",
+    "openApp": "Open FlowXP",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "mainAria": "Main",
+    "homeAria": "FlowXP home",
+    "builtFor": "Built for these trades",
+    "allIndustries": "All industries"
+  },
+  "footer": {
+    "blurb": "FlowXP is made by ManagerXP, the team behind the counters and back offices of businesses across India.",
+    "product": "Product",
+    "company": "Company",
+    "getStarted": "Get started",
+    "legal": "Legal",
+    "features": "Features",
+    "whoFor": "Who it is for",
+    "aiManager": "AI Manager",
+    "integrations": "Integrations",
+    "guide": "Setup guide",
+    "pricing": "Pricing",
+    "about": "About ManagerXP",
+    "contact": "Contact",
+    "startTrial": "Start free trial",
+    "login": "Log in",
+    "privacy": "Privacy",
+    "deleteAccount": "Delete your account",
+    "terms": "Terms",
+    "cookies": "Cookies",
+    "rights": "All rights reserved.",
+    "madeIn": "Made in India for Indian businesses. Prices in ₹, GST built in."
+  }
+}

@@ -30,9 +30,9 @@ Drafts for the owner to review. The data-safety answers are declarations to Goog
 > Print or share
 > - Print the receipt to any printer your phone can reach, 58 mm or 80 mm paper, or share it
 >
-> You need a FlowXP account. Start a 7-day free trial at flowxp.in.
+> Create your account in the app and start a 7-day free trial, no card needed. Your business type switches on the tools it needs: restaurants and cafés (tables, kitchen screen, online orders, deliveries), hotels (front desk, rooms, guest bills), wholesalers and distributors (orders, credit, warehouse, field sales and vans), pharmacies, salons, gyms (front desk check-in), gaming lounges (station timers), and auto spare parts shops (part numbers, vehicle fitment, racks and bins, receiving).
 >
-> Not in this app yet: table orders, held bills, customer lookup, and card machine connection. They are on the FlowXP website till.
+> Some set-up and reports are on the website: card machine connection, hotel night audit and banquets, gym and lounge set-up, and the full reports.
 
 **Category:** Business. **Tags:** point of sale, billing, inventory, GST. **Contact:** the support email on flowxp.in. **Website:** https://flowxp.in. **Privacy policy:** https://flowxp.in/privacy
 
@@ -80,7 +80,7 @@ Notifications (Android 13 and later asks the person; the app asks once, in its o
 3. **Play service-account key** for uploads: save as `mobile/play-service-account.json` (already ignored by git).
 4. **First build to test**: `npx eas-cli@latest build --platform android --profile preview` gives an installable `.apk`. Try it on real phones (camera, airplane-mode drill, printer) before the store build.
 5. **Store build**: `npx eas-cli@latest build --platform android --profile production`, then `npx eas-cli@latest submit --platform android --profile production` (it lands as a draft in the internal track; you press release).
-6. **Production server**: `https://flowxp.in` must be live with HTTPS, the migrations (up to 0081) applied, and `ADMIN_REQUIRE_2FA` on. The profiles point the app at `https://flowxp.in`.
+6. **Production server**: `https://flowxp.in` must be live with HTTPS, the migrations (up to 0100) applied, and `ADMIN_REQUIRE_2FA` on. The profiles point the app at `https://flowxp.in`.
 7. Take the screenshots, fill in the store listing from this file, submit the data-safety form and content rating.
 
 ## Shipping a fix
@@ -94,3 +94,28 @@ cd mobile && npm run release:check
 ```
 
 Runs the typecheck, all tests, `expo-doctor` and a full Android bundle. After the build is installed on a phone, run the checklist in `MOBILE.md` (section "Try it on a phone").
+
+
+## Google Play policy checklist (2026-10-13)
+
+What the app and server already do, and what only you can do. "Checked" means it was run or read in the code on 2026-10-13; nothing here was tested on a Play review device.
+
+| Policy area | State |
+|---|---|
+| **Account creation** | In the app: Start your free trial (name, email, optional mobile, password of 10 or more characters, business name and kind, agree to Terms and Privacy Policy), then a 6-digit email code. Same server rules as the website. Checked live: `mobile/scripts/signup-live.mts`. |
+| **Account deletion (in the app)** | Settings, Delete my account: password (and the sign-in code if two-step sign-in is on). The only owner of a business is told to hand it over or leave a request that support follows up. Also a website form for people who cannot sign in: https://flowxp.in/delete-account. **Enter this URL in the Play Console under "Data deletion".** |
+| **Problem reports** | "Report a problem" (Settings, More, the error screen) sends what the person types plus the app version, phone type, and their name, email and business so FlowXP can reply. Add this to the privacy policy and to the Data safety form (Personal info and App info and performance: collected, required for the feature, not shared). Kept 180 days. Crash reports stay anonymous and are kept 30 days. |
+| **Privacy policy** | https://flowxp.in/privacy, linked on the sign-in screen, the sign-up screen and in Settings. Must describe exactly what the Data safety form says (below), including crash reports, the push address, optional location and the AI assistant. |
+| **Data safety form** | Use the table above. Add: **account creation collects name, email, optional phone and the business name** (Personal info, required, linked to the account). All data is encrypted in transit; users can request deletion. Nothing is sold or shared for ads. |
+| **Permissions** | Camera (barcode and pass scanning, nothing saved), notifications (asked in the app's own words first), foreground location (only for field-sales visits when the business turns it on). No background location, no storage, no microphone, no overlay (checked in a generated manifest). Fill the Play permissions declaration for location. |
+| **User-generated content, ads, kids** | No ads, no tracking, no public user content, no chat between users. Target audience 18 and over (business owners and staff). Not a Families app. |
+| **Payments policy** | The app has **no in-app purchase and shows no prices or payment screens**. A trial ends on the server and the app shows the server's plain message. The paid plan is bought on the website. Play's payments rules for apps used with a paid account are your decision to check with Google before launch: if Google asks, either keep the app a companion to a service bought outside it (as now), or add Google Play Billing. Do not add "buy" buttons or price lists to the app without deciding this. |
+| **Target API and 16 KB pages** | Expo SDK 57 / React Native 0.86 target a current Android level and ship 16 KB aligned libraries (reasoned; confirm in the Play pre-launch report). |
+| **App access for reviewers** | Play needs a login that works. **Create a reviewer account on the production server** (for example a spare parts shop or a café with sample data, using the seed scripts' pattern) and enter its email and password under App content, App access. Do not use a real customer's account. |
+| **Security** | HTTPS only (cleartext off in release builds), no backups of app data, token in the phone's secure storage, no secrets in the app, crash reports carry no personal details. |
+| **Content rating** | Questionnaire: utility app, no violence, sexual content, gambling, or user-shared content. Expect Everyone. |
+| **Listing** | Text above (updated for all business types), icon and feature graphic ready, **screenshots still to take on a real phone**. |
+
+## Testing it now
+
+Phone (Android) on the same Wi-Fi as this laptop, no accounts needed: install Expo Go, run the API (`backend`, `npm run start`) and `npm run phone` in `mobile/` (it uses `mobile/.env`: `EXPO_PUBLIC_API_URL=http://<laptop IP>:5100`), allow ports 5100 and 8081 in the Windows firewall, and open the QR. Alerts and the camera-free paths work in Expo Go; push alerts need a real build. An installable `.apk` needs your Expo login (`npx eas-cli@latest build --platform android --profile test`): set the API address in the `test` profile of `eas.json` to a server your phone can reach over HTTPS first.

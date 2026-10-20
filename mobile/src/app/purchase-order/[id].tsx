@@ -1,3 +1,4 @@
+import { formatDate } from '../../lib/display.ts';
 import { useRef, useState } from 'react';
 import { Alert, ScrollView, Share, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -55,7 +56,7 @@ export default function PurchaseOrderScreen() {
     <SafeAreaView style={s.screen}>
       <Page>
         <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-          <View style={{ flex: 1 }}><Title>{p?.po_number ?? 'Order'}</Title>{p ? <Soft>{`${p.supplier} · ${String(p.po_date).slice(0, 10)}`}</Soft> : null}</View>
+          <View style={{ flex: 1 }}><Title>{p?.po_number ?? 'Order'}</Title>{p ? <Soft>{`${p.supplier} · ${formatDate(p.po_date)}`}</Soft> : null}</View>
           <Button title="Back" kind="quiet" onPress={() => goBack()} />
         </View>
         {po.busy && !p ? <Loading /> : null}
@@ -66,8 +67,8 @@ export default function PurchaseOrderScreen() {
               <Text style={{ fontSize: 18, fontWeight: '700', color: p.status === 'CANCELLED' ? color.danger : color.ink }}>{PO_LABEL[p.status]}</Text>
               <Text style={{ fontSize: 28, fontWeight: '800', color: color.ink }}>{money(p.total)}</Text>
               <Soft>{`Items ${money(p.subtotal)} · GST ${money(p.tax)}${p.paid > 0 ? ` · paid ${money(p.paid)}` : ''}`}</Soft>
-              {p.balance > 0 && ['PARTIAL', 'RECEIVED'].includes(p.status) ? <Text style={{ color: color.warn, fontWeight: '700' }}>{`You owe ${money(p.balance)}${p.due_date ? `, due ${String(p.due_date).slice(0, 10)}` : ''}`}</Text> : null}
-              {p.expected_date ? <Soft>{`Expected ${String(p.expected_date).slice(0, 10)}`}</Soft> : null}
+              {p.balance > 0 && ['PARTIAL', 'RECEIVED'].includes(p.status) ? <Text style={{ color: color.warn, fontWeight: '700' }}>{`You owe ${money(p.balance)}${p.due_date ? `, due ${formatDate(p.due_date)}` : ''}`}</Text> : null}
+              {p.expected_date ? <Soft>{`Expected ${formatDate(p.expected_date)}`}</Soft> : null}
               {p.supplier_invoice_no ? <Soft>{`Supplier's bill ${p.supplier_invoice_no}`}</Soft> : null}
               {p.notes ? <Soft>{p.notes}</Soft> : null}
             </View>
@@ -78,14 +79,15 @@ export default function PurchaseOrderScreen() {
             ))}
 
             {(p.grns ?? []).length ? <SectionTitle>Goods received</SectionTitle> : null}
-            {(p.grns ?? []).map((g) => <Line key={g.grn_id} left={g.grn_number} sub={`${String(g.grn_date).slice(0, 10)}${g.supplier_invoice_no ? ` · bill ${g.supplier_invoice_no}` : ''}`} right={money(g.total_cost)} />)}
+            {(p.grns ?? []).map((g) => <Line key={g.grn_id} left={g.grn_number} sub={`${formatDate(g.grn_date)}${g.supplier_invoice_no ? ` · bill ${g.supplier_invoice_no}` : ''}`} right={money(g.total_cost)} />)}
             {(p.payments ?? []).length ? <SectionTitle>Paid</SectionTitle> : null}
-            {(p.payments ?? []).map((x) => <Line key={x.payment_id} left={`${x.method.replace('_', ' ').toLowerCase()}${x.reference ? ` · ${x.reference}` : ''}`} sub={String(x.date).slice(0, 10)} right={money(x.amount)} />)}
+            {(p.payments ?? []).map((x) => <Line key={x.payment_id} left={`${x.method.replace('_', ' ').toLowerCase()}${x.reference ? ` · ${x.reference}` : ''}`} sub={formatDate(x.date)} right={money(x.amount)} />)}
 
             <View style={{ padding: 16, gap: 8 }}>
               <ErrorText>{problem}</ErrorText>
               {note ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok, fontWeight: '600' }}>{note}</Text> : null}
               {poActions(p.status).map((a) => <Button key={a.id} title={a.label} kind={a.id === 'cancel' ? 'danger' : a.id === 'approve' || a.id === 'receive' ? 'primary' : 'quiet'} busy={busy === a.id || (a.id === 'close' && busy === 'close') || (a.id === 'send' && busy === 'send')} onPress={() => run(a.id)} />)}
+              {['PARTIAL', 'RECEIVED'].includes(p.status) ? <Button title="Raise a debit note" kind="quiet" onPress={() => router.push({ pathname: '/debit-note-new', params: { po: String(id) } })} /> : null}
               {p.balance > 0 && ['PARTIAL', 'RECEIVED'].includes(p.status) ? (
                 paying ? (
                   <View style={{ gap: 8 }}>

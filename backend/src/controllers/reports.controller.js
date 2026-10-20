@@ -247,14 +247,14 @@ export const gst = async (req, res) => {
       [req.tenant.businessId, from, to, ...gi.args]
     ),
     pool.query(
-      `SELECT COALESCE(p.hsn_sac, 'No HSN/SAC') AS hsn_sac, ii.tax_rate,
+      `SELECT COALESCE(ii.hsn_sac, p.hsn_sac, 'No HSN/SAC') AS hsn_sac, ii.tax_rate,
               SUM(ii.quantity * ii.unit_price_paise - ii.discount_paise) AS taxable_paise,
               SUM(ii.tax_amount_paise) AS tax_paise
        FROM invoice_items ii
        JOIN invoices i ON i.invoice_id = ii.invoice_id
        LEFT JOIN products p ON p.product_id = ii.product_id
        WHERE i.business_id = $1 AND i.status = 'ISSUED' AND i.invoice_date BETWEEN $2 AND $3${giI.sql}
-       GROUP BY p.hsn_sac, ii.tax_rate ORDER BY tax_paise DESC`,
+       GROUP BY COALESCE(ii.hsn_sac, p.hsn_sac, 'No HSN/SAC'), ii.tax_rate ORDER BY tax_paise DESC`,
       [req.tenant.businessId, from, to, ...giI.args]
     ),
     // Credit notes issued in the period take tax and taxable value back off the return.
@@ -265,9 +265,9 @@ export const gst = async (req, res) => {
       [req.tenant.businessId, from, to, ...cnC.args]
     ),
     pool.query(
-      `SELECT COALESCE(p.hsn_sac, 'No HSN/SAC') AS hsn_sac, ci.tax_rate, SUM(ci.line_total_paise - ci.tax_amount_paise) AS taxable_paise, SUM(ci.tax_amount_paise) AS tax_paise
+      `SELECT COALESCE(ci.hsn_sac, p.hsn_sac, 'No HSN/SAC') AS hsn_sac, ci.tax_rate, SUM(ci.line_total_paise - ci.tax_amount_paise) AS taxable_paise, SUM(ci.tax_amount_paise) AS tax_paise
        FROM credit_note_items ci JOIN credit_notes c ON c.cn_id = ci.cn_id LEFT JOIN products p ON p.product_id = ci.product_id
-       WHERE c.business_id = $1 AND c.cn_date BETWEEN $2 AND $3${cnC.sql} GROUP BY p.hsn_sac, ci.tax_rate`,
+       WHERE c.business_id = $1 AND c.cn_date BETWEEN $2 AND $3${cnC.sql} GROUP BY COALESCE(ci.hsn_sac, p.hsn_sac, 'No HSN/SAC'), ci.tax_rate`,
       [req.tenant.businessId, from, to, ...cnC.args]
     )
   ]);

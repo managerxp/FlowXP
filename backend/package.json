@@ -14,10 +14,13 @@
     "seed:cafe": "node scripts/seed-cafe.js",
     "seed:supermarket": "node scripts/seed-supermarket.js",
     "seed:hotel": "node scripts/seed-hotel.js",
+    "seed:gym": "node scripts/seed-gym.js",
     "seed:cloudkitchen": "node scripts/seed-cloudkitchen.js",
     "seed:live": "node scripts/seed-live.js",
     "seed:pharmacy": "node scripts/seed-pharmacy.js",
-    "seed:distributor": "node scripts/seed-wholesale.js && node scripts/seed-distributor.js"
+    "seed:distributor": "node scripts/seed-wholesale.js && node scripts/seed-distributor.js",
+    "seed:gaming": "node scripts/seed-gaming.js",
+    "seed:autoparts": "node scripts/seed-autoparts.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

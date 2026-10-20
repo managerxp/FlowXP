@@ -102,12 +102,37 @@ export const setFQty = (lines: FLine[], key: string, quantity: string): FLine[] 
 export const setFUnit = (lines: FLine[], key: string, unit: string | null): FLine[] => lines.map((l) => (l.key === key ? { ...l, unit_name: unit } : l));
 export const dropFLine = (lines: FLine[], key: string): FLine[] => lines.filter((l) => l.key !== key);
 
-/** About what the order comes to (shelf wholesale price per piece times the unit's size, plus GST). The server's price list, offers and rounding replace it. */
-export const estimateOrder = (lines: FLine[]): { subtotalPaise: number; taxPaise: number; totalPaise: number } => {
+/** The price per piece the server last charged THIS shop for each product, kept on the phone so an order taken with no signal is estimated at the shop's own price (its tier, list or deal), not the shelf price. */
+export type KnownPrices = Record<string, number>;
+const PRICES_KEPT = 400;
+const pricesKey = (customerId: number) => `shopprices:${customerId}`;
+
+export const loadKnownPrices = async (kv: KV, customerId: number): Promise<KnownPrices> => {
+  try { const raw = await kv.get(pricesKey(customerId)); const v = raw ? JSON.parse(raw) : {}; return v && typeof v === 'object' ? v : {}; } catch { return {}; }
+};
+
+/** After the server priced these lines for this shop: remember each product's price per piece (the price for the unit asked, divided by the unit's size). Free scheme lines are not a price. */
+export const rememberShopPrices = async (kv: KV, customerId: number, lines: FLine[], priced: { lines: { product_id: number; price: number; is_free?: boolean }[] }): Promise<KnownPrices> => {
+  const known = await loadKnownPrices(kv, customerId);
+  for (const pl of priced.lines) {
+    if (pl.is_free || !(pl.price > 0)) continue;
+    const l = lines.find((x) => x.product.product_id === pl.product_id);
+    if (!l) continue;
+    const factor = unitFactor(l.product, l.unit_name) || 1;
+    delete known[`p${pl.product_id}`]; known[`p${pl.product_id}`] = Math.round((pl.price / factor) * 10000) / 10000;   // re-inserted last, so the oldest drop out first (keys start with p so they keep their order)
+  }
+  const ids = Object.keys(known);
+  for (const id of ids.slice(0, Math.max(0, ids.length - PRICES_KEPT))) delete known[id];
+  try { await kv.set(pricesKey(customerId), JSON.stringify(known)); } catch { /* the estimate just falls back to the shelf price */ }
+  return known;
+};
+
+/** About what the order comes to: the shop's last price per piece when the phone has seen it (else the shelf wholesale price) times the unit's size, plus GST. The server's price list, offers and rounding replace it. */
+export const estimateOrder = (lines: FLine[], known: KnownPrices = {}): { subtotalPaise: number; taxPaise: number; totalPaise: number } => {
   let subtotal = 0; let tax = 0;
   for (const l of lines) {
     const q = Number(l.quantity); if (!(q > 0)) continue;
-    const line = Math.round(toPaise(pieceRupees(l.product)) * unitFactor(l.product, l.unit_name) * q);
+    const line = Math.round(toPaise(known[`p${l.product.product_id}`] ?? pieceRupees(l.product)) * unitFactor(l.product, l.unit_name) * q);
     subtotal += line; tax += Math.round(line * (l.product.tax_rate / 100));
   }
   return { subtotalPaise: subtotal, taxPaise: tax, totalPaise: subtotal + tax };

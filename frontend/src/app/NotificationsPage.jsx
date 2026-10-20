@@ -9,12 +9,17 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { SEVERITY_DOT, timeAgo } from '../components/NotificationBell.jsx';
 import { Alert, Button, Card, PageHeader, useToast, PageLoader } from '../components/ui.jsx';
+import { useT } from '../i18n/useT.js';
 
-const Toggle = ({ checked, onChange, label }) => (
-  <input type="checkbox" checked={checked} onChange={onChange} aria-label={label} className="h-4 w-4 accent-[var(--color-brand-500)]" />
+const Toggle = ({ checked, onChange, label }) => {
+  const tr = useT();
+  return (
+  <input type="checkbox" checked={checked} onChange={onChange} aria-label={tr(label)} className="h-4 w-4 accent-[var(--color-brand-500)]" />
 );
+};
 
 const Preferences = () => {
+  const tr = useT();
   const toast = useToast();
   const [prefs, setPrefs] = useState(null);
   const [error, setError] = useState('');
@@ -23,38 +28,39 @@ const Preferences = () => {
   const change = async (category, field, value) => {
     const next = prefs.map((p) => (p.category === category ? { ...p, [field]: value } : p));
     setPrefs(next);
-    try { await api('/notifications/preferences', { method: 'PUT', body: { preferences: next } }); toast.success('Saved'); }
+    try { await api('/notifications/preferences', { method: 'PUT', body: { preferences: next } }); toast.success(tr('Saved')); }
     catch (caught) { toast.error(caught.message); }
   };
 
   if (error) return <Alert>{error}</Alert>;
   if (!prefs) return null;
-  if (prefs.length === 0) return <p className="text-sm text-ink-500">There are no notification settings for your role.</p>;
+  if (prefs.length === 0) return <p className="text-sm text-ink-500">{tr('There are no notification settings for your role.')}</p>;
 
   return (
     <Card>
-      <h2 className="text-sm font-semibold text-ink-900">What to tell me about</h2>
+      <h2 className="text-sm font-semibold text-ink-900">{tr('What to tell me about')}</h2>
       <div className="mt-3 overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="text-xs text-ink-400"><tr><th className="py-2 font-semibold">Topic</th><th className="w-20 py-2 text-center font-semibold">In app</th><th className="w-20 py-2 text-center font-semibold">Email</th><th className="w-20 py-2 text-center font-semibold">Phone</th></tr></thead>
+          <thead className="text-xs text-ink-400"><tr><th className="py-2 font-semibold">{tr('Topic')}</th><th className="w-20 py-2 text-center font-semibold">{tr('In app')}</th><th className="w-20 py-2 text-center font-semibold">{tr('Email')}</th><th className="w-20 py-2 text-center font-semibold">{tr('Phone')}</th></tr></thead>
           <tbody>
             {prefs.map((p) => (
               <tr key={p.category} className="border-t border-line">
-                <td className="py-3"><p className="font-medium text-ink-900">{p.label}</p><p className="text-xs text-ink-500">{p.description}</p></td>
-                <td className="text-center"><Toggle checked={p.in_app} onChange={(e) => change(p.category, 'in_app', e.target.checked)} label={`${p.label} in the app`} /></td>
-                <td className="text-center"><Toggle checked={p.email} onChange={(e) => change(p.category, 'email', e.target.checked)} label={`${p.label} by email`} /></td>
-                <td className="text-center"><Toggle checked={p.push} onChange={(e) => change(p.category, 'push', e.target.checked)} label={`${p.label} on my phone`} /></td>
+                <td className="py-3"><p className="font-medium text-ink-900">{tr(p.label)}</p><p className="text-xs text-ink-500">{tr(p.description)}</p></td>
+                <td className="text-center"><Toggle checked={p.in_app} onChange={(e) => change(p.category, 'in_app', e.target.checked)} label={tr('{{label}} in the app', { label: p.label })} /></td>
+                <td className="text-center"><Toggle checked={p.email} onChange={(e) => change(p.category, 'email', e.target.checked)} label={tr('{{label}} by email', { label: p.label })} /></td>
+                <td className="text-center"><Toggle checked={p.push} onChange={(e) => change(p.category, 'push', e.target.checked)} label={tr('{{label}} on my phone', { label: p.label })} /></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-xs text-ink-400">Email goes to the address you sign in with. Phone alerts go to the FlowXP app on the phones you are signed in on. Notifications are never sent to customers.</p>
+      <p className="mt-3 text-xs text-ink-400">{tr('Email goes to the address you sign in with. Phone alerts go to the FlowXP app on the phones you are signed in on. Notifications are never sent to customers.')}</p>
     </Card>
   );
 };
 
 const NotificationsPage = () => {
+  const tr = useT();
   const navigate = useNavigate();
   const [items, setItems] = useState(null);
   const [unread, setUnread] = useState(0);
@@ -79,15 +85,15 @@ const NotificationsPage = () => {
 
   return (
     <div>
-      <PageHeader title="Notifications" lead="What needs your attention, so you don't have to go looking." action={<Button variant="secondary" onClick={readAll} disabled={!unread}>Mark all read</Button>} />
+      <PageHeader title={tr('Notifications')} lead={tr('What needs your attention, so you don\'t have to go looking.')} action={<Button variant="secondary" onClick={readAll} disabled={!unread}>{tr('Mark all read')}</Button>} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div>
           <label className="mb-3 flex items-center gap-2 text-sm text-ink-700">
-            <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> Unread only
+            <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> {tr('Unread only')}
           </label>
           <Alert>{error}</Alert>
           {!items && !error && <PageLoader compact />}
-          {items?.length === 0 && <p className="rounded-(--radius-card) border border-dashed border-line-strong py-10 text-center text-sm text-ink-500">{unreadOnly ? 'Nothing unread.' : 'No notifications yet. Stock, unusual-activity and trial alerts will appear here.'}</p>}
+          {items?.length === 0 && <p className="rounded-(--radius-card) border border-dashed border-line-strong py-10 text-center text-sm text-ink-500">{unreadOnly ? tr('Nothing unread.') : tr('No notifications yet. Stock, unusual-activity and trial alerts will appear here.')}</p>}
           <ul className="space-y-2">
             {items?.map((n) => (
               <li key={n.notification_id}>
@@ -95,7 +101,7 @@ const NotificationsPage = () => {
                   <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${SEVERITY_DOT[n.severity]}`} aria-hidden="true" />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-3">
-                      <span className={`text-sm ${n.read_at ? 'text-ink-700' : 'font-semibold text-ink-900'}`}>{n.title}</span>
+                      <span className={`text-sm ${n.read_at ? 'text-ink-700' : 'font-semibold text-ink-900'}`}>{tr(n.title)}</span>
                       <span className="shrink-0 text-xs text-ink-400">{timeAgo(n.created_at)}</span>
                     </span>
                     {n.body && <span className="mt-1 block text-sm text-ink-500">{n.body}</span>}
@@ -104,7 +110,7 @@ const NotificationsPage = () => {
               </li>
             ))}
           </ul>
-          {more && <Button variant="ghost" className="mt-3" onClick={() => load(true)}>Show older</Button>}
+          {more && <Button variant="ghost" className="mt-3" onClick={() => load(true)}>{tr('Show older')}</Button>}
         </div>
         <Preferences />
       </div>

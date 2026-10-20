@@ -119,6 +119,7 @@ const asProduct = (row) => ({
   shared_price: toRupees(row.shared_selling_price_paise ?? row.selling_price_paise),
   purchase_price: toRupees(row.purchase_price_paise),
   tax_rate: Number(row.tax_rate),
+  cess_rate: Number(row.cess_rate || 0),
   hsn_sac: row.hsn_sac,
   track_inventory: row.track_inventory,
   current_stock: Number(row.current_stock),
@@ -304,6 +305,7 @@ export const create = async (req, res) => {
           ]
         );
         productId = rows[0].product_id;
+        if (Number(body.cess_rate) > 0) await client.query('UPDATE products SET cess_rate = $2 WHERE product_id = $1', [productId, Number(body.cess_rate)]);
         for (const alias of aliases) await addAlias(client, { businessId: req.tenant.businessId, productId, alias, userId: req.auth.userId });
         await client.query('COMMIT');
         sku = made;
@@ -381,7 +383,7 @@ const posShape = async (rows, tenant) => {
     const p = asProduct(r);
     const d = details.get(r.product_id);
     return {
-      product_id: p.product_id, name: p.name, sku: p.sku, barcodes: barcodes.get(r.product_id), unit: p.unit, selling_price: p.selling_price, mrp: p.mrp, tax_rate: p.tax_rate,
+      product_id: p.product_id, name: p.name, sku: p.sku, barcodes: barcodes.get(r.product_id), unit: p.unit, selling_price: p.selling_price, mrp: p.mrp, tax_rate: p.tax_rate, cess_rate: p.cess_rate,
       track_inventory: p.track_inventory, current_stock: p.current_stock, category_name: p.category_name, is_quick: p.is_quick, is_available: p.is_available, modifier_group_ids: p.modifier_group_ids,
       ...(['WHOLESALE', 'DISTRIBUTOR'].includes(tenant.businessType) ? { wholesale: wholesale.get(r.product_id) ?? null } : {}),
       ...(tenant.businessType === 'PHARMACY' ? {
@@ -443,7 +445,7 @@ export const quickCreate = async (req, res) => {
    allowlist excludes it on purpose.
    ========================================================================== */
 const EDITABLE = ['name', 'category_id', 'supplier_id', 'brand_id', 'sku', 'barcode', 'erp_code', 'is_quick', 'track_expiry', 'unit',
-  'tax_rate', 'hsn_sac', 'min_stock', 'status', 'description', 'kind', 'lead_time_days', 'food_type'];
+  'tax_rate', 'cess_rate', 'hsn_sac', 'min_stock', 'status', 'description', 'kind', 'lead_time_days', 'food_type'];
 /* What the audit log keeps a before and after for: the things that decide what a product is called and what it sells for. */
 const TRACKED = ['name', 'sku', 'barcode', 'erp_code', 'unit', 'tax_rate', 'category_id', 'status', 'selling_price_paise', 'purchase_price_paise', 'mrp_paise'];
 
@@ -479,6 +481,7 @@ export const update = async (req, res) => {
   if (priceProblem) return fail(res, 400, priceProblem);
   if ('mrp' in body) { values.push(nextMrp); updates.push(`mrp_paise = $${values.length}`); }
 
+  if ('cess_rate' in body && !(Number(body.cess_rate) >= 0 && Number(body.cess_rate) <= 100)) return fail(res, 400, 'The cess rate must be from 0 to 100');
   if ('lead_time_days' in body && !(Number.isInteger(Number(body.lead_time_days)) && body.lead_time_days >= 0 && body.lead_time_days <= 30)) {
     return res.status(400).json({ success: false, message: 'Lead time must be a whole number of days from 0 to 30' });
   }

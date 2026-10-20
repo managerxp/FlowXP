@@ -6,9 +6,11 @@
  */
 import { OfflineNotice } from '../../components/OfflineFlag.jsx';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, FileText, MessageCircle, Printer, Receipt, Wallet } from 'lucide-react';
 import { api, formatCurrency } from '../../lib/api.js';
+import { formatDate } from '../../lib/display.js';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
 import { withApproval } from '../../lib/approval.js';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -17,16 +19,20 @@ import { getDevicePrefs, openDrawer, openPrint, printReceipt } from '../../lib/p
 import CreditNoteModal from '../../components/CreditNoteModal.jsx';
 import EWayBillModal from '../../components/EWayBillModal.jsx';
 import UpiCollect from '../../components/UpiCollect.jsx';
+import TallyInvoice from './TallyInvoice.jsx';
 import { Alert, Button, Field, Input, Modal, Select, useToast, useDialog } from '../../components/ui.jsx';
+import { useT, T } from '../../i18n/useT.js';
 
-const METHODS = [['CASH', 'Cash'], ['UPI', 'UPI'], ['CARD', 'Card'], ['BANK_TRANSFER', 'Bank'], ['CREDIT', 'Credit'], ['OTHER', 'Other']];
+const METHODS = [['CASH', T('Cash')], ['UPI', 'UPI'], ['CARD', T('Card')], ['BANK_TRANSFER', T('Bank')], ['CREDIT', T('Credit')], ['OTHER', T('Other')]];
 const METHOD_LABEL = Object.fromEntries(METHODS);
+const TALLY_TYPES = ['WHOLESALE', 'DISTRIBUTOR', 'AUTO_PARTS', 'ELECTRONICS'];
 const qty = (n) => Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 3 });
-const longDate = (d) => new Date(String(d).length === 10 ? `${d}T00:00` : d).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+const longDate = (d) => formatDate(d);
 
 /* ── Take a payment ───────────────────────────────────────────────────── */
 
 const PayForm = ({ invoice, upiVpa, payee, onSaved, onClose }) => {
+  const tr = useT();
   const idem = useIdempotencyKey();
   const due = invoice.balance_due;
   const [amount, setAmount] = useState(due.toFixed(2));
@@ -57,30 +63,30 @@ const PayForm = ({ invoice, upiVpa, payee, onSaved, onClose }) => {
     return <UpiCollect invoice={invoice} amount={qr} vpa={upiVpa} payee={payee} onPaid={() => onSaved(`${formatCurrency(qr)} UPI recorded`)} onLater={() => setQr(null)} />;
   }
   return (
-    <Modal title={`Take payment for ${invoice.invoice_number}`} onClose={onClose}>
+    <Modal title={tr('Take payment for {{invoice_number}}', { invoice_number: invoice.invoice_number })} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
         <p className="tabular -mt-2 text-small text-ink-500">{formatCurrency(due)} still due{invoice.customer_name ? ` from ${invoice.customer_name}` : ''}</p>
         <Alert>{error}</Alert>
-        <div role="radiogroup" aria-label="Paid by" className="grid grid-cols-3 gap-1.5">
+        <div role="radiogroup" aria-label={tr('Paid by')} className="grid grid-cols-3 gap-1.5">
           {METHODS.map(([v, label]) => (
             <button key={v} type="button" role="radio" aria-checked={method === v} onClick={() => setMethod(v)}
-                    className={`h-10 rounded-lg border text-small font-medium ${method === v ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>{label}</button>
+                    className={`h-10 rounded-lg border text-small font-medium ${method === v ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>{tr(label)}</button>
           ))}
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field id="pay-amount" label="Amount (₹)"><Input id="pay-amount" type="number" inputMode="decimal" min="0.01" step="0.01" max={due} value={amount} onChange={(e) => setAmount(e.target.value)} required autoFocus className="tabular font-semibold" /></Field>
-          <Field id="people" label="Split between">
+          <Field id="pay-amount" label={tr('Amount (₹)')}><Input id="pay-amount" type="number" inputMode="decimal" min="0.01" step="0.01" max={due} value={amount} onChange={(e) => setAmount(e.target.value)} required autoFocus className="tabular font-semibold" /></Field>
+          <Field id="people" label={tr('Split between')}>
             <Select id="people" value={people} onChange={(e) => { const n = Number(e.target.value); setPeople(n); setAmount(share(n).toFixed(2)); }}>
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => <option key={n} value={n}>{n === 1 ? 'One payment' : `${n} people`}</option>)}
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => <option key={n} value={n}>{n === 1 ? tr('One payment') : `${n} people`}</option>)}
             </Select>
           </Field>
         </div>
         {people > 1 && <p className="tabular -mt-2 text-caption text-ink-500">About {formatCurrency(share(people))} each. Record one payment per person; the last one pays exactly what is left.</p>}
-        {!upiQr && method !== 'CASH' && <Field id="pay-ref" label="Reference (optional)" hint="UTR, card slip or cheque number"><Input id="pay-ref" value={reference} onChange={(e) => setReference(e.target.value)} /></Field>}
-        {method === 'UPI' && <p className="text-caption text-ink-500">{upiQr ? `Shows a QR for this amount, paid to ${upiVpa}.` : 'Add your UPI ID in Business settings to show a QR here.'}</p>}
+        {!upiQr && method !== 'CASH' && <Field id="pay-ref" label={tr('Reference (optional)')} hint={tr('UTR, card slip or cheque number')}><Input id="pay-ref" value={reference} onChange={(e) => setReference(e.target.value)} /></Field>}
+        {method === 'UPI' && <p className="text-caption text-ink-500">{upiQr ? `Shows a QR for this amount, paid to ${upiVpa}.` : tr('Add your UPI ID in Business settings to show a QR here.')}</p>}
         <div className="flex justify-end gap-2 border-t border-line pt-4">
-          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={busy}>{busy ? 'Saving…' : upiQr ? 'Show UPI QR' : 'Record payment'}</Button>
+          <Button type="button" variant="ghost" onClick={onClose}>{tr('Cancel')}</Button>
+          <Button type="submit" disabled={busy}>{busy ? tr('Saving…') : upiQr ? tr('Show UPI QR') : tr('Record payment')}</Button>
         </div>
       </form>
     </Modal>
@@ -89,6 +95,7 @@ const PayForm = ({ invoice, upiVpa, payee, onSaved, onClose }) => {
 
 /* A refund is its own record; cancelling a bill never pays anything back. */
 const RefundForm = ({ invoice, refundable, onSaved, onClose }) => {
+  const tr = useT();
   const idem = useIdempotencyKey();
   const [amount, setAmount] = useState(refundable.toFixed(2));
   const [method, setMethod] = useState('CASH');
@@ -108,21 +115,21 @@ const RefundForm = ({ invoice, refundable, onSaved, onClose }) => {
   };
 
   return (
-    <Modal title={`Refund on ${invoice.invoice_number}`} onClose={onClose}>
+    <Modal title={tr('Refund on {{invoice_number}}', { invoice_number: invoice.invoice_number })} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
         <p className="tabular -mt-2 text-small text-ink-500">Up to {formatCurrency(refundable)} can still be given back. This records money returned; to take items back into stock or correct GST, issue a credit note.</p>
         <Alert>{error}</Alert>
-        <Field id="r-amount" label="Amount (₹)"><Input id="r-amount" type="number" min="0.01" step="0.01" max={refundable} value={amount} onChange={(e) => setAmount(e.target.value)} required autoFocus /></Field>
-        <div role="radiogroup" aria-label="Given back by" className="grid grid-cols-4 gap-1.5">
-          {[['CASH', 'Cash'], ['UPI', 'UPI'], ['CARD', 'Card'], ['OTHER', 'Other']].map(([v, label]) => (
+        <Field id="r-amount" label={tr('Amount (₹)')}><Input id="r-amount" type="number" min="0.01" step="0.01" max={refundable} value={amount} onChange={(e) => setAmount(e.target.value)} required autoFocus /></Field>
+        <div role="radiogroup" aria-label={tr('Given back by')} className="grid grid-cols-4 gap-1.5">
+          {[['CASH', T('Cash')], ['UPI', 'UPI'], ['CARD', T('Card')], ['OTHER', T('Other')]].map(([v, label]) => (
             <button key={v} type="button" role="radio" aria-checked={method === v} onClick={() => setMethod(v)}
-                    className={`h-9 rounded-lg border text-small font-medium ${method === v ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>{label}</button>
+                    className={`h-9 rounded-lg border text-small font-medium ${method === v ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>{tr(label)}</button>
           ))}
         </div>
-        <Field id="r-reason" label="Why"><Input id="r-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Wrong item, quality complaint" required /></Field>
+        <Field id="r-reason" label={tr('Why')}><Input id="r-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder={tr('e.g. Wrong item, quality complaint')} required /></Field>
         <div className="flex justify-end gap-2 border-t border-line pt-4">
-          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Record refund'}</Button>
+          <Button type="button" variant="ghost" onClick={onClose}>{tr('Cancel')}</Button>
+          <Button type="submit" disabled={busy}>{busy ? tr('Saving…') : tr('Record refund')}</Button>
         </div>
       </form>
     </Modal>
@@ -131,21 +138,25 @@ const RefundForm = ({ invoice, refundable, onSaved, onClose }) => {
 
 /* ── The page ─────────────────────────────────────────────────────────── */
 
-const Line = ({ label, value, tone = 'text-ink-700', strong }) => (
-  <div className={`flex justify-between gap-4 ${strong ? 'text-body font-semibold text-ink-900' : `text-small ${tone}`}`}><span>{label}</span><span className="tabular">{value}</span></div>
+const Line = ({ label, value, tone = 'text-ink-700', strong }) => {
+  const tr = useT();
+  return (
+  <div className={`flex justify-between gap-4 ${strong ? 'text-body font-semibold text-ink-900' : `text-small ${tone}`}`}><span>{tr(label)}</span><span className="tabular">{value}</span></div>
 );
+};
 
 const MoreMenu = ({ items }) => {
+  const tr = useT();
   const ref = useRef(null);
   const shown = items.filter(Boolean);
   if (!shown.length) return null;
   const close = () => { if (ref.current) ref.current.open = false; };
   return (
     <details ref={ref} className="relative">
-      <summary className="flex h-10 cursor-pointer list-none items-center justify-center gap-1.5 rounded-(--radius-control) border border-line-strong bg-surface px-3 text-small font-medium text-ink-700 hover:border-ink-400 [&::-webkit-details-marker]:hidden">More <ChevronDown aria-hidden="true" className="h-4 w-4" /></summary>
+      <summary className="flex h-10 cursor-pointer list-none items-center justify-center gap-1.5 rounded-(--radius-control) border border-line-strong bg-surface px-3 text-small font-medium text-ink-700 hover:border-ink-400 [&::-webkit-details-marker]:hidden">{tr('More')} <ChevronDown aria-hidden="true" className="h-4 w-4" /></summary>
       <div className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-(--radius-card) border border-line bg-surface py-1 shadow-lg">
         {shown.map(([label, onClick, danger]) => (
-          <button key={label} type="button" onClick={() => { close(); onClick(); }} className={`block w-full px-3.5 py-2 text-left text-small hover:bg-surface-2 ${danger ? 'text-danger' : 'text-ink-700'}`}>{label}</button>
+          <button key={label} type="button" onClick={() => { close(); onClick(); }} className={`block w-full px-3.5 py-2 text-left text-small hover:bg-surface-2 ${danger ? 'text-danger' : 'text-ink-700'}`}>{tr(label)}</button>
         ))}
       </div>
     </details>
@@ -153,6 +164,7 @@ const MoreMenu = ({ items }) => {
 };
 
 const InvoiceDetail = () => {
+  const tr = useT();
   const dialog = useDialog();
   const { id } = useParams();
   const { business } = useAuth();
@@ -160,6 +172,9 @@ const InvoiceDetail = () => {
   const [invoice, setInvoice] = useState(null);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [preview, setPreview] = useState(false);   // the A4 sheet as it will print
+  // the layout comes from the business's invoice print setting; this button switches the view for now (null = follow the setting)
+  const [tallyChoice, setTally] = useState(null);
   const [modal, setModal] = useState(null);   // pay | refund | credit | eway
   const load = () => api(`/invoices/${id}`).then((d) => { setInvoice(d); setError(''); }).catch((caught) => setError(caught.message));
   useEffect(() => { load(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -167,30 +182,41 @@ const InvoiceDetail = () => {
 
   const sendBill = async () => {
     setActionError('');
-    const phone = invoice.customer_phone || await dialog.prompt({ title: 'Send the bill', label: 'Customer mobile number', type: 'tel', inputMode: 'tel', autoComplete: 'tel', confirmLabel: 'Send' });
+    const phone = invoice.customer_phone || await dialog.prompt({ title: tr('Send the bill'), label: tr('Customer mobile number'), type: 'tel', inputMode: 'tel', autoComplete: 'tel', confirmLabel: tr('Send') });
     if (!phone) return;
     try {
       const m = await api('/messaging/send-bill', { method: 'POST', body: { invoice_id: Number(id), phone } });
-      toast.success(m.status === 'SENT' ? 'Bill sent' : m.status === 'SKIPPED' ? 'Not sent: no messaging service is connected yet' : `Could not send: ${m.error}`);
+      toast.success(m.status === 'SENT' ? tr('Bill sent') : m.status === 'SKIPPED' ? tr('Not sent: no messaging service is connected yet') : `Could not send: ${m.error}`);
     } catch (caught) { setActionError(caught.message); }
+  };
+  // WhatsApp with the bill message and link ready (the shop's own WhatsApp: no messaging service needed); the window is opened first so the browser does not block it
+  const shareWhatsApp = async () => {
+    setActionError('');
+    const win = window.open('', '_blank');
+    try {
+      const r = await api('/messaging/bill-share', { method: 'POST', body: { invoice_id: Number(id) } });
+      if (win) { win.opener = null; win.location.href = r.wa_url; } else window.location.href = r.wa_url;
+    } catch (caught) { win?.close(); setActionError(caught.message); }
   };
   const cancel = async () => {
     const paidNote = invoice.amount_paid - invoice.refunded > 0 ? ` ${formatCurrency(invoice.amount_paid - invoice.refunded)} was paid on it and is not refunded automatically; record a refund if you give it back.` : '';
-    if (!(await dialog.confirm({ title: `Cancel ${invoice.invoice_number}?`, body: `Stock comes back and it stops counting as a sale.${paidNote}`, confirmLabel: 'Cancel invoice', cancelLabel: 'Keep invoice', danger: true }))) return;
+    if (!(await dialog.confirm({ title: `Cancel ${invoice.invoice_number}?`, body: `Stock comes back and it stops counting as a sale.${paidNote}`, confirmLabel: tr('Cancel invoice'), cancelLabel: tr('Keep invoice'), danger: true }))) return;
     setActionError('');
     // staff without the approvals right say why, and a manager enters their PIN (the server asks for it; see lib/approval.js)
     let reason = '';
     if (business?.approval?.needed && business?.approval?.cancel_needs_approval) {
-      reason = await dialog.prompt({ title: 'Why is this bill being cancelled?', label: 'Reason', required: true, confirmLabel: 'Continue' });
+      reason = await dialog.prompt({ title: tr('Why is this bill being cancelled?'), label: tr('Reason'), required: true, confirmLabel: tr('Continue') });
       if (reason == null) return;
     }
-    try { await withApproval(dialog, (approval) => api(`/invoices/${id}/cancel`, { method: 'POST', body: { ...(reason ? { reason } : {}), ...(approval ? { approval } : {}) } })); toast.success(`${invoice.invoice_number} cancelled`); load(); }
+    try { await withApproval(dialog, (approval) => api(`/invoices/${id}/cancel`, { method: 'POST', body: { ...(reason ? { reason } : {}), ...(approval ? { approval } : {}) } })); toast.success(tr('{{invoice_number}} cancelled', { invoice_number: invoice.invoice_number })); load(); }
     catch (caught) { setActionError(caught.message); }
   };
 
-  if (error) return <div className="mx-auto max-w-3xl"><Alert>{error}</Alert><Link to="/app/billing/invoices" className="text-small font-medium text-brand-700">← All invoices</Link></div>;
+  if (error) return <div className="mx-auto max-w-3xl"><Alert>{error}</Alert><Link to="/app/billing/invoices" className="text-small font-medium text-brand-700">{tr('← All invoices')}</Link></div>;
   if (!invoice) return <div className="mx-auto max-w-6xl"><div className="h-[560px] animate-pulse rounded-(--radius-panel) bg-surface-3" /></div>;
 
+  const layout = invoice.invoice_print?.layout || 'auto';
+  const tally = tallyChoice ?? (layout === 'tally' || (layout === 'auto' && TALLY_TYPES.includes(business?.business_type)));
   const issued = invoice.status === 'ISSUED';
   const due = issued ? invoice.balance_due : 0;
   const refundable = Math.round((invoice.amount_paid - invoice.refunded) * 100) / 100;
@@ -206,14 +232,17 @@ const InvoiceDetail = () => {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <>
+    <div className={`mx-auto max-w-6xl${preview ? ' print:hidden' : ''}`}>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Link to="/app/billing/invoices" className="flex items-center gap-1.5 text-small font-medium text-ink-500 hover:text-ink-900"><ArrowLeft className="h-4 w-4" />All invoices</Link>
+        <Link to="/app/billing/invoices" className="flex items-center gap-1.5 text-small font-medium text-ink-500 hover:text-ink-900"><ArrowLeft className="h-4 w-4" />{tr('All invoices')}</Link>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => printReceipt(id)}><Receipt aria-hidden="true" className="h-4 w-4" />Receipt</Button>
-          <Button variant="secondary" onClick={() => window.print()}><Printer aria-hidden="true" className="h-4 w-4" />A4 / PDF</Button>
-          {issued && <Button variant="secondary" onClick={sendBill}><MessageCircle aria-hidden="true" className="h-4 w-4" />Send</Button>}
+          <Button variant="secondary" onClick={() => printReceipt(id)}><Receipt aria-hidden="true" className="h-4 w-4" />{tr('Receipt')}</Button>
+          <Button variant="secondary" onClick={() => setTally(!tally)}>{tally ? 'Standard bill' : 'Tally style'}</Button>
+          <Button variant="secondary" onClick={() => (tally ? setPreview(true) : window.print())}><Printer aria-hidden="true" className="h-4 w-4" />{tr('A4 / PDF')}</Button>
+          {issued && <Button variant="secondary" onClick={sendBill}><MessageCircle aria-hidden="true" className="h-4 w-4" />{tr('Send')}</Button>}
           <MoreMenu items={[
+            issued && ['Share on WhatsApp', shareWhatsApp],
             issued && ['Issue a credit note', () => setModal('credit')],
             refundable > 0 && ['Refund money', () => setModal('refund')],
             issued && invoice.customer_gstin && ['OWNER', 'ADMIN'].includes(business?.role) && ['E-way bill', () => setModal('eway')],
@@ -225,8 +254,8 @@ const InvoiceDetail = () => {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* ── The document: this is what prints ── */}
-        <article className="rounded-(--radius-panel) border border-line bg-surface p-6 sm:p-8 print:border-0 print:p-0">
-          {!issued && <p className="mb-5 rounded-lg bg-danger/10 px-3 py-2 text-center text-small font-semibold text-danger">CANCELLED: this bill is not a sale and does not count in totals.</p>}
+        {tally ? <TallyInvoice invoice={invoice} business={business} outlet={outlet} seller={seller} onSaved={load} /> : <article className="rounded-(--radius-panel) border border-line bg-surface p-6 sm:p-8 print:border-0 print:p-0">
+          {!issued && <p className="mb-5 rounded-lg bg-danger/10 px-3 py-2 text-center text-small font-semibold text-danger">{tr('CANCELLED: this bill is not a sale and does not count in totals.')}</p>}
           <header className="flex flex-wrap items-start justify-between gap-6 border-b border-line pb-6">
             <div className="min-w-0">
               <p className="text-title font-semibold text-ink-900">{business?.name}</p>
@@ -235,7 +264,7 @@ const InvoiceDetail = () => {
               {(outlet?.gstin || seller.gstin) && <p className="text-small text-ink-500">GSTIN {outlet?.gstin || seller.gstin}</p>}
             </div>
             <div className="text-right">
-              <p className="text-caption font-semibold uppercase tracking-[0.14em] text-ink-500">{invoice.tax > 0 ? 'Tax invoice' : 'Invoice'}</p>
+              <p className="text-caption font-semibold uppercase tracking-[0.14em] text-ink-500">{invoice.bill_of_supply ? tr('Bill of supply') : invoice.tax > 0 ? tr('Tax invoice') : tr('Invoice')}</p>
               <p className="mt-1 text-h3 font-semibold text-ink-900">{invoice.invoice_number}</p>
               <p className="text-small text-ink-500">{longDate(invoice.invoice_date)}{invoice.created_at && `, ${when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}</p>
             </div>
@@ -243,40 +272,40 @@ const InvoiceDetail = () => {
 
           <div className="grid gap-4 border-b border-line py-5 text-small sm:grid-cols-2">
             <div>
-              <p className="text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">Billed to</p>
+              <p className="text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">{tr('Billed to')}</p>
               {invoice.customer_name ? (
                 <div className="mt-1 text-ink-900">
                   {invoice.customer_id ? <Link to={`/app/customers?c=${invoice.customer_id}`} className="font-medium hover:text-brand-700 print:no-underline">{invoice.customer_name}</Link> : <p className="font-medium">{invoice.customer_name}</p>}
                   {invoice.customer_phone && <p className="text-ink-500">{invoice.customer_phone}</p>}
-                  {invoice.customer_gstin && <p className="text-ink-500">GSTIN {invoice.customer_gstin}</p>}
+                  {invoice.customer_gstin && <p className="text-ink-500">{tr('GSTIN {{customer_gstin}}', { customer_gstin: invoice.customer_gstin })}</p>}
                 </div>
-              ) : <p className="mt-1 text-ink-500">Walk-in customer</p>}
+              ) : <p className="mt-1 text-ink-500">{tr('Walk-in customer')}</p>}
             </div>
             <div className="sm:text-right">
               {(invoice.order_number || invoice.table_name) && <p className="text-ink-700">{[invoice.table_name && `Table ${invoice.table_name}`, invoice.order_number].filter(Boolean).join(' · ')}</p>}
-              {invoice.cashier && <p className="text-ink-500">Served by {invoice.cashier}</p>}
-              {invoice.irn && <p className="break-all text-caption text-ink-500">IRN {invoice.irn}</p>}
-              {invoice.eway_bill_no && <p className="text-caption text-ink-500">E-way bill {invoice.eway_bill_no}</p>}
+              {invoice.cashier && <p className="text-ink-500">{tr('Served by {{cashier}}', { cashier: invoice.cashier })}</p>}
+              {invoice.irn && <p className="break-all text-caption text-ink-500">{tr('IRN {{irn}}', { irn: invoice.irn })}</p>}
+              {invoice.eway_bill_no && <p className="text-caption text-ink-500">{tr('E-way bill {{eway_bill_no}}', { eway_bill_no: invoice.eway_bill_no })}</p>}
             </div>
           </div>
 
           <table className="mt-2 w-full text-small">
             <thead>
               <tr className="border-b border-line text-left text-caption font-semibold uppercase tracking-[0.08em] text-ink-500">
-                <th className="py-2.5 font-semibold">Item</th>
-                <th className="py-2.5 text-right font-semibold">Qty</th>
-                <th className="hidden py-2.5 text-right font-semibold sm:table-cell print:table-cell">Rate</th>
-                {invoice.tax > 0 && <th className="hidden py-2.5 text-right font-semibold sm:table-cell print:table-cell">GST</th>}
-                <th className="py-2.5 text-right font-semibold">Amount</th>
+                <th className="py-2.5 font-semibold">{tr('Item')}</th>
+                <th className="py-2.5 text-right font-semibold">{tr('Qty')}</th>
+                <th className="hidden py-2.5 text-right font-semibold sm:table-cell print:table-cell">{tr('Rate')}</th>
+                {invoice.tax > 0 && <th className="hidden py-2.5 text-right font-semibold sm:table-cell print:table-cell">{tr('GST')}</th>}
+                <th className="py-2.5 text-right font-semibold">{tr('Amount')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
               {invoice.items.map((i) => (
                 <tr key={i.item_id} className="align-top">
                   <td className="py-3 pr-3">
-                    <p className="font-medium text-ink-900">{i.description}</p>
+                    <p className="font-medium text-ink-900">{tr(i.description)}</p>
                     {extraChoices(i).length > 0 && <p className="text-caption text-ink-500">{extraChoices(i).join(', ')}</p>}
-                    {i.discount > 0 && <p className="text-caption text-success">−{formatCurrency(i.discount)} off</p>}
+                    {i.discount > 0 && <p className="text-caption text-success">{tr('−{{formatCurrency}} off', { formatCurrency: formatCurrency(i.discount) })}</p>}
                     <p className="tabular text-caption text-ink-500 sm:hidden print:hidden">{formatCurrency(i.unit_price)} each{invoice.tax > 0 ? ` · ${i.tax_rate}% GST` : ''}</p>
                   </td>
                   <td className="tabular py-3 text-right text-ink-700">{qty(i.quantity)}</td>
@@ -289,68 +318,72 @@ const InvoiceDetail = () => {
           </table>
 
           <div className="ml-auto mt-4 max-w-xs space-y-1.5 border-t border-line pt-4">
-            <Line label="Subtotal" value={formatCurrency(invoice.subtotal)} />
-            {invoice.cgst > 0 && <Line label="CGST" value={formatCurrency(invoice.cgst)} tone="text-ink-500" />}
+            <Line label={tr('Subtotal')} value={formatCurrency(invoice.subtotal)} />
+            {invoice.cgst > 0 && <Line label={tr('CGST')} value={formatCurrency(invoice.cgst)} tone="text-ink-500" />}
             {invoice.sgst > 0 && <Line label={stateTaxName(invoice.outlet?.state || business?.state)} value={formatCurrency(invoice.sgst)} tone="text-ink-500" />}
-            {invoice.igst > 0 && <Line label="IGST" value={formatCurrency(invoice.igst)} tone="text-ink-500" />}
-            {invoice.discount - invoice.coupon_discount > 0 && <Line label="Discount" value={`−${formatCurrency(invoice.discount - invoice.coupon_discount)}`} />}
-            {invoice.coupon_discount > 0 && <Line label={`Coupon ${invoice.coupon_code}`} value={`−${formatCurrency(invoice.coupon_discount)}`} />}
-            {invoice.points_discount > 0 && <Line label={`Points used (${invoice.points_redeemed})`} value={`−${formatCurrency(invoice.points_discount)}`} tone="text-success" />}
-            {invoice.loyalty_discount > 0 && <Line label="Loyalty reward" value={`−${formatCurrency(invoice.loyalty_discount)}`} tone="text-success" />}
-            {invoice.round_off !== 0 && <Line label="Round off" value={`${invoice.round_off > 0 ? '+' : '−'}${formatCurrency(Math.abs(invoice.round_off))}`} tone="text-ink-500" />}
-            <div className="border-t border-line pt-2"><Line label="Total" value={formatCurrency(invoice.total)} strong /></div>
-            {invoice.amount_paid > 0 && <Line label="Paid" value={formatCurrency(invoice.amount_paid)} tone="text-ink-500" />}
-            {invoice.refunded > 0 && <Line label="Refunded" value={`−${formatCurrency(invoice.refunded)}`} tone="text-ink-500" />}
-            {due > 0 && <Line label="Balance due" value={formatCurrency(due)} tone="font-semibold text-warning" />}
+            {invoice.igst > 0 && <Line label={tr('IGST')} value={formatCurrency(invoice.igst)} tone="text-ink-500" />}
+            {invoice.cess > 0 && <Line label={tr('Cess')} value={formatCurrency(invoice.cess)} tone="text-ink-500" />}
+            {invoice.tcs > 0 && <Line label="TCS" value={formatCurrency(invoice.tcs)} tone="text-ink-500" />}
+            {invoice.discount - invoice.coupon_discount > 0 && <Line label={tr('Discount')} value={`−${formatCurrency(invoice.discount - invoice.coupon_discount)}`} />}
+            {invoice.coupon_discount > 0 && <Line label={tr('Coupon {{coupon_code}}', { coupon_code: invoice.coupon_code })} value={`−${formatCurrency(invoice.coupon_discount)}`} />}
+            {invoice.points_discount > 0 && <Line label={tr('Points used ({{points_redeemed}})', { points_redeemed: invoice.points_redeemed })} value={`−${formatCurrency(invoice.points_discount)}`} tone="text-success" />}
+            {invoice.loyalty_discount > 0 && <Line label={tr('Loyalty reward')} value={`−${formatCurrency(invoice.loyalty_discount)}`} tone="text-success" />}
+            {invoice.round_off !== 0 && <Line label={tr('Round off')} value={`${invoice.round_off > 0 ? '+' : '−'}${formatCurrency(Math.abs(invoice.round_off))}`} tone="text-ink-500" />}
+            <div className="border-t border-line pt-2"><Line label={tr('Total')} value={formatCurrency(invoice.total)} strong /></div>
+            {invoice.tds > 0 && <Line label={tr('TDS held back by the customer')} value={formatCurrency(invoice.tds)} tone="text-ink-500" />}
+            {invoice.reverse_charge && <p className="text-caption text-ink-500">{tr('Tax is payable on reverse charge.')}</p>}
+            {invoice.amount_paid > 0 && <Line label={tr('Paid')} value={formatCurrency(invoice.amount_paid)} tone="text-ink-500" />}
+            {invoice.refunded > 0 && <Line label={tr('Refunded')} value={`−${formatCurrency(invoice.refunded)}`} tone="text-ink-500" />}
+            {due > 0 && <Line label={tr('Balance due')} value={formatCurrency(due)} tone="font-semibold text-warning" />}
           </div>
 
           {/* the office's own notice, never printed on the customer's bill */}
           <div className="mt-6 print:hidden"><OfflineNotice offline={invoice.offline} review={invoice.review} /></div>
           {(() => { const shown = invoice.offline ? String(invoice.notes || '').split(' | Taken offline')[0].replace(/^Taken offline.*$/, '') : invoice.notes; return shown ? <p className="border-t border-line pt-4 text-small text-ink-700">{shown}</p> : null; })()}
           <p className="mt-8 text-center text-caption text-ink-400">Thank you{business?.name ? ` for choosing ${business.name}` : ''}.</p>
-        </article>
+        </article>}
 
         {/* ── Beside it: money and what to do next (never printed) ── */}
         <aside className="space-y-4 print:hidden">
-          <section aria-label="Money" className="rounded-(--radius-card) border border-line bg-surface p-5">
+          <section aria-label={tr('Money')} className="rounded-(--radius-card) border border-line bg-surface p-5">
             {!issued ? (
-              <p className="text-small font-semibold text-ink-500">Cancelled</p>
+              <p className="text-small font-semibold text-ink-500">{tr('Cancelled')}</p>
             ) : due > 0 ? <>
-              <p className="text-caption text-ink-500">{invoice.payment_status === 'PARTIAL' ? 'Part paid · still due' : 'Not paid yet'}</p>
+              <p className="text-caption text-ink-500">{invoice.payment_status === 'PARTIAL' ? tr('Part paid · still due') : tr('Not paid yet')}</p>
               <p className="tabular mt-1 text-[28px] font-semibold leading-none tracking-tight text-warning">{formatCurrency(due)}</p>
               <p className="tabular mt-1 text-caption text-ink-500">of {formatCurrency(invoice.total)}{invoice.amount_paid > 0 && ` · ${formatCurrency(invoice.amount_paid)} paid`}</p>
-              <Button className="mt-4 w-full" onClick={() => setModal('pay')}><Wallet aria-hidden="true" className="h-4 w-4" />Take payment</Button>
+              <Button className="mt-4 w-full" onClick={() => setModal('pay')}><Wallet aria-hidden="true" className="h-4 w-4" />{tr('Take payment')}</Button>
             </> : <>
-              <p className="text-caption text-ink-500">Paid in full</p>
+              <p className="text-caption text-ink-500">{tr('Paid in full')}</p>
               <p className="tabular mt-1 text-[28px] font-semibold leading-none tracking-tight text-success">{formatCurrency(invoice.amount_paid)}</p>
-              {invoice.refunded > 0 && <p className="tabular mt-1 text-caption text-ink-500">{formatCurrency(invoice.refunded)} refunded since</p>}
+              {invoice.refunded > 0 && <p className="tabular mt-1 text-caption text-ink-500">{tr('{{formatCurrency}} refunded since', { formatCurrency: formatCurrency(invoice.refunded) })}</p>}
             </>}
           </section>
 
-          <section aria-label="History" className="rounded-(--radius-card) border border-line bg-surface p-5">
-            <h2 className="mb-3 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">History</h2>
+          <section aria-label={tr('History')} className="rounded-(--radius-card) border border-line bg-surface p-5">
+            <h2 className="mb-3 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">{tr('History')}</h2>
             <ol className="space-y-3 text-small">
               <li className="flex justify-between gap-3">
-                <span><span className="block font-medium text-ink-900">Bill raised</span><span className="block text-caption text-ink-500">{longDate(invoice.invoice_date)}{invoice.cashier && ` · ${invoice.cashier}`}</span></span>
+                <span><span className="block font-medium text-ink-900">{tr('Bill raised')}</span><span className="block text-caption text-ink-500">{longDate(invoice.invoice_date)}{invoice.cashier && ` · ${invoice.cashier}`}</span></span>
                 <span className="tabular text-ink-700">{formatCurrency(invoice.total)}</span>
               </li>
               {history.map((h) => (
                 <li key={h.key} className="flex justify-between gap-3">
                   <span className="min-w-0">
-                    <span className="block font-medium text-ink-900">{h.label}</span>
-                    <span className="block truncate text-caption text-ink-500">{longDate(h.at)}{h.note && ` · ${h.note}`}{h.print && <> · <button type="button" onClick={() => openPrint('credit-note', h.print)} className="font-medium text-brand-700">Print</button></>}</span>
+                    <span className="block font-medium text-ink-900">{tr(h.label)}</span>
+                    <span className="block truncate text-caption text-ink-500">{longDate(h.at)}{h.note && ` · ${h.note}`}{h.print && <> · <button type="button" onClick={() => openPrint('credit-note', h.print)} className="font-medium text-brand-700">{tr('Print')}</button></>}</span>
                   </span>
                   <span className={`tabular shrink-0 font-medium ${h.sign === '+' ? 'text-success' : 'text-ink-700'}`}>{h.sign}{formatCurrency(h.amount)}</span>
                 </li>
               ))}
-              {!issued && <li className="font-medium text-danger">Cancelled</li>}
+              {!issued && <li className="font-medium text-danger">{tr('Cancelled')}</li>}
             </ol>
           </section>
 
           {invoice.loyalty_message && issued && (
             <p className="rounded-(--radius-card) border border-line bg-surface-2 p-4 text-small text-ink-700">{invoice.loyalty_message}</p>
           )}
-          <p className="flex items-start gap-2 px-1 text-caption text-ink-500"><FileText aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />A4 / PDF prints only the bill itself. To save a PDF, choose “Save as PDF” as the printer.</p>
+          <p className="flex items-start gap-2 px-1 text-caption text-ink-500"><FileText aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />{tr('A4 / PDF prints only the bill itself. To save a PDF, choose “Save as PDF” as the printer.')}</p>
         </aside>
       </div>
 
@@ -359,6 +392,17 @@ const InvoiceDetail = () => {
       {modal === 'credit' && <CreditNoteModal invoice={invoice} onClose={() => setModal(null)} onIssued={() => done('Credit note issued')} />}
       {modal === 'eway' && <EWayBillModal invoice={invoice} onClose={() => setModal(null)} onDone={() => done()} />}
     </div>
+    {preview && createPortal(  // the A4 sheet as it will print, on a grey desk, with Print and Close
+      <div className="fixed inset-0 z-[200] overflow-auto bg-surface-3 print:static print:overflow-visible print:bg-white">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-2.5 print:hidden">
+          <p className="text-small font-semibold text-ink-900">Print preview · {invoice.invoice_number}</p>
+          <div className="flex gap-2"><Button variant="secondary" onClick={() => setPreview(false)}>Close</Button><Button onClick={() => window.print()}><Printer aria-hidden="true" className="h-4 w-4" />Print / Save as PDF</Button></div>
+        </div>
+        <div className="light-sheet mx-auto my-6 w-full max-w-[860px] bg-white p-4 shadow-lg print:my-0 print:max-w-none print:p-0 print:shadow-none"><TallyInvoice invoice={invoice} business={business} outlet={outlet} seller={seller} plain /></div>
+      </div>,
+      document.body
+    )}
+    </>
   );
 };
 

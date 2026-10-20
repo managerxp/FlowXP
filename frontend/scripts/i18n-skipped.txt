@@ -1,0 +1,229 @@
+src/app/autoparts/LocationLabels.jsx:40  text with a conditional or element value: Print
+src/app/autoparts/PartsHome.jsx:22  lead= template with values
+src/app/autoparts/PartsReceive.jsx:57  aria-label= template with values
+src/app/autoparts/PartsReports.jsx:99  text mixed with values or inline elements: At cost
+src/app/autoparts/PartsReports.jsx:99  text mixed with values or inline elements: ; at selling price
+src/app/autoparts/PartsReports.jsx:106  text with a conditional or element value: of
+src/app/autoparts/PartsTrade.jsx:97  text with a conditional or element value: Owes
+src/app/autoparts/PartsVehicles.jsx:47  text with a conditional or element value: variant
+src/app/autoparts/PartsVehicles.jsx:101  text with a conditional or element value: part
+src/app/autoparts/PartsWarehouse.jsx:95  text mixed with values or inline elements: Add
+src/app/distributor/DistributorDashboard.jsx:60  text mixed with values or inline elements: to go, about
+src/app/distributor/DistributorDashboard.jsx:60  text mixed with values or inline elements: a day.
+src/app/distributor/FieldSales.jsx:199  toast with values
+src/app/distributor/FieldSales.jsx:219  text with a conditional or element value: Month target
+src/app/distributor/parts.jsx:75  text with a conditional or element value: retailer
+src/app/distributor/Principals.jsx:75  text with a conditional or element value: Add
+src/app/distributor/Principals.jsx:118  text with a conditional or element value: product
+src/app/distributor/Principals.jsx:136  text mixed with values or inline elements: Need to change where a product sits? Open it under
+src/app/distributor/SalesTeam.jsx:148  text mixed with values or inline elements: A CSV with
+src/app/distributor/SalesTeam.jsx:148  text mixed with values or inline elements: (SALESPERSON, TERRITORY, BRAND, CATEGORY, BUSINESS),
+src/app/distributor/SalesTeam.jsx:148  text mixed with values or inline elements: (the name),
+src/app/distributor/SalesTeam.jsx:148  text mixed with values or inline elements: (MONTHLY…),
+src/app/distributor/SalesTeam.jsx:148  text mixed with values or inline elements: (any date in the period),
+src/app/distributor/SalesTeam.jsx:148  text mixed with values or inline elements: and optionally
+src/app/distributor/SalesTeam.jsx:148  text mixed with values or inline elements: (VALUE or QTY). For a product or retailer give
+src/app/distributor/SalesTeam.jsx:152  text with a conditional or element value: target
+src/app/distributor/SalesTeam.jsx:251  text with a conditional or element value: on
+src/app/distributor/Schemes.jsx:95  text with a conditional or element value: Leave empty to give the same product free
+src/app/distributor/Schemes.jsx:111  text mixed with values or inline elements: Retailer types
+src/app/distributor/Schemes.jsx:112  text mixed with values or inline elements: Only these territories
+src/app/distributor/Schemes.jsx:115  text mixed with values or inline elements: Only these retailers
+src/app/distributor/Schemes.jsx:140  toast with values
+src/app/distributor/Schemes.jsx:146  text with a conditional or element value: Funded by
+src/app/distributor/Schemes.jsx:153  text mixed with values or inline elements: You can claim
+src/app/distributor/Schemes.jsx:153  text mixed with values or inline elements: from
+src/app/distributor/Schemes.jsx:153  text mixed with values or inline elements: for goods shipped and discounts given under this scheme. See
+src/app/distributor/Schemes.jsx:153  text mixed with values or inline elements: in Reports.
+src/app/distributor/Territories.jsx:61  text with a conditional or element value: Assign
+src/app/gaming/GamingBoard.jsx:32  aria-label= template with values
+src/app/gaming/GamingBoard.jsx:46  text with a conditional or element value: · played
+src/app/gaming/GamingBoard.jsx:51  text with a conditional or element value: played
+src/app/gaming/GamingBoard.jsx:55  text with a conditional or element value: player
+src/app/gaming/GamingBoard.jsx:56  text mixed with values or inline elements: so far
+src/app/gaming/GamingBoard.jsx:62  aria-label= template with values
+src/app/gaming/GamingBoard.jsx:63  aria-label= template with values
+src/app/gaming/GamingBoard.jsx:73  text with a conditional or element value: to collect, with GST
+src/app/gaming/GamingBoard.jsx:77  text with a conditional or element value: player
+src/app/gaming/GamingBoard.jsx:78  text with a conditional or element value: Booked at
+src/app/gaming/GamingBoard.jsx:84  text mixed with values or inline elements: food and drink ·
+src/app/gaming/GamingBoard.jsx:84  text mixed with values or inline elements: item
+src/app/gaming/GamingBookings.jsx:66  title= template with values
+src/app/gaming/GamingBookings.jsx:138  aria-label= template with values
+src/app/gaming/GamingPlayers.jsx:126  text with a conditional or element value: for
+src/app/gaming/GamingPlayers.jsx:158  text with a conditional or element value: Guardian:
+src/app/gaming/GamingPlayers.jsx:188  text with a conditional or element value: left of
+src/app/gaming/GamingReports.jsx:30  lead= template with values
+src/app/gaming/GamingReports.jsx:70  title= template with values
+src/app/gaming/GamingReports.jsx:77  text with a conditional or element value: Busiest:
+src/app/gaming/GamingSessions.jsx:47  text with a conditional or element value: frame
+src/app/gaming/GamingSetup.jsx:83  text with a conditional or element value: · up to
+src/app/gaming/GamingSetup.jsx:292  text with a conditional or element value: for
+src/app/gaming/GamingTournaments.jsx:103  text mixed with values or inline elements: Type each placing and its prize. Leave the rest blank. Prize
+src/app/gaming/GamingTournaments.jsx:103  text mixed with values or inline elements: of
+src/app/gaming/GamingTournaments.jsx:103  text mixed with values or inline elements: . This records the prizes; it does not pay them out.
+src/app/gaming/GamingTournaments.jsx:152  lead= template with values
+src/app/gaming/GamingTournaments.jsx:156  text with a conditional or element value: Entry
+src/app/gaming/GamingTournaments.jsx:158  text with a conditional or element value: in ·
+src/app/gaming/GamingTournaments.jsx:211  text with a conditional or element value: in
+src/app/gaming/SessionDialogs.jsx:14  aria-label= template with values
+src/app/gaming/SessionDialogs.jsx:16  aria-label= template with values
+src/app/gaming/SessionDialogs.jsx:72  text mixed with values or inline elements: Add “
+src/app/gaming/SessionDialogs.jsx:72  text mixed with values or inline elements: ” as a new player
+src/app/gaming/SessionDialogs.jsx:125  text with a conditional or element value: · up to
+src/app/gaming/SessionDialogs.jsx:132  text with a conditional or element value: left
+src/app/gaming/SessionDialogs.jsx:138  text with a conditional or element value: for
+src/app/gym/GymAttendance.jsx:36  text mixed with values or inline elements: Member:
+src/app/gym/GymClasses.jsx:66  title= template with values
+src/app/gym/GymClasses.jsx:67  text with a conditional or element value: places ·
+src/app/gym/GymClasses.jsx:119  text with a conditional or element value: booked
+src/app/gym/GymClasses.jsx:145  text mixed with values or inline elements: Member:
+src/app/gym/GymClasses.jsx:229  text with a conditional or element value: This month: classes
+src/app/gym/GymClasses.jsx:262  text with a conditional or element value: min ·
+src/app/gym/GymMembers.jsx:43  text with a conditional or element value: Add
+src/app/gym/GymReception.jsx:110  text with a conditional or element value: · until
+src/app/gym/GymReception.jsx:240  text mixed with values or inline elements: No member matches.
+src/app/gym/GymReception.jsx:249  text mixed with values or inline elements: Last:
+src/app/gym/GymReception.jsx:249  text mixed with values or inline elements: . Details are hidden from the screen.
+src/app/gym/MemberDetail.jsx:72  lead= template with values
+src/app/gym/MemberDetail.jsx:78  text with a conditional or element value: This account is on hold
+src/app/gym/MemberDetail.jsx:79  text with a conditional or element value: This member is archived
+src/app/gym/MemberDetail.jsx:94  text with a conditional or element value: to
+src/app/gym/MemberDetail.jsx:123  lead= template with values
+src/app/gym/MemberDialogs.jsx:93  text with a conditional or element value: Freeze for
+src/app/gym/MemberDialogs.jsx:99  text with a conditional or element value: The membership ends
+src/app/gym/MemberDialogs.jsx:112  text with a conditional or element value: Add
+src/app/gym/MemberDialogs.jsx:128  text with a conditional or element value: stops working now. This does not move any money. T
+src/app/gym/MemberExtras.jsx:41  text with a conditional or element value: points
+src/app/gym/MemberExtras.jsx:42  text mixed with values or inline elements: They have
+src/app/gym/MemberExtras.jsx:42  text mixed with values or inline elements: points. Free days are added to the running membership straig
+src/app/gym/MemberExtras.jsx:68  text with a conditional or element value: Sell
+src/app/gym/MemberExtras.jsx:166  text with a conditional or element value: Day
+src/app/hotel/BanquetCalendar.jsx:48  text with a conditional or element value: seats
+src/app/hotel/BanquetCalendar.jsx:55  title= template with values
+src/app/hotel/BookingDetail.jsx:45  label= template with values
+src/app/hotel/BookingDetail.jsx:144  text with a conditional or element value: night
+src/app/hotel/BookingDetail.jsx:257  text with a conditional or element value: to
+src/app/hotel/BookingDetail.jsx:287  text with a conditional or element value: adult
+src/app/hotel/BookingForm.jsx:146  text with a conditional or element value: ID, nationality and company details
+src/app/hotel/EventDetail.jsx:172  text with a conditional or element value: guests
+src/app/hotel/EventDetail.jsx:197  text with a conditional or element value: to
+src/app/hotel/EventForm.jsx:71  text with a conditional or element value: stay
+src/app/hotel/HotelCalendar.jsx:33  title= template with values
+src/app/hotel/HotelDashboard.jsx:61  child template with values: `${d.arrivals_late} booking${d.arrivals_late === 1 ? ' was' 
+src/app/hotel/HotelNightAudit.jsx:42  text mixed with values or inline elements: room charge
+src/app/hotel/HotelNightAudit.jsx:42  text mixed with values or inline elements: posted
+src/app/hotel/HotelNightAudit.jsx:57  text with a conditional or element value: room
+src/app/hotel/HotelNightAudit.jsx:72  text mixed with values or inline elements: Close
+src/app/hotel/HotelReports.jsx:91  title= template with values
+src/app/hotel/HotelReports.jsx:182  text with a conditional or element value: function
+src/app/hotel/HotelRooms.jsx:73  text mixed with values or inline elements: Next:
+src/app/hotel/HotelSetup.jsx:73  toast with values
+src/app/hotel/HotelSetup.jsx:189  text with a conditional or element value: to
+src/app/hotel/HotelSetup.jsx:201  text mixed with values or inline elements: Rate a night for each room type
+src/app/hotel/HotelStaff.jsx:106  text with a conditional or element value: Left
+src/app/hotel/HotelStaff.jsx:203  text with a conditional or element value: to
+src/app/hotel/StaffPayroll.jsx:89  child template with values: `${run0.unmarked_days} day${run0.unmarked_days === 1 ? '' : 
+src/app/hotel/StaffTime.jsx:73  aria-label= template with values
+src/app/pharmacy/parts.jsx:116  text with a conditional or element value: No active batch in stock for this product
+src/app/pharmacy/parts.jsx:121  text with a conditional or element value: left
+src/app/pharmacy/PharmacyPos.jsx:152  text mixed with values or inline elements: Pay later
+src/app/salon/ClientPicker.jsx:99  text mixed with values or inline elements: Add “
+src/app/salon/ClientPicker.jsx:99  text mixed with values or inline elements: ” as a new client
+src/app/salon/SalonAppointments.jsx:143  text with a conditional or element value: Nobody is free for
+src/app/salon/SalonAppointments.jsx:183  toast with values
+src/app/salon/SalonAppointments.jsx:306  aria-label= template with values
+src/app/salon/SalonAppointments.jsx:419  text with a conditional or element value: appointment
+src/app/salon/SalonClients.jsx:181  text with a conditional or element value: Loyalty
+src/app/salon/SalonClients.jsx:182  text with a conditional or element value: points available
+src/app/salon/SalonClients.jsx:188  text with a conditional or element value: until
+src/app/salon/SalonDashboard.jsx:26  title= template with values
+src/app/salon/SalonDashboard.jsx:125  text mixed with values or inline elements: item
+src/app/salon/SalonDashboard.jsx:125  text mixed with values or inline elements: low or out of stock.
+src/app/salon/SalonMemberships.jsx:114  text with a conditional or element value: active member
+src/app/salon/SalonMemberships.jsx:164  text with a conditional or element value: day
+src/app/salon/SalonMemberships.jsx:176  title= template with values
+src/app/salon/SalonMemberships.jsx:244  title= template with values
+src/app/salon/SalonMemberships.jsx:480  text mixed with values or inline elements: Only at
+src/app/salon/SalonPos.jsx:205  aria-label= template with values
+src/app/salon/SalonPos.jsx:269  text mixed with values or inline elements: Pay later — leave the whole bill unpaid
+src/app/salon/SalonPos.jsx:280  aria-label= template with values
+src/app/salon/SalonPos.jsx:328  text with a conditional or element value: item
+src/app/salon/SalonPos.jsx:342  text mixed with values or inline elements: Membership
+src/app/salon/SalonPos.jsx:342  text mixed with values or inline elements: — runs to
+src/app/salon/SalonPos.jsx:343  text mixed with values or inline elements: Package added — valid until
+src/app/salon/SalonPos.jsx:534  text mixed with values or inline elements: search ·
+src/app/salon/SalonPos.jsx:534  text mixed with values or inline elements: client ·
+src/app/salon/SalonPos.jsx:534  text mixed with values or inline elements: take payment
+src/app/salon/SalonPos.jsx:547  text with a conditional or element value: until
+src/app/salon/SalonPos.jsx:569  text mixed with values or inline elements: Apply
+src/app/salon/SalonPos.jsx:576  label= template with values
+src/app/salon/SalonServices.jsx:45  text with a conditional or element value: service
+src/app/salon/SalonServices.jsx:143  text with a conditional or element value: Material cost about
+src/app/salon/SalonServices.jsx:145  text mixed with values or inline elements: No consumables in stock yet. Add them under
+src/app/salon/SalonServices.jsx:145  text mixed with values or inline elements: as ingredients.
+src/app/salon/SalonServices.jsx:297  aria-label= template with values
+src/app/salon/SalonSettings.jsx:59  text mixed with values or inline elements: — name, address, GSTIN, logo and invoice numbering are in
+src/app/salon/SalonSettings.jsx:270  toast with values
+src/app/salon/SalonSettings.jsx:277  text mixed with values or inline elements: Loyalty is
+src/app/salon/SalonSettings.jsx:277  text mixed with values or inline elements: points per ₹100, each worth ₹
+src/app/salon/SalonSettings.jsx:277  text mixed with values or inline elements: ; at least
+src/app/salon/SalonSettings.jsx:277  text mixed with values or inline elements: points to use, up to
+src/app/salon/SalonSettings.jsx:277  text mixed with values or inline elements: % of a bill.
+src/app/salon/SalonSettings.jsx:277  text mixed with values or inline elements: Loyalty points are
+src/app/salon/SalonSettings.jsx:406  text mixed with values or inline elements: Messages are switched off, so nothing will be sent yet. Choo
+src/app/salon/SalonSettings.jsx:406  text mixed with values or inline elements: — WhatsApp, SMS or both, through the provider you use.
+src/app/salon/SalonSettings.jsx:415  text mixed with values or inline elements: client
+src/app/salon/SalonSettings.jsx:415  text mixed with values or inline elements: would receive it
+src/app/wholesale/GrnModal.jsx:60  toast with values
+src/app/wholesale/LabelsPrint.jsx:46  text with a conditional or element value: Print
+src/app/wholesale/OrderDetail.jsx:102  lead= template with values
+src/app/wholesale/OrderDetail.jsx:115  text with a conditional or element value: This order is over the approval limit
+src/app/wholesale/OrderDetail.jsx:143  text with a conditional or element value: pick list
+src/app/wholesale/OrderDetail.jsx:192  text with a conditional or element value: Created by
+src/app/wholesale/OrderEditor.jsx:149  toast with values
+src/app/wholesale/OrderEditor.jsx:199  text with a conditional or element value: in stock
+src/app/wholesale/OrderEditor.jsx:233  text with a conditional or element value: GST
+src/app/wholesale/OrderEditor.jsx:255  text with a conditional or element value: This order can be saved but not confirmed
+src/app/wholesale/parts.jsx:34  title= template with values
+src/app/wholesale/parts.jsx:74  title= template with values
+src/app/wholesale/parts.jsx:269  text mixed with values or inline elements: Use a CSV or Excel (.xlsx) file whose first row is the colum
+src/app/wholesale/parts.jsx:274  text mixed with values or inline elements: rows
+src/app/wholesale/parts.jsx:287  text with a conditional or element value: row
+src/app/wholesale/parts.jsx:288  text mixed with values or inline elements: Ready:
+src/app/wholesale/parts.jsx:298  text with a conditional or element value: Import
+src/app/wholesale/ProductForm.jsx:123  text mixed with values or inline elements: Margin at wholesale price:
+src/app/wholesale/ProductForm.jsx:142  text mixed with values or inline elements: on hand ·
+src/app/wholesale/ProductForm.jsx:142  text mixed with values or inline elements: reserved ·
+src/app/wholesale/ProductForm.jsx:142  text mixed with values or inline elements: available
+src/app/wholesale/PurchaseDetail.jsx:42  lead= template with values
+src/app/wholesale/ReceiptModal.jsx:57  toast with values
+src/app/wholesale/ReceiptModal.jsx:89  text with a conditional or element value: · due
+src/app/wholesale/ReturnModals.jsx:47  text with a conditional or element value: per
+src/app/wholesale/ReturnModals.jsx:92  text with a conditional or element value: each
+src/app/wholesale/WholesaleCustomers.jsx:25  toast with values
+src/app/wholesale/WholesaleCustomers.jsx:29  title= template with values
+src/app/wholesale/WholesaleDashboard.jsx:70  text mixed with values or inline elements: Hover a bar for the day’s total. This month so far:
+src/app/wholesale/WholesaleDashboard.jsx:70  text mixed with values or inline elements: across
+src/app/wholesale/WholesaleFulfilment.jsx:132  text with a conditional or element value: item
+src/app/wholesale/WholesaleFulfilment.jsx:137  text with a conditional or element value: package
+src/app/wholesale/WholesaleFulfilment.jsx:202  title= template with values
+src/app/wholesale/WholesaleInventory.jsx:250  text with a conditional or element value: product
+src/app/wholesale/WholesalePrint.jsx:82  text with a conditional or element value: Payment terms:
+src/app/wholesale/WholesalePrint.jsx:83  text with a conditional or element value: Salesperson:
+src/app/wholesale/WholesalePrint.jsx:104  text with a conditional or element value: GSTIN
+src/app/wholesale/WholesaleProducts.jsx:38  text with a conditional or element value: product
+src/app/wholesale/WholesaleProducts.jsx:57  title= template with values
+src/app/wholesale/WholesaleProducts.jsx:141  toast with values
+src/app/wholesale/WholesaleProducts.jsx:268  text with a conditional or element value: product
+src/app/wholesale/WholesalePurchasing.jsx:68  text with a conditional or element value: line
+src/app/wholesale/WholesaleReports.jsx:88  text with a conditional or element value: row
+src/app/wholesale/WholesaleReturns.jsx:40  text mixed with values or inline elements: Customer
+src/app/wholesale/WholesaleReturns.jsx:40  text mixed with values or inline elements: · invoice
+src/app/wholesale/WholesaleReturns.jsx:40  text mixed with values or inline elements: · credit note
+src/app/wholesale/WholesaleReturns.jsx:41  text mixed with values or inline elements: Supplier
+src/app/wholesale/WholesaleReturns.jsx:41  text mixed with values or inline elements: · order
+src/app/wholesale/WholesaleReturns.jsx:41  text mixed with values or inline elements: · debit note
+src/app/wholesale/WholesaleSettings.jsx:87  text mixed with values or inline elements: Provider keys and the channel live in
+src/app/wholesale/WholesaleSettings.jsx:87  text mixed with values or inline elements: . Customers who opted out of messages are never sent promoti
+src/app/wholesale/WholesaleSettings.jsx:132  text with a conditional or element value: % of

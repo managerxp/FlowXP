@@ -8,7 +8,7 @@ import { recordAudit } from '../modules/events.js';
 import { branchFilter } from '../utils/scope.js';
 import { channelsAvailable, isConnected, providerName } from '../modules/messaging/provider.js';
 import { KINDS, TEMPLATES, metaBody } from '../modules/messaging/templates.js';
-import { SEGMENTS, audience, cleanSettings, getSettings, resend, sendBill, startCampaign } from '../modules/messaging/index.js';
+import { SEGMENTS, audience, balanceShare, billShare, cleanSettings, getSettings, resend, sendBalance, sendBill, startCampaign } from '../modules/messaging/index.js';
 
 const bad = (res, message, status = 400) => res.status(status).json({ success: false, message });
 const provider = async () => ({ name: await providerName(), connected: await isConnected(), channels: await channelsAvailable() });
@@ -55,6 +55,39 @@ export const resendHandler = async (req, res) => {
   const r = await resend(pool, req.tenant.businessId, req.params.id);
   if (r.problem) return bad(res, r.problem, r.code);
   res.json({ success: true, data: r.message });
+};
+
+/* POST /api/messaging/bill-share { invoice_id, phone? }: the message, link and WhatsApp address for sharing a bill by hand (no provider needed) */
+export const billShareHandler = async (req, res) => {
+  const id = Number(req.body?.invoice_id);
+  if (!id) return bad(res, 'Choose an invoice');
+  const values = [id, req.tenant.businessId];
+  const own = (await pool.query(`SELECT 1 FROM invoices WHERE invoice_id = $1 AND business_id = $2${branchFilter(req.tenant, 'branch_id', values)}`, values)).rows.length;
+  if (!own) return bad(res, 'Invoice not found', 404);
+  const r = await billShare(pool, { businessId: req.tenant.businessId, invoiceId: id, phone: req.body?.phone || null });
+  if (r.problem) return bad(res, r.problem, r.code);
+  res.json({ success: true, data: r });
+};
+
+/* POST /api/messaging/balance-share { customer_id }: a payment reminder message and WhatsApp address for a customer who owes money */
+export const balanceShareHandler = async (req, res) => {
+  const id = Number(req.body?.customer_id);
+  if (!id) return bad(res, 'Choose a customer');
+  const r = await balanceShare(pool, { businessId: req.tenant.businessId, customerId: id });
+  if (r.problem) return bad(res, r.problem, r.code);
+  res.json({ success: true, data: r });
+};
+
+/* POST /api/messaging/send-balance { customer_id }: the payment reminder, sent from the business's own number */
+export const sendBalanceHandler = async (req, res) => {
+  const id = Number(req.body?.customer_id);
+  if (!id) return bad(res, 'Choose a customer');
+  const r = await sendBalance(pool, { businessId: req.tenant.businessId, customerId: id, createdBy: req.auth.userId });
+  if (r.problem) return bad(res, r.problem, r.code);
+  if (r.skipped === 'OFF') return bad(res, 'Turn messaging on first (Messaging settings)', 409);
+  if (r.skipped === 'NO_PHONE') return bad(res, 'This customer has no mobile number to send to');
+  recordAudit(req, { action: 'messaging.balance_sent', resource_type: 'customer', resource_id: id, metadata: { status: r.status } });
+  res.status(201).json({ success: true, data: r });
 };
 
 /* POST /api/messaging/send-bill { invoice_id, phone? } */

@@ -9,13 +9,15 @@ import { HK_STATUS, MEAL_PLANS, longDate, useLoad } from '../../lib/hotel.js';
 import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Textarea, Th, Thead, Tr, useDialog, useToast } from '../../components/ui.jsx';
 import { Panel, Tabs, Toggle, useAction } from '../salon/parts.jsx';
 import BanquetSetup from './BanquetSetup.jsx';
+import { useT, T } from '../../i18n/useT.js';
 
 const rs = (n) => formatCurrency(n);
-const TABS = [{ key: 'rooms', label: 'Rooms' }, { key: 'rates', label: 'Rates' }, { key: 'blocks', label: 'Out of sale' }, { key: 'banquet', label: 'Banquet' }, { key: 'settings', label: 'Settings' }];
+const TABS = [{ key: 'rooms', label: T('Rooms') }, { key: 'rates', label: T('Rates') }, { key: 'blocks', label: T('Out of sale') }, { key: 'banquet', label: T('Banquet') }, { key: 'settings', label: T('Settings') }];
 
 /* ── room types and rooms ──────────────────────────────────────────────── */
 
 const TypeForm = ({ initial, onClose, onSaved }) => {
+  const tr = useT();
   const edit = Boolean(initial.room_type_id);
   const [busy, run] = useAction();
   const [error, setError] = useState('');
@@ -28,28 +30,29 @@ const TypeForm = ({ initial, onClose, onSaved }) => {
     if (out) onSaved();
   };
   return (
-    <Modal title={edit ? `Edit ${initial.name}` : 'Add a room type'} onClose={onClose} wide>
+    <Modal title={edit ? `Edit ${initial.name}` : tr('Add a room type')} onClose={onClose} wide>
       <form onSubmit={submit} className="space-y-4">
         <Alert>{error}</Alert>
         <div className="grid gap-3 sm:grid-cols-3">
-          <Field id="rt-n" label="Name"><Input id="rt-n" value={f.name} onChange={set('name')} required autoFocus placeholder="Deluxe, Sea view, Dormitory…" /></Field>
-          <Field id="rt-c" label="Short code" hint="Shown on the calendar"><Input id="rt-c" value={f.code} onChange={set('code')} maxLength={12} placeholder="DLX" /></Field>
-          <Field id="rt-r" label="Rack rate a night" hint="Before GST"><Input id="rt-r" type="number" min="0" step="any" value={f.base_rate} onChange={set('base_rate')} required /></Field>
-          <Field id="rt-ba" label="Adults the rate includes"><Input id="rt-ba" type="number" min="1" value={f.base_adults} onChange={set('base_adults')} /></Field>
-          <Field id="rt-ma" label="Most adults"><Input id="rt-ma" type="number" min="1" value={f.max_adults} onChange={set('max_adults')} /></Field>
-          <Field id="rt-mc" label="Most children"><Input id="rt-mc" type="number" min="0" value={f.max_children} onChange={set('max_children')} /></Field>
-          <Field id="rt-ea" label="Each extra adult, a night"><Input id="rt-ea" type="number" min="0" step="any" value={f.extra_adult} onChange={set('extra_adult')} /></Field>
-          <Field id="rt-ec" label="Each child, a night"><Input id="rt-ec" type="number" min="0" step="any" value={f.extra_child} onChange={set('extra_child')} /></Field>
+          <Field id="rt-n" label={tr('Name')}><Input id="rt-n" value={f.name} onChange={set('name')} required autoFocus placeholder={tr('Deluxe, Sea view, Dormitory…')} /></Field>
+          <Field id="rt-c" label={tr('Short code')} hint={tr('Shown on the calendar')}><Input id="rt-c" value={f.code} onChange={set('code')} maxLength={12} placeholder={tr('DLX')} /></Field>
+          <Field id="rt-r" label={tr('Rack rate a night')} hint={tr('Before GST')}><Input id="rt-r" type="number" min="0" step="any" value={f.base_rate} onChange={set('base_rate')} required /></Field>
+          <Field id="rt-ba" label={tr('Adults the rate includes')}><Input id="rt-ba" type="number" min="1" value={f.base_adults} onChange={set('base_adults')} /></Field>
+          <Field id="rt-ma" label={tr('Most adults')}><Input id="rt-ma" type="number" min="1" value={f.max_adults} onChange={set('max_adults')} /></Field>
+          <Field id="rt-mc" label={tr('Most children')}><Input id="rt-mc" type="number" min="0" value={f.max_children} onChange={set('max_children')} /></Field>
+          <Field id="rt-ea" label={tr('Each extra adult, a night')}><Input id="rt-ea" type="number" min="0" step="any" value={f.extra_adult} onChange={set('extra_adult')} /></Field>
+          <Field id="rt-ec" label={tr('Each child, a night')}><Input id="rt-ec" type="number" min="0" step="any" value={f.extra_child} onChange={set('extra_child')} /></Field>
         </div>
-        <Field id="rt-am" label="What is in the room" hint="Separate with commas"><Input id="rt-am" value={f.amenities} onChange={set('amenities')} placeholder="Air conditioning, TV, sea view, breakfast" /></Field>
-        <Field id="rt-d" label="Description"><Textarea id="rt-d" rows={2} value={f.description} onChange={set('description')} /></Field>
-        <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" loading={busy}>Save</Button></div>
+        <Field id="rt-am" label={tr('What is in the room')} hint={tr('Separate with commas')}><Input id="rt-am" value={f.amenities} onChange={set('amenities')} placeholder={tr('Air conditioning, TV, sea view, breakfast')} /></Field>
+        <Field id="rt-d" label={tr('Description')}><Textarea id="rt-d" rows={2} value={f.description} onChange={set('description')} /></Field>
+        <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={onClose}>{tr('Cancel')}</Button><Button type="submit" loading={busy}>{tr('Save')}</Button></div>
       </form>
     </Modal>
   );
 };
 
 const RoomsTab = () => {
+  const tr = useT();
   const dialog = useDialog();
   const toast = useToast();
   const types = useLoad('/hotel/room-types');
@@ -64,8 +67,8 @@ const RoomsTab = () => {
   const reload = () => { types.reload(); rooms.reload(); };
 
   const archiveType = async (t) => {
-    if (!(await dialog.confirm({ title: `Remove ${t.name}?`, body: 'It disappears from new bookings. Past bookings keep it.', confirmLabel: 'Remove', danger: true }))) return;
-    try { await api(`/hotel/room-types/${t.room_type_id}`, { method: 'DELETE' }); toast.success('Removed'); reload(); } catch (e) { toast.error(e.message); }
+    if (!(await dialog.confirm({ title: `Remove ${t.name}?`, body: tr('It disappears from new bookings. Past bookings keep it.'), confirmLabel: tr('Remove'), danger: true }))) return;
+    try { await api(`/hotel/room-types/${t.room_type_id}`, { method: 'DELETE' }); toast.success(tr('Removed')); reload(); } catch (e) { toast.error(e.message); }
   };
   const saveBulk = async (e) => {
     e.preventDefault(); setError('');
@@ -84,23 +87,23 @@ const RoomsTab = () => {
 
   return (
     <div className="space-y-8">
-      <Panel title="Room types" lead="Each type has its own rack rate and how many people it takes." action={<Button size="sm" onClick={() => setTypeForm({})}><Plus aria-hidden="true" className="h-4 w-4" />Add a type</Button>}>
-        <ListState loading={types.loading && !types.data} error={types.error} empty={!types.loading && !(types.data || []).length} emptyLabel="Add your first room type, such as Deluxe or Standard." />
+      <Panel title={tr('Room types')} lead={tr('Each type has its own rack rate and how many people it takes.')} action={<Button size="sm" onClick={() => setTypeForm({})}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add a type')}</Button>}>
+        <ListState loading={types.loading && !types.data} error={types.error} empty={!types.loading && !(types.data || []).length} emptyLabel={tr('Add your first room type, such as Deluxe or Standard.')} />
         {(types.data || []).length > 0 && (
-          <Table><Thead><Th>Type</Th><Th className="text-right">Rack rate</Th><Th className="text-right">Extra adult</Th><Th>People</Th><Th className="text-right">Rooms</Th><Th></Th></Thead>
-            <tbody>{types.data.map((t) => <Tr key={t.room_type_id}><Td><span className="font-medium text-ink-900">{t.name}</span> <span className="text-caption text-ink-500">{t.code}</span></Td><Td className="tabular text-right">{rs(t.base_rate)}</Td><Td className="tabular text-right text-ink-500">{t.extra_adult ? rs(t.extra_adult) : '—'}</Td><Td className="text-ink-500">{t.base_adults} included · up to {t.max_adults} adults, {t.max_children} children</Td><Td className="tabular text-right">{t.room_count}</Td>
-              <Td className="text-right"><button type="button" aria-label={`Edit ${t.name}`} onClick={() => setTypeForm(t)} className="mr-3 text-ink-500 hover:text-ink-900"><Pencil aria-hidden="true" className="inline h-4 w-4" /></button><button type="button" aria-label={`Remove ${t.name}`} onClick={() => archiveType(t)} className="text-ink-500 hover:text-danger"><Trash2 aria-hidden="true" className="inline h-4 w-4" /></button></Td></Tr>)}</tbody></Table>
+          <Table><Thead><Th>{tr('Type')}</Th><Th className="text-right">{tr('Rack rate')}</Th><Th className="text-right">{tr('Extra adult')}</Th><Th>{tr('People')}</Th><Th className="text-right">{tr('Rooms')}</Th><Th></Th></Thead>
+            <tbody>{types.data.map((t) => <Tr key={t.room_type_id}><Td><span className="font-medium text-ink-900">{t.name}</span> <span className="text-caption text-ink-500">{t.code}</span></Td><Td className="tabular text-right">{rs(t.base_rate)}</Td><Td className="tabular text-right text-ink-500">{t.extra_adult ? rs(t.extra_adult) : '—'}</Td><Td className="text-ink-500">{tr('{{base_adults}} included · up to {{max_adults}} adults, {{max_children}} children', { base_adults: t.base_adults, max_adults: t.max_adults, max_children: t.max_children })}</Td><Td className="tabular text-right">{t.room_count}</Td>
+              <Td className="text-right"><button type="button" aria-label={tr('Edit {{t_name}}', { t_name: t.name })} onClick={() => setTypeForm(t)} className="mr-3 text-ink-500 hover:text-ink-900"><Pencil aria-hidden="true" className="inline h-4 w-4" /></button><button type="button" aria-label={tr('Remove {{t_name}}', { t_name: t.name })} onClick={() => archiveType(t)} className="text-ink-500 hover:text-danger"><Trash2 aria-hidden="true" className="inline h-4 w-4" /></button></Td></Tr>)}</tbody></Table>
         )}
       </Panel>
 
-      <Panel title="Rooms" lead="The rooms you can sell." action={<div className="flex gap-2"><Button size="sm" variant="secondary" onClick={() => { setError(''); setBf({ room_type_id: types.data?.[0]?.room_type_id || '', from: '', to: '', floor: '', prefix: '' }); setBulk(true); }} disabled={!(types.data || []).length}>Add many</Button><Button size="sm" onClick={() => { setError(''); setSf({ room_no: '', floor: '', room_type_id: types.data?.[0]?.room_type_id || '' }); setSingle({}); }} disabled={!(types.data || []).length}><Plus aria-hidden="true" className="h-4 w-4" />Add a room</Button></div>}>
-        <ListState loading={rooms.loading && !rooms.data} error={rooms.error} empty={!rooms.loading && !(rooms.data || []).length} emptyLabel="No rooms yet. Add many at once, for example 101 to 110." />
+      <Panel title={tr('Rooms')} lead={tr('The rooms you can sell.')} action={<div className="flex gap-2"><Button size="sm" variant="secondary" onClick={() => { setError(''); setBf({ room_type_id: types.data?.[0]?.room_type_id || '', from: '', to: '', floor: '', prefix: '' }); setBulk(true); }} disabled={!(types.data || []).length}>{tr('Add many')}</Button><Button size="sm" onClick={() => { setError(''); setSf({ room_no: '', floor: '', room_type_id: types.data?.[0]?.room_type_id || '' }); setSingle({}); }} disabled={!(types.data || []).length}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add a room')}</Button></div>}>
+        <ListState loading={rooms.loading && !rooms.data} error={rooms.error} empty={!rooms.loading && !(rooms.data || []).length} emptyLabel={tr('No rooms yet. Add many at once, for example 101 to 110.')} />
         {(rooms.data || []).length > 0 && (
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {rooms.data.map((r) => (
               <div key={r.room_id} className={`flex items-center justify-between gap-2 rounded-(--radius-control) border border-line px-3 py-2 ${r.is_active ? '' : 'opacity-50'}`}>
-                <div><p className="text-small font-semibold text-ink-900">{r.room_no} {!r.is_active && <Badge>Retired</Badge>}</p><p className="text-caption text-ink-500">{r.room_type}{r.floor ? ` · floor ${r.floor}` : ''}</p></div>
-                <div className="flex gap-2 text-caption"><button type="button" onClick={() => { setError(''); setSf({ room_no: r.room_no, floor: r.floor || '', room_type_id: r.room_type_id }); setSingle(r); }} className="font-medium text-brand-600 hover:underline">Edit</button><button type="button" onClick={() => retire(r)} className="text-ink-500 hover:underline">{r.is_active ? 'Retire' : 'Restore'}</button></div>
+                <div><p className="text-small font-semibold text-ink-900">{r.room_no} {!r.is_active && <Badge>{tr('Retired')}</Badge>}</p><p className="text-caption text-ink-500">{r.room_type}{r.floor ? ` · floor ${r.floor}` : ''}</p></div>
+                <div className="flex gap-2 text-caption"><button type="button" onClick={() => { setError(''); setSf({ room_no: r.room_no, floor: r.floor || '', room_type_id: r.room_type_id }); setSingle(r); }} className="font-medium text-brand-600 hover:underline">{tr('Edit')}</button><button type="button" onClick={() => retire(r)} className="text-ink-500 hover:underline">{r.is_active ? tr('Retire') : tr('Restore')}</button></div>
               </div>
             ))}
           </div>
@@ -109,28 +112,28 @@ const RoomsTab = () => {
 
       {typeForm && <TypeForm initial={typeForm} onClose={() => setTypeForm(null)} onSaved={() => { setTypeForm(null); reload(); }} />}
       {bulk && (
-        <Modal title="Add many rooms" onClose={() => setBulk(false)}>
+        <Modal title={tr('Add many rooms')} onClose={() => setBulk(false)}>
           <form onSubmit={saveBulk} className="space-y-4"><Alert>{error}</Alert>
-            <Field id="bk-t" label="Room type"><Select id="bk-t" value={bf.room_type_id} onChange={(e) => setBf((x) => ({ ...x, room_type_id: e.target.value }))}>{types.data.map((t) => <option key={t.room_type_id} value={t.room_type_id}>{t.name}</option>)}</Select></Field>
+            <Field id="bk-t" label={tr('Room type')}><Select id="bk-t" value={bf.room_type_id} onChange={(e) => setBf((x) => ({ ...x, room_type_id: e.target.value }))}>{types.data.map((t) => <option key={t.room_type_id} value={t.room_type_id}>{t.name}</option>)}</Select></Field>
             <div className="grid gap-3 sm:grid-cols-4">
-              <Field id="bk-f" label="First number"><Input id="bk-f" type="number" min="0" value={bf.from} onChange={(e) => setBf((x) => ({ ...x, from: e.target.value }))} required /></Field>
-              <Field id="bk-to" label="Last number"><Input id="bk-to" type="number" min="0" value={bf.to} onChange={(e) => setBf((x) => ({ ...x, to: e.target.value }))} required /></Field>
-              <Field id="bk-fl" label="Floor"><Input id="bk-fl" value={bf.floor} onChange={(e) => setBf((x) => ({ ...x, floor: e.target.value }))} /></Field>
-              <Field id="bk-p" label="Prefix" hint="Like A"><Input id="bk-p" value={bf.prefix} onChange={(e) => setBf((x) => ({ ...x, prefix: e.target.value }))} maxLength={6} /></Field>
+              <Field id="bk-f" label={tr('First number')}><Input id="bk-f" type="number" min="0" value={bf.from} onChange={(e) => setBf((x) => ({ ...x, from: e.target.value }))} required /></Field>
+              <Field id="bk-to" label={tr('Last number')}><Input id="bk-to" type="number" min="0" value={bf.to} onChange={(e) => setBf((x) => ({ ...x, to: e.target.value }))} required /></Field>
+              <Field id="bk-fl" label={tr('Floor')}><Input id="bk-fl" value={bf.floor} onChange={(e) => setBf((x) => ({ ...x, floor: e.target.value }))} /></Field>
+              <Field id="bk-p" label={tr('Prefix')} hint={tr('Like A')}><Input id="bk-p" value={bf.prefix} onChange={(e) => setBf((x) => ({ ...x, prefix: e.target.value }))} maxLength={6} /></Field>
             </div>
-            <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setBulk(false)}>Cancel</Button><Button type="submit" loading={busy}>Add the rooms</Button></div>
+            <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setBulk(false)}>{tr('Cancel')}</Button><Button type="submit" loading={busy}>{tr('Add the rooms')}</Button></div>
           </form>
         </Modal>
       )}
       {single && (
-        <Modal title={single.room_id ? `Edit room ${single.room_no}` : 'Add a room'} onClose={() => setSingle(null)}>
+        <Modal title={single.room_id ? `Edit room ${single.room_no}` : tr('Add a room')} onClose={() => setSingle(null)}>
           <form onSubmit={saveSingle} className="space-y-4"><Alert>{error}</Alert>
             <div className="grid gap-3 sm:grid-cols-3">
-              <Field id="sg-n" label="Room number"><Input id="sg-n" value={sf.room_no} onChange={(e) => setSf((x) => ({ ...x, room_no: e.target.value }))} required autoFocus /></Field>
-              <Field id="sg-f" label="Floor"><Input id="sg-f" value={sf.floor} onChange={(e) => setSf((x) => ({ ...x, floor: e.target.value }))} /></Field>
-              <Field id="sg-t" label="Type"><Select id="sg-t" value={sf.room_type_id} onChange={(e) => setSf((x) => ({ ...x, room_type_id: e.target.value }))}>{types.data.map((t) => <option key={t.room_type_id} value={t.room_type_id}>{t.name}</option>)}</Select></Field>
+              <Field id="sg-n" label={tr('Room number')}><Input id="sg-n" value={sf.room_no} onChange={(e) => setSf((x) => ({ ...x, room_no: e.target.value }))} required autoFocus /></Field>
+              <Field id="sg-f" label={tr('Floor')}><Input id="sg-f" value={sf.floor} onChange={(e) => setSf((x) => ({ ...x, floor: e.target.value }))} /></Field>
+              <Field id="sg-t" label={tr('Type')}><Select id="sg-t" value={sf.room_type_id} onChange={(e) => setSf((x) => ({ ...x, room_type_id: e.target.value }))}>{types.data.map((t) => <option key={t.room_type_id} value={t.room_type_id}>{t.name}</option>)}</Select></Field>
             </div>
-            <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setSingle(null)}>Cancel</Button><Button type="submit" loading={busy}>Save</Button></div>
+            <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setSingle(null)}>{tr('Cancel')}</Button><Button type="submit" loading={busy}>{tr('Save')}</Button></div>
           </form>
         </Modal>
       )}
@@ -141,6 +144,7 @@ const RoomsTab = () => {
 /* ── rates ─────────────────────────────────────────────────────────────── */
 
 const RatesTab = () => {
+  const tr = useT();
   const dialog = useDialog();
   const toast = useToast();
   const types = useLoad('/hotel/room-types');
@@ -165,59 +169,59 @@ const RatesTab = () => {
     if (out) { setSeason(null); reload(); }
   };
   const removeSeason = async (o) => {
-    if (!(await dialog.confirm({ title: 'Remove this seasonal rate?', body: 'Bookings already made keep the rate they were given.', confirmLabel: 'Remove', danger: true }))) return;
-    try { await api(`/hotel/seasonal-rates/${o.override_id}`, { method: 'DELETE' }); toast.success('Removed'); reload(); } catch (e) { toast.error(e.message); }
+    if (!(await dialog.confirm({ title: tr('Remove this seasonal rate?'), body: tr('Bookings already made keep the rate they were given.'), confirmLabel: tr('Remove'), danger: true }))) return;
+    try { await api(`/hotel/seasonal-rates/${o.override_id}`, { method: 'DELETE' }); toast.success(tr('Removed')); reload(); } catch (e) { toast.error(e.message); }
   };
 
   return (
     <div className="space-y-8">
-      <Panel title="Rate plans" lead="A plan is a way of selling the same room, such as room only or with breakfast. Leave a rate empty to use the room type's rack rate."
-             action={<Button size="sm" onClick={() => { setError(''); setPlan({ name: '', code: '', meal_plan: 'EP', is_default: false, rates: {} }); }} disabled={!T.length}><Plus aria-hidden="true" className="h-4 w-4" />Add a plan</Button>}>
-        <ListState loading={plans.loading && !plans.data} error={plans.error} empty={!plans.loading && !(plans.data || []).length} emptyLabel="Add a room type first. A “Room only” plan is made for you." />
+      <Panel title={tr('Rate plans')} lead={tr('A plan is a way of selling the same room, such as room only or with breakfast. Leave a rate empty to use the room type\'s rack rate.')}
+             action={<Button size="sm" onClick={() => { setError(''); setPlan({ name: '', code: '', meal_plan: 'EP', is_default: false, rates: {} }); }} disabled={!T.length}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add a plan')}</Button>}>
+        <ListState loading={plans.loading && !plans.data} error={plans.error} empty={!plans.loading && !(plans.data || []).length} emptyLabel={tr('Add a room type first. A “Room only” plan is made for you.')} />
         {(plans.data || []).length > 0 && (
-          <Table><Thead><Th>Plan</Th><Th>Meals</Th>{T.map((t) => <Th key={t.room_type_id} className="text-right">{t.name}</Th>)}<Th></Th></Thead>
-            <tbody>{plans.data.map((p) => <Tr key={p.rate_plan_id}><Td className="font-medium text-ink-900">{p.name} {p.is_default && <Badge tone="brand">Default</Badge>}</Td><Td>{p.meal_plan_name}</Td>{T.map((t) => <Td key={t.room_type_id} className="tabular text-right">{p.rates[t.room_type_id] != null ? rs(p.rates[t.room_type_id]) : <span className="text-ink-400">{rs(t.base_rate)}</span>}</Td>)}
-              <Td className="text-right"><button type="button" onClick={() => { setError(''); setPlan({ ...p, rates: Object.fromEntries(Object.entries(p.rates)) }); }} className="text-caption font-medium text-brand-600 hover:underline">Edit</button></Td></Tr>)}</tbody></Table>
+          <Table><Thead><Th>{tr('Plan')}</Th><Th>{tr('Meals')}</Th>{T.map((t) => <Th key={t.room_type_id} className="text-right">{t.name}</Th>)}<Th></Th></Thead>
+            <tbody>{plans.data.map((p) => <Tr key={p.rate_plan_id}><Td className="font-medium text-ink-900">{p.name} {p.is_default && <Badge tone="brand">{tr('Default')}</Badge>}</Td><Td>{p.meal_plan_name}</Td>{T.map((t) => <Td key={t.room_type_id} className="tabular text-right">{p.rates[t.room_type_id] != null ? rs(p.rates[t.room_type_id]) : <span className="text-ink-400">{rs(t.base_rate)}</span>}</Td>)}
+              <Td className="text-right"><button type="button" onClick={() => { setError(''); setPlan({ ...p, rates: Object.fromEntries(Object.entries(p.rates)) }); }} className="text-caption font-medium text-brand-600 hover:underline">{tr('Edit')}</button></Td></Tr>)}</tbody></Table>
         )}
       </Panel>
 
-      <Panel title="Seasonal rates" lead="A different rate for a stretch of dates, such as the peak season, a festival or weekends. The newest one wins where they overlap."
-             action={<Button size="sm" onClick={() => { setError(''); setSeason({ room_type_id: T[0]?.room_type_id || '', rate_plan_id: '', name: '', from_date: '', to_date: '', rate: '', weekends: false }); }} disabled={!T.length}><Plus aria-hidden="true" className="h-4 w-4" />Add a seasonal rate</Button>}>
-        <ListState loading={seasons.loading && !seasons.data} error={seasons.error} empty={!seasons.loading && !(seasons.data || []).length} emptyLabel="No seasonal rates. Every night uses the plan or rack rate." />
+      <Panel title={tr('Seasonal rates')} lead={tr('A different rate for a stretch of dates, such as the peak season, a festival or weekends. The newest one wins where they overlap.')}
+             action={<Button size="sm" onClick={() => { setError(''); setSeason({ room_type_id: T[0]?.room_type_id || '', rate_plan_id: '', name: '', from_date: '', to_date: '', rate: '', weekends: false }); }} disabled={!T.length}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add a seasonal rate')}</Button>}>
+        <ListState loading={seasons.loading && !seasons.data} error={seasons.error} empty={!seasons.loading && !(seasons.data || []).length} emptyLabel={tr('No seasonal rates. Every night uses the plan or rack rate.')} />
         {(seasons.data || []).length > 0 && (
-          <Table><Thead><Th>Name</Th><Th>Room type</Th><Th>Plan</Th><Th>Dates</Th><Th className="text-right">Rate</Th><Th></Th></Thead>
-            <tbody>{seasons.data.map((o) => <Tr key={o.override_id}><Td className="font-medium text-ink-900">{o.name || 'Seasonal rate'}</Td><Td>{o.room_type}</Td><Td>{o.rate_plan || 'Every plan'}</Td><Td className="whitespace-nowrap">{longDate(String(o.from_date).slice(0, 10))} to {longDate(String(o.to_date).slice(0, 10))}{o.days_of_week?.length ? <span className="ml-1 text-caption text-ink-500">(Fri and Sat)</span> : null}</Td><Td className="tabular text-right">{rs(o.rate)}</Td><Td className="text-right"><button type="button" aria-label="Remove" onClick={() => removeSeason(o)} className="text-ink-500 hover:text-danger"><Trash2 aria-hidden="true" className="inline h-4 w-4" /></button></Td></Tr>)}</tbody></Table>
+          <Table><Thead><Th>{tr('Name')}</Th><Th>{tr('Room type')}</Th><Th>{tr('Plan')}</Th><Th>{tr('Dates')}</Th><Th className="text-right">{tr('Rate')}</Th><Th></Th></Thead>
+            <tbody>{seasons.data.map((o) => <Tr key={o.override_id}><Td className="font-medium text-ink-900">{o.name || 'Seasonal rate'}</Td><Td>{o.room_type}</Td><Td>{o.rate_plan || 'Every plan'}</Td><Td className="whitespace-nowrap">{longDate(String(o.from_date).slice(0, 10))} to {longDate(String(o.to_date).slice(0, 10))}{o.days_of_week?.length ? <span className="ml-1 text-caption text-ink-500">{tr('(Fri and Sat)')}</span> : null}</Td><Td className="tabular text-right">{rs(o.rate)}</Td><Td className="text-right"><button type="button" aria-label={tr('Remove')} onClick={() => removeSeason(o)} className="text-ink-500 hover:text-danger"><Trash2 aria-hidden="true" className="inline h-4 w-4" /></button></Td></Tr>)}</tbody></Table>
         )}
       </Panel>
 
       {plan && (
-        <Modal title={plan.rate_plan_id ? `Edit ${plan.name}` : 'Add a rate plan'} onClose={() => setPlan(null)} wide>
+        <Modal title={plan.rate_plan_id ? `Edit ${plan.name}` : tr('Add a rate plan')} onClose={() => setPlan(null)} wide>
           <form onSubmit={savePlan} className="space-y-4"><Alert>{error}</Alert>
             <div className="grid gap-3 sm:grid-cols-3">
-              <Field id="pl-n" label="Name"><Input id="pl-n" value={plan.name} onChange={(e) => setPlan((x) => ({ ...x, name: e.target.value }))} required autoFocus placeholder="With breakfast" /></Field>
-              <Field id="pl-c" label="Short code"><Input id="pl-c" value={plan.code} onChange={(e) => setPlan((x) => ({ ...x, code: e.target.value }))} maxLength={12} placeholder="CP" /></Field>
-              <Field id="pl-m" label="Meals included"><Select id="pl-m" value={plan.meal_plan} onChange={(e) => setPlan((x) => ({ ...x, meal_plan: e.target.value }))}>{MEAL_PLANS.map(([c, l]) => <option key={c} value={c}>{l}</option>)}</Select></Field>
+              <Field id="pl-n" label={tr('Name')}><Input id="pl-n" value={plan.name} onChange={(e) => setPlan((x) => ({ ...x, name: e.target.value }))} required autoFocus placeholder={tr('With breakfast')} /></Field>
+              <Field id="pl-c" label={tr('Short code')}><Input id="pl-c" value={plan.code} onChange={(e) => setPlan((x) => ({ ...x, code: e.target.value }))} maxLength={12} placeholder={tr('CP')} /></Field>
+              <Field id="pl-m" label={tr('Meals included')}><Select id="pl-m" value={plan.meal_plan} onChange={(e) => setPlan((x) => ({ ...x, meal_plan: e.target.value }))}>{MEAL_PLANS.map(([c, l]) => <option key={c} value={c}>{l}</option>)}</Select></Field>
             </div>
-            <div><p className="mb-2 text-small font-medium text-ink-900">Rate a night for each room type <span className="font-normal text-ink-500">(before GST)</span></p>
-              <div className="grid gap-3 sm:grid-cols-3">{T.map((t) => <Field key={t.room_type_id} id={`pl-r-${t.room_type_id}`} label={t.name} hint={`Rack rate ${rs(t.base_rate)}`}><Input id={`pl-r-${t.room_type_id}`} type="number" min="0" step="any" value={plan.rates[t.room_type_id] ?? ''} onChange={(e) => setPlan((x) => ({ ...x, rates: { ...x.rates, [t.room_type_id]: e.target.value } }))} placeholder="Rack rate" /></Field>)}</div></div>
-            <Toggle id="pl-d" checked={plan.is_default} onChange={(v) => setPlan((x) => ({ ...x, is_default: v }))} label="Use this plan when none is chosen" />
-            <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setPlan(null)}>Cancel</Button><Button type="submit" loading={busy}>Save</Button></div>
+            <div><p className="mb-2 text-small font-medium text-ink-900">Rate a night for each room type <span className="font-normal text-ink-500">{tr('(before GST)')}</span></p>
+              <div className="grid gap-3 sm:grid-cols-3">{T.map((t) => <Field key={t.room_type_id} id={`pl-r-${t.room_type_id}`} label={t.name} hint={tr('Rack rate {{rs}}', { rs: rs(t.base_rate) })}><Input id={`pl-r-${t.room_type_id}`} type="number" min="0" step="any" value={plan.rates[t.room_type_id] ?? ''} onChange={(e) => setPlan((x) => ({ ...x, rates: { ...x.rates, [t.room_type_id]: e.target.value } }))} placeholder={tr('Rack rate')} /></Field>)}</div></div>
+            <Toggle id="pl-d" checked={plan.is_default} onChange={(v) => setPlan((x) => ({ ...x, is_default: v }))} label={tr('Use this plan when none is chosen')} />
+            <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setPlan(null)}>{tr('Cancel')}</Button><Button type="submit" loading={busy}>{tr('Save')}</Button></div>
           </form>
         </Modal>
       )}
       {season && (
-        <Modal title="Add a seasonal rate" onClose={() => setSeason(null)}>
+        <Modal title={tr('Add a seasonal rate')} onClose={() => setSeason(null)}>
           <form onSubmit={saveSeason} className="space-y-4"><Alert>{error}</Alert>
-            <Field id="se-n" label="Name"><Input id="se-n" value={season.name} onChange={(e) => setSeason((x) => ({ ...x, name: e.target.value }))} placeholder="Peak season, Diwali, New Year…" autoFocus /></Field>
+            <Field id="se-n" label={tr('Name')}><Input id="se-n" value={season.name} onChange={(e) => setSeason((x) => ({ ...x, name: e.target.value }))} placeholder={tr('Peak season, Diwali, New Year…')} autoFocus /></Field>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field id="se-t" label="Room type"><Select id="se-t" value={season.room_type_id} onChange={(e) => setSeason((x) => ({ ...x, room_type_id: e.target.value }))}>{T.map((t) => <option key={t.room_type_id} value={t.room_type_id}>{t.name}</option>)}</Select></Field>
-              <Field id="se-p" label="Plan"><Select id="se-p" value={season.rate_plan_id} onChange={(e) => setSeason((x) => ({ ...x, rate_plan_id: e.target.value }))}><option value="">Every plan</option>{(plans.data || []).map((p) => <option key={p.rate_plan_id} value={p.rate_plan_id}>{p.name}</option>)}</Select></Field>
-              <Field id="se-f" label="From"><Input id="se-f" type="date" value={season.from_date} onChange={(e) => setSeason((x) => ({ ...x, from_date: e.target.value }))} required /></Field>
-              <Field id="se-to" label="To (including)"><Input id="se-to" type="date" value={season.to_date} onChange={(e) => setSeason((x) => ({ ...x, to_date: e.target.value }))} required /></Field>
-              <Field id="se-r" label="Rate a night" hint="Before GST"><Input id="se-r" type="number" min="0" step="any" value={season.rate} onChange={(e) => setSeason((x) => ({ ...x, rate: e.target.value }))} required /></Field>
+              <Field id="se-t" label={tr('Room type')}><Select id="se-t" value={season.room_type_id} onChange={(e) => setSeason((x) => ({ ...x, room_type_id: e.target.value }))}>{T.map((t) => <option key={t.room_type_id} value={t.room_type_id}>{t.name}</option>)}</Select></Field>
+              <Field id="se-p" label={tr('Plan')}><Select id="se-p" value={season.rate_plan_id} onChange={(e) => setSeason((x) => ({ ...x, rate_plan_id: e.target.value }))}><option value="">{tr('Every plan')}</option>{(plans.data || []).map((p) => <option key={p.rate_plan_id} value={p.rate_plan_id}>{p.name}</option>)}</Select></Field>
+              <Field id="se-f" label={tr('From')}><Input id="se-f" type="date" value={season.from_date} onChange={(e) => setSeason((x) => ({ ...x, from_date: e.target.value }))} required /></Field>
+              <Field id="se-to" label={tr('To (including)')}><Input id="se-to" type="date" value={season.to_date} onChange={(e) => setSeason((x) => ({ ...x, to_date: e.target.value }))} required /></Field>
+              <Field id="se-r" label={tr('Rate a night')} hint={tr('Before GST')}><Input id="se-r" type="number" min="0" step="any" value={season.rate} onChange={(e) => setSeason((x) => ({ ...x, rate: e.target.value }))} required /></Field>
             </div>
-            <Toggle id="se-w" checked={season.weekends} onChange={(v) => setSeason((x) => ({ ...x, weekends: v }))} label="Friday and Saturday nights only" />
-            <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setSeason(null)}>Cancel</Button><Button type="submit" loading={busy}>Add</Button></div>
+            <Toggle id="se-w" checked={season.weekends} onChange={(v) => setSeason((x) => ({ ...x, weekends: v }))} label={tr('Friday and Saturday nights only')} />
+            <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setSeason(null)}>{tr('Cancel')}</Button><Button type="submit" loading={busy}>{tr('Add')}</Button></div>
           </form>
         </Modal>
       )}
@@ -228,6 +232,7 @@ const RatesTab = () => {
 /* ── rooms out of sale ─────────────────────────────────────────────────── */
 
 const BlocksTab = () => {
+  const tr = useT();
   const dialog = useDialog();
   const toast = useToast();
   const rooms = useLoad('/hotel/rooms');
@@ -241,21 +246,21 @@ const BlocksTab = () => {
     if (out) { setF(null); blocks.reload(); }
   };
   const release = async (b) => {
-    if (!(await dialog.confirm({ title: `Put room ${b.room_no} back on sale?`, confirmLabel: 'Put back on sale' }))) return;
-    try { await api(`/hotel/room-blocks/${b.block_id}`, { method: 'DELETE' }); toast.success('Back on sale'); blocks.reload(); } catch (e) { toast.error(e.message); }
+    if (!(await dialog.confirm({ title: `Put room ${b.room_no} back on sale?`, confirmLabel: tr('Put back on sale') }))) return;
+    try { await api(`/hotel/room-blocks/${b.block_id}`, { method: 'DELETE' }); toast.success(tr('Back on sale')); blocks.reload(); } catch (e) { toast.error(e.message); }
   };
   return (
-    <Panel title="Rooms out of sale" lead="Take a room off the calendar for repairs, painting or owner use. For a room that is out of order right now, use Rooms and housekeeping."
-           action={<Button size="sm" onClick={() => { setError(''); setF({ room_id: rooms.data?.[0]?.room_id || '', from_date: '', to_date: '', reason: '' }); }}><Plus aria-hidden="true" className="h-4 w-4" />Take a room out of sale</Button>}>
-      <ListState loading={blocks.loading && !blocks.data} error={blocks.error} empty={!blocks.loading && !(blocks.data || []).length} emptyLabel="No rooms are out of sale." />
-      {(blocks.data || []).length > 0 && <Table><Thead><Th>Room</Th><Th>From</Th><Th>Until</Th><Th>Why</Th><Th></Th></Thead><tbody>{blocks.data.map((b) => <Tr key={b.block_id}><Td className="font-medium text-ink-900">{b.room_no}</Td><Td>{longDate(String(b.from_date).slice(0, 10))}</Td><Td>{longDate(String(b.to_date).slice(0, 10))}</Td><Td>{b.reason || '—'}</Td><Td className="text-right"><button type="button" onClick={() => release(b)} className="text-caption font-medium text-brand-600 hover:underline">Put back on sale</button></Td></Tr>)}</tbody></Table>}
+    <Panel title={tr('Rooms out of sale')} lead={tr('Take a room off the calendar for repairs, painting or owner use. For a room that is out of order right now, use Rooms and housekeeping.')}
+           action={<Button size="sm" onClick={() => { setError(''); setF({ room_id: rooms.data?.[0]?.room_id || '', from_date: '', to_date: '', reason: '' }); }}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Take a room out of sale')}</Button>}>
+      <ListState loading={blocks.loading && !blocks.data} error={blocks.error} empty={!blocks.loading && !(blocks.data || []).length} emptyLabel={tr('No rooms are out of sale.')} />
+      {(blocks.data || []).length > 0 && <Table><Thead><Th>{tr('Room')}</Th><Th>{tr('From')}</Th><Th>{tr('Until')}</Th><Th>{tr('Why')}</Th><Th></Th></Thead><tbody>{blocks.data.map((b) => <Tr key={b.block_id}><Td className="font-medium text-ink-900">{b.room_no}</Td><Td>{longDate(String(b.from_date).slice(0, 10))}</Td><Td>{longDate(String(b.to_date).slice(0, 10))}</Td><Td>{b.reason || '—'}</Td><Td className="text-right"><button type="button" onClick={() => release(b)} className="text-caption font-medium text-brand-600 hover:underline">{tr('Put back on sale')}</button></Td></Tr>)}</tbody></Table>}
       {f && (
-        <Modal title="Take a room out of sale" onClose={() => setF(null)}>
+        <Modal title={tr('Take a room out of sale')} onClose={() => setF(null)}>
           <form onSubmit={save} className="space-y-4"><Alert>{error}</Alert>
-            <Field id="bl-r" label="Room"><Select id="bl-r" value={f.room_id} onChange={(e) => setF((x) => ({ ...x, room_id: e.target.value }))}>{(rooms.data || []).map((r) => <option key={r.room_id} value={r.room_id}>{r.room_no} · {r.room_type}</option>)}</Select></Field>
-            <div className="grid gap-3 sm:grid-cols-2"><Field id="bl-f" label="First night"><Input id="bl-f" type="date" value={f.from_date} onChange={(e) => setF((x) => ({ ...x, from_date: e.target.value }))} required /></Field><Field id="bl-t" label="Back on sale on"><Input id="bl-t" type="date" value={f.to_date} onChange={(e) => setF((x) => ({ ...x, to_date: e.target.value }))} required /></Field></div>
-            <Field id="bl-w" label="Why"><Input id="bl-w" value={f.reason} onChange={(e) => setF((x) => ({ ...x, reason: e.target.value }))} placeholder="Repainting, plumbing, owner's guests…" /></Field>
-            <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setF(null)}>Cancel</Button><Button type="submit" loading={busy}>Take out of sale</Button></div>
+            <Field id="bl-r" label={tr('Room')}><Select id="bl-r" value={f.room_id} onChange={(e) => setF((x) => ({ ...x, room_id: e.target.value }))}>{(rooms.data || []).map((r) => <option key={r.room_id} value={r.room_id}>{r.room_no} · {r.room_type}</option>)}</Select></Field>
+            <div className="grid gap-3 sm:grid-cols-2"><Field id="bl-f" label={tr('First night')}><Input id="bl-f" type="date" value={f.from_date} onChange={(e) => setF((x) => ({ ...x, from_date: e.target.value }))} required /></Field><Field id="bl-t" label={tr('Back on sale on')}><Input id="bl-t" type="date" value={f.to_date} onChange={(e) => setF((x) => ({ ...x, to_date: e.target.value }))} required /></Field></div>
+            <Field id="bl-w" label={tr('Why')}><Input id="bl-w" value={f.reason} onChange={(e) => setF((x) => ({ ...x, reason: e.target.value }))} placeholder={tr('Repainting, plumbing, owner\'s guests…')} /></Field>
+            <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setF(null)}>{tr('Cancel')}</Button><Button type="submit" loading={busy}>{tr('Take out of sale')}</Button></div>
           </form>
         </Modal>
       )}
@@ -266,6 +271,7 @@ const BlocksTab = () => {
 /* ── settings ──────────────────────────────────────────────────────────── */
 
 const SettingsTab = () => {
+  const tr = useT();
   const s = useLoad('/hotel/settings');
   const [f, setF] = useState(null);
   const [busy, run] = useAction();
@@ -282,32 +288,33 @@ const SettingsTab = () => {
   return (
     <form onSubmit={save} className="max-w-3xl space-y-6">
       <Alert>{error}</Alert>
-      <Panel title="Check-in and check-out">
+      <Panel title={tr('Check-in and check-out')}>
         <div className="grid gap-3 sm:grid-cols-3">
-          <Field id="st-in" label="Check-in from"><Input id="st-in" type="time" value={v.check_in_time} onChange={set('check_in_time')} /></Field>
-          <Field id="st-out" label="Check-out by"><Input id="st-out" type="time" value={v.check_out_time} onChange={set('check_out_time')} /></Field>
-          <Field id="st-pre" label="Booking number prefix" hint="RES-00001, RES-00002…"><Input id="st-pre" value={v.res_prefix} onChange={set('res_prefix')} maxLength={8} /></Field>
+          <Field id="st-in" label={tr('Check-in from')}><Input id="st-in" type="time" value={v.check_in_time} onChange={set('check_in_time')} /></Field>
+          <Field id="st-out" label={tr('Check-out by')}><Input id="st-out" type="time" value={v.check_out_time} onChange={set('check_out_time')} /></Field>
+          <Field id="st-pre" label={tr('Booking number prefix')} hint={tr('RES-00001, RES-00002…')}><Input id="st-pre" value={v.res_prefix} onChange={set('res_prefix')} maxLength={8} /></Field>
         </div>
-        <div className="mt-4"><Field id="st-date" label="The hotel's date today" hint={s.data.audits === 0 ? 'You can set this until you run the first night audit. After that only night audit moves it.' : 'Only night audit moves this now.'}><Input id="st-date" type="date" value={v.business_date} onChange={set('business_date')} disabled={s.data.audits > 0} /></Field></div>
+        <div className="mt-4"><Field id="st-date" label={tr('The hotel\'s date today')} hint={s.data.audits === 0 ? tr('You can set this until you run the first night audit. After that only night audit moves it.') : tr('Only night audit moves this now.')}><Input id="st-date" type="date" value={v.business_date} onChange={set('business_date')} disabled={s.data.audits > 0} /></Field></div>
       </Panel>
-      <Panel title="GST on room tariff" lead="Room tariff is taxed by the rate charged for the night. Check the rates and the limit with your accountant; the law has changed more than once.">
+      <Panel title={tr('GST on room tariff')} lead="Room tariff is taxed by the rate charged for the night. Check the rates and the limit with your accountant; the law has changed more than once.">
         <div className="grid gap-3 sm:grid-cols-3">
-          <Field id="st-th" label="Limit a night" hint="Up to this, the lower rate applies"><Input id="st-th" type="number" min="0" step="any" value={v.tax_threshold} onChange={set('tax_threshold')} /></Field>
-          <Field id="st-lo" label="GST up to the limit (%)"><Input id="st-lo" type="number" min="0" max="100" step="any" value={v.tax_low_pct} onChange={set('tax_low_pct')} /></Field>
-          <Field id="st-hi" label="GST above the limit (%)"><Input id="st-hi" type="number" min="0" max="100" step="any" value={v.tax_high_pct} onChange={set('tax_high_pct')} /></Field>
+          <Field id="st-th" label={tr('Limit a night')} hint={tr('Up to this, the lower rate applies')}><Input id="st-th" type="number" min="0" step="any" value={v.tax_threshold} onChange={set('tax_threshold')} /></Field>
+          <Field id="st-lo" label={tr('GST up to the limit (%)')}><Input id="st-lo" type="number" min="0" max="100" step="any" value={v.tax_low_pct} onChange={set('tax_low_pct')} /></Field>
+          <Field id="st-hi" label={tr('GST above the limit (%)')}><Input id="st-hi" type="number" min="0" max="100" step="any" value={v.tax_high_pct} onChange={set('tax_high_pct')} /></Field>
         </div>
       </Panel>
-      <Panel title="Bookings"><Toggle id="st-ob" checked={v.allow_overbooking} onChange={(c) => setF({ ...v, allow_overbooking: c })} label="Allow more bookings than rooms" hint="Off is safer: the system refuses a booking when no room of that type is free." /></Panel>
-      <Button type="submit" loading={busy}>Save settings</Button>
+      <Panel title={tr('Bookings')}><Toggle id="st-ob" checked={v.allow_overbooking} onChange={(c) => setF({ ...v, allow_overbooking: c })} label={tr('Allow more bookings than rooms')} hint={tr('Off is safer: the system refuses a booking when no room of that type is free.')} /></Panel>
+      <Button type="submit" loading={busy}>{tr('Save settings')}</Button>
     </form>
   );
 };
 
 export default function HotelSetup() {
+  const tr = useT();
   const [tab, setTab] = useState('rooms');
   return (
     <div>
-      <PageHeader title="Hotel set-up" lead="Your rooms, rates and rules. Set these once, then the front desk takes it from there." />
+      <PageHeader title={tr('Hotel set-up')} lead={tr('Your rooms, rates and rules. Set these once, then the front desk takes it from there.')} />
       <Tabs tabs={TABS} value={tab} onChange={setTab} />
       {tab === 'rooms' && <RoomsTab />}
       {tab === 'rates' && <RatesTab />}

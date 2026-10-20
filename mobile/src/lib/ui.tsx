@@ -1,10 +1,13 @@
 import { ActivityIndicator, Pressable, Pressable as P2, ScrollView as S2, StyleSheet, Text, Text as T2, View, View as V2, type ViewStyle } from 'react-native';
 import { ago } from './ranges.ts';
+import { isOfflineMessage } from './net.ts';
 import { t, tx } from './i18n.ts';
 import type { ReactNode } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 
-export const color = { brand: '#0b57ff', ink: '#0f172a', soft: '#475569', line: '#e2e8f0', bg: '#f8fafc', card: '#ffffff', danger: '#b91c1c', ok: '#047857', warn: '#92400e' };
+import { color } from './theme.ts';
+/** The app's colours (lib/theme.ts): one shared object that follows the theme chosen in Settings > Display. */
+export { color };
 
 /** `selected` is for a choice among options (a payment method, a paper size): the chosen one is solid blue with a tick, the others are outlined, so it reads without relying on colour alone. */
 export const Button = ({ title, onPress, kind: asked = 'primary', busy = false, disabled = false, selected, style }: { title: string; onPress: () => void; kind?: 'primary' | 'quiet' | 'danger'; busy?: boolean; disabled?: boolean; selected?: boolean; style?: ViewStyle }) => {
@@ -24,19 +27,23 @@ export const Title = ({ children }: { children: ReactNode }) => <Text accessibil
 export const Soft = ({ children, style }: { children: ReactNode; style?: object }) => <Text style={[s.soft, style]}>{tx(children)}</Text>;
 export const ErrorText = ({ children }: { children: ReactNode }) => (children ? <Text accessibilityRole="alert" style={s.error}>{children}</Text> : null);
 
-export const s = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
   title: { fontSize: 24, fontWeight: '700', color: color.ink },
   soft: { color: color.soft, fontSize: 14 },
   error: { color: color.danger, fontSize: 14, marginVertical: 6 },
   button: { minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
   primary: { backgroundColor: color.brand },
-  quiet: { backgroundColor: '#eaf1ff', borderWidth: 1, borderColor: '#b9ceff' },
-  dangerBtn: { backgroundColor: '#fee2e2' },
+  quiet: { backgroundColor: color.tint, borderWidth: 1, borderColor: color.tintLine },
+  dangerBtn: { backgroundColor: color.dangerBg },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   input: { minHeight: 48, borderWidth: 1, borderColor: color.line, borderRadius: 12, paddingHorizontal: 14, fontSize: 16, backgroundColor: color.card, color: color.ink },
   card: { backgroundColor: color.card, borderRadius: 14, borderWidth: 1, borderColor: color.line, padding: 14 }
 });
+
+export const s = makeStyles();
+/** After the theme changes: the shared styles take the new colours (the screens then redraw, see app/_layout.tsx). */
+export const rebuildStyles = () => { Object.assign(s, makeStyles()); };
 
 /* ── pieces shared by the pages ───────────────────────────────────────── */
 
@@ -64,8 +71,8 @@ export const Stat = ({ label, value, note, tone }: { label: string; value: strin
 /** A label on the left and a value on the right, in a list. */
 export const Line = ({ left, right, sub, onPress, icon, selected }: { left: string; right?: string; sub?: string; onPress?: () => void; icon?: React.ComponentProps<typeof Ionicons>['name']; selected?: boolean }) => (
   <P2 disabled={!onPress} onPress={onPress} accessibilityRole={onPress ? 'button' : undefined} accessibilityState={selected === undefined ? undefined : { selected }} android_ripple={onPress ? { color: '#0b57ff22' } : undefined}
-    style={({ pressed }) => ({ minHeight: 56, paddingLeft: 11, paddingRight: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: pressed || selected ? '#dbe7ff' : color.card, borderLeftWidth: 5, borderLeftColor: selected ? color.brand : 'transparent', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 })}>
-    {icon ? <V2 style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#eaf1ff', alignItems: 'center', justifyContent: 'center' }}><Ionicons name={icon} size={20} color={color.brand} /></V2> : null}
+    style={({ pressed }) => ({ minHeight: 56, paddingLeft: 11, paddingRight: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: pressed || selected ? color.press : color.card, borderLeftWidth: 5, borderLeftColor: selected ? color.brand : 'transparent', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 })}>
+    {icon ? <V2 style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: color.tint, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={icon} size={20} color={color.brand} /></V2> : null}
     <V2 style={{ flex: 1 }}>
       <T2 style={{ fontSize: 16, color: color.ink }}>{t(left)}</T2>
       {sub ? <T2 style={{ color: color.soft, fontSize: 13 }}>{t(sub)}</T2> : null}
@@ -90,8 +97,15 @@ export const Loading = ({ what = 'Loading' }: { what?: string }) => (
 );
 
 /** Something failed: what happened, in the server's words, and a way to try again. */
-export const Failed = ({ message, onRetry }: { message: string; onRetry?: () => void }) => (
-  <V2 accessibilityRole="alert" style={[s.card, { margin: 16, gap: 10, borderColor: '#fecaca', backgroundColor: '#fef2f2' }]}>
+export const Failed = ({ message, onRetry }: { message: string; onRetry?: () => void }) => isOfflineMessage(message) ? (
+  <V2 accessibilityRole="alert" style={[s.card, { margin: 16, gap: 10, alignItems: 'center', borderColor: color.warnLine, backgroundColor: color.warnBg }]}>
+    <Ionicons name="cloud-offline-outline" size={40} color={color.warn} />
+    <T2 style={{ color: color.warn, fontWeight: '700', fontSize: 18 }}>{t('No internet')}</T2>
+    <T2 style={{ color: color.ink, textAlign: 'center' }}>{t('This needs a connection. Check your Wi-Fi or mobile data, then try again. Bills you make are saved on this phone and sent later.')}</T2>
+    {onRetry ? <Button title="Try again" onPress={onRetry} /> : null}
+  </V2>
+) : (
+  <V2 accessibilityRole="alert" style={[s.card, { margin: 16, gap: 10, borderColor: color.dangerLine, backgroundColor: color.dangerBg }]}>
     <T2 style={{ color: color.danger, fontWeight: '600' }}>{message}</T2>
     {onRetry ? <Button title="Try again" kind="quiet" onPress={onRetry} /> : null}
   </V2>

@@ -455,8 +455,8 @@ const settingsShape = (s) => ({
   distributor_enabled: Boolean(s.distributor_enabled), scheme_stacking: s.scheme_stacking || 'BEST', visit_location: Boolean(s.visit_location),
   field_collections: s.field_collections !== false, credit_manager_override: s.credit_manager_override !== false
 });
-/** A DISTRIBUTOR business always has the distributor features; a WHOLESALE business can switch them on. */
-const withMode = (req, shaped) => ({ ...shaped, distributor_enabled: req.tenant.businessType === 'DISTRIBUTOR' || shaped.distributor_enabled, distributor_locked: req.tenant.businessType === 'DISTRIBUTOR' });
+/** A DISTRIBUTOR business always has the distributor features; a WHOLESALE business has them when the FlowXP team switched them on (Super Admin). The owner sees the state but cannot change it. */
+const withMode = (req, shaped) => ({ ...shaped, distributor_enabled: req.tenant.businessType === 'DISTRIBUTOR' || shaped.distributor_enabled, distributor_locked: true });
 
 const getSettingsEndpoint = async (req, res) => ok(res, withMode(req, settingsShape(await getSettings(pool, req.tenant.businessId))));
 
@@ -488,7 +488,7 @@ const updateSettings = async (req, res) => {
     if (!/^[A-Za-z0-9]{1,8}$/.test(f.order_prefix)) throw new WholesaleError(400, 'The order prefix is letters and digits only');
     f.order_prefix = f.order_prefix.toUpperCase();
   }
-  if ('distributor_enabled' in b) f.distributor_enabled = req.tenant.businessType === 'DISTRIBUTOR' ? true : bool(b.distributor_enabled);
+  // distributor_enabled is not the owner's to change: it is set by FlowXP in the Super Admin (PATCH /api/admin/businesses/:id/plan)
   if ('scheme_stacking' in b) f.scheme_stacking = oneOf(b.scheme_stacking, 'Scheme stacking', ['BEST', 'ALL'], { required: true });
   if ('visit_location' in b) f.visit_location = bool(b.visit_location);
   if ('field_collections' in b) f.field_collections = bool(b.field_collections);

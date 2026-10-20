@@ -13,6 +13,7 @@ import pool from '../config/database.js';
 import { sendMail } from '../modules/mailer.js';
 import { toRupees } from '../utils/money.js';
 import { computeLineTax, isInterState, sumLines } from '../modules/tax.js';
+import { purchaseReverseCharge, purchaseTotal } from '../modules/gstOptions.js';
 import { nextPoNumber, paymentStatus } from './purchases.controller.js';
 import { listPrices } from './supplierPrices.controller.js';
 import { addToBatch, batchTracked, lockProducts, logDamaged, stockIn } from '../modules/wholesale/stock.js';
@@ -32,7 +33,7 @@ const poShape = (r) => ({
   po_id: r.po_id, po_number: r.po_number, po_date: r.po_date, status: r.status, supplier_id: r.supplier_id, supplier: r.supplier_name, branch_id: r.branch_id, warehouse: r.warehouse_name,
   subtotal: rupees(r.subtotal_paise), tax: rupees(r.tax_paise), total: rupees(r.total_paise), paid: rupees(r.amount_paid_paise), balance: rupees(r.balance_due_paise), debited: rupees(r.debited_paise),
   payment_status: r.payment_status, expected_date: r.expected_date, payment_terms_days: r.payment_terms_days, supplier_invoice_no: r.supplier_invoice_no, supplier_invoice_date: r.supplier_invoice_date,
-  due_date: r.due_date, approved_at: r.approved_at, approved_by: r.approved_by_name ?? null, notes: r.notes, created_at: r.created_at, received_at: r.received_at
+  due_date: r.due_date, reverse_charge: Boolean(r.reverse_charge), approved_at: r.approved_at, approved_by: r.approved_by_name ?? null, notes: r.notes, created_at: r.created_at, received_at: r.received_at
 });
 
 const PO_FROM = `FROM purchase_orders po LEFT JOIN suppliers s ON s.supplier_id = po.supplier_id LEFT JOIN branches b ON b.branch_id = po.branch_id LEFT JOIN users au ON au.user_id = po.approved_by`;
@@ -151,12 +152,15 @@ const createPO = async (req, res) => {
   const id = await withTransaction(async (client) => {
     const { lines, supplier } = await prepare(client, req, { supplierId, items: b.items, branchId });
     const totals = sumLines(lines.map((l) => l.tax));
+    const rcm = await purchaseReverseCharge(client, req.tenant.businessId, b.reverse_charge);
+    if (rcm.problem) throw new WholesaleError(400, rcm.problem);
+    totals.total_paise = purchaseTotal(totals.subtotal_paise, totals.tax_paise, rcm.on);
     const settings = await getSettings(client, req.tenant.businessId);
     const terms = 'payment_terms_days' in b ? int(b.payment_terms_days, 'Payment terms', { min: 0, max: 365 }) : (supplier.payment_terms_days ?? settings.default_payment_terms_days);
     const po = (await client.query(
-      `INSERT INTO purchase_orders (business_id, branch_id, supplier_id, po_number, po_date, subtotal_paise, tax_paise, total_paise, balance_due_paise, payment_status, status, source, expected_date, notes, created_by, payment_terms_days)
-       VALUES ($1,$2,$3,$4,CURRENT_DATE,$5,$6,$7,$7,'UNPAID','DRAFT','MANUAL',$8,$9,$10,$11) RETURNING po_id`,
-      [req.tenant.businessId, branchId, supplierId, await nextPoNumber(client, req.tenant.businessId), totals.subtotal_paise, totals.tax_paise, totals.total_paise, isoDate(b.expected_date, 'Expected date'), text(b.notes, 'Notes', { max: 1000 }), req.auth.userId, terms])).rows[0];
+      `INSERT INTO purchase_orders (business_id, branch_id, supplier_id, po_number, po_date, subtotal_paise, tax_paise, total_paise, balance_due_paise, payment_status, status, source, expected_date, notes, created_by, payment_terms_days, reverse_charge)
+       VALUES ($1,$2,$3,$4,CURRENT_DATE,$5,$6,$7,$7,'UNPAID','DRAFT','MANUAL',$8,$9,$10,$11,$12) RETURNING po_id`,
+      [req.tenant.businessId, branchId, supplierId, await nextPoNumber(client, req.tenant.businessId), totals.subtotal_paise, totals.tax_paise, totals.total_paise, isoDate(b.expected_date, 'Expected date'), text(b.notes, 'Notes', { max: 1000 }), req.auth.userId, terms, rcm.on])).rows[0];
     await writePOLines(client, po.po_id, lines);
     return po.po_id;
   });
@@ -175,11 +179,21 @@ const updatePO = async (req, res) => {
     if ('notes' in b) f.notes = text(b.notes, 'Notes', { max: 1000 });
     if ('payment_terms_days' in b) f.payment_terms_days = int(b.payment_terms_days, 'Payment terms', { min: 0, max: 365 });
     if ('supplier_id' in b) f.supplier_id = int(b.supplier_id, 'Supplier', { min: 1, required: true });
+    let reverse = Boolean(po.reverse_charge);
+    if ('reverse_charge' in b) {
+      const rcm = await purchaseReverseCharge(client, req.tenant.businessId, b.reverse_charge === true);
+      if (rcm.problem) throw new WholesaleError(400, rcm.problem);
+      reverse = rcm.on; f.reverse_charge = reverse;
+    }
     if (Array.isArray(b.items)) {
       const { lines } = await prepare(client, req, { supplierId: f.supplier_id ?? po.supplier_id, items: b.items, branchId: po.branch_id });
       const totals = sumLines(lines.map((l) => l.tax));
       await writePOLines(client, po.po_id, lines);
-      Object.assign(f, { subtotal_paise: totals.subtotal_paise, tax_paise: totals.tax_paise, total_paise: totals.total_paise, balance_due_paise: totals.total_paise });
+      const owed = purchaseTotal(totals.subtotal_paise, totals.tax_paise, reverse);
+      Object.assign(f, { subtotal_paise: totals.subtotal_paise, tax_paise: totals.tax_paise, total_paise: owed, balance_due_paise: owed });
+    } else if ('reverse_charge' in b) {
+      const owed = purchaseTotal(po.subtotal_paise, po.tax_paise, reverse);
+      Object.assign(f, { total_paise: owed, balance_due_paise: owed });
     }
     const keys = Object.keys(f); if (!keys.length) throw new WholesaleError(400, 'Nothing to update');
     await client.query(`UPDATE purchase_orders SET ${keys.map((k, i) => `${k} = $${i + 2}`).join(', ')} WHERE po_id = $1`, [po.po_id, ...keys.map((k) => f[k])]);
@@ -370,10 +384,12 @@ const createGRN = async (req, res) => {
 
     const supplierState = supplier.state;
     if (direct) {
+      const rcm = await purchaseReverseCharge(client, req.tenant.businessId, b.reverse_charge);
+      if (rcm.problem) throw new WholesaleError(400, rcm.problem);
       po = (await client.query(
-        `INSERT INTO purchase_orders (business_id, branch_id, supplier_id, po_number, po_date, subtotal_paise, tax_paise, total_paise, balance_due_paise, payment_status, status, source, notes, created_by, received_at, approved_by, approved_at)
-         VALUES ($1,$2,$3,$4,$5,0,0,0,0,'UNPAID','RECEIVED','MANUAL',$6,$7,CURRENT_TIMESTAMP,$7,CURRENT_TIMESTAMP) RETURNING *`,
-        [req.tenant.businessId, branchId, supplierId, await nextPoNumber(client, req.tenant.businessId), date, `Direct purchase (${grnNumber})`, req.auth.userId])).rows[0];
+        `INSERT INTO purchase_orders (business_id, branch_id, supplier_id, po_number, po_date, subtotal_paise, tax_paise, total_paise, balance_due_paise, payment_status, status, source, notes, created_by, received_at, approved_by, approved_at, reverse_charge)
+         VALUES ($1,$2,$3,$4,$5,0,0,0,0,'UNPAID','RECEIVED','MANUAL',$6,$7,CURRENT_TIMESTAMP,$7,CURRENT_TIMESTAMP,$8) RETURNING *`,
+        [req.tenant.businessId, branchId, supplierId, await nextPoNumber(client, req.tenant.businessId), date, `Direct purchase (${grnNumber})`, req.auth.userId, rcm.on])).rows[0];
       for (const l of lineRows) {
         const row = (await client.query(
           `INSERT INTO purchase_order_items (po_id, product_id, description, quantity, unit_cost_paise, tax_rate, tax_amount_paise, line_total_paise, unit_name, unit_factor, received_quantity)
@@ -415,7 +431,7 @@ const createGRN = async (req, res) => {
     const stillOwed = items.some((i) => Number(i.received_quantity ?? 0) < Number(i.quantity) - 1e-9);
     const totals = (await client.query(
       `SELECT COALESCE(SUM(line_total_paise - tax_amount_paise), 0) AS sub, COALESCE(SUM(tax_amount_paise), 0) AS tax, COALESCE(SUM(line_total_paise), 0) AS total FROM purchase_order_items WHERE po_id = $1 AND received_quantity IS NOT NULL`, [po.po_id])).rows[0];
-    const total = Number(totals.total);
+    const total = purchaseTotal(totals.sub, totals.tax, po.reverse_charge);
     let paid = 0;
     if (b.payment?.amount != null && b.payment.amount !== '') { paid = Math.round(Number(b.payment.amount) * 100); if (!(paid > 0)) throw new WholesaleError(400, 'Payment amount must be above zero'); }
     const amountPaid = Number(po.amount_paid_paise) + paid;

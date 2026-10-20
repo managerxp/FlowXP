@@ -15,6 +15,16 @@
         "EXPO_PUBLIC_API_URL": "http://10.0.2.2:5100"
       }
     },
+    "test": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "test",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-YOUR-TEST-SERVER"
+      }
+    },
     "preview": {
       "distribution": "internal",
       "android": {

@@ -1,3 +1,4 @@
+import { formatDate } from '../../lib/display.ts';
 import { ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,7 +19,7 @@ export default function ReturnDetailScreen() {
     <SafeAreaView style={s.screen}>
       <Page>
         <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-          <View style={{ flex: 1 }}><Title>{x?.return_number ?? 'Return'}</Title>{x ? <Soft>{`${x.customer ?? x.supplier ?? ''} · ${String(x.created_at).slice(0, 10)}`}</Soft> : null}</View>
+          <View style={{ flex: 1 }}><Title>{x?.return_number ?? 'Return'}</Title>{x ? <Soft>{`${x.customer ?? x.supplier ?? ''} · ${formatDate(x.created_at)}`}</Soft> : null}</View>
           <Button title="Back" kind="quiet" onPress={() => goBack()} />
         </View>
         {r.busy && !x ? <Loading /> : null}

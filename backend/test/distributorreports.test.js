@@ -9,6 +9,9 @@ import { addCustomer, addProduct, dayFromNow, invoiceRow, makeInvoice, makeWhole
 
 const { pool, skip, cleanup } = await setupTestDb();
 const { runMigrations } = await import('../src/config/migrate.js');
+const admin = await import('../src/controllers/admin.controller.js');
+/** What the FlowXP team does in the Super Admin: switch the distributor tools on or off for one business. */
+const setDistributor = async (w, on) => { const res = { code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } }; await admin.updateBusinessPlan({ params: { id: w.businessId }, body: { distributor_enabled: on }, auth: { userId: null } }, res); assert.equal(res.code, 200, JSON.stringify(res.body)); return res; };
 const reports = (await import('../src/controllers/wholesaleReports.controller.js')).default;
 const dash = (await import('../src/controllers/distributorDashboard.controller.js')).default;
 const team = (await import('../src/controllers/distributorTeam.controller.js')).default;
@@ -187,7 +190,7 @@ t('the report catalogue shows distributor reports only to a distributor', async 
   assert.ok((await keys(d)).includes('principal_settlement')); assert.ok((await keys(d)).includes('sales_summary'));
   assert.ok(!(await keys(wh)).includes('principal_settlement'));
   assert.equal((await wh.call(reports.run, { params: { key: 'principal_settlement' }, query: {} })).code, 404);
-  await wh.call(parties.updateSettings, { body: { distributor_enabled: true } });
+  await setDistributor(wh, true);
   assert.ok((await keys(wh)).includes('principal_settlement'));
   assert.ok(catalogue({ distributor: true }).length > catalogue().length);
   assert.equal((await d.call(reports.run, { params: { key: 'secondary_sales' }, query: {} }, d.tenantFor('FIELD_SALES'))).code, 200, 'the handler gate is the route’s permission');

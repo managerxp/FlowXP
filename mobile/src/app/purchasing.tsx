@@ -1,3 +1,4 @@
+import { formatDate } from '../lib/display.ts';
 import { useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { router } from 'expo-router';
@@ -49,11 +50,11 @@ export default function Purchasing() {
         {show === 'due' ? (
           <ColumnList style={{ flex: 1, marginTop: 8 }} data={due.data ?? []} keyExtractor={(d) => String(d.po_id)} refreshing={due.busy} onRefresh={() => { void due.refresh(); }}
             ListEmptyComponent={due.data ? <Empty>Nothing is due to arrive. Orders that are approved and not yet delivered show here.</Empty> : null}
-            renderItem={({ item: d }) => <Line left={`${d.po_number} · ${d.supplier}`} sub={`${d.units} units still due on ${d.lines} product${d.lines === 1 ? '' : 's'}${d.expected_date ? ` · expected ${String(d.expected_date).slice(0, 10)}` : ''}`} right={d.status === 'PARTIAL' ? 'Part' : undefined} onPress={() => router.push({ pathname: '/purchase-order/[id]', params: { id: String(d.po_id) } })} />} />
+            renderItem={({ item: d }) => <Line left={`${d.po_number} · ${d.supplier}`} sub={`${d.units} units still due on ${d.lines} product${d.lines === 1 ? '' : 's'}${d.expected_date ? ` · expected ${formatDate(d.expected_date)}` : ''}`} right={d.status === 'PARTIAL' ? 'Part' : undefined} onPress={() => router.push({ pathname: '/purchase-order/[id]', params: { id: String(d.po_id) } })} />} />
         ) : (
           <ColumnList style={{ flex: 1, marginTop: 8 }} data={list.data ?? []} keyExtractor={(p) => String(p.po_id)} refreshing={list.busy} onRefresh={() => { void list.refresh(); }} keyboardShouldPersistTaps="handled"
             ListEmptyComponent={list.data ? <Empty>No orders here.</Empty> : null}
-            renderItem={({ item: p }) => <Line left={`${p.po_number} · ${p.supplier}`} sub={`${String(p.po_date).slice(0, 10)} · ${PO_LABEL[p.status]}${p.balance > 0 && ['PARTIAL', 'RECEIVED'].includes(p.status) ? ` · owe ${money(p.balance)}` : ''}`} right={money(p.total)} onPress={() => router.push({ pathname: '/purchase-order/[id]', params: { id: String(p.po_id) } })} />} />
+            renderItem={({ item: p }) => <Line left={`${p.po_number} · ${p.supplier}`} sub={`${formatDate(p.po_date)} · ${PO_LABEL[p.status]}${p.balance > 0 && ['PARTIAL', 'RECEIVED'].includes(p.status) ? ` · owe ${money(p.balance)}` : ''}`} right={money(p.total)} onPress={() => router.push({ pathname: '/purchase-order/[id]', params: { id: String(p.po_id) } })} />} />
         )}
       </Page>
     </SafeAreaView>

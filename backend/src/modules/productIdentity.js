@@ -191,8 +191,9 @@ export const findByCode = async (db, businessId, code) => {
     `SELECT product_id, name, sku, status, 'barcode' AS matched_on FROM products WHERE business_id = $1 AND product_id IN (SELECT product_id FROM product_barcodes WHERE business_id = $1 AND barcode = $2)
      UNION ALL SELECT product_id, name, sku, status, 'sku' FROM products WHERE business_id = $1 AND sku IS NOT NULL AND sku <> '' AND lower(sku) = lower($2)
      UNION ALL SELECT product_id, name, sku, status, 'erp_code' FROM products WHERE business_id = $1 AND erp_code IS NOT NULL AND erp_code <> '' AND lower(erp_code) = lower($2)
-     UNION ALL SELECT p.product_id, p.name, p.sku, p.status, 'supplier_code' FROM product_supplier_codes c JOIN products p ON p.product_id = c.product_id WHERE c.business_id = $1 AND lower(c.code) = lower($2)`,
-    [businessId, text]
+     UNION ALL SELECT p.product_id, p.name, p.sku, p.status, 'supplier_code' FROM product_supplier_codes c JOIN products p ON p.product_id = c.product_id WHERE c.business_id = $1 AND lower(c.code) = lower($2)
+     UNION ALL SELECT p.product_id, p.name, p.sku, p.status, 'part_number' FROM autoparts_part_numbers n JOIN products p ON p.product_id = n.product_id WHERE n.business_id = $1 AND $3::text <> '' AND n.key = $3`,
+    [businessId, text, text.toUpperCase().replace(/[^A-Z0-9]/g, '')]
   );
   const seen = new Map();
   for (const row of rows) if (!seen.has(row.product_id)) seen.set(row.product_id, row);
@@ -212,6 +213,14 @@ export const searchClause = (search, values, business = '$1') => {
     const like = `$${values.length}`;
     values.push(word);
     const exact = `$${values.length}`;
+    // a spare part is also found by any of its part numbers, typed with or without dashes and spaces (a no-op for a shop that has none)
+    const partKey = word.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    let numberUnion = '';
+    if (partKey.length >= 3 && /\d/.test(partKey)) {
+      values.push(`%${likeEscape(partKey)}%`);
+      numberUnion = `
+      UNION SELECT product_id FROM autoparts_part_numbers WHERE business_id = ${business} AND key LIKE $${values.length}`;
+    }
     // One index lookup per place a word can match, unioned: an OR of EXISTS checks per product row can use none of
     // the indexes and reads the whole catalogue (it took 200-600 ms at 100,000 products).
     return `p.product_id IN (
@@ -219,7 +228,7 @@ export const searchClause = (search, values, business = '$1') => {
       UNION SELECT product_id FROM products WHERE business_id = ${business} AND brand_id IN (SELECT brand_id FROM brands WHERE business_id = ${business} AND lower(name) LIKE ${like})
       UNION SELECT product_id FROM product_barcodes WHERE business_id = ${business} AND barcode = ${exact}
       UNION SELECT product_id FROM product_aliases WHERE business_id = ${business} AND alias_key LIKE ${like}
-      UNION SELECT product_id FROM product_supplier_codes WHERE business_id = ${business} AND lower(code) LIKE ${like})`;
+      UNION SELECT product_id FROM product_supplier_codes WHERE business_id = ${business} AND lower(code) LIKE ${like}${numberUnion})`;
   });
   return parts.join(' AND ');
 };

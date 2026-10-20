@@ -10,6 +10,7 @@ import type { SalesReport } from '../lib/types.ts';
 import { qty, rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
 import { averageBill, insights, profitNote, type Profit } from '../lib/reportsView.ts';
+import AskReports from '../lib/AskReports.tsx';
 import { Button, Chips, Empty, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
 
 const money = (r: number) => rupees(toPaise(r));
@@ -41,6 +42,7 @@ export default function Reports() {
         {busy && !r ? <Loading /> : null}
         {r ? (
           <ScrollView refreshControl={<RefreshControl refreshing={busy} onRefresh={() => { void refresh(); }} />} contentContainerStyle={{ paddingBottom: 32 }}>
+            <AskReports />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 16 }}>
               <Stat label={rangeId === 'today' ? "Today's sales" : 'Sales'} value={money(r.total_sales)} />
               <Stat label="Bills" value={String(r.invoice_count)} />

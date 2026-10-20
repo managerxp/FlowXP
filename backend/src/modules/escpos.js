@@ -49,7 +49,7 @@ class Job {
   half(fn) { const full = this.cols; this.cols = Math.floor(full / 2); try { fn(this); } finally { this.cols = full; } return this; }
   rule(ch = '-') { return this.line(ch.repeat(this.cols)); }
   feed(n = 1) { return this.raw(ESC, 0x64, n); }
-  cut() { return this.feed(3).raw(GS, 0x56, 0x42, 0x03); }
+  cut(feed = 3) { return this.feed(feed).raw(GS, 0x56, 0x42, 0x03); }
   /** The printer's own QR code (model 2). */
   qr(data, size = 5) {
     const bytes = [...Buffer.from(data, 'utf8')];
@@ -75,7 +75,13 @@ const stamp = (iso) => (iso ? new Date(iso).toLocaleString('en-IN', { day: '2-di
  * @param opts { cols, drawer, cut }
  */
 /* `upi` (rupees) is an amount being collected by UPI right now: the QR is printed for exactly that, even when the receipt setting that shows the balance QR is off. */
-export const receiptBytes = ({ business, settings = {}, invoice }, { cols = 48, drawer = false, cut = true, upi: upiAmount = null } = {}) => {
+export const receiptBytes = ({ business, settings = {}, invoice }, opts = {}) => {
+  // the business's copies setting prints the whole receipt again; the drawer opens once
+  const copies = Math.min(5, Math.max(1, Number(settings.copies) || 1));
+  return Buffer.concat(Array.from({ length: copies }, (_, i) => oneReceipt({ business, settings, invoice }, { ...opts, drawer: opts.drawer && i === 0 })));
+};
+
+const oneReceipt = ({ business, settings = {}, invoice }, { cols = 48, drawer = false, cut = true, upi: upiAmount = null } = {}) => {
   const j = new Job(cols);
   const outlet = invoice.outlet;
   const gstin = outlet?.gstin || business.gstin;
@@ -129,7 +135,9 @@ export const receiptBytes = ({ business, settings = {}, invoice }, { cols = 48, 
   if (settings.footer) j.rule().align('center').wrap(settings.footer).align('left');
 
   if (drawer) j.drawer();
-  return (cut ? j.cut() : j.feed(2)).bytes();
+  const blank = Number.isInteger(settings.extra_lines) ? settings.extra_lines : 3;
+  // auto-cut is on unless the business turned it off; a printer with no cutter just feeds
+  return (cut && settings.auto_cut !== false ? j.cut(blank) : j.feed(Math.max(blank, 2))).bytes();
 };
 
 /** One printable slip per kitchen station: [{ station, bytes }]. */

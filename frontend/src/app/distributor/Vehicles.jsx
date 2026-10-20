@@ -13,8 +13,10 @@ import { Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Tabl
 import { Chips, NumberField, Toolbar, useAction } from '../wholesale/parts.jsx';
 import { WarehouseSelect } from '../wholesale/parts.jsx';
 import { SalespersonSelect } from './parts.jsx';
+import { T, useT } from '../../i18n/useT.js';
 
 export const VehicleForm = ({ vehicle, onClose, onSaved }) => {
+  const tr = useT();
   const editing = Boolean(vehicle?.vehicle_id);
   const staff = useLoad('/staff').data || [];
   const [f, setF] = useState(() => ({ vehicle_no: vehicle?.vehicle_no || '', branch_id: vehicle?.branch_id ?? '', driver_name: vehicle?.driver_name || '', driver_user_id: vehicle?.driver_user_id ?? '', salesperson_id: vehicle?.salesperson_id ?? '', route: vehicle?.route || '', capacity_kg: vehicle?.capacity_kg ?? '', notes: vehicle?.notes || '', status: vehicle?.status || 'ACTIVE' }));
@@ -26,25 +28,26 @@ export const VehicleForm = ({ vehicle, onClose, onSaved }) => {
     if (r) onSaved(r);
   };
   return (
-    <Modal title={editing ? `Edit ${vehicle.vehicle_no}` : 'Add a vehicle'} onClose={onClose}>
+    <Modal title={editing ? `Edit ${vehicle.vehicle_no}` : tr('Add a vehicle')} onClose={onClose}>
       <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field id="vf-no" label="Vehicle number"><Input id="vf-no" value={f.vehicle_no} onChange={(e) => setF((x) => ({ ...x, vehicle_no: e.target.value.toUpperCase() }))} autoFocus maxLength={20} placeholder="TS09UB1234" /></Field>
-          <WarehouseSelect id="vf-wh" label="Loads from" value={f.branch_id} onChange={(v) => setF((x) => ({ ...x, branch_id: v }))} />
-          <Field id="vf-driver" label="Driver"><Input id="vf-driver" value={f.driver_name} onChange={set('driver_name')} maxLength={120} /></Field>
-          <Field id="vf-login" label="Driver’s sign-in" hint="Optional"><Select id="vf-login" value={f.driver_user_id} onChange={set('driver_user_id')}><option value="">None</option>{staff.map((s) => <option key={s.user_id} value={s.user_id}>{s.name}</option>)}</Select></Field>
-          <SalespersonSelect id="vf-rep" value={f.salesperson_id} onChange={set('salesperson_id')} label="Salesperson on this van" />
-          <NumberField id="vf-cap" label="Capacity" suffix="kg" value={f.capacity_kg} onChange={set('capacity_kg')} />
-          <div className="sm:col-span-2"><Field id="vf-route" label="Route"><Input id="vf-route" value={f.route} onChange={set('route')} maxLength={160} placeholder="Ameerpet – SR Nagar – Kukatpally" /></Field></div>
-          {editing && <Field id="vf-status" label="Status"><Select id="vf-status" value={f.status} onChange={set('status')}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></Select></Field>}
+          <Field id="vf-no" label={tr('Vehicle number')}><Input id="vf-no" value={f.vehicle_no} onChange={(e) => setF((x) => ({ ...x, vehicle_no: e.target.value.toUpperCase() }))} autoFocus maxLength={20} placeholder={tr('TS09UB1234')} /></Field>
+          <WarehouseSelect id="vf-wh" label={tr('Loads from')} value={f.branch_id} onChange={(v) => setF((x) => ({ ...x, branch_id: v }))} />
+          <Field id="vf-driver" label={tr('Driver')}><Input id="vf-driver" value={f.driver_name} onChange={set('driver_name')} maxLength={120} /></Field>
+          <Field id="vf-login" label={tr('Driver’s sign-in')} hint={tr('Optional')}><Select id="vf-login" value={f.driver_user_id} onChange={set('driver_user_id')}><option value="">{tr('None')}</option>{staff.map((s) => <option key={s.user_id} value={s.user_id}>{s.name}</option>)}</Select></Field>
+          <SalespersonSelect id="vf-rep" value={f.salesperson_id} onChange={set('salesperson_id')} label={tr('Salesperson on this van')} />
+          <NumberField id="vf-cap" label={tr('Capacity')} suffix="kg" value={f.capacity_kg} onChange={set('capacity_kg')} />
+          <div className="sm:col-span-2"><Field id="vf-route" label={tr('Route')}><Input id="vf-route" value={f.route} onChange={set('route')} maxLength={160} placeholder={tr('Ameerpet – SR Nagar – Kukatpally')} /></Field></div>
+          {editing && <Field id="vf-status" label={tr('Status')}><Select id="vf-status" value={f.status} onChange={set('status')}><option value="ACTIVE">{tr('Active')}</option><option value="INACTIVE">{tr('Inactive')}</option></Select></Field>}
         </div>
-        <div className="flex justify-end gap-2 border-t border-line pt-4"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={save} loading={busy} disabled={f.vehicle_no.trim().length < 4}>{editing ? 'Save' : 'Add vehicle'}</Button></div>
+        <div className="flex justify-end gap-2 border-t border-line pt-4"><Button variant="ghost" onClick={onClose}>{tr('Cancel')}</Button><Button onClick={save} loading={busy} disabled={f.vehicle_no.trim().length < 4}>{editing ? tr('Save') : tr('Add vehicle')}</Button></div>
       </div>
     </Modal>
   );
 };
 
 const Vehicles = () => {
+  const tr = useT();
   const { can } = useAuth();
   const navigate = useNavigate();
   const [status, setStatus] = useState('ACTIVE');
@@ -52,11 +55,11 @@ const Vehicles = () => {
   const { data, loading, error } = useLoad(`/distributor/vehicles?status=${status}`);
   return (
     <div>
-      <PageHeader title="Vehicle stock" lead="Warehouse → van → retailer. Load a van, sell from it, count what is left at the end of the day." action={can('vehicles') && <Button onClick={() => setAdding(true)}><Plus aria-hidden="true" className="h-4 w-4" />Add vehicle</Button>} />
-      <Toolbar><Chips label="Status" value={status} onChange={setStatus} options={[{ value: 'ACTIVE', label: 'Active' }, { value: 'INACTIVE', label: 'Inactive' }, { value: 'ALL', label: 'All' }]} /></Toolbar>
-      <ListState loading={loading && !data} error={error} empty={data?.length === 0} emptyIcon={Container} emptyLabel="No vehicles" emptyBody="Add the vans that carry stock to your retailers." emptyAction={can('vehicles') ? <Button onClick={() => setAdding(true)}>Add a vehicle</Button> : undefined} />
-      {data?.length > 0 && <Table><Thead><Th>Vehicle</Th><Th>Driver</Th><Th>Salesperson</Th><Th>Loads from</Th><Th>Route</Th><Th className="text-right">Items on board</Th><Th className="text-right">Stock value</Th></Thead>
-        <tbody>{data.map((v) => <Tr key={v.vehicle_id} onClick={() => navigate(`/app/distributor/vehicles/${v.vehicle_id}`)}><Td className="font-medium text-brand-700">{v.vehicle_no}{v.status === 'INACTIVE' && <Badge tone="warning">Inactive</Badge>}</Td><Td>{v.driver_name || '—'}</Td><Td>{v.salesperson || '—'}</Td><Td className="text-ink-500">{v.warehouse}</Td><Td className="max-w-48 truncate text-ink-500">{v.route || '—'}</Td><Td className="text-right tabular">{v.items}</Td><Td className="text-right tabular">{v.items ? money(v.stock_value) : '—'}</Td></Tr>)}</tbody></Table>}
+      <PageHeader title={tr('Vehicle stock')} lead={tr('Warehouse → van → retailer. Load a van, sell from it, count what is left at the end of the day.')} action={can('vehicles') && <Button onClick={() => setAdding(true)}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add vehicle')}</Button>} />
+      <Toolbar><Chips label={tr('Status')} value={status} onChange={setStatus} options={[{ value: 'ACTIVE', label: T('Active') }, { value: 'INACTIVE', label: T('Inactive') }, { value: 'ALL', label: T('All') }]} /></Toolbar>
+      <ListState loading={loading && !data} error={error} empty={data?.length === 0} emptyIcon={Container} emptyLabel={tr('No vehicles')} emptyBody="Add the vans that carry stock to your retailers." emptyAction={can('vehicles') ? <Button onClick={() => setAdding(true)}>{tr('Add a vehicle')}</Button> : undefined} />
+      {data?.length > 0 && <Table><Thead><Th>{tr('Vehicle')}</Th><Th>{tr('Driver')}</Th><Th>{tr('Salesperson')}</Th><Th>{tr('Loads from')}</Th><Th>{tr('Route')}</Th><Th className="text-right">{tr('Items on board')}</Th><Th className="text-right">{tr('Stock value')}</Th></Thead>
+        <tbody>{data.map((v) => <Tr key={v.vehicle_id} onClick={() => navigate(`/app/distributor/vehicles/${v.vehicle_id}`)}><Td className="font-medium text-brand-700">{v.vehicle_no}{v.status === 'INACTIVE' && <Badge tone="warning">{tr('Inactive')}</Badge>}</Td><Td>{v.driver_name || '—'}</Td><Td>{v.salesperson || '—'}</Td><Td className="text-ink-500">{v.warehouse}</Td><Td className="max-w-48 truncate text-ink-500">{v.route || '—'}</Td><Td className="text-right tabular">{v.items}</Td><Td className="text-right tabular">{v.items ? money(v.stock_value) : '—'}</Td></Tr>)}</tbody></Table>}
       {adding && <VehicleForm onClose={() => setAdding(false)} onSaved={(v) => navigate(`/app/distributor/vehicles/${v.vehicle_id}`)} />}
     </div>
   );
