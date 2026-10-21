@@ -61,7 +61,10 @@ const main = async () => {
   };
   const tryCall = async (...a) => { try { return await call(...a); } catch (e) { return { error: e.message }; } };
 
-  await call(parties.updateSettings, { body: { distributor_enabled: true, scheme_stacking: 'BEST', visit_location: true, field_collections: true } });
+  // the distributor switch belongs to FlowXP (Super Admin), not the owner: the seed does what that switch does
+  await pool.query(`INSERT INTO wholesale_settings (business_id) VALUES ($1) ON CONFLICT (business_id) DO NOTHING`, [businessId]);
+  await pool.query(`UPDATE wholesale_settings SET distributor_enabled = TRUE WHERE business_id = $1`, [businessId]);
+  await call(parties.updateSettings, { body: { scheme_stacking: 'BEST', visit_location: true, field_collections: true } });
 
   /* ── territories, and the retailers placed in them ── */
   const node = async (level, name, parent) => (await call(territories.create, { body: { level, name, parent_id: parent?.territory_id } }));

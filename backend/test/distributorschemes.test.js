@@ -268,7 +268,11 @@ t('scheme rules are validated; used schemes cannot be deleted; tenants are isola
   assert.equal(freeOf(await draft(b, bc, [{ product_id: bp, quantity: 20 }])).length, 0, 'tenant A’s scheme never applies to tenant B');
   // audit trail with before / after
   await a.call(schemes.update, { params: { id: s.scheme_id }, body: { free_qty: 2 } });
-  const log = (await pool.query(`SELECT action, metadata FROM audit_log WHERE business_id = $1 AND resource_type = 'scheme' ORDER BY audit_id`, [a.businessId])).rows;
+  let log = [];
+  for (let i = 0; i < 40 && !log.some((x) => x.action === 'distributor.scheme_updated'); i++) {   // the audit write is not awaited by the request
+    log = (await pool.query(`SELECT action, metadata FROM audit_log WHERE business_id = $1 AND resource_type = 'scheme' ORDER BY audit_id`, [a.businessId])).rows;
+    if (!log.some((x) => x.action === 'distributor.scheme_updated')) await new Promise((r) => setTimeout(r, 50));
+  }
   assert.deepEqual(log.map((x) => x.action).slice(0, 2), ['distributor.scheme_created', 'distributor.scheme_created']);
   const upd = log.find((x) => x.action === 'distributor.scheme_updated');
   assert.deepEqual(upd.metadata.changes.free_qty, { from: '1.000', to: '2.000' });
