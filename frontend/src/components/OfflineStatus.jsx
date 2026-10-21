@@ -5,7 +5,6 @@
  */
 import { useEffect, useState } from 'react';
 import { queue, startAutoSync, useOnline, useQueuedSales } from '../lib/offline.js';
-import { useInstall } from '../lib/pwa.js';
 import { Button, Modal, useToast, useDialog } from './ui.jsx';
 
 const when = (ms) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -75,24 +74,4 @@ export const OfflineStatus = () => {
   );
 };
 
-/** "Install app" (Android, desktop Chrome) or how to on an iPhone. Hidden once it is installed. */
-export const InstallButton = () => {
-  const { canInstall, install, showIosHint } = useInstall();
-  const [hint, setHint] = useState(false);
-  if (!canInstall && !showIosHint) return null;
-  return (
-    <>
-      <Button variant="secondary" size="sm" onClick={canInstall ? install : () => setHint(true)}>Install app</Button>
-      {hint && (
-        <Modal title="Install FlowXP on your iPhone" onClose={() => setHint(false)}>
-          <ol className="list-decimal space-y-2 pl-5 text-sm text-ink-700">
-            <li>Open this page in <strong>Safari</strong>.</li>
-            <li>Tap the <strong>Share</strong> button (the square with an arrow).</li>
-            <li>Choose <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
-          </ol>
-          <p className="mt-3 text-xs text-ink-500">FlowXP then opens full screen like any app.</p>
-        </Modal>
-      )}
-    </>
-  );
-};
+export { InstallButton } from './InstallButton.jsx';

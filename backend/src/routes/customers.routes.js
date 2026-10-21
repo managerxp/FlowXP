@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { idempotent } from '../middleware/idempotency.js';
 import { requireAuth, withBusiness, requirePermission, requireAnyPermission } from '../middleware/auth.js';
 import * as customers from '../controllers/customers.controller.js';
+import { importLimiter } from '../middleware/limits.js';
 
 const router = Router();
 const authed = [requireAuth, withBusiness()];
@@ -12,7 +13,7 @@ const read = requireAnyPermission('customers', 'billing');
 router.get('/', ...authed, read, customers.list);
 router.get('/:id', ...authed, read, customers.get);
 router.get('/:id/invoices', ...authed, read, customers.invoiceHistory);
-router.post('/import', ...write, customers.importRows);
+router.post('/import', ...write, importLimiter, customers.importRows);
 router.post('/', ...write, idempotent(), customers.create);
 router.patch('/:id', ...write, customers.update);
 

@@ -6,7 +6,8 @@
  * the screen; writes also need an active subscription. Money- and stock-moving POSTs accept an Idempotency-Key.
  */
 import { Router } from 'express';
-import { requireAnyPermission, requireAuth, requirePermission, withBusiness } from '../middleware/auth.js';
+import { requireAnyPermission, requireAuth, requirePermission, withBusiness } from '../middleware/auth.js';
+import { importLimiter } from '../middleware/limits.js';
 import { idempotent } from '../middleware/idempotency.js';
 import { distributorOn, wholesaleOnly } from '../modules/distributor/common.js';
 import '../modules/distributor/scans.js';   // registers the background checks with the worker
@@ -29,8 +30,8 @@ const once = idempotent();
 router.get('/dashboard', ...read, any('reports', 'payments', 'sales_orders', 'fulfilment', 'inventory', 'purchases', 'field_sales'), dashboard.dashboard);
 
 /* ── bulk imports (the product and retailer imports are the wholesale ones, extended with principal, brand, territory and beat) ── */
-router.post('/import/price-list', ...write, can('pricing'), importer.importPriceList);
-router.post('/import/stock', ...write, any('inventory', 'vehicles'), importer.importStock);
+router.post('/import/price-list', ...write, importLimiter, can('pricing'), importer.importPriceList);
+router.post('/import/stock', ...write, importLimiter, any('inventory', 'vehicles'), importer.importStock);
 
 /* ── principals and brands ────────────────────────────────────────────────── */
 router.get('/principals', ...read, any('principals', 'products', 'purchases', 'reports'), principals.list);

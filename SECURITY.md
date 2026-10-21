@@ -13,6 +13,8 @@ Reviewed 2026-09-26; full end-to-end audit with live attack tests on 2026-10-08:
 - **Tenancy**: every query is scoped by business (and outlet); tested with cross-business and cross-outlet matrices.
 - **Dependencies**: `npm audit --omit=dev` is clean for backend and frontend (nodemailer upgraded to the latest major).
 
+- **Rate limits** (`backend/src/middleware/limits.js`, and the sign-in ones in `routes/index.js`): a safety net over the whole API (4,000 a minute per address; health checks and payment callbacks excluded); sign-up codes and password resets are limited per email address as well as per address (4 an hour); asking for a new sign-in code waits 30 seconds per person and each resend counts against the address; imports, backup, restore and bulk set-up are limited per signed-in person. nginx caps requests at the edge as before. The API answers with a strict content security policy (it only ever sends JSON or files).
+
 ## Before going live (you must do these)
 1. Set a long random `JWT_SECRET` (at least 32 chars). **The 2FA encryption key derives from it; changing it later locks everyone with 2FA out** (recovery codes still work only if the secret can decrypt, so rotate carefully).
 2. Set `CORS_ORIGINS` to your real site only; serve over HTTPS; set `NODE_ENV=production`.

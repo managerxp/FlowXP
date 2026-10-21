@@ -18,6 +18,7 @@ import config from './src/config/env.js';
 import pool, { initializeDatabase } from './src/config/database.js';
 import { ensureSuperAdmin } from './src/config/seedSuperAdmin.js';
 import routes from './src/routes/index.js';
+import { apiLimiter } from './src/middleware/limits.js';
 import './src/modules/scans.js';
 import { startWorker, stopWorker } from './src/modules/jobs.js';
 
@@ -28,7 +29,8 @@ const app = express();
    whole internet and locks everybody out together. */
 if (config.isProduction) app.set('trust proxy', 1);
 
-app.use(helmet({ contentSecurityPolicy: false }));
+// the API only ever answers with JSON or a file, never a page, so nothing it sends may be run or framed. (The web app's own CSP is set at the edge: deploy/nginx-security-headers.conf.)
+app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } } }));
 
 /* One line of JSON per request: an id (also returned to the client, so a user can quote it in a
    support message), the route, status and duration. No bodies, no tokens, no query strings. */
@@ -100,6 +102,7 @@ app.get('/ready', async (_req, res) => {
 });
 /* Local-disk uploads only; with STORAGE_DRIVER=s3 photos are served straight from the bucket. */
 if (config.storage.driver === 'local') app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), { maxAge: '7d', immutable: true, setHeaders: (res) => res.set('Content-Security-Policy', "default-src 'none'; sandbox") }));
+app.use('/api', apiLimiter);   // the safety net over everything; sign-in and the heavy jobs have tighter limits of their own
 app.use('/api', routes);
 
 app.use((_req, res) => res.status(404).json({ success: false, message: 'Not found' }));

@@ -38,6 +38,7 @@ const OTP_TTL_MS = 10 * 60 * 1000;
  * only "the first time". The code is stored as a hash on the user's own row (modules/security.js's existing
  * lockout, keyed off login_events, covers brute-forcing it — no separate attempts counter needed).
  */
+const RESEND_GAP_MS = 30 * 1000;
 const issueEmailOtp = async (user) => {
   const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
   const hash = crypto.createHash('sha256').update(code).digest('hex');
@@ -393,6 +394,10 @@ export const resendEmailOtp = async (req, res) => {
 
     const locked = await lockedMinutes(pool, user.email);
     if (locked) return res.status(429).json({ success: false, message: LOCKED(locked) });
+
+    // one new code at most every 30 seconds per person: a script cannot use this to flood a mailbox or run up the email bill
+    const last = (await pool.query(`SELECT email_otp_expires_at FROM users WHERE user_id = $1`, [user.user_id])).rows[0]?.email_otp_expires_at;
+    if (last && Date.now() - (new Date(last).getTime() - OTP_TTL_MS) < RESEND_GAP_MS) return res.status(429).json({ success: false, message: 'A code was just sent. Wait half a minute before asking for another.' });
 
     await issueEmailOtp(user);
     // a fresh challenge too: the new code lives 10 minutes, and the page's session should not die before it

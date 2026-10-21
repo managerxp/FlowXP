@@ -11,6 +11,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, BedDouble, ChevronDown, Coffee, CookingPot, Dumbbell, Gamepad2, Pill, Scissors, Wrench, ShoppingBasket, Store, UtensilsCrossed, Warehouse } from 'lucide-react';
 import { Button, Container, Logo } from '../components/ui.jsx';
+import { InstallButton } from '../components/InstallButton.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { READY } from './industries/data.js';
 import { useSeo } from './seo.js';
@@ -190,6 +191,7 @@ const Header = () => {
         </nav>
 
         <div className="hidden items-center gap-2 lg:flex">
+          <InstallButton label={t('header.installApp')} variant="ghost" />
           {user ? (
             <Button to="/app" size="sm">{t('header.openApp')}</Button>
           ) : (
@@ -237,6 +239,7 @@ const Header = () => {
             {NAV.slice(1).map((item) => (
               <NavLink key={item.to} to={item.to} className={({ isActive }) => mobileItem(isActive)}>{t(`header.${item.key}`)}</NavLink>
             ))}
+            <InstallButton label={t('header.installApp')} variant="secondary" size="md" className="mt-3 min-h-11 w-full" />
             <div className="mt-3 flex gap-2 pb-3">
               {user ? (
                 <Button to="/app" className="min-h-11 flex-1">{t('header.openApp')}</Button>

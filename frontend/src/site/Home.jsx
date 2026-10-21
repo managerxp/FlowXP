@@ -22,6 +22,7 @@ import { Boxes, ChevronDown, FileCheck2, Lightbulb, ReceiptText, Store } from 'l
 import BlurText from '../components/reactbits/BlurText.jsx';
 import SpotlightCard from '../components/reactbits/SpotlightCard.jsx';
 import { Check, Cross, FinalCta, FULL, H2, KIND, MAIN, PhoneShot, Shot, TextLink } from './parts.jsx';
+import { InstallButton } from '../components/InstallButton.jsx';
 
 /*
  * The "what needs your attention" panel: the kind of thing FlowXP tells an
@@ -572,9 +573,9 @@ const PhoneApp = () => (
         <H2>The counter in your pocket, even with no signal.</H2>
         <p className="mt-4 text-lead text-ink-500">
           The FlowXP app is built for the phone or tablet at the counter. Today it works in any mobile browser;
-          the Android app is being tested with real shops and is not on the Play Store yet.
+          the Android app is being tested with real shops and is not on the Play Store yet. Install the web app from your browser now: it opens full screen and keeps billing with no signal.
         </p>
-        <div className="mt-8"><TextLink to="/contact">Ask to join the test</TextLink></div>
+        <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3"><InstallButton label="Install the app on this device" variant="primary" /><TextLink to="/contact">Ask to join the Android test</TextLink></div>
       </Reveal>
       <ul className="grid gap-6 sm:grid-cols-2 lg:col-span-7 lg:pt-2">
         {APP_POINTS.map(([title, body], i) => (

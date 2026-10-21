@@ -10,6 +10,7 @@
  */
 import { Router } from 'express';
 import { requireAnyPermission, requireAuth, requirePermission, requirePlanFeature, withBusiness } from '../middleware/auth.js';
+import { bulkLimiter, importLimiter } from '../middleware/limits.js';
 import { idempotent } from '../middleware/idempotency.js';
 import { partsOnly } from '../modules/autoparts/common.js';
 import catalog from '../controllers/autopartsCatalog.controller.js';
@@ -52,21 +53,21 @@ router.delete('/fitment/:id', ...write, can('parts_catalog'), cat, catalog.fitRe
 
 router.get('/vehicles', ...read, viewer, cat, catalog.vehicles);
 router.get('/vehicles/parts', ...read, viewer, cat, catalog.byVehicle);
-router.post('/vehicles/defaults', ...write, can('parts_catalog'), cat, catalog.loadDefaultVehicles);
+router.post('/vehicles/defaults', ...write, bulkLimiter, can('parts_catalog'), cat, catalog.loadDefaultVehicles);
 router.post('/vehicles/makes', ...write, can('parts_catalog'), cat, catalog.makeCreate);
 router.put('/vehicles/makes/:id', ...write, can('parts_catalog'), cat, catalog.makeUpdate);
 router.post('/vehicles/models', ...write, can('parts_catalog'), cat, catalog.modelCreate);
 router.put('/vehicles/models/:id', ...write, can('parts_catalog'), cat, catalog.modelUpdate);
 router.post('/vehicles/variants', ...write, can('parts_catalog'), cat, catalog.variantCreate);
 router.put('/vehicles/variants/:id', ...write, can('parts_catalog'), cat, catalog.variantUpdate);
-router.post('/vehicles/import', ...write, can('parts_catalog'), cat, catalog.vehiclesImport);
+router.post('/vehicles/import', ...write, importLimiter, can('parts_catalog'), cat, catalog.vehiclesImport);
 
 /* -- warehouse: locations, bins, put-away -------------------------------- */
 const whView = any('warehouse', 'grn', 'stock_count', 'inventory', 'billing', 'reports');
 router.get('/locations', ...read, whView, racks, wh.tree);
 router.get('/locations/scan', ...read, whView, racks, wh.scan);
 router.post('/locations', ...write, can('warehouse'), racks, wh.create);
-router.post('/locations/bulk', ...write, can('warehouse'), racks, wh.createMany);
+router.post('/locations/bulk', ...write, bulkLimiter, can('warehouse'), racks, wh.createMany);
 router.get('/locations/:id', ...read, whView, racks, wh.location);
 router.put('/locations/:id', ...write, can('warehouse'), racks, wh.update);
 router.get('/warehouse/settings', ...read, whView, racks, wh.settings);

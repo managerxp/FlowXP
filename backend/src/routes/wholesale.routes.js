@@ -6,7 +6,8 @@
  * Writes also require an active subscription. Money- and stock-moving POSTs accept an Idempotency-Key.
  */
 import { Router } from 'express';
-import { requireAnyPermission, requireAuth, requirePermission, requirePlanFeature, withBusiness } from '../middleware/auth.js';
+import { requireAnyPermission, requireAuth, requirePermission, requirePlanFeature, withBusiness } from '../middleware/auth.js';
+import { importLimiter } from '../middleware/limits.js';
 import { idempotent } from '../middleware/idempotency.js';
 import { wholesaleOnly } from '../modules/wholesale/common.js';
 import catalog from '../controllers/wholesaleCatalog.controller.js';
@@ -44,9 +45,9 @@ router.get('/reports', ...read, can('reports'), reports.list);
 router.get('/reports/:key', ...read, can('reports'), reports.run);
 
 /* ── bulk work: imports and bulk edits ────────────────────────────────────── */
-router.post('/import/products', ...write, can('products'), importer.importProducts);
-router.post('/import/customers', ...write, can('customers'), importer.importCustomers);
-router.post('/import/suppliers', ...write, can('suppliers'), importer.importSuppliers);
+router.post('/import/products', ...write, importLimiter, can('products'), importer.importProducts);
+router.post('/import/customers', ...write, importLimiter, can('customers'), importer.importCustomers);
+router.post('/import/suppliers', ...write, importLimiter, can('suppliers'), importer.importSuppliers);
 router.post('/products/bulk', ...write, can('products'), importer.bulkProducts);
 router.post('/customers/bulk', ...writeAll, can('customers'), importer.bulkCustomers);
 

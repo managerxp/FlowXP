@@ -11,7 +11,8 @@
 import express, { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import pool from '../config/database.js';
-import { requireAuth, withBusiness, requireOwner, requirePermission, requireAnyPermission, requirePlanFeature, clearSessionCookie } from '../middleware/auth.js';
+import { requireAuth, withBusiness, requireOwner, requirePermission, requireAnyPermission, requirePlanFeature, clearSessionCookie } from '../middleware/auth.js';
+import { backupLimiter, emailLimiter, restoreLimiter } from '../middleware/limits.js';
 import * as auth from '../controllers/auth.controller.js';
 import * as oauth from '../controllers/oauth.controller.js';
 import * as security from '../controllers/security.controller.js';
@@ -98,6 +99,7 @@ const limiter = (max, minutes, message, options = {}) => rateLimit({
 const loginLimiter = limiter(20, 15, 'Too many attempts. Try again in a few minutes.', { skipSuccessfulRequests: true });
 const signupLimiter = limiter(5, 60, 'Too many accounts created from here. Try again later.');
 const resetLimiter = limiter(5, 60, 'Too many reset requests. Try again later.');
+const resendLimiter = limiter(10, 60, 'Too many new codes were asked for from here. Try again later.');
 const contactLimiter = limiter(5, 60, 'Too many messages sent. Try again later.');
 const deletionLimiter = limiter(5, 60, 'Too many requests from here. Try again later.');
 /* The website chat calls the AI provider, which costs money per message: generous for a person, tight for a script. */
@@ -109,15 +111,15 @@ const assistantLimiter = limiter(30, 15, 'Too many questions in a short time. Tr
 
 router.post('/app-reports', requireAuth, appReportLimiter, appErrors.create);   // what a signed-in person types under "Report a problem"
 router.post('/app-errors', appErrorLimiter, appErrors.report);   // the mobile app's crash reports (no sign-in: a crash can come first)
-router.post('/auth/signup', signupLimiter, auth.signup);
+router.post('/auth/signup', signupLimiter, emailLimiter, auth.signup);
 router.post('/auth/login', loginLimiter, auth.login);
 router.post('/auth/login/2fa', loginLimiter, auth.loginTwoFactor);
 router.get('/auth/oauth/providers', oauth.providers);
 router.get('/auth/google/start', loginLimiter, oauth.googleStart);
 router.get('/auth/google/callback', loginLimiter, oauth.googleCallback);
 router.post('/auth/verify-email', loginLimiter, auth.verifyEmailOtp);
-router.post('/auth/resend-email-otp', loginLimiter, auth.resendEmailOtp);
-router.post('/auth/forgot-password', resetLimiter, auth.forgotPassword);
+router.post('/auth/resend-email-otp', resendLimiter, auth.resendEmailOtp);   // successes count here: each one sends an email (the per-person wait is in the controller)
+router.post('/auth/forgot-password', resetLimiter, emailLimiter, auth.forgotPassword);
 router.post('/auth/reset-password', resetLimiter, auth.resetPassword);
 router.post('/contact', contactLimiter, contact.send);
 // deleting an account: yourself when signed in, or a request when you cannot sign in (nothing is deleted from the public one until support has checked who is asking)
@@ -192,8 +194,8 @@ router.post('/auth/logout', (req, res) => {
 router.get('/businesses/current', requireAuth, withBusiness(), business.getCurrent);
 router.patch('/businesses/current', requireAuth, withBusiness({ requireActive: true }), requireOwner, business.updateCurrent);
 router.put('/businesses/current/workshop-mode', requireAuth, withBusiness({ requireActive: true }), requireOwner, business.setWorkshopMode);
-router.get('/businesses/current/backup', requireAuth, withBusiness(), requireOwner, business.downloadBackup);
-router.post('/businesses/current/restore', requireAuth, withBusiness({ requireActive: true }), requireOwner, requirePlanFeature('backup_restore'), express.raw({ type: '*/*', limit: '60mb' }), business.restoreBackup);
+router.get('/businesses/current/backup', requireAuth, withBusiness(), requireOwner, backupLimiter, business.downloadBackup);
+router.post('/businesses/current/restore', requireAuth, withBusiness({ requireActive: true }), requireOwner, restoreLimiter, requirePlanFeature('backup_restore'), express.raw({ type: '*/*', limit: '60mb' }), business.restoreBackup);
 router.post('/businesses/current/logo', requireAuth, withBusiness({ requireActive: true }), requireOwner, uploadLogo, business.uploadLogo);
 router.delete('/businesses/current/logo', requireAuth, withBusiness({ requireActive: true }), requireOwner, business.removeLogo);
 router.get('/businesses/current/subscription', requireAuth, withBusiness(), business.getSubscription);

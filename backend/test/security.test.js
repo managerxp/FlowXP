@@ -430,12 +430,16 @@ test('resend sends a different code under the same challenge, and repeated wrong
   const { challenge } = (await login('ivan@sec.test')).body.data;
   const before = (await pool.query(`SELECT email_otp_hash FROM users WHERE user_id = $1`, [ivan.user_id])).rows[0].email_otp_hash;
 
+  const longAgo = () => pool.query(`UPDATE users SET email_otp_expires_at = now() + interval '5 minutes' WHERE user_id = $1`, [ivan.user_id]);   // the code went out five minutes ago
+  assert.equal((await post(auth.resendEmailOtp, { challenge })).code, 429, 'a second code within half a minute is refused');
+  await longAgo();
   const resent = await post(auth.resendEmailOtp, { challenge });
   assert.equal(resent.code, 200, JSON.stringify(resent.body));
   const after = (await pool.query(`SELECT email_otp_hash FROM users WHERE user_id = $1`, [ivan.user_id])).rows[0].email_otp_hash;
   assert.notEqual(before, after);
   // the reply carries a fresh sign-up session, so waiting on the code page does not outlive the new code
   assert.ok(resent.body.data.challenge, 'resend returns a session for the page to keep');
+  await longAgo();
   assert.equal((await post(auth.resendEmailOtp, { challenge: resent.body.data.challenge })).code, 200, 'the renewed challenge works for the next resend');
   assert.equal((await post(auth.resendEmailOtp, { challenge: 'garbage' })).code, 401);
 
@@ -443,4 +447,44 @@ test('resend sends a different code under the same challenge, and repeated wrong
   const locked = await post(auth.verifyEmailOtp, { challenge, code: '000000' });
   assert.equal(locked.code, 429);
   assert.match(locked.body.message, /Try again in \d+ minute/);
+});
+
+/* ── rate limits (middleware/limits.js) and the resend wait ───────────────────────────────── */
+
+test('limits: one mailbox, one person and the whole API are counted separately and answer 429 in the usual shape', async () => {
+  const { default: express } = await import('express');
+  const { limiter, emailKey, userKey, apiLimiter } = await import('../src/middleware/limits.js');
+  const app = express();
+  app.use(express.json());
+  app.post('/by-email', limiter(3, 1, 'Too many for that email.', { keyGenerator: emailKey }), (_req, res) => res.json({ ok: true }));
+  app.post('/by-user', (req, _res, next) => { req.auth = { userId: Number(req.headers['x-user']) }; next(); }, limiter(2, 1, 'Slow down.', { keyGenerator: userKey }), (_req, res) => res.json({ ok: true }));
+  app.get('/api-ok', apiLimiter, (_req, res) => res.json({ ok: true }));
+  const server = app.listen(0); const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const post = (path, body, headers = {}) => fetch(base + path, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body || {}) });
+    const codes = [];
+    for (let i = 0; i < 4; i++) codes.push((await post('/by-email', { email: i === 3 ? ' A@Example.com ' : 'a@example.com' })).status);
+    assert.deepEqual(codes, [200, 200, 200, 429], 'the same mailbox, however it is typed, is stopped on the fourth');
+    assert.equal((await post('/by-email', { email: 'b@example.com' })).status, 200, 'another mailbox is not affected');
+    const blocked = await post('/by-email', { email: 'a@example.com' });
+    assert.deepEqual(await blocked.json(), { success: false, message: 'Too many for that email.' }); assert.ok(blocked.headers.get('ratelimit-limit') || blocked.headers.get('retry-after'));
+    assert.deepEqual([(await post('/by-user', {}, { 'x-user': '1' })).status, (await post('/by-user', {}, { 'x-user': '1' })).status, (await post('/by-user', {}, { 'x-user': '1' })).status], [200, 200, 429]);
+    assert.equal((await post('/by-user', {}, { 'x-user': '2' })).status, 200, 'another person is not affected');
+    assert.equal((await fetch(base + '/api-ok')).status, 200, 'a normal request passes the whole-API net');
+  } finally { server.closeAllConnections?.(); await new Promise((r) => server.close(r)); }
+});
+
+test('a new sign-in code cannot be asked for again within half a minute', { skip }, async () => {
+  const res = fakeRes();
+  await auth.signup({ body: { name: 'Resend Test', email: 'resend-wait@flowxp.test', password: 'rosewood-lamp-7', business_name: 'Resend Shop', business_type: 'RETAIL', accepted_terms: true }, headers: {}, ip: '127.0.0.1' }, res);
+  assert.equal(res.code, 201, JSON.stringify(res.body));
+  const challenge = res.body.data.challenge;
+  assert.ok(challenge, 'signup hands back a code challenge');
+  const again = fakeRes();
+  await auth.resendEmailOtp({ body: { challenge }, headers: {}, ip: '127.0.0.1' }, again);
+  assert.equal(again.code, 429); assert.match(again.body.message, /half a minute/);
+  await pool.query(`UPDATE users SET email_otp_expires_at = now() + interval '9 minutes' WHERE email = 'resend-wait@flowxp.test'`);   // the code was sent a minute ago
+  const later = fakeRes();
+  await auth.resendEmailOtp({ body: { challenge }, headers: {}, ip: '127.0.0.1' }, later);
+  assert.equal(later.code, 200, JSON.stringify(later.body));
 });

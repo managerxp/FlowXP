@@ -14,6 +14,7 @@ import * as invoiceImport from '../controllers/invoiceImport.controller.js';
 import * as promotions from '../controllers/promotions.controller.js';
 import * as retailDashboard from '../controllers/retailDashboard.controller.js';
 import rateLimit from 'express-rate-limit';
+import { importLimiter } from '../middleware/limits.js';
 import { uploadBillFiles } from '../middleware/upload.js';
 import { isRetail } from '../modules/retailSettings.js';
 
@@ -65,7 +66,7 @@ router.post('/promotions', ...offersWrite, promotions.create);
 router.put('/promotions/:id', ...offersWrite, promotions.update);
 router.delete('/promotions/:id', ...offersWrite, promotions.remove);
 
-router.post('/import/products', ...write, requirePermission('products'), requireOutlet, stock.importProductRows);
-router.post('/import/stock', ...write, requireOutlet, stock.importStockRows);
+router.post('/import/products', ...write, importLimiter, requirePermission('products'), requireOutlet, stock.importProductRows);
+router.post('/import/stock', ...write, importLimiter, requireOutlet, stock.importStockRows);
 
 export default router;

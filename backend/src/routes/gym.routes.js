@@ -10,6 +10,7 @@
  */
 import { Router } from 'express';
 import { requireAnyPermission, requireAuth, requireOutlet, requirePermission, requirePlanFeature, withBusiness } from '../middleware/auth.js';
+import { importLimiter } from '../middleware/limits.js';
 import { idempotent } from '../middleware/idempotency.js';
 import { uploadProductImage } from '../middleware/upload.js';
 import { gymOnly } from '../modules/gym/common.js';
@@ -47,7 +48,7 @@ router.post('/plans/:id/restore', ...write, can('gym_setup'), setup.planRestore)
 router.get('/members', ...read, staff, members.list);
 router.get('/members/duplicates', ...read, any('gym_members', 'gym_desk', 'gym_setup'), members.duplicates);
 router.get('/members/export', ...read, can('export'), members.exportCsv);
-router.post('/members/import', ...write, can('gym_setup'), members.importCheck);
+router.post('/members/import', ...write, importLimiter, can('gym_setup'), members.importCheck);
 router.post('/members/merge', ...write, can('gym_setup'), members.merge);
 router.post('/members', ...write, any('gym_members', 'gym_setup'), requireOutlet, members.create);
 router.get('/members/:id', ...read, staff, members.get);
