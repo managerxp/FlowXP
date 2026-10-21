@@ -298,3 +298,104 @@ export const billJob = async (client, tenant, userId, id, b = {}) => {
   await client.query(`UPDATE job_cards SET status = 'BILLED', invoice_id = $2, billed_at = now() WHERE job_id = $1`, [job.job_id, invoice.invoice_id]);
   return { invoice, job: await getJob(client, tenant, job.job_id) };
 };
+
+/* ── services the shop charges for ───────────────────────────────────────── */
+
+export const listServices = async (db, tenant) =>
+  (await db.query(`SELECT service_id, name, price_paise, tax_rate FROM workshop_services WHERE business_id = $1 AND is_active ORDER BY lower(name)`, [tenant.businessId])).rows
+    .map((r) => ({ ...r, price_paise: Number(r.price_paise), tax_rate: r.tax_rate == null ? null : Number(r.tax_rate) }));
+
+/** Add a service, or change the charge of the one with the same name. */
+export const saveService = async (db, tenant, b) => {
+  const name = text(b.name, 'Service name', { max: 120, required: true });
+  const price = money(b.price, 'Charge', { required: true });
+  const tax = b.tax_rate === undefined || b.tax_rate === null || b.tax_rate === '' ? null : num(b.tax_rate, 'GST rate', { min: 0, max: 100 });
+  const row = (await db.query(
+    `INSERT INTO workshop_services (business_id, name, price_paise, tax_rate) VALUES ($1,$2,$3,$4)
+     ON CONFLICT (business_id, lower(name)) WHERE is_active DO UPDATE SET price_paise = EXCLUDED.price_paise, tax_rate = EXCLUDED.tax_rate
+     RETURNING service_id, name, price_paise, tax_rate`, [tenant.businessId, name, price, tax])).rows[0];
+  return { ...row, price_paise: Number(row.price_paise), tax_rate: row.tax_rate == null ? null : Number(row.tax_rate) };
+};
+
+export const removeService = async (db, tenant, id) => {
+  const r = await db.query(`UPDATE workshop_services SET is_active = FALSE WHERE service_id = $1 AND business_id = $2 AND is_active RETURNING service_id`, [id, tenant.businessId]);
+  if (!r.rowCount) throw new PartsError(404, 'Not found');
+  return { removed: true };
+};
+
+/**
+ * What the workshop earned on the bills made from job cards, by day: labour and parts before GST, the GST, and the bill totals (cancelled bills left out),
+ * plus each mechanic's labour. These bills are ordinary invoices, so they are also in the shop's sales reports; this only splits them into labour and parts.
+ */
+export const workshopReport = async (db, tenant, { from, to }) => {
+  const args = [tenant.businessId, from, to];
+  const scope = tenant.scopeBranchId != null ? ` AND j.branch_id = $4` : '';
+  if (scope) args.push(tenant.scopeBranchId);
+  const days = (await db.query(
+    `SELECT i.invoice_date AS day, COUNT(DISTINCT j.job_id)::int AS jobs,
+            COALESCE(SUM(ROUND(l.quantity * l.unit_price_paise)) FILTER (WHERE l.kind = 'LABOUR'), 0) AS labour_paise,
+            COALESCE(SUM(ROUND(l.quantity * l.unit_price_paise)) FILTER (WHERE l.kind = 'PART'), 0) AS parts_paise,
+            MAX(i.total_paise) AS total_paise
+       FROM job_cards j JOIN invoices i ON i.invoice_id = j.invoice_id AND i.status = 'ISSUED'
+       JOIN job_card_lines l ON l.job_id = j.job_id
+      WHERE j.business_id = $1 AND j.status = 'BILLED' AND i.invoice_date BETWEEN $2 AND $3${scope}
+      GROUP BY i.invoice_date, j.job_id`, args)).rows;
+  const byDay = new Map();
+  for (const r of days) {
+    const d = byDay.get(String(r.day).slice(0, 10)) || { day: String(r.day).slice(0, 10), jobs: 0, labour_paise: 0, parts_paise: 0, total_paise: 0 };
+    d.jobs += r.jobs; d.labour_paise += Number(r.labour_paise); d.parts_paise += Number(r.parts_paise); d.total_paise += Number(r.total_paise);
+    byDay.set(d.day, d);
+  }
+  const rows = [...byDay.values()].sort((a, b) => (a.day < b.day ? -1 : 1));
+  const totals = rows.reduce((t, d) => ({ jobs: t.jobs + d.jobs, labour_paise: t.labour_paise + d.labour_paise, parts_paise: t.parts_paise + d.parts_paise, total_paise: t.total_paise + d.total_paise }), { jobs: 0, labour_paise: 0, parts_paise: 0, total_paise: 0 });
+  const mech = (await db.query(
+    `SELECT COALESCE(e.name, 'Not assigned') AS name, COUNT(DISTINCT j.job_id)::int AS jobs,
+            COALESCE(SUM(ROUND(l.quantity * l.unit_price_paise)) FILTER (WHERE l.kind = 'LABOUR'), 0) AS labour_paise
+       FROM job_cards j JOIN invoices i ON i.invoice_id = j.invoice_id AND i.status = 'ISSUED'
+       JOIN job_card_lines l ON l.job_id = j.job_id LEFT JOIN hr_employees e ON e.employee_id = j.mechanic_id
+      WHERE j.business_id = $1 AND j.status = 'BILLED' AND i.invoice_date BETWEEN $2 AND $3${scope}
+      GROUP BY e.name ORDER BY labour_paise DESC`, args)).rows.map((r) => ({ ...r, labour_paise: Number(r.labour_paise) }));
+  return { from, to, totals, days: rows, mechanics: mech };
+};
+
+
+/* ── telling the customer on WhatsApp ────────────────────────────────────── */
+
+const rupees = (paise) => `₹${(Number(paise) / 100).toLocaleString('en-IN', { minimumFractionDigits: Number.isInteger(Number(paise) / 100) ? 0 : 2, maximumFractionDigits: 2 })}`;
+export const SHARE_EVENTS = ['received', 'estimate', 'ready', 'bill'];
+
+/**
+ * The words for one update to the customer, and a wa.me address that opens WhatsApp on their number with those words ready: sent by a person from the shop's own
+ * WhatsApp, so it needs no WhatsApp Business set-up and nothing is sent from here. events: received (we have your vehicle), estimate (what it will cost, please approve),
+ * ready (come and collect), bill (the bill with its link).
+ */
+export const shareJob = async (db, tenant, id, event) => {
+  const kind = String(event || '').toLowerCase();
+  if (!SHARE_EVENTS.includes(kind)) throw new PartsError(400, `Message must be one of: ${SHARE_EVENTS.join(', ')}`);
+  const job = await getJob(db, tenant, id);
+  const shop = (await db.query(`SELECT name FROM businesses WHERE business_id = $1`, [tenant.businessId])).rows[0]?.name || 'our workshop';
+  const name = job.customer_name || 'there';
+  const vehicle = [[job.make, job.model].filter(Boolean).join(' '), job.vehicle_reg].filter(Boolean).join(' ');
+  let text;
+  if (kind === 'received') {
+    text = `Hi ${name}, we have received your ${vehicle} at ${shop}. Job card ${job.job_no}.${job.complaint ? ` Work asked for: ${job.complaint}.` : ''}${job.promised_on ? ` We expect to have it ready by ${job.promised_on}.` : ''} We will keep you updated.`;
+  } else if (kind === 'estimate') {
+    if (!job.lines.length) throw new PartsError(400, 'Add the parts or labour first, so there is an estimate to send');
+    const lines = job.lines.map((l) => `${l.description}${l.kind === 'PART' ? ` x${Number(l.quantity)}` : ''}: ${rupees(l.amount_paise)}`).join('; ');
+    text = `Hi ${name}, the estimate for your ${vehicle} at ${shop} (${job.job_no}): ${lines}. GST ${rupees(job.estimate.tax_paise)}. Total ${rupees(job.estimate.total_paise)}. Please reply to approve the work.`;
+  } else if (kind === 'ready') {
+    text = `Hi ${name}, your ${vehicle} is ready at ${shop} (${job.job_no}).${job.estimate.total_paise ? ` The bill will be about ${rupees(job.estimate.total_paise)}.` : ''} You can collect it now.`;
+  } else {
+    if (!job.invoice_id) throw new PartsError(409, 'Make the bill first');
+    const { billShare } = await import('../messaging/index.js');
+    const b = await billShare(db, { businessId: tenant.businessId, invoiceId: job.invoice_id, phone: job.customer_phone });
+    if (b.problem) throw new PartsError(b.code || 400, b.problem);
+    text = `Hi ${name}, your ${vehicle} is done at ${shop}. ${b.text.replace(/^Hi [^,]*, /, '')}`;
+  }
+  const { normalisePhone } = await import('../loyalty.js');
+  const { default: config } = await import('../../config/env.js');
+  const digits = normalisePhone(job.customer_phone);
+  if (!digits) throw new PartsError(400, 'This customer has no mobile number');
+  const to = digits.length === 10 ? `${config.messaging.countryCode}${digits}` : digits;
+  return { event: kind, text, phone: to, wa_url: `https://wa.me/${to}?text=${encodeURIComponent(text)}` };
+};

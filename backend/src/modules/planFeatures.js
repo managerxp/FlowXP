@@ -131,10 +131,13 @@ export const industryDefaults = (businessType) => Object.fromEntries((INDUSTRY_O
  * `sources` is [plan flags, business-type flags for this plan]; `businessType` adds that industry's defaults, which
  * the business-type flags can turn back on with an explicit `true`.
  */
-export const effectiveFeatureFlags = (sources, overrides, businessType) => {
+export const WORKSHOP_KEYS = ['ap_jobcards', 'ap_staff'];   // what "mechanic mode" switches on for a spare parts shop
+export const effectiveFeatureFlags = (sources, overrides, businessType, workshopMode) => {
   overrides ??= {};
   const typeFlags = sources?.[1] || {};
   const off = new Set(Object.keys(industryDefaults(businessType)).filter((key) => typeFlags[key] !== true));
+  // mechanic mode is the owner's own switch: off hides the workshop tools (an admin override that forces one on still wins). Unknown (not loaded) leaves them as they are.
+  if (String(businessType).toUpperCase() === 'AUTO_PARTS' && workshopMode === false) WORKSHOP_KEYS.forEach((k) => off.add(k));
   const merged = {};
   for (const key of PLAN_FEATURE_KEYS) {
     if (overrides[key] === true) continue;   // forced on — skip the off-check below entirely

@@ -52,6 +52,7 @@ router.delete('/fitment/:id', ...write, can('parts_catalog'), cat, catalog.fitRe
 
 router.get('/vehicles', ...read, viewer, cat, catalog.vehicles);
 router.get('/vehicles/parts', ...read, viewer, cat, catalog.byVehicle);
+router.post('/vehicles/defaults', ...write, can('parts_catalog'), cat, catalog.loadDefaultVehicles);
 router.post('/vehicles/makes', ...write, can('parts_catalog'), cat, catalog.makeCreate);
 router.put('/vehicles/makes/:id', ...write, can('parts_catalog'), cat, catalog.makeUpdate);
 router.post('/vehicles/models', ...write, can('parts_catalog'), cat, catalog.modelCreate);
@@ -121,8 +122,13 @@ router.get('/parts/:id/ledger', ...read, any('reports', 'inventory', 'warehouse'
 router.get('/jobcards', ...read, can('billing'), jobF, jobs.list);
 router.get('/jobcards/due', ...read, can('billing'), jobF, jobs.due);
 router.get('/jobcards/mechanics', ...read, can('billing'), jobF, jobs.mechanics);
+router.get('/jobcards/report', ...read, can('billing'), jobF, jobs.report);
+router.get('/jobcards/services', ...read, can('billing'), jobF, jobs.services);
+router.post('/jobcards/services', ...write, can('billing'), jobF, jobs.saveService);
+router.delete('/jobcards/services/:id', ...write, can('billing'), jobF, jobs.removeService);
 router.post('/jobcards', ...write, can('billing'), jobF, jobs.create);
 router.get('/jobcards/:id', ...read, can('billing'), jobF, jobs.get);
+router.get('/jobcards/:id/share', ...read, can('billing'), jobF, jobs.share);
 router.put('/jobcards/:id', ...write, can('billing'), jobF, jobs.update);
 router.post('/jobcards/:id/status', ...write, can('billing'), jobF, jobs.status);
 router.post('/jobcards/:id/lines', ...write, can('billing'), jobF, jobs.lineAdd);

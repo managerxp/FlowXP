@@ -20,13 +20,13 @@ export default {
     {
       id: 'workshop', title: 'Servicing: job cards for bikes and cars',
       body: 'When a vehicle comes in for service, open a job card with its number and what the owner complained about. Add the spare parts used and the labour, and the card becomes the bill when the work is done.',
-      points: ['One card per vehicle visit, with the registration number, the owner and the odometer reading', 'Parts are held for the job, so one on a job cannot be sold to someone else, and they leave stock when the job is billed', 'Labour added as a line, with GST like any other charge', 'Status from open to in progress, waiting for parts, ready and billed; a cancelled job gives the parts back', 'See which vehicles are waiting, which are ready for pick-up and which services are due again', 'Staff attendance, shifts and monthly payroll for your mechanics and counter staff, in the same place'],
+      points: ['One card per vehicle visit, with the registration number, the owner and the odometer reading', 'Parts are held for the job, so one on a job cannot be sold to someone else, and they leave stock when the job is billed', 'Labour from your own list of services (oil change, alignment) in one tap, with GST like any other charge', 'Status from open to in progress, waiting for parts, ready and billed; a cancelled job gives the parts back', 'See which vehicles are waiting, which are ready for pick-up and which services are due again', 'Tell the customer on WhatsApp when you receive the vehicle, with the estimate, when it is ready and with the bill', 'See what the workshop earned, labour and parts, by day and by mechanic; every job bill is also in your sales', 'Staff attendance, shifts and monthly payroll for your mechanics and counter staff, in the same place', 'Mechanic mode: switch it on in Settings only if you service vehicles; a parts-only shop does not see these screens'],
       shots: []
     },
     {
       id: 'fitment', title: 'Fitment that is never assumed',
       body: 'You build your own list of makes, models and variants, and record which parts fit which vehicle. A part with no record is never presented as fitting.',
-      points: ['Makes, models and variants with years, engine and fuel, typed in or imported from a file', 'Each fitment is verified, not verified, or does not fit', 'New fitment is not verified until a person verifies it', 'Find parts for a vehicle: only parts with a record, each labelled', 'Parts recorded as not fitting are left out and counted', 'Alternates are suggested only from verified fitment', 'FlowXP does not ship a vehicle database: fitment is what your shop records or imports'],
+      points: ['Makes, models and variants with years, engine and fuel, typed in or imported from a file', 'Each fitment is verified, not verified, or does not fit', 'New fitment is not verified until a person verifies it', 'Find parts for a vehicle: only parts with a record, each labelled', 'Parts recorded as not fitting are left out and counted', 'Alternates are suggested only from verified fitment', 'One click adds the usual Indian bikes, scooters and cars by company (names only). FlowXP never ships fitment: that is what your shop records or imports'],
       shots: [{ src: p('parts-vehicles'), alt: 'FlowXP vehicle search for a Maruti Suzuki Swift with each part labelled as verified or not verified.' }]
     },
     {
@@ -71,7 +71,7 @@ export default {
     { group: 'Control', items: ['Storekeeper and parts counter roles', 'A manager approves stock count differences', 'Activity log of stock and price changes', 'Several outlets under one login', 'Two-step login'] }
   ],
   notYet: [
-    'A built-in vehicle or fitment database. You enter or import your own, and nothing is assumed to fit.',
+    'A built-in fitment database. The usual Indian makes and models can be added with one click, but which part fits which vehicle is what you record or import, and nothing is assumed to fit.',
     'Choosing a vehicle on the billing screen. Find parts for a vehicle is a separate screen; the till searches by name, SKU, barcode and any part number.',
     'Counting stock bin by bin. A count is for a part at an outlet; the shelf is corrected by the count.',
     'Moving stock between outlets with the bin chosen on both sides. The existing outlet transfer moves the stock; the receiving outlet puts it away.',
@@ -85,7 +85,7 @@ export default {
     ['Can I bring my items from Tally or Vyapar?', 'Yes. Export your item list to Excel or CSV and import it. Names, codes, prices, GST, HSN and stock are recognised. Old bills and ledgers do not come across. The setup guide has the steps.'],
     ['Can I run my servicing on FlowXP?', 'Yes. Open a job card for each vehicle, add parts and labour, and turn it into a bill. Parts are held for the job and leave stock when it is billed. Mechanic attendance and payroll are included.'],
     ['What if I lose my data or set up wrongly?', 'Download a backup file. If you ever need it, restore adds back only what is missing and never changes what you have.'],
-    ['Does FlowXP know which parts fit which car?', 'No. It has no vehicle database. You record or import fitment, and every record is verified, not verified, or does not fit. A part with no record is shown as having no fitment on record.'],
+    ['Does FlowXP know which parts fit which car?', 'It can list the usual Indian bikes, scooters and cars by company with one click, but it does not know fitment. You record or import which part fits which vehicle, and every record is verified, not verified, or does not fit. A part with no record is shown as having no fitment on record.'],
     ['Can I scan an OEM number at the counter?', 'Yes. Any part number you have recorded, with or without dashes and spaces, finds the part in the catalogue and in the till search.'],
     ['How does the bin quantity stay right?', 'The stock total is kept by the same stock ledger every bill and receipt uses. Bins hold part of it, never more than the total, and anything left over shows as waiting for a bin. When stock leaves, it is taken from the shelves first.'],
     ['What counts as stock I can sell?', 'Only what was accepted on receipt. Damaged and rejected goods are recorded but are not sellable stock.'],

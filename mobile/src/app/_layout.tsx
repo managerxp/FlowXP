@@ -4,6 +4,7 @@ import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { restoreSession, useSession } from '../lib/session.ts';
 import { OfflineBar } from '../lib/OfflineBar.tsx';
+import { HelpButton } from '../lib/HelpButton.tsx';
 import { Logo } from '../lib/Logo.tsx';
 import { flushBugReports } from '../lib/bugsend.ts';
 import { installAlerts, syncAlerts } from '../lib/push.ts';
@@ -56,6 +57,7 @@ export default function Layout() {
         <Stack.Screen name="scan" options={{ presentation: 'modal' }} />
         <Stack.Screen name="options" options={{ presentation: 'modal' }} />
       </Stack>
+      <HelpButton />
     </>
   );
 }

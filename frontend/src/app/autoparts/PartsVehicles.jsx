@@ -1,4 +1,4 @@
-/* Vehicles: the shop's own list of makes, models and variants (nothing is pre-loaded or guessed), a CSV import, and "find parts for a vehicle" for the counter. */
+/* Vehicles: the shop's own list of makes, models and variants (starts empty; one click adds the usual Indian makes and models, never fitment), a CSV import, and "find parts for a vehicle" for the counter. */
 import { useState } from 'react';
 import { api } from '../../lib/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -14,6 +14,23 @@ const parseCsv = (text) => {
   return lines.slice(1).map((l) => Object.fromEntries(l.split(',').map((v, i) => [head[i], v.trim()])));
 };
 
+
+const Defaults = ({ reload, empty }) => {
+  const tr = useT();
+  const TYPES = [['BIKE', tr('Bikes')], ['SCOOTER', tr('Scooters')], ['CAR', tr('Cars')], ['COMMERCIAL', tr('Commercial vehicles')]];
+  const [picked, setPicked] = useState(['BIKE', 'SCOOTER', 'CAR']);
+  const [busy, run] = useAction();
+  const add = () => run(async () => { await api('/autoparts/vehicles/defaults', { method: 'POST', body: { types: picked } }); reload(); }, 'Vehicles added');
+  return (
+    <Panel title={tr('Add the usual Indian bikes and cars')} lead={tr('Starts your list with the common makes and models sold in India (Hero, Honda, Bajaj, TVS, Maruti Suzuki, Hyundai, Tata and more). It adds only names. No part is marked as fitting any vehicle. Adding it again adds only what is missing.')} className={empty ? 'border-brand-500' : ''}>
+      <div className="flex flex-wrap items-center gap-4">
+        {TYPES.map(([v, l]) => <label key={v} className="flex items-center gap-2 text-small text-ink-900"><input type="checkbox" checked={picked.includes(v)} onChange={(e) => setPicked((x) => (e.target.checked ? [...x, v] : x.filter((y) => y !== v)))} /> {l}</label>)}
+        <Button onClick={add} loading={busy} disabled={picked.length === 0}>{tr('Add them')}</Button>
+      </div>
+    </Panel>
+  );
+};
+
 const Manage = ({ tree, canEdit, reload }) => {
   const tr = useT();
   const [make, setMake] = useState(''); const [type, setType] = useState('CAR');
@@ -23,6 +40,7 @@ const Manage = ({ tree, canEdit, reload }) => {
   const addModel = () => run(async () => { await api('/autoparts/vehicles/models', { method: 'POST', body: { make_id: Number(modelOf), name: model } }); setModel(''); reload(); }, 'Model added');
   return (
     <div className="space-y-5">
+      {canEdit && <Defaults reload={reload} empty={tree.length === 0} />}
       {canEdit && (
         <Panel title={tr('Add to the list')} lead={tr('Type them in, or import a file on the next tab.')}>
           <div className="flex flex-wrap items-end gap-6">

@@ -298,6 +298,12 @@ export const Signup = () => {
               ))}
             </div>
           </div>
+          {form.business_type === 'AUTO_PARTS' && (
+            <label className="flex items-start gap-2.5 text-sm text-ink-700">
+              <input type="checkbox" checked={Boolean(form.workshop_mode)} onChange={(e) => setForm((f) => ({ ...f, workshop_mode: e.target.checked }))} className="mt-0.5" />
+              <span>{t('signup.alsoService')}</span>
+            </label>
+          )}
         </fieldset>
 
         <div className="space-y-3">

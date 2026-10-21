@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Text, TextInput } from 'react-native';
+import { Linking, Text, TextInput } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { currentBusiness, useSession, api } from '../../lib/session.ts';
 import { allowed } from '../../lib/access.ts';
 import { t } from '../../lib/i18n.ts';
 import { rupees } from '../../lib/money.ts';
-import { Card, Field, Input, Msg, Panel, SetupShell, confirm, useAct, useList } from '../../lib/formKit.tsx';
+import { Card, Field, Input, Msg, Panel, Row, SetupShell, confirm, useAct, useList } from '../../lib/formKit.tsx';
 import {
   JOB_STATUS_LABEL, PAY_METHODS, billBody, billProblem, canBill, canJobCards, estimateLines, isLive, labourBody, labourProblem, lineSub, lineText, misfits, quantityProblem, stepsFor, vehicleOf, type JobFull
 } from '../../lib/jobCards.ts';
+import { serviceLabourBody, shareFor, type Service } from '../../lib/workshopExtras.ts';
 import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, s } from '../../lib/ui.tsx';
 
 type Found = { product_id: number; name: string; sku: string | null; selling_price_paise: number; stock?: number };
@@ -46,6 +47,8 @@ export default function JobCardScreen() {
   const me = currentBusiness(useSession());
   const job = useList<JobFull>(`/autoparts/jobcards/${id}`);
   const [labour, setLabour] = useState({ description: '', price: '' });
+  const [remember, setRemember] = useState(false);
+  const services = useList<Service[]>('/autoparts/jobcards/services');
   const [pay, setPay] = useState({ method: 'CASH', amount: '' });
   const [qty, setQty] = useState<{ id: number; v: string } | null>(null);
   const a = useAct();
@@ -60,6 +63,12 @@ export default function JobCardScreen() {
         <Soft>{[j.customer_name, j.customer_phone].filter(Boolean).join(' · ')}</Soft>
         {j.complaint ? <Text style={{ color: color.ink }}>{j.complaint}</Text> : null}
         {bad.length ? <Text accessibilityRole="alert" style={{ color: color.danger, fontWeight: '600' }}>{`${t('Warning: this part is recorded as not fitting the vehicle')}: ${bad.join(', ')}`}</Text> : null}
+        {shareFor(j).length ? (
+          <>
+            <SectionTitle>Tell the customer on WhatsApp</SectionTitle>
+            {shareFor(j).map((c) => <Button key={c.id} title={c.label} kind="quiet" busy={a.busy} onPress={() => { void a.run('', async () => { const w = await api.get<{ wa_url: string }>(`/autoparts/jobcards/${id}/share?event=${c.id}`); await Linking.openURL(w.wa_url); }, 'WhatsApp opens with the message ready. You press send.'); }} />)}
+          </>
+        ) : null}
         {live ? stepsFor(j.status).map((st) => <Button key={st.status} title={st.label} kind="quiet" busy={a.busy} onPress={() => { void a.run('', async () => { await api.post(`/autoparts/jobcards/${id}/status`, { status: st.status }); job.reload(); }, 'Saved'); }} />) : null}
 
         <SectionTitle>Parts</SectionTitle>
@@ -81,9 +90,11 @@ export default function JobCardScreen() {
           <>
             <AddPart jobId={String(id)} done={job.reload} />
             <SectionTitle>Add labour</SectionTitle>
-            <Input label="What was done" value={labour.description} onChange={(v) => setLabour({ ...labour, description: v })} max={200} />
+            {services.data?.length ? <Field label="Tap a service to add it"><Chips items={services.data.map((x) => ({ id: String(x.service_id), label: `${x.name} · ${rupees(x.price_paise)}` }))} value="" onChange={(v) => { const x = services.data?.find((y) => String(y.service_id) === v); if (x) void a.run('', async () => { await api.post(`/autoparts/jobcards/${id}/lines`, serviceLabourBody(x)); job.reload(); }); }} /></Field> : null}
+            <Input label="Or type a charge" value={labour.description} onChange={(v) => setLabour({ ...labour, description: v })} max={200} />
             <Input label="Charge" numeric value={labour.price} onChange={(v) => setLabour({ ...labour, price: v })} max={9} />
-            <Button title="Add" kind="quiet" busy={a.busy} onPress={() => { void a.run(labourProblem(labour.description, labour.price), async () => { await api.post(`/autoparts/jobcards/${id}/lines`, labourBody(labour.description, labour.price)); setLabour({ description: '', price: '' }); job.reload(); }); }} />
+            <Row label="Remember this as a service, so next time it is one tap" value={remember} onChange={setRemember} />
+            <Button title="Add" kind="quiet" busy={a.busy} onPress={() => { void a.run(labourProblem(labour.description, labour.price), async () => { await api.post(`/autoparts/jobcards/${id}/lines`, labourBody(labour.description, labour.price)); if (remember) { await api.post('/autoparts/jobcards/services', { name: labour.description.trim(), price: Number(labour.price) }); services.reload(); } setLabour({ description: '', price: '' }); setRemember(false); job.reload(); }); }} />
           </>
         ) : null}
         <Card>{estimateLines(j.estimate).map(([k, v]) => <Text key={k} style={{ color: color.ink, fontWeight: k === t('Estimate') ? '700' : '400' }}>{`${k}: ${v}`}</Text>)}</Card>

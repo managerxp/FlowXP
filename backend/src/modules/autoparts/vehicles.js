@@ -1,7 +1,7 @@
 /*
  * The vehicle catalogue (makes, models, variants) and which part fits which vehicle.
  *
- * NOTHING IS PRE-FILLED. The list is whatever the shop enters or imports from a file it has the right to use. A fitment row says which vehicle a part is said to fit,
+ * The list starts empty: the shop enters it, imports a file, or adds the usual Indian makes and models with one click (indiaVehicles.js: names only, never fitment). A fitment row says which vehicle a part is said to fit,
  * for which years, where that came from, and whether a person has checked it. A part is never assumed to fit because it looks the same as another:
  *   VERIFIED    someone checked it (their name and the time are kept)
  *   UNVERIFIED  said to fit, nobody has checked; always shown with a warning

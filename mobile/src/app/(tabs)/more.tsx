@@ -18,6 +18,7 @@ import { canHotelSetup } from '../../lib/hotelSetup.ts';
 import { canGamingSetup } from '../../lib/gamingSetup.ts';
 import { HOTEL_TYPES } from '../../lib/hotel.ts';
 import { AUTO_PARTS_TYPES } from '../../lib/parts.ts';
+import { workshopOn } from '../../lib/workshopExtras.ts';
 import { GAMING_TYPES } from '../../lib/gaming.ts';
 import { GYM_TYPES } from '../../lib/gym.ts';
 import { allowed } from '../../lib/access.ts';
@@ -44,6 +45,7 @@ export default function More() {
   const retail = RETAIL_TYPES.includes(type);
   const hotel = HOTEL_TYPES.includes(type);
   const parts = AUTO_PARTS_TYPES.includes(type);
+  const workshop = workshopOn(business);
   const gaming = GAMING_TYPES.includes(type);
   const gym = GYM_TYPES.includes(type);
   const salon = type === 'SALON';
@@ -90,8 +92,13 @@ export default function More() {
       { left: 'Racks and bins', sub: 'Look in a bin, put stock away, move it between bins', icon: 'file-tray-stacked-outline', go: '/parts-warehouse', show: parts && can('warehouse', 'grn', 'stock_count') },
       { left: 'Receive parts', sub: 'A delivery: accepted, damaged and rejected counted apart', icon: 'download-outline', go: '/parts-receive', show: parts && can('grn') },
       { left: 'Manage parts', sub: 'Add parts, numbers, vehicles and racks', icon: 'construct-outline', go: '/parts-manage', show: parts && can('parts_catalog', 'warehouse') },
-      { left: 'Job cards', sub: 'Vehicles in for service: parts, labour and one bill', icon: 'build-outline', go: '/job-cards', show: parts && can('billing') },
-      { left: 'Staff', sub: 'People, attendance and payroll', icon: 'people-circle-outline', go: '/workshop-staff', show: parts && can('hr', 'payroll') },
+      { left: 'Job cards', sub: 'Vehicles in for service: parts, labour and one bill', icon: 'build-outline', go: '/job-cards', show: parts && workshop && can('billing') },
+      { left: 'Labour and services', sub: 'What you charge for work: oil change, alignment', icon: 'pricetag-outline', go: '/job-services', show: parts && workshop && can('billing') },
+      { left: 'What we earned', sub: 'Labour and parts earned, by day and mechanic', icon: 'stats-chart-outline', go: '/job-earnings', show: parts && workshop && can('billing') },
+      { left: 'Staff', sub: 'People, attendance and payroll', icon: 'people-circle-outline', go: '/workshop-staff', show: parts && workshop && can('hr', 'payroll') },
+      { left: 'Mechanic mode', sub: 'Show job cards, labour and staff, or hide them for a parts-only shop', icon: 'build-outline', go: '/mechanic-mode', show: parts && business?.role === 'OWNER' },
+      { left: 'Import customers', sub: 'A CSV file of customers: names, phones, credit limits', icon: 'cloud-upload-outline', go: '/customers-import', show: can('customers') },
+      { left: 'Help me find', sub: 'Tell me where things are: say what you want to do', icon: 'help-buoy-outline', go: '/help-find' },
       { left: 'Stock', sub: 'What is running low, and fix a count', icon: 'layers-outline', go: '/stock', show: can('inventory') },
       { left: 'Stock counts', sub: 'Scan the shelf and see what differs', icon: 'clipboard-outline', go: '/stock-counts', show: retail && can('inventory') },
       { left: 'Use-by dates', sub: 'What is expiring, and what has expired', icon: 'time-outline', go: '/expiry', show: retail },

@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { api, formatCurrency } from '../lib/api.js';
 import { MobileLookup } from '../components/LoyaltyCard.jsx';
+import { useT } from '../i18n/useT.js';
 import { Alert, Button, Card, Field, Input, ListState, Table, Td, Th, Thead, Tr, useToast } from '../components/ui.jsx';
 
 const Summary = ({ refreshKey }) => {
@@ -66,6 +67,7 @@ const Adjust = ({ onDone }) => {
 };
 
 const PointsTab = () => {
+  const tr = useT();
   const toast = useToast();
   const [form, setForm] = useState(null);
   const [error, setError] = useState('');
@@ -108,13 +110,13 @@ const PointsTab = () => {
           <input type="checkbox" checked={form.is_enabled} onChange={(e) => setForm((f) => ({ ...f, is_enabled: e.target.checked }))} /> Loyalty points are on
         </label>
         <div className="rounded-(--radius-card) border border-brand-100 bg-brand-50 p-4 text-small text-ink-700">
-          <p className="font-semibold text-ink-900">How it works for your customer</p>
+          <p className="font-semibold text-ink-900">{tr('How it works for your customer')}</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>A {formatCurrency(1000)} bill earns <strong>{Math.floor(Number(form.earn_per_100) * 10) || 0} points</strong>.</li>
-            <li>100 points are worth <strong>{formatCurrency(Number(form.point_value) * 100 || 0)}</strong> off a later bill.</li>
-            <li>They can spend points once they have <strong>{form.min_redeem_points || 0}</strong>, and points can pay up to <strong>{form.max_redeem_pct || 0}%</strong> of one bill.</li>
+            <li>{tr('A {{bill}} bill earns {{points}} points.', { bill: formatCurrency(1000), points: Math.floor(Number(form.earn_per_100) * 10) || 0 })}</li>
+            <li>{tr('100 points are worth {{value}} off a later bill.', { value: formatCurrency(Number(form.point_value) * 100 || 0) })}</li>
+            <li>{tr('They can spend points once they have {{min}}, and points can pay up to {{max}}% of one bill.', { min: form.min_redeem_points || 0, max: form.max_redeem_pct || 0 })}</li>
           </ul>
-          <p className="mt-2 text-caption text-ink-500">Change the numbers below and this updates. Most shops keep the starting numbers.</p>
+          <p className="mt-2 text-caption text-ink-500">{tr('Change the numbers below and this updates. Most shops keep the starting numbers.')}</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="earn" label={`Points earned per ${formatCurrency(100)} paid`} hint={`A ${formatCurrency(500)} bill earns ${example} points.`}><Input id="earn" type="number" step="0.5" min="0.5" value={form.earn_per_100} onChange={set('earn_per_100')} /></Field>

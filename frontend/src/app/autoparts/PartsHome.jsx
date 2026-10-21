@@ -1,10 +1,31 @@
 /* Auto parts overview: what is on the shelves, what it is worth, and what is waiting for someone (put-away, holds, supplier claims, reorders). */
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { rsPaise, useLoad } from '../../lib/autoparts.js';
+import { qs, rsPaise, useLoad } from '../../lib/autoparts.js';
 import { ListState, PageHeader, StatCard } from '../../components/ui.jsx';
 import { Panel } from '../salon/parts.jsx';
 import { useT } from '../../i18n/useT.js';
+
+/* The workshop's day on the overview: vehicles in the shop, and what was billed today from job cards (only when mechanic mode is on). */
+const WorkshopToday = () => {
+  const tr = useT();
+  const day = new Date(); const today = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+  const live = useLoad('/autoparts/jobcards?status=LIVE');
+  const r = useLoad(`/autoparts/jobcards/report${qs({ from: today, to: today })}`);
+  const t = r.data?.totals;
+  const rows = Array.isArray(live.data) ? live.data : [];
+  return (
+    <Panel title={tr('Workshop today')} lead={tr('Vehicles in for service and what job cards billed today.')}>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <StatCard size="lg" label={tr('In the workshop')} value={rows.length} note={tr('{{n}} ready to collect', { n: rows.filter((j) => j.status === 'READY').length })} />
+        <StatCard size="lg" label={tr('Jobs billed today')} value={t ? t.jobs : '–'} />
+        <StatCard size="lg" label={tr('Labour today')} value={t ? rsPaise(t.labour_paise) : '–'} tone="brand" />
+        <StatCard size="lg" label={tr('Parts on jobs today')} value={t ? rsPaise(t.parts_paise) : '–'} />
+      </div>
+      <Link to="/app/parts/jobs" className="mt-3 inline-block text-small font-semibold text-brand-600">{tr('Open job cards')}</Link>
+    </Panel>
+  );
+};
 
 const Task = ({ to, n, label, hint }) => {
   const tr = useT();
@@ -18,7 +39,7 @@ const Task = ({ to, n, label, hint }) => {
 
 export default function PartsHome() {
   const tr = useT();
-  const { business } = useAuth();
+  const { business, can, hasFeature } = useAuth();
   const o = useLoad('/autoparts/overview');
   const m = useLoad('/autoparts/reports/movers?limit=5&class=FAST');
   const d = o.data;
@@ -34,6 +55,7 @@ export default function PartsHome() {
             <StatCard size="lg" label={tr('Stock at cost')} value={rsPaise(d.stock_cost_paise)} note="Purchase price x quantity" />
             <StatCard size="lg" label={tr('Stock at selling price')} value={rsPaise(d.stock_value_paise)} />
           </div>
+          {hasFeature('ap_jobcards') && can('billing') && <WorkshopToday />}
           <Panel title={tr('Needs doing')}>
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
               <Task to="/app/parts/warehouse?tab=putaway" n={d.unassigned_units} label={tr('Units waiting for a bin')} hint={tr('Received but not put on a shelf yet')} />

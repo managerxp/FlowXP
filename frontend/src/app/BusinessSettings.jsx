@@ -21,6 +21,7 @@ import DisplaySettings from './DisplaySettings.jsx';
 import GstOptionsSettings from './GstOptionsSettings.jsx';
 import PrintersSettings from './PrintersSettings.jsx';
 import BackupSettings from './BackupSettings.jsx';
+import MechanicModeSettings from './MechanicModeSettings.jsx';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGES, writeStored } from '../i18n/config.js';
 import { useLanguage } from '../i18n/LanguageSync.jsx';
@@ -334,6 +335,7 @@ const BusinessSettings = () => {
           </div>
         </form>
       </Card>
+      <MechanicModeSettings />
       <RoundOffSetting initial={form.round_off_enabled} />
       <LanguageSetting businessDefault={form.default_language} />
       <PrintersSettings />

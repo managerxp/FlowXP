@@ -119,10 +119,10 @@ export const signup = async (req, res) => {
     const business = (await client.query(
       `INSERT INTO businesses
          (name, business_type, owner_user_id, email, phone,
-          subscription_status, plan_code, plan_version_id, trial_started_at, trial_ends_at)
+          subscription_status, plan_code, plan_version_id, trial_started_at, trial_ends_at, workshop_mode)
        VALUES ($1,$2,$3,$4,$5,'TRIAL','TRIAL',
                (SELECT plan_version_id FROM plan_versions WHERE plan_code = 'TRIAL' AND effective_to IS NULL),
-               $6,$7)
+               $6,$7,$8)
        RETURNING *`,
       [
         String(business_name).trim(),
@@ -131,7 +131,8 @@ export const signup = async (req, res) => {
         emailLower,
         phone ? String(phone).trim() : null,
         trial.trial_started_at,
-        trial.trial_ends_at
+        trial.trial_ends_at,
+        req.body?.workshop_mode === true   // a spare parts shop that also services vehicles says so at signup; Settings can change it
       ]
     )).rows[0];
 
@@ -195,7 +196,7 @@ const sessionPayload = async (user) => {
   const businesses = (await pool.query(
     `SELECT bu.role, b.business_id, b.name, b.business_type, b.currency, b.onboarding_step,
             b.subscription_status, b.plan_code, b.billing_cycle,
-            b.trial_started_at, b.trial_ends_at, b.next_billing_date
+            b.trial_started_at, b.trial_ends_at, b.next_billing_date, b.workshop_mode
      FROM business_users bu
      JOIN businesses b ON b.business_id = bu.business_id
      WHERE bu.user_id = $1 AND bu.status = 'ACTIVE' AND b.status <> 'CLOSED'
@@ -442,6 +443,7 @@ export const me = async (req, res) => {
         gst_options: withGstDefaults(m.gst_settings),   // the GST options switched on (composite, cess, TCS, TDS, reverse charge)
         // a distributor, or a wholesaler who switched the distributor features on: the app shows the Distributor menu
         distributor_enabled: Boolean(m.distributor_enabled),
+        workshop_mode: Boolean(m.workshop_mode),   // a parts shop that also services vehicles: job cards, labour, staff
         default_language: m.default_language ?? null,   // what this business's staff see until they choose their own
         upi_vpa: m.upi_vpa || null,   // the till shows a UPI QR for this ID
         two_factor_required: Boolean(m.require_2fa_admins) && ['OWNER', 'ADMIN'].includes(m.role),

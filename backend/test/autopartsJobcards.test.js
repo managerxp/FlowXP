@@ -144,3 +144,65 @@ test('a new workshop starts with workshop departments and shifts, not a hotel\'s
   const s = (await shop.call(staff.shifts, {})).body.data.map((x) => x.name);
   assert.deepEqual(s.sort(), ['Day', 'Late']);
 });
+
+test('the usual Indian bikes, scooters and cars can be added once, never as fitment', { skip }, async () => {
+  const cat = (await import('../src/controllers/autopartsCatalog.controller.js')).default;
+  const first = okBody(await call(cat.loadDefaultVehicles, { body: { types: ['BIKE', 'CAR'] } }), 201);
+  assert.ok(first.added_makes >= 20 && first.added_models >= 150, JSON.stringify(first));
+  const again = okBody(await call(cat.loadDefaultVehicles, { body: { types: ['BIKE', 'CAR'] } }), 201);
+  assert.deepEqual([again.added_makes, again.added_models], [0, 0], 'adding twice adds nothing');
+  const tree = okBody(await call(cat.vehicles, { query: {} }));
+  const splendor = tree.find((m) => m.name === 'Hero MotoCorp' && m.vehicle_type === 'BIKE')?.models.some((m) => m.name === 'Splendor Plus');
+  assert.ok(splendor && tree.some((m) => m.name === 'Maruti Suzuki' && m.vehicle_type === 'CAR'));
+  assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM part_fitment WHERE business_id = $1 AND model_id IN (SELECT model_id FROM vehicle_models WHERE name = 'Splendor Plus')`, [S.businessId])).rows[0].n, 0, 'no fitment is assumed');
+});
+
+test('services the shop charges for: add, change the charge, pick on a card, remove', { skip }, async () => {
+  const a = okBody(await call(jobs.saveService, { body: { name: 'Wheel alignment', price: 600 } }), 201);
+  assert.equal(a.price_paise, 60000);
+  const again = okBody(await call(jobs.saveService, { body: { name: 'wheel ALIGNMENT', price: 650, tax_rate: 12 } }), 201);
+  assert.equal(again.service_id, a.service_id, 'the same name changes the charge, it is not doubled');
+  const list = okBody(await call(jobs.services, {}));
+  assert.deepEqual(list.map((x) => [x.name, x.price_paise, x.tax_rate]), [['Wheel alignment', 65000, 12]]);
+  const j = okBody(await open({ vehicle_reg: 'KA05 CD 9999' }), 201);
+  const g = okBody(await call(jobs.lineAdd, { params: { id: j.job_id }, body: { kind: 'LABOUR', description: list[0].name, unit_price: list[0].price_paise / 100, tax_rate: list[0].tax_rate } }), 201);
+  assert.equal(g.estimate.labour_paise, 65000); assert.equal(g.estimate.tax_paise, 7800, 'the service carries its own GST rate');
+  assert.equal((await call(jobs.saveService, { body: { name: 'x', price: -1 } })).code, 400);
+  okBody(await call(jobs.removeService, { params: { id: a.service_id } }));
+  assert.deepEqual(okBody(await call(jobs.services, {})), []);
+  okBody(await call(jobs.status, { params: { id: j.job_id }, body: { status: 'CANCELLED' } }));
+});
+
+test('a billed job counts in the shop\'s sales, and the workshop report splits labour from parts', { skip }, async () => {
+  const reports = await import('../src/controllers/reports.controller.js');
+  const before = okBody(await call(reports.sales, { query: {} }));
+  const j = okBody(await open({ vehicle_reg: 'KA09 EF 1111', mechanic_id: mechanic }), 201);
+  okBody(await call(jobs.lineAdd, { params: { id: j.job_id }, body: { kind: 'PART', product_id: pad, quantity: 1 } }), 201);
+  okBody(await call(jobs.lineAdd, { params: { id: j.job_id }, body: { kind: 'LABOUR', description: 'Fit pads', unit_price: 200 } }), 201);
+  const billed = okBody(await call(jobs.bill, { params: { id: j.job_id }, body: { payment: { amount: 'FULL', method: 'UPI' } } }), 201);
+  const after = okBody(await call(reports.sales, { query: {} }));
+  const gain = (x) => x.total_sales;
+  assert.equal(Math.round((gain(after) - gain(before)) * 100), Math.round(billed.invoice.total * 100), 'the job bill is in the sales total');
+  const r = okBody(await call(jobs.report, { query: {} }));
+  assert.ok(r.totals.jobs >= 2 && r.totals.labour_paise >= 70000 && r.totals.parts_paise >= 100000 + 300000, JSON.stringify(r.totals));
+  assert.ok(r.mechanics.some((m) => m.name === 'Raju Mechanic' && m.labour_paise >= 20000));
+  await pool.query(`UPDATE invoices SET status = 'CANCELLED' WHERE invoice_id = $1`, [billed.invoice.invoice_id]);
+  const r2 = okBody(await call(jobs.report, { query: {} }));
+  assert.equal(r.totals.jobs - r2.totals.jobs, 1, 'a cancelled bill leaves the workshop report');
+});
+
+test('the customer is told on WhatsApp: words and a wa.me link, nothing is sent from the server', { skip }, async () => {
+  const j = okBody(await open({ vehicle_reg: 'KA03 GH 2222', promised_on: '2026-12-01' }), 201);
+  const share = (event) => call(jobs.share, { params: { id: j.job_id }, query: { event } });
+  const got = okBody(await share('received'));
+  assert.match(got.text, /received your .*KA03 GH 2222.*JC-\d+/); assert.match(got.text, /2026-12-01/);
+  assert.equal(got.phone, '919000000010'); assert.ok(got.wa_url.startsWith('https://wa.me/919000000010?text='));
+  assert.equal((await share('estimate')).code, 400, 'no estimate without lines');
+  okBody(await call(jobs.lineAdd, { params: { id: j.job_id }, body: { kind: 'LABOUR', description: 'Oil change', unit_price: 300 } }), 201);
+  assert.match(okBody(await share('estimate')).text, /Oil change: ₹300.*Total ₹354/);
+  assert.match(okBody(await share('ready')).text, /is ready at/);
+  assert.equal((await share('bill')).code, 409, 'the bill message needs a bill');
+  assert.equal((await share('nonsense')).code, 400);
+  const billed = okBody(await call(jobs.bill, { params: { id: j.job_id }, body: { payment: { amount: 'FULL', method: 'CASH' } } }), 201);
+  assert.match(okBody(await share('bill')).text, new RegExp(billed.invoice.invoice_number));
+});

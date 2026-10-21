@@ -43,3 +43,10 @@ test('signup succeeds once accepted, and records when', { skip }, async () => {
   assert.ok(user.terms_accepted_at, 'terms_accepted_at should be set');
   assert.ok(new Date(user.terms_accepted_at) <= new Date());
 });
+
+test('a spare parts shop says at signup whether it also services vehicles; everyone else starts with it off', { skip }, async () => {
+  const mode = async (email) => (await pool.query(`SELECT workshop_mode FROM businesses b JOIN users u ON u.user_id = b.owner_user_id WHERE u.email = $1`, [email])).rows[0].workshop_mode;
+  assert.equal((await call(signupBody({ email: 'ap-yes@flowxp.test', business_type: 'AUTO_PARTS', workshop_mode: true }))).code, 201);
+  assert.equal((await call(signupBody({ email: 'ap-no@flowxp.test', business_type: 'AUTO_PARTS' }))).code, 201);
+  assert.equal(await mode('ap-yes@flowxp.test'), true); assert.equal(await mode('ap-no@flowxp.test'), false);
+});

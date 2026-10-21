@@ -242,7 +242,7 @@ export const requireAuth = async (req, res, next) => {
               b.name, b.business_type, b.status AS business_status,
               b.subscription_status, b.plan_code, b.billing_cycle,
               b.trial_started_at, b.trial_ends_at, b.next_billing_date,
-              b.currency, b.onboarding_step, b.gst_enabled, b.gst_settings, b.require_2fa_admins, b.upi_vpa, b.default_language, b.discount_cap_pct, b.cancel_needs_approval,
+              b.currency, b.onboarding_step, b.gst_enabled, b.gst_settings, b.require_2fa_admins, b.upi_vpa, b.default_language, b.discount_cap_pct, b.cancel_needs_approval, b.workshop_mode,
               -- feature_flags come from the business's PINNED plan version, not the plan's current
               -- (possibly since-changed) values — see modules/planFeatures.js and migration 0038.
               COALESCE(pv.feature_flags, p.feature_flags, '{}'::jsonb) AS feature_flags,
@@ -386,7 +386,7 @@ export const withBusiness = (options = {}) => async (req, res, next) => {
     subscription: subscriptionSummary(membership),
     // whole-business feature gates — the plan AND the business type combined (either can turn
     // a feature off), checked by requirePlanFeature() below; separate from `permissions`, which is per-user
-    planFeatures: effectiveFeatureFlags([membership.feature_flags, membership.business_type_feature_flags], membership.feature_overrides, membership.business_type)
+    planFeatures: effectiveFeatureFlags([membership.feature_flags, membership.business_type_feature_flags], membership.feature_overrides, membership.business_type, membership.workshop_mode)
   };
 
   /*

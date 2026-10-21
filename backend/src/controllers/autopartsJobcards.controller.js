@@ -2,7 +2,7 @@
  * Workshop job cards (modules/autoparts/jobcards.js). Permissions and the plan feature are decided in the router (autoparts.routes.js).
  */
 import pool from '../config/database.js';
-import { audit, inTx, int, like, ok, paging, wrapAll } from '../modules/autoparts/common.js';
+import { audit, inTx, int, isoDate, like, ok, paging, wrapAll } from '../modules/autoparts/common.js';
 import * as jobs from '../modules/autoparts/jobcards.js';
 import { recordInvoiceCreated } from '../modules/billing.js';
 
@@ -13,6 +13,16 @@ export default wrapAll({
   list: async (req, res) => ok(res, await jobs.listJobs(pool, req.tenant, { status: req.query.status, q: req.query.q ? String(req.query.q).trim().slice(0, 60) : null, reg: req.query.reg, customerId: req.query.customer_id, mechanicId: req.query.mechanic_id, ...paging(req.query, { max: 200, fallback: 50 }), like })),
   due: async (req, res) => ok(res, await jobs.dueServices(pool, req.tenant, { days: Math.min(90, Math.max(0, Number(req.query.days) || 14)) })),
   mechanics: async (req, res) => ok(res, await jobs.mechanics(pool, req.tenant)),
+  share: async (req, res) => ok(res, await jobs.shareJob(pool, req.tenant, id(req), req.query.event)),
+  services: async (req, res) => ok(res, await jobs.listServices(pool, req.tenant)),
+  saveService: async (req, res) => ok(res, await inTx((db) => jobs.saveService(db, req.tenant, req.body || {})), 201),
+  removeService: async (req, res) => ok(res, await inTx((db) => jobs.removeService(db, req.tenant, id(req)))),
+  report: async (req, res) => {
+    const now = new Date(); const iso = (d) => d.toISOString().slice(0, 10);
+    const from = req.query.from ? isoDate(req.query.from, 'From') : iso(new Date(now.getFullYear(), now.getMonth(), 1));
+    const to = req.query.to ? isoDate(req.query.to, 'To') : iso(now);
+    ok(res, await jobs.workshopReport(pool, req.tenant, { from, to }));
+  },
   get: async (req, res) => ok(res, await jobs.getJob(pool, req.tenant, id(req))),
   create: async (req, res) => {
     const j = await inTx((db) => jobs.createJob(db, req.tenant, uid(req), req.body || {}));

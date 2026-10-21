@@ -1,6 +1,7 @@
 /*
  * The parts catalogue and vehicle fitment. Permissions and plan features are decided in the router (autoparts.routes.js).
  */
+import { loadDefaults } from '../modules/autoparts/indiaVehicles.js';
 import pool from '../config/database.js';
 import * as productsApi from './products.controller.js';
 import { PartsError, audit, inTx, int, ok, page, paging, wrapAll } from '../modules/autoparts/common.js';
@@ -53,6 +54,7 @@ export default wrapAll({
   duplicates: async (req, res) => ok(res, await parts.duplicates(pool, req.tenant.businessId)),
 
   vehicles: async (req, res) => ok(res, await vehicles.tree(pool, req.tenant.businessId, { includeInactive: req.query.all === 'true' })),
+  loadDefaultVehicles: async (req, res) => ok(res, await inTx((db) => loadDefaults(db, req.tenant.businessId, req.body?.types)), 201),
   makeCreate: async (req, res) => ok(res, await inTx((db) => vehicles.createMake(db, req.tenant.businessId, req.body || {})), 201),
   makeUpdate: async (req, res) => ok(res, await inTx((db) => vehicles.updateMake(db, req.tenant.businessId, id(req), req.body || {}))),
   modelCreate: async (req, res) => ok(res, await inTx((db) => vehicles.createModel(db, req.tenant.businessId, req.body || {})), 201),

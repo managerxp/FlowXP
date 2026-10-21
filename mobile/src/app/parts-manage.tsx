@@ -3,7 +3,8 @@ import { TextInput } from 'react-native';
 import { currentBusiness, useSession, api } from '../lib/session.ts';
 import { allowed } from '../lib/access.ts';
 import { t } from '../lib/i18n.ts';
-import { Card, Field, Input, Msg, Panel, Row, SetupShell, confirm, useAct, useList } from '../lib/formKit.tsx';
+import { Card, Field, Input, Msg, Multi, Panel, Row, SetupShell, confirm, useAct, useList } from '../lib/formKit.tsx';
+import { DEFAULT_VEHICLE_TYPES, addedLine, quickRacksProblem, quickRacksSummary, storeCode, type QuickRacks } from '../lib/workshopExtras.ts';
 import {
   CLASS_CHOICES, NUMBER_KIND_CHOICES, VEHICLE_TYPE_CHOICES, emptyPart, emptyPlace, fitBody, fitLine, fitProblem, makeLine, makeProblem, modelLine, modelProblem, newPartBody, newPartProblem, numberLine, numberProblem, partLine, placeBody, placeLine, placeProblem,
   profileBody, profileForm, profileProblem, sortPlaces, type NewPart, type PartFull, type Place, type PlaceForm, type ProfileForm, type VMake
@@ -130,6 +131,20 @@ const PartsTab = ({ edit }: { edit: boolean }) => {
   );
 };
 
+const DefaultVehicles = ({ done }: { done: () => void }) => {
+  const [picked, setPicked] = useState<string[]>(['BIKE', 'SCOOTER', 'CAR']);
+  const a = useAct();
+  return (
+    <Card>
+      <SectionTitle>Add the usual Indian bikes and cars</SectionTitle>
+      <Soft>{t('Starts your list with the common makes and models sold in India. It adds only names. No part is marked as fitting any vehicle. Adding it again adds only what is missing.')}</Soft>
+      <Multi items={DEFAULT_VEHICLE_TYPES.map((x) => ({ id: x.id, label: t(x.label) }))} values={picked} onToggle={(id) => setPicked(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id])} />
+      <Button title="Add them" busy={a.busy} onPress={() => { void a.run(picked.length ? '' : 'Choose at least one', async () => { const r = await api.post<{ added_makes: number; added_models: number }>('/autoparts/vehicles/defaults', { types: picked }); a.setNote(addedLine(r)); done(); }, ''); }} />
+      <Msg a={a} />
+    </Card>
+  );
+};
+
 const VehiclesTab = ({ edit }: { edit: boolean }) => {
   const list = useList<VMake[]>('/autoparts/vehicles');
   const [make, setMake] = useState(''); const [type, setType] = useState('CAR');
@@ -139,6 +154,7 @@ const VehiclesTab = ({ edit }: { edit: boolean }) => {
   if (!list.data) return <Loading />;
   return (
     <Panel>
+      {edit ? <DefaultVehicles done={list.reload} /> : null}
       {edit ? (
         <>
           <SectionTitle>Add a make</SectionTitle>
@@ -164,6 +180,29 @@ const VehiclesTab = ({ edit }: { edit: boolean }) => {
   );
 };
 
+const QuickRacksCard = ({ done }: { done: () => void }) => {
+  const [f, setF] = useState<QuickRacks>({ store: t('Main store'), racks: '5', bins: '4' });
+  const a = useAct();
+  const run = async () => {
+    const root = await api.post<{ location_id: number }>('/autoparts/locations', { segment: storeCode(f.store), name: f.store.trim(), loc_type: 'WAREHOUSE', can_store: false });
+    const made = await api.post<{ location_id: number }[]>('/autoparts/locations/bulk', { parent_id: root.location_id, count: Number(f.racks), prefix: 'R', loc_type: 'RACK', can_store: false });
+    for (const rack of made) await api.post('/autoparts/locations/bulk', { parent_id: rack.location_id, count: Number(f.bins), prefix: '', letters: true, loc_type: 'BIN', can_store: true });
+    done();
+  };
+  return (
+    <Card>
+      <SectionTitle>Set up my racks in one step</SectionTitle>
+      <Soft>{t('Tell us how many racks and bins you have. We name them for you (R01, R02 ... and bins A, B, C ...). You can change it later.')}</Soft>
+      <Input label="Name of your store or godown" value={f.store} onChange={(v) => setF({ ...f, store: v })} max={60} />
+      <Input label="How many racks" numeric value={f.racks} onChange={(v) => setF({ ...f, racks: v })} max={2} />
+      <Input label="Bins in each rack" hint="A bin is one small place on a rack where a part sits." numeric value={f.bins} onChange={(v) => setF({ ...f, bins: v })} max={2} />
+      {!quickRacksProblem(f) ? <Soft>{quickRacksSummary(f)}</Soft> : null}
+      <Button title="Create racks and bins" busy={a.busy} onPress={() => { void a.run(quickRacksProblem(f), run, 'Saved'); }} />
+      <Msg a={a} />
+    </Card>
+  );
+};
+
 const RacksTab = ({ edit }: { edit: boolean }) => {
   const list = useList<Place[]>('/autoparts/locations');
   const [form, setForm] = useState<PlaceForm | null>(null);
@@ -175,6 +214,7 @@ const RacksTab = ({ edit }: { edit: boolean }) => {
   const set = (patch: Partial<PlaceForm>) => form && setForm({ ...form, ...patch });
   return (
     <Panel>
+      {edit && places.length === 0 ? <QuickRacksCard done={list.reload} /> : null}
       {edit ? <Button title="Add a place" onPress={() => { a.setError(''); setForm(emptyPlace()); }} /> : null}
       {places.length === 0 ? <Soft>{t('No places yet.')}</Soft> : null}
       {places.map((p) => (

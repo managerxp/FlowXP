@@ -46,15 +46,16 @@ export const createBusiness = async (req, res) => {
     const business = (await client.query(
       `INSERT INTO businesses
          (name, business_type, owner_user_id, subscription_status, plan_code,
-          trial_started_at, trial_ends_at)
-       VALUES ($1,$2,$3,'TRIAL','TRIAL',$4,$5)
+          trial_started_at, trial_ends_at, workshop_mode)
+       VALUES ($1,$2,$3,'TRIAL','TRIAL',$4,$5,$6)
        RETURNING *`,
       [
         String(name).trim(),
         String(business_type).toUpperCase(),
         req.auth.userId,
         trial.trial_started_at,
-        trial.trial_ends_at
+        trial.trial_ends_at,
+        req.body?.workshop_mode === true
       ]
     )).rows[0];
 
@@ -236,6 +237,15 @@ export const cleanReceiptSettings = (input) => {
     out.invoice_print = printed.settings;
   }
   return { settings: out };
+};
+
+/* PUT /api/businesses/current/workshop-mode { enabled } — owner only; a spare parts shop switches the workshop tools (job cards, labour, staff and payroll) on or off. */
+export const setWorkshopMode = async (req, res) => {
+  if (req.tenant.businessType !== 'AUTO_PARTS') return res.status(404).json({ success: false, message: 'Not found' });
+  if (typeof req.body?.enabled !== 'boolean') return res.status(400).json({ success: false, message: 'Say whether mechanic mode is on or off' });
+  await pool.query(`UPDATE businesses SET workshop_mode = $2 WHERE business_id = $1`, [req.tenant.businessId, req.body.enabled]);
+  recordAudit(req, { action: 'business.workshop_mode', resource_type: 'business', resource_id: req.tenant.businessId, metadata: { enabled: req.body.enabled } });
+  res.json({ success: true, data: { workshop_mode: req.body.enabled } });
 };
 
 export const updateCurrent = async (req, res) => {

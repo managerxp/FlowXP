@@ -12,8 +12,8 @@ export const BUSINESS_TYPES: readonly (readonly [string, string])[] = [
   ['AUTO_PARTS', 'Auto spare parts'], ['WHOLESALE', 'Wholesale and distribution']
 ];
 
-export type SignupForm = { name: string; email: string; phone: string; password: string; businessName: string; businessType: string; agreed: boolean };
-export const emptySignup = (): SignupForm => ({ name: '', email: '', phone: '', password: '', businessName: '', businessType: '', agreed: false });
+export type SignupForm = { name: string; email: string; phone: string; password: string; businessName: string; businessType: string; agreed: boolean; alsoService: boolean };
+export const emptySignup = (): SignupForm => ({ name: '', email: '', phone: '', password: '', businessName: '', businessType: '', agreed: false, alsoService: false });
 
 export const emailLooksRight = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
 /** The common slips: gmial.com, gmail.con, hotmial.com. Returns the address with the slip mended, or null. */
@@ -41,7 +41,9 @@ export const signupProblem = (f: SignupForm): string => {
 };
 export const signupBody = (f: SignupForm) => ({
   name: f.name.trim(), email: f.email.trim(), ...(f.phone.trim() ? { phone: f.phone.trim() } : {}), password: f.password,
-  business_name: f.businessName.trim(), business_type: f.businessType, accepted_terms: f.agreed
+  business_name: f.businessName.trim(), business_type: f.businessType, accepted_terms: f.agreed,
+  // a spare parts shop that also services vehicles starts with mechanic mode on (Settings can change it)
+  ...(f.businessType === 'AUTO_PARTS' && f.alsoService ? { workshop_mode: true } : {})
 });
 
 /** The 6-digit code from the email, with spaces and dashes forgiven. */

@@ -26,6 +26,12 @@ test('signup sends trimmed values, leaves out an empty mobile number, and says t
   assert.equal('phone' in signupBody({ ...good, phone: ' ' }), false);
 });
 
+test('a spare parts shop that also services vehicles says so at signup; nobody else sends it', () => {
+  assert.equal('workshop_mode' in signupBody(good), false);
+  assert.equal(signupBody({ ...good, alsoService: true }).workshop_mode, true);
+  assert.equal('workshop_mode' in signupBody({ ...good, alsoService: true, businessType: 'RETAIL' }), false, 'only a parts shop');
+});
+
 test('common email slips are caught and mended', () => {
   assert.equal(suggestEmail('asha@gmial.com'), 'asha@gmail.com');
   assert.equal(suggestEmail('asha@gmail.con'), 'asha@gmail.com');

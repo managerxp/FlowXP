@@ -7,31 +7,33 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { FIT, VEHICLE_TYPES, n3, qs, rsPaise, useDebounced, useLoad } from '../../lib/autoparts.js';
 import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Th, Thead, Tr, useDialog } from '../../components/ui.jsx';
 import { Chips, NumberField, Panel, Tabs, useAction } from '../salon/parts.jsx';
+import { T, useT } from '../../i18n/useT.js';
 
 const STATUS = {
-  OPEN: ['Waiting', 'neutral'], IN_PROGRESS: ['Being worked on', 'brand'], WAITING_PARTS: ['Waiting for parts', 'warning'], READY: ['Ready', 'success'], BILLED: ['Billed', 'neutral'], CANCELLED: ['Cancelled', 'danger']
+  OPEN: [T('Waiting'), 'neutral'], IN_PROGRESS: [T('Being worked on'), 'brand'], WAITING_PARTS: [T('Waiting for parts'), 'warning'], READY: [T('Ready'), 'success'], BILLED: [T('Billed'), 'neutral'], CANCELLED: [T('Cancelled'), 'danger']
 };
 const LIVE = ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS', 'READY'];
-const METHODS = [['CASH', 'Cash'], ['UPI', 'UPI'], ['CARD', 'Card'], ['BANK_TRANSFER', 'Bank transfer'], ['CREDIT', 'Pay later']];
-const StatusBadge = ({ s }) => <Badge tone={STATUS[s]?.[1] || 'neutral'}>{STATUS[s]?.[0] || s}</Badge>;
+const METHODS = [['CASH', T('Cash')], ['UPI', T('UPI')], ['CARD', T('Card')], ['BANK_TRANSFER', T('Bank transfer')], ['CREDIT', T('Pay later')]];
+const StatusBadge = ({ s }) => { const tr = useT(); return <Badge tone={STATUS[s]?.[1] || 'neutral'}>{STATUS[s]?.[0] ? tr(STATUS[s][0]) : s}</Badge>; };
 const vehicleName = (j) => [j.make, j.model].filter(Boolean).join(' ');
 
 /* ── new card ───────────────────────────────────────────────────────────── */
 const CustomerFind = ({ value, onChange }) => {
+  const tr = useT();
   const [term, setTerm] = useState(''); const q = useDebounced(term, 250);
   const found = useLoad(q.trim().length >= 2 && !value ? `/customers${qs({ search: q, limit: 6 })}` : null);
   const [adding, setAdding] = useState(false); const [name, setName] = useState(''); const [phone, setPhone] = useState('');
   const [busy, run] = useAction();
-  if (value) return <div className="flex items-center justify-between rounded-lg border border-line px-3 py-2 text-small"><span><span className="font-medium">{value.name}</span> <span className="text-ink-500">{value.phone}</span></span><button type="button" className="text-caption text-brand-600" onClick={() => onChange(null)}>Change</button></div>;
+  if (value) return <div className="flex items-center justify-between rounded-lg border border-line px-3 py-2 text-small"><span><span className="font-medium">{value.name}</span> <span className="text-ink-500">{value.phone}</span></span><button type="button" className="text-caption text-brand-600" onClick={() => onChange(null)}>{tr('Change')}</button></div>;
   const rows = Array.isArray(found.data) ? found.data : [];
   return (
     <div className="space-y-2">
-      <Input aria-label="Find the customer" placeholder="Customer name or phone" value={term} onChange={(e) => setTerm(e.target.value)} />
+      <Input aria-label={tr('Find the customer')} placeholder={tr('Customer name or phone')} value={term} onChange={(e) => setTerm(e.target.value)} />
       {rows.map((c) => <button key={c.customer_id} type="button" onClick={() => onChange(c)} className="block w-full rounded-lg border border-line px-3 py-2 text-left text-small hover:bg-surface-2">{c.name} <span className="text-ink-500">{c.phone}</span></button>)}
-      {!adding ? <button type="button" className="text-caption font-medium text-brand-700" onClick={() => { setAdding(true); setName(term); }}>New customer</button> : (
+      {!adding ? <button type="button" className="text-caption font-medium text-brand-700" onClick={() => { setAdding(true); setName(term); }}>{tr('New customer')}</button> : (
         <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-          <Input aria-label="Customer name" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} /><Input aria-label="Customer phone" placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-          <Button loading={busy} disabled={name.trim().length < 2} onClick={() => run(async () => { onChange(await api('/customers', { method: 'POST', body: { name: name.trim(), phone: phone.trim() || undefined } })); }, null)}>Add</Button>
+          <Input aria-label={tr('Customer name')} placeholder={tr('Name')} value={name} onChange={(e) => setName(e.target.value)} /><Input aria-label={tr('Customer phone')} placeholder={tr('Phone')} value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Button loading={busy} disabled={name.trim().length < 2} onClick={() => run(async () => { onChange(await api('/customers', { method: 'POST', body: { name: name.trim(), phone: phone.trim() || undefined } })); }, null)}>{tr('Add')}</Button>
         </div>
       )}
     </div>
@@ -39,6 +41,7 @@ const CustomerFind = ({ value, onChange }) => {
 };
 
 const NewJob = ({ onClose, onSaved }) => {
+  const tr = useT();
   const [customer, setCustomer] = useState(null);
   const [f, setF] = useState({ vehicle_reg: '', vehicle_type: 'CAR', model_id: '', odometer_km: '', complaint: '', mechanic_id: '', promised_on: '' });
   const veh = useLoad('/autoparts/vehicles'); const mech = useLoad('/autoparts/jobcards/mechanics');
@@ -50,19 +53,19 @@ const NewJob = ({ onClose, onSaved }) => {
     try { onSaved(await api('/autoparts/jobcards', { method: 'POST', body: { customer_id: customer.customer_id, vehicle_reg: f.vehicle_reg, vehicle_type: f.vehicle_type, model_id: f.model_id ? Number(f.model_id) : undefined, odometer_km: f.odometer_km === '' ? undefined : Number(f.odometer_km), complaint: f.complaint || undefined, mechanic_id: f.mechanic_id ? Number(f.mechanic_id) : undefined, promised_on: f.promised_on || undefined } })); } catch (e) { setError(e.message); }
   }, null);
   return (
-    <Modal wide title="New job card" onClose={onClose} footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button onClick={save} loading={busy} disabled={!customer || f.vehicle_reg.trim().length < 3}>Open the card</Button></>}>
+    <Modal wide title={tr('New job card')} onClose={onClose} footer={<><Button variant="secondary" onClick={onClose}>{tr('Cancel')}</Button><Button onClick={save} loading={busy} disabled={!customer || f.vehicle_reg.trim().length < 3}>{tr('Open the card')}</Button></>}>
       <div className="space-y-4">
         <Alert>{error}</Alert>
-        <Field id="jc-cust" label="Customer"><CustomerFind value={customer} onChange={setCustomer} /></Field>
+        <Field id="jc-cust" label={tr('Customer')}><CustomerFind value={customer} onChange={setCustomer} /></Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field id="jc-reg" label="Registration number"><Input id="jc-reg" value={f.vehicle_reg} onChange={(e) => setF((x) => ({ ...x, vehicle_reg: e.target.value.toUpperCase() }))} placeholder="KA01AB1234" maxLength={20} /></Field>
-          <Field id="jc-type" label="Vehicle"><Select id="jc-type" value={f.vehicle_type} onChange={set('vehicle_type')}>{VEHICLE_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
-          <Field id="jc-model" label="Make and model" hint="From your Vehicles list, so fitment can be checked"><Select id="jc-model" value={f.model_id} onChange={set('model_id')}><option value="">Not in the list</option>{models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</Select></Field>
-          <NumberField id="jc-km" label="Odometer" suffix="km" step={1} value={f.odometer_km} onChange={(v) => setF((x) => ({ ...x, odometer_km: v }))} />
-          <Field id="jc-mech" label="Mechanic"><Select id="jc-mech" value={f.mechanic_id} onChange={set('mechanic_id')}><option value="">Not assigned</option>{(mech.data || []).map((m) => <option key={m.employee_id} value={m.employee_id}>{m.name}</option>)}</Select></Field>
-          <Field id="jc-due" label="Promised for"><Input id="jc-due" type="date" value={f.promised_on} onChange={set('promised_on')} /></Field>
+          <Field id="jc-reg" label={tr('Registration number')}><Input id="jc-reg" value={f.vehicle_reg} onChange={(e) => setF((x) => ({ ...x, vehicle_reg: e.target.value.toUpperCase() }))} placeholder={tr('KA01AB1234')} maxLength={20} /></Field>
+          <Field id="jc-type" label={tr('Vehicle')}><Select id="jc-type" value={f.vehicle_type} onChange={set('vehicle_type')}>{VEHICLE_TYPES.map(([v, l]) => <option key={v} value={v}>{tr(l)}</option>)}</Select></Field>
+          <Field id="jc-model" label={tr('Make and model')} hint={tr('From your Vehicles list, so fitment can be checked')}><Select id="jc-model" value={f.model_id} onChange={set('model_id')}><option value="">{tr('Not in the list')}</option>{models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</Select></Field>
+          <NumberField id="jc-km" label={tr('Odometer')} suffix="km" step={1} value={f.odometer_km} onChange={(v) => setF((x) => ({ ...x, odometer_km: v }))} />
+          <Field id="jc-mech" label={tr('Mechanic')}><Select id="jc-mech" value={f.mechanic_id} onChange={set('mechanic_id')}><option value="">{tr('Not assigned')}</option>{(mech.data || []).map((m) => <option key={m.employee_id} value={m.employee_id}>{m.name}</option>)}</Select></Field>
+          <Field id="jc-due" label={tr('Promised for')}><Input id="jc-due" type="date" value={f.promised_on} onChange={set('promised_on')} /></Field>
         </div>
-        <Field id="jc-complaint" label="What is wrong, or what to do"><Input id="jc-complaint" value={f.complaint} onChange={set('complaint')} placeholder="Brake noise, full service" maxLength={2000} /></Field>
+        <Field id="jc-complaint" label={tr('What is wrong, or what to do')}><Input id="jc-complaint" value={f.complaint} onChange={set('complaint')} placeholder={tr('Brake noise, full service')} maxLength={2000} /></Field>
       </div>
     </Modal>
   );
@@ -70,32 +73,35 @@ const NewJob = ({ onClose, onSaved }) => {
 
 /* ── one card ───────────────────────────────────────────────────────────── */
 const AddPart = ({ job, onDone }) => {
+  const tr = useT();
   const [term, setTerm] = useState(''); const q = useDebounced(term, 250);
   const found = useLoad(q.trim().length >= 2 ? `/autoparts/parts/lookup${qs({ q, limit: 6 })}` : null);
   const dialog = useDialog(); const [busy, run] = useAction();
   const add = (p, allow = false) => run(async () => {
     try { onDone(await api(`/autoparts/jobcards/${job.job_id}/lines`, { method: 'POST', body: { kind: 'PART', product_id: p.product_id, quantity: 1, allow_short: allow || undefined } })); setTerm(''); }
-    catch (e) { if (/free to hold/.test(e.message) && await dialog.confirm({ title: 'Not enough in stock', body: `${e.message}. Add it to the card anyway, without holding it?`, confirmLabel: 'Add anyway' })) await add(p, true); else throw e; }
+    catch (e) { if (/free to hold/.test(e.message) && await dialog.confirm({ title: tr('Not enough in stock'), body: tr('{{why}}. Add it to the card anyway, without holding it?', { why: e.message }), confirmLabel: tr('Add anyway') })) await add(p, true); else throw e; }
   }, null);
   return (
     <div className="space-y-2">
-      <Input aria-label="Add a part" placeholder="Add a part: name, code or part number" value={term} onChange={(e) => setTerm(e.target.value)} />
-      {Array.isArray(found.data) && found.data.map((p) => <button key={p.product_id} type="button" disabled={busy} onClick={() => add(p)} className="flex w-full items-center justify-between rounded-lg border border-line px-3 py-2 text-left text-small hover:bg-surface-2"><span>{p.name}<span className="block text-caption text-ink-500">{[p.sku, p.oem_part_no].filter(Boolean).join(' · ')}</span></span><span className="tabular text-ink-700">{rsPaise(p.selling_price_paise)} · {n3(p.stock)} in stock</span></button>)}
+      <Input aria-label={tr('Add a part')} placeholder={tr('Add a part: name, code or part number')} value={term} onChange={(e) => setTerm(e.target.value)} />
+      {Array.isArray(found.data) && found.data.map((p) => <button key={p.product_id} type="button" disabled={busy} onClick={() => add(p)} className="flex w-full items-center justify-between rounded-lg border border-line px-3 py-2 text-left text-small hover:bg-surface-2"><span>{p.name}<span className="block text-caption text-ink-500">{[p.sku, p.oem_part_no].filter(Boolean).join(' · ')}</span></span><span className="tabular text-ink-700">{rsPaise(p.selling_price_paise)} · {tr('{{n}} in stock', { n: n3(p.stock) })}</span></button>)}
     </div>
   );
 };
 
 const JobDetail = ({ id, onClose, onChanged }) => {
+  const tr = useT();
   const navigate = useNavigate();
   const dialog = useDialog();
   const { can } = useAuth();
   const job = useLoad(`/autoparts/jobcards/${id}`);
   const mech = useLoad('/autoparts/jobcards/mechanics');
-  const [labour, setLabour] = useState({ description: '', price: '' });
+  const [labour, setLabour] = useState({ description: '', price: '', save: false });
+  const services = useLoad('/autoparts/jobcards/services');
   const [pay, setPay] = useState({ method: 'CASH', amount: '' });
   const [error, setError] = useState(''); const [busy, run] = useAction();
   const j = job.data;
-  if (!j) return <Modal wide title="Job card" onClose={onClose}><ListState loading={job.loading} error={job.error} /></Modal>;
+  if (!j) return <Modal wide title={tr('Job card')} onClose={onClose}><ListState loading={job.loading} error={job.error} /></Modal>;
   const live = LIVE.includes(j.status);
   const refresh = (next) => { job.reload(); onChanged(); return next; };
   const act = (fn) => run(async () => { setError(''); try { await fn(); refresh(); } catch (e) { setError(e.message); } }, null);
@@ -114,63 +120,79 @@ const JobDetail = ({ id, onClose, onChanged }) => {
     <Modal wide title={`${j.job_no} · ${j.vehicle_reg}`} onClose={onClose}>
       <div className="space-y-5">
         <Alert>{error}</Alert>
-        <div className="flex flex-wrap items-center gap-2 text-small"><StatusBadge s={j.status} /><span className="font-medium">{j.customer_name}</span><span className="text-ink-500">{j.customer_phone}</span><span className="text-ink-700">{vehicleName(j) || 'Vehicle not in the list'}{j.odometer_km != null ? ` · ${j.odometer_km} km` : ''}</span>{j.earlier_visits > 0 && <Badge tone="brand">{j.earlier_visits} earlier visit{j.earlier_visits === 1 ? '' : 's'}</Badge>}</div>
+        <div className="flex flex-wrap items-center gap-2 text-small"><StatusBadge s={j.status} /><span className="font-medium">{j.customer_name}</span><span className="text-ink-500">{j.customer_phone}</span><span className="text-ink-700">{vehicleName(j) || tr('Vehicle not in the list')}{j.odometer_km != null ? ` · ${j.odometer_km} km` : ''}</span>{j.earlier_visits > 0 && <Badge tone="brand">{j.earlier_visits === 1 ? tr('{{n}} earlier visit', { n: 1 }) : tr('{{n}} earlier visits', { n: j.earlier_visits })}</Badge>}</div>
         {j.complaint && <p className="rounded-lg bg-surface-2 px-3 py-2 text-small text-ink-700">{j.complaint}</p>}
+        <div className="flex flex-wrap items-center gap-2 text-small">
+          <span className="text-ink-500">{tr('Tell the customer on WhatsApp:')}</span>
+          {[['received', tr('We have your vehicle'), live], ['estimate', tr('Send the estimate'), live && j.lines.length > 0], ['ready', tr('It is ready'), live], ['bill', tr('Send the bill'), j.status === 'BILLED']].filter(([, , show]) => show).map(([ev, label]) => (
+            <Button key={ev} size="sm" variant="secondary" disabled={busy || !j.customer_phone} onClick={() => run(async () => { setError(''); try { const w = await api(`/autoparts/jobcards/${id}/share${qs({ event: ev })}`); window.open(w.wa_url, '_blank', 'noopener'); } catch (e) { setError(e.message); } }, null)}>{label}</Button>
+          ))}
+          {!j.customer_phone && <span className="text-caption text-warning">{tr('This customer has no mobile number.')}</span>}
+        </div>
         {live && (
           <div className="flex flex-wrap gap-2">
-            {j.status !== 'IN_PROGRESS' && <Button size="sm" variant="secondary" onClick={() => setStatus('IN_PROGRESS')}>Start work</Button>}
-            {j.status !== 'WAITING_PARTS' && <Button size="sm" variant="secondary" onClick={() => setStatus('WAITING_PARTS')}>Waiting for parts</Button>}
-            {j.status !== 'READY' && <Button size="sm" variant="secondary" onClick={() => setStatus('READY')}>Mark ready</Button>}
-            <Button size="sm" variant="ghost" onClick={async () => { if (await dialog.confirm({ title: 'Cancel this job?', body: 'Every part held for it goes back on the shelf.', confirmLabel: 'Cancel the job', danger: true })) setStatus('CANCELLED'); }}>Cancel job</Button>
+            {j.status !== 'IN_PROGRESS' && <Button size="sm" variant="secondary" onClick={() => setStatus('IN_PROGRESS')}>{tr('Start work')}</Button>}
+            {j.status !== 'WAITING_PARTS' && <Button size="sm" variant="secondary" onClick={() => setStatus('WAITING_PARTS')}>{tr('Waiting for parts')}</Button>}
+            {j.status !== 'READY' && <Button size="sm" variant="secondary" onClick={() => setStatus('READY')}>{tr('Mark ready')}</Button>}
+            <Button size="sm" variant="ghost" onClick={async () => { if (await dialog.confirm({ title: tr('Cancel this job?'), body: tr('Every part held for it goes back on the shelf.'), confirmLabel: tr('Cancel the job'), danger: true })) setStatus('CANCELLED'); }}>{tr('Cancel job')}</Button>
           </div>
         )}
         {live && (
           <div className="grid gap-3 sm:grid-cols-3">
-            <Field id="jd-mech" label="Mechanic"><Select id="jd-mech" value={j.mechanic_id ?? ''} onChange={(e) => put({ mechanic_id: e.target.value ? Number(e.target.value) : null })}><option value="">Not assigned</option>{(mech.data || []).map((m) => <option key={m.employee_id} value={m.employee_id}>{m.name}</option>)}</Select></Field>
-            <Field id="jd-prom" label="Promised for"><Input id="jd-prom" type="date" defaultValue={j.promised_on || ''} onBlur={(e) => e.target.value !== (j.promised_on || '') && put({ promised_on: e.target.value || null })} /></Field>
-            <Field id="jd-next" label="Next service on"><Input id="jd-next" type="date" defaultValue={j.next_service_on || ''} onBlur={(e) => e.target.value !== (j.next_service_on || '') && put({ next_service_on: e.target.value || null })} /></Field>
+            <Field id="jd-mech" label={tr('Mechanic')}><Select id="jd-mech" value={j.mechanic_id ?? ''} onChange={(e) => put({ mechanic_id: e.target.value ? Number(e.target.value) : null })}><option value="">{tr('Not assigned')}</option>{(mech.data || []).map((m) => <option key={m.employee_id} value={m.employee_id}>{m.name}</option>)}</Select></Field>
+            <Field id="jd-prom" label={tr('Promised for')}><Input id="jd-prom" type="date" defaultValue={j.promised_on || ''} onBlur={(e) => e.target.value !== (j.promised_on || '') && put({ promised_on: e.target.value || null })} /></Field>
+            <Field id="jd-next" label={tr('Next service on')}><Input id="jd-next" type="date" defaultValue={j.next_service_on || ''} onBlur={(e) => e.target.value !== (j.next_service_on || '') && put({ next_service_on: e.target.value || null })} /></Field>
           </div>
         )}
 
-        <Panel title="Parts and labour">
-          {j.lines.length === 0 ? <p className="text-small text-ink-500">Nothing on the card yet.</p> : (
+        <Panel title={tr('Parts and labour')}>
+          {j.lines.length === 0 ? <p className="text-small text-ink-500">{tr('Nothing on the card yet.')}</p> : (
             <Table>
-              <Thead><Th>Item</Th><Th>Fits</Th><Th className="text-right">Qty</Th><Th className="text-right">Price</Th><Th className="text-right">Amount</Th><Th /></Thead>
+              <Thead><Th>{tr('Item')}</Th><Th>{tr('Fits')}</Th><Th className="text-right">{tr('Qty')}</Th><Th className="text-right">{tr('Price')}</Th><Th className="text-right">{tr('Amount')}</Th><Th /></Thead>
               <tbody>{j.lines.map((l) => (
                 <Tr key={l.line_id}>
-                  <Td>{l.description}<span className="block text-caption text-ink-500">{l.kind === 'LABOUR' ? 'Labour' : [l.sku, l.held ? 'held for this customer' : 'not held'].filter(Boolean).join(' · ')}</span></Td>
-                  <Td>{l.kind === 'PART' && l.fitment !== 'NO_VEHICLE' && <Badge tone={FIT[l.fitment]?.tone || 'neutral'}>{FIT[l.fitment]?.label || 'No fitment on record'}</Badge>}</Td>
-                  <Td className="text-right tabular">{live ? <input aria-label={`Quantity of ${l.description}`} type="number" min="0" step="any" defaultValue={l.quantity} className="h-8 w-16 rounded border border-line bg-surface px-1 text-right" onBlur={(e) => Number(e.target.value) > 0 && Number(e.target.value) !== l.quantity && act(() => api(`/autoparts/jobcards/lines/${l.line_id}`, { method: 'PUT', body: { quantity: Number(e.target.value) } }))} /> : n3(l.quantity)}</Td>
+                  <Td>{l.description}<span className="block text-caption text-ink-500">{l.kind === 'LABOUR' ? tr('Labour') : [l.sku, l.held ? tr('held for this customer') : tr('not held')].filter(Boolean).join(' · ')}</span></Td>
+                  <Td>{l.kind === 'PART' && l.fitment !== 'NO_VEHICLE' && <Badge tone={FIT[l.fitment]?.tone || 'neutral'}>{FIT[l.fitment]?.label ? tr(FIT[l.fitment].label) : tr('No fitment on record')}</Badge>}</Td>
+                  <Td className="text-right tabular">{live ? <input aria-label={tr('Quantity of {{name}}', { name: l.description })} type="number" min="0" step="any" defaultValue={l.quantity} className="h-8 w-16 rounded border border-line bg-surface px-1 text-right" onBlur={(e) => Number(e.target.value) > 0 && Number(e.target.value) !== l.quantity && act(() => api(`/autoparts/jobcards/lines/${l.line_id}`, { method: 'PUT', body: { quantity: Number(e.target.value) } }))} /> : n3(l.quantity)}</Td>
                   <Td className="text-right tabular">{rsPaise(l.unit_price_paise)}</Td><Td className="text-right tabular">{rsPaise(l.amount_paise)}</Td>
-                  <Td className="text-right">{live && <Button size="sm" variant="ghost" onClick={() => act(() => api(`/autoparts/jobcards/lines/${l.line_id}`, { method: 'DELETE' }))}>Remove</Button>}</Td>
+                  <Td className="text-right">{live && <Button size="sm" variant="ghost" onClick={() => act(() => api(`/autoparts/jobcards/lines/${l.line_id}`, { method: 'DELETE' }))}>{tr('Remove')}</Button>}</Td>
                 </Tr>))}
               </tbody>
             </Table>
           )}
           {live && <div className="mt-4 space-y-4">
             <AddPart job={j} onDone={() => refresh()} />
-            <form className="grid items-end gap-2 sm:grid-cols-[1fr_9rem_auto]" onSubmit={(e) => { e.preventDefault(); if (labour.description.trim() && labour.price !== '') act(async () => { await api(`/autoparts/jobcards/${id}/lines`, { method: 'POST', body: { kind: 'LABOUR', description: labour.description.trim(), unit_price: Number(labour.price) } }); setLabour({ description: '', price: '' }); }); }}>
-              <Field id="jd-lab" label="Add labour"><Input id="jd-lab" value={labour.description} onChange={(e) => setLabour((x) => ({ ...x, description: e.target.value }))} placeholder="Fit brake pads, wheel alignment" /></Field>
-              <NumberField id="jd-labp" label="Charge" prefix="₹" value={labour.price} onChange={(v) => setLabour((x) => ({ ...x, price: v }))} />
-              <Button type="submit" variant="secondary" loading={busy} disabled={!labour.description.trim() || labour.price === ''}>Add</Button>
-            </form>
+            <div className="space-y-2">
+              <p className="text-small font-medium text-ink-900">{tr('Add labour')}</p>
+              {(services.data || []).length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {services.data.map((sv) => <button key={sv.service_id} type="button" disabled={busy} onClick={() => act(() => api(`/autoparts/jobcards/${id}/lines`, { method: 'POST', body: { kind: 'LABOUR', description: sv.name, unit_price: sv.price_paise / 100, ...(sv.tax_rate != null ? { tax_rate: sv.tax_rate } : {}) } }))} className="rounded-full border border-line px-3 py-1.5 text-small text-ink-900 hover:border-brand-500 hover:bg-brand-50">{sv.name} · {rsPaise(sv.price_paise)}</button>)}
+                </div>
+              )}
+              <form className="grid items-end gap-2 sm:grid-cols-[1fr_9rem_auto]" onSubmit={(e) => { e.preventDefault(); if (labour.description.trim() && labour.price !== '') act(async () => { await api(`/autoparts/jobcards/${id}/lines`, { method: 'POST', body: { kind: 'LABOUR', description: labour.description.trim(), unit_price: Number(labour.price) } }); if (labour.save) { await api('/autoparts/jobcards/services', { method: 'POST', body: { name: labour.description.trim(), price: Number(labour.price) } }); services.reload(); } setLabour({ description: '', price: '', save: false }); }); }}>
+                <Field id="jd-lab" label={tr('Or type a charge')}><Input id="jd-lab" value={labour.description} onChange={(e) => setLabour((x) => ({ ...x, description: e.target.value }))} placeholder={tr('Fit brake pads, wheel alignment')} /></Field>
+                <NumberField id="jd-labp" label={tr('Charge')} prefix="₹" value={labour.price} onChange={(v) => setLabour((x) => ({ ...x, price: v }))} />
+                <Button type="submit" variant="secondary" loading={busy} disabled={!labour.description.trim() || labour.price === ''}>{tr('Add')}</Button>
+                <label className="flex items-center gap-2 text-caption text-ink-500 sm:col-span-3"><input type="checkbox" checked={labour.save} onChange={(e) => setLabour((x) => ({ ...x, save: e.target.checked }))} /> {tr('Remember this as a service, so next time it is one tap')}</label>
+              </form>
+            </div>
           </div>}
           <dl className="mt-4 space-y-1 text-small">
-            <div className="flex justify-between"><dt className="text-ink-500">Parts</dt><dd className="tabular">{rsPaise(est.parts_paise)}</dd></div>
-            <div className="flex justify-between"><dt className="text-ink-500">Labour</dt><dd className="tabular">{rsPaise(est.labour_paise)}</dd></div>
-            <div className="flex justify-between"><dt className="text-ink-500">GST</dt><dd className="tabular">{rsPaise(est.tax_paise)}</dd></div>
-            <div className="flex justify-between border-t border-line pt-1 font-semibold"><dt>Estimate</dt><dd className="tabular">{rsPaise(est.total_paise)}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink-500">{tr('Parts')}</dt><dd className="tabular">{rsPaise(est.parts_paise)}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink-500">{tr('Labour')}</dt><dd className="tabular">{rsPaise(est.labour_paise)}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink-500">{tr('GST')}</dt><dd className="tabular">{rsPaise(est.tax_paise)}</dd></div>
+            <div className="flex justify-between border-t border-line pt-1 font-semibold"><dt>{tr('Estimate')}</dt><dd className="tabular">{rsPaise(est.total_paise)}</dd></div>
           </dl>
         </Panel>
 
         {live && can('billing') && j.lines.length > 0 && (
           <div className="flex flex-wrap items-end gap-3 border-t border-line pt-4">
-            <Field id="jd-method" label="Customer pays"><Select id="jd-method" value={pay.method} onChange={(e) => setPay((x) => ({ ...x, method: e.target.value }))}>{METHODS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
-            {pay.method !== 'CREDIT' && <div className="w-40"><NumberField id="jd-amt" label="Amount" prefix="₹" hint="Blank: the whole bill" value={pay.amount} onChange={(v) => setPay((x) => ({ ...x, amount: v }))} /></div>}
-            <Button className="ml-auto" onClick={bill} loading={busy}>Make the bill</Button>
+            <Field id="jd-method" label={tr('Customer pays')}><Select id="jd-method" value={pay.method} onChange={(e) => setPay((x) => ({ ...x, method: e.target.value }))}>{METHODS.map(([v, l]) => <option key={v} value={v}>{tr(l)}</option>)}</Select></Field>
+            {pay.method !== 'CREDIT' && <div className="w-40"><NumberField id="jd-amt" label={tr('Amount')} prefix="₹" hint={tr('Blank: the whole bill')} value={pay.amount} onChange={(v) => setPay((x) => ({ ...x, amount: v }))} /></div>}
+            <Button className="ml-auto" onClick={bill} loading={busy}>{tr('Make the bill')}</Button>
           </div>
         )}
-        {j.status === 'BILLED' && j.invoice_id && <Button onClick={() => navigate(`/app/billing/invoices/${j.invoice_id}`)}>Open the bill</Button>}
+        {j.status === 'BILLED' && j.invoice_id && <Button onClick={() => navigate(`/app/billing/invoices/${j.invoice_id}`)}>{tr('Open the bill')}</Button>}
       </div>
     </Modal>
   );
@@ -178,16 +200,76 @@ const JobDetail = ({ id, onClose, onChanged }) => {
 
 /* ── the list ───────────────────────────────────────────────────────────── */
 const Due = () => {
+  const tr = useT();
   const due = useLoad('/autoparts/jobcards/due?days=30');
   return (
-    <Panel title="Services due" lead="Vehicles whose last job said when the next service is due. Call them.">
-      <ListState loading={due.loading && !due.data} error={due.error} empty={due.data && due.data.length === 0} emptyLabel="No service is due in the next 30 days." />
-      {due.data?.length > 0 && <Table><Thead><Th>Vehicle</Th><Th>Customer</Th><Th>Due</Th></Thead><tbody>{due.data.map((d) => <Tr key={d.job_id}><Td>{d.vehicle_reg}<span className="block text-caption text-ink-500">{[d.make, d.model].filter(Boolean).join(' ')}</span></Td><Td>{d.customer_name}<span className="block text-caption text-ink-500">{d.customer_phone}</span></Td><Td>{d.next_service_on}{d.overdue && <Badge tone="danger"> overdue</Badge>}{d.next_service_km ? <span className="block text-caption text-ink-500">or {d.next_service_km} km</span> : null}</Td></Tr>)}</tbody></Table>}
+    <Panel title={tr('Services due')} lead={tr('Vehicles whose last job said when the next service is due. Call them.')}>
+      <ListState loading={due.loading && !due.data} error={due.error} empty={due.data && due.data.length === 0} emptyLabel={tr('No service is due in the next 30 days.')} />
+      {due.data?.length > 0 && <Table><Thead><Th>{tr('Vehicle')}</Th><Th>{tr('Customer')}</Th><Th>{tr('Due')}</Th></Thead><tbody>{due.data.map((d) => <Tr key={d.job_id}><Td>{d.vehicle_reg}<span className="block text-caption text-ink-500">{[d.make, d.model].filter(Boolean).join(' ')}</span></Td><Td>{d.customer_name}<span className="block text-caption text-ink-500">{d.customer_phone}</span></Td><Td>{d.next_service_on}{d.overdue && <Badge tone="danger"> {tr('overdue')}</Badge>}{d.next_service_km ? <span className="block text-caption text-ink-500">{tr('or {{n}} km', { n: d.next_service_km })}</span> : null}</Td></Tr>)}</tbody></Table>}
     </Panel>
   );
 };
 
+/* ── services the shop charges for ─────────────────────────────────────── */
+const Services = () => {
+  const tr = useT();
+  const list = useLoad('/autoparts/jobcards/services');
+  const [f, setF] = useState({ name: '', price: '', tax: '' });
+  const [error, setError] = useState(''); const [busy, run] = useAction();
+  const add = () => run(async () => {
+    setError('');
+    try { await api('/autoparts/jobcards/services', { method: 'POST', body: { name: f.name.trim(), price: Number(f.price), ...(f.tax !== '' ? { tax_rate: Number(f.tax) } : {}) } }); setF({ name: '', price: '', tax: '' }); list.reload(); } catch (e) { setError(e.message); }
+  }, null);
+  const rows = Array.isArray(list.data) ? list.data : [];
+  return (
+    <Panel title={tr('Labour and services')} lead={tr('What you charge for work. On a job card each one is a single tap. Adding a name that is already here changes its charge.')}>
+      <div className="space-y-4">
+        <Alert>{error}</Alert>
+        <form className="grid items-end gap-2 sm:grid-cols-[1fr_9rem_8rem_auto]" onSubmit={(e) => { e.preventDefault(); if (f.name.trim() && f.price !== '') add(); }}>
+          <Field id="sv-name" label={tr('Service')}><Input id="sv-name" value={f.name} onChange={(e) => setF((x) => ({ ...x, name: e.target.value }))} placeholder={tr('Oil change, wheel alignment, brake pad fitting')} /></Field>
+          <NumberField id="sv-price" label={tr('Charge')} prefix="₹" value={f.price} onChange={(v) => setF((x) => ({ ...x, price: v }))} />
+          <NumberField id="sv-tax" label={tr('GST % (optional)')} hint={tr('Blank: the shop\'s labour rate')} value={f.tax} onChange={(v) => setF((x) => ({ ...x, tax: v }))} />
+          <Button type="submit" loading={busy} disabled={!f.name.trim() || f.price === ''}>{tr('Add')}</Button>
+        </form>
+        <ListState loading={list.loading && !list.data} error={list.error} empty={list.data && rows.length === 0} emptyLabel={tr('No services yet. Add the work you do most, with its charge.')} />
+        {rows.length > 0 && <Table><Thead><Th>{tr('Service')}</Th><Th className="text-right">{tr('Charge')}</Th><Th className="text-right">{tr('GST')}</Th><Th /></Thead><tbody>{rows.map((r) => <Tr key={r.service_id}><Td>{r.name}</Td><Td className="tabular text-right">{rsPaise(r.price_paise)}</Td><Td className="tabular text-right">{r.tax_rate == null ? tr('Shop rate') : `${r.tax_rate}%`}</Td><Td className="text-right"><Button size="sm" variant="ghost" onClick={() => run(async () => { await api(`/autoparts/jobcards/services/${r.service_id}`, { method: 'DELETE' }); list.reload(); }, null)}>{tr('Remove')}</Button></Td></Tr>)}</tbody></Table>}
+      </div>
+    </Panel>
+  );
+};
+
+/* ── what the workshop earned ──────────────────────────────────────────── */
+const Stat = ({ label, value }) => <div className="rounded-(--radius-card) border border-line bg-surface p-4"><p className="text-caption text-ink-500">{label}</p><p className="tabular mt-1 text-title font-semibold text-ink-900">{value}</p></div>;
+const Earnings = () => {
+  const tr = useT();
+  const [from, setFrom] = useState(`${new Date().toISOString().slice(0, 7)}-01`); const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
+  const r = useLoad(`/autoparts/jobcards/report${qs({ from, to })}`);
+  const d = r.data;
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <Field id="er-from" label={tr('From')}><Input id="er-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
+        <Field id="er-to" label={tr('To')}><Input id="er-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
+        <p className="pb-2 text-caption text-ink-500">{tr('These bills are also in Reports and the daily sales, like every other bill.')}</p>
+      </div>
+      <ListState loading={r.loading && !d} error={r.error} />
+      {d && (
+        <>
+          <div className="grid gap-3 sm:grid-cols-4">
+            <Stat label={tr('Jobs billed')} value={d.totals.jobs} /><Stat label={tr('Labour')} value={rsPaise(d.totals.labour_paise)} /><Stat label={tr('Parts')} value={rsPaise(d.totals.parts_paise)} /><Stat label={tr('Billed with GST')} value={rsPaise(d.totals.total_paise)} />
+          </div>
+          {d.days.length === 0 ? <p className="text-small text-ink-500">{tr('No job card was billed in these dates.')}</p> : (
+            <Panel title={tr('Day by day')} className="!p-0"><Table><Thead><Th>{tr('Date')}</Th><Th className="text-right">{tr('Jobs')}</Th><Th className="text-right">{tr('Labour')}</Th><Th className="text-right">{tr('Parts')}</Th><Th className="text-right">{tr('Billed with GST')}</Th></Thead><tbody>{d.days.map((x) => <Tr key={x.day}><Td>{x.day}</Td><Td className="tabular text-right">{x.jobs}</Td><Td className="tabular text-right">{rsPaise(x.labour_paise)}</Td><Td className="tabular text-right">{rsPaise(x.parts_paise)}</Td><Td className="tabular text-right">{rsPaise(x.total_paise)}</Td></Tr>)}</tbody></Table></Panel>
+          )}
+          {d.mechanics.length > 0 && <Panel title={tr('By mechanic')} className="!p-0"><Table><Thead><Th>{tr('Mechanic')}</Th><Th className="text-right">{tr('Jobs')}</Th><Th className="text-right">{tr('Labour')}</Th></Thead><tbody>{d.mechanics.map((m) => <Tr key={m.name}><Td>{m.name === 'Not assigned' ? tr('Not assigned') : m.name}</Td><Td className="tabular text-right">{m.jobs}</Td><Td className="tabular text-right">{rsPaise(m.labour_paise)}</Td></Tr>)}</tbody></Table></Panel>}
+        </>
+      )}
+    </div>
+  );
+};
+
 export default function PartsJobCards() {
+  const tr = useT();
   const { can } = useAuth();
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') || 'jobs';
@@ -198,19 +280,19 @@ export default function PartsJobCards() {
   const rows = Array.isArray(list.data) ? list.data : [];
   return (
     <div>
-      <PageHeader title="Job cards" lead="Vehicles in for service: the parts fitted, the labour, and one bill."
-        action={can('billing') && <Button onClick={() => setAdding(true)}><Plus aria-hidden="true" className="h-4 w-4" /> New job card</Button>} />
-      <Tabs value={tab} onChange={(k) => setParams(k === 'jobs' ? {} : { tab: k })} tabs={[{ key: 'jobs', label: 'Jobs' }, { key: 'due', label: 'Services due' }]} />
-      {tab === 'due' ? <Due /> : (
+      <PageHeader title={tr('Job cards')} lead={tr('Vehicles in for service: the parts fitted, the labour, and one bill.')}
+        action={can('billing') && <Button onClick={() => setAdding(true)}><Plus aria-hidden="true" className="h-4 w-4" /> {tr('New job card')}</Button>} />
+      <Tabs value={tab} onChange={(k) => setParams(k === 'jobs' ? {} : { tab: k })} tabs={[{ key: 'jobs', label: T('Jobs') }, { key: 'due', label: T('Services due') }, { key: 'services', label: T('Labour and services') }, { key: 'earnings', label: T('What we earned') }]} />
+      {tab === 'due' ? <Due /> : tab === 'services' ? <Services /> : tab === 'earnings' ? <Earnings /> : (
         <>
           <div className="mb-4 flex flex-wrap items-center gap-3">
-            <div className="w-full max-w-xs"><Input aria-label="Search job cards" placeholder="Job number, registration, customer" value={term} onChange={(e) => setTerm(e.target.value)} /></div>
-            <Chips label="Show" value={status} onChange={setStatus} options={[{ value: 'LIVE', label: 'In the workshop' }, { value: 'READY', label: 'Ready' }, { value: 'BILLED', label: 'Billed' }, { value: 'ALL', label: 'All' }]} />
+            <div className="w-full max-w-xs"><Input aria-label={tr('Search job cards')} placeholder={tr('Job number, registration, customer')} value={term} onChange={(e) => setTerm(e.target.value)} /></div>
+            <Chips label={tr('Show')} value={status} onChange={setStatus} options={[{ value: 'LIVE', label: tr('In the workshop') }, { value: 'READY', label: tr('Ready') }, { value: 'BILLED', label: tr('Billed') }, { value: 'ALL', label: tr('All') }]} />
           </div>
-          <ListState loading={list.loading && !list.data} error={list.error} empty={list.data && rows.length === 0} emptyIcon={Wrench} emptyLabel="No job cards here" emptyBody="Open a card when a vehicle comes in." />
+          <ListState loading={list.loading && !list.data} error={list.error} empty={list.data && rows.length === 0} emptyIcon={Wrench} emptyLabel={tr('No job cards here')} emptyBody={tr('Open a card when a vehicle comes in.')} />
           {rows.length > 0 && (
             <Table>
-              <Thead><Th>Job</Th><Th>Vehicle</Th><Th>Customer</Th><Th>Mechanic</Th><Th>Status</Th><Th className="text-right">Estimate</Th></Thead>
+              <Thead><Th>{tr('Job')}</Th><Th>{tr('Vehicle')}</Th><Th>{tr('Customer')}</Th><Th>{tr('Mechanic')}</Th><Th>{tr('Status')}</Th><Th className="text-right">{tr('Estimate')}</Th></Thead>
               <tbody>{rows.map((j) => (
                 <Tr key={j.job_id} onClick={() => setOpen(j.job_id)}>
                   <Td className="font-medium text-brand-700">{j.job_no}<span className="block text-caption text-ink-500">{String(j.opened_at).slice(0, 10)}</span></Td>

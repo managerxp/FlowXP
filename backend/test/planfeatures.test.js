@@ -305,3 +305,16 @@ test('a business type with a feature switched off refuses it even on a plan that
   const restored = await tenantFor('enterprise-owner@planfeat.test');
   assert.ok((await runsThrough(mw.requirePlanFeature('reservations'), restored)).next);
 });
+
+test('mechanic mode: a spare parts shop sees the workshop tools only when it switched them on', async () => {
+  const { effectiveFeatureFlags, WORKSHOP_KEYS } = await import('../src/modules/planFeatures.js');
+  const off = effectiveFeatureFlags([{}, {}], {}, 'AUTO_PARTS', false);
+  assert.ok(WORKSHOP_KEYS.every((k) => off[k] === false), 'off: job cards and staff are hidden');
+  const on = effectiveFeatureFlags([{}, {}], {}, 'AUTO_PARTS', true);
+  assert.ok(WORKSHOP_KEYS.every((k) => on[k] !== false), 'on: they show');
+  const unknown = effectiveFeatureFlags([{}, {}], {}, 'AUTO_PARTS', undefined);
+  assert.ok(WORKSHOP_KEYS.every((k) => unknown[k] !== false), 'not loaded: nothing is hidden by mistake');
+  const forced = effectiveFeatureFlags([{}, {}], { ap_jobcards: true }, 'AUTO_PARTS', false);
+  assert.notEqual(forced.ap_jobcards, false, 'an admin override that forces it on still wins');
+  assert.deepEqual(effectiveFeatureFlags([{}, {}], {}, 'RETAIL', false), effectiveFeatureFlags([{}, {}], {}, 'RETAIL', undefined), 'other kinds of shop are unaffected');
+});

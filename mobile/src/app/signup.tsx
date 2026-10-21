@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, T
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, NetworkError } from '../lib/api.ts';
+import { t } from '../lib/i18n.ts';
 import { api, signedIn } from '../lib/session.ts';
 import { kvSet } from '../lib/local.ts';
 import { BUSINESS_TYPES, PRIVACY_URL, TERMS_URL, emptySignup, signupBody, signupProblem, suggestEmail, type SignupForm } from '../lib/account.ts';
@@ -67,6 +68,13 @@ export default function Signup() {
                   </Pressable>
                 ))}
               </View>
+
+              {f.businessType === 'AUTO_PARTS' ? (
+                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: f.alsoService }} onPress={() => set('alsoService', !f.alsoService)} style={{ flexDirection: 'row', gap: 10, alignItems: 'center', minHeight: 48 }}>
+                  <View style={{ width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: color.brand, backgroundColor: f.alsoService ? color.brand : 'transparent', alignItems: 'center', justifyContent: 'center' }}>{f.alsoService ? <Text style={{ color: '#fff', fontWeight: '700' }}>✓</Text> : null}</View>
+                  <Text style={{ flex: 1, color: color.ink }}>{t('We also service bikes or cars (turns on job cards, labour and staff)')}</Text>
+                </Pressable>
+              ) : null}
 
               <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: f.agreed }} onPress={() => set('agreed', !f.agreed)} style={{ flexDirection: 'row', gap: 10, alignItems: 'center', minHeight: 48, marginTop: 8 }}>
                 <View style={{ width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: color.brand, backgroundColor: f.agreed ? color.brand : 'transparent', alignItems: 'center', justifyContent: 'center' }}>{f.agreed ? <Text style={{ color: '#fff', fontWeight: '700' }}>✓</Text> : null}</View>
