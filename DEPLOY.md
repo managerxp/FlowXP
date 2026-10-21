@@ -179,3 +179,15 @@ small things — paths, the Postgres user's auth method — on the first deploy.
 - A Postgres backup runs (`backend/scripts/backup.sh`) and one restore has been tried.
 - The privacy policy mentions Flow AI, location for field sales, phone alerts and account deletion (`mobile/PLAY_PRIVACY.md`), and `https://flowxp.in/delete-account` is live.
 - Sign in as each kind of business on the live server once, make a bill, and cancel it.
+
+## Android app: build the APK and show the download button
+
+The website shows a "Download for Android (APK)" button only when the site is built with `VITE_ANDROID_APP_URL` set to an https link; with it empty there is no button.
+
+1. On your computer, in `mobile/`: `npm install -g eas-cli`, then `eas login` (your Expo account), then `eas build --profile preview --platform android`. The `preview` profile makes an installable **APK** that talks to `https://flowxp.in`. The first build asks to create an Android keystore: let EAS keep it, and never lose it, because every update must be signed with the same one.
+2. When the build ends, download the `.apk` from the link EAS prints (or from expo.dev, Builds).
+3. On the server: `mkdir -p /var/www/flowxp/downloads`, copy the file there as `flowxp.apk` (`scp flowxp.apk root@server:/var/www/flowxp/downloads/flowxp.apk`), and `nginx -t && systemctl reload nginx` after the `location = /downloads/flowxp.apk` block from `deploy/nginx.conf` is in place.
+4. Build the site with the link: `cd frontend && VITE_ANDROID_APP_URL=https://flowxp.in/downloads/flowxp.apk npm run build`. The button appears on the home page.
+5. Each new version: raise `version` in `mobile/app.json` (the production profile raises `versionCode` itself), build again, replace the file on the server.
+
+For Google Play later use `eas build --profile production --platform android` (an AAB) and `eas submit`; see `mobile/STORE.md`. Set `VITE_ANDROID_APP_URL` to the Play page then, and the button becomes "Get it on Google Play".

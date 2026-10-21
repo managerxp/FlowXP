@@ -23,6 +23,7 @@ import BlurText from '../components/reactbits/BlurText.jsx';
 import SpotlightCard from '../components/reactbits/SpotlightCard.jsx';
 import { Check, Cross, FinalCta, FULL, H2, KIND, MAIN, PhoneShot, Shot, TextLink } from './parts.jsx';
 import { InstallButton } from '../components/InstallButton.jsx';
+import { ANDROID_APP_URL, ANDROID_IS_PLAY } from '../lib/appLinks.js';
 
 /*
  * The "what needs your attention" panel: the kind of thing FlowXP tells an
@@ -575,7 +576,12 @@ const PhoneApp = () => (
           The FlowXP app is built for the phone or tablet at the counter. Today it works in any mobile browser;
           the Android app is being tested with real shops and is not on the Play Store yet. Install the web app from your browser now: it opens full screen and keeps billing with no signal.
         </p>
-        <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3"><InstallButton label="Install the app on this device" variant="primary" /><TextLink to="/contact">Ask to join the Android test</TextLink></div>
+        <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
+          {ANDROID_APP_URL && <Button href={ANDROID_APP_URL} {...(ANDROID_IS_PLAY ? {} : { download: true })} variant="primary" size="lg">{ANDROID_IS_PLAY ? 'Get it on Google Play' : 'Download for Android (APK)'}</Button>}
+          <InstallButton label="Install the app on this device" variant={ANDROID_APP_URL ? 'secondary' : 'primary'} />
+          {!ANDROID_APP_URL && <TextLink to="/contact">Ask to join the Android test</TextLink>}
+        </div>
+        {ANDROID_APP_URL && !ANDROID_IS_PLAY && <p className="mt-3 max-w-prose text-caption text-ink-500">This is the test build. Open the downloaded file and allow installs from your browser when Android asks. Updates come as a new download.</p>}
       </Reveal>
       <ul className="grid gap-6 sm:grid-cols-2 lg:col-span-7 lg:pt-2">
         {APP_POINTS.map(([title, body], i) => (
