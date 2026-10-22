@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  JOB_TEXTS, billBody, billProblem, canBill, canJobCards, customerProblem, dueLine, emptyJob, estimateLines, isLive, jobSub, labourBody, labourProblem, lineSub, lineText, misfits, newJobBody, newJobProblem, quantityProblem, stepsFor, vehicleOf,
+  JOB_TEXTS, suggestMakes, suggestModels, billBody, billProblem, canBill, canJobCards, customerProblem, dueLine, emptyJob, estimateLines, isLive, jobSub, labourBody, labourProblem, lineSub, lineText, misfits, newJobBody, newJobProblem, quantityProblem, stepsFor, vehicleOf,
   type JobFull, type JobLine, type JobRow
 } from '../src/lib/jobCards.ts';
 import { HI } from '../src/lib/i18n.ts';
@@ -14,8 +14,8 @@ const labour: JobLine = { line_id: 2, kind: 'LABOUR', product_id: null, descript
 test('only people at the counter', () => { assert.equal(canJobCards((p) => p === 'billing'), true); assert.equal(canJobCards(() => false), false); });
 
 test('a new card: the customer and registration are needed, the body leaves blanks out', () => {
-  const f = { ...emptyJob(), customer_id: 4, customer_name: 'Anil', vehicle_reg: ' ka01 ab 1234 ', odometer_km: '42000', complaint: ' Brake noise ', model_id: '3', mechanic_id: '2' };
-  assert.equal(newJobProblem(f), ''); assert.deepEqual(newJobBody(f), { customer_id: 4, vehicle_reg: 'KA01 AB 1234', vehicle_type: 'CAR', model_id: 3, odometer_km: 42000, complaint: 'Brake noise', mechanic_id: 2 });
+  const f = { ...emptyJob(), customer_id: 4, customer_name: 'Anil', vehicle_reg: ' ka01 ab 1234 ', odometer_km: '42000', complaint: ' Brake noise ', make: ' hero ', model: ' Splendor Plus ', variant: '110cc', vehicle_year: '2021', mechanic_id: '2' };
+  assert.equal(newJobProblem(f), ''); assert.deepEqual(newJobBody(f), { customer_id: 4, vehicle_reg: 'KA01 AB 1234', vehicle_type: 'CAR', make: 'hero', model: 'Splendor Plus', variant: '110cc', vehicle_year: 2021, odometer_km: 42000, complaint: 'Brake noise', mechanic_id: 2 });
   assert.deepEqual(Object.keys(newJobBody({ ...emptyJob(), customer_id: 4, vehicle_reg: 'KA01AB1' })), ['customer_id', 'vehicle_reg', 'vehicle_type']);
   assert.notEqual(newJobProblem({ ...f, customer_id: null }), ''); assert.notEqual(newJobProblem({ ...f, vehicle_reg: '!!' }), ''); assert.notEqual(newJobProblem({ ...f, odometer_km: '4.5' }), ''); assert.notEqual(newJobProblem({ ...f, promised_on: '2026-13-01' }), '');
   assert.equal(customerProblem('A', ''), 'Give the customer a name'); assert.notEqual(customerProblem('Anil', 'abc'), ''); assert.equal(customerProblem('Anil', '9000000010'), '');
@@ -52,4 +52,24 @@ test('every text of the job card screens is translated into all six languages', 
   const missing: string[] = [];
   for (const [name, dict] of Object.entries(dicts)) for (const k of new Set(JOB_TEXTS)) { if (!(k in dict)) missing.push(`${name}: ${k}`); else assert.equal(names(dict[k]), names(k), `${name}: ${k}`); }
   assert.deepEqual(missing, []);
+});
+
+test('the vehicle list on a new card: companies of this kind, models of the typed company, and a typed one is accepted as it is', () => {
+  const tree = [
+    { make_id: 1, name: 'Hero MotoCorp', vehicle_type: 'BIKE', models: [{ model_id: 1, name: 'Splendor Plus' }, { model_id: 2, name: 'HF Deluxe' }, { model_id: 3, name: 'Glamour' }] },
+    { make_id: 2, name: 'Honda', vehicle_type: 'BIKE', models: [{ model_id: 4, name: 'Shine 125' }] },
+    { make_id: 3, name: 'Honda', vehicle_type: 'CAR', models: [{ model_id: 5, name: 'City' }, { model_id: 6, name: 'Amaze' }] }
+  ];
+  assert.deepEqual(suggestMakes(tree, 'BIKE', ''), ['Hero MotoCorp', 'Honda'], 'only the bike companies, all of them when nothing is typed');
+  assert.deepEqual(suggestMakes(tree, 'CAR', ''), ['Honda']);
+  assert.deepEqual(suggestMakes(tree, 'BIKE', 'ho'), ['Honda'], 'only what contains the letters');
+  assert.deepEqual(suggestMakes(tree, 'BIKE', 'o'), ['Hero MotoCorp', 'Honda'], 'nothing starts with it, so alphabetical');
+  assert.deepEqual(suggestMakes(tree, 'BIKE', 'honda'), [], 'a company typed in full is not offered again');
+  assert.deepEqual(suggestMakes(tree, 'BIKE', 'zzz'), [], 'a new company simply has no suggestions: it is typed and remembered');
+  assert.deepEqual(suggestModels(tree, 'BIKE', 'hero motocorp', ''), ['Glamour', 'HF Deluxe', 'Splendor Plus']);
+  assert.deepEqual(suggestModels(tree, 'BIKE', 'Hero MotoCorp', 'spl'), ['Splendor Plus']);
+  assert.deepEqual(suggestModels(tree, 'CAR', 'Honda', 'a'), ['Amaze', 'City'].filter((x) => x.toLowerCase().includes('a')), 'the car Honda, not the bike one');
+  assert.deepEqual(suggestModels(tree, 'BIKE', 'Unknown', ''), [], 'no models until the company is known');
+  assert.equal(newJobProblem({ ...emptyJob(), customer_id: 1, vehicle_reg: 'KA01AB1234', model: 'Swift' }), 'Type the company too, like Hero or Maruti Suzuki');
+  assert.equal(newJobProblem({ ...emptyJob(), customer_id: 1, vehicle_reg: 'KA01AB1234', make: 'Maruti', model: 'Swift', vehicle_year: '21' }), 'The year is four digits, like 2021');
 });

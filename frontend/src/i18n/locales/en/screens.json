@@ -4889,8 +4889,6 @@
   "New job card": "New job card",
   "Open the card": "Open the card",
   "KA01AB1234": "KA01AB1234",
-  "Make and model": "Make and model",
-  "Not in the list": "Not in the list",
   "Mechanic": "Mechanic",
   "Promised for": "Promised for",
   "What is wrong, or what to do": "What is wrong, or what to do",
@@ -4956,7 +4954,6 @@
   "Find the customer": "Find the customer",
   "Customer name": "Customer name",
   "Customer phone": "Customer phone",
-  "From your Vehicles list, so fitment can be checked": "From your Vehicles list, so fitment can be checked",
   "Odometer": "Odometer",
   "{{why}}. Add it to the card anyway, without holding it?": "{{why}}. Add it to the card anyway, without holding it?",
   "Vehicle not in the list": "Vehicle not in the list",
@@ -5010,5 +5007,13 @@
   "For example: add racks, points, job card": "For example: add racks, points, job card",
   "No screen found for that. Try another word, or ask Flow AI below.": "No screen found for that. Try another word, or ask Flow AI below.",
   "Ask Flow AI about your business": "Ask Flow AI about your business",
-  "Blank: the shop's labour rate": "Blank: the shop's labour rate"
+  "Blank: the shop's labour rate": "Blank: the shop's labour rate",
+  "Pick from the list or type it. A new one is remembered.": "Pick from the list or type it. A new one is remembered.",
+  "Hero, Honda, Maruti Suzuki": "Hero, Honda, Maruti Suzuki",
+  "Model": "Model",
+  "Type the model, or pick one of this company.": "Type the model, or pick one of this company.",
+  "Splendor Plus, Swift": "Splendor Plus, Swift",
+  "Model number or variant (optional)": "Model number or variant (optional)",
+  "VXI, 110cc, Disc": "VXI, 110cc, Disc",
+  "Year (optional)": "Year (optional)"
 }

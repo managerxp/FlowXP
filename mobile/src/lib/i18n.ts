@@ -2912,6 +2912,19 @@ export const HI: Record<string, string> = {
   'Show job cards, labour and staff, or hide them for a parts-only shop': 'जॉब कार्ड, मेहनताना और स्टाफ दिखाएँ, या सिर्फ़ पुर्जों की दुकान के लिए छिपाएँ',
   // Signup: also service vehicles
   'We also service bikes or cars (turns on job cards, labour and staff)': 'हम बाइक या कार की सर्विसिंग भी करते हैं (जॉब कार्ड, मेहनताना और स्टाफ चालू होंगे)',
+  // Job card: company and model typed
+  'Company': 'कंपनी',
+  'Model number or variant (optional)': 'मॉडल नंबर या वेरिएंट (वैकल्पिक)',
+  'Year (optional)': 'साल (वैकल्पिक)',
+  'Pick from the list or type it. A new one is remembered.': 'सूची से चुनें या खुद लिखें। नई कंपनी याद रखी जाती है।',
+  'Hero, Honda, Maruti Suzuki': 'हीरो, होंडा, मारुति सुज़ुकी',
+  'Splendor Plus, Swift': 'स्प्लेंडर प्लस, स्विफ्ट',
+  'VXI, 110cc, Disc': 'VXI, 110cc, डिस्क',
+  'The year is four digits, like 2021': 'साल चार अंकों का होता है, जैसे 2021',
+  'Type the company too, like Hero or Maruti Suzuki': 'कंपनी भी लिखें, जैसे हीरो या मारुति सुज़ुकी',
+  // Workshop group
+  'Jobs': 'जॉब',
+  'Workshop': 'वर्कशॉप',
 };
 
 /** Languages that have a dictionary. */

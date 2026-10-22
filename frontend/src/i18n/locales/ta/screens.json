@@ -4889,8 +4889,6 @@
   "New job card": "புதிய வேலை அட்டை",
   "Open the card": "அட்டையைத் திறக்கவும்",
   "KA01AB1234": "KA01AB1234",
-  "Make and model": "நிறுவனமும் மாடலும்",
-  "Not in the list": "பட்டியலில் இல்லை",
   "Mechanic": "மெக்கானிக்",
   "Promised for": "வாக்களித்த நாள்",
   "What is wrong, or what to do": "என்ன பிரச்சினை, அல்லது என்ன செய்ய வேண்டும்",
@@ -4956,7 +4954,6 @@
   "Find the customer": "வாடிக்கையாளரைத் தேடுங்கள்",
   "Customer name": "வாடிக்கையாளர் பெயர்",
   "Customer phone": "வாடிக்கையாளர் தொலைபேசி",
-  "From your Vehicles list, so fitment can be checked": "உங்கள் வாகனப் பட்டியலிலிருந்து, இதனால் பொருத்தத்தைச் சரிபார்க்கலாம்",
   "Odometer": "ஓடோமீட்டர்",
   "{{why}}. Add it to the card anyway, without holding it?": "{{why}}. இருந்தாலும் ஒதுக்கி வைக்காமல் கார்டில் சேர்க்கவா?",
   "Vehicle not in the list": "வாகனம் பட்டியலில் இல்லை",
@@ -5010,5 +5007,13 @@
   "For example: add racks, points, job card": "எடுத்துக்காட்டு: ரேக் சேர்க்க, புள்ளிகள், ஜாப் கார்டு",
   "No screen found for that. Try another word, or ask Flow AI below.": "அதற்கான திரை இல்லை. வேறு சொல்லை முயற்சிக்கவும், அல்லது கீழே Flow AI-இடம் கேளுங்கள்.",
   "Ask Flow AI about your business": "உங்கள் வணிகத்தைப் பற்றி Flow AI-இடம் கேளுங்கள்",
-  "Blank: the shop's labour rate": "காலி: கடையின் கூலி விகிதம்"
+  "Blank: the shop's labour rate": "காலி: கடையின் கூலி விகிதம்",
+  "Pick from the list or type it. A new one is remembered.": "பட்டியலில் இருந்து தேர்ந்தெடுக்கவும் அல்லது தட்டச்சு செய்யவும். புதியது நினைவில் வைக்கப்படும்.",
+  "Hero, Honda, Maruti Suzuki": "ஹீரோ, ஹோண்டா, மாருதி சுசுகி",
+  "Model": "மாடல்",
+  "Type the model, or pick one of this company.": "மாடலைத் தட்டச்சு செய்யவும், அல்லது இந்த நிறுவனத்தின் ஒன்றைத் தேர்ந்தெடுக்கவும்.",
+  "Splendor Plus, Swift": "ஸ்ப்ளெண்டர் பிளஸ், ஸ்விஃப்ட்",
+  "Model number or variant (optional)": "மாடல் எண் அல்லது வகை (விருப்பம்)",
+  "VXI, 110cc, Disc": "VXI, 110cc, டிஸ்க்",
+  "Year (optional)": "ஆண்டு (விருப்பம்)"
 }

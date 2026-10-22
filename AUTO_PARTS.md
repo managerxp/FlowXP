@@ -73,6 +73,18 @@ stock, GST, payments, credit limits and returns work as at the counter; a card n
 salary, days worked, overtime, allowances and deductions; it does not work out PF, ESI, professional tax or TDS. Web: Job cards and Staff under "Spare parts" (`/app/parts/jobs`, `/app/parts/staff`, the staff pages shared with the hotel through `lib/staffBase.js`). Phone: More > Job cards, More > Staff.
 Tests: `backend/test/autopartsJobcards.test.js`.
 
+## Mechanic mode: a garage opens on its job cards (migration 0111 `businesses.workshop_mode`)
+
+The owner switches it in Settings (or answers "We also service bikes or cars" at signup). On: the web app opens on **Job cards**, the sidebar group is called **Workshop** (job cards, staff, vehicles, parts first; racks and trade accounts under More), and the phone gets a **Jobs** tab next to Home with Products moved into More. Off: those screens and their API (`ap_jobcards`, `ap_staff`) are hidden and refused. Nothing is deleted either way.
+
+**Vehicles are typed, not catalogued.** A job card asks for the vehicle kind, the **Company** (pick or type), the **Model** (pick one of that company or type it), an optional model number or variant, and the year. A company or model typed for the first time is added to the shop's vehicle list by the server (`rememberVehicle` in `modules/autoparts/jobcards.js`, matched without regard to capitals, never as fitment). One button on Vehicles adds the usual Indian bikes, scooters, cars and commercial vehicles (`modules/autoparts/indiaVehicles.js`, names only).
+
+**GST on a job bill.** Parts keep their own HSN. Labour lines carry SAC 998714 (maintenance and repair of motor vehicles), so the tax invoice and the GST return show a code for the service.
+
+## Client hand-over check
+
+Run `node backend/scripts/e2e-autoparts.mjs` against the server the client will use (see the header of that file for `BASE`, `EMAIL`, `PASSWORD`). It walks a spare-parts shop through the real API in 58 checks: sign in, add a part and find it by an OEM number typed without dashes, the vehicle list and fitment (never assumed), a delivery with damaged and rejected counted apart, racks and bins (one-step set-up, put away, move, a shelf can never hold more than the stock), a garage on credit with a hold, a counter sale, a job card from typed vehicle to bill (part held, labour, WhatsApp text, ready, billed, in the sales total and the workshop report), staff and payroll, every parts report, backup download and restore preview, mechanic mode off and on, and access rules. It leaves records named ZZE2E behind. Things it cannot check: real printers, the phone app on a device, WhatsApp itself (the app only opens WhatsApp with the message ready).
+
 ## Not built (said plainly)
 
 - Job cards: no printed job card or estimate document, no photos of the vehicle, no customer approval step, no mechanic time tracking or labour commission, no checklist templates per service type, no warranty on a job.

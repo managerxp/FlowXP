@@ -456,7 +456,14 @@ const AppShell = () => {
     && (!item.permission || can(item.permission))
     && (!item.anyPermission || item.anyPermission.some(can))
     && (!item.feature || hasFeature(item.feature));
-  const groups = NAV_GROUPS.map((group) => ({ ...group, items: group.items.filter(allowed) })).filter((group) => group.items.length > 0);
+  /* Mechanic mode: a garage works from its job cards, so the group is called Workshop, job cards and the mechanics come first, and the warehouse tools (racks, trade accounts) move under "More". */
+  const workshopFirst = business.business_type === 'AUTO_PARTS' && business.workshop_mode !== false;
+  const WORKSHOP_RANK = { '/app/parts/jobs': 0, '/app/parts/staff': 1, '/app/parts/vehicles': 2, '/app/parts/catalogue': 3 };
+  const adapt = (group) => (!workshopFirst || group.label !== 'Spare parts' ? group : {
+    ...group, label: 'Workshop',
+    items: group.items.map((i) => (['/app/parts/warehouse', '/app/parts/trade'].includes(i.to) ? { ...i, more: true } : i)).sort((a, b) => (WORKSHOP_RANK[a.to] ?? 9) - (WORKSHOP_RANK[b.to] ?? 9))
+  });
+  const groups = NAV_GROUPS.map(adapt).map((group) => ({ ...group, items: group.items.filter(allowed) })).filter((group) => group.items.length > 0);
   const systemItems = SYSTEM_ITEMS.filter(allowed);
   /* The sidebar shows the daily screens; the rest sit under "More" (still one click away, and always in Ctrl K). */
   const mainGroups = groups.map((g) => ({ ...g, items: g.items.filter((i) => !i.more) })).filter((g) => g.items.length > 0);

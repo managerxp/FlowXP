@@ -24,20 +24,42 @@ export const vehicleOf = (j: Pick<JobRow, 'vehicle_reg' | 'make' | 'model'>): st
 export const jobSub = (j: JobRow): string => [t(JOB_STATUS_LABEL[j.status] ?? j.status), j.customer_name || '', j.mechanic_name || '', rupees(j.total_paise)].filter(Boolean).join(' · ');
 
 /* ── a new card ──────────────────────────────────────────────────────────── */
-export type NewJobForm = { customer_id: number | null; customer_name: string; vehicle_reg: string; vehicle_type: string; model_id: string; odometer_km: string; complaint: string; mechanic_id: string; promised_on: string };
-export const emptyJob = (): NewJobForm => ({ customer_id: null, customer_name: '', vehicle_reg: '', vehicle_type: 'CAR', model_id: '', odometer_km: '', complaint: '', mechanic_id: '', promised_on: '' });
+export type NewJobForm = { customer_id: number | null; customer_name: string; vehicle_reg: string; vehicle_type: string; make: string; model: string; variant: string; vehicle_year: string; odometer_km: string; complaint: string; mechanic_id: string; promised_on: string };
+export const emptyJob = (): NewJobForm => ({ customer_id: null, customer_name: '', vehicle_reg: '', vehicle_type: 'CAR', make: '', model: '', variant: '', vehicle_year: '', odometer_km: '', complaint: '', mechanic_id: '', promised_on: '' });
 const isDate = (s: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
 export const newJobProblem = (f: NewJobForm): string => {
   if (!f.customer_id) return 'Choose the customer first';
   if (!/^[A-Za-z0-9][A-Za-z0-9 -]{2,19}$/.test(f.vehicle_reg.trim())) return 'A registration number is letters and digits, like KA01AB1234';
   if (f.odometer_km.trim() && !/^\d+$/.test(f.odometer_km.trim())) return 'The odometer is a whole number of kilometres';
+  if (f.vehicle_year.trim() && !(/^\d{4}$/.test(f.vehicle_year.trim()) && Number(f.vehicle_year) >= 1950 && Number(f.vehicle_year) <= 2100)) return 'The year is four digits, like 2021';
+  if (f.model.trim() && !f.make.trim()) return 'Type the company too, like Hero or Maruti Suzuki';
   if (f.promised_on.trim() && !isDate(f.promised_on.trim())) return 'Dates are written like 2026-11-01';
   return '';
 };
 export const newJobBody = (f: NewJobForm) => ({
-  customer_id: f.customer_id, vehicle_reg: f.vehicle_reg.trim().toUpperCase(), vehicle_type: f.vehicle_type, ...(f.model_id ? { model_id: Number(f.model_id) } : {}), ...(f.odometer_km.trim() ? { odometer_km: Number(f.odometer_km) } : {}),
+  customer_id: f.customer_id, vehicle_reg: f.vehicle_reg.trim().toUpperCase(), vehicle_type: f.vehicle_type,
+  ...(f.make.trim() ? { make: f.make.trim() } : {}), ...(f.model.trim() ? { model: f.model.trim() } : {}), ...(f.variant.trim() ? { variant: f.variant.trim() } : {}), ...(f.vehicle_year.trim() ? { vehicle_year: Number(f.vehicle_year) } : {}), ...(f.odometer_km.trim() ? { odometer_km: Number(f.odometer_km) } : {}),
   ...(f.complaint.trim() ? { complaint: f.complaint.trim() } : {}), ...(f.mechanic_id ? { mechanic_id: Number(f.mechanic_id) } : {}), ...(f.promised_on.trim() ? { promised_on: f.promised_on.trim() } : {})
 });
+/** The shop's vehicle list as the server sends it (company > models, each company for one kind of vehicle). */
+export type VehicleTree = { make_id: number; name: string; vehicle_type: string; models: { model_id: number; name: string }[] }[];
+const same = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
+/** Companies of this kind of vehicle that match what is typed (all of them when nothing is typed, a few at a time), best matches first. A company already typed in full is not suggested again. */
+export const suggestMakes = (tree: VehicleTree, type: string, typed: string, limit = 8): string[] => {
+  const q = typed.trim().toLowerCase();
+  const names = tree.filter((m) => m.vehicle_type === type).map((m) => m.name);
+  if (q && names.some((n) => same(n, q))) return [];
+  return names.filter((n) => !q || n.toLowerCase().includes(q)).sort((a, b) => Number(b.toLowerCase().startsWith(q)) - Number(a.toLowerCase().startsWith(q)) || a.localeCompare(b)).slice(0, limit);
+};
+/** Models of the typed or picked company that match what is typed. Nothing until the company is known. */
+export const suggestModels = (tree: VehicleTree, type: string, make: string, typed: string, limit = 8): string[] => {
+  const company = tree.find((m) => m.vehicle_type === type && same(m.name, make));
+  if (!company) return [];
+  const q = typed.trim().toLowerCase();
+  const names = company.models.map((m) => m.name);
+  if (q && names.some((n) => same(n, q))) return [];
+  return names.filter((n) => !q || n.toLowerCase().includes(q)).sort((a, b) => Number(b.toLowerCase().startsWith(q)) - Number(a.toLowerCase().startsWith(q)) || a.localeCompare(b)).slice(0, limit);
+};
 export const customerProblem = (name: string, phone: string): string => (name.trim().length < 2 ? 'Give the customer a name' : phone.trim() && !/^[\d +-]{7,15}$/.test(phone.trim()) ? 'That phone number does not look right' : '');
 
 /* ── the lines ───────────────────────────────────────────────────────────── */
@@ -72,5 +94,7 @@ export const JOB_TEXTS: string[] = [
   'Job card', 'earlier visits', 'Services due', 'No service is due in the next 30 days.', 'Vehicles whose last job said when the next service is due. Call them.',
   'Warning: this part is recorded as not fitting the vehicle', 'Nothing on the card yet.', 'Remove {name}?', 'Remove', 'Quantity', 'Save', 'Add a part', 'Add a part: name, code or part number', '{n} in stock',
   'Not enough in stock', 'Add it to the card anyway, without holding it?', 'Add anyway', 'Add labour', 'What was done', 'Charge', 'Add', 'Cancel this job?', 'Every part held for it goes back on the shelf.', 'Cancel the job',
-  'Customer pays', 'Amount', 'Blank: the whole bill', 'Make the bill', 'Open the bill', 'Bill made'
+  'Customer pays', 'Amount', 'Blank: the whole bill', 'Make the bill', 'Open the bill', 'Bill made',
+  'Company', 'Model', 'Model number or variant (optional)', 'Year (optional)', 'Pick from the list or type it. A new one is remembered.', 'Hero, Honda, Maruti Suzuki', 'Splendor Plus, Swift', 'VXI, 110cc, Disc',
+  'The year is four digits, like 2021', 'Type the company too, like Hero or Maruti Suzuki'
 ];

@@ -6,6 +6,7 @@ import { useSyncState } from '../../lib/sync.ts';
 import { currentBusiness, useSession } from '../../lib/session.ts';
 import { allowed } from '../../lib/access.ts';
 import { KITCHEN_TYPES } from '../../lib/cart.ts';
+import { workshopOn } from '../../lib/workshopExtras.ts';
 import { Rail, type RailProps } from '../../lib/Rail.tsx';
 import { color } from '../../lib/ui.tsx';
 import { t } from '../../lib/i18n.ts';
@@ -29,8 +30,10 @@ export default function TabsLayout() {
   const noSell = !allowed(business, 'billing', 'sales_orders', 'fulfilment', 'field_sales', 'collections', 'appointments', 'dispensing', 'vehicles');
   // a salon works from its appointments and clients: both get a place in the sidebar; the phone's bar holds five, so there Clients stays in More and Products makes room
   const salon = business?.business_type === 'SALON';
+  // a garage (a parts shop in mechanic mode) works from its job cards: they get a place on the bar next to Home, and Products moves into More to keep the bar to five
+  const garage = business?.business_type === 'AUTO_PARTS' && workshopOn(business) && allowed(business, 'billing');
   const hidden = [
-    ...(food ? ['products'] : ['tables']), ...(noSell ? ['sell', 'tables', 'sales'] : []), ...(!allowed(business, 'products', 'inventory') ? ['products'] : []),
+    ...(food || garage ? ['products'] : []), ...(food ? [] : ['tables']), ...(noSell ? ['sell', 'tables', 'sales'] : []), ...(!allowed(business, 'products', 'inventory') ? ['products'] : []),
     ...(salon && allowed(business, 'appointments') ? [] : ['appointments']), ...(salon ? [] : ['salon-clients']),
     ...(salon && !wide ? ['products', 'salon-clients'] : [])
   ];
@@ -47,6 +50,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="home" options={tab('Home', 'home-outline', 'home')} />
+      <Tabs.Screen name="jobs" options={{ ...tab('Jobs', 'build-outline', 'build'), href: garage ? undefined : null }} />
       <Tabs.Screen name="sell" options={{ ...tab('Sell', 'cart-outline', 'cart'), href: noSell ? null : undefined }} />
       <Tabs.Screen name="tables" options={{ ...tab(diningRoom ? 'Tables' : 'Orders', 'grid-outline', 'grid'), href: food && !noSell ? undefined : null }} />
       <Tabs.Screen name="appointments" options={{ ...tab('Appointments', 'calendar-outline', 'calendar'), tabBarLabelStyle: { fontSize: 11, fontWeight: '600' }, href: hidden.includes('appointments') ? null : undefined }} />

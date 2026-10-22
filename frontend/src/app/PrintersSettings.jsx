@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pencil, Plus, Printer, Trash2 } from 'lucide-react';
 import { api } from '../lib/api.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import { getDevicePrefs, testPrint } from '../lib/printing.js';
 import { Alert, Button, Card, Field, Input, Modal, Select, useToast } from '../components/ui.jsx';
 import { useT, T } from '../i18n/useT.js';
@@ -83,14 +84,16 @@ export default function PrintersSettings() {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
+  const { hasFeature } = useAuth();
 
   const load = useCallback(async () => {
     try {
       const d = await api('/printers');
       setData(d); setRouting({ ...d.routing, stations: { ...(d.routing.stations || {}) } });
     } catch (caught) { setError(caught.message); }
-    api('/kitchen/stations').then((s) => setStations(Array.isArray(s) ? s : [])).catch(() => setStations([]));   // only kitchens have stations
-  }, []);
+    // only a business with a kitchen has stations: asking any other kind of shop is a 402 in its console
+    if (hasFeature('kitchen')) api('/kitchen/stations').then((s) => setStations(Array.isArray(s) ? s : [])).catch(() => setStations([]));
+  }, [hasFeature]);
   useEffect(() => { load(); }, [load]);
 
   const printers = (data?.printers || []).filter((p) => p.is_active);

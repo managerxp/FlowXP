@@ -4889,8 +4889,6 @@
   "New job card": "പുതിയ ജോബ് കാർഡ്",
   "Open the card": "കാർഡ് തുറക്കുക",
   "KA01AB1234": "KA01AB1234",
-  "Make and model": "മേക്കും മോഡലും",
-  "Not in the list": "ലിസ്റ്റിൽ ഇല്ല",
   "Mechanic": "മെക്കാനിക്",
   "Promised for": "വാഗ്ദാനം ചെയ്ത തീയതി",
   "What is wrong, or what to do": "എന്താണ് പ്രശ്നം, അല്ലെങ്കിൽ എന്ത് ചെയ്യണം",
@@ -4956,7 +4954,6 @@
   "Find the customer": "ഉപഭോക്താവിനെ കണ്ടെത്തുക",
   "Customer name": "ഉപഭോക്താവിന്റെ പേര്",
   "Customer phone": "ഉപഭോക്താവിന്റെ ഫോൺ",
-  "From your Vehicles list, so fitment can be checked": "നിങ്ങളുടെ വാഹന പട്ടികയിൽ നിന്ന്, അതിനാൽ ഫിറ്റ്മെന്റ് പരിശോധിക്കാം",
   "Odometer": "ഓഡോമീറ്റർ",
   "{{why}}. Add it to the card anyway, without holding it?": "{{why}}. എന്നിട്ടും ഹോൾഡ് ചെയ്യാതെ കാർഡിൽ ചേർക്കണോ?",
   "Vehicle not in the list": "വാഹനം പട്ടികയിൽ ഇല്ല",
@@ -5010,5 +5007,13 @@
   "For example: add racks, points, job card": "ഉദാഹരണം: റാക്ക് ചേർക്കുക, പോയിന്റ്, ജോബ് കാർഡ്",
   "No screen found for that. Try another word, or ask Flow AI below.": "അതിനായി സ്ക്രീൻ കണ്ടില്ല. മറ്റൊരു വാക്ക് പരീക്ഷിക്കുക, അല്ലെങ്കിൽ താഴെ Flow AI-യോട് ചോദിക്കുക.",
   "Ask Flow AI about your business": "നിങ്ങളുടെ ബിസിനസിനെക്കുറിച്ച് Flow AI-യോട് ചോദിക്കുക",
-  "Blank: the shop's labour rate": "ശൂന്യം: കടയുടെ കൂലി നിരക്ക്"
+  "Blank: the shop's labour rate": "ശൂന്യം: കടയുടെ കൂലി നിരക്ക്",
+  "Pick from the list or type it. A new one is remembered.": "പട്ടികയിൽ നിന്ന് തിരഞ്ഞെടുക്കുക അല്ലെങ്കിൽ ടൈപ്പ് ചെയ്യുക. പുതിയത് ഓർത്തുവയ്ക്കും.",
+  "Hero, Honda, Maruti Suzuki": "ഹീറോ, ഹോണ്ട, മാരുതി സുസുക്കി",
+  "Model": "മോഡൽ",
+  "Type the model, or pick one of this company.": "മോഡൽ ടൈപ്പ് ചെയ്യുക, അല്ലെങ്കിൽ ഈ കമ്പനിയുടേതിൽ ഒന്ന് തിരഞ്ഞെടുക്കുക.",
+  "Splendor Plus, Swift": "സ്പ്ലെൻഡർ പ്ലസ്, സ്വിഫ്റ്റ്",
+  "Model number or variant (optional)": "മോഡൽ നമ്പർ അല്ലെങ്കിൽ വേരിയന്റ് (ഓപ്ഷണൽ)",
+  "VXI, 110cc, Disc": "VXI, 110cc, ഡിസ്ക്",
+  "Year (optional)": "വർഷം (ഓപ്ഷണൽ)"
 }

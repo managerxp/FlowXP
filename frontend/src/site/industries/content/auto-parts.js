@@ -7,9 +7,9 @@ export default {
   short: 'Auto parts',
   blurb: 'Find any part, know which shelf it is on, run your workshop, and bill it all in one place.',
   title: 'Find the part. Fix the vehicle. Bill it.',
-  lead: 'For car, bike and scooter spare parts shops, hardware counters and workshops. Type any part number and the part comes up. See where it sits on the shelf. Open a job card when a bike or car comes in for servicing, add the parts and labour, and make the bill. Sell to garages on credit.',
+  lead: 'For car, bike and scooter spare parts shops, hardware counters and garages. Type any part number and the part comes up. See which shelf it is on. When a bike or car comes in for servicing, open a job card, add the parts and the labour, tell the owner on WhatsApp and make the bill. Sell to garages on credit. Easy enough to use on the first day.',
   hero: { src: p('parts-catalogue'), alt: 'FlowXP parts catalogue with each part, its OEM and manufacturer number, type, price and stock.' },
-  heroPoints: ['Choose Auto spare parts when you sign up and these tools switch on', 'Bring your items from Tally, Vyapar or Excel', 'Works on a counter PC, a tablet and a phone', '7-day free trial, no card'],
+  heroPoints: ['Choose Auto spare parts when you sign up and these tools switch on', 'A garage? Switch on Mechanic mode and the app opens on your job cards', 'Bring your items and customers from Tally, Vyapar or Excel', 'Works on a counter PC, a tablet and an Android phone', '7-day free trial, no card'],
   modules: [
     {
       id: 'catalogue', title: 'Every part with every number it is known by',
@@ -18,15 +18,22 @@ export default {
       shots: [{ src: p('parts-catalogue'), alt: 'FlowXP parts catalogue with each part, its OEM and manufacturer number, type, price and stock.' }, { src: p('parts-detail'), alt: 'FlowXP part with its vehicles: each with fitment shown as verified or not verified.' }]
     },
     {
-      id: 'workshop', title: 'Servicing: job cards for bikes and cars',
-      body: 'When a vehicle comes in for service, open a job card with its number and what the owner complained about. Add the spare parts used and the labour, and the card becomes the bill when the work is done.',
-      points: ['One card per vehicle visit, with the registration number, the owner and the odometer reading', 'Parts are held for the job, so one on a job cannot be sold to someone else, and they leave stock when the job is billed', 'Labour from your own list of services (oil change, alignment) in one tap, with GST like any other charge', 'Status from open to in progress, waiting for parts, ready and billed; a cancelled job gives the parts back', 'See which vehicles are waiting, which are ready for pick-up and which services are due again', 'Tell the customer on WhatsApp when you receive the vehicle, with the estimate, when it is ready and with the bill', 'See what the workshop earned, labour and parts, by day and by mechanic; every job bill is also in your sales', 'Staff attendance, shifts and monthly payroll for your mechanics and counter staff, in the same place', 'Mechanic mode: switch it on in Settings only if you service vehicles; a parts-only shop does not see these screens'],
+      id: 'workshop', title: 'Servicing: a job card for every bike and car',
+      body: 'A vehicle comes in, you open a job card. Pick the kind of vehicle, then the company and the model: choose from the list or just type it. A company or model you type once is remembered for next time. Add the spare parts used and the labour, and the card becomes the bill when the work is done.',
+      points: ['Company, model, model number or variant and year, picked from the usual Indian makes or typed: no long lists to scroll', 'One card per visit, with the registration number, the owner, the odometer and what is wrong', 'Parts are held for the job, so a part on a card cannot be sold to someone else, and it leaves stock when the job is billed', 'Labour from your own list of services (oil change, wheel alignment) in one tap, or typed on the spot and remembered', 'Status from open, in progress and waiting for parts to ready and billed; cancel a job and the parts go back on the shelf', 'A part recorded as not fitting that vehicle is flagged on the card', 'One tax invoice for parts and labour: parts with their HSN, labour with the vehicle repair SAC, GST worked out for you', 'The job bill counts in your daily sales and in the GST return like every other bill'],
+      shots: []
+    },
+    {
+      id: 'garage', title: 'A garage that opens on its job cards',
+      body: 'Tell FlowXP you also service vehicles and it switches on Mechanic mode: the app opens on your job cards, the menu is called Workshop, and the phone gets a Jobs button next to Home. A shop that only sells parts leaves it off and never sees these screens.',
+      points: ['Mechanic mode is one switch in Settings, or one tick when you sign up. Nothing is deleted when you turn it off', 'Tell the customer on WhatsApp: we have your vehicle, here is the estimate, it is ready, here is the bill. It opens WhatsApp with the message written; you press send', 'Services due: vehicles whose next service date is coming, so you can call them', 'What the workshop earned: labour and parts, by day and by mechanic', 'Mechanics are staff: attendance, shifts, leave and the monthly payroll sheet in the same place', 'The same screens on the counter PC, a tablet and the Android phone, in English and five Indian languages'],
       shots: []
     },
     {
       id: 'fitment', title: 'Fitment that is never assumed',
       body: 'You build your own list of makes, models and variants, and record which parts fit which vehicle. A part with no record is never presented as fitting.',
-      points: ['Makes, models and variants with years, engine and fuel, typed in or imported from a file', 'Each fitment is verified, not verified, or does not fit', 'New fitment is not verified until a person verifies it', 'Find parts for a vehicle: only parts with a record, each labelled', 'Parts recorded as not fitting are left out and counted', 'Alternates are suggested only from verified fitment', 'One click adds the usual Indian bikes, scooters and cars by company (names only). FlowXP never ships fitment: that is what your shop records or imports'],
+      points: ['One click adds the usual Indian bikes, scooters, cars and commercial vehicles by company (Hero, Honda, Bajaj, TVS, Maruti Suzuki, Hyundai, Tata and more); add your own or import a file',
+        'Makes, models and variants with years, engine and fuel, typed in or imported from a file', 'Each fitment is verified, not verified, or does not fit', 'New fitment is not verified until a person verifies it', 'Find parts for a vehicle: only parts with a record, each labelled', 'Parts recorded as not fitting are left out and counted', 'Alternates are suggested only from verified fitment', 'One click adds the usual Indian bikes, scooters and cars by company (names only). FlowXP never ships fitment: that is what your shop records or imports'],
       shots: [{ src: p('parts-vehicles'), alt: 'FlowXP vehicle search for a Maruti Suzuki Swift with each part labelled as verified or not verified.' }]
     },
     {
@@ -66,8 +73,8 @@ export default {
     { group: 'Warehouse', items: ['Warehouse to bin, your own names', 'QR and barcode labels', 'Put away and bin to bin moves', 'Pick bin and bin limits', 'Shelf quantity always agrees with stock'] },
     { group: 'Receiving', items: ['Accepted, damaged, rejected', 'Put away on receipt', 'No duplicate supplier invoice', 'Cancel a receipt', 'Supplier claims'] },
     { group: 'Selling', items: ['The FlowXP till with GST and split payment', 'Trade price lists', 'Credit limits for garages', 'Holds for customers', 'Returns with a reason and what became of the part'] },
-    { group: 'Workshop', items: ['Job cards for each vehicle', 'Spare parts and labour on one bill', 'Services due again', 'Mechanic attendance and shifts', 'Monthly payroll'] },
-    { group: 'Start and keep', items: ['Import from Tally, Vyapar, Busy, Marg, Zoho, Excel', 'Checked before saved', 'Download a backup', 'Restore only what is missing'] },
+    { group: 'Workshop', items: ['Mechanic mode: opens on job cards', 'Job card for each vehicle, company and model typed or picked', 'Spare parts and labour on one tax invoice', 'Your own list of labour services', 'WhatsApp to the customer from the card', 'Services due again', 'What the workshop earned', 'Mechanic attendance, shifts and payroll'] },
+    { group: 'Start and keep', items: ['Import items and customers from Tally, Vyapar, Busy, Marg, Zoho, Excel', 'Checked before saved', 'A Help me find button on every screen', 'Download a backup', 'Restore only what is missing'] },
     { group: 'Control', items: ['Storekeeper and parts counter roles', 'A manager approves stock count differences', 'Activity log of stock and price changes', 'Several outlets under one login', 'Two-step login'] }
   ],
   notYet: [
@@ -82,6 +89,8 @@ export default {
     'Working offline for racks, receiving and counts. Billing keeps working offline; the rest needs a connection.'
   ],
   faq: [
+    ['We service vehicles and sell parts. Where do we start?', 'Sign up as Auto spare parts and tick that you also service bikes or cars. FlowXP opens on your job cards. Add your parts by import or one at a time, add the services you charge for (oil change, alignment) and open your first job card.'],
+    ['Do we have to set up every car and bike model first?', 'No. When you open a job card you choose the company and the model from the usual Indian list, or type them. A new company or model you type is remembered for next time. Fitment of parts to vehicles is separate, and is only what you record.'],
     ['Can I bring my items from Tally or Vyapar?', 'Yes. Export your item list to Excel or CSV and import it. Names, codes, prices, GST, HSN and stock are recognised. Old bills and ledgers do not come across. The setup guide has the steps.'],
     ['Can I run my servicing on FlowXP?', 'Yes. Open a job card for each vehicle, add parts and labour, and turn it into a bill. Parts are held for the job and leave stock when it is billed. Mechanic attendance and payroll are included.'],
     ['What if I lose my data or set up wrongly?', 'Download a backup file. If you ever need it, restore adds back only what is missing and never changes what you have.'],

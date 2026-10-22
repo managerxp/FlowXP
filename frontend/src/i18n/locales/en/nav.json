@@ -99,7 +99,8 @@
     "security": "Security",
     "wholesale_settings": "Wholesale settings",
     "salon_settings": "Salon settings",
-    "settings": "Settings"
+    "settings": "Settings",
+    "workshop": "Workshop"
   },
   "shell": {
     "yourAccount": "Your account",

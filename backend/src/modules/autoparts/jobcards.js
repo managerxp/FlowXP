@@ -15,6 +15,8 @@ import * as sales from './sales.js';
 import { createInvoiceInTransaction } from '../billing.js';
 import { hasPermission } from '../../middleware/auth.js';
 
+/** SAC 998714: maintenance and repair services of motor vehicles. ponytail: one code for all labour; a per-service code if a shop bills other kinds of service. */
+export const LABOUR_SAC = '998714';
 export const JOB_STATUSES = ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS', 'READY', 'BILLED', 'CANCELLED'];
 export const LIVE = ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS', 'READY'];
 const q3 = (n) => Math.round(Number(n) * 1000) / 1000;
@@ -132,7 +134,21 @@ const reg = (v) => {
   return t;
 };
 
-const jobFields = async (db, tenant, b, { creating }) => {
+/**
+ * A make and model typed on a job card go into the shop's vehicle list the first time, so the next card can pick them: the person types a vehicle once, never fills a catalogue.
+ * Names are matched without regard to capitals. Only the names are stored; nothing is ever recorded as fitting.
+ */
+const rememberVehicle = async (db, tenant, type, make, model) => {
+  const k = (await db.query(
+    `INSERT INTO vehicle_makes (business_id, name, vehicle_type) VALUES ($1,$2,$3)
+     ON CONFLICT (business_id, lower(name), vehicle_type) DO UPDATE SET is_active = TRUE RETURNING make_id, name`, [tenant.businessId, make, type])).rows[0];
+  const m = (await db.query(
+    `INSERT INTO vehicle_models (business_id, make_id, name) VALUES ($1,$2,$3)
+     ON CONFLICT (make_id, lower(name)) DO UPDATE SET is_active = TRUE RETURNING model_id, name`, [tenant.businessId, k.make_id, model])).rows[0];
+  return { model_id: m.model_id, make: k.name, model: m.name };
+};
+
+const jobFields = async (db, tenant, b, { creating, current = null }) => {
   const f = {};
   if (creating || b.customer_id !== undefined) {
     f.customer_id = int(b.customer_id, 'Customer', { min: 1, required: true });
@@ -151,6 +167,13 @@ const jobFields = async (db, tenant, b, { creating }) => {
       if (b.make === undefined) f.make = m.make;
       if (b.model === undefined) f.model = m.name;
     }
+  }
+  // typed, not picked: remember it (needs both a company and a model; a type is taken from the card)
+  const typedMake = f.make ?? current?.make; const typedModel = f.model ?? current?.model;
+  if (b.model_id === undefined && typedMake && typedModel && (b.make !== undefined || b.model !== undefined)) {
+    const type = f.vehicle_type || current?.vehicle_type || 'CAR';
+    const kept = await rememberVehicle(db, tenant, type, typedMake, typedModel);
+    f.model_id = kept.model_id; f.make = kept.make; f.model = kept.model;
   }
   if (b.vehicle_year !== undefined) f.vehicle_year = b.vehicle_year === null || b.vehicle_year === '' ? null : int(b.vehicle_year, 'Year', { min: 1900, max: 2100 });
   if (b.odometer_km !== undefined) f.odometer_km = b.odometer_km === null || b.odometer_km === '' ? null : int(b.odometer_km, 'Odometer', { min: 0, max: 5000000 });
@@ -184,7 +207,7 @@ const ensureLive = (job) => { if (!LIVE.includes(job.status)) throw new PartsErr
 export const updateJob = async (db, tenant, id, b) => {
   const job = await jobRow(db, tenant, id, { lock: true });
   ensureLive(job);
-  const f = await jobFields(db, tenant, b, { creating: false });
+  const f = await jobFields(db, tenant, b, { creating: false, current: job });
   const keys = Object.keys(f);
   if (!keys.length) throw new PartsError(400, 'Nothing to update');
   if (f.customer_id && f.customer_id !== job.customer_id && (await db.query(`SELECT 1 FROM job_card_lines WHERE job_id = $1 AND reservation_id IS NOT NULL LIMIT 1`, [job.job_id])).rowCount) throw new PartsError(409, 'Parts are held for the current customer. Remove them before changing the customer');
@@ -295,6 +318,8 @@ export const billJob = async (client, tenant, userId, id, b = {}) => {
   const invoice = await createInvoiceInTransaction(client, tenant, userId, {
     customerId: job.customer_id, items, discount: b.discount, payment: b.payment, payments: b.payments, notes: `Job card ${job.job_no} · ${vehicle}`, clientKey: b.clientKey
   });
+  // labour is a service: its lines carry the SAC for maintenance and repair of motor vehicles, so the tax invoice and the GST return show a code for it (parts keep their own HSN)
+  await client.query(`UPDATE invoice_items SET hsn_sac = $2 WHERE invoice_id = $1 AND product_id IS NULL AND hsn_sac IS NULL`, [invoice.invoice_id, LABOUR_SAC]);
   await client.query(`UPDATE job_cards SET status = 'BILLED', invoice_id = $2, billed_at = now() WHERE job_id = $1`, [job.job_id, invoice.invoice_id]);
   return { invoice, job: await getJob(client, tenant, job.job_id) };
 };

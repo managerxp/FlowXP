@@ -4889,8 +4889,6 @@
   "New job card": "కొత్త జాబ్ కార్డ్",
   "Open the card": "కార్డ్ తెరవండి",
   "KA01AB1234": "KA01AB1234",
-  "Make and model": "మేక్ మరియు మోడల్",
-  "Not in the list": "జాబితాలో లేదు",
   "Mechanic": "మెకానిక్",
   "Promised for": "ఇస్తామన్న తేదీ",
   "What is wrong, or what to do": "ఏం సమస్య, లేదా ఏం చేయాలి",
@@ -4956,7 +4954,6 @@
   "Find the customer": "కస్టమర్‌ను కనుగొనండి",
   "Customer name": "కస్టమర్ పేరు",
   "Customer phone": "కస్టమర్ ఫోన్",
-  "From your Vehicles list, so fitment can be checked": "మీ వాహనాల జాబితా నుండి, తద్వారా ఫిట్‌మెంట్ తనిఖీ చేయవచ్చు",
   "Odometer": "ఓడోమీటర్",
   "{{why}}. Add it to the card anyway, without holding it?": "{{why}}. అయినా హోల్డ్ చేయకుండా కార్డ్‌లో జోడించాలా?",
   "Vehicle not in the list": "వాహనం జాబితాలో లేదు",
@@ -5010,5 +5007,13 @@
   "For example: add racks, points, job card": "ఉదాహరణ: రాక్ జోడించడం, పాయింట్లు, జాబ్ కార్డ్",
   "No screen found for that. Try another word, or ask Flow AI below.": "దానికి స్క్రీన్ కనబడలేదు. మరో పదం ప్రయత్నించండి, లేదా కింద Flow AI ని అడగండి.",
   "Ask Flow AI about your business": "మీ వ్యాపారం గురించి Flow AI ని అడగండి",
-  "Blank: the shop's labour rate": "ఖాళీ: దుకాణం కూలి రేటు"
+  "Blank: the shop's labour rate": "ఖాళీ: దుకాణం కూలి రేటు",
+  "Pick from the list or type it. A new one is remembered.": "జాబితా నుండి ఎంచుకోండి లేదా టైప్ చేయండి. కొత్తది గుర్తుంచుకోబడుతుంది.",
+  "Hero, Honda, Maruti Suzuki": "హీరో, హోండా, మారుతి సుజుకి",
+  "Model": "మోడల్",
+  "Type the model, or pick one of this company.": "మోడల్ టైప్ చేయండి, లేదా ఈ కంపెనీలో ఒకదాన్ని ఎంచుకోండి.",
+  "Splendor Plus, Swift": "స్ప్లెండర్ ప్లస్, స్విఫ్ట్",
+  "Model number or variant (optional)": "మోడల్ నంబర్ లేదా వేరియంట్ (ఐచ్ఛికం)",
+  "VXI, 110cc, Disc": "VXI, 110cc, డిస్క్",
+  "Year (optional)": "సంవత్సరం (ఐచ్ఛికం)"
 }

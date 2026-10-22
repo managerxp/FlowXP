@@ -8,6 +8,7 @@ import { FIT, VEHICLE_TYPES, n3, qs, rsPaise, useDebounced, useLoad } from '../.
 import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Th, Thead, Tr, useDialog } from '../../components/ui.jsx';
 import { Chips, NumberField, Panel, Tabs, useAction } from '../salon/parts.jsx';
 import { T, useT } from '../../i18n/useT.js';
+import { WorkshopToday } from './PartsHome.jsx';
 
 const STATUS = {
   OPEN: [T('Waiting'), 'neutral'], IN_PROGRESS: [T('Being worked on'), 'brand'], WAITING_PARTS: [T('Waiting for parts'), 'warning'], READY: [T('Ready'), 'success'], BILLED: [T('Billed'), 'neutral'], CANCELLED: [T('Cancelled'), 'danger']
@@ -43,14 +44,16 @@ const CustomerFind = ({ value, onChange }) => {
 const NewJob = ({ onClose, onSaved }) => {
   const tr = useT();
   const [customer, setCustomer] = useState(null);
-  const [f, setF] = useState({ vehicle_reg: '', vehicle_type: 'CAR', model_id: '', odometer_km: '', complaint: '', mechanic_id: '', promised_on: '' });
+  const [f, setF] = useState({ vehicle_reg: '', vehicle_type: 'CAR', make: '', model: '', variant: '', vehicle_year: '', odometer_km: '', complaint: '', mechanic_id: '', promised_on: '' });
   const veh = useLoad('/autoparts/vehicles'); const mech = useLoad('/autoparts/jobcards/mechanics');
   const [error, setError] = useState(''); const [busy, run] = useAction();
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
-  const models = (veh.data || []).flatMap((mk) => mk.models.map((m) => ({ id: m.model_id, label: `${mk.name} ${m.name}` })));
+  // companies of this kind of vehicle, and the models of the company that is typed or picked: suggestions only, anything can be typed
+  const makes = (veh.data || []).filter((mk) => mk.vehicle_type === f.vehicle_type);
+  const chosen = makes.find((mk) => mk.name.toLowerCase() === f.make.trim().toLowerCase());
   const save = () => run(async () => {
     setError('');
-    try { onSaved(await api('/autoparts/jobcards', { method: 'POST', body: { customer_id: customer.customer_id, vehicle_reg: f.vehicle_reg, vehicle_type: f.vehicle_type, model_id: f.model_id ? Number(f.model_id) : undefined, odometer_km: f.odometer_km === '' ? undefined : Number(f.odometer_km), complaint: f.complaint || undefined, mechanic_id: f.mechanic_id ? Number(f.mechanic_id) : undefined, promised_on: f.promised_on || undefined } })); } catch (e) { setError(e.message); }
+    try { onSaved(await api('/autoparts/jobcards', { method: 'POST', body: { customer_id: customer.customer_id, vehicle_reg: f.vehicle_reg, vehicle_type: f.vehicle_type, make: f.make.trim() || undefined, model: f.model.trim() || undefined, variant: f.variant.trim() || undefined, vehicle_year: f.vehicle_year === '' ? undefined : Number(f.vehicle_year), odometer_km: f.odometer_km === '' ? undefined : Number(f.odometer_km), complaint: f.complaint || undefined, mechanic_id: f.mechanic_id ? Number(f.mechanic_id) : undefined, promised_on: f.promised_on || undefined } })); } catch (e) { setError(e.message); }
   }, null);
   return (
     <Modal wide title={tr('New job card')} onClose={onClose} footer={<><Button variant="secondary" onClick={onClose}>{tr('Cancel')}</Button><Button onClick={save} loading={busy} disabled={!customer || f.vehicle_reg.trim().length < 3}>{tr('Open the card')}</Button></>}>
@@ -59,8 +62,11 @@ const NewJob = ({ onClose, onSaved }) => {
         <Field id="jc-cust" label={tr('Customer')}><CustomerFind value={customer} onChange={setCustomer} /></Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="jc-reg" label={tr('Registration number')}><Input id="jc-reg" value={f.vehicle_reg} onChange={(e) => setF((x) => ({ ...x, vehicle_reg: e.target.value.toUpperCase() }))} placeholder={tr('KA01AB1234')} maxLength={20} /></Field>
-          <Field id="jc-type" label={tr('Vehicle')}><Select id="jc-type" value={f.vehicle_type} onChange={set('vehicle_type')}>{VEHICLE_TYPES.map(([v, l]) => <option key={v} value={v}>{tr(l)}</option>)}</Select></Field>
-          <Field id="jc-model" label={tr('Make and model')} hint={tr('From your Vehicles list, so fitment can be checked')}><Select id="jc-model" value={f.model_id} onChange={set('model_id')}><option value="">{tr('Not in the list')}</option>{models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</Select></Field>
+          <Field id="jc-type" label={tr('Vehicle')}><Select id="jc-type" value={f.vehicle_type} onChange={(e) => setF((x) => ({ ...x, vehicle_type: e.target.value, make: '', model: '' }))}>{VEHICLE_TYPES.map(([v, l]) => <option key={v} value={v}>{tr(l)}</option>)}</Select></Field>
+          <Field id="jc-make" label={tr('Company')} hint={tr('Pick from the list or type it. A new one is remembered.')}><Input id="jc-make" list="jc-makes" value={f.make} onChange={(e) => setF((x) => ({ ...x, make: e.target.value, model: '' }))} placeholder={tr('Hero, Honda, Maruti Suzuki')} maxLength={60} autoComplete="off" /><datalist id="jc-makes">{makes.map((mk) => <option key={mk.make_id} value={mk.name} />)}</datalist></Field>
+          <Field id="jc-model" label={tr('Model')} hint={tr('Type the model, or pick one of this company.')}><Input id="jc-model" list="jc-models" value={f.model} onChange={set('model')} placeholder={tr('Splendor Plus, Swift')} maxLength={80} autoComplete="off" /><datalist id="jc-models">{(chosen?.models || []).map((m) => <option key={m.model_id} value={m.name} />)}</datalist></Field>
+          <Field id="jc-variant" label={tr('Model number or variant (optional)')}><Input id="jc-variant" value={f.variant} onChange={set('variant')} placeholder={tr('VXI, 110cc, Disc')} maxLength={60} /></Field>
+          <NumberField id="jc-year" label={tr('Year (optional)')} step={1} value={f.vehicle_year} onChange={(v) => setF((x) => ({ ...x, vehicle_year: v }))} />
           <NumberField id="jc-km" label={tr('Odometer')} suffix="km" step={1} value={f.odometer_km} onChange={(v) => setF((x) => ({ ...x, odometer_km: v }))} />
           <Field id="jc-mech" label={tr('Mechanic')}><Select id="jc-mech" value={f.mechanic_id} onChange={set('mechanic_id')}><option value="">{tr('Not assigned')}</option>{(mech.data || []).map((m) => <option key={m.employee_id} value={m.employee_id}>{m.name}</option>)}</Select></Field>
           <Field id="jc-due" label={tr('Promised for')}><Input id="jc-due" type="date" value={f.promised_on} onChange={set('promised_on')} /></Field>
@@ -283,6 +289,7 @@ export default function PartsJobCards() {
       <PageHeader title={tr('Job cards')} lead={tr('Vehicles in for service: the parts fitted, the labour, and one bill.')}
         action={can('billing') && <Button onClick={() => setAdding(true)}><Plus aria-hidden="true" className="h-4 w-4" /> {tr('New job card')}</Button>} />
       <Tabs value={tab} onChange={(k) => setParams(k === 'jobs' ? {} : { tab: k })} tabs={[{ key: 'jobs', label: T('Jobs') }, { key: 'due', label: T('Services due') }, { key: 'services', label: T('Labour and services') }, { key: 'earnings', label: T('What we earned') }]} />
+      {tab === 'jobs' && <div className="mb-5"><WorkshopToday /></div>}
       {tab === 'due' ? <Due /> : tab === 'services' ? <Services /> : tab === 'earnings' ? <Earnings /> : (
         <>
           <div className="mb-4 flex flex-wrap items-center gap-3">

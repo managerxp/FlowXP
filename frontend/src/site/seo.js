@@ -26,7 +26,7 @@ const INDUSTRY_SEARCH = {
   pharmacy: 'Pharmacy billing software with batch and expiry tracking, purchase entry and GST.',
   gym: 'Gym management software with memberships, QR check-in at the front desk and on the phone, attendance, classes, trainers, reward points and GST billing.',
   gaming: 'Gaming lounge software for PS5 and pool lounges: a timer on every station, rates by players and peak hours, food and drink on the same bill, wallets, bookings and GST.',
-  'auto-parts': 'Auto spare parts shop software with OEM and part number search, vehicle fitment you control, rack and bin locations, receiving with damaged and rejected counted apart, trade prices and credit for garages, and GST.'
+  'auto-parts': 'Auto spare parts shop and garage software: OEM and part number search, vehicle fitment you control, racks and bins, job cards for servicing with labour and parts on one GST invoice, WhatsApp updates to the owner, mechanic payroll and trade credit for garages.'
 };
 
 const PAGES = {

@@ -4889,8 +4889,6 @@
   "New job card": "नया जॉब कार्ड",
   "Open the card": "कार्ड खोलें",
   "KA01AB1234": "KA01AB1234",
-  "Make and model": "कंपनी और मॉडल",
-  "Not in the list": "सूची में नहीं",
   "Mechanic": "मैकेनिक",
   "Promised for": "देने का वादा",
   "What is wrong, or what to do": "क्या खराबी है, या क्या करना है",
@@ -4956,7 +4954,6 @@
   "Find the customer": "ग्राहक ढूँढें",
   "Customer name": "ग्राहक का नाम",
   "Customer phone": "ग्राहक का फ़ोन",
-  "From your Vehicles list, so fitment can be checked": "आपकी वाहन सूची से, ताकि फ़िटमेंट जाँचा जा सके",
   "Odometer": "ओडोमीटर",
   "{{why}}. Add it to the card anyway, without holding it?": "{{why}}। फिर भी इसे कार्ड में जोड़ें, बिना रोके?",
   "Vehicle not in the list": "वाहन सूची में नहीं है",
@@ -5010,5 +5007,13 @@
   "For example: add racks, points, job card": "जैसे: रैक जोड़ना, पॉइंट, जॉब कार्ड",
   "No screen found for that. Try another word, or ask Flow AI below.": "इसके लिए कोई स्क्रीन नहीं मिली। कोई और शब्द आज़माएँ, या नीचे Flow AI से पूछें।",
   "Ask Flow AI about your business": "अपने कारोबार के बारे में Flow AI से पूछें",
-  "Blank: the shop's labour rate": "खाली: दुकान की मेहनताने की दर"
+  "Blank: the shop's labour rate": "खाली: दुकान की मेहनताने की दर",
+  "Pick from the list or type it. A new one is remembered.": "सूची से चुनें या खुद लिखें। नई कंपनी याद रखी जाती है।",
+  "Hero, Honda, Maruti Suzuki": "हीरो, होंडा, मारुति सुज़ुकी",
+  "Model": "मॉडल",
+  "Type the model, or pick one of this company.": "मॉडल लिखें, या इस कंपनी का कोई चुनें।",
+  "Splendor Plus, Swift": "स्प्लेंडर प्लस, स्विफ्ट",
+  "Model number or variant (optional)": "मॉडल नंबर या वेरिएंट (वैकल्पिक)",
+  "VXI, 110cc, Disc": "VXI, 110cc, डिस्क",
+  "Year (optional)": "साल (वैकल्पिक)"
 }

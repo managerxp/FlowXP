@@ -243,7 +243,8 @@ const HomeRoute = () => {
   if (business?.business_type === 'HOTEL') return <HotelDashboard />;
   if (business?.business_type === 'GYM') return <GymDashboard />;
   if (business?.business_type === 'GAMING_CAFE') return <GamingDashboard />;
-  if (business?.business_type === 'AUTO_PARTS') return <PartsHome />;
+  // a garage (mechanic mode) opens on its job cards; a parts-only shop on the stock overview
+  if (business?.business_type === 'AUTO_PARTS') return business.workshop_mode !== false ? <Navigate to="/app/parts/jobs" replace /> : <PartsHome />;
   if (business?.business_type === 'PHARMACY') return <PharmacyDashboard />;
   if (['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type)) return business?.distributor_enabled ? <DistributorDashboard /> : <WholesaleDashboard />;
   return <Dashboard />;

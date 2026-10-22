@@ -5,11 +5,10 @@ import { currentBusiness, useSession, api } from '../lib/session.ts';
 import { allowed } from '../lib/access.ts';
 import { t } from '../lib/i18n.ts';
 import { Card, Field, Input, Msg, Panel, SetupShell, useAct, useList } from '../lib/formKit.tsx';
-import { canJobCards, customerProblem, dueLine, emptyJob, jobSub, newJobBody, newJobProblem, vehicleOf, type JobRow, type NewJobForm } from '../lib/jobCards.ts';
+import { canJobCards, customerProblem, dueLine, emptyJob, jobSub, newJobBody, newJobProblem, suggestMakes, suggestModels, vehicleOf, type JobRow, type NewJobForm, type VehicleTree } from '../lib/jobCards.ts';
 import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, s } from '../lib/ui.tsx';
 
 type Cust = { customer_id: number; name: string; phone: string | null };
-type Make = { make_id: number; name: string; models: { model_id: number; name: string }[] };
 const TYPES = [{ id: 'CAR', label: 'Car' }, { id: 'BIKE', label: 'Bike' }, { id: 'SCOOTER', label: 'Scooter' }, { id: 'TRUCK', label: 'Truck' }, { id: 'BUS', label: 'Bus' }, { id: 'COMMERCIAL', label: 'Commercial' }, { id: 'OTHER', label: 'Other' }];
 
 /** Find the customer by name or phone, or add a new one on the spot. */
@@ -50,12 +49,12 @@ export default function JobCardsScreen() {
   useEffect(() => { const timer = setTimeout(() => setQ(text.trim()), 300); return () => clearTimeout(timer); }, [text]);
   const list = useList<JobRow[]>(tab === 'jobs' ? `/autoparts/jobcards?status=${show}${q ? `&q=${encodeURIComponent(q)}` : ''}` : null);
   const due = useList<{ job_id: number; vehicle_reg: string; make: string | null; model: string | null; next_service_on: string; overdue: boolean; customer_name: string | null }[]>(tab === 'due' ? '/autoparts/jobcards/due?days=30' : null);
-  const makes = useList<Make[]>('/autoparts/vehicles');
+  const makes = useList<VehicleTree>('/autoparts/vehicles');
   const mech = useList<{ employee_id: number; name: string }[]>('/autoparts/jobcards/mechanics');
   const [form, setForm] = useState<NewJobForm | null>(null);
   const a = useAct();
   const set = (patch: Partial<NewJobForm>) => form && setForm({ ...form, ...patch });
-  const models = (makes.data ?? []).flatMap((m) => m.models.map((x) => ({ id: String(x.model_id), label: `${m.name} ${x.name}` })));
+  const tree = makes.data ?? [];
   return (
     <SetupShell title="Job cards" sub="Vehicles in for service: the parts fitted, the labour and one bill" ok={ok} denied="You do not have access to job cards.">
       <Chips items={[{ id: 'jobs', label: 'Job cards' }, { id: 'due', label: 'Services due' }]} value={tab} onChange={setTab} />
@@ -72,8 +71,13 @@ export default function JobCardsScreen() {
                 <Card>
                   <CustomerFind form={form} set={set} />
                   <Input label="Registration number" upper value={form.vehicle_reg} onChange={(v) => set({ vehicle_reg: v })} max={20} placeholder="KA01AB1234" />
-                  <Field label="Vehicle"><Chips items={TYPES} value={form.vehicle_type} onChange={(v) => set({ vehicle_type: v })} /></Field>
-                  {models.length ? <Field label="Make and model"><Chips items={[{ id: '', label: t('Not in the list') }, ...models]} value={form.model_id} onChange={(v) => set({ model_id: v })} /></Field> : null}
+                  <Field label="Vehicle"><Chips items={TYPES} value={form.vehicle_type} onChange={(v) => set({ vehicle_type: v, make: '', model: '' })} /></Field>
+                  <Input label="Company" hint="Pick from the list or type it. A new one is remembered." value={form.make} onChange={(v) => set({ make: v, model: '' })} max={60} placeholder="Hero, Honda, Maruti Suzuki" />
+                  {suggestMakes(tree, form.vehicle_type, form.make).map((n) => <Line key={n} left={n} onPress={() => set({ make: n, model: '' })} />)}
+                  <Input label="Model" value={form.model} onChange={(v) => set({ model: v })} max={80} placeholder="Splendor Plus, Swift" />
+                  {suggestModels(tree, form.vehicle_type, form.make, form.model).map((n) => <Line key={n} left={n} onPress={() => set({ model: n })} />)}
+                  <Input label="Model number or variant (optional)" value={form.variant} onChange={(v) => set({ variant: v })} max={60} placeholder="VXI, 110cc, Disc" />
+                  <Input label="Year (optional)" numeric value={form.vehicle_year} onChange={(v) => set({ vehicle_year: v })} max={4} />
                   <Input label="Odometer (km)" numeric value={form.odometer_km} onChange={(v) => set({ odometer_km: v })} max={7} />
                   <Input label="What is wrong, or what to do" multiline value={form.complaint} onChange={(v) => set({ complaint: v })} max={2000} placeholder="Brake noise, full service" />
                   {(mech.data ?? []).length ? <Field label="Mechanic"><Chips items={[{ id: '', label: t('Not assigned') }, ...(mech.data ?? []).map((m) => ({ id: String(m.employee_id), label: m.name }))]} value={form.mechanic_id} onChange={(v) => set({ mechanic_id: v })} /></Field> : null}

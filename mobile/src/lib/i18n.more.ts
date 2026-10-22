@@ -2840,6 +2840,19 @@ export const ML: Record<string, string> = {
   'Show job cards, labour and staff, or hide them for a parts-only shop': 'ജോബ് കാർഡുകൾ, കൂലി, സ്റ്റാഫ് എന്നിവ കാണിക്കുക, അല്ലെങ്കിൽ പാർട്സ് മാത്രമുള്ള കടയ്ക്ക് മറയ്ക്കുക',
   // Signup: also service vehicles
   'We also service bikes or cars (turns on job cards, labour and staff)': 'ഞങ്ങൾ ബൈക്കോ കാറോ സർവീസും ചെയ്യുന്നു (ജോബ് കാർഡ്, കൂലി, സ്റ്റാഫ് എന്നിവ ഓണാകും)',
+  // Job card: company and model typed
+  'Company': 'കമ്പനി',
+  'Model number or variant (optional)': 'മോഡൽ നമ്പർ അല്ലെങ്കിൽ വേരിയന്റ് (ഓപ്ഷണൽ)',
+  'Year (optional)': 'വർഷം (ഓപ്ഷണൽ)',
+  'Pick from the list or type it. A new one is remembered.': 'പട്ടികയിൽ നിന്ന് തിരഞ്ഞെടുക്കുക അല്ലെങ്കിൽ ടൈപ്പ് ചെയ്യുക. പുതിയത് ഓർത്തുവയ്ക്കും.',
+  'Hero, Honda, Maruti Suzuki': 'ഹീറോ, ഹോണ്ട, മാരുതി സുസുക്കി',
+  'Splendor Plus, Swift': 'സ്പ്ലെൻഡർ പ്ലസ്, സ്വിഫ്റ്റ്',
+  'VXI, 110cc, Disc': 'VXI, 110cc, ഡിസ്ക്',
+  'The year is four digits, like 2021': 'വർഷം നാല് അക്കമാണ്, ഉദാഹരണം 2021',
+  'Type the company too, like Hero or Maruti Suzuki': 'കമ്പനിയും ടൈപ്പ് ചെയ്യുക, ഉദാഹരണം ഹീറോ അല്ലെങ്കിൽ മാരുതി സുസുക്കി',
+  // Workshop group
+  'Jobs': 'ജോലികൾ',
+  'Workshop': 'വർക്ക്ഷോപ്പ്',
 };
 
 /** Tamil: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -5682,6 +5695,19 @@ export const TA: Record<string, string> = {
   'Show job cards, labour and staff, or hide them for a parts-only shop': 'ஜாப் கார்டுகள், கூலி, ஊழியர்களைக் காட்டுங்கள், அல்லது பாகங்கள் மட்டும் விற்கும் கடைக்கு மறையுங்கள்',
   // Signup: also service vehicles
   'We also service bikes or cars (turns on job cards, labour and staff)': 'நாங்கள் பைக் அல்லது கார் சர்வீஸும் செய்கிறோம் (ஜாப் கார்டு, கூலி, ஊழியர்கள் ஆன் ஆகும்)',
+  // Job card: company and model typed
+  'Company': 'நிறுவனம்',
+  'Model number or variant (optional)': 'மாடல் எண் அல்லது வகை (விருப்பம்)',
+  'Year (optional)': 'ஆண்டு (விருப்பம்)',
+  'Pick from the list or type it. A new one is remembered.': 'பட்டியலில் இருந்து தேர்ந்தெடுக்கவும் அல்லது தட்டச்சு செய்யவும். புதியது நினைவில் வைக்கப்படும்.',
+  'Hero, Honda, Maruti Suzuki': 'ஹீரோ, ஹோண்டா, மாருதி சுசுகி',
+  'Splendor Plus, Swift': 'ஸ்ப்ளெண்டர் பிளஸ், ஸ்விஃப்ட்',
+  'VXI, 110cc, Disc': 'VXI, 110cc, டிஸ்க்',
+  'The year is four digits, like 2021': 'ஆண்டு நான்கு இலக்கம், எடுத்துக்காட்டு 2021',
+  'Type the company too, like Hero or Maruti Suzuki': 'நிறுவனத்தையும் தட்டச்சு செய்யுங்கள், எடுத்துக்காட்டு ஹீரோ அல்லது மாருதி சுசுகி',
+  // Workshop group
+  'Jobs': 'வேலைகள்',
+  'Workshop': 'பணிமனை',
 };
 
 /** Bengali: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -8524,6 +8550,19 @@ export const BN: Record<string, string> = {
   'Show job cards, labour and staff, or hide them for a parts-only shop': 'জব কার্ড, মজুরি ও স্টাফ দেখান, বা শুধু পার্টসের দোকানের জন্য লুকান',
   // Signup: also service vehicles
   'We also service bikes or cars (turns on job cards, labour and staff)': 'আমরা বাইক বা গাড়ির সার্ভিসও করি (জব কার্ড, মজুরি ও স্টাফ চালু হবে)',
+  // Job card: company and model typed
+  'Company': 'কোম্পানি',
+  'Model number or variant (optional)': 'মডেল নম্বর বা ভেরিয়েন্ট (ঐচ্ছিক)',
+  'Year (optional)': 'বছর (ঐচ্ছিক)',
+  'Pick from the list or type it. A new one is remembered.': 'তালিকা থেকে বেছে নিন বা নিজে লিখুন। নতুনটি মনে রাখা হবে।',
+  'Hero, Honda, Maruti Suzuki': 'হিরো, হোন্ডা, মারুতি সুজুকি',
+  'Splendor Plus, Swift': 'স্প্লেন্ডার প্লাস, সুইফট',
+  'VXI, 110cc, Disc': 'VXI, 110cc, ডিস্ক',
+  'The year is four digits, like 2021': 'বছর চার অঙ্কের, যেমন 2021',
+  'Type the company too, like Hero or Maruti Suzuki': 'কোম্পানিও লিখুন, যেমন হিরো বা মারুতি সুজুকি',
+  // Workshop group
+  'Jobs': 'কাজ',
+  'Workshop': 'ওয়ার্কশপ',
 };
 
 /** Telugu: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -11366,6 +11405,19 @@ export const TE: Record<string, string> = {
   'Show job cards, labour and staff, or hide them for a parts-only shop': 'జాబ్ కార్డులు, కూలి, సిబ్బందిని చూపండి, లేదా భాగాలు మాత్రమే అమ్మే దుకాణానికి దాచండి',
   // Signup: also service vehicles
   'We also service bikes or cars (turns on job cards, labour and staff)': 'మేము బైక్ లేదా కారు సర్వీసింగ్ కూడా చేస్తాం (జాబ్ కార్డులు, కూలి, సిబ్బంది ఆన్ అవుతాయి)',
+  // Job card: company and model typed
+  'Company': 'కంపెనీ',
+  'Model number or variant (optional)': 'మోడల్ నంబర్ లేదా వేరియంట్ (ఐచ్ఛికం)',
+  'Year (optional)': 'సంవత్సరం (ఐచ్ఛికం)',
+  'Pick from the list or type it. A new one is remembered.': 'జాబితా నుండి ఎంచుకోండి లేదా టైప్ చేయండి. కొత్తది గుర్తుంచుకోబడుతుంది.',
+  'Hero, Honda, Maruti Suzuki': 'హీరో, హోండా, మారుతి సుజుకి',
+  'Splendor Plus, Swift': 'స్ప్లెండర్ ప్లస్, స్విఫ్ట్',
+  'VXI, 110cc, Disc': 'VXI, 110cc, డిస్క్',
+  'The year is four digits, like 2021': 'సంవత్సరం నాలుగు అంకెలు, ఉదాహరణ 2021',
+  'Type the company too, like Hero or Maruti Suzuki': 'కంపెనీని కూడా టైప్ చేయండి, ఉదాహరణ హీరో లేదా మారుతి సుజుకి',
+  // Workshop group
+  'Jobs': 'పనులు',
+  'Workshop': 'వర్క్‌షాప్',
 };
 
 /** Kannada: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -14208,4 +14260,17 @@ export const KN: Record<string, string> = {
   'Show job cards, labour and staff, or hide them for a parts-only shop': 'ಜಾಬ್ ಕಾರ್ಡ್‌ಗಳು, ಕೂಲಿ, ಸಿಬ್ಬಂದಿಯನ್ನು ತೋರಿಸಿ, ಅಥವಾ ಭಾಗಗಳನ್ನು ಮಾತ್ರ ಮಾರುವ ಅಂಗಡಿಗೆ ಮರೆಮಾಡಿ',
   // Signup: also service vehicles
   'We also service bikes or cars (turns on job cards, labour and staff)': 'ನಾವು ಬೈಕ್ ಅಥವಾ ಕಾರು ಸರ್ವೀಸ್ ಕೂಡ ಮಾಡುತ್ತೇವೆ (ಜಾಬ್ ಕಾರ್ಡ್, ಕೂಲಿ, ಸಿಬ್ಬಂದಿ ಆನ್ ಆಗುತ್ತದೆ)',
+  // Job card: company and model typed
+  'Company': 'ಕಂಪನಿ',
+  'Model number or variant (optional)': 'ಮಾದರಿ ಸಂಖ್ಯೆ ಅಥವಾ ವೇರಿಯಂಟ್ (ಐಚ್ಛಿಕ)',
+  'Year (optional)': 'ವರ್ಷ (ಐಚ್ಛಿಕ)',
+  'Pick from the list or type it. A new one is remembered.': 'ಪಟ್ಟಿಯಿಂದ ಆರಿಸಿ ಅಥವಾ ಟೈಪ್ ಮಾಡಿ. ಹೊಸದನ್ನು ನೆನಪಿಡಲಾಗುತ್ತದೆ.',
+  'Hero, Honda, Maruti Suzuki': 'ಹೀರೋ, ಹೋಂಡಾ, ಮಾರುತಿ ಸುಜುಕಿ',
+  'Splendor Plus, Swift': 'ಸ್ಪ್ಲೆಂಡರ್ ಪ್ಲಸ್, ಸ್ವಿಫ್ಟ್',
+  'VXI, 110cc, Disc': 'VXI, 110cc, ಡಿಸ್ಕ್',
+  'The year is four digits, like 2021': 'ವರ್ಷ ನಾಲ್ಕು ಅಂಕೆಗಳು, ಉದಾಹರಣೆ 2021',
+  'Type the company too, like Hero or Maruti Suzuki': 'ಕಂಪನಿಯನ್ನೂ ಟೈಪ್ ಮಾಡಿ, ಉದಾಹರಣೆ ಹೀರೋ ಅಥವಾ ಮಾರುತಿ ಸುಜುಕಿ',
+  // Workshop group
+  'Jobs': 'ಕೆಲಸಗಳು',
+  'Workshop': 'ವರ್ಕ್‌ಶಾಪ್',
 };

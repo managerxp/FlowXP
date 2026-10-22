@@ -4889,8 +4889,6 @@
   "New job card": "ಹೊಸ ಜಾಬ್ ಕಾರ್ಡ್",
   "Open the card": "ಕಾರ್ಡ್ ತೆರೆಯಿರಿ",
   "KA01AB1234": "KA01AB1234",
-  "Make and model": "ಮೇಕ್ ಮತ್ತು ಮಾಡೆಲ್",
-  "Not in the list": "ಪಟ್ಟಿಯಲ್ಲಿ ಇಲ್ಲ",
   "Mechanic": "ಮೆಕ್ಯಾನಿಕ್",
   "Promised for": "ಭರವಸೆ ನೀಡಿದ ದಿನ",
   "What is wrong, or what to do": "ಏನು ತೊಂದರೆ, ಅಥವಾ ಏನು ಮಾಡಬೇಕು",
@@ -4956,7 +4954,6 @@
   "Find the customer": "ಗ್ರಾಹಕರನ್ನು ಹುಡುಕಿ",
   "Customer name": "ಗ್ರಾಹಕರ ಹೆಸರು",
   "Customer phone": "ಗ್ರಾಹಕರ ಫೋನ್",
-  "From your Vehicles list, so fitment can be checked": "ನಿಮ್ಮ ವಾಹನ ಪಟ್ಟಿಯಿಂದ, ಹೀಗೆ ಫಿಟ್‌ಮೆಂಟ್ ಪರಿಶೀಲಿಸಬಹುದು",
   "Odometer": "ಓಡೋಮೀಟರ್",
   "{{why}}. Add it to the card anyway, without holding it?": "{{why}}. ಆದರೂ ಹಿಡಿದಿಡದೆ ಕಾರ್ಡ್‌ಗೆ ಸೇರಿಸಬೇಕೆ?",
   "Vehicle not in the list": "ವಾಹನ ಪಟ್ಟಿಯಲ್ಲಿ ಇಲ್ಲ",
@@ -5010,5 +5007,13 @@
   "For example: add racks, points, job card": "ಉದಾಹರಣೆ: ರ‍್ಯಾಕ್ ಸೇರಿಸಿ, ಪಾಯಿಂಟ್‌ಗಳು, ಜಾಬ್ ಕಾರ್ಡ್",
   "No screen found for that. Try another word, or ask Flow AI below.": "ಅದಕ್ಕೆ ಯಾವುದೇ ಪರದೆ ಸಿಗಲಿಲ್ಲ. ಬೇರೆ ಪದ ಪ್ರಯತ್ನಿಸಿ, ಅಥವಾ ಕೆಳಗೆ Flow AI ಅನ್ನು ಕೇಳಿ.",
   "Ask Flow AI about your business": "ನಿಮ್ಮ ವ್ಯವಹಾರದ ಬಗ್ಗೆ Flow AI ಅನ್ನು ಕೇಳಿ",
-  "Blank: the shop's labour rate": "ಖಾಲಿ: ಅಂಗಡಿಯ ಕೂಲಿ ದರ"
+  "Blank: the shop's labour rate": "ಖಾಲಿ: ಅಂಗಡಿಯ ಕೂಲಿ ದರ",
+  "Pick from the list or type it. A new one is remembered.": "ಪಟ್ಟಿಯಿಂದ ಆರಿಸಿ ಅಥವಾ ಟೈಪ್ ಮಾಡಿ. ಹೊಸದನ್ನು ನೆನಪಿಡಲಾಗುತ್ತದೆ.",
+  "Hero, Honda, Maruti Suzuki": "ಹೀರೋ, ಹೋಂಡಾ, ಮಾರುತಿ ಸುಜುಕಿ",
+  "Model": "ಮಾದರಿ",
+  "Type the model, or pick one of this company.": "ಮಾದರಿಯನ್ನು ಟೈಪ್ ಮಾಡಿ, ಅಥವಾ ಈ ಕಂಪನಿಯ ಒಂದನ್ನು ಆರಿಸಿ.",
+  "Splendor Plus, Swift": "ಸ್ಪ್ಲೆಂಡರ್ ಪ್ಲಸ್, ಸ್ವಿಫ್ಟ್",
+  "Model number or variant (optional)": "ಮಾದರಿ ಸಂಖ್ಯೆ ಅಥವಾ ವೇರಿಯಂಟ್ (ಐಚ್ಛಿಕ)",
+  "VXI, 110cc, Disc": "VXI, 110cc, ಡಿಸ್ಕ್",
+  "Year (optional)": "ವರ್ಷ (ಐಚ್ಛಿಕ)"
 }

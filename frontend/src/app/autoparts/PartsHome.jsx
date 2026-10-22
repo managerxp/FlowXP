@@ -7,7 +7,7 @@ import { Panel } from '../salon/parts.jsx';
 import { useT } from '../../i18n/useT.js';
 
 /* The workshop's day on the overview: vehicles in the shop, and what was billed today from job cards (only when mechanic mode is on). */
-const WorkshopToday = () => {
+export const WorkshopToday = () => {
   const tr = useT();
   const day = new Date(); const today = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
   const live = useLoad('/autoparts/jobcards?status=LIVE');

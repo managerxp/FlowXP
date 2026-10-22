@@ -88,6 +88,9 @@ test('a job card: open, hold parts, labour, shortage, fitment, re-quantity, read
   const billed = okBody(await call(jobs.bill, { params: { id }, body: { payment: { amount: 'FULL', method: 'CASH' } } }), 201);
   assert.equal(billed.job.status, 'BILLED'); assert.ok(billed.job.invoice_id);
   assert.equal(billed.invoice.total, 4130, '3 pads 3000 + labour 500, plus 18% GST');
+  const codes = (await pool.query(`SELECT product_id IS NULL AS labour, hsn_sac FROM invoice_items WHERE invoice_id = $1 ORDER BY item_id`, [billed.job.invoice_id])).rows;
+  assert.ok(codes.filter((c) => c.labour).every((c) => c.hsn_sac === '998714'), 'labour carries the SAC for vehicle repair');
+  assert.ok(codes.filter((c) => !c.labour).every((c) => c.hsn_sac !== '998714'), 'parts keep their own code');
   const after = await stockRow(pad);
   assert.equal(after.quantity, '2.000', 'billing took 3 of 5'); assert.equal(after.reserved_qty, '0.000', 'and used the hold up');
   const res = (await pool.query(`SELECT status FROM part_reservations WHERE business_id = $1`, [S.businessId])).rows;
@@ -205,4 +208,22 @@ test('the customer is told on WhatsApp: words and a wa.me link, nothing is sent 
   assert.equal((await share('nonsense')).code, 400);
   const billed = okBody(await call(jobs.bill, { params: { id: j.job_id }, body: { payment: { amount: 'FULL', method: 'CASH' } } }), 201);
   assert.match(okBody(await share('bill')).text, new RegExp(billed.invoice.invoice_number));
+});
+
+test('a make and model typed on a job card are remembered once, in the right type, and never imply fitment', { skip }, async () => {
+  const cat = (await import('../src/controllers/autopartsCatalog.controller.js')).default;
+  const j = okBody(await open({ vehicle_reg: 'KA11 ZZ 0001', vehicle_type: 'BIKE', make: 'hero motocorp', model: 'Splendor Plus Black', vehicle_year: 2021 }), 201);
+  assert.equal(j.make, 'Hero MotoCorp', 'it joins the company that is already in the list, whatever the capitals');
+  assert.equal(j.model, 'Splendor Plus Black'); assert.ok(j.model_id);
+  const typed = okBody(await open({ vehicle_reg: 'KA11 ZZ 0002', vehicle_type: 'BIKE', make: 'Hero MotoCorp', model: 'splendor plus black' }), 201);
+  assert.equal(typed.model_id, j.model_id, 'the same model typed again is the same model, not a copy');
+  const fresh = okBody(await open({ vehicle_reg: 'KA11 ZZ 0003', vehicle_type: 'CAR', make: 'Datsun Newbrand', model: 'Z1' }), 201);
+  assert.equal(fresh.make, 'Datsun Newbrand');
+  const tree = okBody(await call(cat.vehicles, { query: {} }));
+  const mk = tree.find((m) => m.name === 'Datsun Newbrand' && m.vehicle_type === 'CAR');
+  assert.ok(mk && mk.models.some((m) => m.name === 'Z1'), 'the new company and model are now in the list');
+  assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM part_fitment WHERE business_id = $1 AND model_id = $2`, [S.businessId, fresh.model_id])).rows[0].n, 0);
+  const upd = okBody(await call(jobs.update, { params: { id: fresh.job_id }, body: { model: 'Z2' } }));
+  assert.equal(upd.model, 'Z2'); assert.notEqual(upd.model_id, fresh.model_id, 'changing only the model finds or adds that model under the same company');
+  for (const id of [j.job_id, typed.job_id, fresh.job_id]) okBody(await call(jobs.status, { params: { id }, body: { status: 'CANCELLED' } }));
 });

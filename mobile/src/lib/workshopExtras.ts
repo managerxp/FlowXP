@@ -136,6 +136,8 @@ export const EXTRAS_TEXTS: string[] = [
   'Import customers', 'Bring your customers from Tally, Vyapar, Busy or Excel. Save the file as CSV first. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.',
   'Choose the customer file', 'Check the file', 'Import the customers', 'Choose a CSV file. In Excel, use Save as, CSV.', 'That file is too large', 'That file has no rows. The first line must be the column names.',
   '{n} rows have a problem. Fix them in the file and choose it again.', '{n} customers were added.', '{add} to add, {skip} already here.', 'Row {n}',
+  // tabs and groups
+  'Workshop', 'Jobs',
   // signup
   'We also service bikes or cars (turns on job cards, labour and staff)',
   // help me find

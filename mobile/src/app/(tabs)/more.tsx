@@ -60,6 +60,13 @@ export default function More() {
   };
 
   const groups: { title: string; items: Item[] }[] = [
+    { title: 'Workshop', items: [
+      { left: 'Job cards', sub: 'Vehicles in for service: parts, labour and one bill', icon: 'build-outline', go: '/job-cards', show: parts && workshop && can('billing') },
+      { left: 'Labour and services', sub: 'What you charge for work: oil change, alignment', icon: 'pricetag-outline', go: '/job-services', show: parts && workshop && can('billing') },
+      { left: 'What we earned', sub: 'Labour and parts earned, by day and mechanic', icon: 'stats-chart-outline', go: '/job-earnings', show: parts && workshop && can('billing') },
+      { left: 'Staff', sub: 'People, attendance and payroll', icon: 'people-circle-outline', go: '/workshop-staff', show: parts && workshop && can('hr', 'payroll') },
+      { left: 'Mechanic mode', sub: 'Show job cards, labour and staff, or hide them for a parts-only shop', icon: 'build-outline', go: '/mechanic-mode', show: parts && business?.role === 'OWNER' }
+    ] },
     { title: 'Sell', items: [
       { left: 'Gaming set-up', sub: 'Stations, rates, offers and the lounge rules', icon: 'construct-outline', go: '/gaming-setup', show: gaming && canGamingSetup((p) => allowed(business, p)) },
       { left: 'Lounge board', sub: 'Every station with its timer: start, pause, stop, take payment', icon: 'game-controller-outline', go: '/gaming', show: gaming && can('gaming_desk', 'gaming_setup') },
@@ -92,11 +99,6 @@ export default function More() {
       { left: 'Racks and bins', sub: 'Look in a bin, put stock away, move it between bins', icon: 'file-tray-stacked-outline', go: '/parts-warehouse', show: parts && can('warehouse', 'grn', 'stock_count') },
       { left: 'Receive parts', sub: 'A delivery: accepted, damaged and rejected counted apart', icon: 'download-outline', go: '/parts-receive', show: parts && can('grn') },
       { left: 'Manage parts', sub: 'Add parts, numbers, vehicles and racks', icon: 'construct-outline', go: '/parts-manage', show: parts && can('parts_catalog', 'warehouse') },
-      { left: 'Job cards', sub: 'Vehicles in for service: parts, labour and one bill', icon: 'build-outline', go: '/job-cards', show: parts && workshop && can('billing') },
-      { left: 'Labour and services', sub: 'What you charge for work: oil change, alignment', icon: 'pricetag-outline', go: '/job-services', show: parts && workshop && can('billing') },
-      { left: 'What we earned', sub: 'Labour and parts earned, by day and mechanic', icon: 'stats-chart-outline', go: '/job-earnings', show: parts && workshop && can('billing') },
-      { left: 'Staff', sub: 'People, attendance and payroll', icon: 'people-circle-outline', go: '/workshop-staff', show: parts && workshop && can('hr', 'payroll') },
-      { left: 'Mechanic mode', sub: 'Show job cards, labour and staff, or hide them for a parts-only shop', icon: 'build-outline', go: '/mechanic-mode', show: parts && business?.role === 'OWNER' },
       { left: 'Import customers', sub: 'A CSV file of customers: names, phones, credit limits', icon: 'cloud-upload-outline', go: '/customers-import', show: can('customers') },
       { left: 'Help me find', sub: 'Tell me where things are: say what you want to do', icon: 'help-buoy-outline', go: '/help-find' },
       { left: 'Stock', sub: 'What is running low, and fix a count', icon: 'layers-outline', go: '/stock', show: can('inventory') },
