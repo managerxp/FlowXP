@@ -108,6 +108,9 @@ export const config = {
     whatsappToken: process.env.WHATSAPP_TOKEN || '',
     whatsappPhoneId: process.env.WHATSAPP_PHONE_ID || '',
     whatsappLanguage: process.env.WHATSAPP_TEMPLATE_LANG || 'en',
+    whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || '',   // the text typed into Meta's webhook screen
+    whatsappAppSecret: process.env.WHATSAPP_APP_SECRET || '',       // the app secret: callbacks are accepted only when signed with it
+    whatsappApiVersion: /^v\d+\.\d+$/.test(process.env.WHATSAPP_API_VERSION || '') ? process.env.WHATSAPP_API_VERSION : 'v26.0',   // Meta retires old Graph API versions after about two years: keep this current (the app's dashboard shows the newest)
     twilioSid: process.env.TWILIO_SID || '',
     twilioToken: process.env.TWILIO_TOKEN || '',
     twilioFrom: process.env.TWILIO_FROM || '',

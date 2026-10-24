@@ -155,6 +155,9 @@ const MessagingSettings = () => {
           <Field id="msg-wa-phone" label="WhatsApp phone number ID">
             <Input id="msg-wa-phone" value={form.whatsappPhoneId} onChange={(e) => set('whatsappPhoneId')(e.target.value)} />
           </Field>
+          <SecretField id="msg-wa-secret" label="Meta app secret (to check callbacks)" value={form.whatsappAppSecret} onChange={set('whatsappAppSecret')} />
+          <SecretField id="msg-wa-verify" label="Callback verify token (any text you choose)" value={form.whatsappVerifyToken} onChange={set('whatsappVerifyToken')} />
+          <p className="text-caption text-ink-500 sm:col-span-2">In the Meta app, WhatsApp, Configuration, set the Callback URL to <strong>{`${window.location.origin}/api/webhooks/whatsapp`}</strong> and the verify token to the same text as above. Then subscribe to the <strong>messages</strong> field. Delivery, read and STOP replies come back here.</p>
           <Field id="msg-wa-lang" label="Template language">
             <Input id="msg-wa-lang" value={form.whatsappLanguage} onChange={(e) => set('whatsappLanguage')(e.target.value)} placeholder="en" />
           </Field>

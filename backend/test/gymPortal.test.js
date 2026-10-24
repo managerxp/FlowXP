@@ -114,7 +114,7 @@ test('a code goes to a member\'s phone, and the answer is the same for a number 
   assert.ok(await until(() => sent.length === before + 1));
   await new Promise((r) => setTimeout(r, 100));
   assert.equal(sent.length, before + 1, 'only the real member was texted');
-  assert.match(last().text, /^\d{6} is your Gym portal\d+ sign-in code/);
+  assert.match(last().text, /^Your Gym portal\d+ sign-in code is \d{6}\./);
   assert.equal(last().to, '919876511111');
   assert.equal(last().kind, 'GYM_OTP');
   // the code is not kept anywhere in readable form, nor in the message log

@@ -8,6 +8,9 @@
 import pool from '../config/database.js';
 import { verifyWebhookSignature } from '../modules/payments/cashfree.js';
 import { recordAudit } from '../modules/events.js';
+import crypto from 'node:crypto';
+import { webhookSecrets } from '../modules/messaging/provider.js';
+import { applyWhatsappEvents } from '../modules/messaging/index.js';
 
 const CYCLE_INTERVAL = { MONTHLY: '30 days', YEARLY: '365 days' };
 const ADDON_LINK_PREFIX = 'flowxp-addon-'; // see admin.controller.js's createAddonLink — how a link is told apart from a plan subscription's
@@ -111,4 +114,31 @@ export const cashfree = async (req, res) => {
     // never activated anything because of a transient DB hiccup on our side.
     res.status(500).json({ success: false });
   }
+};
+
+/* ==========================================================================
+   GET /api/webhooks/whatsapp: Meta checks the address when the callback URL is saved in the app dashboard. It sends hub.mode=subscribe, hub.verify_token (the text we
+   typed there) and hub.challenge, and wants the challenge back as plain text. Anything else is refused.
+   POST /api/webhooks/whatsapp: delivery and read receipts, and customers' replies. Signed with the app secret (X-Hub-Signature-256: sha256=HMAC of the exact bytes);
+   an unsigned or wrongly signed call is refused, and nothing is acted on without a secret set. Answered with 200 quickly, or Meta retries.
+   ========================================================================== */
+const same = (a, b) => { const x = Buffer.from(String(a)); const y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
+
+export const whatsappVerify = async (req, res) => {
+  const { verifyToken } = await webhookSecrets();
+  const q = req.query || {};
+  if (verifyToken && q['hub.mode'] === 'subscribe' && same(q['hub.verify_token'] ?? '', verifyToken) && q['hub.challenge']) {
+    return res.status(200).type('text/plain').send(String(q['hub.challenge']));
+  }
+  res.status(403).type('text/plain').send('Forbidden');
+};
+
+export const whatsappEvents = async (req, res) => {
+  const { appSecret } = await webhookSecrets();
+  if (!appSecret) return res.status(503).json({ success: false, message: 'WhatsApp callbacks are not set up' });
+  const header = String(req.get('x-hub-signature-256') || '');
+  const expected = `sha256=${crypto.createHmac('sha256', appSecret).update(req.rawBody || Buffer.alloc(0)).digest('hex')}`;
+  if (!same(header, expected)) return res.status(401).json({ success: false, message: 'Bad signature' });
+  try { await applyWhatsappEvents(pool, req.body); } catch (error) { console.error('[webhooks] whatsapp callback failed:', error.message); }   // 200 either way: a retry would fail the same way
+  res.status(200).json({ success: true });
 };

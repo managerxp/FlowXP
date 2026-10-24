@@ -282,3 +282,39 @@ export const afterWaitlist = (w, event) => quiet('waitlist message', async () =>
   if (event === 'added') await send(pool, { ...base, kind: 'WAITLIST_ADDED', values: { name: w.guest_name, business: g.name, minutes: w.quoted_wait_min ?? 10 } });
   else if (event === 'ready') await send(pool, { ...base, kind: 'WAITLIST_READY', values: { name: w.guest_name, business: g.name } });
 });
+
+
+/* ── what Meta tells us afterwards (POST /api/webhooks/whatsapp) ─────────────────────────────────────────────────
+ * A callback carries entry[].changes[].value with `statuses` (a message we sent: sent, delivered, read or failed, with Meta's id for it) and `messages`
+ * (a customer wrote to the number). Statuses update the stored message; a customer who writes STOP is opted out of promotions, so "Reply STOP" in a
+ * template is a promise kept. Everything else is ignored: this is a billing tool, not an inbox.
+ */
+const STOP_WORDS = new Set(['stop', 'unsubscribe', 'opt out', 'optout', 'cancel messages']);
+
+export const applyWhatsappEvents = async (db, payload) => {
+  const out = { statuses: 0, optOuts: 0 };
+  for (const entry of payload?.entry || []) {
+    for (const change of entry?.changes || []) {
+      const value = change?.value || {};
+      for (const st of value.statuses || []) {
+        if (!st?.id) continue;
+        const when = st.timestamp ? new Date(Number(st.timestamp) * 1000) : new Date();
+        if (st.status === 'delivered') await db.query(`UPDATE messages SET delivered_at = COALESCE(delivered_at, $2) WHERE provider_id = $1`, [st.id, when]);
+        else if (st.status === 'read') await db.query(`UPDATE messages SET delivered_at = COALESCE(delivered_at, $2), read_at = COALESCE(read_at, $2) WHERE provider_id = $1`, [st.id, when]);
+        else if (st.status === 'failed') {
+          const why = (st.errors?.[0]?.message || st.errors?.[0]?.title || 'WhatsApp could not deliver the message').slice(0, 300);
+          await db.query(`UPDATE messages SET status = 'FAILED', error = $2 WHERE provider_id = $1`, [st.id, why]);
+        } else if (st.status !== 'sent') continue;
+        out.statuses += 1;
+      }
+      for (const m of value.messages || []) {
+        const text = String(m?.text?.body ?? m?.button?.text ?? '').trim().toLowerCase();
+        const phone = String(m?.from ?? '').replace(/\D/g, '').slice(-10);
+        if (!STOP_WORDS.has(text) || phone.length < 7) continue;
+        const r = await db.query(`UPDATE customers SET marketing_opt_out = TRUE WHERE regexp_replace(COALESCE(phone, ''), '\\D', '', 'g') LIKE '%' || $1 AND marketing_opt_out IS NOT TRUE`, [phone]);
+        out.optOuts += r.rowCount;
+      }
+    }
+  }
+  return out;
+};

@@ -28,6 +28,8 @@ const resolveConfig = async () => {
     whatsappToken: db?.whatsappToken || config.messaging.whatsappToken,
     whatsappPhoneId: db?.whatsappPhoneId || config.messaging.whatsappPhoneId,
     whatsappLanguage: db?.whatsappLanguage || config.messaging.whatsappLanguage,
+    whatsappVerifyToken: db?.whatsappVerifyToken || config.messaging.whatsappVerifyToken,
+    whatsappAppSecret: db?.whatsappAppSecret || config.messaging.whatsappAppSecret,
     twilioSid: db?.twilioSid || config.messaging.twilioSid,
     twilioToken: db?.twilioToken || config.messaging.twilioToken,
     twilioFrom: db?.twilioFrom || config.messaging.twilioFrom,
@@ -35,6 +37,9 @@ const resolveConfig = async () => {
     countryCode: db?.countryCode || config.messaging.countryCode
   };
 };
+
+/** What Meta's callbacks are checked against: the text typed into Meta's webhook screen, and the app secret that signs every callback. */
+export const webhookSecrets = async () => { const c = await resolveConfig(); return { verifyToken: c.whatsappVerifyToken, appSecret: c.whatsappAppSecret }; };
 
 /** 10-digit Indian mobile (or any digits) to E.164 without the plus. */
 export const toE164 = (phone, countryCode = config.messaging.countryCode) => {
@@ -58,7 +63,7 @@ const post = async (url, { headers, body }) => {
 
 const whatsappCloud = async ({ channel, to, template }, cfg) => {
   if (channel !== 'WHATSAPP') return { status: 'SKIPPED', note: 'SMS is not available with this provider' };
-  const { ok, data } = await post(`https://graph.facebook.com/v20.0/${cfg.whatsappPhoneId}/messages`, {
+  const { ok, data } = await post(`https://graph.facebook.com/${config.messaging.whatsappApiVersion}/${cfg.whatsappPhoneId}/messages`, {
     headers: { 'content-type': 'application/json', authorization: `Bearer ${cfg.whatsappToken}` },
     body: JSON.stringify({
       messaging_product: 'whatsapp', to: toE164(to, cfg.countryCode), type: 'template',

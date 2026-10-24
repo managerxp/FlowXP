@@ -88,7 +88,7 @@ export const getMessagingSettings = async (req, res) => {
   res.json({
     success: true,
     data: setting?.value || {
-      provider: 'log', whatsappToken: '', whatsappPhoneId: '', whatsappLanguage: 'en',
+      provider: 'log', whatsappToken: '', whatsappPhoneId: '', whatsappLanguage: 'en', whatsappVerifyToken: '', whatsappAppSecret: '',
       twilioSid: '', twilioToken: '', twilioFrom: '', twilioWhatsappFrom: '', countryCode: '91'
     },
     availableProviders: MESSAGING_PROVIDERS
@@ -100,11 +100,11 @@ export const updateMessagingSettings = async (req, res) => {
   if (body.provider !== undefined && !MESSAGING_PROVIDERS.includes(body.provider)) {
     return bad(res, 'Provider must be log, whatsapp_cloud or twilio');
   }
-  const fields = ['provider', 'whatsappToken', 'whatsappPhoneId', 'whatsappLanguage', 'twilioSid', 'twilioToken', 'twilioFrom', 'twilioWhatsappFrom', 'countryCode'];
+  const fields = ['provider', 'whatsappToken', 'whatsappPhoneId', 'whatsappLanguage', 'whatsappVerifyToken', 'whatsappAppSecret', 'twilioSid', 'twilioToken', 'twilioFrom', 'twilioWhatsappFrom', 'countryCode'];
   const patch = {};
   for (const f of fields) if (body[f] !== undefined) patch[f] = String(body[f]).trim();
 
   const updated = await setPlatformSetting('messaging', patch, req.auth.userId);
-  auditSettingsChange(req, 'messaging', patch, ['whatsappToken', 'twilioToken']);
+  auditSettingsChange(req, 'messaging', patch, ['whatsappToken', 'twilioToken', 'whatsappAppSecret', 'whatsappVerifyToken']);
   res.json({ success: true, data: updated.value });
 };

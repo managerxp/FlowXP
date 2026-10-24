@@ -149,6 +149,8 @@ router.use('/public', publicOrderingRoutes);
 
 /* Cashfree calling us back, not a person — verified by signature, not a token. */
 router.post('/webhooks/cashfree', webhooks.cashfree);
+router.get('/webhooks/whatsapp', webhooks.whatsappVerify);   // Meta's check when the callback URL is saved
+router.post('/webhooks/whatsapp', webhooks.whatsappEvents);   // delivery and read receipts, and customers' STOP
 
 /* ── Signed in, no business needed ──────────────────────────────────────── */
 

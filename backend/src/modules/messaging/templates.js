@@ -13,7 +13,7 @@ export const TEMPLATES = {
   BILL: {
     name: 'flowxp_bill', promo: false,
     vars: ['name', 'business', 'number', 'total', 'link'],
-    text: (p) => `Hi ${p.name}, thank you for visiting ${p.business}! Your bill ${p.number} is ${p.total}. View it here: ${p.link}`
+    text: (p) => `Hi ${p.name}, thank you for visiting ${p.business}! Your bill ${p.number} is ${p.total}. View it here: ${p.link} Thank you, see you again.`
   },
   RESERVATION: {
     name: 'flowxp_booking', promo: false,
@@ -105,12 +105,12 @@ export const TEMPLATES = {
   WS_ORDER_DISPATCHED: {
     name: 'flowxp_ws_order_dispatched', promo: false,
     vars: ['name', 'business', 'order', 'invoice', 'vehicle'],
-    text: (p) => `Hi ${p.name}, your order ${p.order} from ${p.business} has been dispatched with invoice ${p.invoice}${p.vehicle === '-' ? '' : ` on vehicle ${p.vehicle}`}.`
+    text: (p) => `Hi ${p.name}, your order ${p.order} from ${p.business} has been dispatched with invoice ${p.invoice}${p.vehicle === '-' ? '' : ` on vehicle ${p.vehicle}`}. Thank you.`
   },
   WS_INVOICE: {
     name: 'flowxp_ws_invoice', promo: false,
     vars: ['name', 'business', 'number', 'total', 'due', 'link'],
-    text: (p) => `Hi ${p.name}, invoice ${p.number} from ${p.business} for ${p.total} is due on ${p.due}. View it here: ${p.link}`
+    text: (p) => `Hi ${p.name}, invoice ${p.number} from ${p.business} for ${p.total} is due on ${p.due}. View it here: ${p.link} Thank you.`
   },
   WS_PAYMENT_RECEIVED: {
     name: 'flowxp_ws_payment_received', promo: false,
@@ -130,7 +130,7 @@ export const TEMPLATES = {
   WS_DELIVERY_UPDATE: {
     name: 'flowxp_ws_delivery_update', promo: false,
     vars: ['name', 'business', 'order', 'status'],
-    text: (p) => `Hi ${p.name}, update on your order ${p.order} from ${p.business}: ${p.status}.`
+    text: (p) => `Hi ${p.name}, update on your order ${p.order} from ${p.business}: ${p.status}. Thank you.`
   },
   BALANCE_DUE: {
     name: 'flowxp_balance_due', promo: false,
@@ -140,18 +140,18 @@ export const TEMPLATES = {
   REVIEW_REPLY: {
     name: 'flowxp_review_reply', promo: false,
     vars: ['name', 'business', 'reply'],
-    text: (p) => `Hi ${p.name}, ${p.business}: ${p.reply}`
+    text: (p) => `Hi ${p.name}, ${p.business}: ${p.reply} Thank you for your feedback.`
   },
   // Gym. Kinds stay within the messages.kind column (24 characters). The sign-in code is never stored in the messages table.
   GYM_OTP: {
     name: 'flowxp_gym_otp', promo: false,
     vars: ['business', 'code'],
-    text: (p) => `${p.code} is your ${p.business} sign-in code. It works for 10 minutes. Do not share it with anyone.`
+    text: (p) => `Your ${p.business} sign-in code is ${p.code}. It works for 10 minutes. Do not share it with anyone.`
   },
   GYM_WELCOME: {
     name: 'flowxp_gym_welcome', promo: false,
     vars: ['name', 'business', 'code'],
-    text: (p) => `Welcome to ${p.business}, ${p.name}! Your member code is ${p.code}.`
+    text: (p) => `Welcome to ${p.business}, ${p.name}! Your member code is ${p.code}. We are glad to have you.`
   },
   GYM_EXPIRY: {
     name: 'flowxp_gym_expiry', promo: false,
@@ -171,7 +171,7 @@ export const TEMPLATES = {
   GYM_CLASS: {
     name: 'flowxp_gym_class', promo: false,
     vars: ['name', 'business', 'class', 'when'],
-    text: (p) => `Hi ${p.name}, a reminder: ${p.class} at ${p.business} on ${p.when}.`
+    text: (p) => `Hi ${p.name}, a reminder: ${p.class} at ${p.business} on ${p.when}. See you there.`
   },
   GYM_REWARD: {
     name: 'flowxp_gym_reward', promo: false,

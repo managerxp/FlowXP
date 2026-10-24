@@ -17,7 +17,7 @@ import { encrypt, decrypt } from './crypto.js';
 const SECRET_FIELDS = {
   payment_gateway: ['cashfreeSecretKey'],
   email: ['smtpPass'],
-  messaging: ['whatsappToken', 'twilioToken']
+  messaging: ['whatsappToken', 'twilioToken', 'whatsappAppSecret', 'whatsappVerifyToken']
 };
 
 const domain = (key) => `flowxp-platform-setting:${key}`;

@@ -93,7 +93,7 @@ write and delete. Photos already stored on disk keep working after you switch; n
 
 Off until you set a provider. With `MESSAGING_PROVIDER=log` (the default) nothing is sent and the Message log shows every message as *skipped*.
 
-- **WhatsApp (Meta Cloud API):** `MESSAGING_PROVIDER=whatsapp_cloud`, `WHATSAPP_TOKEN` (a permanent system-user token) and `WHATSAPP_PHONE_ID`. Create the seven templates listed in the app (Messaging, Settings, "Show the WhatsApp templates") in Meta Business Manager and wait for approval; until a template is approved its messages fail with Meta's reason, visible in the log.
+- **WhatsApp (Meta Cloud API):** `MESSAGING_PROVIDER=whatsapp_cloud`, `WHATSAPP_TOKEN` (a permanent system-user token) and `WHATSAPP_PHONE_ID` (and optionally `WHATSAPP_API_VERSION`, default `v26.0`: Meta retires old Graph API versions after about two years, so keep it at the version your Meta app dashboard shows). Create the seven templates listed in the app (Messaging, Settings, "Show the WhatsApp templates") in Meta Business Manager and wait for approval; until a template is approved its messages fail with Meta's reason, visible in the log.
 - **SMS (Twilio):** `MESSAGING_PROVIDER=twilio`, `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_FROM`. In India, SMS also needs DLT registration of the sender and templates with your operator; Twilio's own docs cover it.
 - Set `APP_ORIGIN` to the public https address: the bill link customers receive is built from it, and so is the gym's entrance QR link (`/gym/in/...`).
 - Gyms: members sign in with a code sent by the messaging provider, so set one up (Super Admin > Settings > Messaging) before putting up the entrance QR. Set `ENCRYPTION_KEY`: gate-device secrets are encrypted under it. See `GYM.md`.
@@ -191,3 +191,13 @@ The website shows a "Download for Android (APK)" button only when the site is bu
 5. Each new version: raise `version` in `mobile/app.json` (the production profile raises `versionCode` itself), build again, replace the file on the server.
 
 For Google Play later use `eas build --profile production --platform android` (an AAB) and `eas submit`; see `mobile/STORE.md`. Set `VITE_ANDROID_APP_URL` to the Play page then, and the button becomes "Get it on Google Play".
+
+## WhatsApp delivery and read receipts (callback)
+
+Meta calls back `https://YOUR-DOMAIN/api/webhooks/whatsapp` with delivery, read and failure receipts, and with customers' replies (a reply of STOP opts that customer out of promotions). Set it up in this order, because Meta checks the address the moment you save it:
+
+1. Deploy this code and restart the API (migration 0112 adds the delivery times).
+2. Super Admin, Settings, Messaging: provider `whatsapp_cloud`, the access token, the phone number ID, the **Meta app secret** (Meta app, App settings, Basic, App secret, Show) and a **verify token** (any long random text you choose). The same two can be set as `WHATSAPP_APP_SECRET` and `WHATSAPP_VERIFY_TOKEN` in `backend/.env`.
+3. In the Meta app: WhatsApp, Configuration, Webhook: Callback URL `https://YOUR-DOMAIN/api/webhooks/whatsapp`, the same verify token, then **Verify and save**, then subscribe to the **messages** field.
+
+A callback that is not signed with the app secret is refused (401), and nothing is accepted while no secret is set.
