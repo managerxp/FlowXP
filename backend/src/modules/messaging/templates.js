@@ -13,7 +13,7 @@ export const TEMPLATES = {
   BILL: {
     name: 'flowxp_bill', promo: false,
     vars: ['name', 'business', 'number', 'total', 'link'],
-    text: (p) => `Hi ${p.name}, thank you for visiting ${p.business}! Your bill ${p.number} is ${p.total}. View it here: ${p.link} Thank you, see you again.`
+    text: (p) => `Hi ${p.name}, thank you for visiting ${p.business}! Your bill ${p.number} is ${p.total}. View it here: ${p.link} Thank you for your business.`
   },
   RESERVATION: {
     name: 'flowxp_booking', promo: false,
