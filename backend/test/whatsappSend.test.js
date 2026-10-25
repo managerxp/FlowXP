@@ -47,3 +47,22 @@ test('a template without a button sends only its body, and Meta\'s refusal is ke
     await assert.rejects(() => deliver({ channel: 'WHATSAPP', to: '9845011122', kind: 'WAITLIST_READY', text: m.text, template: m.template }), /Template name does not exist/);
   });
 });
+
+test('a shop with a Google review link sends the bill with a second button; the others send the plain bill', { skip }, async () => {
+  const { googleReviewPath } = await import('../src/modules/messaging/index.js');
+  assert.equal(googleReviewPath('https://g.page/r/CabcDEF123-x/review'), 'CabcDEF123-x/review');
+  assert.equal(googleReviewPath('https://g.page/r/CabcDEF123-x'), 'CabcDEF123-x/review');
+  assert.equal(googleReviewPath('https://g.page/r/CabcDEF123-x/review?utm=1'), 'CabcDEF123-x/review');
+  assert.equal(googleReviewPath('https://search.google.com/local/writereview?placeid=ChIJxx'), null, 'another kind of link is not used as the button');
+  assert.equal(googleReviewPath(''), null); assert.equal(googleReviewPath(null), null);
+  const m = render('BILL_REVIEW', { name: 'Asha', business: 'Cafe', number: 'INV-1', date: '1 Jan 2027', total: '₹10', due: '₹0', link: 'https://flowxp.in/bill/tok', token: 'tok', review: 'CabcDEF123-x/review' });
+  assert.equal(m.template.name, 'flowxp_bill_review');
+  await withFetch({ json: { messages: [{ id: 'wamid.R1' }] } }, async (calls) => {
+    await deliver({ channel: 'WHATSAPP', to: '9845011122', kind: 'BILL_REVIEW', text: m.text, template: m.template });
+    const c = calls[0].body.template.components;
+    assert.equal(c.length, 3);
+    assert.deepEqual(c[1], { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: 'tok' }] });
+    assert.deepEqual(c[2], { type: 'button', sub_type: 'url', index: '1', parameters: [{ type: 'text', text: 'CabcDEF123-x/review' }] });
+  });
+  assert.throws(() => render('BILL_REVIEW', { name: 'A', business: 'B', number: 'N', date: 'D', total: 'T', due: 'U', link: 'l', token: 't' }), /needs review/);
+});

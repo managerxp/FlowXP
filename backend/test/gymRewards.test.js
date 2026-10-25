@@ -518,3 +518,30 @@ test('reward routes: who may do what, and the plan can switch the whole feature 
   assert.equal(await as('OWNER', 'POST', '/members/:id/redeem', { planFeatures: { gym_rewards: false } }), 402);
   assert.equal(await as('OWNER', 'GET', '/members', { planFeatures: { gym_rewards: false } }), 200);
 });
+
+test('the start-of-month reminder goes once, on the chosen day, to members whose membership ends that month and who have not renewed', { skip }, async () => {
+  const G = await makeGym(pool, 'monthstart');
+  await channelOn(G);
+  await on(G, 'MONTH_START', { day: 1 });
+  const first = new Date('2026-12-01T04:30:00Z');          // 10 am on the 1st, Kolkata
+  const mk = async (name, phone, start, end, price = 1500) => { const m = await addMember(pool, G, { name, phone }); await addMembership(pool, G, m, { start, end, planName: 'Monthly', price }); return m; };
+  await mk('Ends Mid Month', '9600002001', '2026-11-16', '2026-12-15');
+  await mk('Ends Month End', '9600002002', '2026-12-01', '2026-12-31');
+  await mk('Ended Last Month', '9600002003', '2026-11-01', '2026-11-30');
+  await mk('Ends Next Month', '9600002004', '2026-12-10', '2027-01-09');
+  const renewed = await mk('Renewed Already', '9600002005', '2026-11-16', '2026-12-15');
+  await addMembership(pool, G, renewed, { start: '2026-12-16', end: '2027-01-15', planName: 'Monthly', price: 1500 });
+  const before = messagesTo('GYM_MONTH_START').length;
+  const n1 = await automation.runBusiness(G.businessId, { now: first });
+  const n2 = await automation.runBusiness(G.businessId, { now: new Date(first.getTime() + 3 * 3600000) });
+  await until(() => messagesTo('GYM_MONTH_START').length >= before + 2);
+  assert.equal(n1, 2); assert.equal(n2, 0, 'the same month is not reminded twice');
+  const got = messagesTo('GYM_MONTH_START').slice(before);
+  assert.deepEqual(got.map((m) => m.to).sort(), ['9600002001', '9600002002']);
+  assert.match(got.find((m) => m.to === '9600002001').text, /Ends Mid Month.*Monthly.*15 Dec 2026.*₹1,500/);
+  assert.equal(await automation.runBusiness(G.businessId, { now: new Date('2026-12-02T04:30:00Z') }), 0, 'not on any other day of the month');
+  const next = new Date('2027-01-01T04:30:00Z');
+  await automation.runBusiness(G.businessId, { now: next });
+  await until(() => messagesTo('GYM_MONTH_START').length >= before + 3);
+  assert.ok(messagesTo('GYM_MONTH_START').slice(before).some((m) => m.to === '9600002004'), 'next month it is that member\'s turn');
+});

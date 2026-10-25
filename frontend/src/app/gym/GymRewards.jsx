@@ -184,7 +184,7 @@ const Reminders = ({ manager }) => {
   const save = async (a, patch) => {
     try { await api(`/gym/automations/${a.key}`, { method: 'PUT', body: { is_enabled: patch.is_enabled ?? a.is_enabled, config: { ...a.config, ...(cfg[a.key] || {}), ...(patch.config || {}) } } }); toast.success(tr('Saved')); list.reload(); } catch (e) { toast.error(e.message); }
   };
-  const LABELS = { days_before: 'Days before it ends', days_overdue: 'Days after the sale', repeat_days: 'Then every (days)', days: 'Days without a visit' };
+  const LABELS = { day: 'Day of the month', days_before: 'Days before it ends', days_overdue: 'Days after the sale', repeat_days: 'Then every (days)', days: 'Days without a visit' };
   return (
     <div className="space-y-3">
       <Alert>{tr('Reminders go out as WhatsApp or SMS through your Messaging settings, between 9 am and 8 pm, and never twice for the same thing. With messaging switched off, none are sent.')}</Alert>

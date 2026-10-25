@@ -226,3 +226,5 @@ Tap View Bill below to see the full bill with every item and the GST. For any qu
 - Set a custom validity period (the longest allowed), so a bill is not dropped when the phone is off for a few minutes.
 
 No logo or image is needed. FlowXP sends the six body values and the bill's link token for the button; the header and footer are fixed words kept in Meta. If the template in Meta differs in the number of body variables or has no button, the send fails with a parameter-count error.
+
+All templates FlowXP can send (bill with and without the Google review button, gym reminders including the start-of-month one, salon, restaurant, wholesale), with the exact text, category, samples and buttons for Meta, are listed in `WHATSAPP_TEMPLATES.md` (regenerate it with `node backend/scripts/whatsapp-templates-doc.mjs` after changing a template).

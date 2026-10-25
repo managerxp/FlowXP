@@ -26,7 +26,7 @@ const until = async (check, ms = 10000) => { const end = Date.now() + ms; while 
 test('templates fill their variables, and refuse a missing one', () => {
   const m = render('BILL', { name: 'Asha', business: 'Spice Hub', number: 'INV-0007', date: '22 Oct 2026', total: '₹450', due: '₹0', link: 'https://x.test/bill/abc', token: 'abc' });
   assert.match(m.text, /Asha.*Spice Hub.*INV-0007.*₹450.*https:\/\/x\.test\/bill\/abc/);
-  assert.deepEqual(m.template, { name: 'flowxp_bill', params: ['Asha', 'Spice Hub', 'INV-0007', '22 Oct 2026', '₹450', '₹0'], button: 'abc' }, 'six values in the body, and the link token for the View Bill button');
+  assert.deepEqual(m.template, { name: 'flowxp_bill', params: ['Asha', 'Spice Hub', 'INV-0007', '22 Oct 2026', '₹450', '₹0'], buttons: ['abc'] }, 'six values in the body, and the link token for the View Bill button');
   assert.equal(m.promo, false);
   assert.throws(() => render('BILL', { name: 'Asha' }), /needs business/);
   assert.throws(() => render('NOPE', {}), /Unknown message kind/);

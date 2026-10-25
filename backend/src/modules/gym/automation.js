@@ -15,12 +15,13 @@ import { addDays, bool, inTx, int, localParts, SQL_PHONE_KEY } from './common.js
 export const AUTOMATIONS = {
   WELCOME: { label: 'Welcome message', description: 'Greet a new member with their member number.', default_on: true, config: {} },
   EXPIRY_REMINDER: { label: 'Membership ending soon', description: 'Remind a member before their membership ends, unless they have already renewed.', default_on: false, config: { days_before: 7 } },
+  MONTH_START: { label: 'Start-of-month reminder', description: 'On one day each month (the 1st by default), remind every member whose membership ends this month, with the renewal amount. Members who already renewed are left out.', default_on: false, config: { day: 1 } },
   EXPIRED_NOTICE: { label: 'Membership ended', description: 'Tell a member the day after their membership ended, if they have not renewed.', default_on: false, config: {} },
   PAYMENT_DUE: { label: 'Payment reminder', description: 'Remind a member about a membership that is still not paid for.', default_on: false, config: { days_overdue: 2, repeat_days: 7 } },
   INACTIVE: { label: 'We miss you', description: 'Nudge a member with a running membership who has not visited for a while. Sent only to members who agreed to offers.', default_on: false, config: { days: 21 } },
   BIRTHDAY_POINTS: { label: 'Birthday points', description: 'Give reward points on a member\'s birthday (set the amount under Rewards).', default_on: true, config: {}, internal: true }
 };
-const RANGES = { days_before: [1, 60], days_overdue: [1, 90], repeat_days: [1, 60], days: [7, 365] };
+const RANGES = { day: [1, 28], days_before: [1, 60], days_overdue: [1, 90], repeat_days: [1, 60], days: [7, 365] };
 
 export const getAutomations = async (db, businessId) => {
   const rows = new Map((await db.query(`SELECT automation_key, is_enabled, config FROM gym_automations WHERE business_id = $1`, [businessId])).rows.map((r) => [r.automation_key, r]));
@@ -94,6 +95,20 @@ export const runBusiness = async (businessId, { now = new Date(), db = pool } = 
        WHERE ms.business_id = $1 AND ms.status = 'ACTIVE' AND ms.kind = 'MEMBERSHIP' AND ms.end_date = $2::date AND ${REACHABLE}
          AND NOT EXISTS (SELECT 1 FROM gym_memberships n WHERE n.member_id = ms.member_id AND n.status = 'ACTIVE' AND n.kind = 'MEMBERSHIP' AND n.end_date > ms.end_date)`, [businessId, target])).rows;
     for (const r of rows) if (await claim(db, { ...base, key: 'EXPIRY_REMINDER', ref: `expiry:${r.membership_id}:${r.end_date}`, memberId: r.member_id })) { sent += 1; await deliver(db, { businessId, branchId: r.branch_id, customerId: r.customer_id, phone: r.phone, kind: 'GYM_EXPIRY', memberId: r.member_id, values: { name: r.name, business: biz.name, plan: r.plan_name, date: dateText(r.end_date) } }); }
+  }
+
+  // the first of the month (or the day the owner chose): everyone whose membership ends this month hears about it once, with the renewal amount
+  const monthly = autos.get('MONTH_START');
+  if (monthly.is_enabled && Number(today.slice(8, 10)) === Number(monthly.config.day)) {
+    const monthEnd = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0)).toISOString().slice(0, 10);
+    const rows = (await db.query(
+      `SELECT ${PEOPLE}, ms.membership_id, ms.plan_name, ms.price_paise, ms.end_date::text AS end_date FROM gym_memberships ms JOIN ${FROM} ON gm.member_id = ms.member_id
+       WHERE ms.business_id = $1 AND ms.status = 'ACTIVE' AND ms.kind = 'MEMBERSHIP' AND ms.end_date BETWEEN $2::date AND $3::date AND ${REACHABLE}
+         AND NOT EXISTS (SELECT 1 FROM gym_memberships n WHERE n.member_id = ms.member_id AND n.status = 'ACTIVE' AND n.kind = 'MEMBERSHIP' AND n.end_date > ms.end_date)`, [businessId, today, monthEnd])).rows;
+    for (const r of rows) if (await claim(db, { ...base, key: 'MONTH_START', ref: `monthstart:${r.member_id}:${today.slice(0, 7)}`, memberId: r.member_id })) {
+      sent += 1;
+      await deliver(db, { businessId, branchId: r.branch_id, customerId: r.customer_id, phone: r.phone, kind: 'GYM_MONTH_START', memberId: r.member_id, values: { name: r.name, business: biz.name, plan: r.plan_name, date: dateText(r.end_date), amount: `₹${(Number(r.price_paise) / 100).toLocaleString('en-IN')}` } });
+    }
   }
 
   const ended = autos.get('EXPIRED_NOTICE');

@@ -13,8 +13,18 @@ export const TEMPLATES = {
   BILL: {
     name: 'flowxp_bill', promo: false,
     vars: ['name', 'business', 'number', 'date', 'total', 'due'],   // the six values in the WhatsApp message body (the header and footer are fixed words in Meta)
-    urlButton: 'token',                              // and the "View Bill" button, whose address in Meta is https://YOUR-DOMAIN/bill/{{1}}: {{1}} is the bill's link token
+    urlButtons: ['token'],                           // and the "View Bill" button, whose address in Meta is https://YOUR-DOMAIN/bill/{{1}}: {{1}} is the bill's link token
     also: ['link'],                                  // the whole link, for the recorded and SMS wording
+    body: (p) => `Hi ${p.name}, thank you for choosing ${p.business}!\n\nBill no: ${p.number}\nDate: ${p.date}\nBill amount: ${p.total}\nBalance due: ${p.due}\n\nTap View Bill below to see the full bill with every item and the GST. For any question about it, please contact the shop directly. Thank you for your business.`,
+    text: (p) => `Hi ${p.name}, thank you for choosing ${p.business}! Bill no ${p.number} dated ${p.date}: ${p.total}, balance due ${p.due}. View it here: ${p.link} Thank you for your business.`
+  },
+  /* The same bill with a second button, "Rate us on Google" (address in Meta: https://g.page/r/{{1}}, {{1}} is the end of the shop's own Google review link, like CXXXX/review).
+     Used only for a shop that has saved such a link; the others send the plain bill above. The text is the same as the plain bill on purpose: asking for a review in the words would make Meta call it Marketing. */
+  BILL_REVIEW: {
+    name: 'flowxp_bill_review', promo: false,
+    vars: ['name', 'business', 'number', 'date', 'total', 'due'],
+    urlButtons: ['token', 'review'],
+    also: ['link'],
     body: (p) => `Hi ${p.name}, thank you for choosing ${p.business}!\n\nBill no: ${p.number}\nDate: ${p.date}\nBill amount: ${p.total}\nBalance due: ${p.due}\n\nTap View Bill below to see the full bill with every item and the GST. For any question about it, please contact the shop directly. Thank you for your business.`,
     text: (p) => `Hi ${p.name}, thank you for choosing ${p.business}! Bill no ${p.number} dated ${p.date}: ${p.total}, balance due ${p.due}. View it here: ${p.link} Thank you for your business.`
   },
@@ -161,6 +171,11 @@ export const TEMPLATES = {
     vars: ['name', 'business', 'plan', 'date'],
     text: (p) => `Hi ${p.name}, your ${p.plan} membership at ${p.business} ends on ${p.date}. Renew at the desk to keep training without a break.`
   },
+  GYM_MONTH_START: {
+    name: 'flowxp_gym_month_start', promo: false,
+    vars: ['name', 'business', 'plan', 'date', 'amount'],
+    text: (p) => `Hi ${p.name}, a new month begins at ${p.business}. Your ${p.plan} membership ends on ${p.date}. Renewal is ${p.amount}. Please renew at the desk to keep training without a break. Thank you.`
+  },
   GYM_EXPIRED: {
     name: 'flowxp_gym_expired', promo: false,
     vars: ['name', 'business', 'plan', 'date'],
@@ -194,8 +209,8 @@ export const KINDS = Object.keys(TEMPLATES);
 export const render = (kind, values) => {
   const t = TEMPLATES[kind];
   if (!t) throw new Error(`Unknown message kind ${kind}`);
-  for (const v of [...t.vars, ...(t.urlButton ? [t.urlButton] : []), ...(t.also || [])]) if (values[v] == null || String(values[v]).trim() === '') throw new Error(`Message ${kind} needs ${v}`);
-  return { text: t.text(values), promo: t.promo, template: { name: t.name, params: t.vars.map((v) => String(values[v])), ...(t.urlButton ? { button: String(values[t.urlButton]) } : {}) } };
+  for (const v of [...t.vars, ...(t.urlButtons || []), ...(t.also || [])]) if (values[v] == null || String(values[v]).trim() === '') throw new Error(`Message ${kind} needs ${v}`);
+  return { text: t.text(values), promo: t.promo, template: { name: t.name, params: t.vars.map((v) => String(values[v])), ...(t.urlButtons ? { buttons: t.urlButtons.map((v) => String(values[v])) } : {}) } };
 };
 
 /** The template as the owner pastes it into Meta: variables as {{1}}, {{2}}... */
