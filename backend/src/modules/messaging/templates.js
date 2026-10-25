@@ -12,11 +12,11 @@
 export const TEMPLATES = {
   BILL: {
     name: 'flowxp_bill', promo: false,
-    vars: ['name', 'business', 'number', 'total'],   // the four values in the WhatsApp message body
+    vars: ['name', 'business', 'number', 'date', 'total', 'due'],   // the six values in the WhatsApp message body (the header and footer are fixed words in Meta)
     urlButton: 'token',                              // and the "View Bill" button, whose address in Meta is https://YOUR-DOMAIN/bill/{{1}}: {{1}} is the bill's link token
     also: ['link'],                                  // the whole link, for the recorded and SMS wording
-    body: (p) => `Hi ${p.name}, thank you for visiting ${p.business}! Your bill ${p.number} is ${p.total}. Tap View Bill to see it. Thank you for your business.`,
-    text: (p) => `Hi ${p.name}, thank you for visiting ${p.business}! Your bill ${p.number} is ${p.total}. View it here: ${p.link} Thank you for your business.`
+    body: (p) => `Hi ${p.name}, thank you for choosing ${p.business}!\n\nBill no: ${p.number}\nDate: ${p.date}\nBill amount: ${p.total}\nBalance due: ${p.due}\n\nTap View Bill below to see the full bill with every item and the GST. For any question about it, please contact the shop directly. Thank you for your business.`,
+    text: (p) => `Hi ${p.name}, thank you for choosing ${p.business}! Bill no ${p.number} dated ${p.date}: ${p.total}, balance due ${p.due}. View it here: ${p.link} Thank you for your business.`
   },
   RESERVATION: {
     name: 'flowxp_booking', promo: false,

@@ -22,7 +22,7 @@ const withFetch = async (reply, run) => {
 };
 
 test('a bill goes out as the approved template with the View Bill button', { skip }, async () => {
-  const m = render('BILL', { name: 'Asha', business: 'Sharma Auto Parts', number: 'INV-0007', total: '₹1,203.00', link: 'https://flowxp.in/bill/abc123', token: 'abc123' });
+  const m = render('BILL', { name: 'Asha', business: 'Sharma Auto Parts', number: 'INV-0007', date: '22 Oct 2026', total: '₹1,203.00', due: '₹0', link: 'https://flowxp.in/bill/abc123', token: 'abc123' });
   await withFetch({ json: { messages: [{ id: 'wamid.SENT1' }] } }, async (calls) => {
     const r = await deliver({ channel: 'WHATSAPP', to: '9845011122', kind: 'BILL', text: m.text, template: m.template });
     assert.deepEqual([r.status, r.providerId], ['SENT', 'wamid.SENT1']);
@@ -31,7 +31,7 @@ test('a bill goes out as the approved template with the View Bill button', { ski
     assert.equal(init.headers.authorization, 'Bearer test-token');
     assert.equal(body.to, '919845011122'); assert.equal(body.type, 'template');
     assert.equal(body.template.name, 'flowxp_bill'); assert.equal(body.template.language.code, 'en');
-    assert.deepEqual(body.template.components[0], { type: 'body', parameters: ['Asha', 'Sharma Auto Parts', 'INV-0007', '₹1,203.00'].map((text) => ({ type: 'text', text })) });
+    assert.deepEqual(body.template.components[0], { type: 'body', parameters: ['Asha', 'Sharma Auto Parts', 'INV-0007', '22 Oct 2026', '₹1,203.00', '₹0'].map((text) => ({ type: 'text', text })) });
     assert.deepEqual(body.template.components[1], { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: 'abc123' }] });
     assert.equal(body.template.components.length, 2);
   });

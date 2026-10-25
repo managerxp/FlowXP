@@ -202,14 +202,27 @@ Meta calls back `https://YOUR-DOMAIN/api/webhooks/whatsapp` with delivery, read 
 
 A callback that is not signed with the app secret is refused (401), and nothing is accepted while no secret is set.
 
-### The bill template (with a View Bill button)
+### The bill template (with a header, a fuller body and a View Bill button)
 
 In WhatsApp Manager, Message templates, Create template: category **Utility**, name **flowxp_bill**, language English.
 
-- **Body** (4 variables, no link in the text):
-  `Hi {{1}}, thank you for visiting {{2}}! Your bill {{3}} is {{4}}. Tap View Bill to see it. Thank you for your business.`
-  Samples: `Asha`, `Sharma Auto Parts`, `INV-0007`, `₹1,203.00`.
-- **Button**: Call to action, Visit website, button text `View Bill`, URL type **Dynamic**, website URL `https://YOUR-DOMAIN/bill/{{1}}`, sample `https://YOUR-DOMAIN/bill/abc123`.
+- **Header** (text): `Your bill is ready`
+- **Body** (6 variables, line breaks kept as written):
+
+```
+Hi {{1}}, thank you for choosing {{2}}!
+
+Bill no: {{3}}
+Date: {{4}}
+Bill amount: {{5}}
+Balance due: {{6}}
+
+Tap View Bill below to see the full bill with every item and the GST. For any question about it, please contact the shop directly. Thank you for your business.
+```
+
+  Samples: `Asha`, `Sharma Auto Parts`, `INV-0007`, `22 Oct 2026`, `₹1,203.00`, `₹0`.
+- **Footer:** `Powered by FlowXP`
+- **Button**: Call to action, Visit website, text `View Bill`, URL type **Dynamic**, website URL `https://YOUR-DOMAIN/bill/{{1}}`, sample `https://YOUR-DOMAIN/bill/abc123`.
 - Set a custom validity period (the longest allowed), so a bill is not dropped when the phone is off for a few minutes.
 
-FlowXP sends the four body values and the bill's link token for the button. If the template in Meta differs (a link in the body, or no button), the send fails with a parameter-count error.
+No logo or image is needed. FlowXP sends the six body values and the bill's link token for the button; the header and footer are fixed words kept in Meta. If the template in Meta differs in the number of body variables or has no button, the send fails with a parameter-count error.

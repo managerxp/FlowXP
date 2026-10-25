@@ -99,7 +99,7 @@ export const shareLink = async (db, invoiceId) => {
 /** Send an invoice to `phone` (default: its customer's). `scope` is a branch filter for the caller's outlet. */
 export const sendBill = async (db, { businessId, invoiceId, phone = null, createdBy = null }) => {
   const inv = (await db.query(
-    `SELECT i.invoice_id, i.invoice_number, i.total_paise, i.branch_id, i.customer_id, c.name AS customer_name, c.phone AS customer_phone,
+    `SELECT i.invoice_id, i.invoice_number, i.invoice_date, i.total_paise, i.balance_due_paise, i.branch_id, i.customer_id, c.name AS customer_name, c.phone AS customer_phone,
             b.name AS business_name
      FROM invoices i JOIN businesses b ON b.business_id = i.business_id LEFT JOIN customers c ON c.customer_id = i.customer_id
      WHERE i.invoice_id = $1 AND i.business_id = $2 AND i.status = 'ISSUED'`, [invoiceId, businessId])).rows[0];
@@ -107,9 +107,11 @@ export const sendBill = async (db, { businessId, invoiceId, phone = null, create
   const to = phone || inv.customer_phone;
   if (!normalisePhone(to)) return { problem: 'This bill has no customer mobile number to send to', code: 400 };
   const link = await shareLink(db, inv.invoice_id);
+  const day = inv.invoice_date instanceof Date ? inv.invoice_date.toISOString().slice(0, 10) : String(inv.invoice_date).slice(0, 10);
+  const date = new Date(`${day}T00:00:00Z`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });   // 22 Oct 2026
   return send(db, {
     businessId, branchId: inv.branch_id, customerId: inv.customer_id, phone: to, kind: 'BILL', createdBy,
-    values: { name: inv.customer_name || 'there', business: inv.business_name, number: inv.invoice_number, total: money(inv.total_paise), link, token: link.split('/').pop() },
+    values: { name: inv.customer_name || 'there', business: inv.business_name, number: inv.invoice_number, date, total: money(inv.total_paise), due: money(inv.balance_due_paise), link, token: link.split('/').pop() },
     related: { type: 'invoice', id: inv.invoice_id }
   });
 };
