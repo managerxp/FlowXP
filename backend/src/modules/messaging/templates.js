@@ -205,6 +205,26 @@ export const TEMPLATES = {
     vars: ['name', 'business', 'points'],
     text: (p) => `Hi ${p.name}, you now have ${p.points} reward points at ${p.business}. Ask at the desk what they can get you.`
   },
+  JOB_RECEIVED: {
+    name: 'flowxp_job_received', promo: false,
+    vars: ['name', 'business', 'vehicle', 'job_no', 'when'],
+    text: (p) => `Hi ${p.name}, we have received your ${p.vehicle} at ${p.business}. Job card ${p.job_no}. Expected ready: ${p.when}. We will keep you updated. Thank you.`
+  },
+  JOB_ESTIMATE: {
+    name: 'flowxp_job_estimate', promo: false,
+    vars: ['name', 'business', 'vehicle', 'job_no', 'total'],
+    text: (p) => `Hi ${p.name}, the estimate for your ${p.vehicle} at ${p.business} (job card ${p.job_no}) is ${p.total} including GST. Please reply to approve the work. Thank you.`
+  },
+  JOB_READY: {
+    name: 'flowxp_job_ready', promo: false,
+    vars: ['name', 'business', 'vehicle', 'job_no'],
+    text: (p) => `Hi ${p.name}, your ${p.vehicle} is ready at ${p.business} (job card ${p.job_no}). You can collect it now. Thank you.`
+  },
+  SERVICE_DUE: {
+    name: 'flowxp_service_due', promo: false,
+    vars: ['name', 'business', 'vehicle', 'date'],
+    text: (p) => `Hi ${p.name}, your ${p.vehicle} is due for its next service on ${p.date}. Call or visit ${p.business} to book it. Thank you.`
+  },
   GYM_INACTIVE: {
     name: 'flowxp_gym_inactive', promo: true,
     vars: ['name', 'business', 'days'],

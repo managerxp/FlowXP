@@ -130,6 +130,7 @@ router.delete('/jobcards/services/:id', ...write, can('billing'), jobF, jobs.rem
 router.post('/jobcards', ...write, can('billing'), jobF, jobs.create);
 router.get('/jobcards/:id', ...read, can('billing'), jobF, jobs.get);
 router.get('/jobcards/:id/share', ...read, can('billing'), jobF, jobs.share);
+router.post('/jobcards/:id/send-update', ...write, can('billing'), jobF, jobs.sendUpdate);   // estimate / received / ready, from the shop's WhatsApp channel (plan with messaging)
 router.put('/jobcards/:id', ...write, can('billing'), jobF, jobs.update);
 router.post('/jobcards/:id/status', ...write, can('billing'), jobF, jobs.status);
 router.post('/jobcards/:id/lines', ...write, can('billing'), jobF, jobs.lineAdd);

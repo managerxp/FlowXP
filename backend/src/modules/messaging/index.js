@@ -15,8 +15,8 @@ import { toRupees } from '../../utils/money.js';
 import { deliver } from './provider.js';
 import { TEMPLATES, render } from './templates.js';
 
-export const DEFAULT_SETTINGS = { channel: 'OFF', bill_auto: true, reservation_updates: true, waitlist_updates: true, loyalty_nudge: true };
-const BOOLEANS = ['bill_auto', 'reservation_updates', 'waitlist_updates', 'loyalty_nudge'];
+export const DEFAULT_SETTINGS = { channel: 'OFF', bill_auto: true, reservation_updates: true, waitlist_updates: true, loyalty_nudge: true, job_updates: true };
+const BOOLEANS = ['bill_auto', 'reservation_updates', 'waitlist_updates', 'loyalty_nudge', 'job_updates'];
 export const CAMPAIGN_LIMIT = 1000;
 
 export const getSettings = async (db, businessId) => {

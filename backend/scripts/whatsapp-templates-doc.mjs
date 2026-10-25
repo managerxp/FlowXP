@@ -16,6 +16,7 @@ const GROUPS = [
   ['Restaurants and cafés', (k) => k.startsWith('RESERVATION') || k.startsWith('WAITLIST')],
   ['Salons', (k) => k.startsWith('SALON_')],
   ['Gyms', (k) => k.startsWith('GYM_')],
+  ['Auto parts and garages', (k) => k.startsWith('JOB_') || k === 'SERVICE_DUE'],
   ['Wholesale and distribution', (k) => k.startsWith('WS_')]
 ];
 const lines = [];
@@ -47,8 +48,6 @@ if (rest.length) throw new Error(`Templates not in any group: ${rest.join(', ')}
 lines.push('## The closing line of the bill (variable {{7}})', '', 'The line before "Thank you for choosing us." changes with the business. If the shop has saved its own words (Settings, receipt footer) those are used; otherwise one for its kind of business:', '', '| Business type | Line |', '|---|---|', ...Object.entries(CLOSING).map(([k, v]) => `| ${k} | ${v} |`), '');
 lines.push('## Still to build (not templates in FlowXP yet)', '',
   '| Industry | Message | When it should go |', '|---|---|---|',
-  '| Auto parts and garages | Vehicle received, estimate, ready, bill | When the job card moves to that step (today it opens WhatsApp with the text ready) |',
-  '| Auto parts and garages | Service due | A few days before the job card\'s next service date |',
   '| Restaurants, cafés | Order ready (token), out for delivery | Takeaway ready; delivery rider assigned |',
   '| Hotels | Booking confirmed, check-in reminder, thank you after check-out | On booking; the day before arrival; after departure |',
   '| Pharmacies | Refill reminder, order ready | From the medicine\'s usual duration; when an order is packed |',

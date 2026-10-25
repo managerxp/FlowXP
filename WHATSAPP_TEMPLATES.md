@@ -373,6 +373,56 @@ Hi {{1}}, we have not seen you at {{2}} for {{3}} days. We would love to have yo
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} days = `21`
 
+## Auto parts and garages
+
+### `flowxp_job_received` (JOB_RECEIVED)
+
+**Category:** Utility
+
+**Body:**
+
+```
+Hi {{1}}, we have received your {{3}} at {{2}}. Job card {{4}}. Expected ready: {{5}}. We will keep you updated. Thank you.
+```
+
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} vehicle = `KA01 AB 1234`, {{4}} job_no = `Sample`, {{5}} when = `Sat 24 Oct, 6:30 pm`
+
+### `flowxp_job_estimate` (JOB_ESTIMATE)
+
+**Category:** Utility
+
+**Body:**
+
+```
+Hi {{1}}, the estimate for your {{3}} at {{2}} (job card {{4}}) is {{5}} including GST. Please reply to approve the work. Thank you.
+```
+
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} vehicle = `KA01 AB 1234`, {{4}} job_no = `Sample`, {{5}} total = `₹460.00`
+
+### `flowxp_job_ready` (JOB_READY)
+
+**Category:** Utility
+
+**Body:**
+
+```
+Hi {{1}}, your {{3}} is ready at {{2}} (job card {{4}}). You can collect it now. Thank you.
+```
+
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} vehicle = `KA01 AB 1234`, {{4}} job_no = `Sample`
+
+### `flowxp_service_due` (SERVICE_DUE)
+
+**Category:** Utility
+
+**Body:**
+
+```
+Hi {{1}}, your {{3}} is due for its next service on {{4}}. Call or visit {{2}} to book it. Thank you.
+```
+
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} vehicle = `KA01 AB 1234`, {{4}} date = `22 Oct 2026`
+
 ## Wholesale and distribution
 
 ### `flowxp_ws_order_confirmed` (WS_ORDER_CONFIRMED)
@@ -488,8 +538,6 @@ The line before "Thank you for choosing us." changes with the business. If the s
 
 | Industry | Message | When it should go |
 |---|---|---|
-| Auto parts and garages | Vehicle received, estimate, ready, bill | When the job card moves to that step (today it opens WhatsApp with the text ready) |
-| Auto parts and garages | Service due | A few days before the job card's next service date |
 | Restaurants, cafés | Order ready (token), out for delivery | Takeaway ready; delivery rider assigned |
 | Hotels | Booking confirmed, check-in reminder, thank you after check-out | On booking; the day before arrival; after departure |
 | Pharmacies | Refill reminder, order ready | From the medicine's usual duration; when an order is packed |

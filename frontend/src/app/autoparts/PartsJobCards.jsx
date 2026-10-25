@@ -99,7 +99,8 @@ const JobDetail = ({ id, onClose, onChanged }) => {
   const tr = useT();
   const navigate = useNavigate();
   const dialog = useDialog();
-  const { can } = useAuth();
+  const { can, hasFeature } = useAuth();
+  const [note, setNote] = useState('');
   const job = useLoad(`/autoparts/jobcards/${id}`);
   const mech = useLoad('/autoparts/jobcards/mechanics');
   const [labour, setLabour] = useState({ description: '', price: '', save: false });
@@ -131,9 +132,19 @@ const JobDetail = ({ id, onClose, onChanged }) => {
         <div className="flex flex-wrap items-center gap-2 text-small">
           <span className="text-ink-500">{tr('Tell the customer on WhatsApp:')}</span>
           {[['received', tr('We have your vehicle'), live], ['estimate', tr('Send the estimate'), live && j.lines.length > 0], ['ready', tr('It is ready'), live], ['bill', tr('Send the bill'), j.status === 'BILLED']].filter(([, , show]) => show).map(([ev, label]) => (
-            <Button key={ev} size="sm" variant="secondary" disabled={busy || !j.customer_phone} onClick={() => run(async () => { setError(''); try { const w = await api(`/autoparts/jobcards/${id}/share${qs({ event: ev })}`); window.open(w.wa_url, '_blank', 'noopener'); } catch (e) { setError(e.message); } }, null)}>{label}</Button>
+            <Button key={ev} size="sm" variant="secondary" disabled={busy || !j.customer_phone} onClick={() => run(async () => {
+              setError(''); setNote('');
+              try {
+                // a plan with messaging sends it from the shop's WhatsApp channel; otherwise (or with the channel off) WhatsApp opens with the words ready
+                if (ev !== 'bill' && hasFeature('messaging')) {
+                  try { await api(`/autoparts/jobcards/${id}/send-update`, { method: 'POST', body: { event: ev } }); setNote(tr('Sent to the customer on WhatsApp.')); return; } catch (e) { if (e.status !== 409 || e.code !== 'OFF') throw e; }
+                }
+                const w = await api(`/autoparts/jobcards/${id}/share${qs({ event: ev })}`); window.open(w.wa_url, '_blank', 'noopener');
+              } catch (e) { setError(e.message); }
+            }, null)}>{label}</Button>
           ))}
           {!j.customer_phone && <span className="text-caption text-warning">{tr('This customer has no mobile number.')}</span>}
+          {note && <span role="status" className="text-caption font-medium text-success">{note}</span>}
         </div>
         {live && (
           <div className="flex flex-wrap gap-2">
