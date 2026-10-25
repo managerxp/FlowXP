@@ -98,7 +98,7 @@ const ProductPage = () => (
           aside={<ListPanel title="Customers, loyalty and messages" groups={[
             ['Customers', ['Purchase history and what is outstanding', 'Credit sales and part payments', 'Found at the till by mobile number']],
             ['Loyalty', ['A free item on the Nth visit', 'Points and tiers, earned and spent at the till', 'Coupons and offer codes']],
-            ['Messages', ['Bill links on WhatsApp or SMS: coming soon', 'Offers to chosen groups of customers', 'Customers can opt out; it is respected']],
+            ['Messages', ['The bill on WhatsApp, with View Bill and Rate Us buttons', 'Payment reminders, booking confirmations and workshop updates', 'Offers to chosen groups of customers; customers can opt out, and it is respected']],
             ['Good to know', ['Works across all your outlets', 'Returns take points back automatically']]
           ]} />}
         />

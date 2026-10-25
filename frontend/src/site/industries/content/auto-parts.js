@@ -7,7 +7,7 @@ export default {
   short: 'Auto parts',
   blurb: 'Find any part, know which shelf it is on, run your workshop, and bill it all in one place.',
   title: 'Find the part. Fix the vehicle. Bill it.',
-  lead: 'For car, bike and scooter spare parts shops, hardware counters and garages. Type any part number and the part comes up. See which shelf it is on. When a bike or car comes in for servicing, open a job card, add the parts and the labour, tell the owner on WhatsApp and make the bill. Sell to garages on credit. Easy enough to use on the first day.',
+  lead: 'For car, bike and scooter spare parts shops, hardware counters and garages. Type any part number and the part comes up. See which shelf it is on. When a bike or car comes in for servicing, open a job card, add the parts and the labour, tell the customer on WhatsApp and make the bill. Sell to garages on credit. Easy enough to use on the first day.',
   hero: { src: p('parts-catalogue'), alt: 'FlowXP parts catalogue with each part, its OEM and manufacturer number, type, price and stock.' },
   heroPoints: ['Choose Auto spare parts when you sign up and these tools switch on', 'A garage? Switch on Mechanic mode and the app opens on your job cards', 'Bring your items and customers from Tally, Vyapar or Excel', 'Works on a counter PC, a tablet and an Android phone', '7-day free trial, no card'],
   modules: [
@@ -26,7 +26,7 @@ export default {
     {
       id: 'garage', title: 'A garage that opens on its job cards',
       body: 'Tell FlowXP you also service vehicles and it switches on Mechanic mode: the app opens on your job cards, the menu is called Workshop, and the phone gets a Jobs button next to Home. A shop that only sells parts leaves it off and never sees these screens.',
-      points: ['Mechanic mode is one switch in Settings, or one tick when you sign up. Nothing is deleted when you turn it off', 'Tell the customer on WhatsApp: we have your vehicle, here is the estimate, it is ready, here is the bill. It opens WhatsApp with the message written; you press send', 'Services due: vehicles whose next service date is coming, so you can call them', 'What the workshop earned: labour and parts, by day and by mechanic', 'Mechanics are staff: attendance, shifts, leave and the monthly payroll sheet in the same place', 'The same screens on the counter PC, a tablet and the Android phone, in English and five Indian languages'],
+      points: ['Mechanic mode is one switch in Settings, or one tick when you sign up. Nothing is deleted when you turn it off', 'Tell the customer on WhatsApp: we have your vehicle, here is the estimate, it is ready, here is the bill with its Rate Us button. Sent by FlowXP on the plans with messaging, or opens WhatsApp with the message written; you press send', 'Services due: vehicles whose next service date is coming, so you can call them', 'What the workshop earned: labour and parts, by day and by mechanic', 'Mechanics are staff: attendance, shifts, leave and the monthly payroll sheet in the same place', 'The same screens on the counter PC, a tablet and the Android phone, in English and five Indian languages'],
       shots: []
     },
     {
@@ -73,7 +73,7 @@ export default {
     { group: 'Warehouse', items: ['Warehouse to bin, your own names', 'QR and barcode labels', 'Put away and bin to bin moves', 'Pick bin and bin limits', 'Shelf quantity always agrees with stock'] },
     { group: 'Receiving', items: ['Accepted, damaged, rejected', 'Put away on receipt', 'No duplicate supplier invoice', 'Cancel a receipt', 'Supplier claims'] },
     { group: 'Selling', items: ['The FlowXP till with GST and split payment', 'Trade price lists', 'Credit limits for garages', 'Holds for customers', 'Returns with a reason and what became of the part'] },
-    { group: 'Workshop', items: ['Mechanic mode: opens on job cards', 'Job card for each vehicle, company and model typed or picked', 'Spare parts and labour on one tax invoice', 'Your own list of labour services', 'WhatsApp to the customer from the card', 'Services due again', 'What the workshop earned', 'Mechanic attendance, shifts and payroll'] },
+    { group: 'Workshop', items: ['Mechanic mode: opens on job cards', 'Job card for each vehicle, company and model typed or picked', 'Spare parts and labour on one tax invoice', 'Your own list of labour services', 'WhatsApp to the customer from the card, and a reminder before the next service', 'Services due again', 'What the workshop earned', 'Mechanic attendance, shifts and payroll'] },
     { group: 'Start and keep', items: ['Import items and customers from Tally, Vyapar, Busy, Marg, Zoho, Excel', 'Checked before saved', 'A Help me find button on every screen', 'Download a backup', 'Restore only what is missing'] },
     { group: 'Control', items: ['Storekeeper and parts counter roles', 'A manager approves stock count differences', 'Activity log of stock and price changes', 'Several outlets under one login', 'Two-step login'] }
   ],

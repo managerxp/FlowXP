@@ -77,13 +77,13 @@ export default {
     { group: 'Selling', items: ['Counter, takeaway and table billing', 'Order numbers to call out', 'Size, milk, sugar and add-ons', 'Combos', 'Split and part payments', 'Discounts, coupons, offers, round-off', 'Held bills', 'Customer lookup by mobile', 'Receipt printing, 58 and 80 mm', 'UPI QR on the bill', 'Offline billing, sent on reconnect'] },
     { group: 'Counter and bar', items: ['Barista and kitchen screen by station', 'Timers, rush and late flags', 'Cook-now list', 'Table map and open tabs', 'QR ordering with a veg filter', 'Reservations and waitlist'] },
     { group: 'Menu and stock', items: ['Menu from a photo', 'Veg, non-veg and egg marks', 'Recipes and food cost', 'Cups, lids and packaging as stock', 'Per-outlet prices and availability', 'Reorder levels and alerts', 'Wastage log', 'Stock counts', 'Transfers between outlets'] },
-    { group: 'Regulars', items: ['Visit card', 'Offers on days and hours', 'Points and tiers', 'Coupons', 'Customer history', 'Ratings after the bill', 'Review replies drafted by Flow AI', 'WhatsApp and SMS messages (coming soon)'] },
+    { group: 'Regulars', items: ['Visit card', 'Offers on days and hours', 'Points and tiers', 'Coupons', 'Customer history', 'Ratings after the bill', 'Review replies drafted by Flow AI', 'The bill on WhatsApp with View Bill and Rate Us buttons', 'SMS messages (coming soon)'] },
     { group: 'Buying and money', items: ['Suppliers and price lists', 'Purchase orders and receiving', 'Expenses', 'Profit by outlet', 'Sales, purchase and stock reports', 'CSV export of every report', 'GST invoices and credit notes', 'GSTR-1 file and GSTR-3B figures'] },
     { group: 'Team and control', items: ['Several outlets under one login', 'Roles and per-person permissions', 'Activity log', 'Two-step login', 'Install on a phone or tablet'] }
   ],
   notYet: [
     'Live order feeds from Zomato and Swiggy. Those need each platform’s partner approval. Orders from them can be entered by your team, with the kitchen ticket and the payout check working as usual.',
-    'WhatsApp and SMS sending of bills and offers. It is coming soon.',
+    'SMS sending of bills and offers. It is coming soon.',
     'Taking payments inside FlowXP. Cash, UPI, card and bank payments are recorded on the bill; the money moves outside FlowXP. A card machine is not connected to FlowXP.',
     'An app in the Play Store or App Store. Install FlowXP from the browser on any phone or tablet today.'
   ],

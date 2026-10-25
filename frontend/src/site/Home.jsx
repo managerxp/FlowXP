@@ -512,7 +512,7 @@ const BeforeAfter = () => (
    bigger ideas get a bigger cell. */
 const WORKS_WITH = [
   { title: 'Zomato and Swiggy', body: 'Online orders arrive straight into the kitchen and the day\'s bills, no re-typing.', soon: true, big: true },
-  { title: 'WhatsApp and SMS', body: 'Bills, payment reminders and offers go out the way your customers already read you.', soon: true, big: true },
+  { title: 'WhatsApp', body: 'The bill reaches your customer on WhatsApp with a View Bill button and a Rate Us button for your Google reviews. Payment reminders, bookings and workshop updates go the same way.', big: true },
   { title: 'UPI, cards and cash', body: 'Split one bill across several payments.' },
   { title: 'GST portal', body: 'GSTR-1, e-invoice and e-way bill files, ready to upload.' },
   { title: 'Works offline', body: 'Keep billing when the internet drops.' },

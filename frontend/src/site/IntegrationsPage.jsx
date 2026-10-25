@@ -1,7 +1,7 @@
 /*
  * /integrations — what FlowXP connects to today, and what is coming. Delivery
  * platforms exist only as mock adapters in the code, so they are listed as
- * coming soon; payment is recorded, not collected through a gateway.
+ * coming soon (SMS, delivery apps); payment is recorded, not collected through a gateway.
  */
 import { Section } from '../components/ui.jsx';
 import Reveal from '../components/Reveal.jsx';
@@ -17,7 +17,7 @@ const Hub = () => (
     </div>
     <div className="py-2 sm:px-2"><Node strong title="FlowXP" body="Your bills, stock and GST" /></div>
     <div className="space-y-3">
-      <Node title="WhatsApp and SMS" body="Coming soon" />
+      <Node title="WhatsApp" body="Bills, reminders, updates" />
       <Node title="GST portal" body="GSTR-1, e-invoice, e-way" />
       <Node title="Your accountant" body="CSV exports" />
     </div>
@@ -32,6 +32,7 @@ const HARDWARE = [
 ];
 
 const CONNECTED = [
+  { title: 'WhatsApp', body: 'The bill goes to your customer on WhatsApp with a View Bill button and a Rate Us button that opens your Google reviews. Booking confirmations, payment reminders, workshop job updates, gym reminders and your accountant\'s reports go the same way. Choose whether each bill is sent. On the plans that include messaging.' },
   { title: 'Email', body: 'Purchase orders to suppliers, password resets and sign-in alerts.' },
   { title: 'GST portal', body: 'GSTR-1 JSON to upload, e-invoice and e-way bill files, IRN recorded back.' },
   { title: 'CSV export', body: 'Reports and the GST register for your accountant or spreadsheet.' },
@@ -42,7 +43,6 @@ const CONNECTED = [
 ];
 
 const COMING = [
-  { title: 'WhatsApp', body: 'Bill links, booking confirmations and offers through the WhatsApp Business platform, the channel most of your customers already read.', soon: true, big: true },
   { title: 'SMS', body: 'The same messages by text, for customers not on WhatsApp.', soon: true },
   { title: 'Zomato and Swiggy', body: 'Online orders arrive straight into the kitchen and the day\'s bills, no re-typing.', soon: true, big: true },
   { title: 'ONDC and Magicpin', body: 'More order channels on the same screen.', soon: true },
