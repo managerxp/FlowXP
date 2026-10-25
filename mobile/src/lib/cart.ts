@@ -57,12 +57,13 @@ export const totals = (cart: Cart, offers: Map<string, number> = new Map(), gst?
 
 /** What POST /invoices takes: ids, quantities and chosen option ids only. The server prices every line itself. */
 /** `payNowPaise`: undefined = the whole bill; 0 = nothing now (the bill is left unpaid, the customer's credit); else what is taken now and the rest is owed. */
-export const saleBody = (cart: Cart, payment: { method: string; reference?: string; payNowPaise?: number | null }, { kitchen = false, customerId, levies, gst, printDetails }: { kitchen?: boolean; customerId?: number | null; levies?: Levies; gst?: GstView; /** consignee / dispatch details for the GST tax invoice (hardware shops); see lib/taxInvoice.ts */ printDetails?: Record<string, string> | null } = {}) => ({
+export const saleBody = (cart: Cart, payment: { method: string; reference?: string; payNowPaise?: number | null }, { kitchen = false, customerId, levies, gst, printDetails, sendWhatsapp = true }: { kitchen?: boolean; customerId?: number | null; /** false = this bill is not sent to the customer on WhatsApp (plans with messaging) */ sendWhatsapp?: boolean; levies?: Levies; gst?: GstView; /** consignee / dispatch details for the GST tax invoice (hardware shops); see lib/taxInvoice.ts */ printDetails?: Record<string, string> | null } = {}) => ({
   items: cart.lines.map((l) => ({ product_id: l.product.product_id, quantity: l.quantity, ...(l.modifierIds.length ? { modifier_ids: l.modifierIds } : {}) })),
   ...(payment.payNowPaise === 0 ? {} : { payment: { method: payment.method, amount: payment.payNowPaise ? payment.payNowPaise / 100 : 'FULL', ...(payment.reference ? { reference_number: payment.reference } : {}) } }),
   apply_promotions: true,
   ...(customerId ? { customer_id: customerId } : {}),
   ...(kitchen ? { send_to_kitchen: true } : {}),
+  ...(sendWhatsapp ? {} : { send_whatsapp: false }),
   ...leviesBody(levies, gst),   // TCS, TDS, reverse charge: only the ticks that count
   ...(printDetails ? { print_details: printDetails } : {})
 });

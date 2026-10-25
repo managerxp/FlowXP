@@ -11,6 +11,7 @@ import { ApiError, NetworkError, newKey } from '../lib/api.ts';
 import { useLoad } from '../lib/useLoad.ts';
 import { orderTotals, type Order } from '../lib/orders.ts';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
+import { hasFeature } from '../lib/access.ts';
 import { METHOD_ORDER, cartSummary, cashSuggestions, isMethod, orderSummary, payPlan, type PayHow } from '../lib/billing.ts';
 import { refreshCounts, syncAll } from '../lib/sync.ts';
 import { takeSale } from '../lib/till.ts';
@@ -36,6 +37,7 @@ export default function Pay() {
   const scope = useScope();
   const { cart, kitchen, offers, customer } = useSale();
   const gst = gstView(business);
+  const [sendWa, setSendWa] = useState(true);   // the bill goes to the customer on WhatsApp unless this is unticked (plans with messaging only)
   const [levies, setLevies] = useState<Levies>({});   // TCS, TDS, reverse charge ticked on this bill (only offered when the owner enabled them)
   // a hardware shop's GST tax invoice: consignee, delivery and dispatch details taken with the bill (the website's "Tax invoice details")
   const [details, setDetails] = useState<Record<string, string>>({});
@@ -102,7 +104,7 @@ export default function Pay() {
     try {
       // the same key for every attempt at THIS sale: if the first one reached the server before the signal dropped, a retry returns that invoice.
       // With no signal the sale is kept on the phone and sent later, with that same key.
-      const taken = await takeSale({ api, outbox: scope.outbox, cart, method, reference: reference.trim() || undefined, key: keyForSale(), kitchen: toKitchen, customerId: customer?.id ?? null, payNowPaise: plan.payNowPaise, gst, levies, printDetails: taxDetails ? detailsBody(details) : null });
+      const taken = await takeSale({ api, outbox: scope.outbox, cart, method, reference: reference.trim() || undefined, key: keyForSale(), kitchen: toKitchen, customerId: customer?.id ?? null, payNowPaise: plan.payNowPaise, gst, levies, printDetails: taxDetails ? detailsBody(details) : null, sendWhatsapp: sendWa });
       if (taken.kind === 'full') { setError('Too many bills are waiting on this phone. Connect to the internet so they can be sent, then make this bill again.'); return; }
       clearSale(); markDone('first_bill');
       if (taken.kind === 'queued') {
@@ -179,6 +181,7 @@ export default function Pay() {
           {levyOptions.map(([k, label]) => <Button key={k} title={label} kind="quiet" selected={Boolean(levies[k])} onPress={() => setLevies((o) => ({ ...o, [k]: !o[k] }))} />)}
         </View>
       ) : null}
+      {hasFeature(business, 'messaging') && hasCustomer ? <Button title={t('Send the bill on WhatsApp')} kind="quiet" selected={sendWa} onPress={() => setSendWa(!sendWa)} disabled={busy} /> : null}
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {HOWS.map((h) => <Button key={h.id} title={h.label} selected={how === h.id} onPress={() => { setHow(h.id); setError(''); }} style={{ flex: 1 }} />)}
       </View>

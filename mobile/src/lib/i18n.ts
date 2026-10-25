@@ -753,6 +753,8 @@ export const HI: Record<string, string> = {
   'Enter the accountant\'s email address.': 'अकाउंटेंट का ईमेल पता डालें।',
   'Sent: {email}': 'भेजा गया: {email}',
   'Their address is remembered for next time.': 'उनका पता अगली बार के लिए याद रखा जाता है।',
+  'Send the bill on WhatsApp': 'बिल WhatsApp पर भेजें',
+  'Send on WhatsApp': 'WhatsApp पर भेजें',
   'Could not send. Check the connection and try again.': 'भेज नहीं सके। कनेक्शन जाँचें और दोबारा कोशिश करें।',
   'Choose a period of up to about a year': 'लगभग एक साल तक की अवधि चुनें',
   'Only owners, admins and accountants can export.': 'केवल मालिक, एडमिन और अकाउंटेंट एक्सपोर्ट कर सकते हैं।',

@@ -3,7 +3,7 @@ import { ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api.ts';
 import { API_URL, api, currentBusiness, sessionStore, useSession } from '../lib/session.ts';
-import { allowed } from '../lib/access.ts';
+import { allowed, hasFeature } from '../lib/access.ts';
 import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
@@ -42,6 +42,14 @@ export default function AccountantPack() {
     catch (e) { setError(e instanceof Error ? t(e.message.startsWith('Could not take the backup') ? 'Could not send. Check the connection and try again.' : e.message) : ''); }
     finally { setBusy(''); }
   };
+  // the phone's share sheet has WhatsApp in it, with the file attached: pick the accountant's chat there
+  const whatsapp = async () => {
+    if (tooLong) { setError(t('Choose a period of up to about a year')); return; }
+    setBusy('whatsapp'); setError(''); setNote('');
+    try { await shareDownload(packRequest(API_URL, sessionStore.get(), period), 'application/zip', 'public.zip-archive', 'Accountant pack'); }
+    catch (e) { setError(e instanceof Error ? t(e.message.startsWith('Could not take the backup') ? 'Could not send. Check the connection and try again.' : e.message) : ''); }
+    finally { setBusy(''); }
+  };
   const send = async () => {
     const problem = emailProblem(email);
     if (problem) { setError(t(problem)); return; }
@@ -65,6 +73,7 @@ export default function AccountantPack() {
             <ErrorText>{error}</ErrorText>
             {note ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok, fontWeight: '600' }}>{note}</Text> : null}
             <Button title={busy === 'download' ? t('Preparing…') : t('Download')} onPress={() => { void download(); }} busy={busy === 'download'} disabled={Boolean(busy)} />
+            {hasFeature(business, 'messaging') ? <Button title={busy === 'whatsapp' ? t('Preparing…') : t('Send on WhatsApp')} kind="quiet" onPress={() => { void whatsapp(); }} busy={busy === 'whatsapp'} disabled={Boolean(busy)} /> : null}
             <View style={{ gap: 8, borderTopWidth: 1, borderColor: color.line, paddingTop: 12 }}>
               <Text style={{ color: color.soft, fontSize: 13 }}>{t('Accountant email')}</Text>
               <TextInput style={s.input} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} accessibilityLabel={t('Accountant email')} />

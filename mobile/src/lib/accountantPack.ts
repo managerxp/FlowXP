@@ -44,5 +44,5 @@ export const emailProblem = (email: string): string => (/^[^\s@]+@[^\s@]+\.[^\s@
 export const PACK_TEXTS: string[] = [
   'Accountant pack', 'One ZIP of CSV files for the period: sales and purchase registers, HSN and tax-rate summaries, profit and loss, expenses, every transaction, and what is owed each way.', 'Period', 'This month', 'Last month', 'This quarter',
   'This financial year', 'Last financial year', 'Download', 'Preparing…', 'Accountant email', "Enter the accountant's email address.", 'Email', 'Sent: {email}', 'Their address is remembered for next time.', 'Back', 'Could not send. Check the connection and try again.',
-  'Choose a period of up to about a year', 'Only owners, admins and accountants can export.'
+  'Choose a period of up to about a year', 'Send on WhatsApp', 'Only owners, admins and accountants can export.'
 ];

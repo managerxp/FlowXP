@@ -29,10 +29,10 @@ export const previewOf = (cart: Cart, method: string, paidPaise?: number | null,
 export const dayOf = (ms: number): string => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 export const takeSale = async (
-  { api, outbox, cart, method, reference, key, kitchen = false, customerId = null, payNowPaise, tryMs = 8000, gst, levies, printDetails }:
-  { api: Api; outbox: Outbox; cart: Cart; method: string; reference?: string; key: string; kitchen?: boolean; customerId?: number | null; payNowPaise?: number | null; tryMs?: number; gst?: GstView; levies?: Levies; printDetails?: Record<string, string> | null }
+  { api, outbox, cart, method, reference, key, kitchen = false, customerId = null, payNowPaise, tryMs = 8000, gst, levies, printDetails, sendWhatsapp = true }:
+  { api: Api; outbox: Outbox; cart: Cart; method: string; reference?: string; key: string; kitchen?: boolean; customerId?: number | null; payNowPaise?: number | null; tryMs?: number; gst?: GstView; levies?: Levies; printDetails?: Record<string, string> | null; sendWhatsapp?: boolean }
 ): Promise<Taken> => {
-  const body = saleBody(cart, { method, reference, payNowPaise }, { kitchen, customerId, gst, levies, printDetails });
+  const body = saleBody(cart, { method, reference, payNowPaise }, { kitchen, customerId, gst, levies, printDetails, sendWhatsapp });
   try {
     const invoice = await api.post<{ invoice_id: number; order?: { order_number: string } }>('/invoices', body, { idempotencyKey: key, timeoutMs: tryMs });
     return { kind: 'billed', invoiceId: invoice.invoice_id, token: invoice.order?.order_number ?? null };
