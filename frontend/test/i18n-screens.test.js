@@ -37,7 +37,7 @@ test('every text in screens.json is used by some screen (no leftovers)', () => {
 
 test('no language leaves a text as the English copy, unless it is a code or a name', () => {
   const en = load('en');
-  const SAME_OK = /^(GSTIN|CGST|IGST|HSN \/ SAC|IRN|PIN|SKU:|MRP \(₹\)|A4 \/ PDF|Flow AI|· HSN|IND|MRP|SKU|CSV|GSTR-1|GSTR-3B|GSTIN|FIFA 26, Tekken 8, GTA V|make,model,vehicle_type,.*)( \{\{\w+\}\})?$/;
+  const SAME_OK = /^(WhatsApp|GSTIN|CGST|IGST|HSN \/ SAC|IRN|PIN|SKU:|MRP \(₹\)|A4 \/ PDF|Flow AI|· HSN|IND|MRP|SKU|CSV|GSTR-1|GSTR-3B|GSTIN|FIFA 26, Tekken 8, GTA V|make,model,vehicle_type,.*)( \{\{\w+\}\})?$/;
   const same = [];
   for (const code of CODES.filter((c) => c !== 'en')) {
     const t = load(code);
