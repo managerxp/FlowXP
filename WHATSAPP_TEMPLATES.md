@@ -8,7 +8,7 @@ Rules Meta enforces: no variable at the very start or end of the body; samples f
 
 ## Bills and balances (every kind of business)
 
-### `flowxp_bill_plain` (BILL)
+### `flowxp_bill` (BILL)
 
 **Category:** Utility
 
@@ -37,45 +37,11 @@ Thank you for choosing us.
 **Buttons (Call to action, Visit website, URL type Dynamic):**
 
 - `View Invoice`: `https://YOUR-DOMAIN/bill/{{1}}`, sample `https://YOUR-DOMAIN/bill/abc123`
+- `Rate Us`: `https://YOUR-DOMAIN/r/{{1}}`, sample `https://YOUR-DOMAIN/r/abc123` (the Google review page of the shop; the bill when the shop has no review link)
 
 **Header:** none. **Footer:** `Billing powered by FlowXP`. Button texts are free: `View Bill` / `Rate Us` or `View Invoice` / `Rate Your Experience`.
 
-Sent when the shop has no Google review link saved.
-
-### `flowxp_bill` (BILL_REVIEW)
-
-**Category:** Utility
-
-**Body:**
-
-```
-Hi {{1}},
-
-Thank you for your order at *_{{2}}_*.
-
-Your bill of *_{{3}}_* is ready.
-
-*Invoice No.:* {{4}}
-*Date & Time:* {{5}}
-*Payment Status:* {{6}}
-
-Tap View Invoice below to see every item and the GST.
-
-{{7}}
-
-Thank you for choosing us.
-```
-
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} total = `₹460.00`, {{4}} number = `INV-2026-00125`, {{5}} when = `22 Oct 2026, 3:45 pm`, {{6}} status = `Paid in full`, {{7}} closing = `We hope you enjoyed your meal.`
-
-**Buttons (Call to action, Visit website, URL type Dynamic):**
-
-- `View Invoice`: `https://YOUR-DOMAIN/bill/{{1}}`, sample `https://YOUR-DOMAIN/bill/abc123`
-- `Rate Your Experience`: `https://g.page/r/{{1}}`, sample `https://g.page/r/CabcDEF123/review`
-
-**Header:** none. **Footer:** `Billing powered by FlowXP`. Button texts are free: `View Bill` / `Rate Us` or `View Invoice` / `Rate Your Experience`.
-
-Sent when the shop has saved a `https://g.page/r/...` review link (Settings, Business details, Google review link). Same words as the receipt above, plus the second button.
+One template for every shop. The Rate Us button opens the Google review page the shop saved (Settings, Business details, Google review link), or the bill when there is none.
 
 ### `flowxp_loyalty_next` (LOYALTY_NEXT)
 

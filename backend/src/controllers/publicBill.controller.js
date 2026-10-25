@@ -37,6 +37,17 @@ const findByToken = (token) => pool.query(
 
 const reviewsOn = (inv) => effectiveFeatureFlags([inv.plan_feature_flags, inv.type_feature_flags], inv.feature_overrides, inv.business_type).reviews !== false;
 
+/* GET /r/:token (nginx hands it to /api/public/review/:token): the "Rate Us" button of the WhatsApp bill. The shop's Google review page when it has saved
+   a g.page/r/ link, otherwise the bill itself, so the button always opens something. */
+export const reviewRedirect = async (req, res) => {
+  const token = String(req.params.token || '');
+  const inv = /^[A-Za-z0-9_-]{8,40}$/.test(token) ? (await pool.query(`SELECT b.google_review_link FROM invoices i JOIN businesses b ON b.business_id = i.business_id WHERE i.share_token = $1`, [token])).rows[0] : null;
+  if (!inv) return res.redirect(302, '/');
+  const m = String(inv.google_review_link || '').trim().match(/^https:\/\/g\.page\/r\/([A-Za-z0-9_-]{6,60})(\/review)?\/?(?:\?.*)?$/);
+  res.set('Cache-Control', 'no-store');
+  res.redirect(302, m ? `https://g.page/r/${m[1]}/review` : `/bill/${token}`);
+};
+
 /* GET /api/public/bill/:token */
 export const bill = async (req, res) => {
   const inv = (await findByToken(req.params.token)).rows[0];

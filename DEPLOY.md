@@ -202,14 +202,14 @@ Meta calls back `https://YOUR-DOMAIN/api/webhooks/whatsapp` with delivery, read 
 
 A callback that is not signed with the app secret is refused (401), and nothing is accepted while no secret is set.
 
-### The bill templates (payment receipt, with and without the Google review button)
+### The bill template (payment receipt, with a View Bill and a Rate Us button)
 
-Two templates, created once in WhatsApp Manager (Message templates, Create template). The exact text, samples and buttons are in `WHATSAPP_TEMPLATES.md`, sections `flowxp_bill_plain` and `flowxp_bill`:
+One template, `flowxp_bill`, created once in WhatsApp Manager (Message templates, Create template), Utility, English. The exact text, samples and buttons are in `WHATSAPP_TEMPLATES.md`, section `flowxp_bill`:
 
-- **flowxp_bill_plain**: Utility, English. no header, the body with seven variables (the last one is the closing line, which changes with the kind of business) (the shop name and the amount in bold italics, written `*_{{2}}_*`), footer `Billing powered by FlowXP`, one button `View Bill` or `View Invoice` (dynamic URL `https://YOUR-DOMAIN/bill/{{1}}`).
-- **flowxp_bill** (the one in Meta now): the same as flowxp_bill_plain, plus a second button `Rate Your Experience` (dynamic URL `https://g.page/r/{{1}}`, sample `https://g.page/r/CabcDEF123/review`).
-- Turn on a custom validity period (the longest allowed) on both.
-
-Each shop's own Google review link goes in the shop's Settings, Business details, Google review link (the `https://g.page/r/...` link from Google Business Profile, Get more reviews). FlowXP sends the review version for a shop that has one, and the plain receipt for the others. One approved template serves every shop, because the shop's name and its review link travel as the variables.
+- No header. The body has seven variables (the last is the closing line, which changes with the kind of business; the shop name and the amount are in bold italics, written `*_{{2}}_*`). Footer `Billing powered by FlowXP`.
+- Button 1 `View Bill`: dynamic URL `https://YOUR-DOMAIN/bill/{{1}}`.
+- Button 2 `Rate Us`: dynamic URL `https://YOUR-DOMAIN/r/{{1}}`. `{{1}}` is the same bill token as button 1: FlowXP sends the customer to that shop's Google review page (Settings, Business details, Google review link, a `https://g.page/r/...` link) or, when the shop has none, to the bill. A shop can change its link later without touching Meta.
+- nginx needs the `/r/` location in `deploy/nginx.conf`: copy it to the server and run `nginx -t && systemctl reload nginx`.
+- Optionally turn on a custom validity period; the default (10 minutes) also works.
 
 All templates FlowXP can send (bill with and without the Google review button, gym reminders including the start-of-month one, salon, restaurant, wholesale), with the exact text, category, samples and buttons for Meta, are listed in `WHATSAPP_TEMPLATES.md` (regenerate it with `node backend/scripts/whatsapp-templates-doc.mjs` after changing a template).

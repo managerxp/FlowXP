@@ -10,9 +10,9 @@ const SAMPLE = {
 };
 // the receipt's own samples (the same word means something else in a booking)
 const OWN = { name: 'Asha', business: 'Red Oven Pizza House', total: '₹460.00', number: 'INV-2026-00125', when: '22 Oct 2026, 3:45 pm', status: 'Paid in full', closing: 'We hope you enjoyed your meal.' };
-const sampleOf = (kind, v) => (['BILL', 'BILL_REVIEW'].includes(kind) && v in OWN ? OWN[v] : SAMPLE[v] ?? 'Sample');
+const sampleOf = (kind, v) => (['BILL'].includes(kind) && v in OWN ? OWN[v] : SAMPLE[v] ?? 'Sample');
 const GROUPS = [
-  ['Bills and balances (every kind of business)', (k) => ['BILL', 'BILL_REVIEW', 'BALANCE_DUE', 'REVIEW_REPLY', 'LOYALTY_NEXT', 'OFFER'].includes(k)],
+  ['Bills and balances (every kind of business)', (k) => ['BILL', 'BALANCE_DUE', 'REVIEW_REPLY', 'LOYALTY_NEXT', 'OFFER'].includes(k)],
   ['Restaurants and cafés', (k) => k.startsWith('RESERVATION') || k.startsWith('WAITLIST')],
   ['Salons', (k) => k.startsWith('SALON_')],
   ['Gyms', (k) => k.startsWith('GYM_')],
@@ -35,12 +35,11 @@ for (const [title, test] of GROUPS) {
     if (t.urlButtons) {
       lines.push('**Buttons (Call to action, Visit website, URL type Dynamic):**', '');
       lines.push(`- \`View Invoice\`: \`https://YOUR-DOMAIN/bill/{{1}}\`, sample \`https://YOUR-DOMAIN/bill/abc123\``);
-      if (t.urlButtons.includes('review')) lines.push('- `Rate Your Experience`: `https://g.page/r/{{1}}`, sample `https://g.page/r/CabcDEF123/review`');
+      if (t.urlButtons.length > 1) lines.push('- `Rate Us`: `https://YOUR-DOMAIN/r/{{1}}`, sample `https://YOUR-DOMAIN/r/abc123` (the Google review page of the shop; the bill when the shop has no review link)');
       lines.push('');
     }
-    if (['BILL', 'BILL_REVIEW'].includes(kind)) lines.push('**Header:** none. **Footer:** `Billing powered by FlowXP`. Button texts are free: `View Bill` / `Rate Us` or `View Invoice` / `Rate Your Experience`.', '');
-    if (kind === 'BILL') lines.push('Sent when the shop has no Google review link saved.', '');
-    if (kind === 'BILL_REVIEW') lines.push('Sent when the shop has saved a `https://g.page/r/...` review link (Settings, Business details, Google review link). Same words as the receipt above, plus the second button.', '');
+    if (['BILL'].includes(kind)) lines.push('**Header:** none. **Footer:** `Billing powered by FlowXP`. Button texts are free: `View Bill` / `Rate Us` or `View Invoice` / `Rate Your Experience`.', '');
+    if (kind === 'BILL') lines.push('One template for every shop. The Rate Us button opens the Google review page the shop saved (Settings, Business details, Google review link), or the bill when there is none.', '');
   }
 }
 const rest = KINDS.filter((k) => !shown.has(k));

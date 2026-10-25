@@ -30,10 +30,11 @@ test('a bill goes out as the approved template with the View Bill button', { ski
     assert.equal(url, 'https://graph.facebook.com/v26.0/555000111/messages');
     assert.equal(init.headers.authorization, 'Bearer test-token');
     assert.equal(body.to, '919845011122'); assert.equal(body.type, 'template');
-    assert.equal(body.template.name, 'flowxp_bill_plain'); assert.equal(body.template.language.code, 'en');
+    assert.equal(body.template.name, 'flowxp_bill'); assert.equal(body.template.language.code, 'en');
     assert.deepEqual(body.template.components[0], { type: 'body', parameters: ['Asha', 'Sharma Auto Parts', '₹1,203.00', 'INV-0007', '22 Oct 2026, 3:45 pm', 'Paid in full', 'We hope you enjoyed your meal.'].map((text) => ({ type: 'text', text })) });
     assert.deepEqual(body.template.components[1], { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: 'abc123' }] });
-    assert.equal(body.template.components.length, 2);
+    assert.deepEqual(body.template.components[2], { type: 'button', sub_type: 'url', index: '1', parameters: [{ type: 'text', text: 'abc123' }] }, 'Rate Us ends in the same token');
+    assert.equal(body.template.components.length, 3);
   });
 });
 
@@ -48,21 +49,11 @@ test('a template without a button sends only its body, and Meta\'s refusal is ke
   });
 });
 
-test('a shop with a Google review link sends the bill with a second button; the others send the plain bill', { skip }, async () => {
+test('the Google review link is recognised only when it is a g.page/r/ link', { skip }, async () => {
   const { googleReviewPath } = await import('../src/modules/messaging/index.js');
   assert.equal(googleReviewPath('https://g.page/r/CabcDEF123-x/review'), 'CabcDEF123-x/review');
   assert.equal(googleReviewPath('https://g.page/r/CabcDEF123-x'), 'CabcDEF123-x/review');
   assert.equal(googleReviewPath('https://g.page/r/CabcDEF123-x/review?utm=1'), 'CabcDEF123-x/review');
   assert.equal(googleReviewPath('https://search.google.com/local/writereview?placeid=ChIJxx'), null, 'another kind of link is not used as the button');
   assert.equal(googleReviewPath(''), null); assert.equal(googleReviewPath(null), null);
-  const m = render('BILL_REVIEW', { name: 'Asha', business: 'Cafe', total: '₹10', number: 'INV-1', when: '1 Jan 2027, 9:00 am', status: 'Paid in full', closing: 'Thanks.', link: 'https://flowxp.in/bill/tok', token: 'tok', review: 'CabcDEF123-x/review' });
-  assert.equal(m.template.name, 'flowxp_bill');
-  await withFetch({ json: { messages: [{ id: 'wamid.R1' }] } }, async (calls) => {
-    await deliver({ channel: 'WHATSAPP', to: '9845011122', kind: 'BILL_REVIEW', text: m.text, template: m.template });
-    const c = calls[0].body.template.components;
-    assert.equal(c.length, 3);
-    assert.deepEqual(c[1], { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: 'tok' }] });
-    assert.deepEqual(c[2], { type: 'button', sub_type: 'url', index: '1', parameters: [{ type: 'text', text: 'CabcDEF123-x/review' }] });
-  });
-  assert.throws(() => render('BILL_REVIEW', { name: 'A', business: 'B', number: 'N', when: 'W', total: 'T', status: 'S', closing: 'C', link: 'l', token: 't' }), /needs review/);
 });

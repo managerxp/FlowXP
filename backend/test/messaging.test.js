@@ -26,7 +26,7 @@ const until = async (check, ms = 10000) => { const end = Date.now() + ms; while 
 test('templates fill their variables, and refuse a missing one', () => {
   const m = render('BILL', { name: 'Asha', business: 'Spice Hub', total: '₹450', number: 'INV-0007', when: '22 Oct 2026, 3:45 pm', status: 'Paid in full', closing: 'We hope you enjoyed your meal.', link: 'https://x.test/bill/abc', token: 'abc' });
   assert.match(m.text, /Asha.*Spice Hub.*₹450.*INV-0007.*Paid in full.*https:\/\/x\.test\/bill\/abc/);
-  assert.deepEqual(m.template, { name: 'flowxp_bill_plain', params: ['Asha', 'Spice Hub', '₹450', 'INV-0007', '22 Oct 2026, 3:45 pm', 'Paid in full', 'We hope you enjoyed your meal.'], buttons: ['abc'] }, 'six values in the body and the link token for the View Invoice button');
+  assert.deepEqual(m.template, { name: 'flowxp_bill', params: ['Asha', 'Spice Hub', '₹450', 'INV-0007', '22 Oct 2026, 3:45 pm', 'Paid in full', 'We hope you enjoyed your meal.'], buttons: ['abc', 'abc'] }, 'seven values in the body and the link token for the View Bill and Rate Us buttons');
   assert.equal(m.promo, false);
   assert.throws(() => render('BILL', { name: 'Asha' }), /needs business/);
   assert.throws(() => render('NOPE', {}), /Unknown message kind/);
@@ -119,7 +119,7 @@ test('sending a bill records it, uses the customer number and links to a stable 
 
   const provider = sent.at(-1);
   assert.equal(provider.to, '9876543210');
-  assert.equal(provider.template.name, 'flowxp_bill_plain');
+  assert.equal(provider.template.name, 'flowxp_bill');
   assert.equal(provider.template.params[3], A.firstInvoice.invoice_number);
 
   await A.call(messaging.sendBillHandler, { body: { invoice_id: A.firstInvoice.invoice_id } });

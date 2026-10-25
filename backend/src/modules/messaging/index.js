@@ -96,7 +96,7 @@ export const shareLink = async (db, invoiceId) => {
   return `${config.appOrigin}/bill/${row.share_token}`;
 };
 
-/** The end of a Google Business review link (https://g.page/r/CXXXX/review gives CXXXX/review): what the "Rate us on Google" button's address ends with. Anything else gives null. */
+/** The end of a Google Business review link (https://g.page/r/CXXXX/review gives CXXXX/review): the part the review redirect (/r/<token>) sends the customer to. Anything else gives null. */
 export const googleReviewPath = (link) => {
   const m = String(link || '').trim().match(/^https:\/\/g\.page\/r\/([A-Za-z0-9_-]{6,60})(\/review)?\/?(?:\?.*)?$/);
   return m ? `${m[1]}/review` : null;
@@ -116,12 +116,11 @@ export const sendBill = async (db, { businessId, invoiceId, phone = null, create
   const to = phone || inv.customer_phone;
   if (!normalisePhone(to)) return { problem: 'This bill has no customer mobile number to send to', code: 400 };
   const link = await shareLink(db, inv.invoice_id);
-  const review = googleReviewPath(inv.google_review_link);   // only a g.page/r/ link can be the second button; any other link just means the plain bill
   const paid = Number(inv.total_paise) - Number(inv.balance_due_paise);
   const status = Number(inv.balance_due_paise) <= 0 ? 'Paid in full' : paid > 0 ? `Part paid, ${money(inv.balance_due_paise)} due` : `${money(inv.balance_due_paise)} due`;
   return send(db, {
-    businessId, branchId: inv.branch_id, customerId: inv.customer_id, phone: to, kind: review ? 'BILL_REVIEW' : 'BILL', createdBy,
-    values: { name: inv.customer_name || 'there', business: inv.business_name, number: inv.invoice_number, when: inv.bill_time, total: money(inv.total_paise), status, closing: closingLine(inv.business_type, inv.shop_footer), link, token: link.split('/').pop(), ...(review ? { review } : {}) },
+    businessId, branchId: inv.branch_id, customerId: inv.customer_id, phone: to, kind: 'BILL', createdBy,
+    values: { name: inv.customer_name || 'there', business: inv.business_name, number: inv.invoice_number, when: inv.bill_time, total: money(inv.total_paise), status, closing: closingLine(inv.business_type, inv.shop_footer), link, token: link.split('/').pop() },
     related: { type: 'invoice', id: inv.invoice_id }
   });
 };

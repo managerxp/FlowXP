@@ -30,3 +30,23 @@ test('plan without messaging, or a bill marked not to send, sends nothing; other
   fire(await bill(), { messaging: true });
   assert.equal(await count(), 1, 'on a plan with messaging the bill goes out');
 });
+
+test('the Rate Us button goes to the shop\'s Google page, or to the bill when the shop has none, and never to anything else', { skip }, async () => {
+  const { reviewRedirect } = await import('../src/controllers/publicBill.controller.js');
+  const { shareLink } = await import('../src/modules/messaging/index.js');
+  const owner = (await pool.query(`INSERT INTO users (name, email, password_hash) VALUES ('Om','o@rr.test','x') RETURNING user_id`)).rows[0].user_id;
+  const biz = (await pool.query(`INSERT INTO businesses (name, owner_user_id, business_type, state) VALUES ('Tea Co',$1,'CAFE','Karnataka') RETURNING business_id`, [owner])).rows[0].business_id;
+  const branch = (await pool.query(`INSERT INTO branches (business_id, name, is_primary) VALUES ($1,'Main',TRUE) RETURNING branch_id`, [biz])).rows[0].branch_id;
+  const product = (await pool.query(`INSERT INTO products (business_id, name, kind, selling_price_paise, tax_rate, track_inventory) VALUES ($1,'Tea','DISH',10000,0,FALSE) RETURNING product_id`, [biz])).rows[0].product_id;
+  const client = await pool.connect();
+  let inv;
+  try { await client.query('BEGIN'); inv = await createInvoiceInTransaction(client, { businessId: biz, branchId: branch }, owner, { items: [{ product_id: product, quantity: 1 }], payment: { amount: 'FULL' } }); await client.query('COMMIT'); } finally { client.release(); }
+  const token = (await shareLink(pool, inv.invoice_id)).split('/').pop();
+  const go = async (t) => { let out; await reviewRedirect({ params: { token: t } }, { set() {}, redirect: (code, to) => { out = [code, to]; } }); return out; };
+  assert.deepEqual(await go(token), [302, `/bill/${token}`], 'no Google link: the bill');
+  await pool.query(`UPDATE businesses SET google_review_link = 'https://g.page/r/CabcDEF123-x' WHERE business_id = $1`, [biz]);
+  assert.deepEqual(await go(token), [302, 'https://g.page/r/CabcDEF123-x/review']);
+  await pool.query(`UPDATE businesses SET google_review_link = 'https://evil.example/phish' WHERE business_id = $1`, [biz]);
+  assert.deepEqual(await go(token), [302, `/bill/${token}`], 'a link that is not a Google review page is never followed');
+  assert.deepEqual(await go('nope'), [302, '/']); assert.deepEqual(await go('x'.repeat(32)), [302, '/']);
+});

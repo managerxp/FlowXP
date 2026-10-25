@@ -17,6 +17,7 @@ const router = Router();
 /* The bill link in a customer's message. The token is 128 random bits; the limit is only there to blunt guessing. */
 const billLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { success: false, message: 'Too many requests. Try again shortly.' } });
 router.get('/bill/:token', billLimiter, publicBill.bill);
+router.get('/review/:token', billLimiter, publicBill.reviewRedirect);   // the Rate Us button on the WhatsApp bill (site address /r/:token)
 
 /* A bill is rated once or twice at most (submit, maybe change your mind) — tighter than the order limiter below. */
 const feedbackLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { success: false, message: 'Too many requests. Try again shortly.' } });
