@@ -1,7 +1,7 @@
 // Writes WHATSAPP_TEMPLATES.md at the repo root from the real templates (backend/src/modules/messaging/templates.js), so the text to paste into Meta is exactly what FlowXP sends.
 //   node backend/scripts/whatsapp-templates-doc.mjs
 import fs from 'node:fs';
-import { TEMPLATES, KINDS, metaBody } from '../src/modules/messaging/templates.js';
+import { TEMPLATES, KINDS, metaBody, CLOSING } from '../src/modules/messaging/templates.js';
 
 const SAMPLE = {
   name: 'Asha', business: 'Red Oven Pizza House', number: 'INV-2026-00125', date: '22 Oct 2026', when: '22 Oct 2026, 3:45 pm', status: 'Paid in full', total: '₹460.00', due: '₹0', when: 'Sat 24 Oct, 6:30 pm', party: '4', minutes: '15',
@@ -9,7 +9,7 @@ const SAMPLE = {
   order: 'SO-0031', invoice: 'INV-0112', vehicle: 'KA01 AB 1234', status: 'out for delivery', reply: 'Thank you for your kind words.', link: 'https://flowxp.in/bill/abc123', token: 'abc123', review: 'CabcDEF123/review'
 };
 // the receipt's own samples (the same word means something else in a booking)
-const OWN = { name: 'Asha', business: 'Red Oven Pizza House', total: '₹460.00', number: 'INV-2026-00125', when: '22 Oct 2026, 3:45 pm', status: 'Paid in full' };
+const OWN = { name: 'Asha', business: 'Red Oven Pizza House', total: '₹460.00', number: 'INV-2026-00125', when: '22 Oct 2026, 3:45 pm', status: 'Paid in full', closing: 'We hope you enjoyed your meal.' };
 const sampleOf = (kind, v) => (['BILL', 'BILL_REVIEW'].includes(kind) && v in OWN ? OWN[v] : SAMPLE[v] ?? 'Sample');
 const GROUPS = [
   ['Bills and balances (every kind of business)', (k) => ['BILL', 'BILL_REVIEW', 'BALANCE_DUE', 'REVIEW_REPLY', 'LOYALTY_NEXT', 'OFFER'].includes(k)],
@@ -45,6 +45,7 @@ for (const [title, test] of GROUPS) {
 }
 const rest = KINDS.filter((k) => !shown.has(k));
 if (rest.length) throw new Error(`Templates not in any group: ${rest.join(', ')}`);
+lines.push('## The closing line of the bill (variable {{7}})', '', 'The line before "Thank you for choosing us." changes with the business. If the shop has saved its own words (Settings, receipt footer) those are used; otherwise one for its kind of business:', '', '| Business type | Line |', '|---|---|', ...Object.entries(CLOSING).map(([k, v]) => `| ${k} | ${v} |`), '');
 lines.push('## Still to build (not templates in FlowXP yet)', '',
   '| Industry | Message | When it should go |', '|---|---|---|',
   '| Auto parts and garages | Vehicle received, estimate, ready, bill | When the job card moves to that step (today it opens WhatsApp with the text ready) |',

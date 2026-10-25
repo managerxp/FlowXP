@@ -9,28 +9,42 @@
  *
  * `promo` messages (offers, loyalty nudges) are only sent to customers who have not opted out.
  */
+/* The closing line of a bill message: the shop's own words when it has saved them (the receipt footer in Settings), else one that suits its kind of business. WhatsApp allows no line breaks in a variable. */
+export const CLOSING = {
+  RESTAURANT: 'We hope you enjoyed your meal.', CLOUD_KITCHEN: 'We hope you enjoyed your meal.', CAFE: 'We hope you enjoyed your coffee and your time with us.',
+  RETAIL: 'We hope you found everything you were looking for.', SUPERMARKET: 'We hope you found everything you were looking for.', ELECTRONICS: 'We hope you enjoy your new purchase.', CLOTHING: 'We hope you love what you picked.',
+  PHARMACY: 'Wishing you good health.', SALON: 'We hope you love your new look.', GYM: 'Keep going, we will see you at the gym.', HOTEL: 'We hope you enjoyed your stay.',
+  GAMING_CAFE: 'Thanks for playing, see you again.', AUTO_PARTS: 'Drive safe, and see you again soon.', RACING: 'Thanks for racing with us.',
+  WHOLESALE: 'We value your business and look forward to your next order.', DISTRIBUTOR: 'We value your business and look forward to your next order.',
+  SERVICES: 'It was a pleasure to serve you.', OTHER: 'We hope to serve you again soon.'
+};
+export const closingLine = (businessType, shopFooter) => {
+  const own = String(shopFooter ?? '').replace(/\s+/g, ' ').trim().slice(0, 160);
+  return own || CLOSING[String(businessType || '').toUpperCase()] || CLOSING.OTHER;
+};
+
 export const TEMPLATES = {
-  /* The bill as a payment receipt: the shop's name in the body (bold italics), a clear body, a "View Invoice" button (address in Meta: https://YOUR-DOMAIN/bill/{{1}}, {{1}} is the bill's link token)
+  /* The bill as a payment receipt (one wording for every kind of business; `closing` is the line that changes: the shop's own words, or one for its kind of business, see closingLine in index.js): the shop's name in the body (bold italics), a clear body, a "View Invoice" button (address in Meta: https://YOUR-DOMAIN/bill/{{1}}, {{1}} is the bill's link token)
      and the fixed footer "Billing powered by FlowXP". `status` says Paid in full, Part paid with what is due, or what is due. */
   BILL: {
     name: 'flowxp_payment_receipt', promo: false,
-    vars: ['name', 'business', 'total', 'number', 'when', 'status'],   // the six values in the WhatsApp message body
+    vars: ['name', 'business', 'total', 'number', 'when', 'status', 'closing'],   // the six values in the WhatsApp message body
                                                  // the header is the shop's name
     urlButtons: ['token'],
     also: ['link'],                                                    // the whole link, for the recorded and SMS wording
-    body: (p) => `Hi ${p.name},\n\nThank you for your order at *_${p.business}_*.\n\nYour bill of *_${p.total}_* is ready.\n\n*Invoice No.:* ${p.number}\n*Date & Time:* ${p.when}\n*Payment Status:* ${p.status}\n\nTap View Invoice below to see every item and the GST. We hope to serve you again soon.`,
-    text: (p) => `Hi ${p.name}, thank you for your order at ${p.business}. Your bill of ${p.total} is ready. Invoice ${p.number}, ${p.when}. Payment status: ${p.status}. View it here: ${p.link} We hope to serve you again soon.`
+    body: (p) => `Hi ${p.name},\n\nThank you for your order at *_${p.business}_*.\n\nYour bill of *_${p.total}_* is ready.\n\n*Invoice No.:* ${p.number}\n*Date & Time:* ${p.when}\n*Payment Status:* ${p.status}\n\nTap View Invoice below to see every item and the GST.\n\n${p.closing}\n\nThank you for choosing us.`,
+    text: (p) => `Hi ${p.name}, thank you for your order at ${p.business}. Your bill of ${p.total} is ready. Invoice ${p.number}, ${p.when}. Payment status: ${p.status}. View it here: ${p.link} ${p.closing} Thank you for choosing us.`
   },
   /* The same receipt with a second button, "Rate Your Experience" (address in Meta: https://g.page/r/{{1}}, {{1}} is the end of the shop's own Google review link, like CXXXX/review).
      Used only for a shop that has saved such a link; the others send the receipt above. The words are the same on purpose: asking for a review in the text could make Meta call it Marketing. */
   BILL_REVIEW: {
     name: 'flowxp_payment_receipt_review', promo: false,
-    vars: ['name', 'business', 'total', 'number', 'when', 'status'],
+    vars: ['name', 'business', 'total', 'number', 'when', 'status', 'closing'],
     
     urlButtons: ['token', 'review'],
     also: ['link'],
-    body: (p) => `Hi ${p.name},\n\nThank you for your order at *_${p.business}_*.\n\nYour bill of *_${p.total}_* is ready.\n\n*Invoice No.:* ${p.number}\n*Date & Time:* ${p.when}\n*Payment Status:* ${p.status}\n\nTap View Invoice below to see every item and the GST. We hope to serve you again soon.`,
-    text: (p) => `Hi ${p.name}, thank you for your order at ${p.business}. Your bill of ${p.total} is ready. Invoice ${p.number}, ${p.when}. Payment status: ${p.status}. View it here: ${p.link} We hope to serve you again soon.`
+    body: (p) => `Hi ${p.name},\n\nThank you for your order at *_${p.business}_*.\n\nYour bill of *_${p.total}_* is ready.\n\n*Invoice No.:* ${p.number}\n*Date & Time:* ${p.when}\n*Payment Status:* ${p.status}\n\nTap View Invoice below to see every item and the GST.\n\n${p.closing}\n\nThank you for choosing us.`,
+    text: (p) => `Hi ${p.name}, thank you for your order at ${p.business}. Your bill of ${p.total} is ready. Invoice ${p.number}, ${p.when}. Payment status: ${p.status}. View it here: ${p.link} ${p.closing} Thank you for choosing us.`
   },
   RESERVATION: {
     name: 'flowxp_booking', promo: false,

@@ -102,6 +102,9 @@ export const googleReviewPath = (link) => {
   return m ? `${m[1]}/review` : null;
 };
 
+export { CLOSING, closingLine } from './templates.js';
+import { closingLine } from './templates.js';
+
 /** Send an invoice to `phone` (default: its customer's). `scope` is a branch filter for the caller's outlet. */
 export const sendBill = async (db, { businessId, invoiceId, phone = null, createdBy = null }) => {
   const inv = (await db.query(
@@ -118,7 +121,7 @@ export const sendBill = async (db, { businessId, invoiceId, phone = null, create
   const status = Number(inv.balance_due_paise) <= 0 ? 'Paid in full' : paid > 0 ? `Part paid, ${money(inv.balance_due_paise)} due` : `${money(inv.balance_due_paise)} due`;
   return send(db, {
     businessId, branchId: inv.branch_id, customerId: inv.customer_id, phone: to, kind: review ? 'BILL_REVIEW' : 'BILL', createdBy,
-    values: { name: inv.customer_name || 'there', business: inv.business_name, number: inv.invoice_number, when: inv.bill_time, total: money(inv.total_paise), status, link, token: link.split('/').pop(), ...(review ? { review } : {}) },
+    values: { name: inv.customer_name || 'there', business: inv.business_name, number: inv.invoice_number, when: inv.bill_time, total: money(inv.total_paise), status, closing: closingLine(inv.business_type, inv.shop_footer), link, token: link.split('/').pop(), ...(review ? { review } : {}) },
     related: { type: 'invoice', id: inv.invoice_id }
   });
 };

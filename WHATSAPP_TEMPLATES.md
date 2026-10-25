@@ -25,10 +25,14 @@ Your bill of *_{{3}}_* is ready.
 *Date & Time:* {{5}}
 *Payment Status:* {{6}}
 
-Tap View Invoice below to see every item and the GST. We hope to serve you again soon.
+Tap View Invoice below to see every item and the GST.
+
+{{7}}
+
+Thank you for choosing us.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} total = `₹460.00`, {{4}} number = `INV-2026-00125`, {{5}} when = `22 Oct 2026, 3:45 pm`, {{6}} status = `Paid in full`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} total = `₹460.00`, {{4}} number = `INV-2026-00125`, {{5}} when = `22 Oct 2026, 3:45 pm`, {{6}} status = `Paid in full`, {{7}} closing = `We hope you enjoyed your meal.`
 
 **Buttons (Call to action, Visit website, URL type Dynamic):**
 
@@ -55,10 +59,14 @@ Your bill of *_{{3}}_* is ready.
 *Date & Time:* {{5}}
 *Payment Status:* {{6}}
 
-Tap View Invoice below to see every item and the GST. We hope to serve you again soon.
+Tap View Invoice below to see every item and the GST.
+
+{{7}}
+
+Thank you for choosing us.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} total = `₹460.00`, {{4}} number = `INV-2026-00125`, {{5}} when = `22 Oct 2026, 3:45 pm`, {{6}} status = `Paid in full`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} total = `₹460.00`, {{4}} number = `INV-2026-00125`, {{5}} when = `22 Oct 2026, 3:45 pm`, {{6}} status = `Paid in full`, {{7}} closing = `We hope you enjoyed your meal.`
 
 **Buttons (Call to action, Visit website, URL type Dynamic):**
 
@@ -484,6 +492,31 @@ Hi {{1}}, update on your order {{3}} from {{2}}: {{4}}. Thank you.
 ```
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} order = `SO-0031`, {{4}} status = `out for delivery`
+
+## The closing line of the bill (variable {{7}})
+
+The line before "Thank you for choosing us." changes with the business. If the shop has saved its own words (Settings, receipt footer) those are used; otherwise one for its kind of business:
+
+| Business type | Line |
+|---|---|
+| RESTAURANT | We hope you enjoyed your meal. |
+| CLOUD_KITCHEN | We hope you enjoyed your meal. |
+| CAFE | We hope you enjoyed your coffee and your time with us. |
+| RETAIL | We hope you found everything you were looking for. |
+| SUPERMARKET | We hope you found everything you were looking for. |
+| ELECTRONICS | We hope you enjoy your new purchase. |
+| CLOTHING | We hope you love what you picked. |
+| PHARMACY | Wishing you good health. |
+| SALON | We hope you love your new look. |
+| GYM | Keep going, we will see you at the gym. |
+| HOTEL | We hope you enjoyed your stay. |
+| GAMING_CAFE | Thanks for playing, see you again. |
+| AUTO_PARTS | Drive safe, and see you again soon. |
+| RACING | Thanks for racing with us. |
+| WHOLESALE | We value your business and look forward to your next order. |
+| DISTRIBUTOR | We value your business and look forward to your next order. |
+| SERVICES | It was a pleasure to serve you. |
+| OTHER | We hope to serve you again soon. |
 
 ## Still to build (not templates in FlowXP yet)
 

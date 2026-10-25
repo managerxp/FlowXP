@@ -24,13 +24,23 @@ const until = async (check, ms = 10000) => { const end = Date.now() + ms; while 
 /* ── pure ───────────────────────────────────────────────────────────────── */
 
 test('templates fill their variables, and refuse a missing one', () => {
-  const m = render('BILL', { name: 'Asha', business: 'Spice Hub', total: '₹450', number: 'INV-0007', when: '22 Oct 2026, 3:45 pm', status: 'Paid in full', link: 'https://x.test/bill/abc', token: 'abc' });
+  const m = render('BILL', { name: 'Asha', business: 'Spice Hub', total: '₹450', number: 'INV-0007', when: '22 Oct 2026, 3:45 pm', status: 'Paid in full', closing: 'We hope you enjoyed your meal.', link: 'https://x.test/bill/abc', token: 'abc' });
   assert.match(m.text, /Asha.*Spice Hub.*₹450.*INV-0007.*Paid in full.*https:\/\/x\.test\/bill\/abc/);
-  assert.deepEqual(m.template, { name: 'flowxp_payment_receipt', params: ['Asha', 'Spice Hub', '₹450', 'INV-0007', '22 Oct 2026, 3:45 pm', 'Paid in full'], buttons: ['abc'] }, 'six values in the body and the link token for the View Invoice button');
+  assert.deepEqual(m.template, { name: 'flowxp_payment_receipt', params: ['Asha', 'Spice Hub', '₹450', 'INV-0007', '22 Oct 2026, 3:45 pm', 'Paid in full', 'We hope you enjoyed your meal.'], buttons: ['abc'] }, 'six values in the body and the link token for the View Invoice button');
   assert.equal(m.promo, false);
   assert.throws(() => render('BILL', { name: 'Asha' }), /needs business/);
   assert.throws(() => render('NOPE', {}), /Unknown message kind/);
   assert.equal(render('OFFER', { name: 'A', business: 'B', offer: 'C' }).promo, true);
+});
+
+test('the closing line of a bill: the shop\'s own words, else one for its kind of business, on one line', async () => {
+  const { closingLine, CLOSING } = await import('../src/modules/messaging/index.js');
+  assert.equal(closingLine('RESTAURANT', ''), 'We hope you enjoyed your meal.');
+  assert.equal(closingLine('pharmacy', null), 'Wishing you good health.');
+  assert.equal(closingLine('SOMETHING_NEW', undefined), CLOSING.OTHER);
+  assert.equal(closingLine('CAFE', '  Thank you!\n\nVisit   us again.  '), 'Thank you! Visit us again.', 'the shop\'s own words, on one line');
+  assert.equal(closingLine('CAFE', 'x'.repeat(500)).length, 160);
+  for (const type of ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'HOTEL', 'GYM', 'SERVICES', 'ELECTRONICS', 'CLOTHING', 'GAMING_CAFE', 'AUTO_PARTS', 'RACING', 'WHOLESALE', 'DISTRIBUTOR', 'OTHER']) assert.ok(CLOSING[type], `${type} has a closing line`);
 });
 
 test('the Meta template text uses numbered variables in order', () => {
@@ -169,7 +179,7 @@ test('offers and reminders never reach someone who opted out; bills still do', {
   assert.equal((await B.call(messaging.setOptOut, { params: { id: A.ravi }, body: { opt_out: true } })).code, 404);
   const offer = await mod.send(pool, { businessId: A.biz, customerId: A.ravi, phone: '9876500001', kind: 'OFFER', values: { name: 'Ravi', business: 'a', offer: '10% off' } });
   assert.deepEqual(offer, { skipped: 'OPTED_OUT' });
-  const bill = await mod.send(pool, { businessId: A.biz, customerId: A.ravi, phone: '9876500001', kind: 'BILL', values: { name: 'Ravi', business: 'a', number: 'X', when: '1 Jan 2026, 9:00 am', total: '₹1', status: 'Paid in full', link: 'https://x.test/bill/l', token: 'l' } });
+  const bill = await mod.send(pool, { businessId: A.biz, customerId: A.ravi, phone: '9876500001', kind: 'BILL', values: { name: 'Ravi', business: 'a', number: 'X', when: '1 Jan 2026, 9:00 am', total: '₹1', status: 'Paid in full', closing: 'Thanks.', link: 'https://x.test/bill/l', token: 'l' } });
   assert.equal(bill.status, 'SENT');
   await A.call(messaging.setOptOut, { params: { id: A.ravi }, body: { opt_out: false } });
 });
@@ -271,6 +281,6 @@ test('the log is per business and can be filtered', { skip }, async () => {
   assert.ok(failed.every((m) => m.status === 'FAILED'));
   const templates = (await A.call(messaging.templates)).body.data;
   assert.equal(templates.length, Object.keys(TEMPLATES).length);
-  assert.match(templates.find((t) => t.kind === 'BILL').body, /\{\{6\}\}/);
-  assert.doesNotMatch(templates.find((t) => t.kind === 'BILL').body, /\{\{7\}\}/, 'the link is the button now, not a variable');
+  assert.match(templates.find((t) => t.kind === 'BILL').body, /\{\{7\}\}/);
+  assert.doesNotMatch(templates.find((t) => t.kind === 'BILL').body, /\{\{8\}\}/, 'the link is the button now, not a variable');
 });
