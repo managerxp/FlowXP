@@ -117,18 +117,35 @@ export const api = async (path, { method = 'GET', body, businessId, idempotencyK
   return payload.data ?? payload;
 };
 
-/** Download a file the API produces (a CSV export) under the person's own session. */
-export const downloadFile = async (path, filename) => {
+const fetchBlob = async (path) => {
   const headers = { ...APP_HEADER };
   const token = getToken(); if (token) headers.Authorization = `Bearer ${token}`;
   const scope = getBusinessId(); if (scope) headers['X-Business-Id'] = String(scope);
   const outlet = getBranchId(); if (outlet) headers['X-Branch-Id'] = outlet;
   const response = await fetch(`/api${path}`, { headers });
   if (!response.ok) { const payload = await response.json().catch(() => ({})); throw new ApiError(payload.message || 'Could not download that', response.status); }
-  const url = URL.createObjectURL(await response.blob());
+  return response.blob();
+};
+
+const saveBlob = (blob, filename) => {
+  const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove();
   URL.revokeObjectURL(url);
+};
+
+/** Download a file the API produces (a CSV export) under the person's own session. */
+export const downloadFile = async (path, filename) => saveBlob(await fetchBlob(path), filename);
+
+/** Hand a file the API produces to the phone's share sheet (WhatsApp is in it, with the file attached). Where the browser cannot share files it downloads the file instead and returns false. */
+export const shareFile = async (path, filename, text) => {
+  const blob = await fetchBlob(path);
+  const file = new File([blob], filename, { type: blob.type });
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], text }); return true; } catch (e) { if (e?.name === 'AbortError') return true; }
+  }
+  saveBlob(blob, filename);
+  return false;
 };
 
 /* Plans still quote prices in paise (see backend/src/config/database.js) —

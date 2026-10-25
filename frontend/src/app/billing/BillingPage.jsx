@@ -312,7 +312,7 @@ const OrderBillLine = ({ line, onQty }) => {
 const BillingPage = () => {
   const tr = useT();
   const dialog = useDialog();
-  const { business, outletId, can } = useAuth();
+  const { business, outletId, can, hasFeature } = useAuth();
   const navigate = useNavigate();
   const searchRef = useRef(null);
 
@@ -322,6 +322,7 @@ const BillingPage = () => {
   const [cart, setCart] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [customerId, setCustomerId] = useState('');
+  const [sendWa, setSendWa] = useState(true);   // the bill goes to the customer on WhatsApp unless this is unticked (plans with messaging only)
   const [customerName, setCustomerName] = useState('');
   const [customerOpen, setCustomerOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
@@ -624,7 +625,7 @@ const BillingPage = () => {
     setCart([]); setCustomerId(''); setCustomerName(''); setCard(null); setPointsInfo(null); setRedeem(''); setCustomerOpen(false); setInvoiceDiscount(''); setCouponCode(''); setCouponInfo(null); setCouponError('');
     setNotes(''); setDispatch({}); setLevies({}); setExtrasOpen(false); setReceived(''); setCardRef(''); setMethod('CASH'); setRoom(null); setConfirmation(null); setChange(0); setError(''); setQuery('');
     setSplit(false); setParts([]); setHoldOpen(false); setHoldLabel(''); setCollecting(null);
-    setOrderId(null); setOrder(null); setExchange(null); setPromo({});
+    setSendWa(true); setOrderId(null); setOrder(null); setExchange(null); setPromo({});
     setTimeout(() => searchRef.current?.focus(), 0);
   };
 
@@ -651,6 +652,7 @@ const BillingPage = () => {
         ? { payments: parts.map((p, i) => ({ method: p.method, amount: i === parts.length - 1 && p.amount === '' ? 'REST' : Number(p.amount), ...cardSlip(p.method, p.reference) })) }
         : { payment: payLater || upiQr ? undefined : { method, amount: amount ?? 'FULL', ...cardSlip(method, cardRef) } };
       const extras = {
+        send_whatsapp: sendWa ? undefined : false,
         discount: Number(invoiceDiscount) || undefined,
         coupon_code: couponCode.trim() || undefined,
         redeem_points: Number(redeem) > 0 ? Number(redeem) : undefined,
@@ -1216,6 +1218,13 @@ const BillingPage = () => {
             <Split aria-hidden="true" className="h-3.5 w-3.5" />{tr('Split between payment methods')}
           </button>
           </>
+          )}
+
+          {hasFeature('messaging') && customerId && (
+            <label className="pos-gap mt-2 flex items-center gap-2 rounded-lg border border-line px-2.5 py-1.5 text-caption font-semibold text-ink-900">
+              <input type="checkbox" checked={sendWa} onChange={(e) => setSendWa(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--color-brand-500)] pointer-coarse:h-5 pointer-coarse:w-5" />
+              {tr('Send the bill on WhatsApp')}
+            </label>
           )}
 
           {restaurant && (!orderMode || orderLines.some((l) => l.pending)) && (

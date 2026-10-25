@@ -31,6 +31,7 @@ import { CouponError, validateCoupon } from './coupons.js';
 import { consumptionPerUnit, loadRecipes } from './recipes.js';
 import { comboBlocker, comboConsumption, loadCombos } from './combos.js';
 import { afterBill } from './messaging/index.js';
+import { hasPlanFeature } from './planFeatures.js';
 import { PointsError, addEntry, earnFor, getPoints, redemption, standing, tierFor } from './points.js';
 import { spend as spendWallet } from './gaming/wallet.js';
 import { checkCredit as partsCredit, fulfilForSale, reservedMap, tradePrices } from './autoparts/sales.js';
@@ -613,5 +614,6 @@ export const recordInvoiceCreated = (req, invoice) => {
   const offline = req.get?.('X-Offline-Sale') === '1' || req.headers?.['x-offline-sale'] === '1';
   recordAudit(req, { action: 'invoice.created', resource_type: 'invoice', resource_id: invoice.invoice_id, metadata: { total: invoice.total, ...(offline ? { offline: true, claimed_date: req.get?.('X-Sale-Date') || req.headers?.['x-sale-date'] || null } : {}) } });
   recordEvent('invoice_created', { userId: req.auth.userId, businessId: req.tenant.businessId, properties: { total: invoice.total } });
-  afterBill(req.tenant.businessId, invoice.invoice_id);   // the customer's copy and loyalty nudge, when messaging is on
+  // the customer's copy and loyalty nudge: only on a plan with messaging, and not when this bill was ticked "don't send" (send_whatsapp: false)
+  if (hasPlanFeature(req.tenant, 'messaging') && req.body?.send_whatsapp !== false) afterBill(req.tenant.businessId, invoice.invoice_id);
 };

@@ -10,7 +10,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Download, Send } from 'lucide-react';
-import { api, downloadFile, formatCurrency } from '../lib/api.js';
+import { api, downloadFile, shareFile, formatCurrency } from '../lib/api.js';
 import { localISO } from '../lib/dates.js';
 import { formatDate } from '../lib/display.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -1325,8 +1325,10 @@ const PartyItemsReport = ({ period }) => {
 
 const AccountantPack = ({ period }) => {
   const tr = useT();
+  const { hasFeature } = useAuth();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState(() => { try { return localStorage.getItem('flowxp.ca.phone') || ''; } catch { return ''; } });
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
@@ -1339,6 +1341,20 @@ const AccountantPack = ({ period }) => {
     setBusy('download'); setError(''); setNote('');
     try { await downloadFile(`/reports/accountant-pack?${range}`, `accountant-pack-${period.from}-to-${period.to}.zip`); }
     catch (caught) { setError(caught.message); } finally { setBusy(''); }
+  };
+  // WhatsApp: the phone's share sheet attaches the ZIP; where the browser cannot, the ZIP downloads and WhatsApp opens on the accountant's number to attach it
+  const whatsapp = async () => {
+    setBusy('whatsapp'); setError(''); setNote('');
+    const name = `accountant-pack-${period.from}-to-${period.to}.zip`;
+    const text = `${tr('Accounts')} ${period.from} – ${period.to}`;
+    try {
+      if (!(await shareFile(`/reports/accountant-pack?${range}`, name, text))) {
+        const digits = phone.replace(/\D/g, '');
+        window.open(`https://wa.me/${digits.length === 10 ? `91${digits}` : digits}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+        setNote(tr('The file is downloaded. Attach it in the WhatsApp chat that opened.'));
+      }
+      if (phone) { try { localStorage.setItem('flowxp.ca.phone', phone); } catch { /* the number is just a convenience */ } }
+    } catch (caught) { setError(caught.message); } finally { setBusy(''); }
   };
   const send = async (e) => {
     e.preventDefault(); setBusy('email'); setError(''); setNote('');
@@ -1360,6 +1376,12 @@ const AccountantPack = ({ period }) => {
               <Input type="email" aria-label={tr('Accountant email')} placeholder={tr('Accountant email')} value={email} onChange={(e) => setEmail(e.target.value)} className="min-w-56 flex-1" required />
               <Button type="submit" variant="secondary" disabled={Boolean(busy)}><Send aria-hidden="true" className="h-4 w-4" />{busy === 'email' ? tr('Thinking…') : tr('Email')}</Button>
             </form>
+            {hasFeature('messaging') && (
+              <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
+                <Input type="tel" inputMode="tel" aria-label={tr('Accountant WhatsApp number')} placeholder={tr('Accountant WhatsApp number')} value={phone} onChange={(e) => setPhone(e.target.value)} className="min-w-56 flex-1" />
+                <Button variant="secondary" onClick={whatsapp} disabled={Boolean(busy)}><Send aria-hidden="true" className="h-4 w-4" />{busy === 'whatsapp' ? tr('Thinking…') : tr('WhatsApp')}</Button>
+              </div>
+            )}
           </div>
         </Modal>
       )}
