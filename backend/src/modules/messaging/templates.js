@@ -12,7 +12,10 @@
 export const TEMPLATES = {
   BILL: {
     name: 'flowxp_bill', promo: false,
-    vars: ['name', 'business', 'number', 'total', 'link'],
+    vars: ['name', 'business', 'number', 'total'],   // the four values in the WhatsApp message body
+    urlButton: 'token',                              // and the "View Bill" button, whose address in Meta is https://YOUR-DOMAIN/bill/{{1}}: {{1}} is the bill's link token
+    also: ['link'],                                  // the whole link, for the recorded and SMS wording
+    body: (p) => `Hi ${p.name}, thank you for visiting ${p.business}! Your bill ${p.number} is ${p.total}. Tap View Bill to see it. Thank you for your business.`,
     text: (p) => `Hi ${p.name}, thank you for visiting ${p.business}! Your bill ${p.number} is ${p.total}. View it here: ${p.link} Thank you for your business.`
   },
   RESERVATION: {
@@ -191,13 +194,13 @@ export const KINDS = Object.keys(TEMPLATES);
 export const render = (kind, values) => {
   const t = TEMPLATES[kind];
   if (!t) throw new Error(`Unknown message kind ${kind}`);
-  for (const v of t.vars) if (values[v] == null || String(values[v]).trim() === '') throw new Error(`Message ${kind} needs ${v}`);
-  return { text: t.text(values), promo: t.promo, template: { name: t.name, params: t.vars.map((v) => String(values[v])) } };
+  for (const v of [...t.vars, ...(t.urlButton ? [t.urlButton] : []), ...(t.also || [])]) if (values[v] == null || String(values[v]).trim() === '') throw new Error(`Message ${kind} needs ${v}`);
+  return { text: t.text(values), promo: t.promo, template: { name: t.name, params: t.vars.map((v) => String(values[v])), ...(t.urlButton ? { button: String(values[t.urlButton]) } : {}) } };
 };
 
 /** The template as the owner pastes it into Meta: variables as {{1}}, {{2}}... */
 export const metaBody = (kind) => {
   const t = TEMPLATES[kind];
   const placeholders = Object.fromEntries(t.vars.map((v, i) => [v, `{{${i + 1}}}`]));
-  return t.text(placeholders);
+  return (t.body || t.text)(placeholders);
 };

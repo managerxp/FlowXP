@@ -109,7 +109,7 @@ export const sendBill = async (db, { businessId, invoiceId, phone = null, create
   const link = await shareLink(db, inv.invoice_id);
   return send(db, {
     businessId, branchId: inv.branch_id, customerId: inv.customer_id, phone: to, kind: 'BILL', createdBy,
-    values: { name: inv.customer_name || 'there', business: inv.business_name, number: inv.invoice_number, total: money(inv.total_paise), link },
+    values: { name: inv.customer_name || 'there', business: inv.business_name, number: inv.invoice_number, total: money(inv.total_paise), link, token: link.split('/').pop() },
     related: { type: 'invoice', id: inv.invoice_id }
   });
 };

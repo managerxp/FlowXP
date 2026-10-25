@@ -24,9 +24,9 @@ const until = async (check, ms = 10000) => { const end = Date.now() + ms; while 
 /* ── pure ───────────────────────────────────────────────────────────────── */
 
 test('templates fill their variables, and refuse a missing one', () => {
-  const m = render('BILL', { name: 'Asha', business: 'Spice Hub', number: 'INV-0007', total: '₹450', link: 'https://x.test/bill/abc' });
+  const m = render('BILL', { name: 'Asha', business: 'Spice Hub', number: 'INV-0007', total: '₹450', link: 'https://x.test/bill/abc', token: 'abc' });
   assert.match(m.text, /Asha.*Spice Hub.*INV-0007.*₹450.*https:\/\/x\.test\/bill\/abc/);
-  assert.deepEqual(m.template, { name: 'flowxp_bill', params: ['Asha', 'Spice Hub', 'INV-0007', '₹450', 'https://x.test/bill/abc'] });
+  assert.deepEqual(m.template, { name: 'flowxp_bill', params: ['Asha', 'Spice Hub', 'INV-0007', '₹450'], button: 'abc' }, 'four values in the body, and the link token for the View Bill button');
   assert.equal(m.promo, false);
   assert.throws(() => render('BILL', { name: 'Asha' }), /needs business/);
   assert.throws(() => render('NOPE', {}), /Unknown message kind/);
@@ -169,7 +169,7 @@ test('offers and reminders never reach someone who opted out; bills still do', {
   assert.equal((await B.call(messaging.setOptOut, { params: { id: A.ravi }, body: { opt_out: true } })).code, 404);
   const offer = await mod.send(pool, { businessId: A.biz, customerId: A.ravi, phone: '9876500001', kind: 'OFFER', values: { name: 'Ravi', business: 'a', offer: '10% off' } });
   assert.deepEqual(offer, { skipped: 'OPTED_OUT' });
-  const bill = await mod.send(pool, { businessId: A.biz, customerId: A.ravi, phone: '9876500001', kind: 'BILL', values: { name: 'Ravi', business: 'a', number: 'X', total: '₹1', link: 'l' } });
+  const bill = await mod.send(pool, { businessId: A.biz, customerId: A.ravi, phone: '9876500001', kind: 'BILL', values: { name: 'Ravi', business: 'a', number: 'X', total: '₹1', link: 'https://x.test/bill/l', token: 'l' } });
   assert.equal(bill.status, 'SENT');
   await A.call(messaging.setOptOut, { params: { id: A.ravi }, body: { opt_out: false } });
 });
@@ -271,5 +271,6 @@ test('the log is per business and can be filtered', { skip }, async () => {
   assert.ok(failed.every((m) => m.status === 'FAILED'));
   const templates = (await A.call(messaging.templates)).body.data;
   assert.equal(templates.length, Object.keys(TEMPLATES).length);
-  assert.match(templates.find((t) => t.kind === 'BILL').body, /\{\{5\}\}/);
+  assert.match(templates.find((t) => t.kind === 'BILL').body, /\{\{4\}\}/);
+  assert.doesNotMatch(templates.find((t) => t.kind === 'BILL').body, /\{\{5\}\}/, 'the link is the button now, not a fifth variable');
 });

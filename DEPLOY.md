@@ -201,3 +201,15 @@ Meta calls back `https://YOUR-DOMAIN/api/webhooks/whatsapp` with delivery, read 
 3. In the Meta app: WhatsApp, Configuration, Webhook: Callback URL `https://YOUR-DOMAIN/api/webhooks/whatsapp`, the same verify token, then **Verify and save**, then subscribe to the **messages** field.
 
 A callback that is not signed with the app secret is refused (401), and nothing is accepted while no secret is set.
+
+### The bill template (with a View Bill button)
+
+In WhatsApp Manager, Message templates, Create template: category **Utility**, name **flowxp_bill**, language English.
+
+- **Body** (4 variables, no link in the text):
+  `Hi {{1}}, thank you for visiting {{2}}! Your bill {{3}} is {{4}}. Tap View Bill to see it. Thank you for your business.`
+  Samples: `Asha`, `Sharma Auto Parts`, `INV-0007`, `₹1,203.00`.
+- **Button**: Call to action, Visit website, button text `View Bill`, URL type **Dynamic**, website URL `https://YOUR-DOMAIN/bill/{{1}}`, sample `https://YOUR-DOMAIN/bill/abc123`.
+- Set a custom validity period (the longest allowed), so a bill is not dropped when the phone is off for a few minutes.
+
+FlowXP sends the four body values and the bill's link token for the button. If the template in Meta differs (a link in the body, or no button), the send fails with a parameter-count error.
