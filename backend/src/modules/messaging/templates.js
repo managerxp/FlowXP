@@ -175,6 +175,12 @@ export const TEMPLATES = {
     vars: ['name', 'business', 'code'],
     text: (p) => `Welcome to ${p.business}, ${p.name}! Your member code is ${p.code}. We are glad to have you.`
   },
+  GYM_SUBSCRIBED: {
+    name: 'flowxp_gym_subscribed', promo: false,
+    vars: ['name', 'business', 'plan', 'start', 'end'],
+    body: (p) => `Hi ${p.name},\n\nYour membership at *_${p.business}_* is confirmed.\n\n*Plan:* ${p.plan}\n*Started on:* ${p.start}\n*Ends on:* ${p.end}\n\nThank you for joining us. See you at the gym.`,
+    text: (p) => `Hi ${p.name}, your ${p.plan} membership at ${p.business} is confirmed. It started on ${p.start} and ends on ${p.end}. Thank you for joining us. See you at the gym.`
+  },
   GYM_EXPIRY: {
     name: 'flowxp_gym_expiry', promo: false,
     vars: ['name', 'business', 'plan', 'date'],

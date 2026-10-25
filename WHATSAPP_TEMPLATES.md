@@ -289,6 +289,28 @@ Welcome to {{2}}, {{1}}! Your member code is {{3}}. We are glad to have you.
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} code = `GYM-0042`
 
+### `flowxp_gym_subscribed` (GYM_SUBSCRIBED)
+
+**Category:** Utility
+
+**Body:**
+
+```
+Hi {{1}},
+
+Your membership at *_{{2}}_* is confirmed.
+
+*Plan:* {{3}}
+*Started on:* {{4}}
+*Ends on:* {{5}}
+
+Thank you for joining us. See you at the gym.
+```
+
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} plan = `Quarterly Plan`, {{4}} start = `01 Sep 2026`, {{5}} end = `30 Nov 2026`
+
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
+
 ### `flowxp_gym_expiry` (GYM_EXPIRY)
 
 **Category:** Utility

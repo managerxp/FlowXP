@@ -12,7 +12,7 @@ import * as members from '../modules/gym/members.js';
 import * as memberships from '../modules/gym/memberships.js';
 import * as credentials from '../modules/gym/credentials.js';
 import { endMemberSessions } from '../modules/gym/portal.js';
-import { sendWelcome } from '../modules/gym/automation.js';
+import { sendWelcome, sendSubscribed } from '../modules/gym/automation.js';
 import { GymError, audit, inTx, ok, page, wrapAll } from '../modules/gym/common.js';
 
 const id = (req, name = 'id') => { const n = Number(req.params[name]); if (!Number.isInteger(n) || n <= 0) throw new GymError(404, 'Not found'); return n; };
@@ -111,6 +111,7 @@ const sell = async (req, res) => {
   if (sold.invoice) recordInvoiceCreated(req, sold.invoice);
   audit(req, 'gym.membership_sold', 'gym_membership', sold.membership_id, null, { member_id: memberId, start: sold.start_date, end: sold.end_date, invoice_id: sold.invoice?.invoice_id ?? null });
   ok(res, sold, 201);
+  sendSubscribed(req.tenant, sold.membership_id);
 };
 
 /** A membership by id, but only if its member is visible to this viewer. */
@@ -128,6 +129,7 @@ const renew = async (req, res) => {
   if (sold.invoice) recordInvoiceCreated(req, sold.invoice);
   audit(req, 'gym.membership_renewed', 'gym_membership', sold.membership_id, null, { renewed_from: membershipId, invoice_id: sold.invoice?.invoice_id ?? null });
   ok(res, sold, 201);
+  sendSubscribed(req.tenant, sold.membership_id);
 };
 
 const changePlan = async (req, res) => {
@@ -136,6 +138,7 @@ const changePlan = async (req, res) => {
   if (sold.invoice) recordInvoiceCreated(req, sold.invoice);
   audit(req, 'gym.membership_plan_changed', 'gym_membership', membershipId, null, { new_membership_id: sold.membership_id, credit: sold.credit_paise / 100 });
   ok(res, sold, 201);
+  sendSubscribed(req.tenant, sold.membership_id);
 };
 
 const freeze = async (req, res) => {

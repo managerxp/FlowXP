@@ -461,6 +461,7 @@ test('payment reminders repeat on a schedule, and "we miss you" only goes to mem
 test('a welcome is sent once after a registration; a birthday pays its points once a year', { skip }, async () => {
   const G = await makeGym(pool, 'welcome');
   await channelOn(G);
+  await automation.saveAutomation(pool, G.businessId, 'WELCOME', { is_enabled: true });   // off unless the gym turns it on
   const before = messagesTo('GYM_WELCOME').length;
   const m = ok(await G.call(membersApi.create, { body: { name: 'Newcomer', phone: '9600003001', dob: `1990-${TODAY.slice(5)}` } }), 201);
   await until(() => messagesTo('GYM_WELCOME').length > before);
@@ -482,7 +483,8 @@ test('the reminder settings are checked, and only a manager can change them', { 
   const G = await makeGym(pool, 'cfg');
   const owner = G.tenantFor('OWNER');
   const list = ok(await G.call(api.automations, {}, owner));
-  assert.ok(list.find((a) => a.key === 'WELCOME').is_enabled, 'the welcome is on by default');
+  assert.ok(list.find((a) => a.key === 'SUBSCRIBED').is_enabled, 'the subscription confirmation is on by default');
+  assert.equal(list.find((a) => a.key === 'WELCOME').is_enabled, false);
   assert.equal(list.find((a) => a.key === 'EXPIRY_REMINDER').is_enabled, false);
   fails(await G.call(api.putAutomation, { params: { key: 'EXPIRY_REMINDER' }, body: { is_enabled: true, config: { days_before: 0 } } }, owner), 400);
   fails(await G.call(api.putAutomation, { params: { key: 'NOPE' }, body: {} }, owner), 404);
@@ -544,4 +546,19 @@ test('the start-of-month reminder goes once, on the chosen day, to members whose
   await automation.runBusiness(G.businessId, { now: next });
   await until(() => messagesTo('GYM_MONTH_START').length >= before + 3);
   assert.ok(messagesTo('GYM_MONTH_START').slice(before).some((m) => m.to === '9600002004'), 'next month it is that member\'s turn');
+});
+
+test('selling a membership tells the member the plan and the dates it starts and ends, once', { skip }, async () => {
+  const G = await makeGym(pool, 'subscribed');
+  await channelOn(G);
+  const plan = await addPlan(pool, G, { price: 1000, tax: 18 });
+  const m = await reg(G, { name: 'Subscriber', phone: '9600004001' });
+  const before = messagesTo('GYM_SUBSCRIBED').length;
+  const s = await sell(G, m.member_id, plan);
+  await until(() => messagesTo('GYM_SUBSCRIBED').length > before);
+  const text = messagesTo('GYM_SUBSCRIBED').at(-1).text;
+  assert.match(text, /Hi Subscriber, your .* membership at .* is confirmed\. It started on .* and ends on .*\./);
+  await automation.sendSubscribed(G.tenantFor('OWNER'), s.membership_id);
+  await new Promise((r) => setTimeout(r, 100));
+  assert.equal(messagesTo('GYM_SUBSCRIBED').length, before + 1, 'not twice for the same membership');
 });

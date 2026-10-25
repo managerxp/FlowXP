@@ -11,9 +11,11 @@ import { registerScan } from '../jobs.js';
 import { send, getSettings as getMessagingSettings } from '../messaging/index.js';
 import { awardBirthday, getRules, sweepExpired } from './rewards.js';
 import { addDays, bool, inTx, int, localParts, SQL_PHONE_KEY } from './common.js';
+import { hasPlanFeature } from '../planFeatures.js';
 
 export const AUTOMATIONS = {
-  WELCOME: { label: 'Welcome message', description: 'Greet a new member with their member number.', default_on: true, config: {} },
+  SUBSCRIBED: { label: 'Subscription confirmation', description: 'When a membership is sold or renewed, tell the member the plan and the dates it starts and ends.', default_on: true, config: {} },
+  WELCOME: { label: 'Welcome message', description: 'Greet a new member with their member number.', default_on: false, config: {} },
   EXPIRY_REMINDER: { label: 'Membership ending soon', description: 'Remind a member before their membership ends, unless they have already renewed.', default_on: false, config: { days_before: 7 } },
   MONTH_START: { label: 'Start-of-month reminder', description: 'On one day each month (the 1st by default), remind every member whose membership ends this month, with the renewal amount. Members who already renewed are left out.', default_on: false, config: { day: 1 } },
   EXPIRED_NOTICE: { label: 'Membership ended', description: 'Tell a member the day after their membership ended, if they have not renewed.', default_on: false, config: {} },
@@ -160,6 +162,25 @@ export const sendWelcome = async (businessId, memberId) => {
     if (!await claim(pool, { businessId, key: 'WELCOME', ref: `welcome:${memberId}`, memberId, date })) return;
     await deliver(pool, { businessId, branchId: m.branch_id, customerId: m.customer_id, phone: m.phone, kind: 'GYM_WELCOME', memberId, values: { name: m.name, business: m.business, code: m.member_code } });
   } catch (error) { console.error('[gym] welcome failed:', error.message); }
+};
+
+/** A membership was just sold or renewed: tell the member the plan and the dates. Never throws; only on a plan with messaging and a channel that is on. */
+export const sendSubscribed = async (tenant, membershipId) => {
+  try {
+    if (!hasPlanFeature(tenant, 'messaging')) return;
+    const businessId = tenant.businessId;
+    const auto = (await getAutomations(pool, businessId)).find((a) => a.key === 'SUBSCRIBED');
+    if (!auto?.is_enabled) return;
+    const m = (await pool.query(
+      `SELECT ${PEOPLE}, ms.plan_name, ms.start_date::text AS start_date, ms.end_date::text AS end_date, b.name AS business
+         FROM gym_memberships ms JOIN ${FROM} ON gm.member_id = ms.member_id JOIN businesses b ON b.business_id = ms.business_id
+        WHERE ms.membership_id = $1 AND ms.business_id = $2 AND ms.kind = 'MEMBERSHIP'`, [membershipId, businessId])).rows[0];
+    if (!m?.phone) return;
+    const { date } = await localParts(pool, businessId);
+    if (!await claim(pool, { businessId, key: 'SUBSCRIBED', ref: `subscribed:${membershipId}`, memberId: m.member_id, date })) return;
+    await deliver(pool, { businessId, branchId: m.branch_id, customerId: m.customer_id, phone: m.phone, kind: 'GYM_SUBSCRIBED', memberId: m.member_id,
+      values: { name: m.name, business: m.business, plan: m.plan_name, start: dateText(m.start_date), end: dateText(m.end_date) } });
+  } catch (error) { console.error('[gym] subscription message failed:', error.message); }
 };
 
 /* the worker's scan: every gym, at most every five minutes */
