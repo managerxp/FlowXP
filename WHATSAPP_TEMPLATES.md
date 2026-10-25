@@ -275,7 +275,7 @@ Hi {{1}}, a gentle reminder that {{4}} is still due on bill {{3}} at {{2}}. Than
 Your {{1}} sign-in code is {{2}}. It works for 10 minutes. Do not share it with anyone.
 ```
 
-**Samples:** {{1}} business = `Red Oven Pizza House`, {{2}} code = `GYM-0042`
+**Samples:** {{1}} business = `Iron House Fitness`, {{2}} code = `GYM-0042`
 
 ### `flowxp_gym_welcome` (GYM_WELCOME)
 
@@ -287,7 +287,7 @@ Your {{1}} sign-in code is {{2}}. It works for 10 minutes. Do not share it with 
 Welcome to {{2}}, {{1}}! Your member code is {{3}}. We are glad to have you.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} code = `GYM-0042`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} code = `GYM-0042`
 
 ### `flowxp_gym_expiry` (GYM_EXPIRY)
 
@@ -296,10 +296,21 @@ Welcome to {{2}}, {{1}}! Your member code is {{3}}. We are glad to have you.
 **Body:**
 
 ```
-Hi {{1}}, your {{3}} membership at {{2}} ends on {{4}}. Renew at the desk to keep training without a break.
+Hi {{1}},
+
+Your membership at *_{{2}}_* is ending soon.
+
+*Plan:* {{3}}
+*Ends on:* {{4}}
+
+Renew at the desk to keep training without a break.
+
+Thank you for training with us.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} plan = `Monthly`, {{4}} date = `22 Oct 2026`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} plan = `Quarterly Plan`, {{4}} date = `30 Nov 2026`
+
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
 
 ### `flowxp_gym_month_start` (GYM_MONTH_START)
 
@@ -308,10 +319,22 @@ Hi {{1}}, your {{3}} membership at {{2}} ends on {{4}}. Renew at the desk to kee
 **Body:**
 
 ```
-Hi {{1}}, a new month begins at {{2}}. Your {{3}} membership ends on {{4}}. Renewal is {{5}}. Please renew at the desk to keep training without a break. Thank you.
+Hi {{1}},
+
+A new month begins at *_{{2}}_*. Here is your membership renewal.
+
+*Plan:* {{3}}
+*Ends on:* {{4}}
+*Renewal amount:* {{5}}
+
+Please renew at the desk to keep training without a break.
+
+Thank you for training with us.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} plan = `Monthly`, {{4}} date = `22 Oct 2026`, {{5}} amount = `₹1,500`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} plan = `Quarterly Plan`, {{4}} date = `30 Nov 2026`, {{5}} amount = `₹4,500`
+
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
 
 ### `flowxp_gym_expired` (GYM_EXPIRED)
 
@@ -320,10 +343,21 @@ Hi {{1}}, a new month begins at {{2}}. Your {{3}} membership ends on {{4}}. Rene
 **Body:**
 
 ```
-Hi {{1}}, your {{3}} membership at {{2}} ended on {{4}}. Renew at the desk when you are ready to come back.
+Hi {{1}},
+
+Your membership at *_{{2}}_* has ended.
+
+*Plan:* {{3}}
+*Ended on:* {{4}}
+
+Renew at the desk whenever you are ready to come back.
+
+We would be glad to see you again.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} plan = `Monthly`, {{4}} date = `22 Oct 2026`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} plan = `Quarterly Plan`, {{4}} date = `30 Nov 2026`
+
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
 
 ### `flowxp_gym_payment_due` (GYM_PAYMENT_DUE)
 
@@ -332,10 +366,21 @@ Hi {{1}}, your {{3}} membership at {{2}} ended on {{4}}. Renew at the desk when 
 **Body:**
 
 ```
-Hi {{1}}, {{4}} is still due on your {{3}} membership at {{2}}. Please pay at the desk to keep your access.
+Hi {{1}},
+
+This is a payment reminder from *_{{2}}_*.
+
+*Plan:* {{3}}
+*Amount due:* {{4}}
+
+Please pay at the desk to keep your access.
+
+Thank you for your support.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} plan = `Monthly`, {{4}} amount = `₹1,500`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} plan = `Quarterly Plan`, {{4}} amount = `₹4,500`
+
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
 
 ### `flowxp_gym_class` (GYM_CLASS)
 
@@ -347,7 +392,7 @@ Hi {{1}}, {{4}} is still due on your {{3}} membership at {{2}}. Please pay at th
 Hi {{1}}, a reminder: {{3}} at {{2}} on {{4}}. See you there.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} class = `Morning yoga`, {{4}} when = `Sat 24 Oct, 6:30 pm`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} class = `Morning yoga`, {{4}} when = `Sat 24 Oct, 6:30 pm`
 
 ### `flowxp_gym_reward` (GYM_REWARD)
 
@@ -359,7 +404,7 @@ Hi {{1}}, a reminder: {{3}} at {{2}} on {{4}}. See you there.
 Hi {{1}}, you now have {{3}} reward points at {{2}}. Ask at the desk what they can get you.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} points = `240`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} points = `240`
 
 ### `flowxp_gym_inactive` (GYM_INACTIVE)
 
@@ -371,7 +416,7 @@ Hi {{1}}, you now have {{3}} reward points at {{2}}. Ask at the desk what they c
 Hi {{1}}, we have not seen you at {{2}} for {{3}} days. We would love to have you back! Reply STOP to opt out.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} days = `21`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} days = `21`
 
 ## Auto parts and garages
 

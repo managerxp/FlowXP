@@ -43,6 +43,16 @@ test('the closing line of a bill: the shop\'s own words, else one for its kind o
   for (const type of ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'HOTEL', 'GYM', 'SERVICES', 'ELECTRONICS', 'CLOTHING', 'GAMING_CAFE', 'AUTO_PARTS', 'RACING', 'WHOLESALE', 'DISTRIBUTOR', 'OTHER']) assert.ok(CLOSING[type], `${type} has a closing line`);
 });
 
+test('a Meta body never starts or ends with a variable, and the gym subscription and payment reminders carry labels', async () => {
+  const { TEMPLATES, metaBody } = await import('../src/modules/messaging/templates.js');
+  for (const kind of Object.keys(TEMPLATES)) {
+    const b = metaBody(kind);
+    assert.ok(!/^\{\{\d+\}\}/.test(b) && !/\{\{\d+\}\}[.!?\s]*$/.test(b), `${kind} starts or ends with a variable`);
+  }
+  assert.match(metaBody('GYM_MONTH_START'), /\*Renewal amount:\* \{\{5\}\}/);
+  assert.match(metaBody('GYM_PAYMENT_DUE'), /\*Amount due:\* \{\{4\}\}/);
+});
+
 test('the Meta template text uses numbered variables in order', () => {
   assert.equal(metaBody('WAITLIST_READY'), 'Hi {{1}}, your table at {{2}} is ready. Please come to the host desk.');
   for (const kind of Object.keys(TEMPLATES)) assert.match(metaBody(kind), /\{\{1\}\}/);

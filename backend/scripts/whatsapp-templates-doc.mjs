@@ -10,7 +10,8 @@ const SAMPLE = {
 };
 // the receipt's own samples (the same word means something else in a booking)
 const OWN = { name: 'Asha', business: 'Red Oven Pizza House', total: '₹460.00', number: 'INV-2026-00125', when: '22 Oct 2026, 3:45 pm', status: 'Paid in full', closing: 'We hope you enjoyed your meal.' };
-const sampleOf = (kind, v) => (['BILL'].includes(kind) && v in OWN ? OWN[v] : SAMPLE[v] ?? 'Sample');
+const GYM = { business: 'Iron House Fitness', plan: 'Quarterly Plan', date: '30 Nov 2026', amount: '₹4,500' };   // gym wording needs gym-like samples for Meta's review
+const sampleOf = (kind, v) => (kind.startsWith('GYM_') && v in GYM ? GYM[v] : ['BILL'].includes(kind) && v in OWN ? OWN[v] : SAMPLE[v] ?? 'Sample');
 const GROUPS = [
   ['Bills and balances (every kind of business)', (k) => ['BILL', 'BALANCE_DUE', 'REVIEW_REPLY', 'LOYALTY_NEXT', 'OFFER'].includes(k)],
   ['Restaurants and cafés', (k) => k.startsWith('RESERVATION') || k.startsWith('WAITLIST')],
@@ -39,6 +40,7 @@ for (const [title, test] of GROUPS) {
       if (t.urlButtons.length > 1) lines.push('- `Rate Us`: `https://YOUR-DOMAIN/r/{{1}}`, sample `https://YOUR-DOMAIN/r/abc123` (the Google review page of the shop; the bill when the shop has no review link)');
       lines.push('');
     }
+    if (['GYM_EXPIRY', 'GYM_MONTH_START', 'GYM_EXPIRED', 'GYM_PAYMENT_DUE'].includes(kind)) lines.push('**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.', '');
     if (['BILL'].includes(kind)) lines.push('**Header:** none. **Footer:** `Billing powered by FlowXP`. Button texts are free: `View Bill` / `Rate Us` or `View Invoice` / `Rate Your Experience`.', '');
     if (kind === 'BILL') lines.push('One template for every shop. The Rate Us button opens the Google review page the shop saved (Settings, Business details, Google review link), or the bill when there is none.', '');
   }

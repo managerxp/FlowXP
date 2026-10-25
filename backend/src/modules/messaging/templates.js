@@ -178,21 +178,25 @@ export const TEMPLATES = {
   GYM_EXPIRY: {
     name: 'flowxp_gym_expiry', promo: false,
     vars: ['name', 'business', 'plan', 'date'],
+    body: (p) => `Hi ${p.name},\n\nYour membership at *_${p.business}_* is ending soon.\n\n*Plan:* ${p.plan}\n*Ends on:* ${p.date}\n\nRenew at the desk to keep training without a break.\n\nThank you for training with us.`,
     text: (p) => `Hi ${p.name}, your ${p.plan} membership at ${p.business} ends on ${p.date}. Renew at the desk to keep training without a break.`
   },
   GYM_MONTH_START: {
     name: 'flowxp_gym_month_start', promo: false,
     vars: ['name', 'business', 'plan', 'date', 'amount'],
+    body: (p) => `Hi ${p.name},\n\nA new month begins at *_${p.business}_*. Here is your membership renewal.\n\n*Plan:* ${p.plan}\n*Ends on:* ${p.date}\n*Renewal amount:* ${p.amount}\n\nPlease renew at the desk to keep training without a break.\n\nThank you for training with us.`,
     text: (p) => `Hi ${p.name}, a new month begins at ${p.business}. Your ${p.plan} membership ends on ${p.date}. Renewal is ${p.amount}. Please renew at the desk to keep training without a break. Thank you.`
   },
   GYM_EXPIRED: {
     name: 'flowxp_gym_expired', promo: false,
     vars: ['name', 'business', 'plan', 'date'],
+    body: (p) => `Hi ${p.name},\n\nYour membership at *_${p.business}_* has ended.\n\n*Plan:* ${p.plan}\n*Ended on:* ${p.date}\n\nRenew at the desk whenever you are ready to come back.\n\nWe would be glad to see you again.`,
     text: (p) => `Hi ${p.name}, your ${p.plan} membership at ${p.business} ended on ${p.date}. Renew at the desk when you are ready to come back.`
   },
   GYM_PAYMENT_DUE: {
     name: 'flowxp_gym_payment_due', promo: false,
     vars: ['name', 'business', 'plan', 'amount'],
+    body: (p) => `Hi ${p.name},\n\nThis is a payment reminder from *_${p.business}_*.\n\n*Plan:* ${p.plan}\n*Amount due:* ${p.amount}\n\nPlease pay at the desk to keep your access.\n\nThank you for your support.`,
     text: (p) => `Hi ${p.name}, ${p.amount} is still due on your ${p.plan} membership at ${p.business}. Please pay at the desk to keep your access.`
   },
   GYM_CLASS: {
