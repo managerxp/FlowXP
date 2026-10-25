@@ -89,7 +89,7 @@ export const getMessagingSettings = async (req, res) => {
     success: true,
     data: setting?.value || {
       provider: 'log', whatsappToken: '', whatsappPhoneId: '', whatsappLanguage: 'en', whatsappVerifyToken: '', whatsappAppSecret: '',
-      twilioSid: '', twilioToken: '', twilioFrom: '', twilioWhatsappFrom: '', countryCode: '91'
+      twilioSid: '', twilioToken: '', twilioFrom: '', twilioWhatsappFrom: '', countryCode: '91', trialMessageLimit: '5'
     },
     availableProviders: MESSAGING_PROVIDERS
   });
@@ -100,7 +100,8 @@ export const updateMessagingSettings = async (req, res) => {
   if (body.provider !== undefined && !MESSAGING_PROVIDERS.includes(body.provider)) {
     return bad(res, 'Provider must be log, whatsapp_cloud or twilio');
   }
-  const fields = ['provider', 'whatsappToken', 'whatsappPhoneId', 'whatsappLanguage', 'whatsappVerifyToken', 'whatsappAppSecret', 'twilioSid', 'twilioToken', 'twilioFrom', 'twilioWhatsappFrom', 'countryCode'];
+  if (body.trialMessageLimit !== undefined && !/^\d{1,4}$/.test(String(body.trialMessageLimit).trim())) return bad(res, 'The trial message limit is a whole number, 0 or more');
+  const fields = ['provider', 'whatsappToken', 'whatsappPhoneId', 'whatsappLanguage', 'whatsappVerifyToken', 'whatsappAppSecret', 'twilioSid', 'twilioToken', 'twilioFrom', 'twilioWhatsappFrom', 'countryCode', 'trialMessageLimit'];
   const patch = {};
   for (const f of fields) if (body[f] !== undefined) patch[f] = String(body[f]).trim();
 

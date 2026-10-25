@@ -42,6 +42,11 @@ const Settings = () => {
           No messaging service is connected on the server yet, so messages are only recorded as <strong>skipped</strong>. Ask whoever runs the server to set it up (see DEPLOY.md: WhatsApp Cloud API or Twilio).
         </p>
       )}
+      {data.trial && (
+        <p className="rounded-lg bg-brand-50 p-3 text-sm text-ink-700" role="status">
+          Free trial: <strong>{data.trial.used} of {data.trial.limit}</strong> WhatsApp messages used.{data.trial.used >= data.trial.limit ? ' Upgrade to keep sending.' : ''}
+        </p>
+      )}
       <Card className="p-5">
         <Field id="ch" label="Send messages by" hint={provider.connected ? `Connected: ${humanize(provider.name)}` : undefined}>
           <Select id="ch" value={settings.channel} onChange={(e) => save({ channel: e.target.value })}>

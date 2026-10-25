@@ -13,11 +13,25 @@ import { describe, getProgram, isLive, normalisePhone, progressFor } from '../lo
 import { businessToday } from '../../utils/dates.js';
 import { toRupees } from '../../utils/money.js';
 import { deliver } from './provider.js';
+import { getPlatformSetting } from '../platformSettings.js';
 import { TEMPLATES, render } from './templates.js';
 
 export const DEFAULT_SETTINGS = { channel: 'OFF', bill_auto: true, reservation_updates: true, waitlist_updates: true, loyalty_nudge: true, job_updates: true };
 const BOOLEANS = ['bill_auto', 'reservation_updates', 'waitlist_updates', 'loyalty_nudge', 'job_updates'];
 export const CAMPAIGN_LIMIT = 1000;
+export const TRIAL_MESSAGE_LIMIT = 5;   // WhatsApp messages a business on a free trial may send in all; the Super Admin's Settings, Messaging can change it
+// a sign-in code is never counted or held back: the person cannot get in without it
+const FREE_KINDS = ['GYM_OTP'];
+
+/** { used, limit } for a business on a free trial, or null for one that is not (no limit). */
+export const trialUsage = async (db, businessId) => {
+  const b = (await db.query(`SELECT subscription_status FROM businesses WHERE business_id = $1`, [businessId])).rows[0];
+  if (b?.subscription_status !== 'TRIAL') return null;
+  const saved = await getPlatformSetting('messaging').catch(() => null);
+  const n = Number(saved?.value?.trialMessageLimit);
+  const used = (await db.query(`SELECT COUNT(*)::int AS n FROM messages WHERE business_id = $1 AND channel = 'WHATSAPP' AND status IN ('SENT','QUEUED') AND kind <> ALL($2)`, [businessId, FREE_KINDS])).rows[0].n;
+  return { used, limit: Number.isInteger(n) && n >= 0 ? n : TRIAL_MESSAGE_LIMIT };
+};
 
 export const getSettings = async (db, businessId) => {
   const row = (await db.query(`SELECT messaging_settings FROM businesses WHERE business_id = $1`, [businessId])).rows[0];
@@ -49,6 +63,11 @@ export const send = async (db, { businessId, branchId = null, customerId = null,
   if (useChannel === 'OFF') return { skipped: 'OFF' };
   const to = normalisePhone(phone);
   if (!to) return { skipped: 'NO_PHONE' };
+
+  if (useChannel === 'WHATSAPP' && !FREE_KINDS.includes(kind)) {
+    const trial = await trialUsage(db, businessId);
+    if (trial && trial.used >= trial.limit) return { skipped: 'TRIAL_LIMIT' };
+  }
 
   const message = render(kind, values);
   if (message.promo && customerId) {

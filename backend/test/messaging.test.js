@@ -65,7 +65,7 @@ let A; let B;
 const sent = [];
 const makeBusiness = async (label) => {
   const user = (await pool.query(`INSERT INTO users (name, email, password_hash) VALUES ($1,$2,'x') RETURNING user_id`, [label, `${label}@msg.test`])).rows[0];
-  const biz = (await pool.query(`INSERT INTO businesses (name, owner_user_id, business_type) VALUES ($1,$2,'RESTAURANT') RETURNING business_id`, [`${label} Kitchen`, user.user_id])).rows[0];
+  const biz = (await pool.query(`INSERT INTO businesses (name, owner_user_id, business_type, subscription_status) VALUES ($1,$2,'RESTAURANT','ACTIVE') RETURNING business_id`, [`${label} Kitchen`, user.user_id])).rows[0];
   const branchId = (await pool.query(`INSERT INTO branches (business_id, name, is_primary) VALUES ($1,'Main',TRUE) RETURNING branch_id`, [biz.business_id])).rows[0].branch_id;
   const tenant = { businessId: biz.business_id, branchId, scopeBranchId: branchId, role: 'OWNER', permissions: {} };
   const req = (extra = {}) => ({ tenant, auth: { userId: user.user_id }, params: {}, body: {}, query: {}, headers: {}, ip: '127.0.0.1', ...extra });

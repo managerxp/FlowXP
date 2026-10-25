@@ -8,14 +8,14 @@ import { recordAudit } from '../modules/events.js';
 import { branchFilter } from '../utils/scope.js';
 import { channelsAvailable, isConnected, providerName } from '../modules/messaging/provider.js';
 import { KINDS, TEMPLATES, metaBody } from '../modules/messaging/templates.js';
-import { SEGMENTS, audience, balanceShare, billShare, cleanSettings, getSettings, resend, sendBalance, sendBill, startCampaign } from '../modules/messaging/index.js';
+import { SEGMENTS, audience, balanceShare, billShare, cleanSettings, getSettings, resend, sendBalance, sendBill, startCampaign, trialUsage } from '../modules/messaging/index.js';
 
 const bad = (res, message, status = 400) => res.status(status).json({ success: false, message });
 const provider = async () => ({ name: await providerName(), connected: await isConnected(), channels: await channelsAvailable() });
 
 /* GET /api/messaging/settings */
 export const getSettingsHandler = async (req, res) => {
-  res.json({ success: true, data: { settings: await getSettings(pool, req.tenant.businessId), provider: await provider(), segments: SEGMENTS } });
+  res.json({ success: true, data: { settings: await getSettings(pool, req.tenant.businessId), provider: await provider(), segments: SEGMENTS, trial: await trialUsage(pool, req.tenant.businessId) } });
 };
 
 /* PUT /api/messaging/settings */
@@ -25,7 +25,7 @@ export const putSettings = async (req, res) => {
   if (error) return bad(res, error);
   await pool.query(`UPDATE businesses SET messaging_settings = $1 WHERE business_id = $2`, [JSON.stringify(settings), req.tenant.businessId]);
   recordAudit(req, { action: 'messaging.settings_updated', resource_type: 'business', resource_id: req.tenant.businessId, metadata: req.body });
-  res.json({ success: true, data: { settings, provider: await provider(), segments: SEGMENTS } });
+  res.json({ success: true, data: { settings, provider: await provider(), segments: SEGMENTS, trial: await trialUsage(pool, req.tenant.businessId) } });
 };
 
 /* GET /api/messaging/templates — the WhatsApp templates to create once in Meta Business Manager */
@@ -85,6 +85,7 @@ export const sendBalanceHandler = async (req, res) => {
   const r = await sendBalance(pool, { businessId: req.tenant.businessId, customerId: id, createdBy: req.auth.userId });
   if (r.problem) return bad(res, r.problem, r.code);
   if (r.skipped === 'OFF') return bad(res, 'Turn messaging on first (Messaging settings)', 409);
+  if (r.skipped === 'TRIAL_LIMIT') return bad(res, 'Your free trial includes a limited number of WhatsApp messages and they are used up. Upgrade to keep sending.', 402);
   if (r.skipped === 'NO_PHONE') return bad(res, 'This customer has no mobile number to send to');
   recordAudit(req, { action: 'messaging.balance_sent', resource_type: 'customer', resource_id: id, metadata: { status: r.status } });
   res.status(201).json({ success: true, data: r });
@@ -100,6 +101,7 @@ export const sendBillHandler = async (req, res) => {
   const r = await sendBill(pool, { businessId: req.tenant.businessId, invoiceId: id, phone: req.body?.phone || null, createdBy: req.auth.userId });
   if (r.problem) return bad(res, r.problem, r.code);
   if (r.skipped === 'OFF') return bad(res, 'Turn messaging on first (Messaging settings)', 409);
+  if (r.skipped === 'TRIAL_LIMIT') return bad(res, 'Your free trial includes a limited number of WhatsApp messages and they are used up. Upgrade to keep sending.', 402);
   if (r.skipped === 'NO_PHONE') return bad(res, 'Enter a valid 10-digit mobile number');
   recordAudit(req, { action: 'messaging.bill_sent', resource_type: 'invoice', resource_id: id, metadata: { status: r.status } });
   res.status(201).json({ success: true, data: r });

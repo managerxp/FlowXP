@@ -9,7 +9,7 @@ import { recordInvoiceCreated } from '../modules/billing.js';
 
 const id = (req, label = 'Id') => int(req.params.id, label, { min: 1, required: true });
 const uid = (req) => req.auth?.userId ?? req.tenant?.userId ?? null;
-const SKIP_WORDS = { PLAN: 'WhatsApp messages are not part of this plan.', NO_PHONE: 'This customer has no mobile number.', NO_ESTIMATE: 'Add the parts or labour first, so there is an estimate to send.', OFF: 'Messaging is switched off. Choose WhatsApp or SMS under Messaging.', UNKNOWN_EVENT: 'Choose received, estimate or ready.' };
+const SKIP_WORDS = { PLAN: 'WhatsApp messages are not part of this plan.', NO_PHONE: 'This customer has no mobile number.', TRIAL_LIMIT: 'Your free trial includes a limited number of WhatsApp messages and they are used up. Upgrade to keep sending.', NO_ESTIMATE: 'Add the parts or labour first, so there is an estimate to send.', OFF: 'Messaging is switched off. Choose WhatsApp or SMS under Messaging.', UNKNOWN_EVENT: 'Choose received, estimate or ready.' };
 
 export default wrapAll({
   list: async (req, res) => ok(res, await jobs.listJobs(pool, req.tenant, { status: req.query.status, q: req.query.q ? String(req.query.q).trim().slice(0, 60) : null, reg: req.query.reg, customerId: req.query.customer_id, mechanicId: req.query.mechanic_id, ...paging(req.query, { max: 200, fallback: 50 }), like })),

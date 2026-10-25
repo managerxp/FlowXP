@@ -147,6 +147,9 @@ const MessagingSettings = () => {
         <Field id="msg-country" label="Default country code">
           <Input id="msg-country" value={form.countryCode} onChange={(e) => set('countryCode')(e.target.value)} placeholder="91" />
         </Field>
+        <Field id="msg-trial" label="WhatsApp messages in a free trial" hint="The most a business on a free trial can send in all (sign-in codes do not count). 0 stops them entirely.">
+          <Input id="msg-trial" inputMode="numeric" value={form.trialMessageLimit ?? '5'} onChange={(e) => set('trialMessageLimit')(e.target.value)} placeholder="5" />
+        </Field>
       </div>
 
       {provider === 'whatsapp_cloud' && (
