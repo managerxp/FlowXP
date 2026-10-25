@@ -10,15 +10,15 @@
  * `promo` messages (offers, loyalty nudges) are only sent to customers who have not opted out.
  */
 export const TEMPLATES = {
-  /* The bill as a payment receipt: the shop's name as the header, a clear body, a "View Invoice" button (address in Meta: https://YOUR-DOMAIN/bill/{{1}}, {{1}} is the bill's link token)
+  /* The bill as a payment receipt: the shop's name in the body (bold italics), a clear body, a "View Invoice" button (address in Meta: https://YOUR-DOMAIN/bill/{{1}}, {{1}} is the bill's link token)
      and the fixed footer "Billing powered by FlowXP". `status` says Paid in full, Part paid with what is due, or what is due. */
   BILL: {
     name: 'flowxp_payment_receipt', promo: false,
     vars: ['name', 'business', 'total', 'number', 'when', 'status'],   // the six values in the WhatsApp message body
-    headerVar: 'business',                                             // the header is the shop's name
+                                                 // the header is the shop's name
     urlButtons: ['token'],
     also: ['link'],                                                    // the whole link, for the recorded and SMS wording
-    body: (p) => `Hi ${p.name},\n\nThank you for your order at _${p.business}_.\n\nYour bill of _${p.total}_ is ready.\n\n_Invoice No.:_ ${p.number}\n_Date & Time:_ ${p.when}\n_Payment Status:_ ${p.status}\n\nTap View Invoice below to see every item and the GST. We hope to serve you again soon.`,
+    body: (p) => `Hi ${p.name},\n\nThank you for your order at *_${p.business}_*.\n\nYour bill of *_${p.total}_* is ready.\n\n*Invoice No.:* ${p.number}\n*Date & Time:* ${p.when}\n*Payment Status:* ${p.status}\n\nTap View Invoice below to see every item and the GST. We hope to serve you again soon.`,
     text: (p) => `Hi ${p.name}, thank you for your order at ${p.business}. Your bill of ${p.total} is ready. Invoice ${p.number}, ${p.when}. Payment status: ${p.status}. View it here: ${p.link} We hope to serve you again soon.`
   },
   /* The same receipt with a second button, "Rate Your Experience" (address in Meta: https://g.page/r/{{1}}, {{1}} is the end of the shop's own Google review link, like CXXXX/review).
@@ -26,10 +26,10 @@ export const TEMPLATES = {
   BILL_REVIEW: {
     name: 'flowxp_payment_receipt_review', promo: false,
     vars: ['name', 'business', 'total', 'number', 'when', 'status'],
-    headerVar: 'business',
+    
     urlButtons: ['token', 'review'],
     also: ['link'],
-    body: (p) => `Hi ${p.name},\n\nThank you for your order at _${p.business}_.\n\nYour bill of _${p.total}_ is ready.\n\n_Invoice No.:_ ${p.number}\n_Date & Time:_ ${p.when}\n_Payment Status:_ ${p.status}\n\nTap View Invoice below to see every item and the GST. We hope to serve you again soon.`,
+    body: (p) => `Hi ${p.name},\n\nThank you for your order at *_${p.business}_*.\n\nYour bill of *_${p.total}_* is ready.\n\n*Invoice No.:* ${p.number}\n*Date & Time:* ${p.when}\n*Payment Status:* ${p.status}\n\nTap View Invoice below to see every item and the GST. We hope to serve you again soon.`,
     text: (p) => `Hi ${p.name}, thank you for your order at ${p.business}. Your bill of ${p.total} is ready. Invoice ${p.number}, ${p.when}. Payment status: ${p.status}. View it here: ${p.link} We hope to serve you again soon.`
   },
   RESERVATION: {

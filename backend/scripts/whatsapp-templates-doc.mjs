@@ -38,7 +38,7 @@ for (const [title, test] of GROUPS) {
       if (t.urlButtons.includes('review')) lines.push('- `Rate Your Experience`: `https://g.page/r/{{1}}`, sample `https://g.page/r/CabcDEF123/review`');
       lines.push('');
     }
-    if (t.headerVar) lines.push('**Header (text):** `{{1}}`, sample `Red Oven Pizza House` (the shop\'s name). **Footer:** `Billing powered by FlowXP`.', '');
+    if (['BILL', 'BILL_REVIEW'].includes(kind)) lines.push('**Header:** none. **Footer:** `Billing powered by FlowXP`. Button texts are free: `View Bill` / `Rate Us` or `View Invoice` / `Rate Your Experience`.', '');
     if (kind === 'BILL') lines.push('Sent when the shop has no Google review link saved.', '');
     if (kind === 'BILL_REVIEW') lines.push('Sent when the shop has saved a `https://g.page/r/...` review link (Settings, Business details, Google review link). Same words as the receipt above, plus the second button.', '');
   }

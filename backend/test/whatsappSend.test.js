@@ -31,10 +31,9 @@ test('a bill goes out as the approved template with the View Bill button', { ski
     assert.equal(init.headers.authorization, 'Bearer test-token');
     assert.equal(body.to, '919845011122'); assert.equal(body.type, 'template');
     assert.equal(body.template.name, 'flowxp_payment_receipt'); assert.equal(body.template.language.code, 'en');
-    assert.deepEqual(body.template.components[0], { type: 'header', parameters: [{ type: 'text', text: 'Sharma Auto Parts' }] });
-    assert.deepEqual(body.template.components[1], { type: 'body', parameters: ['Asha', 'Sharma Auto Parts', '₹1,203.00', 'INV-0007', '22 Oct 2026, 3:45 pm', 'Paid in full'].map((text) => ({ type: 'text', text })) });
-    assert.deepEqual(body.template.components[2], { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: 'abc123' }] });
-    assert.equal(body.template.components.length, 3);
+    assert.deepEqual(body.template.components[0], { type: 'body', parameters: ['Asha', 'Sharma Auto Parts', '₹1,203.00', 'INV-0007', '22 Oct 2026, 3:45 pm', 'Paid in full'].map((text) => ({ type: 'text', text })) });
+    assert.deepEqual(body.template.components[1], { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: 'abc123' }] });
+    assert.equal(body.template.components.length, 2);
   });
 });
 
@@ -61,10 +60,9 @@ test('a shop with a Google review link sends the bill with a second button; the 
   await withFetch({ json: { messages: [{ id: 'wamid.R1' }] } }, async (calls) => {
     await deliver({ channel: 'WHATSAPP', to: '9845011122', kind: 'BILL_REVIEW', text: m.text, template: m.template });
     const c = calls[0].body.template.components;
-    assert.equal(c.length, 4);
-    assert.deepEqual(c[0], { type: 'header', parameters: [{ type: 'text', text: 'Cafe' }] });
-    assert.deepEqual(c[2], { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: 'tok' }] });
-    assert.deepEqual(c[3], { type: 'button', sub_type: 'url', index: '1', parameters: [{ type: 'text', text: 'CabcDEF123-x/review' }] });
+    assert.equal(c.length, 3);
+    assert.deepEqual(c[1], { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: 'tok' }] });
+    assert.deepEqual(c[2], { type: 'button', sub_type: 'url', index: '1', parameters: [{ type: 'text', text: 'CabcDEF123-x/review' }] });
   });
   assert.throws(() => render('BILL_REVIEW', { name: 'A', business: 'B', number: 'N', when: 'W', total: 'T', status: 'S', link: 'l', token: 't' }), /needs review/);
 });

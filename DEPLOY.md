@@ -206,7 +206,7 @@ A callback that is not signed with the app secret is refused (401), and nothing 
 
 Two templates, created once in WhatsApp Manager (Message templates, Create template). The exact text, samples and buttons are in `WHATSAPP_TEMPLATES.md`, sections `flowxp_payment_receipt` and `flowxp_payment_receipt_review`:
 
-- **flowxp_payment_receipt**: Utility, English. Header `{{1}}` (sample: the shop name), the body with six variables, footer `Billing powered by FlowXP`, one button `View Invoice` (dynamic URL `https://YOUR-DOMAIN/bill/{{1}}`).
+- **flowxp_payment_receipt**: Utility, English. no header, the body with six variables (the shop name and the amount in bold italics, written `*_{{2}}_*`), footer `Billing powered by FlowXP`, one button `View Bill` or `View Invoice` (dynamic URL `https://YOUR-DOMAIN/bill/{{1}}`).
 - **flowxp_payment_receipt_review**: the same, plus a second button `Rate Your Experience` (dynamic URL `https://g.page/r/{{1}}`, sample `https://g.page/r/CabcDEF123/review`).
 - Turn on a custom validity period (the longest allowed) on both.
 

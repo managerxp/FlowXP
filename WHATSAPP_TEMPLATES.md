@@ -17,13 +17,13 @@ Rules Meta enforces: no variable at the very start or end of the body; samples f
 ```
 Hi {{1}},
 
-Thank you for your order at _{{2}}_.
+Thank you for your order at *_{{2}}_*.
 
-Your bill of _{{3}}_ is ready.
+Your bill of *_{{3}}_* is ready.
 
-_Invoice No.:_ {{4}}
-_Date & Time:_ {{5}}
-_Payment Status:_ {{6}}
+*Invoice No.:* {{4}}
+*Date & Time:* {{5}}
+*Payment Status:* {{6}}
 
 Tap View Invoice below to see every item and the GST. We hope to serve you again soon.
 ```
@@ -34,7 +34,7 @@ Tap View Invoice below to see every item and the GST. We hope to serve you again
 
 - `View Invoice`: `https://YOUR-DOMAIN/bill/{{1}}`, sample `https://YOUR-DOMAIN/bill/abc123`
 
-**Header (text):** `{{1}}`, sample `Red Oven Pizza House` (the shop's name). **Footer:** `Billing powered by FlowXP`.
+**Header:** none. **Footer:** `Billing powered by FlowXP`. Button texts are free: `View Bill` / `Rate Us` or `View Invoice` / `Rate Your Experience`.
 
 Sent when the shop has no Google review link saved.
 
@@ -47,13 +47,13 @@ Sent when the shop has no Google review link saved.
 ```
 Hi {{1}},
 
-Thank you for your order at _{{2}}_.
+Thank you for your order at *_{{2}}_*.
 
-Your bill of _{{3}}_ is ready.
+Your bill of *_{{3}}_* is ready.
 
-_Invoice No.:_ {{4}}
-_Date & Time:_ {{5}}
-_Payment Status:_ {{6}}
+*Invoice No.:* {{4}}
+*Date & Time:* {{5}}
+*Payment Status:* {{6}}
 
 Tap View Invoice below to see every item and the GST. We hope to serve you again soon.
 ```
@@ -65,7 +65,7 @@ Tap View Invoice below to see every item and the GST. We hope to serve you again
 - `View Invoice`: `https://YOUR-DOMAIN/bill/{{1}}`, sample `https://YOUR-DOMAIN/bill/abc123`
 - `Rate Your Experience`: `https://g.page/r/{{1}}`, sample `https://g.page/r/CabcDEF123/review`
 
-**Header (text):** `{{1}}`, sample `Red Oven Pizza House` (the shop's name). **Footer:** `Billing powered by FlowXP`.
+**Header:** none. **Footer:** `Billing powered by FlowXP`. Button texts are free: `View Bill` / `Rate Us` or `View Invoice` / `Rate Your Experience`.
 
 Sent when the shop has saved a `https://g.page/r/...` review link (Settings, Business details, Google review link). Same words as the receipt above, plus the second button.
 
