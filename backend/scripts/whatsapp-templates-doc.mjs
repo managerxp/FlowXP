@@ -4,10 +4,13 @@ import fs from 'node:fs';
 import { TEMPLATES, KINDS, metaBody } from '../src/modules/messaging/templates.js';
 
 const SAMPLE = {
-  name: 'Asha', business: 'Sharma Auto Parts', number: 'INV-0007', date: '22 Oct 2026', total: '₹1,203.00', due: '₹0', when: 'Sat 24 Oct, 6:30 pm', party: '4', minutes: '15',
+  name: 'Asha', business: 'Red Oven Pizza House', number: 'INV-2026-00125', date: '22 Oct 2026', when: '22 Oct 2026, 3:45 pm', status: 'Paid in full', total: '₹460.00', due: '₹0', when: 'Sat 24 Oct, 6:30 pm', party: '4', minutes: '15',
   reward: 'free coffee', offer: '10% off this weekend', services: 'Haircut', plan: 'Monthly', amount: '₹1,500', code: 'GYM-0042', class: 'Morning yoga', points: '240', days: '21',
   order: 'SO-0031', invoice: 'INV-0112', vehicle: 'KA01 AB 1234', status: 'out for delivery', reply: 'Thank you for your kind words.', link: 'https://flowxp.in/bill/abc123', token: 'abc123', review: 'CabcDEF123/review'
 };
+// the receipt's own samples (the same word means something else in a booking)
+const OWN = { name: 'Asha', business: 'Red Oven Pizza House', total: '₹460.00', number: 'INV-2026-00125', when: '22 Oct 2026, 3:45 pm', status: 'Paid in full' };
+const sampleOf = (kind, v) => (['BILL', 'BILL_REVIEW'].includes(kind) && v in OWN ? OWN[v] : SAMPLE[v] ?? 'Sample');
 const GROUPS = [
   ['Bills and balances (every kind of business)', (k) => ['BILL', 'BILL_REVIEW', 'BALANCE_DUE', 'REVIEW_REPLY', 'LOYALTY_NEXT', 'OFFER'].includes(k)],
   ['Restaurants and cafés', (k) => k.startsWith('RESERVATION') || k.startsWith('WAITLIST')],
@@ -28,15 +31,16 @@ for (const [title, test] of GROUPS) {
     const t = TEMPLATES[kind];
     const body = metaBody(kind).replace(/\n/g, '\n');
     lines.push(`### \`${t.name}\` (${kind})`, '', `**Category:** ${t.promo ? 'Marketing' : 'Utility'}`, '', '**Body:**', '', '```', body, '```', '');
-    lines.push(`**Samples:** ${t.vars.map((v, i) => `{{${i + 1}}} ${v} = \`${SAMPLE[v] ?? 'Sample'}\``).join(', ')}`, '');
+    lines.push(`**Samples:** ${t.vars.map((v, i) => `{{${i + 1}}} ${v} = \`${sampleOf(kind, v)}\``).join(', ')}`, '');
     if (t.urlButtons) {
       lines.push('**Buttons (Call to action, Visit website, URL type Dynamic):**', '');
-      lines.push(`- \`View Bill\`: \`https://YOUR-DOMAIN/bill/{{1}}\`, sample \`https://YOUR-DOMAIN/bill/abc123\``);
-      if (t.urlButtons.includes('review')) lines.push('- `Rate us on Google`: `https://g.page/r/{{1}}`, sample `https://g.page/r/CabcDEF123/review`');
+      lines.push(`- \`View Invoice\`: \`https://YOUR-DOMAIN/bill/{{1}}\`, sample \`https://YOUR-DOMAIN/bill/abc123\``);
+      if (t.urlButtons.includes('review')) lines.push('- `Rate Your Experience`: `https://g.page/r/{{1}}`, sample `https://g.page/r/CabcDEF123/review`');
       lines.push('');
     }
-    if (kind === 'BILL') lines.push('Header: `Your bill is ready`. Footer: `Powered by FlowXP`. Sent when the shop has no Google review link saved.', '');
-    if (kind === 'BILL_REVIEW') lines.push('Same header and footer. Sent when the shop has saved a `https://g.page/r/...` review link (Settings, Business details, Google review link).', '');
+    if (t.headerVar) lines.push('**Header (text):** `{{1}}`, sample `Red Oven Pizza House` (the shop\'s name). **Footer:** `Billing powered by FlowXP`.', '');
+    if (kind === 'BILL') lines.push('Sent when the shop has no Google review link saved.', '');
+    if (kind === 'BILL_REVIEW') lines.push('Sent when the shop has saved a `https://g.page/r/...` review link (Settings, Business details, Google review link). Same words as the receipt above, plus the second button.', '');
   }
 }
 const rest = KINDS.filter((k) => !shown.has(k));

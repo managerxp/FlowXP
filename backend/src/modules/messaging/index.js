@@ -105,7 +105,7 @@ export const googleReviewPath = (link) => {
 /** Send an invoice to `phone` (default: its customer's). `scope` is a branch filter for the caller's outlet. */
 export const sendBill = async (db, { businessId, invoiceId, phone = null, createdBy = null }) => {
   const inv = (await db.query(
-    `SELECT i.invoice_id, i.invoice_number, i.invoice_date, i.total_paise, i.balance_due_paise, i.branch_id, i.customer_id, c.name AS customer_name, c.phone AS customer_phone,
+    `SELECT i.invoice_id, i.invoice_number, i.invoice_date, to_char(i.created_at AT TIME ZONE COALESCE(b.timezone, 'Asia/Kolkata'), 'DD Mon YYYY, FMHH12:MI am') AS bill_time, i.total_paise, i.balance_due_paise, i.branch_id, i.customer_id, c.name AS customer_name, c.phone AS customer_phone,
             b.name AS business_name, b.google_review_link
      FROM invoices i JOIN businesses b ON b.business_id = i.business_id LEFT JOIN customers c ON c.customer_id = i.customer_id
      WHERE i.invoice_id = $1 AND i.business_id = $2 AND i.status = 'ISSUED'`, [invoiceId, businessId])).rows[0];
@@ -114,11 +114,11 @@ export const sendBill = async (db, { businessId, invoiceId, phone = null, create
   if (!normalisePhone(to)) return { problem: 'This bill has no customer mobile number to send to', code: 400 };
   const link = await shareLink(db, inv.invoice_id);
   const review = googleReviewPath(inv.google_review_link);   // only a g.page/r/ link can be the second button; any other link just means the plain bill
-  const day = inv.invoice_date instanceof Date ? inv.invoice_date.toISOString().slice(0, 10) : String(inv.invoice_date).slice(0, 10);
-  const date = new Date(`${day}T00:00:00Z`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });   // 22 Oct 2026
+  const paid = Number(inv.total_paise) - Number(inv.balance_due_paise);
+  const status = Number(inv.balance_due_paise) <= 0 ? 'Paid in full' : paid > 0 ? `Part paid, ${money(inv.balance_due_paise)} due` : `${money(inv.balance_due_paise)} due`;
   return send(db, {
     businessId, branchId: inv.branch_id, customerId: inv.customer_id, phone: to, kind: review ? 'BILL_REVIEW' : 'BILL', createdBy,
-    values: { name: inv.customer_name || 'there', business: inv.business_name, number: inv.invoice_number, date, total: money(inv.total_paise), due: money(inv.balance_due_paise), link, token: link.split('/').pop(), ...(review ? { review } : {}) },
+    values: { name: inv.customer_name || 'there', business: inv.business_name, number: inv.invoice_number, when: inv.bill_time, total: money(inv.total_paise), status, link, token: link.split('/').pop(), ...(review ? { review } : {}) },
     related: { type: 'invoice', id: inv.invoice_id }
   });
 };

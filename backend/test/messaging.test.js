@@ -24,9 +24,9 @@ const until = async (check, ms = 10000) => { const end = Date.now() + ms; while 
 /* ── pure ───────────────────────────────────────────────────────────────── */
 
 test('templates fill their variables, and refuse a missing one', () => {
-  const m = render('BILL', { name: 'Asha', business: 'Spice Hub', number: 'INV-0007', date: '22 Oct 2026', total: '₹450', due: '₹0', link: 'https://x.test/bill/abc', token: 'abc' });
-  assert.match(m.text, /Asha.*Spice Hub.*INV-0007.*₹450.*https:\/\/x\.test\/bill\/abc/);
-  assert.deepEqual(m.template, { name: 'flowxp_bill', params: ['Asha', 'Spice Hub', 'INV-0007', '22 Oct 2026', '₹450', '₹0'], buttons: ['abc'] }, 'six values in the body, and the link token for the View Bill button');
+  const m = render('BILL', { name: 'Asha', business: 'Spice Hub', total: '₹450', number: 'INV-0007', when: '22 Oct 2026, 3:45 pm', status: 'Paid in full', link: 'https://x.test/bill/abc', token: 'abc' });
+  assert.match(m.text, /Asha.*Spice Hub.*₹450.*INV-0007.*Paid in full.*https:\/\/x\.test\/bill\/abc/);
+  assert.deepEqual(m.template, { name: 'flowxp_payment_receipt', params: ['Asha', 'Spice Hub', '₹450', 'INV-0007', '22 Oct 2026, 3:45 pm', 'Paid in full'], header: 'Spice Hub', buttons: ['abc'] }, 'six values in the body, the shop in the header, the link token for the View Invoice button');
   assert.equal(m.promo, false);
   assert.throws(() => render('BILL', { name: 'Asha' }), /needs business/);
   assert.throws(() => render('NOPE', {}), /Unknown message kind/);
@@ -109,8 +109,8 @@ test('sending a bill records it, uses the customer number and links to a stable 
 
   const provider = sent.at(-1);
   assert.equal(provider.to, '9876543210');
-  assert.equal(provider.template.name, 'flowxp_bill');
-  assert.equal(provider.template.params[2], A.firstInvoice.invoice_number);
+  assert.equal(provider.template.name, 'flowxp_payment_receipt');
+  assert.equal(provider.template.params[3], A.firstInvoice.invoice_number);
 
   await A.call(messaging.sendBillHandler, { body: { invoice_id: A.firstInvoice.invoice_id } });
   const again = (await A.call(messaging.list)).body.data[0].body.match(/\/bill\/(\w+)/)[1];
@@ -169,7 +169,7 @@ test('offers and reminders never reach someone who opted out; bills still do', {
   assert.equal((await B.call(messaging.setOptOut, { params: { id: A.ravi }, body: { opt_out: true } })).code, 404);
   const offer = await mod.send(pool, { businessId: A.biz, customerId: A.ravi, phone: '9876500001', kind: 'OFFER', values: { name: 'Ravi', business: 'a', offer: '10% off' } });
   assert.deepEqual(offer, { skipped: 'OPTED_OUT' });
-  const bill = await mod.send(pool, { businessId: A.biz, customerId: A.ravi, phone: '9876500001', kind: 'BILL', values: { name: 'Ravi', business: 'a', number: 'X', date: '1 Jan 2026', total: '₹1', due: '₹0', link: 'https://x.test/bill/l', token: 'l' } });
+  const bill = await mod.send(pool, { businessId: A.biz, customerId: A.ravi, phone: '9876500001', kind: 'BILL', values: { name: 'Ravi', business: 'a', number: 'X', when: '1 Jan 2026, 9:00 am', total: '₹1', status: 'Paid in full', link: 'https://x.test/bill/l', token: 'l' } });
   assert.equal(bill.status, 'SENT');
   await A.call(messaging.setOptOut, { params: { id: A.ravi }, body: { opt_out: false } });
 });

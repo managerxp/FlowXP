@@ -10,23 +10,27 @@
  * `promo` messages (offers, loyalty nudges) are only sent to customers who have not opted out.
  */
 export const TEMPLATES = {
+  /* The bill as a payment receipt: the shop's name as the header, a clear body, a "View Invoice" button (address in Meta: https://YOUR-DOMAIN/bill/{{1}}, {{1}} is the bill's link token)
+     and the fixed footer "Billing powered by FlowXP". `status` says Paid in full, Part paid with what is due, or what is due. */
   BILL: {
-    name: 'flowxp_bill', promo: false,
-    vars: ['name', 'business', 'number', 'date', 'total', 'due'],   // the six values in the WhatsApp message body (the header and footer are fixed words in Meta)
-    urlButtons: ['token'],                           // and the "View Bill" button, whose address in Meta is https://YOUR-DOMAIN/bill/{{1}}: {{1}} is the bill's link token
-    also: ['link'],                                  // the whole link, for the recorded and SMS wording
-    body: (p) => `Hi ${p.name}, thank you for choosing ${p.business}!\n\nBill no: ${p.number}\nDate: ${p.date}\nBill amount: ${p.total}\nBalance due: ${p.due}\n\nTap View Bill below to see the full bill with every item and the GST. For any question about it, please contact the shop directly. Thank you for your business.`,
-    text: (p) => `Hi ${p.name}, thank you for choosing ${p.business}! Bill no ${p.number} dated ${p.date}: ${p.total}, balance due ${p.due}. View it here: ${p.link} Thank you for your business.`
+    name: 'flowxp_payment_receipt', promo: false,
+    vars: ['name', 'business', 'total', 'number', 'when', 'status'],   // the six values in the WhatsApp message body
+    headerVar: 'business',                                             // the header is the shop's name
+    urlButtons: ['token'],
+    also: ['link'],                                                    // the whole link, for the recorded and SMS wording
+    body: (p) => `Hi ${p.name},\n\nThank you for your order at *${p.business}*.\n\nYour bill of *${p.total}* is ready.\n\n*Invoice No.:* ${p.number}\n*Date & Time:* ${p.when}\n*Payment Status:* ${p.status}\n\nTap View Invoice below to see every item and the GST. We hope to serve you again soon.`,
+    text: (p) => `Hi ${p.name}, thank you for your order at ${p.business}. Your bill of ${p.total} is ready. Invoice ${p.number}, ${p.when}. Payment status: ${p.status}. View it here: ${p.link} We hope to serve you again soon.`
   },
-  /* The same bill with a second button, "Rate us on Google" (address in Meta: https://g.page/r/{{1}}, {{1}} is the end of the shop's own Google review link, like CXXXX/review).
-     Used only for a shop that has saved such a link; the others send the plain bill above. The text is the same as the plain bill on purpose: asking for a review in the words would make Meta call it Marketing. */
+  /* The same receipt with a second button, "Rate Your Experience" (address in Meta: https://g.page/r/{{1}}, {{1}} is the end of the shop's own Google review link, like CXXXX/review).
+     Used only for a shop that has saved such a link; the others send the receipt above. The words are the same on purpose: asking for a review in the text could make Meta call it Marketing. */
   BILL_REVIEW: {
-    name: 'flowxp_bill_review', promo: false,
-    vars: ['name', 'business', 'number', 'date', 'total', 'due'],
+    name: 'flowxp_payment_receipt_review', promo: false,
+    vars: ['name', 'business', 'total', 'number', 'when', 'status'],
+    headerVar: 'business',
     urlButtons: ['token', 'review'],
     also: ['link'],
-    body: (p) => `Hi ${p.name}, thank you for choosing ${p.business}!\n\nBill no: ${p.number}\nDate: ${p.date}\nBill amount: ${p.total}\nBalance due: ${p.due}\n\nTap View Bill below to see the full bill with every item and the GST. For any question about it, please contact the shop directly. Thank you for your business.`,
-    text: (p) => `Hi ${p.name}, thank you for choosing ${p.business}! Bill no ${p.number} dated ${p.date}: ${p.total}, balance due ${p.due}. View it here: ${p.link} Thank you for your business.`
+    body: (p) => `Hi ${p.name},\n\nThank you for your order at *${p.business}*.\n\nYour bill of *${p.total}* is ready.\n\n*Invoice No.:* ${p.number}\n*Date & Time:* ${p.when}\n*Payment Status:* ${p.status}\n\nTap View Invoice below to see every item and the GST. We hope to serve you again soon.`,
+    text: (p) => `Hi ${p.name}, thank you for your order at ${p.business}. Your bill of ${p.total} is ready. Invoice ${p.number}, ${p.when}. Payment status: ${p.status}. View it here: ${p.link} We hope to serve you again soon.`
   },
   RESERVATION: {
     name: 'flowxp_booking', promo: false,
@@ -209,8 +213,8 @@ export const KINDS = Object.keys(TEMPLATES);
 export const render = (kind, values) => {
   const t = TEMPLATES[kind];
   if (!t) throw new Error(`Unknown message kind ${kind}`);
-  for (const v of [...t.vars, ...(t.urlButtons || []), ...(t.also || [])]) if (values[v] == null || String(values[v]).trim() === '') throw new Error(`Message ${kind} needs ${v}`);
-  return { text: t.text(values), promo: t.promo, template: { name: t.name, params: t.vars.map((v) => String(values[v])), ...(t.urlButtons ? { buttons: t.urlButtons.map((v) => String(values[v])) } : {}) } };
+  for (const v of [...t.vars, ...(t.urlButtons || []), ...(t.also || []), ...(t.headerVar ? [t.headerVar] : [])]) if (values[v] == null || String(values[v]).trim() === '') throw new Error(`Message ${kind} needs ${v}`);
+  return { text: t.text(values), promo: t.promo, template: { name: t.name, params: t.vars.map((v) => String(values[v])), ...(t.headerVar ? { header: String(values[t.headerVar]) } : {}), ...(t.urlButtons ? { buttons: t.urlButtons.map((v) => String(values[v])) } : {}) } };
 };
 
 /** The template as the owner pastes it into Meta: variables as {{1}}, {{2}}... */

@@ -22,7 +22,7 @@ const withFetch = async (reply, run) => {
 };
 
 test('a bill goes out as the approved template with the View Bill button', { skip }, async () => {
-  const m = render('BILL', { name: 'Asha', business: 'Sharma Auto Parts', number: 'INV-0007', date: '22 Oct 2026', total: '₹1,203.00', due: '₹0', link: 'https://flowxp.in/bill/abc123', token: 'abc123' });
+  const m = render('BILL', { name: 'Asha', business: 'Sharma Auto Parts', total: '₹1,203.00', number: 'INV-0007', when: '22 Oct 2026, 3:45 pm', status: 'Paid in full', link: 'https://flowxp.in/bill/abc123', token: 'abc123' });
   await withFetch({ json: { messages: [{ id: 'wamid.SENT1' }] } }, async (calls) => {
     const r = await deliver({ channel: 'WHATSAPP', to: '9845011122', kind: 'BILL', text: m.text, template: m.template });
     assert.deepEqual([r.status, r.providerId], ['SENT', 'wamid.SENT1']);
@@ -30,10 +30,11 @@ test('a bill goes out as the approved template with the View Bill button', { ski
     assert.equal(url, 'https://graph.facebook.com/v26.0/555000111/messages');
     assert.equal(init.headers.authorization, 'Bearer test-token');
     assert.equal(body.to, '919845011122'); assert.equal(body.type, 'template');
-    assert.equal(body.template.name, 'flowxp_bill'); assert.equal(body.template.language.code, 'en');
-    assert.deepEqual(body.template.components[0], { type: 'body', parameters: ['Asha', 'Sharma Auto Parts', 'INV-0007', '22 Oct 2026', '₹1,203.00', '₹0'].map((text) => ({ type: 'text', text })) });
-    assert.deepEqual(body.template.components[1], { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: 'abc123' }] });
-    assert.equal(body.template.components.length, 2);
+    assert.equal(body.template.name, 'flowxp_payment_receipt'); assert.equal(body.template.language.code, 'en');
+    assert.deepEqual(body.template.components[0], { type: 'header', parameters: [{ type: 'text', text: 'Sharma Auto Parts' }] });
+    assert.deepEqual(body.template.components[1], { type: 'body', parameters: ['Asha', 'Sharma Auto Parts', '₹1,203.00', 'INV-0007', '22 Oct 2026, 3:45 pm', 'Paid in full'].map((text) => ({ type: 'text', text })) });
+    assert.deepEqual(body.template.components[2], { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: 'abc123' }] });
+    assert.equal(body.template.components.length, 3);
   });
 });
 
@@ -55,14 +56,15 @@ test('a shop with a Google review link sends the bill with a second button; the 
   assert.equal(googleReviewPath('https://g.page/r/CabcDEF123-x/review?utm=1'), 'CabcDEF123-x/review');
   assert.equal(googleReviewPath('https://search.google.com/local/writereview?placeid=ChIJxx'), null, 'another kind of link is not used as the button');
   assert.equal(googleReviewPath(''), null); assert.equal(googleReviewPath(null), null);
-  const m = render('BILL_REVIEW', { name: 'Asha', business: 'Cafe', number: 'INV-1', date: '1 Jan 2027', total: '₹10', due: '₹0', link: 'https://flowxp.in/bill/tok', token: 'tok', review: 'CabcDEF123-x/review' });
-  assert.equal(m.template.name, 'flowxp_bill_review');
+  const m = render('BILL_REVIEW', { name: 'Asha', business: 'Cafe', total: '₹10', number: 'INV-1', when: '1 Jan 2027, 9:00 am', status: 'Paid in full', link: 'https://flowxp.in/bill/tok', token: 'tok', review: 'CabcDEF123-x/review' });
+  assert.equal(m.template.name, 'flowxp_payment_receipt_review');
   await withFetch({ json: { messages: [{ id: 'wamid.R1' }] } }, async (calls) => {
     await deliver({ channel: 'WHATSAPP', to: '9845011122', kind: 'BILL_REVIEW', text: m.text, template: m.template });
     const c = calls[0].body.template.components;
-    assert.equal(c.length, 3);
-    assert.deepEqual(c[1], { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: 'tok' }] });
-    assert.deepEqual(c[2], { type: 'button', sub_type: 'url', index: '1', parameters: [{ type: 'text', text: 'CabcDEF123-x/review' }] });
+    assert.equal(c.length, 4);
+    assert.deepEqual(c[0], { type: 'header', parameters: [{ type: 'text', text: 'Cafe' }] });
+    assert.deepEqual(c[2], { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: 'tok' }] });
+    assert.deepEqual(c[3], { type: 'button', sub_type: 'url', index: '1', parameters: [{ type: 'text', text: 'CabcDEF123-x/review' }] });
   });
-  assert.throws(() => render('BILL_REVIEW', { name: 'A', business: 'B', number: 'N', date: 'D', total: 'T', due: 'U', link: 'l', token: 't' }), /needs review/);
+  assert.throws(() => render('BILL_REVIEW', { name: 'A', business: 'B', number: 'N', when: 'W', total: 'T', status: 'S', link: 'l', token: 't' }), /needs review/);
 });

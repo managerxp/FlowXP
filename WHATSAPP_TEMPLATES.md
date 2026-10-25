@@ -8,56 +8,66 @@ Rules Meta enforces: no variable at the very start or end of the body; samples f
 
 ## Bills and balances (every kind of business)
 
-### `flowxp_bill` (BILL)
+### `flowxp_payment_receipt` (BILL)
 
 **Category:** Utility
 
 **Body:**
 
 ```
-Hi {{1}}, thank you for choosing {{2}}!
+Hi {{1}},
 
-Bill no: {{3}}
-Date: {{4}}
-Bill amount: {{5}}
-Balance due: {{6}}
+Thank you for your order at *{{2}}*.
 
-Tap View Bill below to see the full bill with every item and the GST. For any question about it, please contact the shop directly. Thank you for your business.
+Your bill of *{{3}}* is ready.
+
+*Invoice No.:* {{4}}
+*Date & Time:* {{5}}
+*Payment Status:* {{6}}
+
+Tap View Invoice below to see every item and the GST. We hope to serve you again soon.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} number = `INV-0007`, {{4}} date = `22 Oct 2026`, {{5}} total = `₹1,203.00`, {{6}} due = `₹0`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} total = `₹460.00`, {{4}} number = `INV-2026-00125`, {{5}} when = `22 Oct 2026, 3:45 pm`, {{6}} status = `Paid in full`
 
 **Buttons (Call to action, Visit website, URL type Dynamic):**
 
-- `View Bill`: `https://YOUR-DOMAIN/bill/{{1}}`, sample `https://YOUR-DOMAIN/bill/abc123`
+- `View Invoice`: `https://YOUR-DOMAIN/bill/{{1}}`, sample `https://YOUR-DOMAIN/bill/abc123`
 
-Header: `Your bill is ready`. Footer: `Powered by FlowXP`. Sent when the shop has no Google review link saved.
+**Header (text):** `{{1}}`, sample `Red Oven Pizza House` (the shop's name). **Footer:** `Billing powered by FlowXP`.
 
-### `flowxp_bill_review` (BILL_REVIEW)
+Sent when the shop has no Google review link saved.
+
+### `flowxp_payment_receipt_review` (BILL_REVIEW)
 
 **Category:** Utility
 
 **Body:**
 
 ```
-Hi {{1}}, thank you for choosing {{2}}!
+Hi {{1}},
 
-Bill no: {{3}}
-Date: {{4}}
-Bill amount: {{5}}
-Balance due: {{6}}
+Thank you for your order at *{{2}}*.
 
-Tap View Bill below to see the full bill with every item and the GST. For any question about it, please contact the shop directly. Thank you for your business.
+Your bill of *{{3}}* is ready.
+
+*Invoice No.:* {{4}}
+*Date & Time:* {{5}}
+*Payment Status:* {{6}}
+
+Tap View Invoice below to see every item and the GST. We hope to serve you again soon.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} number = `INV-0007`, {{4}} date = `22 Oct 2026`, {{5}} total = `₹1,203.00`, {{6}} due = `₹0`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} total = `₹460.00`, {{4}} number = `INV-2026-00125`, {{5}} when = `22 Oct 2026, 3:45 pm`, {{6}} status = `Paid in full`
 
 **Buttons (Call to action, Visit website, URL type Dynamic):**
 
-- `View Bill`: `https://YOUR-DOMAIN/bill/{{1}}`, sample `https://YOUR-DOMAIN/bill/abc123`
-- `Rate us on Google`: `https://g.page/r/{{1}}`, sample `https://g.page/r/CabcDEF123/review`
+- `View Invoice`: `https://YOUR-DOMAIN/bill/{{1}}`, sample `https://YOUR-DOMAIN/bill/abc123`
+- `Rate Your Experience`: `https://g.page/r/{{1}}`, sample `https://g.page/r/CabcDEF123/review`
 
-Same header and footer. Sent when the shop has saved a `https://g.page/r/...` review link (Settings, Business details, Google review link).
+**Header (text):** `{{1}}`, sample `Red Oven Pizza House` (the shop's name). **Footer:** `Billing powered by FlowXP`.
+
+Sent when the shop has saved a `https://g.page/r/...` review link (Settings, Business details, Google review link). Same words as the receipt above, plus the second button.
 
 ### `flowxp_loyalty_next` (LOYALTY_NEXT)
 
@@ -69,7 +79,7 @@ Same header and footer. Sent when the shop has saved a `https://g.page/r/...` re
 Hi {{1}}, your next visit to {{2}} earns a free {{3}}! Reply STOP to opt out.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} reward = `free coffee`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} reward = `free coffee`
 
 ### `flowxp_offer` (OFFER)
 
@@ -81,7 +91,7 @@ Hi {{1}}, your next visit to {{2}} earns a free {{3}}! Reply STOP to opt out.
 Hi {{1}}, {{2}}: {{3}} Reply STOP to opt out.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} offer = `10% off this weekend`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} offer = `10% off this weekend`
 
 ### `flowxp_balance_due` (BALANCE_DUE)
 
@@ -93,7 +103,7 @@ Hi {{1}}, {{2}}: {{3}} Reply STOP to opt out.
 Hi {{1}}, a gentle reminder from {{2}}: {{3}} is due on your account. Unpaid: {{4}}. Please pay when you can. Thank you!
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} amount = `₹1,500`, {{4}} bills = `Sample`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} amount = `₹1,500`, {{4}} bills = `Sample`
 
 ### `flowxp_review_reply` (REVIEW_REPLY)
 
@@ -105,7 +115,7 @@ Hi {{1}}, a gentle reminder from {{2}}: {{3}} is due on your account. Unpaid: {{
 Hi {{1}}, {{2}}: {{3}} Thank you for your feedback.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} reply = `Thank you for your kind words.`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} reply = `Thank you for your kind words.`
 
 ## Restaurants and cafés
 
@@ -119,7 +129,7 @@ Hi {{1}}, {{2}}: {{3}} Thank you for your feedback.
 Hi {{1}}, your table at {{2}} is booked for {{3}}, party of {{4}}. See you soon!
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} when = `Sat 24 Oct, 6:30 pm`, {{4}} party = `4`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} when = `Sat 24 Oct, 6:30 pm`, {{4}} party = `4`
 
 ### `flowxp_booking_cancelled` (RESERVATION_CANCELLED)
 
@@ -131,7 +141,7 @@ Hi {{1}}, your table at {{2}} is booked for {{3}}, party of {{4}}. See you soon!
 Hi {{1}}, your booking at {{2}} for {{3}} has been cancelled.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} when = `Sat 24 Oct, 6:30 pm`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} when = `Sat 24 Oct, 6:30 pm`
 
 ### `flowxp_waitlist_added` (WAITLIST_ADDED)
 
@@ -143,7 +153,7 @@ Hi {{1}}, your booking at {{2}} for {{3}} has been cancelled.
 Hi {{1}}, you are on the waitlist at {{2}}. Estimated wait: about {{3}} minutes. We will message you when your table is ready.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} minutes = `15`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} minutes = `15`
 
 ### `flowxp_table_ready` (WAITLIST_READY)
 
@@ -155,7 +165,7 @@ Hi {{1}}, you are on the waitlist at {{2}}. Estimated wait: about {{3}} minutes.
 Hi {{1}}, your table at {{2}} is ready. Please come to the host desk.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`
 
 ## Salons
 
@@ -169,7 +179,7 @@ Hi {{1}}, your table at {{2}} is ready. Please come to the host desk.
 Hi {{1}}, your appointment at {{2}} is booked for {{3}}: {{4}}. See you soon!
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} when = `Sat 24 Oct, 6:30 pm`, {{4}} services = `Haircut`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} when = `Sat 24 Oct, 6:30 pm`, {{4}} services = `Haircut`
 
 ### `flowxp_salon_reminder` (SALON_APPT_REMINDER)
 
@@ -181,7 +191,7 @@ Hi {{1}}, your appointment at {{2}} is booked for {{3}}: {{4}}. See you soon!
 Hi {{1}}, a reminder of your appointment at {{2}} on {{3}}: {{4}}. Reply if you need to change it.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} when = `Sat 24 Oct, 6:30 pm`, {{4}} services = `Haircut`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} when = `Sat 24 Oct, 6:30 pm`, {{4}} services = `Haircut`
 
 ### `flowxp_salon_cancelled` (SALON_APPT_CANCELLED)
 
@@ -193,7 +203,7 @@ Hi {{1}}, a reminder of your appointment at {{2}} on {{3}}: {{4}}. Reply if you 
 Hi {{1}}, your appointment at {{2}} on {{3}} has been cancelled. Call us to book another time.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} when = `Sat 24 Oct, 6:30 pm`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} when = `Sat 24 Oct, 6:30 pm`
 
 ### `flowxp_salon_birthday` (SALON_BIRTHDAY)
 
@@ -205,7 +215,7 @@ Hi {{1}}, your appointment at {{2}} on {{3}} has been cancelled. Call us to book
 Happy birthday {{1}}! {{2}} has a treat for you: {{3}} Reply STOP to opt out.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} offer = `10% off this weekend`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} offer = `10% off this weekend`
 
 ### `flowxp_salon_anniversary` (SALON_ANNIVERSARY)
 
@@ -217,7 +227,7 @@ Happy birthday {{1}}! {{2}} has a treat for you: {{3}} Reply STOP to opt out.
 Happy anniversary {{1}}! {{2}}: {{3}} Reply STOP to opt out.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} offer = `10% off this weekend`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} offer = `10% off this weekend`
 
 ### `flowxp_salon_member_expiry` (SALON_MEMBER_EXPIRY)
 
@@ -229,7 +239,7 @@ Happy anniversary {{1}}! {{2}}: {{3}} Reply STOP to opt out.
 Hi {{1}}, your {{3}} membership at {{2}} ends on {{4}}. Renew at your next visit to keep your benefits.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} plan = `Monthly`, {{4}} date = `22 Oct 2026`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} plan = `Monthly`, {{4}} date = `22 Oct 2026`
 
 ### `flowxp_salon_points_expiry` (SALON_POINTS_EXPIRY)
 
@@ -241,7 +251,7 @@ Hi {{1}}, your {{3}} membership at {{2}} ends on {{4}}. Renew at your next visit
 Hi {{1}}, {{3}} of your reward points at {{2}} expire in the next {{4}} days. Use them on your next visit!
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} points = `240`, {{4}} days = `21`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} points = `240`, {{4}} days = `21`
 
 ### `flowxp_salon_revisit` (SALON_REVISIT)
 
@@ -253,7 +263,7 @@ Hi {{1}}, {{3}} of your reward points at {{2}} expire in the next {{4}} days. Us
 Hi {{1}}, it has been a while since your last visit to {{2}}. Book your next appointment with us! Reply STOP to opt out.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`
 
 ### `flowxp_salon_inactive` (SALON_INACTIVE)
 
@@ -265,7 +275,7 @@ Hi {{1}}, it has been a while since your last visit to {{2}}. Book your next app
 Hi {{1}}, we miss you at {{2}}! {{3}} Reply STOP to opt out.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} offer = `10% off this weekend`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} offer = `10% off this weekend`
 
 ### `flowxp_salon_payment_due` (SALON_PAYMENT_DUE)
 
@@ -277,7 +287,7 @@ Hi {{1}}, we miss you at {{2}}! {{3}} Reply STOP to opt out.
 Hi {{1}}, a gentle reminder that {{4}} is still due on bill {{3}} at {{2}}. Thank you!
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} number = `INV-0007`, {{4}} amount = `₹1,500`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} number = `INV-2026-00125`, {{4}} amount = `₹1,500`
 
 ## Gyms
 
@@ -291,7 +301,7 @@ Hi {{1}}, a gentle reminder that {{4}} is still due on bill {{3}} at {{2}}. Than
 Your {{1}} sign-in code is {{2}}. It works for 10 minutes. Do not share it with anyone.
 ```
 
-**Samples:** {{1}} business = `Sharma Auto Parts`, {{2}} code = `GYM-0042`
+**Samples:** {{1}} business = `Red Oven Pizza House`, {{2}} code = `GYM-0042`
 
 ### `flowxp_gym_welcome` (GYM_WELCOME)
 
@@ -303,7 +313,7 @@ Your {{1}} sign-in code is {{2}}. It works for 10 minutes. Do not share it with 
 Welcome to {{2}}, {{1}}! Your member code is {{3}}. We are glad to have you.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} code = `GYM-0042`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} code = `GYM-0042`
 
 ### `flowxp_gym_expiry` (GYM_EXPIRY)
 
@@ -315,7 +325,7 @@ Welcome to {{2}}, {{1}}! Your member code is {{3}}. We are glad to have you.
 Hi {{1}}, your {{3}} membership at {{2}} ends on {{4}}. Renew at the desk to keep training without a break.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} plan = `Monthly`, {{4}} date = `22 Oct 2026`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} plan = `Monthly`, {{4}} date = `22 Oct 2026`
 
 ### `flowxp_gym_month_start` (GYM_MONTH_START)
 
@@ -327,7 +337,7 @@ Hi {{1}}, your {{3}} membership at {{2}} ends on {{4}}. Renew at the desk to kee
 Hi {{1}}, a new month begins at {{2}}. Your {{3}} membership ends on {{4}}. Renewal is {{5}}. Please renew at the desk to keep training without a break. Thank you.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} plan = `Monthly`, {{4}} date = `22 Oct 2026`, {{5}} amount = `₹1,500`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} plan = `Monthly`, {{4}} date = `22 Oct 2026`, {{5}} amount = `₹1,500`
 
 ### `flowxp_gym_expired` (GYM_EXPIRED)
 
@@ -339,7 +349,7 @@ Hi {{1}}, a new month begins at {{2}}. Your {{3}} membership ends on {{4}}. Rene
 Hi {{1}}, your {{3}} membership at {{2}} ended on {{4}}. Renew at the desk when you are ready to come back.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} plan = `Monthly`, {{4}} date = `22 Oct 2026`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} plan = `Monthly`, {{4}} date = `22 Oct 2026`
 
 ### `flowxp_gym_payment_due` (GYM_PAYMENT_DUE)
 
@@ -351,7 +361,7 @@ Hi {{1}}, your {{3}} membership at {{2}} ended on {{4}}. Renew at the desk when 
 Hi {{1}}, {{4}} is still due on your {{3}} membership at {{2}}. Please pay at the desk to keep your access.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} plan = `Monthly`, {{4}} amount = `₹1,500`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} plan = `Monthly`, {{4}} amount = `₹1,500`
 
 ### `flowxp_gym_class` (GYM_CLASS)
 
@@ -363,7 +373,7 @@ Hi {{1}}, {{4}} is still due on your {{3}} membership at {{2}}. Please pay at th
 Hi {{1}}, a reminder: {{3}} at {{2}} on {{4}}. See you there.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} class = `Morning yoga`, {{4}} when = `Sat 24 Oct, 6:30 pm`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} class = `Morning yoga`, {{4}} when = `Sat 24 Oct, 6:30 pm`
 
 ### `flowxp_gym_reward` (GYM_REWARD)
 
@@ -375,7 +385,7 @@ Hi {{1}}, a reminder: {{3}} at {{2}} on {{4}}. See you there.
 Hi {{1}}, you now have {{3}} reward points at {{2}}. Ask at the desk what they can get you.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} points = `240`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} points = `240`
 
 ### `flowxp_gym_inactive` (GYM_INACTIVE)
 
@@ -387,7 +397,7 @@ Hi {{1}}, you now have {{3}} reward points at {{2}}. Ask at the desk what they c
 Hi {{1}}, we have not seen you at {{2}} for {{3}} days. We would love to have you back! Reply STOP to opt out.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} days = `21`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} days = `21`
 
 ## Wholesale and distribution
 
@@ -401,7 +411,7 @@ Hi {{1}}, we have not seen you at {{2}} for {{3}} days. We would love to have yo
 Hi {{1}}, {{2}} has confirmed your order {{3}} ({{4}}). We will let you know when it is dispatched.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} order = `SO-0031`, {{4}} total = `₹1,203.00`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} order = `SO-0031`, {{4}} total = `₹460.00`
 
 ### `flowxp_ws_order_dispatched` (WS_ORDER_DISPATCHED)
 
@@ -413,7 +423,7 @@ Hi {{1}}, {{2}} has confirmed your order {{3}} ({{4}}). We will let you know whe
 Hi {{1}}, your order {{3}} from {{2}} has been dispatched with invoice {{4}} on vehicle {{5}}. Thank you.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} order = `SO-0031`, {{4}} invoice = `INV-0112`, {{5}} vehicle = `KA01 AB 1234`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} order = `SO-0031`, {{4}} invoice = `INV-0112`, {{5}} vehicle = `KA01 AB 1234`
 
 ### `flowxp_ws_invoice` (WS_INVOICE)
 
@@ -425,7 +435,7 @@ Hi {{1}}, your order {{3}} from {{2}} has been dispatched with invoice {{4}} on 
 Hi {{1}}, invoice {{3}} from {{2}} for {{4}} is due on {{5}}. View it here: {{6}} Thank you.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} number = `INV-0007`, {{4}} total = `₹1,203.00`, {{5}} due = `₹0`, {{6}} link = `https://flowxp.in/bill/abc123`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} number = `INV-2026-00125`, {{4}} total = `₹460.00`, {{5}} due = `₹0`, {{6}} link = `https://flowxp.in/bill/abc123`
 
 ### `flowxp_ws_payment_received` (WS_PAYMENT_RECEIVED)
 
@@ -437,7 +447,7 @@ Hi {{1}}, invoice {{3}} from {{2}} for {{4}} is due on {{5}}. View it here: {{6}
 Hi {{1}}, {{2}} has received your payment of {{3}} (receipt {{4}}). Thank you!
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} amount = `₹1,500`, {{4}} receipt = `Sample`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} amount = `₹1,500`, {{4}} receipt = `Sample`
 
 ### `flowxp_ws_payment_due` (WS_PAYMENT_DUE)
 
@@ -449,7 +459,7 @@ Hi {{1}}, {{2}} has received your payment of {{3}} (receipt {{4}}). Thank you!
 Hi {{1}}, a reminder from {{2}}: {{3}} on invoice {{4}} is due on {{5}}. Thank you!
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} amount = `₹1,500`, {{4}} number = `INV-0007`, {{5}} due = `₹0`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} amount = `₹1,500`, {{4}} number = `INV-2026-00125`, {{5}} due = `₹0`
 
 ### `flowxp_ws_payment_overdue` (WS_PAYMENT_OVERDUE)
 
@@ -461,7 +471,7 @@ Hi {{1}}, a reminder from {{2}}: {{3}} on invoice {{4}} is due on {{5}}. Thank y
 Hi {{1}}, {{3}} on invoice {{4}} to {{2}} is {{5}} days overdue. Please arrange payment at the earliest.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} amount = `₹1,500`, {{4}} number = `INV-0007`, {{5}} days = `21`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} amount = `₹1,500`, {{4}} number = `INV-2026-00125`, {{5}} days = `21`
 
 ### `flowxp_ws_delivery_update` (WS_DELIVERY_UPDATE)
 
@@ -473,7 +483,7 @@ Hi {{1}}, {{3}} on invoice {{4}} to {{2}} is {{5}} days overdue. Please arrange 
 Hi {{1}}, update on your order {{3}} from {{2}}: {{4}}. Thank you.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Sharma Auto Parts`, {{3}} order = `SO-0031`, {{4}} status = `out for delivery`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} order = `SO-0031`, {{4}} status = `out for delivery`
 
 ## Still to build (not templates in FlowXP yet)
 

@@ -70,6 +70,7 @@ const whatsappCloud = async ({ channel, to, template }, cfg) => {
       template: {
         name: template.name, language: { code: cfg.whatsappLanguage },
         components: [
+          ...(template.header ? [{ type: 'header', parameters: [{ type: 'text', text: String(template.header) }] }] : []),
           { type: 'body', parameters: template.params.map((text) => ({ type: 'text', text: String(text) })) },
           // a "View Bill" style button whose address ends in a variable: the value is what goes after the fixed part of the address
           ...(template.buttons || []).map((text, i) => ({ type: 'button', sub_type: 'url', index: String(i), parameters: [{ type: 'text', text: String(text) }] }))
