@@ -27,7 +27,7 @@ export const TEMPLATES = {
   /* The bill as a payment receipt (one wording for every kind of business; `closing` is the line that changes: the shop's own words, or one for its kind of business, see closingLine in index.js): the shop's name in the body (bold italics), a clear body, a "View Invoice" button (address in Meta: https://YOUR-DOMAIN/bill/{{1}}, {{1}} is the bill's link token)
      and the fixed footer "Billing powered by FlowXP". `status` says Paid in full, Part paid with what is due, or what is due. */
   BILL: {
-    name: 'flowxp_bill', promo: false,
+    name: 'flowxp_bill_plain', promo: false,
     vars: ['name', 'business', 'total', 'number', 'when', 'status', 'closing'],   // the six values in the WhatsApp message body
                                                  // the header is the shop's name
     urlButtons: ['token'],
@@ -38,7 +38,7 @@ export const TEMPLATES = {
   /* The same receipt with a second button, "Rate Your Experience" (address in Meta: https://g.page/r/{{1}}, {{1}} is the end of the shop's own Google review link, like CXXXX/review).
      Used only for a shop that has saved such a link; the others send the receipt above. The words are the same on purpose: asking for a review in the text could make Meta call it Marketing. */
   BILL_REVIEW: {
-    name: 'flowxp_bill_review', promo: false,
+    name: 'flowxp_bill', promo: false,
     vars: ['name', 'business', 'total', 'number', 'when', 'status', 'closing'],
     
     urlButtons: ['token', 'review'],

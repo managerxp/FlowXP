@@ -204,10 +204,10 @@ A callback that is not signed with the app secret is refused (401), and nothing 
 
 ### The bill templates (payment receipt, with and without the Google review button)
 
-Two templates, created once in WhatsApp Manager (Message templates, Create template). The exact text, samples and buttons are in `WHATSAPP_TEMPLATES.md`, sections `flowxp_bill` and `flowxp_bill_review`:
+Two templates, created once in WhatsApp Manager (Message templates, Create template). The exact text, samples and buttons are in `WHATSAPP_TEMPLATES.md`, sections `flowxp_bill_plain` and `flowxp_bill`:
 
-- **flowxp_bill**: Utility, English. no header, the body with seven variables (the last one is the closing line, which changes with the kind of business) (the shop name and the amount in bold italics, written `*_{{2}}_*`), footer `Billing powered by FlowXP`, one button `View Bill` or `View Invoice` (dynamic URL `https://YOUR-DOMAIN/bill/{{1}}`).
-- **flowxp_bill_review**: the same, plus a second button `Rate Your Experience` (dynamic URL `https://g.page/r/{{1}}`, sample `https://g.page/r/CabcDEF123/review`).
+- **flowxp_bill_plain**: Utility, English. no header, the body with seven variables (the last one is the closing line, which changes with the kind of business) (the shop name and the amount in bold italics, written `*_{{2}}_*`), footer `Billing powered by FlowXP`, one button `View Bill` or `View Invoice` (dynamic URL `https://YOUR-DOMAIN/bill/{{1}}`).
+- **flowxp_bill** (the one in Meta now): the same as flowxp_bill_plain, plus a second button `Rate Your Experience` (dynamic URL `https://g.page/r/{{1}}`, sample `https://g.page/r/CabcDEF123/review`).
 - Turn on a custom validity period (the longest allowed) on both.
 
 Each shop's own Google review link goes in the shop's Settings, Business details, Google review link (the `https://g.page/r/...` link from Google Business Profile, Get more reviews). FlowXP sends the review version for a shop that has one, and the plain receipt for the others. One approved template serves every shop, because the shop's name and its review link travel as the variables.

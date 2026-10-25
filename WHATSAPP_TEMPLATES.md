@@ -8,7 +8,7 @@ Rules Meta enforces: no variable at the very start or end of the body; samples f
 
 ## Bills and balances (every kind of business)
 
-### `flowxp_bill` (BILL)
+### `flowxp_bill_plain` (BILL)
 
 **Category:** Utility
 
@@ -42,7 +42,7 @@ Thank you for choosing us.
 
 Sent when the shop has no Google review link saved.
 
-### `flowxp_bill_review` (BILL_REVIEW)
+### `flowxp_bill` (BILL_REVIEW)
 
 **Category:** Utility
 
