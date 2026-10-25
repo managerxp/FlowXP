@@ -14,6 +14,7 @@ const NAV = [
   { to: '/superadmin/businesses', label: 'Businesses' },
   { to: '/superadmin/users', label: 'People' },
   { to: '/superadmin/activity', label: 'Activity' },
+  { to: '/superadmin/messages', label: 'Messages' },
   { to: '/superadmin/plans', label: 'Plans' },
   { to: '/superadmin/features', label: 'Features' },
   { to: '/superadmin/addons', label: 'Add-ons' },

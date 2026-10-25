@@ -13,6 +13,7 @@ import * as admin from '../controllers/admin.controller.js';
 import * as settings from '../controllers/settings.controller.js';
 import * as appErrors from '../controllers/appErrors.controller.js';
 import * as support from '../controllers/adminSupport.controller.js';
+import * as messaging from '../controllers/adminMessaging.controller.js';
 
 const router = Router();
 
@@ -40,6 +41,9 @@ router.patch('/app-errors/status', appErrors.setCrashStatus);
 router.get('/bug-reports', appErrors.reports);   // what people typed under "Report a problem"
 router.patch('/bug-reports/:id', appErrors.setReportStatus);
 router.get('/bug-summary', appErrors.summary);
+
+router.get('/messaging/usage', messaging.usage);   // WhatsApp sent per business and Meta's estimated charge
+router.get('/businesses/:id/messaging', messaging.businessUsage);
 
 router.get('/me', admin.me);
 router.get('/stats', admin.getStats);

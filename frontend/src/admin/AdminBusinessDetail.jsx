@@ -613,6 +613,7 @@ const AdminBusinessDetail = () => {
         </Badge>
         <StatusBadge status={business.subscription.status} />
         <Badge tone="brand">{business.subscription.plan_code}</Badge>
+        <Link to={`/superadmin/messages?business=${business.business_id}`} className="text-sm text-brand-600 hover:underline">WhatsApp messages and cost</Link>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
