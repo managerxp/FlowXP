@@ -17,13 +17,13 @@ Rules Meta enforces: no variable at the very start or end of the body; samples f
 ```
 Hi {{1}},
 
-Thank you for your order at *{{2}}*.
+Thank you for your order at _{{2}}_.
 
-Your bill of *{{3}}* is ready.
+Your bill of _{{3}}_ is ready.
 
-*Invoice No.:* {{4}}
-*Date & Time:* {{5}}
-*Payment Status:* {{6}}
+_Invoice No.:_ {{4}}
+_Date & Time:_ {{5}}
+_Payment Status:_ {{6}}
 
 Tap View Invoice below to see every item and the GST. We hope to serve you again soon.
 ```
@@ -47,13 +47,13 @@ Sent when the shop has no Google review link saved.
 ```
 Hi {{1}},
 
-Thank you for your order at *{{2}}*.
+Thank you for your order at _{{2}}_.
 
-Your bill of *{{3}}* is ready.
+Your bill of _{{3}}_ is ready.
 
-*Invoice No.:* {{4}}
-*Date & Time:* {{5}}
-*Payment Status:* {{6}}
+_Invoice No.:_ {{4}}
+_Date & Time:_ {{5}}
+_Payment Status:_ {{6}}
 
 Tap View Invoice below to see every item and the GST. We hope to serve you again soon.
 ```
