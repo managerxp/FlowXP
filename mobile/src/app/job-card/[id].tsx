@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Linking, Text, TextInput } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { currentBusiness, useSession, api } from '../../lib/session.ts';
-import { allowed } from '../../lib/access.ts';
+import { ApiError } from '../../lib/api.ts';
+import { allowed, hasFeature } from '../../lib/access.ts';
 import { t } from '../../lib/i18n.ts';
 import { rupees } from '../../lib/money.ts';
 import { Card, Field, Input, Msg, Panel, Row, SetupShell, confirm, useAct, useList } from '../../lib/formKit.tsx';
 import {
-  JOB_STATUS_LABEL, PAY_METHODS, billBody, billProblem, canBill, canJobCards, estimateLines, isLive, labourBody, labourProblem, lineSub, lineText, misfits, quantityProblem, stepsFor, vehicleOf, type JobFull
+  JOB_STATUS_LABEL, PAY_METHODS, billBody, billProblem, canBill, canJobCards, datesBody, datesProblem, estimateLines, promiseDays, isLive, labourBody, labourProblem, lineSub, lineText, misfits, quantityProblem, stepsFor, vehicleOf, type JobFull
 } from '../../lib/jobCards.ts';
 import { serviceLabourBody, shareFor, type Service } from '../../lib/workshopExtras.ts';
 import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, s } from '../../lib/ui.tsx';
@@ -50,6 +51,8 @@ export default function JobCardScreen() {
   const [remember, setRemember] = useState(false);
   const services = useList<Service[]>('/autoparts/jobcards/services');
   const [pay, setPay] = useState({ method: 'CASH', amount: '' });
+  const mech = useList<{ employee_id: number; name: string }[]>('/autoparts/jobcards/mechanics');
+  const [dates, setDates] = useState<{ promised_on?: string; next_service_on?: string }>({});
   const [qty, setQty] = useState<{ id: number; v: string } | null>(null);
   const a = useAct();
   const j = job.data;
@@ -66,8 +69,29 @@ export default function JobCardScreen() {
         {shareFor(j).length ? (
           <>
             <SectionTitle>Tell the customer on WhatsApp</SectionTitle>
-            {shareFor(j).map((c) => <Button key={c.id} title={c.label} kind="quiet" busy={a.busy} onPress={() => { void a.run('', async () => { const w = await api.get<{ wa_url: string }>(`/autoparts/jobcards/${id}/share?event=${c.id}`); await Linking.openURL(w.wa_url); }, 'WhatsApp opens with the message ready. You press send.'); }} />)}
+            {shareFor(j).map((c) => <Button key={c.id} title={c.label} kind="quiet" busy={a.busy} onPress={() => { void a.run('', async () => {
+              // a plan with messaging sends it from the shop's WhatsApp channel; otherwise (or with the channel off) WhatsApp opens with the words ready
+              if (c.id !== 'bill' && hasFeature(me, 'messaging')) {
+                try { await api.post(`/autoparts/jobcards/${id}/send-update`, { event: c.id }); return; } catch (e) { if (!(e instanceof ApiError) || e.status !== 409 || e.code !== 'OFF') throw e; }
+              }
+              const w = await api.get<{ wa_url: string }>(`/autoparts/jobcards/${id}/share?event=${c.id}`); await Linking.openURL(w.wa_url);
+            }, c.id !== 'bill' && hasFeature(me, 'messaging') ? 'Sent to the customer on WhatsApp.' : 'WhatsApp opens with the message ready. You press send.'); }} />)}
           </>
+        ) : null}
+        {live ? (
+          <Card>
+            {(mech.data ?? []).length ? <Field label="Mechanic"><Chips items={[{ id: '', label: t('Not assigned') }, ...(mech.data ?? []).map((m) => ({ id: String(m.employee_id), label: m.name }))]} value={j.mechanic_id ? String(j.mechanic_id) : ''} onChange={(v) => { void a.run('', async () => { await api.call(`/autoparts/jobcards/${id}`, { method: 'PUT', body: { mechanic_id: v ? Number(v) : null } }); job.reload(); }, 'Saved'); }} /></Field> : null}
+            {(['promised_on', 'next_service_on'] as const).map((k) => {
+              const now = dates[k] ?? j[k] ?? '';
+              return (
+                <Fragment key={k}>
+                  <Field label={k === 'promised_on' ? 'Promised for' : 'Next service on'}><Chips items={promiseDays()} value={now} onChange={(v) => setDates({ ...dates, [k]: now === v ? '' : v })} /></Field>
+                  <Input label="Or another date" hint="Like 2026-11-01" value={now} onChange={(v) => setDates({ ...dates, [k]: v })} max={10} />
+                </Fragment>
+              );
+            })}
+            {Object.keys(dates).length ? <Button title="Save" busy={a.busy} onPress={() => { void a.run(datesProblem(dates), async () => { await api.call(`/autoparts/jobcards/${id}`, { method: 'PUT', body: datesBody(dates) }); setDates({}); job.reload(); }, 'Saved'); }} /> : null}
+          </Card>
         ) : null}
         {live ? stepsFor(j.status).map((st) => <Button key={st.status} title={st.label} kind="quiet" busy={a.busy} onPress={() => { void a.run('', async () => { await api.post(`/autoparts/jobcards/${id}/status`, { status: st.status }); job.reload(); }, 'Saved'); }} />) : null}
 

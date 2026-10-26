@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  JOB_TEXTS, suggestMakes, suggestModels, billBody, billProblem, canBill, canJobCards, customerProblem, dueLine, emptyJob, estimateLines, isLive, jobSub, labourBody, labourProblem, lineSub, lineText, misfits, newJobBody, newJobProblem, quantityProblem, stepsFor, vehicleOf,
+  JOB_TEXTS, datesBody, datesProblem, promiseDays, suggestMakes, suggestModels, billBody, billProblem, canBill, canJobCards, customerProblem, dueLine, emptyJob, estimateLines, isLive, jobSub, labourBody, labourProblem, lineSub, lineText, misfits, newJobBody, newJobProblem, quantityProblem, stepsFor, vehicleOf,
   type JobFull, type JobLine, type JobRow
 } from '../src/lib/jobCards.ts';
 import { HI } from '../src/lib/i18n.ts';
@@ -72,4 +72,13 @@ test('the vehicle list on a new card: companies of this kind, models of the type
   assert.deepEqual(suggestModels(tree, 'BIKE', 'Unknown', ''), [], 'no models until the company is known');
   assert.equal(newJobProblem({ ...emptyJob(), customer_id: 1, vehicle_reg: 'KA01AB1234', model: 'Swift' }), 'Type the company too, like Hero or Maruti Suzuki');
   assert.equal(newJobProblem({ ...emptyJob(), customer_id: 1, vehicle_reg: 'KA01AB1234', make: 'Maruti', model: 'Swift', vehicle_year: '21' }), 'The year is four digits, like 2021');
+});
+
+test('the promised and next-service dates: a week of chips, blank clears, a bad date is refused', () => {
+  const days = promiseDays(new Date(2026, 9, 31));
+  assert.deepEqual(days.slice(0, 3).map((d) => d.id), ['2026-10-31', '2026-11-01', '2026-11-02']);
+  assert.equal(days.length, 7);
+  assert.deepEqual(datesBody({ promised_on: '2026-11-01', next_service_on: ' ' }), { promised_on: '2026-11-01', next_service_on: null });
+  assert.equal(datesProblem({ promised_on: '2026-11-01', next_service_on: '' }), '');
+  assert.ok(datesProblem({ promised_on: '1 Nov' }));
 });

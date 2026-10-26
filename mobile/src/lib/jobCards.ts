@@ -27,6 +27,10 @@ export const jobSub = (j: JobRow): string => [t(JOB_STATUS_LABEL[j.status] ?? j.
 export type NewJobForm = { customer_id: number | null; customer_name: string; vehicle_reg: string; vehicle_type: string; make: string; model: string; variant: string; vehicle_year: string; odometer_km: string; complaint: string; mechanic_id: string; promised_on: string };
 export const emptyJob = (): NewJobForm => ({ customer_id: null, customer_name: '', vehicle_reg: '', vehicle_type: 'CAR', make: '', model: '', variant: '', vehicle_year: '', odometer_km: '', complaint: '', mechanic_id: '', promised_on: '' });
 /** The next week as pick-a-day chips for the promised date: Today, Tomorrow, then the weekday and day. */
+/** Editing the promised and next-service dates on an open card: blank clears the date, anything else must be a real date. */
+export const datesProblem = (d: Record<string, string | undefined>): string => (Object.values(d).some((v) => v?.trim() && !isDate(v.trim())) ? 'Dates are written like 2026-11-01' : '');
+export const datesBody = (d: Record<string, string | undefined>): Record<string, string | null> => Object.fromEntries(Object.entries(d).map(([k, v]) => [k, v?.trim() || null]));
+
 export const promiseDays = (from: Date = new Date()): { id: string; label: string }[] => Array.from({ length: 7 }, (_, i) => {
   const d = new Date(from.getFullYear(), from.getMonth(), from.getDate() + i);
   const id = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

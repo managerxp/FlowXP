@@ -28,7 +28,7 @@ test('the log: status words, which messages can be tried again, and the lines sh
   assert.equal(messageTitle(m), '9876543210'); assert.equal(messageTitle({ ...m, customer_name: 'Asha' }), 'Asha');
   assert.equal(messageSub(m, '15 Oct, 3:30 pm'), '15 Oct, 3:30 pm · 9876543210 · WhatsApp · Your bill · No template'); assert.equal(messageSub({ ...m, channel: 'SMS', error: null }, 'now'), 'now · 9876543210 · SMS · Your bill');
   assert.equal(messagesPath(''), '/messaging/messages'); assert.equal(messagesPath('failed'), '/messaging/messages?status=failed'); assert.equal(resendText('SENT'), 'Sent'); assert.equal(resendText('FAILED'), 'Still failed');
-  assert.deepEqual(TOGGLES.map((x) => x.key), ['bill_auto', 'reservation_updates', 'waitlist_updates', 'loyalty_nudge']);
+  assert.deepEqual(TOGGLES.map((x) => x.key), ['bill_auto', 'reservation_updates', 'waitlist_updates', 'loyalty_nudge', 'job_updates']);
 });
 
 test('one tap to send the bill: who it can go to, and what the person is told', () => {

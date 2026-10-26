@@ -16,6 +16,7 @@ const when = (iso: string) => new Date(iso).toLocaleString([], { day: 'numeric',
 
 /* ── settings ────────────────────────────────────────────────────────────── */
 const Settings = () => {
+  const me = currentBusiness(useSession());
   const [data, setData] = useState<SettingsData | null>(null);
   const [templates, setTemplates] = useState<Template[] | null>(null);
   const [error, setError] = useState('');
@@ -33,7 +34,7 @@ const Settings = () => {
     <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 32 }}>
       {!provider.connected ? <Soft>{t('No messaging service is connected on the server yet, so messages are only recorded as skipped. Ask whoever runs the server to set it up.')}</Soft> : <Soft>{t('Connected: {name}', { name: provider.name ?? '' })}</Soft>}
       <View style={{ gap: 4 }}><Text style={{ color: color.soft, fontSize: 13 }}>{t('Send messages by')}</Text><Chips items={CHANNELS} value={settings.channel} onChange={(c: Channel) => { void save({ channel: c }); }} /></View>
-      {TOGGLES.map((x) => (
+      {TOGGLES.filter((x) => x.key !== 'job_updates' || me?.business_type === 'AUTO_PARTS').map((x) => (
         <View key={x.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, opacity: off ? 0.5 : 1 }}>
           <View style={{ flex: 1, gap: 2 }}><Text style={{ color: color.ink, fontWeight: '600' }}>{t(x.label)}</Text><Soft>{t(x.hint)}</Soft></View>
           <Switch value={settings[x.key]} disabled={off} onValueChange={(v) => { void save({ [x.key]: v }); }} accessibilityLabel={t(x.label)} />
