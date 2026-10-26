@@ -5,7 +5,7 @@ import { currentBusiness, useSession, api } from '../lib/session.ts';
 import { allowed } from '../lib/access.ts';
 import { t } from '../lib/i18n.ts';
 import { Card, Field, Input, Msg, Panel, SetupShell, useAct, useList } from '../lib/formKit.tsx';
-import { canJobCards, customerProblem, dueLine, emptyJob, jobSub, newJobBody, newJobProblem, suggestMakes, suggestModels, vehicleOf, type JobRow, type NewJobForm, type VehicleTree } from '../lib/jobCards.ts';
+import { canJobCards, customerProblem, dueLine, emptyJob, jobSub, newJobBody, newJobProblem, promiseDays, suggestMakes, suggestModels, vehicleOf, type JobRow, type NewJobForm, type VehicleTree } from '../lib/jobCards.ts';
 import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, s } from '../lib/ui.tsx';
 
 type Cust = { customer_id: number; name: string; phone: string | null };
@@ -81,7 +81,8 @@ export default function JobCardsScreen() {
                   <Input label="Odometer (km)" numeric value={form.odometer_km} onChange={(v) => set({ odometer_km: v })} max={7} />
                   <Input label="What is wrong, or what to do" multiline value={form.complaint} onChange={(v) => set({ complaint: v })} max={2000} placeholder="Brake noise, full service" />
                   {(mech.data ?? []).length ? <Field label="Mechanic"><Chips items={[{ id: '', label: t('Not assigned') }, ...(mech.data ?? []).map((m) => ({ id: String(m.employee_id), label: m.name }))]} value={form.mechanic_id} onChange={(v) => set({ mechanic_id: v })} /></Field> : null}
-                  <Input label="Promised for" hint="Like 2026-11-01" value={form.promised_on} onChange={(v) => set({ promised_on: v })} max={10} />
+                  <Field label="Promised for"><Chips items={promiseDays()} value={form.promised_on} onChange={(v) => set({ promised_on: form.promised_on === v ? '' : v })} /></Field>
+                  <Input label="Or another date" hint="Like 2026-11-01" value={form.promised_on} onChange={(v) => set({ promised_on: v })} max={10} />
                   <Msg a={a} />
                   <Button title="Open the card" busy={a.busy} onPress={() => { void a.run(newJobProblem(form), async () => { const j = await api.post<{ job_id: number }>('/autoparts/jobcards', newJobBody(form)); setForm(null); list.reload(); router.push({ pathname: '/job-card/[id]', params: { id: String(j.job_id) } }); }); }} />
                   <Button title="Cancel" kind="quiet" onPress={() => setForm(null)} />
