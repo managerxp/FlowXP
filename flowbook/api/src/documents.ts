@@ -3,7 +3,7 @@ import { audit } from './audit.ts';
 import { validStateCode } from './gst.ts';
 import { LedgerError, post, reverse } from './ledger.ts';
 import { paiseToString, roundDiv, taxOn, toPaise } from './money.ts';
-import { creditNoteJournal, customerPaymentJournal, saleJournal, supplierBillJournal, supplierPaymentJournal } from './rules.ts';
+import { creditNoteJournal, customerPaymentJournal, openingJournal, saleJournal, supplierBillJournal, supplierPaymentJournal } from './rules.ts';
 import type { Tender } from './rules.ts';
 
 /* Invoices, bills and credit notes are drafts until issued. Issuing numbers the document and posts its journal in one
@@ -191,6 +191,20 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
   await c.query(`UPDATE documents SET status = 'ISSUED', number = $2, journal_entry_id = $3, balance_minor = total_minor WHERE id = $1`, [id, number, posted.entryId]);
   await audit(c, orgId, { actor, action: 'document.issued', entityType: 'document', entityId: id, detail: { kind, number, entryNo: posted.entryNo, total: paiseToString(total) } });
   return { number, entryNo: posted.entryNo };
+};
+
+/** An opening balance: what a customer owes you (INVOICE) or you owe a vendor (BILL) from before the books began. Issued at once; paid like any other document. */
+export const createOpeningBalance = async (c: Db, orgId: bigint, o: { kind: 'INVOICE' | 'BILL'; partyId: bigint; date: string; amount: bigint; dueDate?: string; memo?: string }, actor: string, override?: Override) => {
+  if (o.amount <= 0n) throw new LedgerError('bad_amount', 'an opening balance must be above zero');
+  await partyFor(c, o.partyId, roleOf(o.kind));
+  const number = await nextNumber(c, orgId, 'OB', o.date);
+  const id = (await c.query(
+    `INSERT INTO documents (organization_id, kind, created_by, party_id, issue_date, due_date, status, number, memo, subtotal_minor, total_minor, balance_minor, is_opening)
+     VALUES ($1, $2, $3, $4, $5, $6, 'ISSUED', $7, $8, $9, $9, $9, true) RETURNING id`, [orgId, o.kind, actor, o.partyId, o.date, o.dueDate ?? null, number, o.memo ?? 'Opening balance', o.amount])).rows[0].id as bigint;
+  const posted = await post(c, orgId, { ...openingJournal({ date: o.date, number, partyId: o.partyId, kind: o.kind, amount: o.amount }), actor, override });
+  await c.query(`UPDATE documents SET journal_entry_id = $2 WHERE id = $1`, [id, posted.entryId]);
+  await audit(c, orgId, { actor, action: 'document.opening_balance', entityType: 'document', entityId: id, detail: { number, kind: o.kind, amount: paiseToString(o.amount) } });
+  return { id, number };
 };
 
 /** Cancel an issued document the only allowed way: reverse its journal. Refused while money has been applied to it. */

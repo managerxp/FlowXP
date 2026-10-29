@@ -31,6 +31,7 @@ const GENERAL: Seed[] = [
   { code: '3000', name: "Owner's capital", type: 'EQUITY' },
   { code: '3100', name: 'Retained earnings', type: 'EQUITY', key: 'RETAINED_EARNINGS' },
   { code: '3200', name: "Owner's drawings", type: 'EQUITY' },
+  { code: '3900', name: 'Opening balances', type: 'EQUITY', key: 'OPENING_BALANCE' },
   { code: '4000', name: 'Sales', type: 'INCOME', key: 'SALES' },
   { code: '4100', name: 'Sales returns', type: 'INCOME', key: 'SALES_RETURNS' },
   { code: '4150', name: 'Discount given', type: 'INCOME', key: 'DISCOUNT_GIVEN' },

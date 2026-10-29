@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { withOrg } from '../src/db.ts';
 import type { Db } from '../src/db.ts';
-import { createPayment, getPayment, issueDocument, saveDraft } from '../src/documents.ts';
+import { createOpeningBalance, createPayment, getPayment, issueDocument, saveDraft } from '../src/documents.ts';
 import type { DocIn } from '../src/documents.ts';
 import { salesAnalysis } from '../src/analysis.ts';
 import { createParty, seedTaxRates } from '../src/masters.ts';
@@ -82,4 +82,17 @@ test('a line with GST in its price keeps the typed amount as the total, and surv
   assert.deepEqual([doc.subtotal_minor, doc.tax_minor, doc.total_minor], [310_000n, 55_800n, 365_800n], '3540 incl. GST = 3000 + 540, plus 100 + 18');
   const lines = (await pool.query(`SELECT price_includes_tax, taxable_minor, tax_minor FROM document_lines WHERE document_id = $1 ORDER BY line_no`, [id])).rows;
   assert.deepEqual(lines.map((l) => [l.price_includes_tax, l.taxable_minor, l.tax_minor]), [[true, 300_000n, 54_000n], [false, 10_000n, 1_800n]]);
+});
+
+test('an opening balance is owed and payable but is not a sale', { skip }, async () => {
+  const { org, cust, vend } = await shop();
+  const ob = await run(org, (c) => createOpeningBalance(c, org, { kind: 'INVOICE', partyId: cust, date: '2026-04-01', amount: 5_000_000n }, 't'));
+  await run(org, (c) => createOpeningBalance(c, org, { kind: 'BILL', partyId: vend, date: '2026-04-01', amount: 2_000_000n }, 't'));
+  const bal = await balances(org);
+  assert.deepEqual([bal['Accounts receivable'], bal['Accounts payable'], bal['Opening balances']], [[5_000_000n, 0n], [0n, 2_000_000n], [0n, 3_000_000n]]);
+  await run(org, (c) => createPayment(c, org, { direction: 'IN', partyId: cust, date: '2026-05-01', mode: 'BANK', amount: 5_000_000n, idempotencyKey: 'ob-pay-0001', allocations: [{ documentId: ob.id, amount: 5_000_000n }] }, 't'));
+  assert.equal((await pool.query(`SELECT balance_minor FROM documents WHERE id = $1`, [ob.id])).rows[0].balance_minor, 0n);
+  const a = await run(org, (c) => salesAnalysis(c, '2026-04-01', '2027-03-31'));
+  assert.equal(a.customers.length + a.months.length, 0, 'opening balances are not sales or purchases');
+  assert.equal((await run(org, (c) => partyStatement(c, cust, '2026-04-01', '2026-12-31'))).closing, 0n);
 });

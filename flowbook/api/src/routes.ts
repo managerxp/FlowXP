@@ -3,7 +3,7 @@ import type pg from 'pg';
 import { audit } from './audit.ts';
 import { withOrg } from './db.ts';
 import type { Db } from './db.ts';
-import { ageing, allocatePayment, applyCreditNote, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, voidDocument, voidPayment } from './documents.ts';
+import { ageing, allocatePayment, applyCreditNote, createOpeningBalance, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, voidDocument, voidPayment } from './documents.ts';
 import type { Alloc, DocIn, DocKind } from './documents.ts';
 import { listExpenses, recordExpense, voidExpense } from './expenses.ts';
 import { ewayBill } from './eway.ts';
@@ -179,6 +179,12 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     const limit = q.limit ?? 50;
     const rows = await run(req, (c) => listPayments(c, { direction: q.direction, partyId: q.partyId ? BigInt(q.partyId) : undefined, before: q.before ? BigInt(q.before) : undefined, limit }));
     return { payments: rows, next: rows.length === limit ? rows[rows.length - 1]?.id : null };
+  });
+  app.post(`${base}/opening-balances`, { preHandler: scope('party.write'), schema: { body: { type: 'object', required: ['kind', 'partyId', 'date', 'amount'], additionalProperties: false, properties: {
+    kind: { type: 'string', enum: ['INVOICE', 'BILL'] }, partyId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, dueDate: { type: 'string', pattern: DATE }, amount: { type: 'string', pattern: AMOUNT }, memo: { type: 'string', maxLength: 200 }, ...override } } } }, async (req, reply) => {
+    const b = req.body as { kind: 'INVOICE' | 'BILL'; partyId: string; date: string; dueDate?: string; amount: string; memo?: string; overrideReason?: string };
+    const out = await run(req, (c, orgId) => createOpeningBalance(c, orgId, { kind: b.kind, partyId: BigInt(b.partyId), date: b.date, dueDate: b.dueDate, amount: toPaise(b.amount), memo: b.memo }, me(req), lockOverride(req, b.overrideReason)));
+    return reply.code(201).send({ id: out.id, number: out.number });
   });
   app.post(`${base}/payments`, { preHandler: scope('payment.write'), schema: { body: { type: 'object', required: ['direction', 'partyId', 'date', 'mode', 'amount'], additionalProperties: false, properties: {
     direction: { type: 'string', enum: ['IN', 'OUT'] }, partyId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, mode: { type: 'string', enum: ['CASH', 'BANK', 'UPI', 'CARD'] },

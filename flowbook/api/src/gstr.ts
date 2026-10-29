@@ -31,7 +31,7 @@ const load = async (c: Db, kinds: string[], month: string, statuses: string[]) =
   const docs = (await c.query(
     `SELECT d.id, d.kind, d.number, d.status, d.issue_date::text AS issue_date, d.inter_state, d.place_of_supply, d.total_minor, d.round_off_minor, p.gstin, p.state_code, p.name
        FROM documents d JOIN parties p ON p.id = d.party_id
-      WHERE d.kind = ANY($1) AND d.status = ANY($2) AND d.number IS NOT NULL AND d.issue_date BETWEEN $3::date AND $4::date ORDER BY d.number`,
+      WHERE d.kind = ANY($1) AND d.status = ANY($2) AND d.number IS NOT NULL AND NOT d.is_opening AND d.issue_date BETWEEN $3::date AND $4::date ORDER BY d.number`,
     [kinds, statuses, `${month}-01`, monthEnd(month)])).rows as Doc[];
   const lines = docs.length ? (await c.query(
     `SELECT document_id, hsn_sac, description, unit, quantity_milli, taxable_minor, tax_rate_bp, tax_minor FROM document_lines WHERE document_id = ANY($1) ORDER BY document_id, line_no`,

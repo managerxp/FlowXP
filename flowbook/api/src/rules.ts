@@ -83,6 +83,14 @@ export const supplierBillJournal = (d: { date: string; billId: string; partyId?:
     lines: merge([{ account: d.stock ? 'INVENTORY' : 'PURCHASES', side: 'D', amount: net }, ...taxLines(tax, 'D', 'INPUT'), { account: 'AP', side: 'C', amount: net + tax.total, partyId: d.partyId }]) };
 };
 
+/** What a customer owed (INVOICE) or a vendor was owed (BILL) when the books began; the other side is the opening-balance account. */
+export const openingJournal = (d: { date: string; number: string; partyId: bigint; kind: 'INVOICE' | 'BILL'; amount: bigint }): PostInput => ({
+  date: d.date, sourceType: d.kind === 'INVOICE' ? 'invoice' : 'bill', sourceId: d.number, kind: 'OPENING', rulesVersion: RULES_VERSION, memo: `Opening balance ${d.number}`,
+  lines: d.kind === 'INVOICE'
+    ? [{ account: 'AR', side: 'D', amount: d.amount, partyId: d.partyId }, { account: 'OPENING_BALANCE', side: 'C', amount: d.amount }]
+    : [{ account: 'OPENING_BALANCE', side: 'D', amount: d.amount }, { account: 'AP', side: 'C', amount: d.amount, partyId: d.partyId }]
+});
+
 /** Supplier payment. Example 5. */
 export const supplierPaymentJournal = (d: { date: string; paymentId: string; partyId?: bigint; mode: Tender; amount: bigint; tds?: bigint }): PostInput => ({
   date: d.date, sourceType: 'payment_out', sourceId: d.paymentId, kind: 'PAYMENT_OUT', rulesVersion: RULES_VERSION, memo: `Payment ${d.paymentId}`,

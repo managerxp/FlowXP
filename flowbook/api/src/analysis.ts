@@ -3,7 +3,7 @@ import type { Db } from './db.ts';
 /* Who buys, what sells and how each month went. Sales are issued invoices less credit notes, before GST; voided and draft documents are left out. */
 
 export const salesAnalysis = async (c: Db, from: string, to: string) => {
-  const between = `d.status = 'ISSUED' AND d.issue_date BETWEEN $1::date AND $2::date`;
+  const between = `d.status = 'ISSUED' AND NOT d.is_opening AND d.issue_date BETWEEN $1::date AND $2::date`;
   const net = `CASE d.kind WHEN 'CREDIT_NOTE' THEN -d.subtotal_minor ELSE d.subtotal_minor END`;
   const customers = (await c.query(
     `SELECT p.id AS party_id, p.name AS party_name, SUM(${net})::bigint AS sales_minor, COUNT(*) FILTER (WHERE d.kind = 'INVOICE')::bigint AS invoices,

@@ -44,3 +44,5 @@ Settings, WhatsApp. Two modes, plus off:
 - **TDS** (migration 0009, payment form): tax a customer deducted is kept as TDS receivable; tax you deduct from a vendor is TDS payable. The payment amount stays the cash that moved; cash plus TDS settles the documents. The statement and the books both use the full amount.
 - **TCS** (invoice form): a percent of value plus GST, added to the total and owed as TCS payable; invoices only. Rates and sections shown in the pickers are a helper, not tax advice.
 - **Sales analysis** (Reports): month-by-month sales and purchases, top customers with what they still owe, best-selling items.
+- **Tax-inclusive prices:** tick "GST is in this price" on a line; the tax is carved out of what you typed, so the total is exactly that amount (migration 0010).
+- **Opening balances** (Settings > Opening balances, migration 0011): what customers owed you and you owed vendors when you started. Posted against an "Opening balances" account, payable like a normal document, shown on statements, and kept out of GST returns and sales analysis.

@@ -72,6 +72,33 @@ const Printing = () => {
   );
 };
 
+const OpeningBalances = () => {
+  const { o, org } = useSession();
+  const a = useAction();
+  const [f, setF] = useState({ kind: 'INVOICE', partyId: '', date: today(), amount: '', dueDate: '' });
+  const parties = useLoad(() => o('/parties?limit=500'), [org.id]);
+  const list = (parties.data || []).filter((p) => (f.kind === 'INVOICE' ? p.kind !== 'VENDOR' : p.kind !== 'CUSTOMER'));
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value, ...(k === 'kind' && { partyId: '' }) });
+  const save = (e) => {
+    e.preventDefault();
+    a.run(async () => { await o('/opening-balances', { method: 'POST', body: { kind: f.kind, partyId: f.partyId, date: f.date, amount: f.amount, ...(f.dueDate && { dueDate: f.dueDate }) } }); setF({ ...f, partyId: '', amount: '', dueDate: '' }); },
+      'Added. It shows on their statement and can be paid like any invoice or bill.');
+  };
+  return (
+    <Card title="Opening balances"><p className="muted">What customers owed you, and what you owed vendors, on the day you started using these books. Enter one per customer or vendor, dated the day before you started. These are not sales or purchases: they stay out of GST returns and sales reports.</p>
+      <Err>{a.error}</Err><Note>{a.done}</Note>
+      <form className="form" onSubmit={save}>
+        <Field label="Type"><select value={f.kind} onChange={set('kind')}><option value="INVOICE">A customer owes me</option><option value="BILL">I owe a vendor</option></select></Field>
+        <Field label={f.kind === 'INVOICE' ? 'Customer' : 'Vendor'}><select value={f.partyId} onChange={set('partyId')} required><option value="">Choose…</option>{list.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+        <Field label="Amount (₹)"><input inputMode="decimal" value={f.amount} onChange={set('amount')} required /></Field>
+        <Field label="As of"><input type="date" value={f.date} onChange={set('date')} required /></Field>
+        <Field label="Due date" hint="Optional"><input type="date" value={f.dueDate} onChange={set('dueDate')} /></Field>
+        <div className="wide"><Btn kind="primary" busy={a.busy}>Add opening balance</Btn></div>
+      </form>
+    </Card>
+  );
+};
+
 const TaxRates = () => {
   const { o, org } = useSession();
   const load = useLoad(() => o('/tax-rates'), [org.id]);
@@ -180,8 +207,8 @@ export default ({ AddBusiness }) => {
   const [tab, setTab] = useState('biz');
   return (
     <Page title="Settings">
-      <Tabs value={tab} onChange={setTab} tabs={[['biz', 'Business'], ['print', 'Printing'], ['tax', 'GST rates'], ['periods', 'Closing'], ['team', 'Team'], ['wa', 'WhatsApp'], ['flowxp', 'FlowXP'], ['log', 'Activity'], ['new', 'Add business']]} />
-      {tab === 'biz' && <Business />}{tab === 'print' && <Printing />}{tab === 'tax' && <TaxRates />}{tab === 'periods' && <Periods />}{tab === 'team' && <Team />}{tab === 'wa' && <WhatsappSettings />}{tab === 'flowxp' && <FlowXP />}{tab === 'log' && <Activity />}{tab === 'new' && <AddBusiness />}
+      <Tabs value={tab} onChange={setTab} tabs={[['biz', 'Business'], ['print', 'Printing'], ['open', 'Opening balances'], ['tax', 'GST rates'], ['periods', 'Closing'], ['team', 'Team'], ['wa', 'WhatsApp'], ['flowxp', 'FlowXP'], ['log', 'Activity'], ['new', 'Add business']]} />
+      {tab === 'biz' && <Business />}{tab === 'print' && <Printing />}{tab === 'open' && <OpeningBalances />}{tab === 'tax' && <TaxRates />}{tab === 'periods' && <Periods />}{tab === 'team' && <Team />}{tab === 'wa' && <WhatsappSettings />}{tab === 'flowxp' && <FlowXP />}{tab === 'log' && <Activity />}{tab === 'new' && <AddBusiness />}
     </Page>
   );
 };
