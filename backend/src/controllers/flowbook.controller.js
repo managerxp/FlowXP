@@ -7,6 +7,7 @@ import pool from '../config/database.js';
 import config from '../config/env.js';
 import { decrypt, encrypt } from '../modules/crypto.js';
 import { recordAudit } from '../modules/events.js';
+import { hasPlanFeature } from '../modules/planFeatures.js';
 import { DOMAIN, defaultSend } from '../modules/flowbook/outbox.js';
 import { envelope, signature } from '../modules/flowbook/events.js';
 
@@ -26,6 +27,10 @@ export const checkUrl = (value) => {
    handoff (who they are, which business, and the business's own trial or plan) instead of asking for another password. */
 export const launch = async (req, res) => {
   if (!config.flowbookAppUrl || !config.flowbookSsoSecret) return res.status(503).json({ success: false, message: 'FlowBook is not set up on this server yet' });
+  // FlowBook is the offer of the business that signed up for FlowBook; a business of another type has it once it is paying (the FlowXP link)
+  if (req.tenant.businessType !== 'FLOWBOOK' && !(req.tenant.subscription.status === 'ACTIVE' && hasPlanFeature(req.tenant, 'flowbook'))) {
+    return res.status(402).json({ success: false, message: 'FlowBook is not part of this business plan. Start a FlowBook free trial from the FlowBook page, or contact us.' });
+  }
   const u = (await pool.query(`SELECT name, email FROM users WHERE user_id = $1`, [req.tenant.userId])).rows[0];
   const s = req.tenant.subscription;
   const body = Buffer.from(JSON.stringify({

@@ -17,6 +17,7 @@ const app = buildApp({
   pool,
   onEvent: worker?.kick,
   allowedOrigins: (process.env.ALLOWED_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+  passwordAuth: !production || process.env.FLOWBOOK_PASSWORD_AUTH === 'on',   // in production FlowXP is the only sign-in
   secureCookie: production || process.env.COOKIE_SECURE === 'true'
 });
 const port = Number(process.env.PORT ?? 5200);

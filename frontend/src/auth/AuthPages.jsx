@@ -151,6 +151,7 @@ const useFinishAuth = () => {
   return (data) => {
     signIn(data.token, data.user, data.businesses);
     const first = data.businesses[0];
+    if (first?.business_type === 'FLOWBOOK') { navigate('/app/flowbook?open=1', { replace: true }); return; }   // FlowBook only: no billing setup, straight in
     const there = /^\/app(\/|$)/.test(next || '') ? next : null;
     if (first && first.onboarding_step < 10) { try { if (there) sessionStorage.setItem('flowxp.after', there); } catch { /* storage blocked */ } }
     navigate(first && first.onboarding_step < 10 ? '/app/onboarding' : there || '/app', { replace: true });
@@ -230,9 +231,10 @@ const EmailCodeStep = ({ challenge: initialChallenge, email, aside, onDone, onBa
 export const Signup = () => {
   const { t } = useTranslation('auth');
   const finish = useFinishAuth();
+  const forBook = /flowbook/.test(useSearchParams()[0].get('next') || '');   // came from the website's FlowBook page: same account and trial, FlowBook opens at the end
   const { busy, error, submit } = useSubmit();
   const [form, setForm] = useState({
-    name: '', email: '', phone: '', password: '', business_name: '', business_type: ''
+    name: '', email: '', phone: '', password: '', business_name: '', business_type: forBook ? 'FLOWBOOK' : ''
   });
   const [agreed, setAgreed] = useState(false);
   const [challenge, setChallenge] = useState(null);   // set once the account exists and a code has been emailed
@@ -253,8 +255,8 @@ export const Signup = () => {
     <AuthLayout
       aside="signup"
       top={<Trans t={t} i18nKey="signup.haveAccount" components={{ link: <Link to="/login" className="font-medium text-brand-600 hover:text-brand-700" /> }} />}
-      title={t('signup.title')}
-      lead={t('signup.lead')}
+      title={forBook ? 'Start your FlowBook free trial' : t('signup.title')}
+      lead={forBook ? 'Seven days free, no card. Select FlowBook below and it opens as soon as you finish.' : t('signup.lead')}
     >
       <form onSubmit={onSubmit} className="space-y-8">
         <Alert>{error}</Alert>
@@ -301,6 +303,12 @@ export const Signup = () => {
                 </label>
               ))}
             </div>
+            <label
+              className={`mt-2 flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-4 py-3 text-small font-medium transition-colors duration-(--duration-fast) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-500 ${form.business_type === 'FLOWBOOK' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}
+            >
+              <input type="radio" name="business_type" value="FLOWBOOK" checked={form.business_type === 'FLOWBOOK'} onChange={set('business_type')} required className="sr-only" />
+              <span>{t('types.FLOWBOOK', 'FlowBook, accounting only')}<span className="block text-xs font-normal text-ink-500">{t('signup.flowbookHint', 'Invoices, GST, stock, bank and books. Choose this for the FlowBook 7-day free trial.')}</span></span>
+            </label>
           </div>
           {form.business_type === 'AUTO_PARTS' && (
             <label className="flex items-start gap-2.5 text-sm text-ink-700">

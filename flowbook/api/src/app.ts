@@ -32,6 +32,8 @@ export type AppOptions = {
   onEvent?: () => void;
   /** attempts allowed per 15 minutes (defaults: sign-in 8 per email and address, sign-up 20 per address) */
   limits?: { login?: number; register?: number };
+  /** FlowXP is the only sign-in. false answers /auth/register and /auth/login with 404 (server.ts: off in production unless FLOWBOOK_PASSWORD_AUTH=on). Default true so tests and scripts can register. */
+  passwordAuth?: boolean;
 };
 
 const COOKIE = 'fb_session';
@@ -127,7 +129,8 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
   };
 
   /* ---- auth */
-  app.post('/v1/auth/register', { schema: { body: { type: 'object', required: ['name', 'email', 'password'], additionalProperties: false, properties: {
+  const passwordAuthOff = (_req: FastifyRequest, reply: FastifyReply, done: () => void): void => { if (opts.passwordAuth === false) reply.code(404).send({ error: { code: 'not_found', message: 'sign in through FlowXP' } }); else done(); };
+  app.post('/v1/auth/register', { preHandler: passwordAuthOff,  schema: { body: { type: 'object', required: ['name', 'email', 'password'], additionalProperties: false, properties: {
     name: { type: 'string', minLength: 1, maxLength: 120 }, email: { type: 'string', format: 'email', maxLength: 200 }, password: { type: 'string' } } } } }, async (req, reply) => {
     const b = req.body as { name: string; email: string; password: string };
     if (throttled(`register:${req.ip}`, opts.limits?.register ?? 20)) return reply.code(429).send({ error: { code: 'rate_limited', message: 'too many attempts; wait a few minutes' } });
@@ -140,7 +143,7 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
     return reply.code(201).send({ user: { id: row.id, name: b.name.trim(), email: b.email.trim() }, token });
   });
 
-  app.post('/v1/auth/login', { schema: { body: { type: 'object', required: ['email', 'password'], additionalProperties: false, properties: {
+  app.post('/v1/auth/login', { preHandler: passwordAuthOff,  schema: { body: { type: 'object', required: ['email', 'password'], additionalProperties: false, properties: {
     email: { type: 'string', maxLength: 200 }, password: { type: 'string', maxLength: 200 } } } } }, async (req, reply) => {
     const b = req.body as { email: string; password: string };
     if (throttled(`login:${b.email.toLowerCase()}:${req.ip}`, opts.limits?.login ?? 8)) return reply.code(429).send({ error: { code: 'rate_limited', message: 'too many attempts; wait a few minutes' } });

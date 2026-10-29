@@ -76,11 +76,11 @@ export const checkUpiVpa = (value) => {
 export const BUSINESS_TYPES = [
   'RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'HOTEL', 'GYM',
   'SERVICES', 'ELECTRONICS', 'CLOTHING', 'GAMING_CAFE', 'AUTO_PARTS', 'RACING',
-  'WHOLESALE', 'DISTRIBUTOR', 'OTHER'
+  'WHOLESALE', 'DISTRIBUTOR', 'OTHER', 'FLOWBOOK'   // FLOWBOOK: signed up for FlowBook, the accounting product, alone (no billing tools); opens FlowBook straight away
 ];
 
 /* What a new business can choose: the businesses FlowXP is built for. Wholesale and distribution is ONE choice (WHOLESALE): the FlowXP team switches the distributor tools on for a business that needs them, in the Super Admin. DISTRIBUTOR stays a valid stored type for businesses that already have it. BUSINESS_TYPES above stays wider so businesses created earlier as another type keep working. */
-export const SIGNUP_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'GYM', 'GAMING_CAFE', 'AUTO_PARTS', 'WHOLESALE'];
+export const SIGNUP_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'GYM', 'GAMING_CAFE', 'AUTO_PARTS', 'WHOLESALE', 'FLOWBOOK'];
 export const checkSignupType = (value) =>
   SIGNUP_TYPES.includes(String(value ?? '').toUpperCase())
     ? null
