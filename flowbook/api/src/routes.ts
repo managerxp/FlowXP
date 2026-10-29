@@ -3,7 +3,7 @@ import type pg from 'pg';
 import { audit } from './audit.ts';
 import { withOrg } from './db.ts';
 import type { Db } from './db.ts';
-import { ageing, allocatePayment, applyCreditNote, convertDocument, createOpeningBalance, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, setOutcome, voidDocument, voidPayment } from './documents.ts';
+import { ageing, allocatePayment, applyCreditNote, applyDebitNote, convertDocument, createOpeningBalance, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, setOutcome, voidDocument, voidPayment } from './documents.ts';
 import type { Alloc, DocIn, DocKind } from './documents.ts';
 import { listExpenses, recordExpense, voidExpense } from './expenses.ts';
 import { ewayBill } from './eway.ts';
@@ -135,7 +135,7 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   });
 
   /* ---- invoices, bills and credit notes */
-  const kinds: [string, DocKind, string, string][] = [['invoices', 'INVOICE', 'invoice', 'invoice'], ['bills', 'BILL', 'bill', 'bill'], ['credit-notes', 'CREDIT_NOTE', 'invoice', 'credit note'], ['quotes', 'QUOTE', 'invoice', 'quote'], ['sales-orders', 'SALES_ORDER', 'invoice', 'sales order'], ['purchase-orders', 'PURCHASE_ORDER', 'bill', 'purchase order']];
+  const kinds: [string, DocKind, string, string][] = [['invoices', 'INVOICE', 'invoice', 'invoice'], ['bills', 'BILL', 'bill', 'bill'], ['credit-notes', 'CREDIT_NOTE', 'invoice', 'credit note'], ['quotes', 'QUOTE', 'invoice', 'quote'], ['sales-orders', 'SALES_ORDER', 'invoice', 'sales order'], ['purchase-orders', 'PURCHASE_ORDER', 'bill', 'purchase order'], ['debit-notes', 'DEBIT_NOTE', 'bill', 'debit note']];
   for (const [path, kind, perm, label] of kinds) {
     const url = `${base}/${path}`;
     app.get(url, { preHandler: scope(`${perm}.read`), schema: { querystring: { type: 'object', properties: {
@@ -178,6 +178,10 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
       return reply.code(201).send(await run(req, (c, orgId) => convertDocument(c, orgId, idOf(req), b.to, b.date, me(req))));
     });
   }
+  app.post(`${base}/debit-notes/:id/apply`, { preHandler: scope('bill.write'), schema: { ...idParam, body: { type: 'object', required: ['allocations'], additionalProperties: false, properties: { allocations: allocBody } } } }, async (req) => {
+    await run(req, (c, orgId) => applyDebitNote(c, orgId, BigInt((req.params as { id: string }).id), allocs((req.body as { allocations: { documentId: string; amount: string }[] }).allocations), me(req)));
+    return { ok: true };
+  });
   app.post(`${base}/credit-notes/:id/apply`, { preHandler: scope('invoice.write'), schema: { ...idParam, body: { type: 'object', required: ['allocations'], additionalProperties: false, properties: { allocations: allocBody } } } }, async (req) => {
     await run(req, (c, orgId) => applyCreditNote(c, orgId, BigInt((req.params as { id: string }).id), allocs((req.body as { allocations: { documentId: string; amount: string }[] }).allocations), me(req)));
     return { ok: true };

@@ -3,13 +3,13 @@ import { audit } from './audit.ts';
 import { validStateCode } from './gst.ts';
 import { LedgerError, post, reverse } from './ledger.ts';
 import { paiseToString, roundDiv, taxOn, toPaise } from './money.ts';
-import { creditNoteJournal, customerPaymentJournal, openingJournal, saleJournal, supplierBillJournal, supplierPaymentJournal } from './rules.ts';
+import { creditNoteJournal, customerPaymentJournal, debitNoteJournal, openingJournal, saleJournal, supplierBillJournal, supplierPaymentJournal } from './rules.ts';
 import type { Tender } from './rules.ts';
 
 /* Invoices, bills and credit notes are drafts until issued. Issuing numbers the document and posts its journal in one
    transaction through the rules in rules.ts, so a document and its journal can never disagree (accounting-rules I1, I2). */
 
-export type DocKind = 'INVOICE' | 'BILL' | 'CREDIT_NOTE' | 'QUOTE' | 'SALES_ORDER' | 'PURCHASE_ORDER';
+export type DocKind = 'INVOICE' | 'BILL' | 'CREDIT_NOTE' | 'QUOTE' | 'SALES_ORDER' | 'PURCHASE_ORDER' | 'DEBIT_NOTE';
 const POSTS_NOTHING = (k: DocKind): boolean => k === 'QUOTE' || k === 'SALES_ORDER' || k === 'PURCHASE_ORDER';
 export type LineIn = { itemId?: bigint; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; unit?: string; inclusive?: boolean };
 export type DocIn = {
@@ -18,7 +18,7 @@ export type DocIn = {
 };
 type Override = { reason: string };
 
-const PREFIX: Record<DocKind, string> = { INVOICE: 'INV', BILL: 'BILL', CREDIT_NOTE: 'CN', QUOTE: 'QUO', SALES_ORDER: 'SO', PURCHASE_ORDER: 'PO' };
+const PREFIX: Record<DocKind, string> = { INVOICE: 'INV', BILL: 'BILL', CREDIT_NOTE: 'CN', QUOTE: 'QUO', SALES_ORDER: 'SO', PURCHASE_ORDER: 'PO', DEBIT_NOTE: 'DN' };
 const gone = (what: string) => new LedgerError('not_found', `no such ${what}`);
 
 /** The financial year (April to March) a date falls in, by its starting year. */
@@ -83,7 +83,7 @@ const partyFor = async (c: Db, id: bigint, role: 'CUSTOMER' | 'VENDOR') => {
   if (p.kind !== 'BOTH' && p.kind !== role) throw new LedgerError('wrong_party_kind', `that party is not a ${role.toLowerCase()}`);
   return p as { state_code: string | null; credit_days: number };
 };
-const roleOf = (kind: DocKind): 'CUSTOMER' | 'VENDOR' => (kind === 'BILL' || kind === 'PURCHASE_ORDER' ? 'VENDOR' : 'CUSTOMER');
+const roleOf = (kind: DocKind): 'CUSTOMER' | 'VENDOR' => (kind === 'BILL' || kind === 'PURCHASE_ORDER' || kind === 'DEBIT_NOTE' ? 'VENDOR' : 'CUSTOMER');
 
 const addDays = (date: string, days: number): string => new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
@@ -93,8 +93,9 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
   if (d.roundOff && d.kind !== 'INVOICE' && !POSTS_NOTHING(d.kind)) throw new LedgerError('round_off_unsupported', 'only invoices can be rounded off');
   if (d.placeOfSupply && !validStateCode(d.placeOfSupply)) throw new LedgerError('bad_state', `${d.placeOfSupply} is not a GST state code`);
   if (d.relatedDocumentId) {
-    const ok = d.kind === 'CREDIT_NOTE' && (await c.query(`SELECT 1 FROM documents WHERE id = $1 AND kind = 'INVOICE' AND status = 'ISSUED' AND party_id = $2`, [d.relatedDocumentId, d.partyId])).rowCount;
-    if (!ok) throw new LedgerError('bad_related_document', 'a credit note can only refer to an issued invoice of the same customer');
+    const target = d.kind === 'CREDIT_NOTE' ? 'INVOICE' : d.kind === 'DEBIT_NOTE' ? 'BILL' : null;
+    const ok = target && (await c.query(`SELECT 1 FROM documents WHERE id = $1 AND kind = $3 AND status = 'ISSUED' AND party_id = $2 AND NOT reverse_charge`, [d.relatedDocumentId, d.partyId, target])).rowCount;
+    if (!ok) throw new LedgerError('bad_related_document', d.kind === 'DEBIT_NOTE' ? 'a debit note can only refer to an issued bill of the same vendor (not one under reverse charge)' : 'a credit note can only refer to an issued invoice of the same customer');
   }
   const lines = await priceLines(c, d.kind, d.lines, d.date);
   const org = (await c.query(`SELECT state_code FROM organizations WHERE id = $1`, [orgId])).rows[0];
@@ -108,7 +109,7 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
   if (!Number.isInteger(tcsRate) || tcsRate < 0 || tcsRate > 2000) throw new LedgerError('bad_tcs_rate', 'the TCS rate must be between 0 and 20 percent');
   const tcs = roundDiv((subtotal + tax) * BigInt(tcsRate), 10_000n);
   const roundOff = d.roundOff ? roundDiv(subtotal + tax + tcs, 100n) * 100n - (subtotal + tax + tcs) : 0n;
-  const due = d.kind === 'CREDIT_NOTE' ? null : d.dueDate ?? addDays(d.date, party.credit_days);
+  const due = d.kind === 'CREDIT_NOTE' || d.kind === 'DEBIT_NOTE' ? null : d.dueDate ?? addDays(d.date, party.credit_days);
   const fields = [d.partyId, d.date, due, place ?? null, interState, d.supplierRef ?? null, d.relatedDocumentId ?? null, d.memo ?? null, Boolean(d.roundOff), subtotal, tax, roundOff, subtotal + (d.reverseCharge ? 0n : tax) + tcs + roundOff, tcsRate, tcs, tcsRate ? d.tcsSection ?? null : null, Boolean(d.reverseCharge)];
   if (id === null) {
     id = (await c.query(
@@ -121,7 +122,7 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
     if (cur.status !== 'DRAFT') throw new LedgerError('not_draft', 'only a draft can be edited; void an issued document and make a new one');
     if (cur.kind !== d.kind) throw new LedgerError('kind_mismatch', 'a document cannot change its kind');
     await c.query(
-      `UPDATE documents SET party_id = $2, issue_date = $3, due_date = $4, place_of_supply = $5, inter_state = $6, supplier_ref = $7, related_document_id = CASE WHEN kind = 'CREDIT_NOTE' THEN $8::bigint ELSE related_document_id END, memo = $9, round_off_on = $10,
+      `UPDATE documents SET party_id = $2, issue_date = $3, due_date = $4, place_of_supply = $5, inter_state = $6, supplier_ref = $7, related_document_id = CASE WHEN kind IN ('CREDIT_NOTE', 'DEBIT_NOTE') THEN $8::bigint ELSE related_document_id END, memo = $9, round_off_on = $10,
               subtotal_minor = $11, tax_minor = $12, round_off_minor = $13, total_minor = $14, tcs_rate_bp = $15, tcs_minor = $16, tcs_section = $17, reverse_charge = $18 WHERE id = $1`, [id, ...fields]);
     await c.query(`DELETE FROM document_lines WHERE document_id = $1`, [id]);
   }
@@ -172,7 +173,7 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
   const milli = (q: bigint) => `${q / 1000n}.${String(q % 1000n).padStart(3, '0')}`;
   await saveDraft(c, orgId, id, {
     kind, partyId: doc.party_id, date: doc.issue_d, dueDate: doc.due_d ?? undefined,
-    placeOfSupply: doc.place_of_supply ?? undefined, supplierRef: doc.supplier_ref ?? undefined, relatedDocumentId: kind === 'CREDIT_NOTE' ? doc.related_document_id ?? undefined : undefined, memo: doc.memo ?? undefined, roundOff: doc.round_off_on, tcsRateBp: doc.tcs_rate_bp, tcsSection: doc.tcs_section ?? undefined, reverseCharge: doc.reverse_charge,
+    placeOfSupply: doc.place_of_supply ?? undefined, supplierRef: doc.supplier_ref ?? undefined, relatedDocumentId: kind === 'CREDIT_NOTE' || kind === 'DEBIT_NOTE' ? doc.related_document_id ?? undefined : undefined, memo: doc.memo ?? undefined, roundOff: doc.round_off_on, tcsRateBp: doc.tcs_rate_bp, tcsSection: doc.tcs_section ?? undefined, reverseCharge: doc.reverse_charge,
     lines: stored.map((l) => ({ itemId: l.item_id ?? undefined, description: l.description, hsnSac: l.hsn_sac ?? undefined, quantity: milli(l.quantity_milli), unitPrice: paiseToString(l.unit_price_minor), discount: paiseToString(l.discount_minor), taxCode: l.tax_code, unit: l.unit ?? undefined, inclusive: l.price_includes_tax }))
   }, actor);
   const fresh = (await c.query(`SELECT *, issue_date::text AS d FROM documents WHERE id = $1`, [id])).rows[0];
@@ -193,6 +194,7 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
   const common = { date: fresh.d as string, partyId: fresh.party_id as bigint, lines: taxed, interState: fresh.inter_state as boolean };
   const journal = kind === 'INVOICE' ? saleJournal({ ...common, invoiceId: number, roundOff: fresh.round_off_minor as bigint, tcs: fresh.tcs_minor as bigint })
     : kind === 'BILL' ? supplierBillJournal({ ...common, billId: number, reverseCharge: fresh.reverse_charge as boolean })
+    : kind === 'DEBIT_NOTE' ? debitNoteJournal({ ...common, noteId: number })
     : creditNoteJournal({ ...common, noteId: number });
   const posted = await post(c, orgId, { ...journal, actor, override });
   await c.query(`UPDATE documents SET status = 'ISSUED', number = $2, journal_entry_id = $3, balance_minor = total_minor WHERE id = $1`, [id, number, posted.entryId]);
@@ -268,7 +270,7 @@ export const voidDocument = async (c: Db, orgId: bigint, kind: DocKind, id: bigi
 export type Alloc = { documentId: bigint; amount: bigint };
 const byId = (a: Alloc, b: Alloc) => (a.documentId < b.documentId ? -1 : a.documentId > b.documentId ? 1 : 0);
 
-const applyAllocations = async (c: Db, orgId: bigint, src: { type: 'PAYMENT' | 'CREDIT_NOTE'; id: bigint; partyId: bigint }, docKind: DocKind, allocs: Alloc[]): Promise<bigint> => {
+const applyAllocations = async (c: Db, orgId: bigint, src: { type: 'PAYMENT' | 'CREDIT_NOTE' | 'DEBIT_NOTE'; id: bigint; partyId: bigint }, docKind: DocKind, allocs: Alloc[]): Promise<bigint> => {
   const seen = new Set<bigint>();
   let total = 0n;
   for (const a of [...allocs].sort(byId)) {                       // a fixed order, so two callers cannot deadlock on each other
@@ -296,6 +298,17 @@ export const applyCreditNote = async (c: Db, orgId: bigint, noteId: bigint, allo
   if (total > (note.balance_minor as bigint)) throw new LedgerError('over_allocation', `the credit note has only ${paiseToString(note.balance_minor)} left`);
   await c.query(`UPDATE documents SET balance_minor = balance_minor - $2 WHERE id = $1`, [noteId, total]);
   await audit(c, orgId, { actor, action: 'credit_note.applied', entityType: 'document', entityId: noteId, detail: { total: paiseToString(total) } });
+};
+
+/** Use the unapplied credit on a debit note to settle the vendor's bills. No journal: both already sit in payables. */
+export const applyDebitNote = async (c: Db, orgId: bigint, noteId: bigint, allocs: Alloc[], actor: string): Promise<void> => {
+  const note = (await c.query(`SELECT status, party_id, balance_minor FROM documents WHERE id = $1 AND kind = 'DEBIT_NOTE' FOR UPDATE`, [noteId])).rows[0];
+  if (!note) throw gone('debit note');
+  if (note.status !== 'ISSUED') throw new LedgerError('not_issued', 'only an issued debit note can be applied');
+  const total = await applyAllocations(c, orgId, { type: 'DEBIT_NOTE', id: noteId, partyId: note.party_id }, 'BILL', allocs);
+  if (total > (note.balance_minor as bigint)) throw new LedgerError('over_allocation', `the debit note has only ${paiseToString(note.balance_minor)} left`);
+  await c.query(`UPDATE documents SET balance_minor = balance_minor - $2 WHERE id = $1`, [noteId, total]);
+  await audit(c, orgId, { actor, action: 'debit_note.applied', entityType: 'document', entityId: noteId, detail: { total: paiseToString(total) } });
 };
 
 /* ---- payments */

@@ -151,11 +151,12 @@ export const gstr1 = async (c: Db, orgId: bigint, month: string, opts: { hsnDigi
 export const gstr3b = async (c: Db, orgId: bigint, month: string) => {
   const org = (await c.query(`SELECT gstin FROM organizations WHERE id = $1`, [orgId])).rows[0] as { gstin: string | null };
   const out = zero(); const nil = zero(); const itc = zero(); const rev = zero();
-  for (const kinds of [['INVOICE', 'CREDIT_NOTE'], ['BILL']]) {
+  for (const kinds of [['INVOICE', 'CREDIT_NOTE'], ['BILL', 'DEBIT_NOTE']]) {
     const { docs, linesOf } = await load(c, kinds, month, ['ISSUED']);
     for (const d of docs) for (const l of linesOf(d)) {
-      const sign = d.kind === 'CREDIT_NOTE' ? -1 : 1;
-      if (d.kind === 'BILL') { add(itc, l, d.inter_state); if (d.reverse_charge) add(rev, l, d.inter_state); } else if (l.tax_rate_bp === 0) add(nil, l, false, sign); else add(out, l, d.inter_state, sign);
+      const sign = d.kind === 'CREDIT_NOTE' || d.kind === 'DEBIT_NOTE' ? -1 : 1;
+      if (d.kind === 'DEBIT_NOTE') add(itc, l, d.inter_state, -1);   // credit claimed on the bill is taken back
+      else if (d.kind === 'BILL') { add(itc, l, d.inter_state); if (d.reverse_charge) add(rev, l, d.inter_state); } else if (l.tax_rate_bp === 0) add(nil, l, false, sign); else add(out, l, d.inter_state, sign);
     }
   }
   // GST paid on expenses (and taken back out when an expense is voided) is credit too

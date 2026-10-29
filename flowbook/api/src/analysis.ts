@@ -17,7 +17,7 @@ export const salesAnalysis = async (c: Db, from: string, to: string) => {
   const months = (await c.query(
     `SELECT to_char(date_trunc('month', d.issue_date), 'YYYY-MM') AS month,
             COALESCE(SUM(${net}) FILTER (WHERE d.kind IN ('INVOICE', 'CREDIT_NOTE')), 0)::bigint AS sales_minor,
-            COALESCE(SUM(d.subtotal_minor) FILTER (WHERE d.kind = 'BILL'), 0)::bigint AS purchases_minor
-       FROM documents d WHERE d.kind IN ('INVOICE', 'CREDIT_NOTE', 'BILL') AND ${between} GROUP BY 1 ORDER BY 1`, [from, to])).rows;
+            COALESCE(SUM(CASE d.kind WHEN 'DEBIT_NOTE' THEN -d.subtotal_minor ELSE d.subtotal_minor END) FILTER (WHERE d.kind IN ('BILL', 'DEBIT_NOTE')), 0)::bigint AS purchases_minor
+       FROM documents d WHERE d.kind IN ('INVOICE', 'CREDIT_NOTE', 'BILL', 'DEBIT_NOTE') AND ${between} GROUP BY 1 ORDER BY 1`, [from, to])).rows;
   return { customers, items, months };
 };

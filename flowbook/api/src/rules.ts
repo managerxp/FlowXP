@@ -92,6 +92,14 @@ export const openingJournal = (d: { date: string; number: string; partyId: bigin
     : [{ account: 'OPENING_BALANCE', side: 'D', amount: d.amount }, { account: 'AP', side: 'C', amount: d.amount, partyId: d.partyId }]
 });
 
+/** Debit note: a vendor's bill reduced. Payables are debited; purchase returns and the input tax that was claimed are credited back. */
+export const debitNoteJournal = (d: { date: string; noteId: string; partyId?: bigint; lines: TaxedLine[]; interState: boolean }): PostInput => {
+  const net = d.lines.reduce((a, l) => a + l.taxable, 0n);
+  const tax = taxSplit(d.lines, d.interState);
+  return { date: d.date, sourceType: 'debit_note', sourceId: d.noteId, kind: 'DEBIT_NOTE', rulesVersion: RULES_VERSION, memo: `Debit note ${d.noteId}`,
+    lines: merge([{ account: 'AP', side: 'D', amount: net + tax.total, partyId: d.partyId }, { account: 'PURCHASE_RETURNS', side: 'C', amount: net }, ...taxLines(tax, 'C', 'INPUT')]) };
+};
+
 /** Supplier payment. Example 5. */
 export const supplierPaymentJournal = (d: { date: string; paymentId: string; partyId?: bigint; mode: Tender; amount: bigint; tds?: bigint }): PostInput => ({
   date: d.date, sourceType: 'payment_out', sourceId: d.paymentId, kind: 'PAYMENT_OUT', rulesVersion: RULES_VERSION, memo: `Payment ${d.paymentId}`,

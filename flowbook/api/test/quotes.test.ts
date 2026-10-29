@@ -2,10 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { withOrg } from '../src/db.ts';
 import type { Db } from '../src/db.ts';
-import { convertDocument, getDocument, issueDocument, listDocuments, saveDraft, setOutcome, voidDocument } from '../src/documents.ts';
+import { applyDebitNote, convertDocument, getDocument, issueDocument, listDocuments, saveDraft, setOutcome, voidDocument } from '../src/documents.ts';
 import type { DocIn } from '../src/documents.ts';
 import { createParty, seedTaxRates } from '../src/masters.ts';
 import { openFinancialYear } from '../src/periods.ts';
+import { gstr3b } from '../src/gstr.ts';
 import { partyStatement } from '../src/statement.ts';
 import { trialBalance } from '../src/reports.ts';
 import { newOrg, setup } from './helpers.ts';
@@ -81,4 +82,29 @@ test('a purchase order is for a vendor, posts nothing, and becomes a bill', { sk
   const bill = (await run(org, (c) => convertDocument(c, org, po.id, 'BILL', '2026-06-05', 't'))).id;
   await run(org, (c) => issueDocument(c, org, 'BILL', bill, 't'));
   assert.equal((await run(org, (c) => partyStatement(c, vend, '2026-04-01', '2026-12-31'))).closing, -224_000n, 'the vendor is owed 2,000 + 12%');
+});
+
+test('a debit note reduces what the vendor is owed, takes back the input credit and is applied to a bill', { skip }, async () => {
+  const org = await newOrg(pool);
+  const vend = await run(org, async (c) => {
+    await c.query(`UPDATE organizations SET state_code = '27' WHERE id = $1`, [org]);
+    await seedTaxRates(c, org);
+    await openFinancialYear(c, org, 2027, 4, 't');
+    return createParty(c, org, { kind: 'VENDOR', name: 'Mehta', stateCode: '27' }, 't');
+  });
+  const bill = await run(org, async (c) => { const x = await saveDraft(c, org, null, { kind: 'BILL', partyId: vend, date: '2026-06-01', supplierRef: 'M-1', lines: [{ description: 'Paper', quantity: '10', unitPrice: '1000', taxCode: 'GST18' }] }, 't'); await issueDocument(c, org, 'BILL', x, 't'); return x; });
+  const dn = await run(org, async (c) => {
+    const x = await saveDraft(c, org, null, { kind: 'DEBIT_NOTE', partyId: vend, date: '2026-06-10', relatedDocumentId: bill, lines: [{ description: 'Paper returned', quantity: '2', unitPrice: '1000', taxCode: 'GST18' }] }, 't');
+    const n = await issueDocument(c, org, 'DEBIT_NOTE', x, 't'); return { id: x, ...n };
+  });
+  assert.match(dn.number, /^DN-26-27-000001$/);
+  const tb = Object.fromEntries((await run(org, (c) => trialBalance(c, org, { from: '2026-04-01', to: '2027-03-31' }))).rows.map((r) => [r.name, [r.debitBalance, r.creditBalance]]));
+  assert.deepEqual([tb['Accounts payable'], tb['Purchases'], tb['Purchase returns'], tb['Input CGST']], [[0n, 1_180_000n - 236_000n], [1_000_000n, 0n], [0n, 200_000n], [90_000n - 18_000n, 0n]]);
+  assert.equal((await run(org, (c) => partyStatement(c, vend, '2026-04-01', '2026-12-31'))).closing, -944_000n);
+  const r = await run(org, (c) => gstr3b(c, org, '2026-06'));
+  assert.equal(r.file.itc_elg.itc_avl[4]?.camt, 720, 'credit on the bill (900) less the 180 taken back');
+  await run(org, (c) => applyDebitNote(c, org, dn.id, [{ documentId: bill, amount: 236_000n }], 't'));
+  assert.equal((await pool.query(`SELECT balance_minor FROM documents WHERE id = $1`, [bill])).rows[0].balance_minor, 944_000n);
+  await assert.rejects(run(org, (c) => applyDebitNote(c, org, dn.id, [{ documentId: bill, amount: 1n }], 't')), /only 0\.00 left/);
+  await assert.rejects(run(org, (c) => saveDraft(c, org, null, { kind: 'DEBIT_NOTE', partyId: vend, date: '2026-06-10', relatedDocumentId: dn.id, lines: [{ description: 'x', quantity: '1', unitPrice: '1', taxCode: 'GST0' }] }, 't')), /issued bill of the same vendor/);
 });

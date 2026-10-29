@@ -41,6 +41,7 @@ export const DocList = ({ kind }) => {
   );
 };
 
+const isNote = (kind) => kind.api === 'credit-notes' || kind.api === 'debit-notes';   // reduces what a customer owes (credit) or what you owe a vendor (debit)
 const blankLine = () => ({ itemId: '', description: '', hsnSac: '', unit: '', quantity: '1', unitPrice: '', discount: '', taxCode: 'GST18', inclusive: false });
 
 export const DocForm = ({ kind }) => {
@@ -54,7 +55,7 @@ export const DocForm = ({ kind }) => {
   const rates = useLoad(() => o('/tax-rates'), [org.id]);
   const existing = useLoad(() => (id ? o(`/${kind.api}/${id}`) : Promise.resolve(null)), [org.id, id]);
   const [f, setF] = useState({ partyId: '', date: today(), dueDate: '', placeOfSupply: '', supplierRef: '', relatedDocumentId: '', memo: '', roundOff: true, tcsRate: '', tcsSection: '', reverseCharge: false, lines: [blankLine()] });
-  const invoices = useLoad(() => (kind.api === 'credit-notes' && f.partyId ? o(`/invoices?status=ISSUED&partyId=${f.partyId}&limit=100`) : Promise.resolve(null)), [org.id, f.partyId, kind.api]);
+  const invoices = useLoad(() => (isNote(kind) && f.partyId ? o(`/${kind.api === 'credit-notes' ? 'invoices' : 'bills'}?status=ISSUED&partyId=${f.partyId}&limit=100`) : Promise.resolve(null)), [org.id, f.partyId, kind.api]);
 
   useEffect(() => {
     const d = existing.data;
@@ -76,7 +77,7 @@ export const DocForm = ({ kind }) => {
     e.preventDefault();
     a.run(async () => {
       const body = { partyId: f.partyId, date: f.date, roundOff: f.roundOff, memo: f.memo || undefined, dueDate: f.dueDate || undefined, placeOfSupply: f.placeOfSupply || undefined,
-        supplierRef: kind.api === 'bills' ? f.supplierRef || undefined : undefined, relatedDocumentId: kind.api === 'credit-notes' ? f.relatedDocumentId || undefined : undefined,
+        supplierRef: kind.api === 'bills' ? f.supplierRef || undefined : undefined, relatedDocumentId: isNote(kind) ? f.relatedDocumentId || undefined : undefined,
         ...(kind.api === 'bills' && f.reverseCharge && { reverseCharge: true }),
         ...(kind.api === 'invoices' && Number(f.tcsRate) > 0 && { tcsRateBp: Math.round(Number(f.tcsRate) * 100), ...(f.tcsSection && { tcsSection: f.tcsSection }) }),
         lines: f.lines.map((l) => ({ itemId: l.itemId || undefined, description: l.description || undefined, hsnSac: l.hsnSac || undefined, unit: l.unit || undefined, quantity: String(l.quantity), unitPrice: String(l.unitPrice || '0'), discount: l.discount ? String(l.discount) : undefined, taxCode: l.taxCode || undefined, ...(l.inclusive && { inclusive: true }) })) };
@@ -102,11 +103,11 @@ export const DocForm = ({ kind }) => {
               {parties.data && !parties.data.length && <span className="hint">No {kind.who.toLowerCase()}s yet. <Link to={kind.partyKind === 'VENDOR' ? '/vendors' : '/customers'}>Add one first</Link>.</span>}
             </Field>
             <Field label="Date"><input type="date" value={f.date} onChange={set('date')} required /></Field>
-            {kind.api !== 'credit-notes' && <Field label={kind.dueLabel || 'Due date'} hint={party?.credit_days ? `${party.name} usually gets ${party.credit_days} days` : 'Optional'}><input type="date" value={f.dueDate} onChange={set('dueDate')} /></Field>}
+            {!isNote(kind) && <Field label={kind.dueLabel || 'Due date'} hint={party?.credit_days ? `${party.name} usually gets ${party.credit_days} days` : 'Optional'}><input type="date" value={f.dueDate} onChange={set('dueDate')} /></Field>}
             <Field label="Place of supply" hint="Leave empty to use the party's state"><select value={f.placeOfSupply} onChange={set('placeOfSupply')}><option value="">Automatic</option>{Object.entries(STATES).map(([c, n]) => <option key={c} value={String(c).padStart(2, '0')}>{String(c).padStart(2, '0')} · {n}</option>)}</select></Field>
             {kind.api === 'bills' && <Field label="Vendor's bill number"><input value={f.supplierRef} onChange={set('supplierRef')} maxLength={60} /></Field>}
-            {kind.api === 'credit-notes' && (
-              <Field label="Against invoice" hint="Optional">
+            {isNote(kind) && (
+              <Field label={kind.api === 'credit-notes' ? 'Against invoice' : 'Against bill'} hint="Optional">
                 <select value={f.relatedDocumentId} onChange={set('relatedDocumentId')} disabled={!f.partyId}><option value="">None</option>{(invoices.data?.documents || []).map((d) => <option key={d.id} value={d.id}>{d.number} · ₹{inr(d.total_minor)}</option>)}</select>
               </Field>
             )}
@@ -142,7 +143,7 @@ export const DocForm = ({ kind }) => {
   );
 };
 
-const PATH = { PURCHASE_ORDER: 'purchase-orders', INVOICE: 'sales', BILL: 'purchases', CREDIT_NOTE: 'credit-notes', QUOTE: 'quotes', SALES_ORDER: 'sales-orders' };
+const PATH = { PURCHASE_ORDER: 'purchase-orders', INVOICE: 'sales', BILL: 'purchases', CREDIT_NOTE: 'credit-notes', DEBIT_NOTE: 'debit-notes', QUOTE: 'quotes', SALES_ORDER: 'sales-orders' };
 
 export const DocView = ({ kind }) => {
   const { id } = useParams();
@@ -154,7 +155,7 @@ export const DocView = ({ kind }) => {
   const [sent, setSent] = useState(0);
   const [void_, setVoid] = useState({ date: today(), reason: '' });
   const [apply, setApply] = useState({});
-  const open = useLoad(() => (kind.api === 'credit-notes' && load.data?.status === 'ISSUED' ? o(`/invoices?status=ISSUED&partyId=${load.data.party_id}&limit=100`) : Promise.resolve(null)), [load.data?.id, load.data?.status]);
+  const open = useLoad(() => (isNote(kind) && load.data?.status === 'ISSUED' ? o(`/${kind.api === 'credit-notes' ? 'invoices' : 'bills'}?status=ISSUED&partyId=${load.data.party_id}&limit=100`) : Promise.resolve(null)), [load.data?.id, load.data?.status]);
 
   const d0 = load.data || {};
   const convert = (to) => a.run(async () => { const r = await o(`/${kind.api}/${id}/convert`, { method: 'POST', body: { to, date: today() } }); nav(`/${PATH[to]}/${r.id}`); });
@@ -166,7 +167,7 @@ export const DocView = ({ kind }) => {
           <Btn kind="danger" onClick={() => setPanel(panel === 'delete' ? '' : 'delete')}>Delete draft</Btn></>}
         {load.data.status === 'ISSUED' && <>
           {kind.paymentDirection && Number(load.data.balance_minor) > 0 && <Link className="btn primary" to={`/payments/new?direction=${kind.paymentDirection}&partyId=${load.data.party_id}&documentId=${id}`}>{kind.paymentDirection === 'IN' ? 'Record payment' : 'Pay this bill'}</Link>}
-          {kind.api === 'credit-notes' && Number(load.data.balance_minor) > 0 && <Btn onClick={() => setPanel(panel === 'apply' ? '' : 'apply')}>Apply to invoices</Btn>}
+          {isNote(kind) && Number(load.data.balance_minor) > 0 && <Btn onClick={() => setPanel(panel === 'apply' ? '' : 'apply')}>{kind.api === 'credit-notes' ? 'Apply to invoices' : 'Apply to bills'}</Btn>}
           {kind.api === 'invoices' && <WhatsappButton kind="INVOICE" documentId={id} label="Send on WhatsApp" onDone={() => setSent((n) => n + 1)} />}
           {kind.api === 'invoices' && Number(load.data.balance_minor) > 0 && <WhatsappButton kind="REMINDER" documentId={id} label="Remind on WhatsApp" onDone={() => setSent((n) => n + 1)} />}
           {kind.pre && !d0.outcome && <><Btn onClick={() => act(() => o(`/${kind.api}/${id}/outcome`, { method: 'POST', body: { outcome: 'ACCEPTED' } }), 'Marked accepted.')}>{kind.who} accepted</Btn><Btn onClick={() => act(() => o(`/${kind.api}/${id}/outcome`, { method: 'POST', body: { outcome: 'DECLINED' } }), 'Marked declined.')}>{kind.who} declined</Btn></>}
@@ -188,10 +189,10 @@ export const DocView = ({ kind }) => {
             <p><Btn kind="danger" busy={a.busy} disabled={!void_.reason} onClick={() => act(() => o(`/${kind.api}/${id}/void`, { method: 'POST', body: void_ }), `${kind.one} voided.`)}>Void {kind.one.toLowerCase()}</Btn></p></Confirm>
         )}
         {panel === 'apply' && (
-          <Confirm><p>Set this credit note against open invoices (up to ₹{inr(d.balance_minor)}).</p>
+          <Confirm><p>Set this {kind.one.toLowerCase()} against open {kind.api === 'credit-notes' ? 'invoices' : 'bills'} (up to ₹{inr(d.balance_minor)}).</p>
             {(open.data?.documents || []).filter((x) => Number(x.balance_minor) > 0).map((x) => (
               <Field key={x.id} label={`${x.number} · due ₹${inr(x.balance_minor)}`}><input inputMode="decimal" value={apply[x.id] || ''} onChange={(e) => setApply({ ...apply, [x.id]: e.target.value })} /></Field>))}
-            <p><Btn kind="primary" busy={a.busy} onClick={() => act(() => o(`/credit-notes/${id}/apply`, { method: 'POST', body: { allocations: Object.entries(apply).filter(([, v]) => Number(v) > 0).map(([documentId, amount]) => ({ documentId, amount })) } }), 'Applied.')}>Apply</Btn></p></Confirm>
+            <p><Btn kind="primary" busy={a.busy} onClick={() => act(() => o(`/${kind.api}/${id}/apply`, { method: 'POST', body: { allocations: Object.entries(apply).filter(([, v]) => Number(v) > 0).map(([documentId, amount]) => ({ documentId, amount })) } }), 'Applied.')}>Apply</Btn></p></Confirm>
         )}
 
         <Card>
@@ -200,7 +201,7 @@ export const DocView = ({ kind }) => {
             <dt>Date</dt><dd>{showDate(d.issue_date)}</dd>
             {d.outcome && <><dt>Answer</dt><dd><Badge status={d.outcome} /></dd></>}
             {d.converted_document_id && <><dt>Turned into</dt><dd><Link to={`/${PATH[d.converted_kind]}/${d.converted_document_id}`}>See it</Link></dd></>}
-            {d.related_document_id && PATH[d.related_kind] && kind.api !== 'credit-notes' && <><dt>Made from</dt><dd><Link to={`/${PATH[d.related_kind]}/${d.related_document_id}`}>See it</Link></dd></>}
+            {d.related_document_id && PATH[d.related_kind] && !isNote(kind) && <><dt>Made from</dt><dd><Link to={`/${PATH[d.related_kind]}/${d.related_document_id}`}>See it</Link></dd></>}
             {d.due_date && <><dt>{kind.dueLabel || 'Due'}</dt><dd>{showDate(d.due_date)}</dd></>}
             {d.supplier_ref && <><dt>Vendor's number</dt><dd>{d.supplier_ref}</dd></>}
             {d.place_of_supply && <><dt>Place of supply</dt><dd>{d.place_of_supply} · {STATES[d.place_of_supply] || ''} ({d.inter_state ? 'other state: IGST' : 'same state: CGST + SGST'})</dd></>}

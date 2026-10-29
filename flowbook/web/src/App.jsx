@@ -20,6 +20,7 @@ const DOCS = [
   { path: 'purchases', api: 'bills', title: 'Purchase bills', one: 'Bill', who: 'Vendor', partyKind: 'VENDOR', paymentDirection: 'OUT' },
   { path: 'credit-notes', api: 'credit-notes', title: 'Credit notes', one: 'Credit note', who: 'Customer', partyKind: 'CUSTOMER' },
   { path: 'quotes', api: 'quotes', title: 'Quotes', one: 'Quote', who: 'Customer', partyKind: 'CUSTOMER', pre: true, dueLabel: 'Valid until' },
+  { path: 'debit-notes', api: 'debit-notes', title: 'Debit notes', one: 'Debit note', who: 'Vendor', partyKind: 'VENDOR' },
   { path: 'purchase-orders', api: 'purchase-orders', title: 'Purchase orders', one: 'Purchase order', who: 'Vendor', partyKind: 'VENDOR', pre: true, dueLabel: 'Expected by' },
   { path: 'sales-orders', api: 'sales-orders', title: 'Sales orders', one: 'Sales order', who: 'Customer', partyKind: 'CUSTOMER', pre: true, dueLabel: 'Expected by' }
 ];
@@ -44,7 +45,7 @@ const ICON = {
 const NAV = [
   { items: [['/', 'Home', 'home']] },
   { label: 'Sales', items: [['/quotes', 'Quotes', 'bill'], ['/sales-orders', 'Sales orders', 'list'], ['/sales', 'Invoices', 'invoice'], ['/credit-notes', 'Credit notes', 'credit'], ['/recurring', 'Recurring', 'repeat'], ['/customers', 'Customers', 'people']] },
-  { label: 'Purchases', items: [['/purchase-orders', 'Purchase orders', 'list'], ['/purchases', 'Bills', 'bill'], ['/expenses', 'Expenses', 'wallet'], ['/vendors', 'Vendors', 'people']] },
+  { label: 'Purchases', items: [['/purchase-orders', 'Purchase orders', 'list'], ['/purchases', 'Bills', 'bill'], ['/debit-notes', 'Debit notes', 'credit'], ['/expenses', 'Expenses', 'wallet'], ['/vendors', 'Vendors', 'people']] },
   { label: 'Money', items: [['/payments', 'Payments', 'cash'], ['/bank', 'Bank', 'bank']] },
   { label: 'Books', items: [['/items', 'Items', 'box'], ['/accounts', 'Accounts', 'list'], ['/journals', 'Journals', 'book'], ['/reports', 'Reports', 'chart']] },
   { label: 'Setup', items: [['/settings', 'Settings', 'gear']] }

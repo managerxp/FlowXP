@@ -8,9 +8,9 @@ export const partyStatement = async (c: Db, partyId: bigint, from: string, to: s
   if (!party) throw new LedgerError('not_found', 'no such party');
   const rows = (await c.query(
     `SELECT * FROM (
-       SELECT d.issue_date::text AS date, d.id, CASE d.kind WHEN 'INVOICE' THEN 'Invoice' WHEN 'BILL' THEN 'Bill' ELSE 'Credit note' END AS type, COALESCE(d.number, '') AS number, d.supplier_ref AS reference,
-              CASE d.kind WHEN 'INVOICE' THEN d.total_minor ELSE -d.total_minor END AS amount
-         FROM documents d WHERE d.party_id = $1 AND d.status = 'ISSUED' AND d.kind IN ('INVOICE', 'BILL', 'CREDIT_NOTE')
+       SELECT d.issue_date::text AS date, d.id, CASE d.kind WHEN 'INVOICE' THEN 'Invoice' WHEN 'BILL' THEN 'Bill' WHEN 'DEBIT_NOTE' THEN 'Debit note' ELSE 'Credit note' END AS type, COALESCE(d.number, '') AS number, d.supplier_ref AS reference,
+              CASE WHEN d.kind IN ('INVOICE', 'DEBIT_NOTE') THEN d.total_minor ELSE -d.total_minor END AS amount
+         FROM documents d WHERE d.party_id = $1 AND d.status = 'ISSUED' AND d.kind IN ('INVOICE', 'BILL', 'CREDIT_NOTE', 'DEBIT_NOTE')
        UNION ALL
        SELECT p.pay_date::text, p.id, CASE p.direction WHEN 'IN' THEN 'Payment received' ELSE 'Payment made' END, p.number, p.reference,
               CASE p.direction WHEN 'IN' THEN -(p.amount_minor + p.tds_minor) ELSE p.amount_minor + p.tds_minor END
