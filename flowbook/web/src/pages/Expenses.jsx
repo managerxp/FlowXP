@@ -6,7 +6,7 @@ import { financialYear, inr, showDate, today, uuid } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { Async, Badge, Btn, Card, Empty, Err, Field, Money, Note, Page, Table, useAction } from '../ui.jsx';
 
-const blank = () => ({ date: today(), accountId: '', amount: '', taxCode: '', interState: false, paidWith: 'CASH', description: '', paidTo: '', reference: '', key: uuid() });
+const blank = () => ({ date: today(), accountId: '', amount: '', taxCode: '', interState: false, paidWith: 'CASH', description: '', paidTo: '', reference: '', projectId: '', key: uuid() });
 const MODES = { CASH: 'Cash', BANK: 'Bank', UPI: 'UPI', CARD: 'Card' };
 
 export default () => {
@@ -20,6 +20,7 @@ export default () => {
   const load = useLoad(() => o(`/expenses?from=${range.from}&to=${range.to}`), [org.id, range.from, range.to]);
   const accounts = useLoad(() => o('/accounts'), [org.id]);
   const rates = useLoad(() => o('/tax-rates'), [org.id]);
+  const projects = useLoad(() => o('/projects?status=ACTIVE'), [org.id]);
   const spend = (accounts.data || []).filter((x) => x.type === 'EXPENSE' && x.active !== false && x.system_key !== 'ROUND_OFF');
   const codes = [...new Set((rates.data || []).map((r) => r.code))].filter((c) => c !== 'GST0');
   const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
@@ -29,7 +30,7 @@ export default () => {
     e.preventDefault();
     a.run(async () => {
       await o('/expenses', { method: 'POST', body: { date: f.date, accountId: f.accountId, amount: f.amount, paidWith: f.paidWith, description: f.description, idempotencyKey: f.key,
-        ...(f.taxCode && { taxCode: f.taxCode, interState: f.interState }), ...(f.paidTo && { paidTo: f.paidTo }), ...(f.reference && { reference: f.reference }) } });
+        ...(f.taxCode && { taxCode: f.taxCode, interState: f.interState }), ...(f.paidTo && { paidTo: f.paidTo }), ...(f.reference && { reference: f.reference }), ...(f.projectId && { projectId: f.projectId }) } });
       setF(blank()); await load.reload();
     }, 'Expense saved.');
   };
@@ -49,6 +50,7 @@ export default () => {
             {f.taxCode && <p className="check wide"><input id="inter" type="checkbox" checked={f.interState} onChange={set('interState')} /><label htmlFor="inter">The seller is in another state (IGST)</label></p>}
             <Field label="Paid with"><select value={f.paidWith} onChange={set('paidWith')}>{Object.entries(MODES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             <Field label="Note" hint="For example: June shop rent"><input value={f.description} onChange={set('description')} required maxLength={200} /></Field>
+            {!!projects.data?.length && <Field label="Project" hint="Optional"><select value={f.projectId} onChange={set('projectId')}><option value="">None</option>{projects.data.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>}
             <Field label="Paid to" hint="Optional"><input value={f.paidTo} onChange={set('paidTo')} maxLength={120} /></Field>
             <Field label="Bill or reference no." hint="Optional"><input value={f.reference} onChange={set('reference')} maxLength={60} /></Field>
             <div className="wide actions"><Btn kind="primary" busy={a.busy}>Save</Btn><Btn type="button" onClick={() => setF(null)}>Cancel</Btn></div>
