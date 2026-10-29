@@ -5,6 +5,23 @@ import { showDate, today } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { Async, Btn, Card, Empty, Err, Field, Note, Table, useAction } from '../ui.jsx';
 
+const Revalue = () => {
+  const { o, org } = useSession();
+  const load = useLoad(() => o('/fx/revaluations'), [org.id]);
+  const a = useAction();
+  const [date, setDate] = useState(today());
+  const run = (e) => { e.preventDefault(); a.run(async () => { const r = await o('/fx/revalue', { method: 'POST', body: { date } }); await load.reload(); return r; }, 'Revalued. It is reversed the next day.'); };
+  return (
+    <Card title="Revalue open foreign balances">
+      <p className="muted">At a period end, restate unpaid foreign invoices and bills at that day's rate (save the rate first). The difference is posted as an exchange gain or loss on that date and reversed the next day, so settling the document later is not affected.</p>
+      <Err>{a.error}</Err><Note>{a.done}</Note>
+      <form className="form" onSubmit={run}><Field label="As of"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} required /></Field>
+        <div className="wide actions"><Btn kind="primary" busy={a.busy}>Revalue</Btn></div></form>
+      <Async load={load}>{(rows) => (rows.length ? <Table head={['As of', '>Net difference', 'Reversed']}>{rows.map((r) => <tr key={r.id}><td>{showDate(r.as_of)}</td><td className="r num">₹{r.net_minor}</td><td>{r.reversed ? 'yes' : 'pending'}</td></tr>)}</Table> : null)}</Async>
+    </Card>
+  );
+};
+
 export const CurrencySettings = () => {
   const { o, org } = useSession();
   const load = useLoad(() => o('/exchange-rates'), [org.id]);
@@ -28,8 +45,9 @@ export const CurrencySettings = () => {
         {d.rates.map((r) => <tr key={r.currency + r.date}><td>{r.currency}</td><td>{showDate(r.date)}</td><td className="r num">{r.rate.replace(/0+$/, '').replace(/\.$/, '')}</td></tr>)}
       </Table>
     </Card>
+    <Revalue />
     <Card title="What is and is not covered">
-      <p className="muted">Invoices, bills, quotes and orders can be in a foreign currency. A payment settles one such document at a time and any difference between the rupees booked and the rupees that arrived is posted as an exchange gain or loss. Credit and debit notes are in rupees. Open foreign balances are not revalued at period end, and GSTR-1 does not yet have a separate export table.</p>
+      <p className="muted">Invoices, bills, quotes and orders can be in a foreign currency. A payment settles one such document at a time and any difference between the rupees booked and the rupees that arrived is posted as an exchange gain or loss. Credit and debit notes are in rupees. GSTR-1 does not yet have a separate export table.</p>
     </Card>
   </>)}</Async>;
 };

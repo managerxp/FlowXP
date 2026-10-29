@@ -17,7 +17,7 @@ import type { Every } from './recurring.ts';
 import { salesAnalysis } from './analysis.ts';
 import { getEmailSettings, listEmails, saveEmailSettings, sendDocument } from './email.ts';
 import type { EmailSettingsIn } from './email.ts';
-import { CURRENCIES, listRates, rateOn, saveRate } from './fx.ts';
+import { CURRENCIES, listRates, listRevaluations, rateOn, revalue, reversePending, saveRate } from './fx.ts';
 import { addTime, createProject, deleteTime, getProject, invoiceTime, listProjects, updateProject } from './projects.ts';
 import { addAsset, assetRegister, cancelAsset, disposeAsset, runDepreciation } from './assets.ts';
 import type { AssetIn } from './assets.ts';
@@ -206,6 +206,11 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
 
   /* ---- exchange rates */
   app.get(`${base}/exchange-rates`, { preHandler: scope('org.read') }, async (req) => run(req, async (c) => ({ currencies: CURRENCIES, rates: await listRates(c) })));
+  app.get(`${base}/fx/revaluations`, { preHandler: scope('org.read') }, async (req) => run(req, async (c, orgId) => { await reversePending(c, orgId, me(req)); return listRevaluations(c); }));
+  app.post(`${base}/fx/revalue`, { preHandler: scope('journal.post'), schema: { body: { type: 'object', required: ['date'], additionalProperties: false, properties: { date: { type: 'string', pattern: DATE }, ...override } } } }, async (req) => {
+    const b = req.body as { date: string; overrideReason?: string };
+    return run(req, (c, orgId) => revalue(c, orgId, b.date, me(req), lockOverride(req, b.overrideReason)));
+  });
   app.get(`${base}/exchange-rates/on`, { preHandler: scope('org.read'), schema: { querystring: { type: 'object', required: ['currency', 'date'], properties: { currency: { type: 'string', pattern: '^[A-Z]{3}$' }, date: { type: 'string', pattern: DATE } } } } }, async (req) => {
     const q = req.query as { currency: string; date: string };
     return run(req, async (c) => ({ rate: await rateOn(c, q.currency, q.date) }));

@@ -4,7 +4,7 @@ import { withOrg } from '../src/db.ts';
 import type { Db } from '../src/db.ts';
 import { allocatePayment, createPayment, getDocument, getPayment, issueDocument, saveDraft, voidDocument, voidPayment } from '../src/documents.ts';
 import type { DocKind } from '../src/documents.ts';
-import { listRates, rateOn, saveRate } from '../src/fx.ts';
+import { listRates, listRevaluations, rateOn, revalue, reversePending, saveRate } from '../src/fx.ts';
 import { createParty, seedTaxRates } from '../src/masters.ts';
 import { openFinancialYear } from '../src/periods.ts';
 import { newOrg, setup } from './helpers.ts';
@@ -95,4 +95,26 @@ test('an invoice in rupees is untouched: no foreign total, ordinary payment', { 
   assert.equal(d.currency, 'INR'); assert.equal(d.foreign_total_minor, null);
   await run(org, (c) => createPayment(c, org, { direction: 'IN', partyId: cust, date: '2026-06-03', mode: 'CASH', amount: 100_000n, allocations: [{ documentId: inv, amount: 100_000n }], idempotencyKey: 'plain-inr-0001' }, 't'));
   assert.equal(await balance(org, 'AR'), 0n);
+});
+
+test('revaluing open foreign balances posts the unrealised difference for the date and reverses it the next day', { skip }, async () => {
+  const { org, cust, vend } = await books();
+  await run(org, (c) => saveRate(c, org, { currency: 'USD', date: '2026-06-01', rate: '80' }, 't'));
+  await assert.rejects(run(org, (c) => revalue(c, org, '2026-06-30', 't')), /no open foreign/);
+  const inv = await make(org, 'INVOICE', cust, 'USD');            // $1000 at 80 = Rs 80,000 owed to us
+  await make(org, 'BILL', vend, 'USD');                          // $1000 at 80 = Rs 80,000 owed by us
+  await run(org, (c) => saveRate(c, org, { currency: 'USD', date: '2026-06-30', rate: '82' }, 't'));
+  const r = await run(org, (c) => revalue(c, org, '2026-06-30', 't'));
+  assert.equal(r.documents, 2); assert.equal(r.net, 0n, 'a gain on the invoice and an equal loss on the bill');
+  assert.equal(r.reversed, true);
+  assert.equal(await balance(org, 'AR'), 8_000_000n, 'carried back at the original rupees after the reversal');
+  assert.equal(await balance(org, 'EXCHANGE_GAIN_LOSS'), 0n);
+  const asOfBal = (await pool.query(
+    `SELECT COALESCE(SUM(CASE l.side WHEN 'D' THEN l.base_amount_minor ELSE -l.base_amount_minor END), 0)::bigint AS b FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id JOIN accounts a ON a.id = l.account_id
+      WHERE a.organization_id = $1 AND a.system_key = 'AR' AND e.posting_date <= '2026-06-30'`, [org])).rows[0].b as bigint;
+  assert.equal(asOfBal, 8_200_000n, 'on the report date the invoice stands at 1000 x 82');
+  await assert.rejects(run(org, (c) => revalue(c, org, '2026-06-30', 't')), /already revalued/);
+  assert.equal((await run(org, (c) => listRevaluations(c)))[0]!.reversed, true);
+  assert.equal(await run(org, (c) => reversePending(c, org, 't')), 0);
+  void inv;
 });

@@ -1,6 +1,7 @@
 import { audit } from './audit.ts';
 import type { Db } from './db.ts';
-import { LedgerError } from './ledger.ts';
+import { LedgerError, post, reverse } from './ledger.ts';
+import type { LineInput } from './ledger.ts';
 
 /* Foreign currency. Books are in rupees; a document written in another currency is converted at its rate and keeps the foreign amount beside it.
    Rates are rupees per one unit, held to six places and handled as whole micro-rupees so there is no floating point. */
@@ -39,3 +40,62 @@ export const saveRate = async (c: Db, orgId: bigint, o: { currency: string; date
 
 export const listRates = async (c: Db) => (await c.query(
   `SELECT currency, rate_date::text AS date, rate::text AS rate FROM exchange_rates ORDER BY rate_date DESC, currency LIMIT 200`)).rows;
+
+const dayAfter = (d: string): string => new Date(Date.parse(`${d}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+
+/**
+ * Restate open foreign invoices and bills at the rate in force on a date and post the difference as an unrealised exchange gain or loss
+ * (same account as the realised one). The entry is reversed the next day, so settling a document later still works from its original rupees.
+ * Every currency with something open needs a saved rate on or before the date.
+ */
+export const revalue = async (c: Db, orgId: bigint, asOf: string, actor: string, override?: { reason: string }) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) throw new LedgerError('bad_date', 'the date must be YYYY-MM-DD');
+  if ((await c.query(`SELECT 1 FROM fx_revaluations WHERE as_of = $1`, [asOf])).rowCount) throw new LedgerError('already_done', `the books were already revalued on ${asOf}`);
+  const open = (await c.query(
+    `SELECT id, kind, party_id, currency, balance_minor, foreign_balance_minor FROM documents
+      WHERE status = 'ISSUED' AND currency <> 'INR' AND kind IN ('INVOICE', 'BILL') AND issue_date <= $1::date AND foreign_balance_minor > 0 ORDER BY id`, [asOf])).rows;
+  const rates = new Map<string, bigint>();
+  const lines: LineInput[] = []; let net = 0n; let touched = 0;
+  for (const d of open) {
+    const cur = d.currency as string;
+    if (!rates.has(cur)) { const r = await rateOn(c, cur, asOf); if (!r) throw new LedgerError('no_rate', `save a ${cur} rate on or before ${asOf} first`); rates.set(cur, rateMicro(r)); }
+    const target = ((d.foreign_balance_minor as bigint) * (rates.get(cur) as bigint) + 500_000n) / 1_000_000n;
+    const diff = target - (d.balance_minor as bigint);
+    if (diff === 0n) continue;
+    const up = diff > 0n; const amount = up ? diff : -diff; touched += 1;
+    // an invoice owed to us is worth more when the rate rises; a bill we owe costs more
+    const gainSide = d.kind === 'INVOICE' ? up : !up;
+    lines.push({ account: d.kind === 'INVOICE' ? 'AR' : 'AP', side: (d.kind === 'INVOICE') === up ? 'D' : 'C', amount, partyId: d.party_id as bigint });
+    net += gainSide ? amount : -amount;
+  }
+  if (!touched) throw new LedgerError('nothing_to_revalue', 'no open foreign invoice or bill needs restating at that date');
+  // gain is a credit to the exchange account; a net loss a debit
+  lines.push({ account: 'EXCHANGE_GAIN_LOSS', side: net >= 0n ? 'C' : 'D', amount: net >= 0n ? net : -net });
+  const posted = await post(c, orgId, { date: asOf, sourceType: 'fx_reval', sourceId: asOf, kind: 'FX', memo: `Unrealised exchange difference on open foreign balances at ${asOf}`, actor, override, lines: lines.filter((l) => l.amount !== 0n) });
+  let reversalId: bigint | null = null;
+  try {
+    await c.query('SAVEPOINT fx_rev');
+    reversalId = (await reverse(c, orgId, posted.entryId, { date: dayAfter(asOf), reason: 'Unrealised exchange difference reversed the next day', actor, override })).entryId;
+    await c.query('RELEASE SAVEPOINT fx_rev');
+  } catch { await c.query('ROLLBACK TO SAVEPOINT fx_rev'); }   // the next day may fall in a period that is not open yet; reversePending finishes it later
+  await c.query(`INSERT INTO fx_revaluations (organization_id, as_of, entry_id, reversal_entry_id, net_minor, created_by) VALUES ($1, $2, $3, $4, $5, $6)`, [orgId, asOf, posted.entryId, reversalId, net, actor]);
+  await audit(c, orgId, { actor, action: 'fx.revalued', entityType: 'organization', entityId: orgId, detail: { asOf, documents: touched } });
+  return { entryNo: posted.entryNo, net, documents: touched, reversed: reversalId !== null };
+};
+
+/** Finish any revaluation whose next-day reversal could not be posted when it was made (that day's period was not open). */
+export const reversePending = async (c: Db, orgId: bigint, actor: string): Promise<number> => {
+  let done = 0;
+  for (const r of (await c.query(`SELECT id, as_of::text AS as_of, entry_id FROM fx_revaluations WHERE reversal_entry_id IS NULL ORDER BY as_of`)).rows) {
+    await c.query('SAVEPOINT fx_rev');
+    try {
+      const rev = await reverse(c, orgId, r.entry_id as bigint, { date: dayAfter(r.as_of as string), reason: 'Unrealised exchange difference reversed the next day', actor });
+      await c.query(`UPDATE fx_revaluations SET reversal_entry_id = $2 WHERE id = $1`, [r.id, rev.entryId]);
+      await c.query('RELEASE SAVEPOINT fx_rev'); done += 1;
+    } catch { await c.query('ROLLBACK TO SAVEPOINT fx_rev'); }
+  }
+  return done;
+};
+
+export const listRevaluations = async (c: Db) => (await c.query(
+  `SELECT id, as_of::text AS as_of, net_minor, reversal_entry_id IS NOT NULL AS reversed, created_by FROM fx_revaluations ORDER BY as_of DESC LIMIT 100`)).rows;
