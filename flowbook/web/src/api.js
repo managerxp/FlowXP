@@ -12,7 +12,7 @@ export const api = async (path, { method = 'GET', body, headers = {} } = {}) => 
   if (t) h.authorization = `Bearer ${t}`;
   if (body !== undefined) h['content-type'] = 'application/json';   // Fastify refuses an empty body that claims to be JSON
   let res;
-  try { res = await fetch(`/v1${path}`, { method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) }); }
+  try { res = await fetch(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/v1${path}`, { method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) }); }
   catch { throw new Error('Cannot reach the server. Check your connection and try again.'); }
   const data = await res.json().catch(() => null);
   if (!res.ok) {

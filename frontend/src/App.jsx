@@ -287,7 +287,6 @@ const App = () => (
         offering seven ways to leave it. */}
     <Route path="login" element={<Login />} />
     <Route path="signup" element={<Signup />} />
-    <Route path="flowbook/signup" element={<Signup product="flowbook" />} />
     {/* reset-password is no longer a route: the code is entered on /forgot-password itself now, not via an
         emailed link to a separate page — see AuthPages.jsx's header comment on ForgotPassword. */}
     <Route path="forgot-password" element={<ForgotPassword />} />

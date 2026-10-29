@@ -5,4 +5,4 @@ import App from './App.jsx';
 import '@fontsource-variable/plus-jakarta-sans';
 import './styles.css';
 
-createRoot(document.getElementById('root')).render(<StrictMode><BrowserRouter><App /></BrowserRouter></StrictMode>);
+createRoot(document.getElementById('root')).render(<StrictMode><BrowserRouter basename={import.meta.env.BASE_URL}><App /></BrowserRouter></StrictMode>);

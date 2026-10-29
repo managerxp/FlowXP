@@ -1,6 +1,6 @@
 /* Small helpers shared by every screen. Amounts arrive from the API as decimal strings ("1234.50"); they are shown, never added up as floats for anything that matters. */
 
-export const SITE_URL = import.meta.env.VITE_SITE_URL || 'https://flowxp.in';   // the public website (contact page, help)
+export const SITE_URL = import.meta.env.VITE_SITE_URL ?? '';   // the public website: the same domain in production (empty = relative), another port in development
 export const BRAND = 'FlowBook';   // the product name lives here (and in index.html) so a rename is one edit
 
 export const inr = (value) => {

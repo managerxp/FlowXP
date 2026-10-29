@@ -157,6 +157,19 @@ cd .. && pm2 reload flowxp-api     # zero-downtime: finishes in-flight requests 
 New migrations apply on start. They only ever move forward, so take a backup first when the release notes mention a
 new migration. nginx serves the new `frontend/dist` immediately — no reload needed for a frontend-only change.
 
+## FlowBook (accounting) on the same site
+
+FlowBook is served at `https://flowxp.in/books`, not on a separate address. Extra steps beyond the above:
+
+```bash
+cd flowbook/api && npm ci --omit=dev      # Node 24; needs its own Postgres database and flowbook/api/.env (DATABASE_URL, FLOWBOOK_SSO_SECRET, ALLOWED_ORIGINS=https://flowxp.in)
+cd ../web && npm ci && npm run build      # builds with base /books/ into flowbook/web/dist
+```
+
+- `FLOWBOOK_SSO_SECRET` is the same long random value in `backend/.env` and `flowbook/api/.env`; `backend/.env` also gets `FLOWBOOK_APP_URL=https://flowxp.in/books`.
+- nginx (`deploy/nginx.conf`) serves `flowbook/web/dist` at `/books/` and proxies `/books/v1/` to port 5200. `ecosystem.config.cjs` has a `flowbook-api` process. FlowBook migrations run when it starts.
+- FlowBook has no login of its own; people arrive from FlowXP's sign-in. In production its own register and login API stays reachable only through `/books/v1`, so block `/books/v1/auth/register` and `/books/v1/auth/login` in nginx if you do not want them (FlowBook's SSO call is `/books/v1/auth/flowxp`).
+
 ## What is not covered here
 
 Running the API as more than one PM2 instance (the background worker would then run once per instance; set
