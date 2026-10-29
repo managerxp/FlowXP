@@ -19,6 +19,7 @@ import { getEmailSettings, listEmails, saveEmailSettings, sendDocument } from '.
 import type { EmailSettingsIn } from './email.ts';
 import { CURRENCIES, listRates, listRevaluations, rateOn, revalue, reversePending, saveRate } from './fx.ts';
 import { addTime, createProject, deleteTime, getProject, invoiceTime, listProjects, updateProject } from './projects.ts';
+import { IT_BLOCKS, assetSchedule, setAssetTax, taxDepreciation } from './assets-tax.ts';
 import { addAsset, assetRegister, cancelAsset, disposeAsset, runDepreciation } from './assets.ts';
 import type { AssetIn } from './assets.ts';
 import type { TrackIn } from './stock.ts';
@@ -191,9 +192,20 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   app.post(`${base}/assets`, { preHandler: scope('journal.post'), schema: { body: { type: 'object', required: ['name', 'purchaseDate', 'cost', 'method', 'paidFrom'], additionalProperties: false, properties: {
     name: { type: 'string', minLength: 1, maxLength: 160 }, tag: { type: 'string', maxLength: 40 }, category: { type: 'string', maxLength: 60 }, purchaseDate: { type: 'string', pattern: DATE }, startDate: { type: 'string', pattern: DATE },
     cost: { type: 'string', pattern: AMOUNT }, salvage: { type: 'string', pattern: AMOUNT }, method: { type: 'string', enum: ['SLM', 'WDV', 'NONE'] }, lifeYears: { type: 'string', pattern: '^\\d{1,3}(\\.\\d{1,2})?$' },
-    ratePercent: { type: 'string', pattern: '^\\d{1,3}(\\.\\d{1,2})?$' }, paidFrom: acct, openingAccumulated: { type: 'string', pattern: AMOUNT }, ...override } } } }, async (req, reply) => {
+    ratePercent: { type: 'string', pattern: '^\\d{1,3}(\\.\\d{1,2})?$' }, paidFrom: acct, openingAccumulated: { type: 'string', pattern: AMOUNT },
+    itBlock: { type: 'string', enum: Object.keys(IT_BLOCKS) }, itOpeningWdv: { type: 'string', pattern: AMOUNT }, itUseDate: { type: 'string', pattern: DATE }, ...override } } } }, async (req, reply) => {
     const b = req.body as AssetIn & { overrideReason?: string };
     return reply.code(201).send(await run(req, (c, orgId) => addAsset(c, orgId, b, me(req), lockOverride(req, b.overrideReason))));
+  });
+  const fyQuery = { querystring: { type: 'object', properties: { fy: { type: 'integer', minimum: 1990, maximum: 2200 } } } };
+  const thisFy = () => { const d = new Date(); return d.getUTCFullYear() - (d.getUTCMonth() < 3 ? 1 : 0); };
+  app.get(`${base}/assets/schedule`, { preHandler: scope('journal.read'), schema: fyQuery }, async (req) => run(req, (c) => assetSchedule(c, (req.query as { fy?: number }).fy ?? thisFy())));
+  app.get(`${base}/assets/tax-depreciation`, { preHandler: scope('journal.read'), schema: fyQuery }, async (req) => run(req, (c, orgId) => taxDepreciation(c, orgId, (req.query as { fy?: number }).fy ?? thisFy())));
+  app.get(`${base}/assets/tax-blocks`, { preHandler: scope('journal.read') }, async () => Object.entries(IT_BLOCKS).map(([code, b]) => ({ code, label: b.label, rate_percent: b.bp / 100 })));
+  app.patch(`${base}/assets/:id/tax`, { preHandler: scope('journal.post'), schema: { ...idParam, body: { type: 'object', required: ['itBlock'], additionalProperties: false, properties: { itBlock: { type: ['string', 'null'], enum: [...Object.keys(IT_BLOCKS), null] }, itOpeningWdv: { type: 'string', pattern: AMOUNT }, itUseDate: { type: 'string', pattern: DATE } } } } }, async (req) => {
+    const b = req.body as { itBlock: string | null; itOpeningWdv?: string; itUseDate?: string };
+    await run(req, (c, orgId) => setAssetTax(c, orgId, BigInt((req.params as { id: string }).id), b, me(req)));
+    return { ok: true };
   });
   app.post(`${base}/assets/depreciation`, { preHandler: scope('journal.post'), schema: { body: { type: 'object', required: ['through'], additionalProperties: false, properties: { through: { type: 'string', pattern: '^\\d{4}-\\d{2}$' }, ...override } } } }, async (req) => {
     const b = req.body as { through: string; overrideReason?: string };

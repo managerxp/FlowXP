@@ -6,9 +6,9 @@ import { useSession } from '../session.jsx';
 import { Async, Badge, Btn, Card, Confirm, Empty, Err, Field, Money, Note, Page, Table, useAction } from '../ui.jsx';
 
 const METHOD = { SLM: 'Straight line', WDV: 'Written-down value', NONE: 'No depreciation' };
-const blank = () => ({ name: '', tag: '', category: '', purchaseDate: today(), startDate: '', cost: '', salvage: '', method: 'SLM', lifeYears: '5', ratePercent: '15', paidFrom: 'BANK', openingAccumulated: '' });
+const blank = () => ({ name: '', tag: '', category: '', purchaseDate: today(), startDate: '', cost: '', salvage: '', method: 'SLM', lifeYears: '5', ratePercent: '15', paidFrom: 'BANK', openingAccumulated: '', itBlock: '', itOpeningWdv: '' });
 
-const AddAsset = ({ onDone, onClose }) => {
+const AddAsset = ({ blocks, onDone, onClose }) => {
   const { o } = useSession();
   const a = useAction();
   const [f, setF] = useState(blank);
@@ -19,7 +19,8 @@ const AddAsset = ({ onDone, onClose }) => {
     a.run(async () => {
       await o('/assets', { method: 'POST', body: { name: f.name, purchaseDate: f.purchaseDate, cost: f.cost, method: f.method, paidFrom: f.paidFrom,
         ...(f.tag && { tag: f.tag }), ...(f.category && { category: f.category }), ...(f.startDate && { startDate: f.startDate }), ...(f.salvage && { salvage: f.salvage }),
-        ...(f.method === 'SLM' && { lifeYears: f.lifeYears }), ...(f.method === 'WDV' && { ratePercent: f.ratePercent }), ...(owned && f.openingAccumulated && { openingAccumulated: f.openingAccumulated }) } });
+        ...(f.method === 'SLM' && { lifeYears: f.lifeYears }), ...(f.method === 'WDV' && { ratePercent: f.ratePercent }), ...(owned && f.openingAccumulated && { openingAccumulated: f.openingAccumulated }),
+        ...(f.itBlock && { itBlock: f.itBlock, ...(owned && f.itOpeningWdv && { itOpeningWdv: f.itOpeningWdv }) }) } });
       onDone(); onClose();
     }, 'Asset added.');
   };
@@ -39,6 +40,8 @@ const AddAsset = ({ onDone, onClose }) => {
         {f.method === 'WDV' && <Field label="Yearly rate (%)"><input inputMode="decimal" value={f.ratePercent} onChange={set('ratePercent')} required /></Field>}
         {f.method !== 'NONE' && <Field label="Scrap value (₹)" hint="What it should be worth at the end (optional)"><input inputMode="decimal" value={f.salvage} onChange={set('salvage')} /></Field>}
         {f.method !== 'NONE' && <Field label="Start depreciating from" hint={owned ? 'Must be inside your books, such as the first day of this financial year' : 'Defaults to the purchase month, counted as a full month'}><input type="date" value={f.startDate} onChange={set('startDate')} /></Field>}
+        <Field label="Income tax block (optional)" hint="The class the Income Tax Act pools it into; used for the tax depreciation schedule"><select value={f.itBlock} onChange={set('itBlock')}><option value="">Not set</option>{blocks.map((b) => <option key={b.code} value={b.code}>{b.label} ({b.rate_percent}%)</option>)}</select></Field>
+        {owned && f.itBlock && <Field label="Its tax value at the start of this financial year (₹)" hint="What is left of it for tax, from last year's schedule"><input inputMode="decimal" value={f.itOpeningWdv} onChange={set('itOpeningWdv')} /></Field>}
         <div className="wide actions"><Btn kind="primary" busy={a.busy}>Save</Btn><Btn type="button" onClick={onClose}>Cancel</Btn></div>
       </form>
     </Card>
@@ -70,10 +73,48 @@ const Dispose = ({ asset, onDone, onClose }) => {
   );
 };
 
+const thisFy = () => { const d = new Date(); return d.getFullYear() - (d.getMonth() < 3 ? 1 : 0); };
+
+/* The same assets seen year by year: from the books, and as the Income Tax Act pools them into blocks. */
+const Schedules = () => {
+  const { o, org } = useSession();
+  const [fy, setFy] = useState(thisFy());
+  const [view, setView] = useState('books');
+  const book = useLoad(() => o(`/assets/schedule?fy=${fy}`), [org.id, fy]);
+  const tax = useLoad(() => o(`/assets/tax-depreciation?fy=${fy}`), [org.id, fy]);
+  const years = book.data?.years?.length ? book.data.years : [fy];
+  return (
+    <Card title="Year by year">
+      <p className="actions">
+        <select value={fy} onChange={(e) => setFy(Number(e.target.value))}>{[...new Set([...years, fy])].sort().map((y) => <option key={y} value={y}>{y}-{String(y + 1).slice(2)}</option>)}</select>{' '}
+        <Btn kind={view === 'books' ? 'primary' : undefined} onClick={() => setView('books')}>From the books</Btn>
+        <Btn kind={view === 'tax' ? 'primary' : undefined} onClick={() => setView('tax')}>Income tax blocks</Btn>
+      </p>
+      {view === 'books'
+        ? <Async load={book}>{(d) => (
+          <Table head={['Asset', '>Cost at start', '>Added', '>Sold', '>Cost at end', '>Depreciation to start', '>This year', '>Taken off on sale', '>Worth at end']} empty={!d.lines.length && <Empty>No assets in this year.</Empty>}>
+            {d.lines.map((l) => <tr key={l.id}><td>{l.name}</td><td className="r"><Money v={l.gross_opening_minor} /></td><td className="r"><Money v={l.gross_additions_minor} /></td><td className="r"><Money v={l.gross_disposals_minor} /></td><td className="r"><Money v={l.gross_closing_minor} /></td>
+              <td className="r"><Money v={l.accum_opening_minor} /></td><td className="r"><Money v={l.depreciation_minor} /></td><td className="r"><Money v={l.accum_on_disposals_minor} /></td><td className="r"><Money v={l.wdv_closing_minor} strong /></td></tr>)}
+            {d.lines.length > 0 && <tr><td><strong>Total</strong></td>{['gross_opening_minor', 'gross_additions_minor', 'gross_disposals_minor', 'gross_closing_minor', 'accum_opening_minor', 'depreciation_minor', 'accum_on_disposals_minor', 'wdv_closing_minor'].map((k) => <td key={k} className="r"><Money v={d.totals[k]} strong /></td>)}</tr>}
+          </Table>)}</Async>
+        : <Async load={tax}>{(d) => (<>
+          <Table head={['Block', '>Rate', '>Value at start', '>Added (180+ days)', '>Added (under 180)', '>Sold for', '>Depreciation', '>Capital gain / (loss)', '>Value at end']} empty={!d.blocks.length && <Empty>Give your assets an income tax block to see the schedule.</Empty>}>
+            {d.blocks.map((b) => <tr key={b.block}><td>{b.label}</td><td className="r">{b.rate_percent}%</td><td className="r"><Money v={b.opening_minor} /></td><td className="r"><Money v={b.additions_full_minor} /></td><td className="r"><Money v={b.additions_half_minor} /></td><td className="r"><Money v={b.sales_minor} /></td>
+              <td className="r"><Money v={b.depreciation_minor} strong /></td><td className="r"><Money v={b.capital_gain_minor} /></td><td className="r"><Money v={b.closing_minor} strong /></td></tr>)}
+            {d.blocks.length > 0 && <tr><td><strong>Total</strong></td><td />{['opening_minor', 'additions_full_minor', 'additions_half_minor', 'sales_minor', 'depreciation_minor', 'capital_gain_minor', 'closing_minor'].map((k) => <td key={k} className="r"><Money v={d.totals[k]} strong /></td>)}</tr>}
+          </Table>
+          {d.unassigned > 0 && <Note>{d.unassigned} asset{d.unassigned === 1 ? '' : 's'} still without a block are left out. Pick one in the list below.</Note>}
+          <p className="muted">A report for your tax return, not posted to the books. Additions used less than 180 days in the year get half the rate; a sale comes off the block, and if it takes the block below zero the rest is a short-term capital gain. Rates are the standard ones: confirm with your CA.</p>
+        </>)}</Async>}
+    </Card>
+  );
+};
+
 export default () => {
   const { o, org } = useSession();
   const load = useLoad(() => o('/assets'), [org.id]);
   const a = useAction();
+  const blocks = useLoad(() => o('/assets/tax-blocks'), []);
   const [adding, setAdding] = useState(false);
   const [dispose, setDispose] = useState(null);
   const [through, setThrough] = useState(today().slice(0, 7));
@@ -86,26 +127,28 @@ export default () => {
   return (
     <Page title="Fixed assets" lead="Things the business owns and uses for years. Depreciation is posted a month at a time." actions={<Btn kind="primary" onClick={() => setAdding(true)}>Add asset</Btn>}>
       <Err>{a.error}</Err><Note>{a.done}</Note>
-      {adding && <AddAsset onDone={load.reload} onClose={() => setAdding(false)} />}
+      {adding && <AddAsset blocks={blocks.data || []} onDone={load.reload} onClose={() => setAdding(false)} />}
       <Card title="Post depreciation">
         <div className="form"><Field label="Through the end of" hint="Posts every month not yet done, one entry per month"><input type="month" value={through} onChange={(e) => setThrough(e.target.value)} /></Field></div>
         <p className="actions"><Btn busy={a.busy} onClick={runDep}>Post depreciation</Btn></p>
       </Card>
       {dispose && <Dispose asset={dispose} onDone={load.reload} onClose={() => setDispose(null)} />}
       <Card><Async load={load}>{(d) => (<>
-        <Table head={['Asset', 'Bought', 'Method', '>Cost', '>Depreciation so far', '>Worth now', '']} empty={!d.assets.length && <Empty>No assets yet. Add a computer, vehicle or machine to start.</Empty>}>
+        <Table head={['Asset', 'Bought', 'Method', '>Cost', '>Depreciation so far', '>Worth now', 'Tax block', '']} empty={!d.assets.length && <Empty>No assets yet. Add a computer, vehicle or machine to start.</Empty>}>
           {d.assets.map((r) => (
             <tr key={r.id} className={r.status === 'DISPOSED' ? 'muted' : ''}>
               <td>{r.name}{r.tag && <span className="muted"> · {r.tag}</span>}{r.status === 'DISPOSED' && <> <Badge status="VOID">gone {showDate(r.disposed_on)}</Badge></>}</td>
               <td>{showDate(r.purchase_date)}</td>
               <td>{METHOD[r.method]}{r.method === 'SLM' ? `, ${r.life_months / 12} yrs` : r.method === 'WDV' ? `, ${r.rate_bp / 100}%` : ''}</td>
               <td className="r"><Money v={r.cost_minor} /></td><td className="r"><Money v={r.accumulated_minor} /></td><td className="r"><Money v={r.book_value_minor} strong /></td>
+              <td>{r.status !== 'CANCELLED' && <select value={r.it_block || ''} onChange={(e) => a.run(async () => { await o(`/assets/${r.id}/tax`, { method: 'PATCH', body: { itBlock: e.target.value || null } }); await load.reload(); })}><option value="">Not set</option>{(blocks.data || []).map((b) => <option key={b.code} value={b.code}>{b.label}</option>)}</select>}</td>
               <td>{r.status === 'ACTIVE' && <button className="linkish" onClick={() => setDispose(r)}>Sell or write off</button>}</td>
             </tr>
           ))}
         </Table>
         {d.assets.some((r) => r.status === 'ACTIVE') && <p className="muted">On the books now: cost ₹{inr(d.totals.cost_minor)}, depreciation ₹{inr(d.totals.accumulated_minor)}, worth ₹{inr(d.totals.book_value_minor)}.</p>}
       </>)}</Async></Card>
+      <Schedules />
     </Page>
   );
 };

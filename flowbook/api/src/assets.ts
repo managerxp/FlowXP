@@ -1,3 +1,4 @@
+import { setAssetTax } from './assets-tax.ts';
 import { audit } from './audit.ts';
 import type { Db } from './db.ts';
 import { LedgerError, post, reverse } from './ledger.ts';
@@ -13,6 +14,8 @@ export type AssetIn = {
   method: 'SLM' | 'WDV' | 'NONE'; lifeYears?: string; ratePercent?: string;
   /** where the money came from: Bank, Cash, a vendor payable account, or OPENING_BALANCE for an asset the business already had */
   paidFrom: string; openingAccumulated?: string;
+  /** Income Tax Act block (see IT_BLOCKS), tax value at the start of the financial year the books begin in (for an older asset), and the date first put to use */
+  itBlock?: string; itOpeningWdv?: string; itUseDate?: string;
 };
 
 const monthStart = (d: string): string => `${d.slice(0, 7)}-01`;
@@ -59,6 +62,7 @@ export const addAsset = async (c: Db, orgId: bigint, a: AssetIn, actor: string, 
     ] as LineInput[]).filter((l) => l.amount > 0n)
   });
   await c.query(`UPDATE fixed_assets SET acquisition_entry_id = $2 WHERE id = $1`, [id, posted.entryId]);
+  if (a.itBlock) await setAssetTax(c, orgId, id, { itBlock: a.itBlock, itOpeningWdv: a.itOpeningWdv, itUseDate: a.itUseDate }, actor);
   await audit(c, orgId, { actor, action: 'asset.added', entityType: 'fixed_asset', entityId: id, detail: { name: a.name, cost: paiseToString(cost) } });
   return { id, entryNo: posted.entryNo };
 };
@@ -170,7 +174,7 @@ export const cancelAsset = async (c: Db, orgId: bigint, id: bigint, reason: stri
 export const assetRegister = async (c: Db) => {
   const rows = (await c.query(
     `SELECT a.id, a.name, a.tag, a.category, a.purchase_date::text AS purchase_date, a.method, a.life_months, a.rate_bp, a.status, a.cost_minor, a.salvage_minor,
-            a.disposed_on::text AS disposed_on, a.proceeds_minor,
+            a.disposed_on::text AS disposed_on, a.proceeds_minor, a.it_block,
             (a.opening_accum_minor + COALESCE((SELECT SUM(d.amount_minor) FROM asset_depreciation d WHERE d.asset_id = a.id), 0))::bigint AS accumulated_minor,
             (SELECT MAX(d.month)::text FROM asset_depreciation d WHERE d.asset_id = a.id) AS depreciated_through
        FROM fixed_assets a WHERE a.status <> 'CANCELLED' ORDER BY a.status, a.purchase_date, a.id`)).rows;

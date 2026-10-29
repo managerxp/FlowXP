@@ -4,6 +4,7 @@ import { withOrg } from '../src/db.ts';
 import type { Db } from '../src/db.ts';
 import { addAsset, assetRegister, cancelAsset, disposeAsset, runDepreciation } from '../src/assets.ts';
 import type { AssetIn } from '../src/assets.ts';
+import { assetSchedule, setAssetTax, taxDepreciation } from '../src/assets-tax.ts';
 import { openFinancialYear } from '../src/periods.ts';
 import { seedTaxRates } from '../src/masters.ts';
 import { gstr3b } from '../src/gstr.ts';
@@ -96,4 +97,51 @@ test('GST on the sale of an asset goes to output tax, not to the gain, and shows
   assert.equal(await bal(org, 'BANK'), -12_000_000n + 11_800_000n, 'the bank got the price plus GST');
   const f = (await run(org, (c) => gstr3b(c, org, '2026-08'))).file.sup_details.osup_det;
   assert.deepEqual([f.txval, f.camt, f.samt, f.iamt], [100000, 9000, 9000, 0]);
+});
+
+test('income tax block depreciation: half rate under 180 days, sales taken off the block, a ceased block ends in a capital gain, and the book schedule rolls year to year', { skip }, async () => {
+  const org = await books();
+  const { id: laptopId } = await run(org, (c) => addAsset(c, org, { ...laptop, itBlock: 'COMPUTERS' }, 't'));
+  await run(org, (c) => addAsset(c, org, { name: 'Desks', purchaseDate: '2026-12-15', cost: '50000', method: 'SLM', lifeYears: '10', paidFrom: 'BANK', itBlock: 'FURNITURE' }, 't'));
+  await run(org, (c) => addAsset(c, org, { name: 'Lathe', purchaseDate: '2020-05-01', startDate: '2026-04-01', cost: '200000', openingAccumulated: '100000', method: 'WDV', ratePercent: '15', paidFrom: 'OPENING_BALANCE', itBlock: 'PLANT', itOpeningWdv: '90000' }, 't'));
+  await run(org, (c) => addAsset(c, org, { name: 'Plot', purchaseDate: '2026-05-01', cost: '10000', method: 'NONE', paidFrom: 'BANK' }, 't'));
+  await assert.rejects(run(org, (c) => setAssetTax(c, org, laptopId, { itBlock: 'COMPUTERS', itOpeningWdv: '1000' }, 't')), /before the financial year/);
+  await assert.rejects(run(org, (c) => setAssetTax(c, org, laptopId, { itBlock: 'NOPE' }, 't')), /unknown tax block/);
+
+  const y26 = await run(org, (c) => taxDepreciation(c, org, 2026));
+  const blk = (r: typeof y26, k: string) => r.blocks.find((b) => b.block === k)!;
+  assert.equal(y26.unassigned, 1, 'the plot has no tax block');
+  assert.deepEqual([blk(y26, 'COMPUTERS').additions_full_minor, blk(y26, 'COMPUTERS').depreciation_minor, blk(y26, 'COMPUTERS').closing_minor], [12_000_000n, 4_800_000n, 7_200_000n]);
+  assert.deepEqual([blk(y26, 'FURNITURE').additions_half_minor, blk(y26, 'FURNITURE').depreciation_minor, blk(y26, 'FURNITURE').closing_minor], [5_000_000n, 250_000n, 4_750_000n], 'under 180 days: half the rate');
+  assert.deepEqual([blk(y26, 'PLANT').opening_minor, blk(y26, 'PLANT').depreciation_minor, blk(y26, 'PLANT').closing_minor], [9_000_000n, 1_350_000n, 7_650_000n]);
+  assert.equal(y26.totals.depreciation_minor, 4_800_000n + 250_000n + 1_350_000n);
+
+  const y27 = await run(org, (c) => taxDepreciation(c, org, 2027));
+  assert.deepEqual([blk(y27, 'COMPUTERS').opening_minor, blk(y27, 'COMPUTERS').depreciation_minor], [7_200_000n, 2_880_000n]);
+  assert.equal(blk(y27, 'FURNITURE').depreciation_minor, 475_000n, 'a full year on the opening value');
+
+  // book schedule: depreciation through March 2027, then the year's lines agree with the register and roll forward
+  await run(org, (c) => runDepreciation(c, org, '2027-03', 't'));
+  const s26 = await run(org, (c) => assetSchedule(c, 2026));
+  const lap = s26.lines.find((l) => l.name === 'Laptop')!;
+  assert.deepEqual([lap.gross_additions_minor, lap.depreciation_minor, lap.wdv_closing_minor], [12_000_000n, 2_400_000n, 9_600_000n]);
+  const lathe = s26.lines.find((l) => l.name === 'Lathe')!;
+  assert.deepEqual([lathe.gross_additions_minor, lathe.accum_opening_minor], [20_000_000n, 0n], 'brought in during the books year');
+  for (const l of s26.lines) assert.equal(l.gross_opening_minor + l.gross_additions_minor - l.gross_disposals_minor, l.gross_closing_minor);
+  for (const l of s26.lines) assert.equal(l.accum_opening_minor + l.depreciation_minor - l.accum_on_disposals_minor, l.accum_closing_minor);
+  const reg = await run(org, (c) => assetRegister(c));
+  assert.equal(s26.totals.wdv_closing_minor, reg.totals.book_value_minor);
+  assert.equal(s26.years[0], 2026);
+  const s27 = await run(org, (c) => assetSchedule(c, 2027));
+  assert.equal(s27.lines.find((l) => l.name === 'Laptop')!.wdv_opening_minor, 9_600_000n, 'last year closes into this year');
+  assert.equal(s27.totals.wdv_opening_minor, s26.totals.wdv_closing_minor);
+
+  // selling the whole computers block for more than its tax value is a capital gain, not depreciation
+  await run(org, (c) => runDepreciation(c, org, '2027-04', 't'));
+  await run(org, (c) => disposeAsset(c, org, laptopId, { date: '2027-05-15', proceeds: '80000', receivedIn: 'BANK' }, 't'));
+  const sold = blk(await run(org, (c) => taxDepreciation(c, org, 2027)), 'COMPUTERS');
+  assert.deepEqual([sold.sales_minor, sold.depreciation_minor, sold.capital_gain_minor, sold.closing_minor], [8_000_000n, 0n, 800_000n, 0n]);
+  const s27b = await run(org, (c) => assetSchedule(c, 2027));
+  const gone = s27b.lines.find((l) => l.name === 'Laptop')!;
+  assert.deepEqual([gone.gross_disposals_minor, gone.gross_closing_minor, gone.accum_closing_minor, gone.sale_minor], [12_000_000n, 0n, 0n, 8_000_000n]);
 });
