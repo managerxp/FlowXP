@@ -1,0 +1,107 @@
+/* Fixed assets: the register, depreciation run, adding an asset, and selling or writing one off. */
+import { useState } from 'react';
+import { useLoad } from '../api.js';
+import { inr, showDate, today } from '../lib.js';
+import { useSession } from '../session.jsx';
+import { Async, Badge, Btn, Card, Confirm, Empty, Err, Field, Money, Note, Page, Table, useAction } from '../ui.jsx';
+
+const METHOD = { SLM: 'Straight line', WDV: 'Written-down value', NONE: 'No depreciation' };
+const blank = () => ({ name: '', tag: '', category: '', purchaseDate: today(), startDate: '', cost: '', salvage: '', method: 'SLM', lifeYears: '5', ratePercent: '15', paidFrom: 'BANK', openingAccumulated: '' });
+
+const AddAsset = ({ onDone, onClose }) => {
+  const { o } = useSession();
+  const a = useAction();
+  const [f, setF] = useState(blank);
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const owned = f.paidFrom === 'OPENING_BALANCE';
+  const save = (e) => {
+    e.preventDefault();
+    a.run(async () => {
+      await o('/assets', { method: 'POST', body: { name: f.name, purchaseDate: f.purchaseDate, cost: f.cost, method: f.method, paidFrom: f.paidFrom,
+        ...(f.tag && { tag: f.tag }), ...(f.category && { category: f.category }), ...(f.startDate && { startDate: f.startDate }), ...(f.salvage && { salvage: f.salvage }),
+        ...(f.method === 'SLM' && { lifeYears: f.lifeYears }), ...(f.method === 'WDV' && { ratePercent: f.ratePercent }), ...(owned && f.openingAccumulated && { openingAccumulated: f.openingAccumulated }) } });
+      onDone(); onClose();
+    }, 'Asset added.');
+  };
+  return (
+    <Card title="Add an asset"><Err>{a.error}</Err>
+      <form className="form" onSubmit={save}>
+        <Field label="Name"><input value={f.name} onChange={set('name')} required maxLength={160} /></Field>
+        <Field label="Tag or serial (optional)"><input value={f.tag} onChange={set('tag')} maxLength={40} /></Field>
+        <Field label="Kind (optional)" hint="Computer, furniture, vehicle..."><input value={f.category} onChange={set('category')} maxLength={60} /></Field>
+        <Field label="Bought on"><input type="date" value={f.purchaseDate} onChange={set('purchaseDate')} required /></Field>
+        <Field label="Cost (₹)"><input inputMode="decimal" value={f.cost} onChange={set('cost')} required /></Field>
+        <Field label="Where the money came from" hint="Choose Already owned for something the business had before these books"><select value={f.paidFrom} onChange={set('paidFrom')}>
+          <option value="BANK">Bank</option><option value="CASH">Cash</option><option value="AP">Owed to a vendor (payable)</option><option value="OPENING_BALANCE">Already owned</option></select></Field>
+        {owned && <Field label="Depreciation already taken (₹)" hint="Total written off before these books began"><input inputMode="decimal" value={f.openingAccumulated} onChange={set('openingAccumulated')} /></Field>}
+        <Field label="How it loses value"><select value={f.method} onChange={set('method')}><option value="SLM">Straight line (same amount every month)</option><option value="WDV">Written-down value (a yearly percent of what is left)</option><option value="NONE">None (land, for example)</option></select></Field>
+        {f.method === 'SLM' && <Field label="Useful life (years)"><input inputMode="decimal" value={f.lifeYears} onChange={set('lifeYears')} required /></Field>}
+        {f.method === 'WDV' && <Field label="Yearly rate (%)"><input inputMode="decimal" value={f.ratePercent} onChange={set('ratePercent')} required /></Field>}
+        {f.method !== 'NONE' && <Field label="Scrap value (₹)" hint="What it should be worth at the end (optional)"><input inputMode="decimal" value={f.salvage} onChange={set('salvage')} /></Field>}
+        {f.method !== 'NONE' && <Field label="Start depreciating from" hint={owned ? 'Must be inside your books, such as the first day of this financial year' : 'Defaults to the purchase month, counted as a full month'}><input type="date" value={f.startDate} onChange={set('startDate')} /></Field>}
+        <div className="wide actions"><Btn kind="primary" busy={a.busy}>Save</Btn><Btn type="button" onClick={onClose}>Cancel</Btn></div>
+      </form>
+    </Card>
+  );
+};
+
+const Dispose = ({ asset, onDone, onClose }) => {
+  const { o } = useSession();
+  const a = useAction();
+  const [f, setF] = useState({ date: today(), proceeds: '', receivedIn: 'BANK' });
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const book = Number(asset.book_value_minor);
+  const gain = f.proceeds === '' ? null : Number(f.proceeds) - book;
+  return (
+    <Confirm><p>Selling or writing off <strong>{asset.name}</strong> clears its cost and depreciation from the books and posts the difference as a gain or loss. Depreciation must be up to date through the month before.</p>
+      <Err>{a.error}</Err>
+      <div className="form">
+        <Field label="Date"><input type="date" value={f.date} onChange={set('date')} required /></Field>
+        <Field label="Sold for (₹)" hint="Leave empty or 0 for a write-off"><input inputMode="decimal" value={f.proceeds} onChange={set('proceeds')} /></Field>
+        {Number(f.proceeds) > 0 && <Field label="Money went into"><select value={f.receivedIn} onChange={set('receivedIn')}><option value="BANK">Bank</option><option value="CASH">Cash</option><option value="UPI_CLEARING">UPI</option></select></Field>}
+      </div>
+      <p className="muted">Worth ₹{inr(book)} on the books{gain !== null ? `: ${gain >= 0 ? 'gain' : 'loss'} of ₹${inr(Math.abs(gain))}` : ''}.</p>
+      <p className="actions"><Btn kind="danger" busy={a.busy} onClick={() => a.run(async () => { await o(`/assets/${asset.id}/dispose`, { method: 'POST', body: { date: f.date, ...(Number(f.proceeds) > 0 && { proceeds: f.proceeds, receivedIn: f.receivedIn }) } }); onDone(); onClose(); })}>{Number(f.proceeds) > 0 ? 'Record the sale' : 'Write it off'}</Btn><Btn onClick={onClose}>Cancel</Btn></p>
+    </Confirm>
+  );
+};
+
+export default () => {
+  const { o, org } = useSession();
+  const load = useLoad(() => o('/assets'), [org.id]);
+  const a = useAction();
+  const [adding, setAdding] = useState(false);
+  const [dispose, setDispose] = useState(null);
+  const [through, setThrough] = useState(today().slice(0, 7));
+  const runDep = () => a.run(async () => {
+    const done = await o('/assets/depreciation', { method: 'POST', body: { through } });
+    await load.reload();
+    if (!done.length) throw new Error('Nothing to post: depreciation is already up to date through that month.');
+    return done;
+  }, 'Depreciation posted.');
+  return (
+    <Page title="Fixed assets" lead="Things the business owns and uses for years. Depreciation is posted a month at a time." actions={<Btn kind="primary" onClick={() => setAdding(true)}>Add asset</Btn>}>
+      <Err>{a.error}</Err><Note>{a.done}</Note>
+      {adding && <AddAsset onDone={load.reload} onClose={() => setAdding(false)} />}
+      <Card title="Post depreciation">
+        <div className="form"><Field label="Through the end of" hint="Posts every month not yet done, one entry per month"><input type="month" value={through} onChange={(e) => setThrough(e.target.value)} /></Field></div>
+        <p className="actions"><Btn busy={a.busy} onClick={runDep}>Post depreciation</Btn></p>
+      </Card>
+      {dispose && <Dispose asset={dispose} onDone={load.reload} onClose={() => setDispose(null)} />}
+      <Card><Async load={load}>{(d) => (<>
+        <Table head={['Asset', 'Bought', 'Method', '>Cost', '>Depreciation so far', '>Worth now', '']} empty={!d.assets.length && <Empty>No assets yet. Add a computer, vehicle or machine to start.</Empty>}>
+          {d.assets.map((r) => (
+            <tr key={r.id} className={r.status === 'DISPOSED' ? 'muted' : ''}>
+              <td>{r.name}{r.tag && <span className="muted"> · {r.tag}</span>}{r.status === 'DISPOSED' && <> <Badge status="VOID">gone {showDate(r.disposed_on)}</Badge></>}</td>
+              <td>{showDate(r.purchase_date)}</td>
+              <td>{METHOD[r.method]}{r.method === 'SLM' ? `, ${r.life_months / 12} yrs` : r.method === 'WDV' ? `, ${r.rate_bp / 100}%` : ''}</td>
+              <td className="r"><Money v={r.cost_minor} /></td><td className="r"><Money v={r.accumulated_minor} /></td><td className="r"><Money v={r.book_value_minor} strong /></td>
+              <td>{r.status === 'ACTIVE' && <button className="linkish" onClick={() => setDispose(r)}>Sell or write off</button>}</td>
+            </tr>
+          ))}
+        </Table>
+        {d.assets.some((r) => r.status === 'ACTIVE') && <p className="muted">On the books now: cost ₹{inr(d.totals.cost_minor)}, depreciation ₹{inr(d.totals.accumulated_minor)}, worth ₹{inr(d.totals.book_value_minor)}.</p>}
+      </>)}</Async></Card>
+    </Page>
+  );
+};

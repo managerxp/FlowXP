@@ -9,6 +9,7 @@ import { DocForm, DocList, DocView } from './pages/Documents.jsx';
 import { PaymentForm, PaymentView, Payments } from './pages/Payments.jsx';
 import { Items, Parties } from './pages/Contacts.jsx';
 import Stock from './pages/Stock.jsx';
+import Assets from './pages/Assets.jsx';
 import { Accounts, JournalForm, JournalView, Journals } from './pages/Books.jsx';
 import Bank from './pages/Bank.jsx';
 import Expenses from './pages/Expenses.jsx';
@@ -48,7 +49,7 @@ const NAV = [
   { label: 'Sales', items: [['/quotes', 'Quotes', 'bill'], ['/sales-orders', 'Sales orders', 'list'], ['/sales', 'Invoices', 'invoice'], ['/credit-notes', 'Credit notes', 'credit'], ['/recurring', 'Recurring', 'repeat'], ['/customers', 'Customers', 'people']] },
   { label: 'Purchases', items: [['/purchase-orders', 'Purchase orders', 'list'], ['/purchases', 'Bills', 'bill'], ['/debit-notes', 'Debit notes', 'credit'], ['/expenses', 'Expenses', 'wallet'], ['/vendors', 'Vendors', 'people']] },
   { label: 'Money', items: [['/payments', 'Payments', 'cash'], ['/bank', 'Bank', 'bank']] },
-  { label: 'Books', items: [['/items', 'Items', 'box'], ['/stock', 'Stock', 'list'], ['/accounts', 'Accounts', 'list'], ['/journals', 'Journals', 'book'], ['/reports', 'Reports', 'chart']] },
+  { label: 'Books', items: [['/items', 'Items', 'box'], ['/stock', 'Stock', 'list'], ['/assets', 'Fixed assets', 'box'], ['/accounts', 'Accounts', 'list'], ['/journals', 'Journals', 'book'], ['/reports', 'Reports', 'chart']] },
   { label: 'Setup', items: [['/settings', 'Settings', 'gear']] }
 ];
 const Icon = ({ name }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={ICON[name]} /></svg>;
@@ -158,6 +159,7 @@ const Shell = () => {
             <Route path="/vendors" element={<Parties kind="VENDOR" />} />
             <Route path="/items" element={<Items />} />
             <Route path="/stock" element={<Stock />} />
+            <Route path="/assets" element={<Assets />} />
             <Route path="/accounts" element={<Accounts />} />
             <Route path="/journals" element={<Journals />} />
             <Route path="/journals/new" element={<JournalForm />} />

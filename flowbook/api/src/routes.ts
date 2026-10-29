@@ -18,6 +18,8 @@ import { salesAnalysis } from './analysis.ts';
 import { getEmailSettings, listEmails, saveEmailSettings, sendDocument } from './email.ts';
 import type { EmailSettingsIn } from './email.ts';
 import { CURRENCIES, listRates, rateOn, saveRate } from './fx.ts';
+import { addAsset, assetRegister, cancelAsset, disposeAsset, runDepreciation } from './assets.ts';
+import type { AssetIn } from './assets.ts';
 import { adjust, setTracking, stockLedger, stockSummary } from './stock.ts';
 import { addEntry, bankAccounts, importStatement, matchLine, setIgnored, unmatchLine, workbench } from './reconcile.ts';
 import { partyStatement } from './statement.ts';
@@ -145,6 +147,30 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   });
   app.patch(`${base}/items/:id`, { preHandler: scope('item.write'), schema: { ...idParam, body: { type: 'object', additionalProperties: false, properties: { trackStock: { type: 'boolean' }, reorderLevel: { type: 'string', pattern: QTY } } } } }, async (req) => {
     await run(req, (c, orgId) => setTracking(c, orgId, BigInt((req.params as { id: string }).id), req.body as { trackStock?: boolean; reorderLevel?: string }, me(req)));
+    return { ok: true };
+  });
+
+  /* ---- fixed assets */
+  const acct = { type: 'string', minLength: 1, maxLength: 40 };
+  app.get(`${base}/assets`, { preHandler: scope('journal.read') }, async (req) => run(req, (c) => assetRegister(c)));
+  app.post(`${base}/assets`, { preHandler: scope('journal.post'), schema: { body: { type: 'object', required: ['name', 'purchaseDate', 'cost', 'method', 'paidFrom'], additionalProperties: false, properties: {
+    name: { type: 'string', minLength: 1, maxLength: 160 }, tag: { type: 'string', maxLength: 40 }, category: { type: 'string', maxLength: 60 }, purchaseDate: { type: 'string', pattern: DATE }, startDate: { type: 'string', pattern: DATE },
+    cost: { type: 'string', pattern: AMOUNT }, salvage: { type: 'string', pattern: AMOUNT }, method: { type: 'string', enum: ['SLM', 'WDV', 'NONE'] }, lifeYears: { type: 'string', pattern: '^\\d{1,3}(\\.\\d{1,2})?$' },
+    ratePercent: { type: 'string', pattern: '^\\d{1,3}(\\.\\d{1,2})?$' }, paidFrom: acct, openingAccumulated: { type: 'string', pattern: AMOUNT }, ...override } } } }, async (req, reply) => {
+    const b = req.body as AssetIn & { overrideReason?: string };
+    return reply.code(201).send(await run(req, (c, orgId) => addAsset(c, orgId, b, me(req), lockOverride(req, b.overrideReason))));
+  });
+  app.post(`${base}/assets/depreciation`, { preHandler: scope('journal.post'), schema: { body: { type: 'object', required: ['through'], additionalProperties: false, properties: { through: { type: 'string', pattern: '^\\d{4}-\\d{2}$' }, ...override } } } }, async (req) => {
+    const b = req.body as { through: string; overrideReason?: string };
+    return run(req, (c, orgId) => runDepreciation(c, orgId, b.through, me(req), lockOverride(req, b.overrideReason)));
+  });
+  app.post(`${base}/assets/:id/dispose`, { preHandler: scope('journal.post'), schema: { ...idParam, body: { type: 'object', required: ['date'], additionalProperties: false, properties: { date: { type: 'string', pattern: DATE }, proceeds: { type: 'string', pattern: AMOUNT }, receivedIn: acct, ...override } } } }, async (req) => {
+    const b = req.body as { date: string; proceeds?: string; receivedIn?: string; overrideReason?: string };
+    return run(req, (c, orgId) => disposeAsset(c, orgId, BigInt((req.params as { id: string }).id), { date: b.date, proceeds: b.proceeds ?? '0', receivedIn: b.receivedIn }, me(req), lockOverride(req, b.overrideReason)));
+  });
+  app.post(`${base}/assets/:id/cancel`, { preHandler: scope('journal.post'), schema: { ...idParam, body: voidBody } }, async (req) => {
+    const b = req.body as { date: string; reason: string; overrideReason?: string };
+    await run(req, (c, orgId) => cancelAsset(c, orgId, BigInt((req.params as { id: string }).id), b.reason, b.date, me(req), lockOverride(req, b.overrideReason)));
     return { ok: true };
   });
 
