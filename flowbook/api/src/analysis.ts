@@ -11,7 +11,7 @@ export const salesAnalysis = async (c: Db, from: string, to: string) => {
        FROM documents d JOIN parties p ON p.id = d.party_id WHERE d.kind IN ('INVOICE', 'CREDIT_NOTE') AND ${between}
       GROUP BY p.id, p.name ORDER BY sales_minor DESC LIMIT 10`, [from, to])).rows;
   const items = (await c.query(
-    `SELECT COALESCE(i.name, l.description) AS name, SUM(l.taxable_minor)::bigint AS sales_minor, SUM(l.quantity_milli)::bigint AS quantity_milli, MIN(l.unit) AS unit
+    `SELECT COALESCE(i.name, l.description) AS name, SUM(l.taxable_minor)::bigint AS sales_minor, round(SUM(l.quantity_milli)::numeric / 1000, 3)::text AS quantity, MIN(l.unit) AS unit
        FROM document_lines l JOIN documents d ON d.id = l.document_id LEFT JOIN items i ON i.id = l.item_id
       WHERE d.kind = 'INVOICE' AND ${between} GROUP BY COALESCE(i.name, l.description) ORDER BY sales_minor DESC LIMIT 10`, [from, to])).rows;
   const months = (await c.query(

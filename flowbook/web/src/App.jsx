@@ -9,6 +9,7 @@ import { DocForm, DocList, DocView } from './pages/Documents.jsx';
 import { PaymentForm, PaymentView, Payments } from './pages/Payments.jsx';
 import { Items, Parties } from './pages/Contacts.jsx';
 import { Accounts, JournalForm, JournalView, Journals } from './pages/Books.jsx';
+import Bank from './pages/Bank.jsx';
 import Expenses from './pages/Expenses.jsx';
 import Recurring from './pages/Recurring.jsx';
 import Reports from './pages/Reports.jsx';
@@ -28,6 +29,7 @@ const ICON = {
   repeat: 'M17 2l3 3-3 3M4 11V9a4 4 0 014-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 01-4 4H4',
   people: 'M16 20v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M9.5 10a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM21 20v-2a4 4 0 00-3-3.9M16 3.1a3.5 3.5 0 010 6.8',
   bill: 'M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6',
+  bank: 'M3 10l9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18',
   wallet: 'M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l13-3v3M17 13.5h.01',
   cash: 'M2 6h20v12H2zM12 15a3 3 0 100-6 3 3 0 000 6z',
   box: 'M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8',
@@ -40,7 +42,7 @@ const NAV = [
   { items: [['/', 'Home', 'home']] },
   { label: 'Sales', items: [['/sales', 'Invoices', 'invoice'], ['/credit-notes', 'Credit notes', 'credit'], ['/recurring', 'Recurring', 'repeat'], ['/customers', 'Customers', 'people']] },
   { label: 'Purchases', items: [['/purchases', 'Bills', 'bill'], ['/expenses', 'Expenses', 'wallet'], ['/vendors', 'Vendors', 'people']] },
-  { label: 'Money', items: [['/payments', 'Payments', 'cash']] },
+  { label: 'Money', items: [['/payments', 'Payments', 'cash'], ['/bank', 'Bank', 'bank']] },
   { label: 'Books', items: [['/items', 'Items', 'box'], ['/accounts', 'Accounts', 'list'], ['/journals', 'Journals', 'book'], ['/reports', 'Reports', 'chart']] },
   { label: 'Setup', items: [['/settings', 'Settings', 'gear']] }
 ];
@@ -142,6 +144,7 @@ const Shell = () => {
               <Route key={`${d.path}-v`} path={`/${d.path}/:id`} element={<DocView kind={d} />} />
             ])}
             <Route path="/expenses" element={<Expenses />} />
+            <Route path="/bank" element={<Bank />} />
             <Route path="/recurring" element={<Recurring />} />
             <Route path="/payments" element={<Payments />} />
             <Route path="/payments/new" element={<PaymentForm />} />

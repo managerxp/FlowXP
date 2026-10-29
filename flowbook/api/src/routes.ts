@@ -15,6 +15,7 @@ import { getSettings as getWhatsapp, listMessages, saveSettings as saveWhatsapp,
 import { createTemplate, deleteTemplate, listTemplates, runDue, setTemplateActive } from './recurring.ts';
 import type { Every } from './recurring.ts';
 import { salesAnalysis } from './analysis.ts';
+import { addEntry, bankAccounts, importStatement, matchLine, setIgnored, unmatchLine, workbench } from './reconcile.ts';
 import { partyStatement } from './statement.ts';
 import { UQC, validGstin, validStateCode } from './gst.ts';
 import { LedgerError } from './ledger.ts';
@@ -180,6 +181,27 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     const rows = await run(req, (c) => listPayments(c, { direction: q.direction, partyId: q.partyId ? BigInt(q.partyId) : undefined, before: q.before ? BigInt(q.before) : undefined, limit }));
     return { payments: rows, next: rows.length === limit ? rows[rows.length - 1]?.id : null };
   });
+  /* ---- bank reconciliation */
+  const lineParam = { params: { type: 'object', properties: { lineId: { type: 'string', pattern: ID } } } };
+  const lineId = (req: FastifyRequest) => BigInt((req.params as { lineId: string }).lineId);
+  app.get(`${base}/bank/accounts`, { preHandler: scope('journal.read') }, async (req) => run(req, (c, orgId) => bankAccounts(c, orgId)));
+  app.get(`${base}/bank/accounts/:accountId`, { preHandler: scope('journal.read'), schema: { params: { type: 'object', properties: { accountId: { type: 'string', pattern: ID } } }, querystring: { type: 'object', required: ['asOf'], properties: { asOf: { type: 'string', pattern: DATE } } } } }, async (req) =>
+    run(req, (c, orgId) => workbench(c, orgId, BigInt((req.params as { accountId: string }).accountId), (req.query as { asOf: string }).asOf)));
+  app.post(`${base}/bank/accounts/:accountId/import`, { preHandler: scope('journal.post'), bodyLimit: 2_000_000, schema: { params: { type: 'object', properties: { accountId: { type: 'string', pattern: ID } } }, body: { type: 'object', required: ['rows'], additionalProperties: false, properties: {
+    rows: { type: 'array', minItems: 1, maxItems: 2000, items: { type: 'object', required: ['date', 'amount'], additionalProperties: false, properties: { date: { type: 'string', pattern: DATE }, description: { type: 'string', maxLength: 300 }, reference: { type: 'string', maxLength: 100 }, amount: { type: 'string', maxLength: 20 } } } } } } } }, async (req) =>
+    run(req, (c, orgId) => importStatement(c, orgId, BigInt((req.params as { accountId: string }).accountId), (req.body as { rows: Parameters<typeof importStatement>[3] }).rows, me(req))));
+  app.post(`${base}/bank/lines/:lineId/match`, { preHandler: scope('journal.post'), schema: { ...lineParam, body: { type: 'object', required: ['journalLineId'], additionalProperties: false, properties: { journalLineId: { type: 'string', pattern: ID } } } } }, async (req) => {
+    await run(req, (c, orgId) => matchLine(c, orgId, lineId(req), BigInt((req.body as { journalLineId: string }).journalLineId), me(req))); return { ok: true };
+  });
+  app.post(`${base}/bank/lines/:lineId/unmatch`, { preHandler: scope('journal.post'), schema: lineParam }, async (req) => { await run(req, (c, orgId) => unmatchLine(c, orgId, lineId(req), me(req))); return { ok: true }; });
+  app.post(`${base}/bank/lines/:lineId/ignore`, { preHandler: scope('journal.post'), schema: { ...lineParam, body: { type: 'object', additionalProperties: false, properties: { ignored: { type: 'boolean' } } } } }, async (req) => {
+    await run(req, (c, orgId) => setIgnored(c, orgId, lineId(req), (req.body as { ignored?: boolean } | undefined)?.ignored !== false, me(req))); return { ok: true };
+  });
+  app.post(`${base}/bank/lines/:lineId/add-entry`, { preHandler: scope('journal.post'), schema: { ...lineParam, body: { type: 'object', required: ['counterAccountId'], additionalProperties: false, properties: { counterAccountId: { type: 'string', pattern: ID }, memo: { type: 'string', maxLength: 200 }, ...override } } } }, async (req) => {
+    const b = req.body as { counterAccountId: string; memo?: string; overrideReason?: string };
+    return run(req, (c, orgId) => addEntry(c, orgId, lineId(req), { counterAccountId: BigInt(b.counterAccountId), memo: b.memo }, me(req), lockOverride(req, b.overrideReason)));
+  });
+
   app.post(`${base}/opening-balances`, { preHandler: scope('party.write'), schema: { body: { type: 'object', required: ['kind', 'partyId', 'date', 'amount'], additionalProperties: false, properties: {
     kind: { type: 'string', enum: ['INVOICE', 'BILL'] }, partyId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, dueDate: { type: 'string', pattern: DATE }, amount: { type: 'string', pattern: AMOUNT }, memo: { type: 'string', maxLength: 200 }, ...override } } } }, async (req, reply) => {
     const b = req.body as { kind: 'INVOICE' | 'BILL'; partyId: string; date: string; dueDate?: string; amount: string; memo?: string; overrideReason?: string };

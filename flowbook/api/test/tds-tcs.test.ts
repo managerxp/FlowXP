@@ -71,7 +71,7 @@ test('sales analysis ranks customers and items and nets credit notes', { skip },
   await run(org, async (c) => { const x = await saveDraft(c, org, null, { kind: 'CREDIT_NOTE', partyId: cust, date: '2026-07-02', relatedDocumentId: inv, lines: [{ ...line, quantity: '1' }] }, 't'); await issueDocument(c, org, 'CREDIT_NOTE', x, 't'); });
   const a = await run(org, (c) => salesAnalysis(c, '2026-04-01', '2027-03-31'));
   assert.deepEqual(a.customers.map((x) => [x.party_name, x.sales_minor, x.invoices]), [['Ravi', 100_000n, 1n]], '2000 less a 1000 credit note');
-  assert.deepEqual(a.items.map((x) => [x.name, x.sales_minor, x.quantity_milli]), [['Widget', 200_000n, 2000n]]);
+  assert.deepEqual(a.items.map((x) => [x.name, x.sales_minor, x.quantity]), [["Widget", 200_000n, "2.000"]]);
   assert.deepEqual(a.months.map((m) => [m.month, m.sales_minor]), [['2026-06', 200_000n], ['2026-07', -100_000n]]);
 });
 

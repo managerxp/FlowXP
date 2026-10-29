@@ -64,3 +64,34 @@ export const download = (name, text) => {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
   Object.assign(document.createElement('a'), { href: url, download: name }).click(); URL.revokeObjectURL(url);
 };
+
+/* Bank statements. Banks differ: one signed Amount column, or Deposit / Withdrawal (also called Credit / Debit) columns. Slash dates are day first. */
+export const STATEMENT_ALIASES = {
+  date: ['date', 'txndate', 'transactiondate', 'valuedate', 'postingdate'], description: ['description', 'narration', 'particulars', 'details', 'remarks', 'transactiondetails'],
+  reference: ['reference', 'ref', 'refno', 'chequeno', 'chqno', 'utr', 'chequerefno'], amount: ['amount', 'txnamount', 'transactionamount'],
+  deposit: ['deposit', 'deposits', 'credit', 'credits', 'depositamt', 'creditamount', 'cr'], withdrawal: ['withdrawal', 'withdrawals', 'debit', 'debits', 'withdrawalamt', 'debitamount', 'dr']
+};
+const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+export const statementDate = (text) => {
+  const t = String(text).trim();
+  let y; let m; let d; let x;
+  if ((x = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(t))) [y, m, d] = [x[1], x[2], x[3]];
+  else if ((x = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(t))) [d, m, y] = [x[1], x[2], x[3]];
+  else if ((x = /^(\d{1,2})[ /-]([A-Za-z]{3})[a-z]*[ /,-]*(\d{2}|\d{4})$/.exec(t))) [d, m, y] = [x[1], String(MONTHS[x[2].toLowerCase()] || ''), x[3]];
+  if (!y || !m || !d) return null;
+  if (y.length === 2) y = `20${y}`;
+  const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const dt = new Date(`${iso}T00:00:00Z`);
+  return Number.isNaN(dt.getTime()) || dt.toISOString().slice(0, 10) !== iso ? null : iso;
+};
+const amt = (v) => (v === undefined || v === '' ? null : Number(money(v).replace(/^\((.*)\)$/, '-$1')));
+export const statementRow = (r) => {
+  const date = statementDate(r.date || '');
+  if (!date) return { problem: `"${r.date || ''}" is not a date I can read (use dd/mm/yyyy or yyyy-mm-dd)` };
+  let value;
+  if (r.amount !== undefined) value = amt(r.amount);
+  else { const dep = amt(r.deposit); const wd = amt(r.withdrawal); value = (dep || 0) - Math.abs(wd || 0); if (dep === null && wd === null) value = NaN; }
+  if (!Number.isFinite(value)) return { problem: 'no amount found' };
+  if (Math.round(value * 100) === 0) return { problem: 'the amount is zero' };
+  return { row: { date, description: r.description || '', ...(r.reference && { reference: r.reference }), amount: value.toFixed(2) } };
+};

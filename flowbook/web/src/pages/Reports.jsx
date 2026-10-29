@@ -69,7 +69,7 @@ const Analysis = ({ r }) => {
     <Card title="Top customers"><Table head={['Customer', '>Invoices', '>Sales', '>Still owed']} empty={!d.customers.length && <Empty>No sales in this range.</Empty>}>
       {d.customers.map((x) => <tr key={x.party_id}><td>{x.party_name}</td><td className="r">{x.invoices}</td><td className="r"><Money v={x.sales_minor} /></td><td className="r">{Number(x.owed_minor) ? <Money v={x.owed_minor} /> : ''}</td></tr>)}</Table></Card>
     <Card title="Best-selling items"><Table head={['Item', '>Quantity', '>Sales']} empty={!d.items.length && <Empty>No sales in this range.</Empty>}>
-      {d.items.map((x) => <tr key={x.name}><td>{x.name}</td><td className="r">{Number(x.quantity_milli) / 1000}{x.unit ? ` ${unitLabel(x.unit)}` : ''}</td><td className="r"><Money v={x.sales_minor} /></td></tr>)}</Table></Card>
+      {d.items.map((x) => <tr key={x.name}><td>{x.name}</td><td className="r">{Number(x.quantity)}{x.unit ? ` ${unitLabel(x.unit)}` : ''}</td><td className="r"><Money v={x.sales_minor} /></td></tr>)}</Table></Card>
   </>)}</Async>;
 };
 
