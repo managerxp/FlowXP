@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { api } from './api.js';
 import { SessionProvider, useSession } from './session.jsx';
-import { BRAND } from './lib.js';
+import { wordmark } from './lib.js';
 import { Btn, Card, Err, Field, Loading, useAction } from './ui.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import { DocForm, DocList, DocView } from './pages/Documents.jsx';
@@ -26,6 +26,9 @@ const NAV = [
   ['/settings', 'Settings', 'Setup']
 ];
 
+const Wordmark = () => { const [a, b] = wordmark(); return <span className="wordmark">{a}<span>{b}</span></span>; };
+const initials = (name = '') => name.split(/s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'B';
+
 const AuthScreen = () => {
   const { signIn } = useSession();
   const [mode, setMode] = useState('login');
@@ -35,7 +38,7 @@ const AuthScreen = () => {
   const submit = (e) => { e.preventDefault(); a.run(() => (mode === 'login' ? signIn('/auth/login', { email: f.email, password: f.password }) : signIn('/auth/register', f))); };
   return (
     <div className="auth"><Card>
-      <h1>{BRAND}</h1>
+      <Wordmark />
       <p className="muted">{mode === 'login' ? 'Sign in to your books.' : 'Create your account. You set up your business next.'}</p>
       <Err>{a.error}</Err>
       <form className="form" onSubmit={submit}>
@@ -86,19 +89,27 @@ const Shell = () => {
   const close = () => setOpen(false);
   return (
     <div className="shell">
-      <header className="top">
-        <button className="menu-btn" aria-label="Menu" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? '✕' : '☰'}</button>
-        <NavLink to="/" className="brand" onClick={close}>{BRAND}</NavLink>
-        <span className="spacer" />
-        {orgs.length > 1 && <select className="org-pick" aria-label="Business" value={org?.id} onChange={(e) => pick(e.target.value)}>{orgs.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>}
-        {orgs.length === 1 && <span className="muted">{org.name}</span>}
-        <button className="btn small" onClick={signOut} title={user.email}>Sign out</button>
-      </header>
-      <nav className={`side ${open ? 'open' : ''}`} onClick={close}>
-        {NAV.map(([to, label, group]) => (
-          <span key={to}>{group && <div className="group">{group}</div>}<NavLink to={to} end={to === '/'}>{label}</NavLink></span>
-        ))}
-      </nav>
+      {open && <div className="backdrop" onClick={close} aria-hidden="true" />}
+      <aside className={`side ${open ? 'open' : ''}`} aria-label="Main menu">
+        <div className="side-head">
+          <NavLink to="/" onClick={close} aria-label="Home"><Wordmark /></NavLink>
+          <button className="icon-btn side-close" aria-label="Close menu" onClick={close}>✕</button>
+        </div>
+        <nav onClick={close}>
+          {NAV.map(([to, label, group]) => (
+            <div key={to}>{group && <p className="nav-label">{group}</p>}<NavLink to={to} end={to === '/'} className="nav-item">{label}</NavLink></div>
+          ))}
+        </nav>
+      </aside>
+      <div className="col">
+        <header className="top">
+          <button className="icon-btn menu-btn" aria-label="Open menu" aria-expanded={open} onClick={() => setOpen(true)}>☰</button>
+          {orgs.length > 1
+            ? <select className="org-pick" aria-label="Business" value={org?.id} onChange={(e) => pick(e.target.value)}>{orgs.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
+            : org && <p className="who" style={{ margin: 0 }}><span className="chip" aria-hidden="true">{initials(org.name)}</span><span className="name">{org.name}</span></p>}
+          <span className="spacer" />
+          <button className="btn small" onClick={signOut} title={user.email}>Sign out</button>
+        </header>
       <main key={`${org?.id}`}>
         {!org ? <CreateOrg first /> : (
           <Routes location={loc}>
@@ -125,6 +136,7 @@ const Shell = () => {
           </Routes>
         )}
       </main>
+      </div>
     </div>
   );
 };

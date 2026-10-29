@@ -5,13 +5,13 @@ import { withOrg } from './db.ts';
 import { findConnection, newSecret, processEvent, receiveEvent, verifySignature } from './inbox.ts';
 
 type Scope = (permission: string) => (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
-type Deps = { pool: pg.Pool; scope: Scope; me: (req: FastifyRequest) => string };
+type Deps = { pool: pg.Pool; scope: Scope; me: (req: FastifyRequest) => string; /** called after an event is stored, when a background worker will post it */ onEvent?: () => void };
 declare module 'fastify' { interface FastifyRequest { rawBody?: string } }
 
 const ID = '^\\d{1,18}$';
 const deny = (reply: FastifyReply) => reply.code(401).send({ error: { code: 'bad_signature', message: 'the signature, timestamp or connection is not valid' } });
 
-export const registerIntegrationRoutes = (app: FastifyInstance, { pool, scope, me }: Deps): void => {
+export const registerIntegrationRoutes = (app: FastifyInstance, { pool, scope, me, onEvent }: Deps): void => {
   /* ---- the inbox: signed by FlowXP, no session. Its own plugin, so keeping the raw body (the signature covers the exact bytes) changes no other route. */
   app.register(async (inbox) => {
     inbox.addContentTypeParser('application/json', { parseAs: 'string', bodyLimit: 1_000_000 }, (req, body, done) => {
@@ -25,7 +25,8 @@ export const registerIntegrationRoutes = (app: FastifyInstance, { pool, scope, m
       const conn = await findConnection(pool, String(b.business_id));
       // an unknown business and a wrong signature answer alike, so the endpoint does not say which businesses are connected
       if (!conn || !verifySignature(req.headers['x-flowxp-signature'] as string | undefined, req.rawBody ?? '', conn)) return deny(reply);
-      const out = await receiveEvent(pool, conn, b);
+      const out = await receiveEvent(pool, conn, b, !onEvent);   // with a worker the event is stored and answered at once; without one it posts here
+      if (onEvent && !out.duplicate) onEvent();
       return reply.code(out.duplicate ? 200 : 202).send({ event_id: b.event_id, status: out.status, duplicate: out.duplicate });
     });
   });
@@ -74,7 +75,7 @@ export const registerIntegrationRoutes = (app: FastifyInstance, { pool, scope, m
     const found = await withOrg(pool, orgOf(req), async (c) => (await c.query(
       `SELECT e.id, e.status, e.connection_id FROM integration_events e WHERE e.id = $1`, [(req.params as { id: string }).id])).rows[0]);
     if (!found) return reply.code(404).send({ error: { code: 'not_found', message: 'no such event' } });
-    if (!['RECEIVED', 'NEEDS_ATTENTION', 'FAILED_VALIDATION'].includes(found.status)) return reply.code(409).send({ error: { code: 'not_replayable', message: `an event that is ${found.status} cannot be replayed` } });
+    if (!['RECEIVED', 'WAITING', 'NEEDS_ATTENTION', 'FAILED_VALIDATION'].includes(found.status)) return reply.code(409).send({ error: { code: 'not_replayable', message: `an event that is ${found.status} cannot be replayed` } });
     const conn = (await pool.query(
       `SELECT id, organization_id, secret, previous_secret, previous_secret_until, cutover_date::text AS cutover_date FROM integration_connections WHERE id = $1`, [found.connection_id])).rows[0];
     return { status: await processEvent(pool, conn, found.id as bigint) };

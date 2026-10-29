@@ -7,14 +7,14 @@ import { Async, Badge, Btn, Card, Empty, Err, Field, Note, Page, Table, Tabs, us
 const Business = () => {
   const { o, org } = useSession();
   const a = useAction();
-  const [f, setF] = useState({ legalName: '', gstin: '', stateCode: '', pan: '' });
+  const [f, setF] = useState({ legalName: '', gstin: '', stateCode: '', pan: '', invoicePrefix: '' });
   const load = useLoad(() => o('/profile'), [org.id]);
-  useEffect(() => { const p = load.data; if (p) setF({ legalName: p.legal_name || '', gstin: p.gstin || '', stateCode: p.state_code || '', pan: p.pan || '' }); }, [load.data]);
+  useEffect(() => { const p = load.data; if (p) setF({ legalName: p.legal_name || '', gstin: p.gstin || '', stateCode: p.state_code || '', pan: p.pan || '', invoicePrefix: p.invoice_prefix || '' }); }, [load.data]);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const save = (e) => {
     e.preventDefault();
     a.run(async () => {
-      const body = Object.fromEntries(Object.entries({ legalName: f.legalName, gstin: f.gstin.toUpperCase(), stateCode: f.stateCode, pan: f.pan.toUpperCase() }).filter(([, v]) => v));
+      const body = Object.fromEntries(Object.entries({ legalName: f.legalName, gstin: f.gstin.toUpperCase(), stateCode: f.stateCode, pan: f.pan.toUpperCase(), invoicePrefix: f.invoicePrefix.toUpperCase() }).filter(([, v]) => v));
       await o('/profile', { method: 'PUT', body });
     }, 'Saved. The GSTIN is checked, and the state decides CGST + SGST versus IGST on every new document.');
   };
@@ -26,6 +26,7 @@ const Business = () => {
         <Field label="GSTIN" hint="The state is taken from it"><input value={f.gstin} onChange={set('gstin')} maxLength={15} /></Field>
         <Field label="State" hint="Needed for GST if you have no GSTIN"><select value={f.stateCode} onChange={set('stateCode')}><option value="">Leave as is</option>{Object.entries(STATES).map(([c, n]) => <option key={c} value={String(c).padStart(2, '0')}>{String(c).padStart(2, '0')} · {n}</option>)}</select></Field>
         <Field label="PAN"><input value={f.pan} onChange={set('pan')} maxLength={10} /></Field>
+        <Field label="Invoice number prefix" hint={`Numbers look like ${f.invoicePrefix || 'INV'}-26-27-000001 and start again each financial year`}><input value={f.invoicePrefix} onChange={set('invoicePrefix')} maxLength={3} pattern="[A-Za-z0-9]{1,3}" title="One to three letters or digits" /></Field>
         <div className="wide"><Btn kind="primary" busy={a.busy}>Save</Btn></div>
       </form>
     </Card>

@@ -117,10 +117,9 @@ test('a sale in a locked period waits for attention, and replays once the period
 test('void takes the sale out of the books; a void that arrives before its sale waits; a repeated void changes nothing', { skip }, async () => {
   const s = await connected();
   const early = await s.send('sale.voided', { invoice_id: 'inv-1', date: '2026-06-11', reason: 'wrong bill' });
-  assert.equal(early.body.status, 'NEEDS_ATTENTION');
-  await s.send('sale.finalized', sale());
-  const ev = (await call('GET', `${s.base}/integrations/events?status=NEEDS_ATTENTION`, { token: s.token })).body[0];
-  assert.equal((await call('POST', `${s.base}/integrations/events/${ev.id}/replay`, { token: s.token })).body.status, 'POSTED');
+  assert.equal(early.body.status, 'WAITING');
+  await s.send('sale.finalized', sale());     // the sale arrives and the waiting cancellation runs by itself
+  assert.equal((await call('GET', `${s.base}/integrations/events?status=WAITING`, { token: s.token })).body.length, 0);
   const pl = await withOrg(pool, s.orgId, (c) => profitAndLoss(c, s.orgId, '2026-04-01', '2027-03-31'));
   assert.equal(pl.netProfit, 0n);
   const n1 = await s.entries();

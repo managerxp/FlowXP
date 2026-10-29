@@ -27,6 +27,8 @@ export type AppOptions = {
   /** Set the Secure flag on the session cookie (always true in production, off only for http://localhost). */
   secureCookie?: boolean;
   sessionDays?: number;
+  /** Set when a background worker posts FlowXP events (see startInboxWorker): events are then stored and answered at once. Unset, they post inside the request. */
+  onEvent?: () => void;
   /** attempts allowed per 15 minutes (defaults: sign-in 8 per email and address, sign-up 20 per address) */
   limits?: { login?: number; register?: number };
 };
@@ -301,7 +303,7 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
     ({ issues: await withOrg(pool, req.org?.id as bigint, async (c) => [...await reconcile(c, req.org?.id as bigint), ...await documentIssues(c, req.org?.id as bigint)]) }));
 
   registerBookRoutes(app, { pool, scope, me });
-  registerIntegrationRoutes(app, { pool, scope, me });
+  registerIntegrationRoutes(app, { pool, scope, me, onEvent: opts.onEvent });
 
   /* ---- audit */
   app.get(`${orgRoute}/audit`, { preHandler: scope('audit.read'), schema: { querystring: { type: 'object', properties: { limit: { type: 'integer', minimum: 1, maximum: 200 } } } } }, async (req) =>

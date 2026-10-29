@@ -20,13 +20,21 @@ type Override = { reason: string };
 const PREFIX: Record<DocKind, string> = { INVOICE: 'INV', BILL: 'BILL', CREDIT_NOTE: 'CN' };
 const gone = (what: string) => new LedgerError('not_found', `no such ${what}`);
 
-/** Gapless numbers: the row lock taken by the upsert serialises callers, and a rolled-back transaction gives its number back. */
-const nextNumber = async (c: Db, orgId: bigint, key: string): Promise<string> => {
+/** The financial year (April to March) a date falls in, by its starting year. */
+export const fyStart = (date: string): number => (Number(date.slice(5, 7)) >= 4 ? Number(date.slice(0, 4)) : Number(date.slice(0, 4)) - 1);
+
+/**
+ * Gapless numbers that restart every financial year: INV-26-27-000001 is 16 characters, the most the GST rules allow on an invoice.
+ * The row lock taken by the upsert serialises callers, and a rolled-back transaction gives its number back. Each prefix is its own series.
+ */
+const nextNumber = async (c: Db, orgId: bigint, prefix: string, date: string): Promise<string> => {
+  const fy = fyStart(date);
   const n = (await c.query(
     `INSERT INTO document_sequences (organization_id, key, next_value) VALUES ($1, $2, 1)
-       ON CONFLICT (organization_id, key) DO UPDATE SET next_value = document_sequences.next_value + 1 RETURNING next_value`, [orgId, key])).rows[0].next_value as bigint;
-  return `${key}-${String(n).padStart(6, '0')}`;
+       ON CONFLICT (organization_id, key) DO UPDATE SET next_value = document_sequences.next_value + 1 RETURNING next_value`, [orgId, `${prefix}:${fy}`])).rows[0].next_value as bigint;
+  return `${prefix}-${String(fy).slice(2)}-${String(fy + 1).slice(2)}-${String(n).padStart(6, '0')}`;
 };
+const invoicePrefix = async (c: Db, orgId: bigint): Promise<string> => (await c.query(`SELECT invoice_prefix FROM organizations WHERE id = $1`, [orgId])).rows[0].invoice_prefix as string;
 
 const toMilli = (text: string): bigint => {
   const m = /^(\d{1,9})(?:\.(\d{1,3}))?$/.exec(text.trim());
@@ -165,7 +173,7 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
     const dup = (await c.query(`SELECT number FROM documents WHERE kind = 'BILL' AND status = 'ISSUED' AND party_id = $1 AND lower(supplier_ref) = lower($2) AND id <> $3`, [fresh.party_id, fresh.supplier_ref, id])).rows[0];
     if (dup) throw new LedgerError('duplicate_bill', `this supplier invoice number was already entered as ${dup.number}`);
   }
-  const number = await nextNumber(c, orgId, PREFIX[kind]);
+  const number = await nextNumber(c, orgId, kind === 'INVOICE' ? await invoicePrefix(c, orgId) : PREFIX[kind], fresh.d as string);
   const taxed = lines.map((l) => ({ taxable: l.taxable_minor as bigint, rateBp: l.tax_rate_bp as number }));
   const common = { date: fresh.d as string, partyId: fresh.party_id as bigint, lines: taxed, interState: fresh.inter_state as boolean };
   const journal = kind === 'INVOICE' ? saleJournal({ ...common, invoiceId: number, roundOff: fresh.round_off_minor as bigint })
@@ -184,7 +192,7 @@ export const voidDocument = async (c: Db, orgId: bigint, kind: DocKind, id: bigi
   if (doc.status !== 'ISSUED') throw new LedgerError('not_issued', 'only an issued document can be voided');
   if (doc.balance_minor !== doc.total_minor) throw new LedgerError('has_allocations', 'payments or credits are applied to this document; void those first');
   await reverse(c, orgId, doc.journal_entry_id as bigint, { date: o.date, reason: o.reason, actor, override });
-  await c.query(`UPDATE documents SET status = 'VOID', balance_minor = 0 WHERE id = $1`, [id]);
+  await c.query(`UPDATE documents SET status = 'VOID', balance_minor = 0, voided_on = $2 WHERE id = $1`, [id, o.date]);
   await audit(c, orgId, { actor, action: 'document.voided', entityType: 'document', entityId: id, detail: { number: doc.number, reason: o.reason } });
 };
 
@@ -245,7 +253,7 @@ export const createPayment = async (c: Db, orgId: bigint, p: PaymentIn, actor: s
   if (prior) return { id: prior.id as bigint, number: prior.number as string, replayed: true };
   if (p.amount <= 0n) throw new LedgerError('bad_amount', 'a payment must be above zero');
   await partyFor(c, p.partyId, p.direction === 'IN' ? 'CUSTOMER' : 'VENDOR');
-  const number = await nextNumber(c, orgId, p.direction === 'IN' ? 'RCT' : 'PAY');
+  const number = await nextNumber(c, orgId, p.direction === 'IN' ? 'RCT' : 'PAY', p.date);
   const id = (await c.query(
     `INSERT INTO payments (organization_id, direction, number, party_id, pay_date, mode, reference, amount_minor, unallocated_minor, idempotency_key, created_by)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9, $10) RETURNING id`, [orgId, p.direction, number, p.partyId, p.date, p.mode, p.reference ?? null, p.amount, p.idempotencyKey, actor])).rows[0].id as bigint;
@@ -287,7 +295,10 @@ export const getPayment = async (c: Db, id: bigint) => {
 
 /* ---- reports */
 
-/** Who owes what, by how late. Uses the balances today, so it answers "as of now"; a past date only moves the buckets. */
+/**
+ * Who owes what, by how late, as of a date. The balance is rebuilt for that date: a payment or credit counts from its own date, and
+ * one voided later still counts until then. ponytail: an allocation is treated as voided on the day it was voided in the system, not on the date given for the reversal.
+ */
 export const ageing = async (c: Db, orgId: bigint, kind: 'INVOICE' | 'BILL', asOf: string) => {
   const rows = (await c.query(
     `SELECT party_id, party_name,
@@ -297,9 +308,15 @@ export const ageing = async (c: Db, orgId: bigint, kind: 'INVOICE' | 'BILL', asO
             COALESCE(SUM(balance_minor) FILTER (WHERE age BETWEEN 61 AND 90), 0)::bigint AS days_61_90,
             COALESCE(SUM(balance_minor) FILTER (WHERE age > 90), 0)::bigint AS days_over_90,
             SUM(balance_minor)::bigint AS total
-       FROM (SELECT d.party_id, p.name AS party_name, d.balance_minor, ($3::date - COALESCE(d.due_date, d.issue_date)) AS age
+       FROM (SELECT d.party_id, p.name AS party_name, ($3::date - COALESCE(d.due_date, d.issue_date)) AS age,
+                    d.total_minor - COALESCE((SELECT SUM(a.amount_minor) FROM payment_allocations a
+                       WHERE a.document_id = d.id AND (a.voided_at IS NULL OR a.voided_at::date > $3::date)
+                         AND (CASE a.source_type WHEN 'PAYMENT' THEN (SELECT pay_date FROM payments x WHERE x.id = a.source_id)
+                                                 ELSE (SELECT issue_date FROM documents x WHERE x.id = a.source_id) END) <= $3::date), 0) AS balance_minor
                FROM documents d JOIN parties p ON p.id = d.party_id
-              WHERE d.organization_id = $1 AND d.kind = $2 AND d.status = 'ISSUED' AND d.balance_minor > 0) x
-      GROUP BY party_id, party_name ORDER BY party_name`, [orgId, kind, asOf])).rows as { total: bigint }[];
+              WHERE d.organization_id = $1 AND d.kind = $2 AND d.issue_date <= $3::date
+                AND (d.status = 'ISSUED' OR (d.status = 'VOID' AND d.voided_on > $3::date))) x
+      WHERE balance_minor > 0
+      GROUP BY party_id, party_name ORDER BY party_name`, [orgId, kind, asOf])).rows as { party_id: bigint; party_name: string; not_due: bigint; days_1_30: bigint; days_31_60: bigint; days_61_90: bigint; days_over_90: bigint; total: bigint }[];
   return { rows, total: rows.reduce((a, r) => a + r.total, 0n) };
 };

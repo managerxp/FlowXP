@@ -56,18 +56,19 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
 
   /* ---- organization profile and tax rates */
   app.get(`${base}/profile`, { preHandler: scope('org.read') }, async (req) =>
-    run(req, async (c, orgId) => (await c.query(`SELECT id, name, legal_name, pan, gstin, state_code FROM organizations WHERE id = $1`, [orgId])).rows[0]));
+    run(req, async (c, orgId) => (await c.query(`SELECT id, name, legal_name, pan, gstin, state_code, invoice_prefix FROM organizations WHERE id = $1`, [orgId])).rows[0]));
   app.put(`${base}/profile`, { preHandler: scope('org.manage'), schema: { body: { type: 'object', additionalProperties: false, properties: {
-    legalName: { type: 'string', maxLength: 200 }, gstin: { type: 'string', maxLength: 15 }, stateCode: { type: 'string', pattern: '^\\d{2}$' }, pan: { type: 'string', pattern: '^[A-Z]{5}[0-9]{4}[A-Z]$' } } } } }, async (req) => {
-    const b = req.body as { legalName?: string; gstin?: string; stateCode?: string; pan?: string };
+    legalName: { type: 'string', maxLength: 200 }, gstin: { type: 'string', maxLength: 15 }, stateCode: { type: 'string', pattern: '^\\d{2}$' }, pan: { type: 'string', pattern: '^[A-Z]{5}[0-9]{4}[A-Z]$' },
+    invoicePrefix: { type: 'string', pattern: '^[A-Z0-9]{1,3}$' } } } } }, async (req) => {
+    const b = req.body as { legalName?: string; gstin?: string; stateCode?: string; pan?: string; invoicePrefix?: string };
     if (b.gstin && !validGstin(b.gstin.toUpperCase())) throw new LedgerError('bad_gstin', `${b.gstin} is not a valid GSTIN`);
     if (b.stateCode && !validStateCode(b.stateCode)) throw new LedgerError('bad_state', `${b.stateCode} is not a GST state code`);
     const state = b.stateCode ?? (b.gstin ? b.gstin.slice(0, 2) : null);
     return run(req, async (c, orgId) => {
-      await c.query(`UPDATE organizations SET legal_name = COALESCE($2, legal_name), gstin = COALESCE($3, gstin), state_code = COALESCE($4, state_code), pan = COALESCE($5, pan) WHERE id = $1`,
-        [orgId, b.legalName ?? null, b.gstin?.toUpperCase() ?? null, state, b.pan ?? null]);
+      await c.query(`UPDATE organizations SET legal_name = COALESCE($2, legal_name), gstin = COALESCE($3, gstin), state_code = COALESCE($4, state_code), pan = COALESCE($5, pan), invoice_prefix = COALESCE($6, invoice_prefix) WHERE id = $1`,
+        [orgId, b.legalName ?? null, b.gstin?.toUpperCase() ?? null, state, b.pan ?? null, b.invoicePrefix ?? null]);
       await audit(c, orgId, { actor: me(req), action: 'organization.profile_updated', entityType: 'organization', entityId: orgId });
-      return (await c.query(`SELECT id, name, legal_name, pan, gstin, state_code FROM organizations WHERE id = $1`, [orgId])).rows[0];
+      return (await c.query(`SELECT id, name, legal_name, pan, gstin, state_code, invoice_prefix FROM organizations WHERE id = $1`, [orgId])).rows[0];
     });
   });
 

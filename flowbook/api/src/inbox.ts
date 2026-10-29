@@ -37,6 +37,8 @@ export const findConnection = async (pool: pg.Pool, businessId: string): Promise
 /* ---- reading the payload: strict, and explicit about which problems a person can fix */
 class EventInvalid extends Error {}
 class NeedsAttention extends Error {}
+/** An event that depends on a document that has not arrived yet: it waits, and runs by itself when that document posts. */
+class Waiting extends Error { key: string; constructor(message: string, key: string) { super(message); this.key = key; } }
 type Obj = Record<string, unknown>;
 
 const obj = (v: unknown, name: string): Obj => { if (!v || typeof v !== 'object' || Array.isArray(v)) throw new EventInvalid(`${name} is missing`); return v as Obj; };
@@ -101,7 +103,7 @@ const handle = async (c: Db, orgId: bigint, conn: Connection, ev: Event): Promis
   if (ev.type === 'sale.voided') {
     const id = text(p.invoice_id, 'invoice_id'); const date = day(p.date, 'date');
     const doc = (await c.query(`SELECT id, status, journal_entry_id FROM external_documents WHERE connection_id = $1 AND source_type = 'sale' AND source_id = $2 FOR UPDATE`, [conn.id, id])).rows[0];
-    if (!doc) throw new NeedsAttention(`sale ${id} has not arrived yet; replay this event after it does`);
+    if (!doc) throw new Waiting(`waiting for sale ${id} to arrive`, `sale:${id}`);
     if (doc.status !== 'POSTED') return doc.status === 'VOID' ? 'POSTED' : 'IGNORED_CUTOVER';      // already void, or never posted (before cut-over)
     const rev = await reverse(c, orgId, doc.journal_entry_id as bigint, { date, reason: text(p.reason ?? 'voided in FlowXP', 'reason').slice(0, 280), actor: ACTOR });
     await c.query(`UPDATE external_documents SET status = 'VOID', reversal_entry_id = $2 WHERE id = $1`, [doc.id, rev.entryId]);
@@ -143,7 +145,7 @@ const handle = async (c: Db, orgId: bigint, conn: Connection, ev: Event): Promis
 };
 
 /** Store the event first (so it is never lost), then post it. A duplicate delivery returns what happened the first time. */
-export const receiveEvent = async (pool: pg.Pool, conn: Connection, env: { event_id: string; event_type: string; schema_version: number; sequence?: unknown; occurred_at?: string; payload: Obj }) => {
+export const receiveEvent = async (pool: pg.Pool, conn: Connection, env: { event_id: string; event_type: string; schema_version: number; sequence?: unknown; occurred_at?: string; payload: Obj }, inline = true) => {
   const orgId = conn.organization_id;
   const stored = await withOrg(pool, orgId, async (c) => {
     const row = (await c.query(
@@ -156,32 +158,70 @@ export const receiveEvent = async (pool: pg.Pool, conn: Connection, env: { event
     const prior = await withOrg(pool, orgId, async (c) => (await c.query(`SELECT status FROM integration_events WHERE id = $1`, [stored.id])).rows[0]);
     return { status: prior.status as string, duplicate: true };
   }
-  return { status: await processEvent(pool, conn, stored.id), duplicate: false };
+  return { status: inline ? await processEvent(pool, conn, stored.id) : 'RECEIVED', duplicate: false };   // not inline: the worker posts it
 };
 
 const ATTENTION = new Set(['period_locked', 'no_period', 'unknown_account', 'inactive_account']);
 
 /** Run the stored event inside a savepoint: if it cannot be posted, nothing it did is kept and the reason is recorded on the event. */
+const RUNNABLE = new Set(['RECEIVED', 'WAITING', 'NEEDS_ATTENTION', 'FAILED_VALIDATION']);
+
 export const processEvent = async (pool: pg.Pool, conn: Connection, eventRowId: bigint): Promise<string> => {
   const orgId = conn.organization_id;
-  return withOrg(pool, orgId, async (c) => {
-    const ev = (await c.query(`SELECT event_type, schema_version, payload FROM integration_events WHERE id = $1 FOR UPDATE`, [eventRowId])).rows[0];
+  const done = await withOrg(pool, orgId, async (c) => {
+    const ev = (await c.query(`SELECT event_type, schema_version, payload, status FROM integration_events WHERE id = $1 FOR UPDATE`, [eventRowId])).rows[0];
+    if (!RUNNABLE.has(ev.status)) return { status: ev.status as string, release: null as string | null };   // another worker already finished it
     await c.query('SAVEPOINT event_post');
-    let status: string; let error: string | null = null;
+    let status: string; let error: string | null = null; let waitingFor: string | null = null;
     try {
       if (ev.schema_version !== 1) throw new EventInvalid(`schema_version ${ev.schema_version} is not supported`);
       status = await handle(c, orgId, conn, { type: ev.event_type, payload: ev.payload as Obj });
       await c.query('RELEASE SAVEPOINT event_post');
     } catch (e) {
       await c.query('ROLLBACK TO SAVEPOINT event_post');
-      if (e instanceof NeedsAttention) status = 'NEEDS_ATTENTION';
+      if (e instanceof Waiting) { status = 'WAITING'; waitingFor = e.key; }
+      else if (e instanceof NeedsAttention) status = 'NEEDS_ATTENTION';
       else if (e instanceof LedgerError && ATTENTION.has(e.code)) status = 'NEEDS_ATTENTION';
       else if (e instanceof EventInvalid || e instanceof LedgerError || e instanceof RangeError) status = 'FAILED_VALIDATION';
       else throw e;
       error = (e as Error).message;
     }
-    await c.query(`UPDATE integration_events SET status = $2, error = $3, processed_at = now(), attempts = attempts + 1 WHERE id = $1`, [eventRowId, status, error]);
+    await c.query(`UPDATE integration_events SET status = $2, error = $3, waiting_for = $4, processed_at = now(), attempts = attempts + 1 WHERE id = $1`, [eventRowId, status, error, waitingFor]);
     if (status === 'POSTED') await audit(c, orgId, { actor: ACTOR, action: 'integration.event_posted', entityType: 'integration_event', entityId: eventRowId, detail: { type: ev.event_type } });
-    return status;
+    return { status, release: status === 'POSTED' && ev.event_type === 'sale.finalized' ? `sale:${String((ev.payload as Obj).invoice_id)}` : null };
   });
+  if (done.release) {      // a cancellation that was waiting for this sale can run now
+    const waiting = await withOrg(pool, orgId, async (c) => (await c.query(`SELECT id FROM integration_events WHERE connection_id = $1 AND status = 'WAITING' AND waiting_for = $2 ORDER BY id`, [conn.id, done.release])).rows);
+    for (const w of waiting) await processEvent(pool, conn, w.id as bigint);
+  }
+  return done.status;
+};
+
+/**
+ * The background worker's job: post what was stored but not yet posted, oldest first, one connection at a time, so a
+ * cancellation never runs before the sale it cancels. Returns how many events it handled.
+ */
+export const drainInbox = async (pool: pg.Pool, limit = 100): Promise<number> => {
+  let handled = 0;
+  const conns = (await pool.query(`SELECT id, organization_id, secret, previous_secret, previous_secret_until, cutover_date::text AS cutover_date FROM integration_connections WHERE provider = 'FLOWXP' AND active`)).rows as Connection[];
+  for (const conn of conns) {
+    const ids = await withOrg(pool, conn.organization_id, async (c) => (await c.query(`SELECT id FROM integration_events WHERE connection_id = $1 AND status = 'RECEIVED' ORDER BY id LIMIT $2`, [conn.id, limit])).rows);
+    for (const row of ids) { await processEvent(pool, conn, row.id as bigint); handled += 1; }
+  }
+  return handled;
+};
+
+/** Start the worker: it runs on a timer, and at once when an event arrives (kick). It never overlaps itself. */
+export const startInboxWorker = (pool: pg.Pool, everyMs = 3000) => {
+  let running = false; let again = false;
+  const run = async () => {
+    if (running) { again = true; return; }
+    running = true;
+    try { do { again = false; await drainInbox(pool); } while (again); }
+    catch (error) { console.error('[flowbook] inbox worker:', (error as Error).message); }
+    finally { running = false; }
+  };
+  const timer = setInterval(run, everyMs);
+  timer.unref();
+  return { kick: () => { void run(); }, stop: () => clearInterval(timer) };
 };

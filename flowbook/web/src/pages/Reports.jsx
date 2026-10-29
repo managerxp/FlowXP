@@ -54,7 +54,7 @@ const Ageing = ({ r, type }) => {
     <Card><Table head={[type === 'receivables' ? 'Customer' : 'Vendor', '>Not due', '>1–30 days', '>31–60', '>61–90', '>Over 90', '>Total']} empty={!d.rows.length && <Empty>Nothing outstanding.</Empty>}>
       {d.rows.map((x) => <tr key={x.party_id}><td>{x.party_name}</td>{['not_due', 'days_1_30', 'days_31_60', 'days_61_90', 'days_over_90'].map((k) => <td key={k} className="r num">{Number(x[k]) ? inr(x[k]) : ''}</td>)}<td className="r num strong">{inr(x.total)}</td></tr>)}
       {d.rows.length > 0 && <tr className="total"><td>Total</td><td colSpan={5} /><td className="r num">{inr(d.total)}</td></tr>}
-    </Table><p className="muted">Days are counted past the due date (or the invoice date when there is none).</p></Card>)}</Async>;
+    </Table><p className="muted">Worked out for the date chosen: a payment counts from its own date. Days are counted past the due date (or the invoice date when there is none).</p></Card>)}</Async>;
 };
 
 const Checks = () => {

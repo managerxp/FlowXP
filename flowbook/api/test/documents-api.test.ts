@@ -50,7 +50,7 @@ test('sell, collect and look at the books over HTTP; each role does only its own
   assert.equal((await call('POST', `${b}/invoices`, { token: viewer, body: { partyId: party.body.id, date: '2026-06-10', lines: [{ description: 'x', unitPrice: '1', taxCode: 'GST0' }] } })).status, 403);
 
   const issued = await call('POST', `${inv}/issue`, { token: sales });
-  assert.deepEqual([issued.status, issued.body.number], [200, 'INV-000001']);
+  assert.deepEqual([issued.status, issued.body.number], [200, 'INV-26-27-000001']);
   assert.equal((await call('POST', `${inv}/issue`, { token: sales })).body.error.code, 'not_draft');
   assert.equal((await call('PUT', inv, { token: sales, body: { partyId: party.body.id, date: '2026-06-10', lines: [{ description: 'x', unitPrice: '1', taxCode: 'GST0' }] } })).body.error.code, 'not_draft');
 
@@ -58,7 +58,7 @@ test('sell, collect and look at the books over HTTP; each role does only its own
   assert.equal((await call('POST', `${b}/payments`, { token: sales, key: 'http-pay-0001', body: pay })).status, 403, 'sales does not take payments');
   assert.equal((await call('POST', `${b}/payments`, { token: owner, body: pay })).body.error.code, 'idempotency_key_required');
   const paid = await call('POST', `${b}/payments`, { token: owner, key: 'http-pay-0001', body: pay });
-  assert.deepEqual([paid.status, paid.body.number, paid.body.replayed], [201, 'RCT-000001', false]);
+  assert.deepEqual([paid.status, paid.body.number, paid.body.replayed], [201, 'RCT-26-27-000001', false]);
   const replay = await call('POST', `${b}/payments`, { token: owner, key: 'http-pay-0001', body: pay });
   assert.deepEqual([replay.status, replay.body.id], [200, paid.body.id]);
 

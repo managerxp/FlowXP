@@ -20,7 +20,7 @@ export const Card = ({ title, actions, children, className = '' }) => (
 
 export const Err = ({ children }) => (children ? <p className="notice bad" role="alert">{children}</p> : null);
 export const Note = ({ children }) => (children ? <p className="notice ok" role="status">{children}</p> : null);
-export const Loading = () => <p className="muted pad">Loading…</p>;
+export const Loading = () => <p className="muted pad" role="status"><span className="spinner" aria-hidden="true" style={{ display: 'inline-block', verticalAlign: '-3px', marginRight: '.5rem' }} />Loading…</p>;
 export const Empty = ({ children }) => <p className="muted pad">{children}</p>;
 
 /** Shows the loading or error state, or the content. */
@@ -33,7 +33,10 @@ export const Field = ({ label, hint, children, wide }) => (
   <label className={`field ${wide ? 'wide' : ''}`}><span className="label">{label}</span>{children}{hint && <span className="hint">{hint}</span>}</label>
 );
 
-export const Btn = ({ kind = '', busy, children, ...rest }) => <button className={`btn ${kind}`} disabled={busy || rest.disabled} {...rest}>{busy ? 'Please wait…' : children}</button>;
+/** Keeps its label while busy (so it does not change width under the pointer) and shows a small spinner. */
+export const Btn = ({ kind = '', className = '', busy, children, ...rest }) => (
+  <button className={`btn ${kind} ${className}`} {...rest} disabled={busy || rest.disabled} aria-busy={busy || undefined}>{busy && <span className="spinner" aria-hidden="true" />}{children}</button>
+);
 
 export const Table = ({ head, children, empty }) => (
   <div className="scroll">

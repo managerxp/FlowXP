@@ -31,6 +31,9 @@ export const ROLE_HELP = {
   sales: 'Customers and sales invoices', purchases: 'Vendors and bills', viewer: 'Look only', auditor: 'Look only, including the activity log'
 };
 
-export const statusTone = (s) => ({ ISSUED: 'ok', POSTED: 'ok', SENT: 'ok', DRAFT: 'muted', VOID: 'bad', FAILED_VALIDATION: 'bad', NEEDS_ATTENTION: 'warn', IGNORED_CUTOVER: 'muted', IGNORED_UNSUPPORTED: 'muted', OPEN: 'ok', SOFT_LOCKED: 'warn', CLOSED: 'bad' })[s] || 'muted';
+export const statusTone = (s) => ({ ISSUED: 'brand', POSTED: 'ok', SENT: 'ok', DRAFT: 'muted', VOID: 'bad', FAILED_VALIDATION: 'bad', NEEDS_ATTENTION: 'warn', IGNORED_CUTOVER: 'muted', IGNORED_UNSUPPORTED: 'muted', OPEN: 'ok', SOFT_LOCKED: 'warn', CLOSED: 'bad' })[s] || 'muted';
+
+/** The name split for the two-tone wordmark: "Flow" in ink, "Book" in the logo blue. */
+export const wordmark = () => { const m = /^(.*?)([A-Z][a-z]+)$/.exec(BRAND); return m ? [m[1], m[2]] : [BRAND, '']; };
 
 export const uuid = () => crypto.randomUUID();

@@ -57,7 +57,7 @@ test('parties: a bad GSTIN or a state that does not match it is refused; a dupli
 test('an invoice: drafted, issued, numbered, posted, and paid in two parts', { skip }, async () => {
   const { org, cust } = await shop();
   const inv = await issue(org, invoice(cust));
-  assert.equal(inv.number, 'INV-000001');
+  assert.equal(inv.number, 'INV-26-27-000001');
   const doc = await run(org, (c) => getDocument(c, 'INVOICE', inv.id));
   assert.equal(doc?.status, 'ISSUED');
   assert.deepEqual([doc?.subtotal_minor, doc?.tax_minor, doc?.total_minor, doc?.balance_minor], [100000n, 18000n, 118000n, 118000n]);
@@ -67,7 +67,7 @@ test('an invoice: drafted, issued, numbered, posted, and paid in two parts', { s
   assert.equal(await arOf(org), 118000n);
 
   const p1 = await run(org, (c) => createPayment(c, org, { direction: 'IN', partyId: cust, date: '2026-06-12', mode: 'UPI', amount: 50000n, allocations: [{ documentId: inv.id, amount: 50000n }], idempotencyKey: 'pay-key-0001' }, 't'));
-  assert.equal(p1.number, 'RCT-000001');
+  assert.equal(p1.number, 'RCT-26-27-000001');
   assert.equal((await run(org, (c) => getDocument(c, 'INVOICE', inv.id)))?.balance_minor, 68000n);
   await run(org, (c) => createPayment(c, org, { direction: 'IN', partyId: cust, date: '2026-06-13', mode: 'CASH', amount: 68000n, allocations: [{ documentId: inv.id, amount: 68000n }], idempotencyKey: 'pay-key-0002' }, 't'));
   assert.equal((await run(org, (c) => getDocument(c, 'INVOICE', inv.id)))?.balance_minor, 0n);
@@ -99,7 +99,7 @@ test('an issued document is frozen, a draft can still change, and a failed issue
   const outside = await run(org, (c) => saveDraft(c, org, null, invoice(cust, { date: '2030-01-01' }), 't'));
   await assert.rejects(run(org, (c) => issueDocument(c, org, 'INVOICE', outside, 't')), { code: 'no_period' });
   const next = await issue(org, invoice(cust));
-  assert.equal(next.number, 'INV-000002', 'the failed attempt gave its number back');
+  assert.equal(next.number, 'INV-26-27-000002', 'the failed attempt gave its number back');
 
   const draft = await run(org, (c) => saveDraft(c, org, null, invoice(cust), 't'));
   await run(org, (c) => saveDraft(c, org, draft, invoice(cust, { lines: [{ description: 'Chai', quantity: '3', unitPrice: '100', taxCode: 'GST5' }] }), 't'));
@@ -110,7 +110,7 @@ test('a bill: the same supplier invoice number cannot be entered twice; paying i
   const { org, vendor, cust } = await shop();
   const bill: DocIn = { kind: 'BILL', partyId: vendor, date: '2026-06-05', supplierRef: 'EST/77', lines: [{ description: 'Leaves', quantity: '10', unitPrice: '300', taxCode: 'GST5' }] };
   const b1 = await issue(org, bill);
-  assert.equal(b1.number, 'BILL-000001');
+  assert.equal(b1.number, 'BILL-26-27-000001');
   await assert.rejects(issue(org, bill), { code: 'duplicate_bill' });
   await assert.rejects(run(org, (c) => saveDraft(c, org, null, { ...bill, partyId: cust }, 't')), { code: 'wrong_party_kind' });
   const doc = await run(org, (c) => getDocument(c, 'BILL', b1.id));
@@ -124,7 +124,7 @@ test('a credit note settles part of an invoice without any money moving', { skip
   const { org, cust } = await shop();
   const inv = await issue(org, invoice(cust));
   const note = await issue(org, { kind: 'CREDIT_NOTE', partyId: cust, date: '2026-06-15', relatedDocumentId: inv.id, lines: [{ description: 'Returned tea', quantity: '1', unitPrice: '500', taxCode: 'GST18' }] });
-  assert.equal(note.number, 'CN-000001');
+  assert.equal(note.number, 'CN-26-27-000001');
   assert.equal(await arOf(org), 118000n - 59000n);
   await run(org, (c) => applyCreditNote(c, org, note.id, [{ documentId: inv.id, amount: 59000n }], 't'));
   assert.equal((await run(org, (c) => getDocument(c, 'INVOICE', inv.id)))?.balance_minor, 59000n);
@@ -171,7 +171,7 @@ test('void: a document with money applied is refused; otherwise its journal is r
 
   await run(org, (c) => voidDocument(c, org, 'INVOICE', inv.id, { date: '2026-06-20', reason: 'wrong customer' }, 't'));
   const voided = await run(org, (c) => getDocument(c, 'INVOICE', inv.id));
-  assert.deepEqual([voided?.status, voided?.balance_minor, voided?.number], ['VOID', 0n, 'INV-000001']);
+  assert.deepEqual([voided?.status, voided?.balance_minor, voided?.number], ['VOID', 0n, 'INV-26-27-000001']);
   assert.equal(await arOf(org), 0n);
   assert.equal(((await run(org, (c) => trialBalance(c, org, { to: '2027-03-31' }))).balanced), true);
   assert.deepEqual(await run(org, async (c) => [...await reconcile(c, org), ...await documentIssues(c, org)]), []);
