@@ -19,6 +19,7 @@ Key facts:
 - [Features](https://flowxp.in/features): billing and payments, invoices, stock and buying, GST, customers and loyalty, reports, team and roles
 - [Flow AI](https://flowxp.in/ai): the AI manager, what it reads and how it answers
 - [Integrations](https://flowxp.in/integrations): printers, scanners, cash drawers, email, GST portal files, CSV export, WhatsApp messages for bills, reminders and updates (SMS is coming soon)
+- [FlowBook](https://flowxp.in/flowbook): the ManagerXP accounting product, in development: books fed by FlowXP, statements, GST registers prepared for filing, bank statement import.
 - [Setup guide](https://flowxp.in/guide): first-day setup and importing items and stock from Tally, Vyapar, Busy, Marg, Zoho or a spreadsheet
 - [Pricing](https://flowxp.in/pricing): plans and the free trial
 

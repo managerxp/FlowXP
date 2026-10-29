@@ -25,6 +25,7 @@ const NAV = [   // text: site:header.<key>
   { to: '/features', key: 'product' },
   { to: '/ai', key: 'aiManager' },
   { to: '/integrations', key: 'integrations' },
+  { to: '/flowbook', key: 'flowbook' },
   { to: '/guide', key: 'guide' },
   { to: '/pricing', key: 'pricing' },
   { to: '/about', key: 'about' }
@@ -132,6 +133,7 @@ const FOOTER_GROUPS = [   // text: site:footer.<heading> and site:footer.<key>
     { to: '/industries', key: 'whoFor' },
     { to: '/ai', key: 'aiManager' },
     { to: '/integrations', key: 'integrations' },
+    { to: '/flowbook', key: 'flowbook' },
     { to: '/guide', key: 'guide' },
     { to: '/pricing', key: 'pricing' }
   ]},

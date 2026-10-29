@@ -18,10 +18,10 @@ import { Button, Container, Section } from '../components/ui.jsx';
 import Reveal from '../components/Reveal.jsx';
 import { FAQ } from './content.js';
 import PricingTable from './PricingTable.jsx';
-import { Boxes, ChevronDown, FileCheck2, Lightbulb, ReceiptText, Store } from 'lucide-react';
+import { ArrowRight, Boxes, ChevronDown, FileCheck2, Lightbulb, ReceiptText, Store } from 'lucide-react';
 import BlurText from '../components/reactbits/BlurText.jsx';
 import SpotlightCard from '../components/reactbits/SpotlightCard.jsx';
-import { Check, Cross, FinalCta, FULL, H2, KIND, MAIN, PhoneShot, Shot, TextLink } from './parts.jsx';
+import { Check, CellGrid, Cross, FinalCta, FULL, H2, KIND, MAIN, PhoneShot, Shot, TextLink } from './parts.jsx';
 import { InstallButton } from '../components/InstallButton.jsx';
 import { ANDROID_APP_URL, ANDROID_IS_PLAY } from '../lib/appLinks.js';
 
@@ -351,6 +351,19 @@ const OUTLET_FACTS = [
   ['Each outlet its own', 'Stock, prices, invoice series and staff, kept per outlet.']
 ];
 
+const FlowBookBand = () => (
+  <Section className="border-y border-line bg-surface" title="Next: FlowBook, your books written by your till."
+           lead="FlowBook is our accounting product, now in development. Every bill, return and payment you make in FlowXP becomes a proper ledger entry, so your profit and loss, balance sheet and GST registers are ready without typing anything twice.">
+    <CellGrid items={[
+      { title: 'Books without double entry', body: 'Sales, returns and payments from FlowXP post themselves, once.' },
+      { title: 'Statements you can trust', body: 'Trial balance, profit and loss and balance sheet that tie back to every bill.' },
+      { title: 'Bank and GST ready', body: 'Import bank statements, match them to bills, and prepare GST returns for filing.' },
+      { title: 'Made for your accountant too', body: 'One place to review, adjust and export, with a record of every change.' }
+    ]} />
+    <p className="mt-6"><Link to="/flowbook" className="inline-flex items-center gap-1.5 font-semibold text-brand-600 transition-colors hover:text-brand-700">See what FlowBook will do <ArrowRight aria-hidden="true" className="size-4" /></Link></p>
+  </Section>
+);
+
 const Outlets = () => (
   <Section className="border-t border-line">
     <div className="grid gap-x-12 gap-y-8 lg:grid-cols-12">
@@ -657,6 +670,7 @@ const Home = () => (
     <OneBill />
     <ForYourBusiness />
     <Insights />
+    <FlowBookBand />
     <Outlets />
     <HowItWorks />
     <Bento />
