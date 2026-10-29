@@ -7,8 +7,8 @@ const BOOKS = ['accounts.write', 'journal.post', 'journal.reverse', 'period.mana
   'invoice.write', 'invoice.void', 'bill.write', 'bill.void', 'payment.write', 'payment.void'];
 
 export const PERMISSIONS: Record<Role, ReadonlySet<string>> = {
-  owner: new Set([...READ, ...BOOKS, 'period.override', 'audit.read', 'members.manage', 'org.manage']),
-  admin: new Set([...READ, ...BOOKS, 'audit.read', 'members.manage', 'org.manage']),
+  owner: new Set([...READ, ...BOOKS, 'period.override', 'audit.read', 'members.manage', 'org.manage', 'integration.manage']),
+  admin: new Set([...READ, ...BOOKS, 'audit.read', 'members.manage', 'org.manage', 'integration.manage']),
   accountant: new Set([...READ, ...BOOKS, 'period.override', 'audit.read']),
   sales: new Set(['org.read', 'accounts.read', 'party.read', 'party.write', 'item.read', 'invoice.read', 'invoice.write', 'payment.read']),
   purchases: new Set(['org.read', 'accounts.read', 'party.read', 'party.write', 'item.read', 'bill.read', 'bill.write', 'payment.read']),

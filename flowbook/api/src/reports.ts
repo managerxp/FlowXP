@@ -51,11 +51,14 @@ export const balanceSheet = async (c: Db, orgId: bigint, asOf: string) => {
 };
 
 /** Balances by party on one account (the sub-ledger), for comparison with the control account. */
-export const partyBalances = async (c: Db, orgId: bigint, accountKey: string, to: string) => (await c.query(
+export const partyBalances = async (c: Db, orgId: bigint, accountKey: string, to: string, opts: { withoutEvents?: boolean } = {}) => (await c.query(
   `SELECT l.party_id, SUM(CASE WHEN l.side = 'D' THEN l.base_amount_minor ELSE -l.base_amount_minor END)::bigint AS balance
      FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'POSTED' AND e.posting_date <= $3::date
      JOIN accounts a ON a.id = l.account_id
-    WHERE l.organization_id = $1 AND a.system_key = $2 GROUP BY l.party_id ORDER BY l.party_id`, [orgId, accountKey, to])).rows as { party_id: bigint | null; balance: bigint }[];
+    WHERE l.organization_id = $1 AND a.system_key = $2
+      AND (NOT $4::boolean OR (e.source_type NOT LIKE 'flowxp\\_%'
+           AND NOT (e.source_type = 'reversal' AND EXISTS (SELECT 1 FROM journal_entries o WHERE o.id = e.reverses_entry_id AND o.source_type LIKE 'flowxp\\_%'))))
+    GROUP BY l.party_id ORDER BY l.party_id`, [orgId, accountKey, to, opts.withoutEvents ?? false])).rows as { party_id: bigint | null; balance: bigint }[];
 
 /** The documents' own balances must agree, party by party, with the receivable and payable accounts they post to.
     Kept apart from `reconcile` because journals posted by hand (or by rules without a document) have no document to match. */
@@ -73,7 +76,7 @@ export const documentIssues = async (c: Db, orgId: bigint): Promise<string[]> =>
   ];
   for (const [key, label, sql] of checks) {
     const docs = await expected(sql);
-    const ledger = new Map((await partyBalances(c, orgId, key, '9999-12-31')).map((r) => [String(r.party_id), r.balance]));
+    const ledger = new Map((await partyBalances(c, orgId, key, '9999-12-31', { withoutEvents: true })).map((r) => [String(r.party_id), r.balance]));
     for (const party of new Set([...docs.keys(), ...ledger.keys()])) {
       const d = docs.get(party) ?? 0n; const l = ledger.get(party) ?? 0n;
       if (d !== l) issues.push(`${label}: party ${party} is ${l} in the ledger but ${d} in the documents`);
