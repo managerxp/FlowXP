@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLoad } from '../api.js';
 import { STATES, UNITS, isZero, unitLabel } from '../lib.js';
+import { CsvImport } from './Import.jsx';
 import { useSession } from '../session.jsx';
 import { Async, Badge, Btn, Card, Empty, Err, Field, Money, Note, Page, Table, useAction } from '../ui.jsx';
 
@@ -12,6 +13,7 @@ export const Parties = ({ kind }) => {
   const { o, org } = useSession();
   const [q, setQ] = useState('');
   const [form, setForm] = useState(null);   // null closed; {id?, ...fields}
+  const [importing, setImporting] = useState(false);
   const a = useAction();
   const word = kind === 'CUSTOMER' ? 'customer' : 'vendor';
   const load = useLoad(() => o(`/parties?kind=${kind}&limit=500${q ? `&q=${encodeURIComponent(q)}` : ''}`), [org.id, kind, q]);
@@ -28,7 +30,8 @@ export const Parties = ({ kind }) => {
   const edit = (p) => setForm({ id: p.id, kind: p.kind, name: p.name, gstin: p.gstin || '', pan: p.pan || '', stateCode: p.state_code || '', phone: p.phone || '', email: p.email || '', creditDays: p.credit_days ?? '', whatsappOptOut: Boolean(p.whatsapp_opt_out) });
 
   return (
-    <Page title={`${word[0].toUpperCase()}${word.slice(1)}s`} lead={kind === 'CUSTOMER' ? 'People and businesses you sell to.' : 'People and businesses you buy from.'} actions={<Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm(blank(kind)); }}>Add {word}</Btn>}>
+    <Page title={`${word[0].toUpperCase()}${word.slice(1)}s`} lead={kind === 'CUSTOMER' ? 'People and businesses you sell to.' : 'People and businesses you buy from.'} actions={<><Btn onClick={() => setImporting(true)}>Import CSV</Btn><Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm(blank(kind)); }}>Add {word}</Btn></>}>
+      {importing && <CsvImport what="party" partyKind={kind} onDone={() => load.reload()} onClose={() => setImporting(false)} />}
       <Note>{a.done}</Note>
       {form && (
         <Card title={form.id ? `Edit ${word}` : `New ${word}`}>
@@ -62,6 +65,7 @@ export const Parties = ({ kind }) => {
 export const Items = () => {
   const { o, org } = useSession();
   const [form, setForm] = useState(null);
+  const [importing, setImporting] = useState(false);
   const load = useLoad(() => o('/items'), [org.id]);
   const rates = useLoad(() => o('/tax-rates'), [org.id]);
   const a = useAction();
@@ -75,7 +79,8 @@ export const Items = () => {
     }, 'Item added.');
   };
   return (
-    <Page title="Items" lead="Products and services you sell or buy. Pick them on a line to fill in the price and GST." actions={<Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm({ sku: '', name: '', kind: 'GOODS', hsnSac: '', unit: 'NOS', taxCode: 'GST18', salePrice: '', purchasePrice: '' }); }}>Add item</Btn>}>
+    <Page title="Items" lead="Products and services you sell or buy. Pick them on a line to fill in the price and GST." actions={<><Btn onClick={() => setImporting(true)}>Import CSV</Btn><Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm({ sku: '', name: '', kind: 'GOODS', hsnSac: '', unit: 'NOS', taxCode: 'GST18', salePrice: '', purchasePrice: '' }); }}>Add item</Btn></>}>
+      {importing && <CsvImport what="item" onDone={() => load.reload()} onClose={() => setImporting(false)} />}
       <Note>{a.done}</Note>
       {form && (
         <Card title="New item"><Err>{a.error}</Err>

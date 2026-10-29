@@ -5,7 +5,9 @@ import { withOrg } from './db.ts';
 import type { Db } from './db.ts';
 import { ageing, allocatePayment, applyCreditNote, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, voidDocument, voidPayment } from './documents.ts';
 import type { Alloc, DocIn, DocKind } from './documents.ts';
+import { listExpenses, recordExpense, voidExpense } from './expenses.ts';
 import { gstr1, gstr3b } from './gstr.ts';
+import { IMPORT_LIMIT, importItems, importParties } from './import.ts';
 import { getSettings as getWhatsapp, listMessages, saveSettings as saveWhatsapp, sendMessage } from './whatsapp.ts';
 import { createTemplate, deleteTemplate, listTemplates, runDue, setTemplateActive } from './recurring.ts';
 import type { Every } from './recurring.ts';
@@ -194,6 +196,39 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     type: { type: 'string', enum: ['receivables', 'payables'] }, asOf: { type: 'string', pattern: DATE } } } } }, async (req) => {
     const q = req.query as { type: string; asOf: string };
     return run(req, (c, orgId) => ageing(c, orgId, q.type === 'receivables' ? 'INVOICE' : 'BILL', q.asOf));
+  });
+
+  /* ---- expenses paid at the time */
+  app.get(`${base}/expenses`, { preHandler: scope('bill.read'), schema: { querystring: { type: 'object', required: ['from', 'to'], properties: { from: { type: 'string', pattern: DATE }, to: { type: 'string', pattern: DATE }, limit: { type: 'integer', minimum: 1, maximum: 500 } } } } }, async (req) => {
+    const q = req.query as { from: string; to: string; limit?: number };
+    return run(req, (c) => listExpenses(c, { from: q.from, to: q.to, limit: q.limit ?? 200 }));
+  });
+  app.post(`${base}/expenses`, { preHandler: scope('bill.write'), schema: { body: { type: 'object', required: ['date', 'accountId', 'amount', 'paidWith', 'description', 'idempotencyKey'], additionalProperties: false, properties: {
+    date: { type: 'string', pattern: DATE }, accountId: { type: 'string', pattern: ID }, amount: { type: 'string', pattern: AMOUNT }, taxCode: { type: 'string', maxLength: 20 }, interState: { type: 'boolean' },
+    paidWith: { type: 'string', enum: ['CASH', 'BANK', 'UPI', 'CARD'] }, description: { type: 'string', minLength: 1, maxLength: 200 }, paidTo: { type: 'string', maxLength: 120 }, reference: { type: 'string', maxLength: 60 },
+    idempotencyKey: { type: 'string', minLength: 8, maxLength: 80 }, ...override } } } }, async (req, reply) => {
+    const b = req.body as { accountId: string; overrideReason?: string } & Omit<Parameters<typeof recordExpense>[2], 'accountId'>;
+    const out = await run(req, (c, orgId) => recordExpense(c, orgId, { ...b, accountId: BigInt(b.accountId) }, me(req), lockOverride(req, b.overrideReason)));
+    return reply.code(201).send(out);
+  });
+  app.post(`${base}/expenses/:id/void`, { preHandler: scope('bill.void'), schema: { ...idParam, body: voidBody } }, async (req) => {
+    const b = req.body as { date: string; reason: string };
+    await run(req, (c, orgId) => voidExpense(c, orgId, BigInt((req.params as { id: string }).id), { date: b.date, reason: b.reason }, me(req)));
+    return { ok: true };
+  });
+
+  /* ---- bulk import (rows already read from a CSV by the web app) */
+  const importBody = (row: object) => ({ type: 'object', required: ['rows'], additionalProperties: false, properties: { dryRun: { type: 'boolean' }, rows: { type: 'array', minItems: 1, maxItems: IMPORT_LIMIT, items: row } } });
+  const str = (max: number) => ({ type: 'string', maxLength: max });
+  app.post(`${base}/import/parties`, { preHandler: scope('party.write'), schema: { body: importBody({ type: 'object', required: ['kind', 'name'], additionalProperties: false, properties: {
+    kind: { type: 'string', enum: ['CUSTOMER', 'VENDOR', 'BOTH'] }, name: str(160), gstin: str(15), pan: str(10), stateCode: str(2), phone: str(20), email: str(200), creditDays: { type: 'integer', minimum: 0, maximum: 365 } } }) } }, async (req) => {
+    const b = req.body as { dryRun?: boolean; rows: Parameters<typeof importParties>[2] };
+    return run(req, (c, orgId) => importParties(c, orgId, b.rows, Boolean(b.dryRun), me(req)));
+  });
+  app.post(`${base}/import/items`, { preHandler: scope('item.write'), schema: { body: importBody({ type: 'object', required: ['sku', 'name'], additionalProperties: false, properties: {
+    sku: str(60), name: str(160), kind: { type: 'string', enum: ['GOODS', 'SERVICE'] }, hsnSac: str(12), unit: { type: 'string', enum: UQC }, taxCode: str(20), salePrice: { type: 'string', pattern: AMOUNT }, purchasePrice: { type: 'string', pattern: AMOUNT } } }) } }, async (req) => {
+    const b = req.body as { dryRun?: boolean; rows: Parameters<typeof importItems>[2] };
+    return run(req, (c, orgId) => importItems(c, orgId, b.rows, Boolean(b.dryRun), me(req)));
   });
 
   /* ---- WhatsApp */

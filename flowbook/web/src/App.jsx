@@ -9,6 +9,7 @@ import { DocForm, DocList, DocView } from './pages/Documents.jsx';
 import { PaymentForm, PaymentView, Payments } from './pages/Payments.jsx';
 import { Items, Parties } from './pages/Contacts.jsx';
 import { Accounts, JournalForm, JournalView, Journals } from './pages/Books.jsx';
+import Expenses from './pages/Expenses.jsx';
 import Recurring from './pages/Recurring.jsx';
 import Reports from './pages/Reports.jsx';
 import Settings from './pages/Settings.jsx';
@@ -22,7 +23,7 @@ const DOCS = [
 const NAV = [
   ['/', 'Home', null],
   ['/sales', 'Sales', 'Money in'], ['/credit-notes', 'Credit notes'], ['/recurring', 'Recurring'], ['/payments', 'Payments'], ['/customers', 'Customers'],
-  ['/purchases', 'Purchases', 'Money out'], ['/vendors', 'Vendors'],
+  ['/purchases', 'Purchases', 'Money out'], ['/expenses', 'Expenses'], ['/vendors', 'Vendors'],
   ['/items', 'Items', 'Books'], ['/accounts', 'Accounts'], ['/journals', 'Journals'], ['/reports', 'Reports'],
   ['/settings', 'Settings', 'Setup']
 ];
@@ -121,6 +122,7 @@ const Shell = () => {
               <Route key={`${d.path}-e`} path={`/${d.path}/:id/edit`} element={<DocForm kind={d} />} />,
               <Route key={`${d.path}-v`} path={`/${d.path}/:id`} element={<DocView kind={d} />} />
             ])}
+            <Route path="/expenses" element={<Expenses />} />
             <Route path="/recurring" element={<Recurring />} />
             <Route path="/payments" element={<Payments />} />
             <Route path="/payments/new" element={<PaymentForm />} />

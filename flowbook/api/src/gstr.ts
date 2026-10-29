@@ -158,6 +158,14 @@ export const gstr3b = async (c: Db, orgId: bigint, month: string) => {
       if (d.kind === 'BILL') add(itc, l, d.inter_state); else if (l.tax_rate_bp === 0) add(nil, l, false, sign); else add(out, l, d.inter_state, sign);
     }
   }
+  // GST paid on expenses (and taken back out when an expense is voided) is credit too
+  const exp = (await c.query(
+    `SELECT a.system_key, COALESCE(SUM(CASE WHEN l.side = 'D' THEN l.base_amount_minor ELSE -l.base_amount_minor END), 0)::bigint AS net
+       FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'POSTED' JOIN accounts a ON a.id = l.account_id
+      WHERE a.system_key IN ('INPUT_CGST', 'INPUT_SGST', 'INPUT_IGST') AND e.posting_date BETWEEN $1::date AND $2::date
+        AND (e.source_type = 'expense' OR EXISTS (SELECT 1 FROM journal_entries o WHERE o.id = e.reverses_entry_id AND o.source_type = 'expense'))
+      GROUP BY a.system_key`, [`${month}-01`, monthEnd(month)])).rows as { system_key: string; net: bigint }[];
+  for (const r of exp) itc[r.system_key === 'INPUT_IGST' ? 'iamt' : r.system_key === 'INPUT_CGST' ? 'camt' : 'samt'] += rs(r.net);
   const z = { iamt: 0, camt: 0, samt: 0, csamt: 0 };
   const { txval: _taxable, ...credit } = fix(itc);
   return {
