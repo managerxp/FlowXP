@@ -114,10 +114,10 @@ const CreateOrg = ({ first }) => {
 const TrialBanner = ({ org }) => {
   if (!org || org.plan !== 'TRIAL') return null;
   const left = Number(org.trial_days_left);
-  const contact = <a href={`${SITE_URL}/contact`} target="_blank" rel="noreferrer">contact us</a>;
+  const pay = <a href={`${SITE_URL}/app/settings/subscription`}>pay for your plan in FlowXP</a>;   // the subscription (and its payment link) is FlowXP's; reopening FlowBook from FlowXP picks the new plan up
   return left > 0
-    ? <p className={`notice ${left <= 2 ? 'warn' : 'ok'}`} role="status"><strong>Free trial:</strong> {left} {left === 1 ? 'day' : 'days'} left. Everything works. To keep going after that, {contact}.</p>
-    : <p className="notice bad" role="alert"><strong>Your free trial has ended.</strong> Your books are safe and you can still look at everything, but nothing new can be saved. To continue, {contact}.</p>;
+    ? <p className={`notice ${left <= 2 ? 'warn' : 'ok'}`} role="status"><strong>Free trial:</strong> {left} {left === 1 ? 'day' : 'days'} left. Everything works. To keep going after that, {pay}.</p>
+    : <p className="notice bad" role="alert"><strong>Your free trial has ended.</strong> Your books are safe and you can still look at everything, but nothing new can be saved. To continue, {pay}, then open FlowBook again from FlowXP.</p>;
 };
 
 const Shell = () => {

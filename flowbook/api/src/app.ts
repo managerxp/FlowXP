@@ -115,7 +115,7 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
     if (!m) { reply.code(404).send({ error: { code: 'not_found', message: 'no such organization' } }); return; }
     if (!can(m.role as Role, permission)) { reply.code(403).send({ error: { code: 'forbidden', message: `your role cannot do this (${permission})` } }); return; }
     // a finished free trial keeps the books readable and exportable but takes no new entries
-    if (m.trial_over && req.method !== 'GET' && req.method !== 'HEAD') { reply.code(402).send({ error: { code: 'trial_ended', message: 'your 7-day free trial has ended. Your books are safe and can still be read; contact us to continue' } }); return; }
+    if (m.trial_over && req.method !== 'GET' && req.method !== 'HEAD') { reply.code(402).send({ error: { code: 'trial_ended', message: 'your 7-day free trial has ended. Your books are safe and can still be read; pay for your plan in FlowXP (Settings, Subscription) and open FlowBook again' } }); return; }
     req.org = { id: BigInt(raw), role: m.role as Role };
   };
   const me = (req: FastifyRequest) => `user:${req.session?.userId}`;
