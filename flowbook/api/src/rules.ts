@@ -66,13 +66,16 @@ export const creditNoteJournal = (d: { date: string; noteId: string; partyId?: b
     lines: merge([{ account: 'SALES_RETURNS', side: 'D', amount: net }, ...taxLines(tax, 'D', 'OUTPUT'), { account: 'AR', side: 'C', amount: net + tax.total, partyId: d.partyId }]) };
 };
 
+/** Exchange gain or loss when a foreign-currency document is settled. adj is what the document was worth minus the rupees that moved: a customer who pays less than it was worth is a loss, a vendor paid less than it was worth is a gain. */
+const fxLine = (adj: bigint, dir: 'IN' | 'OUT'): LineInput[] => [{ account: 'EXCHANGE_GAIN_LOSS', side: (dir === 'IN') === (adj > 0n) ? 'D' : 'C', amount: adj < 0n ? -adj : adj }];
+
 /** Customer pays (or is refunded) against what they owe. Examples 3 and 14. */
-export const customerPaymentJournal = (d: { date: string; paymentId: string; partyId?: bigint; mode: Tender; amount: bigint; refund?: boolean; tds?: bigint }): PostInput => ({
+export const customerPaymentJournal = (d: { date: string; paymentId: string; partyId?: bigint; mode: Tender; amount: bigint; refund?: boolean; tds?: bigint; adj?: bigint }): PostInput => ({
   date: d.date, sourceType: d.refund ? 'refund' : 'payment_in', sourceId: d.paymentId, kind: d.refund ? 'REFUND' : 'PAYMENT_IN', rulesVersion: RULES_VERSION,
   memo: `${d.refund ? 'Refund' : 'Payment'} ${d.paymentId}`,
   lines: d.refund
     ? [{ account: 'AR', side: 'D', amount: d.amount, partyId: d.partyId }, { account: TENDER_ACCOUNT[d.mode], side: 'C', amount: d.amount }]
-    : merge([{ account: TENDER_ACCOUNT[d.mode], side: 'D', amount: d.amount }, { account: 'TDS_RECEIVABLE', side: 'D', amount: d.tds ?? 0n }, { account: 'AR', side: 'C', amount: d.amount + (d.tds ?? 0n), partyId: d.partyId }])
+    : merge([{ account: TENDER_ACCOUNT[d.mode], side: 'D', amount: d.amount }, { account: 'TDS_RECEIVABLE', side: 'D', amount: d.tds ?? 0n }, { account: 'AR', side: 'C', amount: d.amount + (d.tds ?? 0n) + (d.adj ?? 0n), partyId: d.partyId }, ...fxLine(d.adj ?? 0n, 'IN')])
 });
 
 /** Supplier bill: the cost (or stock) and the input tax are debited, payables credited. Example 4. */
@@ -101,9 +104,9 @@ export const debitNoteJournal = (d: { date: string; noteId: string; partyId?: bi
 };
 
 /** Supplier payment. Example 5. */
-export const supplierPaymentJournal = (d: { date: string; paymentId: string; partyId?: bigint; mode: Tender; amount: bigint; tds?: bigint }): PostInput => ({
+export const supplierPaymentJournal = (d: { date: string; paymentId: string; partyId?: bigint; mode: Tender; amount: bigint; tds?: bigint; adj?: bigint }): PostInput => ({
   date: d.date, sourceType: 'payment_out', sourceId: d.paymentId, kind: 'PAYMENT_OUT', rulesVersion: RULES_VERSION, memo: `Payment ${d.paymentId}`,
-  lines: merge([{ account: 'AP', side: 'D', amount: d.amount + (d.tds ?? 0n), partyId: d.partyId }, { account: TENDER_ACCOUNT[d.mode], side: 'C', amount: d.amount }, { account: 'TDS_PAYABLE', side: 'C', amount: d.tds ?? 0n }])
+  lines: merge([{ account: 'AP', side: 'D', amount: d.amount + (d.tds ?? 0n) + (d.adj ?? 0n), partyId: d.partyId }, { account: TENDER_ACCOUNT[d.mode], side: 'C', amount: d.amount }, { account: 'TDS_PAYABLE', side: 'C', amount: d.tds ?? 0n }, ...fxLine(d.adj ?? 0n, 'OUT')])
 });
 
 /* Documents that arrive with their tax already worked out (FlowXP's bills): the amounts are the record, so nothing is

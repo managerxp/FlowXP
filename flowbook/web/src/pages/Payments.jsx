@@ -39,18 +39,26 @@ export const PaymentForm = () => {
   const [key] = useState(uuid);   // one key per form, so a double click or a retry cannot record the payment twice
   const [f, setF] = useState({ direction: q.get('direction') === 'OUT' ? 'OUT' : 'IN', partyId: q.get('partyId') || '', date: today(), mode: 'BANK', amount: '', reference: '', tds: '', tdsSection: '' });
   const [alloc, setAlloc] = useState({});
+  const [fxd, setFxd] = useState({ docId: '', foreign: '' });   // settling one foreign-currency document
   const parties = useLoad(() => o('/parties?limit=500'), [org.id]);
   const docKind = f.direction === 'IN' ? 'invoices' : 'bills';
   const docs = useLoad(() => (f.partyId ? o(`/${docKind}?status=ISSUED&partyId=${f.partyId}&limit=200`) : Promise.resolve(null)), [org.id, f.partyId, docKind]);
-  const openDocs = useMemo(() => (docs.data?.documents || []).filter((d) => Number(d.balance_minor) > 0).reverse(), [docs.data]);   // oldest first
+  const allOpen = useMemo(() => (docs.data?.documents || []).filter((d) => Number(d.balance_minor) > 0).reverse(), [docs.data]);   // oldest first
+  const openDocs = useMemo(() => allOpen.filter((d) => !d.currency || d.currency === 'INR'), [allOpen]);
+  const foreignDocs = useMemo(() => allOpen.filter((d) => d.currency && d.currency !== 'INR'), [allOpen]);
+  const fxDoc = foreignDocs.find((d) => String(d.id) === fxd.docId);
+  const fxShare = fxDoc && Number(fxd.foreign) > 0 ? (Number(fxd.foreign) >= Number(fxDoc.foreign_balance_minor) ? Number(fxDoc.balance_minor) : Math.round(Number(fxDoc.balance_minor) * 100 * Number(fxd.foreign) / Number(fxDoc.foreign_balance_minor)) / 100) : 0;
+  const fxDiff = fxShare ? (f.direction === 'IN' ? Number(f.amount || 0) - fxShare : fxShare - Number(f.amount || 0)) : 0;
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
   useEffect(() => {   // arriving from a document: pre-fill its balance
     const docId = q.get('documentId');
     const d = openDocs.find((x) => String(x.id) === docId);
     if (d && !f.amount) { setF((x) => ({ ...x, amount: d.balance_minor })); setAlloc({ [d.id]: d.balance_minor }); }
+    const fd = foreignDocs.find((x) => String(x.id) === docId);
+    if (fd && !fxd.docId) setFxd({ docId: String(fd.id), foreign: fd.foreign_balance_minor });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openDocs]);
+  }, [openDocs, foreignDocs]);
 
   const allocated = Object.values(alloc).reduce((s, v) => s + Math.round(Number(v || 0) * 100), 0);
   const total = Math.round((Number(f.amount || 0) + Number(f.tds || 0)) * 100);   // cash plus the tax deducted settles the documents
@@ -62,6 +70,11 @@ export const PaymentForm = () => {
   const submit = (e) => {
     e.preventDefault();
     a.run(async () => {
+      if (fxd.docId) {
+        const out = await o('/payments', { method: 'POST', headers: { 'idempotency-key': key }, body: { direction: f.direction, partyId: f.partyId, date: f.date, mode: f.mode, amount: f.amount, reference: f.reference || undefined, fx: { documentId: fxd.docId, foreignAmount: String(fxd.foreign) } } });
+        nav(`/payments/${out.id}`);
+        return;
+      }
       const allocations = Object.entries(alloc).filter(([, v]) => Number(v) > 0).map(([documentId, amount]) => ({ documentId, amount: String(amount) }));
       const out = await o('/payments', { method: 'POST', headers: { 'idempotency-key': key }, body: { ...f, tds: Number(f.tds) > 0 ? f.tds : undefined, tdsSection: Number(f.tds) > 0 && f.tdsSection ? f.tdsSection : undefined, reference: f.reference || undefined, allocations: allocations.length ? allocations : undefined } });
       nav(`/payments/${out.id}`);
@@ -78,13 +91,24 @@ export const PaymentForm = () => {
           <Field label={f.direction === 'IN' ? 'Customer' : 'Vendor'}><select value={f.partyId} onChange={(e) => { setF({ ...f, partyId: e.target.value }); setAlloc({}); }} required><option value="">Choose…</option>{list.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
           <Field label="Date"><input type="date" value={f.date} onChange={set('date')} required /></Field>
           <Field label="How"><select value={f.mode} onChange={set('mode')}><option value="BANK">Bank transfer</option><option value="UPI">UPI</option><option value="CASH">Cash</option><option value="CARD">Card</option></select></Field>
-          <Field label="Amount (₹)"><input inputMode="decimal" value={f.amount} onChange={set('amount')} required /></Field>
+          <Field label={fxd.docId ? 'Rupees that actually moved (₹)' : 'Amount (₹)'}><input inputMode="decimal" value={f.amount} onChange={set('amount')} required /></Field>
           <Field label={f.direction === 'IN' ? 'TDS the customer deducted (₹)' : 'TDS you deducted (₹)'} hint="Optional. The amount above is what actually moved; this is tax held back"><input inputMode="decimal" value={f.tds} onChange={set('tds')} /></Field>
-          {Number(f.tds) > 0 && <Field label="TDS section"><select value={f.tdsSection} onChange={set('tdsSection')}><option value="">Not stated</option>{TDS_SECTIONS.map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
+          {Number(f.tds) > 0 && !fxd.docId && <Field label="TDS section"><select value={f.tdsSection} onChange={set('tdsSection')}><option value="">Not stated</option>{TDS_SECTIONS.map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
           <Field label="Reference" hint="Cheque, UTR or note (optional)"><input value={f.reference} onChange={set('reference')} maxLength={80} /></Field>
         </div></Card>
 
-        {f.partyId && (
+        {f.partyId && foreignDocs.length > 0 && (
+          <Card title="Or settle a foreign-currency document">
+            <div className="form">
+              <Field label="Document"><select value={fxd.docId} onChange={(e) => { const d = foreignDocs.find((x) => String(x.id) === e.target.value); setFxd({ docId: e.target.value, foreign: d ? d.foreign_balance_minor : '' }); setAlloc({}); }}>
+                <option value="">None, use the list below</option>{foreignDocs.map((d) => <option key={d.id} value={d.id}>{d.number} · {d.currency} {inr(d.foreign_balance_minor)} open</option>)}</select></Field>
+              {fxDoc && <Field label={`Part of it you are settling (${fxDoc.currency})`}><input inputMode="decimal" value={fxd.foreign} onChange={(e) => setFxd({ ...fxd, foreign: e.target.value })} required /></Field>}
+            </div>
+            {fxDoc && fxShare > 0 && <p className={fxDiff < 0 ? 'notice warn' : 'muted'}>That part is in your books at ₹{inr(fxShare)}. {Number(f.amount) > 0 ? (fxDiff === 0 ? 'No exchange difference.' : `Exchange ${fxDiff > 0 ? 'gain' : 'loss'}: ₹${inr(Math.abs(fxDiff))}, posted to Exchange gain or loss.`) : 'Type the rupees that moved above to see the exchange gain or loss.'}</p>}
+          </Card>
+        )}
+
+        {f.partyId && !fxd.docId && (
           <Card title={f.direction === 'IN' ? 'Settle these invoices' : 'Settle these bills'} actions={<Btn type="button" className="btn small" onClick={autoFill} disabled={!total}>Fill oldest first</Btn>}>
             {docs.loading ? <p className="muted">Loading…</p> : !openDocs.length ? <Empty>Nothing is open for this party. The money will stay on account.</Empty> : (
               <Table head={['Number', 'Date', '>Open', '>Settle now']}>
@@ -95,7 +119,7 @@ export const PaymentForm = () => {
             <p className={allocated > total ? 'notice bad' : 'muted'}>Matched ₹{inr(allocated / 100)} of ₹{inr(total / 100)}{Number(f.tds) > 0 ? ' (with TDS)' : ''}{allocated > total ? ' — more than the payment' : allocated < total ? ` · ₹${inr((total - allocated) / 100)} stays on account` : ''}</p>
           </Card>
         )}
-        <div className="actions"><Btn kind="primary" busy={a.busy} disabled={allocated > total}>Record payment</Btn><Btn type="button" onClick={() => nav(-1)}>Cancel</Btn></div>
+        <div className="actions"><Btn kind="primary" busy={a.busy} disabled={!fxd.docId && allocated > total}>Record payment</Btn><Btn type="button" onClick={() => nav(-1)}>Cancel</Btn></div>
       </form>
     </Page>
   );

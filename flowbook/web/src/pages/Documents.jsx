@@ -53,16 +53,17 @@ export const DocForm = ({ kind }) => {
   const a = useAction();
   const parties = useLoad(() => o(`/parties?kind=${kind.partyKind}&limit=500`), [org.id, kind.partyKind]);
   const items = useLoad(() => o('/items'), [org.id]);
+  const fx = useLoad(() => o('/exchange-rates'), [org.id]);
   const rates = useLoad(() => o('/tax-rates'), [org.id]);
   const existing = useLoad(() => (id ? o(`/${kind.api}/${id}`) : Promise.resolve(null)), [org.id, id]);
-  const [f, setF] = useState({ partyId: '', date: today(), dueDate: '', placeOfSupply: '', supplierRef: '', relatedDocumentId: '', memo: '', roundOff: true, tcsRate: '', tcsSection: '', reverseCharge: false, lines: [blankLine()] });
+  const [f, setF] = useState({ partyId: '', date: today(), dueDate: '', placeOfSupply: '', supplierRef: '', relatedDocumentId: '', memo: '', roundOff: true, tcsRate: '', tcsSection: '', reverseCharge: false, currency: 'INR', fxRate: '', lines: [blankLine()] });
   const invoices = useLoad(() => (isNote(kind) && f.partyId ? o(`/${kind.api === 'credit-notes' ? 'invoices' : 'bills'}?status=ISSUED&partyId=${f.partyId}&limit=100`) : Promise.resolve(null)), [org.id, f.partyId, kind.api]);
 
   useEffect(() => {
     const d = existing.data;
     if (!d) return;
-    setF({ partyId: String(d.party_id), date: d.issue_date || today(), dueDate: d.due_date || '', placeOfSupply: d.place_of_supply || '', supplierRef: d.supplier_ref || '', relatedDocumentId: d.related_document_id ? String(d.related_document_id) : '',
-      memo: d.memo || '', reverseCharge: Boolean(d.reverse_charge), tcsRate: d.tcs_rate_bp ? String(d.tcs_rate_bp / 100) : '', tcsSection: d.tcs_section || '', roundOff: Number(d.round_off_minor) !== 0 || d.status === 'DRAFT', lines: d.lines.map((l) => ({ itemId: l.item_id ? String(l.item_id) : '', description: l.description || '', hsnSac: l.hsn_sac || '', unit: l.unit || '', quantity: l.quantity, unitPrice: l.unit_price_minor, discount: Number(l.discount_minor) ? l.discount_minor : '', taxCode: l.tax_code || '', inclusive: Boolean(l.price_includes_tax) })) });
+    setF({ currency: d.currency || 'INR', fxRate: d.currency && d.currency !== 'INR' ? String(d.fx_rate).replace(/0+$/, '').replace(/\.$/, '') : '', partyId: String(d.party_id), date: d.issue_date || today(), dueDate: d.due_date || '', placeOfSupply: d.place_of_supply || '', supplierRef: d.supplier_ref || '', relatedDocumentId: d.related_document_id ? String(d.related_document_id) : '',
+      memo: d.memo || '', reverseCharge: Boolean(d.reverse_charge), tcsRate: d.tcs_rate_bp ? String(d.tcs_rate_bp / 100) : '', tcsSection: d.tcs_section || '', roundOff: Number(d.round_off_minor) !== 0 || d.status === 'DRAFT', lines: d.lines.map((l) => ({ itemId: l.item_id ? String(l.item_id) : '', description: l.description || '', hsnSac: l.hsn_sac || '', unit: l.unit || '', quantity: l.quantity, unitPrice: l.unit_price_fc_minor ?? l.unit_price_minor, discount: Number(l.discount_fc_minor ?? l.discount_minor) ? (l.discount_fc_minor ?? l.discount_minor) : '', taxCode: l.tax_code || '', inclusive: Boolean(l.price_includes_tax) })) });
   }, [existing.data]);
   useEffect(() => { if (!id && search.get('partyId')) setF((x) => ({ ...x, partyId: search.get('partyId') })); }, [id, search]);
 
@@ -70,14 +71,14 @@ export const DocForm = ({ kind }) => {
   const setLine = (i, patch) => setF({ ...f, lines: f.lines.map((l, n) => (n === i ? { ...l, ...patch } : l)) });
   const pickItem = (i, itemId) => {
     const it = (items.data || []).find((x) => String(x.id) === itemId);
-    setLine(i, it ? { itemId, description: it.name, hsnSac: it.hsn_sac || '', unit: it.unit || '', taxCode: it.tax_code || 'GST18', unitPrice: (kind.api === 'bills' || kind.api === 'purchase-orders' ? it.purchase_price_minor : it.sale_price_minor) || '' } : { itemId: '' });
+    setLine(i, it ? { itemId, description: it.name, hsnSac: it.hsn_sac || '', unit: it.unit || '', taxCode: it.tax_code || 'GST18', unitPrice: f.currency !== 'INR' ? '' : (kind.api === 'bills' || kind.api === 'purchase-orders' ? it.purchase_price_minor : it.sale_price_minor) || '' } : { itemId: '' });
   };
   const codes = [...new Set((rates.data || []).map((r) => r.code))];
 
   const submit = (e) => {
     e.preventDefault();
     a.run(async () => {
-      const body = { partyId: f.partyId, date: f.date, roundOff: f.roundOff, memo: f.memo || undefined, dueDate: f.dueDate || undefined, placeOfSupply: f.placeOfSupply || undefined,
+      const body = { partyId: f.partyId, date: f.date, roundOff: f.currency !== 'INR' ? false : f.roundOff, ...(f.currency !== 'INR' && { currency: f.currency, fxRate: f.fxRate }), memo: f.memo || undefined, dueDate: f.dueDate || undefined, placeOfSupply: f.placeOfSupply || undefined,
         supplierRef: kind.api === 'bills' ? f.supplierRef || undefined : undefined, relatedDocumentId: isNote(kind) ? f.relatedDocumentId || undefined : undefined,
         ...(kind.api === 'bills' && f.reverseCharge && { reverseCharge: true }),
         ...(kind.api === 'invoices' && Number(f.tcsRate) > 0 && { tcsRateBp: Math.round(Number(f.tcsRate) * 100), ...(f.tcsSection && { tcsSection: f.tcsSection }) }),
@@ -88,6 +89,12 @@ export const DocForm = ({ kind }) => {
   };
 
   const party = (parties.data || []).find((p) => String(p.id) === f.partyId);
+  const cs = f.currency === 'INR' ? '₹' : f.currency;
+  const changeCurrency = async (currency) => {
+    let fxRate = '';
+    if (currency !== 'INR') { try { fxRate = (await o(`/exchange-rates/on?currency=${currency}&date=${f.date}`)).rate || ''; } catch { /* the person types the rate */ } }
+    setF((x) => ({ ...x, currency, fxRate: fxRate.replace(/0+$/, '').replace(/\.$/, '') }));
+  };
   const onParty = (e) => {
     const p = (parties.data || []).find((x) => String(x.id) === e.target.value);
     setF({ ...f, partyId: e.target.value, relatedDocumentId: '', dueDate: p && !f.dueDate && p.credit_days ? addDays(f.date, p.credit_days) : f.dueDate });
@@ -104,6 +111,8 @@ export const DocForm = ({ kind }) => {
               {parties.data && !parties.data.length && <span className="hint">No {kind.who.toLowerCase()}s yet. <Link to={kind.partyKind === 'VENDOR' ? '/vendors' : '/customers'}>Add one first</Link>.</span>}
             </Field>
             <Field label="Date"><input type="date" value={f.date} onChange={set('date')} required /></Field>
+            {!isNote(kind) && <Field label="Currency"><select value={f.currency} onChange={(e) => changeCurrency(e.target.value)}><option value="INR">Rupees (₹)</option>{Object.entries(fx.data?.currencies || {}).map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
+            {f.currency !== 'INR' && <Field label={`Rate: ₹ for 1 ${f.currency}`} hint="Converts to rupees for your books and GST. Save usual rates in Settings > Currencies"><input inputMode="decimal" value={f.fxRate} onChange={set('fxRate')} required /></Field>}
             {!isNote(kind) && <Field label={kind.dueLabel || 'Due date'} hint={party?.credit_days ? `${party.name} usually gets ${party.credit_days} days` : 'Optional'}><input type="date" value={f.dueDate} onChange={set('dueDate')} /></Field>}
             <Field label="Place of supply" hint="Leave empty to use the party's state"><select value={f.placeOfSupply} onChange={set('placeOfSupply')}><option value="">Automatic</option>{Object.entries(STATES).map(([c, n]) => <option key={c} value={String(c).padStart(2, '0')}>{String(c).padStart(2, '0')} · {n}</option>)}</select></Field>
             {kind.api === 'bills' && <Field label="Vendor's bill number"><input value={f.supplierRef} onChange={set('supplierRef')} maxLength={60} /></Field>}
@@ -124,8 +133,8 @@ export const DocForm = ({ kind }) => {
                 <Field label="Description"><input value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} /></Field>
                 <Field label="Qty"><input inputMode="decimal" value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} required /></Field>
                 <Field label="Unit"><select value={l.unit} onChange={(e) => setLine(i, { unit: e.target.value })}><option value="">–</option>{UNITS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select></Field>
-                <Field label={l.inclusive ? 'Price with GST (₹)' : 'Price (₹)'} hint={<label className="check"><input type="checkbox" checked={l.inclusive} onChange={(e) => setLine(i, { inclusive: e.target.checked })} /> GST is in this price</label>}><input inputMode="decimal" value={l.unitPrice} onChange={(e) => setLine(i, { unitPrice: e.target.value })} required /></Field>
-                <Field label="Discount (₹)"><input inputMode="decimal" value={l.discount} onChange={(e) => setLine(i, { discount: e.target.value })} /></Field>
+                <Field label={l.inclusive ? `Price with GST (${cs})` : `Price (${cs})`} hint={<label className="check"><input type="checkbox" checked={l.inclusive} onChange={(e) => setLine(i, { inclusive: e.target.checked })} /> GST is in this price</label>}><input inputMode="decimal" value={l.unitPrice} onChange={(e) => setLine(i, { unitPrice: e.target.value })} required /></Field>
+                <Field label={`Discount (${cs})`}><input inputMode="decimal" value={l.discount} onChange={(e) => setLine(i, { discount: e.target.value })} /></Field>
                 <Field label="GST"><select value={l.taxCode} onChange={(e) => setLine(i, { taxCode: e.target.value })}>{codes.length ? codes.map((c) => <option key={c}>{c}</option>) : <option>{l.taxCode}</option>}</select></Field>
                 <Btn type="button" className="btn small danger" disabled={f.lines.length === 1} onClick={() => setF({ ...f, lines: f.lines.filter((_, n) => n !== i) })} aria-label="Remove line">Remove</Btn>
               </div>
@@ -206,6 +215,7 @@ export const DocView = ({ kind }) => {
             {d.outcome && <><dt>Answer</dt><dd><Badge status={d.outcome} /></dd></>}
             {d.converted_document_id && <><dt>Turned into</dt><dd><Link to={`/${PATH[d.converted_kind]}/${d.converted_document_id}`}>See it</Link></dd></>}
             {d.related_document_id && PATH[d.related_kind] && !isNote(kind) && <><dt>Made from</dt><dd><Link to={`/${PATH[d.related_kind]}/${d.related_document_id}`}>See it</Link></dd></>}
+            {d.currency !== 'INR' && <><dt>Currency</dt><dd>{d.currency} at ₹{String(d.fx_rate).replace(/0+$/, '').replace(/\.$/, '')} for 1 {d.currency}; the books and GST use rupees</dd></>}
             {d.due_date && <><dt>{kind.dueLabel || 'Due'}</dt><dd>{showDate(d.due_date)}</dd></>}
             {d.supplier_ref && <><dt>Vendor's number</dt><dd>{d.supplier_ref}</dd></>}
             {d.place_of_supply && <><dt>Place of supply</dt><dd>{d.place_of_supply} · {STATES[d.place_of_supply] || ''} ({d.inter_state ? 'other state: IGST' : 'same state: CGST + SGST'})</dd></>}
@@ -222,6 +232,8 @@ export const DocView = ({ kind }) => {
             {Number(d.tcs_minor) > 0 && <div><span>TCS{d.tcs_section ? ` (${d.tcs_section})` : ''}</span><Money v={d.tcs_minor} /></div>}
             {Number(d.round_off_minor) !== 0 && <div><span>Round off</span><Money v={d.round_off_minor} /></div>}
             <div className="grand"><span>Total</span><Money v={d.total_minor} /></div>
+            {d.currency !== 'INR' && <div><span>Total in {d.currency}</span><span className="num strong">{d.currency} {inr(d.foreign_total_minor)}</span></div>}
+            {d.currency !== 'INR' && d.status === 'ISSUED' && !kind.pre && <div><span>Still to settle in {d.currency}</span><span className="num">{d.currency} {inr(d.foreign_balance_minor)}</span></div>}
             {d.status === 'ISSUED' && !kind.pre && <div><span>Still to settle</span><Money v={d.balance_minor} strong /></div>}
           </div>
           <p className="muted words">{amountInWords(d.total_minor)}</p>

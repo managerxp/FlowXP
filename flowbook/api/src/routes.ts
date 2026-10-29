@@ -17,6 +17,7 @@ import type { Every } from './recurring.ts';
 import { salesAnalysis } from './analysis.ts';
 import { getEmailSettings, listEmails, saveEmailSettings, sendDocument } from './email.ts';
 import type { EmailSettingsIn } from './email.ts';
+import { CURRENCIES, listRates, rateOn, saveRate } from './fx.ts';
 import { adjust, setTracking, stockLedger, stockSummary } from './stock.ts';
 import { addEntry, bankAccounts, importStatement, matchLine, setIgnored, unmatchLine, workbench } from './reconcile.ts';
 import { partyStatement } from './statement.ts';
@@ -47,13 +48,14 @@ const docBody = { type: 'object', required: ['partyId', 'date', 'lines'], additi
   partyId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, dueDate: { type: 'string', pattern: DATE }, placeOfSupply: { type: 'string', pattern: '^\\d{2}$' },
   supplierRef: { type: 'string', maxLength: 60 }, relatedDocumentId: { type: 'string', pattern: ID }, memo: { type: 'string', maxLength: 500 }, roundOff: { type: 'boolean' },
   reverseCharge: { type: 'boolean' }, tcsRateBp: { type: 'integer', minimum: 0, maximum: 2000 }, tcsSection: { type: 'string', maxLength: 30 },
+  currency: { type: 'string', pattern: '^[A-Z]{3}$' }, fxRate: { type: 'string', pattern: '^\\d{1,9}(\\.\\d{1,6})?$' },
   lines: { type: 'array', minItems: 1, maxItems: 200, items: line } } };
 const allocBody = { type: 'array', minItems: 1, maxItems: 200, items: { type: 'object', required: ['documentId', 'amount'], additionalProperties: false, properties: {
   documentId: { type: 'string', pattern: ID }, amount: { type: 'string', pattern: AMOUNT } } } };
 const allocs = (a: { documentId: string; amount: string }[]): Alloc[] => a.map((x) => ({ documentId: BigInt(x.documentId), amount: toPaise(x.amount) }));
 const voidBody = { type: 'object', required: ['date', 'reason'], additionalProperties: false, properties: { date: { type: 'string', pattern: DATE }, reason: { type: 'string', minLength: 1, maxLength: 300 }, ...override } };
 
-type RawDoc = { partyId: string; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string; relatedDocumentId?: string; memo?: string; roundOff?: boolean; reverseCharge?: boolean; tcsRateBp?: number; tcsSection?: string;
+type RawDoc = { currency?: string; fxRate?: string; partyId: string; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string; relatedDocumentId?: string; memo?: string; roundOff?: boolean; reverseCharge?: boolean; tcsRateBp?: number; tcsSection?: string;
   lines: { itemId?: string; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; unit?: string; inclusive?: boolean }[] };
 const docIn = (kind: DocKind, b: RawDoc): DocIn => ({ ...b, kind, partyId: BigInt(b.partyId), relatedDocumentId: b.relatedDocumentId ? BigInt(b.relatedDocumentId) : undefined,
   lines: b.lines.map((l) => ({ ...l, itemId: l.itemId ? BigInt(l.itemId) : undefined })) });
@@ -143,6 +145,18 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   });
   app.patch(`${base}/items/:id`, { preHandler: scope('item.write'), schema: { ...idParam, body: { type: 'object', additionalProperties: false, properties: { trackStock: { type: 'boolean' }, reorderLevel: { type: 'string', pattern: QTY } } } } }, async (req) => {
     await run(req, (c, orgId) => setTracking(c, orgId, BigInt((req.params as { id: string }).id), req.body as { trackStock?: boolean; reorderLevel?: string }, me(req)));
+    return { ok: true };
+  });
+
+  /* ---- exchange rates */
+  app.get(`${base}/exchange-rates`, { preHandler: scope('org.read') }, async (req) => run(req, async (c) => ({ currencies: CURRENCIES, rates: await listRates(c) })));
+  app.get(`${base}/exchange-rates/on`, { preHandler: scope('org.read'), schema: { querystring: { type: 'object', required: ['currency', 'date'], properties: { currency: { type: 'string', pattern: '^[A-Z]{3}$' }, date: { type: 'string', pattern: DATE } } } } }, async (req) => {
+    const q = req.query as { currency: string; date: string };
+    return run(req, async (c) => ({ rate: await rateOn(c, q.currency, q.date) }));
+  });
+  app.put(`${base}/exchange-rates`, { preHandler: scope('org.manage'), schema: { body: { type: 'object', required: ['currency', 'date', 'rate'], additionalProperties: false, properties: {
+    currency: { type: 'string', pattern: '^[A-Z]{3}$' }, date: { type: 'string', pattern: DATE }, rate: { type: 'string', pattern: '^\\d{1,9}(\\.\\d{1,6})?$' } } } } }, async (req) => {
+    await run(req, (c, orgId) => saveRate(c, orgId, req.body as { currency: string; date: string; rate: string }, me(req)));
     return { ok: true };
   });
 
@@ -246,12 +260,12 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   });
   app.post(`${base}/payments`, { preHandler: scope('payment.write'), schema: { body: { type: 'object', required: ['direction', 'partyId', 'date', 'mode', 'amount'], additionalProperties: false, properties: {
     direction: { type: 'string', enum: ['IN', 'OUT'] }, partyId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, mode: { type: 'string', enum: ['CASH', 'BANK', 'UPI', 'CARD'] },
-    amount: { type: 'string', pattern: AMOUNT }, tds: { type: 'string', pattern: AMOUNT }, tdsSection: { type: 'string', maxLength: 30 }, reference: { type: 'string', maxLength: 80 }, allocations: allocBody, ...override } } } }, async (req, reply) => {
+    amount: { type: 'string', pattern: AMOUNT }, tds: { type: 'string', pattern: AMOUNT }, tdsSection: { type: 'string', maxLength: 30 }, reference: { type: 'string', maxLength: 80 }, allocations: allocBody, fx: { type: 'object', required: ['documentId', 'foreignAmount'], additionalProperties: false, properties: { documentId: { type: 'string', pattern: ID }, foreignAmount: { type: 'string', pattern: AMOUNT } } }, ...override } } } }, async (req, reply) => {
     const key = String(req.headers['idempotency-key'] ?? '');
     if (key.length < 8 || key.length > 128) return reply.code(400).send({ error: { code: 'idempotency_key_required', message: 'send an Idempotency-Key header (8 to 128 characters), one per user action' } });
-    const b = req.body as { direction: 'IN' | 'OUT'; partyId: string; date: string; mode: 'CASH' | 'BANK' | 'UPI' | 'CARD'; amount: string; tds?: string; tdsSection?: string; reference?: string; allocations?: { documentId: string; amount: string }[]; overrideReason?: string };
+    const b = req.body as { direction: 'IN' | 'OUT'; partyId: string; date: string; mode: 'CASH' | 'BANK' | 'UPI' | 'CARD'; amount: string; tds?: string; tdsSection?: string; reference?: string; allocations?: { documentId: string; amount: string }[]; fx?: { documentId: string; foreignAmount: string }; overrideReason?: string };
     const out = await run(req, (c, orgId) => createPayment(c, orgId, { direction: b.direction, partyId: BigInt(b.partyId), date: b.date, mode: b.mode, amount: toPaise(b.amount), tds: b.tds ? toPaise(b.tds) : undefined, tdsSection: b.tdsSection, reference: b.reference,
-      allocations: b.allocations ? allocs(b.allocations) : undefined, idempotencyKey: key }, me(req), lockOverride(req, b.overrideReason)));
+      allocations: b.allocations ? allocs(b.allocations) : undefined, fx: b.fx ? { documentId: BigInt(b.fx.documentId), foreignAmount: toPaise(b.fx.foreignAmount) } : undefined, idempotencyKey: key }, me(req), lockOverride(req, b.overrideReason)));
     return reply.code(out.replayed ? 200 : 201).send({ id: out.id, number: out.number, replayed: out.replayed });
   });
   app.get(`${base}/payments/:id`, { preHandler: scope('payment.read'), schema: idParam }, async (req, reply) =>

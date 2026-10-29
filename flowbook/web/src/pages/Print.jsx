@@ -62,6 +62,7 @@ export const DocSheet = ({ kind, d }) => {
         {Number(d.tcs_minor) > 0 && <div><span>TCS</span><span>{inr(d.tcs_minor)}</span></div>}
         {Number(d.round_off_minor) !== 0 && <div><span>Round off</span><span>{inr(d.round_off_minor)}</span></div>}
         <div className="grand"><span>Total</span><span>₹{inr(d.total_minor)}</span></div>
+        {d.currency && d.currency !== 'INR' && <div><span>Amount in {d.currency}</span><span>{d.currency} {inr(d.foreign_total_minor)} (at ₹{String(d.fx_rate).replace(/0+$/, '').replace(/.$/, '')})</span></div>}
       </div>
       <p className="words">{amountInWords(d.total_minor)}</p>
       {s.showBank && (p.bank_account || p.upi_id) && <p className="small"><strong>Pay to</strong> {[p.bank_name, p.bank_account && `A/c ${p.bank_account}`, p.bank_ifsc && `IFSC ${p.bank_ifsc}`, p.upi_id && `UPI ${p.upi_id}`].filter(Boolean).join(' · ')}</p>}
