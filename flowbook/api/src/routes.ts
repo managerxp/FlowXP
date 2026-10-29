@@ -6,7 +6,10 @@ import type { Db } from './db.ts';
 import { ageing, allocatePayment, applyCreditNote, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, voidDocument, voidPayment } from './documents.ts';
 import type { Alloc, DocIn, DocKind } from './documents.ts';
 import { listExpenses, recordExpense, voidExpense } from './expenses.ts';
+import { ewayBill } from './eway.ts';
 import { gstr1, gstr3b } from './gstr.ts';
+import { PROFILE_COLUMNS, saveExtras } from './profile.ts';
+import type { ProfileExtras } from './profile.ts';
 import { IMPORT_LIMIT, importItems, importParties } from './import.ts';
 import { getSettings as getWhatsapp, listMessages, saveSettings as saveWhatsapp, sendMessage } from './whatsapp.ts';
 import { createTemplate, deleteTemplate, listTemplates, runDue, setTemplateActive } from './recurring.ts';
@@ -63,19 +66,24 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
 
   /* ---- organization profile and tax rates */
   app.get(`${base}/profile`, { preHandler: scope('org.read') }, async (req) =>
-    run(req, async (c, orgId) => (await c.query(`SELECT id, name, legal_name, pan, gstin, state_code, invoice_prefix FROM organizations WHERE id = $1`, [orgId])).rows[0]));
+    run(req, async (c, orgId) => (await c.query(`SELECT id, name, legal_name, pan, gstin, state_code, invoice_prefix, ${PROFILE_COLUMNS} FROM organizations WHERE id = $1`, [orgId])).rows[0]));
   app.put(`${base}/profile`, { preHandler: scope('org.manage'), schema: { body: { type: 'object', additionalProperties: false, properties: {
     legalName: { type: 'string', maxLength: 200 }, gstin: { type: 'string', maxLength: 15 }, stateCode: { type: 'string', pattern: '^\\d{2}$' }, pan: { type: 'string', pattern: '^[A-Z]{5}[0-9]{4}[A-Z]$' },
-    invoicePrefix: { type: 'string', pattern: '^[A-Z0-9]{1,3}$' } } } } }, async (req) => {
-    const b = req.body as { legalName?: string; gstin?: string; stateCode?: string; pan?: string; invoicePrefix?: string };
+    invoicePrefix: { type: 'string', pattern: '^[A-Z0-9]{1,3}$' },
+    addressLine: { type: 'string', maxLength: 200 }, city: { type: 'string', maxLength: 80 }, pincode: { type: 'string', maxLength: 6 }, phone: { type: 'string', maxLength: 20 }, email: { type: 'string', maxLength: 200 },
+    bankName: { type: 'string', maxLength: 80 }, bankAccount: { type: 'string', maxLength: 30 }, bankIfsc: { type: 'string', maxLength: 11 }, upiId: { type: 'string', maxLength: 80 }, terms: { type: 'string', maxLength: 1000 },
+    printSettings: { type: 'object', additionalProperties: false, properties: { paper: { type: 'string', enum: ['A4', 'A5', 'THERMAL'] }, accent: { type: 'string', maxLength: 7 }, title: { type: 'string', maxLength: 40 },
+      showHsn: { type: 'boolean' }, showBank: { type: 'boolean' }, showTerms: { type: 'boolean' }, showUnit: { type: 'boolean' } } } } } } }, async (req) => {
+    const b = req.body as { legalName?: string; gstin?: string; stateCode?: string; pan?: string; invoicePrefix?: string } & ProfileExtras;
     if (b.gstin && !validGstin(b.gstin.toUpperCase())) throw new LedgerError('bad_gstin', `${b.gstin} is not a valid GSTIN`);
     if (b.stateCode && !validStateCode(b.stateCode)) throw new LedgerError('bad_state', `${b.stateCode} is not a GST state code`);
     const state = b.stateCode ?? (b.gstin ? b.gstin.slice(0, 2) : null);
     return run(req, async (c, orgId) => {
       await c.query(`UPDATE organizations SET legal_name = COALESCE($2, legal_name), gstin = COALESCE($3, gstin), state_code = COALESCE($4, state_code), pan = COALESCE($5, pan), invoice_prefix = COALESCE($6, invoice_prefix) WHERE id = $1`,
         [orgId, b.legalName ?? null, b.gstin?.toUpperCase() ?? null, state, b.pan ?? null, b.invoicePrefix ?? null]);
+      await saveExtras(c, orgId, b);
       await audit(c, orgId, { actor: me(req), action: 'organization.profile_updated', entityType: 'organization', entityId: orgId });
-      return (await c.query(`SELECT id, name, legal_name, pan, gstin, state_code, invoice_prefix FROM organizations WHERE id = $1`, [orgId])).rows[0];
+      return (await c.query(`SELECT id, name, legal_name, pan, gstin, state_code, invoice_prefix, ${PROFILE_COLUMNS} FROM organizations WHERE id = $1`, [orgId])).rows[0];
     });
   });
 
@@ -91,12 +99,13 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   /* ---- parties */
   const partyProps = { kind: { type: 'string', enum: ['CUSTOMER', 'VENDOR', 'BOTH'] }, name: { type: 'string', minLength: 1, maxLength: 160 }, gstin: { type: 'string', maxLength: 15 },
     pan: { type: 'string', maxLength: 10 }, stateCode: { type: 'string', pattern: '^\\d{2}$' }, phone: { type: 'string', maxLength: 20 }, email: { type: 'string', maxLength: 200 },
-    creditDays: { type: 'integer', minimum: 0, maximum: 365 }, externalRef: { type: 'string', maxLength: 80 } };
+    creditDays: { type: 'integer', minimum: 0, maximum: 365 }, externalRef: { type: 'string', maxLength: 80 },
+    addressLine: { type: 'string', maxLength: 200 }, city: { type: 'string', maxLength: 80 }, pincode: { type: 'string', maxLength: 6 }, shipAddressLine: { type: 'string', maxLength: 200 }, shipCity: { type: 'string', maxLength: 80 }, shipPincode: { type: 'string', maxLength: 6 } };
   app.get(`${base}/parties`, { preHandler: scope('party.read'), schema: { querystring: { type: 'object', properties: {
     kind: { type: 'string', enum: ['CUSTOMER', 'VENDOR'] }, q: { type: 'string', maxLength: 80 }, limit: { type: 'integer', minimum: 1, maximum: 500 } } } } }, async (req) => {
     const q = req.query as { kind?: string; q?: string; limit?: number };
     return run(req, async (c) => (await c.query(
-      `SELECT id, kind, name, gstin, state_code, phone, email, credit_days, active, external_ref, whatsapp_opt_out FROM parties
+      `SELECT id, kind, name, gstin, state_code, phone, email, credit_days, active, external_ref, whatsapp_opt_out, address_line, city, pincode FROM parties
         WHERE ($1::text IS NULL OR kind IN ($1, 'BOTH')) AND ($2::text IS NULL OR name ILIKE '%' || $2 || '%') ORDER BY name LIMIT $3`, [q.kind ?? null, q.q ?? null, q.limit ?? 200])).rows);
   });
   app.post(`${base}/parties`, { preHandler: scope('party.write'), schema: { body: { type: 'object', required: ['kind', 'name'], additionalProperties: false, properties: partyProps } } }, async (req, reply) => {
@@ -104,7 +113,7 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     return reply.code(201).send({ id });
   });
   app.get(`${base}/parties/:id`, { preHandler: scope('party.read'), schema: idParam }, async (req, reply) => {
-    const row = await run(req, async (c) => (await c.query(`SELECT id, kind, name, gstin, pan, state_code, phone, email, credit_days, active, external_ref, whatsapp_opt_out FROM parties WHERE id = $1`, [(req.params as { id: string }).id])).rows[0]);
+    const row = await run(req, async (c) => (await c.query(`SELECT id, kind, name, gstin, pan, state_code, phone, email, credit_days, active, external_ref, whatsapp_opt_out, address_line, city, pincode, ship_address_line, ship_city, ship_pincode FROM parties WHERE id = $1`, [(req.params as { id: string }).id])).rows[0]);
     return row ?? notFound(reply, 'party');
   });
   app.patch(`${base}/parties/:id`, { preHandler: scope('party.write'), schema: { ...idParam, body: { type: 'object', additionalProperties: false, properties: { ...partyProps, active: { type: 'boolean' }, whatsappOptOut: { type: 'boolean' } } } } }, async (req, reply) => {
@@ -197,6 +206,12 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     const q = req.query as { type: string; asOf: string };
     return run(req, (c, orgId) => ageing(c, orgId, q.type === 'receivables' ? 'INVOICE' : 'BILL', q.asOf));
   });
+
+  /* ---- e-way bill file for an issued invoice */
+  app.get(`${base}/invoices/:id/eway-bill`, { preHandler: scope('invoice.read'), schema: { ...idParam, querystring: { type: 'object', required: ['distanceKm'], properties: {
+    distanceKm: { type: 'integer', minimum: 1, maximum: 4000 }, mode: { type: 'integer', enum: [1, 2, 3, 4] }, vehicleNo: { type: 'string', maxLength: 15 }, transporterId: { type: 'string', maxLength: 15 },
+    transporterName: { type: 'string', maxLength: 100 }, transDocNo: { type: 'string', maxLength: 15 }, transDocDate: { type: 'string', pattern: DATE } } } } }, async (req) =>
+    run(req, (c, orgId) => ewayBill(c, orgId, BigInt((req.params as { id: string }).id), req.query as Parameters<typeof ewayBill>[3])));
 
   /* ---- expenses paid at the time */
   app.get(`${base}/expenses`, { preHandler: scope('bill.read'), schema: { querystring: { type: 'object', required: ['from', 'to'], properties: { from: { type: 'string', pattern: DATE }, to: { type: 'string', pattern: DATE }, limit: { type: 'integer', minimum: 1, maximum: 500 } } } } }, async (req) => {

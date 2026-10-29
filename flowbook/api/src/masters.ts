@@ -18,9 +18,11 @@ export const addTaxRate = async (c: Db, orgId: bigint, r: { code: string; name: 
   await audit(c, orgId, { actor, action: 'tax_rate.added', entityType: 'tax_rate', entityId: r.code, detail: { rateBp: r.rateBp, from: r.effectiveFrom } });
 };
 
-export type PartyIn = { kind: 'CUSTOMER' | 'VENDOR' | 'BOTH'; name: string; gstin?: string; pan?: string; stateCode?: string; phone?: string; email?: string; creditDays?: number; externalRef?: string };
+export type PartyIn = { kind: 'CUSTOMER' | 'VENDOR' | 'BOTH'; name: string; gstin?: string; pan?: string; stateCode?: string; phone?: string; email?: string; creditDays?: number; externalRef?: string;
+  addressLine?: string; city?: string; pincode?: string; shipAddressLine?: string; shipCity?: string; shipPincode?: string };
 
-const cleanParty = (p: PartyIn) => {
+const cleanParty = (p: Partial<PartyIn>) => {
+  for (const pin of [p.pincode, p.shipPincode]) if (pin && !/^\d{6}$/.test(pin)) throw new LedgerError('bad_pincode', 'a PIN code is six digits');
   const gstin = p.gstin?.trim().toUpperCase() || null;
   if (gstin && !validGstin(gstin)) throw new LedgerError('bad_gstin', `${gstin} is not a valid GSTIN`);
   const state = p.stateCode ?? (gstin ? stateOfGstin(gstin) : null);
@@ -32,8 +34,8 @@ const cleanParty = (p: PartyIn) => {
 export const createParty = async (c: Db, orgId: bigint, p: PartyIn, actor: string): Promise<bigint> => {
   const { gstin, state } = cleanParty(p);
   const row = (await c.query(
-    `INSERT INTO parties (organization_id, kind, name, gstin, pan, state_code, phone, email, credit_days, external_ref) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT DO NOTHING RETURNING id`,
-    [orgId, p.kind, p.name.trim(), gstin, p.pan ?? null, state, p.phone ?? null, p.email ?? null, p.creditDays ?? 0, p.externalRef ?? null])).rows[0];
+    `INSERT INTO parties (organization_id, kind, name, gstin, pan, state_code, phone, email, credit_days, external_ref, address_line, city, pincode, ship_address_line, ship_city, ship_pincode) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) ON CONFLICT DO NOTHING RETURNING id`,
+    [orgId, p.kind, p.name.trim(), gstin, p.pan ?? null, state, p.phone ?? null, p.email ?? null, p.creditDays ?? 0, p.externalRef ?? null, p.addressLine?.trim() || null, p.city?.trim() || null, p.pincode || null, p.shipAddressLine?.trim() || null, p.shipCity?.trim() || null, p.shipPincode || null])).rows[0];
   if (!row) throw new LedgerError('party_exists', 'a party with that GSTIN or external reference already exists');
   await audit(c, orgId, { actor, action: 'party.created', entityType: 'party', entityId: row.id as bigint, detail: { name: p.name } });
   return row.id as bigint;
@@ -43,7 +45,11 @@ export const updateParty = async (c: Db, orgId: bigint, id: bigint, p: Partial<P
   const cur = (await c.query(`SELECT kind, name, gstin, pan, state_code, phone, email, credit_days FROM parties WHERE id = $1`, [id])).rows[0];
   if (!cur) return false;
   const next: PartyIn = { kind: p.kind ?? cur.kind, name: p.name ?? cur.name, gstin: p.gstin ?? cur.gstin ?? undefined, stateCode: p.stateCode ?? cur.state_code ?? undefined };
-  const { gstin, state } = cleanParty(next);
+  const { gstin, state } = cleanParty({ ...next, pincode: p.pincode, shipPincode: p.shipPincode });
+  const text = (v: string | undefined) => (v === undefined ? null : v.trim());   // null keeps what is there; an empty string clears it
+  await c.query(
+    `UPDATE parties SET address_line = COALESCE($2, address_line), city = COALESCE($3, city), pincode = COALESCE($4, pincode), ship_address_line = COALESCE($5, ship_address_line), ship_city = COALESCE($6, ship_city), ship_pincode = COALESCE($7, ship_pincode) WHERE id = $1`,
+    [id, text(p.addressLine), text(p.city), text(p.pincode), text(p.shipAddressLine), text(p.shipCity), text(p.shipPincode)]);
   await c.query(
     `UPDATE parties SET kind = $2, name = $3, gstin = $4, state_code = $5, pan = COALESCE($6, pan), phone = COALESCE($7, phone), email = COALESCE($8, email),
             credit_days = COALESCE($9, credit_days), active = COALESCE($10, active), whatsapp_opt_out = COALESCE($11, whatsapp_opt_out) WHERE id = $1`,
