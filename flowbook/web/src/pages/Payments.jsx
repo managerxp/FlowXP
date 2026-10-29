@@ -102,6 +102,7 @@ export const PaymentForm = () => {
 };
 
 import { ReceiptSheet } from './Print.jsx';
+import { EmailForm, EmailLog, useEmailOn } from './Email.jsx';
 
 export const PaymentView = () => {
   const { id } = useParams();
@@ -109,12 +110,16 @@ export const PaymentView = () => {
   const load = useLoad(() => o(`/payments/${id}`), [org.id, id]);
   const a = useAction();
   const [panel, setPanel] = useState(false);
+  const [mail, setMail] = useState(false);
+  const [sent, setSent] = useState(0);
+  const emailOn = useEmailOn();
   const [v, setV] = useState({ date: today(), reason: '' });
   return (
     <Page title={load.data ? `Payment ${load.data.number}` : 'Payment'} lead={load.data && `${load.data.direction === 'IN' ? 'Received from' : 'Paid to'} ${load.data.party_name}`}
-      actions={load.data?.status === 'POSTED' && <>{load.data.direction === 'IN' && <WhatsappButton kind="RECEIPT" paymentId={id} label="Send receipt on WhatsApp" />}<Btn onClick={() => window.print()}>Print receipt</Btn><Btn kind="danger" onClick={() => setPanel(!panel)}>Void</Btn></>}>
+      actions={load.data?.status === 'POSTED' && <>{load.data.direction === 'IN' && <WhatsappButton kind="RECEIPT" paymentId={id} label="Send receipt on WhatsApp" />}{emailOn && load.data.direction === 'IN' && <Btn onClick={() => setMail(!mail)}>Send email</Btn>}<Btn onClick={() => window.print()}>Print receipt</Btn><Btn kind="danger" onClick={() => setPanel(!panel)}>Void</Btn></>}>
       <Async load={load}>{(p) => (<>
         <Err>{a.error}</Err><Note>{a.done}</Note>
+        {mail && <EmailForm paymentId={id} onDone={() => setSent((n) => n + 1)} onClose={() => setMail(false)} />}
         {p.status === 'POSTED' && <ReceiptSheet pay={p} />}
         {panel && (<Confirm><p>Voiding reverses the entries and frees the invoices or bills it settled.</p>
           <div className="form"><Field label="Date of reversal"><input type="date" value={v.date} onChange={(e) => setV({ ...v, date: e.target.value })} /></Field><Field label="Reason"><input value={v.reason} onChange={(e) => setV({ ...v, reason: e.target.value })} /></Field></div>
@@ -125,6 +130,7 @@ export const PaymentView = () => {
             <dt>Amount</dt><dd><Money v={p.amount_minor} strong /></dd>{Number(p.tds_minor) > 0 && <><dt>TDS deducted</dt><dd><Money v={p.tds_minor} />{p.tds_section ? ` · ${p.tds_section}` : ''}</dd></>}<dt>Not yet matched</dt><dd><Money v={p.unallocated_minor} /></dd>
             {p.journal_entry_id && <><dt>Books</dt><dd><Link to={`/journals/${p.journal_entry_id}`}>See the entry</Link></dd></>}</dl>
         </Card>
+        <EmailLog paymentId={id} refresh={sent} />
         {p.allocations.length > 0 && <Card title="Settles"><Table head={['Document', '>Amount', 'State']}>{p.allocations.map((x, i) => (<tr key={i}><td>#{x.document_id}</td><td className="r"><Money v={x.amount_minor} /></td><td>{x.voided ? <Badge status="VOID" /> : 'Counted'}</td></tr>))}</Table></Card>}
       </>)}</Async>
     </Page>

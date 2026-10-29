@@ -6,6 +6,7 @@ import { STATES, TCS_SECTIONS, UNITS, addDays, amountInWords, inr, showDate, tod
 import { useSession } from '../session.jsx';
 import { DocSheet, EwayPanel } from './Print.jsx';
 import { WhatsappButton, WhatsappLog } from './Whatsapp.jsx';
+import { EmailForm, EmailLog, useEmailOn } from './Email.jsx';
 import { Async, Badge, Btn, Card, Confirm, Empty, Err, Field, Money, Note, Page, Table, Tabs, useAction } from '../ui.jsx';
 
 export const DocList = ({ kind }) => {
@@ -153,6 +154,7 @@ export const DocView = ({ kind }) => {
   const a = useAction();
   const [panel, setPanel] = useState('');
   const [sent, setSent] = useState(0);
+  const emailOn = useEmailOn();
   const [void_, setVoid] = useState({ date: today(), reason: '' });
   const [apply, setApply] = useState({});
   const open = useLoad(() => (isNote(kind) && load.data?.status === 'ISSUED' ? o(`/${kind.api === 'credit-notes' ? 'invoices' : 'bills'}?status=ISSUED&partyId=${load.data.party_id}&limit=100`) : Promise.resolve(null)), [load.data?.id, load.data?.status]);
@@ -175,10 +177,12 @@ export const DocView = ({ kind }) => {
             {kind.api === 'quotes' && <Btn onClick={() => convert('SALES_ORDER')}>Make sales order</Btn>}
             {kind.api === 'purchase-orders' ? <Btn kind="primary" onClick={() => convert('BILL')}>Make bill</Btn> : <Btn kind="primary" onClick={() => convert('INVOICE')}>Make invoice</Btn>}</>}
           {kind.api === 'invoices' && <Btn onClick={() => setPanel(panel === 'eway' ? '' : 'eway')}>E-way bill</Btn>}
+          {emailOn && kind.api !== 'bills' && <Btn onClick={() => setPanel(panel === 'email' ? '' : 'email')}>Send email</Btn>}
           <Btn onClick={() => window.print()}>Print</Btn><Btn kind="danger" onClick={() => setPanel(panel === 'void' ? '' : 'void')}>Void</Btn></>}
       </>}>
       <Async load={load}>{(d) => (<>
         <Err>{a.error}</Err><Note>{a.done}</Note>
+        {panel === 'email' && <EmailForm documentId={id} onDone={() => setSent((n) => n + 1)} onClose={() => setPanel('')} />}
         {panel === 'eway' && <EwayPanel id={id} number={d.number} onClose={() => setPanel('')} />}
         {d.status === 'ISSUED' && <DocSheet kind={kind} d={d} />}
         {panel === 'delete' && <Confirm><p>Delete this draft? It has no number and nothing is posted.</p><Btn kind="danger" busy={a.busy} onClick={() => a.run(async () => { await o(`/${kind.api}/${id}`, { method: 'DELETE' }); nav(`/${kind.path}`); })}>Yes, delete</Btn></Confirm>}
@@ -223,6 +227,7 @@ export const DocView = ({ kind }) => {
           <p className="muted words">{amountInWords(d.total_minor)}</p>
         </Card>
         {kind.api === 'invoices' && <WhatsappLog documentId={id} refresh={sent} />}
+        {kind.api !== 'bills' && <EmailLog documentId={id} refresh={sent} />}
         {d.allocations.length > 0 && (
           <Card title="Payments and credits against this">
             <Table head={['What', '>Amount', 'State']}>{d.allocations.map((x, i) => (<tr key={i}><td>{x.source_type === 'PAYMENT' ? <Link to={`/payments/${x.source_id}`}>Payment</Link> : 'Credit note'}</td><td className="r"><Money v={x.amount_minor} /></td><td>{x.voided ? <Badge status="VOID" /> : 'Counted'}</td></tr>))}</Table>
