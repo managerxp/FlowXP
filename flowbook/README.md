@@ -46,3 +46,4 @@ Settings, WhatsApp. Two modes, plus off:
 - **Sales analysis** (Reports): month-by-month sales and purchases, top customers with what they still owe, best-selling items.
 - **Tax-inclusive prices:** tick "GST is in this price" on a line; the tax is carved out of what you typed, so the total is exactly that amount (migration 0010).
 - **Opening balances** (Settings > Opening balances, migration 0011): what customers owed you and you owed vendors when you started. Posted against an "Opening balances" account, payable like a normal document, shown on statements, and kept out of GST returns and sales analysis.
+- **Reverse charge** (tick it on a purchase bill, migration 0012): the vendor is owed the price only; the GST is credited as output tax and debited as input credit, so it nets to nothing in the books. GSTR-3B shows it in 3.1(d) and as credit. Not covered: self-invoices, payment vouchers, and rules on which supplies are eligible; your CA decides when to use it.

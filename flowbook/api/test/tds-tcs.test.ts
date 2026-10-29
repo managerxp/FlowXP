@@ -8,6 +8,7 @@ import { salesAnalysis } from '../src/analysis.ts';
 import { createParty, seedTaxRates } from '../src/masters.ts';
 import { openFinancialYear } from '../src/periods.ts';
 import { partyStatement } from '../src/statement.ts';
+import { gstr3b } from '../src/gstr.ts';
 import { trialBalance } from '../src/reports.ts';
 import { newOrg, setup } from './helpers.ts';
 
@@ -95,4 +96,17 @@ test('an opening balance is owed and payable but is not a sale', { skip }, async
   const a = await run(org, (c) => salesAnalysis(c, '2026-04-01', '2027-03-31'));
   assert.equal(a.customers.length + a.months.length, 0, 'opening balances are not sales or purchases');
   assert.equal((await run(org, (c) => partyStatement(c, cust, '2026-04-01', '2026-12-31'))).closing, 0n);
+});
+
+test('a reverse-charge bill owes the vendor the price only and the GST to the government, claimed back as credit', { skip }, async () => {
+  const { org, vend, cust } = await shop();
+  const d: DocIn = { kind: 'BILL', partyId: vend, date: '2026-06-10', supplierRef: 'V-1', reverseCharge: true, lines: [{ description: 'Transport service', quantity: '1', unitPrice: '10000', taxCode: 'GST18' }] };
+  const id = await run(org, async (c) => { const x = await saveDraft(c, org, null, d, 't'); await issueDocument(c, org, 'BILL', x, 't'); return x; });
+  const row = (await pool.query(`SELECT subtotal_minor, tax_minor, total_minor FROM documents WHERE id = $1`, [id])).rows[0];
+  assert.deepEqual([row.subtotal_minor, row.tax_minor, row.total_minor], [1_000_000n, 180_000n, 1_000_000n], 'the vendor is owed 10,000, not 11,800');
+  const bal = await balances(org);
+  assert.deepEqual([bal['Accounts payable'], bal['Input CGST'], bal['Output CGST'], bal['Input SGST'], bal['Output SGST']], [[0n, 1_000_000n], [90_000n, 0n], [0n, 90_000n], [90_000n, 0n], [0n, 90_000n]]);
+  const r = await run(org, (c) => gstr3b(c, org, '2026-06'));
+  assert.deepEqual([r.file.sup_details.isup_rev.txval, r.file.sup_details.isup_rev.camt, r.file.itc_elg.itc_avl[4]?.camt], [10000, 900, 900]);
+  await assert.rejects(run(org, (c) => saveDraft(c, org, null, { ...d, kind: 'INVOICE', partyId: cust }, 't')), /purchase bills only/);
 });

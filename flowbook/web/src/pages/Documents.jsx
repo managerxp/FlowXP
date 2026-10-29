@@ -53,14 +53,14 @@ export const DocForm = ({ kind }) => {
   const items = useLoad(() => o('/items'), [org.id]);
   const rates = useLoad(() => o('/tax-rates'), [org.id]);
   const existing = useLoad(() => (id ? o(`/${kind.api}/${id}`) : Promise.resolve(null)), [org.id, id]);
-  const [f, setF] = useState({ partyId: '', date: today(), dueDate: '', placeOfSupply: '', supplierRef: '', relatedDocumentId: '', memo: '', roundOff: true, tcsRate: '', tcsSection: '', lines: [blankLine()] });
+  const [f, setF] = useState({ partyId: '', date: today(), dueDate: '', placeOfSupply: '', supplierRef: '', relatedDocumentId: '', memo: '', roundOff: true, tcsRate: '', tcsSection: '', reverseCharge: false, lines: [blankLine()] });
   const invoices = useLoad(() => (kind.api === 'credit-notes' && f.partyId ? o(`/invoices?status=ISSUED&partyId=${f.partyId}&limit=100`) : Promise.resolve(null)), [org.id, f.partyId, kind.api]);
 
   useEffect(() => {
     const d = existing.data;
     if (!d) return;
     setF({ partyId: String(d.party_id), date: d.issue_date || today(), dueDate: d.due_date || '', placeOfSupply: d.place_of_supply || '', supplierRef: d.supplier_ref || '', relatedDocumentId: d.related_document_id ? String(d.related_document_id) : '',
-      memo: d.memo || '', tcsRate: d.tcs_rate_bp ? String(d.tcs_rate_bp / 100) : '', tcsSection: d.tcs_section || '', roundOff: Number(d.round_off_minor) !== 0 || d.status === 'DRAFT', lines: d.lines.map((l) => ({ itemId: l.item_id ? String(l.item_id) : '', description: l.description || '', hsnSac: l.hsn_sac || '', unit: l.unit || '', quantity: l.quantity, unitPrice: l.unit_price_minor, discount: Number(l.discount_minor) ? l.discount_minor : '', taxCode: l.tax_code || '', inclusive: Boolean(l.price_includes_tax) })) });
+      memo: d.memo || '', reverseCharge: Boolean(d.reverse_charge), tcsRate: d.tcs_rate_bp ? String(d.tcs_rate_bp / 100) : '', tcsSection: d.tcs_section || '', roundOff: Number(d.round_off_minor) !== 0 || d.status === 'DRAFT', lines: d.lines.map((l) => ({ itemId: l.item_id ? String(l.item_id) : '', description: l.description || '', hsnSac: l.hsn_sac || '', unit: l.unit || '', quantity: l.quantity, unitPrice: l.unit_price_minor, discount: Number(l.discount_minor) ? l.discount_minor : '', taxCode: l.tax_code || '', inclusive: Boolean(l.price_includes_tax) })) });
   }, [existing.data]);
   useEffect(() => { if (!id && search.get('partyId')) setF((x) => ({ ...x, partyId: search.get('partyId') })); }, [id, search]);
 
@@ -77,6 +77,7 @@ export const DocForm = ({ kind }) => {
     a.run(async () => {
       const body = { partyId: f.partyId, date: f.date, roundOff: f.roundOff, memo: f.memo || undefined, dueDate: f.dueDate || undefined, placeOfSupply: f.placeOfSupply || undefined,
         supplierRef: kind.api === 'bills' ? f.supplierRef || undefined : undefined, relatedDocumentId: f.relatedDocumentId || undefined,
+        ...(kind.api === 'bills' && f.reverseCharge && { reverseCharge: true }),
         ...(kind.api === 'invoices' && Number(f.tcsRate) > 0 && { tcsRateBp: Math.round(Number(f.tcsRate) * 100), ...(f.tcsSection && { tcsSection: f.tcsSection }) }),
         lines: f.lines.map((l) => ({ itemId: l.itemId || undefined, description: l.description || undefined, hsnSac: l.hsnSac || undefined, unit: l.unit || undefined, quantity: String(l.quantity), unitPrice: String(l.unitPrice || '0'), discount: l.discount ? String(l.discount) : undefined, taxCode: l.taxCode || undefined, ...(l.inclusive && { inclusive: true }) })) };
       const out = id ? await o(`/${kind.api}/${id}`, { method: 'PUT', body }) : await o(`/${kind.api}`, { method: 'POST', body });
@@ -132,6 +133,7 @@ export const DocForm = ({ kind }) => {
             <Field label="TCS to collect (%)" hint="Only if the law requires you to collect tax at source on this sale; charged on value plus GST"><input inputMode="decimal" value={f.tcsRate} onChange={set('tcsRate')} /></Field>
             {Number(f.tcsRate) > 0 && <Field label="TCS section"><select value={f.tcsSection} onChange={set('tcsSection')}><option value="">Not stated</option>{TCS_SECTIONS.map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
           </div>}
+          {kind.api === 'bills' && <p className="check"><input id="rcm" type="checkbox" checked={f.reverseCharge} onChange={set('reverseCharge')} /><label htmlFor="rcm">Reverse charge: the vendor charges no GST, I pay it to the government and claim it back</label></p>}
           <p className="check"><input id="ro" type="checkbox" checked={f.roundOff} onChange={set('roundOff')} /><label htmlFor="ro">Round the total to the nearest rupee</label></p>
         </Card>
         <div className="actions"><Btn kind="primary" busy={a.busy}>Save draft</Btn><Btn type="button" onClick={() => nav(-1)}>Cancel</Btn></div>
@@ -191,6 +193,7 @@ export const DocView = ({ kind }) => {
             {d.due_date && <><dt>Due</dt><dd>{showDate(d.due_date)}</dd></>}
             {d.supplier_ref && <><dt>Vendor's number</dt><dd>{d.supplier_ref}</dd></>}
             {d.place_of_supply && <><dt>Place of supply</dt><dd>{d.place_of_supply} · {STATES[d.place_of_supply] || ''} ({d.inter_state ? 'other state: IGST' : 'same state: CGST + SGST'})</dd></>}
+            {d.reverse_charge && <><dt>Reverse charge</dt><dd>Yes: the GST below is paid by you, not added to what the vendor is owed</dd></>}
             {d.memo && <><dt>Note</dt><dd>{d.memo}</dd></>}
           </dl>
         </Card>

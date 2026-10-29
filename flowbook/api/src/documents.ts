@@ -13,7 +13,7 @@ export type DocKind = 'INVOICE' | 'BILL' | 'CREDIT_NOTE';
 export type LineIn = { itemId?: bigint; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; unit?: string; inclusive?: boolean };
 export type DocIn = {
   kind: DocKind; partyId: bigint; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string;
-  relatedDocumentId?: bigint; memo?: string; roundOff?: boolean; tcsRateBp?: number; tcsSection?: string; lines: LineIn[];
+  relatedDocumentId?: bigint; memo?: string; roundOff?: boolean; reverseCharge?: boolean; tcsRateBp?: number; tcsSection?: string; lines: LineIn[];
 };
 type Override = { reason: string };
 
@@ -101,17 +101,18 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
   const interState = Boolean(org?.state_code && place && org.state_code !== place);
   const subtotal = lines.reduce((a, l) => a + l.taxable, 0n);
   const tax = lines.reduce((a, l) => a + l.tax, 0n);
+  if (d.reverseCharge && d.kind !== 'BILL') throw new LedgerError('reverse_charge_unsupported', 'reverse charge applies to purchase bills only');
   if (d.tcsRateBp && d.kind !== 'INVOICE') throw new LedgerError('tcs_unsupported', 'TCS is collected on sales invoices only');
   const tcsRate = d.tcsRateBp ?? 0;
   if (!Number.isInteger(tcsRate) || tcsRate < 0 || tcsRate > 2000) throw new LedgerError('bad_tcs_rate', 'the TCS rate must be between 0 and 20 percent');
   const tcs = roundDiv((subtotal + tax) * BigInt(tcsRate), 10_000n);
   const roundOff = d.roundOff ? roundDiv(subtotal + tax + tcs, 100n) * 100n - (subtotal + tax + tcs) : 0n;
   const due = d.kind === 'CREDIT_NOTE' ? null : d.dueDate ?? addDays(d.date, party.credit_days);
-  const fields = [d.partyId, d.date, due, place ?? null, interState, d.supplierRef ?? null, d.relatedDocumentId ?? null, d.memo ?? null, Boolean(d.roundOff), subtotal, tax, roundOff, subtotal + tax + tcs + roundOff, tcsRate, tcs, tcsRate ? d.tcsSection ?? null : null];
+  const fields = [d.partyId, d.date, due, place ?? null, interState, d.supplierRef ?? null, d.relatedDocumentId ?? null, d.memo ?? null, Boolean(d.roundOff), subtotal, tax, roundOff, subtotal + (d.reverseCharge ? 0n : tax) + tcs + roundOff, tcsRate, tcs, tcsRate ? d.tcsSection ?? null : null, Boolean(d.reverseCharge)];
   if (id === null) {
     id = (await c.query(
-      `INSERT INTO documents (organization_id, kind, created_by, party_id, issue_date, due_date, place_of_supply, inter_state, supplier_ref, related_document_id, memo, round_off_on, subtotal_minor, tax_minor, round_off_minor, total_minor, tcs_rate_bp, tcs_minor, tcs_section)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING id`, [orgId, d.kind, actor, ...fields])).rows[0].id as bigint;
+      `INSERT INTO documents (organization_id, kind, created_by, party_id, issue_date, due_date, place_of_supply, inter_state, supplier_ref, related_document_id, memo, round_off_on, subtotal_minor, tax_minor, round_off_minor, total_minor, tcs_rate_bp, tcs_minor, tcs_section, reverse_charge)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING id`, [orgId, d.kind, actor, ...fields])).rows[0].id as bigint;
     await audit(c, orgId, { actor, action: 'document.drafted', entityType: 'document', entityId: id, detail: { kind: d.kind } });
   } else {
     const cur = (await c.query(`SELECT kind, status FROM documents WHERE id = $1 FOR UPDATE`, [id])).rows[0];
@@ -120,7 +121,7 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
     if (cur.kind !== d.kind) throw new LedgerError('kind_mismatch', 'a document cannot change its kind');
     await c.query(
       `UPDATE documents SET party_id = $2, issue_date = $3, due_date = $4, place_of_supply = $5, inter_state = $6, supplier_ref = $7, related_document_id = $8, memo = $9, round_off_on = $10,
-              subtotal_minor = $11, tax_minor = $12, round_off_minor = $13, total_minor = $14, tcs_rate_bp = $15, tcs_minor = $16, tcs_section = $17 WHERE id = $1`, [id, ...fields]);
+              subtotal_minor = $11, tax_minor = $12, round_off_minor = $13, total_minor = $14, tcs_rate_bp = $15, tcs_minor = $16, tcs_section = $17, reverse_charge = $18 WHERE id = $1`, [id, ...fields]);
     await c.query(`DELETE FROM document_lines WHERE document_id = $1`, [id]);
   }
   let no = 0;
@@ -135,7 +136,7 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
 };
 
 const DOC_COLS = `d.id, d.kind, d.number, d.supplier_ref, d.party_id, p.name AS party_name, d.status, d.issue_date::text AS issue_date, d.due_date::text AS due_date,
-  d.place_of_supply, d.inter_state, d.subtotal_minor, d.tax_minor, d.round_off_minor, d.tcs_rate_bp, d.tcs_minor, d.tcs_section, d.total_minor, d.balance_minor, d.related_document_id, d.journal_entry_id, d.memo`;
+  d.place_of_supply, d.inter_state, d.subtotal_minor, d.tax_minor, d.round_off_minor, d.tcs_rate_bp, d.tcs_minor, d.tcs_section, d.reverse_charge, d.total_minor, d.balance_minor, d.related_document_id, d.journal_entry_id, d.memo`;
 
 export const listDocuments = async (c: Db, kind: DocKind, q: { status?: string; partyId?: bigint; before?: bigint; limit: number }) => (await c.query(
   `SELECT ${DOC_COLS} FROM documents d JOIN parties p ON p.id = d.party_id
@@ -170,7 +171,7 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
   const milli = (q: bigint) => `${q / 1000n}.${String(q % 1000n).padStart(3, '0')}`;
   await saveDraft(c, orgId, id, {
     kind, partyId: doc.party_id, date: doc.issue_d, dueDate: doc.due_d ?? undefined,
-    placeOfSupply: doc.place_of_supply ?? undefined, supplierRef: doc.supplier_ref ?? undefined, relatedDocumentId: doc.related_document_id ?? undefined, memo: doc.memo ?? undefined, roundOff: doc.round_off_on, tcsRateBp: doc.tcs_rate_bp, tcsSection: doc.tcs_section ?? undefined,
+    placeOfSupply: doc.place_of_supply ?? undefined, supplierRef: doc.supplier_ref ?? undefined, relatedDocumentId: doc.related_document_id ?? undefined, memo: doc.memo ?? undefined, roundOff: doc.round_off_on, tcsRateBp: doc.tcs_rate_bp, tcsSection: doc.tcs_section ?? undefined, reverseCharge: doc.reverse_charge,
     lines: stored.map((l) => ({ itemId: l.item_id ?? undefined, description: l.description, hsnSac: l.hsn_sac ?? undefined, quantity: milli(l.quantity_milli), unitPrice: paiseToString(l.unit_price_minor), discount: paiseToString(l.discount_minor), taxCode: l.tax_code, unit: l.unit ?? undefined, inclusive: l.price_includes_tax }))
   }, actor);
   const fresh = (await c.query(`SELECT *, issue_date::text AS d FROM documents WHERE id = $1`, [id])).rows[0];
@@ -185,7 +186,7 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
   const taxed = lines.map((l) => ({ taxable: l.taxable_minor as bigint, rateBp: l.tax_rate_bp as number }));
   const common = { date: fresh.d as string, partyId: fresh.party_id as bigint, lines: taxed, interState: fresh.inter_state as boolean };
   const journal = kind === 'INVOICE' ? saleJournal({ ...common, invoiceId: number, roundOff: fresh.round_off_minor as bigint, tcs: fresh.tcs_minor as bigint })
-    : kind === 'BILL' ? supplierBillJournal({ ...common, billId: number })
+    : kind === 'BILL' ? supplierBillJournal({ ...common, billId: number, reverseCharge: fresh.reverse_charge as boolean })
     : creditNoteJournal({ ...common, noteId: number });
   const posted = await post(c, orgId, { ...journal, actor, override });
   await c.query(`UPDATE documents SET status = 'ISSUED', number = $2, journal_entry_id = $3, balance_minor = total_minor WHERE id = $1`, [id, number, posted.entryId]);
