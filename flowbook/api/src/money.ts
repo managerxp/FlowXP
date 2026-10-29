@@ -47,3 +47,10 @@ export const formatINR = (p: Paise): string => {
   const grouped = rest ? `${rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',')},${last3}` : last3;
   return `${neg ? '-' : ''}${grouped}.${paise}`;
 };
+
+/** 118050n to "1180.50": the plain decimal the API speaks (no grouping, no float). */
+export const paiseToString = (p: Paise): string => {
+  const neg = p < 0n;
+  const abs = neg ? -p : p;
+  return `${neg ? '-' : ''}${abs / 100n}.${(abs % 100n).toString().padStart(2, '0')}`;
+};

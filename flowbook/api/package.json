@@ -4,11 +4,21 @@
   "private": true,
   "type": "module",
   "description": "FlowBook accounting engine: ledger, periods, statements (Phase 1, milestone 1)",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
+    "start": "node src/server.ts",
     "test": "node --test test/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": { "pg": "^8.12.0" },
-  "devDependencies": { "@types/node": "^24.0.0", "@types/pg": "^8.11.0", "typescript": "~5.9.0" }
+  "dependencies": {
+    "fastify": "^5.12.7",
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.11.0",
+    "typescript": "~5.9.0"
+  }
 }

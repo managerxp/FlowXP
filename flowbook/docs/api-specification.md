@@ -2,6 +2,9 @@
 
 Base: `https://api.flowbook.example/v1` (domain not decided). OpenAPI 3.1 will be generated from the NestJS code and published; this file fixes the conventions. Design is informed by what Zoho publishes for its API (organization scoping, regional domains, per-plan quotas, webhook management) without copying it.
 
+## 0. What is built (2026-10-29, `api/src/app.ts`)
+Differences from the draft below: the organization is in the path (`/v1/orgs/{orgId}/...`), not a header; a Bearer token is a session token (D-16), OAuth and API keys are not built; amounts are decimal strings with two places ("1180.50"); ids are strings. Built: auth (register, login, logout), `GET /v1/me`, `POST /v1/organizations`, members (list, add), accounts (list, create), journals (post with `Idempotency-Key`, list, get, reverse), periods (list, lock), reports (trial balance, profit and loss, balance sheet, party balances, reconcile), audit. Not built: parties, items, invoices, bills, payments, credit notes, banking, tax, webhooks, rate limits beyond sign-in.
+
 ## 1. Conventions
 - JSON, UTF-8. Amounts are integers in minor units (paise) plus `currency`; quantities and rates are decimal strings. Dates ISO 8601; business dates `YYYY-MM-DD`.
 - Auth: `Authorization: Bearer <token>`. Tokens are OAuth 2.0 access tokens (authorization code + PKCE, 1 h) or personal API keys (`fbk_...`, hashed at rest, scoped, revocable). Refresh tokens rotate.

@@ -48,3 +48,9 @@ Start on a VPS pair or managed Postgres in an Indian region like FlowXP; move to
 
 ## D-14 Auth (Proposed)
 Own auth with Argon2id, TOTP MFA, session cookies for web and short-lived JWT plus refresh for API/phone; SSO for FlowXP users via OAuth 2.0 authorization-code flow so a FlowXP owner is not asked to register twice.
+
+## D-15 Fastify, not NestJS, for the HTTP layer (Accepted 2026-10-29, supersedes the framework line in D-02)
+Node 24 runs TypeScript directly (type stripping), which keeps the engine free of a build step. NestJS relies on decorators and parameter properties, which type stripping does not support, so it would bring back a compiler. Fastify is plain functions, validates request bodies with JSON Schema, and is tested with `app.inject` without a network. Module boundaries (D-03) are kept by folders and the import rules, not by a DI container. Revisit if the team wants NestJS conventions badly enough to accept a build step.
+
+## D-16 Sessions, not JWTs, for sign-in (Accepted 2026-10-29)
+A session is a random 32-byte token whose SHA-256 is stored; it can be revoked at once and expires after 30 days. It travels as an HttpOnly SameSite=Lax cookie for the web app (changes also need an allowed Origin: CSRF) or as a Bearer token for API clients. Passwords use Argon2id from Node's own crypto. MFA, password reset and e-mail verification are not built yet. Replaces the JWT plus refresh idea in D-14.
