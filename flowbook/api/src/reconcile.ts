@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
 import type { Db } from './db.ts';
 import { audit } from './audit.ts';
+import { BASE, costOfForeign, holding, rateMicro, rateOn } from './fx.ts';
 import { LedgerError, post } from './ledger.ts';
+import { roundDiv } from './money.ts';
 import { toPaise } from './money.ts';
 
 /* Bank reconciliation. Statement lines are imported for one ledger account and matched one-to-one with journal lines on it. Entries that were
@@ -12,9 +14,9 @@ export type StatementRow = { date: string; description?: string; reference?: str
 const SIGNED = /^-?\d{1,12}(\.\d{1,2})?$/;
 
 const bankAccount = async (c: Db, orgId: bigint, accountId: bigint) => {
-  const a = (await c.query(`SELECT id, code, name, type FROM accounts WHERE organization_id = $1 AND id = $2`, [orgId, accountId])).rows[0];
+  const a = (await c.query(`SELECT id, code, name, type, currency FROM accounts WHERE organization_id = $1 AND id = $2`, [orgId, accountId])).rows[0];
   if (!a || a.type !== 'ASSET') throw new LedgerError('bad_account', 'choose a bank, UPI or card account (an asset account)');
-  return a as { id: bigint; code: string; name: string };
+  return a as { id: bigint; code: string; name: string; currency: string };
 };
 
 export const importStatement = async (c: Db, orgId: bigint, accountId: bigint, rows: StatementRow[], actor: string) => {
@@ -42,16 +44,17 @@ export const importStatement = async (c: Db, orgId: bigint, accountId: bigint, r
 
 /** Journal lines on the account that are not yet matched, signed from the account's side. */
 const BOOK_LINES = `
-  SELECT l.id, e.posting_date::text AS date, e.entry_no, COALESCE(NULLIF(l.memo, ''), e.memo, '') AS memo, CASE l.side WHEN 'D' THEN l.base_amount_minor ELSE -l.base_amount_minor END AS amount_minor
-    FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id
-   WHERE l.organization_id = $1 AND l.account_id = $2 AND e.status = 'POSTED' AND e.reverses_entry_id IS NULL
+  SELECT l.id, e.posting_date::text AS date, e.entry_no, COALESCE(NULLIF(l.memo, ''), e.memo, '') AS memo, CASE l.side WHEN 'D' THEN COALESCE(l.foreign_amount_minor, l.base_amount_minor) ELSE -COALESCE(l.foreign_amount_minor, l.base_amount_minor) END AS amount_minor
+    FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id JOIN accounts ac ON ac.id = l.account_id
+   WHERE l.organization_id = $1 AND l.account_id = $2 AND e.status = 'POSTED' AND e.reverses_entry_id IS NULL AND (ac.currency = 'INR' OR l.foreign_amount_minor IS NOT NULL)
      AND NOT EXISTS (SELECT 1 FROM journal_entries r WHERE r.reverses_entry_id = e.id)`;
 
 export const bankAccounts = async (c: Db, orgId: bigint) => (await c.query(
-  `SELECT a.id, a.code, a.name,
-          COALESCE((SELECT SUM(CASE l.side WHEN 'D' THEN l.base_amount_minor ELSE -l.base_amount_minor END) FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'POSTED' WHERE l.account_id = a.id), 0)::bigint AS book_balance_minor,
+  `SELECT a.id, a.code, a.name, a.currency,
+          COALESCE((SELECT SUM(CASE l.side WHEN 'D' THEN COALESCE(l.foreign_amount_minor, l.base_amount_minor) ELSE -COALESCE(l.foreign_amount_minor, l.base_amount_minor) END) FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'POSTED' WHERE l.account_id = a.id AND (a.currency = 'INR' OR l.foreign_amount_minor IS NOT NULL)), 0)::bigint AS book_balance_minor,
+          COALESCE((SELECT SUM(CASE l.side WHEN 'D' THEN l.base_amount_minor ELSE -l.base_amount_minor END) FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'POSTED' WHERE l.account_id = a.id), 0)::bigint AS rupee_value_minor,
           (SELECT COUNT(*) FROM bank_statement_lines s WHERE s.account_id = a.id AND s.status = 'OPEN')::int AS open_statement_lines
-     FROM accounts a WHERE a.organization_id = $1 AND a.type = 'ASSET' AND a.active AND (a.system_key IN ('BANK', 'UPI_CLEARING', 'CARD_CLEARING') OR EXISTS (SELECT 1 FROM bank_statement_lines s WHERE s.account_id = a.id))
+     FROM accounts a WHERE a.organization_id = $1 AND a.type = 'ASSET' AND a.active AND (a.is_bank OR a.system_key IN ('BANK', 'UPI_CLEARING', 'CARD_CLEARING') OR EXISTS (SELECT 1 FROM bank_statement_lines s WHERE s.account_id = a.id))
     ORDER BY a.code`, [orgId])).rows;
 
 const DAYS = 5;
@@ -75,8 +78,8 @@ export const workbench = async (c: Db, orgId: bigint, accountId: bigint, asOf: s
     return { ...s, suggestion_id: best?.id ?? null };
   });
   const book_balance = (await c.query(
-    `SELECT COALESCE(SUM(CASE l.side WHEN 'D' THEN l.base_amount_minor ELSE -l.base_amount_minor END), 0)::bigint AS v
-       FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'POSTED' WHERE l.organization_id = $1 AND l.account_id = $2 AND e.posting_date <= $3::date`, [orgId, accountId, asOf])).rows[0].v as bigint;
+    `SELECT COALESCE(SUM(CASE l.side WHEN 'D' THEN COALESCE(l.foreign_amount_minor, l.base_amount_minor) ELSE -COALESCE(l.foreign_amount_minor, l.base_amount_minor) END), 0)::bigint AS v
+       FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'POSTED' WHERE l.organization_id = $1 AND l.account_id = $2 AND e.posting_date <= $3::date AND ($4 OR l.foreign_amount_minor IS NOT NULL)`, [orgId, accountId, asOf, account.currency === 'INR'])).rows[0].v as bigint;
   const sum = (xs: { amount_minor: bigint }[]) => xs.reduce((a, x) => a + x.amount_minor, 0n);
   const open = lines.filter((l) => l.status === 'OPEN');
   return {
@@ -127,9 +130,21 @@ export const addEntry = async (c: Db, orgId: bigint, id: bigint, o: { counterAcc
   const full = (await c.query(`SELECT txn_date::text AS d, description FROM bank_statement_lines WHERE id = $1`, [id])).rows[0];
   const amount = s.amount_minor < 0n ? -s.amount_minor : s.amount_minor;
   const deposit = s.amount_minor > 0n;
+  // a foreign account's statement is in its own currency: a deposit is valued at the day's rate, a withdrawal at the average the account holds
+  const acct = (await c.query(`SELECT currency FROM accounts WHERE id = $1`, [s.account_id])).rows[0];
+  if ((await c.query(`SELECT 1 FROM accounts WHERE id = $1 AND currency <> 'INR'`, [o.counterAccountId])).rowCount) throw new LedgerError('bad_account', 'the other side must be a rupee account');
+  let rupees = amount; let foreign: bigint | undefined;
+  if (acct.currency !== BASE) {
+    foreign = amount;
+    if (deposit) {
+      const rate = await rateOn(c, acct.currency as string, full.d as string);
+      if (!rate) throw new LedgerError('rate_required', `save a ${acct.currency} rate on or before ${full.d} first`);
+      rupees = roundDiv(amount * rateMicro(rate), 1_000_000n);
+    } else rupees = costOfForeign(await holding(c, s.account_id, full.d as string), amount);
+  }
   const posted = await post(c, orgId, {
     date: full.d as string, sourceType: 'bank_line', sourceId: String(id), kind: 'BANK', memo: o.memo?.trim() || (full.description as string) || 'Bank statement line', actor, override,
-    lines: [{ account: s.account_id, side: deposit ? 'D' : 'C', amount }, { account: o.counterAccountId, side: deposit ? 'C' : 'D', amount }]
+    lines: [{ account: s.account_id, side: deposit ? 'D' : 'C', amount: rupees, foreignAmount: foreign }, { account: o.counterAccountId, side: deposit ? 'C' : 'D', amount: rupees }]
   });
   const jl = (await c.query(`SELECT id FROM journal_lines WHERE entry_id = $1 AND account_id = $2`, [posted.entryId, s.account_id])).rows[0].id as bigint;
   await c.query(`UPDATE bank_statement_lines SET status = 'MATCHED', journal_line_id = $2, matched_at = now() WHERE id = $1`, [id, jl]);

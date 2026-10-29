@@ -2,6 +2,7 @@ import { audit } from './audit.ts';
 import type { Db } from './db.ts';
 import { LedgerError, post, reverse } from './ledger.ts';
 import type { LineInput } from './ledger.ts';
+import { roundDiv } from './money.ts';
 
 /* Foreign currency. Books are in rupees; a document written in another currency is converted at its rate and keeps the foreign amount beside it.
    Rates are rupees per one unit, held to six places and handled as whole micro-rupees so there is no floating point. */
@@ -41,6 +42,23 @@ export const saveRate = async (c: Db, orgId: bigint, o: { currency: string; date
 export const listRates = async (c: Db) => (await c.query(
   `SELECT currency, rate_date::text AS date, rate::text AS rate FROM exchange_rates ORDER BY rate_date DESC, currency LIMIT 200`)).rows;
 
+/** What a foreign-currency account holds: the amount in its own currency and the rupee value it is carried at, as of a date. Revaluation entries (and their reversals) are left out, so this is always the booked value. */
+export const holding = async (c: Db, accountId: bigint, asOf?: string): Promise<{ foreign: bigint; base: bigint }> => {
+  const r = (await c.query(
+    `SELECT COALESCE(SUM(CASE l.side WHEN 'D' THEN l.foreign_amount_minor ELSE -l.foreign_amount_minor END), 0)::bigint AS foreign,
+            COALESCE(SUM(CASE l.side WHEN 'D' THEN l.base_amount_minor ELSE -l.base_amount_minor END) FILTER (WHERE l.foreign_amount_minor IS NOT NULL), 0)::bigint AS base
+       FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'POSTED'
+      WHERE l.account_id = $1 AND ($2::date IS NULL OR e.posting_date <= $2::date)
+        AND e.source_type <> 'fx_reval' AND NOT EXISTS (SELECT 1 FROM journal_entries o WHERE o.id = e.reverses_entry_id AND o.source_type = 'fx_reval')`, [accountId, asOf ?? null])).rows[0];
+  return { foreign: r.foreign as bigint, base: r.base as bigint };
+};
+
+/** The rupee value of spending `foreign` from an account's holding: the average it was bought at. */
+export const costOfForeign = (h: { foreign: bigint; base: bigint }, foreign: bigint): bigint => {
+  if (foreign > h.foreign) throw new LedgerError('insufficient_foreign', 'the account does not hold that much');
+  return foreign === h.foreign ? h.base : roundDiv(h.base * foreign, h.foreign);
+};
+
 const dayAfter = (d: string): string => new Date(Date.parse(`${d}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 
 /**
@@ -68,10 +86,22 @@ export const revalue = async (c: Db, orgId: bigint, asOf: string, actor: string,
     lines.push({ account: d.kind === 'INVOICE' ? 'AR' : 'AP', side: (d.kind === 'INVOICE') === up ? 'D' : 'C', amount, partyId: d.party_id as bigint });
     net += gainSide ? amount : -amount;
   }
-  if (!touched) throw new LedgerError('nothing_to_revalue', 'no open foreign invoice or bill needs restating at that date');
+  // foreign-currency bank accounts: what they hold, at the day's rate, against the rupees they are carried at
+  for (const acct of (await c.query(`SELECT id, currency FROM accounts WHERE currency <> 'INR' AND active ORDER BY id`)).rows) {
+    const h = await holding(c, acct.id as bigint, asOf);
+    if (h.foreign <= 0n) continue;
+    const cur = acct.currency as string;
+    if (!rates.has(cur)) { const r = await rateOn(c, cur, asOf); if (!r) throw new LedgerError('no_rate', `save a ${cur} rate on or before ${asOf} first`); rates.set(cur, rateMicro(r)); }
+    const diff = (h.foreign * (rates.get(cur) as bigint) + 500_000n) / 1_000_000n - h.base;
+    if (diff === 0n) continue;
+    touched += 1;
+    lines.push({ account: acct.id as bigint, side: diff > 0n ? 'D' : 'C', amount: diff > 0n ? diff : -diff });
+    net += diff;   // a rise in the rupee value of what we hold is a gain
+  }
+  if (!touched) throw new LedgerError('nothing_to_revalue', 'no open foreign invoice, bill or account needs restating at that date');
   // gain is a credit to the exchange account; a net loss a debit
   lines.push({ account: 'EXCHANGE_GAIN_LOSS', side: net >= 0n ? 'C' : 'D', amount: net >= 0n ? net : -net });
-  const posted = await post(c, orgId, { date: asOf, sourceType: 'fx_reval', sourceId: asOf, kind: 'FX', memo: `Unrealised exchange difference on open foreign balances at ${asOf}`, actor, override, lines: lines.filter((l) => l.amount !== 0n) });
+  const posted = await post(c, orgId, { date: asOf, sourceType: 'fx_reval', sourceId: asOf, kind: 'FX', memo: `Unrealised exchange difference on open foreign balances at ${asOf}`, actor, override, restate: true, lines: lines.filter((l) => l.amount !== 0n) });
   let reversalId: bigint | null = null;
   try {
     await c.query('SAVEPOINT fx_rev');

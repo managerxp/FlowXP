@@ -39,7 +39,8 @@ export const PaymentForm = () => {
   const [key] = useState(uuid);   // one key per form, so a double click or a retry cannot record the payment twice
   const [f, setF] = useState({ direction: q.get('direction') === 'OUT' ? 'OUT' : 'IN', partyId: q.get('partyId') || '', date: today(), mode: 'BANK', amount: '', reference: '', tds: '', tdsSection: '' });
   const [alloc, setAlloc] = useState({});
-  const [fxd, setFxd] = useState({ docId: '', foreign: '' });   // settling one foreign-currency document
+  const [fxd, setFxd] = useState({ docId: '', foreign: '', accountId: '', rate: '' });   // settling one foreign-currency document, optionally through a foreign-currency bank account
+  const banks = useLoad(() => o('/bank/accounts'), [org.id]);
   const parties = useLoad(() => o('/parties?limit=500'), [org.id]);
   const docKind = f.direction === 'IN' ? 'invoices' : 'bills';
   const docs = useLoad(() => (f.partyId ? o(`/${docKind}?status=ISSUED&partyId=${f.partyId}&limit=200`) : Promise.resolve(null)), [org.id, f.partyId, docKind]);
@@ -47,6 +48,8 @@ export const PaymentForm = () => {
   const openDocs = useMemo(() => allOpen.filter((d) => !d.currency || d.currency === 'INR'), [allOpen]);
   const foreignDocs = useMemo(() => allOpen.filter((d) => d.currency && d.currency !== 'INR'), [allOpen]);
   const fxDoc = foreignDocs.find((d) => String(d.id) === fxd.docId);
+  const fxBanks = (banks.data || []).filter((b) => fxDoc && b.currency === fxDoc.currency);
+  const viaBank = Boolean(fxDoc && fxBanks.some((b) => String(b.id) === fxd.accountId));   // the rupees follow from the rate or the account's average, so none are typed
   const fxShare = fxDoc && Number(fxd.foreign) > 0 ? (Number(fxd.foreign) >= Number(fxDoc.foreign_balance_minor) ? Number(fxDoc.balance_minor) : Math.round(Number(fxDoc.balance_minor) * 100 * Number(fxd.foreign) / Number(fxDoc.foreign_balance_minor)) / 100) : 0;
   const fxDiff = fxShare ? (f.direction === 'IN' ? Number(f.amount || 0) - fxShare : fxShare - Number(f.amount || 0)) : 0;
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
@@ -71,7 +74,7 @@ export const PaymentForm = () => {
     e.preventDefault();
     a.run(async () => {
       if (fxd.docId) {
-        const out = await o('/payments', { method: 'POST', headers: { 'idempotency-key': key }, body: { direction: f.direction, partyId: f.partyId, date: f.date, mode: f.mode, amount: f.amount, reference: f.reference || undefined, fx: { documentId: fxd.docId, foreignAmount: String(fxd.foreign) } } });
+        const out = await o('/payments', { method: 'POST', headers: { 'idempotency-key': key }, body: { direction: f.direction, partyId: f.partyId, date: f.date, mode: f.mode, reference: f.reference || undefined, ...(viaBank ? { accountId: fxd.accountId, ...(f.direction === 'IN' && fxd.rate && { rate: fxd.rate }) } : { amount: f.amount }), fx: { documentId: fxd.docId, foreignAmount: String(fxd.foreign) } } });
         nav(`/payments/${out.id}`);
         return;
       }
@@ -91,7 +94,7 @@ export const PaymentForm = () => {
           <Field label={f.direction === 'IN' ? 'Customer' : 'Vendor'}><select value={f.partyId} onChange={(e) => { setF({ ...f, partyId: e.target.value }); setAlloc({}); }} required><option value="">Choose…</option>{list.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
           <Field label="Date"><input type="date" value={f.date} onChange={set('date')} required /></Field>
           <Field label="How"><select value={f.mode} onChange={set('mode')}><option value="BANK">Bank transfer</option><option value="UPI">UPI</option><option value="CASH">Cash</option><option value="CARD">Card</option></select></Field>
-          <Field label={fxd.docId ? 'Rupees that actually moved (₹)' : 'Amount (₹)'}><input inputMode="decimal" value={f.amount} onChange={set('amount')} required /></Field>
+          {!viaBank && <Field label={fxd.docId ? 'Rupees that actually moved (₹)' : 'Amount (₹)'}><input inputMode="decimal" value={f.amount} onChange={set('amount')} required /></Field>}
           <Field label={f.direction === 'IN' ? 'TDS the customer deducted (₹)' : 'TDS you deducted (₹)'} hint="Optional. The amount above is what actually moved; this is tax held back"><input inputMode="decimal" value={f.tds} onChange={set('tds')} /></Field>
           {Number(f.tds) > 0 && !fxd.docId && <Field label="TDS section"><select value={f.tdsSection} onChange={set('tdsSection')}><option value="">Not stated</option>{TDS_SECTIONS.map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
           <Field label="Reference" hint="Cheque, UTR or note (optional)"><input value={f.reference} onChange={set('reference')} maxLength={80} /></Field>
@@ -100,11 +103,14 @@ export const PaymentForm = () => {
         {f.partyId && foreignDocs.length > 0 && (
           <Card title="Or settle a foreign-currency document">
             <div className="form">
-              <Field label="Document"><select value={fxd.docId} onChange={(e) => { const d = foreignDocs.find((x) => String(x.id) === e.target.value); setFxd({ docId: e.target.value, foreign: d ? d.foreign_balance_minor : '' }); setAlloc({}); }}>
+              <Field label="Document"><select value={fxd.docId} onChange={(e) => { const d = foreignDocs.find((x) => String(x.id) === e.target.value); setFxd({ docId: e.target.value, foreign: d ? d.foreign_balance_minor : '', accountId: '', rate: '' }); setAlloc({}); }}>
                 <option value="">None, use the list below</option>{foreignDocs.map((d) => <option key={d.id} value={d.id}>{d.number} · {d.currency} {inr(d.foreign_balance_minor)} open</option>)}</select></Field>
+              {fxDoc && fxBanks.length > 0 && <Field label={f.direction === 'IN' ? 'Received into' : 'Paid from'}><select value={fxd.accountId} onChange={(e) => setFxd({ ...fxd, accountId: e.target.value })}><option value="">A rupee account (type the rupees)</option>{fxBanks.map((b) => <option key={b.id} value={b.id}>{b.name} · {fxDoc.currency} {inr(b.book_balance_minor)}</option>)}</select></Field>}
+              {viaBank && f.direction === 'IN' && <Field label={`Rate: ₹ for 1 ${fxDoc.currency}`} hint="Leave empty to use the rate saved for that day"><input inputMode="decimal" value={fxd.rate} onChange={(e) => setFxd({ ...fxd, rate: e.target.value })} /></Field>}
               {fxDoc && <Field label={`Part of it you are settling (${fxDoc.currency})`}><input inputMode="decimal" value={fxd.foreign} onChange={(e) => setFxd({ ...fxd, foreign: e.target.value })} required /></Field>}
             </div>
-            {fxDoc && fxShare > 0 && <p className={fxDiff < 0 ? 'notice warn' : 'muted'}>That part is in your books at ₹{inr(fxShare)}. {Number(f.amount) > 0 ? (fxDiff === 0 ? 'No exchange difference.' : `Exchange ${fxDiff > 0 ? 'gain' : 'loss'}: ₹${inr(Math.abs(fxDiff))}, posted to Exchange gain or loss.`) : 'Type the rupees that moved above to see the exchange gain or loss.'}</p>}
+            {viaBank && <p className="muted">{f.direction === 'IN' ? 'The dollars are valued in rupees at that rate.' : 'They leave the account at the average rupee value it holds.'} The difference from what the document was booked at is posted to Exchange gain or loss.</p>}
+            {fxDoc && !viaBank && fxShare > 0 && <p className={fxDiff < 0 ? 'notice warn' : 'muted'}>That part is in your books at ₹{inr(fxShare)}. {Number(f.amount) > 0 ? (fxDiff === 0 ? 'No exchange difference.' : `Exchange ${fxDiff > 0 ? 'gain' : 'loss'}: ₹${inr(Math.abs(fxDiff))}, posted to Exchange gain or loss.`) : 'Type the rupees that moved above to see the exchange gain or loss.'}</p>}
           </Card>
         )}
 

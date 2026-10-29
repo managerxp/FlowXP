@@ -3,7 +3,8 @@ import { audit } from './audit.ts';
 import { validStateCode } from './gst.ts';
 import { LedgerError, post, reverse } from './ledger.ts';
 import { paiseToString, roundDiv, taxOn, toPaise } from './money.ts';
-import { BASE, checkCurrency, rateMicro, rateOn } from './fx.ts';
+import { moneyAccount } from './bankacct.ts';
+import { BASE, checkCurrency, costOfForeign, holding, rateMicro, rateOn } from './fx.ts';
 import type { TrackIn } from './stock.ts';
 import { costEntry, costIn, costOut, defaultWarehouse, planSlices, record, splitValue, trackedLines, undoMoves } from './stock.ts';
 import { creditNoteJournal, customerPaymentJournal, debitNoteJournal, openingJournal, saleJournal, supplierBillJournal, supplierPaymentJournal } from './rules.ts';
@@ -378,7 +379,7 @@ export const applyDebitNote = async (c: Db, orgId: bigint, noteId: bigint, alloc
 /* ---- payments */
 
 /** fx: a payment that settles one foreign-currency document. amount is the rupees that moved; foreignAmount is the part of the document's currency it settles. */
-export type PaymentIn = { fx?: { documentId: bigint; foreignAmount: bigint }; direction: 'IN' | 'OUT'; partyId: bigint; date: string; mode: Tender; amount: bigint; tds?: bigint; tdsSection?: string; reference?: string; allocations?: Alloc[]; idempotencyKey: string };
+export type PaymentIn = { accountId?: bigint; rate?: string; fx?: { documentId: bigint; foreignAmount: bigint }; direction: 'IN' | 'OUT'; partyId: bigint; date: string; mode: Tender; amount: bigint; tds?: bigint; tdsSection?: string; reference?: string; allocations?: Alloc[]; idempotencyKey: string };
 const docKindFor = (direction: 'IN' | 'OUT'): DocKind => (direction === 'IN' ? 'INVOICE' : 'BILL');
 
 export const allocatePayment = async (c: Db, orgId: bigint, paymentId: bigint, allocs: Alloc[], actor: string): Promise<void> => {
@@ -396,10 +397,13 @@ export const createPayment = async (c: Db, orgId: bigint, p: PaymentIn, actor: s
   await c.query(`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, [`${orgId}:payment:${p.idempotencyKey}`]);   // one request per key at a time
   const prior = (await c.query(`SELECT id, number, journal_entry_id FROM payments WHERE idempotency_key = $1`, [p.idempotencyKey])).rows[0];
   if (prior) return { id: prior.id as bigint, number: prior.number as string, replayed: true };
-  if (p.amount <= 0n) throw new LedgerError('bad_amount', 'a payment must be above zero');
+  let amount = p.amount;
   const tds = p.tds ?? 0n;
   if (tds < 0n) throw new LedgerError('bad_amount', 'TDS cannot be negative');
   await partyFor(c, p.partyId, p.direction === 'IN' ? 'CUSTOMER' : 'VENDOR');
+  const acct = p.accountId ? await moneyAccount(c, orgId, p.accountId) : null;
+  const acctForeign = acct !== null && acct.currency !== BASE;
+  if (acct && acctForeign && !p.fx) throw new LedgerError('foreign_account', `${acct.name} holds ${acct.currency}: use it to receive or pay a ${acct.currency} invoice or bill`);
   // settling a foreign-currency document: the rupees it was booked at, for the share being paid, against the rupees that actually moved
   let adj = 0n; let share = 0n; let fxDoc: { currency: string; foreign_balance_minor: bigint } | null = null;
   if (p.fx) {
@@ -411,26 +415,36 @@ export const createPayment = async (c: Db, orgId: bigint, p: PaymentIn, actor: s
     if (doc.kind !== docKindFor(p.direction) || doc.status !== 'ISSUED') throw new LedgerError('not_allocatable', `that is not an issued ${docKindFor(p.direction).toLowerCase()}`);
     if (doc.party_id !== p.partyId) throw new LedgerError('party_mismatch', 'the document belongs to a different party');
     if (doc.currency === BASE) throw new LedgerError('not_foreign', 'that document is in rupees; record the payment normally');
+    if (acct && acctForeign) {
+      if (acct.currency !== doc.currency) throw new LedgerError('currency_mismatch', `${acct.name} holds ${acct.currency} but the document is in ${doc.currency}`);
+      // the rupees are not typed: money in is valued at the day's rate, money out leaves at the average value the account holds
+      if (p.direction === 'IN') {
+        const rate = p.rate ?? await rateOn(c, doc.currency as string, p.date);
+        if (!rate) throw new LedgerError('rate_required', `no ${doc.currency} rate saved for ${p.date}; type the rate`);
+        amount = roundDiv(p.fx.foreignAmount * rateMicro(rate), 1_000_000n);
+      } else amount = costOfForeign(await holding(c, acct.id, p.date), p.fx.foreignAmount);
+    }
     if (p.fx.foreignAmount > (doc.foreign_balance_minor as bigint)) throw new LedgerError('over_allocation', `only ${paiseToString(doc.foreign_balance_minor)} ${doc.currency} is outstanding on that document`);
     share = p.fx.foreignAmount === doc.foreign_balance_minor ? (doc.balance_minor as bigint) : roundDiv((doc.balance_minor as bigint) * p.fx.foreignAmount, doc.foreign_balance_minor as bigint);
-    adj = share - p.amount;
+    adj = share - amount;
     fxDoc = doc;
   }
+  if (amount <= 0n) throw new LedgerError('bad_amount', 'a payment must be above zero');
   const number = await nextNumber(c, orgId, p.direction === 'IN' ? 'RCT' : 'PAY', p.date);
   const id = (await c.query(
     `INSERT INTO payments (organization_id, direction, number, party_id, pay_date, mode, reference, amount_minor, unallocated_minor, idempotency_key, created_by, tds_minor, tds_section, currency, foreign_amount_minor, fx_settle_adj_minor)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8 + $11::bigint + $15::bigint, $9, $10, $11, $12, $13, $14, $15) RETURNING id`, [orgId, p.direction, number, p.partyId, p.date, p.mode, p.reference ?? null, p.amount, p.idempotencyKey, actor, tds, tds ? p.tdsSection ?? null : null, fxDoc?.currency ?? BASE, p.fx?.foreignAmount ?? null, adj])).rows[0].id as bigint;
-  const base = { date: p.date, paymentId: number, partyId: p.partyId, mode: p.mode, amount: p.amount, tds, adj };
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8 + $11::bigint + $15::bigint, $9, $10, $11, $12, $13, $14, $15) RETURNING id`, [orgId, p.direction, number, p.partyId, p.date, p.mode, p.reference ?? null, amount, p.idempotencyKey, actor, tds, tds ? p.tdsSection ?? null : null, fxDoc?.currency ?? BASE, p.fx?.foreignAmount ?? null, adj])).rows[0].id as bigint;
+  const base = { date: p.date, paymentId: number, partyId: p.partyId, mode: p.mode, amount, tds, adj, account: acct?.id, foreign: acctForeign ? p.fx?.foreignAmount : undefined };
   const journal = p.direction === 'IN' ? customerPaymentJournal(base) : supplierPaymentJournal(base);
   const posted = await post(c, orgId, { ...journal, actor, override });
-  await c.query(`UPDATE payments SET journal_entry_id = $2 WHERE id = $1`, [id, posted.entryId]);
+  await c.query(`UPDATE payments SET journal_entry_id = $2, account_id = $3 WHERE id = $1`, [id, posted.entryId, acct?.id ?? null]);
   if (p.allocations?.length) await allocatePayment(c, orgId, id, p.allocations, actor);
   if (p.fx && fxDoc) {
     await c.query(`UPDATE documents SET balance_minor = balance_minor - $2, foreign_balance_minor = foreign_balance_minor - $3 WHERE id = $1`, [p.fx.documentId, share, p.fx.foreignAmount]);
     await c.query(`INSERT INTO payment_allocations (organization_id, source_type, source_id, document_id, amount_minor, foreign_minor) VALUES ($1, 'PAYMENT', $2, $3, $4, $5)`, [orgId, id, p.fx.documentId, share, p.fx.foreignAmount]);
     await c.query(`UPDATE payments SET unallocated_minor = unallocated_minor - $2 WHERE id = $1`, [id, share]);
   }
-  await audit(c, orgId, { actor, action: 'payment.recorded', entityType: 'payment', entityId: id, detail: { number, direction: p.direction, amount: paiseToString(p.amount), ...(tds ? { tds: paiseToString(tds) } : {}) } });
+  await audit(c, orgId, { actor, action: 'payment.recorded', entityType: 'payment', entityId: id, detail: { number, direction: p.direction, amount: paiseToString(amount), ...(tds ? { tds: paiseToString(tds) } : {}) } });
   return { id, number, entryNo: posted.entryNo, replayed: false };
 };
 

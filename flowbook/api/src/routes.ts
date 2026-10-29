@@ -24,6 +24,7 @@ import { addAsset, assetRegister, cancelAsset, disposeAsset, runDepreciation } f
 import type { AssetIn } from './assets.ts';
 import type { TrackIn } from './stock.ts';
 import { addWarehouse, adjust, stockBatches, stockSerials, listWarehouses, setTracking, stockByWarehouse, stockLedger, stockSummary, transferStock, updateWarehouse } from './stock.ts';
+import { createBankAccount, listTransfers, transfer, voidTransfer } from './bankacct.ts';
 import { addEntry, bankAccounts, importStatement, matchLine, setIgnored, unmatchLine, workbench } from './reconcile.ts';
 import { partyStatement } from './statement.ts';
 import { UQC, validGstin, validStateCode } from './gst.ts';
@@ -333,6 +334,24 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   /* ---- bank reconciliation */
   const lineParam = { params: { type: 'object', properties: { lineId: { type: 'string', pattern: ID } } } };
   const lineId = (req: FastifyRequest) => BigInt((req.params as { lineId: string }).lineId);
+  app.post(`${base}/bank/accounts`, { preHandler: scope('journal.post'), schema: { body: { type: 'object', required: ['name'], additionalProperties: false, properties: { name: { type: 'string', minLength: 1, maxLength: 80 }, currency: { type: 'string', pattern: '^[A-Z]{3}$' } } } } }, async (req, reply) => {
+    const b = req.body as { name: string; currency?: string };
+    return reply.code(201).send(await run(req, (c, orgId) => createBankAccount(c, orgId, b, me(req))));
+  });
+  app.get(`${base}/bank/transfers`, { preHandler: scope('journal.read') }, async (req) => run(req, (c) => listTransfers(c)));
+  app.post(`${base}/bank/transfers`, { preHandler: scope('journal.post'), schema: { body: { type: 'object', required: ['fromAccountId', 'toAccountId', 'date', 'fromAmount', 'toAmount'], additionalProperties: false, properties: {
+    fromAccountId: { type: 'string', pattern: ID }, toAccountId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, fromAmount: { type: 'string', pattern: AMOUNT }, toAmount: { type: 'string', pattern: AMOUNT }, memo: { type: 'string', maxLength: 200 }, ...override } } } }, async (req, reply) => {
+    const key = String(req.headers['idempotency-key'] ?? '');
+    if (key.length < 8 || key.length > 128) return reply.code(400).send({ error: { code: 'idempotency_key_required', message: 'send an Idempotency-Key header (8 to 128 characters), one per user action' } });
+    const b = req.body as { fromAccountId: string; toAccountId: string; date: string; fromAmount: string; toAmount: string; memo?: string; overrideReason?: string };
+    const out = await run(req, (c, orgId) => transfer(c, orgId, { fromAccountId: BigInt(b.fromAccountId), toAccountId: BigInt(b.toAccountId), date: b.date, fromAmount: toPaise(b.fromAmount), toAmount: toPaise(b.toAmount), memo: b.memo, idempotencyKey: key }, me(req), lockOverride(req, b.overrideReason)));
+    return reply.code(out.replayed ? 200 : 201).send({ id: out.id, replayed: out.replayed });
+  });
+  app.post(`${base}/bank/transfers/:id/void`, { preHandler: scope('journal.post'), schema: { ...idParam, body: voidBody } }, async (req) => {
+    const b = req.body as { date: string; reason: string; overrideReason?: string };
+    await run(req, (c, orgId) => voidTransfer(c, orgId, BigInt((req.params as { id: string }).id), b, me(req), lockOverride(req, b.overrideReason)));
+    return { ok: true };
+  });
   app.get(`${base}/bank/accounts`, { preHandler: scope('journal.read') }, async (req) => run(req, (c, orgId) => bankAccounts(c, orgId)));
   app.get(`${base}/bank/accounts/:accountId`, { preHandler: scope('journal.read'), schema: { params: { type: 'object', properties: { accountId: { type: 'string', pattern: ID } } }, querystring: { type: 'object', required: ['asOf'], properties: { asOf: { type: 'string', pattern: DATE } } } } }, async (req) =>
     run(req, (c, orgId) => workbench(c, orgId, BigInt((req.params as { accountId: string }).accountId), (req.query as { asOf: string }).asOf)));
@@ -357,13 +376,14 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     const out = await run(req, (c, orgId) => createOpeningBalance(c, orgId, { kind: b.kind, partyId: BigInt(b.partyId), date: b.date, dueDate: b.dueDate, amount: toPaise(b.amount), memo: b.memo }, me(req), lockOverride(req, b.overrideReason)));
     return reply.code(201).send({ id: out.id, number: out.number });
   });
-  app.post(`${base}/payments`, { preHandler: scope('payment.write'), schema: { body: { type: 'object', required: ['direction', 'partyId', 'date', 'mode', 'amount'], additionalProperties: false, properties: {
+  app.post(`${base}/payments`, { preHandler: scope('payment.write'), schema: { body: { type: 'object', required: ['direction', 'partyId', 'date', 'mode'], additionalProperties: false, properties: {
+    accountId: { type: 'string', pattern: ID }, rate: { type: 'string', pattern: '^\\d{1,9}(\\.\\d{1,6})?$' },
     direction: { type: 'string', enum: ['IN', 'OUT'] }, partyId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, mode: { type: 'string', enum: ['CASH', 'BANK', 'UPI', 'CARD'] },
     amount: { type: 'string', pattern: AMOUNT }, tds: { type: 'string', pattern: AMOUNT }, tdsSection: { type: 'string', maxLength: 30 }, reference: { type: 'string', maxLength: 80 }, allocations: allocBody, fx: { type: 'object', required: ['documentId', 'foreignAmount'], additionalProperties: false, properties: { documentId: { type: 'string', pattern: ID }, foreignAmount: { type: 'string', pattern: AMOUNT } } }, ...override } } } }, async (req, reply) => {
     const key = String(req.headers['idempotency-key'] ?? '');
     if (key.length < 8 || key.length > 128) return reply.code(400).send({ error: { code: 'idempotency_key_required', message: 'send an Idempotency-Key header (8 to 128 characters), one per user action' } });
-    const b = req.body as { direction: 'IN' | 'OUT'; partyId: string; date: string; mode: 'CASH' | 'BANK' | 'UPI' | 'CARD'; amount: string; tds?: string; tdsSection?: string; reference?: string; allocations?: { documentId: string; amount: string }[]; fx?: { documentId: string; foreignAmount: string }; overrideReason?: string };
-    const out = await run(req, (c, orgId) => createPayment(c, orgId, { direction: b.direction, partyId: BigInt(b.partyId), date: b.date, mode: b.mode, amount: toPaise(b.amount), tds: b.tds ? toPaise(b.tds) : undefined, tdsSection: b.tdsSection, reference: b.reference,
+    const b = req.body as { direction: 'IN' | 'OUT'; partyId: string; date: string; mode: 'CASH' | 'BANK' | 'UPI' | 'CARD'; amount?: string; accountId?: string; rate?: string; tds?: string; tdsSection?: string; reference?: string; allocations?: { documentId: string; amount: string }[]; fx?: { documentId: string; foreignAmount: string }; overrideReason?: string };
+    const out = await run(req, (c, orgId) => createPayment(c, orgId, { direction: b.direction, partyId: BigInt(b.partyId), date: b.date, mode: b.mode, amount: b.amount ? toPaise(b.amount) : 0n, accountId: b.accountId ? BigInt(b.accountId) : undefined, rate: b.rate, tds: b.tds ? toPaise(b.tds) : undefined, tdsSection: b.tdsSection, reference: b.reference,
       allocations: b.allocations ? allocs(b.allocations) : undefined, fx: b.fx ? { documentId: BigInt(b.fx.documentId), foreignAmount: toPaise(b.fx.foreignAmount) } : undefined, idempotencyKey: key }, me(req), lockOverride(req, b.overrideReason)));
     return reply.code(out.replayed ? 200 : 201).send({ id: out.id, number: out.number, replayed: out.replayed });
   });

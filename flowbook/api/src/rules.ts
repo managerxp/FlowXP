@@ -25,7 +25,7 @@ const merge = (lines: LineInput[]): LineInput[] => {
   for (const l of lines) {
     if (l.amount === 0n) continue;
     const same = out.find((o) => o.account === l.account && o.side === l.side && o.partyId === l.partyId);
-    if (same) same.amount += l.amount; else out.push({ ...l });
+    if (same) { same.amount += l.amount; if (l.foreignAmount) same.foreignAmount = (same.foreignAmount ?? 0n) + l.foreignAmount; } else out.push({ ...l });
   }
   return out;
 };
@@ -70,12 +70,12 @@ export const creditNoteJournal = (d: { date: string; noteId: string; partyId?: b
 const fxLine = (adj: bigint, dir: 'IN' | 'OUT'): LineInput[] => [{ account: 'EXCHANGE_GAIN_LOSS', side: (dir === 'IN') === (adj > 0n) ? 'D' : 'C', amount: adj < 0n ? -adj : adj }];
 
 /** Customer pays (or is refunded) against what they owe. Examples 3 and 14. */
-export const customerPaymentJournal = (d: { date: string; paymentId: string; partyId?: bigint; mode: Tender; amount: bigint; refund?: boolean; tds?: bigint; adj?: bigint }): PostInput => ({
+export const customerPaymentJournal = (d: { date: string; paymentId: string; partyId?: bigint; mode: Tender; amount: bigint; refund?: boolean; tds?: bigint; adj?: bigint; account?: bigint; foreign?: bigint }): PostInput => ({
   date: d.date, sourceType: d.refund ? 'refund' : 'payment_in', sourceId: d.paymentId, kind: d.refund ? 'REFUND' : 'PAYMENT_IN', rulesVersion: RULES_VERSION,
   memo: `${d.refund ? 'Refund' : 'Payment'} ${d.paymentId}`,
   lines: d.refund
-    ? [{ account: 'AR', side: 'D', amount: d.amount, partyId: d.partyId }, { account: TENDER_ACCOUNT[d.mode], side: 'C', amount: d.amount }]
-    : merge([{ account: TENDER_ACCOUNT[d.mode], side: 'D', amount: d.amount }, { account: 'TDS_RECEIVABLE', side: 'D', amount: d.tds ?? 0n }, { account: 'AR', side: 'C', amount: d.amount + (d.tds ?? 0n) + (d.adj ?? 0n), partyId: d.partyId }, ...fxLine(d.adj ?? 0n, 'IN')])
+    ? [{ account: 'AR', side: 'D', amount: d.amount, partyId: d.partyId }, { account: d.account ?? TENDER_ACCOUNT[d.mode], side: 'C', amount: d.amount }]
+    : merge([{ account: d.account ?? TENDER_ACCOUNT[d.mode], side: 'D', amount: d.amount, foreignAmount: d.foreign }, { account: 'TDS_RECEIVABLE', side: 'D', amount: d.tds ?? 0n }, { account: 'AR', side: 'C', amount: d.amount + (d.tds ?? 0n) + (d.adj ?? 0n), partyId: d.partyId }, ...fxLine(d.adj ?? 0n, 'IN')])
 });
 
 /** Supplier bill: the cost (or stock) and the input tax are debited, payables credited. Example 4. */
@@ -104,9 +104,9 @@ export const debitNoteJournal = (d: { date: string; noteId: string; partyId?: bi
 };
 
 /** Supplier payment. Example 5. */
-export const supplierPaymentJournal = (d: { date: string; paymentId: string; partyId?: bigint; mode: Tender; amount: bigint; tds?: bigint; adj?: bigint }): PostInput => ({
+export const supplierPaymentJournal = (d: { date: string; paymentId: string; partyId?: bigint; mode: Tender; amount: bigint; tds?: bigint; adj?: bigint; account?: bigint; foreign?: bigint }): PostInput => ({
   date: d.date, sourceType: 'payment_out', sourceId: d.paymentId, kind: 'PAYMENT_OUT', rulesVersion: RULES_VERSION, memo: `Payment ${d.paymentId}`,
-  lines: merge([{ account: 'AP', side: 'D', amount: d.amount + (d.tds ?? 0n) + (d.adj ?? 0n), partyId: d.partyId }, { account: TENDER_ACCOUNT[d.mode], side: 'C', amount: d.amount }, { account: 'TDS_PAYABLE', side: 'C', amount: d.tds ?? 0n }, ...fxLine(d.adj ?? 0n, 'OUT')])
+  lines: merge([{ account: 'AP', side: 'D', amount: d.amount + (d.tds ?? 0n) + (d.adj ?? 0n), partyId: d.partyId }, { account: d.account ?? TENDER_ACCOUNT[d.mode], side: 'C', amount: d.amount, foreignAmount: d.foreign }, { account: 'TDS_PAYABLE', side: 'C', amount: d.tds ?? 0n }, ...fxLine(d.adj ?? 0n, 'OUT')])
 });
 
 /* Documents that arrive with their tax already worked out (FlowXP's bills): the amounts are the record, so nothing is

@@ -3,13 +3,17 @@ import { audit } from './audit.ts';
 
 export type Side = 'D' | 'C';
 /** `account` is a system key (SALES), an account code (4000) or, as a bigint, an account id. */
-export type LineInput = { account: string | bigint; side: Side; amount: bigint; partyId?: bigint; memo?: string; taxRateBp?: number };
+export type LineInput = { account: string | bigint; side: Side; amount: bigint; partyId?: bigint; memo?: string; taxRateBp?: number;
+  /** the amount in the account's own currency, required on a foreign-currency account (where `amount` is its rupee value) */
+  foreignAmount?: bigint };
 export type PostInput = {
   date: string; sourceType: string; sourceId: string; lines: LineInput[];
   kind?: string; sourceSystem?: string; memo?: string; actor?: string; rulesVersion?: number;
   /** a period that is locked can only be posted into with a stated reason (accounting-rules.md I8) */
   override?: { reason: string };
   reverses?: bigint;
+  /** restating the rupee value of a foreign-currency account (unrealised exchange difference) moves no foreign amount */
+  restate?: boolean;
 };
 export type Posted = { entryId: bigint; entryNo: string; replayed: boolean };
 
@@ -23,7 +27,7 @@ const resolveAccounts = async (c: Db, orgId: bigint, lines: LineInput[]): Promis
   const names = refs.filter((r): r is string => typeof r === 'string');
   const ids = refs.filter((r): r is bigint => typeof r === 'bigint');
   const rows = (await c.query(
-    `SELECT id, code, system_key, active FROM accounts WHERE organization_id = $1 AND (system_key = ANY($2::text[]) OR code = ANY($2::text[]) OR id = ANY($3::bigint[]))`,
+    `SELECT id, code, system_key, active, currency FROM accounts WHERE organization_id = $1 AND (system_key = ANY($2::text[]) OR code = ANY($2::text[]) OR id = ANY($3::bigint[]))`,
     [orgId, names, ids]
   )).rows;
   const map = new Map<string | bigint, bigint>();
@@ -81,6 +85,13 @@ const postInner = async (c: Db, orgId: bigint, input: PostInput): Promise<Posted
   }
 
   const accounts = await resolveAccounts(c, orgId, lines);
+  const foreign = (await c.query(`SELECT id FROM accounts WHERE organization_id = $1 AND id = ANY($2::bigint[]) AND currency <> 'INR'`, [orgId, [...accounts.values()]])).rows.map((r) => r.id as bigint);
+  for (const l of lines) {
+    const isForeign = foreign.includes(accounts.get(l.account) as bigint);
+    if (l.foreignAmount !== undefined && !isForeign) throw new LedgerError('not_foreign_account', 'a foreign amount can only go on a foreign-currency account');
+    if (isForeign && l.foreignAmount === undefined && !input.restate) throw new LedgerError('foreign_account', 'a foreign-currency account can only be posted to with an amount in its own currency');
+    if (l.foreignAmount !== undefined && l.foreignAmount <= 0n) throw new LedgerError('bad_amount', 'every line must be above zero');
+  }
 
   const period = (await c.query(
     `SELECT status FROM accounting_periods WHERE organization_id = $1 AND $2::date BETWEEN start_date AND end_date`, [orgId, input.date]
@@ -107,9 +118,9 @@ const postInner = async (c: Db, orgId: bigint, input: PostInput): Promise<Posted
   for (const l of lines) {
     no += 1;
     await c.query(
-      `INSERT INTO journal_lines (organization_id, entry_id, line_no, account_id, side, amount_minor, base_amount_minor, party_id, tax_rate_bp, memo)
-       VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9)`,
-      [orgId, entryId, no, accounts.get(l.account), l.side, l.amount, l.partyId ?? null, l.taxRateBp ?? null, l.memo ?? null]
+      `INSERT INTO journal_lines (organization_id, entry_id, line_no, account_id, side, amount_minor, base_amount_minor, party_id, tax_rate_bp, memo, foreign_amount_minor)
+       VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9, $10)`,
+      [orgId, entryId, no, accounts.get(l.account), l.side, l.amount, l.partyId ?? null, l.taxRateBp ?? null, l.memo ?? null, l.foreignAmount ?? null]
     );
   }
   await c.query(`UPDATE journal_entries SET status = 'POSTED', posted_at = now() WHERE id = $1`, [entryId]);
@@ -124,18 +135,18 @@ const postInner = async (c: Db, orgId: bigint, input: PostInput): Promise<Posted
 /** Correct a posted entry the only allowed way: a new entry with every side swapped, linked to the original (I3). */
 export const reverse = async (c: Db, orgId: bigint, entryId: bigint, opts: { date: string; reason: string; actor?: string; override?: { reason: string } }): Promise<Posted> => {
   if (!opts.reason.trim()) throw new LedgerError('reason_required', 'a reversal needs a reason');
-  const entry = (await c.query(`SELECT id, entry_no, status FROM journal_entries WHERE organization_id = $1 AND id = $2`, [orgId, entryId])).rows[0];
+  const entry = (await c.query(`SELECT id, entry_no, status, source_type FROM journal_entries WHERE organization_id = $1 AND id = $2`, [orgId, entryId])).rows[0];
   if (!entry) throw new LedgerError('not_found', 'no such journal entry');
   if (entry.status !== 'POSTED') throw new LedgerError('not_posted', 'only a posted entry can be reversed');
   const taken = (await c.query(`SELECT 1 FROM journal_entries WHERE organization_id = $1 AND reverses_entry_id = $2`, [orgId, entryId])).rowCount;
   if (taken) throw new LedgerError('already_reversed', `${entry.entry_no} has already been reversed`);
   const lines = (await c.query(
-    `SELECT account_id, side, base_amount_minor, party_id, tax_rate_bp, memo FROM journal_lines WHERE entry_id = $1 ORDER BY line_no`, [entryId]
+    `SELECT account_id, side, base_amount_minor, party_id, tax_rate_bp, memo, foreign_amount_minor FROM journal_lines WHERE entry_id = $1 ORDER BY line_no`, [entryId]
   )).rows;
   const out = await post(c, orgId, {
-    date: opts.date, sourceType: 'reversal', sourceId: String(entryId), kind: 'REVERSAL', reverses: entryId, actor: opts.actor, override: opts.override,
+    date: opts.date, sourceType: 'reversal', sourceId: String(entryId), kind: 'REVERSAL', reverses: entryId, actor: opts.actor, override: opts.override, restate: entry.source_type === 'fx_reval',
     memo: `Reversal of ${entry.entry_no}: ${opts.reason}`,
-    lines: lines.map((l) => ({ account: l.account_id as bigint, side: (l.side === 'D' ? 'C' : 'D') as Side, amount: l.base_amount_minor as bigint, partyId: (l.party_id as bigint | null) ?? undefined, taxRateBp: (l.tax_rate_bp as number | null) ?? undefined, memo: (l.memo as string | null) ?? undefined }))
+    lines: lines.map((l) => ({ account: l.account_id as bigint, side: (l.side === 'D' ? 'C' : 'D') as Side, amount: l.base_amount_minor as bigint, partyId: (l.party_id as bigint | null) ?? undefined, taxRateBp: (l.tax_rate_bp as number | null) ?? undefined, memo: (l.memo as string | null) ?? undefined, foreignAmount: (l.foreign_amount_minor as bigint | null) ?? undefined }))
   });
   await audit(c, orgId, { actor: opts.actor, action: 'journal.reversed', entityType: 'journal_entry', entityId: entryId, detail: { reversal: out.entryNo, reason: opts.reason } });
   return out;
