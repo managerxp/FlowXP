@@ -354,7 +354,9 @@ const Onboarding = () => {
         setIndex((i) => i + 1);
       } else {
         await refresh();
-        navigate('/app', { replace: true });
+        let after = null;   // where the person was headed when they signed up (the website's FlowBook page), kept by the sign-in
+        try { after = sessionStorage.getItem('flowxp.after'); sessionStorage.removeItem('flowxp.after'); } catch { /* storage blocked */ }
+        navigate(/^\/app(\/|$)/.test(after || '') ? after : '/app', { replace: true });
       }
     } catch (caught) {
       setError(caught.message);

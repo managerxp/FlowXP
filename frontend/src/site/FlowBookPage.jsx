@@ -1,14 +1,15 @@
 /*
  * /flowbook: ManagerXP's accounting product. The screens are real FlowBook (a demo shop's books), and the page says
  * plainly what works and what is not built, so nothing here claims a filing or a bank connection that does not exist.
- * The trial buttons go to the FlowBook app (VITE_FLOWBOOK_APP_URL); where that is not set they fall back to Contact.
+ * The buttons use the FlowXP sign-up and login; FlowXP then opens FlowBook signed in.
  */
 import { Button, Section } from '../components/ui.jsx';
 import { Check, CellGrid, Connector, Cross, FeatureRow, FinalCta, Node, PageHero, Shot } from './parts.jsx';
 
-const APP = import.meta.env.VITE_FLOWBOOK_APP_URL;
-const trial = APP ? { href: `${APP}/signup` } : { to: '/contact' };
-const login = APP ? { href: `${APP}/login` } : { to: '/contact' };
+/* One sign-in: the FlowXP account is the FlowBook account, and the FlowXP free trial is the FlowBook trial. */
+const NEXT = '?next=%2Fapp%2Fflowbook%3Fopen%3D1';
+const trial = { to: `/signup${NEXT}` };
+const login = { to: `/login${NEXT}` };
 const FULL = { width: 1440, height: 900 };
 
 const Flow = () => (
@@ -31,9 +32,9 @@ const Flow = () => (
 
 const Steps = () => (
   <div className="grid items-center gap-3 sm:grid-cols-[1fr_auto_1fr_auto_1fr]">
-    <Node title="1. Sign up" body="Email and password. No card." />
+    <Node title="1. Sign up" body="One FlowXP account. No card." />
     <Connector />
-    <Node title="2. Set up your business" body="Pick a template; accounts are made for you." />
+    <Node title="2. Open FlowBook" body="Signed in for you. Your books are ready." />
     <Connector />
     <Node strong title="3. Use it for 7 days" body="Everything works. Read-only after, never deleted." />
   </div>
@@ -113,11 +114,11 @@ const FlowBookPage = () => (
       <Steps />
       <div className="mt-10 grid items-center gap-8 lg:grid-cols-12">
         <ul className="space-y-2.5 lg:col-span-5">
-          <li className="flex gap-3 text-body text-ink-700"><Check />Sign up takes an email and a password</li>
-          <li className="flex gap-3 text-body text-ink-700"><Check />You choose your business type and start date</li>
+          <li className="flex gap-3 text-body text-ink-700"><Check />One account for FlowXP and FlowBook</li>
+          <li className="flex gap-3 text-body text-ink-700"><Check />Your FlowXP trial is your FlowBook trial</li>
           <li className="flex gap-3 text-body text-ink-700"><Cross />No payment details asked</li>
         </ul>
-        <div className="lg:col-span-7"><Shot src="/product/flowbook-trial.webp" alt="The FlowBook sign-up screen" size={FULL} /></div>
+        <div className="lg:col-span-7"><Shot src="/product/flowbook-trial.webp" alt="The FlowXP sign-up screen, which also opens FlowBook" size={FULL} /></div>
       </div>
     </Section>
 

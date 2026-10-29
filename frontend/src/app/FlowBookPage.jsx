@@ -21,6 +21,10 @@ const FlowBookPage = () => {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
+  /* One sign-in: FlowXP hands you to FlowBook already signed in, with this business's trial. `?open=1` (from the website's FlowBook page) does it on arrival. */
+  const openBook = () => run('open', async () => { const r = await api('/flowbook/launch', { method: 'POST' }); window.location.assign(r.url); });
+  useEffect(() => { if (new URLSearchParams(window.location.search).get('open') === '1') openBook(); }, []);
+
   const load = () => api('/flowbook').then((d) => {
     setData(d);
     if (d.link) { setUrl(d.link.base_url); setEnabled(d.link.enabled); }
@@ -47,13 +51,19 @@ const FlowBookPage = () => {
     await load();
   });
 
-  if (!data) return <div><PageHeader title="FlowBook" lead="Send every sale to your books." /><Alert>{error}</Alert></div>;
+  if (!data) return <div><PageHeader title="FlowBook" lead="Send every sale to your books." /><Alert>{error}</Alert>{busy === 'open' && <p className="text-sm text-ink-500" role="status">Opening FlowBook...</p>}</div>;
   const { link, counts, problems } = data;
 
   return (
     <div className="space-y-6">
       <PageHeader title="FlowBook" lead="Every sale, return and payment goes to FlowBook as it happens, so your books and GST figures keep themselves. Only what you bill after you switch this on is sent." />
       <Alert>{error}</Alert>
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-ink-500">Your FlowXP sign-in and free trial work in FlowBook too. No second login.</p>
+          <Button onClick={openBook} loading={busy === 'open'}>Open FlowBook</Button>
+        </div>
+      </Card>
       {notice && <p className="text-sm text-success" role="status">{notice}</p>}
 
       <Card>

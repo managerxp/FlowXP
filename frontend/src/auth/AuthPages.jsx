@@ -146,10 +146,14 @@ const useSubmit = () => {
 const useFinishAuth = () => {
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const next = params.get('next');   // where the sign-in was asked for from, e.g. the website's FlowBook page; only places inside the app
   return (data) => {
     signIn(data.token, data.user, data.businesses);
     const first = data.businesses[0];
-    navigate(first && first.onboarding_step < 10 ? '/app/onboarding' : '/app', { replace: true });
+    const there = /^\/app(\/|$)/.test(next || '') ? next : null;
+    if (first && first.onboarding_step < 10) { try { if (there) sessionStorage.setItem('flowxp.after', there); } catch { /* storage blocked */ } }
+    navigate(first && first.onboarding_step < 10 ? '/app/onboarding' : there || '/app', { replace: true });
   };
 };
 

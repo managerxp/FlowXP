@@ -22,6 +22,20 @@ export const checkUrl = (value) => {
   return { url: `${u.protocol}//${u.host}` };
 };
 
+/* POST /api/flowbook/launch: the one sign-in. The person is already signed in to FlowXP, so FlowBook gets a signed 60-second
+   handoff (who they are, which business, and the business's own trial or plan) instead of asking for another password. */
+export const launch = async (req, res) => {
+  if (!config.flowbookAppUrl || !config.flowbookSsoSecret) return res.status(503).json({ success: false, message: 'FlowBook is not set up on this server yet' });
+  const u = (await pool.query(`SELECT name, email FROM users WHERE user_id = $1`, [req.tenant.userId])).rows[0];
+  const s = req.tenant.subscription;
+  const body = Buffer.from(JSON.stringify({
+    sub: String(req.tenant.userId), email: u.email, name: u.name, bid: String(req.tenant.businessId), bname: req.tenant.name, role: req.tenant.role,
+    status: s.status, tend: s.trial_ends_at, exp: Date.now() + 60_000
+  })).toString('base64url');
+  const sig = crypto.createHmac('sha256', config.flowbookSsoSecret).update(body).digest('base64url');
+  res.json({ success: true, data: { url: `${config.flowbookAppUrl}/sso#${body}.${sig}` } });
+};
+
 const status = async (businessId) => {
   const link = (await pool.query(`SELECT base_url, enabled, enabled_from, last_ok_at, last_error FROM flowbook_links WHERE business_id = $1`, [businessId])).rows[0] || null;
   const counts = Object.fromEntries((await pool.query(`SELECT status, COUNT(*)::int AS n FROM flowbook_outbox WHERE business_id = $1 GROUP BY status`, [businessId])).rows.map((r) => [r.status, r.n]));

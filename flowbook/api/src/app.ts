@@ -15,6 +15,7 @@ import { registerIntegrationRoutes } from './integration-routes.ts';
 import { setPeriodStatus } from './periods.ts';
 import type { PeriodStatus } from './periods.ts';
 import { TEMPLATES } from './coa.ts';
+import { readHandoff, signInFromFlowxp } from './sso.ts';
 
 type Session = { sessionId: bigint; userId: bigint; email: string; name: string; viaCookie: boolean };
 type OrgScope = { id: bigint; role: Role };
@@ -148,6 +149,17 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
     if (!user || !ok || user.status !== 'ACTIVE') return reply.code(401).send({ error: { code: 'bad_credentials', message: 'email or password is wrong' } });
     const token = await startSession(req, reply, user.id as bigint);
     return { user: { id: user.id, name: user.name, email: user.email }, token };
+  });
+
+  /** The one sign-in: FlowXP's signed handoff in, a FlowBook session out. */
+  app.post('/v1/auth/flowxp', { schema: { body: { type: 'object', required: ['token'], additionalProperties: false, properties: { token: { type: 'string', maxLength: 2000 } } } } }, async (req, reply) => {
+    if (throttled(`sso:${req.ip}`, opts.limits?.login ?? 8 * 5)) return reply.code(429).send({ error: { code: 'rate_limited', message: 'too many attempts; wait a few minutes' } });
+    const h = readHandoff((req.body as { token: string }).token, process.env.FLOWBOOK_SSO_SECRET ?? '');
+    if (!h) return reply.code(401).send({ error: { code: 'bad_handoff', message: 'that sign-in link is not valid or has expired; open FlowBook again from FlowXP' } });
+    const r = await signInFromFlowxp(pool, h);
+    if (!r) return reply.code(403).send({ error: { code: 'ask_owner', message: 'ask the owner or an admin of this business to open FlowBook first' } });
+    const token = await startSession(req, reply, r.userId);
+    return { user: { id: r.userId, name: h.name, email: h.email }, token, organizationId: r.orgId };
   });
 
   app.post('/v1/auth/logout', async (req, reply) => {

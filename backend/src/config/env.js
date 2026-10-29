@@ -47,6 +47,9 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET,
   // Optional. Keeps stored secrets (2FA, payment and messaging keys) on a key of their own, so rotating JWT_SECRET to sign everyone out does not break them.
   encryptionKey: process.env.ENCRYPTION_KEY || '',
+  // FlowBook sign-in: FlowXP signs the person in, then hands them to FlowBook with a short-lived token signed with this shared secret (same value in FlowBook's FLOWBOOK_SSO_SECRET).
+  flowbookAppUrl: (process.env.FLOWBOOK_APP_URL || '').replace(/\/+$/, ''),
+  flowbookSsoSecret: process.env.FLOWBOOK_SSO_SECRET || '',
   /* Phone notifications go through Expo's push service. PUSH_ENABLED=false switches them off; EXPO_PUSH_URL lets a test point at a stand-in; EXPO_ACCESS_TOKEN only if the Expo project has push security on. */
   push: {
     enabled: String(process.env.PUSH_ENABLED ?? 'true').toLowerCase() !== 'false',

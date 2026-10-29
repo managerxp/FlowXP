@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api } from './api.js';
 import { SessionProvider, useSession } from './session.jsx';
 import { SITE_URL, wordmark } from './lib.js';
@@ -58,26 +58,24 @@ const Icon = ({ name }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={
 const Wordmark = () => { const [a, b] = wordmark(); return <span className="wordmark">{a}<span>{b}</span></span>; };
 const initials = (name = '') => name.split(/s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'B';
 
+/* There is no FlowBook password. FlowXP is the one sign-in: this page takes the signed handoff FlowXP sends (in the address
+   after #), trades it for a FlowBook session, and anyone arriving signed out is sent to FlowXP to sign in or start the free trial. */
+const FLOWXP_LOGIN = `${SITE_URL}/login?next=${encodeURIComponent('/app/flowbook?open=1')}`;
 const AuthScreen = () => {
   const { signIn } = useSession();
-  const loc = useLocation();
-  const [mode, setMode] = useState(() => (loc.pathname === '/signup' || new URLSearchParams(loc.search).get('mode') === 'signup' ? 'register' : 'login'));   // the website's Start free trial lands here
-  const [f, setF] = useState({ name: '', email: '', password: '' });
+  const handoff = useLocation().pathname === '/sso' ? window.location.hash.slice(1) : '';
+  const navigate = useNavigate();
   const a = useAction();
-  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
-  const submit = (e) => { e.preventDefault(); a.run(() => (mode === 'login' ? signIn('/auth/login', { email: f.email, password: f.password }) : signIn('/auth/register', f))); };
+  useEffect(() => {
+    if (!handoff) { window.location.replace(FLOWXP_LOGIN); return; }
+    a.run(async () => { await signIn('/auth/flowxp', { token: handoff }); navigate('/', { replace: true }); });   // replaces whoever was signed in here before
+  }, []);
   return (
     <div className="auth"><Card>
       <Wordmark />
-      <p className="muted">{mode === 'login' ? 'Sign in to your books.' : 'Start your 7-day free trial. No card needed. You set up your business next.'}</p>
-      <Err>{a.error}</Err>
-      <form className="form" onSubmit={submit}>
-        {mode === 'register' && <Field label="Your name"><input value={f.name} onChange={set('name')} required autoComplete="name" /></Field>}
-        <Field label="Email"><input type="email" value={f.email} onChange={set('email')} required autoComplete="email" /></Field>
-        <Field label="Password" hint={mode === 'register' ? 'At least 10 characters' : undefined}><input type="password" value={f.password} onChange={set('password')} required autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></Field>
-        <Btn kind="primary" busy={a.busy}>{mode === 'login' ? 'Sign in' : 'Start free trial'}</Btn>
-      </form>
-      <p className="muted"><button className="linkish" onClick={() => { a.setError(''); setMode(mode === 'login' ? 'register' : 'login'); }}>{mode === 'login' ? 'New here? Start a 7-day free trial' : 'Have an account? Sign in'}</button></p>
+      {a.error
+        ? <><Err>{a.error}</Err><p className="muted"><a href={FLOWXP_LOGIN}>Open FlowBook from FlowXP</a></p></>
+        : <p className="muted">Signing you in with FlowXP... <a href={FLOWXP_LOGIN}>Continue to FlowXP</a></p>}
     </Card></div>
   );
 };
@@ -192,6 +190,7 @@ const Shell = () => {
 
 const Gate = () => {
   const { ready, user } = useSession();
+  if (useLocation().pathname === '/sso') return <AuthScreen />;
   if (!ready) return <div className="auth"><Loading /></div>;
   return user ? <Shell /> : <AuthScreen />;
 };
