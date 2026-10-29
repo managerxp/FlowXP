@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLoad } from '../api.js';
-import { financialYear, inr, today } from '../lib.js';
+import { financialYear, inr, today, unitLabel } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { GstReturns, Statement } from './Gst.jsx';
 import { Async, Badge, Card, Empty, Field, Money, Page, Table, Tabs } from '../ui.jsx';
@@ -58,6 +58,21 @@ const Ageing = ({ r, type }) => {
     </Table><p className="muted">Worked out for the date chosen: a payment counts from its own date. Days are counted past the due date (or the invoice date when there is none).</p></Card>)}</Async>;
 };
 
+const Analysis = ({ r }) => {
+  const { o, org } = useSession();
+  const load = useLoad(() => o(`/reports/sales-analysis?from=${r.from}&to=${r.to}`), [org.id, r.from, r.to]);
+  const monthName = (m) => new Date(`${m}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+  return <Async load={load}>{(d) => (<>
+    <Card title="Month by month"><p className="muted">Sales are invoices less credit notes; purchases are bills. Both before GST.</p>
+      <Table head={['Month', '>Sales', '>Purchases']} empty={!d.months.length && <Empty>Nothing issued in this range.</Empty>}>
+        {d.months.map((m) => <tr key={m.month}><td>{monthName(m.month)}</td><td className="r"><Money v={m.sales_minor} /></td><td className="r"><Money v={m.purchases_minor} /></td></tr>)}</Table></Card>
+    <Card title="Top customers"><Table head={['Customer', '>Invoices', '>Sales', '>Still owed']} empty={!d.customers.length && <Empty>No sales in this range.</Empty>}>
+      {d.customers.map((x) => <tr key={x.party_id}><td>{x.party_name}</td><td className="r">{x.invoices}</td><td className="r"><Money v={x.sales_minor} /></td><td className="r">{Number(x.owed_minor) ? <Money v={x.owed_minor} /> : ''}</td></tr>)}</Table></Card>
+    <Card title="Best-selling items"><Table head={['Item', '>Quantity', '>Sales']} empty={!d.items.length && <Empty>No sales in this range.</Empty>}>
+      {d.items.map((x) => <tr key={x.name}><td>{x.name}</td><td className="r">{Number(x.quantity_milli) / 1000}{x.unit ? ` ${unitLabel(x.unit)}` : ''}</td><td className="r"><Money v={x.sales_minor} /></td></tr>)}</Table></Card>
+  </>)}</Async>;
+};
+
 const Checks = () => {
   const { o, org } = useSession();
   const load = useLoad(() => o('/reports/reconcile'), [org.id]);
@@ -73,10 +88,10 @@ export default () => {
   const asOfOnly = ['bs', 'ar', 'ap'].includes(tab);
   return (
     <Page title="Reports" lead={fy.label + ' by default. Change the dates to look at any period.'} actions={<button className="btn no-print" onClick={() => window.print()}>Print</button>}>
-      <Tabs value={tab} onChange={setTab} tabs={[['pnl', 'Profit and loss'], ['bs', 'Balance sheet'], ['tb', 'Trial balance'], ['ar', 'Who owes you'], ['ap', 'Who you owe'], ['stmt', 'Party statement'], ['gst', 'GST returns'], ['chk', 'Checks']]} />
+      <Tabs value={tab} onChange={setTab} tabs={[['pnl', 'Profit and loss'], ['bs', 'Balance sheet'], ['tb', 'Trial balance'], ['an', 'Sales analysis'], ['ar', 'Who owes you'], ['ap', 'Who you owe'], ['stmt', 'Party statement'], ['gst', 'GST returns'], ['chk', 'Checks']]} />
       {!['chk', 'gst'].includes(tab) && <Range r={r} set={setR} one={asOfOnly} />}
       {tab === 'pnl' && <ProfitLoss r={r} />}{tab === 'bs' && <BalanceSheet r={r} />}{tab === 'tb' && <TrialBalance r={r} />}
-      {tab === 'ar' && <Ageing r={r} type="receivables" />}{tab === 'ap' && <Ageing r={r} type="payables" />}{tab === 'chk' && <Checks />}{tab === 'gst' && <GstReturns />}{tab === 'stmt' && <Statement r={r} />}
+      {tab === 'an' && <Analysis r={r} />}{tab === 'ar' && <Ageing r={r} type="receivables" />}{tab === 'ap' && <Ageing r={r} type="payables" />}{tab === 'chk' && <Checks />}{tab === 'gst' && <GstReturns />}{tab === 'stmt' && <Statement r={r} />}
     </Page>
   );
 };

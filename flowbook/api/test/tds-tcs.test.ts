@@ -4,6 +4,7 @@ import { withOrg } from '../src/db.ts';
 import type { Db } from '../src/db.ts';
 import { createPayment, getPayment, issueDocument, saveDraft } from '../src/documents.ts';
 import type { DocIn } from '../src/documents.ts';
+import { salesAnalysis } from '../src/analysis.ts';
 import { createParty, seedTaxRates } from '../src/masters.ts';
 import { openFinancialYear } from '../src/periods.ts';
 import { partyStatement } from '../src/statement.ts';
@@ -60,4 +61,15 @@ test('TCS is added to the invoice total and owed to the government', { skip }, a
   const bal = await balances(org);
   assert.deepEqual([bal['TCS payable'], bal['Accounts receivable']], [[0n, 118_000n], [11_918_000n, 0n]]);
   await assert.rejects(run(org, (c) => saveDraft(c, org, null, { ...d, kind: 'CREDIT_NOTE', relatedDocumentId: id }, 't')), /TCS is collected on sales invoices only/);
+});
+
+test('sales analysis ranks customers and items and nets credit notes', { skip }, async () => {
+  const { org, cust } = await shop();
+  const line = { description: 'Widget', quantity: '2', unitPrice: '1000', taxCode: 'GST18' };
+  const inv = await run(org, async (c) => { const x = await saveDraft(c, org, null, { kind: 'INVOICE', partyId: cust, date: '2026-06-10', lines: [line] }, 't'); await issueDocument(c, org, 'INVOICE', x, 't'); return x; });
+  await run(org, async (c) => { const x = await saveDraft(c, org, null, { kind: 'CREDIT_NOTE', partyId: cust, date: '2026-07-02', relatedDocumentId: inv, lines: [{ ...line, quantity: '1' }] }, 't'); await issueDocument(c, org, 'CREDIT_NOTE', x, 't'); });
+  const a = await run(org, (c) => salesAnalysis(c, '2026-04-01', '2027-03-31'));
+  assert.deepEqual(a.customers.map((x) => [x.party_name, x.sales_minor, x.invoices]), [['Ravi', 100_000n, 1n]], '2000 less a 1000 credit note');
+  assert.deepEqual(a.items.map((x) => [x.name, x.sales_minor, x.quantity_milli]), [['Widget', 200_000n, 2000n]]);
+  assert.deepEqual(a.months.map((m) => [m.month, m.sales_minor]), [['2026-06', 200_000n], ['2026-07', -100_000n]]);
 });

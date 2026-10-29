@@ -14,6 +14,7 @@ import { IMPORT_LIMIT, importItems, importParties } from './import.ts';
 import { getSettings as getWhatsapp, listMessages, saveSettings as saveWhatsapp, sendMessage } from './whatsapp.ts';
 import { createTemplate, deleteTemplate, listTemplates, runDue, setTemplateActive } from './recurring.ts';
 import type { Every } from './recurring.ts';
+import { salesAnalysis } from './analysis.ts';
 import { partyStatement } from './statement.ts';
 import { UQC, validGstin, validStateCode } from './gst.ts';
 import { LedgerError } from './ledger.ts';
@@ -202,6 +203,10 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   });
 
   /* ---- ageing */
+  app.get(`${base}/reports/sales-analysis`, { preHandler: scope('report.read'), schema: { querystring: { type: 'object', required: ['from', 'to'], properties: { from: { type: 'string', pattern: DATE }, to: { type: 'string', pattern: DATE } } } } }, async (req) => {
+    const q = req.query as { from: string; to: string };
+    return run(req, (c) => salesAnalysis(c, q.from, q.to));
+  });
   app.get(`${base}/reports/ageing`, { preHandler: scope('report.read'), schema: { querystring: { type: 'object', required: ['type', 'asOf'], properties: {
     type: { type: 'string', enum: ['receivables', 'payables'] }, asOf: { type: 'string', pattern: DATE } } } } }, async (req) => {
     const q = req.query as { type: string; asOf: string };
