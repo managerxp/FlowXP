@@ -122,7 +122,9 @@ export const defaultSend = async (url, body, sig) => {
     const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-flowxp-signature': sig }, body, signal: controller.signal });
     if (!res.ok) throw new Error(res.status === 401 ? 'FlowBook did not accept the signature: check the secret and the business id' : `FlowBook answered ${res.status}`);
   } catch (error) {
-    throw new Error(error.name === 'AbortError' ? 'FlowBook did not answer in time' : error.message);
+    if (error.name === 'AbortError') throw new Error('FlowBook did not answer in time');
+    if (error.message === 'fetch failed') throw new Error(`Could not reach FlowBook at that address${error.cause?.code ? ` (${error.cause.code})` : ''}`);
+    throw error;
   } finally {
     clearTimeout(timer);
   }

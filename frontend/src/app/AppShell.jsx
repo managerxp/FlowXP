@@ -21,7 +21,7 @@ import {
   History, Landmark, LayoutDashboard, LayoutGrid, Lock, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
   Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X, Warehouse, PackageCheck, Undo2, HandCoins, ChartBar, ShoppingBag, Tags,
-  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass, BedDouble, Moon, DoorOpen, UsersRound, CalendarCheck, Dumbbell, Gamepad2, Timer, Trophy, Sun, Wrench
+  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass, BedDouble, Moon, DoorOpen, UsersRound, CalendarCheck, Dumbbell, Gamepad2, Timer, Trophy, Sun, Wrench, BookOpen
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Avatar, Button, EmptyState, Logo, PageLoader, useToast } from '../components/ui.jsx';
@@ -243,6 +243,7 @@ const NAV_GROUPS = [
 /* Pinned to the bottom of the sidebar. */
 const SYSTEM_ITEMS = [
   { to: '/app/integrations', label: 'Integrations', icon: Plug, types: RESTAURANT_TYPES, permission: 'settings', more: true },
+  { to: '/app/flowbook', label: 'FlowBook', icon: BookOpen, permission: 'settings', feature: 'flowbook', more: true },
   { to: '/app/settlements', label: 'Settlements', icon: ArrowLeftRight, types: RESTAURANT_TYPES, permission: 'settings', feature: 'integrations', more: true },
   // personal account security (password, 2FA, sessions) — every role manages their own
   { to: '/app/security', label: 'Security', icon: Shield, more: true },
