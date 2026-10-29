@@ -5,75 +5,57 @@ import { getDocument } from './documents.ts';
 import type { DocKind } from './documents.ts';
 import { LedgerError } from './ledger.ts';
 import { paiseToString } from './money.ts';
-import { seal, unseal } from './whatsapp.ts';
 
-/* Documents by email, from the business's own mailbox (SMTP). The document is in the body of the message as a plain table, not an attached PDF.
-   Not tested against a real mail server: that needs the business's own SMTP login. */
+/* Documents by email. Mail goes out through the platform's own mailbox (FLOWBOOK_SMTP_* in the server environment), shown as "<business> via FlowBook";
+   replies go to the business. The document is in the body of the message as a plain table, not an attached PDF. Not tested against a real mail server. */
 
-export type SmtpConfig = { host: string; port: number; secure: boolean; user?: string; pass?: string };
+export type SmtpConfig = { host: string; port: number; secure: boolean; user?: string; pass?: string; from: string };
 export type Mail = { from: string; to: string; bcc?: string; replyTo?: string; subject: string; html: string; text: string };
-export type Mailer = { send: (m: Mail) => Promise<{ id?: string }>; verify: () => Promise<void> };
+export type Mailer = { send: (m: Mail) => Promise<{ id?: string }> };
 const realMailer = (s: SmtpConfig): Mailer => {
   const t = nodemailer.createTransport({ host: s.host, port: s.port, secure: s.secure, auth: s.user ? { user: s.user, pass: s.pass ?? '' } : undefined, connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: 20_000 });
-  return { send: async (m) => ({ id: (await t.sendMail(m)).messageId }), verify: async () => { await t.verify(); } };
+  return { send: async (m) => ({ id: (await t.sendMail(m)).messageId }) };
 };
 let makeMailer: (s: SmtpConfig) => Mailer = realMailer;
 /** Tests swap in a mailer that sends nothing. */
 export const setMailer = (f: ((s: SmtpConfig) => Mailer) | null): void => { makeMailer = f ?? realMailer; };
+const platform = (): SmtpConfig | null => {
+  const e = process.env;
+  return e.FLOWBOOK_SMTP_HOST && e.FLOWBOOK_SMTP_FROM ? { host: e.FLOWBOOK_SMTP_HOST, port: Number(e.FLOWBOOK_SMTP_PORT) || 587, secure: e.FLOWBOOK_SMTP_SECURE === 'true', user: e.FLOWBOOK_SMTP_USER || undefined, pass: e.FLOWBOOK_SMTP_PASS, from: e.FLOWBOOK_SMTP_FROM } : null;
+};
 
 const EMAIL = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]{2,}$/;
-/** A business's SMTP host must be on the public internet: not this machine or a private network. */
-const publicHost = (h: string): boolean => {
-  const host = h.toLowerCase();
-  if (!/^[a-z0-9.-]+$/.test(host) || host.length > 253) return false;
-  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal') || !host.includes('.')) return process.env.FLOWBOOK_ALLOW_PRIVATE_SMTP === 'true';
-  const m = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(host);
-  if (m) { const [a, b] = [Number(m[1]), Number(m[2])]; if (a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)) return process.env.FLOWBOOK_ALLOW_PRIVATE_SMTP === 'true'; }
-  return true;
-};
 const oneLine = (s: string): string => s.replace(/[\r\n]+/g, ' ').trim();
 const esc = (s: unknown): string => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] as string);
 const inr = (paise: bigint | string): string => Number(typeof paise === 'string' ? paise : paiseToString(paise)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const showDate = (iso: string): string => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
-type Row = { host: string | null; port: number; secure: boolean; username: string | null; password_enc: string | null; from_name: string | null; from_email: string | null; reply_to: string | null; bcc_self: boolean; enabled: boolean };
-const load = async (c: Db): Promise<Row | undefined> => (await c.query(`SELECT * FROM email_settings`)).rows[0] as Row | undefined;
+type Row = { enabled: boolean; reply_to: string | null; bcc_self: boolean };
+const load = async (c: Db): Promise<Row | undefined> => (await c.query(`SELECT enabled, reply_to, bcc_self FROM email_settings`)).rows[0] as Row | undefined;
 
 export const getEmailSettings = async (c: Db) => {
   const s = await load(c);
-  return { enabled: s?.enabled ?? false, host: s?.host ?? '', port: s?.port ?? 587, secure: s?.secure ?? false, username: s?.username ?? '', hasPassword: Boolean(s?.password_enc), fromName: s?.from_name ?? '', fromEmail: s?.from_email ?? '', replyTo: s?.reply_to ?? '', bccSelf: s?.bcc_self ?? false };
+  return { available: platform() !== null, enabled: s?.enabled ?? false, replyTo: s?.reply_to ?? '', bccSelf: s?.bcc_self ?? false };
 };
 
-export type EmailSettingsIn = { enabled?: boolean; host?: string; port?: number; secure?: boolean; username?: string; password?: string; fromName?: string; fromEmail?: string; replyTo?: string; bccSelf?: boolean };
+export type EmailSettingsIn = { enabled?: boolean; replyTo?: string; bccSelf?: boolean };
 export const saveEmailSettings = async (c: Db, orgId: bigint, b: EmailSettingsIn, actor: string): Promise<void> => {
   const cur = await load(c);
-  const host = (b.host ?? cur?.host ?? '').trim();
-  if (host && !publicHost(host)) throw new LedgerError('bad_host', 'the mail server must be a public address like smtp.gmail.com, not this computer or a private network');
-  if (b.fromEmail && !EMAIL.test(b.fromEmail.trim())) throw new LedgerError('bad_email', `${b.fromEmail} is not an email address`);
   if (b.replyTo && !EMAIL.test(b.replyTo.trim())) throw new LedgerError('bad_email', `${b.replyTo} is not an email address`);
-  const next = {
-    enabled: b.enabled ?? cur?.enabled ?? false, host: host || null, port: b.port ?? cur?.port ?? 587, secure: b.secure ?? cur?.secure ?? false,
-    username: b.username === undefined ? cur?.username ?? null : b.username.trim() || null,
-    password_enc: b.password ? seal(b.password) : cur?.password_enc ?? null,
-    from_name: b.fromName === undefined ? cur?.from_name ?? null : oneLine(b.fromName) || null,
-    from_email: b.fromEmail === undefined ? cur?.from_email ?? null : b.fromEmail.trim() || null,
-    reply_to: b.replyTo === undefined ? cur?.reply_to ?? null : b.replyTo.trim() || null,
-    bcc_self: b.bccSelf ?? cur?.bcc_self ?? false
-  };
-  if (next.enabled && (!next.host || !next.from_email)) throw new LedgerError('email_incomplete', 'to turn email on, fill in the mail server and the address mail is sent from');
+  const next = { enabled: b.enabled ?? cur?.enabled ?? false, reply_to: b.replyTo === undefined ? cur?.reply_to ?? null : b.replyTo.trim() || null, bcc_self: b.bccSelf ?? cur?.bcc_self ?? false };
   await c.query(
-    `INSERT INTO email_settings (organization_id, enabled, host, port, secure, username, password_enc, from_name, from_email, reply_to, bcc_self, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
-     ON CONFLICT (organization_id) DO UPDATE SET enabled = $2, host = $3, port = $4, secure = $5, username = $6, password_enc = $7, from_name = $8, from_email = $9, reply_to = $10, bcc_self = $11, updated_at = now()`,
-    [orgId, next.enabled, next.host, next.port, next.secure, next.username, next.password_enc, next.from_name, next.from_email, next.reply_to, next.bcc_self]);
-  await audit(c, orgId, { actor, action: 'email.settings_saved', entityType: 'organization', entityId: orgId, detail: { enabled: next.enabled, host: next.host } });
+    `INSERT INTO email_settings (organization_id, enabled, reply_to, bcc_self, updated_at) VALUES ($1, $2, $3, $4, now())
+     ON CONFLICT (organization_id) DO UPDATE SET enabled = $2, reply_to = $3, bcc_self = $4, updated_at = now()`, [orgId, next.enabled, next.reply_to, next.bcc_self]);
+  await audit(c, orgId, { actor, action: 'email.settings_saved', entityType: 'organization', entityId: orgId, detail: { enabled: next.enabled } });
 };
 
-const ready = (s: Row | undefined): { cfg: SmtpConfig; from: string; s: Row } => {
-  if (!s || !s.enabled || !s.host || !s.from_email) throw new LedgerError('email_off', 'email is not set up yet (Settings > Email)');
-  if (!publicHost(s.host)) throw new LedgerError('bad_host', 'the mail server must be a public address');
-  const from = s.from_name ? `"${oneLine(s.from_name).replace(/"/g, '')}" <${s.from_email}>` : s.from_email;
-  return { cfg: { host: s.host, port: s.port, secure: s.secure, user: s.username ?? undefined, pass: s.password_enc ? unseal(s.password_enc) : undefined }, from, s };
+const ready = (s: Row | undefined, biz: Biz): { cfg: SmtpConfig; from: string; replyTo?: string; bcc?: string } => {
+  const cfg = platform();
+  if (!cfg) throw new LedgerError('email_off', 'email is not available on this server yet (the platform mailbox is not set up)');
+  if (!s?.enabled) throw new LedgerError('email_off', 'email is switched off for this business (Settings > Email)');
+  const name = oneLine(biz.legal_name || biz.name).replace(/["<>]/g, '');
+  const replyTo = s.reply_to ?? (biz.email && EMAIL.test(biz.email) ? biz.email : undefined);
+  return { cfg, from: `"${name} via FlowBook" <${cfg.from}>`, replyTo, bcc: s.bcc_self ? replyTo : undefined };
 };
 
 const LABEL: Partial<Record<DocKind, string>> = { INVOICE: 'Invoice', CREDIT_NOTE: 'Credit note', QUOTE: 'Quote', SALES_ORDER: 'Sales order', PURCHASE_ORDER: 'Purchase order', DEBIT_NOTE: 'Debit note' };
@@ -112,9 +94,9 @@ const recipient = (to: string | undefined, partyEmail: string | null): string =>
 const BIZ = `SELECT name, legal_name, gstin, address_line, city, pincode, phone, email, bank_name, bank_account, bank_ifsc, upi_id, terms FROM organizations WHERE id = $1`;
 
 export const sendDocument = async (c: Db, orgId: bigint, ref: { documentId?: bigint; paymentId?: bigint }, o: { to?: string; message?: string }, actor: string) => {
-  const { cfg, from, s } = ready(await load(c));
-  const note = o.message?.trim().slice(0, 1000) || undefined;
   const biz = (await c.query(BIZ, [orgId])).rows[0] as Biz;
+  const { cfg, from, replyTo, bcc } = ready(await load(c), biz);
+  const note = o.message?.trim().slice(0, 1000) || undefined;
   const bizName = biz.legal_name || biz.name;
   let mail: Mail; let partyId: bigint;
   if (ref.documentId) {
@@ -126,7 +108,7 @@ export const sendDocument = async (c: Db, orgId: bigint, ref: { documentId?: big
     const d = (await getDocument(c, head.kind as DocKind, ref.documentId))!;
     const to = recipient(o.to, head.email);
     const subject = oneLine(`${label} ${d.number} from ${bizName}`);
-    mail = { from, to, bcc: s.bcc_self ? s.from_email ?? undefined : undefined, replyTo: s.reply_to ?? undefined, subject, html: documentHtml(biz, head.kind === 'INVOICE' && biz.gstin ? 'Tax Invoice' : label, d, head.name, note),
+    mail = { from, to, bcc, replyTo, subject, html: documentHtml(biz, head.kind === 'INVOICE' && biz.gstin ? 'Tax Invoice' : label, d, head.name, note),
       text: `${note ? `${note}\n\n` : ''}${label} ${d.number} from ${bizName}\nDate: ${showDate(d.issue_date)}\nTotal: ₹${inr(d.total_minor)}\n` };
     partyId = head.party_id as bigint;
   } else {
@@ -135,17 +117,11 @@ export const sendDocument = async (c: Db, orgId: bigint, ref: { documentId?: big
     if (p.direction !== 'IN' || p.status !== 'POSTED') throw new LedgerError('not_sendable', 'a receipt is sent for money received that is not void');
     const to = recipient(o.to, p.email);
     const body = `<p>Received from: <strong>${esc(p.name)}</strong><br>Date: ${showDate(p.pay_date)}<br>How: ${esc(p.mode)}${p.reference ? `<br>Reference: ${esc(p.reference)}` : ''}</p>${p.tds_minor > 0n ? `<p>TDS deducted: ₹${inr(p.tds_minor)}</p>` : ''}<p style="font-size:18px"><strong>Amount received: ₹${inr(p.amount_minor)}</strong></p>`;
-    mail = { from, to, bcc: s.bcc_self ? s.from_email ?? undefined : undefined, replyTo: s.reply_to ?? undefined, subject: oneLine(`Receipt ${p.number} from ${bizName}`), html: shell(biz, `Receipt ${p.number}`, note, body),
+    mail = { from, to, bcc, replyTo, subject: oneLine(`Receipt ${p.number} from ${bizName}`), html: shell(biz, `Receipt ${p.number}`, note, body),
       text: `${note ? `${note}\n\n` : ''}Receipt ${p.number} from ${bizName}\nReceived ₹${inr(p.amount_minor)} on ${showDate(p.pay_date)}.\n` };
     partyId = p.party_id as bigint;
   }
   return finish(c, orgId, { mailer: makeMailer(cfg), mail, partyId, documentId: ref.documentId, paymentId: ref.paymentId, actor });
-};
-
-/** Check the login works without sending anything. */
-export const testConnection = async (c: Db): Promise<{ ok: boolean; error?: string }> => {
-  const { cfg } = ready(await load(c));
-  try { await makeMailer(cfg).verify(); return { ok: true }; } catch (e) { return { ok: false, error: oneLine(e instanceof Error ? e.message : String(e)).slice(0, 300) }; }
 };
 
 export const listEmails = async (c: Db, q: { documentId?: bigint; paymentId?: bigint; limit: number }) => (await c.query(

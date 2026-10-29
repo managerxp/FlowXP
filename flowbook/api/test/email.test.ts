@@ -4,7 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { withOrg } from '../src/db.ts';
 import type { Db } from '../src/db.ts';
 import { issueDocument, saveDraft } from '../src/documents.ts';
-import { getEmailSettings, listEmails, saveEmailSettings, sendDocument, setMailer, testConnection } from '../src/email.ts';
+import { getEmailSettings, listEmails, saveEmailSettings, sendDocument, setMailer } from '../src/email.ts';
 import type { Mail } from '../src/email.ts';
 import { createParty, seedTaxRates } from '../src/masters.ts';
 import { openFinancialYear } from '../src/periods.ts';
@@ -15,7 +15,7 @@ const { pool, skip, cleanup } = await setup();
 test.after(() => { setMailer(null); return cleanup(); });
 const run = <T>(org: bigint, fn: (c: Db) => Promise<T>) => withOrg(pool, org, fn);
 
-test('settings keep the password sealed, refuse private hosts, and a document goes out through the mailer and is logged', { skip }, async () => {
+test('a document goes out through the mailer and is logged', { skip }, async () => {
   const sent: Mail[] = []; let fail = false;
   setMailer(() => ({ send: async (m) => { if (fail) throw new Error('550 mailbox full\r\nsecond line'); sent.push(m); return { id: '<x@y>' }; }, verify: async () => { if (fail) throw new Error('auth failed'); } }));
   const org = await newOrg(pool);
@@ -28,20 +28,15 @@ test('settings keep the password sealed, refuse private hosts, and a document go
   });
   void cust;
 
-  await assert.rejects(run(org, (c) => sendDocument(c, org, { documentId: inv }, {}, 't')), /not set up/);
-  await assert.rejects(run(org, (c) => saveEmailSettings(c, org, { enabled: true, host: 'localhost', fromEmail: 'a@b.com' }, 't')), /public address/);
-  await assert.rejects(run(org, (c) => saveEmailSettings(c, org, { enabled: true, host: '192.168.1.5', fromEmail: 'a@b.com' }, 't')), /public address/);
-  await assert.rejects(run(org, (c) => saveEmailSettings(c, org, { enabled: true, host: 'smtp.example.com' }, 't')), /sent from/);
-  await run(org, (c) => saveEmailSettings(c, org, { enabled: true, host: 'smtp.example.com', port: 465, secure: true, username: 'me', password: 'hunter2hunter2', fromName: 'Shop\r\nBcc: x@evil.com', fromEmail: 'shop@example.com' }, 't'));
-  const s = await run(org, (c) => getEmailSettings(c));
-  assert.equal(s.hasPassword, true);
-  assert.ok(!JSON.stringify(s).includes('hunter2'), 'the password is never returned');
-  assert.ok(!(await pool.query(`SELECT password_enc FROM email_settings WHERE organization_id = $1`, [org])).rows[0].password_enc.includes('hunter2'), 'and not stored in the clear');
-  // saving again without a password keeps it
-  await run(org, (c) => saveEmailSettings(c, org, { fromName: 'Shop' }, 't'));
-  assert.equal((await run(org, (c) => getEmailSettings(c))).hasPassword, true);
+  const env = process.env;
+  delete env.FLOWBOOK_SMTP_HOST;
+  await assert.rejects(run(org, (c) => sendDocument(c, org, { documentId: inv }, {}, 't')), /not available on this server/);
+  Object.assign(env, { FLOWBOOK_SMTP_HOST: 'smtp.example.com', FLOWBOOK_SMTP_FROM: 'noreply@flowxp.example' });
+  assert.equal((await run(org, (c) => getEmailSettings(c))).available, true);
+  await assert.rejects(run(org, (c) => sendDocument(c, org, { documentId: inv }, {}, 't')), /switched off/);
+  await assert.rejects(run(org, (c) => saveEmailSettings(c, org, { replyTo: 'nope' }, 't')), /not an email address/);
+  await run(org, (c) => saveEmailSettings(c, org, { enabled: true, replyTo: 'shop@example.com', bccSelf: true }, 't'));
 
-  assert.deepEqual(await run(org, (c) => testConnection(c)), { ok: true });
   const out = await run(org, (c) => sendDocument(c, org, { documentId: inv }, { message: 'Thanks!' }, 't'));
   assert.equal(out.status, 'SENT');
   assert.equal(sent[0]?.to, 'ravi@example.com');
@@ -59,7 +54,6 @@ test('settings keep the password sealed, refuse private hosts, and a document go
   assert.equal(bad.status, 'FAILED');
   assert.equal(bad.error, '550 mailbox full second line');
   assert.deepEqual((await run(org, (c) => listEmails(c, { documentId: inv, limit: 10 }))).map((m) => m.status), ['FAILED', 'SENT']);
-  assert.deepEqual(await run(org, (c) => testConnection(c)), { ok: false, error: 'auth failed' });
 
   // another business sees none of it
   const other = await newOrg(pool);

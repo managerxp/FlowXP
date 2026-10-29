@@ -15,7 +15,7 @@ import { getSettings as getWhatsapp, listMessages, saveSettings as saveWhatsapp,
 import { createTemplate, deleteTemplate, listTemplates, runDue, setTemplateActive } from './recurring.ts';
 import type { Every } from './recurring.ts';
 import { salesAnalysis } from './analysis.ts';
-import { getEmailSettings, listEmails, saveEmailSettings, sendDocument, testConnection } from './email.ts';
+import { getEmailSettings, listEmails, saveEmailSettings, sendDocument } from './email.ts';
 import type { EmailSettingsIn } from './email.ts';
 import { addEntry, bankAccounts, importStatement, matchLine, setIgnored, unmatchLine, workbench } from './reconcile.ts';
 import { partyStatement } from './statement.ts';
@@ -320,12 +320,10 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   const addr = { type: 'string', maxLength: 254 };
   app.get(`${base}/email/settings`, { preHandler: scope('org.read') }, async (req) => run(req, (c) => getEmailSettings(c)));
   app.put(`${base}/email/settings`, { preHandler: scope('org.manage'), schema: { body: { type: 'object', additionalProperties: false, properties: {
-    enabled: { type: 'boolean' }, host: { type: 'string', maxLength: 253 }, port: { type: 'integer', minimum: 1, maximum: 65535 }, secure: { type: 'boolean' }, username: { type: 'string', maxLength: 254 }, password: { type: 'string', minLength: 1, maxLength: 500 },
-    fromName: { type: 'string', maxLength: 100 }, fromEmail: addr, replyTo: addr, bccSelf: { type: 'boolean' } } } } }, async (req) => {
+    enabled: { type: 'boolean' }, replyTo: addr, bccSelf: { type: 'boolean' } } } } }, async (req) => {
     await run(req, (c, orgId) => saveEmailSettings(c, orgId, req.body as EmailSettingsIn, me(req)));
     return { ok: true };
   });
-  app.post(`${base}/email/test`, { preHandler: scope('org.manage') }, async (req) => run(req, (c) => testConnection(c)));
   app.post(`${base}/email/send`, { preHandler: scope('invoice.write'), schema: { body: { type: 'object', additionalProperties: false, properties: {
     documentId: { type: 'string', pattern: ID }, paymentId: { type: 'string', pattern: ID }, to: addr, message: { type: 'string', maxLength: 1000 } } } } }, async (req, reply) => {
     const b = req.body as { documentId?: string; paymentId?: string; to?: string; message?: string };
