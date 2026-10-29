@@ -55,6 +55,8 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   };
 
   /* ---- organization profile and tax rates */
+  app.get(`${base}/profile`, { preHandler: scope('org.read') }, async (req) =>
+    run(req, async (c, orgId) => (await c.query(`SELECT id, name, legal_name, pan, gstin, state_code FROM organizations WHERE id = $1`, [orgId])).rows[0]));
   app.put(`${base}/profile`, { preHandler: scope('org.manage'), schema: { body: { type: 'object', additionalProperties: false, properties: {
     legalName: { type: 'string', maxLength: 200 }, gstin: { type: 'string', maxLength: 15 }, stateCode: { type: 'string', pattern: '^\\d{2}$' }, pan: { type: 'string', pattern: '^[A-Z]{5}[0-9]{4}[A-Z]$' } } } } }, async (req) => {
     const b = req.body as { legalName?: string; gstin?: string; stateCode?: string; pan?: string };
