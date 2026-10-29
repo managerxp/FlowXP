@@ -25,11 +25,11 @@ export const DocList = ({ kind }) => {
       <Tabs value={status} onChange={setStatus} tabs={[['', 'All'], ['DRAFT', 'Drafts'], ['ISSUED', 'Issued'], ['VOID', 'Void']]} />
       <Async load={load}>{() => (
         <Card>
-          <Table head={['Number', kind.who, 'Date', 'Due', 'Status', '>Total', '>Balance']} empty={!rows.length && <Empty>Nothing here yet.</Empty>}>
+          <Table head={['Number', kind.who, 'Date', kind.dueLabel || 'Due', 'Status', '>Total', kind.pre ? '' : '>Balance']} empty={!rows.length && <Empty>Nothing here yet.</Empty>}>
             {rows.map((d) => (
               <tr key={d.id} className="click" onClick={() => nav(`/${kind.path}/${d.id}`)}>
                 <td><Link to={`/${kind.path}/${d.id}`}>{d.number || 'Draft'}</Link></td><td>{d.party_name}</td><td>{showDate(d.issue_date)}</td><td>{showDate(d.due_date)}</td>
-                <td><Badge status={d.status} /></td><td className="r"><Money v={d.total_minor} /></td><td className="r">{d.status === 'ISSUED' ? <Money v={d.balance_minor} /> : ''}</td>
+                <td><Badge status={d.outcome || d.status} /></td><td className="r"><Money v={d.total_minor} /></td><td className="r">{d.status === 'ISSUED' && !kind.pre ? <Money v={d.balance_minor} /> : ''}</td>
               </tr>
             ))}
           </Table>
@@ -76,7 +76,7 @@ export const DocForm = ({ kind }) => {
     e.preventDefault();
     a.run(async () => {
       const body = { partyId: f.partyId, date: f.date, roundOff: f.roundOff, memo: f.memo || undefined, dueDate: f.dueDate || undefined, placeOfSupply: f.placeOfSupply || undefined,
-        supplierRef: kind.api === 'bills' ? f.supplierRef || undefined : undefined, relatedDocumentId: f.relatedDocumentId || undefined,
+        supplierRef: kind.api === 'bills' ? f.supplierRef || undefined : undefined, relatedDocumentId: kind.api === 'credit-notes' ? f.relatedDocumentId || undefined : undefined,
         ...(kind.api === 'bills' && f.reverseCharge && { reverseCharge: true }),
         ...(kind.api === 'invoices' && Number(f.tcsRate) > 0 && { tcsRateBp: Math.round(Number(f.tcsRate) * 100), ...(f.tcsSection && { tcsSection: f.tcsSection }) }),
         lines: f.lines.map((l) => ({ itemId: l.itemId || undefined, description: l.description || undefined, hsnSac: l.hsnSac || undefined, unit: l.unit || undefined, quantity: String(l.quantity), unitPrice: String(l.unitPrice || '0'), discount: l.discount ? String(l.discount) : undefined, taxCode: l.taxCode || undefined, ...(l.inclusive && { inclusive: true }) })) };
@@ -102,7 +102,7 @@ export const DocForm = ({ kind }) => {
               {parties.data && !parties.data.length && <span className="hint">No {kind.who.toLowerCase()}s yet. <Link to={kind.partyKind === 'VENDOR' ? '/vendors' : '/customers'}>Add one first</Link>.</span>}
             </Field>
             <Field label="Date"><input type="date" value={f.date} onChange={set('date')} required /></Field>
-            {kind.api !== 'credit-notes' && <Field label="Due date" hint={party?.credit_days ? `${party.name} usually gets ${party.credit_days} days` : 'Optional'}><input type="date" value={f.dueDate} onChange={set('dueDate')} /></Field>}
+            {kind.api !== 'credit-notes' && <Field label={kind.dueLabel || 'Due date'} hint={party?.credit_days ? `${party.name} usually gets ${party.credit_days} days` : 'Optional'}><input type="date" value={f.dueDate} onChange={set('dueDate')} /></Field>}
             <Field label="Place of supply" hint="Leave empty to use the party's state"><select value={f.placeOfSupply} onChange={set('placeOfSupply')}><option value="">Automatic</option>{Object.entries(STATES).map(([c, n]) => <option key={c} value={String(c).padStart(2, '0')}>{String(c).padStart(2, '0')} · {n}</option>)}</select></Field>
             {kind.api === 'bills' && <Field label="Vendor's bill number"><input value={f.supplierRef} onChange={set('supplierRef')} maxLength={60} /></Field>}
             {kind.api === 'credit-notes' && (
@@ -142,6 +142,8 @@ export const DocForm = ({ kind }) => {
   );
 };
 
+const PATH = { INVOICE: 'sales', BILL: 'purchases', CREDIT_NOTE: 'credit-notes', QUOTE: 'quotes', SALES_ORDER: 'sales-orders' };
+
 export const DocView = ({ kind }) => {
   const { id } = useParams();
   const { o, org } = useSession();
@@ -154,17 +156,23 @@ export const DocView = ({ kind }) => {
   const [apply, setApply] = useState({});
   const open = useLoad(() => (kind.api === 'credit-notes' && load.data?.status === 'ISSUED' ? o(`/invoices?status=ISSUED&partyId=${load.data.party_id}&limit=100`) : Promise.resolve(null)), [load.data?.id, load.data?.status]);
 
+  const d0 = load.data || {};
+  const convert = (to) => a.run(async () => { const r = await o(`/${kind.api}/${id}/convert`, { method: 'POST', body: { to, date: today() } }); nav(`/${PATH[to]}/${r.id}`); });
   const act = (fn, msg) => a.run(async () => { await fn(); await load.reload(); setPanel(''); }, msg);
   return (
     <Page title={load.data ? `${kind.one} ${load.data.number || '(draft)'}` : kind.one} lead={load.data && `${kind.who}: ${load.data.party_name}`}
       actions={load.data && <>
-        {load.data.status === 'DRAFT' && <><Link className="btn" to={`/${kind.path}/${id}/edit`}>Edit</Link><Btn kind="primary" busy={a.busy} onClick={() => act(() => o(`/${kind.api}/${id}/issue`, { method: 'POST', body: {} }), `${kind.one} issued and posted to the books.`)}>Issue</Btn>
+        {load.data.status === 'DRAFT' && <><Link className="btn" to={`/${kind.path}/${id}/edit`}>Edit</Link><Btn kind="primary" busy={a.busy} onClick={() => act(() => o(`/${kind.api}/${id}/issue`, { method: 'POST', body: {} }), kind.pre ? `${kind.one} sent.` : `${kind.one} issued and posted to the books.`)}>{kind.pre ? 'Mark as sent' : 'Issue'}</Btn>
           <Btn kind="danger" onClick={() => setPanel(panel === 'delete' ? '' : 'delete')}>Delete draft</Btn></>}
         {load.data.status === 'ISSUED' && <>
           {kind.paymentDirection && Number(load.data.balance_minor) > 0 && <Link className="btn primary" to={`/payments/new?direction=${kind.paymentDirection}&partyId=${load.data.party_id}&documentId=${id}`}>{kind.paymentDirection === 'IN' ? 'Record payment' : 'Pay this bill'}</Link>}
           {kind.api === 'credit-notes' && Number(load.data.balance_minor) > 0 && <Btn onClick={() => setPanel(panel === 'apply' ? '' : 'apply')}>Apply to invoices</Btn>}
           {kind.api === 'invoices' && <WhatsappButton kind="INVOICE" documentId={id} label="Send on WhatsApp" onDone={() => setSent((n) => n + 1)} />}
           {kind.api === 'invoices' && Number(load.data.balance_minor) > 0 && <WhatsappButton kind="REMINDER" documentId={id} label="Remind on WhatsApp" onDone={() => setSent((n) => n + 1)} />}
+          {kind.pre && !d0.outcome && <><Btn onClick={() => act(() => o(`/${kind.api}/${id}/outcome`, { method: 'POST', body: { outcome: 'ACCEPTED' } }), 'Marked accepted.')}>Customer accepted</Btn><Btn onClick={() => act(() => o(`/${kind.api}/${id}/outcome`, { method: 'POST', body: { outcome: 'DECLINED' } }), 'Marked declined.')}>Customer declined</Btn></>}
+          {kind.pre && d0.outcome !== 'CONVERTED' && d0.outcome !== 'DECLINED' && <>
+            {kind.api === 'quotes' && <Btn onClick={() => convert('SALES_ORDER')}>Make sales order</Btn>}
+            <Btn kind="primary" onClick={() => convert('INVOICE')}>Make invoice</Btn></>}
           {kind.api === 'invoices' && <Btn onClick={() => setPanel(panel === 'eway' ? '' : 'eway')}>E-way bill</Btn>}
           <Btn onClick={() => window.print()}>Print</Btn><Btn kind="danger" onClick={() => setPanel(panel === 'void' ? '' : 'void')}>Void</Btn></>}
       </>}>
@@ -190,7 +198,10 @@ export const DocView = ({ kind }) => {
           <div className="actions" style={{ justifyContent: 'space-between' }}><Badge status={d.status} />{d.status === 'ISSUED' && d.journal_entry_id && <Link to={`/journals/${d.journal_entry_id}`}>See in the books</Link>}</div>
           <dl className="kv" style={{ marginTop: '.75rem' }}>
             <dt>Date</dt><dd>{showDate(d.issue_date)}</dd>
-            {d.due_date && <><dt>Due</dt><dd>{showDate(d.due_date)}</dd></>}
+            {d.outcome && <><dt>Answer</dt><dd><Badge status={d.outcome} /></dd></>}
+            {d.converted_document_id && <><dt>Turned into</dt><dd><Link to={`/${PATH[d.converted_kind]}/${d.converted_document_id}`}>See it</Link></dd></>}
+            {d.related_document_id && PATH[d.related_kind] && kind.api !== 'credit-notes' && <><dt>Made from</dt><dd><Link to={`/${PATH[d.related_kind]}/${d.related_document_id}`}>See it</Link></dd></>}
+            {d.due_date && <><dt>{kind.dueLabel || 'Due'}</dt><dd>{showDate(d.due_date)}</dd></>}
             {d.supplier_ref && <><dt>Vendor's number</dt><dd>{d.supplier_ref}</dd></>}
             {d.place_of_supply && <><dt>Place of supply</dt><dd>{d.place_of_supply} · {STATES[d.place_of_supply] || ''} ({d.inter_state ? 'other state: IGST' : 'same state: CGST + SGST'})</dd></>}
             {d.reverse_charge && <><dt>Reverse charge</dt><dd>Yes: the GST below is paid by you, not added to what the vendor is owed</dd></>}
@@ -206,7 +217,7 @@ export const DocView = ({ kind }) => {
             {Number(d.tcs_minor) > 0 && <div><span>TCS{d.tcs_section ? ` (${d.tcs_section})` : ''}</span><Money v={d.tcs_minor} /></div>}
             {Number(d.round_off_minor) !== 0 && <div><span>Round off</span><Money v={d.round_off_minor} /></div>}
             <div className="grand"><span>Total</span><Money v={d.total_minor} /></div>
-            {d.status === 'ISSUED' && <div><span>Still to settle</span><Money v={d.balance_minor} strong /></div>}
+            {d.status === 'ISSUED' && !kind.pre && <div><span>Still to settle</span><Money v={d.balance_minor} strong /></div>}
           </div>
           <p className="muted words">{amountInWords(d.total_minor)}</p>
         </Card>

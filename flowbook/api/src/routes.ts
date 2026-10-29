@@ -3,7 +3,7 @@ import type pg from 'pg';
 import { audit } from './audit.ts';
 import { withOrg } from './db.ts';
 import type { Db } from './db.ts';
-import { ageing, allocatePayment, applyCreditNote, createOpeningBalance, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, voidDocument, voidPayment } from './documents.ts';
+import { ageing, allocatePayment, applyCreditNote, convertDocument, createOpeningBalance, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, setOutcome, voidDocument, voidPayment } from './documents.ts';
 import type { Alloc, DocIn, DocKind } from './documents.ts';
 import { listExpenses, recordExpense, voidExpense } from './expenses.ts';
 import { ewayBill } from './eway.ts';
@@ -135,7 +135,7 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   });
 
   /* ---- invoices, bills and credit notes */
-  const kinds: [string, DocKind, string, string][] = [['invoices', 'INVOICE', 'invoice', 'invoice'], ['bills', 'BILL', 'bill', 'bill'], ['credit-notes', 'CREDIT_NOTE', 'invoice', 'credit note']];
+  const kinds: [string, DocKind, string, string][] = [['invoices', 'INVOICE', 'invoice', 'invoice'], ['bills', 'BILL', 'bill', 'bill'], ['credit-notes', 'CREDIT_NOTE', 'invoice', 'credit note'], ['quotes', 'QUOTE', 'invoice', 'quote'], ['sales-orders', 'SALES_ORDER', 'invoice', 'sales order']];
   for (const [path, kind, perm, label] of kinds) {
     const url = `${base}/${path}`;
     app.get(url, { preHandler: scope(`${perm}.read`), schema: { querystring: { type: 'object', properties: {
@@ -166,6 +166,16 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
       const b = req.body as { date: string; reason: string; overrideReason?: string };
       await run(req, (c, orgId) => voidDocument(c, orgId, kind, BigInt((req.params as { id: string }).id), b, me(req), lockOverride(req, b.overrideReason)));
       return { ok: true };
+    });
+  }
+  for (const path of ['quotes', 'sales-orders']) {
+    const idOf = (req: FastifyRequest) => BigInt((req.params as { id: string }).id);
+    app.post(`${base}/${path}/:id/outcome`, { preHandler: scope('invoice.write'), schema: { ...idParam, body: { type: 'object', required: ['outcome'], additionalProperties: false, properties: { outcome: { type: 'string', enum: ['ACCEPTED', 'DECLINED'] } } } } }, async (req) => {
+      await run(req, (c, orgId) => setOutcome(c, orgId, idOf(req), (req.body as { outcome: 'ACCEPTED' | 'DECLINED' }).outcome, me(req))); return { ok: true };
+    });
+    app.post(`${base}/${path}/:id/convert`, { preHandler: scope('invoice.write'), schema: { ...idParam, body: { type: 'object', required: ['to', 'date'], additionalProperties: false, properties: { to: { type: 'string', enum: ['SALES_ORDER', 'INVOICE'] }, date: { type: 'string', pattern: DATE } } } } }, async (req, reply) => {
+      const b = req.body as { to: 'SALES_ORDER' | 'INVOICE'; date: string };
+      return reply.code(201).send(await run(req, (c, orgId) => convertDocument(c, orgId, idOf(req), b.to, b.date, me(req))));
     });
   }
   app.post(`${base}/credit-notes/:id/apply`, { preHandler: scope('invoice.write'), schema: { ...idParam, body: { type: 'object', required: ['allocations'], additionalProperties: false, properties: { allocations: allocBody } } } }, async (req) => {

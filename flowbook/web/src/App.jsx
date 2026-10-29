@@ -18,7 +18,9 @@ import Settings from './pages/Settings.jsx';
 const DOCS = [
   { path: 'sales', api: 'invoices', title: 'Sales invoices', one: 'Invoice', who: 'Customer', partyKind: 'CUSTOMER', paymentDirection: 'IN' },
   { path: 'purchases', api: 'bills', title: 'Purchase bills', one: 'Bill', who: 'Vendor', partyKind: 'VENDOR', paymentDirection: 'OUT' },
-  { path: 'credit-notes', api: 'credit-notes', title: 'Credit notes', one: 'Credit note', who: 'Customer', partyKind: 'CUSTOMER' }
+  { path: 'credit-notes', api: 'credit-notes', title: 'Credit notes', one: 'Credit note', who: 'Customer', partyKind: 'CUSTOMER' },
+  { path: 'quotes', api: 'quotes', title: 'Quotes', one: 'Quote', who: 'Customer', partyKind: 'CUSTOMER', pre: true, dueLabel: 'Valid until' },
+  { path: 'sales-orders', api: 'sales-orders', title: 'Sales orders', one: 'Sales order', who: 'Customer', partyKind: 'CUSTOMER', pre: true, dueLabel: 'Expected by' }
 ];
 
 /* [path, label, icon]; a group is a heading and the links under it */
@@ -40,7 +42,7 @@ const ICON = {
 };
 const NAV = [
   { items: [['/', 'Home', 'home']] },
-  { label: 'Sales', items: [['/sales', 'Invoices', 'invoice'], ['/credit-notes', 'Credit notes', 'credit'], ['/recurring', 'Recurring', 'repeat'], ['/customers', 'Customers', 'people']] },
+  { label: 'Sales', items: [['/quotes', 'Quotes', 'bill'], ['/sales-orders', 'Sales orders', 'list'], ['/sales', 'Invoices', 'invoice'], ['/credit-notes', 'Credit notes', 'credit'], ['/recurring', 'Recurring', 'repeat'], ['/customers', 'Customers', 'people']] },
   { label: 'Purchases', items: [['/purchases', 'Bills', 'bill'], ['/expenses', 'Expenses', 'wallet'], ['/vendors', 'Vendors', 'people']] },
   { label: 'Money', items: [['/payments', 'Payments', 'cash'], ['/bank', 'Bank', 'bank']] },
   { label: 'Books', items: [['/items', 'Items', 'box'], ['/accounts', 'Accounts', 'list'], ['/journals', 'Journals', 'book'], ['/reports', 'Reports', 'chart']] },

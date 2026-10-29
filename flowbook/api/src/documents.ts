@@ -9,7 +9,8 @@ import type { Tender } from './rules.ts';
 /* Invoices, bills and credit notes are drafts until issued. Issuing numbers the document and posts its journal in one
    transaction through the rules in rules.ts, so a document and its journal can never disagree (accounting-rules I1, I2). */
 
-export type DocKind = 'INVOICE' | 'BILL' | 'CREDIT_NOTE';
+export type DocKind = 'INVOICE' | 'BILL' | 'CREDIT_NOTE' | 'QUOTE' | 'SALES_ORDER';
+const POSTS_NOTHING = (k: DocKind): boolean => k === 'QUOTE' || k === 'SALES_ORDER';
 export type LineIn = { itemId?: bigint; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; unit?: string; inclusive?: boolean };
 export type DocIn = {
   kind: DocKind; partyId: bigint; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string;
@@ -17,7 +18,7 @@ export type DocIn = {
 };
 type Override = { reason: string };
 
-const PREFIX: Record<DocKind, string> = { INVOICE: 'INV', BILL: 'BILL', CREDIT_NOTE: 'CN' };
+const PREFIX: Record<DocKind, string> = { INVOICE: 'INV', BILL: 'BILL', CREDIT_NOTE: 'CN', QUOTE: 'QUO', SALES_ORDER: 'SO' };
 const gone = (what: string) => new LedgerError('not_found', `no such ${what}`);
 
 /** The financial year (April to March) a date falls in, by its starting year. */
@@ -89,7 +90,7 @@ const addDays = (date: string, days: number): string => new Date(Date.parse(`${d
 /** Create a draft (id null) or replace the content of one. Totals are worked out here, from the lines, never taken from the caller. */
 export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocIn, actor: string): Promise<bigint> => {
   const party = await partyFor(c, d.partyId, roleOf(d.kind));
-  if (d.roundOff && d.kind !== 'INVOICE') throw new LedgerError('round_off_unsupported', 'only invoices can be rounded off');
+  if (d.roundOff && d.kind !== 'INVOICE' && !POSTS_NOTHING(d.kind)) throw new LedgerError('round_off_unsupported', 'only invoices can be rounded off');
   if (d.placeOfSupply && !validStateCode(d.placeOfSupply)) throw new LedgerError('bad_state', `${d.placeOfSupply} is not a GST state code`);
   if (d.relatedDocumentId) {
     const ok = d.kind === 'CREDIT_NOTE' && (await c.query(`SELECT 1 FROM documents WHERE id = $1 AND kind = 'INVOICE' AND status = 'ISSUED' AND party_id = $2`, [d.relatedDocumentId, d.partyId])).rowCount;
@@ -120,7 +121,7 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
     if (cur.status !== 'DRAFT') throw new LedgerError('not_draft', 'only a draft can be edited; void an issued document and make a new one');
     if (cur.kind !== d.kind) throw new LedgerError('kind_mismatch', 'a document cannot change its kind');
     await c.query(
-      `UPDATE documents SET party_id = $2, issue_date = $3, due_date = $4, place_of_supply = $5, inter_state = $6, supplier_ref = $7, related_document_id = $8, memo = $9, round_off_on = $10,
+      `UPDATE documents SET party_id = $2, issue_date = $3, due_date = $4, place_of_supply = $5, inter_state = $6, supplier_ref = $7, related_document_id = CASE WHEN kind = 'CREDIT_NOTE' THEN $8::bigint ELSE related_document_id END, memo = $9, round_off_on = $10,
               subtotal_minor = $11, tax_minor = $12, round_off_minor = $13, total_minor = $14, tcs_rate_bp = $15, tcs_minor = $16, tcs_section = $17, reverse_charge = $18 WHERE id = $1`, [id, ...fields]);
     await c.query(`DELETE FROM document_lines WHERE document_id = $1`, [id]);
   }
@@ -136,7 +137,7 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
 };
 
 const DOC_COLS = `d.id, d.kind, d.number, d.supplier_ref, d.party_id, p.name AS party_name, d.status, d.issue_date::text AS issue_date, d.due_date::text AS due_date,
-  d.place_of_supply, d.inter_state, d.subtotal_minor, d.tax_minor, d.round_off_minor, d.tcs_rate_bp, d.tcs_minor, d.tcs_section, d.reverse_charge, d.total_minor, d.balance_minor, d.related_document_id, d.journal_entry_id, d.memo`;
+  d.place_of_supply, d.inter_state, d.subtotal_minor, d.tax_minor, d.round_off_minor, d.outcome, d.converted_document_id, (SELECT x.kind FROM documents x WHERE x.id = d.converted_document_id) AS converted_kind, (SELECT x.kind FROM documents x WHERE x.id = d.related_document_id) AS related_kind, d.tcs_rate_bp, d.tcs_minor, d.tcs_section, d.reverse_charge, d.total_minor, d.balance_minor, d.related_document_id, d.journal_entry_id, d.memo`;
 
 export const listDocuments = async (c: Db, kind: DocKind, q: { status?: string; partyId?: bigint; before?: bigint; limit: number }) => (await c.query(
   `SELECT ${DOC_COLS} FROM documents d JOIN parties p ON p.id = d.party_id
@@ -171,7 +172,7 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
   const milli = (q: bigint) => `${q / 1000n}.${String(q % 1000n).padStart(3, '0')}`;
   await saveDraft(c, orgId, id, {
     kind, partyId: doc.party_id, date: doc.issue_d, dueDate: doc.due_d ?? undefined,
-    placeOfSupply: doc.place_of_supply ?? undefined, supplierRef: doc.supplier_ref ?? undefined, relatedDocumentId: doc.related_document_id ?? undefined, memo: doc.memo ?? undefined, roundOff: doc.round_off_on, tcsRateBp: doc.tcs_rate_bp, tcsSection: doc.tcs_section ?? undefined, reverseCharge: doc.reverse_charge,
+    placeOfSupply: doc.place_of_supply ?? undefined, supplierRef: doc.supplier_ref ?? undefined, relatedDocumentId: kind === 'CREDIT_NOTE' ? doc.related_document_id ?? undefined : undefined, memo: doc.memo ?? undefined, roundOff: doc.round_off_on, tcsRateBp: doc.tcs_rate_bp, tcsSection: doc.tcs_section ?? undefined, reverseCharge: doc.reverse_charge,
     lines: stored.map((l) => ({ itemId: l.item_id ?? undefined, description: l.description, hsnSac: l.hsn_sac ?? undefined, quantity: milli(l.quantity_milli), unitPrice: paiseToString(l.unit_price_minor), discount: paiseToString(l.discount_minor), taxCode: l.tax_code, unit: l.unit ?? undefined, inclusive: l.price_includes_tax }))
   }, actor);
   const fresh = (await c.query(`SELECT *, issue_date::text AS d FROM documents WHERE id = $1`, [id])).rows[0];
@@ -183,6 +184,11 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
     if (dup) throw new LedgerError('duplicate_bill', `this supplier invoice number was already entered as ${dup.number}`);
   }
   const number = await nextNumber(c, orgId, kind === 'INVOICE' ? await invoicePrefix(c, orgId) : PREFIX[kind], fresh.d as string);
+  if (POSTS_NOTHING(kind)) {   // a quote or order: numbered, nothing posted, nothing owed
+    await c.query(`UPDATE documents SET status = 'ISSUED', number = $2, balance_minor = 0 WHERE id = $1`, [id, number]);
+    await audit(c, orgId, { actor, action: 'document.issued', entityType: 'document', entityId: id, detail: { kind, number, total: paiseToString(total) } });
+    return { number, entryNo: null as string | null };
+  }
   const taxed = lines.map((l) => ({ taxable: l.taxable_minor as bigint, rateBp: l.tax_rate_bp as number }));
   const common = { date: fresh.d as string, partyId: fresh.party_id as bigint, lines: taxed, interState: fresh.inter_state as boolean };
   const journal = kind === 'INVOICE' ? saleJournal({ ...common, invoiceId: number, roundOff: fresh.round_off_minor as bigint, tcs: fresh.tcs_minor as bigint })
@@ -208,11 +214,49 @@ export const createOpeningBalance = async (c: Db, orgId: bigint, o: { kind: 'INV
   return { id, number };
 };
 
+/** A customer said yes or no to a quote or order that was sent. */
+export const setOutcome = async (c: Db, orgId: bigint, id: bigint, outcome: 'ACCEPTED' | 'DECLINED', actor: string) => {
+  const d = (await c.query(`SELECT kind, status, outcome, number FROM documents WHERE id = $1 FOR UPDATE`, [id])).rows[0];
+  if (!d) throw gone('document');
+  if (!POSTS_NOTHING(d.kind as DocKind)) throw new LedgerError('not_a_quote', 'only a quote or a sales order can be accepted or declined');
+  if (d.status !== 'ISSUED') throw new LedgerError('not_issued', 'send it first');
+  if (d.outcome === 'CONVERTED') throw new LedgerError('converted', 'it was already turned into another document');
+  await c.query(`UPDATE documents SET outcome = $2 WHERE id = $1`, [id, outcome]);
+  await audit(c, orgId, { actor, action: `document.${outcome.toLowerCase()}`, entityType: 'document', entityId: id, detail: { number: d.number } });
+};
+
+/** Turn a sent quote into a sales order or an invoice, or a sales order into an invoice. The new document is a draft with the same lines; nothing is posted until it is issued. */
+export const convertDocument = async (c: Db, orgId: bigint, id: bigint, to: 'SALES_ORDER' | 'INVOICE', date: string, actor: string) => {
+  const d = (await c.query(`SELECT * FROM documents WHERE id = $1 FOR UPDATE`, [id])).rows[0];
+  if (!d) throw gone('document');
+  const from = d.kind as DocKind;
+  if (!((from === 'QUOTE' && (to === 'SALES_ORDER' || to === 'INVOICE')) || (from === 'SALES_ORDER' && to === 'INVOICE'))) throw new LedgerError('bad_conversion', 'a quote becomes a sales order or an invoice; a sales order becomes an invoice');
+  if (d.status !== 'ISSUED') throw new LedgerError('not_issued', 'send it first');
+  if (d.outcome === 'CONVERTED') throw new LedgerError('converted', 'it was already turned into another document');
+  if (d.outcome === 'DECLINED') throw new LedgerError('declined', 'the customer declined this');
+  const stored = (await c.query(`SELECT * FROM document_lines WHERE document_id = $1 ORDER BY line_no`, [id])).rows;
+  const milli = (q: bigint) => `${q / 1000n}.${String(q % 1000n).padStart(3, '0')}`;
+  const newId = await saveDraft(c, orgId, null, {
+    kind: to, partyId: d.party_id, date, placeOfSupply: d.place_of_supply ?? undefined, memo: d.memo ?? undefined, roundOff: d.round_off_on,
+    lines: stored.map((l) => ({ itemId: l.item_id ?? undefined, description: l.description, hsnSac: l.hsn_sac ?? undefined, quantity: milli(l.quantity_milli), unitPrice: paiseToString(l.unit_price_minor), discount: paiseToString(l.discount_minor), taxCode: l.tax_code, unit: l.unit ?? undefined, inclusive: l.price_includes_tax }))
+  }, actor);
+  await c.query(`UPDATE documents SET related_document_id = $2 WHERE id = $1`, [newId, id]);
+  await c.query(`UPDATE documents SET outcome = 'CONVERTED', converted_document_id = $2 WHERE id = $1`, [id, newId]);
+  await audit(c, orgId, { actor, action: 'document.converted', entityType: 'document', entityId: id, detail: { number: d.number, to, newId: String(newId) } });
+  return { id: newId };
+};
+
 /** Cancel an issued document the only allowed way: reverse its journal. Refused while money has been applied to it. */
 export const voidDocument = async (c: Db, orgId: bigint, kind: DocKind, id: bigint, o: { date: string; reason: string }, actor: string, override?: Override): Promise<void> => {
   const doc = (await c.query(`SELECT status, journal_entry_id, balance_minor, total_minor, number FROM documents WHERE id = $1 AND kind = $2 FOR UPDATE`, [id, kind])).rows[0];
   if (!doc) throw gone('document');
   if (doc.status !== 'ISSUED') throw new LedgerError('not_issued', 'only an issued document can be voided');
+  if (POSTS_NOTHING(kind)) {
+    if ((await c.query(`SELECT outcome FROM documents WHERE id = $1`, [id])).rows[0].outcome === 'CONVERTED') throw new LedgerError('converted', 'this was already turned into another document; void that one first');
+    await c.query(`UPDATE documents SET status = 'VOID', voided_on = $2 WHERE id = $1`, [id, o.date]);
+    await audit(c, orgId, { actor, action: 'document.voided', entityType: 'document', entityId: id, detail: { number: doc.number, reason: o.reason } });
+    return;
+  }
   if (doc.balance_minor !== doc.total_minor) throw new LedgerError('has_allocations', 'payments or credits are applied to this document; void those first');
   await reverse(c, orgId, doc.journal_entry_id as bigint, { date: o.date, reason: o.reason, actor, override });
   await c.query(`UPDATE documents SET status = 'VOID', balance_minor = 0, voided_on = $2 WHERE id = $1`, [id, o.date]);

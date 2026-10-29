@@ -48,7 +48,7 @@ export const DocSheet = ({ kind, d }) => {
     <Shell s={s} p={p} heading={heading}>
       <div className="meta">
         <Parties party={party || { name: d.party_name }} label={kind.who} />
-        <dl><dt>No.</dt><dd>{d.number}</dd><dt>Date</dt><dd>{showDate(d.issue_date)}</dd>{d.due_date && <><dt>Due</dt><dd>{showDate(d.due_date)}</dd></>}
+        <dl><dt>No.</dt><dd>{d.number}</dd><dt>Date</dt><dd>{showDate(d.issue_date)}</dd>{d.due_date && <><dt>{kind.dueLabel || 'Due'}</dt><dd>{showDate(d.due_date)}</dd></>}
           {d.place_of_supply && <><dt>Place of supply</dt><dd>{d.place_of_supply} {STATES[d.place_of_supply] || ''}</dd></>}</dl>
       </div>
       <table>
