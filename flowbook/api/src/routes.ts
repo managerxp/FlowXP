@@ -135,7 +135,7 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   });
 
   /* ---- invoices, bills and credit notes */
-  const kinds: [string, DocKind, string, string][] = [['invoices', 'INVOICE', 'invoice', 'invoice'], ['bills', 'BILL', 'bill', 'bill'], ['credit-notes', 'CREDIT_NOTE', 'invoice', 'credit note'], ['quotes', 'QUOTE', 'invoice', 'quote'], ['sales-orders', 'SALES_ORDER', 'invoice', 'sales order']];
+  const kinds: [string, DocKind, string, string][] = [['invoices', 'INVOICE', 'invoice', 'invoice'], ['bills', 'BILL', 'bill', 'bill'], ['credit-notes', 'CREDIT_NOTE', 'invoice', 'credit note'], ['quotes', 'QUOTE', 'invoice', 'quote'], ['sales-orders', 'SALES_ORDER', 'invoice', 'sales order'], ['purchase-orders', 'PURCHASE_ORDER', 'bill', 'purchase order']];
   for (const [path, kind, perm, label] of kinds) {
     const url = `${base}/${path}`;
     app.get(url, { preHandler: scope(`${perm}.read`), schema: { querystring: { type: 'object', properties: {
@@ -168,13 +168,13 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
       return { ok: true };
     });
   }
-  for (const path of ['quotes', 'sales-orders']) {
+  for (const [path, perm] of [['quotes', 'invoice'], ['sales-orders', 'invoice'], ['purchase-orders', 'bill']] as const) {
     const idOf = (req: FastifyRequest) => BigInt((req.params as { id: string }).id);
-    app.post(`${base}/${path}/:id/outcome`, { preHandler: scope('invoice.write'), schema: { ...idParam, body: { type: 'object', required: ['outcome'], additionalProperties: false, properties: { outcome: { type: 'string', enum: ['ACCEPTED', 'DECLINED'] } } } } }, async (req) => {
+    app.post(`${base}/${path}/:id/outcome`, { preHandler: scope(`${perm}.write`), schema: { ...idParam, body: { type: 'object', required: ['outcome'], additionalProperties: false, properties: { outcome: { type: 'string', enum: ['ACCEPTED', 'DECLINED'] } } } } }, async (req) => {
       await run(req, (c, orgId) => setOutcome(c, orgId, idOf(req), (req.body as { outcome: 'ACCEPTED' | 'DECLINED' }).outcome, me(req))); return { ok: true };
     });
-    app.post(`${base}/${path}/:id/convert`, { preHandler: scope('invoice.write'), schema: { ...idParam, body: { type: 'object', required: ['to', 'date'], additionalProperties: false, properties: { to: { type: 'string', enum: ['SALES_ORDER', 'INVOICE'] }, date: { type: 'string', pattern: DATE } } } } }, async (req, reply) => {
-      const b = req.body as { to: 'SALES_ORDER' | 'INVOICE'; date: string };
+    app.post(`${base}/${path}/:id/convert`, { preHandler: scope(`${perm}.write`), schema: { ...idParam, body: { type: 'object', required: ['to', 'date'], additionalProperties: false, properties: { to: { type: 'string', enum: ['SALES_ORDER', 'INVOICE', 'BILL'] }, date: { type: 'string', pattern: DATE } } } } }, async (req, reply) => {
+      const b = req.body as { to: 'SALES_ORDER' | 'INVOICE' | 'BILL'; date: string };
       return reply.code(201).send(await run(req, (c, orgId) => convertDocument(c, orgId, idOf(req), b.to, b.date, me(req))));
     });
   }

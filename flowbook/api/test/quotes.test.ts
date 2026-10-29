@@ -63,3 +63,22 @@ test('quote to order to invoice; declined or unsent ones cannot convert; an orde
   await run(org, (c) => voidDocument(c, org, 'SALES_ORDER', so2, { date: '2026-06-04', reason: 'cancelled' }, 't'));
   assert.equal((await run(org, (c) => getDocument(c, 'SALES_ORDER', so2)))?.status, 'VOID');
 });
+
+test('a purchase order is for a vendor, posts nothing, and becomes a bill', { skip }, async () => {
+  const org = await newOrg(pool);
+  const { vend, cust } = await run(org, async (c) => {
+    await c.query(`UPDATE organizations SET state_code = '27' WHERE id = $1`, [org]);
+    await seedTaxRates(c, org);
+    await openFinancialYear(c, org, 2027, 4, 't');
+    return { vend: await createParty(c, org, { kind: 'VENDOR', name: 'Mehta', stateCode: '27' }, 't'), cust: await createParty(c, org, { kind: 'CUSTOMER', name: 'Ravi', stateCode: '27' }, 't') };
+  });
+  const lines = [{ description: 'Paper', quantity: '10', unitPrice: '200', taxCode: 'GST12' }];
+  await assert.rejects(run(org, (c) => saveDraft(c, org, null, { kind: 'PURCHASE_ORDER', partyId: cust, date: '2026-06-01', lines }, 't')), /not a vendor/);
+  const po = await run(org, async (c) => { const x = await saveDraft(c, org, null, { kind: 'PURCHASE_ORDER', partyId: vend, date: '2026-06-01', lines }, 't'); const n = await issueDocument(c, org, 'PURCHASE_ORDER', x, 't'); return { id: x, ...n }; });
+  assert.match(po.number, /^PO-26-27-000001$/);
+  assert.equal((await run(org, (c) => trialBalance(c, org, { from: '2026-04-01', to: '2027-03-31' }))).rows.length, 0);
+  await assert.rejects(run(org, (c) => convertDocument(c, org, po.id, 'INVOICE', '2026-06-02', 't')), /purchase order becomes a bill/);
+  const bill = (await run(org, (c) => convertDocument(c, org, po.id, 'BILL', '2026-06-05', 't'))).id;
+  await run(org, (c) => issueDocument(c, org, 'BILL', bill, 't'));
+  assert.equal((await run(org, (c) => partyStatement(c, vend, '2026-04-01', '2026-12-31'))).closing, -224_000n, 'the vendor is owed 2,000 + 12%');
+});

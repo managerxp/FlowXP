@@ -68,7 +68,7 @@ export const DocForm = ({ kind }) => {
   const setLine = (i, patch) => setF({ ...f, lines: f.lines.map((l, n) => (n === i ? { ...l, ...patch } : l)) });
   const pickItem = (i, itemId) => {
     const it = (items.data || []).find((x) => String(x.id) === itemId);
-    setLine(i, it ? { itemId, description: it.name, hsnSac: it.hsn_sac || '', unit: it.unit || '', taxCode: it.tax_code || 'GST18', unitPrice: (kind.api === 'bills' ? it.purchase_price_minor : it.sale_price_minor) || '' } : { itemId: '' });
+    setLine(i, it ? { itemId, description: it.name, hsnSac: it.hsn_sac || '', unit: it.unit || '', taxCode: it.tax_code || 'GST18', unitPrice: (kind.api === 'bills' || kind.api === 'purchase-orders' ? it.purchase_price_minor : it.sale_price_minor) || '' } : { itemId: '' });
   };
   const codes = [...new Set((rates.data || []).map((r) => r.code))];
 
@@ -142,7 +142,7 @@ export const DocForm = ({ kind }) => {
   );
 };
 
-const PATH = { INVOICE: 'sales', BILL: 'purchases', CREDIT_NOTE: 'credit-notes', QUOTE: 'quotes', SALES_ORDER: 'sales-orders' };
+const PATH = { PURCHASE_ORDER: 'purchase-orders', INVOICE: 'sales', BILL: 'purchases', CREDIT_NOTE: 'credit-notes', QUOTE: 'quotes', SALES_ORDER: 'sales-orders' };
 
 export const DocView = ({ kind }) => {
   const { id } = useParams();
@@ -169,10 +169,10 @@ export const DocView = ({ kind }) => {
           {kind.api === 'credit-notes' && Number(load.data.balance_minor) > 0 && <Btn onClick={() => setPanel(panel === 'apply' ? '' : 'apply')}>Apply to invoices</Btn>}
           {kind.api === 'invoices' && <WhatsappButton kind="INVOICE" documentId={id} label="Send on WhatsApp" onDone={() => setSent((n) => n + 1)} />}
           {kind.api === 'invoices' && Number(load.data.balance_minor) > 0 && <WhatsappButton kind="REMINDER" documentId={id} label="Remind on WhatsApp" onDone={() => setSent((n) => n + 1)} />}
-          {kind.pre && !d0.outcome && <><Btn onClick={() => act(() => o(`/${kind.api}/${id}/outcome`, { method: 'POST', body: { outcome: 'ACCEPTED' } }), 'Marked accepted.')}>Customer accepted</Btn><Btn onClick={() => act(() => o(`/${kind.api}/${id}/outcome`, { method: 'POST', body: { outcome: 'DECLINED' } }), 'Marked declined.')}>Customer declined</Btn></>}
+          {kind.pre && !d0.outcome && <><Btn onClick={() => act(() => o(`/${kind.api}/${id}/outcome`, { method: 'POST', body: { outcome: 'ACCEPTED' } }), 'Marked accepted.')}>{kind.who} accepted</Btn><Btn onClick={() => act(() => o(`/${kind.api}/${id}/outcome`, { method: 'POST', body: { outcome: 'DECLINED' } }), 'Marked declined.')}>{kind.who} declined</Btn></>}
           {kind.pre && d0.outcome !== 'CONVERTED' && d0.outcome !== 'DECLINED' && <>
             {kind.api === 'quotes' && <Btn onClick={() => convert('SALES_ORDER')}>Make sales order</Btn>}
-            <Btn kind="primary" onClick={() => convert('INVOICE')}>Make invoice</Btn></>}
+            {kind.api === 'purchase-orders' ? <Btn kind="primary" onClick={() => convert('BILL')}>Make bill</Btn> : <Btn kind="primary" onClick={() => convert('INVOICE')}>Make invoice</Btn>}</>}
           {kind.api === 'invoices' && <Btn onClick={() => setPanel(panel === 'eway' ? '' : 'eway')}>E-way bill</Btn>}
           <Btn onClick={() => window.print()}>Print</Btn><Btn kind="danger" onClick={() => setPanel(panel === 'void' ? '' : 'void')}>Void</Btn></>}
       </>}>

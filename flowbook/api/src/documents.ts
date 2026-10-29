@@ -9,8 +9,8 @@ import type { Tender } from './rules.ts';
 /* Invoices, bills and credit notes are drafts until issued. Issuing numbers the document and posts its journal in one
    transaction through the rules in rules.ts, so a document and its journal can never disagree (accounting-rules I1, I2). */
 
-export type DocKind = 'INVOICE' | 'BILL' | 'CREDIT_NOTE' | 'QUOTE' | 'SALES_ORDER';
-const POSTS_NOTHING = (k: DocKind): boolean => k === 'QUOTE' || k === 'SALES_ORDER';
+export type DocKind = 'INVOICE' | 'BILL' | 'CREDIT_NOTE' | 'QUOTE' | 'SALES_ORDER' | 'PURCHASE_ORDER';
+const POSTS_NOTHING = (k: DocKind): boolean => k === 'QUOTE' || k === 'SALES_ORDER' || k === 'PURCHASE_ORDER';
 export type LineIn = { itemId?: bigint; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; unit?: string; inclusive?: boolean };
 export type DocIn = {
   kind: DocKind; partyId: bigint; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string;
@@ -18,7 +18,7 @@ export type DocIn = {
 };
 type Override = { reason: string };
 
-const PREFIX: Record<DocKind, string> = { INVOICE: 'INV', BILL: 'BILL', CREDIT_NOTE: 'CN', QUOTE: 'QUO', SALES_ORDER: 'SO' };
+const PREFIX: Record<DocKind, string> = { INVOICE: 'INV', BILL: 'BILL', CREDIT_NOTE: 'CN', QUOTE: 'QUO', SALES_ORDER: 'SO', PURCHASE_ORDER: 'PO' };
 const gone = (what: string) => new LedgerError('not_found', `no such ${what}`);
 
 /** The financial year (April to March) a date falls in, by its starting year. */
@@ -83,7 +83,7 @@ const partyFor = async (c: Db, id: bigint, role: 'CUSTOMER' | 'VENDOR') => {
   if (p.kind !== 'BOTH' && p.kind !== role) throw new LedgerError('wrong_party_kind', `that party is not a ${role.toLowerCase()}`);
   return p as { state_code: string | null; credit_days: number };
 };
-const roleOf = (kind: DocKind): 'CUSTOMER' | 'VENDOR' => (kind === 'BILL' ? 'VENDOR' : 'CUSTOMER');
+const roleOf = (kind: DocKind): 'CUSTOMER' | 'VENDOR' => (kind === 'BILL' || kind === 'PURCHASE_ORDER' ? 'VENDOR' : 'CUSTOMER');
 
 const addDays = (date: string, days: number): string => new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
@@ -218,7 +218,7 @@ export const createOpeningBalance = async (c: Db, orgId: bigint, o: { kind: 'INV
 export const setOutcome = async (c: Db, orgId: bigint, id: bigint, outcome: 'ACCEPTED' | 'DECLINED', actor: string) => {
   const d = (await c.query(`SELECT kind, status, outcome, number FROM documents WHERE id = $1 FOR UPDATE`, [id])).rows[0];
   if (!d) throw gone('document');
-  if (!POSTS_NOTHING(d.kind as DocKind)) throw new LedgerError('not_a_quote', 'only a quote or a sales order can be accepted or declined');
+  if (!POSTS_NOTHING(d.kind as DocKind)) throw new LedgerError('not_a_quote', 'only a quote or an order can be accepted or declined');
   if (d.status !== 'ISSUED') throw new LedgerError('not_issued', 'send it first');
   if (d.outcome === 'CONVERTED') throw new LedgerError('converted', 'it was already turned into another document');
   await c.query(`UPDATE documents SET outcome = $2 WHERE id = $1`, [id, outcome]);
@@ -226,11 +226,11 @@ export const setOutcome = async (c: Db, orgId: bigint, id: bigint, outcome: 'ACC
 };
 
 /** Turn a sent quote into a sales order or an invoice, or a sales order into an invoice. The new document is a draft with the same lines; nothing is posted until it is issued. */
-export const convertDocument = async (c: Db, orgId: bigint, id: bigint, to: 'SALES_ORDER' | 'INVOICE', date: string, actor: string) => {
+export const convertDocument = async (c: Db, orgId: bigint, id: bigint, to: 'SALES_ORDER' | 'INVOICE' | 'BILL', date: string, actor: string) => {
   const d = (await c.query(`SELECT * FROM documents WHERE id = $1 FOR UPDATE`, [id])).rows[0];
   if (!d) throw gone('document');
   const from = d.kind as DocKind;
-  if (!((from === 'QUOTE' && (to === 'SALES_ORDER' || to === 'INVOICE')) || (from === 'SALES_ORDER' && to === 'INVOICE'))) throw new LedgerError('bad_conversion', 'a quote becomes a sales order or an invoice; a sales order becomes an invoice');
+  if (!((from === 'QUOTE' && (to === 'SALES_ORDER' || to === 'INVOICE')) || (from === 'SALES_ORDER' && to === 'INVOICE') || (from === 'PURCHASE_ORDER' && to === 'BILL'))) throw new LedgerError('bad_conversion', 'a quote becomes a sales order or an invoice; a sales order becomes an invoice; a purchase order becomes a bill');
   if (d.status !== 'ISSUED') throw new LedgerError('not_issued', 'send it first');
   if (d.outcome === 'CONVERTED') throw new LedgerError('converted', 'it was already turned into another document');
   if (d.outcome === 'DECLINED') throw new LedgerError('declined', 'the customer declined this');
