@@ -7,6 +7,11 @@ import { LedgerError, post, reverse } from './ledger.ts';
 import { createParty } from './masters.ts';
 import { customerPaymentJournal, statedCreditNoteJournal, statedSaleJournal } from './rules.ts';
 import type { Tender } from './rules.ts';
+import { keyConfigured, seal, unseal } from './whatsapp.ts';
+
+/** The FlowXP signing secret is stored encrypted when FLOWBOOK_SECRET_KEY is set; rows written before that (or without a key) stay readable as they are. */
+export const storeSecret = (s: string): string => (keyConfigured() ? `enc1:${seal(s)}` : s);
+const openSecret = (s: string): string => (s.startsWith('enc1:') ? unseal(s.slice(5)) : s);
 
 /* FlowXP events become journals here (flowxp-integration-contract.md). Every event is stored as it arrived before anything
    is posted, so a failure never loses it; posting is idempotent by the event's own document id, so a re-delivery or a
@@ -23,7 +28,7 @@ export const verifySignature = (header: string | undefined, raw: string, conn: C
   const parts = Object.fromEntries((header ?? '').split(',').map((p) => p.trim().split('=') as [string, string]));
   const t = Number(parts.t);
   if (!Number.isInteger(t) || Math.abs(nowMs / 1000 - t) > SKEW_SECONDS || !parts.v1) return false;
-  const secrets = [conn.secret, ...(conn.previous_secret && conn.previous_secret_until && conn.previous_secret_until.getTime() > nowMs ? [conn.previous_secret] : [])];
+  const secrets = [conn.secret, ...(conn.previous_secret && conn.previous_secret_until && conn.previous_secret_until.getTime() > nowMs ? [conn.previous_secret] : [])].map(openSecret);
   const got = Buffer.from(parts.v1, 'hex');
   return secrets.some((s) => { const want = createHmac('sha256', s).update(`${t}.${raw}`).digest(); return got.length === want.length && timingSafeEqual(got, want); });
 };

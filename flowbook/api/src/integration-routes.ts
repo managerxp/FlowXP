@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type pg from 'pg';
 import { audit } from './audit.ts';
 import { withOrg } from './db.ts';
-import { findConnection, newSecret, processEvent, receiveEvent, verifySignature } from './inbox.ts';
+import { findConnection, newSecret, storeSecret, processEvent, receiveEvent, verifySignature } from './inbox.ts';
 
 type Scope = (permission: string) => (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
 type Deps = { pool: pg.Pool; scope: Scope; me: (req: FastifyRequest) => string; /** called after an event is stored, when a background worker will post it */ onEvent?: () => void };
@@ -45,7 +45,7 @@ export const registerIntegrationRoutes = (app: FastifyInstance, { pool, scope, m
     const row = await withOrg(pool, orgOf(req), async (c) => {
       const r = (await c.query(
         `INSERT INTO integration_connections (organization_id, provider, external_business_id, secret, cutover_date) VALUES ($1, 'FLOWXP', $2, $3, $4) ON CONFLICT DO NOTHING RETURNING id`,
-        [orgOf(req), String(b.businessId), secret, b.cutoverDate ?? null])).rows[0];
+        [orgOf(req), String(b.businessId), storeSecret(secret), b.cutoverDate ?? null])).rows[0];
       if (r) await audit(c, orgOf(req), { actor: me(req), action: 'integration.connected', entityType: 'integration_connection', entityId: r.id as bigint, detail: { businessId: String(b.businessId) } });
       return r;
     });
@@ -56,7 +56,7 @@ export const registerIntegrationRoutes = (app: FastifyInstance, { pool, scope, m
   app.post(`${base}/flowxp/connections/:id/rotate-secret`, { preHandler: scope('integration.manage'), schema: { params: { type: 'object', properties: { id: { type: 'string', pattern: ID } } } } }, async (req, reply) => {
     const secret = newSecret();
     const ok = await withOrg(pool, orgOf(req), async (c) => {
-      const r = await c.query(`UPDATE integration_connections SET previous_secret = secret, previous_secret_until = now() + interval '24 hours', secret = $2 WHERE id = $1`, [(req.params as { id: string }).id, secret]);
+      const r = await c.query(`UPDATE integration_connections SET previous_secret = secret, previous_secret_until = now() + interval '24 hours', secret = $2 WHERE id = $1`, [(req.params as { id: string }).id, storeSecret(secret)]);
       if (r.rowCount) await audit(c, orgOf(req), { actor: me(req), action: 'integration.secret_rotated', entityType: 'integration_connection', entityId: (req.params as { id: string }).id });
       return r.rowCount;
     });

@@ -34,7 +34,7 @@ test('sell, collect and look at the books over HTTP; each role does only its own
   assert.equal(profile.body.state_code, '27');
 
   const rates = (await call('GET', `${b}/tax-rates`, { token: owner })).body;
-  assert.deepEqual(rates.map((r: any) => r.code), ['GST0', 'GST12', 'GST18', 'GST28', 'GST5']);
+  assert.deepEqual(rates.map((r: any) => r.code), ['GST0', 'GST12', 'GST18', 'GST28', 'GST40', 'GST5']);
 
   const party = await call('POST', `${b}/parties`, { token: sales, body: { kind: 'CUSTOMER', name: 'Ravi Stores', stateCode: '29' } });
   assert.equal(party.status, 201); assert.equal(typeof party.body.id, 'string');

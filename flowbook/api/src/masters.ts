@@ -7,8 +7,8 @@ import { toPaise } from './money.ts';
 /** Starter GST slabs so a new organization can bill at once. They are data, not code: check them against the current
     notifications and add a new effective date when a rate changes (research/indian-gst-compliance.md section 4). */
 export const seedTaxRates = async (c: Db, orgId: bigint): Promise<void> => {
-  for (const [code, name, bp] of [['GST0', 'GST 0% / exempt', 0], ['GST5', 'GST 5%', 500], ['GST12', 'GST 12%', 1200], ['GST18', 'GST 18%', 1800], ['GST28', 'GST 28%', 2800]] as const) {
-    await c.query(`INSERT INTO tax_rates (organization_id, code, name, rate_bp, effective_from) VALUES ($1, $2, $3, $4, '2017-07-01')`, [orgId, code, name, bp]);
+  for (const [code, name, bp, from] of [['GST0', 'GST 0% / exempt', 0, '2017-07-01'], ['GST5', 'GST 5%', 500, '2017-07-01'], ['GST12', 'GST 12%', 1200, '2017-07-01'], ['GST18', 'GST 18%', 1800, '2017-07-01'], ['GST28', 'GST 28%', 2800, '2017-07-01'], ['GST40', 'GST 40%', 4000, '2025-09-22']] as const) {
+    await c.query(`INSERT INTO tax_rates (organization_id, code, name, rate_bp, effective_from) VALUES ($1, $2, $3, $4, $5)`, [orgId, code, name, bp, from]);
   }
 };
 

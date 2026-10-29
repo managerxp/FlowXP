@@ -25,6 +25,7 @@ const key = (): Buffer => {
   if (k.length !== 32) throw new LedgerError('secret_key_missing', 'set FLOWBOOK_SECRET_KEY (32 random bytes, base64) before saving a WhatsApp token');
   return k;
 };
+export const keyConfigured = (): boolean => Buffer.from(process.env.FLOWBOOK_SECRET_KEY ?? '', 'base64').length === 32;
 export const seal = (text: string): string => {
   const iv = randomBytes(12); const c = createCipheriv('aes-256-gcm', key(), iv);
   const body = Buffer.concat([c.update(text, 'utf8'), c.final()]);

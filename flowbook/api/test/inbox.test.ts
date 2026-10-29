@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHmac } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import { buildApp } from '../src/app.ts';
 import { withOrg } from '../src/db.ts';
 import { partyBalances, profitAndLoss, trialBalance } from '../src/reports.ts';
@@ -183,4 +183,18 @@ test('the exact shapes the FlowXP sender builds are accepted: sale, later paymen
   assert.equal((await s.send('sale.voided', { invoice_id: '7', date: '2026-06-13', reason: 'Cancelled in FlowXP' })).body.status, 'POSTED');
   assert.equal((await s.send('connection.test', {})).body.status, 'IGNORED_UNSUPPORTED');
   assert.deepEqual((await call('GET', `${s.base}/reports/reconcile`, { token: s.token })).body, { issues: [] });
+});
+
+test('with an encryption key the signing secret is stored sealed and signatures still verify, old plain rows included', { skip }, async () => {
+  const before = process.env.FLOWBOOK_SECRET_KEY;
+  process.env.FLOWBOOK_SECRET_KEY = randomBytes(32).toString('base64');
+  try {
+    const s = await connected();
+    const stored = (await pool.query(`SELECT secret FROM integration_connections WHERE id = $1`, [s.connId])).rows[0].secret as string;
+    assert.match(stored, /^enc1:/);
+    assert.equal((await s.send('sale.finalized', sale())).status, 202);
+    await pool.query(`UPDATE integration_connections SET secret = $2 WHERE id = $1`, [s.connId, 'fxs_plain_legacy']);
+    s.setSecret('fxs_plain_legacy');
+    assert.equal((await s.send('sale.finalized', sale())).status, 202, 'a plain legacy secret still works');
+  } finally { if (before === undefined) delete process.env.FLOWBOOK_SECRET_KEY; else process.env.FLOWBOOK_SECRET_KEY = before; }
 });
