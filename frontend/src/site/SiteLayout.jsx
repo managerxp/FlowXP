@@ -49,8 +49,8 @@ const Chevron = ({ open }) => (
 /* One look for every top-level item. The whole padded box is the target (40px tall, 14px either side), not just
    the word, and the current page is marked by a line under it as well as by weight. */
 const itemClass = (active, open = false) =>
-  `relative inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-lg px-3.5 text-[15px] font-medium transition-colors duration-(--duration-fast) ` +
-  `after:absolute after:inset-x-3.5 after:bottom-1 after:h-0.5 after:rounded-full after:bg-brand-500 after:transition-opacity after:duration-(--duration-fast) ` +
+  `relative inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[15px] xl:px-3.5 font-medium transition-colors duration-(--duration-fast) ` +
+  `after:absolute after:inset-x-2.5 xl:after:inset-x-3.5 after:bottom-1 after:h-0.5 after:rounded-full after:bg-brand-500 after:transition-opacity after:duration-(--duration-fast) ` +
   `${active ? 'text-ink-900 after:opacity-100' : 'text-ink-500 after:opacity-0 hover:bg-surface-2 hover:text-ink-900'} ${open ? 'bg-surface-2 text-ink-900' : ''}`;
 
 const ICONS = { restaurant: UtensilsCrossed, cafe: Coffee, 'cloud-kitchen': CookingPot, hotel: BedDouble, retail: ShoppingBasket, wholesale: Warehouse, salon: Scissors, gym: Dumbbell, gaming: Gamepad2, 'auto-parts': Wrench, pharmacy: Pill };
@@ -181,10 +181,10 @@ const Header = () => {
 
   return (
     <header className={`sticky top-0 z-50 border-b transition-colors duration-200 ${scrolled || open ? 'border-line bg-page/95 backdrop-blur-sm' : 'border-transparent bg-page'}`}>
-      <Container className="flex h-16 items-center justify-between gap-6">
+      <Container className="flex h-16 items-center justify-between gap-4 xl:gap-6">
         <HomeLink className="shrink-0"><Logo /></HomeLink>
 
-        <nav aria-label={t('header.mainAria')} className="hidden flex-1 items-center gap-0.5 lg:flex">
+        <nav aria-label={t('header.mainAria')} className="hidden flex-1 items-center gap-0.5 min-[1100px]:flex">
           <NavLink to="/features" className={({ isActive }) => itemClass(isActive)}>{t('header.product')}</NavLink>
           <IndustriesMenu />
           {NAV.slice(1).map((item) => (
@@ -192,8 +192,8 @@ const Header = () => {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 lg:flex">
-          <InstallButton label={t('header.installApp')} variant="ghost" />
+        <div className="hidden items-center gap-2 min-[1100px]:flex">
+          <span className="hidden 2xl:block"><InstallButton label={t('header.installApp')} variant="ghost" /></span>
           {user ? (
             <Button to="/app" size="sm">{t('header.openApp')}</Button>
           ) : (
@@ -210,14 +210,14 @@ const Header = () => {
           aria-expanded={open}
           aria-controls="site-menu"
           aria-label={open ? t('header.closeMenu') : t('header.openMenu')}
-          className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-700 hover:bg-surface-2 lg:hidden"
+          className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-700 hover:bg-surface-2 min-[1100px]:hidden"
         >
           <MenuGlyph open={open} />
         </button>
       </Container>
 
       {open && (
-        <div id="site-menu" className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-line bg-page lg:hidden">
+        <div id="site-menu" className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-line bg-page min-[1100px]:hidden">
           <Container className="flex flex-col py-2">
             <NavLink to="/features" className={({ isActive }) => mobileItem(isActive)}>{t('header.product')}</NavLink>
             <div className="border-b border-line">
