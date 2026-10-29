@@ -80,12 +80,12 @@ export const Items = () => {
   const save = (e) => {
     e.preventDefault();
     a.run(async () => {
-      await o('/items', { method: 'POST', body: { sku: form.sku, name: form.name, kind: form.kind, ...(form.hsnSac && { hsnSac: form.hsnSac }), ...(form.unit && { unit: form.unit }), taxCode: form.taxCode, ...(form.salePrice && { salePrice: form.salePrice }), ...(form.purchasePrice && { purchasePrice: form.purchasePrice }) } });
+      await o('/items', { method: 'POST', body: { sku: form.sku, name: form.name, kind: form.kind, ...(form.hsnSac && { hsnSac: form.hsnSac }), ...(form.unit && { unit: form.unit }), taxCode: form.taxCode, ...(form.salePrice && { salePrice: form.salePrice }), ...(form.purchasePrice && { purchasePrice: form.purchasePrice }), ...(form.kind === 'GOODS' && form.trackStock && { trackStock: true, ...(form.reorderLevel && { reorderLevel: form.reorderLevel }) }) } });
       setForm(null); await load.reload();
     }, 'Item added.');
   };
   return (
-    <Page title="Items" lead="Products and services you sell or buy. Pick them on a line to fill in the price and GST." actions={<><Btn onClick={() => setImporting(true)}>Import CSV</Btn><Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm({ sku: '', name: '', kind: 'GOODS', hsnSac: '', unit: 'NOS', taxCode: 'GST18', salePrice: '', purchasePrice: '' }); }}>Add item</Btn></>}>
+    <Page title="Items" lead="Products and services you sell or buy. Pick them on a line to fill in the price and GST." actions={<><Btn onClick={() => setImporting(true)}>Import CSV</Btn><Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm({ sku: '', name: '', kind: 'GOODS', hsnSac: '', unit: 'NOS', taxCode: 'GST18', salePrice: '', purchasePrice: '', trackStock: false, reorderLevel: '' }); }}>Add item</Btn></>}>
       {importing && <CsvImport what="item" onDone={() => load.reload()} onClose={() => setImporting(false)} />}
       <Note>{a.done}</Note>
       {form && (
@@ -99,6 +99,8 @@ export const Items = () => {
             <Field label="GST"><select value={form.taxCode} onChange={set('taxCode')}>{(codes.length ? codes : ['GST18']).map((c) => <option key={c}>{c}</option>)}</select></Field>
             <Field label="Selling price (₹)"><input inputMode="decimal" value={form.salePrice} onChange={set('salePrice')} /></Field>
             <Field label="Buying price (₹)"><input inputMode="decimal" value={form.purchasePrice} onChange={set('purchasePrice')} /></Field>
+            {form.kind === 'GOODS' && <p className="check wide"><input id="trk" type="checkbox" checked={form.trackStock} onChange={(e) => setForm({ ...form, trackStock: e.target.checked })} /><label htmlFor="trk">Count its stock (buying adds, selling takes away)</label></p>}
+            {form.kind === 'GOODS' && form.trackStock && <Field label="Warn me when it falls to" hint="Optional"><input inputMode="decimal" value={form.reorderLevel} onChange={set('reorderLevel')} /></Field>}
             <div className="wide actions"><Btn kind="primary" busy={a.busy}>Save</Btn><Btn type="button" onClick={() => setForm(null)}>Cancel</Btn></div>
           </form></Card>
       )}

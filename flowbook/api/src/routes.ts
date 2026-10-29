@@ -17,6 +17,7 @@ import type { Every } from './recurring.ts';
 import { salesAnalysis } from './analysis.ts';
 import { getEmailSettings, listEmails, saveEmailSettings, sendDocument } from './email.ts';
 import type { EmailSettingsIn } from './email.ts';
+import { adjust, setTracking, stockLedger, stockSummary } from './stock.ts';
 import { addEntry, bankAccounts, importStatement, matchLine, setIgnored, unmatchLine, workbench } from './reconcile.ts';
 import { partyStatement } from './statement.ts';
 import { UQC, validGstin, validStateCode } from './gst.ts';
@@ -128,13 +129,32 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
 
   /* ---- items */
   app.get(`${base}/items`, { preHandler: scope('item.read') }, async (req) => run(req, async (c) => (await c.query(
-    `SELECT id, sku, name, kind, hsn_sac, unit, tax_code, sale_price_minor, purchase_price_minor, active FROM items ORDER BY name LIMIT 1000`)).rows));
+    `SELECT id, sku, name, kind, hsn_sac, unit, tax_code, sale_price_minor, purchase_price_minor, active, track_stock FROM items ORDER BY name LIMIT 1000`)).rows));
   app.post(`${base}/items`, { preHandler: scope('item.write'), schema: { body: { type: 'object', required: ['sku', 'name'], additionalProperties: false, properties: {
     sku: { type: 'string', minLength: 1, maxLength: 60 }, name: { type: 'string', minLength: 1, maxLength: 160 }, kind: { type: 'string', enum: ['GOODS', 'SERVICE'] }, hsnSac: { type: 'string', maxLength: 12 }, unit: { type: 'string', enum: UQC },
-    taxCode: { type: 'string', maxLength: 20 }, salePrice: { type: 'string', pattern: AMOUNT }, purchasePrice: { type: 'string', pattern: AMOUNT } } } } }, async (req, reply) => {
-    const id = await run(req, (c, orgId) => createItem(c, orgId, req.body as Parameters<typeof createItem>[2], me(req)));
+    taxCode: { type: 'string', maxLength: 20 }, salePrice: { type: 'string', pattern: AMOUNT }, purchasePrice: { type: 'string', pattern: AMOUNT }, trackStock: { type: 'boolean' }, reorderLevel: { type: 'string', pattern: QTY } } } } }, async (req, reply) => {
+    const { trackStock, reorderLevel, ...item } = req.body as Parameters<typeof createItem>[2] & { trackStock?: boolean; reorderLevel?: string };
+    const id = await run(req, async (c, orgId) => {
+      const made = await createItem(c, orgId, item, me(req));
+      if (trackStock || reorderLevel) await setTracking(c, orgId, made, { trackStock, reorderLevel }, me(req));
+      return made;
+    });
     return reply.code(201).send({ id });
   });
+  app.patch(`${base}/items/:id`, { preHandler: scope('item.write'), schema: { ...idParam, body: { type: 'object', additionalProperties: false, properties: { trackStock: { type: 'boolean' }, reorderLevel: { type: 'string', pattern: QTY } } } } }, async (req) => {
+    await run(req, (c, orgId) => setTracking(c, orgId, BigInt((req.params as { id: string }).id), req.body as { trackStock?: boolean; reorderLevel?: string }, me(req)));
+    return { ok: true };
+  });
+
+  /* ---- stock */
+  app.get(`${base}/stock`, { preHandler: scope('item.read') }, async (req) => run(req, (c) => stockSummary(c)));
+  app.get(`${base}/stock/items/:id`, { preHandler: scope('item.read'), schema: idParam }, async (req) => run(req, (c) => stockLedger(c, BigInt((req.params as { id: string }).id), 200)));
+  app.post(`${base}/stock/adjustments`, { preHandler: scope('item.write'), schema: { body: { type: 'object', required: ['itemId', 'date', 'direction', 'quantity', 'counterAccount', 'reason'], additionalProperties: false, properties: {
+    itemId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, direction: { type: 'string', enum: ['IN', 'OUT'] }, quantity: { type: 'string', pattern: QTY }, unitCost: { type: 'string', pattern: AMOUNT }, counterAccount: { type: 'string', minLength: 1, maxLength: 40 }, reason: { type: 'string', minLength: 1, maxLength: 200 } } } } }, async (req) => {
+    const b = req.body as { itemId: string; date: string; direction: 'IN' | 'OUT'; quantity: string; unitCost?: string; counterAccount: string; reason: string };
+    return run(req, (c, orgId) => adjust(c, orgId, { ...b, itemId: BigInt(b.itemId) }, me(req)));
+  });
+
 
   /* ---- invoices, bills and credit notes */
   const kinds: [string, DocKind, string, string][] = [['invoices', 'INVOICE', 'invoice', 'invoice'], ['bills', 'BILL', 'bill', 'bill'], ['credit-notes', 'CREDIT_NOTE', 'invoice', 'credit note'], ['quotes', 'QUOTE', 'invoice', 'quote'], ['sales-orders', 'SALES_ORDER', 'invoice', 'sales order'], ['purchase-orders', 'PURCHASE_ORDER', 'bill', 'purchase order'], ['debit-notes', 'DEBIT_NOTE', 'bill', 'debit note']];

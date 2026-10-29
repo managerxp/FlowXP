@@ -3,6 +3,7 @@ import { audit } from './audit.ts';
 import { validStateCode } from './gst.ts';
 import { LedgerError, post, reverse } from './ledger.ts';
 import { paiseToString, roundDiv, taxOn, toPaise } from './money.ts';
+import { costEntry, costIn, costOut, record, trackedLines, undoMoves } from './stock.ts';
 import { creditNoteJournal, customerPaymentJournal, debitNoteJournal, openingJournal, saleJournal, supplierBillJournal, supplierPaymentJournal } from './rules.ts';
 import type { Tender } from './rules.ts';
 
@@ -192,12 +193,31 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
   }
   const taxed = lines.map((l) => ({ taxable: l.taxable_minor as bigint, rateBp: l.tax_rate_bp as number }));
   const common = { date: fresh.d as string, partyId: fresh.party_id as bigint, lines: taxed, interState: fresh.inter_state as boolean };
+  // goods that are counted: what they cost is worked out first (it may refuse for lack of stock), the moves are recorded once the entries exist
+  const tracked = kind === 'BILL' || kind === 'DEBIT_NOTE' || kind === 'INVOICE' || kind === 'CREDIT_NOTE' ? await trackedLines(c, id) : [];
+  const worth = tracked.map((t) => t.taxable_minor).reduce((a, b) => a + b, 0n);
+  const cost = new Map<bigint, bigint>();
+  for (const t of tracked) {
+    if (kind === 'INVOICE' || kind === 'DEBIT_NOTE') cost.set(t.item_id, await costOut(c, t.item_id, t.qty_milli));
+    else if (kind === 'CREDIT_NOTE') cost.set(t.item_id, await costIn(c, t.item_id, t.qty_milli));
+  }
   const journal = kind === 'INVOICE' ? saleJournal({ ...common, invoiceId: number, roundOff: fresh.round_off_minor as bigint, tcs: fresh.tcs_minor as bigint })
-    : kind === 'BILL' ? supplierBillJournal({ ...common, billId: number, reverseCharge: fresh.reverse_charge as boolean })
-    : kind === 'DEBIT_NOTE' ? debitNoteJournal({ ...common, noteId: number })
+    : kind === 'BILL' ? supplierBillJournal({ ...common, billId: number, reverseCharge: fresh.reverse_charge as boolean, inventoryNet: worth })
+    : kind === 'DEBIT_NOTE' ? debitNoteJournal({ ...common, noteId: number, inventoryNet: worth })
     : creditNoteJournal({ ...common, noteId: number });
   const posted = await post(c, orgId, { ...journal, actor, override });
   await c.query(`UPDATE documents SET status = 'ISSUED', number = $2, journal_entry_id = $3, balance_minor = total_minor WHERE id = $1`, [id, number, posted.entryId]);
+  if (tracked.length) {
+    const sold = kind === 'INVOICE' || kind === 'CREDIT_NOTE';
+    const value = [...cost.values()].reduce((a, b) => a + b, 0n);
+    const costed = sold && value > 0n ? await costEntry(c, orgId, { date: fresh.d as string, number, kind: kind as 'INVOICE' | 'CREDIT_NOTE', value, actor, override }) : null;
+    if (costed) await c.query(`UPDATE documents SET stock_entry_id = $2 WHERE id = $1`, [id, costed.entryId]);
+    for (const t of tracked) {
+      const inward = kind === 'BILL' || kind === 'CREDIT_NOTE';
+      const v = kind === 'BILL' || kind === 'DEBIT_NOTE' ? t.taxable_minor : cost.get(t.item_id) ?? 0n;
+      await record(c, orgId, actor, { itemId: t.item_id, qty: inward ? t.qty_milli : -t.qty_milli, value: inward ? v : -v, date: fresh.d as string, source: kind as 'BILL', documentId: id, entryId: costed?.entryId ?? posted.entryId, memo: number });
+    }
+  }
   await audit(c, orgId, { actor, action: 'document.issued', entityType: 'document', entityId: id, detail: { kind, number, entryNo: posted.entryNo, total: paiseToString(total) } });
   return { number, entryNo: posted.entryNo };
 };
@@ -250,7 +270,7 @@ export const convertDocument = async (c: Db, orgId: bigint, id: bigint, to: 'SAL
 
 /** Cancel an issued document the only allowed way: reverse its journal. Refused while money has been applied to it. */
 export const voidDocument = async (c: Db, orgId: bigint, kind: DocKind, id: bigint, o: { date: string; reason: string }, actor: string, override?: Override): Promise<void> => {
-  const doc = (await c.query(`SELECT status, journal_entry_id, balance_minor, total_minor, number FROM documents WHERE id = $1 AND kind = $2 FOR UPDATE`, [id, kind])).rows[0];
+  const doc = (await c.query(`SELECT status, journal_entry_id, stock_entry_id, balance_minor, total_minor, number FROM documents WHERE id = $1 AND kind = $2 FOR UPDATE`, [id, kind])).rows[0];
   if (!doc) throw gone('document');
   if (doc.status !== 'ISSUED') throw new LedgerError('not_issued', 'only an issued document can be voided');
   if (POSTS_NOTHING(kind)) {
@@ -261,6 +281,8 @@ export const voidDocument = async (c: Db, orgId: bigint, kind: DocKind, id: bigi
   }
   if (doc.balance_minor !== doc.total_minor) throw new LedgerError('has_allocations', 'payments or credits are applied to this document; void those first');
   await reverse(c, orgId, doc.journal_entry_id as bigint, { date: o.date, reason: o.reason, actor, override });
+  if (doc.stock_entry_id) await reverse(c, orgId, doc.stock_entry_id as bigint, { date: o.date, reason: o.reason, actor, override });
+  await undoMoves(c, orgId, id, o.date, actor);
   await c.query(`UPDATE documents SET status = 'VOID', balance_minor = 0, voided_on = $2 WHERE id = $1`, [id, o.date]);
   await audit(c, orgId, { actor, action: 'document.voided', entityType: 'document', entityId: id, detail: { number: doc.number, reason: o.reason } });
 };
