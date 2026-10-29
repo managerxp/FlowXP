@@ -41,7 +41,7 @@ export const DocList = ({ kind }) => {
   );
 };
 
-const blankLine = () => ({ itemId: '', description: '', hsnSac: '', unit: '', quantity: '1', unitPrice: '', discount: '', taxCode: 'GST18' });
+const blankLine = () => ({ itemId: '', description: '', hsnSac: '', unit: '', quantity: '1', unitPrice: '', discount: '', taxCode: 'GST18', inclusive: false });
 
 export const DocForm = ({ kind }) => {
   const { id } = useParams();
@@ -60,7 +60,7 @@ export const DocForm = ({ kind }) => {
     const d = existing.data;
     if (!d) return;
     setF({ partyId: String(d.party_id), date: d.issue_date || today(), dueDate: d.due_date || '', placeOfSupply: d.place_of_supply || '', supplierRef: d.supplier_ref || '', relatedDocumentId: d.related_document_id ? String(d.related_document_id) : '',
-      memo: d.memo || '', tcsRate: d.tcs_rate_bp ? String(d.tcs_rate_bp / 100) : '', tcsSection: d.tcs_section || '', roundOff: Number(d.round_off_minor) !== 0 || d.status === 'DRAFT', lines: d.lines.map((l) => ({ itemId: l.item_id ? String(l.item_id) : '', description: l.description || '', hsnSac: l.hsn_sac || '', unit: l.unit || '', quantity: l.quantity, unitPrice: l.unit_price_minor, discount: Number(l.discount_minor) ? l.discount_minor : '', taxCode: l.tax_code || '' })) });
+      memo: d.memo || '', tcsRate: d.tcs_rate_bp ? String(d.tcs_rate_bp / 100) : '', tcsSection: d.tcs_section || '', roundOff: Number(d.round_off_minor) !== 0 || d.status === 'DRAFT', lines: d.lines.map((l) => ({ itemId: l.item_id ? String(l.item_id) : '', description: l.description || '', hsnSac: l.hsn_sac || '', unit: l.unit || '', quantity: l.quantity, unitPrice: l.unit_price_minor, discount: Number(l.discount_minor) ? l.discount_minor : '', taxCode: l.tax_code || '', inclusive: Boolean(l.price_includes_tax) })) });
   }, [existing.data]);
   useEffect(() => { if (!id && search.get('partyId')) setF((x) => ({ ...x, partyId: search.get('partyId') })); }, [id, search]);
 
@@ -78,7 +78,7 @@ export const DocForm = ({ kind }) => {
       const body = { partyId: f.partyId, date: f.date, roundOff: f.roundOff, memo: f.memo || undefined, dueDate: f.dueDate || undefined, placeOfSupply: f.placeOfSupply || undefined,
         supplierRef: kind.api === 'bills' ? f.supplierRef || undefined : undefined, relatedDocumentId: f.relatedDocumentId || undefined,
         ...(kind.api === 'invoices' && Number(f.tcsRate) > 0 && { tcsRateBp: Math.round(Number(f.tcsRate) * 100), ...(f.tcsSection && { tcsSection: f.tcsSection }) }),
-        lines: f.lines.map((l) => ({ itemId: l.itemId || undefined, description: l.description || undefined, hsnSac: l.hsnSac || undefined, unit: l.unit || undefined, quantity: String(l.quantity), unitPrice: String(l.unitPrice || '0'), discount: l.discount ? String(l.discount) : undefined, taxCode: l.taxCode || undefined })) };
+        lines: f.lines.map((l) => ({ itemId: l.itemId || undefined, description: l.description || undefined, hsnSac: l.hsnSac || undefined, unit: l.unit || undefined, quantity: String(l.quantity), unitPrice: String(l.unitPrice || '0'), discount: l.discount ? String(l.discount) : undefined, taxCode: l.taxCode || undefined, ...(l.inclusive && { inclusive: true }) })) };
       const out = id ? await o(`/${kind.api}/${id}`, { method: 'PUT', body }) : await o(`/${kind.api}`, { method: 'POST', body });
       nav(`/${kind.path}/${out.id}`);
     });
@@ -121,7 +121,7 @@ export const DocForm = ({ kind }) => {
                 <Field label="Description"><input value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} /></Field>
                 <Field label="Qty"><input inputMode="decimal" value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} required /></Field>
                 <Field label="Unit"><select value={l.unit} onChange={(e) => setLine(i, { unit: e.target.value })}><option value="">–</option>{UNITS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select></Field>
-                <Field label="Price (₹)"><input inputMode="decimal" value={l.unitPrice} onChange={(e) => setLine(i, { unitPrice: e.target.value })} required /></Field>
+                <Field label={l.inclusive ? 'Price with GST (₹)' : 'Price (₹)'} hint={<label className="check"><input type="checkbox" checked={l.inclusive} onChange={(e) => setLine(i, { inclusive: e.target.checked })} /> GST is in this price</label>}><input inputMode="decimal" value={l.unitPrice} onChange={(e) => setLine(i, { unitPrice: e.target.value })} required /></Field>
                 <Field label="Discount (₹)"><input inputMode="decimal" value={l.discount} onChange={(e) => setLine(i, { discount: e.target.value })} /></Field>
                 <Field label="GST"><select value={l.taxCode} onChange={(e) => setLine(i, { taxCode: e.target.value })}>{codes.length ? codes.map((c) => <option key={c}>{c}</option>) : <option>{l.taxCode}</option>}</select></Field>
                 <Btn type="button" className="btn small danger" disabled={f.lines.length === 1} onClick={() => setF({ ...f, lines: f.lines.filter((_, n) => n !== i) })} aria-label="Remove line">Remove</Btn>

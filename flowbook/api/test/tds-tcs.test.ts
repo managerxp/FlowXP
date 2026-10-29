@@ -73,3 +73,13 @@ test('sales analysis ranks customers and items and nets credit notes', { skip },
   assert.deepEqual(a.items.map((x) => [x.name, x.sales_minor, x.quantity_milli]), [['Widget', 200_000n, 2000n]]);
   assert.deepEqual(a.months.map((m) => [m.month, m.sales_minor]), [['2026-06', 200_000n], ['2026-07', -100_000n]]);
 });
+
+test('a line with GST in its price keeps the typed amount as the total, and survives issuing', { skip }, async () => {
+  const { org, cust } = await shop();
+  const d: DocIn = { kind: 'INVOICE', partyId: cust, date: '2026-06-10', lines: [{ description: 'Shirt', quantity: '3', unitPrice: '1180', taxCode: 'GST18', inclusive: true }, { description: 'Pen', quantity: '1', unitPrice: '100', taxCode: 'GST18' }] };
+  const id = await run(org, async (c) => { const x = await saveDraft(c, org, null, d, 't'); await issueDocument(c, org, 'INVOICE', x, 't'); return x; });
+  const doc = (await pool.query(`SELECT subtotal_minor, tax_minor, total_minor FROM documents WHERE id = $1`, [id])).rows[0];
+  assert.deepEqual([doc.subtotal_minor, doc.tax_minor, doc.total_minor], [310_000n, 55_800n, 365_800n], '3540 incl. GST = 3000 + 540, plus 100 + 18');
+  const lines = (await pool.query(`SELECT price_includes_tax, taxable_minor, tax_minor FROM document_lines WHERE document_id = $1 ORDER BY line_no`, [id])).rows;
+  assert.deepEqual(lines.map((l) => [l.price_includes_tax, l.taxable_minor, l.tax_minor]), [[true, 300_000n, 54_000n], [false, 10_000n, 1_800n]]);
+});

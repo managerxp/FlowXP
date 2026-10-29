@@ -38,7 +38,7 @@ type Deps = { pool: pg.Pool; scope: Scope; me: (req: FastifyRequest) => string }
 
 const line = { type: 'object', additionalProperties: false, properties: {
   itemId: { type: 'string', pattern: ID }, description: { type: 'string', maxLength: 300 }, hsnSac: { type: 'string', maxLength: 12 },
-  quantity: { type: 'string', pattern: QTY }, unitPrice: { type: 'string', pattern: AMOUNT }, discount: { type: 'string', pattern: AMOUNT }, taxCode: { type: 'string', maxLength: 20 }, unit: { type: 'string', enum: UQC } } };
+  quantity: { type: 'string', pattern: QTY }, unitPrice: { type: 'string', pattern: AMOUNT }, discount: { type: 'string', pattern: AMOUNT }, taxCode: { type: 'string', maxLength: 20 }, unit: { type: 'string', enum: UQC }, inclusive: { type: 'boolean' } } };
 const docBody = { type: 'object', required: ['partyId', 'date', 'lines'], additionalProperties: false, properties: {
   partyId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, dueDate: { type: 'string', pattern: DATE }, placeOfSupply: { type: 'string', pattern: '^\\d{2}$' },
   supplierRef: { type: 'string', maxLength: 60 }, relatedDocumentId: { type: 'string', pattern: ID }, memo: { type: 'string', maxLength: 500 }, roundOff: { type: 'boolean' },
@@ -50,7 +50,7 @@ const allocs = (a: { documentId: string; amount: string }[]): Alloc[] => a.map((
 const voidBody = { type: 'object', required: ['date', 'reason'], additionalProperties: false, properties: { date: { type: 'string', pattern: DATE }, reason: { type: 'string', minLength: 1, maxLength: 300 }, ...override } };
 
 type RawDoc = { partyId: string; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string; relatedDocumentId?: string; memo?: string; roundOff?: boolean; tcsRateBp?: number; tcsSection?: string;
-  lines: { itemId?: string; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; unit?: string }[] };
+  lines: { itemId?: string; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; unit?: string; inclusive?: boolean }[] };
 const docIn = (kind: DocKind, b: RawDoc): DocIn => ({ ...b, kind, partyId: BigInt(b.partyId), relatedDocumentId: b.relatedDocumentId ? BigInt(b.relatedDocumentId) : undefined,
   lines: b.lines.map((l) => ({ ...l, itemId: l.itemId ? BigInt(l.itemId) : undefined })) });
 
