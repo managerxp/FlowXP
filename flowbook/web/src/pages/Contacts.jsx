@@ -6,7 +6,7 @@ import { CsvImport } from './Import.jsx';
 import { useSession } from '../session.jsx';
 import { Async, Badge, Btn, Card, Empty, Err, Field, Money, Note, Page, Table, useAction } from '../ui.jsx';
 
-const blank = (kind) => ({ kind, name: '', gstin: '', pan: '', stateCode: '', phone: '', email: '', creditDays: '' });
+const blank = (kind) => ({ kind, name: '', gstin: '', pan: '', stateCode: '', phone: '', email: '', creditDays: '', addressLine: '', city: '', pincode: '', shipAddressLine: '', shipCity: '', shipPincode: '' });
 
 /** Customers and vendors: a list with search, and a form that opens in place for adding or changing one. */
 export const Parties = ({ kind }) => {
@@ -22,12 +22,12 @@ export const Parties = ({ kind }) => {
     e.preventDefault();
     a.run(async () => {
       const { id, ...f } = form;
-      const body = { kind: f.kind, name: f.name, ...(f.gstin && { gstin: f.gstin.toUpperCase() }), ...(f.pan && { pan: f.pan.toUpperCase() }), ...(f.stateCode && { stateCode: f.stateCode }), ...(f.phone && { phone: f.phone }), ...(f.email && { email: f.email }), ...(f.creditDays !== '' && { creditDays: Number(f.creditDays) }), ...(id && { whatsappOptOut: Boolean(f.whatsappOptOut) }) };
+      const body = { kind: f.kind, name: f.name, ...(f.gstin && { gstin: f.gstin.toUpperCase() }), ...(f.pan && { pan: f.pan.toUpperCase() }), ...(f.stateCode && { stateCode: f.stateCode }), ...(f.phone && { phone: f.phone }), ...(f.email && { email: f.email }), ...(f.creditDays !== '' && { creditDays: Number(f.creditDays) }), ...Object.fromEntries(['addressLine', 'city', 'pincode', 'shipAddressLine', 'shipCity', 'shipPincode'].filter((k) => f[k] || id).map((k) => [k, f[k]])), ...(id && { whatsappOptOut: Boolean(f.whatsappOptOut) }) };
       if (id) await o(`/parties/${id}`, { method: 'PATCH', body }); else await o('/parties', { method: 'POST', body });
       setForm(null); await load.reload();
     }, `Saved.`);
   };
-  const edit = (p) => setForm({ id: p.id, kind: p.kind, name: p.name, gstin: p.gstin || '', pan: p.pan || '', stateCode: p.state_code || '', phone: p.phone || '', email: p.email || '', creditDays: p.credit_days ?? '', whatsappOptOut: Boolean(p.whatsapp_opt_out) });
+  const edit = (p) => setForm({ id: p.id, kind: p.kind, name: p.name, gstin: p.gstin || '', pan: p.pan || '', stateCode: p.state_code || '', phone: p.phone || '', email: p.email || '', creditDays: p.credit_days ?? '', whatsappOptOut: Boolean(p.whatsapp_opt_out), addressLine: p.address_line || '', city: p.city || '', pincode: p.pincode || '', shipAddressLine: p.ship_address_line || '', shipCity: p.ship_city || '', shipPincode: p.ship_pincode || '' });
 
   return (
     <Page title={`${word[0].toUpperCase()}${word.slice(1)}s`} lead={kind === 'CUSTOMER' ? 'People and businesses you sell to.' : 'People and businesses you buy from.'} actions={<><Btn onClick={() => setImporting(true)}>Import CSV</Btn><Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm(blank(kind)); }}>Add {word}</Btn></>}>
@@ -44,6 +44,12 @@ export const Parties = ({ kind }) => {
             <Field label="Email"><input type="email" value={form.email} onChange={set('email')} maxLength={200} /></Field>
             <Field label="PAN"><input value={form.pan} onChange={set('pan')} maxLength={10} /></Field>
             <Field label="Days to pay" hint="Sets the due date on new documents"><input inputMode="numeric" value={form.creditDays} onChange={set('creditDays')} /></Field>
+            <Field label="Address" wide><input value={form.addressLine} onChange={set('addressLine')} maxLength={200} /></Field>
+            <Field label="City"><input value={form.city} onChange={set('city')} maxLength={80} /></Field>
+            <Field label="PIN code" hint="Six digits; needed for an e-way bill"><input value={form.pincode} onChange={set('pincode')} maxLength={6} inputMode="numeric" /></Field>
+            <Field label="Deliver to (if different)" wide><input value={form.shipAddressLine} onChange={set('shipAddressLine')} maxLength={200} /></Field>
+            <Field label="Delivery city"><input value={form.shipCity} onChange={set('shipCity')} maxLength={80} /></Field>
+            <Field label="Delivery PIN code"><input value={form.shipPincode} onChange={set('shipPincode')} maxLength={6} inputMode="numeric" /></Field>
             {form.id && <p className="check wide"><input id="wa-out" type="checkbox" checked={form.whatsappOptOut} onChange={(e) => setForm({ ...form, whatsappOptOut: e.target.checked })} /><label htmlFor="wa-out">Do not send WhatsApp messages to this {word} (they asked to stop)</label></p>}
             <div className="wide actions"><Btn kind="primary" busy={a.busy}>Save</Btn><Btn type="button" onClick={() => setForm(null)}>Cancel</Btn></div>
           </form>

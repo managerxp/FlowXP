@@ -105,7 +105,7 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     kind: { type: 'string', enum: ['CUSTOMER', 'VENDOR'] }, q: { type: 'string', maxLength: 80 }, limit: { type: 'integer', minimum: 1, maximum: 500 } } } } }, async (req) => {
     const q = req.query as { kind?: string; q?: string; limit?: number };
     return run(req, async (c) => (await c.query(
-      `SELECT id, kind, name, gstin, state_code, phone, email, credit_days, active, external_ref, whatsapp_opt_out, address_line, city, pincode FROM parties
+      `SELECT id, kind, name, gstin, state_code, phone, email, credit_days, active, external_ref, whatsapp_opt_out, address_line, city, pincode, ship_address_line, ship_city, ship_pincode FROM parties
         WHERE ($1::text IS NULL OR kind IN ($1, 'BOTH')) AND ($2::text IS NULL OR name ILIKE '%' || $2 || '%') ORDER BY name LIMIT $3`, [q.kind ?? null, q.q ?? null, q.limit ?? 200])).rows);
   });
   app.post(`${base}/parties`, { preHandler: scope('party.write'), schema: { body: { type: 'object', required: ['kind', 'name'], additionalProperties: false, properties: partyProps } } }, async (req, reply) => {

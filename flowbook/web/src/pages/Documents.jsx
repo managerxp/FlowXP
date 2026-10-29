@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useLoad } from '../api.js';
 import { STATES, UNITS, addDays, amountInWords, inr, showDate, today, unitLabel } from '../lib.js';
 import { useSession } from '../session.jsx';
+import { DocSheet, EwayPanel } from './Print.jsx';
 import { WhatsappButton, WhatsappLog } from './Whatsapp.jsx';
 import { Async, Badge, Btn, Card, Confirm, Empty, Err, Field, Money, Note, Page, Table, Tabs, useAction } from '../ui.jsx';
 
@@ -157,10 +158,13 @@ export const DocView = ({ kind }) => {
           {kind.api === 'credit-notes' && Number(load.data.balance_minor) > 0 && <Btn onClick={() => setPanel(panel === 'apply' ? '' : 'apply')}>Apply to invoices</Btn>}
           {kind.api === 'invoices' && <WhatsappButton kind="INVOICE" documentId={id} label="Send on WhatsApp" onDone={() => setSent((n) => n + 1)} />}
           {kind.api === 'invoices' && Number(load.data.balance_minor) > 0 && <WhatsappButton kind="REMINDER" documentId={id} label="Remind on WhatsApp" onDone={() => setSent((n) => n + 1)} />}
+          {kind.api === 'invoices' && <Btn onClick={() => setPanel(panel === 'eway' ? '' : 'eway')}>E-way bill</Btn>}
           <Btn onClick={() => window.print()}>Print</Btn><Btn kind="danger" onClick={() => setPanel(panel === 'void' ? '' : 'void')}>Void</Btn></>}
       </>}>
       <Async load={load}>{(d) => (<>
         <Err>{a.error}</Err><Note>{a.done}</Note>
+        {panel === 'eway' && <EwayPanel id={id} number={d.number} onClose={() => setPanel('')} />}
+        {d.status === 'ISSUED' && <DocSheet kind={kind} d={d} />}
         {panel === 'delete' && <Confirm><p>Delete this draft? It has no number and nothing is posted.</p><Btn kind="danger" busy={a.busy} onClick={() => a.run(async () => { await o(`/${kind.api}/${id}`, { method: 'DELETE' }); nav(`/${kind.path}`); })}>Yes, delete</Btn></Confirm>}
         {panel === 'void' && (
           <Confirm><p>Voiding reverses the entries in the books. Money already allocated to this {kind.one.toLowerCase()} must be unlinked first.</p>

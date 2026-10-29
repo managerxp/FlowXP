@@ -99,6 +99,8 @@ export const PaymentForm = () => {
   );
 };
 
+import { ReceiptSheet } from './Print.jsx';
+
 export const PaymentView = () => {
   const { id } = useParams();
   const { o, org } = useSession();
@@ -108,9 +110,10 @@ export const PaymentView = () => {
   const [v, setV] = useState({ date: today(), reason: '' });
   return (
     <Page title={load.data ? `Payment ${load.data.number}` : 'Payment'} lead={load.data && `${load.data.direction === 'IN' ? 'Received from' : 'Paid to'} ${load.data.party_name}`}
-      actions={load.data?.status === 'POSTED' && <>{load.data.direction === 'IN' && <WhatsappButton kind="RECEIPT" paymentId={id} label="Send receipt on WhatsApp" />}<Btn kind="danger" onClick={() => setPanel(!panel)}>Void</Btn></>}>
+      actions={load.data?.status === 'POSTED' && <>{load.data.direction === 'IN' && <WhatsappButton kind="RECEIPT" paymentId={id} label="Send receipt on WhatsApp" />}<Btn onClick={() => window.print()}>Print receipt</Btn><Btn kind="danger" onClick={() => setPanel(!panel)}>Void</Btn></>}>
       <Async load={load}>{(p) => (<>
         <Err>{a.error}</Err><Note>{a.done}</Note>
+        {p.status === 'POSTED' && <ReceiptSheet pay={p} />}
         {panel && (<Confirm><p>Voiding reverses the entries and frees the invoices or bills it settled.</p>
           <div className="form"><Field label="Date of reversal"><input type="date" value={v.date} onChange={(e) => setV({ ...v, date: e.target.value })} /></Field><Field label="Reason"><input value={v.reason} onChange={(e) => setV({ ...v, reason: e.target.value })} /></Field></div>
           <p><Btn kind="danger" busy={a.busy} disabled={!v.reason} onClick={() => a.run(async () => { await o(`/payments/${id}/void`, { method: 'POST', body: v }); await load.reload(); setPanel(false); }, 'Payment voided.')}>Void payment</Btn></p></Confirm>)}

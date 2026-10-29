@@ -4,17 +4,20 @@ import { ROLE_HELP, STATES, showDate, showTime, today } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { Async, Badge, Btn, Card, Empty, Err, Field, Note, Page, Table, Tabs, useAction } from '../ui.jsx';
 
+const XB = { addressLine: '', city: '', pincode: '', phone: '', email: '', bankName: '', bankAccount: '', bankIfsc: '', upiId: '', terms: '' };
+const XCOL = { addressLine: 'address_line', city: 'city', pincode: 'pincode', phone: 'phone', email: 'email', bankName: 'bank_name', bankAccount: 'bank_account', bankIfsc: 'bank_ifsc', upiId: 'upi_id', terms: 'terms' };
+
 const Business = () => {
   const { o, org } = useSession();
   const a = useAction();
-  const [f, setF] = useState({ legalName: '', gstin: '', stateCode: '', pan: '', invoicePrefix: '' });
+  const [f, setF] = useState({ legalName: '', gstin: '', stateCode: '', pan: '', invoicePrefix: '', ...XB });
   const load = useLoad(() => o('/profile'), [org.id]);
-  useEffect(() => { const p = load.data; if (p) setF({ legalName: p.legal_name || '', gstin: p.gstin || '', stateCode: p.state_code || '', pan: p.pan || '', invoicePrefix: p.invoice_prefix || '' }); }, [load.data]);
+  useEffect(() => { const p = load.data; if (p) setF({ legalName: p.legal_name || '', gstin: p.gstin || '', stateCode: p.state_code || '', pan: p.pan || '', invoicePrefix: p.invoice_prefix || '', ...Object.fromEntries(Object.entries(XCOL).map(([k, c]) => [k, p[c] || ''])) }); }, [load.data]);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const save = (e) => {
     e.preventDefault();
     a.run(async () => {
-      const body = Object.fromEntries(Object.entries({ legalName: f.legalName, gstin: f.gstin.toUpperCase(), stateCode: f.stateCode, pan: f.pan.toUpperCase(), invoicePrefix: f.invoicePrefix.toUpperCase() }).filter(([, v]) => v));
+      const body = { ...Object.fromEntries(Object.entries({ legalName: f.legalName, gstin: f.gstin.toUpperCase(), stateCode: f.stateCode, pan: f.pan.toUpperCase(), invoicePrefix: f.invoicePrefix.toUpperCase() }).filter(([, v]) => v)), ...Object.fromEntries(Object.keys(XCOL).map((k) => [k, f[k]])) };
       await o('/profile', { method: 'PUT', body });
     }, 'Saved. The GSTIN is checked, and the state decides CGST + SGST versus IGST on every new document.');
   };
@@ -27,6 +30,42 @@ const Business = () => {
         <Field label="State" hint="Needed for GST if you have no GSTIN"><select value={f.stateCode} onChange={set('stateCode')}><option value="">Leave as is</option>{Object.entries(STATES).map(([c, n]) => <option key={c} value={String(c).padStart(2, '0')}>{String(c).padStart(2, '0')} · {n}</option>)}</select></Field>
         <Field label="PAN"><input value={f.pan} onChange={set('pan')} maxLength={10} /></Field>
         <Field label="Invoice number prefix" hint={`Numbers look like ${f.invoicePrefix || 'INV'}-26-27-000001 and start again each financial year`}><input value={f.invoicePrefix} onChange={set('invoicePrefix')} maxLength={3} pattern="[A-Za-z0-9]{1,3}" title="One to three letters or digits" /></Field>
+        <h3 className="wide">Address and contact <span className="muted">· printed on invoices and used for e-way bills</span></h3>
+        <Field label="Address" wide><input value={f.addressLine} onChange={set('addressLine')} maxLength={200} /></Field>
+        <Field label="City"><input value={f.city} onChange={set('city')} maxLength={80} /></Field>
+        <Field label="PIN code"><input value={f.pincode} onChange={set('pincode')} maxLength={6} inputMode="numeric" /></Field>
+        <Field label="Phone"><input value={f.phone} onChange={set('phone')} maxLength={20} inputMode="tel" /></Field>
+        <Field label="Email"><input type="email" value={f.email} onChange={set('email')} maxLength={200} /></Field>
+        <h3 className="wide">Bank, UPI and terms <span className="muted">· printed so customers know how to pay</span></h3>
+        <Field label="Bank name"><input value={f.bankName} onChange={set('bankName')} maxLength={80} /></Field>
+        <Field label="Account number"><input value={f.bankAccount} onChange={set('bankAccount')} maxLength={30} inputMode="numeric" /></Field>
+        <Field label="IFSC"><input value={f.bankIfsc} onChange={set('bankIfsc')} maxLength={11} /></Field>
+        <Field label="UPI ID"><input value={f.upiId} onChange={set('upiId')} maxLength={80} placeholder="name@bank" /></Field>
+        <Field label="Terms and conditions" wide><textarea rows={3} value={f.terms} onChange={set('terms')} maxLength={1000} /></Field>
+        <div className="wide"><Btn kind="primary" busy={a.busy}>Save</Btn></div>
+      </form>
+    </Card>
+  );
+};
+
+const PRINT_DEFAULT = { paper: 'A4', accent: '#1a56db', title: '', showHsn: true, showBank: true, showTerms: true, showUnit: true };
+const Printing = () => {
+  const { o, org } = useSession();
+  const a = useAction();
+  const [f, setF] = useState(PRINT_DEFAULT);
+  const load = useLoad(() => o('/profile'), [org.id]);
+  useEffect(() => { if (load.data) setF({ ...PRINT_DEFAULT, ...load.data.print_settings }); }, [load.data]);
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
+  const save = (e) => { e.preventDefault(); a.run(() => o('/profile', { method: 'PUT', body: { printSettings: f } }), 'Saved. New prints use these choices.'); };
+  return (
+    <Card title="Printing"><p className="muted">How invoices, bills, credit notes and receipts look on paper. Open a document and press Print to see it.</p>
+      <Err>{a.error}</Err><Note>{a.done}</Note>
+      <form className="form" onSubmit={save}>
+        <Field label="Paper"><select value={f.paper} onChange={set('paper')}><option value="A4">A4</option><option value="A5">A5 (half page)</option><option value="THERMAL">Thermal roll (80 mm)</option></select></Field>
+        <Field label="Colour"><input type="color" value={f.accent} onChange={set('accent')} /></Field>
+        <Field label="Heading" hint="Leave empty for Tax Invoice / Bill of Supply as the document needs" wide><input value={f.title} onChange={set('title')} maxLength={40} /></Field>
+        {[['showHsn', 'Show HSN / SAC on each line'], ['showUnit', 'Show the unit on each line'], ['showBank', 'Show bank details and UPI'], ['showTerms', 'Show terms and conditions']].map(([k, t]) => (
+          <p className="check wide" key={k}><input id={k} type="checkbox" checked={f[k]} onChange={set(k)} /><label htmlFor={k}>{t}</label></p>))}
         <div className="wide"><Btn kind="primary" busy={a.busy}>Save</Btn></div>
       </form>
     </Card>
@@ -141,8 +180,8 @@ export default ({ AddBusiness }) => {
   const [tab, setTab] = useState('biz');
   return (
     <Page title="Settings">
-      <Tabs value={tab} onChange={setTab} tabs={[['biz', 'Business'], ['tax', 'GST rates'], ['periods', 'Closing'], ['team', 'Team'], ['wa', 'WhatsApp'], ['flowxp', 'FlowXP'], ['log', 'Activity'], ['new', 'Add business']]} />
-      {tab === 'biz' && <Business />}{tab === 'tax' && <TaxRates />}{tab === 'periods' && <Periods />}{tab === 'team' && <Team />}{tab === 'wa' && <WhatsappSettings />}{tab === 'flowxp' && <FlowXP />}{tab === 'log' && <Activity />}{tab === 'new' && <AddBusiness />}
+      <Tabs value={tab} onChange={setTab} tabs={[['biz', 'Business'], ['print', 'Printing'], ['tax', 'GST rates'], ['periods', 'Closing'], ['team', 'Team'], ['wa', 'WhatsApp'], ['flowxp', 'FlowXP'], ['log', 'Activity'], ['new', 'Add business']]} />
+      {tab === 'biz' && <Business />}{tab === 'print' && <Printing />}{tab === 'tax' && <TaxRates />}{tab === 'periods' && <Periods />}{tab === 'team' && <Team />}{tab === 'wa' && <WhatsappSettings />}{tab === 'flowxp' && <FlowXP />}{tab === 'log' && <Activity />}{tab === 'new' && <AddBusiness />}
     </Page>
   );
 };

@@ -183,3 +183,23 @@ tr.total td { font-weight: 700; border-top: 2px solid var(--line); background: v
 .problems li { padding: .625rem .75rem; border-radius: 8px; font-size: .875rem; border: 1px solid var(--line); }
 .problems li.bad { border-color: var(--danger); }
 .problems li.warn { border-color: var(--warning); }
+
+.form h3 { margin: .5rem 0 0; font-size: .9375rem; } .form h3 .muted { font-weight: 400; font-size: .8125rem; }
+input[type="color"] { padding: .125rem; max-width: 5rem; cursor: pointer; }
+.sheet { display: none; }
+@media print {
+  #root { display: none !important; }
+  .sheet { display: block; color: #000; background: #fff; font-size: 11pt; line-height: 1.4; --accent: #1a56db; }
+  .sheet header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; border-bottom: 2px solid var(--accent); padding-bottom: .5rem; margin-bottom: .75rem; }
+  .sheet h1 { margin: 0; font-size: 1.5em; color: var(--accent); text-align: right; } .sheet .biz { font-size: 1.25em; }
+  .sheet .meta { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .75rem; } .sheet .meta > div, .sheet .meta dl { margin: 0; }
+  .sheet .meta strong, .sheet .meta .muted { display: block; } .sheet .meta .muted { color: #555; font-size: .85em; }
+  .sheet dl { display: grid; grid-template-columns: auto auto; gap: 0 .75rem; } .sheet dt { color: #555; } .sheet dd { margin: 0; }
+  .sheet table { width: 100%; border-collapse: collapse; } .sheet th { background: var(--accent); color: #fff; text-align: left; }
+  .sheet th, .sheet td { padding: .25rem .4rem; border-bottom: 1px solid #ccc; } .sheet .r { text-align: right; }
+  .sheet .sum { margin: .5rem 0 0 auto; width: 16rem; } .sheet .sum div { display: flex; justify-content: space-between; padding: .1rem 0; }
+  .sheet .sum .grand { border-top: 2px solid var(--accent); font-weight: 700; font-size: 1.1em; margin-top: .25rem; padding-top: .25rem; }
+  .sheet .words { font-style: italic; } .sheet .small { font-size: .85em; }
+  .sheet footer { display: flex; justify-content: space-between; margin-top: 2rem; }
+  .sheet.thermal { font-size: 9pt; } .sheet.thermal header, .sheet.thermal .meta { flex-direction: column; } .sheet.thermal h1 { text-align: left; font-size: 1.2em; } .sheet.thermal .sum { width: 100%; }
+}
