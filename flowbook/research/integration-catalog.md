@@ -8,8 +8,8 @@ Zoho's own integrations list (from its help index) is: Bigin, Bharat Connect, Zo
 
 | Integration | Category | Availability | Main purpose | Data exchanged | Direction | Trigger | Auth | Cost | Limitations | FlowBook |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Razorpay | Payments | In Zoho: native online-payment setup (page exists) | collect invoice payments | payment link or checkout, payment status, refunds | both | webhook + manual | API key pair + webhook secret | unknown, verify | India | **MVP** |
-| Cashfree | Payments | not in Zoho's list | same; FlowXP already uses Cashfree for subscriptions | same | both | webhook | key + signature (FlowXP has `payments/cashfree.js`) | unknown, verify | | **MVP** (reuse) |
+| Razorpay | Payments | In Zoho: native online-payment setup (page exists) | collect invoice payments | payment link or checkout, payment status, refunds | both | webhook + manual | API key pair + webhook secret | headline 2% per transaction (see cost section) | India | **MVP** |
+| Cashfree | Payments | not in Zoho's list | same; FlowXP already uses Cashfree for subscriptions | same | both | webhook | key + signature (FlowXP has `payments/cashfree.js`) | 1.95% promotional (see cost section) | | **MVP** (reuse) |
 | Stripe, PayPal | Payments | native in Zoho | international | same | both | webhook | OAuth/keys | unknown | India onboarding limits unverified | Later |
 | Paytm, ICICI eazypay, bank gateways (SBI, Axis, Kotak, Yes, StanChart, HSBC, ICICI) | Payments | native in Zoho (listed) | collect payments | payment status | inbound | callback | per bank | unknown | | Not required |
 | Zoho Payments | Payments | Zoho's own | | | | | | | Zoho only | n/a |
@@ -17,7 +17,7 @@ Zoho's own integrations list (from its help index) is: Bigin, Bharat Connect, Zo
 | Bank feeds | Banking | Zoho: via Yodlee aggregator | auto statement lines | bank transactions | inbound | polling by aggregator | bank authorisation redirect | unknown | availability by bank unknown | **Later**; MVP = CSV/statement import |
 | Statement import | Banking | native | | lines | inbound | manual | n/a | free | format variety | **MVP** |
 | Account Aggregator (RBI framework) | Banking | not claimed by Zoho | consented bank data | | inbound | consent | FIU registration/partner | unknown | needs regulated route; do not assume | Evaluate, Later |
-| GSP / IRP for e-invoice | Compliance | Zoho is a registered GSP (e-invoicing page) | IRN + signed QR | invoice JSON out, IRN/QR/ack back | both | on issue | GSP credentials, IRP user | unknown | needs a GSP/ASP arrangement | **Phase 2**, partner first |
+| GSP / IRP for e-invoice | Compliance | Zoho is a registered GSP (e-invoicing page) | IRN + signed QR | invoice JSON out, IRN/QR/ack back | both | on issue | GSP credentials, IRP user | one GSP's published API price read (GSTZen, see cost section) | needs a GSP/ASP arrangement | **Phase 2**, partner first |
 | E-way bill | Compliance | native in Zoho | EWB number | invoice + transport | both | manual or on issue | GSP | unknown | | Phase 2 |
 | GSTR-1/3B filing | Compliance | native in Zoho (filing pages) | return filing | return JSON, status | both | manual | GSP + OTP | unknown | | **Phase 2 exports first**, filing via partner |
 | Zoho CRM, Projects, Expense, People, Desk, Analytics, Commerce, Billing | Zoho apps | native | | contacts, invoices, expenses | both | | Zoho OAuth | included | Zoho only | Not required |
@@ -41,3 +41,21 @@ Zoho's own integrations list (from its help index) is: Bigin, Bharat Connect, Zo
 
 ## Per-integration deliverables
 For each integration listed "MVP" or "Phase 2", docs/integration-architecture.md gives purpose, credentials, auth model, data flow, mapping, webhook events, retry/reconcile strategy, security, complexity, cost note and phase. Costs stay *unknown, verify* until a vendor price page is read.
+
+## Costs read on 2026-10-29 (vendor pages, India)
+All prices exclude GST unless stated. Promotions change; re-read before quoting a customer.
+
+| Vendor | What the page says | Source |
+|---|---|---|
+| Razorpay (payment gateway) | Pricing page shows a headline of **2%**, and a promotion "0% fee (down from 2%)" with a free payment gateway for the first 90 days for funded startups; businesses above ₹5L/month are told to ask for custom pricing. Per-method rates (UPI, cards, netbanking) were not shown in the text read: unknown | https://razorpay.com/pricing/ |
+| Cashfree (payment gateway) | Festive offer: **1.95%** for new merchants on sales up to ₹20L, valid till 31 Mar 2027, next-day settlement. Enterprise: custom. Payouts: transfers up to ₹1,000: NEFT ₹3, RTGS ₹4, IMPS/UPI ₹6; ₹1,000 to ₹25,000: ₹5, ₹6, ₹8; above ₹25,000: ₹8, ₹10, ₹15 (exclusive of bank charges and GST). Cashgram payout links ₹2.50 + transfer charge | https://www.cashfree.com/payment-gateway-charges/ |
+| Meta WhatsApp Business Platform | Updated 30 Sep 2026. Charged **per delivered message** by category (marketing, utility, authentication, service, Meta Business Agent) and the recipient's country. India is a named market on the rate card (47 markets). Volume tiers lower the rate by market and category. Messages from users to businesses are not charged. The India per-message rate is in Meta's rate card file, which was **not read**: unknown here. FlowXP notes list an approximate India utility rate of ₹0.115 from memory; unverified | https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing |
+| GSTZen (a GSP; used only as one published example) | e-Invoice API without storage: minimum 50,000 e-invoices a year, extra 18 paise each, invoice deleted after 10 days. With storage: minimum 25,000 a year, extra 50 paise each, kept 7 years. Add-ons: document signer certificate ₹15,000 per configuration per year; e-mail ₹0.06 per email; PDF customisation ₹15,000. The yearly price of the minimum plan is not shown in the text read: unknown. A search snippet (not the page itself) gave ₹5,250 + GST a year for its Tally e-invoice plan up to 500 e-invoices a month | https://gstzen.in/e-invoicing-api-integration-pricing |
+| Zoho Books (for comparison) | Standard ₹749, Professional ₹1,499, Premium ₹2,999, Elite ₹4,999, Ultimate ₹7,999 per organization per month billed yearly; add-ons as in the feature matrix | https://www.zoho.com/in/books/pricing/ |
+
+Still unknown (not read): Razorpay per-method fees, Meta India per-message rates, other GSPs (ClearTax, Masters India, Cygnet, TaxPro), e-way bill API prices, bank-feed aggregator or Account Aggregator fees, SMS (DLT) costs, LLM provider prices, hosting. These stay marked unknown in the matrix above.
+
+## What the costs mean for FlowBook pricing
+- A GSP minimum of 25,000 to 50,000 e-invoices a year only suits a reseller with many customers; one small business cannot carry that minimum. FlowBook would need to pool volume through one GSP account, which makes the GSP a cost of goods per e-invoice (roughly 18 to 50 paise at the extra-pack rate on this one vendor, plus the minimum commitment) and favours metered e-invoice credits over a flat fee.
+- Payment-gateway fees are paid by the merchant and are not a FlowBook cost; FlowBook only needs to reconcile them.
+- WhatsApp is a pass-through cost; price it after reading the India rate card.

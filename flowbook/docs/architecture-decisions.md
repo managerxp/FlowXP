@@ -34,7 +34,7 @@ Weighted average first; FIFO later. FlowXP owns quantities when connected.
 ## D-09 Event integration with FlowXP (Proposed)
 Signed HTTPS events with transactional outbox on the FlowXP side and an idempotent inbox on the FlowBook side. Alternatives: shared database (rejected: coupling), polling a read API only (kept for gap repair), message broker (not needed at this scale).
 
-## D-10 Pricing (Open)
+## D-10 Pricing (Open; costs partly read, see research/integration-catalog.md)
 See product-requirements section 7. Needs GSP cost, WhatsApp cost, hosting cost per org and a decision on the free tier.
 
 ## D-11 GST filing route (Open)
