@@ -13,6 +13,8 @@ export const gstinCheckChar = (first14: string): string => {
 
 /** True when the text is a well-formed GSTIN whose check character is right. It does not say the registration exists. */
 export const validGstin = (g: string): boolean => SHAPE.test(g) && gstinCheckChar(g.slice(0, 14)) === g[14];
+/** Unit quantity codes the GST portal accepts in the HSN table; "OTH" covers anything else. */
+export const UQC = ['BAG', 'BTL', 'BOX', 'CMS', 'DAY', 'DOZ', 'FTS', 'GMS', 'HRS', 'INS', 'KGS', 'LTR', 'MLT', 'MTR', 'NOS', 'OTH', 'PCS', 'PRS', 'ROL', 'SET', 'SQF', 'SQM', 'TON'];
 export const stateOfGstin = (g: string): string => g.slice(0, 2);
 
 /** GST state and union-territory codes in use (01 to 38, plus 97 other territory and 99 centre jurisdiction). */

@@ -5,7 +5,11 @@ import { withOrg } from './db.ts';
 import type { Db } from './db.ts';
 import { ageing, allocatePayment, applyCreditNote, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, voidDocument, voidPayment } from './documents.ts';
 import type { Alloc, DocIn, DocKind } from './documents.ts';
-import { validGstin, validStateCode } from './gst.ts';
+import { gstr1, gstr3b } from './gstr.ts';
+import { createTemplate, deleteTemplate, listTemplates, runDue, setTemplateActive } from './recurring.ts';
+import type { Every } from './recurring.ts';
+import { partyStatement } from './statement.ts';
+import { UQC, validGstin, validStateCode } from './gst.ts';
 import { LedgerError } from './ledger.ts';
 import { addTaxRate, createItem, createParty, updateParty } from './masters.ts';
 import { toPaise } from './money.ts';
@@ -27,7 +31,7 @@ type Deps = { pool: pg.Pool; scope: Scope; me: (req: FastifyRequest) => string }
 
 const line = { type: 'object', additionalProperties: false, properties: {
   itemId: { type: 'string', pattern: ID }, description: { type: 'string', maxLength: 300 }, hsnSac: { type: 'string', maxLength: 12 },
-  quantity: { type: 'string', pattern: QTY }, unitPrice: { type: 'string', pattern: AMOUNT }, discount: { type: 'string', pattern: AMOUNT }, taxCode: { type: 'string', maxLength: 20 } } };
+  quantity: { type: 'string', pattern: QTY }, unitPrice: { type: 'string', pattern: AMOUNT }, discount: { type: 'string', pattern: AMOUNT }, taxCode: { type: 'string', maxLength: 20 }, unit: { type: 'string', enum: UQC } } };
 const docBody = { type: 'object', required: ['partyId', 'date', 'lines'], additionalProperties: false, properties: {
   partyId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, dueDate: { type: 'string', pattern: DATE }, placeOfSupply: { type: 'string', pattern: '^\\d{2}$' },
   supplierRef: { type: 'string', maxLength: 60 }, relatedDocumentId: { type: 'string', pattern: ID }, memo: { type: 'string', maxLength: 500 }, roundOff: { type: 'boolean' },
@@ -38,7 +42,7 @@ const allocs = (a: { documentId: string; amount: string }[]): Alloc[] => a.map((
 const voidBody = { type: 'object', required: ['date', 'reason'], additionalProperties: false, properties: { date: { type: 'string', pattern: DATE }, reason: { type: 'string', minLength: 1, maxLength: 300 }, ...override } };
 
 type RawDoc = { partyId: string; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string; relatedDocumentId?: string; memo?: string; roundOff?: boolean;
-  lines: { itemId?: string; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string }[] };
+  lines: { itemId?: string; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; unit?: string }[] };
 const docIn = (kind: DocKind, b: RawDoc): DocIn => ({ ...b, kind, partyId: BigInt(b.partyId), relatedDocumentId: b.relatedDocumentId ? BigInt(b.relatedDocumentId) : undefined,
   lines: b.lines.map((l) => ({ ...l, itemId: l.itemId ? BigInt(l.itemId) : undefined })) });
 
@@ -107,9 +111,9 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
 
   /* ---- items */
   app.get(`${base}/items`, { preHandler: scope('item.read') }, async (req) => run(req, async (c) => (await c.query(
-    `SELECT id, sku, name, kind, hsn_sac, tax_code, sale_price_minor, purchase_price_minor, active FROM items ORDER BY name LIMIT 1000`)).rows));
+    `SELECT id, sku, name, kind, hsn_sac, unit, tax_code, sale_price_minor, purchase_price_minor, active FROM items ORDER BY name LIMIT 1000`)).rows));
   app.post(`${base}/items`, { preHandler: scope('item.write'), schema: { body: { type: 'object', required: ['sku', 'name'], additionalProperties: false, properties: {
-    sku: { type: 'string', minLength: 1, maxLength: 60 }, name: { type: 'string', minLength: 1, maxLength: 160 }, kind: { type: 'string', enum: ['GOODS', 'SERVICE'] }, hsnSac: { type: 'string', maxLength: 12 },
+    sku: { type: 'string', minLength: 1, maxLength: 60 }, name: { type: 'string', minLength: 1, maxLength: 160 }, kind: { type: 'string', enum: ['GOODS', 'SERVICE'] }, hsnSac: { type: 'string', maxLength: 12 }, unit: { type: 'string', enum: UQC },
     taxCode: { type: 'string', maxLength: 20 }, salePrice: { type: 'string', pattern: AMOUNT }, purchasePrice: { type: 'string', pattern: AMOUNT } } } } }, async (req, reply) => {
     const id = await run(req, (c, orgId) => createItem(c, orgId, req.body as Parameters<typeof createItem>[2], me(req)));
     return reply.code(201).send({ id });
@@ -190,4 +194,32 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     const q = req.query as { type: string; asOf: string };
     return run(req, (c, orgId) => ageing(c, orgId, q.type === 'receivables' ? 'INVOICE' : 'BILL', q.asOf));
   });
+
+  /* ---- GST returns (drafts), party statement, recurring documents */
+  const month = { type: 'string', pattern: '^\\d{4}-(0[1-9]|1[0-2])$' };
+  app.get(`${base}/gst/gstr1`, { preHandler: scope('report.read'), schema: { querystring: { type: 'object', required: ['month'], properties: { month, hsnDigits: { type: 'integer', enum: [4, 6, 8] } } } } }, async (req) => {
+    const q = req.query as { month: string; hsnDigits?: number };
+    return run(req, (c, orgId) => gstr1(c, orgId, q.month, { hsnDigits: q.hsnDigits }));
+  });
+  app.get(`${base}/gst/gstr3b`, { preHandler: scope('report.read'), schema: { querystring: { type: 'object', required: ['month'], properties: { month } } } }, async (req) =>
+    run(req, (c, orgId) => gstr3b(c, orgId, (req.query as { month: string }).month)));
+  app.get(`${base}/parties/:id/statement`, { preHandler: scope('report.read'), schema: { ...idParam, querystring: { type: 'object', required: ['from', 'to'], properties: { from: { type: 'string', pattern: DATE }, to: { type: 'string', pattern: DATE } } } } }, async (req) => {
+    const q = req.query as { from: string; to: string };
+    return run(req, (c) => partyStatement(c, BigInt((req.params as { id: string }).id), q.from, q.to));
+  });
+
+  // Recurring documents use the invoice permissions for both kinds.
+  app.get(`${base}/recurring`, { preHandler: scope('invoice.read') }, async (req) => run(req, (c) => listTemplates(c)));
+  app.post(`${base}/recurring`, { preHandler: scope('invoice.write'), schema: { body: { type: 'object', required: ['kind', 'partyId', 'every', 'startDate', 'lines'], additionalProperties: false, properties: {
+    kind: { type: 'string', enum: ['INVOICE', 'BILL'] }, partyId: { type: 'string', pattern: ID }, every: { type: 'string', enum: ['WEEK', 'MONTH', 'QUARTER', 'YEAR'] },
+    startDate: { type: 'string', pattern: DATE }, endDate: { type: 'string', pattern: DATE }, memo: { type: 'string', maxLength: 500 }, lines: { type: 'array', minItems: 1, maxItems: 200, items: line } } } } }, async (req, reply) => {
+    const b = req.body as { kind: 'INVOICE' | 'BILL'; partyId: string; every: Every; startDate: string; endDate?: string; memo?: string; lines: RawDoc['lines'] };
+    const id = await run(req, (c, orgId) => createTemplate(c, orgId, { ...b, partyId: BigInt(b.partyId) }, me(req)));
+    return reply.code(201).send({ id });
+  });
+  app.post(`${base}/recurring/run`, { preHandler: scope('invoice.write') }, async (req) => run(req, (c, orgId) => runDue(c, orgId, new Date().toLocaleDateString('en-CA'), me(req))));
+  app.post(`${base}/recurring/:id/active`, { preHandler: scope('invoice.write'), schema: { ...idParam, body: { type: 'object', required: ['active'], additionalProperties: false, properties: { active: { type: 'boolean' } } } } }, async (req, reply) =>
+    (await run(req, (c, orgId) => setTemplateActive(c, orgId, BigInt((req.params as { id: string }).id), (req.body as { active: boolean }).active, me(req)))) ? { ok: true } : notFound(reply, 'template'));
+  app.delete(`${base}/recurring/:id`, { preHandler: scope('invoice.write'), schema: idParam }, async (req, reply) =>
+    (await run(req, (c, orgId) => deleteTemplate(c, orgId, BigInt((req.params as { id: string }).id), me(req)))) ? { ok: true } : notFound(reply, 'template'));
 };

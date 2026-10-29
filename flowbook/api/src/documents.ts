@@ -10,7 +10,7 @@ import type { Tender } from './rules.ts';
    transaction through the rules in rules.ts, so a document and its journal can never disagree (accounting-rules I1, I2). */
 
 export type DocKind = 'INVOICE' | 'BILL' | 'CREDIT_NOTE';
-export type LineIn = { itemId?: bigint; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string };
+export type LineIn = { itemId?: bigint; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; unit?: string };
 export type DocIn = {
   kind: DocKind; partyId: bigint; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string;
   relatedDocumentId?: bigint; memo?: string; roundOff?: boolean; lines: LineIn[];
@@ -43,14 +43,14 @@ const toMilli = (text: string): bigint => {
   return v;
 };
 
-type Priced = { itemId: bigint | null; description: string; hsnSac: string | null; qtyMilli: bigint; unitPrice: bigint; discount: bigint; taxable: bigint; taxCode: string; rateBp: number; tax: bigint };
+type Priced = { itemId: bigint | null; description: string; hsnSac: string | null; qtyMilli: bigint; unitPrice: bigint; discount: bigint; taxable: bigint; unit: string | null; taxCode: string; rateBp: number; tax: bigint };
 
 /** Prices lines with the tax rate in force on the document date, so an old invoice never changes when a rate does. */
 const priceLines = async (c: Db, kind: DocKind, lines: LineIn[], date: string): Promise<Priced[]> => {
   if (lines.length === 0) throw new LedgerError('no_lines', 'a document needs at least one line');
   const out: Priced[] = [];
   for (const l of lines) {
-    const item = l.itemId ? (await c.query(`SELECT name, hsn_sac, tax_code, sale_price_minor, purchase_price_minor FROM items WHERE id = $1 AND active`, [l.itemId])).rows[0] : null;
+    const item = l.itemId ? (await c.query(`SELECT name, hsn_sac, unit, tax_code, sale_price_minor, purchase_price_minor FROM items WHERE id = $1 AND active`, [l.itemId])).rows[0] : null;
     if (l.itemId && !item) throw gone('item');
     const description = l.description?.trim() || (item?.name as string | undefined);
     if (!description) throw new LedgerError('description_required', 'each line needs an item or a description');
@@ -66,7 +66,7 @@ const priceLines = async (c: Db, kind: DocKind, lines: LineIn[], date: string): 
     const gross = roundDiv(qtyMilli * unitPrice, 1000n);
     if (discount > gross) throw new LedgerError('discount_too_large', 'a discount cannot exceed the line amount');
     const taxable = gross - discount;
-    out.push({ itemId: l.itemId ?? null, description, hsnSac: l.hsnSac ?? (item?.hsn_sac as string | null) ?? null, qtyMilli, unitPrice, discount, taxable, taxCode, rateBp: rate.rate_bp as number, tax: taxOn(taxable, rate.rate_bp as number) });
+    out.push({ itemId: l.itemId ?? null, description, hsnSac: l.hsnSac ?? (item?.hsn_sac as string | null) ?? null, qtyMilli, unitPrice, discount, taxable, unit: l.unit ?? (item?.unit as string | null) ?? null, taxCode, rateBp: rate.rate_bp as number, tax: taxOn(taxable, rate.rate_bp as number) });
   }
   return out;
 };
@@ -119,9 +119,9 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
   for (const l of lines) {
     no += 1;
     await c.query(
-      `INSERT INTO document_lines (organization_id, document_id, line_no, item_id, description, hsn_sac, quantity_milli, unit_price_minor, discount_minor, taxable_minor, tax_code, tax_rate_bp, tax_minor)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-      [orgId, id, no, l.itemId, l.description, l.hsnSac, l.qtyMilli, l.unitPrice, l.discount, l.taxable, l.taxCode, l.rateBp, l.tax]);
+      `INSERT INTO document_lines (organization_id, document_id, line_no, item_id, description, hsn_sac, quantity_milli, unit_price_minor, discount_minor, taxable_minor, tax_code, tax_rate_bp, tax_minor, unit)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+      [orgId, id, no, l.itemId, l.description, l.hsnSac, l.qtyMilli, l.unitPrice, l.discount, l.taxable, l.taxCode, l.rateBp, l.tax, l.unit]);
   }
   return id;
 };
@@ -138,7 +138,7 @@ export const getDocument = async (c: Db, kind: DocKind, id: bigint) => {
   const doc = (await c.query(`SELECT ${DOC_COLS} FROM documents d JOIN parties p ON p.id = d.party_id WHERE d.id = $1 AND d.kind = $2`, [id, kind])).rows[0];
   if (!doc) return null;
   const lines = (await c.query(
-    `SELECT id, line_no, item_id, description, hsn_sac, round(quantity_milli::numeric / 1000, 3)::text AS quantity, unit_price_minor, discount_minor, taxable_minor, tax_code, tax_rate_bp, tax_minor
+    `SELECT id, line_no, item_id, description, hsn_sac, round(quantity_milli::numeric / 1000, 3)::text AS quantity, unit_price_minor, discount_minor, taxable_minor, tax_code, tax_rate_bp, tax_minor, unit
        FROM document_lines WHERE document_id = $1 ORDER BY line_no`, [id])).rows;
   const allocations = (await c.query(`SELECT source_type, source_id, amount_minor, voided_at IS NOT NULL AS voided FROM payment_allocations WHERE document_id = $1 ORDER BY id`, [id])).rows;
   return { ...doc, lines, allocations };
@@ -163,7 +163,7 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
   await saveDraft(c, orgId, id, {
     kind, partyId: doc.party_id, date: doc.issue_d, dueDate: doc.due_d ?? undefined,
     placeOfSupply: doc.place_of_supply ?? undefined, supplierRef: doc.supplier_ref ?? undefined, relatedDocumentId: doc.related_document_id ?? undefined, memo: doc.memo ?? undefined, roundOff: doc.round_off_on,
-    lines: stored.map((l) => ({ itemId: l.item_id ?? undefined, description: l.description, hsnSac: l.hsn_sac ?? undefined, quantity: milli(l.quantity_milli), unitPrice: paiseToString(l.unit_price_minor), discount: paiseToString(l.discount_minor), taxCode: l.tax_code }))
+    lines: stored.map((l) => ({ itemId: l.item_id ?? undefined, description: l.description, hsnSac: l.hsn_sac ?? undefined, quantity: milli(l.quantity_milli), unitPrice: paiseToString(l.unit_price_minor), discount: paiseToString(l.discount_minor), taxCode: l.tax_code, unit: l.unit ?? undefined }))
   }, actor);
   const fresh = (await c.query(`SELECT *, issue_date::text AS d FROM documents WHERE id = $1`, [id])).rows[0];
   const lines = (await c.query(`SELECT taxable_minor, tax_rate_bp FROM document_lines WHERE document_id = $1`, [id])).rows;
