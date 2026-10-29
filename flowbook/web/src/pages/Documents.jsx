@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLoad } from '../api.js';
-import { STATES, UNITS, addDays, amountInWords, inr, showDate, today, unitLabel } from '../lib.js';
+import { STATES, TCS_SECTIONS, UNITS, addDays, amountInWords, inr, showDate, today, unitLabel } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { DocSheet, EwayPanel } from './Print.jsx';
 import { WhatsappButton, WhatsappLog } from './Whatsapp.jsx';
@@ -53,14 +53,14 @@ export const DocForm = ({ kind }) => {
   const items = useLoad(() => o('/items'), [org.id]);
   const rates = useLoad(() => o('/tax-rates'), [org.id]);
   const existing = useLoad(() => (id ? o(`/${kind.api}/${id}`) : Promise.resolve(null)), [org.id, id]);
-  const [f, setF] = useState({ partyId: '', date: today(), dueDate: '', placeOfSupply: '', supplierRef: '', relatedDocumentId: '', memo: '', roundOff: true, lines: [blankLine()] });
+  const [f, setF] = useState({ partyId: '', date: today(), dueDate: '', placeOfSupply: '', supplierRef: '', relatedDocumentId: '', memo: '', roundOff: true, tcsRate: '', tcsSection: '', lines: [blankLine()] });
   const invoices = useLoad(() => (kind.api === 'credit-notes' && f.partyId ? o(`/invoices?status=ISSUED&partyId=${f.partyId}&limit=100`) : Promise.resolve(null)), [org.id, f.partyId, kind.api]);
 
   useEffect(() => {
     const d = existing.data;
     if (!d) return;
     setF({ partyId: String(d.party_id), date: d.issue_date || today(), dueDate: d.due_date || '', placeOfSupply: d.place_of_supply || '', supplierRef: d.supplier_ref || '', relatedDocumentId: d.related_document_id ? String(d.related_document_id) : '',
-      memo: d.memo || '', roundOff: Number(d.round_off_minor) !== 0 || d.status === 'DRAFT', lines: d.lines.map((l) => ({ itemId: l.item_id ? String(l.item_id) : '', description: l.description || '', hsnSac: l.hsn_sac || '', unit: l.unit || '', quantity: l.quantity, unitPrice: l.unit_price_minor, discount: Number(l.discount_minor) ? l.discount_minor : '', taxCode: l.tax_code || '' })) });
+      memo: d.memo || '', tcsRate: d.tcs_rate_bp ? String(d.tcs_rate_bp / 100) : '', tcsSection: d.tcs_section || '', roundOff: Number(d.round_off_minor) !== 0 || d.status === 'DRAFT', lines: d.lines.map((l) => ({ itemId: l.item_id ? String(l.item_id) : '', description: l.description || '', hsnSac: l.hsn_sac || '', unit: l.unit || '', quantity: l.quantity, unitPrice: l.unit_price_minor, discount: Number(l.discount_minor) ? l.discount_minor : '', taxCode: l.tax_code || '' })) });
   }, [existing.data]);
   useEffect(() => { if (!id && search.get('partyId')) setF((x) => ({ ...x, partyId: search.get('partyId') })); }, [id, search]);
 
@@ -77,6 +77,7 @@ export const DocForm = ({ kind }) => {
     a.run(async () => {
       const body = { partyId: f.partyId, date: f.date, roundOff: f.roundOff, memo: f.memo || undefined, dueDate: f.dueDate || undefined, placeOfSupply: f.placeOfSupply || undefined,
         supplierRef: kind.api === 'bills' ? f.supplierRef || undefined : undefined, relatedDocumentId: f.relatedDocumentId || undefined,
+        ...(kind.api === 'invoices' && Number(f.tcsRate) > 0 && { tcsRateBp: Math.round(Number(f.tcsRate) * 100), ...(f.tcsSection && { tcsSection: f.tcsSection }) }),
         lines: f.lines.map((l) => ({ itemId: l.itemId || undefined, description: l.description || undefined, hsnSac: l.hsnSac || undefined, unit: l.unit || undefined, quantity: String(l.quantity), unitPrice: String(l.unitPrice || '0'), discount: l.discount ? String(l.discount) : undefined, taxCode: l.taxCode || undefined })) };
       const out = id ? await o(`/${kind.api}/${id}`, { method: 'PUT', body }) : await o(`/${kind.api}`, { method: 'POST', body });
       nav(`/${kind.path}/${out.id}`);
@@ -127,6 +128,10 @@ export const DocForm = ({ kind }) => {
               </div>
             ))}
           </div>
+          {kind.api === 'invoices' && <div className="form">
+            <Field label="TCS to collect (%)" hint="Only if the law requires you to collect tax at source on this sale; charged on value plus GST"><input inputMode="decimal" value={f.tcsRate} onChange={set('tcsRate')} /></Field>
+            {Number(f.tcsRate) > 0 && <Field label="TCS section"><select value={f.tcsSection} onChange={set('tcsSection')}><option value="">Not stated</option>{TCS_SECTIONS.map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
+          </div>}
           <p className="check"><input id="ro" type="checkbox" checked={f.roundOff} onChange={set('roundOff')} /><label htmlFor="ro">Round the total to the nearest rupee</label></p>
         </Card>
         <div className="actions"><Btn kind="primary" busy={a.busy}>Save draft</Btn><Btn type="button" onClick={() => nav(-1)}>Cancel</Btn></div>
@@ -195,6 +200,7 @@ export const DocView = ({ kind }) => {
           </Table>
           <div className="totals">
             <div><span>Subtotal</span><Money v={d.subtotal_minor} /></div><div><span>Tax</span><Money v={d.tax_minor} /></div>
+            {Number(d.tcs_minor) > 0 && <div><span>TCS{d.tcs_section ? ` (${d.tcs_section})` : ''}</span><Money v={d.tcs_minor} /></div>}
             {Number(d.round_off_minor) !== 0 && <div><span>Round off</span><Money v={d.round_off_minor} /></div>}
             <div className="grand"><span>Total</span><Money v={d.total_minor} /></div>
             {d.status === 'ISSUED' && <div><span>Still to settle</span><Money v={d.balance_minor} strong /></div>}

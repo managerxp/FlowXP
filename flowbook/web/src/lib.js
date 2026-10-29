@@ -74,3 +74,7 @@ export const gstDueDates = (from = today(), ahead = 45) => {
   }
   return out.sort((a, b) => a.days - b.days);
 };
+
+/* Tax deducted at source (paid to a vendor or deducted by a customer) and tax collected at source (on a sale). Rates are the usual ones as of 2026; check the section's rate for your case. */
+export const TDS_SECTIONS = [['194C', 'Contractors (1% individual or HUF, 2% others)', 1], ['194J', 'Professional or technical fees (10%; 2% technical services)', 10], ['194I', 'Rent (10% land and building, 2% machinery)', 10], ['194H', 'Commission or brokerage (2%)', 2], ['194Q', 'Purchase of goods over ₹50 lakh (0.1%)', 0.1], ['194O', 'E-commerce operators (0.1%)', 0.1], ['OTHER', 'Another section', 0]];
+export const TCS_SECTIONS = [['206C(1)', 'Scrap, timber, minerals and similar (rates vary)', 1], ['52 CGST', 'E-commerce operators (GST)', 0.5], ['OTHER', 'Another section', 0]];

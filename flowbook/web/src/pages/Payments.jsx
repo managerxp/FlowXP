@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLoad } from '../api.js';
-import { inr, showDate, today, uuid } from '../lib.js';
+import { TDS_SECTIONS, inr, showDate, today, uuid } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { WhatsappButton } from './Whatsapp.jsx';
 import { Async, Badge, Btn, Card, Confirm, Empty, Err, Field, Money, Note, Page, Table, Tabs, useAction } from '../ui.jsx';
@@ -37,7 +37,7 @@ export const PaymentForm = () => {
   const nav = useNavigate();
   const a = useAction();
   const [key] = useState(uuid);   // one key per form, so a double click or a retry cannot record the payment twice
-  const [f, setF] = useState({ direction: q.get('direction') === 'OUT' ? 'OUT' : 'IN', partyId: q.get('partyId') || '', date: today(), mode: 'BANK', amount: '', reference: '' });
+  const [f, setF] = useState({ direction: q.get('direction') === 'OUT' ? 'OUT' : 'IN', partyId: q.get('partyId') || '', date: today(), mode: 'BANK', amount: '', reference: '', tds: '', tdsSection: '' });
   const [alloc, setAlloc] = useState({});
   const parties = useLoad(() => o('/parties?limit=500'), [org.id]);
   const docKind = f.direction === 'IN' ? 'invoices' : 'bills';
@@ -53,7 +53,7 @@ export const PaymentForm = () => {
   }, [openDocs]);
 
   const allocated = Object.values(alloc).reduce((s, v) => s + Math.round(Number(v || 0) * 100), 0);
-  const total = Math.round(Number(f.amount || 0) * 100);
+  const total = Math.round((Number(f.amount || 0) + Number(f.tds || 0)) * 100);   // cash plus the tax deducted settles the documents
   const autoFill = () => {
     let left = total; const next = {};
     for (const d of openDocs) { if (left <= 0) break; const take = Math.min(left, Math.round(Number(d.balance_minor) * 100)); next[d.id] = (take / 100).toFixed(2); left -= take; }
@@ -63,7 +63,7 @@ export const PaymentForm = () => {
     e.preventDefault();
     a.run(async () => {
       const allocations = Object.entries(alloc).filter(([, v]) => Number(v) > 0).map(([documentId, amount]) => ({ documentId, amount: String(amount) }));
-      const out = await o('/payments', { method: 'POST', headers: { 'idempotency-key': key }, body: { ...f, reference: f.reference || undefined, allocations: allocations.length ? allocations : undefined } });
+      const out = await o('/payments', { method: 'POST', headers: { 'idempotency-key': key }, body: { ...f, tds: Number(f.tds) > 0 ? f.tds : undefined, tdsSection: Number(f.tds) > 0 && f.tdsSection ? f.tdsSection : undefined, reference: f.reference || undefined, allocations: allocations.length ? allocations : undefined } });
       nav(`/payments/${out.id}`);
     });
   };
@@ -79,6 +79,8 @@ export const PaymentForm = () => {
           <Field label="Date"><input type="date" value={f.date} onChange={set('date')} required /></Field>
           <Field label="How"><select value={f.mode} onChange={set('mode')}><option value="BANK">Bank transfer</option><option value="UPI">UPI</option><option value="CASH">Cash</option><option value="CARD">Card</option></select></Field>
           <Field label="Amount (₹)"><input inputMode="decimal" value={f.amount} onChange={set('amount')} required /></Field>
+          <Field label={f.direction === 'IN' ? 'TDS the customer deducted (₹)' : 'TDS you deducted (₹)'} hint="Optional. The amount above is what actually moved; this is tax held back"><input inputMode="decimal" value={f.tds} onChange={set('tds')} /></Field>
+          {Number(f.tds) > 0 && <Field label="TDS section"><select value={f.tdsSection} onChange={set('tdsSection')}><option value="">Not stated</option>{TDS_SECTIONS.map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
           <Field label="Reference" hint="Cheque, UTR or note (optional)"><input value={f.reference} onChange={set('reference')} maxLength={80} /></Field>
         </div></Card>
 
@@ -90,7 +92,7 @@ export const PaymentForm = () => {
                   <td className="r"><input aria-label={`Amount for ${d.number}`} style={{ maxWidth: '8rem' }} inputMode="decimal" value={alloc[d.id] || ''} onChange={(e) => setAlloc({ ...alloc, [d.id]: e.target.value })} /></td></tr>))}
               </Table>
             )}
-            <p className={allocated > total ? 'notice bad' : 'muted'}>Matched ₹{inr(allocated / 100)} of ₹{inr(total / 100)}{allocated > total ? ' — more than the payment' : allocated < total ? ` · ₹${inr((total - allocated) / 100)} stays on account` : ''}</p>
+            <p className={allocated > total ? 'notice bad' : 'muted'}>Matched ₹{inr(allocated / 100)} of ₹{inr(total / 100)}{Number(f.tds) > 0 ? ' (with TDS)' : ''}{allocated > total ? ' — more than the payment' : allocated < total ? ` · ₹${inr((total - allocated) / 100)} stays on account` : ''}</p>
           </Card>
         )}
         <div className="actions"><Btn kind="primary" busy={a.busy} disabled={allocated > total}>Record payment</Btn><Btn type="button" onClick={() => nav(-1)}>Cancel</Btn></div>
@@ -120,7 +122,7 @@ export const PaymentView = () => {
         <Card>
           <Badge status={p.status} />
           <dl className="kv" style={{ marginTop: '.75rem' }}><dt>Date</dt><dd>{showDate(p.pay_date)}</dd><dt>How</dt><dd>{p.mode}</dd>{p.reference && <><dt>Reference</dt><dd>{p.reference}</dd></>}
-            <dt>Amount</dt><dd><Money v={p.amount_minor} strong /></dd><dt>Not yet matched</dt><dd><Money v={p.unallocated_minor} /></dd>
+            <dt>Amount</dt><dd><Money v={p.amount_minor} strong /></dd>{Number(p.tds_minor) > 0 && <><dt>TDS deducted</dt><dd><Money v={p.tds_minor} />{p.tds_section ? ` · ${p.tds_section}` : ''}</dd></>}<dt>Not yet matched</dt><dd><Money v={p.unallocated_minor} /></dd>
             {p.journal_entry_id && <><dt>Books</dt><dd><Link to={`/journals/${p.journal_entry_id}`}>See the entry</Link></dd></>}</dl>
         </Card>
         {p.allocations.length > 0 && <Card title="Settles"><Table head={['Document', '>Amount', 'State']}>{p.allocations.map((x, i) => (<tr key={i}><td>#{x.document_id}</td><td className="r"><Money v={x.amount_minor} /></td><td>{x.voided ? <Badge status="VOID" /> : 'Counted'}</td></tr>))}</Table></Card>}

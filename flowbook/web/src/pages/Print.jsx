@@ -59,6 +59,7 @@ export const DocSheet = ({ kind, d }) => {
       <div className="sum">
         <div><span>Subtotal</span><span>{inr(d.subtotal_minor)}</span></div>
         {d.inter_state ? <div><span>IGST</span><span>{inr(d.tax_minor)}</span></div> : <><div><span>CGST</span><span>{inr(Number(d.tax_minor) / 2)}</span></div><div><span>SGST</span><span>{inr(Number(d.tax_minor) / 2)}</span></div></>}
+        {Number(d.tcs_minor) > 0 && <div><span>TCS</span><span>{inr(d.tcs_minor)}</span></div>}
         {Number(d.round_off_minor) !== 0 && <div><span>Round off</span><span>{inr(d.round_off_minor)}</span></div>}
         <div className="grand"><span>Total</span><span>₹{inr(d.total_minor)}</span></div>
       </div>
@@ -80,7 +81,7 @@ export const ReceiptSheet = ({ pay }) => {
         <Parties party={party || { name: pay.party_name }} label={incoming ? 'Received from' : 'Paid to'} />
         <dl><dt>No.</dt><dd>{pay.number}</dd><dt>Date</dt><dd>{showDate(pay.pay_date)}</dd><dt>How</dt><dd>{pay.mode}</dd>{pay.reference && <><dt>Reference</dt><dd>{pay.reference}</dd></>}</dl>
       </div>
-      <div className="sum"><div className="grand"><span>{incoming ? 'Amount received' : 'Amount paid'}</span><span>₹{inr(pay.amount_minor)}</span></div></div>
+      <div className="sum">{Number(pay.tds_minor) > 0 && <div><span>TDS deducted{pay.tds_section ? ` (${pay.tds_section})` : ''}</span><span>{inr(pay.tds_minor)}</span></div>}<div className="grand"><span>{incoming ? 'Amount received' : 'Amount paid'}</span><span>₹{inr(pay.amount_minor)}</span></div></div>
       <p className="words">{amountInWords(pay.amount_minor)}</p>
       <footer><span>{incoming ? 'Received with thanks.' : ''}</span><span>For {p.legal_name || p.name}<br /><br />Authorised signatory</span></footer>
     </Shell>
