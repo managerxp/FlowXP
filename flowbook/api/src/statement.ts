@@ -13,7 +13,7 @@ export const partyStatement = async (c: Db, partyId: bigint, from: string, to: s
          FROM documents d WHERE d.party_id = $1 AND d.status = 'ISSUED'
        UNION ALL
        SELECT p.pay_date::text, p.id, CASE p.direction WHEN 'IN' THEN 'Payment received' ELSE 'Payment made' END, p.number, p.reference,
-              CASE p.direction WHEN 'IN' THEN -p.amount_minor ELSE p.amount_minor END
+              CASE p.direction WHEN 'IN' THEN -(p.amount_minor + p.tds_minor) ELSE p.amount_minor + p.tds_minor END
          FROM payments p WHERE p.party_id = $1 AND p.status = 'POSTED') x
       WHERE date <= $2::text ORDER BY date, type, id`, [partyId, to])).rows as { date: string; id: bigint; type: string; number: string; reference: string | null; amount: bigint }[];
   let balance = 0n;

@@ -36,14 +36,15 @@ const taxLines = (t: ReturnType<typeof taxSplit>, side: Side, prefix: 'OUTPUT' |
   { account: `${prefix}_IGST`, side, amount: t.igst, taxRateBp: t.rateBp }
 ];
 
-export type SaleDoc = { date: string; invoiceId: string; partyId?: bigint; lines: TaxedLine[]; interState: boolean; tenders?: { mode: Tender; amount: bigint }[]; roundOff?: bigint; sourceSystem?: string };
+export type SaleDoc = { date: string; invoiceId: string; partyId?: bigint; lines: TaxedLine[]; interState: boolean; tcs?: bigint; tenders?: { mode: Tender; amount: bigint }[]; roundOff?: bigint; sourceSystem?: string };
 
 /** Sale: money received goes to its tender account, the unpaid part to receivables, revenue and tax are credited. Examples 1 and 2. */
 export const saleJournal = (d: SaleDoc): PostInput => {
   const net = d.lines.reduce((a, l) => a + l.taxable, 0n);
   const tax = taxSplit(d.lines, d.interState);
   const roundOff = d.roundOff ?? 0n;
-  const total = net + tax.total + roundOff;
+  const tcs = d.tcs ?? 0n;
+  const total = net + tax.total + tcs + roundOff;
   const paid = (d.tenders ?? []).reduce((a, t) => a + t.amount, 0n);
   if (paid > total) throw new RangeError('payments exceed the invoice total');
   const lines: LineInput[] = [
@@ -51,6 +52,7 @@ export const saleJournal = (d: SaleDoc): PostInput => {
     { account: 'AR', side: 'D', amount: total - paid, partyId: d.partyId },
     { account: 'SALES', side: 'C', amount: net },
     ...taxLines(tax, 'C', 'OUTPUT'),
+    { account: 'TCS_PAYABLE', side: 'C', amount: tcs },
     { account: 'ROUND_OFF', side: roundOff >= 0n ? 'C' : 'D', amount: roundOff >= 0n ? roundOff : -roundOff }
   ];
   return { date: d.date, sourceType: 'invoice', sourceId: d.invoiceId, kind: 'SALE', sourceSystem: d.sourceSystem, rulesVersion: RULES_VERSION, memo: `Sale ${d.invoiceId}`, lines: merge(lines) };
@@ -65,12 +67,12 @@ export const creditNoteJournal = (d: { date: string; noteId: string; partyId?: b
 };
 
 /** Customer pays (or is refunded) against what they owe. Examples 3 and 14. */
-export const customerPaymentJournal = (d: { date: string; paymentId: string; partyId?: bigint; mode: Tender; amount: bigint; refund?: boolean }): PostInput => ({
+export const customerPaymentJournal = (d: { date: string; paymentId: string; partyId?: bigint; mode: Tender; amount: bigint; refund?: boolean; tds?: bigint }): PostInput => ({
   date: d.date, sourceType: d.refund ? 'refund' : 'payment_in', sourceId: d.paymentId, kind: d.refund ? 'REFUND' : 'PAYMENT_IN', rulesVersion: RULES_VERSION,
   memo: `${d.refund ? 'Refund' : 'Payment'} ${d.paymentId}`,
   lines: d.refund
     ? [{ account: 'AR', side: 'D', amount: d.amount, partyId: d.partyId }, { account: TENDER_ACCOUNT[d.mode], side: 'C', amount: d.amount }]
-    : [{ account: TENDER_ACCOUNT[d.mode], side: 'D', amount: d.amount }, { account: 'AR', side: 'C', amount: d.amount, partyId: d.partyId }]
+    : merge([{ account: TENDER_ACCOUNT[d.mode], side: 'D', amount: d.amount }, { account: 'TDS_RECEIVABLE', side: 'D', amount: d.tds ?? 0n }, { account: 'AR', side: 'C', amount: d.amount + (d.tds ?? 0n), partyId: d.partyId }])
 });
 
 /** Supplier bill: the cost (or stock) and the input tax are debited, payables credited. Example 4. */
@@ -82,9 +84,9 @@ export const supplierBillJournal = (d: { date: string; billId: string; partyId?:
 };
 
 /** Supplier payment. Example 5. */
-export const supplierPaymentJournal = (d: { date: string; paymentId: string; partyId?: bigint; mode: Tender; amount: bigint }): PostInput => ({
+export const supplierPaymentJournal = (d: { date: string; paymentId: string; partyId?: bigint; mode: Tender; amount: bigint; tds?: bigint }): PostInput => ({
   date: d.date, sourceType: 'payment_out', sourceId: d.paymentId, kind: 'PAYMENT_OUT', rulesVersion: RULES_VERSION, memo: `Payment ${d.paymentId}`,
-  lines: [{ account: 'AP', side: 'D', amount: d.amount, partyId: d.partyId }, { account: TENDER_ACCOUNT[d.mode], side: 'C', amount: d.amount }]
+  lines: merge([{ account: 'AP', side: 'D', amount: d.amount + (d.tds ?? 0n), partyId: d.partyId }, { account: TENDER_ACCOUNT[d.mode], side: 'C', amount: d.amount }, { account: 'TDS_PAYABLE', side: 'C', amount: d.tds ?? 0n }])
 });
 
 /* Documents that arrive with their tax already worked out (FlowXP's bills): the amounts are the record, so nothing is

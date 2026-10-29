@@ -13,7 +13,7 @@ export type DocKind = 'INVOICE' | 'BILL' | 'CREDIT_NOTE';
 export type LineIn = { itemId?: bigint; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; unit?: string };
 export type DocIn = {
   kind: DocKind; partyId: bigint; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string;
-  relatedDocumentId?: bigint; memo?: string; roundOff?: boolean; lines: LineIn[];
+  relatedDocumentId?: bigint; memo?: string; roundOff?: boolean; tcsRateBp?: number; tcsSection?: string; lines: LineIn[];
 };
 type Override = { reason: string };
 
@@ -97,13 +97,17 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
   const interState = Boolean(org?.state_code && place && org.state_code !== place);
   const subtotal = lines.reduce((a, l) => a + l.taxable, 0n);
   const tax = lines.reduce((a, l) => a + l.tax, 0n);
-  const roundOff = d.roundOff ? roundDiv(subtotal + tax, 100n) * 100n - (subtotal + tax) : 0n;
+  if (d.tcsRateBp && d.kind !== 'INVOICE') throw new LedgerError('tcs_unsupported', 'TCS is collected on sales invoices only');
+  const tcsRate = d.tcsRateBp ?? 0;
+  if (!Number.isInteger(tcsRate) || tcsRate < 0 || tcsRate > 2000) throw new LedgerError('bad_tcs_rate', 'the TCS rate must be between 0 and 20 percent');
+  const tcs = roundDiv((subtotal + tax) * BigInt(tcsRate), 10_000n);
+  const roundOff = d.roundOff ? roundDiv(subtotal + tax + tcs, 100n) * 100n - (subtotal + tax + tcs) : 0n;
   const due = d.kind === 'CREDIT_NOTE' ? null : d.dueDate ?? addDays(d.date, party.credit_days);
-  const fields = [d.partyId, d.date, due, place ?? null, interState, d.supplierRef ?? null, d.relatedDocumentId ?? null, d.memo ?? null, Boolean(d.roundOff), subtotal, tax, roundOff, subtotal + tax + roundOff];
+  const fields = [d.partyId, d.date, due, place ?? null, interState, d.supplierRef ?? null, d.relatedDocumentId ?? null, d.memo ?? null, Boolean(d.roundOff), subtotal, tax, roundOff, subtotal + tax + tcs + roundOff, tcsRate, tcs, tcsRate ? d.tcsSection ?? null : null];
   if (id === null) {
     id = (await c.query(
-      `INSERT INTO documents (organization_id, kind, created_by, party_id, issue_date, due_date, place_of_supply, inter_state, supplier_ref, related_document_id, memo, round_off_on, subtotal_minor, tax_minor, round_off_minor, total_minor)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`, [orgId, d.kind, actor, ...fields])).rows[0].id as bigint;
+      `INSERT INTO documents (organization_id, kind, created_by, party_id, issue_date, due_date, place_of_supply, inter_state, supplier_ref, related_document_id, memo, round_off_on, subtotal_minor, tax_minor, round_off_minor, total_minor, tcs_rate_bp, tcs_minor, tcs_section)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING id`, [orgId, d.kind, actor, ...fields])).rows[0].id as bigint;
     await audit(c, orgId, { actor, action: 'document.drafted', entityType: 'document', entityId: id, detail: { kind: d.kind } });
   } else {
     const cur = (await c.query(`SELECT kind, status FROM documents WHERE id = $1 FOR UPDATE`, [id])).rows[0];
@@ -112,7 +116,7 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
     if (cur.kind !== d.kind) throw new LedgerError('kind_mismatch', 'a document cannot change its kind');
     await c.query(
       `UPDATE documents SET party_id = $2, issue_date = $3, due_date = $4, place_of_supply = $5, inter_state = $6, supplier_ref = $7, related_document_id = $8, memo = $9, round_off_on = $10,
-              subtotal_minor = $11, tax_minor = $12, round_off_minor = $13, total_minor = $14 WHERE id = $1`, [id, ...fields]);
+              subtotal_minor = $11, tax_minor = $12, round_off_minor = $13, total_minor = $14, tcs_rate_bp = $15, tcs_minor = $16, tcs_section = $17 WHERE id = $1`, [id, ...fields]);
     await c.query(`DELETE FROM document_lines WHERE document_id = $1`, [id]);
   }
   let no = 0;
@@ -127,7 +131,7 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
 };
 
 const DOC_COLS = `d.id, d.kind, d.number, d.supplier_ref, d.party_id, p.name AS party_name, d.status, d.issue_date::text AS issue_date, d.due_date::text AS due_date,
-  d.place_of_supply, d.inter_state, d.subtotal_minor, d.tax_minor, d.round_off_minor, d.total_minor, d.balance_minor, d.related_document_id, d.journal_entry_id, d.memo`;
+  d.place_of_supply, d.inter_state, d.subtotal_minor, d.tax_minor, d.round_off_minor, d.tcs_rate_bp, d.tcs_minor, d.tcs_section, d.total_minor, d.balance_minor, d.related_document_id, d.journal_entry_id, d.memo`;
 
 export const listDocuments = async (c: Db, kind: DocKind, q: { status?: string; partyId?: bigint; before?: bigint; limit: number }) => (await c.query(
   `SELECT ${DOC_COLS} FROM documents d JOIN parties p ON p.id = d.party_id
@@ -162,7 +166,7 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
   const milli = (q: bigint) => `${q / 1000n}.${String(q % 1000n).padStart(3, '0')}`;
   await saveDraft(c, orgId, id, {
     kind, partyId: doc.party_id, date: doc.issue_d, dueDate: doc.due_d ?? undefined,
-    placeOfSupply: doc.place_of_supply ?? undefined, supplierRef: doc.supplier_ref ?? undefined, relatedDocumentId: doc.related_document_id ?? undefined, memo: doc.memo ?? undefined, roundOff: doc.round_off_on,
+    placeOfSupply: doc.place_of_supply ?? undefined, supplierRef: doc.supplier_ref ?? undefined, relatedDocumentId: doc.related_document_id ?? undefined, memo: doc.memo ?? undefined, roundOff: doc.round_off_on, tcsRateBp: doc.tcs_rate_bp, tcsSection: doc.tcs_section ?? undefined,
     lines: stored.map((l) => ({ itemId: l.item_id ?? undefined, description: l.description, hsnSac: l.hsn_sac ?? undefined, quantity: milli(l.quantity_milli), unitPrice: paiseToString(l.unit_price_minor), discount: paiseToString(l.discount_minor), taxCode: l.tax_code, unit: l.unit ?? undefined }))
   }, actor);
   const fresh = (await c.query(`SELECT *, issue_date::text AS d FROM documents WHERE id = $1`, [id])).rows[0];
@@ -176,7 +180,7 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
   const number = await nextNumber(c, orgId, kind === 'INVOICE' ? await invoicePrefix(c, orgId) : PREFIX[kind], fresh.d as string);
   const taxed = lines.map((l) => ({ taxable: l.taxable_minor as bigint, rateBp: l.tax_rate_bp as number }));
   const common = { date: fresh.d as string, partyId: fresh.party_id as bigint, lines: taxed, interState: fresh.inter_state as boolean };
-  const journal = kind === 'INVOICE' ? saleJournal({ ...common, invoiceId: number, roundOff: fresh.round_off_minor as bigint })
+  const journal = kind === 'INVOICE' ? saleJournal({ ...common, invoiceId: number, roundOff: fresh.round_off_minor as bigint, tcs: fresh.tcs_minor as bigint })
     : kind === 'BILL' ? supplierBillJournal({ ...common, billId: number })
     : creditNoteJournal({ ...common, noteId: number });
   const posted = await post(c, orgId, { ...journal, actor, override });
@@ -233,7 +237,7 @@ export const applyCreditNote = async (c: Db, orgId: bigint, noteId: bigint, allo
 
 /* ---- payments */
 
-export type PaymentIn = { direction: 'IN' | 'OUT'; partyId: bigint; date: string; mode: Tender; amount: bigint; reference?: string; allocations?: Alloc[]; idempotencyKey: string };
+export type PaymentIn = { direction: 'IN' | 'OUT'; partyId: bigint; date: string; mode: Tender; amount: bigint; tds?: bigint; tdsSection?: string; reference?: string; allocations?: Alloc[]; idempotencyKey: string };
 const docKindFor = (direction: 'IN' | 'OUT'): DocKind => (direction === 'IN' ? 'INVOICE' : 'BILL');
 
 export const allocatePayment = async (c: Db, orgId: bigint, paymentId: bigint, allocs: Alloc[], actor: string): Promise<void> => {
@@ -252,17 +256,19 @@ export const createPayment = async (c: Db, orgId: bigint, p: PaymentIn, actor: s
   const prior = (await c.query(`SELECT id, number, journal_entry_id FROM payments WHERE idempotency_key = $1`, [p.idempotencyKey])).rows[0];
   if (prior) return { id: prior.id as bigint, number: prior.number as string, replayed: true };
   if (p.amount <= 0n) throw new LedgerError('bad_amount', 'a payment must be above zero');
+  const tds = p.tds ?? 0n;
+  if (tds < 0n) throw new LedgerError('bad_amount', 'TDS cannot be negative');
   await partyFor(c, p.partyId, p.direction === 'IN' ? 'CUSTOMER' : 'VENDOR');
   const number = await nextNumber(c, orgId, p.direction === 'IN' ? 'RCT' : 'PAY', p.date);
   const id = (await c.query(
-    `INSERT INTO payments (organization_id, direction, number, party_id, pay_date, mode, reference, amount_minor, unallocated_minor, idempotency_key, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9, $10) RETURNING id`, [orgId, p.direction, number, p.partyId, p.date, p.mode, p.reference ?? null, p.amount, p.idempotencyKey, actor])).rows[0].id as bigint;
-  const base = { date: p.date, paymentId: number, partyId: p.partyId, mode: p.mode, amount: p.amount };
+    `INSERT INTO payments (organization_id, direction, number, party_id, pay_date, mode, reference, amount_minor, unallocated_minor, idempotency_key, created_by, tds_minor, tds_section)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8 + $11::bigint, $9, $10, $11, $12) RETURNING id`, [orgId, p.direction, number, p.partyId, p.date, p.mode, p.reference ?? null, p.amount, p.idempotencyKey, actor, tds, tds ? p.tdsSection ?? null : null])).rows[0].id as bigint;
+  const base = { date: p.date, paymentId: number, partyId: p.partyId, mode: p.mode, amount: p.amount, tds };
   const journal = p.direction === 'IN' ? customerPaymentJournal(base) : supplierPaymentJournal(base);
   const posted = await post(c, orgId, { ...journal, actor, override });
   await c.query(`UPDATE payments SET journal_entry_id = $2 WHERE id = $1`, [id, posted.entryId]);
   if (p.allocations?.length) await allocatePayment(c, orgId, id, p.allocations, actor);
-  await audit(c, orgId, { actor, action: 'payment.recorded', entityType: 'payment', entityId: id, detail: { number, direction: p.direction, amount: paiseToString(p.amount) } });
+  await audit(c, orgId, { actor, action: 'payment.recorded', entityType: 'payment', entityId: id, detail: { number, direction: p.direction, amount: paiseToString(p.amount), ...(tds ? { tds: paiseToString(tds) } : {}) } });
   return { id, number, entryNo: posted.entryNo, replayed: false };
 };
 
@@ -279,14 +285,14 @@ export const voidPayment = async (c: Db, orgId: bigint, id: bigint, o: { date: s
 };
 
 export const listPayments = async (c: Db, q: { direction?: string; partyId?: bigint; before?: bigint; limit: number }) => (await c.query(
-  `SELECT p.id, p.direction, p.number, p.party_id, pt.name AS party_name, p.pay_date::text AS pay_date, p.mode, p.reference, p.amount_minor, p.unallocated_minor, p.status, p.journal_entry_id
+  `SELECT p.id, p.direction, p.number, p.party_id, pt.name AS party_name, p.pay_date::text AS pay_date, p.mode, p.reference, p.amount_minor, p.tds_minor, p.tds_section, p.unallocated_minor, p.status, p.journal_entry_id
      FROM payments p JOIN parties pt ON pt.id = p.party_id
     WHERE ($1::text IS NULL OR p.direction = $1) AND ($2::bigint IS NULL OR p.party_id = $2) AND ($3::bigint IS NULL OR p.id < $3) ORDER BY p.id DESC LIMIT $4`,
   [q.direction ?? null, q.partyId ?? null, q.before ?? null, q.limit])).rows;
 
 export const getPayment = async (c: Db, id: bigint) => {
   const p = (await c.query(
-    `SELECT p.id, p.direction, p.number, p.party_id, pt.name AS party_name, p.pay_date::text AS pay_date, p.mode, p.reference, p.amount_minor, p.unallocated_minor, p.status, p.journal_entry_id
+    `SELECT p.id, p.direction, p.number, p.party_id, pt.name AS party_name, p.pay_date::text AS pay_date, p.mode, p.reference, p.amount_minor, p.tds_minor, p.tds_section, p.unallocated_minor, p.status, p.journal_entry_id
        FROM payments p JOIN parties pt ON pt.id = p.party_id WHERE p.id = $1`, [id])).rows[0];
   if (!p) return null;
   const allocations = (await c.query(`SELECT document_id, amount_minor, voided_at IS NOT NULL AS voided FROM payment_allocations WHERE source_type = 'PAYMENT' AND source_id = $1 ORDER BY id`, [id])).rows;
