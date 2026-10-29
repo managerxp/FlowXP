@@ -57,6 +57,31 @@ export const partyBalances = async (c: Db, orgId: bigint, accountKey: string, to
      JOIN accounts a ON a.id = l.account_id
     WHERE l.organization_id = $1 AND a.system_key = $2 GROUP BY l.party_id ORDER BY l.party_id`, [orgId, accountKey, to])).rows as { party_id: bigint | null; balance: bigint }[];
 
+/** The documents' own balances must agree, party by party, with the receivable and payable accounts they post to.
+    Kept apart from `reconcile` because journals posted by hand (or by rules without a document) have no document to match. */
+export const documentIssues = async (c: Db, orgId: bigint): Promise<string[]> => {
+  const issues: string[] = [];
+  const expected = async (sql: string) => new Map((await c.query(sql, [orgId])).rows.map((r) => [String(r.party_id), r.balance as bigint]));
+  const checks: [string, string, string][] = [
+    ['AR', 'receivables', `SELECT party_id, SUM(v)::bigint AS balance FROM (
+        SELECT party_id, balance_minor AS v FROM documents WHERE organization_id = $1 AND kind = 'INVOICE' AND status = 'ISSUED'
+        UNION ALL SELECT party_id, -balance_minor FROM documents WHERE organization_id = $1 AND kind = 'CREDIT_NOTE' AND status = 'ISSUED'
+        UNION ALL SELECT party_id, -unallocated_minor FROM payments WHERE organization_id = $1 AND direction = 'IN' AND status = 'POSTED') x GROUP BY party_id`],
+    ['AP', 'payables', `SELECT party_id, SUM(v)::bigint AS balance FROM (
+        SELECT party_id, -balance_minor AS v FROM documents WHERE organization_id = $1 AND kind = 'BILL' AND status = 'ISSUED'
+        UNION ALL SELECT party_id, unallocated_minor FROM payments WHERE organization_id = $1 AND direction = 'OUT' AND status = 'POSTED') x GROUP BY party_id`]
+  ];
+  for (const [key, label, sql] of checks) {
+    const docs = await expected(sql);
+    const ledger = new Map((await partyBalances(c, orgId, key, '9999-12-31')).map((r) => [String(r.party_id), r.balance]));
+    for (const party of new Set([...docs.keys(), ...ledger.keys()])) {
+      const d = docs.get(party) ?? 0n; const l = ledger.get(party) ?? 0n;
+      if (d !== l) issues.push(`${label}: party ${party} is ${l} in the ledger but ${d} in the documents`);
+    }
+  }
+  return issues;
+};
+
 /** The nightly self-check (backlog FB-017): anything returned here is a defect to investigate. Empty means the books are consistent. */
 export const reconcile = async (c: Db, orgId: bigint): Promise<string[]> => {
   const issues: string[] = [];

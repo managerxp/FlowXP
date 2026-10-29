@@ -1,6 +1,7 @@
 import type pg from 'pg';
 import { audit } from './audit.ts';
 import { seedChartOfAccounts, TEMPLATES } from './coa.ts';
+import { seedTaxRates } from './masters.ts';
 import { openFinancialYear } from './periods.ts';
 
 export type NewOrg = { name: string; legalName?: string; pan?: string; template?: string; fyStartYear?: number; ownerUserId: bigint };
@@ -20,6 +21,7 @@ export const provisionOrganization = async (pool: pg.Pool, o: NewOrg): Promise<b
     await c.query('INSERT INTO memberships (organization_id, user_id, role) VALUES ($1, $2, $3)', [orgId, o.ownerUserId, 'owner']);
     await seedChartOfAccounts(c, orgId, template);
     await openFinancialYear(c, orgId, startYear, 4, `user:${o.ownerUserId}`);
+    await seedTaxRates(c, orgId);
     await audit(c, orgId, { actor: `user:${o.ownerUserId}`, action: 'organization.created', entityType: 'organization', entityId: orgId, detail: { template } });
     await c.query('COMMIT');
     return orgId;

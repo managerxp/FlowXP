@@ -9,7 +9,8 @@ import { paiseToString, toPaise } from './money.ts';
 import { can, ROLES } from './permissions.ts';
 import type { Role } from './permissions.ts';
 import { provisionOrganization } from './provision.ts';
-import { balanceSheet, partyBalances, profitAndLoss, reconcile, trialBalance } from './reports.ts';
+import { balanceSheet, documentIssues, partyBalances, profitAndLoss, reconcile, trialBalance } from './reports.ts';
+import { registerBookRoutes } from './routes.ts';
 import { setPeriodStatus } from './periods.ts';
 import type { PeriodStatus } from './periods.ts';
 import { TEMPLATES } from './coa.ts';
@@ -37,7 +38,7 @@ const ID = '^\\d{1,18}$';
 /* ids are bigint inside; on the wire they are strings and amounts are decimal strings, never floats */
 const ID_KEYS = new Set(['id', 'party_id', 'entry_id', 'account_id', 'user_id', 'organization_id']);
 const wire = (v: unknown, key = ''): unknown => {
-  if (typeof v === 'bigint') return ID_KEYS.has(key) ? v.toString() : paiseToString(v);
+  if (typeof v === 'bigint') return ID_KEYS.has(key) || /(^|_)id$|Id$/.test(key) ? v.toString() : paiseToString(v);
   if (Array.isArray(v)) return v.map((x) => wire(x, key));
   if (v && typeof v === 'object' && !(v instanceof Date)) return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, wire(x, k)]));
   return v;
@@ -59,7 +60,7 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
 
   app.setReplySerializer((payload) => JSON.stringify(wire(payload)));
   app.setErrorHandler((error: Error & { statusCode?: number; validation?: unknown; code?: string }, _req, reply) => {
-    if (error instanceof LedgerError) return reply.code(422).send({ error: { code: error.code, message: error.message } });
+    if (error instanceof LedgerError) return reply.code(error.code === 'not_found' ? 404 : 422).send({ error: { code: error.code, message: error.message } });
     if (error.validation) return reply.code(400).send({ error: { code: 'invalid_request', message: error.message } });
     if (error.code === 'P0001') return reply.code(422).send({ error: { code: 'rule_violation', message: error.message.replace(/^error: /, '') } });
     if (error instanceof RangeError) return reply.code(400).send({ error: { code: 'invalid_request', message: error.message } });
@@ -296,7 +297,9 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
     return withOrg(pool, req.org?.id as bigint, (c) => partyBalances(c, req.org?.id as bigint, q.account, q.to));
   });
   app.get(`${orgRoute}/reports/reconcile`, { preHandler: scope('report.read') }, async (req) =>
-    ({ issues: await withOrg(pool, req.org?.id as bigint, (c) => reconcile(c, req.org?.id as bigint)) }));
+    ({ issues: await withOrg(pool, req.org?.id as bigint, async (c) => [...await reconcile(c, req.org?.id as bigint), ...await documentIssues(c, req.org?.id as bigint)]) }));
+
+  registerBookRoutes(app, { pool, scope, me });
 
   /* ---- audit */
   app.get(`${orgRoute}/audit`, { preHandler: scope('audit.read'), schema: { querystring: { type: 'object', properties: { limit: { type: 'integer', minimum: 1, maximum: 200 } } } } }, async (req) =>
