@@ -20,13 +20,31 @@ const DOCS = [
   { path: 'credit-notes', api: 'credit-notes', title: 'Credit notes', one: 'Credit note', who: 'Customer', partyKind: 'CUSTOMER' }
 ];
 
+/* [path, label, icon]; a group is a heading and the links under it */
+const ICON = {
+  home: 'M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10',
+  invoice: 'M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7',
+  credit: 'M6 3h9l4 4v14H6zM9 14l3-3 3 3M12 11v7',
+  repeat: 'M17 2l3 3-3 3M4 11V9a4 4 0 014-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 01-4 4H4',
+  people: 'M16 20v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M9.5 10a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM21 20v-2a4 4 0 00-3-3.9M16 3.1a3.5 3.5 0 010 6.8',
+  bill: 'M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6',
+  wallet: 'M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l13-3v3M17 13.5h.01',
+  cash: 'M2 6h20v12H2zM12 15a3 3 0 100-6 3 3 0 000 6z',
+  box: 'M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8',
+  list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  book: 'M4 4h12a3 3 0 013 3v13H7a3 3 0 01-3-3zM4 17a3 3 0 013-3h12',
+  chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+  gear: 'M12 15a3 3 0 100-6 3 3 0 000 6zM19 12a7 7 0 00-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 00-2-1.2L14 3h-4l-.6 2.6a7 7 0 00-2 1.2l-2.3-.9-2 3.4 2 1.5a7 7 0 000 2.4l-2 1.5 2 3.4 2.3-.9a7 7 0 002 1.2L10 21h4l.6-2.6a7 7 0 002-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z'
+};
 const NAV = [
-  ['/', 'Home', null],
-  ['/sales', 'Sales', 'Money in'], ['/credit-notes', 'Credit notes'], ['/recurring', 'Recurring'], ['/payments', 'Payments'], ['/customers', 'Customers'],
-  ['/purchases', 'Purchases', 'Money out'], ['/expenses', 'Expenses'], ['/vendors', 'Vendors'],
-  ['/items', 'Items', 'Books'], ['/accounts', 'Accounts'], ['/journals', 'Journals'], ['/reports', 'Reports'],
-  ['/settings', 'Settings', 'Setup']
+  { items: [['/', 'Home', 'home']] },
+  { label: 'Sales', items: [['/sales', 'Invoices', 'invoice'], ['/credit-notes', 'Credit notes', 'credit'], ['/recurring', 'Recurring', 'repeat'], ['/customers', 'Customers', 'people']] },
+  { label: 'Purchases', items: [['/purchases', 'Bills', 'bill'], ['/expenses', 'Expenses', 'wallet'], ['/vendors', 'Vendors', 'people']] },
+  { label: 'Money', items: [['/payments', 'Payments', 'cash']] },
+  { label: 'Books', items: [['/items', 'Items', 'box'], ['/accounts', 'Accounts', 'list'], ['/journals', 'Journals', 'book'], ['/reports', 'Reports', 'chart']] },
+  { label: 'Setup', items: [['/settings', 'Settings', 'gear']] }
 ];
+const Icon = ({ name }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={ICON[name]} /></svg>;
 
 const Wordmark = () => { const [a, b] = wordmark(); return <span className="wordmark">{a}<span>{b}</span></span>; };
 const initials = (name = '') => name.split(/s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'B';
@@ -98,8 +116,9 @@ const Shell = () => {
           <button className="icon-btn side-close" aria-label="Close menu" onClick={close}>✕</button>
         </div>
         <nav onClick={close}>
-          {NAV.map(([to, label, group]) => (
-            <div key={to}>{group && <p className="nav-label">{group}</p>}<NavLink to={to} end={to === '/'} className="nav-item">{label}</NavLink></div>
+          {NAV.map((g, i) => (
+            <div key={i} className="nav-group">{g.label && <p className="nav-label">{g.label}</p>}
+              {g.items.map(([to, label, icon]) => <NavLink key={to} to={to} end={to === '/'} className="nav-item"><Icon name={icon} />{label}</NavLink>)}</div>
           ))}
         </nav>
       </aside>
