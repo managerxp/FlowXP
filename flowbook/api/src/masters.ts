@@ -39,15 +39,15 @@ export const createParty = async (c: Db, orgId: bigint, p: PartyIn, actor: strin
   return row.id as bigint;
 };
 
-export const updateParty = async (c: Db, orgId: bigint, id: bigint, p: Partial<PartyIn> & { active?: boolean }, actor: string): Promise<boolean> => {
+export const updateParty = async (c: Db, orgId: bigint, id: bigint, p: Partial<PartyIn> & { active?: boolean; whatsappOptOut?: boolean }, actor: string): Promise<boolean> => {
   const cur = (await c.query(`SELECT kind, name, gstin, pan, state_code, phone, email, credit_days FROM parties WHERE id = $1`, [id])).rows[0];
   if (!cur) return false;
   const next: PartyIn = { kind: p.kind ?? cur.kind, name: p.name ?? cur.name, gstin: p.gstin ?? cur.gstin ?? undefined, stateCode: p.stateCode ?? cur.state_code ?? undefined };
   const { gstin, state } = cleanParty(next);
   await c.query(
     `UPDATE parties SET kind = $2, name = $3, gstin = $4, state_code = $5, pan = COALESCE($6, pan), phone = COALESCE($7, phone), email = COALESCE($8, email),
-            credit_days = COALESCE($9, credit_days), active = COALESCE($10, active) WHERE id = $1`,
-    [id, next.kind, next.name.trim(), gstin, state, p.pan ?? null, p.phone ?? null, p.email ?? null, p.creditDays ?? null, p.active ?? null]);
+            credit_days = COALESCE($9, credit_days), active = COALESCE($10, active), whatsapp_opt_out = COALESCE($11, whatsapp_opt_out) WHERE id = $1`,
+    [id, next.kind, next.name.trim(), gstin, state, p.pan ?? null, p.phone ?? null, p.email ?? null, p.creditDays ?? null, p.active ?? null, p.whatsappOptOut ?? null]);
   await audit(c, orgId, { actor, action: 'party.updated', entityType: 'party', entityId: id });
   return true;
 };

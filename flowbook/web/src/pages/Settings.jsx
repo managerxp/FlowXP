@@ -135,12 +135,14 @@ const Activity = () => {
     <Async load={load}>{(rows) => <Table head={['When', 'Who', 'What']} empty={!rows.length && <Empty>Nothing yet.</Empty>}>{rows.map((r) => <tr key={r.id}><td>{showTime(r.created_at)}</td><td>{String(r.actor).replace('user:', 'user ')}</td><td>{String(r.action).replaceAll('.', ' ').replaceAll('_', ' ')} <span className="muted">{r.entity_type}</span></td></tr>)}</Table>}</Async></Card>;
 };
 
+import { WhatsappSettings } from './Whatsapp.jsx';
+
 export default ({ AddBusiness }) => {
   const [tab, setTab] = useState('biz');
   return (
     <Page title="Settings">
-      <Tabs value={tab} onChange={setTab} tabs={[['biz', 'Business'], ['tax', 'GST rates'], ['periods', 'Closing'], ['team', 'Team'], ['flowxp', 'FlowXP'], ['log', 'Activity'], ['new', 'Add business']]} />
-      {tab === 'biz' && <Business />}{tab === 'tax' && <TaxRates />}{tab === 'periods' && <Periods />}{tab === 'team' && <Team />}{tab === 'flowxp' && <FlowXP />}{tab === 'log' && <Activity />}{tab === 'new' && <AddBusiness />}
+      <Tabs value={tab} onChange={setTab} tabs={[['biz', 'Business'], ['tax', 'GST rates'], ['periods', 'Closing'], ['team', 'Team'], ['wa', 'WhatsApp'], ['flowxp', 'FlowXP'], ['log', 'Activity'], ['new', 'Add business']]} />
+      {tab === 'biz' && <Business />}{tab === 'tax' && <TaxRates />}{tab === 'periods' && <Periods />}{tab === 'team' && <Team />}{tab === 'wa' && <WhatsappSettings />}{tab === 'flowxp' && <FlowXP />}{tab === 'log' && <Activity />}{tab === 'new' && <AddBusiness />}
     </Page>
   );
 };

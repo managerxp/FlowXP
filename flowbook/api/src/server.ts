@@ -1,6 +1,7 @@
 import { buildApp } from './app.ts';
 import { createPool, migrate } from './db.ts';
 import { startInboxWorker } from './inbox.ts';
+import { startReminderWorker } from './whatsapp.ts';
 
 try { process.loadEnvFile(new URL('../.env', import.meta.url)); } catch { /* environment only */ }
 
@@ -11,6 +12,7 @@ if (process.env.RUN_MIGRATIONS !== 'false') console.log('[flowbook] migrations a
 
 const production = process.env.NODE_ENV === 'production';
 const worker = process.env.INBOX_WORKER === 'false' ? null : startInboxWorker(pool);   // INBOX_WORKER=false posts events inside the request instead
+if (process.env.WHATSAPP_WORKER !== 'false') startReminderWorker(pool);   // automatic payment reminders, for businesses that turned them on
 const app = buildApp({
   pool,
   onEvent: worker?.kick,

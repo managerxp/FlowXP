@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useLoad } from '../api.js';
 import { inr, showDate, today, uuid } from '../lib.js';
 import { useSession } from '../session.jsx';
+import { WhatsappButton } from './Whatsapp.jsx';
 import { Async, Badge, Btn, Card, Confirm, Empty, Err, Field, Money, Note, Page, Table, Tabs, useAction } from '../ui.jsx';
 
 export const Payments = () => {
@@ -107,7 +108,7 @@ export const PaymentView = () => {
   const [v, setV] = useState({ date: today(), reason: '' });
   return (
     <Page title={load.data ? `Payment ${load.data.number}` : 'Payment'} lead={load.data && `${load.data.direction === 'IN' ? 'Received from' : 'Paid to'} ${load.data.party_name}`}
-      actions={load.data?.status === 'POSTED' && <Btn kind="danger" onClick={() => setPanel(!panel)}>Void</Btn>}>
+      actions={load.data?.status === 'POSTED' && <>{load.data.direction === 'IN' && <WhatsappButton kind="RECEIPT" paymentId={id} label="Send receipt on WhatsApp" />}<Btn kind="danger" onClick={() => setPanel(!panel)}>Void</Btn></>}>
       <Async load={load}>{(p) => (<>
         <Err>{a.error}</Err><Note>{a.done}</Note>
         {panel && (<Confirm><p>Voiding reverses the entries and frees the invoices or bills it settled.</p>

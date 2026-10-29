@@ -6,6 +6,7 @@ import type { Db } from './db.ts';
 import { ageing, allocatePayment, applyCreditNote, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, voidDocument, voidPayment } from './documents.ts';
 import type { Alloc, DocIn, DocKind } from './documents.ts';
 import { gstr1, gstr3b } from './gstr.ts';
+import { getSettings as getWhatsapp, listMessages, saveSettings as saveWhatsapp, sendMessage } from './whatsapp.ts';
 import { createTemplate, deleteTemplate, listTemplates, runDue, setTemplateActive } from './recurring.ts';
 import type { Every } from './recurring.ts';
 import { partyStatement } from './statement.ts';
@@ -93,7 +94,7 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     kind: { type: 'string', enum: ['CUSTOMER', 'VENDOR'] }, q: { type: 'string', maxLength: 80 }, limit: { type: 'integer', minimum: 1, maximum: 500 } } } } }, async (req) => {
     const q = req.query as { kind?: string; q?: string; limit?: number };
     return run(req, async (c) => (await c.query(
-      `SELECT id, kind, name, gstin, state_code, phone, email, credit_days, active, external_ref FROM parties
+      `SELECT id, kind, name, gstin, state_code, phone, email, credit_days, active, external_ref, whatsapp_opt_out FROM parties
         WHERE ($1::text IS NULL OR kind IN ($1, 'BOTH')) AND ($2::text IS NULL OR name ILIKE '%' || $2 || '%') ORDER BY name LIMIT $3`, [q.kind ?? null, q.q ?? null, q.limit ?? 200])).rows);
   });
   app.post(`${base}/parties`, { preHandler: scope('party.write'), schema: { body: { type: 'object', required: ['kind', 'name'], additionalProperties: false, properties: partyProps } } }, async (req, reply) => {
@@ -101,10 +102,10 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     return reply.code(201).send({ id });
   });
   app.get(`${base}/parties/:id`, { preHandler: scope('party.read'), schema: idParam }, async (req, reply) => {
-    const row = await run(req, async (c) => (await c.query(`SELECT id, kind, name, gstin, pan, state_code, phone, email, credit_days, active, external_ref FROM parties WHERE id = $1`, [(req.params as { id: string }).id])).rows[0]);
+    const row = await run(req, async (c) => (await c.query(`SELECT id, kind, name, gstin, pan, state_code, phone, email, credit_days, active, external_ref, whatsapp_opt_out FROM parties WHERE id = $1`, [(req.params as { id: string }).id])).rows[0]);
     return row ?? notFound(reply, 'party');
   });
-  app.patch(`${base}/parties/:id`, { preHandler: scope('party.write'), schema: { ...idParam, body: { type: 'object', additionalProperties: false, properties: { ...partyProps, active: { type: 'boolean' } } } } }, async (req, reply) => {
+  app.patch(`${base}/parties/:id`, { preHandler: scope('party.write'), schema: { ...idParam, body: { type: 'object', additionalProperties: false, properties: { ...partyProps, active: { type: 'boolean' }, whatsappOptOut: { type: 'boolean' } } } } }, async (req, reply) => {
     const ok = await run(req, (c, orgId) => updateParty(c, orgId, BigInt((req.params as { id: string }).id), req.body as Parameters<typeof updateParty>[3], me(req)));
     return ok ? { ok: true } : notFound(reply, 'party');
   });
@@ -193,6 +194,26 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     type: { type: 'string', enum: ['receivables', 'payables'] }, asOf: { type: 'string', pattern: DATE } } } } }, async (req) => {
     const q = req.query as { type: string; asOf: string };
     return run(req, (c, orgId) => ageing(c, orgId, q.type === 'receivables' ? 'INVOICE' : 'BILL', q.asOf));
+  });
+
+  /* ---- WhatsApp */
+  app.get(`${base}/whatsapp/settings`, { preHandler: scope('org.read') }, async (req) => run(req, (c) => getWhatsapp(c)));
+  app.put(`${base}/whatsapp/settings`, { preHandler: scope('org.manage'), schema: { body: { type: 'object', additionalProperties: false, properties: {
+    mode: { type: 'string', enum: ['OFF', 'LINK', 'CLOUD'] }, phoneNumberId: { type: 'string', pattern: '^\\d{5,30}$' }, token: { type: 'string', minLength: 10, maxLength: 1000 }, language: { type: 'string', pattern: '^[a-z]{2}(_[A-Z]{2})?$' },
+    autoReminders: { type: 'boolean' }, reminderOffsets: { type: 'array', maxItems: 6, items: { type: 'integer', minimum: -30, maximum: 90 } },
+    templateInvoice: { type: 'string', pattern: '^[a-z0-9_]{1,512}$' }, templateReminder: { type: 'string', pattern: '^[a-z0-9_]{1,512}$' }, templateReceipt: { type: 'string', pattern: '^[a-z0-9_]{1,512}$' } } } } }, async (req) => {
+    await run(req, (c, orgId) => saveWhatsapp(c, orgId, req.body as Parameters<typeof saveWhatsapp>[2], me(req)));
+    return { ok: true };
+  });
+  app.post(`${base}/whatsapp/send`, { preHandler: scope('invoice.write'), schema: { body: { type: 'object', required: ['kind'], additionalProperties: false, properties: {
+    kind: { type: 'string', enum: ['INVOICE', 'REMINDER', 'RECEIPT'] }, documentId: { type: 'string', pattern: ID }, paymentId: { type: 'string', pattern: ID } } } } }, async (req, reply) => {
+    const b = req.body as { kind: 'INVOICE' | 'REMINDER' | 'RECEIPT'; documentId?: string; paymentId?: string };
+    if (b.kind === 'RECEIPT' ? !b.paymentId : !b.documentId) return reply.code(400).send({ error: { code: 'bad_request', message: b.kind === 'RECEIPT' ? 'a receipt needs a paymentId' : 'this message needs a documentId' } });
+    return sendMessage(pool, orgOf(req), b.kind, { documentId: b.documentId ? BigInt(b.documentId) : undefined, paymentId: b.paymentId ? BigInt(b.paymentId) : undefined }, { actor: me(req) });
+  });
+  app.get(`${base}/whatsapp/messages`, { preHandler: scope('invoice.read'), schema: { querystring: { type: 'object', properties: { documentId: { type: 'string', pattern: ID }, limit: { type: 'integer', minimum: 1, maximum: 200 } } } } }, async (req) => {
+    const q = req.query as { documentId?: string; limit?: number };
+    return run(req, (c) => listMessages(c, { documentId: q.documentId ? BigInt(q.documentId) : undefined, limit: q.limit ?? 50 }));
   });
 
   /* ---- GST returns (drafts), party statement, recurring documents */

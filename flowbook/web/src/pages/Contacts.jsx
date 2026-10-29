@@ -20,12 +20,12 @@ export const Parties = ({ kind }) => {
     e.preventDefault();
     a.run(async () => {
       const { id, ...f } = form;
-      const body = { kind: f.kind, name: f.name, ...(f.gstin && { gstin: f.gstin.toUpperCase() }), ...(f.pan && { pan: f.pan.toUpperCase() }), ...(f.stateCode && { stateCode: f.stateCode }), ...(f.phone && { phone: f.phone }), ...(f.email && { email: f.email }), ...(f.creditDays !== '' && { creditDays: Number(f.creditDays) }) };
+      const body = { kind: f.kind, name: f.name, ...(f.gstin && { gstin: f.gstin.toUpperCase() }), ...(f.pan && { pan: f.pan.toUpperCase() }), ...(f.stateCode && { stateCode: f.stateCode }), ...(f.phone && { phone: f.phone }), ...(f.email && { email: f.email }), ...(f.creditDays !== '' && { creditDays: Number(f.creditDays) }), ...(id && { whatsappOptOut: Boolean(f.whatsappOptOut) }) };
       if (id) await o(`/parties/${id}`, { method: 'PATCH', body }); else await o('/parties', { method: 'POST', body });
       setForm(null); await load.reload();
     }, `Saved.`);
   };
-  const edit = (p) => setForm({ id: p.id, kind: p.kind, name: p.name, gstin: p.gstin || '', pan: p.pan || '', stateCode: p.state_code || '', phone: p.phone || '', email: p.email || '', creditDays: p.credit_days ?? '' });
+  const edit = (p) => setForm({ id: p.id, kind: p.kind, name: p.name, gstin: p.gstin || '', pan: p.pan || '', stateCode: p.state_code || '', phone: p.phone || '', email: p.email || '', creditDays: p.credit_days ?? '', whatsappOptOut: Boolean(p.whatsapp_opt_out) });
 
   return (
     <Page title={`${word[0].toUpperCase()}${word.slice(1)}s`} lead={kind === 'CUSTOMER' ? 'People and businesses you sell to.' : 'People and businesses you buy from.'} actions={<Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm(blank(kind)); }}>Add {word}</Btn>}>
@@ -41,6 +41,7 @@ export const Parties = ({ kind }) => {
             <Field label="Email"><input type="email" value={form.email} onChange={set('email')} maxLength={200} /></Field>
             <Field label="PAN"><input value={form.pan} onChange={set('pan')} maxLength={10} /></Field>
             <Field label="Days to pay" hint="Sets the due date on new documents"><input inputMode="numeric" value={form.creditDays} onChange={set('creditDays')} /></Field>
+            {form.id && <p className="check wide"><input id="wa-out" type="checkbox" checked={form.whatsappOptOut} onChange={(e) => setForm({ ...form, whatsappOptOut: e.target.checked })} /><label htmlFor="wa-out">Do not send WhatsApp messages to this {word} (they asked to stop)</label></p>}
             <div className="wide actions"><Btn kind="primary" busy={a.busy}>Save</Btn><Btn type="button" onClick={() => setForm(null)}>Cancel</Btn></div>
           </form>
         </Card>

@@ -25,3 +25,11 @@ Added after reading the MIT-licensed [Free-GST-Billing-Software](https://github.
 - **Party statement** (`api/src/statement.ts`, Reports, Party statement): documents and payments with a running balance.
 - **Amount in words** under every document total, and a **GST due dates** card on the home screen (monthly filers only).
 - Left out on purpose: the reference's HSN-to-rate table. Its rates predate or only partly follow the September 2025 rate change, so it would suggest wrong rates. Seeded tax codes are still GST0/5/12/18/28; add a 40% code (and retire 12/28 for new dates) in Settings once the owner's CA confirms the rates in use.
+
+### WhatsApp (2026-10-29)
+Settings, WhatsApp. Two modes, plus off:
+- **Open WhatsApp (LINK):** no setup. The Send and Remind buttons on an invoice, and Send receipt on a payment, open a click-to-chat address with the message ready; a person presses send.
+- **Send from FlowBook (CLOUD):** FlowBook sends through the business's own Meta WhatsApp Cloud API number (`api/src/whatsapp.ts`), and can remind on its own: an hourly worker (`WHATSAPP_WORKER=false` turns it off) sends the unpaid-invoice reminder at the chosen days from the due date (default 3 days before, on the day, 7 and 15 days after). Each invoice gets each reminder once, only while money is pending.
+- Needs three **Utility** templates approved in Meta Business Manager, named as in Settings, with exactly the text shown there (`TEMPLATE_BODY` in whatsapp.ts). The access token is stored encrypted (AES-256-GCM); set `FLOWBOOK_SECRET_KEY` (32 random bytes, base64) in `api/.env` first or saving a token is refused.
+- A customer or vendor can be marked "do not send WhatsApp" and is then skipped (and logged as skipped). Every message, sent or not, is in the log on the invoice and in Settings.
+- **Not tested against WhatsApp's live service** (needs a real number and approved templates); tests use a stand-in sender. No delivery or read receipts yet (needs Meta's webhook), no reply handling.

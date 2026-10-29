@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useLoad } from '../api.js';
 import { STATES, UNITS, addDays, amountInWords, inr, showDate, today, unitLabel } from '../lib.js';
 import { useSession } from '../session.jsx';
+import { WhatsappButton, WhatsappLog } from './Whatsapp.jsx';
 import { Async, Badge, Btn, Card, Confirm, Empty, Err, Field, Money, Note, Page, Table, Tabs, useAction } from '../ui.jsx';
 
 export const DocList = ({ kind }) => {
@@ -140,6 +141,7 @@ export const DocView = ({ kind }) => {
   const load = useLoad(() => o(`/${kind.api}/${id}`), [org.id, kind.api, id]);
   const a = useAction();
   const [panel, setPanel] = useState('');
+  const [sent, setSent] = useState(0);
   const [void_, setVoid] = useState({ date: today(), reason: '' });
   const [apply, setApply] = useState({});
   const open = useLoad(() => (kind.api === 'credit-notes' && load.data?.status === 'ISSUED' ? o(`/invoices?status=ISSUED&partyId=${load.data.party_id}&limit=100`) : Promise.resolve(null)), [load.data?.id, load.data?.status]);
@@ -153,6 +155,8 @@ export const DocView = ({ kind }) => {
         {load.data.status === 'ISSUED' && <>
           {kind.paymentDirection && Number(load.data.balance_minor) > 0 && <Link className="btn primary" to={`/payments/new?direction=${kind.paymentDirection}&partyId=${load.data.party_id}&documentId=${id}`}>{kind.paymentDirection === 'IN' ? 'Record payment' : 'Pay this bill'}</Link>}
           {kind.api === 'credit-notes' && Number(load.data.balance_minor) > 0 && <Btn onClick={() => setPanel(panel === 'apply' ? '' : 'apply')}>Apply to invoices</Btn>}
+          {kind.api === 'invoices' && <WhatsappButton kind="INVOICE" documentId={id} label="Send on WhatsApp" onDone={() => setSent((n) => n + 1)} />}
+          {kind.api === 'invoices' && Number(load.data.balance_minor) > 0 && <WhatsappButton kind="REMINDER" documentId={id} label="Remind on WhatsApp" onDone={() => setSent((n) => n + 1)} />}
           <Btn onClick={() => window.print()}>Print</Btn><Btn kind="danger" onClick={() => setPanel(panel === 'void' ? '' : 'void')}>Void</Btn></>}
       </>}>
       <Async load={load}>{(d) => (<>
@@ -193,6 +197,7 @@ export const DocView = ({ kind }) => {
           </div>
           <p className="muted words">{amountInWords(d.total_minor)}</p>
         </Card>
+        {kind.api === 'invoices' && <WhatsappLog documentId={id} refresh={sent} />}
         {d.allocations.length > 0 && (
           <Card title="Payments and credits against this">
             <Table head={['What', '>Amount', 'State']}>{d.allocations.map((x, i) => (<tr key={i}><td>{x.source_type === 'PAYMENT' ? <Link to={`/payments/${x.source_id}`}>Payment</Link> : 'Credit note'}</td><td className="r"><Money v={x.amount_minor} /></td><td>{x.voided ? <Badge status="VOID" /> : 'Counted'}</td></tr>))}</Table>
