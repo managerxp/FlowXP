@@ -47,7 +47,7 @@ export const CurrencySettings = () => {
     </Card>
     <Revalue />
     <Card title="What is and is not covered">
-      <p className="muted">Invoices, bills, quotes and orders can be in a foreign currency. A payment settles one such document at a time and any difference between the rupees booked and the rupees that arrived is posted as an exchange gain or loss. Credit and debit notes are in rupees. GSTR-1 does not yet have a separate export table.</p>
+      <p className="muted">Invoices, bills, quotes and orders can be in a foreign currency. A payment settles one such document at a time and any difference between the rupees booked and the rupees that arrived is posted as an exchange gain or loss. Credit and debit notes are in rupees.  An invoice in a foreign currency is listed in GSTR-1 as an export, and in GSTR-3B as a zero-rated supply.</p>
     </Card>
   </>)}</Async>;
 };

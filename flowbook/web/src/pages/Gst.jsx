@@ -22,7 +22,7 @@ const Gstr1 = ({ month }) => {
   const load = useLoad(() => o(`/gst/gstr1?month=${month}&hsnDigits=${digits}`), [org.id, month, digits]);
   return <Async load={load}>{({ file, counts, problems }) => {
     const blocked = problems.some((p) => p.level === 'block');
-    const sections = [['Registered buyers (B2B)', counts.b2b], ['Large unregistered, other state (B2CL)', counts.b2cl], ['Small unregistered (B2CS)', counts.b2cs], ['Credit notes', counts.creditNotes], ['Cancelled', counts.cancelled]];
+    const sections = [['Registered buyers (B2B)', counts.b2b], ['Large unregistered, other state (B2CL)', counts.b2cl], ['Exports', counts.exports], ['Small unregistered (B2CS)', counts.b2cs], ['Credit notes', counts.creditNotes], ['Cancelled', counts.cancelled]];
     return (<>
       <Card title="Checks before you file" actions={<Field label="HSN digits"><select value={digits} onChange={(e) => setDigits(e.target.value)}><option value="4">4 (turnover up to ₹5 crore)</option><option value="6">6 (above ₹5 crore)</option></select></Field>}>
         <Problems list={problems} />
@@ -35,6 +35,9 @@ const Gstr1 = ({ month }) => {
       {file.b2b.length > 0 && <Card title="B2B, by buyer"><Table head={['GSTIN', '>Invoices', '>Taxable', '>Tax']}>
         {file.b2b.map((b) => { const items = b.inv.flatMap((i) => i.itms.map((m) => m.itm_det)); return (
           <tr key={b.ctin}><td>{b.ctin}</td><td className="r">{b.inv.length}</td><td className="r num">{rupees(items.reduce((a, m) => a + m.txval, 0))}</td><td className="r num">{rupees(items.reduce((a, m) => a + m.iamt + m.camt + m.samt, 0))}</td></tr>); })}
+      </Table></Card>}
+      {file.exp?.length > 0 && <Card title="Exports"><Table head={['Invoice', 'Date', 'Tax', 'Shipping bill', '>Taxable', '>IGST']}>
+        {file.exp.flatMap((g) => g.inv.map((i) => <tr key={i.inum}><td>{i.inum}</td><td>{i.idt}</td><td>{g.exp_typ === 'WPAY' ? 'With IGST' : 'Without tax (LUT)'}</td><td>{i.sbnum ? `${i.sbnum} · ${i.sbdt || ''} · ${i.sbpcode || ''}` : <span className="muted">not added</span>}</td><td className="r num">{rupees(i.itms.reduce((a, m) => a + m.txval, 0))}</td><td className="r num">{rupees(i.itms.reduce((a, m) => a + m.iamt, 0))}</td></tr>))}
       </Table></Card>}
       {file.b2cs.length > 0 && <Card title="Small sales to unregistered buyers"><Table head={['Supply', 'State', '>Rate', '>Taxable', '>IGST', '>CGST', '>SGST']}>
         {file.b2cs.map((e) => <tr key={`${e.sply_ty}${e.pos}${e.rt}`}><td>{e.sply_ty === 'INTER' ? 'Other state' : 'Same state'}</td><td>{e.pos}</td><td className="r">{e.rt}%</td><td className="r num">{rupees(e.txval)}</td><td className="r num">{rupees(e.iamt)}</td><td className="r num">{rupees(e.camt)}</td><td className="r num">{rupees(e.samt)}</td></tr>)}

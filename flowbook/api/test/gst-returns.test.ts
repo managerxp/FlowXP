@@ -4,6 +4,7 @@ import { withOrg } from '../src/db.ts';
 import type { Db } from '../src/db.ts';
 import { createPayment, issueDocument, saveDraft } from '../src/documents.ts';
 import type { DocIn } from '../src/documents.ts';
+import { saveRate } from '../src/fx.ts';
 import { gstinCheckChar } from '../src/gst.ts';
 import { gstr1, gstr3b } from '../src/gstr.ts';
 import { createItem, createParty, seedTaxRates } from '../src/masters.ts';
@@ -42,7 +43,7 @@ test('GSTR-1 sorts sales into B2B, B2C small and the HSN table, and 3B adds the 
   const r = await run(org, (c) => gstr1(c, org, '2026-06'));
   assert.equal(r.problems.filter((p) => p.level === 'block').length, 0);
   assert.equal(r.file.fp, '062026');
-  assert.deepEqual(r.counts, { invoices: 2, b2b: 1, b2cl: 0, b2cs: 1, creditNotes: 0, cancelled: 0 });
+  assert.deepEqual(r.counts, { invoices: 2, b2b: 1, b2cl: 0, exports: 0, b2cs: 1, creditNotes: 0, cancelled: 0 });
   const inv = (r.file.b2b[0]?.inv[0] ?? {}) as { inum: string; idt: string; val: number; itms: { itm_det: { rt: number; txval: number; camt: number; samt: number; iamt: number } }[] };
   assert.equal(inv.inum, 'INV-26-27-000001');
   assert.equal(inv.idt, '10-06-2026');
@@ -92,4 +93,26 @@ test('a party statement runs a balance through invoices, credit and payments', {
   assert.equal(s.opening, 420000n);
   assert.deepEqual(s.lines.map((l) => [l.type, l.debit, l.credit, l.balance]), [['Invoice', 210000n, 0n, 630000n], ['Payment received', 0n, 100000n, 530000n]]);
   assert.equal(s.closing, 530000n);
+});
+
+test('a foreign-currency invoice is an export: its own GSTR-1 table, with or without IGST, and zero-rated in 3B', { skip }, async () => {
+  const { org } = await shop();
+  const buyer = await run(org, (c) => createParty(c, org, { kind: 'CUSTOMER', name: 'Acme Inc' }, 't'));
+  await run(org, (c) => saveRate(c, org, { currency: 'USD', date: '2026-06-01', rate: '80' }, 't'));
+  const ship = { shippingBillNo: '1234567', shippingBillDate: '2026-06-11', portCode: 'INMAA1' };
+  await issue(org, { kind: 'INVOICE', partyId: buyer, date: '2026-06-10', currency: 'USD', ...ship, lines: [{ description: 'Tea', hsnSac: '0902', unit: 'KGS', quantity: '10', unitPrice: '100', taxCode: 'GST5' }] });
+  await issue(org, { kind: 'INVOICE', partyId: buyer, date: '2026-06-12', currency: 'USD', lines: [{ description: 'Consulting', hsnSac: '998313', quantity: '1', unitPrice: '500', taxCode: 'GST0' }] });
+  const r = await run(org, (c) => gstr1(c, org, '2026-06'));
+  assert.deepEqual(r.counts, { invoices: 2, b2b: 0, b2cl: 0, exports: 2, b2cs: 0, creditNotes: 0, cancelled: 0 });
+  assert.equal(r.file.b2cs.length, 0, 'an export is not a small domestic sale');
+  const exp = (r.file as unknown as { exp: { exp_typ: string; inv: { inum: string; sbnum?: string; sbdt?: string; sbpcode?: string; itms: { txval: number; rt: number; iamt: number }[] }[] }[] }).exp;
+  assert.deepEqual(exp.map((g) => g.exp_typ), ['WPAY', 'WOPAY']);
+  assert.deepEqual(exp[0]!.inv[0]!.itms, [{ txval: 80000, rt: 5, iamt: 4000, csamt: 0 }]);
+  assert.deepEqual([exp[0]!.inv[0]!.sbnum, exp[0]!.inv[0]!.sbdt, exp[0]!.inv[0]!.sbpcode], ['1234567', '11-06-2026', 'INMAA1']);
+  assert.deepEqual(exp[1]!.inv[0]!.itms, [{ txval: 40000, rt: 0, iamt: 0, csamt: 0 }]);
+  assert.equal(r.problems.filter((p) => p.level === 'block').length, 0);
+  const b = await run(org, (c) => gstr3b(c, org, '2026-06'));
+  assert.deepEqual(b.file.sup_details.osup_zero, { txval: 120000, iamt: 4000, csamt: 0 });
+  assert.deepEqual(b.file.sup_details.osup_det, { txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 }, 'not in domestic taxable supplies');
+  assert.equal(b.file.sup_details.osup_nil_exmp.txval, 0);
 });
