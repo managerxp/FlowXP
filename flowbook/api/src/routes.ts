@@ -7,6 +7,7 @@ import { ageing, allocatePayment, applyCreditNote, applyDebitNote, convertDocume
 import type { Alloc, DocIn, DocKind } from './documents.ts';
 import { listExpenses, recordExpense, voidExpense } from './expenses.ts';
 import { ewayBill } from './eway.ts';
+import { buildEinvoice, cancelIrn, einvoiceBulk, einvoiceList, recordIrn } from './einvoice.ts';
 import { gstr1, gstr3b } from './gstr.ts';
 import { PROFILE_COLUMNS, saveExtras } from './profile.ts';
 import type { ProfileExtras } from './profile.ts';
@@ -415,6 +416,30 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     distanceKm: { type: 'integer', minimum: 1, maximum: 4000 }, mode: { type: 'integer', enum: [1, 2, 3, 4] }, vehicleNo: { type: 'string', maxLength: 15 }, transporterId: { type: 'string', maxLength: 15 },
     transporterName: { type: 'string', maxLength: 100 }, transDocNo: { type: 'string', maxLength: 15 }, transDocDate: { type: 'string', pattern: DATE } } } } }, async (req) =>
     run(req, (c, orgId) => ewayBill(c, orgId, BigInt((req.params as { id: string }).id), req.query as Parameters<typeof ewayBill>[3])));
+
+  /* ---- e-invoicing: the IRP file for an invoice or credit note, and the IRN it answers with */
+  const range = { type: 'object', required: ['from', 'to'], properties: { from: { type: 'string', pattern: DATE }, to: { type: 'string', pattern: DATE } } };
+  app.get(`${base}/einvoice`, { preHandler: scope('invoice.read'), schema: { querystring: range } }, async (req) => {
+    const q = req.query as { from: string; to: string };
+    return run(req, (c, orgId) => einvoiceList(c, orgId, q.from, q.to));
+  });
+  app.get(`${base}/einvoice/bulk`, { preHandler: scope('invoice.read'), schema: { querystring: range } }, async (req) => {
+    const q = req.query as { from: string; to: string };
+    return run(req, (c, orgId) => einvoiceBulk(c, orgId, q.from, q.to));
+  });
+  app.get(`${base}/einvoice/:id/file`, { preHandler: scope('invoice.read'), schema: idParam }, async (req) =>
+    run(req, (c, orgId) => buildEinvoice(c, orgId, BigInt((req.params as { id: string }).id))));
+  app.post(`${base}/einvoice/:id/irn`, { preHandler: scope('invoice.write'), schema: { ...idParam, body: { type: 'object', required: ['irn', 'ackNo', 'ackDate'], additionalProperties: false, properties: {
+    irn: { type: 'string', maxLength: 80 }, ackNo: { type: 'string', minLength: 1, maxLength: 30 }, ackDate: { type: 'string', maxLength: 40 }, signedQr: { type: 'string', maxLength: 6000 } } } } }, async (req, reply) => {
+    await run(req, (c, orgId) => recordIrn(c, orgId, BigInt((req.params as { id: string }).id), req.body as Parameters<typeof recordIrn>[3], me(req)));
+    return reply.code(201).send({ ok: true });
+  });
+  app.post(`${base}/einvoice/:id/cancel`, { preHandler: scope('invoice.void'), schema: { ...idParam, body: { type: 'object', required: ['reason'], additionalProperties: false, properties: {
+    reason: { type: 'integer', enum: [1, 2, 3, 4] }, remark: { type: 'string', maxLength: 100 } } } } }, async (req) => {
+    const b = req.body as { reason: 1 | 2 | 3 | 4; remark?: string };
+    await run(req, (c, orgId) => cancelIrn(c, orgId, BigInt((req.params as { id: string }).id), b.reason, b.remark ?? '', me(req)));
+    return { ok: true };
+  });
 
   /* ---- expenses paid at the time */
   app.get(`${base}/expenses`, { preHandler: scope('bill.read'), schema: { querystring: { type: 'object', required: ['from', 'to'], properties: { from: { type: 'string', pattern: DATE }, to: { type: 'string', pattern: DATE }, limit: { type: 'integer', minimum: 1, maximum: 500 } } } } }, async (req) => {

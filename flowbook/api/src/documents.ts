@@ -1,3 +1,4 @@
+import { einvoiceOf } from './einvoice.ts';
 import type { Db } from './db.ts';
 import { audit } from './audit.ts';
 import { validStateCode } from './gst.ts';
@@ -181,7 +182,7 @@ export const getDocument = async (c: Db, kind: DocKind, id: bigint) => {
             (SELECT i.tracking FROM items i WHERE i.id = document_lines.item_id) AS tracking
        FROM document_lines WHERE document_id = $1 ORDER BY line_no`, [id])).rows;
   const allocations = (await c.query(`SELECT source_type, source_id, amount_minor, voided_at IS NOT NULL AS voided FROM payment_allocations WHERE document_id = $1 ORDER BY id`, [id])).rows;
-  return { ...doc, lines, allocations };
+  return { ...doc, lines, allocations, einvoice: await einvoiceOf(c, id) };
 };
 
 export const deleteDraft = async (c: Db, orgId: bigint, kind: DocKind, id: bigint, actor: string): Promise<void> => {
@@ -305,6 +306,7 @@ export const voidDocument = async (c: Db, orgId: bigint, kind: DocKind, id: bigi
   const doc = (await c.query(`SELECT status, journal_entry_id, stock_entry_id, balance_minor, total_minor, number FROM documents WHERE id = $1 AND kind = $2 FOR UPDATE`, [id, kind])).rows[0];
   if (!doc) throw gone('document');
   if (doc.status !== 'ISSUED') throw new LedgerError('not_issued', 'only an issued document can be voided');
+  if ((await c.query(`SELECT 1 FROM einvoices WHERE document_id = $1 AND status = 'GENERATED'`, [id])).rows.length) throw new LedgerError('has_irn', 'this has an IRN; cancel the e-invoice on the IRP and record it here first');
   if (POSTS_NOTHING(kind)) {
     if ((await c.query(`SELECT outcome FROM documents WHERE id = $1`, [id])).rows[0].outcome === 'CONVERTED') throw new LedgerError('converted', 'this was already turned into another document; void that one first');
     await c.query(`UPDATE documents SET status = 'VOID', voided_on = $2 WHERE id = $1`, [id, o.date]);

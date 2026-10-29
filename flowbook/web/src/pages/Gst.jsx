@@ -4,6 +4,7 @@ import { useLoad } from '../api.js';
 import { inr, showDate, today } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { Async, Card, Empty, Field, Table, Tabs } from '../ui.jsx';
+import { Einvoices } from './Einvoice.jsx';
 
 const rupees = (n) => inr(n);
 const download = (name, data) => {
@@ -79,8 +80,8 @@ export const GstReturns = () => {
     <Card className="no-print"><div className="form">
       <Field label="Month"><input type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} /></Field>
     </div></Card>
-    <Tabs value={form} onChange={setForm} tabs={[['1', 'GSTR-1 (sales)'], ['3b', 'GSTR-3B (summary)']]} />
-    {form === '1' ? <Gstr1 month={month} /> : <Gstr3b month={month} />}
+    <Tabs value={form} onChange={setForm} tabs={[['1', 'GSTR-1 (sales)'], ['3b', 'GSTR-3B (summary)'], ['e', 'E-invoices']]} />
+    {form === '1' ? <Gstr1 month={month} /> : form === 'e' ? <Einvoices month={month} /> : <Gstr3b month={month} />}
   </>);
 };
 
