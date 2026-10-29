@@ -11,7 +11,7 @@
 import express, { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import pool from '../config/database.js';
-import { requireAuth, withBusiness, requireOwner, requirePermission, requireAnyPermission, requirePlanFeature, clearSessionCookie } from '../middleware/auth.js';
+import { requireAuth, withBusiness, requireOwner, requirePermission, requireAnyPermission, requirePlanFeature, clearSessionCookie } from '../middleware/auth.js';
 import { backupLimiter, emailLimiter, restoreLimiter } from '../middleware/limits.js';
 import * as auth from '../controllers/auth.controller.js';
 import * as oauth from '../controllers/oauth.controller.js';
@@ -43,6 +43,7 @@ import reportsRoutes from './reports.routes.js';
 import ordersRoutes from './orders.routes.js';
 import tablesRoutes from './tables.routes.js';
 import integrationsRoutes from './integrations.routes.js';
+import flowbookRoutes from './flowbook.routes.js';
 import adminRoutes from './admin.routes.js';
 import outletsRoutes from './outlets.routes.js';
 import loyaltyRoutes from './loyalty.routes.js';
@@ -239,6 +240,7 @@ router.use('/locations', locationsRoutes);
 router.use('/orders', ordersRoutes);
 router.use('/tables', tablesRoutes);
 router.use('/integrations', integrationsRoutes);
+router.use('/flowbook', flowbookRoutes);   // the link that sends sales to FlowBook (accounting)
 router.use('/ai', aiRoutes);
 router.use('/audit', auditRoutes);
 router.use('/menu-import', menuImportRoutes);

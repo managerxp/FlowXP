@@ -64,6 +64,8 @@ export const PLAN_FEATURES = [
   ['ap_staff', 'Staff and payroll', 'Mechanics and counter staff: records, roster, attendance, leave and the monthly payroll sheet'],
   // Backup and restore (all business types). Missing key = on.
   ['backup_restore', 'Restore from a backup', 'Put the records of a downloaded backup back, adding only what is missing and never changing what is there'],
+  // FlowBook link (all business types). Missing key = on.
+  ['flowbook', 'FlowBook accounting link', 'Send every sale, return and payment to FlowBook so the books keep themselves'],
   // Supermarket / retail. Missing key = on.
   ['auto_sku', 'Automatic SKU', 'FlowXP makes each new product\'s SKU (MILK-00001), so nobody has to invent one']
 ];

@@ -4,9 +4,8 @@ import { audit } from './audit.ts';
 import { withOrg } from './db.ts';
 import type { Db } from './db.ts';
 import { LedgerError, post, reverse } from './ledger.ts';
-import { taxOn } from './money.ts';
 import { createParty } from './masters.ts';
-import { creditNoteJournal, customerPaymentJournal, saleJournal } from './rules.ts';
+import { customerPaymentJournal, statedCreditNoteJournal, statedSaleJournal } from './rules.ts';
 import type { Tender } from './rules.ts';
 
 /* FlowXP events become journals here (flowxp-integration-contract.md). Every event is stored as it arrived before anything
@@ -51,17 +50,14 @@ const list = (v: unknown, name: string): unknown[] => { if (!Array.isArray(v) ||
 const MODES = new Set(['CASH', 'BANK', 'UPI', 'CARD']);
 const mode = (v: unknown): Tender => { const m = text(v, 'tender mode').toUpperCase(); if (!MODES.has(m)) throw new NeedsAttention(`tender ${m} has no account in this organization yet`); return m as Tender; };
 
-const taxedLines = (v: unknown) => {
-  const lines = list(v, 'lines').map((l, i) => {
-    const o = obj(l, `line ${i + 1}`);
-    const rateBp = o.tax_rate_bp;
-    if (typeof rateBp !== 'number' || !Number.isInteger(rateBp) || rateBp < 0 || rateBp > 10000) throw new EventInvalid(`line ${i + 1} tax_rate_bp is wrong`);
-    return { taxable: paise(o.taxable_minor, `line ${i + 1} taxable_minor`), rateBp };
-  });
-  if (lines.length === 0) throw new EventInvalid('lines must not be empty');
-  return lines;
+/** Net value, the three tax amounts, the discount taken off the bill and the round-off: what FlowXP worked out is the record. */
+const amounts = (p: Obj) => {
+  const net = paise(p.net_minor, 'net_minor');
+  const tax = { cgst: paise(p.cgst_minor ?? 0, 'cgst_minor'), sgst: paise(p.sgst_minor ?? 0, 'sgst_minor'), igst: paise(p.igst_minor ?? 0, 'igst_minor') };
+  const discount = paise(p.discount_minor ?? 0, 'discount_minor');
+  const roundOff = paise(p.round_off_minor ?? 0, 'round_off_minor', { signed: true });
+  return { net, tax, discount, roundOff, gross: net + tax.cgst + tax.sgst + tax.igst - discount };
 };
-const gross = (lines: { taxable: bigint; rateBp: number }[]) => lines.reduce((a, l) => a + l.taxable + taxOn(l.taxable, l.rateBp), 0n);
 
 /** The customer FlowXP names becomes (or is found as) a party, matched by FlowXP's id and never by name. */
 const partyOf = async (c: Db, orgId: bigint, customer: unknown): Promise<bigint | undefined> => {
@@ -87,17 +83,16 @@ const handle = async (c: Db, orgId: bigint, conn: Connection, ev: Event): Promis
 
   if (ev.type === 'sale.finalized') {
     const id = text(p.invoice_id, 'invoice_id'); const number = text(p.invoice_number ?? id, 'invoice_number'); const date = day(p.date, 'date');
-    const lines = taxedLines(p.lines);
-    const roundOff = p.round_off_minor === undefined ? 0n : paise(p.round_off_minor, 'round_off_minor', { signed: true });
+    const a = amounts(p);
     const total = paise(p.total_minor, 'total_minor');
-    if (gross(lines) + roundOff !== total) throw new EventInvalid(`total_minor ${total} does not equal the lines plus tax plus round-off ${gross(lines) + roundOff}`);
+    if (a.gross + a.roundOff !== total) throw new EventInvalid(`total_minor ${total} does not equal net plus tax less discount plus round-off ${a.gross + a.roundOff}`);
     const tenders = list(p.tenders ?? [], 'tenders').map((t) => ({ mode: mode(obj(t, 'tender').mode), amount: paise(obj(t, 'tender').amount_minor, 'tender amount_minor', { positive: true }) }));
     const unpaid = total - tenders.reduce((a, t) => a + t.amount, 0n);
     if (unpaid < 0n || unpaid !== paise(p.unpaid_minor, 'unpaid_minor')) throw new EventInvalid('unpaid_minor does not equal the total less the tenders');
     if (before(date)) { await remember(c, orgId, conn, 'sale', id, number, date, total, 'REFERENCE', null, p); return 'IGNORED_CUTOVER'; }
     const partyId = await partyOf(c, orgId, p.customer);
     if (unpaid > 0n && partyId === undefined) throw new NeedsAttention('a sale with an unpaid amount needs a customer');
-    const j = saleJournal({ date, invoiceId: number, partyId, lines, interState: p.inter_state === true, tenders, roundOff });
+    const j = statedSaleJournal({ date, invoiceId: number, partyId, net: a.net, tax: a.tax, discount: a.discount, roundOff: a.roundOff, tenders, total });
     const posted = await post(c, orgId, { ...j, sourceSystem: 'flowxp', sourceType: 'flowxp_sale', sourceId: id, actor: ACTOR });
     await remember(c, orgId, conn, 'sale', id, number, date, total, 'POSTED', posted.entryId, p);
     return 'POSTED';
@@ -115,15 +110,16 @@ const handle = async (c: Db, orgId: bigint, conn: Connection, ev: Event): Promis
 
   if (ev.type === 'sale.returned') {
     const id = text(p.note_id, 'note_id'); const number = text(p.note_number ?? id, 'note_number'); const date = day(p.date, 'date');
-    const lines = taxedLines(p.lines);
-    const total = gross(lines);
+    const a = amounts(p);
+    const total = paise(p.total_minor, 'total_minor');
+    if (a.gross !== total || a.roundOff !== 0n) throw new EventInvalid(`total_minor ${total} does not equal net plus tax less discount ${a.gross}`);
     const refunds = list(p.refund_tenders ?? [], 'refund_tenders').map((t) => ({ mode: mode(obj(t, 'refund tender').mode), amount: paise(obj(t, 'refund tender').amount_minor, 'refund amount_minor', { positive: true }) }));
     const refunded = refunds.reduce((a, t) => a + t.amount, 0n);
     if (refunded > total) throw new EventInvalid('the refund is more than the credit note');
     if (before(date)) { await remember(c, orgId, conn, 'credit_note', id, number, date, total, 'REFERENCE', null, p); return 'IGNORED_CUTOVER'; }
     const partyId = await partyOf(c, orgId, p.customer);
     if (refunded < total && partyId === undefined) throw new NeedsAttention('a credit note that is not fully refunded needs a customer');
-    const posted = await post(c, orgId, { ...creditNoteJournal({ date, noteId: number, partyId, lines, interState: p.inter_state === true }), sourceSystem: 'flowxp', sourceType: 'flowxp_credit_note', sourceId: id, actor: ACTOR });
+    const posted = await post(c, orgId, { ...statedCreditNoteJournal({ date, noteId: number, partyId, net: a.net, tax: a.tax, discount: a.discount, total }), sourceSystem: 'flowxp', sourceType: 'flowxp_credit_note', sourceId: id, actor: ACTOR });
     let i = 0;
     for (const r of refunds) {
       i += 1;

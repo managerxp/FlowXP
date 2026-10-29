@@ -43,9 +43,9 @@ const connected = async (cutoverDate?: string) => {
   return { token, org, orgId, send, books, entries, base: `/v1/orgs/${org}`, setSecret: (s: string) => { secret = s; }, connId: conn.id as string };
 };
 
-// 1000.00 at 18% and 500.00 at 5%: 1000 + 180 + 500 + 25 = 1705.00, paid 1000 cash and 705 UPI
-const sale = (extra: object = {}) => ({ invoice_id: 'inv-1', invoice_number: 'POS-0001', date: '2026-06-10', inter_state: false, total_minor: 170500, unpaid_minor: 0,
-  lines: [{ taxable_minor: 100000, tax_rate_bp: 1800 }, { taxable_minor: 50000, tax_rate_bp: 500 }], tenders: [{ mode: 'CASH', amount_minor: 100000 }, { mode: 'UPI', amount_minor: 70500 }], ...extra });
+// 1500.00 net with 205.00 GST (102.50 CGST + 102.50 SGST) is 1705.00, paid 1000 cash and 705 UPI
+const sale = (extra: object = {}) => ({ invoice_id: 'inv-1', invoice_number: 'POS-0001', date: '2026-06-10', total_minor: 170500, unpaid_minor: 0,
+  net_minor: 150000, cgst_minor: 10250, sgst_minor: 10250, igst_minor: 0, tenders: [{ mode: 'CASH', amount_minor: 100000 }, { mode: 'UPI', amount_minor: 70500 }], ...extra });
 
 test('a signed sale from FlowXP posts a journal with split tenders; a re-delivery posts nothing more', { skip }, async () => {
   const s = await connected();
@@ -94,7 +94,7 @@ test('bad events are kept with the reason and post nothing: wrong total, missing
   assert.equal(wrong.body.status, 'FAILED_VALIDATION');
   assert.equal((await s.send('sale.finalized', sale({ invoice_id: 'inv-2', tenders: [], unpaid_minor: 170500 }))).body.status, 'NEEDS_ATTENTION');
   assert.equal((await s.send('sale.finalized', sale({ invoice_id: 'inv-3', tenders: [{ mode: 'WALLET', amount_minor: 170500 }] }))).body.status, 'NEEDS_ATTENTION');
-  assert.equal((await s.send('sale.finalized', sale({ invoice_id: 'inv-4', lines: [] }))).body.status, 'FAILED_VALIDATION');
+  assert.equal((await s.send('sale.finalized', sale({ invoice_id: 'inv-4', net_minor: -5 }))).body.status, 'FAILED_VALIDATION');
   assert.equal(await s.entries(), 0);
   const listed = (await call('GET', `${s.base}/integrations/events?status=FAILED_VALIDATION`, { token: s.token })).body;
   assert.equal(listed.length, 2); assert.match(listed[1].error, /total_minor/);
@@ -131,7 +131,7 @@ test('void takes the sale out of the books; a void that arrives before its sale 
 test('a return with a refund credits the sale back and pays the customer out of the same tender', { skip }, async () => {
   const s = await connected();
   await s.send('sale.finalized', sale());
-  const r = await s.send('sale.returned', { note_id: 'cn-1', note_number: 'CN-0001', date: '2026-06-11', lines: [{ taxable_minor: 100000, tax_rate_bp: 1800 }], refund_tenders: [{ mode: 'CASH', amount_minor: 118000 }] });
+  const r = await s.send('sale.returned', { note_id: 'cn-1', note_number: 'CN-0001', date: '2026-06-11', net_minor: 100000, cgst_minor: 9000, sgst_minor: 9000, total_minor: 118000, refund_tenders: [{ mode: 'CASH', amount_minor: 118000 }] });
   assert.equal(r.body.status, 'POSTED');
   const books = await s.books();
   // cash: 1000.00 taken, 1180.00 refunded, so 180.00 net out (shown as a credit balance); CGST 102.50 charged less 90.00 returned
@@ -159,4 +159,29 @@ test('rotating the secret: the new one works at once, the old one for a day, and
   const stranger = (await call('POST', '/v1/auth/register', { body: { name: 'S', email: 'stranger-inbox@example.com', password: 'correct horse battery' } })).body.token;
   assert.equal((await call('GET', `${s.base}/integrations/events`, { token: stranger })).status, 404);
   assert.equal((await call('POST', `${s.base}/integrations/flowxp/connections`, { token: s.token, body: { businessId: `biz-${n}` } })).status, 409);
+});
+
+test('a discount taken off the bill after tax is kept as its own line, and the books still balance', { skip }, async () => {
+  const s = await connected();
+  // 1000 net + 180 GST - 50 discount = 1130 paid in cash
+  const r = await s.send('sale.finalized', { invoice_id: 'inv-d', invoice_number: 'POS-D', date: '2026-06-10', net_minor: 100000, cgst_minor: 9000, sgst_minor: 9000, discount_minor: 5000,
+    total_minor: 113000, unpaid_minor: 0, tenders: [{ mode: 'CASH', amount_minor: 113000 }] });
+  assert.equal(r.body.status, 'POSTED');
+  const books = await s.books();
+  assert.deepEqual([books('Sales'), books('Discount given'), books('Cash in hand')], [100000n, 5000n, 113000n]);
+  const pl = await withOrg(pool, s.orgId, (c) => profitAndLoss(c, s.orgId, '2026-04-01', '2027-03-31'));
+  assert.equal(pl.netProfit, 95000n);
+});
+
+test('the exact shapes the FlowXP sender builds are accepted: sale, later payment, return with refund, cancellation, test ping', { skip }, async () => {
+  const s = await connected();
+  const cust = { id: '3', name: 'Ravi Stores', state_code: '27' };
+  assert.equal((await s.send('sale.finalized', { invoice_id: '7', invoice_number: 'INV-0007', date: '2026-06-10', customer: cust, net_minor: 100000, cgst_minor: 9000, sgst_minor: 9000, igst_minor: 0,
+    discount_minor: 0, round_off_minor: 0, total_minor: 118000, tenders: [{ mode: 'BANK', amount_minor: 30000, reference: 'UTR1' }], unpaid_minor: 88000 })).body.status, 'POSTED');
+  assert.equal((await s.send('payment.received', { payment_id: '9', invoice_id: '7', date: '2026-06-12', customer: cust, mode: 'UPI', amount_minor: 38000, reference: 'r' })).body.status, 'POSTED');
+  assert.equal((await s.send('sale.returned', { note_id: '2', note_number: 'CN-0002', invoice_id: '7', invoice_number: 'INV-0007', date: '2026-06-11', customer: cust, net_minor: 50000,
+    cgst_minor: 4500, sgst_minor: 4500, igst_minor: 0, discount_minor: 0, total_minor: 59000, refund_tenders: [] })).body.status, 'POSTED');
+  assert.equal((await s.send('sale.voided', { invoice_id: '7', date: '2026-06-13', reason: 'Cancelled in FlowXP' })).body.status, 'POSTED');
+  assert.equal((await s.send('connection.test', {})).body.status, 'IGNORED_UNSUPPORTED');
+  assert.deepEqual((await call('GET', `${s.base}/reports/reconcile`, { token: s.token })).body, { issues: [] });
 });

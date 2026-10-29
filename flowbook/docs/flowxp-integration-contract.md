@@ -32,6 +32,9 @@ FlowXP side: a **transactional outbox** table written in the same DB transaction
 
 ## 3. Events (v1)
 
+**As built (2026-10-29).** Sales, voids, returns and payments carry the figures FlowXP already worked out, in integer paise, and FlowBook posts them without recomputing tax: `sale.finalized` has `invoice_id`, `invoice_number`, `date`, optional `customer {id, name, state_code}`, `net_minor`, `cgst_minor`, `sgst_minor`, `igst_minor`, `discount_minor` (taken off after tax, kept as the Discount given account), `round_off_minor`, `total_minor`, `tenders [{mode CASH|BANK|UPI|CARD, amount_minor}]`, `unpaid_minor`. `sale.returned` has `note_id`, `note_number`, the same amounts and `refund_tenders`. `payment.received` has `payment_id`, `date`, `customer`, `mode`, `amount_minor`. `sale.voided` has `invoice_id`, `date`, `reason`. FlowBook refuses an event whose total does not equal net plus tax less discount plus round-off. Purchases, stock, shifts and master data are not sent or posted yet.
+
+
 | Event | When | Key payload fields |
 |---|---|---|
 | `sale.finalized` | bill is paid or finalized and invoice number assigned | invoice id/number/date, customer ref, lines (item ref, qty, unit price, discount, tax code, HSN/SAC, tax split CGST/SGST/IGST/cess), charges, round-off, total, place of supply, tenders[] (mode, amount, reference), unpaid amount, status |
@@ -73,5 +76,8 @@ Per-connection secret, rotated on demand (old and new valid for 24 hours); IP al
 ## 9. Versioning
 `schema_version` per event type; FlowBook accepts N and N-1; additive changes do not bump the version. A published JSON Schema per event lives in docs/api-specification.md.
 
-## 10. Changes needed in FlowXP (not started)
+## 10. FlowXP side: built 2026-10-29
+`backend/src/modules/flowbook/` (events builders, outbox discovery and delivery), migration `0113_flowbook_link.js` (`flowbook_links`, `flowbook_outbox`), routes `/api/flowbook` (status, save, test, retry) behind the plan feature `flowbook` and the `settings` permission. Differences from the plan below: no outbox write inside the billing transaction; a scan every 30 seconds finds new invoices, credit notes and payments made after the link was switched on, so every billing module is covered without touching each one (ponytail: move the write into the transaction if the delay matters). A bill FlowBook cannot yet post (cess, TCS, TDS, an unknown payment method, figures that do not add up) is recorded as SKIPPED with the reason and counted on the settings screen. Tenders are the payments with the same timestamp as the invoice (same transaction); later payments are `payment.received`. Not built: a web or phone settings screen (API only), backfill of earlier sales, purchases, stock, shifts, master data, a read API for gap repair.
+
+### Original plan (kept for reference)
 Outbox table and worker; event builders from invoices/credit notes/payments/purchases/stock; a read API for documents by id for gap repair; connection settings screen (secret, cut-over date); plan feature key for the connector (project convention: every capability gets a `PLAN_FEATURE_KEYS` entry).

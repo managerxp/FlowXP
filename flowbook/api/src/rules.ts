@@ -86,3 +86,29 @@ export const supplierPaymentJournal = (d: { date: string; paymentId: string; par
   date: d.date, sourceType: 'payment_out', sourceId: d.paymentId, kind: 'PAYMENT_OUT', rulesVersion: RULES_VERSION, memo: `Payment ${d.paymentId}`,
   lines: [{ account: 'AP', side: 'D', amount: d.amount, partyId: d.partyId }, { account: TENDER_ACCOUNT[d.mode], side: 'C', amount: d.amount }]
 });
+
+/* Documents that arrive with their tax already worked out (FlowXP's bills): the amounts are the record, so nothing is
+   recomputed from rates. A discount taken off the bill after tax is kept as its own contra-income line, so Sales stays gross. */
+export type Taxes = { cgst: bigint; sgst: bigint; igst: bigint };
+const taxAmounts = (t: Taxes, side: Side): LineInput[] => [
+  { account: 'OUTPUT_CGST', side, amount: t.cgst }, { account: 'OUTPUT_SGST', side, amount: t.sgst }, { account: 'OUTPUT_IGST', side, amount: t.igst }
+];
+
+export const statedSaleJournal = (d: { date: string; invoiceId: string; partyId?: bigint; net: bigint; tax: Taxes; discount: bigint; roundOff: bigint; tenders: { mode: Tender; amount: bigint }[]; total: bigint }): PostInput => {
+  const paid = d.tenders.reduce((a, t) => a + t.amount, 0n);
+  if (paid > d.total) throw new RangeError('payments exceed the invoice total');
+  return { date: d.date, sourceType: 'invoice', sourceId: d.invoiceId, kind: 'SALE', rulesVersion: RULES_VERSION, memo: `Sale ${d.invoiceId}`, lines: merge([
+    ...d.tenders.map((t) => ({ account: TENDER_ACCOUNT[t.mode], side: 'D' as Side, amount: t.amount })),
+    { account: 'AR', side: 'D', amount: d.total - paid, partyId: d.partyId },
+    { account: 'DISCOUNT_GIVEN', side: 'D', amount: d.discount },
+    { account: 'SALES', side: 'C', amount: d.net },
+    ...taxAmounts(d.tax, 'C'),
+    { account: 'ROUND_OFF', side: d.roundOff >= 0n ? 'C' : 'D', amount: d.roundOff >= 0n ? d.roundOff : -d.roundOff }
+  ]) };
+};
+
+export const statedCreditNoteJournal = (d: { date: string; noteId: string; partyId?: bigint; net: bigint; tax: Taxes; discount: bigint; total: bigint }): PostInput => ({
+  date: d.date, sourceType: 'credit_note', sourceId: d.noteId, kind: 'CREDIT_NOTE', rulesVersion: RULES_VERSION, memo: `Credit note ${d.noteId}`,
+  lines: merge([{ account: 'SALES_RETURNS', side: 'D', amount: d.net }, ...taxAmounts(d.tax, 'D'),
+    { account: 'AR', side: 'C', amount: d.total, partyId: d.partyId }, { account: 'DISCOUNT_GIVEN', side: 'C', amount: d.discount }])
+});

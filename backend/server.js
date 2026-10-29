@@ -20,6 +20,7 @@ import { ensureSuperAdmin } from './src/config/seedSuperAdmin.js';
 import routes from './src/routes/index.js';
 import { apiLimiter } from './src/middleware/limits.js';
 import './src/modules/scans.js';
+import './src/modules/flowbook/outbox.js';
 import { startWorker, stopWorker } from './src/modules/jobs.js';
 
 const app = express();
