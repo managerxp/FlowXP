@@ -8,7 +8,7 @@ import { Check, CellGrid, Connector, Cross, FeatureRow, FinalCta, Node, PageHero
 
 /* One sign-in: the FlowXP account is the FlowBook account, and the FlowXP free trial is the FlowBook trial. */
 const NEXT = '?next=%2Fapp%2Fflowbook%3Fopen%3D1';
-const trial = { to: `/signup${NEXT}` };
+const trial = { to: '/flowbook/signup' };
 const login = { to: `/login${NEXT}` };
 const FULL = { width: 1440, height: 900 };
 

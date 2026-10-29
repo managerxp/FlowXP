@@ -29,6 +29,10 @@ const ASIDES = {   // text: auth:aside.<name>.title / p1..p3 / alt
      business type signs in here, and every one of them raises bills. */
   login: {
     src: '/product/invoices-main.webp'
+  },
+  /* FlowBook is its own product with its own signup page (/flowbook/signup); it is not one of the business types. */
+  flowbook: {
+    src: '/product/flowbook-home.webp'
   }
 };
 
@@ -228,10 +232,10 @@ const EmailCodeStep = ({ challenge: initialChallenge, email, aside, onDone, onBa
 /* ==========================================================================
    Signup
    ========================================================================== */
-export const Signup = () => {
+export const Signup = ({ product }) => {
   const { t } = useTranslation('auth');
   const finish = useFinishAuth();
-  const forBook = /flowbook/.test(useSearchParams()[0].get('next') || '');   // came from the website's FlowBook page: same account and trial, FlowBook opens at the end
+  const forBook = product === 'flowbook';   // FlowBook's own signup: same account system, no business type to choose, FlowBook opens at the end
   const { busy, error, submit } = useSubmit();
   const [form, setForm] = useState({
     name: '', email: '', phone: '', password: '', business_name: '', business_type: forBook ? 'FLOWBOOK' : ''
@@ -249,14 +253,14 @@ export const Signup = () => {
 
   // The brief's five-minute-to-first-bill target starts once this code is entered, not before —
   // an unverified email is not yet an account that can sign in.
-  if (challenge) return <EmailCodeStep aside="signup" challenge={challenge} email={form.email.trim()} onBack={() => setChallenge(null)} onDone={finish} />;
+  if (challenge) return <EmailCodeStep aside={forBook ? 'flowbook' : 'signup'} challenge={challenge} email={form.email.trim()} onBack={() => setChallenge(null)} onDone={finish} />;
 
   return (
     <AuthLayout
-      aside="signup"
-      top={<Trans t={t} i18nKey="signup.haveAccount" components={{ link: <Link to="/login" className="font-medium text-brand-600 hover:text-brand-700" /> }} />}
-      title={forBook ? 'Start your FlowBook free trial' : t('signup.title')}
-      lead={forBook ? 'Seven days free, no card. Select FlowBook below and it opens as soon as you finish.' : t('signup.lead')}
+      aside={forBook ? 'flowbook' : 'signup'}
+      top={<Trans t={t} i18nKey="signup.haveAccount" components={{ link: <Link to={forBook ? '/login?next=%2Fapp%2Fflowbook%3Fopen%3D1' : '/login'} className="font-medium text-brand-600 hover:text-brand-700" /> }} />}
+      title={forBook ? t('signup.flowbookTitle') : t('signup.title')}
+      lead={forBook ? t('signup.flowbookLead') : t('signup.lead')}
     >
       <form onSubmit={onSubmit} className="space-y-8">
         <Alert>{error}</Alert>
@@ -289,7 +293,7 @@ export const Signup = () => {
           <Field id="business_name" label={t('signup.businessName')}>
             <Input id="business_name" value={form.business_name} onChange={set('business_name')} autoComplete="organization" required />
           </Field>
-          <div role="radiogroup" aria-labelledby="type-label" aria-describedby="type-hint">
+          {!forBook && <div role="radiogroup" aria-labelledby="type-label" aria-describedby="type-hint">
             <p id="type-label" className="text-sm font-medium text-ink-700">{t('signup.kindQ')}</p>
             <p id="type-hint" className="mt-1 text-xs text-ink-500">{t('signup.kindHint')}</p>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -303,13 +307,7 @@ export const Signup = () => {
                 </label>
               ))}
             </div>
-            <label
-              className={`mt-2 flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-4 py-3 text-small font-medium transition-colors duration-(--duration-fast) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-500 ${form.business_type === 'FLOWBOOK' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}
-            >
-              <input type="radio" name="business_type" value="FLOWBOOK" checked={form.business_type === 'FLOWBOOK'} onChange={set('business_type')} required className="sr-only" />
-              <span>{t('types.FLOWBOOK', 'FlowBook, accounting only')}<span className="block text-xs font-normal text-ink-500">{t('signup.flowbookHint', 'Invoices, GST, stock, bank and books. Choose this for the FlowBook 7-day free trial.')}</span></span>
-            </label>
-          </div>
+          </div>}
           {form.business_type === 'AUTO_PARTS' && (
             <label className="flex items-start gap-2.5 text-sm text-ink-700">
               <input type="checkbox" checked={Boolean(form.workshop_mode)} onChange={(e) => setForm((f) => ({ ...f, workshop_mode: e.target.checked }))} className="mt-0.5" />
