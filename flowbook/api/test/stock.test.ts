@@ -82,3 +82,36 @@ test('opening stock and write-offs are adjustments against an account you choose
   assert.equal((await run(org, (c) => stockSummary(c))).length, 1);
   assert.equal((await run(org, (c) => stockLedger(c, service, 10))).length, 0);
 });
+
+const dated = (org: bigint, kind: DocKind, partyId: bigint, itemId: bigint, date: string, quantity: string, unitPrice: string) => run(org, async (c) => {
+  const id = await saveDraft(c, org, null, { kind, partyId, date, supplierRef: kind === 'BILL' ? `S-${++n}` : undefined, lines: [{ itemId, quantity, unitPrice, taxCode: 'GST18' }] }, 't');
+  await issueDocument(c, org, kind, id, 't'); return id;
+});
+const inventory = async (org: bigint) => (await pool.query(
+  `SELECT COALESCE(SUM(CASE l.side WHEN 'D' THEN l.base_amount_minor ELSE -l.base_amount_minor END), 0)::bigint AS b FROM journal_lines l JOIN accounts a ON a.id = l.account_id WHERE a.organization_id = $1 AND a.system_key = 'INVENTORY'`, [org])).rows[0].b as bigint;
+
+test('a purchase entered for an earlier date changes the cost of the sales after it, and the books keep matching the stock', { skip }, async () => {
+  const { org, item, cust, vend } = await shop();
+  await dated(org, 'BILL', vend, item, '2026-06-01', '10', '10');            // 10 at 10 = 100
+  const inv = await dated(org, 'INVOICE', cust, item, '2026-06-10', '5', '30');   // costed at 10: 50
+  assert.equal((await summary(org)).value_minor, 5_000n);
+  await dated(org, 'BILL', vend, item, '2026-06-05', '10', '20');            // 10 at 20 = 200, bought before the sale: average on the 10th is 15
+  const s = await summary(org);
+  assert.equal(s.value_minor, 30_000n - 7_500n, 'the sale now cost 5 x 15 = 75');
+  assert.equal(await inventory(org), s.value_minor, 'Inventory in the books equals the value of the stock');
+  const cogs = (await pool.query(`SELECT COALESCE(SUM(CASE l.side WHEN 'D' THEN l.base_amount_minor ELSE -l.base_amount_minor END), 0)::bigint AS b FROM journal_lines l JOIN accounts a ON a.id = l.account_id WHERE a.organization_id = $1 AND a.system_key = 'COGS'`, [org])).rows[0].b as bigint;
+  assert.equal(cogs, 7_500n);
+  // voiding the sale puts back what it now cost, not what it first cost
+  await run(org, (c) => voidDocument(c, org, 'INVOICE', inv, { date: '2026-06-12', reason: 'wrong' }, 't'));
+  assert.equal((await summary(org)).value_minor, 30_000n); assert.equal(await inventory(org), 30_000n);
+});
+
+test('stock cannot be taken out for a day it was not there, even if there is plenty today', { skip }, async () => {
+  const { org, item, cust, vend } = await shop();
+  await dated(org, 'BILL', vend, item, '2026-06-10', '10', '10');
+  await assert.rejects(dated(org, 'INVOICE', cust, item, '2026-06-05', '2', '30'), /only 0.000 of Pen in stock on 2026-06-05/);
+  await dated(org, 'INVOICE', cust, item, '2026-06-12', '8', '30');
+  // a bill dated after the sale would have left the stock short on the 12th
+  await assert.rejects(dated(org, 'INVOICE', cust, item, '2026-06-11', '5', '30'), /would have been in stock|only 10.000 of Pen in stock on 2026-06-11/);
+  assert.equal(await inventory(org), (await summary(org)).value_minor);
+});

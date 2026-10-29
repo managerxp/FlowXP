@@ -220,8 +220,8 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
   const worth = tracked.map((t) => t.taxable_minor).reduce((a, b) => a + b, 0n);
   const cost = new Map<bigint, bigint>();
   for (const t of tracked) {
-    if (kind === 'INVOICE' || kind === 'DEBIT_NOTE') cost.set(t.item_id, await costOut(c, t.item_id, t.qty_milli));
-    else if (kind === 'CREDIT_NOTE') cost.set(t.item_id, await costIn(c, t.item_id, t.qty_milli));
+    if (kind === 'INVOICE' || kind === 'DEBIT_NOTE') cost.set(t.item_id, await costOut(c, t.item_id, t.qty_milli, fresh.d as string));
+    else if (kind === 'CREDIT_NOTE') cost.set(t.item_id, await costIn(c, t.item_id, t.qty_milli, fresh.d as string));
   }
   const journal = kind === 'INVOICE' ? saleJournal({ ...common, invoiceId: number, roundOff: fresh.round_off_minor as bigint, tcs: fresh.tcs_minor as bigint })
     : kind === 'BILL' ? supplierBillJournal({ ...common, billId: number, reverseCharge: fresh.reverse_charge as boolean, inventoryNet: worth })
@@ -237,7 +237,7 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
     for (const t of tracked) {
       const inward = kind === 'BILL' || kind === 'CREDIT_NOTE';
       const v = kind === 'BILL' || kind === 'DEBIT_NOTE' ? t.taxable_minor : cost.get(t.item_id) ?? 0n;
-      await record(c, orgId, actor, { itemId: t.item_id, qty: inward ? t.qty_milli : -t.qty_milli, value: inward ? v : -v, date: fresh.d as string, source: kind as 'BILL', documentId: id, entryId: costed?.entryId ?? posted.entryId, memo: number });
+      await record(c, orgId, actor, { itemId: t.item_id, qty: inward ? t.qty_milli : -t.qty_milli, value: inward ? v : -v, date: fresh.d as string, source: kind as 'BILL', documentId: id, entryId: costed?.entryId ?? posted.entryId, memo: number, costed: sold, override });
     }
   }
   await audit(c, orgId, { actor, action: 'document.issued', entityType: 'document', entityId: id, detail: { kind, number, entryNo: posted.entryNo, total: paiseToString(total) } });
@@ -305,7 +305,16 @@ export const voidDocument = async (c: Db, orgId: bigint, kind: DocKind, id: bigi
   await reverse(c, orgId, doc.journal_entry_id as bigint, { date: o.date, reason: o.reason, actor, override });
   await c.query(`UPDATE time_entries SET invoice_id = NULL WHERE invoice_id = $1`, [id]);   // a voided invoice frees the hours it billed
   if (doc.stock_entry_id) await reverse(c, orgId, doc.stock_entry_id as bigint, { date: o.date, reason: o.reason, actor, override });
-  await undoMoves(c, orgId, id, o.date, actor);
+  const worth = await undoMoves(c, orgId, id, o.date, actor, override);
+  if (doc.stock_entry_id) {   // if the cost was corrected after the sale, the cost entry reversed above is not the whole of what the stock moves undo
+    const orig = (await c.query(`SELECT COALESCE(SUM(l.base_amount_minor), 0)::bigint AS v FROM journal_lines l JOIN accounts a ON a.id = l.account_id WHERE l.entry_id = $1 AND a.system_key = 'INVENTORY'`, [doc.stock_entry_id])).rows[0].v as bigint;
+    const diff = (worth < 0n ? -worth : worth) - orig;
+    if (diff !== 0n) {
+      const amount = diff < 0n ? -diff : diff; const inventorySide = (worth < 0n) === (diff > 0n) ? 'D' : 'C';
+      await post(c, orgId, { date: o.date, sourceType: 'stock_void_adjust', sourceId: `${id}`, kind: 'COGS', memo: `Cost corrections undone with ${doc.number}`, actor, override,
+        lines: [{ account: 'INVENTORY', side: inventorySide, amount }, { account: 'COGS', side: inventorySide === 'D' ? 'C' : 'D', amount }] });
+    }
+  }
   await c.query(`UPDATE documents SET status = 'VOID', balance_minor = 0, foreign_balance_minor = CASE WHEN foreign_total_minor IS NULL THEN NULL ELSE 0 END, voided_on = $2 WHERE id = $1`, [id, o.date]);
   await audit(c, orgId, { actor, action: 'document.voided', entityType: 'document', entityId: id, detail: { number: doc.number, reason: o.reason } });
 };
