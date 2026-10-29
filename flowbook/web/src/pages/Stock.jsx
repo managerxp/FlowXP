@@ -22,17 +22,59 @@ const History = ({ item, onClose }) => {
   );
 };
 
-const Adjust = ({ items, accounts, onDone, onClose }) => {
+const Transfer = ({ items, warehouses, onDone, onClose }) => {
   const { o } = useSession();
   const a = useAction();
-  const [f, setF] = useState({ itemId: items[0]?.id || '', direction: 'IN', quantity: '', unitCost: '', counterAccount: 'OPENING_BALANCE', date: today(), reason: 'Opening stock' });
+  const [f, setF] = useState({ itemId: items[0]?.id || '', from: warehouses[0]?.id || '', to: warehouses[1]?.id || '', quantity: '', date: today(), memo: '' });
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const save = (e) => { e.preventDefault(); a.run(async () => { await o('/stock/transfers', { method: 'POST', body: { itemId: String(f.itemId), from: String(f.from), to: String(f.to), quantity: f.quantity, date: f.date, ...(f.memo && { memo: f.memo }) } }); onDone(); onClose(); }, 'Stock moved.'); };
+  return (
+    <Card title="Move stock between warehouses"><Err>{a.error}</Err>
+      <form className="form" onSubmit={save}>
+        <Field label="Item"><select value={f.itemId} onChange={set('itemId')}>{items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}</select></Field>
+        <Field label="From"><select value={f.from} onChange={set('from')}>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field>
+        <Field label="To"><select value={f.to} onChange={set('to')}>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field>
+        <Field label="Quantity"><input inputMode="decimal" value={f.quantity} onChange={set('quantity')} required /></Field>
+        <Field label="Date"><input type="date" value={f.date} onChange={set('date')} required /></Field>
+        <Field label="Note"><input value={f.memo} onChange={set('memo')} maxLength={200} /></Field>
+        <div className="wide actions"><Btn kind="primary" busy={a.busy}>Move</Btn><Btn type="button" onClick={onClose}>Cancel</Btn></div>
+      </form>
+    </Card>
+  );
+};
+
+const Warehouses = ({ rows, onDone }) => {
+  const { o } = useSession();
+  const a = useAction();
+  const [name, setName] = useState('');
+  const patch = (w, body) => a.run(async () => { await o(`/warehouses/${w.id}`, { method: 'PATCH', body }); await onDone(); });
+  return (
+    <Card title="Warehouses"><Err>{a.error}</Err>
+      <Table head={['Warehouse', '>Units held', '']}>
+        {rows.map((w) => <tr key={w.id} className={w.active ? '' : 'muted'}><td>{w.name}{w.is_default && <> <Badge status="ISSUED">default</Badge></>}{!w.active && <> <Badge status="VOID">off</Badge></>}</td><td className="r num">{w.quantity}</td>
+          <td>{w.active && !w.is_default && <button className="linkish" onClick={() => patch(w, { makeDefault: true })}>Make default</button>}{' '}
+            {w.active && !w.is_default && <button className="linkish" onClick={() => patch(w, { active: false })}>Switch off</button>}{!w.active && <button className="linkish" onClick={() => patch(w, { active: true })}>Switch on</button>}</td></tr>)}
+      </Table>
+      <form className="form" onSubmit={(e) => { e.preventDefault(); a.run(async () => { await o('/warehouses', { method: 'POST', body: { name } }); setName(''); await onDone(); }, 'Warehouse added.'); }}>
+        <Field label="New warehouse"><input value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} /></Field>
+        <div className="wide actions"><Btn busy={a.busy}>Add</Btn></div>
+      </form>
+    </Card>
+  );
+};
+
+const Adjust = ({ items, accounts, warehouses, onDone, onClose }) => {
+  const { o } = useSession();
+  const a = useAction();
+  const [f, setF] = useState({ itemId: items[0]?.id || '', direction: 'IN', quantity: '', unitCost: '', counterAccount: 'OPENING_BALANCE', date: today(), reason: 'Opening stock', warehouseId: '' });
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const dir = (e) => setF({ ...f, direction: e.target.value, counterAccount: e.target.value === 'IN' ? 'OPENING_BALANCE' : 'COGS', reason: e.target.value === 'IN' ? 'Opening stock' : 'Damaged or lost' });
-  const save = (e) => { e.preventDefault(); a.run(async () => { await o('/stock/adjustments', { method: 'POST', body: { itemId: String(f.itemId), date: f.date, direction: f.direction, quantity: f.quantity, counterAccount: f.counterAccount, reason: f.reason, ...(f.direction === 'IN' && { unitCost: f.unitCost }) } }); onDone(); onClose(); }, 'Stock adjusted.'); };
+  const save = (e) => { e.preventDefault(); a.run(async () => { await o('/stock/adjustments', { method: 'POST', body: { itemId: String(f.itemId), date: f.date, direction: f.direction, quantity: f.quantity, counterAccount: f.counterAccount, reason: f.reason, ...(f.warehouseId && { warehouseId: f.warehouseId }), ...(f.direction === 'IN' && { unitCost: f.unitCost }) } }); onDone(); onClose(); }, 'Stock adjusted.'); };
   return (
     <Card title="Adjust stock"><Err>{a.error}</Err>
       <form className="form" onSubmit={save}>
         <Field label="Item"><select value={f.itemId} onChange={set('itemId')}>{items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}</select></Field>
+        {warehouses.length > 1 && <Field label="Warehouse"><select value={f.warehouseId} onChange={set('warehouseId')}><option value="">Default</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field>}
         <Field label="Date"><input type="date" value={f.date} onChange={set('date')} required /></Field>
         <Field label="What happened"><select value={f.direction} onChange={dir}><option value="IN">Add stock (opening stock, found)</option><option value="OUT">Remove stock (damaged, lost, used)</option></select></Field>
         <Field label="Quantity"><input inputMode="decimal" value={f.quantity} onChange={set('quantity')} required /></Field>
@@ -52,15 +94,21 @@ const Adjust = ({ items, accounts, onDone, onClose }) => {
 
 export default () => {
   const { o, org } = useSession();
-  const load = useLoad(() => o('/stock'), [org.id]);
+  const [wh, setWh] = useState('');
+  const load = useLoad(() => o(`/stock${wh ? `?warehouseId=${wh}` : ''}`), [org.id, wh]);
+  const whs = useLoad(() => o('/warehouses'), [org.id]);
+  const warehouses = (whs.data || []).filter((w) => w.active);
+  const [moving, setMoving] = useState(false);
   const accounts = useLoad(() => o('/accounts'), [org.id]);
   const [adjust, setAdjust] = useState(false);
   const [view, setView] = useState(null);
   return (
-    <Page title="Stock" lead="Goods you count. Buying adds to it, selling takes from it, at the average cost." actions={<Btn kind="primary" onClick={() => setAdjust(true)}>Adjust stock</Btn>}>
+    <Page title="Stock" lead="Goods you count. Buying adds to it, selling takes from it, at the average cost." actions={<>{warehouses.length > 1 && <Btn onClick={() => setMoving(true)}>Move stock</Btn>}<Btn kind="primary" onClick={() => setAdjust(true)}>Adjust stock</Btn></>}>
       <Async load={load}>{(rows) => (<>
-        {adjust && rows.length > 0 && <Adjust items={rows} accounts={accounts.data} onDone={load.reload} onClose={() => setAdjust(false)} />}
+        {moving && rows.length > 0 && <Transfer items={rows} warehouses={warehouses} onDone={() => { load.reload(); whs.reload(); }} onClose={() => setMoving(false)} />}
+        {adjust && rows.length > 0 && <Adjust items={rows} accounts={accounts.data} warehouses={warehouses} onDone={load.reload} onClose={() => setAdjust(false)} />}
         {view && <History item={view} onClose={() => setView(null)} />}
+        {warehouses.length > 1 && <p className="actions"><label className="muted">Showing </label><select value={wh} onChange={(e) => setWh(e.target.value)}><option value="">All warehouses</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></p>}
         <Card>
           <Table head={['Item', '>On hand', '>Average cost', '>Value', '']} empty={!rows.length && <Empty>No item is counted yet. Open Items, add a goods item and tick "Count its stock".</Empty>}>
             {rows.map((r) => <tr key={r.id}><td>{r.name} <span className="muted">{r.sku}</span></td><td className="r num">{r.quantity}{r.low && <> <Badge status="NEEDS_ATTENTION">low</Badge></>}</td>
@@ -68,7 +116,8 @@ export default () => {
               <td><button className="linkish" onClick={() => setView(r)}>History</button></td></tr>)}
           </Table>
         </Card>
-        {rows.length > 0 && <Note>{`Stock is worth ₹${inr(rows.reduce((a, r) => a + Number(r.value_minor), 0))} in total, the same as Inventory in your books.`}</Note>}
+        {whs.data && <Warehouses rows={whs.data} onDone={() => { whs.reload(); load.reload(); }} />}
+        {rows.length > 0 && !wh && <Note>{`Stock is worth ₹${inr(rows.reduce((a, r) => a + Number(r.value_minor), 0))} in total, the same as Inventory in your books.`}</Note>}
       </>)}</Async>
     </Page>
   );

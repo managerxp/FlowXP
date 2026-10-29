@@ -6,7 +6,7 @@ import { issueDocument, saveDraft, voidDocument } from '../src/documents.ts';
 import type { DocKind } from '../src/documents.ts';
 import { createItem, createParty, seedTaxRates } from '../src/masters.ts';
 import { openFinancialYear } from '../src/periods.ts';
-import { adjust, setTracking, stockLedger, stockSummary } from '../src/stock.ts';
+import { addWarehouse, adjust, listWarehouses, setTracking, stockByWarehouse, stockLedger, stockSummary, transferStock, updateWarehouse } from '../src/stock.ts';
 import { newOrg, setup } from './helpers.ts';
 
 const { pool, skip, cleanup } = await setup();
@@ -56,7 +56,7 @@ test('a purchase that was partly sold cannot be voided; returns go in at cost an
   const { org, item, cust, vend } = await shop();
   const bill = await doc(org, 'BILL', vend, item, '10', '10');
   await doc(org, 'INVOICE', cust, item, '8', '20');
-  await assert.rejects(run(org, (c) => voidDocument(c, org, 'BILL', bill, { date: '2026-06-02', reason: 'oops' }, 't')), /has been sold or used/);
+  await assert.rejects(run(org, (c) => voidDocument(c, org, 'BILL', bill, { date: '2026-06-02', reason: 'oops' }, 't')), /has been sold, moved or used/);
   await doc(org, 'CREDIT_NOTE', cust, item, '3', '20');   // 3 back at the average cost of 10
   let s = await summary(org);
   assert.equal(s.quantity, '5.000'); assert.equal(s.value_minor, 5_000n);
@@ -113,5 +113,26 @@ test('stock cannot be taken out for a day it was not there, even if there is ple
   await dated(org, 'INVOICE', cust, item, '2026-06-12', '8', '30');
   // a bill dated after the sale would have left the stock short on the 12th
   await assert.rejects(dated(org, 'INVOICE', cust, item, '2026-06-11', '5', '30'), /would have been in stock|only 10.000 of Pen in stock on 2026-06-11/);
+  assert.equal(await inventory(org), (await summary(org)).value_minor);
+});
+
+test('warehouses split the quantity, transfers move it at the average without touching the books, and each warehouse cannot go below zero', { skip }, async () => {
+  const { org, item, cust, vend } = await shop();
+  const [main] = await run(org, (c) => listWarehouses(c, org));
+  const shed = await run(org, (c) => addWarehouse(c, org, 'Shed', 't'));
+  await assert.rejects(run(org, (c) => addWarehouse(c, org, 'shed', 't')), /already a warehouse/);
+  await dated(org, 'BILL', vend, item, '2026-06-01', '10', '10');
+  const before = await inventory(org);
+  await run(org, (c) => transferStock(c, org, { itemId: item, from: main!.id as bigint, to: shed, quantity: '4', date: '2026-06-02' }, 't'));
+  assert.equal(await inventory(org), before, 'a transfer posts no journal');
+  const by = await run(org, (c) => stockByWarehouse(c));
+  assert.deepEqual(by.map((r) => [r.warehouse, r.quantity]), [['Main', '6.000'], ['Shed', '4.000']]);
+  assert.equal((await run(org, (c) => stockSummary(c, shed)))[0]!.quantity, '4.000');
+  assert.equal((await summary(org)).quantity, '10.000');
+  await assert.rejects(run(org, (c) => transferStock(c, org, { itemId: item, from: shed, to: main!.id as bigint, quantity: '5', date: '2026-06-03' }, 't')), /only 4.000 of Pen in Shed/);
+  // a sale drawn from the shed
+  const id = await run(org, async (c) => { const d = await saveDraft(c, org, null, { kind: 'INVOICE', partyId: cust, date: '2026-06-04', warehouseId: shed, lines: [{ itemId: item, quantity: '5', unitPrice: '30', taxCode: 'GST18' }] }, 't'); await issueDocument(c, org, 'INVOICE', d, 't'); return d; }).catch((e) => e);
+  assert.match(String(id), /only 4.000 of Pen in Shed/);
+  await assert.rejects(run(org, (c) => updateWarehouse(c, org, shed, { active: false }, 't')), /still holds/);
   assert.equal(await inventory(org), (await summary(org)).value_minor);
 });

@@ -4,7 +4,7 @@ import { validStateCode } from './gst.ts';
 import { LedgerError, post, reverse } from './ledger.ts';
 import { paiseToString, roundDiv, taxOn, toPaise } from './money.ts';
 import { BASE, checkCurrency, rateMicro, rateOn } from './fx.ts';
-import { costEntry, costIn, costOut, record, trackedLines, undoMoves } from './stock.ts';
+import { costEntry, costIn, costOut, defaultWarehouse, record, trackedLines, undoMoves } from './stock.ts';
 import { creditNoteJournal, customerPaymentJournal, debitNoteJournal, openingJournal, saleJournal, supplierBillJournal, supplierPaymentJournal } from './rules.ts';
 import type { Tender } from './rules.ts';
 
@@ -15,7 +15,7 @@ export type DocKind = 'INVOICE' | 'BILL' | 'CREDIT_NOTE' | 'QUOTE' | 'SALES_ORDE
 const POSTS_NOTHING = (k: DocKind): boolean => k === 'QUOTE' || k === 'SALES_ORDER' || k === 'PURCHASE_ORDER';
 export type LineIn = { itemId?: bigint; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; unit?: string; inclusive?: boolean };
 export type DocIn = {
-  currency?: string; fxRate?: string; projectId?: bigint;
+  currency?: string; fxRate?: string; projectId?: bigint; warehouseId?: bigint;
   kind: DocKind; partyId: bigint; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string;
   relatedDocumentId?: bigint; memo?: string; roundOff?: boolean; reverseCharge?: boolean; tcsRateBp?: number; tcsSection?: string; lines: LineIn[];
 };
@@ -148,6 +148,8 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
               subtotal_minor = $11, tax_minor = $12, round_off_minor = $13, total_minor = $14, tcs_rate_bp = $15, tcs_minor = $16, tcs_section = $17, reverse_charge = $18, currency = $19, fx_rate = $20, foreign_total_minor = $21, project_id = $22 WHERE id = $1`, [id, ...fields]);
     await c.query(`DELETE FROM document_lines WHERE document_id = $1`, [id]);
   }
+  if (d.warehouseId && !(await c.query(`SELECT 1 FROM warehouses WHERE id = $1 AND active`, [d.warehouseId])).rowCount) throw gone('warehouse');
+  await c.query(`UPDATE documents SET warehouse_id = $2 WHERE id = $1`, [id, d.warehouseId ?? null]);
   let no = 0;
   for (const l of lines) {
     no += 1;
@@ -160,7 +162,7 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
 };
 
 const DOC_COLS = `d.id, d.kind, d.number, d.supplier_ref, d.party_id, p.name AS party_name, d.status, d.issue_date::text AS issue_date, d.due_date::text AS due_date,
-  d.place_of_supply, d.inter_state, d.subtotal_minor, d.tax_minor, d.round_off_minor, d.outcome, d.converted_document_id, (SELECT x.kind FROM documents x WHERE x.id = d.converted_document_id) AS converted_kind, (SELECT x.kind FROM documents x WHERE x.id = d.related_document_id) AS related_kind, d.tcs_rate_bp, d.tcs_minor, d.tcs_section, d.reverse_charge, d.project_id, (SELECT pr.name FROM projects pr WHERE pr.id = d.project_id) AS project_name, d.currency, d.fx_rate::text AS fx_rate, d.foreign_total_minor, d.foreign_balance_minor, d.total_minor, d.balance_minor, d.related_document_id, d.journal_entry_id, d.memo`;
+  d.place_of_supply, d.inter_state, d.subtotal_minor, d.tax_minor, d.round_off_minor, d.outcome, d.converted_document_id, (SELECT x.kind FROM documents x WHERE x.id = d.converted_document_id) AS converted_kind, (SELECT x.kind FROM documents x WHERE x.id = d.related_document_id) AS related_kind, d.tcs_rate_bp, d.tcs_minor, d.tcs_section, d.reverse_charge, d.project_id, d.warehouse_id, (SELECT w.name FROM warehouses w WHERE w.id = d.warehouse_id) AS warehouse_name, (SELECT pr.name FROM projects pr WHERE pr.id = d.project_id) AS project_name, d.currency, d.fx_rate::text AS fx_rate, d.foreign_total_minor, d.foreign_balance_minor, d.total_minor, d.balance_minor, d.related_document_id, d.journal_entry_id, d.memo`;
 
 export const listDocuments = async (c: Db, kind: DocKind, q: { status?: string; partyId?: bigint; before?: bigint; limit: number }) => (await c.query(
   `SELECT ${DOC_COLS} FROM documents d JOIN parties p ON p.id = d.party_id
@@ -195,7 +197,7 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
   const stored = (await c.query(`SELECT * FROM document_lines WHERE document_id = $1 ORDER BY line_no`, [id])).rows;
   const milli = (q: bigint) => `${q / 1000n}.${String(q % 1000n).padStart(3, '0')}`;
   await saveDraft(c, orgId, id, {
-    kind, currency: doc.currency, fxRate: doc.fx_rate, projectId: doc.project_id ?? undefined, partyId: doc.party_id, date: doc.issue_d, dueDate: doc.due_d ?? undefined,
+    kind, currency: doc.currency, fxRate: doc.fx_rate, projectId: doc.project_id ?? undefined, warehouseId: doc.warehouse_id ?? undefined, partyId: doc.party_id, date: doc.issue_d, dueDate: doc.due_d ?? undefined,
     placeOfSupply: doc.place_of_supply ?? undefined, supplierRef: doc.supplier_ref ?? undefined, relatedDocumentId: kind === 'CREDIT_NOTE' || kind === 'DEBIT_NOTE' ? doc.related_document_id ?? undefined : undefined, memo: doc.memo ?? undefined, roundOff: doc.round_off_on, tcsRateBp: doc.tcs_rate_bp, tcsSection: doc.tcs_section ?? undefined, reverseCharge: doc.reverse_charge,
     lines: stored.map((l) => ({ itemId: l.item_id ?? undefined, description: l.description, hsnSac: l.hsn_sac ?? undefined, quantity: milli(l.quantity_milli), unitPrice: paiseToString(l.unit_price_fc_minor ?? l.unit_price_minor), discount: paiseToString(l.discount_fc_minor ?? l.discount_minor), taxCode: l.tax_code, unit: l.unit ?? undefined, inclusive: l.price_includes_tax }))
   }, actor);
@@ -219,8 +221,9 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
   const tracked = kind === 'BILL' || kind === 'DEBIT_NOTE' || kind === 'INVOICE' || kind === 'CREDIT_NOTE' ? await trackedLines(c, id) : [];
   const worth = tracked.map((t) => t.taxable_minor).reduce((a, b) => a + b, 0n);
   const cost = new Map<bigint, bigint>();
+  const whId = tracked.length ? ((await c.query(`SELECT warehouse_id FROM documents WHERE id = $1`, [id])).rows[0].warehouse_id as bigint | null) ?? await defaultWarehouse(c, orgId) : 0n;
   for (const t of tracked) {
-    if (kind === 'INVOICE' || kind === 'DEBIT_NOTE') cost.set(t.item_id, await costOut(c, t.item_id, t.qty_milli, fresh.d as string));
+    if (kind === 'INVOICE' || kind === 'DEBIT_NOTE') cost.set(t.item_id, await costOut(c, t.item_id, t.qty_milli, fresh.d as string, whId));
     else if (kind === 'CREDIT_NOTE') cost.set(t.item_id, await costIn(c, t.item_id, t.qty_milli, fresh.d as string));
   }
   const journal = kind === 'INVOICE' ? saleJournal({ ...common, invoiceId: number, roundOff: fresh.round_off_minor as bigint, tcs: fresh.tcs_minor as bigint })
@@ -237,7 +240,7 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
     for (const t of tracked) {
       const inward = kind === 'BILL' || kind === 'CREDIT_NOTE';
       const v = kind === 'BILL' || kind === 'DEBIT_NOTE' ? t.taxable_minor : cost.get(t.item_id) ?? 0n;
-      await record(c, orgId, actor, { itemId: t.item_id, qty: inward ? t.qty_milli : -t.qty_milli, value: inward ? v : -v, date: fresh.d as string, source: kind as 'BILL', documentId: id, entryId: costed?.entryId ?? posted.entryId, memo: number, costed: sold, override });
+      await record(c, orgId, actor, { itemId: t.item_id, qty: inward ? t.qty_milli : -t.qty_milli, value: inward ? v : -v, date: fresh.d as string, source: kind as 'BILL', documentId: id, entryId: costed?.entryId ?? posted.entryId, memo: number, costed: sold, override, warehouseId: whId });
     }
   }
   await audit(c, orgId, { actor, action: 'document.issued', entityType: 'document', entityId: id, detail: { kind, number, entryNo: posted.entryNo, total: paiseToString(total) } });
@@ -281,7 +284,7 @@ export const convertDocument = async (c: Db, orgId: bigint, id: bigint, to: 'SAL
   const stored = (await c.query(`SELECT * FROM document_lines WHERE document_id = $1 ORDER BY line_no`, [id])).rows;
   const milli = (q: bigint) => `${q / 1000n}.${String(q % 1000n).padStart(3, '0')}`;
   const newId = await saveDraft(c, orgId, null, {
-    kind: to, currency: d.currency, fxRate: d.fx_rate, projectId: d.project_id ?? undefined, partyId: d.party_id, date, placeOfSupply: d.place_of_supply ?? undefined, memo: d.memo ?? undefined, roundOff: d.round_off_on,
+    kind: to, currency: d.currency, fxRate: d.fx_rate, projectId: d.project_id ?? undefined, warehouseId: d.warehouse_id ?? undefined, partyId: d.party_id, date, placeOfSupply: d.place_of_supply ?? undefined, memo: d.memo ?? undefined, roundOff: d.round_off_on,
     lines: stored.map((l) => ({ itemId: l.item_id ?? undefined, description: l.description, hsnSac: l.hsn_sac ?? undefined, quantity: milli(l.quantity_milli), unitPrice: paiseToString(l.unit_price_fc_minor ?? l.unit_price_minor), discount: paiseToString(l.discount_fc_minor ?? l.discount_minor), taxCode: l.tax_code, unit: l.unit ?? undefined, inclusive: l.price_includes_tax }))
   }, actor);
   await c.query(`UPDATE documents SET related_document_id = $2 WHERE id = $1`, [newId, id]);
