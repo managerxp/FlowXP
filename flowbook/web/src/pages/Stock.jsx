@@ -22,6 +22,28 @@ const History = ({ item, onClose }) => {
   );
 };
 
+const Units = ({ rows }) => {
+  const { o, org } = useSession();
+  const counted = rows.filter((r) => r.tracking && r.tracking !== 'NONE');
+  const [pick, setPick] = useState('');
+  const item = counted.find((r) => String(r.id) === pick) || counted[0];
+  const load = useLoad(() => (item ? o(item.tracking === 'BATCH' ? `/stock/batches?itemId=${item.id}` : `/stock/serials/${item.id}`) : Promise.resolve([])), [org.id, item?.id]);
+  if (!counted.length) return null;
+  const soon = (d) => d && d <= new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+  return (
+    <Card title="Batches and serial numbers">
+      <p className="actions"><select value={item.id} onChange={(e) => setPick(e.target.value)}>{counted.map((r) => <option key={r.id} value={r.id}>{r.name} ({r.tracking === 'BATCH' ? 'by batch' : 'by serial'})</option>)}</select></p>
+      <Async load={load}>{(list) => (item.tracking === 'BATCH'
+        ? <Table head={['Batch', 'Expires', 'Warehouse', '>Quantity']} empty={!list.length && <Empty>No batch in stock.</Empty>}>
+          {list.map((b) => <tr key={b.batch + b.warehouse_id}><td>{b.batch}</td><td>{b.expiry ? showDate(b.expiry) : <span className="muted">none</span>}{soon(b.expiry) && <> <Badge status="NEEDS_ATTENTION">{b.expiry < today() ? 'expired' : 'expires soon'}</Badge></>}</td><td>{b.warehouse}</td><td className="r num">{b.quantity}</td></tr>)}
+        </Table>
+        : <Table head={['Serial number', 'Warehouse', 'In since']} empty={!list.length && <Empty>No unit in stock.</Empty>}>
+          {list.map((s) => <tr key={s.serial + s.warehouse_id}><td>{s.serial}</td><td>{s.warehouse}</td><td>{showDate(s.since)}</td></tr>)}
+        </Table>)}</Async>
+    </Card>
+  );
+};
+
 const Transfer = ({ items, warehouses, onDone, onClose }) => {
   const { o } = useSession();
   const a = useAction();
@@ -116,6 +138,7 @@ export default () => {
               <td><button className="linkish" onClick={() => setView(r)}>History</button></td></tr>)}
           </Table>
         </Card>
+        <Units rows={rows} />
         {whs.data && <Warehouses rows={whs.data} onDone={() => { whs.reload(); load.reload(); }} />}
         {rows.length > 0 && !wh && <Note>{`Stock is worth ₹${inr(rows.reduce((a, r) => a + Number(r.value_minor), 0))} in total, the same as Inventory in your books.`}</Note>}
       </>)}</Async>

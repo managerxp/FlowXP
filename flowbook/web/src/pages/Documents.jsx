@@ -159,6 +159,43 @@ export const DocForm = ({ kind }) => {
 
 const PATH = { PURCHASE_ORDER: 'purchase-orders', INVOICE: 'sales', BILL: 'purchases', CREDIT_NOTE: 'credit-notes', DEBIT_NOTE: 'debit-notes', QUOTE: 'quotes', SALES_ORDER: 'sales-orders' };
 
+/* Which batches or serial numbers a counted line is made of, asked for when a document is issued. Buying needs them; selling may leave them empty and takes the earliest expiry or oldest serial. */
+const TrackingPanel = ({ lines, inward, value, onChange }) => {
+  const items = [...new Map(lines.filter((l) => l.tracking && l.tracking !== 'NONE').map((l) => [l.item_id, l])).values()];
+  if (!items.length) return null;
+  const set = (id, v) => onChange({ ...value, [id]: v });
+  return (
+    <Card title="Which units?">
+      <p className="muted">{inward ? 'Say the batch (with its expiry date) or the serial numbers coming in.' : 'Leave empty to take the batch that expires first, or the serial numbers that have been in longest.'}</p>
+      {items.map((l) => {
+        const v = value[l.item_id] || { rows: [{ batch: '', expiry: '', quantity: '' }], serials: '' };
+        const rows = v.rows;
+        return (
+          <div key={l.item_id} className="form">
+            <strong className="wide">{l.description} · {l.quantity}</strong>
+            {l.tracking === 'SERIAL'
+              ? <Field label="Serial numbers" hint="One per line" wide><textarea rows={Math.min(8, Math.max(3, Number(l.quantity) + 1))} value={v.serials} onChange={(e) => set(l.item_id, { ...v, serials: e.target.value })} /></Field>
+              : rows.map((r, i) => (
+                <div key={i} className="wide form">
+                  <Field label="Batch"><input value={r.batch} maxLength={40} onChange={(e) => set(l.item_id, { ...v, rows: rows.map((x, j) => (j === i ? { ...x, batch: e.target.value } : x)) })} /></Field>
+                  <Field label="Expires"><input type="date" value={r.expiry} onChange={(e) => set(l.item_id, { ...v, rows: rows.map((x, j) => (j === i ? { ...x, expiry: e.target.value } : x)) })} /></Field>
+                  {rows.length > 1 && <Field label="Quantity"><input inputMode="decimal" value={r.quantity} onChange={(e) => set(l.item_id, { ...v, rows: rows.map((x, j) => (j === i ? { ...x, quantity: e.target.value } : x)) })} /></Field>}
+                </div>
+              ))}
+            {l.tracking === 'BATCH' && <p className="wide actions"><button type="button" className="linkish" onClick={() => set(l.item_id, { ...v, rows: [...rows, { batch: '', expiry: '', quantity: '' }] })}>Split across another batch</button></p>}
+          </div>
+        );
+      })}
+    </Card>
+  );
+};
+const trackingBody = (lines, value) => lines.filter((l) => l.tracking && l.tracking !== 'NONE').flatMap((l) => {
+  const v = value[l.item_id];
+  if (!v) return [];
+  if (l.tracking === 'SERIAL') { const serials = v.serials.split(/[\n,]+/).map((x) => x.trim()).filter(Boolean); return serials.length ? [{ itemId: String(l.item_id), serials }] : []; }
+  return v.rows.filter((r) => r.batch.trim()).map((r) => ({ itemId: String(l.item_id), batch: r.batch.trim(), ...(r.expiry && { expiry: r.expiry }), ...(r.quantity && { quantity: r.quantity }) }));
+});
+
 export const DocView = ({ kind }) => {
   const { id } = useParams();
   const { o, org } = useSession();
@@ -170,6 +207,7 @@ export const DocView = ({ kind }) => {
   const emailOn = useEmailOn();
   const [void_, setVoid] = useState({ date: today(), reason: '' });
   const [apply, setApply] = useState({});
+  const [trk, setTrk] = useState({});
   const open = useLoad(() => (isNote(kind) && load.data?.status === 'ISSUED' ? o(`/${kind.api === 'credit-notes' ? 'invoices' : 'bills'}?status=ISSUED&partyId=${load.data.party_id}&limit=100`) : Promise.resolve(null)), [load.data?.id, load.data?.status]);
 
   const d0 = load.data || {};
@@ -178,7 +216,7 @@ export const DocView = ({ kind }) => {
   return (
     <Page title={load.data ? `${kind.one} ${load.data.number || '(draft)'}` : kind.one} lead={load.data && `${kind.who}: ${load.data.party_name}`}
       actions={load.data && <>
-        {load.data.status === 'DRAFT' && <><Link className="btn" to={`/${kind.path}/${id}/edit`}>Edit</Link><Btn kind="primary" busy={a.busy} onClick={() => act(() => o(`/${kind.api}/${id}/issue`, { method: 'POST', body: {} }), kind.pre ? `${kind.one} sent.` : `${kind.one} issued and posted to the books.`)}>{kind.pre ? 'Mark as sent' : 'Issue'}</Btn>
+        {load.data.status === 'DRAFT' && <><Link className="btn" to={`/${kind.path}/${id}/edit`}>Edit</Link><Btn kind="primary" busy={a.busy} onClick={() => act(() => o(`/${kind.api}/${id}/issue`, { method: 'POST', body: { tracking: trackingBody(load.data.lines, trk) } }), kind.pre ? `${kind.one} sent.` : `${kind.one} issued and posted to the books.`)}>{kind.pre ? 'Mark as sent' : 'Issue'}</Btn>
           <Btn kind="danger" onClick={() => setPanel(panel === 'delete' ? '' : 'delete')}>Delete draft</Btn></>}
         {load.data.status === 'ISSUED' && <>
           {kind.paymentDirection && Number(load.data.balance_minor) > 0 && <Link className="btn primary" to={`/payments/new?direction=${kind.paymentDirection}&partyId=${load.data.party_id}&documentId=${id}`}>{kind.paymentDirection === 'IN' ? 'Record payment' : 'Pay this bill'}</Link>}
@@ -197,6 +235,7 @@ export const DocView = ({ kind }) => {
         <Err>{a.error}</Err><Note>{a.done}</Note>
         {panel === 'email' && <EmailForm documentId={id} onDone={() => setSent((n) => n + 1)} onClose={() => setPanel('')} />}
         {panel === 'eway' && <EwayPanel id={id} number={d.number} onClose={() => setPanel('')} />}
+        {d.status === 'DRAFT' && d.lines && !kind.pre && <TrackingPanel lines={d.lines} inward={kind.api === 'bills' || kind.api === 'credit-notes'} value={trk} onChange={setTrk} />}
         {d.status === 'ISSUED' && <DocSheet kind={kind} d={d} />}
         {panel === 'delete' && <Confirm><p>Delete this draft? It has no number and nothing is posted.</p><Btn kind="danger" busy={a.busy} onClick={() => a.run(async () => { await o(`/${kind.api}/${id}`, { method: 'DELETE' }); nav(`/${kind.path}`); })}>Yes, delete</Btn></Confirm>}
         {panel === 'void' && (

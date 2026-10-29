@@ -6,6 +6,8 @@ import { issueDocument, saveDraft, voidDocument } from '../src/documents.ts';
 import type { DocKind } from '../src/documents.ts';
 import { createItem, createParty, seedTaxRates } from '../src/masters.ts';
 import { openFinancialYear } from '../src/periods.ts';
+import { stockBatches, stockSerials } from '../src/stock.ts';
+import type { TrackIn } from '../src/stock.ts';
 import { addWarehouse, adjust, listWarehouses, setTracking, stockByWarehouse, stockLedger, stockSummary, transferStock, updateWarehouse } from '../src/stock.ts';
 import { newOrg, setup } from './helpers.ts';
 
@@ -135,4 +137,49 @@ test('warehouses split the quantity, transfers move it at the average without to
   assert.match(String(id), /only 4.000 of Pen in Shed/);
   await assert.rejects(run(org, (c) => updateWarehouse(c, org, shed, { active: false }, 't')), /still holds/);
   assert.equal(await inventory(org), (await summary(org)).value_minor);
+});
+
+const issueWith = (org: bigint, kind: DocKind, partyId: bigint, itemId: bigint, quantity: string, tracking?: TrackIn[], date = '2026-06-01') => run(org, async (c) => {
+  const id = await saveDraft(c, org, null, { kind, partyId, date, supplierRef: kind === 'BILL' ? `S-${++n}` : undefined, lines: [{ itemId, quantity, unitPrice: '10', taxCode: 'GST18' }] }, 't');
+  await issueDocument(c, org, kind, id, 't', undefined, tracking); return id;
+});
+const newItem = (org: bigint, sku: string, tracking: 'BATCH' | 'SERIAL') => run(org, async (c) => {
+  const id = await createItem(c, org, { sku, name: sku, purchasePrice: '10', salePrice: '20', taxCode: 'GST18' }, 't');
+  await setTracking(c, org, id, { trackStock: true, tracking }, 't'); return id;
+});
+
+test('batch items: the batch is named when buying, the earliest expiry goes first when selling, and what is left is by batch', { skip }, async () => {
+  const { org, cust, vend } = await shop();
+  const med = await newItem(org, 'MED', 'BATCH');
+  await assert.rejects(issueWith(org, 'BILL', vend, med, '10'), /say the batch number/);
+  await assert.rejects(issueWith(org, 'BILL', vend, med, '10', [{ itemId: med, batch: 'A', expiry: '2026-12-01', quantity: '6' }]), /must add up to 10/);
+  await issueWith(org, 'BILL', vend, med, '10', [{ itemId: med, batch: 'A', expiry: '2026-12-01', quantity: '6' }, { itemId: med, batch: 'B', expiry: '2026-09-01', quantity: '4' }]);
+  assert.deepEqual((await run(org, (c) => stockBatches(c, med))).map((b) => [b.batch, b.quantity, b.expiry]), [['B', '4.000', '2026-09-01'], ['A', '6.000', '2026-12-01']], 'the batch that expires first is listed first');
+  const inv = await issueWith(org, 'INVOICE', cust, med, '7');          // nothing chosen: B (4) then A (3)
+  assert.deepEqual((await run(org, (c) => stockBatches(c, med))).map((b) => [b.batch, b.quantity]), [['A', '3.000']]);
+  await assert.rejects(issueWith(org, 'INVOICE', cust, med, '1', [{ itemId: med, batch: 'B', quantity: '1' }]), /only 0.000 of MED is in batch B/);
+  assert.equal(await inventory(org), (await run(org, (c) => stockSummary(c))).reduce((a, r) => a + (r.value_minor as bigint), 0n));
+  await run(org, (c) => voidDocument(c, org, 'INVOICE', inv, { date: '2026-06-02', reason: 'wrong' }, 't'));
+  assert.deepEqual((await run(org, (c) => stockBatches(c, med))).map((b) => [b.batch, b.quantity]), [['B', '4.000'], ['A', '6.000']]);
+  await assert.rejects(run(org, (c) => setTracking(c, org, med, { tracking: 'SERIAL' }, 't')), /how it is counted cannot change/);
+});
+
+test('serial items: every unit has a number, none can be in stock twice, and selling takes named or the oldest serials', { skip }, async () => {
+  const { org, cust, vend } = await shop();
+  const tv = await newItem(org, 'TV', 'SERIAL');
+  await assert.rejects(issueWith(org, 'BILL', vend, tv, '1.5', [{ itemId: tv, serials: ['S1'] }]), /whole units/);
+  await assert.rejects(issueWith(org, 'BILL', vend, tv, '3', [{ itemId: tv, serials: ['S1', 'S2'] }]), /list 3 serial numbers/);
+  const bill = await issueWith(org, 'BILL', vend, tv, '3', [{ itemId: tv, serials: ['S1', 'S2', 'S3'] }]);
+  await assert.rejects(issueWith(org, 'BILL', vend, tv, '1', [{ itemId: tv, serials: ['S2'] }]), /already in stock/);
+  assert.equal((await run(org, (c) => stockSummary(c))).find((r) => r.sku === 'TV')!.quantity, '3.000');
+  const inv = await issueWith(org, 'INVOICE', cust, tv, '1', [{ itemId: tv, serials: ['S3'] }]);
+  assert.deepEqual((await run(org, (c) => stockSerials(c, tv))).map((x) => x.serial), ['S1', 'S2']);
+  await assert.rejects(issueWith(org, 'INVOICE', cust, tv, '1', [{ itemId: tv, serials: ['S3'] }]), /serial S3 of TV is not in stock/);
+  await issueWith(org, 'INVOICE', cust, tv, '1');                      // nothing chosen: the oldest, S1
+  assert.deepEqual((await run(org, (c) => stockSerials(c, tv))).map((x) => x.serial), ['S2']);
+  await assert.rejects(issueWith(org, 'INVOICE', cust, tv, '2'), /only 1.000 of TV in stock/);
+  await assert.rejects(run(org, (c) => voidDocument(c, org, 'BILL', bill, { date: '2026-06-02', reason: 'oops' }, 't')), /has been sold|sold, moved or used/);
+  await run(org, (c) => voidDocument(c, org, 'INVOICE', inv, { date: '2026-06-02', reason: 'returned' }, 't'));
+  assert.deepEqual((await run(org, (c) => stockSerials(c, tv))).map((x) => x.serial).sort(), ['S2', 'S3']);
+  assert.equal(await inventory(org), (await run(org, (c) => stockSummary(c))).reduce((a, r) => a + (r.value_minor as bigint), 0n));
 });

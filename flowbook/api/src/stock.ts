@@ -7,8 +7,8 @@ import { paiseToString, roundDiv, toPaise } from './money.ts';
    stock_moves (signed quantity and value, never edited), so the quantity and value of an item are just sums. A bill puts the price into Inventory; an
    invoice posts a second entry, Cost of goods sold against Inventory, so Inventory in the books equals the value of what is on hand. */
 
-export type TrackedLine = { item_id: bigint; name: string; qty_milli: bigint; taxable_minor: bigint };
-type Move = { itemId: bigint; qty: bigint; value: bigint; date: string; source: 'BILL' | 'INVOICE' | 'CREDIT_NOTE' | 'DEBIT_NOTE' | 'ADJUSTMENT' | 'VOID' | 'TRANSFER'; warehouseId?: bigint; documentId?: bigint; entryId?: bigint; memo?: string; costed?: boolean; reverses?: bigint; override?: { reason: string } };
+export type TrackedLine = { item_id: bigint; name: string; tracking: 'NONE' | 'BATCH' | 'SERIAL'; qty_milli: bigint; taxable_minor: bigint };
+type Move = { itemId: bigint; qty: bigint; value: bigint; date: string; source: 'BILL' | 'INVOICE' | 'CREDIT_NOTE' | 'DEBIT_NOTE' | 'ADJUSTMENT' | 'VOID' | 'TRANSFER'; warehouseId?: bigint; documentId?: bigint; entryId?: bigint; memo?: string; costed?: boolean; reverses?: bigint; override?: { reason: string }; batch?: string; expiry?: string | null; serial?: string };
 
 export const toMilli = (text: string, what = 'quantity'): bigint => {
   const m = /^(\d{1,9})(?:\.(\d{1,3}))?$/.exec(text.trim());
@@ -43,8 +43,8 @@ const lockOnHand = async (c: Db, itemId: bigint, date?: string) => {
 
 /** The tracked goods on a document, one row per item (several lines of one item add up). */
 export const trackedLines = async (c: Db, documentId: bigint): Promise<TrackedLine[]> => (await c.query(
-  `SELECT l.item_id, i.name, SUM(l.quantity_milli)::bigint AS qty_milli, SUM(l.taxable_minor)::bigint AS taxable_minor
-     FROM document_lines l JOIN items i ON i.id = l.item_id WHERE l.document_id = $1 AND i.track_stock GROUP BY l.item_id, i.name ORDER BY l.item_id`, [documentId])).rows;
+  `SELECT l.item_id, i.name, i.tracking, SUM(l.quantity_milli)::bigint AS qty_milli, SUM(l.taxable_minor)::bigint AS taxable_minor
+     FROM document_lines l JOIN items i ON i.id = l.item_id WHERE l.document_id = $1 AND i.track_stock GROUP BY l.item_id, i.name, i.tracking ORDER BY l.item_id`, [documentId])).rows;
 
 /** Cost of taking qty out at today's average. Refuses to go below zero. */
 export const costOut = async (c: Db, itemId: bigint, qty: bigint, date?: string, warehouseId?: bigint): Promise<bigint> => {
@@ -61,6 +61,82 @@ export const costOut = async (c: Db, itemId: bigint, qty: bigint, date?: string,
 export const costIn = async (c: Db, itemId: bigint, qty: bigint, date?: string): Promise<bigint> => {
   const s = await lockOnHand(c, itemId, date);
   return s.qty > 0n && s.value > 0n ? roundDiv(s.value * qty, s.qty) : roundDiv(s.buyPrice * qty, 1000n);
+};
+
+/* ---- batches and serial numbers */
+
+/** What a person tells us about which units are moving. Quantities are text ("2.5"); serials are listed one by one. */
+export type TrackIn = { itemId: bigint; batch?: string; expiry?: string; quantity?: string; serials?: string[] };
+export type Slice = { qty: bigint; batch?: string; expiry?: string | null; serial?: string };
+
+const tag = (t: string | undefined, what: string): string => {
+  const v = (t ?? '').trim();
+  if (!v || v.length > 40) throw new LedgerError('bad_tracking', `${what} is needed (up to 40 characters)`);
+  return v;
+};
+const day = (d: string | undefined): string | null => {
+  if (!d) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || Number.isNaN(Date.parse(d))) throw new LedgerError('bad_tracking', `${d} is not an expiry date (YYYY-MM-DD)`);
+  return d;
+};
+
+/** Share a total value over slices by quantity; the last slice takes the rounding. */
+export const splitValue = (total: bigint, slices: Slice[]): bigint[] => {
+  const q = slices.reduce((a, x) => a + x.qty, 0n);
+  let left = total;
+  return slices.map((x, i) => { const v = i === slices.length - 1 ? left : roundDiv(total * x.qty, q); left -= v; return v; });
+};
+
+/**
+ * Which batches or serial numbers a movement of qty of an item is made of. Plain items are one slice. Taking out with nothing chosen picks the
+ * batch that expires first (no expiry last), or the serial numbers that have been in longest.
+ */
+export const planSlices = async (c: Db, o: { itemId: bigint; name: string; tracking: string; qty: bigint; dir: 'IN' | 'OUT'; warehouseId: bigint; given?: TrackIn[] }): Promise<Slice[]> => {
+  if (o.tracking === 'NONE') return [{ qty: o.qty }];
+  const mine = (o.given ?? []).filter((g) => g.itemId === o.itemId);
+  if (o.tracking === 'BATCH') {
+    let slices: Slice[];
+    if (mine.length) {
+      slices = mine.map((g) => ({ qty: g.quantity ? toMilli(g.quantity) : mine.length === 1 ? o.qty : 0n, batch: tag(g.batch, `the batch number for ${o.name}`), expiry: day(g.expiry) }));
+      if (slices.some((x) => x.qty === 0n)) throw new LedgerError('bad_tracking', `give a quantity for each batch of ${o.name}`);
+    } else if (o.dir === 'IN') throw new LedgerError('bad_tracking', `say the batch number for ${o.name}`);
+    else {
+      slices = []; let need = o.qty;
+      const rows = (await c.query(
+        `SELECT batch_no, MIN(expiry_date)::text AS expiry, SUM(qty_milli)::bigint AS q FROM stock_moves WHERE item_id = $1 AND warehouse_id = $2 AND batch_no IS NOT NULL
+          GROUP BY batch_no HAVING SUM(qty_milli) > 0 ORDER BY MIN(expiry_date) NULLS LAST, MIN(id)`, [o.itemId, o.warehouseId])).rows;
+      for (const r of rows) { if (need === 0n) break; const take = (r.q as bigint) < need ? (r.q as bigint) : need; slices.push({ qty: take, batch: r.batch_no as string, expiry: r.expiry as string | null }); need -= take; }
+      if (need > 0n) throw new LedgerError('insufficient_stock', `not enough of ${o.name} in its batches: ${milliToString(o.qty - need)} found, ${milliToString(o.qty)} needed`);
+    }
+    if (slices.reduce((a, x) => a + x.qty, 0n) !== o.qty) throw new LedgerError('bad_tracking', `the batch quantities of ${o.name} must add up to ${milliToString(o.qty)}`);
+    if (o.dir === 'OUT' && mine.length) for (const x of slices) {
+      const have = (await c.query(`SELECT COALESCE(SUM(qty_milli), 0)::bigint AS q, MIN(expiry_date)::text AS expiry FROM stock_moves WHERE item_id = $1 AND warehouse_id = $2 AND batch_no = $3`, [o.itemId, o.warehouseId, x.batch])).rows[0];
+      if ((have.q as bigint) < x.qty) throw new LedgerError('insufficient_stock', `only ${milliToString(have.q as bigint)} of ${o.name} is in batch ${x.batch}`);
+      x.expiry = have.expiry as string | null;
+    }
+    return slices;
+  }
+  // serial numbers
+  if (o.qty % 1000n !== 0n) throw new LedgerError('bad_tracking', `${o.name} is counted by serial number, so only whole units can move`);
+  const n = Number(o.qty / 1000n);
+  const given = mine.flatMap((g) => g.serials ?? []).map((x) => tag(x, `a serial number for ${o.name}`));
+  if (new Set(given).size !== given.length) throw new LedgerError('bad_tracking', `a serial number of ${o.name} is listed twice`);
+  if (o.dir === 'IN') {
+    if (given.length !== n) throw new LedgerError('bad_tracking', `list ${n} serial number${n === 1 ? '' : 's'} for ${o.name}`);
+    const have = (await c.query(`SELECT serial_no FROM stock_moves WHERE item_id = $1 AND serial_no = ANY($2) GROUP BY serial_no HAVING SUM(qty_milli) > 0`, [o.itemId, given])).rows;
+    if (have.length) throw new LedgerError('bad_tracking', `serial ${have[0].serial_no} of ${o.name} is already in stock`);
+    return given.map((serial) => ({ qty: 1000n, serial }));
+  }
+  if (given.length) {
+    if (given.length !== n) throw new LedgerError('bad_tracking', `list ${n} serial number${n === 1 ? '' : 's'} for ${o.name}`);
+    const have = new Set((await c.query(`SELECT serial_no FROM stock_moves WHERE item_id = $1 AND warehouse_id = $2 AND serial_no = ANY($3) GROUP BY serial_no HAVING SUM(qty_milli) > 0`, [o.itemId, o.warehouseId, given])).rows.map((r) => r.serial_no as string));
+    const missing = given.find((g) => !have.has(g));
+    if (missing) throw new LedgerError('insufficient_stock', `serial ${missing} of ${o.name} is not in stock here`);
+    return given.map((serial) => ({ qty: 1000n, serial }));
+  }
+  const rows = (await c.query(`SELECT serial_no FROM stock_moves WHERE item_id = $1 AND warehouse_id = $2 AND serial_no IS NOT NULL GROUP BY serial_no HAVING SUM(qty_milli) > 0 ORDER BY MIN(id) LIMIT $3`, [o.itemId, o.warehouseId, n])).rows;
+  if (rows.length < n) throw new LedgerError('insufficient_stock', `only ${rows.length} serial-numbered unit${rows.length === 1 ? '' : 's'} of ${o.name} in stock, need ${n}`);
+  return rows.map((r) => ({ qty: 1000n, serial: r.serial_no as string }));
 };
 
 /**
@@ -106,8 +182,8 @@ export const recost = async (c: Db, orgId: bigint, itemId: bigint, actor: string
 
 export const record = async (c: Db, orgId: bigint, actor: string, m: Move): Promise<bigint> => {
   const later = (await c.query(`SELECT 1 FROM stock_moves WHERE item_id = $1 AND move_date > $2::date LIMIT 1`, [m.itemId, m.date])).rowCount;
-  const id = (await c.query(`INSERT INTO stock_moves (organization_id, item_id, move_date, qty_milli, value_minor, source_type, document_id, journal_entry_id, memo, created_by, costed, reverses_move_id, warehouse_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
-    [orgId, m.itemId, m.date, m.qty, m.value, m.source, m.documentId ?? null, m.entryId ?? null, m.memo ?? null, actor, m.costed ?? false, m.reverses ?? null, m.warehouseId ?? await defaultWarehouse(c, orgId)])).rows[0].id as bigint;
+  const id = (await c.query(`INSERT INTO stock_moves (organization_id, item_id, move_date, qty_milli, value_minor, source_type, document_id, journal_entry_id, memo, created_by, costed, reverses_move_id, warehouse_id, batch_no, expiry_date, serial_no) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
+    [orgId, m.itemId, m.date, m.qty, m.value, m.source, m.documentId ?? null, m.entryId ?? null, m.memo ?? null, actor, m.costed ?? false, m.reverses ?? null, m.warehouseId ?? await defaultWarehouse(c, orgId), m.batch ?? null, m.expiry ?? null, m.serial ?? null])).rows[0].id as bigint;
   if (later) await recost(c, orgId, m.itemId, actor, m.override);
   return id;
 };
@@ -121,18 +197,23 @@ export const costEntry = (c: Db, orgId: bigint, d: { date: string; number: strin
 /** Undo a voided document's stock moves with opposite moves of the same value. A purchase cannot be undone once some of it has been sold. */
 export const undoMoves = async (c: Db, orgId: bigint, documentId: bigint, date: string, actor: string, override?: { reason: string }): Promise<bigint> => {
   let worth = 0n;
-  const moves = (await c.query(`SELECT id, item_id, qty_milli, value_minor, warehouse_id FROM stock_moves WHERE document_id = $1 AND source_type <> 'VOID' ORDER BY id`, [documentId])).rows;
+  const moves = (await c.query(`SELECT id, item_id, qty_milli, value_minor, warehouse_id, batch_no, expiry_date::text AS expiry, serial_no FROM stock_moves WHERE document_id = $1 AND source_type <> 'VOID' ORDER BY id`, [documentId])).rows;
   for (const m of moves) {
     const s = await lockOnHand(c, m.item_id as bigint);
     const w = await qtyIn(c, m.item_id as bigint, m.warehouse_id as bigint);
     if (m.qty_milli > 0n && (s.qty < m.qty_milli || w.qty < m.qty_milli)) throw new LedgerError('insufficient_stock', `some of the ${s.name} from this document has been sold, moved or used; only ${milliToString(w.qty < s.qty ? w.qty : s.qty)} is left`);
-    await record(c, orgId, actor, { itemId: m.item_id, qty: -(m.qty_milli as bigint), value: -(m.value_minor as bigint), date, source: 'VOID', documentId, memo: 'Document voided', reverses: m.id, override, warehouseId: m.warehouse_id });
+    if (m.qty_milli > 0n && m.batch_no) {
+      const b = (await c.query(`SELECT COALESCE(SUM(qty_milli), 0)::bigint AS q FROM stock_moves WHERE item_id = $1 AND warehouse_id = $2 AND batch_no = $3`, [m.item_id, m.warehouse_id, m.batch_no])).rows[0].q as bigint;
+      if (b < m.qty_milli) throw new LedgerError('insufficient_stock', `some of batch ${m.batch_no} of ${s.name} has been sold, moved or used`);
+    }
+    if (m.qty_milli > 0n && m.serial_no && !(await c.query(`SELECT 1 FROM stock_moves WHERE item_id = $1 AND warehouse_id = $2 AND serial_no = $3 HAVING SUM(qty_milli) > 0`, [m.item_id, m.warehouse_id, m.serial_no])).rowCount) throw new LedgerError('insufficient_stock', `serial ${m.serial_no} of ${s.name} has been sold or moved`);
+    await record(c, orgId, actor, { itemId: m.item_id, qty: -(m.qty_milli as bigint), value: -(m.value_minor as bigint), date, source: 'VOID', documentId, memo: 'Document voided', reverses: m.id, override, warehouseId: m.warehouse_id, batch: m.batch_no ?? undefined, expiry: m.expiry, serial: m.serial_no ?? undefined });
     worth += m.value_minor as bigint;
   }
   return worth;   // the moves' value as it stands now; it differs from the cost entry posted with the document if the document was recosted
 };
 
-export type AdjustIn = { warehouseId?: bigint; itemId: bigint; date: string; direction: 'IN' | 'OUT'; quantity: string; unitCost?: string; counterAccount: string | bigint; reason: string };
+export type AdjustIn = { tracking?: TrackIn[]; warehouseId?: bigint; itemId: bigint; date: string; direction: 'IN' | 'OUT'; quantity: string; unitCost?: string; counterAccount: string | bigint; reason: string };
 /** Opening stock, a count that came out different, damage or loss. The other side of the entry is the account you choose. */
 export const adjust = async (c: Db, orgId: bigint, a: AdjustIn, actor: string, override?: { reason: string }) => {
   const qty = toMilli(a.quantity);
@@ -140,6 +221,9 @@ export const adjust = async (c: Db, orgId: bigint, a: AdjustIn, actor: string, o
   if (!a.reason.trim()) throw new LedgerError('reason_required', 'say why the stock changed');
   const s = await lockOnHand(c, a.itemId);
   if (!s.tracked) throw new LedgerError('not_tracked', `${s.name} is not set to track stock`);
+  const wh = a.warehouseId ?? await defaultWarehouse(c, orgId);
+  const item = (await c.query(`SELECT tracking FROM items WHERE id = $1`, [a.itemId])).rows[0];
+  const slices = await planSlices(c, { itemId: a.itemId, name: s.name, tracking: item.tracking as string, qty, dir: a.direction, warehouseId: wh, given: a.tracking });
   let value: bigint;
   if (a.direction === 'IN') {
     if (a.unitCost === undefined) throw new LedgerError('cost_required', 'say what each unit cost');
@@ -149,30 +233,36 @@ export const adjust = async (c: Db, orgId: bigint, a: AdjustIn, actor: string, o
     date: a.date, sourceType: 'stock_adjustment', sourceId: `${a.itemId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, kind: 'STOCK', memo: `Stock ${a.direction === 'IN' ? 'in' : 'out'}: ${s.name} (${a.reason.trim().slice(0, 100)})`, actor, override,
     lines: [{ account: 'INVENTORY', side: a.direction === 'IN' ? 'D' : 'C', amount: value }, { account: a.counterAccount, side: a.direction === 'IN' ? 'C' : 'D', amount: value }]
   }) : null;
-  await record(c, orgId, actor, { itemId: a.itemId, qty: a.direction === 'IN' ? qty : -qty, value: a.direction === 'IN' ? value : -value, date: a.date, source: 'ADJUSTMENT', entryId: posted?.entryId, memo: a.reason.trim().slice(0, 200), costed: a.direction === 'OUT', override, warehouseId: a.warehouseId });
+  const parts = splitValue(value, slices);
+  for (const [i, x] of slices.entries()) await record(c, orgId, actor, { itemId: a.itemId, qty: a.direction === 'IN' ? x.qty : -x.qty, value: a.direction === 'IN' ? parts[i]! : -parts[i]!, date: a.date, source: 'ADJUSTMENT', entryId: posted?.entryId, memo: a.reason.trim().slice(0, 200), costed: a.direction === 'OUT', override, warehouseId: wh, batch: x.batch, expiry: x.expiry, serial: x.serial });
   await audit(c, orgId, { actor, action: 'stock.adjusted', entityType: 'item', entityId: a.itemId, detail: { direction: a.direction, quantity: milliToString(qty), value: paiseToString(value) } });
   return { entryNo: posted?.entryNo ?? null, value };
 };
 
-export const setTracking = async (c: Db, orgId: bigint, itemId: bigint, o: { trackStock?: boolean; reorderLevel?: string }, actor: string): Promise<void> => {
+export const setTracking = async (c: Db, orgId: bigint, itemId: bigint, o: { trackStock?: boolean; reorderLevel?: string; tracking?: 'NONE' | 'BATCH' | 'SERIAL' }, actor: string): Promise<void> => {
   const s = await lockOnHand(c, itemId);
   const item = (await c.query(`SELECT kind FROM items WHERE id = $1`, [itemId])).rows[0];
   if (o.trackStock && item.kind !== 'GOODS') throw new LedgerError('not_goods', 'only goods can be counted in stock, not services');
   if (o.trackStock === false && (await c.query(`SELECT 1 FROM stock_moves WHERE item_id = $1 LIMIT 1`, [itemId])).rowCount) throw new LedgerError('has_moves', `${s.name} already has stock history, so it cannot stop being tracked`);
+  if (o.tracking) {
+    const cur = (await c.query(`SELECT tracking, track_stock FROM items WHERE id = $1`, [itemId])).rows[0];
+    if (o.tracking !== 'NONE' && !(o.trackStock ?? cur.track_stock)) throw new LedgerError('not_tracked', 'tick "count its stock" before counting by batch or serial number');
+    if (o.tracking !== cur.tracking && (await c.query(`SELECT 1 FROM stock_moves WHERE item_id = $1 LIMIT 1`, [itemId])).rowCount) throw new LedgerError('has_moves', `${s.name} already has stock history, so how it is counted cannot change`);
+  }
   const level = o.reorderLevel === undefined ? null : /^0+(\.0+)?$/.test(o.reorderLevel.trim()) ? 0n : toMilli(o.reorderLevel, 'level');
-  await c.query(`UPDATE items SET track_stock = COALESCE($2, track_stock), reorder_level_milli = COALESCE($3, reorder_level_milli) WHERE id = $1`, [itemId, o.trackStock ?? null, level]);
+  await c.query(`UPDATE items SET track_stock = COALESCE($2, track_stock), reorder_level_milli = COALESCE($3, reorder_level_milli), tracking = COALESCE($4, tracking) WHERE id = $1`, [itemId, o.trackStock ?? null, level, o.tracking ?? null]);
   await audit(c, orgId, { actor, action: 'item.stock_tracking', entityType: 'item', entityId: itemId, detail: { trackStock: o.trackStock ?? null } });
 };
 
 /** Quantity, value and average cost of every tracked item, and whether it is at or under its reorder level. */
 export const stockSummary = async (c: Db, warehouseId?: bigint) => (await c.query(
-  `SELECT i.id, i.sku, i.name, i.unit, i.reorder_level_milli,
+  `SELECT i.id, i.sku, i.name, i.unit, i.tracking, i.reorder_level_milli,
           COALESCE(SUM(m.qty_milli), 0)::bigint AS qty_milli, COALESCE(SUM(m.value_minor), 0)::bigint AS value_minor,
           (i.reorder_level_milli > 0 AND COALESCE(SUM(m.qty_milli), 0) <= i.reorder_level_milli) AS low
-     FROM items i LEFT JOIN stock_moves m ON m.item_id = i.id AND ($1::bigint IS NULL OR m.warehouse_id = $1) WHERE i.track_stock AND i.active GROUP BY i.id ORDER BY i.name`, [warehouseId ?? null])).rows.map((r) => ({ id: r.id, sku: r.sku, name: r.name, unit: r.unit, quantity: milliToString(r.qty_milli), reorder_level: milliToString(r.reorder_level_milli), value_minor: r.value_minor, low: r.low }));   // quantities as text: the wire format would read a bare bigint as rupees
+     FROM items i LEFT JOIN stock_moves m ON m.item_id = i.id AND ($1::bigint IS NULL OR m.warehouse_id = $1) WHERE i.track_stock AND i.active GROUP BY i.id ORDER BY i.name`, [warehouseId ?? null])).rows.map((r) => ({ id: r.id, sku: r.sku, name: r.name, unit: r.unit, tracking: r.tracking, quantity: milliToString(r.qty_milli), reorder_level: milliToString(r.reorder_level_milli), value_minor: r.value_minor, low: r.low }));   // quantities as text: the wire format would read a bare bigint as rupees
 
 export const stockLedger = async (c: Db, itemId: bigint, limit: number) => (await c.query(
-  `SELECT id, move_date::text AS date, qty_milli, value_minor, source_type, document_id, memo FROM stock_moves WHERE item_id = $1 ORDER BY id DESC LIMIT $2`, [itemId, limit])).rows.map((r) => ({ id: r.id, date: r.date, quantity: milliToString(r.qty_milli), value_minor: r.value_minor, source_type: r.source_type, document_id: r.document_id, memo: r.memo }));
+  `SELECT id, move_date::text AS date, qty_milli, value_minor, source_type, document_id, memo, batch_no, expiry_date::text AS expiry, serial_no FROM stock_moves WHERE item_id = $1 ORDER BY id DESC LIMIT $2`, [itemId, limit])).rows.map((r) => ({ id: r.id, date: r.date, quantity: milliToString(r.qty_milli), value_minor: r.value_minor, source_type: r.source_type, document_id: r.document_id, memo: r.memo, batch: r.batch_no, expiry: r.expiry, serial: r.serial_no }));
 
 /* ---- warehouses */
 
@@ -207,7 +297,7 @@ export const updateWarehouse = async (c: Db, orgId: bigint, id: bigint, o: { nam
 };
 
 /** Move stock between warehouses at today's average cost: an out and an in of equal value, no journal. */
-export const transferStock = async (c: Db, orgId: bigint, t: { itemId: bigint; from: bigint; to: bigint; quantity: string; date: string; memo?: string }, actor: string, override?: { reason: string }) => {
+export const transferStock = async (c: Db, orgId: bigint, t: { itemId: bigint; from: bigint; to: bigint; quantity: string; date: string; memo?: string; tracking?: TrackIn[] }, actor: string, override?: { reason: string }) => {
   if (t.from === t.to) throw new LedgerError('same_warehouse', 'choose two different warehouses');
   const qty = toMilli(t.quantity);
   const s = await lockOnHand(c, t.itemId);
@@ -215,8 +305,13 @@ export const transferStock = async (c: Db, orgId: bigint, t: { itemId: bigint; f
   for (const w of [t.from, t.to]) if (!(await c.query(`SELECT 1 FROM warehouses WHERE id = $1 AND active`, [w])).rowCount) throw new LedgerError('bad_warehouse', 'choose warehouses that are in use');
   const value = await costOut(c, t.itemId, qty, t.date, t.from);
   const memo = (t.memo?.trim() || 'Transfer').slice(0, 200);
-  const out = await record(c, orgId, actor, { itemId: t.itemId, qty: -qty, value: -value, date: t.date, source: 'TRANSFER', memo, costed: true, warehouseId: t.from, override });
-  await record(c, orgId, actor, { itemId: t.itemId, qty, value, date: t.date, source: 'TRANSFER', memo, reverses: out, warehouseId: t.to, override });
+  const tr = (await c.query(`SELECT tracking FROM items WHERE id = $1`, [t.itemId])).rows[0].tracking as string;
+  const slices = await planSlices(c, { itemId: t.itemId, name: s.name, tracking: tr, qty, dir: 'OUT', warehouseId: t.from, given: t.tracking });
+  const parts = splitValue(value, slices);
+  for (const [i, x] of slices.entries()) {
+    const out = await record(c, orgId, actor, { itemId: t.itemId, qty: -x.qty, value: -parts[i]!, date: t.date, source: 'TRANSFER', memo, costed: true, warehouseId: t.from, override, batch: x.batch, expiry: x.expiry, serial: x.serial });
+    await record(c, orgId, actor, { itemId: t.itemId, qty: x.qty, value: parts[i]!, date: t.date, source: 'TRANSFER', memo, reverses: out, warehouseId: t.to, override, batch: x.batch, expiry: x.expiry, serial: x.serial });
+  }
   await audit(c, orgId, { actor, action: 'stock.transferred', entityType: 'item', entityId: t.itemId, detail: { quantity: milliToString(qty), from: String(t.from), to: String(t.to) } });
   return { value };
 };
@@ -226,3 +321,16 @@ export const stockByWarehouse = async (c: Db) => (await c.query(
   `SELECT m.item_id, i.name, m.warehouse_id, w.name AS warehouse, SUM(m.qty_milli)::bigint AS qty_milli FROM stock_moves m JOIN items i ON i.id = m.item_id JOIN warehouses w ON w.id = m.warehouse_id
     GROUP BY m.item_id, i.name, m.warehouse_id, w.name HAVING SUM(m.qty_milli) <> 0 ORDER BY i.name, w.name`)).rows
   .map((r) => ({ item_id: r.item_id, name: r.name, warehouse_id: r.warehouse_id, warehouse: r.warehouse, quantity: milliToString(r.qty_milli) }));
+
+/** Batches that still have stock, with expiry date and where they are; the ones expiring first come first. */
+export const stockBatches = async (c: Db, itemId?: bigint) => (await c.query(
+  `SELECT m.item_id, i.name, m.batch_no, MIN(m.expiry_date)::text AS expiry, m.warehouse_id, w.name AS warehouse, SUM(m.qty_milli)::bigint AS qty_milli
+     FROM stock_moves m JOIN items i ON i.id = m.item_id JOIN warehouses w ON w.id = m.warehouse_id WHERE m.batch_no IS NOT NULL AND ($1::bigint IS NULL OR m.item_id = $1)
+    GROUP BY m.item_id, i.name, m.batch_no, m.warehouse_id, w.name HAVING SUM(m.qty_milli) > 0 ORDER BY MIN(m.expiry_date) NULLS LAST, i.name, m.batch_no LIMIT 1000`, [itemId ?? null])).rows
+  .map((r) => ({ item_id: r.item_id, name: r.name, batch: r.batch_no, expiry: r.expiry, warehouse_id: r.warehouse_id, warehouse: r.warehouse, quantity: milliToString(r.qty_milli) }));
+
+/** Serial numbers of an item that are in stock now, and where. */
+export const stockSerials = async (c: Db, itemId: bigint) => (await c.query(
+  `SELECT m.serial_no, m.warehouse_id, w.name AS warehouse, MIN(m.move_date)::text AS since FROM stock_moves m JOIN warehouses w ON w.id = m.warehouse_id WHERE m.item_id = $1 AND m.serial_no IS NOT NULL
+    GROUP BY m.serial_no, m.warehouse_id, w.name HAVING SUM(m.qty_milli) > 0 ORDER BY MIN(m.id) LIMIT 2000`, [itemId])).rows
+  .map((r) => ({ serial: r.serial_no, warehouse_id: r.warehouse_id, warehouse: r.warehouse, since: r.since }));

@@ -80,7 +80,7 @@ export const Items = () => {
   const save = (e) => {
     e.preventDefault();
     a.run(async () => {
-      await o('/items', { method: 'POST', body: { sku: form.sku, name: form.name, kind: form.kind, ...(form.hsnSac && { hsnSac: form.hsnSac }), ...(form.unit && { unit: form.unit }), taxCode: form.taxCode, ...(form.salePrice && { salePrice: form.salePrice }), ...(form.purchasePrice && { purchasePrice: form.purchasePrice }), ...(form.kind === 'GOODS' && form.trackStock && { trackStock: true, ...(form.reorderLevel && { reorderLevel: form.reorderLevel }) }) } });
+      await o('/items', { method: 'POST', body: { sku: form.sku, name: form.name, kind: form.kind, ...(form.hsnSac && { hsnSac: form.hsnSac }), ...(form.unit && { unit: form.unit }), taxCode: form.taxCode, ...(form.salePrice && { salePrice: form.salePrice }), ...(form.purchasePrice && { purchasePrice: form.purchasePrice }), ...(form.kind === 'GOODS' && form.trackStock && { trackStock: true, ...(form.tracking && form.tracking !== 'NONE' && { tracking: form.tracking }), ...(form.reorderLevel && { reorderLevel: form.reorderLevel }) }) } });
       setForm(null); await load.reload();
     }, 'Item added.');
   };
@@ -100,6 +100,7 @@ export const Items = () => {
             <Field label="Selling price (₹)"><input inputMode="decimal" value={form.salePrice} onChange={set('salePrice')} /></Field>
             <Field label="Buying price (₹)"><input inputMode="decimal" value={form.purchasePrice} onChange={set('purchasePrice')} /></Field>
             {form.kind === 'GOODS' && <p className="check wide"><input id="trk" type="checkbox" checked={form.trackStock} onChange={(e) => setForm({ ...form, trackStock: e.target.checked })} /><label htmlFor="trk">Count its stock (buying adds, selling takes away)</label></p>}
+            {form.kind === 'GOODS' && form.trackStock && <Field label="How to count it" hint="By batch for medicines or food that expire; by serial number for items like phones. Cannot be changed once stock moves"><select value={form.tracking || 'NONE'} onChange={set('tracking')}><option value="NONE">Just a quantity</option><option value="BATCH">By batch (with expiry date)</option><option value="SERIAL">By serial number</option></select></Field>}
             {form.kind === 'GOODS' && form.trackStock && <Field label="Warn me when it falls to" hint="Optional"><input inputMode="decimal" value={form.reorderLevel} onChange={set('reorderLevel')} /></Field>}
             <div className="wide actions"><Btn kind="primary" busy={a.busy}>Save</Btn><Btn type="button" onClick={() => setForm(null)}>Cancel</Btn></div>
           </form></Card>

@@ -21,7 +21,8 @@ import { CURRENCIES, listRates, listRevaluations, rateOn, revalue, reversePendin
 import { addTime, createProject, deleteTime, getProject, invoiceTime, listProjects, updateProject } from './projects.ts';
 import { addAsset, assetRegister, cancelAsset, disposeAsset, runDepreciation } from './assets.ts';
 import type { AssetIn } from './assets.ts';
-import { addWarehouse, adjust, listWarehouses, setTracking, stockByWarehouse, stockLedger, stockSummary, transferStock, updateWarehouse } from './stock.ts';
+import type { TrackIn } from './stock.ts';
+import { addWarehouse, adjust, stockBatches, stockSerials, listWarehouses, setTracking, stockByWarehouse, stockLedger, stockSummary, transferStock, updateWarehouse } from './stock.ts';
 import { addEntry, bankAccounts, importStatement, matchLine, setIgnored, unmatchLine, workbench } from './reconcile.ts';
 import { partyStatement } from './statement.ts';
 import { UQC, validGstin, validStateCode } from './gst.ts';
@@ -40,6 +41,10 @@ const ID = '^\\d{1,18}$';
 const QTY = '^\\d{1,9}(\\.\\d{1,3})?$';
 const idParam = { params: { type: 'object', properties: { id: { type: 'string', pattern: ID } } } };
 const override = { overrideReason: { type: 'string', maxLength: 300 } };
+const trackBody = { type: 'array', maxItems: 500, items: { type: 'object', required: ['itemId'], additionalProperties: false, properties: {
+  itemId: { type: 'string', pattern: ID }, batch: { type: 'string', maxLength: 40 }, expiry: { type: 'string', pattern: DATE }, quantity: { type: 'string', pattern: QTY }, serials: { type: 'array', maxItems: 2000, items: { type: 'string', minLength: 1, maxLength: 40 } } } } };
+type RawTrack = { itemId: string; batch?: string; expiry?: string; quantity?: string; serials?: string[] }[];
+const trackIn = (t?: RawTrack): TrackIn[] | undefined => t?.map((x) => ({ ...x, itemId: BigInt(x.itemId) }));
 
 type Scope = (permission: string) => (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
 type Deps = { pool: pg.Pool; scope: Scope; me: (req: FastifyRequest) => string };
@@ -134,20 +139,20 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
 
   /* ---- items */
   app.get(`${base}/items`, { preHandler: scope('item.read') }, async (req) => run(req, async (c) => (await c.query(
-    `SELECT id, sku, name, kind, hsn_sac, unit, tax_code, sale_price_minor, purchase_price_minor, active, track_stock FROM items ORDER BY name LIMIT 1000`)).rows));
+    `SELECT id, sku, name, kind, hsn_sac, unit, tax_code, sale_price_minor, purchase_price_minor, active, track_stock, tracking FROM items ORDER BY name LIMIT 1000`)).rows));
   app.post(`${base}/items`, { preHandler: scope('item.write'), schema: { body: { type: 'object', required: ['sku', 'name'], additionalProperties: false, properties: {
     sku: { type: 'string', minLength: 1, maxLength: 60 }, name: { type: 'string', minLength: 1, maxLength: 160 }, kind: { type: 'string', enum: ['GOODS', 'SERVICE'] }, hsnSac: { type: 'string', maxLength: 12 }, unit: { type: 'string', enum: UQC },
-    taxCode: { type: 'string', maxLength: 20 }, salePrice: { type: 'string', pattern: AMOUNT }, purchasePrice: { type: 'string', pattern: AMOUNT }, trackStock: { type: 'boolean' }, reorderLevel: { type: 'string', pattern: QTY } } } } }, async (req, reply) => {
-    const { trackStock, reorderLevel, ...item } = req.body as Parameters<typeof createItem>[2] & { trackStock?: boolean; reorderLevel?: string };
+    taxCode: { type: 'string', maxLength: 20 }, salePrice: { type: 'string', pattern: AMOUNT }, purchasePrice: { type: 'string', pattern: AMOUNT }, trackStock: { type: 'boolean' }, reorderLevel: { type: 'string', pattern: QTY }, tracking: { type: 'string', enum: ['NONE', 'BATCH', 'SERIAL'] } } } } }, async (req, reply) => {
+    const { trackStock, reorderLevel, tracking, ...item } = req.body as Parameters<typeof createItem>[2] & { trackStock?: boolean; reorderLevel?: string; tracking?: 'NONE' | 'BATCH' | 'SERIAL' };
     const id = await run(req, async (c, orgId) => {
       const made = await createItem(c, orgId, item, me(req));
-      if (trackStock || reorderLevel) await setTracking(c, orgId, made, { trackStock, reorderLevel }, me(req));
+      if (trackStock || reorderLevel) await setTracking(c, orgId, made, { trackStock, reorderLevel, tracking }, me(req));
       return made;
     });
     return reply.code(201).send({ id });
   });
-  app.patch(`${base}/items/:id`, { preHandler: scope('item.write'), schema: { ...idParam, body: { type: 'object', additionalProperties: false, properties: { trackStock: { type: 'boolean' }, reorderLevel: { type: 'string', pattern: QTY } } } } }, async (req) => {
-    await run(req, (c, orgId) => setTracking(c, orgId, BigInt((req.params as { id: string }).id), req.body as { trackStock?: boolean; reorderLevel?: string }, me(req)));
+  app.patch(`${base}/items/:id`, { preHandler: scope('item.write'), schema: { ...idParam, body: { type: 'object', additionalProperties: false, properties: { trackStock: { type: 'boolean' }, reorderLevel: { type: 'string', pattern: QTY }, tracking: { type: 'string', enum: ['NONE', 'BATCH', 'SERIAL'] } } } } }, async (req) => {
+    await run(req, (c, orgId) => setTracking(c, orgId, BigInt((req.params as { id: string }).id), req.body as { trackStock?: boolean; reorderLevel?: string; tracking?: 'NONE' | 'BATCH' | 'SERIAL' }, me(req)));
     return { ok: true };
   });
 
@@ -228,10 +233,15 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   });
   app.get(`${base}/stock/items/:id`, { preHandler: scope('item.read'), schema: idParam }, async (req) => run(req, (c) => stockLedger(c, BigInt((req.params as { id: string }).id), 200)));
   app.post(`${base}/stock/adjustments`, { preHandler: scope('item.write'), schema: { body: { type: 'object', required: ['itemId', 'date', 'direction', 'quantity', 'counterAccount', 'reason'], additionalProperties: false, properties: {
-    itemId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, direction: { type: 'string', enum: ['IN', 'OUT'] }, quantity: { type: 'string', pattern: QTY }, unitCost: { type: 'string', pattern: AMOUNT }, counterAccount: { type: 'string', minLength: 1, maxLength: 40 }, reason: { type: 'string', minLength: 1, maxLength: 200 }, warehouseId: { type: 'string', pattern: ID } } } } }, async (req) => {
-    const b = req.body as { warehouseId?: string; itemId: string; date: string; direction: 'IN' | 'OUT'; quantity: string; unitCost?: string; counterAccount: string; reason: string };
-    return run(req, (c, orgId) => adjust(c, orgId, { ...b, itemId: BigInt(b.itemId), warehouseId: b.warehouseId ? BigInt(b.warehouseId) : undefined }, me(req)));
+    itemId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, direction: { type: 'string', enum: ['IN', 'OUT'] }, quantity: { type: 'string', pattern: QTY }, unitCost: { type: 'string', pattern: AMOUNT }, counterAccount: { type: 'string', minLength: 1, maxLength: 40 }, reason: { type: 'string', minLength: 1, maxLength: 200 }, warehouseId: { type: 'string', pattern: ID }, tracking: trackBody } } } }, async (req) => {
+    const b = req.body as { tracking?: RawTrack; warehouseId?: string; itemId: string; date: string; direction: 'IN' | 'OUT'; quantity: string; unitCost?: string; counterAccount: string; reason: string };
+    return run(req, (c, orgId) => adjust(c, orgId, { ...b, itemId: BigInt(b.itemId), warehouseId: b.warehouseId ? BigInt(b.warehouseId) : undefined, tracking: trackIn(b.tracking) }, me(req)));
   });
+  app.get(`${base}/stock/batches`, { preHandler: scope('item.read'), schema: { querystring: { type: 'object', properties: { itemId: { type: 'string', pattern: ID } } } } }, async (req) => {
+    const i = (req.query as { itemId?: string }).itemId;
+    return run(req, (c) => stockBatches(c, i ? BigInt(i) : undefined));
+  });
+  app.get(`${base}/stock/serials/:id`, { preHandler: scope('item.read'), schema: idParam }, async (req) => run(req, (c) => stockSerials(c, BigInt((req.params as { id: string }).id))));
   app.get(`${base}/warehouses`, { preHandler: scope('item.read') }, async (req) => run(req, (c, orgId) => listWarehouses(c, orgId)));
   app.get(`${base}/stock/by-warehouse`, { preHandler: scope('item.read') }, async (req) => run(req, (c) => stockByWarehouse(c)));
   app.post(`${base}/warehouses`, { preHandler: scope('item.write'), schema: { body: { type: 'object', required: ['name'], additionalProperties: false, properties: { name: { type: 'string', minLength: 1, maxLength: 80 } } } } }, async (req, reply) =>
@@ -241,9 +251,9 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     return { ok: true };
   });
   app.post(`${base}/stock/transfers`, { preHandler: scope('item.write'), schema: { body: { type: 'object', required: ['itemId', 'from', 'to', 'quantity', 'date'], additionalProperties: false, properties: {
-    itemId: { type: 'string', pattern: ID }, from: { type: 'string', pattern: ID }, to: { type: 'string', pattern: ID }, quantity: { type: 'string', pattern: QTY }, date: { type: 'string', pattern: DATE }, memo: { type: 'string', maxLength: 200 }, ...override } } } }, async (req) => {
-    const b = req.body as { itemId: string; from: string; to: string; quantity: string; date: string; memo?: string; overrideReason?: string };
-    return run(req, (c, orgId) => transferStock(c, orgId, { itemId: BigInt(b.itemId), from: BigInt(b.from), to: BigInt(b.to), quantity: b.quantity, date: b.date, memo: b.memo }, me(req), lockOverride(req, b.overrideReason)));
+    itemId: { type: 'string', pattern: ID }, from: { type: 'string', pattern: ID }, to: { type: 'string', pattern: ID }, quantity: { type: 'string', pattern: QTY }, date: { type: 'string', pattern: DATE }, memo: { type: 'string', maxLength: 200 }, tracking: trackBody, ...override } } } }, async (req) => {
+    const b = req.body as { tracking?: RawTrack; itemId: string; from: string; to: string; quantity: string; date: string; memo?: string; overrideReason?: string };
+    return run(req, (c, orgId) => transferStock(c, orgId, { itemId: BigInt(b.itemId), from: BigInt(b.from), to: BigInt(b.to), quantity: b.quantity, date: b.date, memo: b.memo, tracking: trackIn(b.tracking) }, me(req), lockOverride(req, b.overrideReason)));
   });
 
 
@@ -271,9 +281,9 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
       await run(req, (c, orgId) => deleteDraft(c, orgId, kind, BigInt((req.params as { id: string }).id), me(req)));
       return { ok: true };
     });
-    app.post(`${url}/:id/issue`, { preHandler: scope(`${perm}.write`), schema: { ...idParam, body: { type: ['object', 'null'], additionalProperties: false, properties: override } } }, async (req) => {
-      const b = (req.body ?? {}) as { overrideReason?: string };
-      return run(req, (c, orgId) => issueDocument(c, orgId, kind, BigInt((req.params as { id: string }).id), me(req), lockOverride(req, b.overrideReason)));
+    app.post(`${url}/:id/issue`, { preHandler: scope(`${perm}.write`), schema: { ...idParam, body: { type: ['object', 'null'], additionalProperties: false, properties: { ...override, tracking: trackBody } } } }, async (req) => {
+      const b = (req.body ?? {}) as { overrideReason?: string; tracking?: RawTrack };
+      return run(req, (c, orgId) => issueDocument(c, orgId, kind, BigInt((req.params as { id: string }).id), me(req), lockOverride(req, b.overrideReason), trackIn(b.tracking)));
     });
     app.post(`${url}/:id/void`, { preHandler: scope(`${perm}.void`), schema: { ...idParam, body: voidBody } }, async (req) => {
       const b = req.body as { date: string; reason: string; overrideReason?: string };

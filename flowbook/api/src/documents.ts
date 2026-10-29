@@ -4,7 +4,8 @@ import { validStateCode } from './gst.ts';
 import { LedgerError, post, reverse } from './ledger.ts';
 import { paiseToString, roundDiv, taxOn, toPaise } from './money.ts';
 import { BASE, checkCurrency, rateMicro, rateOn } from './fx.ts';
-import { costEntry, costIn, costOut, defaultWarehouse, record, trackedLines, undoMoves } from './stock.ts';
+import type { TrackIn } from './stock.ts';
+import { costEntry, costIn, costOut, defaultWarehouse, planSlices, record, splitValue, trackedLines, undoMoves } from './stock.ts';
 import { creditNoteJournal, customerPaymentJournal, debitNoteJournal, openingJournal, saleJournal, supplierBillJournal, supplierPaymentJournal } from './rules.ts';
 import type { Tender } from './rules.ts';
 
@@ -173,7 +174,8 @@ export const getDocument = async (c: Db, kind: DocKind, id: bigint) => {
   const doc = (await c.query(`SELECT ${DOC_COLS} FROM documents d JOIN parties p ON p.id = d.party_id WHERE d.id = $1 AND d.kind = $2`, [id, kind])).rows[0];
   if (!doc) return null;
   const lines = (await c.query(
-    `SELECT id, line_no, item_id, description, hsn_sac, round(quantity_milli::numeric / 1000, 3)::text AS quantity, unit_price_minor, discount_minor, taxable_minor, tax_code, tax_rate_bp, tax_minor, unit, price_includes_tax, unit_price_fc_minor, discount_fc_minor
+    `SELECT id, line_no, item_id, description, hsn_sac, round(quantity_milli::numeric / 1000, 3)::text AS quantity, unit_price_minor, discount_minor, taxable_minor, tax_code, tax_rate_bp, tax_minor, unit, price_includes_tax, unit_price_fc_minor, discount_fc_minor,
+            (SELECT i.tracking FROM items i WHERE i.id = document_lines.item_id) AS tracking
        FROM document_lines WHERE document_id = $1 ORDER BY line_no`, [id])).rows;
   const allocations = (await c.query(`SELECT source_type, source_id, amount_minor, voided_at IS NOT NULL AS voided FROM payment_allocations WHERE document_id = $1 ORDER BY id`, [id])).rows;
   return { ...doc, lines, allocations };
@@ -190,7 +192,7 @@ export const deleteDraft = async (c: Db, orgId: bigint, kind: DocKind, id: bigin
 };
 
 /** Number the draft, post its journal and mark it issued. Prices are worked out again first, so the journal always matches the lines. */
-export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: bigint, actor: string, override?: Override) => {
+export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: bigint, actor: string, override?: Override, tracking?: TrackIn[]) => {
   const doc = (await c.query(`SELECT *, issue_date::text AS issue_d, due_date::text AS due_d FROM documents WHERE id = $1 AND kind = $2 FOR UPDATE`, [id, kind])).rows[0];
   if (!doc) throw gone('document');
   if (doc.status !== 'DRAFT') throw new LedgerError('not_draft', 'this document is already issued');
@@ -240,7 +242,9 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
     for (const t of tracked) {
       const inward = kind === 'BILL' || kind === 'CREDIT_NOTE';
       const v = kind === 'BILL' || kind === 'DEBIT_NOTE' ? t.taxable_minor : cost.get(t.item_id) ?? 0n;
-      await record(c, orgId, actor, { itemId: t.item_id, qty: inward ? t.qty_milli : -t.qty_milli, value: inward ? v : -v, date: fresh.d as string, source: kind as 'BILL', documentId: id, entryId: costed?.entryId ?? posted.entryId, memo: number, costed: sold, override, warehouseId: whId });
+      const slices = await planSlices(c, { itemId: t.item_id, name: t.name, tracking: t.tracking, qty: t.qty_milli, dir: inward ? 'IN' : 'OUT', warehouseId: whId, given: tracking });
+      const parts = splitValue(v, slices);
+      for (const [i, x] of slices.entries()) await record(c, orgId, actor, { itemId: t.item_id, qty: inward ? x.qty : -x.qty, value: inward ? parts[i]! : -parts[i]!, date: fresh.d as string, source: kind as 'BILL', documentId: id, entryId: costed?.entryId ?? posted.entryId, memo: number, costed: sold, override, warehouseId: whId, batch: x.batch, expiry: x.expiry, serial: x.serial });
     }
   }
   await audit(c, orgId, { actor, action: 'document.issued', entityType: 'document', entityId: id, detail: { kind, number, entryNo: posted.entryNo, total: paiseToString(total) } });
