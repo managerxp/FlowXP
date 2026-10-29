@@ -159,6 +159,11 @@ export const gstr3b = async (c: Db, orgId: bigint, month: string) => {
       else if (d.kind === 'BILL') { add(itc, l, d.inter_state); if (d.reverse_charge) add(rev, l, d.inter_state); } else if (l.tax_rate_bp === 0) add(nil, l, false, sign); else add(out, l, d.inter_state, sign);
     }
   }
+  // an asset sold with GST is an outward supply of the month it was sold in
+  for (const s of (await c.query(`SELECT proceeds_minor, sale_gst_minor, sale_inter_state FROM fixed_assets WHERE status = 'DISPOSED' AND sale_gst_minor > 0 AND disposed_on BETWEEN $1::date AND $2::date`, [`${month}-01`, monthEnd(month)])).rows) {
+    out.txval += rs(s.proceeds_minor);
+    if (s.sale_inter_state) out.iamt += rs(s.sale_gst_minor); else { const half = (s.sale_gst_minor as bigint) / 2n; out.camt += rs(half); out.samt += rs((s.sale_gst_minor as bigint) - half); }
+  }
   // GST paid on expenses (and taken back out when an expense is voided) is credit too
   const exp = (await c.query(
     `SELECT a.system_key, COALESCE(SUM(CASE WHEN l.side = 'D' THEN l.base_amount_minor ELSE -l.base_amount_minor END), 0)::bigint AS net

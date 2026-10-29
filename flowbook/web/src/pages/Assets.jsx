@@ -48,8 +48,10 @@ const AddAsset = ({ onDone, onClose }) => {
 const Dispose = ({ asset, onDone, onClose }) => {
   const { o } = useSession();
   const a = useAction();
-  const [f, setF] = useState({ date: today(), proceeds: '', receivedIn: 'BANK' });
-  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const [f, setF] = useState({ date: today(), proceeds: '', receivedIn: 'BANK', taxCode: '', interState: false });
+  const rates = useLoad(() => o('/tax-rates'), []);
+  const codes = [...new Set((rates.data || []).map((r) => r.code))].filter((c) => c !== 'GST0');
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   const book = Number(asset.book_value_minor);
   const gain = f.proceeds === '' ? null : Number(f.proceeds) - book;
   return (
@@ -58,10 +60,12 @@ const Dispose = ({ asset, onDone, onClose }) => {
       <div className="form">
         <Field label="Date"><input type="date" value={f.date} onChange={set('date')} required /></Field>
         <Field label="Sold for (₹)" hint="Leave empty or 0 for a write-off"><input inputMode="decimal" value={f.proceeds} onChange={set('proceeds')} /></Field>
+        {Number(f.proceeds) > 0 && <Field label="GST charged on the sale" hint="On top of the price; it goes to output tax and into GSTR-3B"><select value={f.taxCode} onChange={set('taxCode')}><option value="">None</option>{codes.map((c) => <option key={c}>{c}</option>)}</select></Field>}
+        {Number(f.proceeds) > 0 && f.taxCode && <p className="check"><input id="ist" type="checkbox" checked={f.interState} onChange={set('interState')} /><label htmlFor="ist">Buyer is in another state (IGST)</label></p>}
         {Number(f.proceeds) > 0 && <Field label="Money went into"><select value={f.receivedIn} onChange={set('receivedIn')}><option value="BANK">Bank</option><option value="CASH">Cash</option><option value="UPI_CLEARING">UPI</option></select></Field>}
       </div>
       <p className="muted">Worth ₹{inr(book)} on the books{gain !== null ? `: ${gain >= 0 ? 'gain' : 'loss'} of ₹${inr(Math.abs(gain))}` : ''}.</p>
-      <p className="actions"><Btn kind="danger" busy={a.busy} onClick={() => a.run(async () => { await o(`/assets/${asset.id}/dispose`, { method: 'POST', body: { date: f.date, ...(Number(f.proceeds) > 0 && { proceeds: f.proceeds, receivedIn: f.receivedIn }) } }); onDone(); onClose(); })}>{Number(f.proceeds) > 0 ? 'Record the sale' : 'Write it off'}</Btn><Btn onClick={onClose}>Cancel</Btn></p>
+      <p className="actions"><Btn kind="danger" busy={a.busy} onClick={() => a.run(async () => { await o(`/assets/${asset.id}/dispose`, { method: 'POST', body: { date: f.date, ...(Number(f.proceeds) > 0 && { proceeds: f.proceeds, receivedIn: f.receivedIn, ...(f.taxCode && { taxCode: f.taxCode, interState: f.interState }) }) } }); onDone(); onClose(); })}>{Number(f.proceeds) > 0 ? 'Record the sale' : 'Write it off'}</Btn><Btn onClick={onClose}>Cancel</Btn></p>
     </Confirm>
   );
 };

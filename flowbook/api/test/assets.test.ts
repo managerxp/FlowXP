@@ -5,6 +5,8 @@ import type { Db } from '../src/db.ts';
 import { addAsset, assetRegister, cancelAsset, disposeAsset, runDepreciation } from '../src/assets.ts';
 import type { AssetIn } from '../src/assets.ts';
 import { openFinancialYear } from '../src/periods.ts';
+import { seedTaxRates } from '../src/masters.ts';
+import { gstr3b } from '../src/gstr.ts';
 import { newOrg, setup } from './helpers.ts';
 
 const { pool, skip, cleanup } = await setup();
@@ -80,4 +82,18 @@ test('an asset already owned comes in against opening balances, and a mistaken o
   await run(org, (c) => cancelAsset(c, org, id, 'entered twice', '2026-05-02', 't'));
   assert.equal((await run(org, (c) => assetRegister(c))).assets.length, 1);
   assert.equal(await bal(org, 'FIXED_ASSETS'), 5_000_000n);
+});
+
+test('GST on the sale of an asset goes to output tax, not to the gain, and shows in GSTR-3B for the month', { skip }, async () => {
+  const org = await books();
+  await run(org, (c) => seedTaxRates(c, org));
+  const { id } = await run(org, (c) => addAsset(c, org, laptop, 't'));
+  await run(org, (c) => runDepreciation(c, org, '2026-07', 't'));
+  await assert.rejects(run(org, (c) => disposeAsset(c, org, id, { date: '2026-08-15', proceeds: '0', taxCode: 'GST18' }, 't')), /needs a sale price/);
+  const out = await run(org, (c) => disposeAsset(c, org, id, { date: '2026-08-15', proceeds: '100000', receivedIn: 'BANK', taxCode: 'GST18' }, 't'));
+  assert.equal(out.gain, -1_200_000n, 'the gain or loss is worked on the price before GST');
+  assert.equal(await bal(org, 'OUTPUT_CGST'), -900_000n); assert.equal(await bal(org, 'OUTPUT_SGST'), -900_000n);
+  assert.equal(await bal(org, 'BANK'), -12_000_000n + 11_800_000n, 'the bank got the price plus GST');
+  const f = (await run(org, (c) => gstr3b(c, org, '2026-08'))).file.sup_details.osup_det;
+  assert.deepEqual([f.txval, f.camt, f.samt, f.iamt], [100000, 9000, 9000, 0]);
 });

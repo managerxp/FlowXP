@@ -194,9 +194,9 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     const b = req.body as { through: string; overrideReason?: string };
     return run(req, (c, orgId) => runDepreciation(c, orgId, b.through, me(req), lockOverride(req, b.overrideReason)));
   });
-  app.post(`${base}/assets/:id/dispose`, { preHandler: scope('journal.post'), schema: { ...idParam, body: { type: 'object', required: ['date'], additionalProperties: false, properties: { date: { type: 'string', pattern: DATE }, proceeds: { type: 'string', pattern: AMOUNT }, receivedIn: acct, ...override } } } }, async (req) => {
-    const b = req.body as { date: string; proceeds?: string; receivedIn?: string; overrideReason?: string };
-    return run(req, (c, orgId) => disposeAsset(c, orgId, BigInt((req.params as { id: string }).id), { date: b.date, proceeds: b.proceeds ?? '0', receivedIn: b.receivedIn }, me(req), lockOverride(req, b.overrideReason)));
+  app.post(`${base}/assets/:id/dispose`, { preHandler: scope('journal.post'), schema: { ...idParam, body: { type: 'object', required: ['date'], additionalProperties: false, properties: { date: { type: 'string', pattern: DATE }, proceeds: { type: 'string', pattern: AMOUNT }, receivedIn: acct, taxCode: { type: 'string', minLength: 1, maxLength: 20 }, interState: { type: 'boolean' }, ...override } } } }, async (req) => {
+    const b = req.body as { date: string; proceeds?: string; receivedIn?: string; taxCode?: string; interState?: boolean; overrideReason?: string };
+    return run(req, (c, orgId) => disposeAsset(c, orgId, BigInt((req.params as { id: string }).id), { date: b.date, proceeds: b.proceeds ?? '0', receivedIn: b.receivedIn, taxCode: b.taxCode, interState: b.interState }, me(req), lockOverride(req, b.overrideReason)));
   });
   app.post(`${base}/assets/:id/cancel`, { preHandler: scope('journal.post'), schema: { ...idParam, body: voidBody } }, async (req) => {
     const b = req.body as { date: string; reason: string; overrideReason?: string };

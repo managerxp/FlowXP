@@ -2,7 +2,7 @@ import { audit } from './audit.ts';
 import type { Db } from './db.ts';
 import { LedgerError, post, reverse } from './ledger.ts';
 import type { LineInput } from './ledger.ts';
-import { paiseToString, roundDiv, toPaise } from './money.ts';
+import { paiseToString, roundDiv, taxOn, toPaise } from './money.ts';
 
 /* Fixed assets. Buying one posts Dr Fixed assets at cost; depreciation is posted a month at a time (Dr Depreciation, Cr Accumulated depreciation), starting
    with the month of its start date as a full month; selling or writing it off clears cost and accumulated depreciation and posts the difference as a gain or loss.
@@ -115,7 +115,7 @@ export const runDepreciation = async (c: Db, orgId: bigint, through: string, act
 };
 
 /** Sell or write off an asset on a date. Depreciation must be up to date through the month before. Proceeds go to the account you say (0 for a write-off). */
-export const disposeAsset = async (c: Db, orgId: bigint, id: bigint, o: { date: string; proceeds: string; receivedIn?: string }, actor: string, override?: { reason: string }) => {
+export const disposeAsset = async (c: Db, orgId: bigint, id: bigint, o: { date: string; proceeds: string; receivedIn?: string; taxCode?: string; interState?: boolean }, actor: string, override?: { reason: string }) => {
   asDate(o.date, 'the date');
   const a = (await c.query(`SELECT id, name, status, start_date::text AS start_date, cost_minor, salvage_minor, method, opening_accum_minor, purchase_date::text AS purchase_date FROM fixed_assets WHERE id = $1 FOR UPDATE`, [id])).rows[0];
   if (!a) throw new LedgerError('not_found', 'no such asset');
@@ -128,20 +128,29 @@ export const disposeAsset = async (c: Db, orgId: bigint, id: bigint, o: { date: 
   const proceeds = toPaise(o.proceeds || '0');
   if (proceeds < 0n) throw new LedgerError('bad_amount', 'proceeds cannot be negative');
   if (proceeds > 0n && !o.receivedIn) throw new LedgerError('account_required', 'say where the money went (Bank, Cash...)');
+  let gst = 0n; let rateBp = 0;
+  if (o.taxCode) {
+    if (proceeds === 0n) throw new LedgerError('bad_amount', 'GST needs a sale price');
+    const rate = (await c.query(`SELECT rate_bp FROM tax_rates WHERE code = $1 AND effective_from <= $2::date ORDER BY effective_from DESC LIMIT 1`, [o.taxCode, o.date])).rows[0];
+    if (!rate) throw new LedgerError('unknown_tax_code', `no rate for ${o.taxCode} on ${o.date}`);
+    rateBp = rate.rate_bp as number; gst = taxOn(proceeds, rateBp);
+  }
+  const half = gst / 2n;
   const accumulated = (a.opening_accum_minor as bigint) + (dep.s as bigint);
   const book = (a.cost_minor as bigint) - accumulated;
   const gain = proceeds - book;
   const posted = await post(c, orgId, {
     date: o.date, sourceType: 'asset', sourceId: `disp-${id}`, kind: 'ASSET', memo: `${proceeds > 0n ? 'Sale' : 'Write-off'} of asset: ${String(a.name).slice(0, 100)}`, actor, override,
     lines: [
-      ...(proceeds > 0n ? [{ account: o.receivedIn as string, side: 'D' as const, amount: proceeds }] : []),
+      ...(proceeds > 0n ? [{ account: o.receivedIn as string, side: 'D' as const, amount: proceeds + gst }] : []),
       ...(accumulated > 0n ? [{ account: 'ACCUM_DEPRECIATION', side: 'D' as const, amount: accumulated }] : []),
       ...(gain < 0n ? [{ account: 'ASSET_SALE_GAIN_LOSS', side: 'D' as const, amount: -gain }] : []),
       { account: 'FIXED_ASSETS', side: 'C', amount: a.cost_minor as bigint },
-      ...(gain > 0n ? [{ account: 'ASSET_SALE_GAIN_LOSS', side: 'C' as const, amount: gain }] : [])
+      ...(gain > 0n ? [{ account: 'ASSET_SALE_GAIN_LOSS', side: 'C' as const, amount: gain }] : []),
+      ...(gst > 0n ? (o.interState ? [{ account: 'OUTPUT_IGST', side: 'C' as const, amount: gst, taxRateBp: rateBp }] : [{ account: 'OUTPUT_CGST', side: 'C' as const, amount: half, taxRateBp: rateBp }, { account: 'OUTPUT_SGST', side: 'C' as const, amount: gst - half, taxRateBp: rateBp }]) : [])
     ]
   });
-  await c.query(`UPDATE fixed_assets SET status = 'DISPOSED', disposed_on = $2, proceeds_minor = $3, disposal_entry_id = $4 WHERE id = $1`, [id, o.date, proceeds, posted.entryId]);
+  await c.query(`UPDATE fixed_assets SET status = 'DISPOSED', disposed_on = $2, proceeds_minor = $3, disposal_entry_id = $4, sale_gst_minor = $5, sale_inter_state = $6 WHERE id = $1`, [id, o.date, proceeds, posted.entryId, gst, Boolean(o.interState)]);
   await audit(c, orgId, { actor, action: 'asset.disposed', entityType: 'fixed_asset', entityId: id, detail: { proceeds: paiseToString(proceeds), gain: paiseToString(gain) } });
   return { entryNo: posted.entryNo, gain };
 };
