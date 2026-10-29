@@ -77,7 +77,7 @@ const Warehouses = ({ rows, onDone }) => {
           <td>{w.active && !w.is_default && <button className="linkish" onClick={() => patch(w, { makeDefault: true })}>Make default</button>}{' '}
             {w.active && !w.is_default && <button className="linkish" onClick={() => patch(w, { active: false })}>Switch off</button>}{!w.active && <button className="linkish" onClick={() => patch(w, { active: true })}>Switch on</button>}</td></tr>)}
       </Table>
-      <form className="form" onSubmit={(e) => { e.preventDefault(); a.run(async () => { await o('/warehouses', { method: 'POST', body: { name } }); setName(''); await onDone(); }, 'Warehouse added.'); }}>
+      <form className="form" style={{ marginTop: '1rem' }} onSubmit={(e) => { e.preventDefault(); a.run(async () => { await o('/warehouses', { method: 'POST', body: { name } }); setName(''); await onDone(); }, 'Warehouse added.'); }}>
         <Field label="New warehouse"><input value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} /></Field>
         <div className="wide actions"><Btn busy={a.busy}>Add</Btn></div>
       </form>

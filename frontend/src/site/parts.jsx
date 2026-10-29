@@ -144,7 +144,7 @@ export const Connector = () => (
 
 /* The closing call every public page ends on: a brand card that sits over the top of the footer
    (index.css gives the footer room for it when main ends with .final-cta). */
-export const FinalCta = ({ title, lead, secondary = { to: '/contact', label: 'Talk to us' } }) => (
+export const FinalCta = ({ title, lead, secondary = { to: '/contact', label: 'Talk to us' }, primary = { to: '/signup' } }) => (
   <section className="final-cta relative z-10 pt-8 sm:pt-12">
     <Container>
       <Reveal className="relative -mb-24 overflow-hidden rounded-[2rem] bg-brand-500 px-6 py-14 text-center shadow-lg sm:-mb-28 sm:px-12 sm:py-16">
@@ -152,7 +152,7 @@ export const FinalCta = ({ title, lead, secondary = { to: '/contact', label: 'Ta
         <h2 className="relative mx-auto max-w-2xl text-h2 font-semibold text-white">{title}</h2>
         {lead && <p className="relative mx-auto mt-4 max-w-xl text-lead text-white/80">{lead}</p>}
         <div className="relative mt-8 flex flex-wrap justify-center gap-3">
-          <Button to="/signup" size="lg" variant="secondary" className="border-transparent">Start free trial</Button>
+          <Button {...primary} size="lg" variant="secondary" className="border-transparent">Start free trial</Button>
           {secondary && <Button to={secondary.to} size="lg" variant="ghost" className="text-white ring-1 ring-white/40 hover:bg-white/10 hover:text-white">{secondary.label}</Button>}
         </div>
       </Reveal>

@@ -91,7 +91,7 @@ const Accounts = ({ list, rates, onDone }) => {
       <Table head={['Account', '>Balance', '>Worth in rupees']}>
         {list.map((x) => <tr key={x.id}><td>{x.name}</td><td className="r num">{x.currency === 'INR' ? '₹' : `${x.currency} `}{signed(x.book_balance_minor)}</td><td className="r num">{x.currency === 'INR' ? '' : `₹${signed(x.rupee_value_minor)}`}</td></tr>)}
       </Table>
-      <form className="form" onSubmit={add}>
+      <form className="form" onSubmit={add} style={{ marginTop: '1rem' }}>
         <Field label="New account"><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required maxLength={80} /></Field>
         <Field label="Holds"><select value={f.currency} onChange={(e) => setF({ ...f, currency: e.target.value })}><option value="INR">Rupees (₹)</option>{Object.entries(rates?.currencies || {}).map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>
         <div className="wide actions"><Btn busy={a.busy}>Add account</Btn></div>

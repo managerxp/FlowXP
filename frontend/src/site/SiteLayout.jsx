@@ -23,13 +23,11 @@ import CookieNotice from './CookieNotice.jsx';
    separately in both the desktop nav and the mobile panel below. */
 const NAV = [   // text: site:header.<key>
   { to: '/features', key: 'product' },
+  { to: '/flowbook', key: 'flowbook' },
   { to: '/ai', key: 'aiManager' },
   { to: '/integrations', key: 'integrations' },
-  { to: '/flowbook', key: 'flowbook' },
-  { to: '/guide', key: 'guide' },
-  { to: '/pricing', key: 'pricing' },
-  { to: '/about', key: 'about' }
-];
+  { to: '/pricing', key: 'pricing' }
+];   // Setup guide and About live in the footer
 
 /* The logo goes home, and when you are already on the home page it scrolls back to the top (a link to the page you are
    on does nothing by itself). The header's and the footer's logo are both this. */

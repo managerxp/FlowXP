@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { api } from './api.js';
 import { SessionProvider, useSession } from './session.jsx';
-import { wordmark } from './lib.js';
+import { SITE_URL, wordmark } from './lib.js';
 import { Btn, Card, Err, Field, Loading, useAction } from './ui.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import { DocForm, DocList, DocView } from './pages/Documents.jsx';
@@ -60,7 +60,8 @@ const initials = (name = '') => name.split(/s+/).filter(Boolean).slice(0, 2).map
 
 const AuthScreen = () => {
   const { signIn } = useSession();
-  const [mode, setMode] = useState('login');
+  const loc = useLocation();
+  const [mode, setMode] = useState(() => (loc.pathname === '/signup' || new URLSearchParams(loc.search).get('mode') === 'signup' ? 'register' : 'login'));   // the website's Start free trial lands here
   const [f, setF] = useState({ name: '', email: '', password: '' });
   const a = useAction();
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
@@ -68,15 +69,15 @@ const AuthScreen = () => {
   return (
     <div className="auth"><Card>
       <Wordmark />
-      <p className="muted">{mode === 'login' ? 'Sign in to your books.' : 'Create your account. You set up your business next.'}</p>
+      <p className="muted">{mode === 'login' ? 'Sign in to your books.' : 'Start your 7-day free trial. No card needed. You set up your business next.'}</p>
       <Err>{a.error}</Err>
       <form className="form" onSubmit={submit}>
         {mode === 'register' && <Field label="Your name"><input value={f.name} onChange={set('name')} required autoComplete="name" /></Field>}
         <Field label="Email"><input type="email" value={f.email} onChange={set('email')} required autoComplete="email" /></Field>
         <Field label="Password" hint={mode === 'register' ? 'At least 10 characters' : undefined}><input type="password" value={f.password} onChange={set('password')} required autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></Field>
-        <Btn kind="primary" busy={a.busy}>{mode === 'login' ? 'Sign in' : 'Create account'}</Btn>
+        <Btn kind="primary" busy={a.busy}>{mode === 'login' ? 'Sign in' : 'Start free trial'}</Btn>
       </form>
-      <p className="muted"><button className="linkish" onClick={() => { a.setError(''); setMode(mode === 'login' ? 'register' : 'login'); }}>{mode === 'login' ? 'New here? Create an account' : 'Have an account? Sign in'}</button></p>
+      <p className="muted"><button className="linkish" onClick={() => { a.setError(''); setMode(mode === 'login' ? 'register' : 'login'); }}>{mode === 'login' ? 'New here? Start a 7-day free trial' : 'Have an account? Sign in'}</button></p>
     </Card></div>
   );
 };
@@ -111,6 +112,16 @@ const CreateOrg = ({ first }) => {
   );
 };
 
+/** The free trial: days left while it runs, and what happens once it ends. */
+const TrialBanner = ({ org }) => {
+  if (!org || org.plan !== 'TRIAL') return null;
+  const left = Number(org.trial_days_left);
+  const contact = <a href={`${SITE_URL}/contact`} target="_blank" rel="noreferrer">contact us</a>;
+  return left > 0
+    ? <p className={`notice ${left <= 2 ? 'warn' : 'ok'}`} role="status"><strong>Free trial:</strong> {left} {left === 1 ? 'day' : 'days'} left. Everything works. To keep going after that, {contact}.</p>
+    : <p className="notice bad" role="alert"><strong>Your free trial has ended.</strong> Your books are safe and you can still look at everything, but nothing new can be saved. To continue, {contact}.</p>;
+};
+
 const Shell = () => {
   const { user, orgs, org, pick, signOut } = useSession();
   const [open, setOpen] = useState(false);
@@ -141,6 +152,7 @@ const Shell = () => {
           <button className="btn small" onClick={signOut} title={user.email}>Sign out</button>
         </header>
       <main key={`${org?.id}`}>
+        <TrialBanner org={org} />
         {!org ? <CreateOrg first /> : (
           <Routes location={loc}>
             <Route path="/" element={<Dashboard />} />

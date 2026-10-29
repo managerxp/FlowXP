@@ -107,9 +107,12 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
   const scope = (permission: string) => async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
     if (!(await authenticate(req, reply))) return;
     const raw = (req.params as { orgId?: string }).orgId ?? '';
-    const m = /^\d{1,18}$/.test(raw) ? (await pool.query('SELECT role FROM memberships WHERE organization_id = $1 AND user_id = $2', [raw, req.session?.userId])).rows[0] : null;
+    const m = /^\d{1,18}$/.test(raw) ? (await pool.query(
+      `SELECT m.role, o.plan = 'TRIAL' AND o.trial_ends_at <= now() AS trial_over FROM memberships m JOIN organizations o ON o.id = m.organization_id WHERE m.organization_id = $1 AND m.user_id = $2`, [raw, req.session?.userId])).rows[0] : null;
     if (!m) { reply.code(404).send({ error: { code: 'not_found', message: 'no such organization' } }); return; }
     if (!can(m.role as Role, permission)) { reply.code(403).send({ error: { code: 'forbidden', message: `your role cannot do this (${permission})` } }); return; }
+    // a finished free trial keeps the books readable and exportable but takes no new entries
+    if (m.trial_over && req.method !== 'GET' && req.method !== 'HEAD') { reply.code(402).send({ error: { code: 'trial_ended', message: 'your 7-day free trial has ended. Your books are safe and can still be read; contact us to continue' } }); return; }
     req.org = { id: BigInt(raw), role: m.role as Role };
   };
   const me = (req: FastifyRequest) => `user:${req.session?.userId}`;
@@ -157,7 +160,7 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
   app.get('/v1/me', async (req, reply) => {
     if (!(await authenticate(req, reply))) return;
     const orgs = (await pool.query(
-      `SELECT o.id, o.name, m.role FROM memberships m JOIN organizations o ON o.id = m.organization_id WHERE m.user_id = $1 ORDER BY o.name`, [req.session?.userId])).rows;
+      `SELECT o.id, o.name, m.role, o.plan, o.trial_ends_at, GREATEST(0, CEIL(EXTRACT(EPOCH FROM (o.trial_ends_at - now())) / 86400))::int AS trial_days_left FROM memberships m JOIN organizations o ON o.id = m.organization_id WHERE m.user_id = $1 ORDER BY o.name`, [req.session?.userId])).rows;
     return { user: { id: req.session?.userId, name: req.session?.name, email: req.session?.email }, organizations: orgs };
   });
 

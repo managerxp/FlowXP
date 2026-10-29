@@ -168,6 +168,7 @@ tr.total td { font-weight: 700; border-top: 2px solid var(--line); background: v
 /* ---- sign in */
 .auth { min-height: 100vh; display: grid; place-items: center; padding: 1rem; background: var(--page); }
 .auth .card { width: min(26rem, 100%); padding: 1.75rem; border-radius: var(--radius-panel); animation: panel-in var(--duration-moderate) var(--ease-decelerate) both; }
+.auth form + .muted { margin-top: 1rem; }
 .auth .wordmark { font-size: 1.75rem; display: block; margin-bottom: .5rem; } .auth .form { grid-template-columns: 1fr; }
 
 @media print {
