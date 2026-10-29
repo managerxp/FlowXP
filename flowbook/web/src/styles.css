@@ -153,9 +153,10 @@ tr.total td { font-weight: 700; border-top: 2px solid var(--line); background: v
 .lines { display: grid; gap: .75rem; }
 .line { border: 1px solid var(--line); border-radius: 10px; padding: .875rem; display: grid; gap: .75rem; grid-template-columns: repeat(2, 1fr); background: var(--surface-2); animation: panel-in var(--duration-normal) var(--ease-decelerate) both; }
 .line .wide { grid-column: 1 / -1; }
-@media (min-width: 900px) { .line { grid-template-columns: 2fr 2fr 1fr 1fr 1fr 1fr auto; align-items: end; } .line .wide { grid-column: auto; } }
+@media (min-width: 900px) { .line { grid-template-columns: 2fr 2fr 1fr 1fr 1fr 1fr 1fr auto; align-items: end; } .line .wide { grid-column: auto; } }
 
 .kv { display: grid; grid-template-columns: auto 1fr; gap: .375rem 1.5rem; margin: 0; font-size: .875rem; } .kv dt { color: var(--ink-500); } .kv dd { margin: 0; }
+.words { text-align: right; font-style: italic; margin: .5rem 0 0; }
 .totals { margin-left: auto; width: min(22rem, 100%); font-size: .875rem; padding-top: .75rem; } .totals div { display: flex; justify-content: space-between; padding: .25rem 0; }
 .totals .grand { border-top: 1px solid var(--line-strong); font-weight: 700; font-size: 1.0625rem; margin-top: .375rem; padding-top: .625rem; }
 .confirm { border: 1px solid var(--line); border-radius: var(--radius-card); padding: 1rem; margin: 0 0 1rem; background: var(--surface); font-size: .875rem; }
@@ -174,3 +175,8 @@ tr.total td { font-weight: 700; border-top: 2px solid var(--line); background: v
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; transition-duration: 0.01ms !important; }
   .btn:hover:not(:disabled) { transform: none; }
 }
+
+.problems { list-style: none; margin: 0 0 .75rem; padding: 0; display: grid; gap: .5rem; }
+.problems li { padding: .625rem .75rem; border-radius: 8px; font-size: .875rem; border: 1px solid var(--line); }
+.problems li.bad { border-color: var(--danger); }
+.problems li.warn { border-color: var(--warning); }

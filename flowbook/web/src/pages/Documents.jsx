@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLoad } from '../api.js';
-import { STATES, addDays, inr, showDate, today } from '../lib.js';
+import { STATES, UNITS, addDays, amountInWords, inr, showDate, today, unitLabel } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { Async, Badge, Btn, Card, Confirm, Empty, Err, Field, Money, Note, Page, Table, Tabs, useAction } from '../ui.jsx';
 
@@ -39,7 +39,7 @@ export const DocList = ({ kind }) => {
   );
 };
 
-const blankLine = () => ({ itemId: '', description: '', hsnSac: '', quantity: '1', unitPrice: '', discount: '', taxCode: 'GST18' });
+const blankLine = () => ({ itemId: '', description: '', hsnSac: '', unit: '', quantity: '1', unitPrice: '', discount: '', taxCode: 'GST18' });
 
 export const DocForm = ({ kind }) => {
   const { id } = useParams();
@@ -58,7 +58,7 @@ export const DocForm = ({ kind }) => {
     const d = existing.data;
     if (!d) return;
     setF({ partyId: String(d.party_id), date: d.issue_date || today(), dueDate: d.due_date || '', placeOfSupply: d.place_of_supply || '', supplierRef: d.supplier_ref || '', relatedDocumentId: d.related_document_id ? String(d.related_document_id) : '',
-      memo: d.memo || '', roundOff: Number(d.round_off_minor) !== 0 || d.status === 'DRAFT', lines: d.lines.map((l) => ({ itemId: l.item_id ? String(l.item_id) : '', description: l.description || '', hsnSac: l.hsn_sac || '', quantity: l.quantity, unitPrice: l.unit_price_minor, discount: Number(l.discount_minor) ? l.discount_minor : '', taxCode: l.tax_code || '' })) });
+      memo: d.memo || '', roundOff: Number(d.round_off_minor) !== 0 || d.status === 'DRAFT', lines: d.lines.map((l) => ({ itemId: l.item_id ? String(l.item_id) : '', description: l.description || '', hsnSac: l.hsn_sac || '', unit: l.unit || '', quantity: l.quantity, unitPrice: l.unit_price_minor, discount: Number(l.discount_minor) ? l.discount_minor : '', taxCode: l.tax_code || '' })) });
   }, [existing.data]);
   useEffect(() => { if (!id && search.get('partyId')) setF((x) => ({ ...x, partyId: search.get('partyId') })); }, [id, search]);
 
@@ -66,7 +66,7 @@ export const DocForm = ({ kind }) => {
   const setLine = (i, patch) => setF({ ...f, lines: f.lines.map((l, n) => (n === i ? { ...l, ...patch } : l)) });
   const pickItem = (i, itemId) => {
     const it = (items.data || []).find((x) => String(x.id) === itemId);
-    setLine(i, it ? { itemId, description: it.name, hsnSac: it.hsn_sac || '', taxCode: it.tax_code || 'GST18', unitPrice: (kind.api === 'bills' ? it.purchase_price_minor : it.sale_price_minor) || '' } : { itemId: '' });
+    setLine(i, it ? { itemId, description: it.name, hsnSac: it.hsn_sac || '', unit: it.unit || '', taxCode: it.tax_code || 'GST18', unitPrice: (kind.api === 'bills' ? it.purchase_price_minor : it.sale_price_minor) || '' } : { itemId: '' });
   };
   const codes = [...new Set((rates.data || []).map((r) => r.code))];
 
@@ -75,7 +75,7 @@ export const DocForm = ({ kind }) => {
     a.run(async () => {
       const body = { partyId: f.partyId, date: f.date, roundOff: f.roundOff, memo: f.memo || undefined, dueDate: f.dueDate || undefined, placeOfSupply: f.placeOfSupply || undefined,
         supplierRef: kind.api === 'bills' ? f.supplierRef || undefined : undefined, relatedDocumentId: f.relatedDocumentId || undefined,
-        lines: f.lines.map((l) => ({ itemId: l.itemId || undefined, description: l.description || undefined, hsnSac: l.hsnSac || undefined, quantity: String(l.quantity), unitPrice: String(l.unitPrice || '0'), discount: l.discount ? String(l.discount) : undefined, taxCode: l.taxCode || undefined })) };
+        lines: f.lines.map((l) => ({ itemId: l.itemId || undefined, description: l.description || undefined, hsnSac: l.hsnSac || undefined, unit: l.unit || undefined, quantity: String(l.quantity), unitPrice: String(l.unitPrice || '0'), discount: l.discount ? String(l.discount) : undefined, taxCode: l.taxCode || undefined })) };
       const out = id ? await o(`/${kind.api}/${id}`, { method: 'PUT', body }) : await o(`/${kind.api}`, { method: 'POST', body });
       nav(`/${kind.path}/${out.id}`);
     });
@@ -117,6 +117,7 @@ export const DocForm = ({ kind }) => {
                 <Field label="Item"><select value={l.itemId} onChange={(e) => pickItem(i, e.target.value)}><option value="">Not from the list</option>{(items.data || []).map((it) => <option key={it.id} value={it.id}>{it.name}</option>)}</select></Field>
                 <Field label="Description"><input value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} /></Field>
                 <Field label="Qty"><input inputMode="decimal" value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} required /></Field>
+                <Field label="Unit"><select value={l.unit} onChange={(e) => setLine(i, { unit: e.target.value })}><option value="">–</option>{UNITS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select></Field>
                 <Field label="Price (₹)"><input inputMode="decimal" value={l.unitPrice} onChange={(e) => setLine(i, { unitPrice: e.target.value })} required /></Field>
                 <Field label="Discount (₹)"><input inputMode="decimal" value={l.discount} onChange={(e) => setLine(i, { discount: e.target.value })} /></Field>
                 <Field label="GST"><select value={l.taxCode} onChange={(e) => setLine(i, { taxCode: e.target.value })}>{codes.length ? codes.map((c) => <option key={c}>{c}</option>) : <option>{l.taxCode}</option>}</select></Field>
@@ -182,7 +183,7 @@ export const DocView = ({ kind }) => {
         </Card>
         <Card title="Lines">
           <Table head={['#', 'Description', 'HSN/SAC', '>Qty', '>Price', 'GST', '>Taxable', '>Tax']}>
-            {d.lines.map((l) => (<tr key={l.id}><td>{l.line_no}</td><td>{l.description}</td><td>{l.hsn_sac}</td><td className="r">{l.quantity}</td><td className="r num">{inr(l.unit_price_minor)}</td><td>{l.tax_code} {l.tax_rate_bp != null ? `(${l.tax_rate_bp / 100}%)` : ''}</td><td className="r num">{inr(l.taxable_minor)}</td><td className="r num">{inr(l.tax_minor)}</td></tr>))}
+            {d.lines.map((l) => (<tr key={l.id}><td>{l.line_no}</td><td>{l.description}</td><td>{l.hsn_sac}</td><td className="r">{l.quantity}{l.unit ? ' ' + unitLabel(l.unit) : ''}</td><td className="r num">{inr(l.unit_price_minor)}</td><td>{l.tax_code} {l.tax_rate_bp != null ? `(${l.tax_rate_bp / 100}%)` : ''}</td><td className="r num">{inr(l.taxable_minor)}</td><td className="r num">{inr(l.tax_minor)}</td></tr>))}
           </Table>
           <div className="totals">
             <div><span>Subtotal</span><Money v={d.subtotal_minor} /></div><div><span>Tax</span><Money v={d.tax_minor} /></div>
@@ -190,6 +191,7 @@ export const DocView = ({ kind }) => {
             <div className="grand"><span>Total</span><Money v={d.total_minor} /></div>
             {d.status === 'ISSUED' && <div><span>Still to settle</span><Money v={d.balance_minor} strong /></div>}
           </div>
+          <p className="muted words">{amountInWords(d.total_minor)}</p>
         </Card>
         {d.allocations.length > 0 && (
           <Card title="Payments and credits against this">

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLoad } from '../api.js';
 import { financialYear, inr, today } from '../lib.js';
 import { useSession } from '../session.jsx';
+import { GstReturns, Statement } from './Gst.jsx';
 import { Async, Badge, Card, Empty, Field, Money, Page, Table, Tabs } from '../ui.jsx';
 
 const Range = ({ r, set, one }) => (
@@ -72,10 +73,10 @@ export default () => {
   const asOfOnly = ['bs', 'ar', 'ap'].includes(tab);
   return (
     <Page title="Reports" lead={fy.label + ' by default. Change the dates to look at any period.'} actions={<button className="btn no-print" onClick={() => window.print()}>Print</button>}>
-      <Tabs value={tab} onChange={setTab} tabs={[['pnl', 'Profit and loss'], ['bs', 'Balance sheet'], ['tb', 'Trial balance'], ['ar', 'Who owes you'], ['ap', 'Who you owe'], ['chk', 'Checks']]} />
-      {tab !== 'chk' && <Range r={r} set={setR} one={asOfOnly} />}
+      <Tabs value={tab} onChange={setTab} tabs={[['pnl', 'Profit and loss'], ['bs', 'Balance sheet'], ['tb', 'Trial balance'], ['ar', 'Who owes you'], ['ap', 'Who you owe'], ['stmt', 'Party statement'], ['gst', 'GST returns'], ['chk', 'Checks']]} />
+      {!['chk', 'gst'].includes(tab) && <Range r={r} set={setR} one={asOfOnly} />}
       {tab === 'pnl' && <ProfitLoss r={r} />}{tab === 'bs' && <BalanceSheet r={r} />}{tab === 'tb' && <TrialBalance r={r} />}
-      {tab === 'ar' && <Ageing r={r} type="receivables" />}{tab === 'ap' && <Ageing r={r} type="payables" />}{tab === 'chk' && <Checks />}
+      {tab === 'ar' && <Ageing r={r} type="receivables" />}{tab === 'ap' && <Ageing r={r} type="payables" />}{tab === 'chk' && <Checks />}{tab === 'gst' && <GstReturns />}{tab === 'stmt' && <Statement r={r} />}
     </Page>
   );
 };

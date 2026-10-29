@@ -37,3 +37,40 @@ export const statusTone = (s) => ({ ISSUED: 'brand', POSTED: 'ok', SENT: 'ok', D
 export const wordmark = () => { const m = /^(.*?)([A-Z][a-z]+)$/.exec(BRAND); return m ? [m[1], m[2]] : [BRAND, '']; };
 
 export const uuid = () => crypto.randomUUID();
+
+/** Unit codes the GST portal knows (UQC), with a plain label. Only the code is stored. */
+export const UNITS = [['NOS', 'Nos'], ['PCS', 'Pcs'], ['KGS', 'Kg'], ['GMS', 'Gram'], ['TON', 'Tonne'], ['LTR', 'Litre'], ['MLT', 'ml'], ['MTR', 'Metre'], ['CMS', 'cm'], ['FTS', 'Foot'], ['INS', 'Inch'],
+  ['SQF', 'Sq. ft'], ['SQM', 'Sq. m'], ['HRS', 'Hour'], ['DAY', 'Day'], ['BOX', 'Box'], ['BAG', 'Bag'], ['BTL', 'Bottle'], ['DOZ', 'Dozen'], ['PRS', 'Pair'], ['SET', 'Set'], ['ROL', 'Roll'], ['OTH', 'Other']];
+export const unitLabel = (code) => (UNITS.find(([c]) => c === code) || [, code || ''])[1];
+
+const ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+const below100 = (n) => (n < 20 ? ONES[n] : `${TENS[Math.floor(n / 10)]}${n % 10 ? ` ${ONES[n % 10]}` : ''}`);
+const below1000 = (n) => [n >= 100 && `${ONES[Math.floor(n / 100)]} Hundred`, n % 100 && below100(n % 100)].filter(Boolean).join(' ');
+const indian = (n) => {
+  const parts = [[10000000, 'Crore'], [100000, 'Lakh'], [1000, 'Thousand']].map(([size, name]) => { const q = Math.floor(n / size); n %= size; return q && `${indian(q)} ${name}`; });
+  return [...parts, n && below1000(n)].filter(Boolean).join(' ');
+};
+/** "1234.50" to "One Thousand Two Hundred Thirty Four Rupees and Fifty Paise Only" (Indian grouping, from the decimal text so nothing is rounded). */
+export const amountInWords = (value) => {
+  const [r, p = '0'] = String(value ?? '0').replace(/,/g, '').split('.');
+  const rupees = Number(r); const paise = Number(`${p}0`.slice(0, 2));
+  if (!Number.isFinite(rupees) || rupees < 0) return '';
+  const words = [rupees ? `${indian(rupees)} Rupee${rupees === 1 ? '' : 's'}` : paise ? '' : 'Zero Rupees', paise && `${rupees ? 'and ' : ''}${below100(paise)} Paise`].filter(Boolean).join(' ');
+  return `${words} Only`;
+};
+
+/** Monthly-filer due dates for GSTR-1 (11th) and GSTR-3B (20th) of the next month, for the months whose date falls in the next `ahead` days. QRMP and notified extensions differ: check the portal. */
+export const gstDueDates = (from = today(), ahead = 45) => {
+  const start = new Date(`${from}T00:00:00`); const out = [];
+  for (let m = -1; m <= 2; m += 1) {
+    const period = new Date(start.getFullYear(), start.getMonth() + m, 1);
+    const label = period.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+    for (const [form, day] of [['GSTR-1', 11], ['GSTR-3B', 20]]) {
+      const due = new Date(period.getFullYear(), period.getMonth() + 1, day);
+      const days = Math.round((due - start) / 86400000);
+      if (days >= 0 && days <= ahead) out.push({ form, label, due: due.toLocaleDateString('en-CA'), days });
+    }
+  }
+  return out.sort((a, b) => a.days - b.days);
+};

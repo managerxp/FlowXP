@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLoad } from '../api.js';
-import { STATES, isZero } from '../lib.js';
+import { STATES, UNITS, isZero, unitLabel } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { Async, Badge, Btn, Card, Empty, Err, Field, Money, Note, Page, Table, useAction } from '../ui.jsx';
 
@@ -69,12 +69,12 @@ export const Items = () => {
   const save = (e) => {
     e.preventDefault();
     a.run(async () => {
-      await o('/items', { method: 'POST', body: { sku: form.sku, name: form.name, kind: form.kind, ...(form.hsnSac && { hsnSac: form.hsnSac }), taxCode: form.taxCode, ...(form.salePrice && { salePrice: form.salePrice }), ...(form.purchasePrice && { purchasePrice: form.purchasePrice }) } });
+      await o('/items', { method: 'POST', body: { sku: form.sku, name: form.name, kind: form.kind, ...(form.hsnSac && { hsnSac: form.hsnSac }), ...(form.unit && { unit: form.unit }), taxCode: form.taxCode, ...(form.salePrice && { salePrice: form.salePrice }), ...(form.purchasePrice && { purchasePrice: form.purchasePrice }) } });
       setForm(null); await load.reload();
     }, 'Item added.');
   };
   return (
-    <Page title="Items" lead="Products and services you sell or buy. Pick them on a line to fill in the price and GST." actions={<Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm({ sku: '', name: '', kind: 'GOODS', hsnSac: '', taxCode: 'GST18', salePrice: '', purchasePrice: '' }); }}>Add item</Btn>}>
+    <Page title="Items" lead="Products and services you sell or buy. Pick them on a line to fill in the price and GST." actions={<Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm({ sku: '', name: '', kind: 'GOODS', hsnSac: '', unit: 'NOS', taxCode: 'GST18', salePrice: '', purchasePrice: '' }); }}>Add item</Btn>}>
       <Note>{a.done}</Note>
       {form && (
         <Card title="New item"><Err>{a.error}</Err>
@@ -83,6 +83,7 @@ export const Items = () => {
             <Field label="Name"><input value={form.name} onChange={set('name')} required maxLength={160} /></Field>
             <Field label="Kind"><select value={form.kind} onChange={set('kind')}><option value="GOODS">Goods</option><option value="SERVICE">Service</option></select></Field>
             <Field label="HSN / SAC"><input value={form.hsnSac} onChange={set('hsnSac')} maxLength={12} /></Field>
+            <Field label="Unit" hint="Needed for the GST return"><select value={form.unit} onChange={set('unit')}>{UNITS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select></Field>
             <Field label="GST"><select value={form.taxCode} onChange={set('taxCode')}>{(codes.length ? codes : ['GST18']).map((c) => <option key={c}>{c}</option>)}</select></Field>
             <Field label="Selling price (₹)"><input inputMode="decimal" value={form.salePrice} onChange={set('salePrice')} /></Field>
             <Field label="Buying price (₹)"><input inputMode="decimal" value={form.purchasePrice} onChange={set('purchasePrice')} /></Field>
@@ -90,8 +91,8 @@ export const Items = () => {
           </form></Card>
       )}
       <Card><Async load={load}>{(rows) => (
-        <Table head={['Code', 'Name', 'Kind', 'HSN/SAC', 'GST', '>Sells at', '>Buys at']} empty={!rows.length && <Empty>No items yet. You can also type lines by hand on an invoice.</Empty>}>
-          {rows.map((i) => (<tr key={i.id}><td>{i.sku}</td><td>{i.name}</td><td>{i.kind === 'SERVICE' ? 'Service' : 'Goods'}</td><td>{i.hsn_sac}</td><td>{i.tax_code}</td><td className="r">{!isZero(i.sale_price_minor) && <Money v={i.sale_price_minor} />}</td><td className="r">{!isZero(i.purchase_price_minor) && <Money v={i.purchase_price_minor} />}</td></tr>))}
+        <Table head={['Code', 'Name', 'Kind', 'HSN/SAC', 'Unit', 'GST', '>Sells at', '>Buys at']} empty={!rows.length && <Empty>No items yet. You can also type lines by hand on an invoice.</Empty>}>
+          {rows.map((i) => (<tr key={i.id}><td>{i.sku}</td><td>{i.name}</td><td>{i.kind === 'SERVICE' ? 'Service' : 'Goods'}</td><td>{i.hsn_sac}</td><td>{unitLabel(i.unit)}</td><td>{i.tax_code}</td><td className="r">{!isZero(i.sale_price_minor) && <Money v={i.sale_price_minor} />}</td><td className="r">{!isZero(i.purchase_price_minor) && <Money v={i.purchase_price_minor} />}</td></tr>))}
         </Table>
       )}</Async></Card>
       <p className="muted"><Link to="/settings">GST rates</Link> are set in Settings.</p>

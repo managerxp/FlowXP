@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useLoad } from '../api.js';
-import { financialYear, showDate, today } from '../lib.js';
+import { financialYear, gstDueDates, showDate, today } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { Badge, Card, Empty, Money, Page, Table } from '../ui.jsx';
 
@@ -29,6 +29,13 @@ export default () => {
       {checks.data && (checks.data.issues.length
         ? <p className="notice warn" role="alert"><strong>Your books need a look:</strong> {checks.data.issues.slice(0, 3).join(' · ')}{checks.data.issues.length > 3 ? ` (+${checks.data.issues.length - 3} more)` : ''}</p>
         : <p className="notice ok">Books check: every figure agrees with its documents.</p>)}
+
+      <Card title="Coming up" actions={<Link to="/reports">GST returns</Link>}>
+        <Table head={['Return', 'Due', '>In']}>
+          {gstDueDates().map((d) => <tr key={d.form + d.label}><td>{d.form}<div className="muted">{d.label}</div></td><td>{showDate(d.due)}</td><td className="r">{d.days === 0 ? 'today' : `${d.days} days`}</td></tr>)}
+        </Table>
+        <p className="muted">Dates for monthly filers. Quarterly filers (QRMP) and extensions differ, so check the GST portal.</p>
+      </Card>
 
       <Card title="Latest invoices" actions={<Link to="/sales">See all</Link>}>
         {recent.data && (
