@@ -5036,5 +5036,11 @@
   "Nothing recorded in this month.": "इस महीने कुछ दर्ज नहीं है।",
   "What it was for": "यह किसलिए था",
   "Total other income": "कुल अन्य आय",
-  "Discounts given at payment": "भुगतान पर दी गई छूट"
+  "Discounts given at payment": "भुगतान पर दी गई छूट",
+  "Invoices and bills": "इनवॉइस और बिल",
+  "Credit notes (sale returns)": "क्रेडिट नोट (बिक्री वापसी)",
+  "Debit notes (purchase returns)": "डेबिट नोट (खरीद वापसी)",
+  "Document numbers saved": "दस्तावेज़ों के नंबर सहेजे गए",
+  "Document numbers": "दस्तावेज़ों के नंबर",
+  "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "हर नंबर से पहले के अक्षर। इन्हें बदलने पर गिनती जारी रहती है; बन चुके दस्तावेज़ों का नंबर नहीं बदलता।"
 }

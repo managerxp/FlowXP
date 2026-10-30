@@ -5036,5 +5036,11 @@
   "Nothing recorded in this month.": "Nothing recorded in this month.",
   "What it was for": "What it was for",
   "Total other income": "Total other income",
-  "Discounts given at payment": "Discounts given at payment"
+  "Discounts given at payment": "Discounts given at payment",
+  "Invoices and bills": "Invoices and bills",
+  "Credit notes (sale returns)": "Credit notes (sale returns)",
+  "Debit notes (purchase returns)": "Debit notes (purchase returns)",
+  "Document numbers saved": "Document numbers saved",
+  "Document numbers": "Document numbers",
+  "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "The letters before each number. Changing one keeps the numbering going; documents already made keep their number."
 }

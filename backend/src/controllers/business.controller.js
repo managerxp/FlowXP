@@ -144,6 +144,9 @@ export const getCurrent = async (req, res) => {
         financial_year_start_month: b.financial_year_start_month,
         invoice_prefix: b.invoice_prefix,
         invoice_next_number: b.invoice_next_number,
+        credit_note_prefix: b.credit_note_prefix,
+        debit_note_prefix: b.debit_note_prefix,
+        po_prefix: b.po_prefix,
         round_off_enabled: b.round_off_enabled,
         onboarding_step: b.onboarding_step,
         gst_settings: withGstDefaults(b.gst_settings),
@@ -173,6 +176,9 @@ export const getCurrent = async (req, res) => {
 
 /* An allowlist, not `Object.keys(req.body)`. Without it a caller could PATCH
    subscription_status or owner_user_id and grant themselves a paid plan. */
+/* A document-number prefix: 1 to 12 letters, digits or dashes (it is printed before the running number, CN-0001). Stored in capitals. */
+const checkPrefix = (what) => (v) => (/^[A-Za-z0-9-]{1,12}$/.test(String(v ?? '').trim()) ? null : `${what} must be 1 to 12 letters or digits`);
+
 const EDITABLE = {
   name:                       (v) => checkName(v, 'Business name'),
   business_type:              checkBusinessType,
@@ -194,6 +200,9 @@ const EDITABLE = {
   round_off_enabled:          () => null,
   invoice_prefix:             (v) =>
     String(v ?? '').trim().length <= 12 ? null : 'Invoice prefix is too long',
+  credit_note_prefix:         checkPrefix('Credit note prefix'),
+  debit_note_prefix:          checkPrefix('Debit note prefix'),
+  po_prefix:                  checkPrefix('Purchase order prefix'),
   upi_vpa:                    checkUpiVpa,
   google_review_link:         (v) => (!v || (String(v).trim().length <= 300 && /^https:\/\//.test(String(v).trim()))
     ? null : 'Paste the https:// link from "Share" on your Google Business listing')
@@ -274,7 +283,7 @@ export const updateCurrent = async (req, res) => {
     if (!(field in body)) continue;
     const error = validator(body[field]);
     if (error) return res.status(400).json({ success: false, message: error });
-    values.push(field === 'gstin' && body[field] ? String(body[field]).trim().toUpperCase() : field === 'default_language' ? cleanLocale(body[field]) : body[field]);
+    values.push(field === 'gstin' && body[field] ? String(body[field]).trim().toUpperCase() : /_prefix$/.test(field) ? String(body[field]).trim().toUpperCase() : field === 'default_language' ? cleanLocale(body[field]) : body[field]);
     updates.push(`${field} = $${values.length}`);
   }
 

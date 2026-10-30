@@ -5036,5 +5036,11 @@
   "Nothing recorded in this month.": "இந்த மாதம் எதுவும் பதிவாகவில்லை.",
   "What it was for": "எதற்காக",
   "Total other income": "மொத்த பிற வருமானம்",
-  "Discounts given at payment": "பணம் செலுத்தும்போது கொடுத்த தள்ளுபடி"
+  "Discounts given at payment": "பணம் செலுத்தும்போது கொடுத்த தள்ளுபடி",
+  "Invoices and bills": "இன்வாய்ஸ் மற்றும் பில்கள்",
+  "Credit notes (sale returns)": "கிரெடிட் நோட்டுகள் (விற்பனை திரும்பல்)",
+  "Debit notes (purchase returns)": "டெபிட் நோட்டுகள் (கொள்முதல் திரும்பல்)",
+  "Document numbers saved": "ஆவண எண்கள் சேமிக்கப்பட்டன",
+  "Document numbers": "ஆவண எண்கள்",
+  "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "ஒவ்வொரு எண்ணுக்கும் முன் வரும் எழுத்துகள். மாற்றினாலும் எண்ணிக்கை தொடரும்; ஏற்கனவே உருவான ஆவணங்களின் எண் மாறாது."
 }

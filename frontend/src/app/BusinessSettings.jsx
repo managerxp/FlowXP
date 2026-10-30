@@ -19,6 +19,7 @@ import PincodeHint from '../components/PincodeHint.jsx';
 import InvoicePrintSettings from './InvoicePrintSettings.jsx';
 import DisplaySettings from './DisplaySettings.jsx';
 import GstOptionsSettings from './GstOptionsSettings.jsx';
+import DocumentNumbersSettings from './DocumentNumbersSettings.jsx';
 import PrintersSettings from './PrintersSettings.jsx';
 import BackupSettings from './BackupSettings.jsx';
 import MechanicModeSettings from './MechanicModeSettings.jsx';
@@ -341,6 +342,7 @@ const BusinessSettings = () => {
       <PrintersSettings />
       <ReceiptSettings initial={form.receipt_settings} />
       <GstOptionsSettings />
+      <DocumentNumbersSettings />
       <InvoicePrintSettings initial={form.receipt_settings} />
       <DisplaySettings />
       <BackupSettings />
