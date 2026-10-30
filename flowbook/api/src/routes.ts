@@ -20,6 +20,7 @@ import { getEmailSettings, listEmails, saveEmailSettings, sendDocument } from '.
 import type { EmailSettingsIn } from './email.ts';
 import { CURRENCIES, listRates, listRevaluations, rateOn, revalue, reversePending, saveRate } from './fx.ts';
 import { COST_TYPES } from './costtypes.ts';
+import { createWorkOrder, listWorkOrders, raiseRaBill } from './workorders.ts';
 import { addFromCatalogue, catalogueFor } from './catalogue.ts';
 import { addUnit, listUnits, raiseStage, sellUnit } from './units.ts';
 import { addTime, createProject, deleteTime, getProject, invoiceTime, listProjects, updateProject } from './projects.ts';
@@ -177,6 +178,18 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   app.post(`${base}/projects/:id/units`, { preHandler: scope('invoice.write'), schema: { ...idParam, body: { type: 'object', required: ['name', 'price'], additionalProperties: false, properties: { name: { type: 'string', minLength: 1, maxLength: 60 }, price: money } } } }, async (req, reply) => {
     const b = req.body as { name: string; price: string };
     return reply.code(201).send({ id: await run(req, (c, orgId) => addUnit(c, orgId, BigInt((req.params as { id: string }).id), b, me(req))) });
+  });
+  app.get(`${base}/projects/:id/work-orders`, { preHandler: scope('project.read'), schema: idParam }, async (req) => run(req, (c) => listWorkOrders(c, BigInt((req.params as { id: string }).id))));
+  app.post(`${base}/projects/:id/work-orders`, { preHandler: scope('bill.write'), schema: { ...idParam, body: { type: 'object', required: ['partyId', 'side', 'title', 'items'], additionalProperties: false, properties: {
+    partyId: { type: 'string', pattern: ID }, side: { type: 'string', enum: ['PAYABLE', 'RECEIVABLE'] }, title: { type: 'string', minLength: 1, maxLength: 160 }, taxCode: { type: 'string', maxLength: 20 }, retentionPercent: { type: 'number', minimum: 0, maximum: 50 },
+    items: { type: 'array', minItems: 1, maxItems: 200, items: { type: 'object', required: ['description', 'quantity', 'rate'], additionalProperties: false, properties: { description: { type: 'string', minLength: 1, maxLength: 200 }, unit: { type: 'string', enum: UQC }, quantity: { type: 'string', pattern: QTY }, rate: money } } } } } } }, async (req, reply) => {
+    const b = req.body as Omit<Parameters<typeof createWorkOrder>[2], 'projectId' | 'partyId'> & { partyId: string };
+    return reply.code(201).send({ id: await run(req, (c, orgId) => createWorkOrder(c, orgId, { ...b, projectId: BigInt((req.params as { id: string }).id), partyId: BigInt(b.partyId) }, me(req))) });
+  });
+  app.post(`${base}/work-orders/:id/ra-bills`, { preHandler: scope('bill.write'), schema: { ...idParam, body: { type: 'object', required: ['date', 'measured'], additionalProperties: false, properties: {
+    date: { type: 'string', pattern: DATE }, measured: { type: 'array', minItems: 1, maxItems: 200, items: { type: 'object', required: ['itemId', 'quantity'], additionalProperties: false, properties: { itemId: { type: 'string', pattern: ID }, quantity: { type: 'string', pattern: QTY } } } } } } } }, async (req) => {
+    const b = req.body as { date: string; measured: { itemId: string; quantity: string }[] };
+    return run(req, (c, orgId) => raiseRaBill(c, orgId, BigInt((req.params as { id: string }).id), { date: b.date, measured: b.measured.map((m) => ({ itemId: BigInt(m.itemId), quantity: m.quantity })) }, me(req)));
   });
   app.post(`${base}/units/:id/sell`, { preHandler: scope('invoice.write'), schema: { ...idParam, body: { type: 'object', required: ['partyId', 'date', 'stages'], additionalProperties: false, properties: {
     partyId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, taxCode: { type: 'string', maxLength: 20 },

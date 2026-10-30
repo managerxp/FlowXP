@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Link, useParams } from '../router.jsx';
 import { useLoad } from '../api.js';
-import { inr, showDate, today } from '../lib.js';
+import { UNITS, inr, showDate, today } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { Async, Badge, Btn, Card, Confirm, Empty, Err, Field, Money, Note, Page, Table, useAction } from '../ui.jsx';
 
@@ -190,6 +190,70 @@ const Units = ({ id }) => {
   );
 };
 
+const milli = (m) => (Number(m) / 1000).toString();
+
+/* Work orders and running-account bills: the work agreed with a subcontractor or a client, billed stage by stage by measuring what is done to date. */
+const WorkOrders = ({ id }) => {
+  const { o, org } = useSession();
+  const load = useLoad(() => o(`/projects/${id}/work-orders`), [org.id, id]);
+  const parties = useLoad(() => o('/parties?limit=500'), [org.id]);
+  const a = useAction();
+  const blank = { side: 'PAYABLE', partyId: '', title: '', retention: '5', items: [{ description: '', unit: 'SQM', quantity: '', rate: '' }] };
+  const [form, setForm] = useState(null);
+  const [ra, setRa] = useState(null);
+  const setItem = (i, k, v) => setForm({ ...form, items: form.items.map((x, j) => (j === i ? { ...x, [k]: v } : x)) });
+  const who = (parties.data || []).filter((x) => (form?.side === 'PAYABLE' ? x.kind !== 'CUSTOMER' : x.kind !== 'VENDOR'));
+  const create = () => a.run(async () => {
+    await o(`/projects/${id}/work-orders`, { method: 'POST', body: { side: form.side, partyId: form.partyId, title: form.title, retentionPercent: Number(form.retention) || 0, items: form.items.filter((x) => x.description.trim()).map((x) => ({ description: x.description, unit: x.unit, quantity: x.quantity, rate: x.rate })) } });
+    setForm(null); await load.reload();
+  });
+  const raise = () => a.run(async () => {
+    await o(`/work-orders/${ra.id}/ra-bills`, { method: 'POST', body: { date: today(), measured: ra.items.filter((x) => x.value !== '').map((x) => ({ itemId: x.id, quantity: x.value })) } });
+    setRa(null); await load.reload();
+  });
+  return (
+    <Card title="Work orders and running bills" actions={<Btn onClick={() => setForm(form ? null : blank)}>New work order</Btn>}>
+      <p className="muted">List the work agreed with a subcontractor (you pay) or a client (they pay). Each running bill takes the total work done to date, bills only what is new, and holds back the retention.</p>
+      <Err>{a.error}</Err>
+      {form && (
+        <Confirm><div className="form">
+          <Field label="Who is it with"><select value={form.side} onChange={(e) => setForm({ ...form, side: e.target.value, partyId: '' })}><option value="PAYABLE">A subcontractor or vendor (I pay)</option><option value="RECEIVABLE">A client (they pay me)</option></select></Field>
+          <Field label="Name"><select value={form.partyId} onChange={(e) => setForm({ ...form, partyId: e.target.value })}><option value="">Choose</option>{who.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
+          <Field label="Work (e.g. Plastering, Block A)"><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
+          <Field label="Retention held back (%)"><input inputMode="decimal" value={form.retention} onChange={(e) => setForm({ ...form, retention: e.target.value })} /></Field>
+          {form.items.map((x, i) => (
+            <div key={i} style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+              <input aria-label="Work item" placeholder="Item of work" value={x.description} onChange={(e) => setItem(i, 'description', e.target.value)} />
+              <select aria-label="Unit" value={x.unit} onChange={(e) => setItem(i, 'unit', e.target.value)}>{UNITS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select>
+              <input aria-label="Quantity" placeholder="Quantity" inputMode="decimal" style={{ width: '6rem' }} value={x.quantity} onChange={(e) => setItem(i, 'quantity', e.target.value)} />
+              <input aria-label="Rate" placeholder="Rate ₹" inputMode="decimal" style={{ width: '6rem' }} value={x.rate} onChange={(e) => setItem(i, 'rate', e.target.value)} />
+            </div>))}
+          <button type="button" className="linkish" onClick={() => setForm({ ...form, items: [...form.items, { description: '', unit: 'SQM', quantity: '', rate: '' }] })}>+ Add another item</button>
+        </div><Btn kind="primary" busy={a.busy} onClick={create}>Save work order</Btn></Confirm>
+      )}
+      <Async load={load}>{(orders) => (<>
+        {!orders.length && !form && <Empty>No work orders yet.</Empty>}
+        {orders.map((w) => (
+          <div key={w.id} style={{ marginTop: '1rem' }}>
+            <p><strong>{w.title}</strong> <span className="muted">{w.side === 'PAYABLE' ? 'you pay' : 'client pays'} {w.party_name} · retention {w.retention_bp / 100}%</span></p>
+            <Table head={['Work', '>Agreed', '>Rate', '>Done to date', '>Value done']}>
+              {w.items.map((i) => <tr key={i.id}><td>{i.description}</td><td className="r num">{milli(i.qty_milli)} {i.unit || ''}</td><td className="r"><Money v={i.rate_minor} /></td><td className="r num">{milli(i.done_milli)}</td><td className="r"><Money v={i.done_minor} /></td></tr>)}
+              <tr className="total"><td>Total</td><td colSpan={3} /><td className="r"><Money v={w.done_minor} /> of <Money v={w.contract_minor} /></td></tr>
+            </Table>
+            {w.bills.length > 0 && <Table head={['Running bill', 'Date', 'Status', '>Amount', '>Held back']}>
+              {w.bills.map((b) => <tr key={b.id}><td><Link to={`/${w.side === 'PAYABLE' ? 'purchases' : 'sales'}/${b.document_id}`}>RA {b.seq} · {b.number}</Link></td><td>{showDate(b.bill_date)}</td><td><Badge status={b.status} /></td><td className="r"><Money v={b.total_minor} /></td><td className="r">{Number(b.retention_minor) ? <Money v={b.retention_minor} /> : ''}</td></tr>)}
+            </Table>}
+            {ra?.id === w.id ? (
+              <Confirm><p>Type the total work done to date for each item. Only the new work since the last bill is billed.</p>
+                <div className="form">{ra.items.map((x, k) => <Field key={x.id} label={`${x.description} (agreed ${x.max}, billed so far ${x.was})`}><input inputMode="decimal" placeholder={x.was} value={x.value} onChange={(e) => setRa({ ...ra, items: ra.items.map((y, j) => (j === k ? { ...y, value: e.target.value } : y)) })} /></Field>)}</div>
+                <Btn kind="primary" busy={a.busy} onClick={raise}>Make running bill</Btn> <Btn onClick={() => setRa(null)}>Cancel</Btn></Confirm>
+            ) : <Btn onClick={() => setRa({ id: w.id, items: w.items.map((i) => ({ id: i.id, description: i.description, max: milli(i.qty_milli), was: milli(i.done_milli), value: '' })) })}>Next running bill</Btn>}
+          </div>))}
+      </>)}</Async>
+    </Card>
+  );
+};
+
 export const ProjectView = () => {
   const { id } = useParams();
   const { o, org } = useSession();
@@ -205,6 +269,7 @@ export const ProjectView = () => {
         {billing && <InvoiceHours id={id} onDone={load.reload} onClose={() => setBilling(false)} />}
         <Dashboard p={p} />
         <Units id={id} />
+        <WorkOrders id={id} />
         <Card title="How it is going"><dl className="facts">
           <dt>Hours logged</dt><dd>{hours(p.minutes)} ({hours(p.unbilled_minutes)} still to bill, worth ₹{inr(p.unbilled_minor)})</dd>
           <dt>Invoiced</dt><dd>₹{inr(p.invoiced_minor)}</dd>
