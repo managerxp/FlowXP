@@ -73,6 +73,11 @@ const Frame = () => {
           {current.items.map(([to, label]) => <NavLink key={to} to={to} end={to === '/'} className={`fb-pill ${open(to) ? 'active' : ''}`}>{label}</NavLink>)}
         </nav>
       )}
+      {here === '/' && (
+        <p className="muted" style={{ margin: '.5rem 0 0', fontSize: '.85rem' }}>
+          {simple ? 'Simple view: everyday screens only. Choose Full to add quotes, sales orders, credit notes, recurring, projects, journals, bank and more.' : 'Full view: every screen, including the accountant’s. Choose Simple to hide the extras.'}
+        </p>
+      )}
       <Routes>
         <Route path="/" element={<Dashboard />} />
         {DOCS.flatMap((d) => [
