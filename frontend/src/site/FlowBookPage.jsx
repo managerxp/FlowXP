@@ -51,6 +51,17 @@ const WORKS = [
   { title: 'Controls', body: 'Lock a closed month, roles for your team, and a record of who changed what.' }
 ];
 
+const EASY = [
+  { title: 'Simple view, by default', body: 'You see only what a shop needs every day: invoices, payments, parties, items and reports. One tap on Full view brings back everything your accountant uses.' },
+  { title: 'A short get-started list', body: 'The home screen walks you through the first steps: add your details, your first customer and item, your first invoice.' },
+  { title: 'Help on every page', body: 'The ? button explains the page you are on and what to do next, in plain words.' },
+  { title: 'Words explained', body: 'Terms like GSTIN, HSN, ledger or reconciliation have a tap-to-read meaning right where they appear.' },
+  { title: 'An assistant that reads your books', body: 'Ask “who owes me money?”, “what was my profit this month?” or “explain this report”. It answers from your own figures and can only read. It never changes anything.' },
+  { title: 'Figures it double-checks', body: 'Every rupee amount in an answer is checked against your books, and the assistant says so when it cannot match one.' },
+  { title: 'Your plan decides what shows', body: 'Advanced parts such as bank, stock, GST, foreign currency and journals can be switched on or off per plan. Turned-off parts disappear for your team and are refused by FlowBook itself.' },
+  { title: 'One sign-in', body: 'Your FlowXP account opens FlowBook directly. No second password. The assistant uses your plan’s AI allowance, the same one as the rest of FlowXP.' }
+];
+
 const NOT_YET = [
   { title: 'Direct GST filing and e-invoicing', body: 'Returns are prepared, not filed. The file format has not been checked on the GST portal yet.', soon: true },
   { title: 'Live bank feeds', body: 'Import a statement and match it. Direct bank connections are not built.', soon: true },
@@ -62,7 +73,7 @@ const FlowBookPage = () => (
     <PageHero
       eyebrow="FlowBook"
       title="Accounting that follows your billing."
-      lead="Real books for an Indian business: invoices, GST, stock, bank and statements. Works with FlowXP, or on its own."
+      lead="Real books for an Indian business: invoices, GST, stock, bank and statements. Simple enough to use without being an accountant, with help and an assistant on every page."
       points={['7-day free trial', 'No card needed', 'Every figure traceable']}
       split="6-6"
       visual={<Shot src="/product/flowbook-home.webp" alt="FlowBook home: sales, money in and out, and what needs attention" size={FULL} eager />}
@@ -100,6 +111,11 @@ const FlowBookPage = () => (
                     points={['Exports with shipping bill details', 'Warnings for what is missing', 'Download for your accountant']}
                     aside={<Shot src="/product/flowbook-gst.webp" alt="FlowBook GST returns prepared from the books" size={FULL} />} />
       </div>
+    </Section>
+
+    <Section className="border-t border-line bg-surface" title="Made for people who are not accountants."
+             lead="Open it as a shopkeeper and it stays out of your way. Open it as an accountant and it is all there.">
+      <CellGrid items={EASY} cols="sm:grid-cols-2 lg:grid-cols-4" />
     </Section>
 
     <Section title="What works today." lead="Built and tested. Have your accountant look it over before you rely on it for filing.">

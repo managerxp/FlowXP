@@ -358,7 +358,7 @@ const FlowBookBand = () => (
       { title: 'Books without double entry', body: 'Sales, returns and payments from FlowXP post themselves, once.' },
       { title: 'Statements you can trust', body: 'Trial balance, profit and loss and balance sheet that tie back to every bill.' },
       { title: 'Bank and GST ready', body: 'Import bank statements, match them to bills, and prepare GST returns for your accountant.' },
-      { title: 'Made for your accountant too', body: 'One place to review, adjust and export, with a record of every change.' }
+      { title: 'Easy for you, complete for your accountant', body: 'A simple view with help on every page and an assistant that explains your reports in plain words. Switch to the full view for everything else.' }
     ]} />
     <p className="mt-6"><Link to="/flowbook" className="inline-flex items-center gap-1.5 font-semibold text-brand-600 transition-colors hover:text-brand-700">See FlowBook and start your free trial <ArrowRight aria-hidden="true" className="size-4" /></Link></p>
   </Section>
