@@ -1,6 +1,6 @@
 /* Projects: hours logged against a customer, invoiced from the log, with the bills and expenses tagged to the project and its profit. */
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams } from '../router.jsx';
 import { useLoad } from '../api.js';
 import { inr, showDate, today } from '../lib.js';
 import { useSession } from '../session.jsx';

@@ -1,6 +1,6 @@
 /* Invoices, bills and credit notes share one set of screens: a list, a form for the draft, and a page for the document. */
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from '../router.jsx';
 import { useLoad } from '../api.js';
 import { STATES, TCS_SECTIONS, UNITS, addDays, amountInWords, inr, showDate, today, unitLabel } from '../lib.js';
 import { useSession } from '../session.jsx';

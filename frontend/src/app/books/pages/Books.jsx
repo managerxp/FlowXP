@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from '../router.jsx';
 import { useLoad } from '../api.js';
 import { financialYear, inr, showDate, today, uuid } from '../lib.js';
 import { useSession } from '../session.jsx';

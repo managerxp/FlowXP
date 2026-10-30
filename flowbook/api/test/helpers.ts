@@ -1,5 +1,6 @@
 /* A throwaway Postgres database per test file, migrated, so the real constraints, triggers and row level security are tested. */
 import { randomBytes } from 'node:crypto';
+import type { FastifyInstance } from 'fastify';
 import pg from 'pg';
 import { createOrganization, createPool, migrate, withOrg } from '../src/db.ts';
 import { seedChartOfAccounts } from '../src/coa.ts';
@@ -26,4 +27,14 @@ export const newOrg = async (pool: pg.Pool, name = 'Test Cafe', template = 'GENE
   const id = await createOrganization(pool, { name });
   await withOrg(pool, id, async (c) => { await seedChartOfAccounts(c, id, template); await openFinancialYear(c, id, 2026, 4, 'test'); });
   return id;
+};
+
+/* Inside the FlowXP app, the FlowXP API puts who is signed in on the request. A test app is given the same, from a header. */
+export const fromHeader = (app: FastifyInstance): FastifyInstance => { app.addHook('onRequest', async (req) => { const who = req.headers['x-test-who']; if (typeof who === 'string') (req.raw as { flowxp?: unknown }).flowxp = JSON.parse(who); }); return app; };
+export const identity = (bid: string, over: object = {}) => ({ sub: bid, email: `u${bid}@shop.example`, name: 'U', bid, bname: `Shop ${bid}`, role: 'OWNER', status: 'TRIAL', tend: new Date(Date.now() + 3 * 86400_000).toISOString(), ...over });
+/** Open the books as that FlowXP person: the headers to send, and the books' organization id. */
+export const enter = async (app: FastifyInstance, who: object) => {
+  const headers = { 'x-test-who': JSON.stringify(who) };
+  const me = (await app.inject({ method: 'GET', url: '/v1/me', headers })).json();
+  return { headers, org: me.organizations[0]?.id as string };
 };

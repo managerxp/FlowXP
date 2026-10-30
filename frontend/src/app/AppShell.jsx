@@ -232,6 +232,17 @@ const NAV_GROUPS = [
     ]
   },
   {
+    label: 'FlowBook',
+    items: [
+      { to: '/app/books', label: 'Books home', icon: BookOpen, books: true, end: true },
+      { to: '/app/books/sales', label: 'Sales invoices', icon: FileText, books: true },
+      { to: '/app/books/purchases', label: 'Purchase bills', icon: Receipt, books: true },
+      { to: '/app/books/payments', label: 'Book payments', icon: Wallet, books: true },
+      { to: '/app/books/reports', label: 'Book reports', icon: ChartColumn, books: true },
+      { to: '/app/books/settings', label: 'Books settings', icon: Settings, books: true, roles: ['OWNER', 'ADMIN'], more: true }
+    ]
+  },
+  {
     label: 'Team',
     items: [
       { to: '/app/outlets', label: 'Outlets', icon: Store, roles: ['OWNER', 'ADMIN'], types: [...RESTAURANT_TYPES, ...WHOLESALE, ...PHARMACY], more: true },
@@ -244,7 +255,6 @@ const NAV_GROUPS = [
 /* Pinned to the bottom of the sidebar. */
 const SYSTEM_ITEMS = [
   { to: '/app/integrations', label: 'Integrations', icon: Plug, types: RESTAURANT_TYPES, permission: 'settings', more: true },
-  { to: '/app/flowbook', label: 'FlowBook', icon: BookOpen, permission: 'settings', feature: 'flowbook', more: true },
   { to: '/app/settlements', label: 'Settlements', icon: ArrowLeftRight, types: RESTAURANT_TYPES, permission: 'settings', feature: 'integrations', more: true },
   // personal account security (password, 2FA, sessions) — every role manages their own
   { to: '/app/security', label: 'Security', icon: Shield, more: true },
@@ -446,10 +456,12 @@ const AppShell = () => {
 
   // a FlowBook-only business has no till: only FlowBook, its plan and its account pages are offered
   const bookOnly = business.business_type === 'FLOWBOOK';
-  const BOOK_PAGES = ['/app/flowbook', '/app/settings', '/app/security', '/app/onboarding'];
+  const BOOK_PAGES = ['/app/books', '/app/settings', '/app/security', '/app/onboarding'];
   const bookPage = (item) => !bookOnly || BOOK_PAGES.some((p) => item.to === p || item.to.startsWith(`${p}/`));
-  if (bookOnly && !BOOK_PAGES.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) return <Navigate to="/app/flowbook" replace />;
-  const allowed = (item) => bookPage(item) && (!item.types || item.types.includes(business.business_type))
+  if (bookOnly && !BOOK_PAGES.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) return <Navigate to="/app/books" replace />;
+  // FlowBook (accounting) is part of the app: it is the offer of a business that signed up for it, and any other business has it once it is paying and its plan includes it
+  const hasBooks = hasFeature('flowbook_app') && (bookOnly || (business.subscription?.status === 'ACTIVE' && hasFeature('flowbook')));
+  const allowed = (item) => bookPage(item) && (!item.books || hasBooks) && (!item.types || item.types.includes(business.business_type))
     && (!item.distributor || business.distributor_enabled)
     && (!item.notTypes || !item.notTypes.includes(business.business_type))
     && (!item.roles || item.roles.includes(business.role))
@@ -459,7 +471,7 @@ const AppShell = () => {
     && (!item.feature || hasFeature(item.feature));
   // Access, not fit: a mismatched business type or outlet count means a page doesn't
   // apply here, not that this person may not open it, so only role/permission/plan block it.
-  const accessible = (item) => (!item.roles || item.roles.includes(business.role))
+  const accessible = (item) => (!item.books || hasBooks) && (!item.roles || item.roles.includes(business.role))
     && (!item.permission || can(item.permission))
     && (!item.anyPermission || item.anyPermission.some(can))
     && (!item.feature || hasFeature(item.feature));

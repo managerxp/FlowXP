@@ -8,17 +8,18 @@ import type { FastifyInstance } from 'fastify';
 import { buildApp } from './app.ts';
 import type { AiBridge } from './assistant.ts';
 import { createPool, migrate } from './db.ts';
-import { startInboxWorker } from './inbox.ts';
+import { findConnection, receiveEvent, startInboxWorker } from './inbox.ts';
 import { useHostMail } from './email.ts';
 import type { HostMail } from './email.ts';
 import { startReminderWorker, useHostWhatsapp } from './whatsapp.ts';
 import type { HostWhatsapp } from './whatsapp.ts';
 
-export type Booted = { app: FastifyInstance; close: () => Promise<void> };
+/** `ingest` takes one FlowXP event for a FlowXP business, in this process (no address, no signature: the caller is FlowXP itself). */
+export type Booted = { app: FastifyInstance; close: () => Promise<void>; ingest: (flowxpBusinessId: string, event: Parameters<typeof receiveEvent>[2]) => Promise<{ status: string; duplicate: boolean }> };
 
 /** @param extraOrigins browser origins that may make cookie-authenticated changes, on top of ALLOWED_ORIGINS
  *  @param host what the FlowXP API hands in when FlowBook is mounted inside it: its AI provider (with the plan and allowance check) and which features the super admin switched off */
-export type Host = { ai?: AiBridge; featuresOff?: (flowxpBusinessId: string) => Promise<string[]>; mail?: HostMail; whatsapp?: HostWhatsapp };
+export type Host = { /** FlowBook is part of the FlowXP app: FlowXP signs the person in (see sso.ts) */ shared?: boolean; ai?: AiBridge; featuresOff?: (flowxpBusinessId: string) => Promise<string[]>; mail?: HostMail; whatsapp?: HostWhatsapp };
 export const bootFlowbook = async (url: string, extraOrigins: string[] = [], host: Host = {}): Promise<Booted> => {
   const pool = createPool(url);
   useHostMail(host.mail ?? null);
@@ -34,9 +35,17 @@ export const bootFlowbook = async (url: string, extraOrigins: string[] = [], hos
     allowedOrigins: [...(process.env.ALLOWED_ORIGINS ?? '').split(','), ...extraOrigins].map((s) => s.trim()).filter(Boolean),
     passwordAuth: !production || process.env.FLOWBOOK_PASSWORD_AUTH === 'on',   // in production FlowXP is the only sign-in
     secureCookie: production || process.env.COOKIE_SECURE === 'true',
+    hostAuth: host.shared,
     ai: host.ai,
     featuresOff: host.featuresOff
   });
   await app.ready();
-  return { app, close: async () => { worker?.stop(); reminders?.stop(); await app.close(); await pool.end(); } };
+  const ingest: Booted['ingest'] = async (businessId, event) => {
+    const conn = await findConnection(pool, businessId);
+    if (!conn) throw new Error('these books are not open yet; open FlowBook once in FlowXP');
+    const out = await receiveEvent(pool, conn, event, !worker);
+    if (worker && !out.duplicate) worker.kick();
+    return out;
+  };
+  return { ingest, app, close: async () => { worker?.stop(); reminders?.stop(); await app.close(); await pool.end(); } };
 };

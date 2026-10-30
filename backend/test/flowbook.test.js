@@ -65,7 +65,7 @@ const { createInvoiceInTransaction } = await import('../src/modules/billing.js')
 const { encrypt } = await import('../src/modules/crypto.js');
 const { discover, deliver, DOMAIN } = await import('../src/modules/flowbook/outbox.js');
 const notes = await import('../src/controllers/creditNotes.controller.js');
-const { checkUrl } = await import('../src/controllers/flowbook.controller.js');
+const { ensureLink, setLocalDelivery } = await import('../src/modules/flowbook/outbox.js');
 test.after(cleanup);
 
 let biz; let owner; let dish; let ravi; let link;
@@ -172,11 +172,32 @@ test('a cancellation, a later payment and a credit note follow their sale; a can
   assert.ok(order.indexOf('sale.finalized') < order.indexOf('sale.voided'), 'the sale is sent before its cancellation');
 });
 
-test('parked events are counted, and the address check keeps the server from calling inward', { skip }, async () => {
-  assert.equal(checkUrl('https://books.example.com/').url, 'https://books.example.com');
-  assert.match(checkUrl('ftp://x').error, /https/);
-  assert.match(checkUrl('not a url').error, /address/);
+test('parked events are counted', { skip }, async () => {
   await pool.query(`UPDATE flowbook_outbox SET status = 'DEAD', attempts = 12 WHERE business_id = $1 AND status = 'PENDING' AND event_type = 'payment.received'`, [biz]);
   const dead = (await pool.query(`SELECT count(*)::int AS n FROM flowbook_outbox WHERE business_id = $1 AND status = 'DEAD'`, [biz])).rows[0].n;
   assert.equal(dead, 1);
+});
+
+test('inside the app a sale is handed to FlowBook directly: no address, no secret, no signature', { skip }, async () => {
+  await pool.query(`DELETE FROM flowbook_outbox WHERE business_id = $1`, [biz]);
+  await pool.query(`DELETE FROM flowbook_links WHERE business_id = $1`, [biz]);
+  await ensureLink(biz, true);
+  assert.equal((await pool.query(`SELECT base_url FROM flowbook_links WHERE business_id = $1`, [biz])).rows[0].base_url, 'embedded');
+  const mine = (await pool.query(`UPDATE flowbook_links SET enabled_from = CURRENT_TIMESTAMP - interval '1 day' WHERE business_id = $1 RETURNING *`, [biz])).rows[0];
+  await bill([{ product_id: dish, quantity: 1 }]);
+  await age();
+  const found = await discover(mine);
+  assert.ok(found >= 1);
+  const waiting = (await outbox()).filter((r) => r.status === 'PENDING').length;
+  const handed = [];
+  setLocalDelivery(async (businessId, event) => { handed.push({ businessId, event }); });
+  assert.deepEqual(await deliver(mine), { sent: waiting, failed: 0 });
+  assert.equal(handed[0].businessId, String(biz));
+  assert.deepEqual([handed[0].event.event_type, handed[0].event.schema_version], ['sale.finalized', 1]);
+  assert.equal(handed.length, waiting);
+  assert.equal((await outbox()).at(-1).status, 'SENT');
+  setLocalDelivery(null);
+  assert.deepEqual(await deliver(mine), { sent: 0, failed: 0 });   // nothing left, nothing tried
+  await bill([{ product_id: dish, quantity: 1 }]); await age(); await discover(mine);
+  assert.deepEqual(await deliver(mine), { sent: 0, failed: 1 }, 'with FlowBook not running it waits and retries');
 });

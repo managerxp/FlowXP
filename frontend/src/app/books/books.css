@@ -1,0 +1,226 @@
+/*
+ * FlowBook's screens, inside the FlowXP app. Everything is under .fb, so none of it touches the rest of FlowXP; the colours are FlowXP's own tokens,
+ * so the books follow its light and dark themes. The paper copy of a document (.fb-sheet) is outside the page and is at the bottom.
+ */
+.fb {
+  --page: var(--color-page); --surface: var(--color-surface); --surface-2: var(--color-surface-2); --surface-3: var(--color-surface-3);
+  --line: var(--color-line); --line-strong: var(--color-line-strong);
+  --ink-900: var(--color-ink-900); --ink-700: var(--color-ink-700); --ink-500: var(--color-ink-500); --ink-400: var(--color-ink-400);
+  --brand-50: var(--color-brand-50); --brand-100: var(--color-brand-100); --brand-400: var(--color-brand-400); --brand-500: var(--color-brand-500); --brand-600: var(--color-brand-600); --brand-700: var(--color-brand-700);
+  --success: var(--color-success); --warning: var(--color-warning); --danger: var(--color-danger);
+  --success-bg: color-mix(in srgb, var(--color-success) 12%, var(--color-surface)); --warning-bg: color-mix(in srgb, var(--color-warning) 12%, var(--color-surface)); --danger-bg: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
+  color: var(--ink-900); font-family: var(--font-sans); font-size: 1rem; line-height: 1.6;
+}
+
+.fb h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; margin: 0; }
+.fb h2 { font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em; line-height: 1.4; margin: 0; }
+.fb p { margin: 0 0 .75rem; }
+.fb a { color: var(--brand-500); text-decoration: none; }
+.fb a:hover { text-decoration: underline; }
+.fb :focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; border-radius: 4px; }
+.fb .muted { color: var(--ink-500); }
+.fb .pad { padding: 1rem 0; }
+.fb .r { text-align: right; }
+.fb .strong { font-weight: 700; }
+.fb .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* ---- motion: one entrance for a page, one for a panel, lift on hover. Reduced motion turns all of it off (bottom). */
+@keyframes fb-fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes fb-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes fb-panel-in { from { opacity: 0; transform: translateY(8px) scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes fb-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+.fb .page { animation: fb-fade-in var(--duration-moderate) var(--ease-decelerate) both; }
+.fb .grid > * { animation: fb-rise 520ms var(--ease-decelerate) both; }
+.fb .grid > *:nth-child(2) { animation-delay: 60ms; }
+.fb .grid > *:nth-child(3) { animation-delay: 120ms; }
+.fb .grid > *:nth-child(4) { animation-delay: 180ms; }
+.fb .confirm, .fb .notice { animation: fb-panel-in var(--duration-normal) var(--ease-decelerate) both; }
+/* ---- page header, cards, stat tiles */
+.fb .page-head { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; }
+.fb .lead { color: var(--ink-500); font-size: .875rem; margin: .25rem 0 0; max-width: 42rem; }
+.fb .actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.fb .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 1.25rem; margin-bottom: 1rem; }
+.fb .card-head { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: space-between; align-items: center; margin-bottom: .875rem; }
+.fb .grid { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); margin-bottom: 1rem; }
+.fb .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 1rem; min-width: 0; transition: border-color var(--duration-normal), box-shadow var(--duration-normal); }
+@media (hover: hover) {
+.fb .stat:hover { border-color: var(--line-strong); box-shadow: var(--shadow-sm); }
+}
+.fb .stat .k { color: var(--ink-500); font-size: .8125rem; font-weight: 500; }
+.fb .stat .v { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; margin-top: .125rem; font-variant-numeric: tabular-nums; }
+.fb .stat.bad .v { color: var(--danger); }
+.fb .stat.ok .v { color: var(--success); }
+/* ---- buttons: 40px, 8px radius; primary is the solid logo blue and lifts a little on hover, as in FlowXP */
+.fb .btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 2.5rem; padding: 0 1rem; border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface); color: var(--ink-900);
+  font: inherit; font-size: .875rem; font-weight: 500; white-space: nowrap; cursor: pointer; box-shadow: var(--shadow-sm);
+  transition: background-color var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast), box-shadow var(--duration-fast), transform var(--duration-fast); }
+.fb .btn:hover:not(:disabled) { background: var(--surface-2); border-color: var(--ink-400); text-decoration: none; }
+@media (hover: hover) {
+.fb .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+}
+.fb .btn:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
+.fb .btn:disabled { opacity: .5; pointer-events: none; }
+.fb .btn.primary { background: var(--brand-500); border-color: var(--brand-500); color: #fff; }
+.fb .btn.primary:hover:not(:disabled) { background: var(--brand-600); border-color: var(--brand-600); }
+.fb .btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+.fb .btn.danger:hover:not(:disabled) { background: var(--danger-bg); border-color: var(--danger); }
+.fb .btn.small { min-height: 2rem; padding: 0 .75rem; }
+.fb .spinner { width: 1rem; height: 1rem; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: fb-spin .7s linear infinite; }
+@keyframes fb-spin { to { transform: rotate(360deg); } }
+.fb .linkish { background: none; border: 0; color: var(--brand-500); cursor: pointer; padding: 0; font: inherit; font-size: inherit; }
+.fb .linkish:hover { text-decoration: underline; }
+/* ---- forms */
+.fb .form { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+@media (min-width: 640px) {
+.fb .form { grid-template-columns: repeat(2, 1fr); }
+.fb .form .wide { grid-column: 1 / -1; }
+}
+.fb .field { display: flex; flex-direction: column; gap: .375rem; min-width: 0; }
+.fb .field .label { font-size: .875rem; font-weight: 500; color: var(--ink-700); }
+.fb .field .hint { font-size: .75rem; color: var(--ink-500); }
+.fb input, .fb select, .fb textarea { width: 100%; min-height: 2.5rem; padding: .5rem .75rem; font: inherit; font-size: 1rem; color: var(--ink-900); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-control);
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast); }
+@media (min-width: 640px) {
+.fb input, .fb select, .fb textarea { font-size: .875rem; }
+}
+.fb input::placeholder { color: var(--ink-400); }
+.fb input:hover, .fb select:hover, .fb textarea:hover { border-color: var(--ink-400); }
+.fb input:focus, .fb select:focus, .fb textarea:focus { outline: none; border-color: var(--brand-500); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-500) 18%, transparent); }
+.fb select { appearance: none; padding-right: 2.5rem; cursor: pointer; background-repeat: no-repeat; background-position: right .75rem center; background-size: 1rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2365758e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
+.fb input[type=checkbox] { width: 1rem; min-height: 0; height: 1rem; accent-color: var(--brand-500); }
+.fb .check { display: flex; gap: .5rem; align-items: center; font-size: .875rem; }
+/* ---- notices, badges */
+.fb .notice { padding: .75rem 1rem; border-radius: var(--radius-control); margin: 0 0 1rem; font-size: .875rem; border: 1px solid transparent; }
+.fb .notice.bad { background: var(--danger-bg); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 25%, transparent); }
+.fb .notice.ok { background: var(--success-bg); color: var(--success); border-color: color-mix(in srgb, var(--success) 25%, transparent); }
+.fb .notice.warn { background: var(--warning-bg); color: var(--warning); border-color: color-mix(in srgb, var(--warning) 25%, transparent); }
+.fb .badge { display: inline-flex; align-items: center; padding: .125rem .5rem; border-radius: 999px; font-size: .75rem; font-weight: 500; text-transform: capitalize; }
+.fb .badge.ok { background: var(--success-bg); color: var(--success); }
+.fb .badge.bad { background: var(--danger-bg); color: var(--danger); }
+.fb .badge.warn { background: var(--warning-bg); color: var(--warning); }
+.fb .badge.muted { background: var(--surface-3); color: var(--ink-500); }
+.fb .badge.brand { background: var(--brand-50); color: var(--brand-700); }
+/* ---- tables: a bordered rounded frame, a tinted uppercase header, hover rows */
+.fb .scroll { overflow-x: auto; }
+.fb .card > .scroll { margin: -.25rem 0; }
+.fb table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+.fb th, .fb td { padding: .75rem 1rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.fb th { background: var(--surface-2); font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-500); white-space: nowrap; }
+.fb th:first-child { border-top-left-radius: 8px; }
+.fb th:last-child { border-top-right-radius: 8px; }
+.fb th.r, .fb td.r { text-align: right; }
+.fb tbody tr { transition: background-color var(--duration-fast); }
+.fb tbody tr:last-child td { border-bottom: 0; }
+.fb tbody tr.click { cursor: pointer; }
+.fb tbody tr:hover { background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
+.fb tr.total td { font-weight: 700; border-top: 2px solid var(--line); background: var(--surface-2); }
+.fb .tabs { display: flex; gap: .25rem; overflow-x: auto; margin-bottom: 1.25rem; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+.fb .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: .625rem .875rem; font: inherit; font-size: .875rem; font-weight: 500; color: var(--ink-500); cursor: pointer; white-space: nowrap;
+  transition: color var(--duration-fast), border-color var(--duration-normal); }
+.fb .tabs button:hover { color: var(--ink-900); }
+.fb .tabs button.on { color: var(--brand-500); border-color: var(--brand-500); font-weight: 600; }
+.fb .lines { display: grid; gap: .75rem; }
+.fb .line { border: 1px solid var(--line); border-radius: 10px; padding: .875rem; display: grid; gap: .75rem; grid-template-columns: repeat(2, 1fr); background: var(--surface-2); animation: fb-panel-in var(--duration-normal) var(--ease-decelerate) both; }
+.fb .line .wide { grid-column: 1 / -1; }
+@media (min-width: 900px) {
+.fb .line { grid-template-columns: 2fr 2fr 1fr 1fr 1fr 1fr 1fr auto; align-items: end; }
+.fb .line .wide { grid-column: auto; }
+}
+.fb .kv { display: grid; grid-template-columns: auto 1fr; gap: .375rem 1.5rem; margin: 0; font-size: .875rem; }
+.fb .kv dt { color: var(--ink-500); }
+.fb .kv dd { margin: 0; }
+.fb .words { text-align: right; font-style: italic; margin: .5rem 0 0; }
+.fb .totals { margin-left: auto; width: min(22rem, 100%); font-size: .875rem; padding-top: .75rem; }
+.fb .totals div { display: flex; justify-content: space-between; padding: .25rem 0; }
+.fb .totals .grand { border-top: 1px solid var(--line-strong); font-weight: 700; font-size: 1.0625rem; margin-top: .375rem; padding-top: .625rem; }
+.fb .confirm { border: 1px solid var(--line); border-radius: var(--radius-card); padding: 1rem; margin: 0 0 1rem; background: var(--surface); font-size: .875rem; }
+.fb .secret { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .8125rem; word-break: break-all; background: var(--surface-2); border: 1px dashed var(--line-strong); padding: .75rem; border-radius: var(--radius-control); }
+@media (prefers-reduced-motion: reduce) {
+.fb *, .fb *::before, .fb *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; transition-duration: 0.01ms !important; }
+.fb .btn:hover:not(:disabled) { transform: none; }
+}
+.fb .problems { list-style: none; margin: 0 0 .75rem; padding: 0; display: grid; gap: .5rem; }
+.fb .problems li { padding: .625rem .75rem; border-radius: 8px; font-size: .875rem; border: 1px solid var(--line); }
+.fb .problems li.bad { border-color: var(--danger); }
+.fb .problems li.warn { border-color: var(--warning); }
+.fb .form h3 { margin: .5rem 0 0; font-size: .9375rem; }
+.fb .form h3 .muted { font-weight: 400; font-size: .8125rem; }
+.fb input[type="color"] { padding: .125rem; max-width: 5rem; cursor: pointer; }
+/* the books' own sections, above the screen: a row of tabs, then the screens of the open one */
+.fb .fb-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; margin-bottom: .5rem; border-bottom: 1px solid var(--line); }
+.fb .fb-tabs { display: flex; gap: .25rem; overflow-x: auto; scrollbar-width: none; }
+.fb .fb-tab { padding: .625rem .875rem; margin-bottom: -1px; border-bottom: 2px solid transparent; color: var(--ink-500); font-size: .875rem; font-weight: 500; white-space: nowrap; }
+.fb .fb-tab:hover { color: var(--ink-900); text-decoration: none; }
+.fb .fb-tab.active { color: var(--brand-500); border-color: var(--brand-500); font-weight: 600; }
+.fb .fb-tools { display: flex; align-items: center; gap: .5rem; padding-bottom: .375rem; }
+.fb .fb-sub { display: flex; flex-wrap: wrap; gap: .375rem; margin: 0 0 1.25rem; }
+.fb .fb-pill { padding: .25rem .75rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-700); font-size: .8125rem; }
+.fb .fb-pill:hover { border-color: var(--line-strong); background: var(--surface-2); text-decoration: none; }
+.fb .fb-pill.active { background: var(--brand-50); border-color: var(--brand-400); color: var(--brand-700); font-weight: 600; }
+.fb .seg { min-width: 9rem; }
+
+/* ---- the paper copy of an invoice, bill, credit note or receipt: outside the page (a portal), hidden on screen, the only thing printed */
+.fb-sheet { display: none; }
+@media print {
+  body:has(.fb-sheet) #root { display: none !important; }
+  .fb-sheet { display: block; color: #000; background: #fff; font-size: 11pt; line-height: 1.4; --accent: #1a56db; }
+  .fb-sheet header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; border-bottom: 2px solid var(--accent); padding-bottom: .5rem; margin-bottom: .75rem; }
+  .fb-sheet h1 { margin: 0; font-size: 1.5em; color: var(--accent); text-align: right; } .fb-sheet .biz { font-size: 1.25em; }
+  .fb-sheet .meta { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .75rem; } .fb-sheet .meta > div, .fb-sheet .meta dl { margin: 0; }
+  .fb-sheet .meta strong, .fb-sheet .meta .muted { display: block; } .fb-sheet .meta .muted { color: #555; font-size: .85em; }
+  .fb-sheet dl { display: grid; grid-template-columns: auto auto; gap: 0 .75rem; } .fb-sheet dt { color: #555; } .fb-sheet dd { margin: 0; }
+  .fb-sheet table { width: 100%; border-collapse: collapse; } .fb-sheet th { background: var(--accent); color: #fff; text-align: left; }
+  .fb-sheet th, .fb-sheet td { padding: .25rem .4rem; border-bottom: 1px solid #ccc; } .fb-sheet .r { text-align: right; }
+  .fb-sheet .sum { margin: .5rem 0 0 auto; width: 16rem; } .fb-sheet .sum div { display: flex; justify-content: space-between; padding: .1rem 0; }
+  .fb-sheet .sum .grand { border-top: 2px solid var(--accent); font-weight: 700; font-size: 1.1em; margin-top: .25rem; padding-top: .25rem; }
+  .fb-sheet .words { font-style: italic; } .fb-sheet .small { font-size: .85em; }
+  .fb-sheet footer { display: flex; justify-content: space-between; margin-top: 2rem; }
+  .fb-sheet.thermal { font-size: 9pt; } .fb-sheet.thermal header, .fb-sheet.thermal .meta { flex-direction: column; } .fb-sheet.thermal h1 { text-align: left; font-size: 1.2em; } .fb-sheet.thermal .sum { width: 100%; }
+}
+
+/* ---- simple / full switch, help button and panel, inline word explanations, assistant chat */
+.mode-switch { flex: none; padding: .75rem .875rem 1rem; border-top: 1px solid var(--line); }
+.mode-switch .nav-label { padding: 0; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 2px; background: var(--surface-3); border-radius: 8px; }
+.seg button { min-height: 2rem; border: 0; border-radius: 6px; background: none; color: var(--ink-700); font: inherit; font-size: .8125rem; font-weight: 500; cursor: pointer; }
+.seg button.on { background: var(--surface); color: var(--brand-700); font-weight: 600; box-shadow: var(--shadow-sm); }
+.mode-switch .hint { margin: .5rem 0 0; font-size: .75rem; color: var(--ink-500); }
+.help-btn { border-color: var(--brand-400); color: var(--brand-700); background: var(--brand-50); }
+.help-btn span { display: inline-grid; place-items: center; width: 1.125rem; height: 1.125rem; border-radius: 50%; background: var(--brand-500); color: #fff; font-size: .75rem; font-weight: 700; }
+.help-backdrop { z-index: 60; }
+.help-panel { position: fixed; z-index: 70; top: 0; right: 0; bottom: 0; width: min(26rem, 100vw); display: flex; flex-direction: column; background: var(--surface); border-left: 1px solid var(--line); box-shadow: var(--shadow-md); animation: panel-in var(--duration-normal) var(--ease-decelerate) both; }
+.help-head { display: flex; align-items: center; justify-content: space-between; padding: .75rem 1rem; border-bottom: 1px solid var(--line); }
+.help-panel .tabs { padding: 0 .75rem; margin: 0; }
+.help-body { flex: 1; min-height: 0; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; }
+.help-body h3 { margin: 0 0 .25rem; font-size: 1.0625rem; }
+.steps { padding-left: 1.25rem; margin: 0 0 1rem; } .steps li { margin-bottom: .5rem; }
+.chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.chip-btn { padding: .375rem .75rem; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); color: var(--ink-700); font: inherit; font-size: .8125rem; cursor: pointer; text-align: left; }
+.chip-btn:hover { background: var(--brand-50); border-color: var(--brand-400); color: var(--brand-700); }
+.words { margin: 1rem 0 0; } .words div { padding: .625rem 0; border-top: 1px solid var(--line); } .words dt { font-weight: 600; } .words dd { margin: .125rem 0 0; color: var(--ink-700); font-size: .875rem; }
+.ask { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.ask-log { flex: 1; overflow-y: auto; padding-bottom: .5rem; }
+.bubble { max-width: 92%; margin: 0 0 .625rem; padding: .625rem .875rem; border-radius: 12px; font-size: .9375rem; line-height: 1.5; overflow-wrap: anywhere; }
+.bubble p { margin: 0 0 .5rem; } .bubble p:last-child { margin-bottom: 0; } .bubble ul { margin: .25rem 0 .5rem; padding-left: 1.125rem; }
+.bubble.user { margin-left: auto; background: var(--brand-500); color: #fff; }
+.bubble.assistant { background: var(--surface-2); border: 1px solid var(--line); }
+.bubble.err { background: var(--warning-bg); border-color: transparent; color: var(--warning); }
+.bubble .used { margin-top: .5rem; font-size: .75rem; color: var(--ink-500); }
+.bubble .spinner { margin-right: .5rem; vertical-align: -3px; }
+.ask-form { display: flex; gap: .5rem; padding-top: .75rem; border-top: 1px solid var(--line); }
+.term-wrap { position: relative; display: inline; }
+.term { display: inline; padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: help; border-bottom: 1px dotted var(--ink-400); }
+.term-q { display: inline-grid; place-items: center; width: .9rem; height: .9rem; margin-left: .25rem; border-radius: 50%; background: var(--brand-100); color: var(--brand-700); font-size: .65rem; font-weight: 700; vertical-align: 1px; }
+.term-pop { display: block; margin: .375rem 0; padding: .625rem .75rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface-2); color: var(--ink-700); font-size: .8125rem; font-weight: 400; line-height: 1.5; text-transform: none; letter-spacing: 0; }
+.more-bar { display: flex; justify-content: flex-end; margin-top: .75rem; }
+.start-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.start-list li { display: flex; align-items: center; gap: .75rem; padding: .625rem .75rem; border: 1px solid var(--line); border-radius: 10px; }
+.start-list .tick { flex: none; display: grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 2px solid var(--line-strong); font-size: .8rem; font-weight: 700; }
+.start-list .done .tick { background: var(--success); border-color: var(--success); color: #fff; }
+.start-list .done { color: var(--ink-500); } .start-list .done a { color: inherit; }
+.start-list .why { display: block; font-size: .8125rem; color: var(--ink-500); }
+.explain-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+.explain-bar .about { flex: 1; min-width: 12rem; margin: 0; color: var(--ink-700); font-size: .9375rem; }
+.top .org-pick { flex: 0 1 14rem; min-width: 6rem; text-overflow: ellipsis; }
+@media (max-width: 420px) { .top { gap: .5rem; padding: 0 .5rem; } .top .btn.small { padding: 0 .5rem; } }
+.more-bar .btn { white-space: normal; text-align: center; }

@@ -6,7 +6,7 @@
  * Other screens can open the panel with a question already typed (useHelp().ask).
  */
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from './router.jsx';
 import { useSession } from './session.jsx';
 import { Btn } from './ui.jsx';
 

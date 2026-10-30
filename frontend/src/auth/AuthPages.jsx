@@ -151,7 +151,7 @@ const useFinishAuth = () => {
   return (data) => {
     signIn(data.token, data.user, data.businesses);
     const first = data.businesses[0];
-    if (first?.business_type === 'FLOWBOOK') { navigate('/app/flowbook?open=1', { replace: true }); return; }   // FlowBook only: no billing setup, straight in
+    if (first?.business_type === 'FLOWBOOK') { navigate('/app/books', { replace: true }); return; }   // FlowBook only: no billing setup, straight in
     const there = /^\/app(\/|$)/.test(next || '') ? next : null;
     if (first && first.onboarding_step < 10) { try { if (there) sessionStorage.setItem('flowxp.after', there); } catch { /* storage blocked */ } }
     navigate(first && first.onboarding_step < 10 ? '/app/onboarding' : there || '/app', { replace: true });

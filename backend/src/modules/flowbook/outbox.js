@@ -12,7 +12,7 @@
  */
 import crypto from 'node:crypto';
 import pool from '../../config/database.js';
-import { decrypt } from '../crypto.js';
+import { decrypt, encrypt } from '../crypto.js';
 import { registerScan } from '../jobs.js';
 import { businessToday } from '../../utils/dates.js';
 import { stateCode } from '../gst/states.js';
@@ -27,6 +27,26 @@ const customerRow = async (id, db) => {
   const c = (await db.query(`SELECT customer_id, name, state FROM customers WHERE customer_id = $1`, [id])).rows[0];
   return c ? { ...c, state_code: stateCode(c.state) || undefined } : null;
 };
+
+/* FlowBook runs inside this process, so a sale is handed to it directly: no address, no secret, no signature. embed.js gives
+   `local` once FlowBook has started; a link row says base_url 'embedded'. (A link made before that, with an address, still posts over HTTP.) */
+const EMBEDDED = 'embedded';
+let local = null;
+export const setLocalDelivery = (fn) => { local = fn; };
+
+/** Switch the feed on or off for a business, making its link row if it has none. Only what is made after it is switched on is sent. */
+export const ensureLink = async (businessId, enabled = true, db = pool) => {
+  await db.query(
+    `INSERT INTO flowbook_links (business_id, base_url, secret_enc, enabled, enabled_from) VALUES ($1, $2, $3, $4::boolean, CASE WHEN $4::boolean THEN CURRENT_TIMESTAMP END)
+     ON CONFLICT (business_id) DO UPDATE SET base_url = $2, enabled = $4::boolean,
+       enabled_from = CASE WHEN $4::boolean AND (NOT flowbook_links.enabled OR flowbook_links.enabled_from IS NULL) THEN CURRENT_TIMESTAMP ELSE flowbook_links.enabled_from END, updated_at = CURRENT_TIMESTAMP`,
+    [businessId, EMBEDDED, encrypt('embedded', DOMAIN), enabled]);
+};
+
+/** The first time a business with a till opens its books: the feed starts, unless the owner already made a choice. */
+export const openLink = (businessId, db = pool) => db.query(
+  `INSERT INTO flowbook_links (business_id, base_url, secret_enc, enabled, enabled_from) VALUES ($1, $2, $3, TRUE, CURRENT_TIMESTAMP) ON CONFLICT (business_id) DO NOTHING`,
+  [businessId, EMBEDDED, encrypt('embedded', DOMAIN)]);
 
 /** Add one outbox row. A skipped document is recorded too (with its reason) so it is counted and never looked at again. */
 const queue = async (db, businessId, type, sourceId, built) => (await db.query(
@@ -87,7 +107,8 @@ export const discover = async (link, db = pool) => {
  * (replaceable in tests). Returns { sent, failed }.
  */
 export const deliver = async (link, { db = pool, send = defaultSend, now = () => Math.floor(Date.now() / 1000) } = {}) => {
-  const secret = decrypt(link.secret_enc, DOMAIN);
+  const inside = link.base_url === EMBEDDED;
+  const secret = inside ? '' : decrypt(link.secret_enc, DOMAIN);
   let sent = 0; let failed = 0;
   for (;;) {
     const row = (await db.query(
@@ -95,7 +116,12 @@ export const deliver = async (link, { db = pool, send = defaultSend, now = () =>
     if (!row || new Date(row.next_attempt_at) > new Date()) break;
     const body = envelope({ eventId: row.event_id, type: row.event_type, businessId: row.business_id, sequence: row.outbox_id, occurredAt: new Date(row.created_at).toISOString(), payload: row.payload });
     try {
-      await send(`${link.base_url.replace(/\/+$/, '')}/v1/integrations/flowxp/events`, body, signature(secret, body, now()));
+      if (inside) {
+        if (!local) throw new Error('FlowBook is not running');
+        await local(String(link.business_id), JSON.parse(body));
+      } else {
+        await send(`${link.base_url.replace(/\/+$/, '')}/v1/integrations/flowxp/events`, body, signature(secret, body, now()));
+      }
       await db.query(`UPDATE flowbook_outbox SET status = 'SENT', sent_at = CURRENT_TIMESTAMP, attempts = attempts + 1, last_error = NULL WHERE outbox_id = $1`, [row.outbox_id]);
       await db.query(`UPDATE flowbook_links SET last_ok_at = CURRENT_TIMESTAMP, last_error = NULL WHERE business_id = $1`, [link.business_id]);
       sent++;

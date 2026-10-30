@@ -1,22 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHmac } from 'node:crypto';
 import { buildApp } from '../src/app.ts';
-import { setup } from './helpers.ts';
+import { enter, fromHeader, identity, setup } from './helpers.ts';
 
-process.env.FLOWBOOK_SSO_SECRET = 'test-shared-secret-test-shared-secret';
 const { pool, skip, cleanup } = await setup();
 
 let off: string[] = [];
-const app = buildApp({ pool, allowedOrigins: [], featuresOff: async (id) => (id === '88' ? off : []) });
-const free = buildApp({ pool, allowedOrigins: [] });
+const app = fromHeader(buildApp({ pool, allowedOrigins: [], hostAuth: true, featuresOff: async (id) => (id === '88' ? off : []) }));
+const free = fromHeader(buildApp({ pool, allowedOrigins: [], hostAuth: true }));
 test.after(async () => { await app.close(); await free.close(); await cleanup(); });
 
-const login = async (bid: string) => {
-  const body = Buffer.from(JSON.stringify({ sub: bid, email: `u${bid}@shop.example`, name: 'U', bid, bname: `Shop ${bid}`, role: 'OWNER', status: 'TRIAL', tend: new Date(Date.now() + 3 * 86400_000).toISOString(), exp: Date.now() + 60_000 })).toString('base64url');
-  const r = (await app.inject({ method: 'POST', url: '/v1/auth/flowxp', payload: { token: `${body}.${createHmac('sha256', process.env.FLOWBOOK_SSO_SECRET as string).update(body).digest('base64url')}` } })).json();
-  return { headers: { authorization: `Bearer ${r.token}` }, org: r.organizationId as string };
-};
+const login = (bid: string) => enter(app, identity(bid));
 const get = async (a: typeof app, who: { headers: object; org: string }, path: string) => a.inject({ method: 'GET', url: `/v1/orgs/${who.org}${path}`, headers: who.headers });
 
 test('what the super admin switches off stops working in FlowBook, everyday screens stay, and a business not linked to FlowXP is never gated', { skip }, async () => {

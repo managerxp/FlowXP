@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useLoad } from '../api.js';
 import { ROLE_HELP, STATES, showDate, showTime, today } from '../lib.js';
 import { useSession } from '../session.jsx';
+import { api as xp } from '../../../lib/api.js';
+import { useAuth } from '../../../context/AuthContext.jsx';
 import { Async, Badge, Btn, Card, Empty, Err, Field, Note, Page, Table, Tabs, useAction } from '../ui.jsx';
 
 const XB = { addressLine: '', city: '', pincode: '', phone: '', email: '', bankName: '', bankAccount: '', bankIfsc: '', upiId: '', terms: '' };
@@ -144,7 +146,7 @@ const Team = () => {
   const add = (e) => { e.preventDefault(); a.run(async () => { await o('/members', { method: 'POST', body: f }); setF({ ...f, email: '' }); await load.reload(); }, 'Done.'); };
   return (<>
     <Card title="People with access"><Async load={load}>{(rows) => <Table head={['Name', 'Email', 'Can']}>{rows.map((m) => <tr key={m.id}><td>{m.name}</td><td>{m.email}</td><td><strong>{m.role}</strong> <span className="muted">· {ROLE_HELP[m.role]}</span></td></tr>)}</Table>}</Async></Card>
-    <Card title="Add someone"><p className="muted">They must create a FlowBook account first. Adding someone who is already here changes their role.</p>
+    <Card title="Add someone"><p className="muted">Everyone on your FlowXP team who opens FlowBook appears here, as a viewer. Choose their role to let them do more. Add or remove people in FlowXP (Staff).</p>
       <Err>{a.error}</Err><Note>{a.done}</Note>
       <form className="form" onSubmit={add}>
         <Field label="Their email"><input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} required /></Field>
@@ -154,44 +156,29 @@ const Team = () => {
   </>);
 };
 
-const FlowXP = () => {
-  const { o, org } = useSession();
-  const conns = useLoad(() => o('/integrations/flowxp/connections'), [org.id]);
-  const [status, setStatus] = useState('');
-  const events = useLoad(() => o(`/integrations/events?limit=50${status ? `&status=${status}` : ''}`), [org.id, status]);
+/** Sales made in FlowXP reach these books by themselves, from the day the books were opened. Here: whether it is on, and anything that could not be sent. */
+const Feed = () => {
+  const load = useLoad(() => xp('/flowbook'), []);
   const a = useAction();
-  const [f, setF] = useState({ businessId: '', cutoverDate: '' });
-  const [secret, setSecret] = useState(null);
-  const [copied, setCopied] = useState(false);
-  useEffect(() => setCopied(false), [secret]);
-  const connect = (e) => { e.preventDefault(); a.run(async () => { const r = await o('/integrations/flowxp/connections', { method: 'POST', body: { businessId: f.businessId, ...(f.cutoverDate && { cutoverDate: f.cutoverDate }) } }); setSecret(r.secret); setF({ businessId: '', cutoverDate: '' }); await conns.reload(); }); };
-  const rotate = (c) => a.run(async () => { const r = await o(`/integrations/flowxp/connections/${c.id}/rotate-secret`, { method: 'POST', body: {} }); setSecret(r.secret); });
-  const replay = (ev) => a.run(async () => { await o(`/integrations/events/${ev.id}/replay`, { method: 'POST', body: {} }); await events.reload(); }, 'Tried again.');
-  const copy = async () => { try { await navigator.clipboard.writeText(secret); setCopied(true); } catch { /* the secret is on screen to copy by hand */ } };
-  return (<>
-    {secret && (
-      <Card title="Your secret — shown only once"><p>Copy it now and paste it into FlowXP (Settings, FlowBook). It cannot be shown again; if you lose it, make a new one.</p>
-        <p className="secret">{secret}</p><div className="actions"><Btn onClick={copy}>{copied ? 'Copied' : 'Copy'}</Btn><Btn onClick={() => setSecret(null)}>I have saved it</Btn></div></Card>
-    )}
-    <Err>{a.error}</Err><Note>{a.done}</Note>
-    <Card title="Connected FlowXP businesses"><Async load={conns}>{(rows) => (
-      <Table head={['FlowXP business number', 'Counts sales from', 'State', '']} empty={!rows.length && <Empty>Not connected. Add your FlowXP business below.</Empty>}>
-        {rows.map((c) => <tr key={c.id}><td>{c.external_business_id}</td><td>{c.cutover_date ? showDate(c.cutover_date) : 'the start'}</td><td><Badge status={c.active ? 'OPEN' : 'CLOSED'}>{c.active ? 'active' : 'off'}</Badge></td><td className="r"><button className="linkish" onClick={() => rotate(c)}>New secret</button></td></tr>)}
-      </Table>)}</Async></Card>
-    <Card title="Connect a FlowXP business"><p className="muted">The business number is shown on FlowXP's FlowBook screen. Sales dated before the start date are ignored, so you can begin from a clean opening balance.</p>
-      <form className="form" onSubmit={connect}>
-        <Field label="FlowXP business number"><input value={f.businessId} onChange={(e) => setF({ ...f, businessId: e.target.value })} required inputMode="numeric" /></Field>
-        <Field label="Count sales from" hint="Optional"><input type="date" value={f.cutoverDate} onChange={(e) => setF({ ...f, cutoverDate: e.target.value })} /></Field>
-        <div className="wide"><Btn kind="primary" busy={a.busy}>Connect</Btn></div>
-      </form></Card>
-    <Card title="What arrived from FlowXP">
-      <Tabs value={status} onChange={setStatus} tabs={[['', 'All'], ['NEEDS_ATTENTION', 'Needs a look'], ['FAILED_VALIDATION', 'Rejected'], ['POSTED', 'Posted']]} />
-      <Async load={events}>{(rows) => (
-        <Table head={['When', 'What', 'State', 'Detail', '']} empty={!rows.length && <Empty>Nothing yet.</Empty>}>
-          {rows.map((e) => <tr key={e.id}><td>{showTime(e.received_at)}</td><td>{String(e.event_type).replaceAll('.', ' ')}</td><td><Badge status={e.status} /></td><td>{e.error}</td>
-            <td className="r">{['NEEDS_ATTENTION', 'FAILED_VALIDATION', 'RECEIVED'].includes(e.status) && <button className="linkish" onClick={() => replay(e)}>Try again</button>}</td></tr>)}
-        </Table>)}</Async></Card>
-  </>);
+  const set = (enabled) => a.run(async () => { await xp('/flowbook', { method: 'PUT', body: { enabled } }); await load.reload(); }, enabled ? 'Sales are being sent to your books.' : 'Sales are not being sent.');
+  const retry = () => a.run(async () => { await xp('/flowbook/retry', { method: 'POST' }); await load.reload(); }, 'Put back in the queue.');
+  return (
+    <Card title="Sales from FlowXP"><p className="muted">Every sale, return and payment you make in FlowXP is written into these books by itself, a minute or so later. Only what you bill after this was switched on is sent.</p>
+      <Err>{a.error}</Err><Note>{a.done}</Note>
+      <Async load={load}>{(d) => (<>
+        <div className="grid">
+          <div className="stat ok"><div className="k">Sent</div><div className="v">{d.counts.sent}</div></div>
+          <div className="stat"><div className="k">Waiting</div><div className="v">{d.counts.pending}</div></div>
+          <div className={`stat ${d.counts.skipped + d.counts.dead ? 'bad' : ''}`}><div className="k">Needs a look</div><div className="v">{d.counts.skipped + d.counts.dead}</div></div>
+        </div>
+        {d.link?.last_error && <Err>{d.link.last_error}</Err>}
+        {d.problems.length > 0 && <Table head={['What', 'Why']}>{d.problems.map((p) => <tr key={p.outbox_id}><td>{String(p.event_type).replace('.', ' ')} <span className="muted">#{p.source_id}</span></td><td>{p.last_error || p.status}</td></tr>)}</Table>}
+        <div className="actions">
+          {d.link?.enabled ? <Btn busy={a.busy} onClick={() => set(false)}>Stop sending</Btn> : <Btn kind="primary" busy={a.busy} onClick={() => set(true)}>Start sending</Btn>}
+          {d.counts.dead > 0 && <Btn busy={a.busy} onClick={retry}>Try the stuck ones again</Btn>}
+        </div>
+      </>)}</Async></Card>
+  );
 };
 
 const Activity = () => {
@@ -205,12 +192,14 @@ import { WhatsappSettings } from './Whatsapp.jsx';
 import { EmailSettings } from './Email.jsx';
 import { CurrencySettings } from './Currency.jsx';
 
-export default ({ AddBusiness }) => {
+export default () => {
+  const { on } = useSession();
+  const till = useAuth().business?.business_type !== 'FLOWBOOK';   // a business that signed up for FlowBook alone has no till to send from
   const [tab, setTab] = useState('biz');
   return (
     <Page title="Settings">
-      <Tabs value={tab} onChange={setTab} tabs={[['biz', 'Business'], ['print', 'Printing'], ['open', 'Opening balances'], ['tax', 'GST rates'], ['periods', 'Closing'], ['team', 'Team'], ['wa', 'WhatsApp'], ['email', 'Email'], ['fx', 'Currencies'], ['flowxp', 'FlowXP'], ['log', 'Activity'], ['new', 'Add business']].filter(([k]) => on({ wa: 'flowbook_whatsapp', email: 'flowbook_email', fx: 'flowbook_currency' }[k] || 'flowbook_app'))} />
-      {tab === 'biz' && <Business />}{tab === 'print' && <Printing />}{tab === 'open' && <OpeningBalances />}{tab === 'tax' && <TaxRates />}{tab === 'periods' && <Periods />}{tab === 'team' && <Team />}{tab === 'wa' && <WhatsappSettings />}{tab === 'email' && <EmailSettings />}{tab === 'fx' && <CurrencySettings />}{tab === 'flowxp' && <FlowXP />}{tab === 'log' && <Activity />}{tab === 'new' && <AddBusiness />}
+      <Tabs value={tab} onChange={setTab} tabs={[['biz', 'Business'], ['print', 'Printing'], ['open', 'Opening balances'], ['tax', 'GST rates'], ['periods', 'Closing'], ['team', 'Team'], ['wa', 'WhatsApp'], ['email', 'Email'], ['fx', 'Currencies'], ['feed', 'Sales from FlowXP'], ['log', 'Activity']].filter(([k]) => (k !== 'feed' || till) && on({ wa: 'flowbook_whatsapp', email: 'flowbook_email', fx: 'flowbook_currency' }[k] || 'flowbook_app'))} />
+      {tab === 'biz' && <Business />}{tab === 'print' && <Printing />}{tab === 'open' && <OpeningBalances />}{tab === 'tax' && <TaxRates />}{tab === 'periods' && <Periods />}{tab === 'team' && <Team />}{tab === 'wa' && <WhatsappSettings />}{tab === 'email' && <EmailSettings />}{tab === 'fx' && <CurrencySettings />}{tab === 'feed' && <Feed />}{tab === 'log' && <Activity />}
     </Page>
   );
 };

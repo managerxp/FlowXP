@@ -1,6 +1,6 @@
 /* Recurring invoices and bills: a template makes a draft each time it falls due. Nothing is issued by itself. */
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '../router.jsx';
 import { useLoad } from '../api.js';
 import { addDays, showDate, today } from '../lib.js';
 import { useSession } from '../session.jsx';

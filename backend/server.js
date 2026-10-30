@@ -19,6 +19,7 @@ import pool, { initializeDatabase } from './src/config/database.js';
 import { ensureSuperAdmin } from './src/config/seedSuperAdmin.js';
 import routes from './src/routes/index.js';
 import { apiLimiter } from './src/middleware/limits.js';
+import { requireAuth, withBusiness } from './src/middleware/auth.js';
 import './src/modules/scans.js';
 import './src/modules/flowbook/outbox.js';
 import { startWorker, stopWorker } from './src/modules/jobs.js';
@@ -50,9 +51,10 @@ app.use((req, res, next) => {
   next();
 });
 
-/* FlowBook (accounting) runs inside this process at /books, in the same database. It reads its own request body, so it goes before the body parsers. */
+/* FlowBook (accounting) is part of this app: it answers at /api/books, behind the same sign-in and business choice as everything else, and in the same database.
+   It reads its own request body, so it goes before the body parsers; the sign-in checks need no body. */
 const flowbook = embeddedFlowbook();
-app.use('/books', flowbook.middleware);
+app.use('/api/books', apiLimiter, requireAuth, withBusiness(), flowbook.middleware);
 
 /*
  * CORS is an allowlist, not a wildcard. The app and the marketing site are the

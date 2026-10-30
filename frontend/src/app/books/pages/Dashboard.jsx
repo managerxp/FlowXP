@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '../router.jsx';
 import { useLoad } from '../api.js';
 import { financialYear, gstDueDates, showDate, today } from '../lib.js';
 import { useSession } from '../session.jsx';

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from '../router.jsx';
 import { useLoad } from '../api.js';
 import { useSimple } from '../mode.js';
 import { Term } from '../help.jsx';

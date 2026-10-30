@@ -1,6 +1,6 @@
 /* Expenses paid at the time: rent, fuel, repairs. Something you will pay later belongs in Purchases as a bill. */
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '../router.jsx';
 import { useLoad } from '../api.js';
 import { financialYear, inr, showDate, today, uuid } from '../lib.js';
 import { useSession } from '../session.jsx';

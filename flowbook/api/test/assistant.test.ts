@@ -1,11 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHmac } from 'node:crypto';
 import { buildApp } from '../src/app.ts';
 import type { AiBridge } from '../src/assistant.ts';
-import { setup } from './helpers.ts';
+import { enter, fromHeader, identity, setup } from './helpers.ts';
 
-process.env.FLOWBOOK_SSO_SECRET = 'test-shared-secret-test-shared-secret';
 const { pool, skip, cleanup } = await setup();
 
 /** a stand-in provider: asks for the snapshot, then for a customer that does not exist, then answers from what it was given */
@@ -19,15 +17,11 @@ const ai: AiBridge = {
     return { stopReason: 'end_turn', content: [{ type: 'text', text: 'Customers owe you nothing yet.' }] };
   }
 };
-const on = buildApp({ pool, allowedOrigins: [], ai });
-const off = buildApp({ pool, allowedOrigins: [] });
+const on = fromHeader(buildApp({ pool, allowedOrigins: [], hostAuth: true, ai }));
+const off = fromHeader(buildApp({ pool, allowedOrigins: [], hostAuth: true }));
 test.after(async () => { await on.close(); await off.close(); await cleanup(); });
 
-const login = async () => {
-  const body = Buffer.from(JSON.stringify({ sub: '9', email: 'a@shop.example', name: 'A', bid: '77', bname: 'Shop', role: 'OWNER', status: 'TRIAL', tend: new Date(Date.now() + 3 * 86400_000).toISOString(), exp: Date.now() + 60_000 })).toString('base64url');
-  const r = (await on.inject({ method: 'POST', url: '/v1/auth/flowxp', payload: { token: `${body}.${createHmac('sha256', process.env.FLOWBOOK_SSO_SECRET as string).update(body).digest('base64url')}` } })).json();
-  return { headers: { authorization: `Bearer ${r.token}` }, org: r.organizationId as string };
-};
+const login = () => enter(on, identity('77', { sub: '9', email: 'a@shop.example', name: 'A', bname: 'Shop' }));
 
 test('the assistant looks things up read-only, answers in words, and is off without a provider', { skip }, async () => {
   const { headers, org } = await login();

@@ -1,6 +1,6 @@
 /* E-invoicing. FlowBook makes the file the IRP reads; you upload it there (or through your GSP) and enter the IRN it answers with. Not checked on the portal. */
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '../router.jsx';
 import { useLoad } from '../api.js';
 import { inr, showDate, today } from '../lib.js';
 import { useSession } from '../session.jsx';

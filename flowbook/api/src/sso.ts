@@ -1,31 +1,19 @@
 /*
- * One sign-in. FlowXP signs the person in and hands them over with a token it signs with the secret both servers share
- * (FLOWBOOK_SSO_SECRET): who they are, which FlowXP business, their role, and that business's own trial or plan. FlowBook
- * keeps no password for them. The trial is FlowXP's: the books' plan and trial end are copied from the business each time.
+ * Who is working in the books. FlowBook has no sign-in of its own: the FlowXP API signs the person in, puts who they are on the
+ * request (user, FlowXP business, role, and that business's trial or plan), and FlowBook finds or makes their user and the
+ * business's books. The trial is FlowXP's: the books' plan and trial end are copied from the business.
  */
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import type pg from 'pg';
+import { withOrg } from './db.ts';
+import { newSecret, storeSecret } from './inbox.ts';
 import { provisionOrganization } from './provision.ts';
 
-export type Handoff = { sub: string; email: string; name: string; bid: string; bname: string; role: string; status: string; tend: string | null; exp: number };
-
-/** The handoff if the signature is right and it has not expired (it lives 60 seconds), else null. */
-export const readHandoff = (token: string, secret: string, now = Date.now()): Handoff | null => {
-  const [body, sig] = token.split('.');
-  if (!secret || !body || !sig) return null;
-  const want = createHmac('sha256', secret).update(body).digest();
-  const got = Buffer.from(sig, 'base64url');
-  if (got.length !== want.length || !timingSafeEqual(got, want)) return null;
-  try {
-    const h = JSON.parse(Buffer.from(body, 'base64url').toString()) as Handoff;
-    return typeof h.exp === 'number' && h.exp > now && h.sub && h.email && h.bid ? h : null;
-  } catch { return null; }
-};
+export type Identity = { sub: string; email: string; name: string; bid: string; bname: string; role: string; status: string; tend: string | null };
 
 const ROLE: Record<string, string> = { OWNER: 'owner', ADMIN: 'admin' };
 
 /** Find or make the person and the business's books, add them if new, and copy the trial. Returns null for a role that may not open the books. */
-export const signInFromFlowxp = async (pool: pg.Pool, h: Handoff): Promise<{ userId: bigint; orgId: bigint } | null> => {
+export const signInFromFlowxp = async (pool: pg.Pool, h: Identity): Promise<{ userId: bigint; orgId: bigint } | null> => {
   // two handoffs for the same business can arrive together (a double click, a page that opens twice): one at a time, or each would make its own books
   const lock = await pool.connect();
   try {
@@ -37,7 +25,19 @@ export const signInFromFlowxp = async (pool: pg.Pool, h: Handoff): Promise<{ use
   }
 };
 
-const signIn = async (pool: pg.Pool, h: Handoff): Promise<{ userId: bigint; orgId: bigint } | null> => {
+/** The same, remembered for a few seconds: every call of the app comes through here, and nothing it checks changes that fast. */
+const seen = new Map<string, { at: number; r: { userId: bigint; orgId: bigint } | null }>();
+export const hostSession = async (pool: pg.Pool, h: Identity): Promise<{ userId: bigint; orgId: bigint } | null> => {
+  const key = [h.sub, h.bid, h.role, h.status, h.tend, h.email, h.bname].join('|');
+  const hit = seen.get(key);
+  if (hit && Date.now() - hit.at < 20_000) return hit.r;
+  const r = await signInFromFlowxp(pool, h);
+  if (seen.size > 2000) seen.clear();
+  seen.set(key, { at: Date.now(), r });
+  return r;
+};
+
+const signIn = async (pool: pg.Pool, h: Identity): Promise<{ userId: bigint; orgId: bigint } | null> => {
   let user = (await pool.query(`SELECT id FROM users WHERE lower(email) = lower($1) AND status = 'ACTIVE'`, [h.email])).rows[0];
   if (!user) user = (await pool.query(`INSERT INTO users (email, name, password_hash) VALUES ($1, $2, 'flowxp-sign-in') RETURNING id`, [h.email, h.name || h.email])).rows[0];
   const userId = user.id as bigint;
@@ -48,6 +48,11 @@ const signIn = async (pool: pg.Pool, h: Handoff): Promise<{ userId: bigint; orgI
     const id = await provisionOrganization(pool, { name: h.bname || 'My business', ownerUserId: userId });
     await pool.query('UPDATE organizations SET flowxp_business_id = $2 WHERE id = $1', [id, h.bid]);
     org = { id };
+  }
+  // FlowXP's sales reach these books inside the same process, so the connection needs no address and no secret from anyone: this row only says whose books they are
+  if (!(await pool.query(`SELECT 1 FROM integration_connections WHERE provider = 'FLOWXP' AND external_business_id = $1`, [h.bid])).rowCount) {
+    await withOrg(pool, org.id as bigint, (c) => c.query(
+      `INSERT INTO integration_connections (organization_id, provider, external_business_id, secret) VALUES ($1, 'FLOWXP', $2, $3) ON CONFLICT DO NOTHING`, [org.id, h.bid, storeSecret(newSecret())]));
   }
   await pool.query(`INSERT INTO memberships (organization_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT (organization_id, user_id) DO NOTHING`, [org.id, userId, role]);
   // FlowXP's trial is the trial: a paid business is ACTIVE; a trial, an ended trial or anything else follows the trial end it reports

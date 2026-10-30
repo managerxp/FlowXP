@@ -22,6 +22,6 @@ module.exports = {
       kill_timeout: 10000,        // give server.js's own SIGTERM handler time to finish in-flight requests
       time: true
     }
-    // FlowBook runs inside the FlowXP API process above (at /books, schema `flowbook`), so it has no process of its own
+    // FlowBook runs inside the FlowXP API process above (at /api/books, schema `flowbook`), so it has no process of its own
   ]
 };

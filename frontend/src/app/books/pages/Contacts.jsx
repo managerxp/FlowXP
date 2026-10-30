@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '../router.jsx';
 import { useLoad } from '../api.js';
 import { STATES, UNITS, isZero, unitLabel } from '../lib.js';
 import { CsvImport } from './Import.jsx';

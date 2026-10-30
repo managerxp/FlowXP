@@ -18,7 +18,7 @@ const useSheet = (partyId) => {
 };
 
 const Shell = ({ s, p, heading, children }) => createPortal(
-  <div className={`sheet ${s.paper === 'THERMAL' ? 'thermal' : ''}`} style={{ '--accent': s.accent }}>
+  <div className={`fb-sheet ${s.paper === 'THERMAL' ? 'thermal' : ''}`} style={{ '--accent': s.accent }}>
     <style>{`@media print { @page { size: ${SIZE[s.paper] || 'A4'}; margin: ${s.paper === 'THERMAL' ? '4mm' : '12mm'}; } }`}</style>
     <header>
       <div><strong className="biz">{p.legal_name || p.name}</strong>

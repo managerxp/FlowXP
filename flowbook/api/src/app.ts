@@ -18,11 +18,12 @@ import { featureLabel, featureOfRoute, featuresInBody } from './features.ts';
 import { setPeriodStatus } from './periods.ts';
 import type { PeriodStatus } from './periods.ts';
 import { TEMPLATES } from './coa.ts';
-import { readHandoff, signInFromFlowxp } from './sso.ts';
+import { hostSession } from './sso.ts';
+import type { Identity } from './sso.ts';
 
 type Session = { sessionId: bigint; userId: bigint; email: string; name: string; viaCookie: boolean };
 type OrgScope = { id: bigint; role: Role };
-declare module 'fastify' { interface FastifyRequest { session?: Session; org?: OrgScope } }
+declare module 'fastify' { interface FastifyRequest { session?: Session; org?: OrgScope; hostOrg?: bigint } }
 
 export type AppOptions = {
   pool: pg.Pool;
@@ -37,6 +38,8 @@ export type AppOptions = {
   limits?: { login?: number; register?: number };
   /** FlowXP is the only sign-in. false answers /auth/register and /auth/login with 404 (server.ts: off in production unless FLOWBOOK_PASSWORD_AUTH=on). Default true so tests and scripts can register. */
   passwordAuth?: boolean;
+  /** Inside the FlowXP app: the person is whoever FlowXP signed in (the FlowXP API puts who they are on the request), their books are the one set for their FlowXP business, and FlowBook has no sign-in or session of its own. */
+  hostAuth?: boolean;
   /** The AI provider behind the assistant (the FlowXP API hands in its own). Unset: the assistant says it is not switched on. */
   ai?: AiBridge;
   /** What the FlowXP super admin has switched off for a FlowXP business (keys of features.ts). Unset: nothing is off. */
@@ -96,6 +99,15 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
 
   /* ---- sessions */
   const authenticate = async (req: FastifyRequest, reply: FastifyReply): Promise<boolean> => {
+    if (opts.hostAuth) {
+      const who = (req.raw as { flowxp?: Identity }).flowxp;
+      if (!who) { reply.code(401).send({ error: { code: 'unauthenticated', message: 'sign in first' } }); return false; }
+      const r = await hostSession(pool, who);
+      if (!r) { reply.code(403).send({ error: { code: 'ask_owner', message: 'ask the owner or an admin of this business to open FlowBook first' } }); return false; }
+      req.session = { sessionId: 0n, userId: r.userId, email: who.email, name: who.name, viaCookie: false };
+      req.hostOrg = r.orgId;
+      return true;
+    }
     const bearer = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1];
     const cookie = bearer ? null : cookieValue(req.headers.cookie, COOKIE);
     const token = bearer ?? cookie;
@@ -119,7 +131,7 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
     const raw = (req.params as { orgId?: string }).orgId ?? '';
     const m = /^\d{1,18}$/.test(raw) ? (await pool.query(
       `SELECT m.role, o.flowxp_business_id, o.plan = 'TRIAL' AND o.trial_ends_at <= now() AS trial_over FROM memberships m JOIN organizations o ON o.id = m.organization_id WHERE m.organization_id = $1 AND m.user_id = $2`, [raw, req.session?.userId])).rows[0] : null;
-    if (!m) { reply.code(404).send({ error: { code: 'not_found', message: 'no such organization' } }); return; }
+    if (!m || (req.hostOrg !== undefined && req.hostOrg !== BigInt(raw))) { reply.code(404).send({ error: { code: 'not_found', message: 'no such organization' } }); return; }   // inside FlowXP the books are the signed-in business's, never another's
     if (!can(m.role as Role, permission)) { reply.code(403).send({ error: { code: 'forbidden', message: `your role cannot do this (${permission})` } }); return; }
     // a finished free trial keeps the books readable and exportable but takes no new entries
     if (m.trial_over && req.method !== 'GET' && req.method !== 'HEAD') { reply.code(402).send({ error: { code: 'trial_ended', message: 'your 7-day free trial has ended. Your books are safe and can still be read; pay for your plan in FlowXP (Settings, Subscription) and open FlowBook again' } }); return; }
@@ -167,17 +179,6 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
     return { user: { id: user.id, name: user.name, email: user.email }, token };
   });
 
-  /** The one sign-in: FlowXP's signed handoff in, a FlowBook session out. */
-  app.post('/v1/auth/flowxp', { schema: { body: { type: 'object', required: ['token'], additionalProperties: false, properties: { token: { type: 'string', maxLength: 2000 } } } } }, async (req, reply) => {
-    if (throttled(`sso:${req.ip}`, opts.limits?.login ?? 8 * 5)) return reply.code(429).send({ error: { code: 'rate_limited', message: 'too many attempts; wait a few minutes' } });
-    const h = readHandoff((req.body as { token: string }).token, process.env.FLOWBOOK_SSO_SECRET ?? '');
-    if (!h) return reply.code(401).send({ error: { code: 'bad_handoff', message: 'that sign-in link is not valid or has expired; open FlowBook again from FlowXP' } });
-    const r = await signInFromFlowxp(pool, h);
-    if (!r) return reply.code(403).send({ error: { code: 'ask_owner', message: 'ask the owner or an admin of this business to open FlowBook first' } });
-    const token = await startSession(req, reply, r.userId);
-    return { user: { id: r.userId, name: h.name, email: h.email }, token, organizationId: r.orgId };
-  });
-
   app.post('/v1/auth/logout', async (req, reply) => {
     if (!(await authenticate(req, reply))) return;
     await pool.query('UPDATE sessions SET revoked_at = now() WHERE id = $1', [req.session?.sessionId]);
@@ -188,7 +189,7 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
   app.get('/v1/me', async (req, reply) => {
     if (!(await authenticate(req, reply))) return;
     const orgs = (await pool.query(
-      `SELECT o.id, o.name, o.flowxp_business_id, m.role, o.plan, o.trial_ends_at, GREATEST(0, CEIL(EXTRACT(EPOCH FROM (o.trial_ends_at - now())) / 86400))::int AS trial_days_left FROM memberships m JOIN organizations o ON o.id = m.organization_id WHERE m.user_id = $1 ORDER BY o.name`, [req.session?.userId])).rows;
+      `SELECT o.id, o.name, o.flowxp_business_id, m.role, o.plan, o.trial_ends_at, GREATEST(0, CEIL(EXTRACT(EPOCH FROM (o.trial_ends_at - now())) / 86400))::int AS trial_days_left FROM memberships m JOIN organizations o ON o.id = m.organization_id WHERE m.user_id = $1 AND ($2::bigint IS NULL OR o.id = $2) ORDER BY o.name`, [req.session?.userId, req.hostOrg ?? null])).rows;
     const organizations = await Promise.all(orgs.map(async (o) => ({ ...o, features_off: o.flowxp_business_id && opts.featuresOff ? await opts.featuresOff(String(o.flowxp_business_id)) : [] })));
     return { user: { id: req.session?.userId, name: req.session?.name, email: req.session?.email }, organizations: organizations.map(({ flowxp_business_id: _link, ...o }) => o) };
   });
@@ -198,6 +199,7 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
     name: { type: 'string', minLength: 1, maxLength: 160 }, legalName: { type: 'string', maxLength: 200 }, pan: { type: 'string', pattern: '^[A-Z]{5}[0-9]{4}[A-Z]$' },
     template: { type: 'string', enum: TEMPLATES }, fyStartYear: { type: 'integer', minimum: 2000, maximum: 2100 } } } } }, async (req, reply) => {
     if (!(await authenticate(req, reply))) return;
+    if (req.hostOrg !== undefined) return reply.code(404).send({ error: { code: 'not_found', message: 'your books are set up for you' } });
     const b = req.body as { name: string; legalName?: string; pan?: string; template?: string; fyStartYear?: number };
     const id = await provisionOrganization(pool, { ...b, ownerUserId: req.session?.userId as bigint });
     return reply.code(201).send({ id, name: b.name, role: 'owner' });

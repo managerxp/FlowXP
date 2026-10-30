@@ -157,18 +157,17 @@ cd .. && pm2 reload flowxp-api     # zero-downtime: finishes in-flight requests 
 New migrations apply on start. They only ever move forward, so take a backup first when the release notes mention a
 new migration. nginx serves the new `frontend/dist` immediately — no reload needed for a frontend-only change.
 
-## FlowBook (accounting) on the same site
+## FlowBook (accounting) inside the app
 
-FlowBook is served at `https://flowxp.in/books`, not on a separate address. Extra steps beyond the above:
+FlowBook is part of the FlowXP website: `https://flowxp.in/app/books` (screens) and `/api/books` (API), signed in with FlowXP's own session and business choice. No separate address, secret, login, process, database or nginx block. Extra step beyond the above:
 
 ```bash
 cd flowbook/api && npm ci --omit=dev      # Node 24; FlowBook runs inside the FlowXP API and needs nothing else
-cd ../web && npm ci && npm run build      # builds with base /books/ into flowbook/web/dist
 ```
 
-- FlowBook needs **no variables of its own**: the sign-in secret and the key that seals stored tokens are derived from `ENCRYPTION_KEY` (or `JWT_SECRET`), the address defaults to `APP_ORIGIN` + `/books`, the cookie is `Secure` under `NODE_ENV=production`, email goes through FlowXP's mailbox (SMTP_* or Settings > Email) and WhatsApp through FlowXP's number (WHATSAPP_* or Settings > Messaging). `FLOWBOOK_SSO_SECRET`, `FLOWBOOK_SECRET_KEY` and `FLOWBOOK_APP_URL` exist only to override those defaults. Do not rotate `ENCRYPTION_KEY`/`JWT_SECRET` casually: stored WhatsApp tokens are sealed with the derived key.
-- nginx (`deploy/nginx.conf`) serves `flowbook/web/dist` at `/books/` and proxies `/books/v1/` to the FlowXP API (port 5100): FlowBook runs inside that same process and database, its tables in the `flowbook` schema, so there is no second process or database. Its settings are FlowXP's own, in the one backend `.env`. FlowBook migrations run when the API starts. `FLOWBOOK_EMBEDDED=false` switches it off.
-- FlowBook has no login of its own; people arrive from FlowXP's sign-in. In production its own register and login API stays reachable only through `/books/v1`, so block `/books/v1/auth/register` and `/books/v1/auth/login` in nginx if you do not want them (FlowBook's SSO call is `/books/v1/auth/flowxp`).
+- FlowBook needs **no variables of its own**: the key that seals stored tokens is derived from `ENCRYPTION_KEY` (or `JWT_SECRET`), email goes through FlowXP's mailbox (SMTP_* or Settings > Email) and WhatsApp through FlowXP's number (WHATSAPP_* or Settings > Messaging). Do not rotate `ENCRYPTION_KEY`/`JWT_SECRET` casually: stored WhatsApp tokens are sealed with the derived key.
+- FlowBook runs inside the FlowXP API process, its tables in the `flowbook` schema of the same database; migrations run when the API starts. `FLOWBOOK_EMBEDDED=false` switches it off. nginx's `/api/` block (with its rate limits) already covers `/api/books`.
+- Sales from a business's till reach the books in process (no URL or signature). A business gets FlowBook if it signed up as FlowBook, or is paying (ACTIVE) on a plan with the `flowbook` feature; per-feature switches are in the super admin Features page.
 
 ## What is not covered here
 

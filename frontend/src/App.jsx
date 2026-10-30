@@ -102,7 +102,7 @@ const KitchenPerformancePage = lazy(() => import('./app/KitchenPerformancePage.j
 const OrderReadyBoard = lazy(() => import('./app/OrderReadyBoard.jsx'));
 const TablesPage = lazy(() => import('./app/TablesPage.jsx'));
 const IntegrationsPage = lazy(() => import('./app/IntegrationsPage.jsx'));
-const FlowBookPage = lazy(() => import('./app/FlowBookPage.jsx'));
+const BooksApp = lazy(() => import('./app/books/BooksApp.jsx'));
 const SettlementsPage = lazy(() => import('./app/SettlementsPage.jsx'));
 const OutletsPage = lazy(() => import('./app/OutletsPage.jsx'));
 const ReservationsPage = lazy(() => import('./app/ReservationsPage.jsx'));
@@ -341,7 +341,8 @@ const App = () => (
       <Route path="security" element={<SecurityPage />} />
       <Route path="stock-requests" element={<StockRequestsPage />} />
       <Route path="integrations" element={<IntegrationsPage />} />
-      <Route path="flowbook" element={<FlowBookPage />} />
+      <Route path="books/*" element={<BooksApp />} />
+      <Route path="flowbook" element={<Navigate to="/app/books" replace />} />   {/* the old address */}
       <Route path="settlements" element={<SettlementsPage />} />
       <Route path="outlets" element={<OutletsPage />} />
       <Route path="loyalty" element={<LoyaltyPage />} />
