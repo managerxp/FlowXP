@@ -224,3 +224,15 @@
 .top .org-pick { flex: 0 1 14rem; min-width: 6rem; text-overflow: ellipsis; }
 @media (max-width: 420px) { .top { gap: .5rem; padding: 0 .5rem; } .top .btn.small { padding: 0 .5rem; } }
 .more-bar .btn { white-space: normal; text-align: center; }
+
+/* project dashboard: figures, budget line and the cost breakdown bars */
+.fb .fb-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .75rem; margin-bottom: .75rem; }
+.fb .fb-kpi { display: grid; gap: .25rem; padding: .875rem 1rem; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); }
+.fb .fb-kpi span { color: var(--ink-500); font-size: .8125rem; }
+.fb .fb-kpi strong { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.fb .fb-kpi strong.pos { color: var(--success); } .fb .fb-kpi strong.neg { color: var(--danger); }
+.fb .fb-budget { margin-bottom: 1rem; } .fb .fb-budget p { margin: .25rem 0 0; font-size: .8125rem; }
+.fb .fb-bar-line { position: relative; height: .625rem; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+.fb .fb-bar-line i { position: absolute; inset: 0 auto 0 0; background: var(--brand-500); } .fb .fb-bar-line i.warn { background: var(--warning); } .fb .fb-bar-line i.bad { background: var(--danger); }
+.fb .fb-split { margin-bottom: .875rem; } .fb .fb-split > div:first-child { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .25rem; }
+.fb .fb-track { height: .5rem; border-radius: 99px; background: var(--surface-3); overflow: hidden; } .fb .fb-track i { display: block; height: 100%; background: var(--brand-500); border-radius: 99px; }

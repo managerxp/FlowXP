@@ -154,6 +154,16 @@ test('roles: a viewer reads but cannot post; an auditor sees the audit log; a sa
   assert.equal((await call('PUT', `/v1/orgs/${org}/periods`, { token: viewer.token, body: { date: '2026-06-01', status: 'CLOSED' } })).status, 403);
 });
 
+test('a site supervisor can record stock and see projects, but sees no invoices, payments or reports', { skip }, async () => {
+  const owner = await signUp('Owner2'); const site = await signUp('Site');
+  const org = await makeOrg(owner.token);
+  assert.equal((await call('POST', `/v1/orgs/${org}/members`, { token: owner.token, body: { email: site.email, role: 'site' } })).status, 201);
+  const get = (path: string) => call('GET', `/v1/orgs/${org}/${path}`, { token: site.token });
+  for (const ok of ['projects', 'stock', 'warehouses', 'bills']) assert.equal((await get(ok)).status, 200, ok);
+  for (const no of ['invoices', 'payments', 'reports/trial-balance?to=2026-12-31', 'members']) assert.equal((await get(no)).status, 403, no);
+  assert.equal((await journal(org, site.token, 'site-0001-aaaa')).status, 403);
+});
+
 test('another organization looks like it does not exist: no leak by id, in any route', { skip }, async () => {
   const a = await signUp('A'); const b = await signUp('B');
   const orgA = await makeOrg(a.token, 'A Cafe'); const orgB = await makeOrg(b.token, 'B Cafe');

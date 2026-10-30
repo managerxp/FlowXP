@@ -1,3 +1,4 @@
+import { costType } from './costtypes.ts';
 import { einvoiceOf } from './einvoice.ts';
 import type { Db } from './db.ts';
 import { audit } from './audit.ts';
@@ -18,7 +19,7 @@ export type DocKind = 'INVOICE' | 'BILL' | 'CREDIT_NOTE' | 'QUOTE' | 'SALES_ORDE
 const POSTS_NOTHING = (k: DocKind): boolean => k === 'QUOTE' || k === 'SALES_ORDER' || k === 'PURCHASE_ORDER';
 export type LineIn = { itemId?: bigint; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; unit?: string; inclusive?: boolean };
 export type DocIn = {
-  currency?: string; fxRate?: string; projectId?: bigint; warehouseId?: bigint;
+  currency?: string; fxRate?: string; projectId?: bigint; projectCategory?: string; warehouseId?: bigint;
   /** an export invoice's shipping bill number and date and the port it left from */
   shippingBillNo?: string; shippingBillDate?: string; portCode?: string;
   kind: DocKind; partyId: bigint; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string;
@@ -122,6 +123,7 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
     rateStr = found; rate = rateMicro(found);
   }
   if (d.projectId && !(await c.query(`SELECT 1 FROM projects WHERE id = $1`, [d.projectId])).rowCount) throw gone('project');
+  const projectCategory = d.projectId && (d.kind === 'BILL' || d.kind === 'DEBIT_NOTE') ? costType(d.projectCategory, 'Materials') : null;
   const lines = await priceLines(c, d.kind, d.lines, d.date, rate);
   const org = (await c.query(`SELECT state_code FROM organizations WHERE id = $1`, [orgId])).rows[0];
   const place = d.placeOfSupply ?? party.state_code;
@@ -154,7 +156,7 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
     await c.query(`DELETE FROM document_lines WHERE document_id = $1`, [id]);
   }
   if (d.warehouseId && !(await c.query(`SELECT 1 FROM warehouses WHERE id = $1 AND active`, [d.warehouseId])).rowCount) throw gone('warehouse');
-  await c.query(`UPDATE documents SET warehouse_id = $2, shipping_bill_no = $3, shipping_bill_date = $4, port_code = $5 WHERE id = $1`, [id, d.warehouseId ?? null, d.shippingBillNo?.trim() || null, d.shippingBillDate || null, d.portCode?.trim() || null]);
+  await c.query(`UPDATE documents SET warehouse_id = $2, shipping_bill_no = $3, shipping_bill_date = $4, port_code = $5, project_category = $6 WHERE id = $1`, [id, d.warehouseId ?? null, d.shippingBillNo?.trim() || null, d.shippingBillDate || null, d.portCode?.trim() || null, projectCategory]);
   let no = 0;
   for (const l of lines) {
     no += 1;
@@ -167,7 +169,7 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
 };
 
 const DOC_COLS = `d.id, d.kind, d.number, d.supplier_ref, d.party_id, p.name AS party_name, d.status, d.issue_date::text AS issue_date, d.due_date::text AS due_date,
-  d.place_of_supply, d.inter_state, d.subtotal_minor, d.tax_minor, d.round_off_minor, d.outcome, d.converted_document_id, (SELECT x.kind FROM documents x WHERE x.id = d.converted_document_id) AS converted_kind, (SELECT x.kind FROM documents x WHERE x.id = d.related_document_id) AS related_kind, d.tcs_rate_bp, d.tcs_minor, d.tcs_section, d.reverse_charge, d.project_id, d.warehouse_id, d.shipping_bill_no, d.shipping_bill_date::text AS shipping_bill_date, d.port_code, (SELECT w.name FROM warehouses w WHERE w.id = d.warehouse_id) AS warehouse_name, (SELECT pr.name FROM projects pr WHERE pr.id = d.project_id) AS project_name, d.currency, d.fx_rate::text AS fx_rate, d.foreign_total_minor, d.foreign_balance_minor, d.total_minor, d.balance_minor, d.related_document_id, d.journal_entry_id, d.memo`;
+  d.place_of_supply, d.inter_state, d.subtotal_minor, d.tax_minor, d.round_off_minor, d.outcome, d.converted_document_id, (SELECT x.kind FROM documents x WHERE x.id = d.converted_document_id) AS converted_kind, (SELECT x.kind FROM documents x WHERE x.id = d.related_document_id) AS related_kind, d.tcs_rate_bp, d.tcs_minor, d.tcs_section, d.reverse_charge, d.project_id, d.project_category, d.warehouse_id, d.shipping_bill_no, d.shipping_bill_date::text AS shipping_bill_date, d.port_code, (SELECT w.name FROM warehouses w WHERE w.id = d.warehouse_id) AS warehouse_name, (SELECT pr.name FROM projects pr WHERE pr.id = d.project_id) AS project_name, d.currency, d.fx_rate::text AS fx_rate, d.foreign_total_minor, d.foreign_balance_minor, d.total_minor, d.balance_minor, d.related_document_id, d.journal_entry_id, d.memo`;
 
 export const listDocuments = async (c: Db, kind: DocKind, q: { status?: string; partyId?: bigint; before?: bigint; limit: number }) => (await c.query(
   `SELECT ${DOC_COLS} FROM documents d JOIN parties p ON p.id = d.party_id
@@ -203,7 +205,7 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
   const stored = (await c.query(`SELECT * FROM document_lines WHERE document_id = $1 ORDER BY line_no`, [id])).rows;
   const milli = (q: bigint) => `${q / 1000n}.${String(q % 1000n).padStart(3, '0')}`;
   await saveDraft(c, orgId, id, {
-    kind, currency: doc.currency, fxRate: doc.fx_rate, projectId: doc.project_id ?? undefined, warehouseId: doc.warehouse_id ?? undefined, shippingBillNo: doc.shipping_bill_no ?? undefined, shippingBillDate: doc.shipping_bill_date ?? undefined, portCode: doc.port_code ?? undefined, partyId: doc.party_id, date: doc.issue_d, dueDate: doc.due_d ?? undefined,
+    kind, currency: doc.currency, fxRate: doc.fx_rate, projectId: doc.project_id ?? undefined, projectCategory: doc.project_category ?? undefined, warehouseId: doc.warehouse_id ?? undefined, shippingBillNo: doc.shipping_bill_no ?? undefined, shippingBillDate: doc.shipping_bill_date ?? undefined, portCode: doc.port_code ?? undefined, partyId: doc.party_id, date: doc.issue_d, dueDate: doc.due_d ?? undefined,
     placeOfSupply: doc.place_of_supply ?? undefined, supplierRef: doc.supplier_ref ?? undefined, relatedDocumentId: kind === 'CREDIT_NOTE' || kind === 'DEBIT_NOTE' ? doc.related_document_id ?? undefined : undefined, memo: doc.memo ?? undefined, roundOff: doc.round_off_on, tcsRateBp: doc.tcs_rate_bp, tcsSection: doc.tcs_section ?? undefined, reverseCharge: doc.reverse_charge,
     lines: stored.map((l) => ({ itemId: l.item_id ?? undefined, description: l.description, hsnSac: l.hsn_sac ?? undefined, quantity: milli(l.quantity_milli), unitPrice: paiseToString(l.unit_price_fc_minor ?? l.unit_price_minor), discount: paiseToString(l.discount_fc_minor ?? l.discount_minor), taxCode: l.tax_code, unit: l.unit ?? undefined, inclusive: l.price_includes_tax }))
   }, actor);
@@ -292,7 +294,7 @@ export const convertDocument = async (c: Db, orgId: bigint, id: bigint, to: 'SAL
   const stored = (await c.query(`SELECT * FROM document_lines WHERE document_id = $1 ORDER BY line_no`, [id])).rows;
   const milli = (q: bigint) => `${q / 1000n}.${String(q % 1000n).padStart(3, '0')}`;
   const newId = await saveDraft(c, orgId, null, {
-    kind: to, currency: d.currency, fxRate: d.fx_rate, projectId: d.project_id ?? undefined, warehouseId: d.warehouse_id ?? undefined, partyId: d.party_id, date, placeOfSupply: d.place_of_supply ?? undefined, memo: d.memo ?? undefined, roundOff: d.round_off_on,
+    kind: to, currency: d.currency, fxRate: d.fx_rate, projectId: d.project_id ?? undefined, projectCategory: d.project_category ?? undefined, warehouseId: d.warehouse_id ?? undefined, partyId: d.party_id, date, placeOfSupply: d.place_of_supply ?? undefined, memo: d.memo ?? undefined, roundOff: d.round_off_on,
     lines: stored.map((l) => ({ itemId: l.item_id ?? undefined, description: l.description, hsnSac: l.hsn_sac ?? undefined, quantity: milli(l.quantity_milli), unitPrice: paiseToString(l.unit_price_fc_minor ?? l.unit_price_minor), discount: paiseToString(l.discount_fc_minor ?? l.discount_minor), taxCode: l.tax_code, unit: l.unit ?? undefined, inclusive: l.price_includes_tax }))
   }, actor);
   await c.query(`UPDATE documents SET related_document_id = $2 WHERE id = $1`, [newId, id]);

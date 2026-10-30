@@ -6,6 +6,7 @@ import { issueDocument, saveDraft, voidDocument } from '../src/documents.ts';
 import type { DocKind } from '../src/documents.ts';
 import { createItem, createParty, seedTaxRates } from '../src/masters.ts';
 import { openFinancialYear } from '../src/periods.ts';
+import { createProject, getProject } from '../src/projects.ts';
 import { stockBatches, stockSerials } from '../src/stock.ts';
 import type { TrackIn } from '../src/stock.ts';
 import { addWarehouse, adjust, listWarehouses, setTracking, stockByWarehouse, stockLedger, stockSummary, transferStock, updateWarehouse } from '../src/stock.ts';
@@ -182,4 +183,18 @@ test('serial items: every unit has a number, none can be in stock twice, and sel
   await run(org, (c) => voidDocument(c, org, 'INVOICE', inv, { date: '2026-06-02', reason: 'returned' }, 't'));
   assert.deepEqual((await run(org, (c) => stockSerials(c, tv))).map((x) => x.serial).sort(), ['S2', 'S3']);
   assert.equal(await inventory(org), (await run(org, (c) => stockSummary(c))).reduce((a, r) => a + (r.value_minor as bigint), 0n));
+});
+
+test('stock used on a job is charged to that project at its average cost, and only as a cost', { skip }, async () => {
+  const { org, item } = await shop();
+  const project = await run(org, (c) => createProject(c, org, { name: 'Tower A', budget: '1000' }, 't'));
+  await run(org, (c) => adjust(c, org, { itemId: item, date: '2026-06-01', direction: 'IN', quantity: '10', unitCost: '12', counterAccount: 'OPENING_BALANCE', reason: 'opening' }, 't'));
+  await assert.rejects(run(org, (c) => adjust(c, org, { itemId: item, date: '2026-06-02', direction: 'OUT', quantity: '1', counterAccount: 'OPENING_BALANCE', reason: 'used', projectId: project }, 't')), /cost account/);
+  await assert.rejects(run(org, (c) => adjust(c, org, { itemId: item, date: '2026-06-02', direction: 'IN', quantity: '1', unitCost: '1', counterAccount: 'COGS', reason: 'x', projectId: project }, 't')), /only stock taken out/);
+  await run(org, (c) => adjust(c, org, { itemId: item, date: '2026-06-02', direction: 'OUT', quantity: '4', counterAccount: 'COGS', reason: 'used on slab', projectId: project }, 't'));
+  const p = (await run(org, (c) => getProject(c, project)))!;
+  assert.equal(p.expenses_minor, 4800n);                    // 4 at 12
+  assert.equal(p.budget_left_minor, 100000n - 4800n);
+  assert.equal(p.expenses.length, 1);
+  assert.equal((await summary(org)).quantity, '6.000');
 });

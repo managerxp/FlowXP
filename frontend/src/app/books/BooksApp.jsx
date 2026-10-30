@@ -1,8 +1,10 @@
 /* FlowBook inside the FlowXP app, at /app/books. FlowXP's own sidebar and top bar are around it; this is the books' own sections, the Simple/Full switch and the help. */
+import { useState } from 'react';
 import { Navigate, NavLink, Route, Routes, useLocation } from './router.jsx';
 import { SessionProvider, useSession } from './session.jsx';
 import { setMode, useSimple } from './mode.js';
 import { HelpButton, HelpPanel, HelpProvider } from './help.jsx';
+import { download, tablesToCsv } from './csv.js';
 import { Card, Err, Loading } from './ui.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import { DocForm, DocList, DocView } from './pages/Documents.jsx';
@@ -43,6 +45,17 @@ const NEEDS = { '/quotes': 'flowbook_quotes_orders', '/sales-orders': 'flowbook_
 const SIMPLE = new Set(['/', '/sales', '/customers', '/purchases', '/expenses', '/vendors', '/payments', '/items', '/stock', '/reports', '/settings']);
 
 /** A section's tab goes to its first visible screen; the screens of the open section are listed under the tabs. */
+/** Download what the page shows (every table on it) as a spreadsheet file. */
+const ExportButton = ({ page }) => {
+  const [none, setNone] = useState(false);
+  const go = () => {
+    const text = tablesToCsv(document.querySelector('.fb'));
+    if (!text) { setNone(true); setTimeout(() => setNone(false), 2500); return; }
+    download(`flowbook-${(page.replace(/\//g, '-').replace(/^-|-$/g, '') || 'home')}-${new Date().toISOString().slice(0, 10)}.csv`, text);
+  };
+  return <button type="button" className="btn" onClick={go} title="Download what this page shows as a spreadsheet (opens in Excel)">{none ? 'Nothing to export here' : 'Export'}</button>;
+};
+
 const Frame = () => {
   const { ready, org, on, error } = useSession();
   const simple = useSimple();
@@ -65,6 +78,7 @@ const Frame = () => {
             <button className={simple ? 'on' : ''} aria-pressed={simple} onClick={() => setMode('simple')}>Simple</button>
             <button className={simple ? '' : 'on'} aria-pressed={!simple} onClick={() => setMode('full')}>Full</button>
           </div>
+          <ExportButton page={here} />
           <HelpButton />
         </div>
       </div>

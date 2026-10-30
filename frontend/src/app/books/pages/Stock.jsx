@@ -86,21 +86,23 @@ const Warehouses = ({ rows, onDone }) => {
 };
 
 const Adjust = ({ items, accounts, warehouses, onDone, onClose }) => {
-  const { o } = useSession();
+  const { o, org, on } = useSession();
+  const projects = useLoad(() => (on('flowbook_projects') ? o('/projects?status=ACTIVE') : Promise.resolve([])), [org.id]);
   const a = useAction();
-  const [f, setF] = useState({ itemId: items[0]?.id || '', direction: 'IN', quantity: '', unitCost: '', counterAccount: 'OPENING_BALANCE', date: today(), reason: 'Opening stock', warehouseId: '' });
+  const [f, setF] = useState({ itemId: items[0]?.id || '', direction: 'IN', quantity: '', unitCost: '', counterAccount: 'OPENING_BALANCE', date: today(), reason: 'Opening stock', warehouseId: '', projectId: '' });
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
-  const dir = (e) => setF({ ...f, direction: e.target.value, counterAccount: e.target.value === 'IN' ? 'OPENING_BALANCE' : 'COGS', reason: e.target.value === 'IN' ? 'Opening stock' : 'Damaged or lost' });
-  const save = (e) => { e.preventDefault(); a.run(async () => { await o('/stock/adjustments', { method: 'POST', body: { itemId: String(f.itemId), date: f.date, direction: f.direction, quantity: f.quantity, counterAccount: f.counterAccount, reason: f.reason, ...(f.warehouseId && { warehouseId: f.warehouseId }), ...(f.direction === 'IN' && { unitCost: f.unitCost }) } }); onDone(); onClose(); }, 'Stock adjusted.'); };
+  const dir = (e) => setF({ ...f, direction: e.target.value, counterAccount: e.target.value === 'IN' ? 'OPENING_BALANCE' : 'COGS', reason: e.target.value === 'IN' ? 'Opening stock' : 'Damaged or lost', projectId: '' });
+  const save = (e) => { e.preventDefault(); a.run(async () => { await o('/stock/adjustments', { method: 'POST', body: { itemId: String(f.itemId), date: f.date, direction: f.direction, quantity: f.quantity, counterAccount: f.counterAccount, reason: f.reason, ...(f.warehouseId && { warehouseId: f.warehouseId }), ...(f.direction === 'OUT' && f.projectId && { projectId: f.projectId }), ...(f.direction === 'IN' && { unitCost: f.unitCost }) } }); onDone(); onClose(); }, 'Stock adjusted.'); };
   return (
     <Card title="Adjust stock"><Err>{a.error}</Err>
       <form className="form" onSubmit={save}>
         <Field label="Item"><select value={f.itemId} onChange={set('itemId')}>{items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}</select></Field>
         {warehouses.length > 1 && <Field label="Warehouse"><select value={f.warehouseId} onChange={set('warehouseId')}><option value="">Default</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field>}
         <Field label="Date"><input type="date" value={f.date} onChange={set('date')} required /></Field>
-        <Field label="What happened"><select value={f.direction} onChange={dir}><option value="IN">Add stock (opening stock, found)</option><option value="OUT">Remove stock (damaged, lost, used)</option></select></Field>
+        <Field label="What happened"><select value={f.direction} onChange={dir}><option value="IN">Add stock (opening stock, found)</option><option value="OUT">Remove stock (used on a job, damaged, lost)</option></select></Field>
         <Field label="Quantity"><input inputMode="decimal" value={f.quantity} onChange={set('quantity')} required /></Field>
         {f.direction === 'IN' && <Field label="Cost of each (₹)"><input inputMode="decimal" value={f.unitCost} onChange={set('unitCost')} required /></Field>}
+        {f.direction === 'OUT' && !!projects.data?.length && <Field label="Used on project" hint="Optional: the cost counts towards that project"><select value={f.projectId} onChange={(e) => setF({ ...f, projectId: e.target.value, ...(e.target.value && { counterAccount: 'COGS', reason: 'Used on project' }) })}><option value="">None</option>{projects.data.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>}
         <Field label="Other side in the books" hint={f.direction === 'IN' ? 'Opening stock goes against opening balance' : 'A write-off is a cost'}>
           <select value={f.counterAccount} onChange={set('counterAccount')}>
             {f.direction === 'IN' && <option value="OPENING_BALANCE">Opening balance equity</option>}

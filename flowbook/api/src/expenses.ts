@@ -1,3 +1,4 @@
+import { costType } from './costtypes.ts';
 import type { Db } from './db.ts';
 import { LedgerError, post, reverse } from './ledger.ts';
 import type { LineInput } from './ledger.ts';
@@ -7,7 +8,7 @@ import { taxOn, toPaise } from './money.ts';
    UPI or card account is credited. An expense you will pay later is a purchase bill, not this. */
 
 const PAID_WITH = { CASH: 'CASH', BANK: 'BANK', UPI: 'UPI_CLEARING', CARD: 'CARD_CLEARING' } as const;
-export type ExpenseIn = { date: string; accountId: bigint; amount: string; taxCode?: string; interState?: boolean; paidWith: keyof typeof PAID_WITH; description: string; paidTo?: string; reference?: string; idempotencyKey: string; projectId?: bigint };
+export type ExpenseIn = { date: string; accountId: bigint; amount: string; taxCode?: string; interState?: boolean; paidWith: keyof typeof PAID_WITH; description: string; paidTo?: string; reference?: string; idempotencyKey: string; projectId?: bigint; projectCategory?: string };
 
 export const recordExpense = async (c: Db, orgId: bigint, e: ExpenseIn, actor: string, override?: { reason: string }): Promise<{ entryId: bigint; entryNo: string }> => {
   const acct = (await c.query(`SELECT type, active FROM accounts WHERE organization_id = $1 AND id = $2`, [orgId, e.accountId])).rows[0];
@@ -27,8 +28,9 @@ export const recordExpense = async (c: Db, orgId: bigint, e: ExpenseIn, actor: s
   lines.push({ account: PAID_WITH[e.paidWith], side: 'C', amount: net + tax });
   const memo = [e.description.trim(), e.paidTo && `to ${e.paidTo.trim()}`, e.reference && `ref ${e.reference.trim()}`].filter(Boolean).join(' · ');
   if (e.projectId && !(await c.query(`SELECT 1 FROM projects WHERE id = $1`, [e.projectId])).rowCount) throw new LedgerError('not_found', 'no such project');
+  const category = e.projectId ? costType(e.projectCategory, 'Other') : null;
   const out = await post(c, orgId, { date: e.date, sourceType: 'expense', sourceId: e.idempotencyKey, kind: 'EXPENSE', memo, actor, override, lines: lines.filter((l) => l.amount !== 0n) });
-  if (e.projectId) await c.query(`INSERT INTO project_expenses (organization_id, project_id, entry_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, [orgId, e.projectId, out.entryId]);
+  if (e.projectId) await c.query(`INSERT INTO project_expenses (organization_id, project_id, entry_id, category) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`, [orgId, e.projectId, out.entryId, category]);
   return { entryId: out.entryId, entryNo: out.entryNo };
 };
 

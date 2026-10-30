@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { withOrg } from '../src/db.ts';
 import type { Db } from '../src/db.ts';
-import { deleteDraft, issueDocument, saveDraft, voidDocument } from '../src/documents.ts';
+import { createPayment, deleteDraft, issueDocument, saveDraft, voidDocument, voidPayment } from '../src/documents.ts';
+import { createItem } from '../src/masters.ts';
+import { adjust, setTracking } from '../src/stock.ts';
 import type { DocKind } from '../src/documents.ts';
 import { recordExpense } from '../src/expenses.ts';
 import { createParty, seedTaxRates } from '../src/masters.ts';
@@ -72,4 +74,33 @@ test('profit is invoiced work less bills and tagged expenses; a void invoice fre
   assert.equal(p.invoiced_minor, 0n); assert.equal(p.unbilled_minor, 1_000_000n);
   await run(org, (c) => updateProject(c, org, proj, { status: 'ARCHIVED' }, 't'));
   await assert.rejects(run(org, (c) => addTime(c, org, proj, { date: '2026-06-21', hours: '1' }, 't')), /archived/);
+});
+
+test('the project dashboard: budget, spent by kind of cost, received, and goods counted in stock are charged once, when issued', { skip }, async () => {
+  const { org, proj, cust, vend, rent } = await studio();
+  const bill = (partyId: bigint, lines: { description?: string; itemId?: bigint; quantity: string; unitPrice: string }[], projectCategory?: string) => run(org, async (c) => {
+    const id = await saveDraft(c, org, null, { kind: 'BILL', partyId, date: '2026-06-02', projectId: proj, projectCategory, supplierRef: `S-${Math.random()}`, lines: lines.map((l) => ({ taxCode: 'GST0', ...l })) }, 't');
+    await issueDocument(c, org, 'BILL', id, 't'); return id;
+  });
+  await assert.rejects(run(org, (c) => saveDraft(c, org, null, { kind: 'BILL', partyId: vend, date: '2026-06-02', projectId: proj, projectCategory: 'Snacks', lines: [{ description: 'x', quantity: '1', unitPrice: '1', taxCode: 'GST0' }] }, 't')), /kind of cost/);
+  await bill(vend, [{ description: 'Mason work', quantity: '1', unitPrice: '10000' }], 'Contractors');
+  await run(org, (c) => recordExpense(c, org, { date: '2026-06-03', accountId: rent, amount: '2000', paidWith: 'CASH', description: 'Labour', idempotencyKey: 'dash-exp-01', projectId: proj, projectCategory: 'Labour' }, 't'));
+  // 10 bags of cement bought for the project and counted in stock: cost is 1,000 but it reaches the project only when 4 are issued to it
+  const cement = await run(org, async (c) => { const i = await createItem(c, org, { sku: 'CEM', name: 'Cement', purchasePrice: '100', salePrice: '0', taxCode: 'GST0' }, 't'); await setTracking(c, org, i, { trackStock: true }, 't'); return i; });
+  await bill(vend, [{ itemId: cement, quantity: '10', unitPrice: '100' }]);
+  let p = (await run(org, (c) => getProject(c, proj)))!;
+  assert.equal(p.cost_minor, 1_200_000n, 'only the mason and the labour so far');
+  await run(org, (c) => adjust(c, org, { itemId: cement, date: '2026-06-04', direction: 'OUT', quantity: '4', counterAccount: 'COGS', reason: 'slab', projectId: proj }, 't'));
+  // an invoice to the owner, part paid
+  const inv = await run(org, async (c) => { const id = await saveDraft(c, org, null, { kind: 'INVOICE', partyId: cust, date: '2026-06-05', projectId: proj, lines: [{ description: 'Stage 1', quantity: '1', unitPrice: '30000', taxCode: 'GST0' }] }, 't'); await issueDocument(c, org, 'INVOICE', id, 't'); return id; });
+  const pay = await run(org, (c) => createPayment(c, org, { direction: 'IN', partyId: cust, date: '2026-06-06', mode: 'BANK', amount: 1_200_000n, allocations: [{ documentId: inv, amount: 1_200_000n }], idempotencyKey: 'dash-pay-0001' }, 't'));
+  p = (await run(org, (c) => getProject(c, proj)))!;
+  assert.equal(p.cost_minor, 1_000_000n + 200_000n + 40_000n);               // 10,000 + 2,000 + 4 bags at 100
+  assert.deepEqual(p.breakdown.map((b) => [b.category, b.amount_minor]), [['Materials', 40_000n], ['Labour', 200_000n], ['Contractors', 1_000_000n]]);
+  assert.equal(p.breakdown.reduce((a, b) => a + b.amount_minor, 0n), p.cost_minor, 'the parts add up to the total');
+  assert.equal(p.breakdown.reduce((a, b) => a + b.share_bp, 0) <= 10_000, true);
+  assert.equal(p.receipts_minor, 1_200_000n); assert.equal(p.invoiced_minor, 3_000_000n);
+  assert.equal(p.budget_left_minor, 5_000_000n - p.cost_minor);
+  await run(org, (c) => voidPayment(c, org, pay.id as bigint, { date: '2026-06-07', reason: 'bounced' }, 't'));
+  assert.equal((await run(org, (c) => getProject(c, proj)))!.receipts_minor, 0n, 'a voided receipt stops counting');
 });

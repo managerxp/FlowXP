@@ -49,13 +49,13 @@ export default () => {
       <Card>
         <p className="actions">{['ACTIVE', 'COMPLETED', 'ARCHIVED'].map((s) => <Btn key={s} kind={status === s ? 'primary' : undefined} onClick={() => setStatus(s)}>{s.charAt(0) + s.slice(1).toLowerCase()}</Btn>)}</p>
         <Async load={load}>{(rows) => (
-          <Table head={['Project', 'Customer', '>Hours', '>To bill', '>Invoiced', '>Costs', '>Profit']} empty={!rows.length && <Empty>No {status.toLowerCase()} projects.</Empty>}>
+          <Table head={['Project', 'Customer', '>Budget', '>Spent', '>Budget left', '>Received', '>Profit']} empty={!rows.length && <Empty>No {status.toLowerCase()} projects.</Empty>}>
             {rows.map((r) => (
               <tr key={r.id}>
                 <td><Link to={`/projects/${r.id}`}>{r.name}</Link>{r.code && <span className="muted"> · {r.code}</span>}</td>
                 <td>{r.customer || <span className="muted">none</span>}</td>
-                <td className="r num">{hours(r.minutes)}</td><td className="r"><Money v={r.unbilled_minor} /></td><td className="r"><Money v={r.invoiced_minor} /></td>
-                <td className="r"><Money v={r.cost_minor} /></td><td className="r"><Money v={r.profit_minor} strong /></td>
+                <td className="r">{r.budget_minor > 0 ? <Money v={r.budget_minor} /> : <span className="muted">not set</span>}</td><td className="r"><Money v={r.cost_minor} /></td>
+                <td className="r">{r.budget_left_minor === null ? <span className="muted">-</span> : <Money v={r.budget_left_minor} />}</td><td className="r"><Money v={r.receipts_minor} /></td><td className="r"><Money v={r.profit_minor} strong /></td>
               </tr>
             ))}
           </Table>
@@ -109,6 +109,32 @@ const InvoiceHours = ({ id, onDone, onClose }) => {
   );
 };
 
+/** The money picture of a project: budget, what was spent and on what, what the customer has paid. Spent and the breakdown are before GST. */
+const Dashboard = ({ p }) => {
+  const budget = p.budget_minor > 0 ? Number(p.budget_minor) : 0;
+  const used = budget ? Math.round((Number(p.cost_minor) / budget) * 100) : 0;
+  const left = p.budget_left_minor === null ? null : Number(p.budget_left_minor);
+  return (<>
+    <div className="fb-kpis">
+      <div className="fb-kpi"><span>Total budget</span><strong>{budget ? `₹${inr(p.budget_minor)}` : 'Not set'}</strong></div>
+      <div className="fb-kpi"><span>Total spent</span><strong>₹{inr(p.cost_minor)}</strong></div>
+      <div className="fb-kpi"><span>Customer receipts</span><strong className="pos">₹{inr(p.receipts_minor)}</strong></div>
+      <div className="fb-kpi"><span>Budget remaining</span><strong className={left !== null && left < 0 ? 'neg' : ''}>{left === null ? 'Set a budget' : `${left < 0 ? '-' : ''}₹${inr(Math.abs(left))}`}</strong></div>
+    </div>
+    {budget > 0 && <div className="fb-budget"><div className="fb-bar-line"><i className={used > 100 ? 'bad' : used > 80 ? 'warn' : ''} style={{ width: `${Math.min(used, 100)}%` }} /></div><p className="muted">{used}% of the budget used</p></div>}
+    <Card title="Expense breakdown">
+      {p.breakdown.length === 0
+        ? <Empty>No costs yet. Pick this project on a bill or expense, or when you take goods out of stock, and choose the kind of cost.</Empty>
+        : p.breakdown.map((b) => (
+          <div className="fb-split" key={b.category}>
+            <div><span>{b.category}</span><span className="muted">₹{inr(b.amount_minor)} · {Math.round(b.share_bp / 100)}%</span></div>
+            <div className="fb-track"><i style={{ width: `${Math.max(b.share_bp / 100, 1)}%` }} /></div>
+          </div>))}
+      <p className="muted">Before GST. Goods you count in stock reach the project when you take them out of stock for it, not when you buy them.</p>
+    </Card>
+  </>);
+};
+
 export const ProjectView = () => {
   const { id } = useParams();
   const { o, org } = useSession();
@@ -122,6 +148,7 @@ export const ProjectView = () => {
         actions={<><Btn kind="primary" onClick={() => setBilling(true)}>Invoice the hours</Btn>{p.status === 'ACTIVE' ? <Btn onClick={() => setStatus('COMPLETED')}>Mark complete</Btn> : <Btn onClick={() => setStatus('ACTIVE')}>Reopen</Btn>}{p.status !== 'ARCHIVED' && <Btn onClick={() => setStatus('ARCHIVED')}>Archive</Btn>}</>}>
         <Err>{a.error}</Err>
         {billing && <InvoiceHours id={id} onDone={load.reload} onClose={() => setBilling(false)} />}
+        <Dashboard p={p} />
         <Card title="How it is going"><dl className="facts">
           <dt>Hours logged</dt><dd>{hours(p.minutes)} ({hours(p.unbilled_minutes)} still to bill, worth ₹{inr(p.unbilled_minor)})</dd>
           <dt>Invoiced</dt><dd>₹{inr(p.invoiced_minor)}</dd>

@@ -3,6 +3,7 @@ import type { Db } from './db.ts';
 import { saveDraft } from './documents.ts';
 import { LedgerError } from './ledger.ts';
 import { paiseToString, toPaise } from './money.ts';
+import { COST_TYPES } from './costtypes.ts';
 
 /* Projects. Hours are logged against a project at an hourly rate; bills, invoices and expenses can be tagged to it. The summary sets what was invoiced
    (before GST) against what it cost (bills and expenses, before GST), and "invoice the hours" turns unbilled billable time into a draft invoice. */
@@ -32,6 +33,9 @@ export const updateProject = async (c: Db, orgId: bigint, id: bigint, p: Partial
   await audit(c, orgId, { actor, action: 'project.updated', entityType: 'project', entityId: id, detail: { status: p.status ?? null } });
 };
 
+/** Goods you count in stock reach a project when they are issued to it, so the part of a bill that bought them is left out here (it would be counted twice). */
+const COUNTED = `COALESCE((SELECT SUM(l.taxable_minor) FROM document_lines l JOIN items i ON i.id = l.item_id AND i.track_stock WHERE l.document_id = d.id), 0)`;
+
 /** Hours, money billed, money spent. Revenue and cost are before GST: invoices less credit notes, bills less debit notes, and tagged expenses that were not reversed. */
 const SUMMARY = `
   SELECT p.id, p.name, p.code, p.party_id, (SELECT name FROM parties x WHERE x.id = p.party_id) AS customer, p.status, p.hourly_rate_minor, p.budget_minor, p.notes,
@@ -40,7 +44,8 @@ const SUMMARY = `
     COALESCE((SELECT SUM(minutes) FROM time_entries t WHERE t.project_id = p.id AND t.billable AND t.invoice_id IS NULL), 0)::int AS unbilled_minutes,
     COALESCE((SELECT SUM(ROUND(t.minutes::numeric * t.rate_minor / 60)) FROM time_entries t WHERE t.project_id = p.id AND t.billable AND t.invoice_id IS NULL), 0)::bigint AS unbilled_minor,
     COALESCE((SELECT SUM(CASE d.kind WHEN 'INVOICE' THEN d.subtotal_minor ELSE -d.subtotal_minor END) FROM documents d WHERE d.project_id = p.id AND d.status = 'ISSUED' AND d.kind IN ('INVOICE', 'CREDIT_NOTE')), 0)::bigint AS invoiced_minor,
-    COALESCE((SELECT SUM(CASE d.kind WHEN 'BILL' THEN d.subtotal_minor ELSE -d.subtotal_minor END) FROM documents d WHERE d.project_id = p.id AND d.status = 'ISSUED' AND d.kind IN ('BILL', 'DEBIT_NOTE')), 0)::bigint AS bills_minor,
+    COALESCE((SELECT SUM(CASE d.kind WHEN 'BILL' THEN 1 ELSE -1 END * (d.subtotal_minor - ${COUNTED})) FROM documents d WHERE d.project_id = p.id AND d.status = 'ISSUED' AND d.kind IN ('BILL', 'DEBIT_NOTE')), 0)::bigint AS bills_minor,
+    COALESCE((SELECT SUM(a.amount_minor) FROM payment_allocations a JOIN documents d ON d.id = a.document_id WHERE d.project_id = p.id AND d.kind = 'INVOICE' AND d.status = 'ISSUED' AND a.source_type = 'PAYMENT' AND a.voided_at IS NULL), 0)::bigint AS receipts_minor,
     COALESCE((SELECT SUM(l.base_amount_minor) FROM project_expenses x JOIN journal_lines l ON l.entry_id = x.entry_id AND l.side = 'D' JOIN accounts a ON a.id = l.account_id AND a.type = 'EXPENSE'
                WHERE x.project_id = p.id AND NOT EXISTS (SELECT 1 FROM journal_entries r WHERE r.reverses_entry_id = x.entry_id)), 0)::bigint AS expenses_minor
     FROM projects p`;
@@ -62,7 +67,19 @@ export const getProject = async (c: Db, id: bigint) => {
     `SELECT e.id, e.entry_no, e.posting_date::text AS date, e.memo, (SELECT COALESCE(SUM(l.base_amount_minor), 0)::bigint FROM journal_lines l JOIN accounts a ON a.id = l.account_id AND a.type = 'EXPENSE' WHERE l.entry_id = e.id AND l.side = 'D') AS amount_minor,
             EXISTS (SELECT 1 FROM journal_entries r WHERE r.reverses_entry_id = e.id) AS reversed
        FROM project_expenses x JOIN journal_entries e ON e.id = x.entry_id WHERE x.project_id = $1 ORDER BY e.posting_date DESC, e.id DESC`, [id])).rows;
-  return { ...withProfit(p), time, documents, expenses };
+  // where the money went: bills and debit notes by their kind of cost, expenses and stock issued to the project by theirs; the parts add up to cost_minor
+  const parts = (await c.query(
+    `SELECT category, SUM(amount)::bigint AS amount_minor FROM (
+       SELECT COALESCE(d.project_category, 'Materials') AS category, CASE d.kind WHEN 'BILL' THEN 1 ELSE -1 END * (d.subtotal_minor - ${COUNTED}) AS amount
+         FROM documents d WHERE d.project_id = $1 AND d.status = 'ISSUED' AND d.kind IN ('BILL', 'DEBIT_NOTE')
+       UNION ALL
+       SELECT COALESCE(x.category, 'Other'), SUM(l.base_amount_minor) FROM project_expenses x JOIN journal_lines l ON l.entry_id = x.entry_id AND l.side = 'D' JOIN accounts a ON a.id = l.account_id AND a.type = 'EXPENSE'
+        WHERE x.project_id = $1 AND NOT EXISTS (SELECT 1 FROM journal_entries r WHERE r.reverses_entry_id = x.entry_id) GROUP BY x.entry_id, x.category
+     ) t GROUP BY category HAVING SUM(amount) <> 0`, [id])).rows as { category: string; amount_minor: bigint }[];
+  const total = parts.reduce((a, r) => a + r.amount_minor, 0n);
+  const breakdown = COST_TYPES.map((k) => parts.find((r) => r.category === k)).filter((r): r is { category: string; amount_minor: bigint } => Boolean(r))
+    .map((r) => ({ category: r.category, amount_minor: r.amount_minor, share_bp: total > 0n ? Number((r.amount_minor * 10_000n) / total) : 0 }));
+  return { ...withProfit(p), time, documents, expenses, breakdown };
 };
 
 /** "1.5" is an hour and a half; "1:30" is too. */

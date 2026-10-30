@@ -27,9 +27,12 @@ export const STATES = {
   33: 'Tamil Nadu', 34: 'Puducherry', 35: 'Andaman and Nicobar Islands', 36: 'Telangana', 37: 'Andhra Pradesh', 38: 'Ladakh'
 };
 
+/** The kinds of cost a project's bills and expenses are sorted into (the same list the books' API accepts). */
+export const COST_TYPES = ['Materials', 'Labour', 'Transport', 'Contractors', 'Equipment', 'Other'];
+
 export const ROLE_HELP = {
   owner: 'Everything, including the team and closing the books', admin: 'Everything except making owners', accountant: 'Books, reports and period locks',
-  sales: 'Customers and sales invoices', purchases: 'Vendors and bills', viewer: 'Look only', auditor: 'Look only, including the activity log'
+  sales: 'Customers and sales invoices', purchases: 'Vendors and bills', viewer: 'Look only', auditor: 'Look only, including the activity log', site: 'Site supervisor: records stock in, out and between sites, and sees projects; no sales, payments or reports'
 };
 
 export const statusTone = (s) => ({ ISSUED: 'brand', POSTED: 'ok', SENT: 'ok', DRAFT: 'muted', VOID: 'bad', FAILED_VALIDATION: 'bad', NEEDS_ATTENTION: 'warn', IGNORED_CUTOVER: 'muted', IGNORED_UNSUPPORTED: 'muted', OPEN: 'ok', SOFT_LOCKED: 'warn', CLOSED: 'bad' })[s] || 'muted';

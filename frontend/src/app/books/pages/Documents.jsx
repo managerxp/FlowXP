@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from '../router.jsx';
 import { useLoad } from '../api.js';
-import { STATES, TCS_SECTIONS, UNITS, addDays, amountInWords, inr, showDate, today, unitLabel } from '../lib.js';
+import { COST_TYPES, STATES, TCS_SECTIONS, UNITS, addDays, amountInWords, inr, showDate, today, unitLabel } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { useSimple } from '../mode.js';
 import { Term } from '../help.jsx';
@@ -62,7 +62,7 @@ export const DocForm = ({ kind }) => {
   const fx = useLoad(() => o('/exchange-rates'), [org.id]);
   const rates = useLoad(() => o('/tax-rates'), [org.id]);
   const existing = useLoad(() => (id ? o(`/${kind.api}/${id}`) : Promise.resolve(null)), [org.id, id]);
-  const [f, setF] = useState({ partyId: '', date: today(), dueDate: '', placeOfSupply: '', supplierRef: '', relatedDocumentId: '', memo: '', roundOff: true, tcsRate: '', tcsSection: '', reverseCharge: false, currency: 'INR', fxRate: '', projectId: '', warehouseId: '', shippingBillNo: '', shippingBillDate: '', portCode: '', lines: [blankLine()] });
+  const [f, setF] = useState({ partyId: '', date: today(), dueDate: '', placeOfSupply: '', supplierRef: '', relatedDocumentId: '', memo: '', roundOff: true, tcsRate: '', tcsSection: '', reverseCharge: false, currency: 'INR', fxRate: '', projectId: '', projectCategory: 'Materials', warehouseId: '', shippingBillNo: '', shippingBillDate: '', portCode: '', lines: [blankLine()] });
   const warehouses = useLoad(() => (['quotes', 'sales-orders', 'purchase-orders'].includes(kind.api) ? Promise.resolve([]) : o('/warehouses')), [org.id]);
   const projects = useLoad(() => (isNote(kind) || kind.api === 'purchase-orders' ? Promise.resolve([]) : o('/projects?status=ACTIVE')), [org.id]);
   const invoices = useLoad(() => (isNote(kind) && f.partyId ? o(`/${kind.api === 'credit-notes' ? 'invoices' : 'bills'}?status=ISSUED&partyId=${f.partyId}&limit=100`) : Promise.resolve(null)), [org.id, f.partyId, kind.api]);
@@ -70,7 +70,7 @@ export const DocForm = ({ kind }) => {
   useEffect(() => {
     const d = existing.data;
     if (!d) return;
-    setF({ shippingBillNo: d.shipping_bill_no || '', shippingBillDate: d.shipping_bill_date || '', portCode: d.port_code || '', warehouseId: d.warehouse_id ? String(d.warehouse_id) : '', projectId: d.project_id ? String(d.project_id) : '', currency: d.currency || 'INR', fxRate: d.currency && d.currency !== 'INR' ? String(d.fx_rate).replace(/0+$/, '').replace(/\.$/, '') : '', partyId: String(d.party_id), date: d.issue_date || today(), dueDate: d.due_date || '', placeOfSupply: d.place_of_supply || '', supplierRef: d.supplier_ref || '', relatedDocumentId: d.related_document_id ? String(d.related_document_id) : '',
+    setF({ shippingBillNo: d.shipping_bill_no || '', shippingBillDate: d.shipping_bill_date || '', portCode: d.port_code || '', warehouseId: d.warehouse_id ? String(d.warehouse_id) : '', projectId: d.project_id ? String(d.project_id) : '', projectCategory: d.project_category || 'Materials', currency: d.currency || 'INR', fxRate: d.currency && d.currency !== 'INR' ? String(d.fx_rate).replace(/0+$/, '').replace(/\.$/, '') : '', partyId: String(d.party_id), date: d.issue_date || today(), dueDate: d.due_date || '', placeOfSupply: d.place_of_supply || '', supplierRef: d.supplier_ref || '', relatedDocumentId: d.related_document_id ? String(d.related_document_id) : '',
       memo: d.memo || '', reverseCharge: Boolean(d.reverse_charge), tcsRate: d.tcs_rate_bp ? String(d.tcs_rate_bp / 100) : '', tcsSection: d.tcs_section || '', roundOff: Number(d.round_off_minor) !== 0 || d.status === 'DRAFT', lines: d.lines.map((l) => ({ itemId: l.item_id ? String(l.item_id) : '', description: l.description || '', hsnSac: l.hsn_sac || '', unit: l.unit || '', quantity: l.quantity, unitPrice: l.unit_price_fc_minor ?? l.unit_price_minor, discount: Number(l.discount_fc_minor ?? l.discount_minor) ? (l.discount_fc_minor ?? l.discount_minor) : '', taxCode: l.tax_code || '', inclusive: Boolean(l.price_includes_tax) })) });
   }, [existing.data]);
   useEffect(() => {   // a document that already uses one of those options must show it
@@ -90,7 +90,7 @@ export const DocForm = ({ kind }) => {
   const submit = (e) => {
     e.preventDefault();
     a.run(async () => {
-      const body = { partyId: f.partyId, date: f.date, roundOff: f.currency !== 'INR' ? false : f.roundOff, ...(f.currency !== 'INR' && { currency: f.currency, fxRate: f.fxRate }), memo: f.memo || undefined, ...(f.projectId && { projectId: f.projectId }), ...(f.warehouseId && { warehouseId: f.warehouseId }), ...(f.currency !== 'INR' && kind.api === 'invoices' && { ...(f.shippingBillNo && { shippingBillNo: f.shippingBillNo }), ...(f.shippingBillDate && { shippingBillDate: f.shippingBillDate }), ...(f.portCode && { portCode: f.portCode }) }), dueDate: f.dueDate || undefined, placeOfSupply: f.placeOfSupply || undefined,
+      const body = { partyId: f.partyId, date: f.date, roundOff: f.currency !== 'INR' ? false : f.roundOff, ...(f.currency !== 'INR' && { currency: f.currency, fxRate: f.fxRate }), memo: f.memo || undefined, ...(f.projectId && { projectId: f.projectId }), ...(f.projectId && ['bills', 'debit-notes'].includes(kind.api) && { projectCategory: f.projectCategory }), ...(f.warehouseId && { warehouseId: f.warehouseId }), ...(f.currency !== 'INR' && kind.api === 'invoices' && { ...(f.shippingBillNo && { shippingBillNo: f.shippingBillNo }), ...(f.shippingBillDate && { shippingBillDate: f.shippingBillDate }), ...(f.portCode && { portCode: f.portCode }) }), dueDate: f.dueDate || undefined, placeOfSupply: f.placeOfSupply || undefined,
         supplierRef: kind.api === 'bills' ? f.supplierRef || undefined : undefined, relatedDocumentId: isNote(kind) ? f.relatedDocumentId || undefined : undefined,
         ...(kind.api === 'bills' && f.reverseCharge && { reverseCharge: true }),
         ...(kind.api === 'invoices' && Number(f.tcsRate) > 0 && { tcsRateBp: Math.round(Number(f.tcsRate) * 100), ...(f.tcsSection && { tcsSection: f.tcsSection }) }),
@@ -125,6 +125,7 @@ export const DocForm = ({ kind }) => {
             </Field>
             <Field label="Date"><input type="date" value={f.date} onChange={set('date')} required /></Field>
             {!!projects.data?.length && <Field label="Project" hint="Optional: counts towards that project's profit"><select value={f.projectId} onChange={set('projectId')}><option value="">None</option>{projects.data.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>}
+            {f.projectId && ['bills', 'debit-notes'].includes(kind.api) && <Field label="Kind of cost" hint="Shows in the project's cost breakdown"><select value={f.projectCategory} onChange={set('projectCategory')}>{COST_TYPES.map((t) => <option key={t}>{t}</option>)}</select></Field>}
             {(warehouses.data || []).filter((w) => w.active).length > 1 && <Field label="Warehouse" hint="Where counted goods on this document come from or go to"><select value={f.warehouseId} onChange={set('warehouseId')}><option value="">Default</option>{warehouses.data.filter((w) => w.active).map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field>}
             {!isNote(kind) && adv && on('flowbook_currency') && <Field label="Currency"><select value={f.currency} onChange={(e) => changeCurrency(e.target.value)}><option value="INR">Rupees (₹)</option>{Object.entries(fx.data?.currencies || {}).map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
             {f.currency !== 'INR' && kind.api === 'invoices' && <>

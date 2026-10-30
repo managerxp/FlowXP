@@ -213,12 +213,18 @@ export const undoMoves = async (c: Db, orgId: bigint, documentId: bigint, date: 
   return worth;   // the moves' value as it stands now; it differs from the cost entry posted with the document if the document was recosted
 };
 
-export type AdjustIn = { tracking?: TrackIn[]; warehouseId?: bigint; itemId: bigint; date: string; direction: 'IN' | 'OUT'; quantity: string; unitCost?: string; counterAccount: string | bigint; reason: string };
+export type AdjustIn = { tracking?: TrackIn[]; warehouseId?: bigint; itemId: bigint; date: string; direction: 'IN' | 'OUT'; quantity: string; unitCost?: string; counterAccount: string | bigint; reason: string; projectId?: bigint };
 /** Opening stock, a count that came out different, damage or loss. The other side of the entry is the account you choose. */
 export const adjust = async (c: Db, orgId: bigint, a: AdjustIn, actor: string, override?: { reason: string }) => {
   const qty = toMilli(a.quantity);
   if (['INVENTORY', '1200'].includes(String(a.counterAccount))) throw new LedgerError('same_account', 'choose the account on the other side, not Inventory itself');
   if (!a.reason.trim()) throw new LedgerError('reason_required', 'say why the stock changed');
+  if (a.projectId) {   // material used on a job: the cost counts towards that project, so the other side must be a cost account
+    if (a.direction !== 'OUT') throw new LedgerError('project_out_only', 'only stock taken out can be charged to a project');
+    if (!(await c.query(`SELECT 1 FROM projects WHERE id = $1`, [a.projectId])).rowCount) throw new LedgerError('not_found', 'no such project');
+    const acc = (await c.query(`SELECT type FROM accounts WHERE code = $1 OR system_key = $1`, [String(a.counterAccount)])).rows[0];
+    if (acc?.type !== 'EXPENSE') throw new LedgerError('project_needs_cost', 'to charge a project, the other side must be a cost account');
+  }
   const s = await lockOnHand(c, a.itemId);
   if (!s.tracked) throw new LedgerError('not_tracked', `${s.name} is not set to track stock`);
   const wh = a.warehouseId ?? await defaultWarehouse(c, orgId);
@@ -233,9 +239,10 @@ export const adjust = async (c: Db, orgId: bigint, a: AdjustIn, actor: string, o
     date: a.date, sourceType: 'stock_adjustment', sourceId: `${a.itemId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, kind: 'STOCK', memo: `Stock ${a.direction === 'IN' ? 'in' : 'out'}: ${s.name} (${a.reason.trim().slice(0, 100)})`, actor, override,
     lines: [{ account: 'INVENTORY', side: a.direction === 'IN' ? 'D' : 'C', amount: value }, { account: a.counterAccount, side: a.direction === 'IN' ? 'C' : 'D', amount: value }]
   }) : null;
+  if (a.projectId && posted) await c.query(`INSERT INTO project_expenses (organization_id, project_id, entry_id, category) VALUES ($1, $2, $3, 'Materials') ON CONFLICT DO NOTHING`, [orgId, a.projectId, posted.entryId]);
   const parts = splitValue(value, slices);
   for (const [i, x] of slices.entries()) await record(c, orgId, actor, { itemId: a.itemId, qty: a.direction === 'IN' ? x.qty : -x.qty, value: a.direction === 'IN' ? parts[i]! : -parts[i]!, date: a.date, source: 'ADJUSTMENT', entryId: posted?.entryId, memo: a.reason.trim().slice(0, 200), costed: a.direction === 'OUT', override, warehouseId: wh, batch: x.batch, expiry: x.expiry, serial: x.serial });
-  await audit(c, orgId, { actor, action: 'stock.adjusted', entityType: 'item', entityId: a.itemId, detail: { direction: a.direction, quantity: milliToString(qty), value: paiseToString(value) } });
+  await audit(c, orgId, { actor, action: 'stock.adjusted', entityType: 'item', entityId: a.itemId, detail: { direction: a.direction, quantity: milliToString(qty), value: paiseToString(value), ...(a.projectId && { projectId: String(a.projectId) }) } });
   return { entryNo: posted?.entryNo ?? null, value };
 };
 

@@ -19,6 +19,7 @@ import { salesAnalysis } from './analysis.ts';
 import { getEmailSettings, listEmails, saveEmailSettings, sendDocument } from './email.ts';
 import type { EmailSettingsIn } from './email.ts';
 import { CURRENCIES, listRates, listRevaluations, rateOn, revalue, reversePending, saveRate } from './fx.ts';
+import { COST_TYPES } from './costtypes.ts';
 import { addTime, createProject, deleteTime, getProject, invoiceTime, listProjects, updateProject } from './projects.ts';
 import { IT_BLOCKS, assetSchedule, setAssetTax, taxDepreciation } from './assets-tax.ts';
 import { addAsset, assetRegister, cancelAsset, disposeAsset, runDepreciation } from './assets.ts';
@@ -59,14 +60,14 @@ const docBody = { type: 'object', required: ['partyId', 'date', 'lines'], additi
   partyId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, dueDate: { type: 'string', pattern: DATE }, placeOfSupply: { type: 'string', pattern: '^\\d{2}$' },
   supplierRef: { type: 'string', maxLength: 60 }, relatedDocumentId: { type: 'string', pattern: ID }, memo: { type: 'string', maxLength: 500 }, roundOff: { type: 'boolean' },
   reverseCharge: { type: 'boolean' }, tcsRateBp: { type: 'integer', minimum: 0, maximum: 2000 }, tcsSection: { type: 'string', maxLength: 30 },
-  projectId: { type: 'string', pattern: ID }, warehouseId: { type: 'string', pattern: ID }, shippingBillNo: { type: 'string', maxLength: 7 }, shippingBillDate: { type: 'string', pattern: DATE }, portCode: { type: 'string', maxLength: 6 }, currency: { type: 'string', pattern: '^[A-Z]{3}$' }, fxRate: { type: 'string', pattern: '^\\d{1,9}(\\.\\d{1,6})?$' },
+  projectId: { type: 'string', pattern: ID }, projectCategory: { type: 'string', enum: [...COST_TYPES] }, warehouseId: { type: 'string', pattern: ID }, shippingBillNo: { type: 'string', maxLength: 7 }, shippingBillDate: { type: 'string', pattern: DATE }, portCode: { type: 'string', maxLength: 6 }, currency: { type: 'string', pattern: '^[A-Z]{3}$' }, fxRate: { type: 'string', pattern: '^\\d{1,9}(\\.\\d{1,6})?$' },
   lines: { type: 'array', minItems: 1, maxItems: 200, items: line } } };
 const allocBody = { type: 'array', minItems: 1, maxItems: 200, items: { type: 'object', required: ['documentId', 'amount'], additionalProperties: false, properties: {
   documentId: { type: 'string', pattern: ID }, amount: { type: 'string', pattern: AMOUNT } } } };
 const allocs = (a: { documentId: string; amount: string }[]): Alloc[] => a.map((x) => ({ documentId: BigInt(x.documentId), amount: toPaise(x.amount) }));
 const voidBody = { type: 'object', required: ['date', 'reason'], additionalProperties: false, properties: { date: { type: 'string', pattern: DATE }, reason: { type: 'string', minLength: 1, maxLength: 300 }, ...override } };
 
-type RawDoc = { shippingBillNo?: string; shippingBillDate?: string; portCode?: string; warehouseId?: string; projectId?: string; currency?: string; fxRate?: string; partyId: string; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string; relatedDocumentId?: string; memo?: string; roundOff?: boolean; reverseCharge?: boolean; tcsRateBp?: number; tcsSection?: string;
+type RawDoc = { projectCategory?: string; shippingBillNo?: string; shippingBillDate?: string; portCode?: string; warehouseId?: string; projectId?: string; currency?: string; fxRate?: string; partyId: string; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string; relatedDocumentId?: string; memo?: string; roundOff?: boolean; reverseCharge?: boolean; tcsRateBp?: number; tcsSection?: string;
   lines: { itemId?: string; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; unit?: string; inclusive?: boolean }[] };
 const docIn = (kind: DocKind, b: RawDoc): DocIn => ({ ...b, kind, partyId: BigInt(b.partyId), projectId: b.projectId ? BigInt(b.projectId) : undefined, warehouseId: b.warehouseId ? BigInt(b.warehouseId) : undefined, relatedDocumentId: b.relatedDocumentId ? BigInt(b.relatedDocumentId) : undefined,
   lines: b.lines.map((l) => ({ ...l, itemId: l.itemId ? BigInt(l.itemId) : undefined })) });
@@ -161,13 +162,13 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
 
   /* ---- projects and time */
   const money = { type: 'string', pattern: AMOUNT };
-  app.get(`${base}/projects`, { preHandler: scope('invoice.read'), schema: { querystring: { type: 'object', properties: { status: { type: 'string', enum: ['ACTIVE', 'COMPLETED', 'ARCHIVED'] } } } } }, async (req) => run(req, (c) => listProjects(c, (req.query as { status?: string }).status)));
+  app.get(`${base}/projects`, { preHandler: scope('project.read'), schema: { querystring: { type: 'object', properties: { status: { type: 'string', enum: ['ACTIVE', 'COMPLETED', 'ARCHIVED'] } } } } }, async (req) => run(req, (c) => listProjects(c, (req.query as { status?: string }).status)));
   app.post(`${base}/projects`, { preHandler: scope('invoice.write'), schema: { body: { type: 'object', required: ['name'], additionalProperties: false, properties: {
     name: { type: 'string', minLength: 1, maxLength: 160 }, code: { type: 'string', maxLength: 30 }, customerId: { type: 'string', pattern: ID }, hourlyRate: money, budget: money, notes: { type: 'string', maxLength: 1000 } } } } }, async (req, reply) => {
     const b = req.body as { name: string; code?: string; customerId?: string; hourlyRate?: string; budget?: string; notes?: string };
     return reply.code(201).send({ id: await run(req, (c, orgId) => createProject(c, orgId, { ...b, customerId: b.customerId ? BigInt(b.customerId) : undefined }, me(req))) });
   });
-  app.get(`${base}/projects/:id`, { preHandler: scope('invoice.read'), schema: idParam }, async (req, reply) =>
+  app.get(`${base}/projects/:id`, { preHandler: scope('project.read'), schema: idParam }, async (req, reply) =>
     (await run(req, (c) => getProject(c, BigInt((req.params as { id: string }).id)))) ?? notFound(reply, 'project'));
   app.patch(`${base}/projects/:id`, { preHandler: scope('invoice.write'), schema: { ...idParam, body: { type: 'object', additionalProperties: false, properties: {
     name: { type: 'string', minLength: 1, maxLength: 160 }, customerId: { type: 'string', pattern: ID }, hourlyRate: money, budget: money, notes: { type: 'string', maxLength: 1000 }, status: { type: 'string', enum: ['ACTIVE', 'COMPLETED', 'ARCHIVED'] } } } } }, async (req) => {
@@ -247,9 +248,9 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   });
   app.get(`${base}/stock/items/:id`, { preHandler: scope('item.read'), schema: idParam }, async (req) => run(req, (c) => stockLedger(c, BigInt((req.params as { id: string }).id), 200)));
   app.post(`${base}/stock/adjustments`, { preHandler: scope('item.write'), schema: { body: { type: 'object', required: ['itemId', 'date', 'direction', 'quantity', 'counterAccount', 'reason'], additionalProperties: false, properties: {
-    itemId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, direction: { type: 'string', enum: ['IN', 'OUT'] }, quantity: { type: 'string', pattern: QTY }, unitCost: { type: 'string', pattern: AMOUNT }, counterAccount: { type: 'string', minLength: 1, maxLength: 40 }, reason: { type: 'string', minLength: 1, maxLength: 200 }, warehouseId: { type: 'string', pattern: ID }, tracking: trackBody } } } }, async (req) => {
-    const b = req.body as { tracking?: RawTrack; warehouseId?: string; itemId: string; date: string; direction: 'IN' | 'OUT'; quantity: string; unitCost?: string; counterAccount: string; reason: string };
-    return run(req, (c, orgId) => adjust(c, orgId, { ...b, itemId: BigInt(b.itemId), warehouseId: b.warehouseId ? BigInt(b.warehouseId) : undefined, tracking: trackIn(b.tracking) }, me(req)));
+    itemId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, direction: { type: 'string', enum: ['IN', 'OUT'] }, quantity: { type: 'string', pattern: QTY }, unitCost: { type: 'string', pattern: AMOUNT }, counterAccount: { type: 'string', minLength: 1, maxLength: 40 }, reason: { type: 'string', minLength: 1, maxLength: 200 }, warehouseId: { type: 'string', pattern: ID }, projectId: { type: 'string', pattern: ID }, tracking: trackBody } } } }, async (req) => {
+    const b = req.body as { tracking?: RawTrack; warehouseId?: string; projectId?: string; itemId: string; date: string; direction: 'IN' | 'OUT'; quantity: string; unitCost?: string; counterAccount: string; reason: string };
+    return run(req, (c, orgId) => adjust(c, orgId, { ...b, itemId: BigInt(b.itemId), warehouseId: b.warehouseId ? BigInt(b.warehouseId) : undefined, projectId: b.projectId ? BigInt(b.projectId) : undefined, tracking: trackIn(b.tracking) }, me(req)));
   });
   app.get(`${base}/stock/batches`, { preHandler: scope('item.read'), schema: { querystring: { type: 'object', properties: { itemId: { type: 'string', pattern: ID } } } } }, async (req) => {
     const i = (req.query as { itemId?: string }).itemId;
@@ -449,7 +450,7 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   app.post(`${base}/expenses`, { preHandler: scope('bill.write'), schema: { body: { type: 'object', required: ['date', 'accountId', 'amount', 'paidWith', 'description', 'idempotencyKey'], additionalProperties: false, properties: {
     date: { type: 'string', pattern: DATE }, accountId: { type: 'string', pattern: ID }, amount: { type: 'string', pattern: AMOUNT }, taxCode: { type: 'string', maxLength: 20 }, interState: { type: 'boolean' },
     paidWith: { type: 'string', enum: ['CASH', 'BANK', 'UPI', 'CARD'] }, description: { type: 'string', minLength: 1, maxLength: 200 }, paidTo: { type: 'string', maxLength: 120 }, reference: { type: 'string', maxLength: 60 },
-    idempotencyKey: { type: 'string', minLength: 8, maxLength: 80 }, projectId: { type: 'string', pattern: ID }, ...override } } } }, async (req, reply) => {
+    idempotencyKey: { type: 'string', minLength: 8, maxLength: 80 }, projectId: { type: 'string', pattern: ID }, projectCategory: { type: 'string', enum: [...COST_TYPES] }, ...override } } } }, async (req, reply) => {
     const b = req.body as { accountId: string; projectId?: string; overrideReason?: string } & Omit<Parameters<typeof recordExpense>[2], 'accountId' | 'projectId'>;
     const out = await run(req, (c, orgId) => recordExpense(c, orgId, { ...b, accountId: BigInt(b.accountId), projectId: b.projectId ? BigInt(b.projectId) : undefined }, me(req), lockOverride(req, b.overrideReason)));
     return reply.code(201).send(out);

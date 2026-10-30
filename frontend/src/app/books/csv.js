@@ -65,6 +65,18 @@ export const download = (name, text) => {
   Object.assign(document.createElement('a'), { href: url, download: name }).click(); URL.revokeObjectURL(url);
 };
 
+/** What is on screen as a spreadsheet: every table of the page, one after another. Amounts lose the rupee sign and commas so Excel reads them as numbers. */
+export const tablesToCsv = (root) => {
+  const cell = (t) => { const s = t.replace(/\s+/g, ' ').trim(); const n = s.replace(/^₹\s?/, '').replace(/,/g, ''); return /^-?\d+(\.\d+)?$/.test(n) && !/^0\d/.test(n) ? n : s; };
+  const q = (s) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
+  const out = [];
+  root.querySelectorAll('table').forEach((tb) => {
+    const rows = [...tb.querySelectorAll('tr')].map((r) => [...r.children].map((td) => cell(td.innerText)));
+    if (rows.length) { if (out.length) out.push(''); out.push(...rows.map((r) => r.map(q).join(','))); }
+  });
+  return out.length ? `﻿${out.join('\r\n')}\r\n` : '';
+};
+
 /* Bank statements. Banks differ: one signed Amount column, or Deposit / Withdrawal (also called Credit / Debit) columns. Slash dates are day first. */
 export const STATEMENT_ALIASES = {
   date: ['date', 'txndate', 'transactiondate', 'valuedate', 'postingdate'], description: ['description', 'narration', 'particulars', 'details', 'remarks', 'transactiondetails'],
