@@ -1,7 +1,7 @@
 /* Stock: what is on hand for the goods you count, its value, a low-stock flag, adjustments, and the history of each item. */
 import { useState } from 'react';
 import { useLoad } from '../api.js';
-import { inr, showDate, today } from '../lib.js';
+import { financialYear, inr, showDate, today, unitLabel } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { Async, Badge, Btn, Card, Empty, Err, Field, Money, Note, Page, Table, useAction } from '../ui.jsx';
 
@@ -116,6 +116,37 @@ const Adjust = ({ items, accounts, warehouses, onDone, onClose }) => {
   );
 };
 
+/** For each counted material over a date range: what was there, what came in, what went out and why, what is left. Out is shown with a minus sign. */
+const Movement = ({ warehouses }) => {
+  const { o, org } = useSession();
+  const fy = financialYear();
+  const [r, setR] = useState({ from: fy.from, to: today(), warehouseId: '' });
+  const load = useLoad(() => o(`/stock/movement?from=${r.from}&to=${r.to}${r.warehouseId ? `&warehouseId=${r.warehouseId}` : ''}`), [org.id, r.from, r.to, r.warehouseId]);
+  const q = (v) => (Number(v) === 0 ? <span className="muted">-</span> : v);
+  return (
+    <Card title="Material movement">
+      <div className="form">
+        <Field label="From"><input type="date" value={r.from} max={r.to} onChange={(e) => setR({ ...r, from: e.target.value })} /></Field>
+        <Field label="To"><input type="date" value={r.to} min={r.from} onChange={(e) => setR({ ...r, to: e.target.value })} /></Field>
+        {warehouses.length > 1 && <Field label="Site or store"><select value={r.warehouseId} onChange={(e) => setR({ ...r, warehouseId: e.target.value })}><option value="">All</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field>}
+      </div>
+      <Async load={load}>{(rows) => (
+        <Table head={['Material', '>Opening', '>Bought', '>Sold', '>Used on projects', '>Written off', '>Other', '>Closing', '>Closing value']} empty={!rows.length && <Empty>No stock moved in this period and none is held.</Empty>}>
+          {rows.map((m) => {
+            const other = ['returned_to_vendor', 'sale_returned', 'added', 'moved', 'cancelled'].reduce((a, k) => a + Number(m[k]), 0);
+            return (
+              <tr key={m.id}><td>{m.name} <span className="muted">{m.unit ? unitLabel(m.unit) : ''}</span></td><td className="r num">{q(m.opening)}</td><td className="r num">{q(m.bought)}</td><td className="r num">{q(m.sold)}</td>
+                <td className="r num">{q(m.used_on_projects)}</td><td className="r num">{q(m.written_off)}</td><td className="r num" title="Returns, stock added by hand, moves between sites and cancelled documents">{q(other.toFixed(3))}</td>
+                <td className="r num"><strong>{m.closing}</strong></td><td className="r"><Money v={m.closing_value_minor} /></td></tr>
+            );
+          })}
+        </Table>
+      )}</Async>
+      <p className="muted">Opening plus everything that moved is the closing stock. Moves between sites cancel out when all sites are shown.</p>
+    </Card>
+  );
+};
+
 export default () => {
   const { o, org } = useSession();
   const [wh, setWh] = useState('');
@@ -126,11 +157,13 @@ export default () => {
   const accounts = useLoad(() => o('/accounts'), [org.id]);
   const [adjust, setAdjust] = useState(false);
   const [view, setView] = useState(null);
+  const [report, setReport] = useState(false);
   return (
-    <Page title="Stock" lead="Goods you count. Buying adds to it, selling takes from it, at the average cost." actions={<>{warehouses.length > 1 && <Btn onClick={() => setMoving(true)}>Move stock</Btn>}<Btn kind="primary" onClick={() => setAdjust(true)}>Adjust stock</Btn></>}>
+    <Page title="Stock" lead="Goods you count. Buying adds to it, selling takes from it, at the average cost." actions={<>{warehouses.length > 1 && <Btn onClick={() => setMoving(true)}>Move stock</Btn>}<Btn onClick={() => setReport(!report)}>{report ? 'Hide movement' : 'Movement report'}</Btn><Btn kind="primary" onClick={() => setAdjust(true)}>Adjust stock</Btn></>}>
       <Async load={load}>{(rows) => (<>
         {moving && rows.length > 0 && <Transfer items={rows} warehouses={warehouses} onDone={() => { load.reload(); whs.reload(); }} onClose={() => setMoving(false)} />}
         {adjust && rows.length > 0 && <Adjust items={rows} accounts={accounts.data} warehouses={warehouses} onDone={load.reload} onClose={() => setAdjust(false)} />}
+        {report && <Movement warehouses={warehouses} />}
         {view && <History item={view} onClose={() => setView(null)} />}
         {warehouses.length > 1 && <p className="actions"><label className="muted">Showing </label><select value={wh} onChange={(e) => setWh(e.target.value)}><option value="">All warehouses</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></p>}
         <Card>

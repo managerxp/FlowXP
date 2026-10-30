@@ -268,6 +268,34 @@ export const stockSummary = async (c: Db, warehouseId?: bigint) => (await c.quer
           (i.reorder_level_milli > 0 AND COALESCE(SUM(m.qty_milli), 0) <= i.reorder_level_milli) AS low
      FROM items i LEFT JOIN stock_moves m ON m.item_id = i.id AND ($1::bigint IS NULL OR m.warehouse_id = $1) WHERE i.track_stock AND i.active GROUP BY i.id ORDER BY i.name`, [warehouseId ?? null])).rows.map((r) => ({ id: r.id, sku: r.sku, name: r.name, unit: r.unit, tracking: r.tracking, quantity: milliToString(r.qty_milli), reorder_level: milliToString(r.reorder_level_milli), value_minor: r.value_minor, low: r.low }));   // quantities as text: the wire format would read a bare bigint as rupees
 
+/** For each counted item, over a date range and optionally one warehouse: what was there at the start, what came in and went out and why, and what is there at the end. Out is negative.
+ *  "Used on projects" is stock taken out for a project; "written off" is any other stock taken out by hand (damage, loss, a count that came out short). Moves between warehouses net to nothing across all of them. */
+export const stockMovement = async (c: Db, q: { from: string; to: string; warehouseId?: bigint }) => {
+  const used = `m.source_type = 'ADJUSTMENT' AND m.qty_milli < 0 AND EXISTS (SELECT 1 FROM project_expenses x WHERE x.entry_id = m.journal_entry_id)`;
+  const inRange = `m.move_date BETWEEN $1::date AND $2::date`;
+  const sum = (col: string, where: string) => `COALESCE(SUM(m.${col}) FILTER (WHERE ${where}), 0)::bigint`;
+  const rows = (await c.query(
+    `SELECT i.id, i.sku, i.name, i.unit,
+            ${sum('qty_milli', 'm.move_date < $1::date')} AS opening_qty, ${sum('value_minor', 'm.move_date < $1::date')} AS opening_value,
+            ${sum('qty_milli', `${inRange} AND m.source_type = 'BILL'`)} AS bought,
+            ${sum('qty_milli', `${inRange} AND m.source_type = 'DEBIT_NOTE'`)} AS returned_to_vendor,
+            ${sum('qty_milli', `${inRange} AND m.source_type = 'INVOICE'`)} AS sold,
+            ${sum('qty_milli', `${inRange} AND m.source_type = 'CREDIT_NOTE'`)} AS sale_returned,
+            ${sum('qty_milli', `${inRange} AND ${used}`)} AS used_on_projects, ${sum('value_minor', `${inRange} AND ${used}`)} AS used_value,
+            ${sum('qty_milli', `${inRange} AND m.source_type = 'ADJUSTMENT' AND m.qty_milli < 0 AND NOT (${used})`)} AS written_off,
+            ${sum('qty_milli', `${inRange} AND m.source_type = 'ADJUSTMENT' AND m.qty_milli > 0`)} AS added,
+            ${sum('qty_milli', `${inRange} AND m.source_type = 'TRANSFER'`)} AS moved,
+            ${sum('qty_milli', `${inRange} AND m.source_type = 'VOID'`)} AS cancelled,
+            ${sum('qty_milli', 'm.move_date <= $2::date')} AS closing_qty, ${sum('value_minor', 'm.move_date <= $2::date')} AS closing_value
+       FROM items i LEFT JOIN stock_moves m ON m.item_id = i.id AND ($3::bigint IS NULL OR m.warehouse_id = $3)
+      WHERE i.track_stock GROUP BY i.id ORDER BY i.name`, [q.from, q.to, q.warehouseId ?? null])).rows;
+  const q3 = (r: bigint) => milliToString(r);
+  return rows.filter((r) => [r.opening_qty, r.bought, r.returned_to_vendor, r.sold, r.sale_returned, r.used_on_projects, r.written_off, r.added, r.moved, r.cancelled, r.closing_qty].some((v) => v !== 0n))
+    .map((r) => ({ id: r.id, sku: r.sku, name: r.name, unit: r.unit, opening: q3(r.opening_qty), opening_value_minor: r.opening_value, bought: q3(r.bought), returned_to_vendor: q3(r.returned_to_vendor), sold: q3(r.sold),
+      sale_returned: q3(r.sale_returned), used_on_projects: q3(r.used_on_projects), used_value_minor: r.used_value, written_off: q3(r.written_off), added: q3(r.added), moved: q3(r.moved), cancelled: q3(r.cancelled),
+      closing: q3(r.closing_qty), closing_value_minor: r.closing_value }));
+};
+
 export const stockLedger = async (c: Db, itemId: bigint, limit: number) => (await c.query(
   `SELECT id, move_date::text AS date, qty_milli, value_minor, source_type, document_id, memo, batch_no, expiry_date::text AS expiry, serial_no FROM stock_moves WHERE item_id = $1 ORDER BY id DESC LIMIT $2`, [itemId, limit])).rows.map((r) => ({ id: r.id, date: r.date, quantity: milliToString(r.qty_milli), value_minor: r.value_minor, source_type: r.source_type, document_id: r.document_id, memo: r.memo, batch: r.batch_no, expiry: r.expiry, serial: r.serial_no }));
 

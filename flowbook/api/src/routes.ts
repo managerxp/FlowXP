@@ -25,7 +25,7 @@ import { IT_BLOCKS, assetSchedule, setAssetTax, taxDepreciation } from './assets
 import { addAsset, assetRegister, cancelAsset, disposeAsset, runDepreciation } from './assets.ts';
 import type { AssetIn } from './assets.ts';
 import type { TrackIn } from './stock.ts';
-import { addWarehouse, adjust, stockBatches, stockSerials, listWarehouses, setTracking, stockByWarehouse, stockLedger, stockSummary, transferStock, updateWarehouse } from './stock.ts';
+import { addWarehouse, adjust, stockBatches, stockSerials, listWarehouses, setTracking, stockByWarehouse, stockLedger, stockMovement, stockSummary, transferStock, updateWarehouse } from './stock.ts';
 import { createBankAccount, listTransfers, transfer, voidTransfer } from './bankacct.ts';
 import { addEntry, bankAccounts, importStatement, matchLine, setIgnored, unmatchLine, workbench } from './reconcile.ts';
 import { partyStatement } from './statement.ts';
@@ -257,6 +257,11 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     return run(req, (c) => stockBatches(c, i ? BigInt(i) : undefined));
   });
   app.get(`${base}/stock/serials/:id`, { preHandler: scope('item.read'), schema: idParam }, async (req) => run(req, (c) => stockSerials(c, BigInt((req.params as { id: string }).id))));
+  app.get(`${base}/stock/movement`, { preHandler: scope('item.read'), schema: { querystring: { type: 'object', required: ['from', 'to'], properties: { from: { type: 'string', pattern: DATE }, to: { type: 'string', pattern: DATE }, warehouseId: { type: 'string', pattern: ID } } } } }, async (req, reply) => {
+    const q = req.query as { from: string; to: string; warehouseId?: string };
+    if (q.from > q.to) return reply.code(400).send({ error: { code: 'bad_range', message: 'the start date must not be after the end date' } });
+    return run(req, (c) => stockMovement(c, { from: q.from, to: q.to, warehouseId: q.warehouseId ? BigInt(q.warehouseId) : undefined }));
+  });
   app.get(`${base}/warehouses`, { preHandler: scope('item.read') }, async (req) => run(req, (c, orgId) => listWarehouses(c, orgId)));
   app.get(`${base}/stock/by-warehouse`, { preHandler: scope('item.read') }, async (req) => run(req, (c) => stockByWarehouse(c)));
   app.post(`${base}/warehouses`, { preHandler: scope('item.write'), schema: { body: { type: 'object', required: ['name'], additionalProperties: false, properties: { name: { type: 'string', minLength: 1, maxLength: 80 } } } } }, async (req, reply) =>

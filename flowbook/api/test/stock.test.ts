@@ -7,7 +7,7 @@ import type { DocKind } from '../src/documents.ts';
 import { createItem, createParty, seedTaxRates } from '../src/masters.ts';
 import { openFinancialYear } from '../src/periods.ts';
 import { createProject, getProject } from '../src/projects.ts';
-import { stockBatches, stockSerials } from '../src/stock.ts';
+import { stockBatches, stockMovement, stockSerials } from '../src/stock.ts';
 import type { TrackIn } from '../src/stock.ts';
 import { addWarehouse, adjust, listWarehouses, setTracking, stockByWarehouse, stockLedger, stockSummary, transferStock, updateWarehouse } from '../src/stock.ts';
 import { newOrg, setup } from './helpers.ts';
@@ -197,4 +197,30 @@ test('stock used on a job is charged to that project at its average cost, and on
   assert.equal(p.budget_left_minor, 100000n - 4800n);
   assert.equal(p.expenses.length, 1);
   assert.equal((await summary(org)).quantity, '6.000');
+});
+
+test('the movement report gives opening, bought, sold, used on projects, written off and closing for a date range, and per warehouse', { skip }, async () => {
+  const { org, item, cust, vend } = await shop();
+  const project = await run(org, (c) => createProject(c, org, { name: 'Tower B' }, 't'));
+  await run(org, (c) => adjust(c, org, { itemId: item, date: '2026-05-20', direction: 'IN', quantity: '10', unitCost: '10', counterAccount: 'OPENING_BALANCE', reason: 'opening' }, 't'));
+  await doc(org, 'BILL', vend, item, '10', '14');                 // 1 June: bought 10
+  await doc(org, 'INVOICE', cust, item, '5', '20');               // 1 June: sold 5
+  await run(org, (c) => adjust(c, org, { itemId: item, date: '2026-06-05', direction: 'OUT', quantity: '4', counterAccount: 'COGS', reason: 'slab', projectId: project }, 't'));
+  await run(org, (c) => adjust(c, org, { itemId: item, date: '2026-06-06', direction: 'OUT', quantity: '1', counterAccount: 'COGS', reason: 'broken' }, 't'));
+  const site = await run(org, (c) => addWarehouse(c, org, 'Site B', 't'));
+  const main = (await run(org, (c) => listWarehouses(c, org))).find((w) => w.name === 'Main')!.id as bigint;
+  await run(org, (c) => transferStock(c, org, { itemId: item, from: main, to: site, quantity: '3', date: '2026-06-07' }, 't'));
+
+  const r = (await run(org, (c) => stockMovement(c, { from: '2026-06-01', to: '2026-06-30' })))[0]!;
+  assert.deepEqual([r.opening, r.bought, r.sold, r.used_on_projects, r.written_off, r.moved, r.closing], ['10.000', '10.000', '-5.000', '-4.000', '-1.000', '0.000', '10.000']);
+  assert.equal(r.used_value_minor, -4800n);                        // 4 at the average cost then: (100 + 140 - 5 x 12) / 15 = 12
+  const parts = [r.opening, r.bought, r.returned_to_vendor, r.sold, r.sale_returned, r.used_on_projects, r.written_off, r.added, r.moved, r.cancelled].reduce((a, v) => a + Number(v), 0);
+  assert.equal(parts, Number(r.closing), 'opening plus every movement is the closing stock');
+  assert.equal((await summary(org)).quantity, r.closing, 'and it is what the stock page shows');
+
+  const one = async (w: bigint) => (await run(org, (c) => stockMovement(c, { from: '2026-06-01', to: '2026-06-30', warehouseId: w })))[0]!;
+  assert.equal((await one(site)).moved, '3.000'); assert.equal((await one(site)).closing, '3.000');
+  assert.equal((await one(main)).moved, '-3.000'); assert.equal((await one(main)).closing, '7.000');
+  // a range before anything happened shows nothing
+  assert.deepEqual(await run(org, (c) => stockMovement(c, { from: '2026-01-01', to: '2026-02-01' })), []);
 });
