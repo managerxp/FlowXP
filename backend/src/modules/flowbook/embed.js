@@ -31,6 +31,7 @@ export const embeddedFlowbook = () => {
   const start = async () => {
     if (process.env.FLOWBOOK_EMBEDDED === 'false') { failed = new Error('switched off'); return; }
     try {
+      if (Number(process.versions.node.split('.')[0]) < 24) throw new Error(`FlowBook needs Node 24 or newer, this server runs Node ${process.versions.node}. Upgrade Node, then restart.`);
       // the key FlowBook seals stored tokens with comes from FlowXP's own, so nothing extra is set
       process.env.FLOWBOOK_SECRET_KEY ||= createHash('sha256').update(`flowbook-keys:${config.encryptionKey || config.jwtSecret}`).digest('base64');
       const { bootFlowbook } = await import('../../../../flowbook/api/src/boot.ts');
