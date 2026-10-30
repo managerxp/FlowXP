@@ -8,9 +8,10 @@ import { OfflineNotice } from '../../components/OfflineFlag.jsx';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, FileText, MessageCircle, Printer, Receipt, Wallet } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Download, FileText, MessageCircle, Printer, Receipt, Wallet } from 'lucide-react';
 import { api, formatCurrency } from '../../lib/api.js';
 import { formatDate } from '../../lib/display.js';
+import { downloadPdf } from '../../lib/pdf.js';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
 import { withApproval } from '../../lib/approval.js';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -187,6 +188,16 @@ const InvoiceDetail = () => {
   useEffect(() => { load(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   const done = (msg) => { setModal(null); if (msg) toast.success(msg); load(); };
 
+  /* the bill as a PDF file: the Tally-style sheet on screen, or the standard bill */
+  const articleRef = useRef(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const savePdf = async () => {
+    setPdfBusy(true);
+    try { await downloadPdf(tally || preview ? document.querySelector('.light-sheet') : articleRef.current, `${invoice.invoice_number}.pdf`); }
+    catch (caught) { setActionError(caught.message || 'Could not make the PDF'); }
+    finally { setPdfBusy(false); }
+  };
+
   const sendBill = async () => {
     setActionError('');
     const phone = invoice.customer_phone || await dialog.prompt({ title: tr('Send the bill'), label: tr('Customer mobile number'), type: 'tel', inputMode: 'tel', autoComplete: 'tel', confirmLabel: tr('Send') });
@@ -246,6 +257,7 @@ const InvoiceDetail = () => {
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={() => printReceipt(id)}><Receipt aria-hidden="true" className="h-4 w-4" />{tr('Receipt')}</Button>
           <Button variant="secondary" onClick={() => setTally(!tally)}>{tally ? 'Standard bill' : 'Tally style'}</Button>
+          <Button variant="secondary" loading={pdfBusy} onClick={savePdf}><Download aria-hidden="true" className="h-4 w-4" />{tr('Download PDF')}</Button>
           <Button variant="secondary" onClick={() => (tally ? setPreview(true) : window.print())}><Printer aria-hidden="true" className="h-4 w-4" />{tr('A4 / PDF')}</Button>
           {issued && <Button variant="secondary" onClick={sendBill}><MessageCircle aria-hidden="true" className="h-4 w-4" />{tr('Send')}</Button>}
           <MoreMenu items={[
@@ -261,7 +273,7 @@ const InvoiceDetail = () => {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* ── The document: this is what prints ── */}
-        {tally ? <TallyInvoice invoice={invoice} business={business} outlet={outlet} seller={seller} onSaved={load} /> : <article className="rounded-(--radius-panel) border border-line bg-surface p-6 sm:p-8 print:border-0 print:p-0">
+        {tally ? <TallyInvoice invoice={invoice} business={business} outlet={outlet} seller={seller} onSaved={load} /> : <article ref={articleRef} className="rounded-(--radius-panel) border border-line bg-surface p-6 sm:p-8 print:border-0 print:p-0">
           {!issued && <p className="mb-5 rounded-lg bg-danger/10 px-3 py-2 text-center text-small font-semibold text-danger">{tr('CANCELLED: this bill is not a sale and does not count in totals.')}</p>}
           <header className="flex flex-wrap items-start justify-between gap-6 border-b border-line pb-6">
             <div className="min-w-0">
@@ -403,7 +415,7 @@ const InvoiceDetail = () => {
       <div className="fixed inset-0 z-[200] overflow-auto bg-surface-3 print:static print:overflow-visible print:bg-white">
         <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-2.5 print:hidden">
           <p className="text-small font-semibold text-ink-900">Print preview · {invoice.invoice_number}</p>
-          <div className="flex gap-2"><Button variant="secondary" onClick={() => setPreview(false)}>Close</Button><Button onClick={() => window.print()}><Printer aria-hidden="true" className="h-4 w-4" />Print / Save as PDF</Button></div>
+          <div className="flex gap-2"><Button variant="secondary" onClick={() => setPreview(false)}>Close</Button><Button variant="secondary" loading={pdfBusy} onClick={savePdf}><Download aria-hidden="true" className="h-4 w-4" />{tr('Download PDF')}</Button><Button onClick={() => window.print()}><Printer aria-hidden="true" className="h-4 w-4" />Print / Save as PDF</Button></div>
         </div>
         <div className="light-sheet mx-auto my-6 w-full max-w-[860px] bg-white p-4 shadow-lg print:my-0 print:max-w-none print:p-0 print:shadow-none"><TallyInvoice invoice={invoice} business={business} outlet={outlet} seller={seller} plain /></div>
       </div>,

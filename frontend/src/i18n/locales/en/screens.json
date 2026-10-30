@@ -5044,5 +5044,8 @@
   "Document numbers": "Document numbers",
   "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.",
   "PROFORMA INVOICE": "PROFORMA INVOICE",
-  "This is not a tax invoice. The tax invoice is issued when the goods are supplied.": "This is not a tax invoice. The tax invoice is issued when the goods are supplied."
+  "This is not a tax invoice. The tax invoice is issued when the goods are supplied.": "This is not a tax invoice. The tax invoice is issued when the goods are supplied.",
+  "Download PDF": "Download PDF",
+  "Leave without saving?": "Leave without saving?",
+  "You have changes that are not saved. If you leave now they are lost.": "You have changes that are not saved. If you leave now they are lost."
 }

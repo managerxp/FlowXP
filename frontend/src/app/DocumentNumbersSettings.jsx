@@ -3,6 +3,7 @@
  * Changing a prefix keeps the running number going; documents already made keep the number they were given. Works for every kind of business.
  */
 import { useEffect, useState } from 'react';
+import { useDirty, useUnsavedWarning } from '../lib/unsaved.js';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Button, Card, Field, Input, useToast } from '../components/ui.jsx';
@@ -22,12 +23,14 @@ export default function DocumentNumbersSettings() {
   const [form, setForm] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const unsaved = useDirty(form, form !== null);
+  useUnsavedWarning(unsaved.dirty);
 
   useEffect(() => { api('/businesses/current').then((b) => setForm(Object.fromEntries(KINDS.map(([k, , d]) => [k, b[k] || d])))).catch((e) => setError(e.message)); }, []);
 
   const save = async (e) => {
     e.preventDefault(); setBusy(true); setError('');
-    try { await api('/businesses/current', { method: 'PATCH', body: form }); await refresh(); toast.success(tr('Document numbers saved')); }
+    try { await api('/businesses/current', { method: 'PATCH', body: form }); await refresh(); toast.success(tr('Document numbers saved')); unsaved.clean(); }
     catch (caught) { setError(caught.message); }
     finally { setBusy(false); }
   };

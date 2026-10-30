@@ -5044,5 +5044,8 @@
   "Document numbers": "ডকুমেন্ট নম্বর",
   "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "প্রতিটি নম্বরের আগের অক্ষর। বদলালে গণনা চলতে থাকে; আগে তৈরি ডকুমেন্টের নম্বর বদলায় না।",
   "PROFORMA INVOICE": "প্রফর্মা ইনভয়েস",
-  "This is not a tax invoice. The tax invoice is issued when the goods are supplied.": "এটি ট্যাক্স ইনভয়েস নয়। মাল সরবরাহের সময় ট্যাক্স ইনভয়েস দেওয়া হবে।"
+  "This is not a tax invoice. The tax invoice is issued when the goods are supplied.": "এটি ট্যাক্স ইনভয়েস নয়। মাল সরবরাহের সময় ট্যাক্স ইনভয়েস দেওয়া হবে।",
+  "Download PDF": "PDF ডাউনলোড করুন",
+  "Leave without saving?": "সংরক্ষণ না করে ছাড়বেন?",
+  "You have changes that are not saved. If you leave now they are lost.": "আপনার পরিবর্তন সংরক্ষিত হয়নি। এখন ছাড়লে সেগুলো হারিয়ে যাবে।"
 }

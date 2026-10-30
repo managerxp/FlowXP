@@ -5044,5 +5044,8 @@
   "Document numbers": "ದಾಖಲೆ ಸಂಖ್ಯೆಗಳು",
   "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "ಪ್ರತಿ ಸಂಖ್ಯೆಯ ಮೊದಲಿನ ಅಕ್ಷರಗಳು. ಬದಲಾಯಿಸಿದರೂ ಎಣಿಕೆ ಮುಂದುವರಿಯುತ್ತದೆ; ಈಗಾಗಲೇ ಮಾಡಿದ ದಾಖಲೆಗಳ ಸಂಖ್ಯೆ ಬದಲಾಗುವುದಿಲ್ಲ.",
   "PROFORMA INVOICE": "ಪ್ರೊಫಾರ್ಮಾ ಇನ್‌ವಾಯ್ಸ್",
-  "This is not a tax invoice. The tax invoice is issued when the goods are supplied.": "ಇದು ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್ ಅಲ್ಲ. ಸರಕು ಪೂರೈಸಿದಾಗ ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್ ನೀಡಲಾಗುತ್ತದೆ."
+  "This is not a tax invoice. The tax invoice is issued when the goods are supplied.": "ಇದು ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್ ಅಲ್ಲ. ಸರಕು ಪೂರೈಸಿದಾಗ ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್ ನೀಡಲಾಗುತ್ತದೆ.",
+  "Download PDF": "PDF ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ",
+  "Leave without saving?": "ಉಳಿಸದೆ ಹೊರಡಬೇಕೆ?",
+  "You have changes that are not saved. If you leave now they are lost.": "ನಿಮ್ಮ ಬದಲಾವಣೆಗಳನ್ನು ಉಳಿಸಿಲ್ಲ. ಈಗ ಹೊರಟರೆ ಅವು ಕಳೆದುಹೋಗುತ್ತವೆ."
 }

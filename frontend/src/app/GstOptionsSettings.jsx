@@ -4,6 +4,7 @@
  * are the statutory ones and stay as they are in every language.
  */
 import { useState } from 'react';
+import { useDirty, useUnsavedWarning } from '../lib/unsaved.js';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Button, Card, Field, Input, Select, useToast } from '../components/ui.jsx';
@@ -28,10 +29,12 @@ export default function GstOptionsSettings() {
   const [gst, setGst] = useState(Boolean(business?.gst_enabled));   // charging GST at all; the options below only apply when it is on
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const unsaved = useDirty({ s, gst });
+  useUnsavedWarning(unsaved.dirty);
   const set = (patch) => setS((x) => ({ ...x, ...patch }));
   const save = async (e) => {
     e.preventDefault(); setBusy(true); setError('');
-    try { await api('/businesses/current', { method: 'PATCH', body: { gst_enabled: gst, gst_settings: s } }); await refresh(); toast.success(tr('GST options saved')); }
+    try { await api('/businesses/current', { method: 'PATCH', body: { gst_enabled: gst, gst_settings: s } }); await refresh(); toast.success(tr('GST options saved')); unsaved.clean(); }
     catch (caught) { setError(caught.message); }
     finally { setBusy(false); }
   };

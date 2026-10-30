@@ -4,6 +4,7 @@
  * business's receipt settings as `invoice_print` (modules/invoicePrint.js validates it); the invoice page and its print preview read it back.
  */
 import { useState } from 'react';
+import { useDirty, useUnsavedWarning } from '../lib/unsaved.js';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Card, Field, Input, Select, Textarea, Button, Alert, useToast } from '../components/ui.jsx';
@@ -37,12 +38,14 @@ export default function InvoicePrintSettings({ initial }) {
   const [s, setS] = useState(() => withDefaults(initial?.invoice_print));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const unsaved = useDirty(s);
+  useUnsavedWarning(unsaved.dirty);
   const set = (patch) => setS((x) => ({ ...x, ...patch }));
   const details = Object.fromEntries(['pan', 'bank_name', 'bank_account', 'bank_ifsc', 'bank_branch', 'terms'].map((k) => [k, initial?.[k] || '']));
 
   const save = async (e) => {
     e.preventDefault(); setBusy(true); setError('');
-    try { await api('/businesses/current', { method: 'PATCH', body: { receipt_settings: { invoice_print: s } } }); toast.success(tr('Invoice print settings saved')); }
+    try { await api('/businesses/current', { method: 'PATCH', body: { receipt_settings: { invoice_print: s } } }); toast.success(tr('Invoice print settings saved')); unsaved.clean(); }
     catch (caught) { setError(caught.message); }
     finally { setBusy(false); }
   };

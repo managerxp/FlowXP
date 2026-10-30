@@ -5044,5 +5044,8 @@
   "Document numbers": "ஆவண எண்கள்",
   "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "ஒவ்வொரு எண்ணுக்கும் முன் வரும் எழுத்துகள். மாற்றினாலும் எண்ணிக்கை தொடரும்; ஏற்கனவே உருவான ஆவணங்களின் எண் மாறாது.",
   "PROFORMA INVOICE": "ப்ரோஃபார்மா இன்வாய்ஸ்",
-  "This is not a tax invoice. The tax invoice is issued when the goods are supplied.": "இது வரி இன்வாய்ஸ் அல்ல. பொருட்கள் வழங்கப்படும்போது வரி இன்வாய்ஸ் வழங்கப்படும்."
+  "This is not a tax invoice. The tax invoice is issued when the goods are supplied.": "இது வரி இன்வாய்ஸ் அல்ல. பொருட்கள் வழங்கப்படும்போது வரி இன்வாய்ஸ் வழங்கப்படும்.",
+  "Download PDF": "PDF பதிவிறக்கு",
+  "Leave without saving?": "சேமிக்காமல் வெளியேறவா?",
+  "You have changes that are not saved. If you leave now they are lost.": "உங்கள் மாற்றங்கள் சேமிக்கப்படவில்லை. இப்போது வெளியேறினால் அவை இழக்கப்படும்."
 }

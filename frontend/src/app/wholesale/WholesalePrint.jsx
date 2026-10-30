@@ -2,9 +2,10 @@
  * Print views on A4: the sales order (for the customer to confirm) and the delivery challan (travels with the goods,
  * signed by the receiver). Ordinary pages — the browser prints them or saves them as PDF. ?auto=1 prints on load.
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Alert, Button, PageLoader } from '../../components/ui.jsx';
+import { downloadPdf } from '../../lib/pdf.js';
 import { longDate, money, qty, useLoad } from '../../lib/wholesale.js';
 import { useT } from '../../i18n/useT.js';
 
@@ -28,12 +29,14 @@ const usePrintOnLoad = (ready) => {
   }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
 };
 
-const Bar = ({ back, children }) => {
+const Bar = ({ back, name = 'document', children }) => {
   const tr = useT();
+  const [busy, setBusy] = useState(false);
+  const savePdf = async () => { setBusy(true); try { await downloadPdf(document.querySelector('.sheet'), `${name}.pdf`); } finally { setBusy(false); } };
   return (
   <div className="no-print mb-5 flex flex-wrap items-center gap-2">
     <Link to={back} className="text-sm font-semibold text-brand-600">{tr('← Back')}</Link>
-    <div className="ml-auto flex gap-2">{children}<Button onClick={() => window.print()}>{tr('Print')}</Button></div>
+    <div className="ml-auto flex gap-2">{children}<Button variant="secondary" loading={busy} onClick={savePdf}>{tr('Download PDF')}</Button><Button onClick={() => window.print()}>{tr('Print')}</Button></div>
   </div>
 );
 };
@@ -62,7 +65,7 @@ export const OrderPrint = () => {
   return (
     <div>
       <PrintStyles />
-      <Bar back={`/app/wholesale/orders/${id}`} />
+      <Bar back={`/app/wholesale/orders/${id}`} name={`${proforma ? 'Proforma' : 'Order'}-${o.order_number}`} />
       <div className="sheet light-sheet mx-auto max-w-3xl rounded-(--radius-card) border border-line bg-white p-8 text-ink-900 shadow-sm">
         <header className="flex items-start justify-between gap-6 border-b border-line pb-4">
           <div><h1 className="text-xl font-bold">{b.name || ''}</h1><p className="text-sm text-ink-700">{[b.address, b.state].filter(Boolean).join(', ')}</p>{b.gstin && <p className="text-sm text-ink-700">{tr('GSTIN {{gstin}}', { gstin: b.gstin })}</p>}</div>
@@ -109,7 +112,7 @@ export const ChallanPrint = () => {
   return (
     <div>
       <PrintStyles />
-      <Bar back="/app/wholesale/fulfilment?tab=deliveries" />
+      <Bar back="/app/wholesale/fulfilment?tab=deliveries" name={`Challan-${c.challan_number || id}`} />
       <div className="sheet mx-auto max-w-3xl rounded-(--radius-card) border border-line bg-white p-8 text-ink-900 shadow-sm">
         <header className="flex items-start justify-between gap-6 border-b border-line pb-4">
           <div><h1 className="text-xl font-bold">{c.business?.name}</h1><p className="text-sm text-ink-700">{[w.name, w.address, w.city, w.state].filter(Boolean).join(', ')}</p>{(w.gstin || c.business?.gstin) && <p className="text-sm text-ink-700">GSTIN {w.gstin || c.business.gstin}</p>}</div>
@@ -144,7 +147,7 @@ export const PickPrint = () => {
   return (
     <div>
       <PrintStyles />
-      <Bar back={`/app/wholesale/fulfilment?tab=picks&open=${id}`} />
+      <Bar back={`/app/wholesale/fulfilment?tab=picks&open=${id}`} name={`Pick-list-${p.pick_number || id}`} />
       <div className="sheet mx-auto max-w-3xl rounded-(--radius-card) border border-line bg-white p-8 text-ink-900 shadow-sm">
         <header className="flex items-start justify-between gap-6 border-b border-line pb-4">
           <div><h1 className="text-xl font-bold">{tr('PICK LIST {{pick_number}}', { pick_number: p.pick_number })}</h1><p className="text-sm text-ink-700">{p.warehouse}</p></div>

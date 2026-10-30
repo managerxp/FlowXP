@@ -20,6 +20,7 @@ import InvoicePrintSettings from './InvoicePrintSettings.jsx';
 import DisplaySettings from './DisplaySettings.jsx';
 import GstOptionsSettings from './GstOptionsSettings.jsx';
 import DocumentNumbersSettings from './DocumentNumbersSettings.jsx';
+import { useDirty, useUnsavedWarning } from '../lib/unsaved.js';
 import PrintersSettings from './PrintersSettings.jsx';
 import BackupSettings from './BackupSettings.jsx';
 import MechanicModeSettings from './MechanicModeSettings.jsx';
@@ -293,6 +294,8 @@ const BusinessSettings = () => {
   const [form, setForm] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const unsaved = useDirty(form, form !== null);
+  useUnsavedWarning(unsaved.dirty);
 
   useEffect(() => { api('/businesses/current').then(setForm).catch((e) => setError(e.message)); }, []);
 
@@ -307,6 +310,7 @@ const BusinessSettings = () => {
         body: Object.fromEntries([...FIELDS.map(([key]) => [key, form[key] || '']), ...['address', 'city', 'state', 'postal_code', 'country'].map((key) => [key, form[key] || ''])])
       });
       toast.success(tr('Saved'));
+      unsaved.clean();
       refresh(); // business name may have changed — the nav/topbar read it from AuthContext
     } catch (caught) { setError(caught.message); }
     finally { setBusy(false); }

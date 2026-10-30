@@ -5044,5 +5044,8 @@
   "Document numbers": "డాక్యుమెంట్ నంబర్లు",
   "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "ప్రతి నంబర్ ముందు ఉండే అక్షరాలు. మార్చినా లెక్క కొనసాగుతుంది; ఇప్పటికే చేసిన డాక్యుమెంట్ల నంబర్ మారదు.",
   "PROFORMA INVOICE": "ప్రొఫార్మా ఇన్వాయిస్",
-  "This is not a tax invoice. The tax invoice is issued when the goods are supplied.": "ఇది పన్ను ఇన్వాయిస్ కాదు. సరుకు సరఫరా చేసినప్పుడు పన్ను ఇన్వాయిస్ ఇస్తారు."
+  "This is not a tax invoice. The tax invoice is issued when the goods are supplied.": "ఇది పన్ను ఇన్వాయిస్ కాదు. సరుకు సరఫరా చేసినప్పుడు పన్ను ఇన్వాయిస్ ఇస్తారు.",
+  "Download PDF": "PDF డౌన్‌లోడ్ చేయండి",
+  "Leave without saving?": "సేవ్ చేయకుండా వెళ్లాలా?",
+  "You have changes that are not saved. If you leave now they are lost.": "మీ మార్పులు సేవ్ కాలేదు. ఇప్పుడు వెళ్తే అవి పోతాయి."
 }
