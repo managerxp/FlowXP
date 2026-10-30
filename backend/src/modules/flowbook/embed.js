@@ -53,8 +53,9 @@ export const embeddedFlowbook = () => {
   /** After FlowXP's requireAuth and withBusiness: who this is and which business, handed to FlowBook on the request itself. */
   const middleware = async (req, res, next) => {
     if (!booted && failed?.message === 'switched off') return next();
-    if (!booted) return unavailable(res, 503, 'FlowBook is not available right now');
     const t = req.tenant;
+    // the owner is told why (the reason is in the server log too); everyone else only that it is down
+    if (!booted) return unavailable(res, 503, `FlowBook is not available right now${failed && ['OWNER', 'ADMIN'].includes(t?.role) ? `. Reason: ${failed.message}`.slice(0, 300) : ''}`);
     if (!hasPlanFeature(t, 'flowbook_app')) return unavailable(res, 402, 'FlowBook is not part of this business plan. Contact us to turn it on.');
     // FlowBook is the offer of a business that signed up for it; any other business has it once it is paying and its plan includes it
     const own = t.businessType === 'FLOWBOOK';
