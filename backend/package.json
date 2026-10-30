@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
+    "postinstall": "node -e \"const f='../flowbook/api';const fs=require('fs');if(fs.existsSync(f+'/package.json'))require('child_process').execSync('npm ci',{cwd:f,stdio:'inherit'})\"",
     "dev": "node --watch server.js",
     "test": "node --test",
     "seed:demo": "node scripts/seed-demo.js",

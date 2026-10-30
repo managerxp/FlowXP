@@ -162,7 +162,7 @@ new migration. nginx serves the new `frontend/dist` immediately — no reload ne
 FlowBook is part of the FlowXP website: `https://flowxp.in/app/books` (screens) and `/api/books` (API), signed in with FlowXP's own session and business choice. No separate address, secret, login, process, database or nginx block. Extra step beyond the above:
 
 ```bash
-cd flowbook/api && npm ci --omit=dev      # Node 24; FlowBook runs inside the FlowXP API and needs nothing else
+# nothing to run: `npm ci` in backend/ also installs flowbook/api (postinstall). FlowBook needs Node 24 and starts with the API.
 ```
 
 - FlowBook needs **no variables of its own**: the key that seals stored tokens is derived from `ENCRYPTION_KEY` (or `JWT_SECRET`), email goes through FlowXP's mailbox (SMTP_* or Settings > Email) and WhatsApp through FlowXP's number (WHATSAPP_* or Settings > Messaging). Do not rotate `ENCRYPTION_KEY`/`JWT_SECRET` casually: stored WhatsApp tokens are sealed with the derived key.
