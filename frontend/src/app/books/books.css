@@ -152,7 +152,15 @@
 .fb .fb-tab { padding: .625rem .875rem; margin-bottom: -1px; border-bottom: 2px solid transparent; color: var(--ink-500); font-size: .875rem; font-weight: 500; white-space: nowrap; }
 .fb .fb-tab:hover { color: var(--ink-900); text-decoration: none; }
 .fb .fb-tab.active { color: var(--brand-500); border-color: var(--brand-500); font-weight: 600; }
-.fb .fb-tools { display: flex; align-items: center; gap: .5rem; padding-bottom: .375rem; }
+.fb .fb-tabs { flex: 0 1 auto; min-width: 0; max-width: 100%; }
+.fb .fb-tools { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding-bottom: .375rem; min-width: 0; max-width: 100%; }
+/* Phones and small tablets: the switch gets a full row of its own, Export and Help share the next one, so nothing is wider than the screen. */
+@media (max-width: 40rem) {
+  .fb .fb-bar { gap: 0; }
+  .fb .fb-tools { width: 100%; padding: .5rem 0; }
+  .fb .fb-tools .seg { flex: 1 1 100%; min-width: 0; }
+  .fb .fb-tools .btn { flex: 1 1 0; min-width: 0; }
+}
 .fb .fb-sub { display: flex; flex-wrap: wrap; gap: .375rem; margin: 0 0 1.25rem; }
 .fb .fb-pill { padding: .25rem .75rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-700); font-size: .8125rem; }
 .fb .fb-pill:hover { border-color: var(--line-strong); background: var(--surface-2); text-decoration: none; }
