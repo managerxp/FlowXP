@@ -5042,5 +5042,7 @@
   "Debit notes (purchase returns)": "ಡೆಬಿಟ್ ನೋಟ್‌ಗಳು (ಖರೀದಿ ಹಿಂತಿರುಗಿಸುವಿಕೆ)",
   "Document numbers saved": "ದಾಖಲೆ ಸಂಖ್ಯೆಗಳನ್ನು ಉಳಿಸಲಾಗಿದೆ",
   "Document numbers": "ದಾಖಲೆ ಸಂಖ್ಯೆಗಳು",
-  "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "ಪ್ರತಿ ಸಂಖ್ಯೆಯ ಮೊದಲಿನ ಅಕ್ಷರಗಳು. ಬದಲಾಯಿಸಿದರೂ ಎಣಿಕೆ ಮುಂದುವರಿಯುತ್ತದೆ; ಈಗಾಗಲೇ ಮಾಡಿದ ದಾಖಲೆಗಳ ಸಂಖ್ಯೆ ಬದಲಾಗುವುದಿಲ್ಲ."
+  "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "ಪ್ರತಿ ಸಂಖ್ಯೆಯ ಮೊದಲಿನ ಅಕ್ಷರಗಳು. ಬದಲಾಯಿಸಿದರೂ ಎಣಿಕೆ ಮುಂದುವರಿಯುತ್ತದೆ; ಈಗಾಗಲೇ ಮಾಡಿದ ದಾಖಲೆಗಳ ಸಂಖ್ಯೆ ಬದಲಾಗುವುದಿಲ್ಲ.",
+  "PROFORMA INVOICE": "ಪ್ರೊಫಾರ್ಮಾ ಇನ್‌ವಾಯ್ಸ್",
+  "This is not a tax invoice. The tax invoice is issued when the goods are supplied.": "ಇದು ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್ ಅಲ್ಲ. ಸರಕು ಪೂರೈಸಿದಾಗ ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್ ನೀಡಲಾಗುತ್ತದೆ."
 }

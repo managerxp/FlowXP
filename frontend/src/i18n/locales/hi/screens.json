@@ -5042,5 +5042,7 @@
   "Debit notes (purchase returns)": "डेबिट नोट (खरीद वापसी)",
   "Document numbers saved": "दस्तावेज़ों के नंबर सहेजे गए",
   "Document numbers": "दस्तावेज़ों के नंबर",
-  "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "हर नंबर से पहले के अक्षर। इन्हें बदलने पर गिनती जारी रहती है; बन चुके दस्तावेज़ों का नंबर नहीं बदलता।"
+  "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "हर नंबर से पहले के अक्षर। इन्हें बदलने पर गिनती जारी रहती है; बन चुके दस्तावेज़ों का नंबर नहीं बदलता।",
+  "PROFORMA INVOICE": "प्रोफ़ॉर्मा इनवॉइस",
+  "This is not a tax invoice. The tax invoice is issued when the goods are supplied.": "यह टैक्स इनवॉइस नहीं है। माल की आपूर्ति पर टैक्स इनवॉइस जारी होगा।"
 }

@@ -3081,7 +3081,7 @@
   "Profile": "சுயவிவரம்",
   "Profitability": "இலாபத்தன்மை",
   "Proforma": "ப்ரோஃபார்மா",
-  "Proforma invoice": "ப்ரோஃபார்மா விலைப்பட்டியல்",
+  "Proforma invoice": "ப்ரோஃபார்மா இன்வாய்ஸ்",
   "Progress": "முன்னேற்றம்",
   "Promotion": "விளம்பரம்",
   "Proof of delivery": "விநியோகச் சான்று",
@@ -5042,5 +5042,7 @@
   "Debit notes (purchase returns)": "டெபிட் நோட்டுகள் (கொள்முதல் திரும்பல்)",
   "Document numbers saved": "ஆவண எண்கள் சேமிக்கப்பட்டன",
   "Document numbers": "ஆவண எண்கள்",
-  "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "ஒவ்வொரு எண்ணுக்கும் முன் வரும் எழுத்துகள். மாற்றினாலும் எண்ணிக்கை தொடரும்; ஏற்கனவே உருவான ஆவணங்களின் எண் மாறாது."
+  "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "ஒவ்வொரு எண்ணுக்கும் முன் வரும் எழுத்துகள். மாற்றினாலும் எண்ணிக்கை தொடரும்; ஏற்கனவே உருவான ஆவணங்களின் எண் மாறாது.",
+  "PROFORMA INVOICE": "ப்ரோஃபார்மா இன்வாய்ஸ்",
+  "This is not a tax invoice. The tax invoice is issued when the goods are supplied.": "இது வரி இன்வாய்ஸ் அல்ல. பொருட்கள் வழங்கப்படும்போது வரி இன்வாய்ஸ் வழங்கப்படும்."
 }

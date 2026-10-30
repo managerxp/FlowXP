@@ -3081,7 +3081,7 @@
   "Profile": "প্রোফাইল",
   "Profitability": "লাভজনকতা",
   "Proforma": "প্রোফর্মা",
-  "Proforma invoice": "প্রোফর্মা চালান",
+  "Proforma invoice": "প্রফর্মা ইনভয়েস",
   "Progress": "অগ্রগতি",
   "Promotion": "প্রোমোশন",
   "Proof of delivery": "ডেলিভারির প্রমাণ",
@@ -5042,5 +5042,7 @@
   "Debit notes (purchase returns)": "ডেবিট নোট (কেনা ফেরত)",
   "Document numbers saved": "ডকুমেন্ট নম্বর সংরক্ষিত হয়েছে",
   "Document numbers": "ডকুমেন্ট নম্বর",
-  "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "প্রতিটি নম্বরের আগের অক্ষর। বদলালে গণনা চলতে থাকে; আগে তৈরি ডকুমেন্টের নম্বর বদলায় না।"
+  "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "প্রতিটি নম্বরের আগের অক্ষর। বদলালে গণনা চলতে থাকে; আগে তৈরি ডকুমেন্টের নম্বর বদলায় না।",
+  "PROFORMA INVOICE": "প্রফর্মা ইনভয়েস",
+  "This is not a tax invoice. The tax invoice is issued when the goods are supplied.": "এটি ট্যাক্স ইনভয়েস নয়। মাল সরবরাহের সময় ট্যাক্স ইনভয়েস দেওয়া হবে।"
 }

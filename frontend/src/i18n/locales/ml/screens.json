@@ -5042,5 +5042,7 @@
   "Debit notes (purchase returns)": "ഡെബിറ്റ് നോട്ടുകൾ (വാങ്ങൽ മടക്കം)",
   "Document numbers saved": "ഡോക്യുമെന്റ് നമ്പറുകൾ സേവ് ചെയ്തു",
   "Document numbers": "ഡോക്യുമെന്റ് നമ്പറുകൾ",
-  "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "ഓരോ നമ്പറിനും മുമ്പുള്ള അക്ഷരങ്ങൾ. മാറ്റിയാലും എണ്ണൽ തുടരും; ഇതിനകം ഉണ്ടാക്കിയ ഡോക്യുമെന്റുകളുടെ നമ്പർ മാറില്ല."
+  "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "ഓരോ നമ്പറിനും മുമ്പുള്ള അക്ഷരങ്ങൾ. മാറ്റിയാലും എണ്ണൽ തുടരും; ഇതിനകം ഉണ്ടാക്കിയ ഡോക്യുമെന്റുകളുടെ നമ്പർ മാറില്ല.",
+  "PROFORMA INVOICE": "പ്രോഫോർമ ഇൻവോയ്സ്",
+  "This is not a tax invoice. The tax invoice is issued when the goods are supplied.": "ഇത് നികുതി ഇൻവോയ്സ് അല്ല. സാധനങ്ങൾ നൽകുമ്പോൾ നികുതി ഇൻവോയ്സ് നൽകും."
 }

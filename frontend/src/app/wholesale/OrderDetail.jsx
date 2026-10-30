@@ -106,6 +106,7 @@ const OrderDetail = () => {
       <PageHeader title={<span className="flex flex-wrap items-center gap-3">{o.order_number}<StatusPill map={ORDER_STATUS} status={o.status} /></span>} lead={`${o.customer} · ${longDate(o.order_date)}`}
                   action={<>
                     <Button variant="secondary" to={`/app/wholesale/orders/${o.order_id}/print`}><Printer aria-hidden="true" className="h-4 w-4" />{tr('Print')}</Button>
+                    {['DRAFT', 'PENDING', 'CONFIRMED'].includes(o.status) && <Button variant="secondary" to={`/app/wholesale/orders/${o.order_id}/print?as=proforma`}>{tr('Proforma invoice')}</Button>}
                     {editable && <Button variant="secondary" to={`/app/wholesale/orders/${o.order_id}/edit`}><Pencil aria-hidden="true" className="h-4 w-4" />{tr('Edit')}</Button>}
                     {o.status === 'DRAFT' && can('sales_orders') && <Button variant="secondary" loading={busy} onClick={() => act('submit', 'Submitted for approval')}>{tr('Submit')}</Button>}
                     {['DRAFT', 'PENDING'].includes(o.status) && can('sales_orders') && <Button loading={busy} onClick={tryConfirm}>{tr('Confirm order')}</Button>}

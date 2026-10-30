@@ -5042,5 +5042,7 @@
   "Debit notes (purchase returns)": "Debit notes (purchase returns)",
   "Document numbers saved": "Document numbers saved",
   "Document numbers": "Document numbers",
-  "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "The letters before each number. Changing one keeps the numbering going; documents already made keep their number."
+  "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.": "The letters before each number. Changing one keeps the numbering going; documents already made keep their number.",
+  "PROFORMA INVOICE": "PROFORMA INVOICE",
+  "This is not a tax invoice. The tax invoice is issued when the goods are supplied.": "This is not a tax invoice. The tax invoice is issued when the goods are supplied."
 }

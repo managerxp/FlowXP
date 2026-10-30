@@ -52,6 +52,7 @@ const Party = ({ title, lines }) => {
 export const OrderPrint = () => {
   const tr = useT();
   const { id } = useParams();
+  const proforma = useSearchParams()[0].get('as') === 'proforma';   // the same order printed as a proforma invoice: a price request for payment, not a tax invoice
   const { data: o, error } = useLoad(`/wholesale/orders/${id}`);
   const biz = useLoad('/businesses/current');
   usePrintOnLoad(Boolean(o));
@@ -65,7 +66,7 @@ export const OrderPrint = () => {
       <div className="sheet light-sheet mx-auto max-w-3xl rounded-(--radius-card) border border-line bg-white p-8 text-ink-900 shadow-sm">
         <header className="flex items-start justify-between gap-6 border-b border-line pb-4">
           <div><h1 className="text-xl font-bold">{b.name || ''}</h1><p className="text-sm text-ink-700">{[b.address, b.state].filter(Boolean).join(', ')}</p>{b.gstin && <p className="text-sm text-ink-700">{tr('GSTIN {{gstin}}', { gstin: b.gstin })}</p>}</div>
-          <div className="text-right"><p className="text-lg font-bold">{['DRAFT', 'SUBMITTED'].includes(o.status) ? tr('QUOTATION') : tr('SALES ORDER')}</p><p className="text-sm">{o.order_number}</p><p className="text-sm text-ink-700">{longDate(o.order_date)}</p>{o.customer_po && <p className="text-sm text-ink-700">{tr('Your PO: {{customer_po}}', { customer_po: o.customer_po })}</p>}</div>
+          <div className="text-right"><p className="text-lg font-bold">{proforma ? tr('PROFORMA INVOICE') : ['DRAFT', 'SUBMITTED'].includes(o.status) ? tr('QUOTATION') : tr('SALES ORDER')}</p><p className="text-sm">{o.order_number}</p><p className="text-sm text-ink-700">{longDate(o.order_date)}</p>{o.customer_po && <p className="text-sm text-ink-700">{tr('Your PO: {{customer_po}}', { customer_po: o.customer_po })}</p>}</div>
         </header>
         <div className="grid grid-cols-2 gap-6 py-4">
           <Party title={tr('Bill to')} lines={[o.customer, o.customer_phone, o.customer_gstin && `GSTIN ${o.customer_gstin}`]} />
@@ -86,6 +87,7 @@ export const OrderPrint = () => {
           {o.discount > 0 && <div className="flex justify-between"><dt>{tr('Discount')}</dt><dd className="tabular">−{money(o.discount)}</dd></div>}
           <div className="flex justify-between border-t border-line pt-1 text-base font-bold"><dt>{tr('Total')}</dt><dd className="tabular">{money(o.total)}</dd></div>
         </dl>
+        {proforma && <p className="mt-4 text-xs font-semibold text-ink-700">{tr('This is not a tax invoice. The tax invoice is issued when the goods are supplied.')}</p>}
         <footer className="mt-8 grid grid-cols-2 gap-6 text-xs text-ink-700">
           <p>Payment terms: {o.payment_terms_days} days{o.expected_delivery ? ` · Expected delivery ${longDate(o.expected_delivery)}` : ''}.{o.notes ? ` ${o.notes}` : ''}</p>
           <p className="text-right">Salesperson: {o.salesperson || '—'}</p>
