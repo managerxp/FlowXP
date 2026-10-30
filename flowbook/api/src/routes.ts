@@ -20,6 +20,7 @@ import { getEmailSettings, listEmails, saveEmailSettings, sendDocument } from '.
 import type { EmailSettingsIn } from './email.ts';
 import { CURRENCIES, listRates, listRevaluations, rateOn, revalue, reversePending, saveRate } from './fx.ts';
 import { COST_TYPES } from './costtypes.ts';
+import { addUnit, listUnits, raiseStage, sellUnit } from './units.ts';
 import { addTime, createProject, deleteTime, getProject, invoiceTime, listProjects, updateProject } from './projects.ts';
 import { IT_BLOCKS, assetSchedule, setAssetTax, taxDepreciation } from './assets-tax.ts';
 import { addAsset, assetRegister, cancelAsset, disposeAsset, runDepreciation } from './assets.ts';
@@ -168,6 +169,19 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     const b = req.body as { name: string; code?: string; customerId?: string; hourlyRate?: string; budget?: string; notes?: string };
     return reply.code(201).send({ id: await run(req, (c, orgId) => createProject(c, orgId, { ...b, customerId: b.customerId ? BigInt(b.customerId) : undefined }, me(req))) });
   });
+  app.get(`${base}/projects/:id/units`, { preHandler: scope('project.read'), schema: idParam }, async (req) => run(req, (c) => listUnits(c, BigInt((req.params as { id: string }).id))));
+  app.post(`${base}/projects/:id/units`, { preHandler: scope('invoice.write'), schema: { ...idParam, body: { type: 'object', required: ['name', 'price'], additionalProperties: false, properties: { name: { type: 'string', minLength: 1, maxLength: 60 }, price: money } } } }, async (req, reply) => {
+    const b = req.body as { name: string; price: string };
+    return reply.code(201).send({ id: await run(req, (c, orgId) => addUnit(c, orgId, BigInt((req.params as { id: string }).id), b, me(req))) });
+  });
+  app.post(`${base}/units/:id/sell`, { preHandler: scope('invoice.write'), schema: { ...idParam, body: { type: 'object', required: ['partyId', 'date', 'stages'], additionalProperties: false, properties: {
+    partyId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, taxCode: { type: 'string', maxLength: 20 },
+    stages: { type: 'array', minItems: 1, maxItems: 30, items: { type: 'object', required: ['name', 'percent'], additionalProperties: false, properties: { name: { type: 'string', maxLength: 80 }, percent: { type: 'number', minimum: 0.01, maximum: 100 }, dueDate: { type: 'string', pattern: DATE } } } } } } } }, async (req) => {
+    const b = req.body as { partyId: string; date: string; taxCode?: string; stages: { name: string; percent: number; dueDate?: string }[] };
+    await run(req, (c, orgId) => sellUnit(c, orgId, BigInt((req.params as { id: string }).id), { ...b, partyId: BigInt(b.partyId) }, me(req))); return { ok: true };
+  });
+  app.post(`${base}/unit-stages/:id/raise`, { preHandler: scope('invoice.write'), schema: { ...idParam, body: { type: 'object', required: ['date'], additionalProperties: false, properties: { date: { type: 'string', pattern: DATE } } } } }, async (req) =>
+    run(req, (c, orgId) => raiseStage(c, orgId, BigInt((req.params as { id: string }).id), (req.body as { date: string }).date, me(req))));
   app.get(`${base}/projects/:id`, { preHandler: scope('project.read'), schema: idParam }, async (req, reply) =>
     (await run(req, (c) => getProject(c, BigInt((req.params as { id: string }).id)))) ?? notFound(reply, 'project'));
   app.patch(`${base}/projects/:id`, { preHandler: scope('invoice.write'), schema: { ...idParam, body: { type: 'object', additionalProperties: false, properties: {

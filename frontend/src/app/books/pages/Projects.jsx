@@ -135,6 +135,61 @@ const Dashboard = ({ p }) => {
   </>);
 };
 
+const PLAN = [['Booking', '10'], ['Foundation', '20'], ['Slab', '40'], ['Possession', '30']];
+
+/* Flats and plots: a price, a buyer and stage instalments. Raising a stage invoices the buyer for that share. */
+const Units = ({ id }) => {
+  const { o, org } = useSession();
+  const load = useLoad(() => o(`/projects/${id}/units`), [org.id, id]);
+  const buyers = useLoad(() => o('/parties?kind=CUSTOMER&limit=500'), [org.id]);
+  const a = useAction();
+  const [add, setAdd] = useState({ name: '', price: '' });
+  const [sell, setSell] = useState(null);
+  const total = sell ? sell.stages.reduce((n, x) => n + (Number(x.percent) || 0), 0) : 0;
+  const setStage = (i, k, v) => setSell({ ...sell, stages: sell.stages.map((x, j) => (j === i ? { ...x, [k]: v } : x)) });
+  const doSell = () => a.run(async () => {
+    await o(`/units/${sell.unit}/sell`, { method: 'POST', body: { partyId: sell.partyId, date: today(), stages: sell.stages.map((x) => ({ name: x.name, percent: Number(x.percent), ...(x.dueDate ? { dueDate: x.dueDate } : {}) })) } });
+    setSell(null); await load.reload();
+  });
+  return (
+    <Card title="Flats and plots"><p className="muted">Add each unit with its price. When it is sold, choose the buyer and the stages; raise a stage when it falls due and the buyer is invoiced for that share.</p>
+      <Err>{a.error}</Err>
+      <Async load={load}>{(units) => (
+        <>
+          <Table head={['Unit', 'Buyer', '>Price', '>Asked for', '>Received', '']} empty={!units.length && <Empty>No units yet.</Empty>}>
+            {units.flatMap((u) => [
+              <tr key={u.id}><td><strong>{u.name}</strong></td><td>{u.buyer || <Badge status="DRAFT">for sale</Badge>}</td><td className="r"><Money v={u.price_minor} /></td>
+                <td className="r"><Money v={u.invoiced_minor} /></td><td className="r"><Money v={u.received_minor} /></td>
+                <td>{!u.party_id && <button className="linkish" onClick={() => setSell({ unit: u.id, name: u.name, partyId: '', stages: PLAN.map(([name, percent]) => ({ name, percent, dueDate: '' })) })}>Sell</button>}</td></tr>,
+              ...u.stages.map((s) => (
+                <tr key={`s${s.id}`} className="muted"><td>&nbsp;&nbsp;{s.name} ({s.share_bp / 100}%)</td><td>{s.due_date ? `due ${showDate(s.due_date)}` : ''}</td><td className="r"><Money v={s.amount_minor} /></td>
+                  <td className="r">{s.invoice_id ? <Link to={`/sales/${s.invoice_id}`}>{s.invoice_number}</Link> : ''}</td><td className="r">{s.invoice_id ? <Money v={s.received_minor} /> : ''}</td>
+                  <td>{!s.invoice_id && <button className="linkish" onClick={() => a.run(async () => { await o(`/unit-stages/${s.id}/raise`, { method: 'POST', body: { date: today() } }); await load.reload(); })}>Raise</button>}</td></tr>))
+            ])}
+          </Table>
+          {sell && (
+            <Confirm><p>Sell {sell.name}. The stages must add up to 100% (now {total}%).</p>
+              <div className="form">
+                <Field label="Buyer"><select value={sell.partyId} onChange={(e) => setSell({ ...sell, partyId: e.target.value })}><option value="">Choose a customer</option>{(buyers.data?.parties || buyers.data || []).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
+                {sell.stages.map((x, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '.5rem' }}>
+                    <input aria-label="Stage" value={x.name} onChange={(e) => setStage(i, 'name', e.target.value)} />
+                    <input aria-label="Percent" inputMode="decimal" style={{ width: '5rem' }} value={x.percent} onChange={(e) => setStage(i, 'percent', e.target.value)} />
+                    <input aria-label="Due date" type="date" value={x.dueDate} onChange={(e) => setStage(i, 'dueDate', e.target.value)} />
+                  </div>))}
+              </div>
+              <Btn kind="primary" busy={a.busy} onClick={doSell}>Sell</Btn> <Btn onClick={() => setSell(null)}>Cancel</Btn></Confirm>
+          )}
+        </>)}</Async>
+      <form className="form" onSubmit={(e) => { e.preventDefault(); a.run(async () => { await o(`/projects/${id}/units`, { method: 'POST', body: add }); setAdd({ name: '', price: '' }); await load.reload(); }); }}>
+        <Field label="New unit (e.g. A-101)"><input value={add.name} onChange={(e) => setAdd({ ...add, name: e.target.value })} /></Field>
+        <Field label="Price (₹)"><input inputMode="decimal" value={add.price} onChange={(e) => setAdd({ ...add, price: e.target.value })} /></Field>
+        <Btn type="submit" busy={a.busy}>Add unit</Btn>
+      </form>
+    </Card>
+  );
+};
+
 export const ProjectView = () => {
   const { id } = useParams();
   const { o, org } = useSession();
@@ -149,6 +204,7 @@ export const ProjectView = () => {
         <Err>{a.error}</Err>
         {billing && <InvoiceHours id={id} onDone={load.reload} onClose={() => setBilling(false)} />}
         <Dashboard p={p} />
+        <Units id={id} />
         <Card title="How it is going"><dl className="facts">
           <dt>Hours logged</dt><dd>{hours(p.minutes)} ({hours(p.unbilled_minutes)} still to bill, worth ₹{inr(p.unbilled_minor)})</dd>
           <dt>Invoiced</dt><dd>₹{inr(p.invoiced_minor)}</dd>
