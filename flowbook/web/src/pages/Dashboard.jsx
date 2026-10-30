@@ -1,8 +1,42 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLoad } from '../api.js';
 import { financialYear, gstDueDates, showDate, today } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { Badge, Card, Empty, Money, Page, Table } from '../ui.jsx';
+
+/** First steps for a new business: each one ticks itself off when it is done, and the whole card can be hidden. */
+const GetStarted = ({ org }) => {
+  const { o } = useSession();
+  const key = `fb_start_${org.id}`;
+  const [hidden, setHidden] = useState(() => { try { return localStorage.getItem(key) === '1'; } catch { return false; } });
+  const profile = useLoad(() => o('/profile'), [org.id]);
+  const customers = useLoad(() => o('/parties?kind=CUSTOMER&limit=1'), [org.id]);
+  const items = useLoad(() => o('/items'), [org.id]);
+  const invoices = useLoad(() => o('/invoices?limit=1'), [org.id]);
+  const payments = useLoad(() => o('/payments?limit=1'), [org.id]);
+  if (hidden || [profile, customers, items, invoices, payments].some((x) => x.loading && !x.data)) return null;
+  const steps = [
+    [Boolean(profile.data?.address_line || profile.data?.phone || profile.data?.gstin), 'Add your business details', 'Your address and phone appear on every invoice.', '/settings'],
+    [Boolean(customers.data?.length), 'Add a customer', 'Someone you sell to. Just a name is enough to start.', '/customers'],
+    [Boolean(items.data?.length), 'Add what you sell', 'Each product or service once, with its price. Then invoices fill in the price for you.', '/items'],
+    [Boolean(invoices.data?.documents?.length), 'Make your first invoice', 'Pick the customer, add the items, press Issue.', '/sales/new'],
+    [Boolean(payments.data?.payments?.length), 'Record a payment', 'When a customer pays, record it so their balance is right.', '/payments/new?direction=IN']
+  ];
+  const left = steps.filter((x) => !x[0]).length;
+  if (!left) return null;
+  const hide = () => { try { localStorage.setItem(key, '1'); } catch { /* hidden for this visit only */ } setHidden(true); };
+  return (
+    <Card title={`Get started: ${steps.length - left} of ${steps.length} done`} actions={<button className="linkish" onClick={hide}>Hide</button>}>
+      <ul className="start-list">
+        {steps.map(([done, title, why, to]) => (
+          <li key={title} className={done ? 'done' : ''}><span className="tick" aria-hidden="true">{done ? '✓' : ''}</span>
+            <span>{done ? title : <Link to={to}><strong>{title}</strong></Link>}{!done && <span className="why">{why}</span>}</span></li>
+        ))}
+      </ul>
+    </Card>
+  );
+};
 
 const Stat = ({ k, children, tone = '' }) => <div className={`stat ${tone}`}><div className="k">{k}</div><div className="v">{children}</div></div>;
 
@@ -19,6 +53,7 @@ export default () => {
 
   return (
     <Page title={org.name} lead={`${fy.label} so far`} actions={<><Link className="btn primary" to="/sales/new">New invoice</Link><Link className="btn" to="/payments/new">Record payment</Link></>}>
+      <GetStarted org={org} />
       <div className="grid">
         <Stat k="Customers owe you">{owed.data ? <Money v={owed.data.total} /> : '–'}</Stat>
         <Stat k="…of which overdue" tone={overdue ? 'bad' : ''}>{overdue === null ? '–' : <Money v={overdue} />}</Stat>

@@ -19,7 +19,7 @@ const numbersIn = (value, out) => {
 export const figuresIn = (answer) => {
   const text = String(answer || '').replace(/\d{4}-\d{2}-\d{2}/g, ' ');
   const found = [];
-  for (const m of text.matchAll(/(₹|rs\.?\s*)?(\d[\d,]*(?:\.\d+)?)\s*(lakhs?|crores?|cr|k|l)?(?![\w-])/gi)) {
+  for (const m of text.matchAll(/(₹|rs\.?\s*)?(\d(?:[\d,]*\d)?(?:\.\d+)?)\s*(lakhs?|crores?|cr|k|l)?(?![\w-])/gi)) {
     const base = Number(m[2].replace(/,/g, ''));
     const suffix = m[3] ? m[3].toLowerCase() : null;
     const value = base * (suffix ? MULT[suffix] : 1);

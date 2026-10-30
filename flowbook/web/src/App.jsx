@@ -3,6 +3,8 @@ import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'reac
 import { api } from './api.js';
 import { SessionProvider, useSession } from './session.jsx';
 import { SITE_URL, wordmark } from './lib.js';
+import { setMode, useSimple } from './mode.js';
+import { HelpButton, HelpPanel, HelpProvider } from './help.jsx';
 import { Btn, Card, Err, Field, Loading, useAction } from './ui.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import { DocForm, DocList, DocView } from './pages/Documents.jsx';
@@ -53,6 +55,8 @@ const NAV = [
   { label: 'Books', items: [['/items', 'Items', 'box'], ['/stock', 'Stock', 'list'], ['/assets', 'Fixed assets', 'box'], ['/accounts', 'Accounts', 'list'], ['/journals', 'Journals', 'book'], ['/reports', 'Reports', 'chart']] },
   { label: 'Setup', items: [['/settings', 'Settings', 'gear']] }
 ];
+/* The Simple view keeps what a shop uses every day; the accountant's screens come back with Full */
+const SIMPLE = new Set(['/', '/sales', '/customers', '/purchases', '/expenses', '/vendors', '/payments', '/items', '/stock', '/reports', '/settings']);
 const Icon = ({ name }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={ICON[name]} /></svg>;
 
 const Wordmark = () => { const [a, b] = wordmark(); return <span className="wordmark">{a}<span>{b}</span></span>; };
@@ -124,6 +128,7 @@ const TrialBanner = ({ org }) => {
 const Shell = () => {
   const { user, orgs, org, pick, signOut } = useSession();
   const [open, setOpen] = useState(false);
+  const simple = useSimple();
   const loc = useLocation();
   const close = () => setOpen(false);
   return (
@@ -135,11 +140,16 @@ const Shell = () => {
           <button className="icon-btn side-close" aria-label="Close menu" onClick={close}>✕</button>
         </div>
         <nav onClick={close}>
-          {NAV.map((g, i) => (
+          {NAV.map((g) => ({ ...g, items: simple ? g.items.filter(([to]) => SIMPLE.has(to)) : g.items })).filter((g) => g.items.length).map((g, i) => (
             <div key={i} className="nav-group">{g.label && <p className="nav-label">{g.label}</p>}
               {g.items.map(([to, label, icon]) => <NavLink key={to} to={to} end={to === '/'} className="nav-item"><Icon name={icon} />{label}</NavLink>)}</div>
           ))}
         </nav>
+        <div className="mode-switch" role="group" aria-label="How much to show">
+          <span className="nav-label">Menu</span>
+          <div className="seg"><button className={simple ? 'on' : ''} aria-pressed={simple} onClick={() => setMode('simple')}>Simple</button><button className={simple ? '' : 'on'} aria-pressed={!simple} onClick={() => setMode('full')}>Full</button></div>
+          <p className="hint">{simple ? 'Showing the everyday screens. Choose Full for quotes, orders, bank, journals and more.' : 'Showing every screen.'}</p>
+        </div>
       </aside>
       <div className="col">
         <header className="top">
@@ -148,6 +158,7 @@ const Shell = () => {
             ? <select className="org-pick" aria-label="Business" value={org?.id} onChange={(e) => pick(e.target.value)}>{orgs.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
             : org && <p className="who" style={{ margin: 0 }}><span className="chip" aria-hidden="true">{initials(org.name)}</span><span className="name">{org.name}</span></p>}
           <span className="spacer" />
+          <HelpButton />
           <button className="btn small" onClick={signOut} title={user.email}>Sign out</button>
         </header>
       <main key={`${org?.id}`}>
@@ -185,6 +196,7 @@ const Shell = () => {
         )}
       </main>
       </div>
+      <HelpPanel />
     </div>
   );
 };
@@ -196,4 +208,4 @@ const Gate = () => {
   return user ? <Shell /> : <AuthScreen />;
 };
 
-export default () => <SessionProvider><Gate /></SessionProvider>;
+export default () => <SessionProvider><HelpProvider><Gate /></HelpProvider></SessionProvider>;

@@ -4,6 +4,8 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useLoad } from '../api.js';
 import { STATES, TCS_SECTIONS, UNITS, addDays, amountInWords, inr, showDate, today, unitLabel } from '../lib.js';
 import { useSession } from '../session.jsx';
+import { useSimple } from '../mode.js';
+import { Term } from '../help.jsx';
 import { DocSheet, EwayPanel } from './Print.jsx';
 import { EinvoicePanel } from './Einvoice.jsx';
 import { WhatsappButton, WhatsappLog } from './Whatsapp.jsx';
@@ -52,6 +54,9 @@ export const DocForm = ({ kind }) => {
   const { o, org } = useSession();
   const nav = useNavigate();
   const a = useAction();
+  const simple = useSimple();
+  const [more, setMore] = useState(false);   // Simple view keeps currency, place of supply, tax-at-source and the like behind "More options"
+  const adv = !simple || more;
   const parties = useLoad(() => o(`/parties?kind=${kind.partyKind}&limit=500`), [org.id, kind.partyKind]);
   const items = useLoad(() => o('/items'), [org.id]);
   const fx = useLoad(() => o('/exchange-rates'), [org.id]);
@@ -67,6 +72,10 @@ export const DocForm = ({ kind }) => {
     if (!d) return;
     setF({ shippingBillNo: d.shipping_bill_no || '', shippingBillDate: d.shipping_bill_date || '', portCode: d.port_code || '', warehouseId: d.warehouse_id ? String(d.warehouse_id) : '', projectId: d.project_id ? String(d.project_id) : '', currency: d.currency || 'INR', fxRate: d.currency && d.currency !== 'INR' ? String(d.fx_rate).replace(/0+$/, '').replace(/\.$/, '') : '', partyId: String(d.party_id), date: d.issue_date || today(), dueDate: d.due_date || '', placeOfSupply: d.place_of_supply || '', supplierRef: d.supplier_ref || '', relatedDocumentId: d.related_document_id ? String(d.related_document_id) : '',
       memo: d.memo || '', reverseCharge: Boolean(d.reverse_charge), tcsRate: d.tcs_rate_bp ? String(d.tcs_rate_bp / 100) : '', tcsSection: d.tcs_section || '', roundOff: Number(d.round_off_minor) !== 0 || d.status === 'DRAFT', lines: d.lines.map((l) => ({ itemId: l.item_id ? String(l.item_id) : '', description: l.description || '', hsnSac: l.hsn_sac || '', unit: l.unit || '', quantity: l.quantity, unitPrice: l.unit_price_fc_minor ?? l.unit_price_minor, discount: Number(l.discount_fc_minor ?? l.discount_minor) ? (l.discount_fc_minor ?? l.discount_minor) : '', taxCode: l.tax_code || '', inclusive: Boolean(l.price_includes_tax) })) });
+  }, [existing.data]);
+  useEffect(() => {   // a document that already uses one of those options must show it
+    const d = existing.data;
+    if (d && ((d.currency && d.currency !== 'INR') || d.tcs_rate_bp || d.reverse_charge || d.place_of_supply)) setMore(true);
   }, [existing.data]);
   useEffect(() => { if (!id && search.get('partyId')) setF((x) => ({ ...x, partyId: search.get('partyId') })); }, [id, search]);
 
@@ -107,6 +116,7 @@ export const DocForm = ({ kind }) => {
     <Page title={`${id ? 'Edit' : 'New'} ${kind.one.toLowerCase()}`} lead="Prices are reworked and numbered when you issue it. Until then it is a draft you can change.">
       <Err>{existing.error || a.error}</Err>
       <form onSubmit={submit}>
+        {simple && <div className="more-bar"><Btn type="button" className="btn small" onClick={() => setMore(!more)} aria-expanded={more}>{more ? 'Fewer options' : 'More options'}</Btn></div>}
         <Card>
           <div className="form">
             <Field label={kind.who}>
@@ -116,7 +126,7 @@ export const DocForm = ({ kind }) => {
             <Field label="Date"><input type="date" value={f.date} onChange={set('date')} required /></Field>
             {!!projects.data?.length && <Field label="Project" hint="Optional: counts towards that project's profit"><select value={f.projectId} onChange={set('projectId')}><option value="">None</option>{projects.data.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>}
             {(warehouses.data || []).filter((w) => w.active).length > 1 && <Field label="Warehouse" hint="Where counted goods on this document come from or go to"><select value={f.warehouseId} onChange={set('warehouseId')}><option value="">Default</option>{warehouses.data.filter((w) => w.active).map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field>}
-            {!isNote(kind) && <Field label="Currency"><select value={f.currency} onChange={(e) => changeCurrency(e.target.value)}><option value="INR">Rupees (₹)</option>{Object.entries(fx.data?.currencies || {}).map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
+            {!isNote(kind) && adv && <Field label="Currency"><select value={f.currency} onChange={(e) => changeCurrency(e.target.value)}><option value="INR">Rupees (₹)</option>{Object.entries(fx.data?.currencies || {}).map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
             {f.currency !== 'INR' && kind.api === 'invoices' && <>
               <Field label="Shipping bill no." hint="Export of goods; goes in GSTR-1 (optional until it is filed)"><input value={f.shippingBillNo} onChange={set('shippingBillNo')} maxLength={7} /></Field>
               <Field label="Shipping bill date"><input type="date" value={f.shippingBillDate} onChange={set('shippingBillDate')} /></Field>
@@ -124,7 +134,7 @@ export const DocForm = ({ kind }) => {
             </>}
             {f.currency !== 'INR' && <Field label={`Rate: ₹ for 1 ${f.currency}`} hint="Converts to rupees for your books and GST. Save usual rates in Settings > Currencies"><input inputMode="decimal" value={f.fxRate} onChange={set('fxRate')} required /></Field>}
             {!isNote(kind) && <Field label={kind.dueLabel || 'Due date'} hint={party?.credit_days ? `${party.name} usually gets ${party.credit_days} days` : 'Optional'}><input type="date" value={f.dueDate} onChange={set('dueDate')} /></Field>}
-            <Field label="Place of supply" hint="Leave empty to use the party's state"><select value={f.placeOfSupply} onChange={set('placeOfSupply')}><option value="">Automatic</option>{Object.entries(STATES).map(([c, n]) => <option key={c} value={String(c).padStart(2, '0')}>{String(c).padStart(2, '0')} · {n}</option>)}</select></Field>
+            {adv && <Field label={<Term k="POS">Place of supply</Term>} hint="Leave empty to use the party's state"><select value={f.placeOfSupply} onChange={set('placeOfSupply')}><option value="">Automatic</option>{Object.entries(STATES).map(([c, n]) => <option key={c} value={String(c).padStart(2, '0')}>{String(c).padStart(2, '0')} · {n}</option>)}</select></Field>}
             {kind.api === 'bills' && <Field label="Vendor's bill number"><input value={f.supplierRef} onChange={set('supplierRef')} maxLength={60} /></Field>}
             {isNote(kind) && (
               <Field label={kind.api === 'credit-notes' ? 'Against invoice' : 'Against bill'} hint="Optional">
@@ -140,22 +150,22 @@ export const DocForm = ({ kind }) => {
             {f.lines.map((l, i) => (
               <div className="line" key={i}>
                 <Field label="Item"><select value={l.itemId} onChange={(e) => pickItem(i, e.target.value)}><option value="">Not from the list</option>{(items.data || []).map((it) => <option key={it.id} value={it.id}>{it.name}</option>)}</select></Field>
-                <Field label="Description"><input value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} /></Field>
+                {(adv || !l.itemId) && <Field label="Description"><input value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} /></Field>}
                 <Field label="Qty"><input inputMode="decimal" value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} required /></Field>
-                <Field label="Unit"><select value={l.unit} onChange={(e) => setLine(i, { unit: e.target.value })}><option value="">–</option>{UNITS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select></Field>
-                <Field label={l.inclusive ? `Price with GST (${cs})` : `Price (${cs})`} hint={<label className="check"><input type="checkbox" checked={l.inclusive} onChange={(e) => setLine(i, { inclusive: e.target.checked })} /> GST is in this price</label>}><input inputMode="decimal" value={l.unitPrice} onChange={(e) => setLine(i, { unitPrice: e.target.value })} required /></Field>
-                <Field label={`Discount (${cs})`}><input inputMode="decimal" value={l.discount} onChange={(e) => setLine(i, { discount: e.target.value })} /></Field>
-                <Field label="GST"><select value={l.taxCode} onChange={(e) => setLine(i, { taxCode: e.target.value })}>{codes.length ? codes.map((c) => <option key={c}>{c}</option>) : <option>{l.taxCode}</option>}</select></Field>
+                {adv && <Field label="Unit"><select value={l.unit} onChange={(e) => setLine(i, { unit: e.target.value })}><option value="">–</option>{UNITS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select></Field>}
+                <Field label={l.inclusive ? `Price with GST (${cs})` : `Price (${cs})`} hint={!adv ? undefined : <label className="check"><input type="checkbox" checked={l.inclusive} onChange={(e) => setLine(i, { inclusive: e.target.checked })} /> GST is in this price</label>}><input inputMode="decimal" value={l.unitPrice} onChange={(e) => setLine(i, { unitPrice: e.target.value })} required /></Field>
+                {adv && <Field label={`Discount (${cs})`}><input inputMode="decimal" value={l.discount} onChange={(e) => setLine(i, { discount: e.target.value })} /></Field>}
+                <Field label={<Term k="GST">GST</Term>}><select value={l.taxCode} onChange={(e) => setLine(i, { taxCode: e.target.value })}>{codes.length ? codes.map((c) => <option key={c}>{c}</option>) : <option>{l.taxCode}</option>}</select></Field>
                 <Btn type="button" className="btn small danger" disabled={f.lines.length === 1} onClick={() => setF({ ...f, lines: f.lines.filter((_, n) => n !== i) })} aria-label="Remove line">Remove</Btn>
               </div>
             ))}
           </div>
-          {kind.api === 'invoices' && <div className="form">
-            <Field label="TCS to collect (%)" hint="Only if the law requires you to collect tax at source on this sale; charged on value plus GST"><input inputMode="decimal" value={f.tcsRate} onChange={set('tcsRate')} /></Field>
+          {kind.api === 'invoices' && adv && <div className="form">
+            <Field label={<Term k="TCS">TCS to collect (%)</Term>} hint="Only if the law requires you to collect tax at source on this sale; charged on value plus GST"><input inputMode="decimal" value={f.tcsRate} onChange={set('tcsRate')} /></Field>
             {Number(f.tcsRate) > 0 && <Field label="TCS section"><select value={f.tcsSection} onChange={set('tcsSection')}><option value="">Not stated</option>{TCS_SECTIONS.map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
           </div>}
-          {kind.api === 'bills' && <p className="check"><input id="rcm" type="checkbox" checked={f.reverseCharge} onChange={set('reverseCharge')} /><label htmlFor="rcm">Reverse charge: the vendor charges no GST, I pay it to the government and claim it back</label></p>}
-          <p className="check"><input id="ro" type="checkbox" checked={f.roundOff} onChange={set('roundOff')} /><label htmlFor="ro">Round the total to the nearest rupee</label></p>
+          {kind.api === 'bills' && adv && <p className="check"><input id="rcm" type="checkbox" checked={f.reverseCharge} onChange={set('reverseCharge')} /><label htmlFor="rcm">Reverse charge: the vendor charges no GST, I pay it to the government and claim it back</label></p>}
+          {adv && <p className="check"><input id="ro" type="checkbox" checked={f.roundOff} onChange={set('roundOff')} /><label htmlFor="ro">Round the total to the nearest rupee</label></p>}
         </Card>
         <div className="actions"><Btn kind="primary" busy={a.busy}>Save draft</Btn><Btn type="button" onClick={() => nav(-1)}>Cancel</Btn></div>
       </form>

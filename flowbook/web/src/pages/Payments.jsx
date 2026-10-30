@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLoad } from '../api.js';
+import { useSimple } from '../mode.js';
+import { Term } from '../help.jsx';
 import { TDS_SECTIONS, inr, showDate, today, uuid } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { WhatsappButton } from './Whatsapp.jsx';
@@ -36,6 +38,8 @@ export const PaymentForm = () => {
   const [q] = useSearchParams();
   const nav = useNavigate();
   const a = useAction();
+  const simple = useSimple();
+  const [more, setMore] = useState(false);   // Simple view keeps the tax-deducted (TDS) fields behind "More options"
   const [key] = useState(uuid);   // one key per form, so a double click or a retry cannot record the payment twice
   const [f, setF] = useState({ direction: q.get('direction') === 'OUT' ? 'OUT' : 'IN', partyId: q.get('partyId') || '', date: today(), mode: 'BANK', amount: '', reference: '', tds: '', tdsSection: '' });
   const [alloc, setAlloc] = useState({});
@@ -89,14 +93,15 @@ export const PaymentForm = () => {
     <Page title={f.direction === 'IN' ? 'Money received' : 'Money paid'} lead="Match it to the invoices or bills it settles. Anything left over stays on account for the party.">
       <Err>{a.error}</Err>
       <form onSubmit={submit}>
+        {simple && <div className="more-bar"><Btn type="button" className="btn small" onClick={() => setMore(!more)} aria-expanded={more}>{more ? 'Fewer options' : 'More options'}</Btn></div>}
         <Card><div className="form">
           <Field label="Type"><select value={f.direction} onChange={(e) => { setF({ ...f, direction: e.target.value, partyId: '' }); setAlloc({}); }}><option value="IN">Received from a customer</option><option value="OUT">Paid to a vendor</option></select></Field>
           <Field label={f.direction === 'IN' ? 'Customer' : 'Vendor'}><select value={f.partyId} onChange={(e) => { setF({ ...f, partyId: e.target.value }); setAlloc({}); }} required><option value="">Choose…</option>{list.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
           <Field label="Date"><input type="date" value={f.date} onChange={set('date')} required /></Field>
           <Field label="How"><select value={f.mode} onChange={set('mode')}><option value="BANK">Bank transfer</option><option value="UPI">UPI</option><option value="CASH">Cash</option><option value="CARD">Card</option></select></Field>
           {!viaBank && <Field label={fxd.docId ? 'Rupees that actually moved (₹)' : 'Amount (₹)'}><input inputMode="decimal" value={f.amount} onChange={set('amount')} required /></Field>}
-          <Field label={f.direction === 'IN' ? 'TDS the customer deducted (₹)' : 'TDS you deducted (₹)'} hint="Optional. The amount above is what actually moved; this is tax held back"><input inputMode="decimal" value={f.tds} onChange={set('tds')} /></Field>
-          {Number(f.tds) > 0 && !fxd.docId && <Field label="TDS section"><select value={f.tdsSection} onChange={set('tdsSection')}><option value="">Not stated</option>{TDS_SECTIONS.map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
+          {(!simple || more) && <Field label={<Term k="TDS">{f.direction === 'IN' ? 'TDS the customer deducted (₹)' : 'TDS you deducted (₹)'}</Term>} hint="Optional. The amount above is what actually moved; this is tax held back"><input inputMode="decimal" value={f.tds} onChange={set('tds')} /></Field>}
+          {(!simple || more) && Number(f.tds) > 0 && !fxd.docId && <Field label="TDS section"><select value={f.tdsSection} onChange={set('tdsSection')}><option value="">Not stated</option>{TDS_SECTIONS.map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
           <Field label="Reference" hint="Cheque, UTR or note (optional)"><input value={f.reference} onChange={set('reference')} maxLength={80} /></Field>
         </div></Card>
 

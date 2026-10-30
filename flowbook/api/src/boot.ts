@@ -6,14 +6,16 @@
  */
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from './app.ts';
+import type { AiBridge } from './assistant.ts';
 import { createPool, migrate } from './db.ts';
 import { startInboxWorker } from './inbox.ts';
 import { startReminderWorker } from './whatsapp.ts';
 
 export type Booted = { app: FastifyInstance; close: () => Promise<void> };
 
-/** @param extraOrigins browser origins that may make cookie-authenticated changes, on top of ALLOWED_ORIGINS */
-export const bootFlowbook = async (url: string, extraOrigins: string[] = []): Promise<Booted> => {
+/** @param extraOrigins browser origins that may make cookie-authenticated changes, on top of ALLOWED_ORIGINS
+ *  @param ai the AI provider for the assistant (FlowXP's, when mounted inside it) */
+export const bootFlowbook = async (url: string, extraOrigins: string[] = [], ai?: AiBridge): Promise<Booted> => {
   const pool = createPool(url);
   if (process.env.RUN_MIGRATIONS !== 'false') console.log('[flowbook] migrations applied:', (await migrate(pool)).join(', ') || 'none');
 
@@ -25,7 +27,8 @@ export const bootFlowbook = async (url: string, extraOrigins: string[] = []): Pr
     onEvent: worker?.kick,
     allowedOrigins: [...(process.env.ALLOWED_ORIGINS ?? '').split(','), ...extraOrigins].map((s) => s.trim()).filter(Boolean),
     passwordAuth: !production || process.env.FLOWBOOK_PASSWORD_AUTH === 'on',   // in production FlowXP is the only sign-in
-    secureCookie: production || process.env.COOKIE_SECURE === 'true'
+    secureCookie: production || process.env.COOKIE_SECURE === 'true',
+    ai
   });
   await app.ready();
   return { app, close: async () => { worker?.stop(); reminders?.stop(); await app.close(); await pool.end(); } };

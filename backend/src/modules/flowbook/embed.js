@@ -9,6 +9,8 @@
  * /books answers 503. FLOWBOOK_EMBEDDED=false turns it off, to run FlowBook as its own process (flowbook/api/src/server.ts) instead.
  */
 import config from '../../config/env.js';
+import { complete, isConfigured } from '../ai/provider.js';
+import { CHECK_NOTE, ungrounded } from '../ai/grounding.js';
 
 export const embeddedFlowbook = () => {
   let booted = null;
@@ -21,7 +23,7 @@ export const embeddedFlowbook = () => {
       const { bootFlowbook } = await import('../../../../flowbook/api/src/boot.ts');
       const origins = [config.appOrigin, ...config.corsOrigins];
       if (config.flowbookAppUrl) origins.push(new URL(config.flowbookAppUrl).origin);
-      booted = await bootFlowbook(config.databaseUrl, origins);
+      booted = await bootFlowbook(config.databaseUrl, origins, { configured: isConfigured, complete, ungrounded, checkNote: CHECK_NOTE });
       console.log('[flowbook] running inside the FlowXP API at /books');
     } catch (error) {
       failed = error;

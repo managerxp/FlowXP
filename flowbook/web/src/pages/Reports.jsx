@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useLoad } from '../api.js';
 import { financialYear, inr, today, unitLabel } from '../lib.js';
 import { useSession } from '../session.jsx';
+import { useSimple } from '../mode.js';
+import { Term, useHelp } from '../help.jsx';
 import { GstReturns, Statement } from './Gst.jsx';
-import { Async, Badge, Card, Empty, Field, Money, Page, Table, Tabs } from '../ui.jsx';
+import { Async, Badge, Btn, Card, Empty, Field, Money, Page, Table, Tabs } from '../ui.jsx';
 
 const Range = ({ r, set, one }) => (
   <Card className="no-print"><div className="form">
@@ -81,14 +83,34 @@ const Checks = () => {
     : <Card><Badge status="OK">All good</Badge> Every journal balances, and every customer and vendor balance matches its documents.</Card>)}</Async>;
 };
 
+/* what each report answers, in plain words, shown above it */
+const ABOUT = {
+  pnl: ['Profit and loss', 'Did the business make a profit? Money earned minus money spent, for the dates you choose.'],
+  an: ['Sales', 'How much you sold each month, to whom, and which items sell best.'],
+  ar: ['Who owes you', 'Customers who have not paid yet, and how late they are.'],
+  ap: ['Who you owe', 'Vendor bills you have not paid yet, and how late they are.'],
+  gst: ['GST returns', 'The GST figures for the month, ready to copy into the GST portal.'],
+  bs: ['Balance sheet', 'What the business owns and owes on the date you choose.'],
+  tb: ['Trial balance', 'Every account with its total. The two sides must match; your accountant uses this to check the books.'],
+  stmt: ['Party statement', 'Everything bought, sold and paid with one customer or vendor.'],
+  chk: ['Checks', 'Makes sure every figure in the books agrees with its invoices, bills and payments.']
+};
+const SIMPLE_TABS = ['pnl', 'an', 'ar', 'ap', 'gst'];
+
 export default () => {
+  const simple = useSimple();
+  const { ask } = useHelp();
   const fy = financialYear();
   const [tab, setTab] = useState('pnl');
   const [r, setR] = useState({ from: fy.from, to: today() });
   const asOfOnly = ['bs', 'ar', 'ap'].includes(tab);
   return (
     <Page title="Reports" lead={fy.label + ' by default. Change the dates to look at any period.'} actions={<button className="btn no-print" onClick={() => window.print()}>Print</button>}>
-      <Tabs value={tab} onChange={setTab} tabs={[['pnl', 'Profit and loss'], ['bs', 'Balance sheet'], ['tb', 'Trial balance'], ['an', 'Sales analysis'], ['ar', 'Who owes you'], ['ap', 'Who you owe'], ['stmt', 'Party statement'], ['gst', 'GST returns'], ['chk', 'Checks']]} />
+      <Tabs value={tab} onChange={setTab} tabs={[['pnl', 'Profit and loss'], ['bs', 'Balance sheet'], ['tb', 'Trial balance'], ['an', simple ? 'Sales' : 'Sales analysis'], ['ar', 'Who owes you'], ['ap', 'Who you owe'], ['stmt', 'Party statement'], ['gst', 'GST returns'], ['chk', 'Checks']].filter(([k]) => !simple || SIMPLE_TABS.includes(k))} />
+      <div className="explain-bar no-print">
+        <p className="about">{ABOUT[tab][1]}{tab === 'tb' && <> <Term k="TB">What is this?</Term></>}</p>
+        <Btn type="button" className="btn small" onClick={() => ask(`Explain my ${ABOUT[tab][0]} ${['gst'].includes(tab) ? 'for this month' : `from ${r.from} to ${r.to}`} in simple words, and tell me if anything needs my attention.`)}>Explain in simple words</Btn>
+      </div>
       {!['chk', 'gst'].includes(tab) && <Range r={r} set={setR} one={asOfOnly} />}
       {tab === 'pnl' && <ProfitLoss r={r} />}{tab === 'bs' && <BalanceSheet r={r} />}{tab === 'tb' && <TrialBalance r={r} />}
       {tab === 'an' && <Analysis r={r} />}{tab === 'ar' && <Ageing r={r} type="receivables" />}{tab === 'ap' && <Ageing r={r} type="payables" />}{tab === 'chk' && <Checks />}{tab === 'gst' && <GstReturns />}{tab === 'stmt' && <Statement r={r} />}

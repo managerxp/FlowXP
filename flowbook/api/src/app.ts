@@ -12,6 +12,8 @@ import { provisionOrganization } from './provision.ts';
 import { balanceSheet, documentIssues, partyBalances, profitAndLoss, reconcile, trialBalance } from './reports.ts';
 import { registerBookRoutes } from './routes.ts';
 import { registerIntegrationRoutes } from './integration-routes.ts';
+import { registerAssistant } from './assistant.ts';
+import type { AiBridge } from './assistant.ts';
 import { setPeriodStatus } from './periods.ts';
 import type { PeriodStatus } from './periods.ts';
 import { TEMPLATES } from './coa.ts';
@@ -34,6 +36,8 @@ export type AppOptions = {
   limits?: { login?: number; register?: number };
   /** FlowXP is the only sign-in. false answers /auth/register and /auth/login with 404 (server.ts: off in production unless FLOWBOOK_PASSWORD_AUTH=on). Default true so tests and scripts can register. */
   passwordAuth?: boolean;
+  /** The AI provider behind the assistant (the FlowXP API hands in its own). Unset: the assistant says it is not switched on. */
+  ai?: AiBridge;
 };
 
 const COOKIE = 'fb_session';
@@ -322,6 +326,7 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
 
   registerBookRoutes(app, { pool, scope, me });
   registerIntegrationRoutes(app, { pool, scope, me, onEvent: opts.onEvent });
+  registerAssistant(app, { pool, scope, ai: opts.ai });
 
   /* ---- audit */
   app.get(`${orgRoute}/audit`, { preHandler: scope('audit.read'), schema: { querystring: { type: 'object', properties: { limit: { type: 'integer', minimum: 1, maximum: 200 } } } } }, async (req) =>

@@ -30,3 +30,8 @@ test('Gemini requests carry safety settings', () => {
   assert.equal(body.safetySettings.length, 4);
   assert.ok(body.safetySettings.every((s) => s.threshold === 'BLOCK_MEDIUM_AND_ABOVE' && s.category.startsWith('HARM_CATEGORY_')));
 });
+
+test('a year or figure followed by a comma is read without the comma', async () => {
+  const { figuresIn } = await import('../src/modules/ai/grounding.js');
+  assert.deepEqual(figuresIn('issued on 11 October 2026, due 10 November 2026, total ₹27,439.60, and 1,00,000.').map((f) => f.value), [27439.6, 100000]);
+});
