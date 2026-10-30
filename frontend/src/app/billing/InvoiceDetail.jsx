@@ -39,6 +39,7 @@ const PayForm = ({ invoice, upiVpa, payee, onSaved, onClose }) => {
   const [method, setMethod] = useState('CASH');
   const [people, setPeople] = useState(1);
   const [reference, setReference] = useState('');
+  const [discount, setDiscount] = useState('');   // let go at payment: clears part of the balance, is not money received
   const [qr, setQr] = useState(null);   // the amount a UPI QR is showing for
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -51,10 +52,10 @@ const PayForm = ({ invoice, upiVpa, payee, onSaved, onClose }) => {
     if (upiQr) { setQr(Number(amount)); return; }
     setError(''); setBusy(true);
     try {
-      await api(`/invoices/${invoice.invoice_id}/payments`, { method: 'POST', idempotencyKey: idem.get(), body: { amount: Number(amount), method, reference_number: reference.trim() || undefined } });
+      await api(`/invoices/${invoice.invoice_id}/payments`, { method: 'POST', idempotencyKey: idem.get(), body: { amount: Number(amount), method, reference_number: reference.trim() || undefined, discount: Number(discount) > 0 ? Number(discount) : undefined } });
       idem.settle();
-      if (method === 'CASH' && getDevicePrefs().openDrawer) openDrawer();
-      onSaved(`${formatCurrency(Number(amount))} ${METHOD_LABEL[method]} recorded`);
+      if (method === 'CASH' && Number(amount) > 0 && getDevicePrefs().openDrawer) openDrawer();
+      onSaved(Number(amount) > 0 ? `${formatCurrency(Number(amount))} ${METHOD_LABEL[method]} recorded` : `${formatCurrency(Number(discount))} discount recorded`);
     } catch (caught) { idem.settle(caught); setError(caught.message); }
     finally { setBusy(false); }
   };
@@ -74,13 +75,19 @@ const PayForm = ({ invoice, upiVpa, payee, onSaved, onClose }) => {
           ))}
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field id="pay-amount" label={tr('Amount (₹)')}><Input id="pay-amount" type="number" inputMode="decimal" min="0.01" step="0.01" max={due} value={amount} onChange={(e) => setAmount(e.target.value)} required autoFocus className="tabular font-semibold" /></Field>
+          <Field id="pay-amount" label={tr('Amount (₹)')}><Input id="pay-amount" type="number" inputMode="decimal" min={Number(discount) > 0 ? '0' : '0.01'} step="0.01" max={due} value={amount} onChange={(e) => setAmount(e.target.value)} required autoFocus className="tabular font-semibold" /></Field>
           <Field id="people" label={tr('Split between')}>
             <Select id="people" value={people} onChange={(e) => { const n = Number(e.target.value); setPeople(n); setAmount(share(n).toFixed(2)); }}>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => <option key={n} value={n}>{n === 1 ? tr('One payment') : `${n} people`}</option>)}
             </Select>
           </Field>
         </div>
+        {!upiQr && (
+          <Field id="pay-discount" label={tr('Discount given (₹, optional)')} hint={tr('Cleared from the balance without being paid. It shows in Profit & Loss.')}>
+            <Input id="pay-discount" type="number" inputMode="decimal" min="0" step="0.01" max={due} value={discount} className="tabular"
+                   onChange={(e) => { setDiscount(e.target.value); const d = Math.min(due, Math.max(0, Number(e.target.value) || 0)); setAmount(Math.max(0, due - d).toFixed(2)); setPeople(1); }} />
+          </Field>
+        )}
         {people > 1 && <p className="tabular -mt-2 text-caption text-ink-500">About {formatCurrency(share(people))} each. Record one payment per person; the last one pays exactly what is left.</p>}
         {!upiQr && method !== 'CASH' && <Field id="pay-ref" label={tr('Reference (optional)')} hint={tr('UTR, card slip or cheque number')}><Input id="pay-ref" value={reference} onChange={(e) => setReference(e.target.value)} /></Field>}
         {method === 'UPI' && <p className="text-caption text-ink-500">{upiQr ? `Shows a QR for this amount, paid to ${upiVpa}.` : tr('Add your UPI ID in Business settings to show a QR here.')}</p>}

@@ -114,6 +114,9 @@ export const partyStatement = async (req, res) => {
        SELECT c.cn_date, c.created_at, 'Sale return', c.cn_number, NULL, 0, c.total_paise
          FROM credit_notes c JOIN invoices ci ON ci.invoice_id = c.invoice_id WHERE c.business_id = $1 AND ci.customer_id = $2
        UNION ALL
+       SELECT d.given_on, d.created_at, 'Discount allowed', '#D' || d.discount_id, NULL, 0, d.amount_paise
+         FROM invoice_discounts d JOIN invoices di ON di.invoice_id = d.invoice_id WHERE d.business_id = $1 AND di.customer_id = $2 AND di.status = 'ISSUED'
+       UNION ALL
        SELECT r.created_at::date, r.created_at, 'Refund', '#' || r.refund_id, r.method, r.amount_paise, 0
          FROM refunds r JOIN invoices ri ON ri.invoice_id = r.invoice_id WHERE r.business_id = $1 AND ri.customer_id = $2 AND ri.status = 'ISSUED'`
     : `SELECT po.po_date AS d, po.created_at AS at, 'Purchase' AS label, po.po_number AS number, NULL::text AS note, 0::bigint AS debit, po.total_paise AS credit

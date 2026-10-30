@@ -636,7 +636,7 @@ const ProfitLossReport = ({ d, period }) => {
       </div>
       {d.uncosted_bills > 0 && <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-small text-warning">{tr('Bills with no cost on record, so their profit is shown too high.')} ({d.uncosted_bills})</p>}
       <Section title={tr('Profit & Loss')} action={<CsvButton name={`profit-and-loss-${period.from}-to-${period.to}`} head={['Line', 'Amount']}
-        rows={[['Gross sales', d.gross_sales], ['Discounts', d.discounts], ['Returns', d.returns], ['Net sales', d.net_sales], ['Cost of goods', d.cost_of_goods], ['Gross profit', d.gross_profit], ...d.expenses.map((e) => [e.category, e.amount]), ['Total expenses', d.total_expenses], ...d.other_income.map((e) => [e.category, e.amount]), ['Total other income', d.total_other_income], ['Net profit', d.net_profit]]} />}>
+        rows={[['Gross sales', d.gross_sales], ['Discounts', d.discounts], ['Returns', d.returns], ['Net sales', d.net_sales], ['Cost of goods', d.cost_of_goods], ['Gross profit', d.gross_profit], ...d.expenses.map((e) => [e.category, e.amount]), ['Total expenses', d.total_expenses], ...d.other_income.map((e) => [e.category, e.amount]), ['Total other income', d.total_other_income], d.discounts_at_payment > 0 ? ['Discounts given at payment', d.discounts_at_payment] : null, ['Net profit', d.net_profit]].filter(Boolean)} />}>
         <table className="w-full text-small">
           <tbody>
             {rows.map(([label, value, o]) => <Fragment key={label}>{line(label, value, o)}</Fragment>)}
@@ -644,6 +644,7 @@ const ProfitLossReport = ({ d, period }) => {
             {line(tr('Total expenses'), d.total_expenses, { minus: true })}
             {d.other_income.map((e) => <Fragment key={`oi-${e.category}`}>{line(e.category, e.amount)}</Fragment>)}
             {d.total_other_income > 0 && line(tr('Total other income'), d.total_other_income)}
+            {d.discounts_at_payment > 0 && line(tr('Discounts given at payment'), d.discounts_at_payment, { minus: true })}
             {line(tr('Net profit'), d.net_profit, { strong: true, tone: d.net_profit < 0 ? 'text-danger' : 'text-success' })}
           </tbody>
         </table>

@@ -338,9 +338,16 @@ const rupeesText = (paise) => `₹${(paise / 100).toLocaleString('en-IN', { mini
 export const addPayment = async (req, res) => {
   const body = req.body || {};
   const payScope = [req.tenant.businessId, req.params.id];
-  let amountPaise;
-  try { amountPaise = toPaise(body.amount); } catch { return res.status(400).json({ success: false, message: 'Enter a payment amount' }); }
-  if (amountPaise <= 0) return res.status(400).json({ success: false, message: 'Payment amount must be greater than zero' });
+  let amountPaise = 0; let discountPaise = 0;
+  // an optional discount given at payment: it clears part of the balance without being money received
+  if (body.discount != null && body.discount !== '' && Number(body.discount) !== 0) {
+    try { discountPaise = toPaise(body.discount); } catch { return res.status(400).json({ success: false, message: 'Enter the discount as an amount' }); }
+    if (discountPaise < 0) return res.status(400).json({ success: false, message: 'The discount cannot be negative' });
+  }
+  if (!(discountPaise > 0 && (body.amount == null || body.amount === '' || Number(body.amount) === 0))) {
+    try { amountPaise = toPaise(body.amount); } catch { return res.status(400).json({ success: false, message: 'Enter a payment amount' }); }
+    if (amountPaise <= 0) return res.status(400).json({ success: false, message: 'Payment amount must be greater than zero' });
+  }
   const method = String(body.method || 'CASH').toUpperCase();
   if (!CUSTOMER_PAYMENT_METHODS.includes(method)) return res.status(400).json({ success: false, message: `Unknown payment method: ${body.method}` });
   let reference;
@@ -351,37 +358,48 @@ export const addPayment = async (req, res) => {
     await client.query('BEGIN');
 
     const { rows } = await client.query(
-      `SELECT invoice_id, branch_id, customer_id, total_paise, amount_paid_paise, status
+      `SELECT invoice_id, branch_id, customer_id, total_paise, amount_paid_paise, balance_due_paise, status
        FROM invoices WHERE business_id = $1 AND invoice_id = $2${branchFilter(req.tenant, 'branch_id', payScope)} FOR UPDATE`,
       payScope
     );
     if (!rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ success: false, message: 'Not found' }); }
     const invoice = rows[0];
     if (invoice.status === 'CANCELLED') { await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: 'This invoice is cancelled' }); }
-    const duePaise = Math.max(0, Number(invoice.total_paise) - Number(invoice.amount_paid_paise));
-    if (amountPaise > duePaise) {
+    const duePaise = discountPaise
+      ? Math.max(0, Number(invoice.balance_due_paise))   // what is still owed, after any credit note or earlier discount
+      : Math.max(0, Number(invoice.total_paise) - Number(invoice.amount_paid_paise));
+    if (amountPaise + discountPaise > duePaise) {
       await client.query('ROLLBACK');
       return res.status(400).json({ success: false, message: duePaise ? `That is more than the ${rupeesText(duePaise)} still due` : 'This bill is already paid' });
     }
 
     const newPaid = Number(invoice.amount_paid_paise) + amountPaise;
-    const newBalance = Math.max(0, Number(invoice.total_paise) - newPaid);
+    const newBalance = discountPaise ? duePaise - amountPaise - discountPaise : Math.max(0, Number(invoice.total_paise) - newPaid);
 
-    await client.query(
-      `INSERT INTO payments (business_id, branch_id, invoice_id, customer_id, payment_method, amount_paise, reference_number, notes, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [req.tenant.businessId, invoice.branch_id, invoice.invoice_id, invoice.customer_id,
-       method, amountPaise, reference, body.notes || null, req.auth.userId]
-    );
+    if (amountPaise > 0) {
+      await client.query(
+        `INSERT INTO payments (business_id, branch_id, invoice_id, customer_id, payment_method, amount_paise, reference_number, notes, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [req.tenant.businessId, invoice.branch_id, invoice.invoice_id, invoice.customer_id,
+         method, amountPaise, reference, body.notes || null, req.auth.userId]
+      );
+    }
+    if (discountPaise > 0) {
+      await client.query(
+        `INSERT INTO invoice_discounts (business_id, branch_id, invoice_id, amount_paise, given_on, created_by)
+         VALUES ($1,$2,$3,$4,(CURRENT_TIMESTAMP AT TIME ZONE COALESCE((SELECT timezone FROM businesses WHERE business_id = $1), 'Asia/Kolkata'))::date,$5)`,
+        [req.tenant.businessId, invoice.branch_id, invoice.invoice_id, discountPaise, req.auth.userId]
+      );
+    }
     await client.query(
       `UPDATE invoices SET amount_paid_paise = $1, balance_due_paise = $2, payment_status = $3 WHERE invoice_id = $4`,
-      [newPaid, newBalance, paymentStatus(Number(invoice.total_paise), newPaid), invoice.invoice_id]
+      [newPaid, newBalance, newBalance === 0 && (newPaid > 0 || discountPaise > 0) ? 'PAID' : paymentStatus(Number(invoice.total_paise), newPaid), invoice.invoice_id]
     );
     // a gym membership paid off by this payment earns its reward points now
     if (req.tenant.businessType === 'GYM' && newBalance <= 0) await onGymInvoicePaid(client, { businessId: req.tenant.businessId, invoiceId: invoice.invoice_id });
 
     await client.query('COMMIT');
-    recordAudit(req, { action: 'payment.recorded', resource_type: 'invoice', resource_id: invoice.invoice_id, metadata: { amount: toRupees(amountPaise) } });
+    recordAudit(req, { action: 'payment.recorded', resource_type: 'invoice', resource_id: invoice.invoice_id, metadata: { amount: toRupees(amountPaise), discount: toRupees(discountPaise) } });
     res.status(201).json({ success: true, data: { amount_paid: toRupees(newPaid), balance_due: toRupees(newBalance) } });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
