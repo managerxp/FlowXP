@@ -27,7 +27,7 @@ export const Empty = ({ children }) => <p className="muted pad">{children}</p>;
 export const Async = ({ load, children }) => (load.error ? <Err>{load.error}</Err> : load.loading && !load.data ? <Loading /> : load.data ? children(load.data) : null);
 
 export const Badge = ({ status, children }) => <span className={`badge ${statusTone(status)}`}>{children ?? String(status).replaceAll('_', ' ').toLowerCase()}</span>;
-export const Money = ({ v, strong }) => <span className={`num ${strong ? 'strong' : ''}`}>₹{inr(v)}</span>;
+export const Money = ({ v, strong }) => { const t = String(inr(v)); return <span className={`num ${strong ? 'strong' : ''}`}>{t.startsWith('-') ? `-₹${t.slice(1)}` : `₹${t}`}</span>; };
 
 export const Field = ({ label, hint, children, wide }) => (
   <label className={`field ${wide ? 'wide' : ''}`}><span className="label">{label}</span>{children}{hint && <span className="hint">{hint}</span>}</label>

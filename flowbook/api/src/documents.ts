@@ -542,7 +542,7 @@ export const outstanding = async (c: Db, kind: 'INVOICE' | 'BILL', asOf: string)
 
 /** Everything the business has recorded, as one set of tables, for a backup or a move. Mail and WhatsApp settings and sign-in data are left out. */
 const EXPORT_TABLES = ['organizations', 'financial_years', 'accounting_periods', 'accounts', 'tax_rates', 'parties', 'items', 'warehouses', 'projects', 'documents', 'document_lines',
-  'payments', 'payment_allocations', 'journal_entries', 'journal_lines', 'project_expenses', 'stock_moves', 'fixed_assets', 'bank_transfers', 'audit_log'] as const;
+  'payments', 'payment_allocations', 'journal_entries', 'journal_lines', 'project_expenses', 'time_entries', 'project_units', 'unit_stages', 'work_orders', 'work_order_items', 'ra_bills', 'ra_bill_lines', 'stock_moves', 'fixed_assets', 'bank_transfers', 'audit_log'] as const;
 export const exportAll = async (c: Db, orgId: bigint) => {
   const tables: Record<string, unknown[]> = {};
   for (const t of EXPORT_TABLES) tables[t] = (await c.query(`SELECT * FROM ${t} WHERE ${t === 'organizations' ? 'id' : 'organization_id'} = $1 ORDER BY 1`, [orgId])).rows;

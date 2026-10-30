@@ -215,5 +215,6 @@ test('retention and advances are reachable over HTTP, and bad amounts are refuse
   const r = await o('GET', 'advances-retention');
   assert.equal(r.status, 200); assert.deepEqual(r.body, { retention: [], advances: [] });
   assert.equal((await o('POST', 'bills/1/retention', { amount: '-5' })).status, 400);
+  assert.equal((await o('POST', 'bills/999999/retention', { amount: '5.50' })).body.error.code, 'not_found');   // a well-formed amount reaches the ledger
   assert.notEqual((await o('POST', 'bills/999999/retention', { amount: '5' })).status, 200);
 });

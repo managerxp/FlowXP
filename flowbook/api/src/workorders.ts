@@ -87,7 +87,7 @@ export const raiseRaBill = async (c: Db, orgId: bigint, woId: bigint, o: { date:
   return { id: docId, seq, kind };
 };
 
-/** Each work order with its items (agreed, measured to date, value done) and its RA bills. */
+/** Each work order with its items (agreed, measured to date, value done) and its RA bills. Quantities go out as text with three decimals: the wire format would read a bigint as rupees. */
 export const listWorkOrders = async (c: Db, projectId: bigint) => {
   const orders = (await c.query(
     `SELECT w.id, w.title, w.side, w.party_id, p.name AS party_name, w.tax_code, w.retention_bp FROM work_orders w JOIN parties p ON p.id = w.party_id WHERE w.project_id = $1 ORDER BY w.id`, [projectId])).rows;
@@ -95,7 +95,7 @@ export const listWorkOrders = async (c: Db, projectId: bigint) => {
   for (const w of orders) {
     const cum = await certified(c, w.id as bigint);
     const items = (await c.query(`SELECT id, seq, description, unit, qty_milli, rate_minor FROM work_order_items WHERE work_order_id = $1 ORDER BY seq`, [w.id])).rows
-      .map((it) => { const done = cum.get(String(it.id)) ?? 0n; return { ...it, done_milli: done, done_minor: (done * (it.rate_minor as bigint)) / 1000n, total_minor: ((it.qty_milli as bigint) * (it.rate_minor as bigint)) / 1000n }; });
+      .map(({ qty_milli, ...it }) => { const done = cum.get(String(it.id)) ?? 0n; return { ...it, quantity: milliText(qty_milli as bigint), done_quantity: milliText(done), done_minor: (done * (it.rate_minor as bigint)) / 1000n, total_minor: ((qty_milli as bigint) * (it.rate_minor as bigint)) / 1000n }; });
     const bills = (await c.query(
       `SELECT b.id, b.seq, b.bill_date::text AS bill_date, b.document_id, d.number, d.status, d.subtotal_minor, d.total_minor, d.balance_minor, d.retention_minor FROM ra_bills b JOIN documents d ON d.id = b.document_id WHERE b.work_order_id = $1 ORDER BY b.seq`, [w.id])).rows;
     out.push({ ...w, items, bills, contract_minor: items.reduce((a, i) => a + (i.total_minor as bigint), 0n), done_minor: items.reduce((a, i) => a + (i.done_minor as bigint), 0n) });

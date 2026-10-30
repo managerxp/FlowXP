@@ -35,10 +35,9 @@ export const Parties = ({ kind }) => {
   const edit = (p) => { setMore(Boolean(p.pan || p.state_code || p.email || p.credit_days || p.address_line || p.city || p.pincode || p.ship_address_line)); setForm({ id: p.id, kind: p.kind, name: p.name, gstin: p.gstin || '', pan: p.pan || '', stateCode: p.state_code || '', phone: p.phone || '', email: p.email || '', creditDays: p.credit_days ?? '', whatsappOptOut: Boolean(p.whatsapp_opt_out), addressLine: p.address_line || '', city: p.city || '', pincode: p.pincode || '', shipAddressLine: p.ship_address_line || '', shipCity: p.ship_city || '', shipPincode: p.ship_pincode || '' }); };
 
   return (
-    <Page title={`${word[0].toUpperCase()}${word.slice(1)}s`} lead={kind === 'CUSTOMER' ? 'People and businesses you sell to.' : 'People and businesses you buy from.'} actions={<><Btn onClick={() => setReady(!ready)}>Add from ready list</Btn><Btn onClick={() => setImporting(true)}>Import CSV</Btn><Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm(blank(kind)); }}>Add {word}</Btn></>}>
+    <Page title={`${word[0].toUpperCase()}${word.slice(1)}s`} lead={kind === 'CUSTOMER' ? 'People and businesses you sell to.' : 'People and businesses you buy from.'} actions={<><Btn onClick={() => setImporting(true)}>Import CSV</Btn><Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm(blank(kind)); }}>Add {word}</Btn></>}>
       {importing && <CsvImport what="party" partyKind={kind} onDone={() => load.reload()} onClose={() => setImporting(false)} />}
       <Note>{a.done}</Note>
-      {ready && <ReadyList onDone={() => load.reload()} onClose={() => setReady(false)} />}
       {form && (
         <Card title={form.id ? `Edit ${word}` : `New ${word}`}>
           <Err>{a.error}</Err>
@@ -90,7 +89,7 @@ const ReadyList = ({ onDone, onClose }) => {
       <Async load={load}>{(groups) => {
         const g = groups[Math.min(group, groups.length - 1)];
         return (<>
-          <div className="seg" role="tablist" style={{ flexWrap: 'wrap' }}>{groups.map((x, i) => <button key={x.group} className={i === group ? 'on' : ''} onClick={() => setGroup(i)}>{x.group}</button>)}</div>
+          <div className="seg" role="tablist" style={{ display: 'flex', flexWrap: 'wrap' }}>{groups.map((x, i) => <button key={x.group} className={i === group ? 'on' : ''} style={{ padding: '0 .75rem' }} onClick={() => setGroup(i)}>{x.group}</button>)}</div>
           <div style={{ columns: '16rem', marginTop: '.75rem' }}>
             {g.items.map((i) => (
               <label key={i.sku} className="check" style={{ display: 'block', breakInside: 'avoid', opacity: i.added ? 0.5 : 1 }}>
@@ -125,9 +124,10 @@ export const Items = () => {
     }, 'Item added.');
   };
   return (
-    <Page title="Items" lead="Products and services you sell or buy. Pick them on a line to fill in the price and GST." actions={<><Btn onClick={() => setImporting(true)}>Import CSV</Btn><Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm({ sku: '', name: '', kind: 'GOODS', hsnSac: '', unit: 'NOS', taxCode: 'GST18', salePrice: '', purchasePrice: '', trackStock: false, reorderLevel: '' }); }}>Add item</Btn></>}>
+    <Page title="Items" lead="Products and services you sell or buy. Pick them on a line to fill in the price and GST." actions={<><Btn onClick={() => setReady(!ready)}>Add from ready list</Btn><Btn onClick={() => setImporting(true)}>Import CSV</Btn><Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm({ sku: '', name: '', kind: 'GOODS', hsnSac: '', unit: 'NOS', taxCode: 'GST18', salePrice: '', purchasePrice: '', trackStock: false, reorderLevel: '' }); }}>Add item</Btn></>}>
       {importing && <CsvImport what="item" onDone={() => load.reload()} onClose={() => setImporting(false)} />}
       <Note>{a.done}</Note>
+      {ready && <ReadyList onDone={() => load.reload()} onClose={() => setReady(false)} />}
       {form && (
         <Card title="New item"><Err>{a.error}</Err>
           <form className="form" onSubmit={save}>

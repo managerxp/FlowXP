@@ -171,8 +171,10 @@ const Units = ({ id }) => {
             <Confirm><p>Sell {sell.name}. The stages must add up to 100% (now {total}%).</p>
               <div className="form">
                 <Field label="Buyer"><select value={sell.partyId} onChange={(e) => setSell({ ...sell, partyId: e.target.value })}><option value="">Choose a customer</option>{(buyers.data?.parties || buyers.data || []).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
+              </div>
+              <div style={{ display: 'grid', gap: '.5rem', margin: '.5rem 0 1rem' }}>
                 {sell.stages.map((x, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '.5rem' }}>
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(7rem, 2fr) 5rem minmax(9rem, 1.2fr)', gap: '.5rem' }}>
                     <input aria-label="Stage" value={x.name} onChange={(e) => setStage(i, 'name', e.target.value)} />
                     <input aria-label="Percent" inputMode="decimal" style={{ width: '5rem' }} value={x.percent} onChange={(e) => setStage(i, 'percent', e.target.value)} />
                     <input aria-label="Due date" type="date" value={x.dueDate} onChange={(e) => setStage(i, 'dueDate', e.target.value)} />
@@ -190,7 +192,7 @@ const Units = ({ id }) => {
   );
 };
 
-const milli = (m) => (Number(m) / 1000).toString();
+const qty = (t) => String(Number(t));   // "12.500" -> "12.5"
 
 /* Work orders and running-account bills: the work agreed with a subcontractor or a client, billed stage by stage by measuring what is done to date. */
 const WorkOrders = ({ id }) => {
@@ -221,14 +223,16 @@ const WorkOrders = ({ id }) => {
           <Field label="Name"><select value={form.partyId} onChange={(e) => setForm({ ...form, partyId: e.target.value })}><option value="">Choose</option>{who.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
           <Field label="Work (e.g. Plastering, Block A)"><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
           <Field label="Retention held back (%)"><input inputMode="decimal" value={form.retention} onChange={(e) => setForm({ ...form, retention: e.target.value })} /></Field>
+        </div>
+        <div style={{ display: 'grid', gap: '.5rem', margin: '.5rem 0' }}>
           {form.items.map((x, i) => (
-            <div key={i} style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(8rem, 3fr) minmax(6rem, 1.2fr) minmax(5rem, 1fr) minmax(5rem, 1fr)', gap: '.5rem' }}>
               <input aria-label="Work item" placeholder="Item of work" value={x.description} onChange={(e) => setItem(i, 'description', e.target.value)} />
               <select aria-label="Unit" value={x.unit} onChange={(e) => setItem(i, 'unit', e.target.value)}>{UNITS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select>
-              <input aria-label="Quantity" placeholder="Quantity" inputMode="decimal" style={{ width: '6rem' }} value={x.quantity} onChange={(e) => setItem(i, 'quantity', e.target.value)} />
-              <input aria-label="Rate" placeholder="Rate ₹" inputMode="decimal" style={{ width: '6rem' }} value={x.rate} onChange={(e) => setItem(i, 'rate', e.target.value)} />
+              <input aria-label="Quantity" placeholder="Quantity" inputMode="decimal" value={x.quantity} onChange={(e) => setItem(i, 'quantity', e.target.value)} />
+              <input aria-label="Rate" placeholder="Rate ₹" inputMode="decimal" value={x.rate} onChange={(e) => setItem(i, 'rate', e.target.value)} />
             </div>))}
-          <button type="button" className="linkish" onClick={() => setForm({ ...form, items: [...form.items, { description: '', unit: 'SQM', quantity: '', rate: '' }] })}>+ Add another item</button>
+          <button type="button" className="linkish" style={{ justifySelf: 'start' }} onClick={() => setForm({ ...form, items: [...form.items, { description: '', unit: 'SQM', quantity: '', rate: '' }] })}>+ Add another item</button>
         </div><Btn kind="primary" busy={a.busy} onClick={create}>Save work order</Btn></Confirm>
       )}
       <Async load={load}>{(orders) => (<>
@@ -237,9 +241,9 @@ const WorkOrders = ({ id }) => {
           <div key={w.id} style={{ marginTop: '1rem' }}>
             <p><strong>{w.title}</strong> <span className="muted">{w.side === 'PAYABLE' ? 'you pay' : 'client pays'} {w.party_name} · retention {w.retention_bp / 100}%</span></p>
             <Table head={['Work', '>Agreed', '>Rate', '>Done to date', '>Value done']}>
-              {w.items.map((i) => <tr key={i.id}><td>{i.description}</td><td className="r num">{milli(i.qty_milli)} {i.unit || ''}</td><td className="r"><Money v={i.rate_minor} /></td><td className="r num">{milli(i.done_milli)}</td><td className="r"><Money v={i.done_minor} /></td></tr>)}
-              <tr className="total"><td>Total</td><td colSpan={3} /><td className="r"><Money v={w.done_minor} /> of <Money v={w.contract_minor} /></td></tr>
+              {w.items.map((i) => <tr key={i.id}><td>{i.description}</td><td className="r num">{qty(i.quantity)} {i.unit || ''}</td><td className="r"><Money v={i.rate_minor} /></td><td className="r num">{qty(i.done_quantity)}</td><td className="r"><Money v={i.done_minor} /></td></tr>)}
             </Table>
+            <p className="muted">Work done so far: <Money v={w.done_minor} /> of <Money v={w.contract_minor} /> agreed.</p>
             {w.bills.length > 0 && <Table head={['Running bill', 'Date', 'Status', '>Amount', '>Held back']}>
               {w.bills.map((b) => <tr key={b.id}><td><Link to={`/${w.side === 'PAYABLE' ? 'purchases' : 'sales'}/${b.document_id}`}>RA {b.seq} · {b.number}</Link></td><td>{showDate(b.bill_date)}</td><td><Badge status={b.status} /></td><td className="r"><Money v={b.total_minor} /></td><td className="r">{Number(b.retention_minor) ? <Money v={b.retention_minor} /> : ''}</td></tr>)}
             </Table>}
@@ -247,7 +251,7 @@ const WorkOrders = ({ id }) => {
               <Confirm><p>Type the total work done to date for each item. Only the new work since the last bill is billed.</p>
                 <div className="form">{ra.items.map((x, k) => <Field key={x.id} label={`${x.description} (agreed ${x.max}, billed so far ${x.was})`}><input inputMode="decimal" placeholder={x.was} value={x.value} onChange={(e) => setRa({ ...ra, items: ra.items.map((y, j) => (j === k ? { ...y, value: e.target.value } : y)) })} /></Field>)}</div>
                 <Btn kind="primary" busy={a.busy} onClick={raise}>Make running bill</Btn> <Btn onClick={() => setRa(null)}>Cancel</Btn></Confirm>
-            ) : <Btn onClick={() => setRa({ id: w.id, items: w.items.map((i) => ({ id: i.id, description: i.description, max: milli(i.qty_milli), was: milli(i.done_milli), value: '' })) })}>Next running bill</Btn>}
+            ) : <Btn onClick={() => setRa({ id: w.id, items: w.items.map((i) => ({ id: i.id, description: i.description, max: qty(i.quantity), was: qty(i.done_quantity), value: '' })) })}>Next running bill</Btn>}
           </div>))}
       </>)}</Async>
     </Card>

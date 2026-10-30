@@ -363,7 +363,7 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
 
   /* ---- retention held back on a bill or invoice, and advances not yet applied */
   for (const [path, perm] of [['invoices', 'invoice'], ['bills', 'bill']] as const) {
-    app.post(`${base}/${path}/:id/retention`, { preHandler: scope(`${perm}.write`), schema: { ...idParam, body: { type: 'object', required: ['amount'], additionalProperties: false, properties: { amount: { type: 'string', pattern: '^\d{1,12}(\.\d{1,2})?$' } } } } }, async (req) => {
+    app.post(`${base}/${path}/:id/retention`, { preHandler: scope(`${perm}.write`), schema: { ...idParam, body: { type: 'object', required: ['amount'], additionalProperties: false, properties: { amount: { type: 'string', pattern: AMOUNT } } } } }, async (req) => {
       await run(req, (c, orgId) => setRetention(c, orgId, BigInt((req.params as { id: string }).id), toPaise((req.body as { amount: string }).amount), me(req))); return { ok: true };
     });
   }

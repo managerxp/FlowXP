@@ -68,11 +68,12 @@ export const PaymentForm = () => {
   const fxShare = fxDoc && Number(fxd.foreign) > 0 ? (Number(fxd.foreign) >= Number(fxDoc.foreign_balance_minor) ? Number(fxDoc.balance_minor) : Math.round(Number(fxDoc.balance_minor) * 100 * Number(fxd.foreign) / Number(fxDoc.foreign_balance_minor)) / 100) : 0;
   const fxDiff = fxShare ? (f.direction === 'IN' ? Number(f.amount || 0) - fxShare : fxShare - Number(f.amount || 0)) : 0;
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const payable = (d) => Math.max(0, Number(d.balance_minor) - Number(d.retention_minor || 0)).toFixed(2);   // what can be settled now: retention stays held back
 
   useEffect(() => {   // arriving from a document: pre-fill its balance
     const docId = q.get('documentId');
     const d = openDocs.find((x) => String(x.id) === docId);
-    if (d && !f.amount) { setF((x) => ({ ...x, amount: d.balance_minor })); setAlloc({ [d.id]: d.balance_minor }); }
+    if (d && !f.amount) { setF((x) => ({ ...x, amount: payable(d) })); setAlloc({ [d.id]: payable(d) }); }
     const fd = foreignDocs.find((x) => String(x.id) === docId);
     if (fd && !fxd.docId) setFxd({ docId: String(fd.id), foreign: fd.foreign_balance_minor });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,7 +83,7 @@ export const PaymentForm = () => {
   const total = Math.round((Number(f.amount || 0) + Number(f.tds || 0)) * 100);   // cash plus the tax deducted settles the documents
   const autoFill = () => {
     let left = total; const next = {};
-    for (const d of openDocs) { if (left <= 0) break; const take = Math.min(left, Math.round(Number(d.balance_minor) * 100)); next[d.id] = (take / 100).toFixed(2); left -= take; }
+    for (const d of openDocs) { if (left <= 0) break; const take = Math.min(left, Math.round(Number(payable(d)) * 100)); next[d.id] = (take / 100).toFixed(2); left -= take; }
     setAlloc(next);
   };
   const submit = (e) => {
@@ -134,7 +135,7 @@ export const PaymentForm = () => {
           <Card title={f.direction === 'IN' ? 'Settle these invoices' : 'Settle these bills'} actions={<Btn type="button" className="btn small" onClick={autoFill} disabled={!total}>Fill oldest first</Btn>}>
             {docs.loading ? <p className="muted">Loading…</p> : !openDocs.length ? <Empty>Nothing is open for this party. The money will stay on account.</Empty> : (
               <Table head={['Number', 'Date', '>Open', '>Settle now']}>
-                {openDocs.map((d) => (<tr key={d.id}><td>{d.number}</td><td>{showDate(d.issue_date)}</td><td className="r"><Money v={d.balance_minor} /></td>
+                {openDocs.map((d) => (<tr key={d.id}><td>{d.number}</td><td>{showDate(d.issue_date)}</td><td className="r"><Money v={d.balance_minor} />{Number(d.retention_minor) > 0 && <span className="muted"> (₹{inr(d.retention_minor)} held back)</span>}</td>
                   <td className="r"><input aria-label={`Amount for ${d.number}`} style={{ maxWidth: '8rem' }} inputMode="decimal" value={alloc[d.id] || ''} onChange={(e) => setAlloc({ ...alloc, [d.id]: e.target.value })} /></td></tr>))}
               </Table>
             )}

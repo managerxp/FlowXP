@@ -35,8 +35,8 @@ export const CATALOGUE: CatalogueGroup[] = [
     ['Copper wire 1.5 sq mm', 'ROL', '8544', 'GST18'], ['Copper wire 2.5 sq mm', 'ROL', '8544', 'GST18'], ['Copper wire 4 sq mm', 'ROL', '8544', 'GST18'], ['Copper wire 6 sq mm', 'ROL', '8544', 'GST18'],
     ['Armoured cable', 'MTR', '8544', 'GST18'], ['Modular switch', 'NOS', '8536', 'GST18'], ['Socket 5A', 'NOS', '8536', 'GST18'], ['Socket 15A', 'NOS', '8536', 'GST18'],
     ['Switch plate', 'NOS', '8538', 'GST18'], ['MCB single pole', 'NOS', '8536', 'GST18'], ['MCB double pole', 'NOS', '8536', 'GST18'], ['RCCB', 'NOS', '8536', 'GST18'],
-    ['Distribution board (DB)', 'NOS', '8537', 'GST18'], ['PVC conduit pipe', 'MTR', '3917', 'GST18'], ['Conduit bend and junction box', 'NOS', '3925', 'GST18'], ['LED bulb', 'NOS', '8539', 'GST12'],
-    ['LED tube light', 'NOS', '9405', 'GST12'], ['LED panel light', 'NOS', '9405', 'GST12'], ['Ceiling fan', 'NOS', '8414', 'GST18'], ['Exhaust fan', 'NOS', '8414', 'GST18'],
+    ['Distribution board (DB)', 'NOS', '8537', 'GST18'], ['PVC conduit pipe', 'MTR', '3917', 'GST18'], ['Conduit bend and junction box', 'NOS', '3925', 'GST18'], ['LED bulb', 'NOS', '8539', 'GST5'],
+    ['LED tube light', 'NOS', '9405', 'GST5'], ['LED panel light', 'NOS', '9405', 'GST5'], ['Ceiling fan', 'NOS', '8414', 'GST18'], ['Exhaust fan', 'NOS', '8414', 'GST18'],
     ['Earthing rod', 'NOS', '7326', 'GST18'], ['Insulation tape', 'ROL', '3919', 'GST18'], ['Cable tie', 'PCS', '3926', 'GST18'], ['Meter board', 'NOS', '8537', 'GST18']] },
   { group: 'Plumbing', rows: [
     ['CPVC pipe 15 mm', 'MTR', '3917', 'GST18'], ['CPVC pipe 20 mm', 'MTR', '3917', 'GST18'], ['PVC pipe 110 mm (drainage)', 'MTR', '3917', 'GST18'], ['PVC pipe 75 mm (drainage)', 'MTR', '3917', 'GST18'],

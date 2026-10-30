@@ -37,7 +37,7 @@ test('RA bills bill only the new work, hold the retention, and cannot go back or
   await assert.rejects(run(org, (c) => raiseRaBill(c, org, wo, { date: '2026-07-11', measured: [{ itemId: a.id, quantity: '1001' }] }, 't')), /more than/);
   await assert.rejects(run(org, (c) => raiseRaBill(c, org, wo, { date: '2026-07-11', measured: [{ itemId: a.id, quantity: '700' }] }, 't')), /no new work/);
   const w = (await run(org, (c) => listWorkOrders(c, proj)))[0]!;
-  assert.equal(w.done_minor, 90_000_00n);                           // 700 x 100 + 100 x 200
+  assert.equal(w.items[0]!.done_quantity, '700.000'); assert.equal(w.done_minor, 90_000_00n);                           // 700 x 100 + 100 x 200
   assert.equal(w.bills.length, 2); assert.equal(w.contract_minor, 200_000_00n);
   assert.equal((await run(org, (c) => advancesAndRetention(c))).retention.length, 2);
   assert.equal((await run(org, (c) => getProject(c, proj)))!.bills_minor, 90_000_00n);

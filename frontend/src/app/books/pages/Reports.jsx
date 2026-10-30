@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLoad } from '../api.js';
-import { financialYear, inr, today, unitLabel } from '../lib.js';
+import { financialYear, inr, showDate, today, unitLabel } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { useSimple } from '../mode.js';
 import { Term, useHelp } from '../help.jsx';
@@ -65,7 +65,7 @@ const Due = ({ r, type }) => {
   const load = useLoad(() => o(`/outstanding?type=${type}&asOf=${r.to}`), [org.id, r.to, type]);
   return <Async load={load}>{(rows) => (
     <Card><Table head={[type === 'receivables' ? 'Invoice' : 'Bill', type === 'receivables' ? 'Customer' : 'Vendor', 'Project', 'Due', '>Days late', '>Still owed', '>Held back', '>Payable now']} empty={!rows.length && <Empty>Nothing outstanding.</Empty>}>
-      {rows.map((x) => <tr key={x.id}><td>{x.number}</td><td>{x.party_name}</td><td>{x.project_name || ''}</td><td>{x.due_date || x.issue_date}</td><td className="r num">{Number(x.days_overdue) || ''}</td><td className="r num">{inr(x.balance_minor)}</td><td className="r num">{Number(x.retention_minor) ? inr(x.retention_minor) : ''}</td><td className="r num strong">{inr(x.payable_now_minor)}</td></tr>)}
+      {rows.map((x) => <tr key={x.id}><td>{x.number}</td><td>{x.party_name}</td><td>{x.project_name || ''}</td><td>{showDate(x.due_date || x.issue_date)}</td><td className="r num">{Number(x.days_overdue) || ''}</td><td className="r num">{inr(x.balance_minor)}</td><td className="r num">{Number(x.retention_minor) ? inr(x.retention_minor) : ''}</td><td className="r num strong">{inr(x.payable_now_minor)}</td></tr>)}
     </Table><p className="muted">Each open {type === 'receivables' ? 'invoice' : 'bill'}, oldest due date first. "Held back" is retention that cannot be settled yet.</p></Card>)}</Async>;
 };
 

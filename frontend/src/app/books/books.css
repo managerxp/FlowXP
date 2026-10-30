@@ -46,7 +46,7 @@
 .fb .stat:hover { border-color: var(--line-strong); box-shadow: var(--shadow-sm); }
 }
 .fb .stat .k { color: var(--ink-500); font-size: .8125rem; font-weight: 500; }
-.fb .stat .v { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; margin-top: .125rem; font-variant-numeric: tabular-nums; }
+.fb .stat .v { font-size: clamp(1.05rem, 2.1vw, 1.5rem); overflow-wrap: anywhere; font-weight: 700; letter-spacing: -0.01em; margin-top: .125rem; font-variant-numeric: tabular-nums; }
 .fb .stat.bad .v { color: var(--danger); }
 .fb .stat.ok .v { color: var(--success); }
 /* ---- buttons: 40px, 8px radius; primary is the solid logo blue and lifts a little on hover, as in FlowXP */
@@ -157,7 +157,7 @@
 .fb .fb-pill { padding: .25rem .75rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-700); font-size: .8125rem; }
 .fb .fb-pill:hover { border-color: var(--line-strong); background: var(--surface-2); text-decoration: none; }
 .fb .fb-pill.active { background: var(--brand-50); border-color: var(--brand-400); color: var(--brand-700); font-weight: 600; }
-.fb .seg { min-width: 9rem; }
+.fb .seg { min-width: 14rem; }
 
 /* ---- the paper copy of an invoice, bill, credit note or receipt: outside the page (a portal), hidden on screen, the only thing printed */
 .fb-sheet { display: none; }
@@ -181,7 +181,7 @@
 /* ---- simple / full switch, help button and panel, inline word explanations, assistant chat */
 .mode-switch { flex: none; padding: .75rem .875rem 1rem; border-top: 1px solid var(--line); }
 .mode-switch .nav-label { padding: 0; }
-.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 2px; background: var(--surface-3); border-radius: 8px; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; padding: 2px; background: var(--surface-3); border-radius: 8px; }
 .seg button { min-height: 2rem; border: 0; border-radius: 6px; background: none; color: var(--ink-700); font: inherit; font-size: .8125rem; font-weight: 500; cursor: pointer; }
 .seg button.on { background: var(--surface); color: var(--brand-700); font-weight: 600; box-shadow: var(--shadow-sm); }
 .mode-switch .hint { margin: .5rem 0 0; font-size: .75rem; color: var(--ink-500); }
