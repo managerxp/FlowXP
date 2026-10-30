@@ -9,15 +9,20 @@ import { buildApp } from './app.ts';
 import type { AiBridge } from './assistant.ts';
 import { createPool, migrate } from './db.ts';
 import { startInboxWorker } from './inbox.ts';
-import { startReminderWorker } from './whatsapp.ts';
+import { useHostMail } from './email.ts';
+import type { HostMail } from './email.ts';
+import { startReminderWorker, useHostWhatsapp } from './whatsapp.ts';
+import type { HostWhatsapp } from './whatsapp.ts';
 
 export type Booted = { app: FastifyInstance; close: () => Promise<void> };
 
 /** @param extraOrigins browser origins that may make cookie-authenticated changes, on top of ALLOWED_ORIGINS
  *  @param host what the FlowXP API hands in when FlowBook is mounted inside it: its AI provider (with the plan and allowance check) and which features the super admin switched off */
-export type Host = { ai?: AiBridge; featuresOff?: (flowxpBusinessId: string) => Promise<string[]> };
+export type Host = { ai?: AiBridge; featuresOff?: (flowxpBusinessId: string) => Promise<string[]>; mail?: HostMail; whatsapp?: HostWhatsapp };
 export const bootFlowbook = async (url: string, extraOrigins: string[] = [], host: Host = {}): Promise<Booted> => {
   const pool = createPool(url);
+  useHostMail(host.mail ?? null);
+  useHostWhatsapp(host.whatsapp ?? null);
   if (process.env.RUN_MIGRATIONS !== 'false') console.log('[flowbook] migrations applied:', (await migrate(pool)).join(', ') || 'none');
 
   const production = process.env.NODE_ENV === 'production';

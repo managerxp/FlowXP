@@ -6,6 +6,7 @@
  * Better to refuse to start than to run insecure and look healthy.
  */
 import 'dotenv/config';
+import { createHmac } from 'node:crypto';
 
 const required = ['DATABASE_URL', 'JWT_SECRET'];
 const missing = required.filter((key) => !process.env[key]);
@@ -48,8 +49,9 @@ export const config = {
   // Optional. Keeps stored secrets (2FA, payment and messaging keys) on a key of their own, so rotating JWT_SECRET to sign everyone out does not break them.
   encryptionKey: process.env.ENCRYPTION_KEY || '',
   // FlowBook sign-in: FlowXP signs the person in, then hands them to FlowBook with a short-lived token signed with this shared secret (same value in FlowBook's FLOWBOOK_SSO_SECRET).
-  flowbookAppUrl: (process.env.FLOWBOOK_APP_URL || '').replace(/\/+$/, ''),
-  flowbookSsoSecret: process.env.FLOWBOOK_SSO_SECRET || '',
+  // Both default from what FlowXP already has (APP_ORIGIN, and a key derived from ENCRYPTION_KEY or JWT_SECRET), so FlowBook needs no variables of its own.
+  flowbookAppUrl: (process.env.FLOWBOOK_APP_URL || `${process.env.APP_ORIGIN || 'http://localhost:5173'}/books`).replace(/\/+$/, ''),
+  flowbookSsoSecret: process.env.FLOWBOOK_SSO_SECRET || createHmac('sha256', process.env.ENCRYPTION_KEY || process.env.JWT_SECRET).update('flowbook-sso').digest('hex'),
   /* Phone notifications go through Expo's push service. PUSH_ENABLED=false switches them off; EXPO_PUSH_URL lets a test point at a stand-in; EXPO_ACCESS_TOKEN only if the Expo project has push security on. */
   push: {
     enabled: String(process.env.PUSH_ENABLED ?? 'true').toLowerCase() !== 'false',

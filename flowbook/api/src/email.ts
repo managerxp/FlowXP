@@ -19,7 +19,12 @@ const realMailer = (s: SmtpConfig): Mailer => {
 let makeMailer: (s: SmtpConfig) => Mailer = realMailer;
 /** Tests swap in a mailer that sends nothing. */
 export const setMailer = (f: ((s: SmtpConfig) => Mailer) | null): void => { makeMailer = f ?? realMailer; };
-const platform = (): SmtpConfig | null => {
+/** Inside the FlowXP API the mailbox is FlowXP's own (its .env or the admin's Settings > Email); `from` is the display name, FlowXP adds the address. */
+export type HostMail = { configured: () => Promise<boolean>; send: (m: Mail) => Promise<void> };
+let hostMail: HostMail | null = null;
+export const useHostMail = (m: HostMail | null): void => { hostMail = m; };
+const platform = async (): Promise<SmtpConfig | null> => {
+  if (hostMail) return (await hostMail.configured()) ? { host: 'flowxp', port: 0, secure: false, from: '' } : null;
   const e = process.env;
   return e.FLOWBOOK_SMTP_HOST && e.FLOWBOOK_SMTP_FROM ? { host: e.FLOWBOOK_SMTP_HOST, port: Number(e.FLOWBOOK_SMTP_PORT) || 587, secure: e.FLOWBOOK_SMTP_SECURE === 'true', user: e.FLOWBOOK_SMTP_USER || undefined, pass: e.FLOWBOOK_SMTP_PASS, from: e.FLOWBOOK_SMTP_FROM } : null;
 };
@@ -35,7 +40,7 @@ const load = async (c: Db): Promise<Row | undefined> => (await c.query(`SELECT e
 
 export const getEmailSettings = async (c: Db) => {
   const s = await load(c);
-  return { available: platform() !== null, enabled: s?.enabled ?? false, replyTo: s?.reply_to ?? '', bccSelf: s?.bcc_self ?? false };
+  return { available: (await platform()) !== null, enabled: s?.enabled ?? false, replyTo: s?.reply_to ?? '', bccSelf: s?.bcc_self ?? false };
 };
 
 export type EmailSettingsIn = { enabled?: boolean; replyTo?: string; bccSelf?: boolean };
@@ -49,13 +54,13 @@ export const saveEmailSettings = async (c: Db, orgId: bigint, b: EmailSettingsIn
   await audit(c, orgId, { actor, action: 'email.settings_saved', entityType: 'organization', entityId: orgId, detail: { enabled: next.enabled } });
 };
 
-const ready = (s: Row | undefined, biz: Biz): { cfg: SmtpConfig; from: string; replyTo?: string; bcc?: string } => {
-  const cfg = platform();
+const ready = async (s: Row | undefined, biz: Biz): Promise<{ cfg: SmtpConfig; from: string; replyTo?: string; bcc?: string }> => {
+  const cfg = await platform();
   if (!cfg) throw new LedgerError('email_off', 'email is not available on this server yet (the platform mailbox is not set up)');
   if (!s?.enabled) throw new LedgerError('email_off', 'email is switched off for this business (Settings > Email)');
   const name = oneLine(biz.legal_name || biz.name).replace(/["<>]/g, '');
   const replyTo = s.reply_to ?? (biz.email && EMAIL.test(biz.email) ? biz.email : undefined);
-  return { cfg, from: `"${name} via FlowBook" <${cfg.from}>`, replyTo, bcc: s.bcc_self ? replyTo : undefined };
+  return { cfg, from: hostMail ? `${name} via FlowBook` : `"${name} via FlowBook" <${cfg.from}>`, replyTo, bcc: s.bcc_self ? replyTo : undefined };
 };
 
 const LABEL: Partial<Record<DocKind, string>> = { INVOICE: 'Invoice', CREDIT_NOTE: 'Credit note', QUOTE: 'Quote', SALES_ORDER: 'Sales order', PURCHASE_ORDER: 'Purchase order', DEBIT_NOTE: 'Debit note' };
@@ -95,7 +100,7 @@ const BIZ = `SELECT name, legal_name, gstin, address_line, city, pincode, phone,
 
 export const sendDocument = async (c: Db, orgId: bigint, ref: { documentId?: bigint; paymentId?: bigint }, o: { to?: string; message?: string }, actor: string) => {
   const biz = (await c.query(BIZ, [orgId])).rows[0] as Biz;
-  const { cfg, from, replyTo, bcc } = ready(await load(c), biz);
+  const { cfg, from, replyTo, bcc } = await ready(await load(c), biz);
   const note = o.message?.trim().slice(0, 1000) || undefined;
   const bizName = biz.legal_name || biz.name;
   let mail: Mail; let partyId: bigint;
@@ -121,7 +126,7 @@ export const sendDocument = async (c: Db, orgId: bigint, ref: { documentId?: big
       text: `${note ? `${note}\n\n` : ''}Receipt ${p.number} from ${bizName}\nReceived ₹${inr(p.amount_minor)} on ${showDate(p.pay_date)}.\n` };
     partyId = p.party_id as bigint;
   }
-  return finish(c, orgId, { mailer: makeMailer(cfg), mail, partyId, documentId: ref.documentId, paymentId: ref.paymentId, actor });
+  return finish(c, orgId, { mailer: hostMail ? { send: async (m) => { await hostMail!.send(m); return {}; } } : makeMailer(cfg), mail, partyId, documentId: ref.documentId, paymentId: ref.paymentId, actor });
 };
 
 export const listEmails = async (c: Db, q: { documentId?: bigint; paymentId?: bigint; limit: number }) => (await c.query(

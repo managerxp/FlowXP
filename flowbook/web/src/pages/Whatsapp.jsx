@@ -74,6 +74,7 @@ export const WhatsappSettings = () => {
           <select value={f.mode} onChange={set('mode')}><option value="LINK">Open WhatsApp (nothing to set up)</option><option value="CLOUD">Send from FlowBook (Meta WhatsApp Cloud API)</option><option value="OFF">Off</option></select>
         </Field>
         {f.mode === 'CLOUD' && <>
+          {d.platform && !d.hasToken && <p className="notice wide">Messages go out from the FlowXP WhatsApp number, so there is nothing to set up. To send from your own WhatsApp Business number instead, fill in the two boxes below.</p>}
           <Field label="Phone number ID" hint="From Meta Business Manager, WhatsApp, API setup"><input value={f.phoneNumberId} onChange={set('phoneNumberId')} inputMode="numeric" /></Field>
           <Field label="Access token" hint={d.hasToken ? 'A token is saved. Leave empty to keep it.' : 'Use a permanent token'}><input type="password" value={f.token} onChange={set('token')} autoComplete="off" /></Field>
           <Field label="Template language"><input value={f.language} onChange={set('language')} maxLength={5} /></Field>

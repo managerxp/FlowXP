@@ -7,13 +7,13 @@ import { createPayment, issueDocument, saveDraft } from '../src/documents.ts';
 import type { DocIn } from '../src/documents.ts';
 import { createParty, seedTaxRates, updateParty } from '../src/masters.ts';
 import { openFinancialYear } from '../src/periods.ts';
-import { SendError, getSettings, listMessages, runReminders, saveSettings, sendMessage, setSender, toE164 } from '../src/whatsapp.ts';
+import { SendError, getSettings, listMessages, runReminders, saveSettings, sendMessage, setSender, toE164, useHostWhatsapp } from '../src/whatsapp.ts';
 import type { Outgoing } from '../src/whatsapp.ts';
 import { newOrg, setup } from './helpers.ts';
 
 process.env.FLOWBOOK_SECRET_KEY = randomBytes(32).toString('base64');
 const { pool, skip, cleanup } = await setup();
-test.after(() => { setSender(null); return cleanup(); });
+test.after(() => { setSender(null); useHostWhatsapp(null); return cleanup(); });
 const run = <T>(org: bigint, fn: (c: Db) => Promise<T>) => withOrg(pool, org, fn);
 
 const shop = async () => {
@@ -98,4 +98,18 @@ test('automatic reminders go out once per invoice and offset, only for unpaid in
   await run(org, (c) => createPayment(c, org, { direction: 'IN', partyId: ravi, date: '2026-07-11', mode: 'CASH', amount: 118000n, allocations: [{ documentId: a, amount: 118000n }], idempotencyKey: 'wa-pay-0002' }, 't'));
   await run(org, (c) => saveSettings(c, org, { reminderOffsets: [-3, 0, 1] }, 't'));
   assert.equal((await runReminders(pool, '2026-07-11')).sent, 0, 'a paid invoice gets nothing');
+});
+
+test('inside FlowXP a business with no Meta account of its own sends from the FlowXP number', { skip }, async () => {
+  const { org, ravi } = await shop();
+  useHostWhatsapp(async () => ({ phoneNumberId: '555', token: 'PLATFORM-TOKEN' }));
+  await run(org, (c) => saveSettings(c, org, { mode: 'CLOUD' }, 't'));
+  assert.equal((await run(org, (c) => getSettings(c))).platform, true);
+  setSender(async (m) => { outbox.push(m); return { ref: 'wamid.p' }; });
+  const a = await issue(org, inv(ravi, '2026-06-10', '2026-07-10'));
+  assert.equal((await sendMessage(pool, org, 'INVOICE', { documentId: a }, { actor: 't' })).status, 'SENT');
+  const m = outbox.at(-1) as Outgoing;
+  assert.deepEqual([m.phoneNumberId, m.token], ['555', 'PLATFORM-TOKEN']);
+  useHostWhatsapp(null);
+  await assert.rejects(run(org, (c) => saveSettings(c, org, { mode: 'CLOUD', autoReminders: true }, 't')), /phone number ID and access token/);
 });

@@ -110,6 +110,11 @@ let override = null;
 export const setProvider = (fn) => { override = fn; };
 
 export const providerName = async () => (override ? 'test' : (await resolveConfig()).provider);
+/** FlowXP's own WhatsApp number (the .env or Settings > Messaging), for FlowBook to send from; null unless the provider is the WhatsApp Cloud API. */
+export const platformWhatsapp = async () => {
+  const cfg = await resolveConfig();
+  return cfg.provider === 'whatsapp_cloud' && cfg.whatsappToken && cfg.whatsappPhoneId ? { phoneNumberId: cfg.whatsappPhoneId, token: cfg.whatsappToken } : null;
+};
 /** True when messages really go somewhere. */
 export const isConnected = async () => Boolean(override) || (await resolveConfig()).provider !== 'log';
 /** Which channels the provider can carry. */

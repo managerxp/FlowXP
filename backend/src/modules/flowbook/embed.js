@@ -9,7 +9,10 @@
  * /books answers 503. FLOWBOOK_EMBEDDED=false turns it off, to run FlowBook as its own process (flowbook/api/src/server.ts) instead.
  */
 import config from '../../config/env.js';
+import { createHash } from 'node:crypto';
 import { complete, isConfigured } from '../ai/provider.js';
+import { deliverMail, mailConfigured } from '../mailer.js';
+import { platformWhatsapp } from '../messaging/provider.js';
 import { CHECK_NOTE, ungrounded } from '../ai/grounding.js';
 import { featuresOff, gate, record } from './gate.js';
 
@@ -21,10 +24,13 @@ export const embeddedFlowbook = () => {
   const start = async () => {
     if (process.env.FLOWBOOK_EMBEDDED === 'false') { failed = new Error('switched off'); return; }
     try {
+      // FlowBook shares FlowXP's settings: its sign-in secret, the key its stored tokens are sealed with, and its mailbox and WhatsApp number
+      process.env.FLOWBOOK_SSO_SECRET ||= config.flowbookSsoSecret;
+      process.env.FLOWBOOK_SECRET_KEY ||= createHash('sha256').update(`flowbook-keys:${config.encryptionKey || config.jwtSecret}`).digest('base64');
       const { bootFlowbook } = await import('../../../../flowbook/api/src/boot.ts');
       const origins = [config.appOrigin, ...config.corsOrigins];
       if (config.flowbookAppUrl) origins.push(new URL(config.flowbookAppUrl).origin);
-      booted = await bootFlowbook(config.databaseUrl, origins, { ai: { configured: isConfigured, complete, ungrounded, checkNote: CHECK_NOTE, gate, record }, featuresOff });
+      booted = await bootFlowbook(config.databaseUrl, origins, { ai: { configured: isConfigured, complete, ungrounded, checkNote: CHECK_NOTE, gate, record }, featuresOff, mail: { configured: mailConfigured, send: (m) => deliverMail({ to: m.to, subject: m.subject, text: m.text, html: m.html, replyTo: m.replyTo, bcc: m.bcc, fromName: m.from }) }, whatsapp: platformWhatsapp });
       console.log('[flowbook] running inside the FlowXP API at /books');
     } catch (error) {
       failed = error;

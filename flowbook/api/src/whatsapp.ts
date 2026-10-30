@@ -58,7 +58,7 @@ export type SettingsIn = { mode?: Settings['mode']; phoneNumberId?: string; toke
 /** What the screen may see: everything but the token. */
 export const getSettings = async (c: Db) => {
   const s = await loadSettings(c);
-  return { mode: s.mode, phoneNumberId: s.phone_number_id, hasToken: Boolean(s.token_enc), language: s.language, autoReminders: s.auto_reminders, reminderOffsets: s.reminder_offsets,
+  return { mode: s.mode, phoneNumberId: s.phone_number_id, hasToken: Boolean(s.token_enc), platform: Boolean(hostWa && await hostWa()), language: s.language, autoReminders: s.auto_reminders, reminderOffsets: s.reminder_offsets,
     templateInvoice: s.template_invoice, templateReminder: s.template_reminder, templateReceipt: s.template_receipt, templateBodies: TEMPLATE_BODY };
 };
 
@@ -69,7 +69,7 @@ export const saveSettings = async (c: Db, orgId: bigint, i: SettingsIn, actor: s
     auto: i.autoReminders ?? cur.auto_reminders, offsets: i.reminderOffsets ?? cur.reminder_offsets,
     tInvoice: i.templateInvoice ?? cur.template_invoice, tReminder: i.templateReminder ?? cur.template_reminder, tReceipt: i.templateReceipt ?? cur.template_receipt
   };
-  if (next.mode === 'CLOUD' && (!next.phone || !next.token)) throw new LedgerError('whatsapp_incomplete', 'sending from FlowBook needs the Meta phone number ID and access token');
+  if (next.mode === 'CLOUD' && (!next.phone || !next.token) && !(hostWa && await hostWa())) throw new LedgerError('whatsapp_incomplete', 'sending from FlowBook needs the Meta phone number ID and access token');
   if (next.auto && next.mode !== 'CLOUD') throw new LedgerError('whatsapp_auto_needs_cloud', 'automatic reminders need sending from FlowBook (CLOUD mode); in LINK mode a person presses send');
   await c.query(
     `INSERT INTO whatsapp_settings (organization_id, mode, phone_number_id, token_enc, language, auto_reminders, reminder_offsets, template_invoice, template_reminder, template_receipt, updated_at)
@@ -80,6 +80,13 @@ export const saveSettings = async (c: Db, orgId: bigint, i: SettingsIn, actor: s
 };
 
 /* ---- sending: one function the rest calls, swapped in tests */
+/** Inside the FlowXP API a business with no Meta account of its own sends from FlowXP's WhatsApp number (its .env or the admin's Settings > Messaging). The templates must be approved on that number. */
+export type HostWhatsapp = () => Promise<{ phoneNumberId: string; token: string } | null>;
+let hostWa: HostWhatsapp | null = null;
+export const useHostWhatsapp = (f: HostWhatsapp | null): void => { hostWa = f; };
+const credentials = async (s: Settings): Promise<{ phoneNumberId: string; token: string } | null> =>
+  s.phone_number_id && s.token_enc ? { phoneNumberId: s.phone_number_id, token: unseal(s.token_enc) } : hostWa ? hostWa() : null;
+
 export type Outgoing = { phoneNumberId: string; token: string; to: string; template: string; language: string; params: string[] };
 export type Sender = (m: Outgoing) => Promise<{ ref: string }>;
 export class SendError extends Error {}
@@ -141,7 +148,9 @@ export const sendMessage = async (pool: pg.Pool, orgId: bigint, kind: Kind, ref:
     return { mode: 'LINK', status: 'OPENED', text: b.text, url: `https://wa.me/${to}?text=${encodeURIComponent(b.text)}` };
   }
   try {
-    const out = await sender({ phoneNumberId: s.phone_number_id as string, token: unseal(s.token_enc as string), to, template: s[b.templateKey], language: s.language, params: b.params });
+    const cred = await credentials(s);
+    if (!cred) throw new SendError('WhatsApp sending is not set up on this server yet');
+    const out = await sender({ ...cred, to, template: s[b.templateKey], language: s.language, params: b.params });
     await log({ status: 'SENT', ref: out.ref });
     return { mode: 'CLOUD', status: 'SENT', text: b.text };
   } catch (e) {
@@ -159,7 +168,7 @@ export const listMessages = async (c: Db, q: { documentId?: bigint; limit: numbe
     (or in the last two days, in case the server was off). Each invoice and offset is tried once. */
 export const runReminders = async (pool: pg.Pool, today: string): Promise<{ sent: number; failed: number; skipped: number }> => {
   const tally = { sent: 0, failed: 0, skipped: 0 };
-  const orgs = (await pool.query(`SELECT organization_id FROM whatsapp_settings WHERE mode = 'CLOUD' AND auto_reminders AND token_enc IS NOT NULL AND phone_number_id IS NOT NULL`)).rows as { organization_id: bigint }[];
+  const orgs = (await pool.query(`SELECT organization_id FROM whatsapp_settings WHERE mode = 'CLOUD' AND auto_reminders AND ($1 OR (token_enc IS NOT NULL AND phone_number_id IS NOT NULL))`, [Boolean(hostWa && await hostWa())])).rows as { organization_id: bigint }[];
   for (const { organization_id: orgId } of orgs) {
     const due = await withOrg(pool, orgId, async (c) => (await c.query(
       `SELECT d.id, o AS offset FROM documents d, whatsapp_settings s, unnest(s.reminder_offsets) AS o

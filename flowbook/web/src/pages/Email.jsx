@@ -65,7 +65,7 @@ export const EmailSettings = () => {
     <Err>{a.error}</Err><Note>{a.done}</Note>
     <Card title="Email">
       <p className="muted">Invoices, quotes, orders and receipts are emailed from FlowBook's own address and show your business name ("{org.name} via FlowBook"). You do not need a mail account or password. When your customer replies, it comes to you.</p>
-      {!d.available && <p className="notice warn">Email is not switched on for this server yet. Whoever runs the server needs to set the FLOWBOOK_SMTP_* settings.</p>}
+      {!d.available && <p className="notice warn">Email is not switched on for this server yet. Whoever runs the server needs to set up its mailbox (the same one FlowXP uses for its own emails).</p>}
       <form className="form" onSubmit={save}>
         <p className="check wide"><input id="em-on" type="checkbox" checked={f.enabled} onChange={set('enabled')} /><label htmlFor="em-on">Send documents by email</label></p>
         <Field label="Replies go to" hint="Leave empty to use the email in your business profile"><input type="email" value={f.replyTo} onChange={set('replyTo')} /></Field>
