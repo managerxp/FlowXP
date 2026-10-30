@@ -254,7 +254,7 @@ export const Signup = () => {
   return (
     <AuthLayout
       aside="signup"
-      top={<Trans t={t} i18nKey="signup.haveAccount" components={{ link: <Link to="/login" className="font-medium text-brand-600 hover:text-brand-700" /> }} />}
+      top={<Trans t={t} i18nKey="signup.haveAccount" components={{ go: <Link to="/login" className="font-medium text-brand-600 hover:text-brand-700" /> }} />}
       title={t('signup.title')}
       lead={t('signup.lead')}
     >
@@ -413,7 +413,7 @@ export const Login = () => {
     <AuthLayout
       title={t('login.title')}
       lead={t('login.lead')}
-      top={<Trans t={t} i18nKey="login.newHere" components={{ link: <Link to="/signup" className="font-medium text-brand-600 hover:text-brand-700" /> }} />}
+      top={<Trans t={t} i18nKey="login.newHere" components={{ go: <Link to="/signup" className="font-medium text-brand-600 hover:text-brand-700" /> }} />}
     >
       <form onSubmit={onSubmit} className="space-y-4">
         {googleProblem && !error && <Alert>{googleProblem}</Alert>}
