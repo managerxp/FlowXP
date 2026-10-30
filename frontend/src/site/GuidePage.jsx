@@ -15,7 +15,7 @@ const STEPS = [
   ['Put in the stock you have', 'Put the quantity in the same file as "Opening stock", or use the Stock levels import later. For a parts shop, put each part in a rack or bin afterwards, or leave it for later.'],
   ['Add customers and suppliers', 'They are added as you bill and buy. Import them from a file on the Customers screen (name, phone, GSTIN, address, credit limit). Wholesale and distributor shops can also import suppliers, with opening balances.'],
   ['Add your people', 'Give the counter, the storekeeper and the manager their own login, with only the screens they need. A workshop can also keep staff attendance and payroll here.'],
-  ['Connect a printer, if you want paper', 'Bills can be shared as a link. If you want paper, any 58 or 80 mm receipt printer works through the browser. The Integrations page shows how to print without the print window.'],
+  ['Connect a printer, if you want paper', 'Bills can be shared as a link. If you want paper, any 58 or 80 mm receipt printer works through the browser.'],
   ['Make your first bill', 'Open the till, search or scan a part, take the payment, done. Make one test bill and cancel it if you like.'],
   ['Download a backup', 'Settings → Business → Backup. Keep the file safe. It can be put back later and only adds what is missing.']
 ];

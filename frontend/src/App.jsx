@@ -15,7 +15,6 @@ import Home from './site/Home.jsx';
 import ProductPage from './site/ProductPage.jsx';
 import IndustriesPage from './site/IndustriesPage.jsx';
 import IndustryDetail from './site/industries/IndustryDetail.jsx';
-import SiteIntegrations from './site/IntegrationsPage.jsx';
 import SiteFlowBook from './site/FlowBookPage.jsx';
 import GuidePage from './site/GuidePage.jsx';
 import AboutPage from './site/AboutPage.jsx';
@@ -270,7 +269,7 @@ const App = () => (
       <Route path="industries" element={<IndustriesPage />} />
       <Route path="industries/:slug" element={<IndustryDetail />} />
       <Route path="ai" element={<AIPage />} />
-      <Route path="integrations" element={<SiteIntegrations />} />
+      <Route path="integrations" element={<Navigate to="/" replace />} />
       <Route path="flowbook" element={<SiteFlowBook />} />
       <Route path="guide" element={<GuidePage />} />
       <Route path="about" element={<AboutPage />} />
