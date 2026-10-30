@@ -18,6 +18,7 @@ export const PLAN_FEATURES = [
   ['reservations', 'Reservations & waitlist', 'Table bookings and the walk-in waitlist'],
   ['purchases', 'Purchasing & suppliers', 'Purchase orders, supplier price lists, debit notes'],
   ['expenses', 'Expenses', 'Recording and reporting business expenses'],
+  ['other_income', 'Other income', 'Money received that is not a sale (interest, rent, commission), counted in profit and loss'],
   ['ai', 'Flow AI', 'The AI manager chat, briefings and menu-photo import'],
   ['advanced_reports', 'Advanced reports', 'Profitability, revenue leakage and demand forecast'],
   ['integrations', 'Delivery integrations', 'Zomato/Swiggy/ONDC/Magicpin order sync and webhooks'],

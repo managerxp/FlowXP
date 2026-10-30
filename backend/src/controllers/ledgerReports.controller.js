@@ -47,6 +47,10 @@ export const transactions = async (req, res) => {
               x.amount_paise, x.amount_paise, 0, 'ISSUED', x.payment_method, x.expense_id
        FROM expenses x WHERE x.business_id = $1 AND x.expense_date BETWEEN $2 AND $3${o.sql}
        UNION ALL
+       SELECT 'OTHER_INCOME', x.income_date, x.created_at, x.category, COALESCE(x.description, ''), NULL,
+              x.amount_paise, x.amount_paise, 0, 'ISSUED', x.payment_method, x.income_id
+       FROM other_income x WHERE x.business_id = $1 AND x.income_date BETWEEN $2 AND $3${o.sql}
+       UNION ALL
        SELECT 'SALE_RETURN', x.cn_date, x.created_at, x.cn_number, COALESCE(c.name, 'Walk-in customer'), i.customer_id,
               x.total_paise, 0, 0, 'ISSUED', NULL, x.cn_id
        FROM credit_notes x JOIN invoices i ON i.invoice_id = x.invoice_id LEFT JOIN customers c ON c.customer_id = i.customer_id
@@ -74,7 +78,7 @@ export const transactions = async (req, res) => {
       summary: {
         sales: toRupees(sum('SALE')), purchases: toRupees(sum('PURCHASE')), expenses: toRupees(sum('EXPENSE')),
         sale_returns: toRupees(sum('SALE_RETURN')), purchase_returns: toRupees(sum('PURCHASE_RETURN')),
-        money_in: toRupees(sum('PAYMENT_IN')), money_out: toRupees(sum('PAYMENT_OUT') + sum('EXPENSE'))
+        other_income: toRupees(sum('OTHER_INCOME')), money_in: toRupees(sum('PAYMENT_IN') + sum('OTHER_INCOME')), money_out: toRupees(sum('PAYMENT_OUT') + sum('EXPENSE'))
       },
       rows: list.map((r) => ({
         type: r.type, date: r.txn_date, number: r.number, party: r.party, party_id: r.party_id, total: toRupees(r.total_paise), paid: toRupees(r.paid_paise),

@@ -88,6 +88,9 @@ export const profitLoss = async (req, res) => {
   const expenses = (await pool.query(
     `SELECT category, COALESCE(SUM(amount_paise), 0) AS paise FROM expenses WHERE business_id = $1 AND expense_date BETWEEN $2 AND $3${scope} GROUP BY category ORDER BY paise DESC`, args)).rows;
   const spent = expenses.reduce((s, e) => s + Number(e.paise), 0);
+  const income = (await pool.query(
+    `SELECT category, COALESCE(SUM(amount_paise), 0) AS paise FROM other_income WHERE business_id = $1 AND income_date BETWEEN $2 AND $3${scope} GROUP BY category ORDER BY paise DESC`, args)).rows;
+  const earned = income.reduce((s, e) => s + Number(e.paise), 0);
   res.json({
     success: true,
     data: {
@@ -95,7 +98,8 @@ export const profitLoss = async (req, res) => {
       gross_sales: R(gross), discounts: R(discount), returns: R(returns), net_sales: R(net), cost_of_goods: R(cogs),
       gross_profit: R(net - cogs), gross_margin_pct: pct(net - cogs, net),
       expenses: expenses.map((e) => ({ category: e.category, amount: R(e.paise) })), total_expenses: R(spent),
-      net_profit: R(net - cogs - spent), net_margin_pct: pct(net - cogs - spent, net)
+      other_income: income.map((e) => ({ category: e.category, amount: R(e.paise) })), total_other_income: R(earned),
+      net_profit: R(net - cogs - spent + earned), net_margin_pct: pct(net - cogs - spent + earned, net)
     }
   });
 };

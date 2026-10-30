@@ -367,7 +367,7 @@ const GstReport = ({ d }) => {
 
 const TXN = {
   SALE: [T('Sale'), 'text-ink-900'], PURCHASE: [T('Purchase'), 'text-ink-900'], PAYMENT_IN: [T('Payment in'), 'text-success'], PAYMENT_OUT: [T('Payment out'), 'text-warning'],
-  EXPENSE: [T('Expense'), 'text-warning'], SALE_RETURN: [T('Sale return'), 'text-danger'], PURCHASE_RETURN: [T('Purchase return'), 'text-danger']
+  EXPENSE: [T('Expense'), 'text-warning'], OTHER_INCOME: [T('Other income'), 'text-success'], SALE_RETURN: [T('Sale return'), 'text-danger'], PURCHASE_RETURN: [T('Purchase return'), 'text-danger']
 };
 const fmtDay = (iso) => formatDate(String(iso).slice(0, 10));
 const TH = 'px-2 py-2 text-left text-caption font-semibold uppercase tracking-[0.08em] text-ink-500';
@@ -394,7 +394,7 @@ const TxnTable = ({ rows }) => {
           {rows.map((r) => (
             <tr key={`${r.type}-${r.ref_id}`} className={r.status === 'CANCELLED' ? 'text-ink-400 line-through' : ''}>
               <td className="tabular whitespace-nowrap px-2 py-2 text-ink-500">{fmtDay(r.date)}</td>
-              <td className={`whitespace-nowrap px-2 py-2 font-medium ${TXN[r.type][1]}`}>{tr(TXN[r.type][0])}{r.note && ['PAYMENT_IN', 'PAYMENT_OUT', 'EXPENSE'].includes(r.type) ? <span className="font-normal text-ink-500"> · {METHOD[r.note] || r.note}</span> : null}</td>
+              <td className={`whitespace-nowrap px-2 py-2 font-medium ${TXN[r.type][1]}`}>{tr(TXN[r.type][0])}{r.note && ['PAYMENT_IN', 'PAYMENT_OUT', 'EXPENSE', 'OTHER_INCOME'].includes(r.type) ? <span className="font-normal text-ink-500"> · {METHOD[r.note] || r.note}</span> : null}</td>
               <td className="px-2 py-2">{r.type === 'SALE' ? <Link to={`/app/billing/invoices/${r.ref_id}`} className="text-brand-700 hover:underline">{r.number}</Link> : r.number}</td>
               <td className="max-w-[16rem] truncate px-2 py-2 text-ink-700">{r.party}</td>
               <td className="tabular px-2 py-2 text-right font-medium text-ink-900">{formatCurrency(r.total)}</td>
@@ -636,12 +636,14 @@ const ProfitLossReport = ({ d, period }) => {
       </div>
       {d.uncosted_bills > 0 && <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-small text-warning">{tr('Bills with no cost on record, so their profit is shown too high.')} ({d.uncosted_bills})</p>}
       <Section title={tr('Profit & Loss')} action={<CsvButton name={`profit-and-loss-${period.from}-to-${period.to}`} head={['Line', 'Amount']}
-        rows={[['Gross sales', d.gross_sales], ['Discounts', d.discounts], ['Returns', d.returns], ['Net sales', d.net_sales], ['Cost of goods', d.cost_of_goods], ['Gross profit', d.gross_profit], ...d.expenses.map((e) => [e.category, e.amount]), ['Total expenses', d.total_expenses], ['Net profit', d.net_profit]]} />}>
+        rows={[['Gross sales', d.gross_sales], ['Discounts', d.discounts], ['Returns', d.returns], ['Net sales', d.net_sales], ['Cost of goods', d.cost_of_goods], ['Gross profit', d.gross_profit], ...d.expenses.map((e) => [e.category, e.amount]), ['Total expenses', d.total_expenses], ...d.other_income.map((e) => [e.category, e.amount]), ['Total other income', d.total_other_income], ['Net profit', d.net_profit]]} />}>
         <table className="w-full text-small">
           <tbody>
             {rows.map(([label, value, o]) => <Fragment key={label}>{line(label, value, o)}</Fragment>)}
             {d.expenses.map((e) => <Fragment key={e.category}>{line(e.category, e.amount, { minus: true })}</Fragment>)}
             {line(tr('Total expenses'), d.total_expenses, { minus: true })}
+            {d.other_income.map((e) => <Fragment key={`oi-${e.category}`}>{line(e.category, e.amount)}</Fragment>)}
+            {d.total_other_income > 0 && line(tr('Total other income'), d.total_other_income)}
             {line(tr('Net profit'), d.net_profit, { strong: true, tone: d.net_profit < 0 ? 'text-danger' : 'text-success' })}
           </tbody>
         </table>

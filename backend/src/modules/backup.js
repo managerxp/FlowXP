@@ -26,7 +26,8 @@ const TABLES = [
   ['credit-note-lines', 'SELECT ci.* FROM credit_note_items ci JOIN credit_notes c ON c.cn_id = ci.cn_id WHERE c.business_id = $1 ORDER BY ci.cn_item_id'],
   ['purchase-orders', 'SELECT * FROM purchase_orders WHERE business_id = $1 ORDER BY po_id'],
   ['purchase-order-lines', 'SELECT pi.* FROM purchase_order_items pi JOIN purchase_orders po ON po.po_id = pi.po_id WHERE po.business_id = $1 ORDER BY pi.item_id'],
-  ['expenses', 'SELECT * FROM expenses WHERE business_id = $1 ORDER BY expense_id']
+  ['expenses', 'SELECT * FROM expenses WHERE business_id = $1 ORDER BY expense_id'],
+  ['other-income', 'SELECT * FROM other_income WHERE business_id = $1 ORDER BY income_id']
 ];
 const SECRET_COLUMNS = new Set(['share_token']);
 
