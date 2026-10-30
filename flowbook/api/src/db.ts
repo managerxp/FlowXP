@@ -78,7 +78,8 @@ export const migrate = async (pool: pg.Pool): Promise<string[]> => {
       }
     }
     // the application role reads the tables of this schema (the table grants are in the migrations)
-    await c.query(sql(`GRANT USAGE ON SCHEMA ${SCHEMA} TO flowbook_app`));
+    const target = appRole ?? me;
+    if (!(await c.query('SELECT has_schema_privilege($1, $2, $3) AS ok', [target, SCHEMA, 'USAGE'])).rows[0].ok) await c.query(`GRANT USAGE ON SCHEMA ${SCHEMA} TO "${target.replaceAll('"', '""')}"`);
   } finally {
     c.release();
   }
