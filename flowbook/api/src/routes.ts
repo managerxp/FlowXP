@@ -3,7 +3,7 @@ import type pg from 'pg';
 import { audit } from './audit.ts';
 import { withOrg } from './db.ts';
 import type { Db } from './db.ts';
-import { advancesAndRetention, ageing, allocatePayment, applyCreditNote, applyDebitNote, convertDocument, createOpeningBalance, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, setOutcome, setRetention, voidDocument, voidPayment } from './documents.ts';
+import { advancesAndRetention, ageing, exportAll, outstanding, allocatePayment, applyCreditNote, applyDebitNote, convertDocument, createOpeningBalance, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, setOutcome, setRetention, voidDocument, voidPayment } from './documents.ts';
 import type { Alloc, DocIn, DocKind } from './documents.ts';
 import { listExpenses, recordExpense, voidExpense } from './expenses.ts';
 import { ewayBill } from './eway.ts';
@@ -337,6 +337,12 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     });
   }
   app.get(`${base}/advances-retention`, { preHandler: scope('payment.read') }, async (req) => run(req, (c) => advancesAndRetention(c)));
+
+  app.get(`${base}/outstanding`, { preHandler: scope('payment.read'), schema: { querystring: { type: 'object', required: ['type', 'asOf'], properties: { type: { type: 'string', enum: ['receivables', 'payables'] }, asOf: { type: 'string', pattern: DATE } } } } }, async (req) => {
+    const q = req.query as { type: string; asOf: string };
+    return run(req, (c) => outstanding(c, q.type === 'receivables' ? 'INVOICE' : 'BILL', q.asOf));
+  });
+  app.get(`${base}/export`, { preHandler: scope('audit.read') }, async (req) => run(req, (c, orgId) => exportAll(c, orgId)));
 
   /* ---- payments */
   app.get(`${base}/payments`, { preHandler: scope('payment.read'), schema: { querystring: { type: 'object', properties: {

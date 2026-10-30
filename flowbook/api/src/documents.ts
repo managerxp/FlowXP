@@ -531,3 +531,20 @@ export const ageing = async (c: Db, orgId: bigint, kind: 'INVOICE' | 'BILL', asO
       GROUP BY party_id, party_name ORDER BY party_name`, [orgId, kind, asOf])).rows as { party_id: bigint; party_name: string; not_due: bigint; days_1_30: bigint; days_31_60: bigint; days_61_90: bigint; days_over_90: bigint; total: bigint }[];
   return { rows, total: rows.reduce((a, r) => a + r.total, 0n) };
 };
+
+/** Open bills (payables) or invoices (receivables), oldest due first: what is still to pay or collect, what is overdue, and what is held as retention. */
+export const outstanding = async (c: Db, kind: 'INVOICE' | 'BILL', asOf: string) => (await c.query(
+  `SELECT d.id, d.number, d.party_id, p.name AS party_name, pr.name AS project_name, d.issue_date::text AS issue_date, d.due_date::text AS due_date,
+          GREATEST($2::date - COALESCE(d.due_date, d.issue_date), 0) AS days_overdue, d.total_minor, d.balance_minor, d.retention_minor, d.balance_minor - d.retention_minor AS payable_now_minor
+     FROM documents d JOIN parties p ON p.id = d.party_id LEFT JOIN projects pr ON pr.id = d.project_id
+    WHERE d.kind = $1 AND d.status = 'ISSUED' AND d.balance_minor > 0 AND d.currency = 'INR' AND d.issue_date <= $2::date
+    ORDER BY COALESCE(d.due_date, d.issue_date), d.id`, [kind, asOf])).rows;
+
+/** Everything the business has recorded, as one set of tables, for a backup or a move. Mail and WhatsApp settings and sign-in data are left out. */
+const EXPORT_TABLES = ['organizations', 'financial_years', 'accounting_periods', 'accounts', 'tax_rates', 'parties', 'items', 'warehouses', 'projects', 'documents', 'document_lines',
+  'payments', 'payment_allocations', 'journal_entries', 'journal_lines', 'project_expenses', 'stock_moves', 'fixed_assets', 'bank_transfers', 'audit_log'] as const;
+export const exportAll = async (c: Db, orgId: bigint) => {
+  const tables: Record<string, unknown[]> = {};
+  for (const t of EXPORT_TABLES) tables[t] = (await c.query(`SELECT * FROM ${t} WHERE ${t === 'organizations' ? 'id' : 'organization_id'} = $1 ORDER BY 1`, [orgId])).rows;
+  return { exported_at: new Date().toISOString(), organization_id: orgId, tables };
+};

@@ -192,6 +192,19 @@ import { WhatsappSettings } from './Whatsapp.jsx';
 import { EmailSettings } from './Email.jsx';
 import { CurrencySettings } from './Currency.jsx';
 
+/** Everything recorded in these books as one file, to keep or to move. Only people who can read the audit trail may ask for it. */
+const Backup = () => {
+  const { o } = useSession();
+  const a = useAction();
+  const go = () => a.run(async () => {
+    const d = await o('/export');
+    const url = URL.createObjectURL(new Blob([JSON.stringify(d, null, 1)], { type: 'application/json' }));
+    Object.assign(document.createElement('a'), { href: url, download: `flowbook-all-data-${today()}.json` }).click(); URL.revokeObjectURL(url);
+  }, 'Your data was downloaded.');
+  return <Card title="Download all my data"><p className="muted">One file with everything in these books: contacts, items, invoices, bills, payments, projects, stock and the journal. Keep it as a backup. For a single list in Excel, use Export at the top of that page.</p>
+    <Err>{a.error}</Err><Note>{a.done}</Note><Btn busy={a.busy} onClick={go}>Download all my data</Btn></Card>;
+};
+
 export default () => {
   const { on } = useSession();
   const till = useAuth().business?.business_type !== 'FLOWBOOK';   // a business that signed up for FlowBook alone has no till to send from
@@ -199,7 +212,7 @@ export default () => {
   return (
     <Page title="Settings">
       <Tabs value={tab} onChange={setTab} tabs={[['biz', 'Business'], ['print', 'Printing'], ['open', 'Opening balances'], ['tax', 'GST rates'], ['periods', 'Closing'], ['team', 'Team'], ['wa', 'WhatsApp'], ['email', 'Email'], ['fx', 'Currencies'], ['feed', 'Sales from FlowXP'], ['log', 'Activity']].filter(([k]) => (k !== 'feed' || till) && on({ wa: 'flowbook_whatsapp', email: 'flowbook_email', fx: 'flowbook_currency' }[k] || 'flowbook_app'))} />
-      {tab === 'biz' && <Business />}{tab === 'print' && <Printing />}{tab === 'open' && <OpeningBalances />}{tab === 'tax' && <TaxRates />}{tab === 'periods' && <Periods />}{tab === 'team' && <Team />}{tab === 'wa' && <WhatsappSettings />}{tab === 'email' && <EmailSettings />}{tab === 'fx' && <CurrencySettings />}{tab === 'feed' && <Feed />}{tab === 'log' && <Activity />}
+      {tab === 'biz' && <><Business /><Backup /></>}{tab === 'print' && <Printing />}{tab === 'open' && <OpeningBalances />}{tab === 'tax' && <TaxRates />}{tab === 'periods' && <Periods />}{tab === 'team' && <Team />}{tab === 'wa' && <WhatsappSettings />}{tab === 'email' && <EmailSettings />}{tab === 'fx' && <CurrencySettings />}{tab === 'feed' && <Feed />}{tab === 'log' && <Activity />}
     </Page>
   );
 };

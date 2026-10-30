@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { withOrg } from '../src/db.ts';
 import type { Db } from '../src/db.ts';
-import { advancesAndRetention, setRetention, createPayment, deleteDraft, issueDocument, saveDraft, voidDocument, voidPayment } from '../src/documents.ts';
+import { advancesAndRetention, exportAll, outstanding, setRetention, createPayment, deleteDraft, issueDocument, saveDraft, voidDocument, voidPayment } from '../src/documents.ts';
 import { createItem } from '../src/masters.ts';
 import { adjust, setTracking } from '../src/stock.ts';
 import type { DocKind } from '../src/documents.ts';
@@ -129,4 +129,17 @@ test('a payment made ahead of the bill shows as an advance until it is applied',
   await run(org, (c) => createPayment(c, org, { direction: 'OUT', partyId: vend, date: '2026-06-01', mode: 'BANK', amount: 30_000n, idempotencyKey: 'adv-pay-0001' }, 't'));
   const a = await run(org, (c) => advancesAndRetention(c));
   assert.equal(a.advances.length, 1); assert.equal(a.advances[0].unallocated_minor, 30_000n);
+});
+
+test('the due list shows what is overdue and what is held, and the export carries every table', { skip }, async () => {
+  const { org, vend } = await studio();
+  const bill = await run(org, async (c) => {
+    const id = await saveDraft(c, org, null, { kind: 'BILL', partyId: vend, date: '2026-06-02', dueDate: '2026-06-10', supplierRef: 'D-1', lines: [{ description: 'Work', quantity: '1', unitPrice: '1000', taxCode: 'GST0' }] }, 't');
+    await issueDocument(c, org, 'BILL', id, 't'); return id;
+  });
+  await run(org, (c) => setRetention(c, org, bill, 10_000n, 't'));
+  const rows = await run(org, (c) => outstanding(c, 'BILL', '2026-06-20'));
+  assert.equal(rows.length, 1); assert.equal(Number(rows[0].days_overdue), 10); assert.equal(rows[0].payable_now_minor, 90_000n);
+  const all = await run(org, (c) => exportAll(c, org));
+  assert.equal(all.tables.documents.length, 1); assert.ok(all.tables.accounts.length > 5); assert.equal(all.tables.organizations.length, 1);
 });

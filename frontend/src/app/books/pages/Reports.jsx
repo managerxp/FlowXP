@@ -60,6 +60,15 @@ const Ageing = ({ r, type }) => {
     </Table><p className="muted">Worked out for the date chosen: a payment counts from its own date. Days are counted past the due date (or the invoice date when there is none).</p></Card>)}</Async>;
 };
 
+const Due = ({ r, type }) => {
+  const { o, org } = useSession();
+  const load = useLoad(() => o(`/outstanding?type=${type}&asOf=${r.to}`), [org.id, r.to, type]);
+  return <Async load={load}>{(rows) => (
+    <Card><Table head={[type === 'receivables' ? 'Invoice' : 'Bill', type === 'receivables' ? 'Customer' : 'Vendor', 'Project', 'Due', '>Days late', '>Still owed', '>Held back', '>Payable now']} empty={!rows.length && <Empty>Nothing outstanding.</Empty>}>
+      {rows.map((x) => <tr key={x.id}><td>{x.number}</td><td>{x.party_name}</td><td>{x.project_name || ''}</td><td>{x.due_date || x.issue_date}</td><td className="r num">{Number(x.days_overdue) || ''}</td><td className="r num">{inr(x.balance_minor)}</td><td className="r num">{Number(x.retention_minor) ? inr(x.retention_minor) : ''}</td><td className="r num strong">{inr(x.payable_now_minor)}</td></tr>)}
+    </Table><p className="muted">Each open {type === 'receivables' ? 'invoice' : 'bill'}, oldest due date first. "Held back" is retention that cannot be settled yet.</p></Card>)}</Async>;
+};
+
 const Analysis = ({ r }) => {
   const { o, org } = useSession();
   const load = useLoad(() => o(`/reports/sales-analysis?from=${r.from}&to=${r.to}`), [org.id, r.from, r.to]);
@@ -87,6 +96,7 @@ const Checks = () => {
 const ABOUT = {
   pnl: ['Profit and loss', 'Did the business make a profit? Money earned minus money spent, for the dates you choose.'],
   an: ['Sales', 'How much you sold each month, to whom, and which items sell best.'],
+  due: ['Payments due', 'Every open bill and invoice one by one: how late it is, what is held back, and what can be settled now.'],
   ar: ['Who owes you', 'Customers who have not paid yet, and how late they are.'],
   ap: ['Who you owe', 'Vendor bills you have not paid yet, and how late they are.'],
   gst: ['GST returns', 'The GST figures for the month, ready to copy into the GST portal.'],
@@ -105,17 +115,17 @@ export default () => {
   const fy = financialYear();
   const [tab, setTab] = useState('pnl');
   const [r, setR] = useState({ from: fy.from, to: today() });
-  const asOfOnly = ['bs', 'ar', 'ap'].includes(tab);
+  const asOfOnly = ['bs', 'ar', 'ap', 'due'].includes(tab);
   return (
     <Page title="Reports" lead={fy.label + ' by default. Change the dates to look at any period.'} actions={<button className="btn no-print" onClick={() => window.print()}>Print</button>}>
-      <Tabs value={tab} onChange={setTab} tabs={[['pnl', 'Profit and loss'], ['bs', 'Balance sheet'], ['tb', 'Trial balance'], ['an', simple ? 'Sales' : 'Sales analysis'], ['ar', 'Who owes you'], ['ap', 'Who you owe'], ['stmt', 'Party statement'], ['gst', 'GST returns'], ['chk', 'Checks']].filter(([k]) => (!simple || SIMPLE_TABS.includes(k)) && on(TAB_NEEDS[k] || 'flowbook_app'))} />
+      <Tabs value={tab} onChange={setTab} tabs={[['pnl', 'Profit and loss'], ['bs', 'Balance sheet'], ['tb', 'Trial balance'], ['an', simple ? 'Sales' : 'Sales analysis'], ['ar', 'Who owes you'], ['ap', 'Who you owe'], ['due', 'Payments due'], ['stmt', 'Party statement'], ['gst', 'GST returns'], ['chk', 'Checks']].filter(([k]) => (!simple || SIMPLE_TABS.includes(k)) && on(TAB_NEEDS[k] || 'flowbook_app'))} />
       <div className="explain-bar no-print">
         <p className="about">{ABOUT[tab][1]}{tab === 'tb' && <> <Term k="TB">What is this?</Term></>}</p>
         <Btn type="button" className="btn small" onClick={() => ask(`Explain my ${ABOUT[tab][0]} ${['gst'].includes(tab) ? 'for this month' : `from ${r.from} to ${r.to}`} in simple words, and tell me if anything needs my attention.`)}>Explain in simple words</Btn>
       </div>
       {!['chk', 'gst'].includes(tab) && <Range r={r} set={setR} one={asOfOnly} />}
       {tab === 'pnl' && <ProfitLoss r={r} />}{tab === 'bs' && <BalanceSheet r={r} />}{tab === 'tb' && <TrialBalance r={r} />}
-      {tab === 'an' && <Analysis r={r} />}{tab === 'ar' && <Ageing r={r} type="receivables" />}{tab === 'ap' && <Ageing r={r} type="payables" />}{tab === 'chk' && <Checks />}{tab === 'gst' && <GstReturns />}{tab === 'stmt' && <Statement r={r} />}
+      {tab === 'an' && <Analysis r={r} />}{tab === 'ar' && <Ageing r={r} type="receivables" />}{tab === 'ap' && <Ageing r={r} type="payables" />}{tab === 'due' && <><Due r={r} type="payables" /><Due r={r} type="receivables" /></>}{tab === 'chk' && <Checks />}{tab === 'gst' && <GstReturns />}{tab === 'stmt' && <Statement r={r} />}
     </Page>
   );
 };
