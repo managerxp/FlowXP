@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>FlowBook brochure</title>
+<style>
+@page { size: A4; margin: 0 }
+* { box-sizing: border-box; margin: 0; padding: 0 }
+:root { --blue:#0b5cff; --ink:#0f172a; --mute:#5b6577; --line:#e3e8f0; --soft:#f4f7fc; --green:#0a7a45 }
+body { font-family: "Segoe UI", Arial, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+.page { width: 210mm; height: 297mm; padding: 16mm 16mm 14mm; page-break-after: always; position: relative; overflow: hidden }
+.page:last-child { page-break-after: auto }
+.brand { font-weight: 700; font-size: 15pt; letter-spacing: -.3px } .brand b { color: var(--blue) }
+h1 { font-size: 34pt; line-height: 1.08; letter-spacing: -1px; margin: 0 0 6mm }
+h2 { font-size: 20pt; letter-spacing: -.5px; margin-bottom: 3mm }
+h3 { font-size: 11.5pt; margin-bottom: 1mm }
+p.lead { font-size: 13pt; color: var(--mute); max-width: 160mm }
+.cover { background: linear-gradient(160deg,#0b1d4d 0%,#0b5cff 100%); color: #fff }
+.hdr { display:flex; align-items:center; gap:4mm } .hdr img { height:15mm; width:auto } .hdr span { font-size:15pt; font-weight:700; color:var(--blue); padding-left:4mm; border-left:1px solid var(--line); line-height:1.2 }
+.cov img { background:#fff; border-radius:3mm; padding:2mm 4mm; height:19mm } .cov span { color:#fff; border-left-color:#ffffff66 }
+.cover p.lead { color: #d6e4ff }
+.cover .pill { display: inline-block; border: 1px solid #ffffff55; border-radius: 99px; padding: 1mm 4mm; font-size: 9.5pt; margin: 0 2mm 2mm 0; color: #e8f0ff }
+.cover .shot { position: absolute; left: 16mm; right: 16mm; bottom: 14mm; border-radius: 4mm; box-shadow: 0 6mm 14mm #0006; width: 178mm; height: 82mm; object-fit: cover; object-position: top left }
+.grid { display: grid; gap: 3.5mm } .g2 { grid-template-columns: 1fr 1fr } .g3 { grid-template-columns: 1fr 1fr 1fr }
+.card { border: 1px solid var(--line); border-radius: 3mm; padding: 3.5mm 4.5mm; background: #fff }
+.card p, li { color: var(--mute); font-size: 9.6pt }
+.soft { background: var(--soft) }
+.tag { font-size: 8pt; letter-spacing: .12em; text-transform: uppercase; color: var(--blue); font-weight: 700; margin-bottom: 2mm }
+img.s { width: 100%; border: 1px solid var(--line); border-radius: 3mm; display: block }
+ul { padding-left: 4.5mm } li { margin-bottom: 1.2mm }
+.foot { position: absolute; left: 16mm; right: 16mm; bottom: 8mm; display: flex; justify-content: space-between; font-size: 8.5pt; color: var(--mute); border-top: 1px solid var(--line); padding-top: 2mm }
+.big { font-size: 22pt; font-weight: 700; color: var(--blue) }
+table { width: 100%; border-collapse: collapse; font-size: 9.6pt } td, th { text-align: left; padding: 2mm 2.5mm; border-bottom: 1px solid var(--line); vertical-align: top } th { background: var(--soft); font-size: 8.5pt; text-transform: uppercase; letter-spacing: .06em; color: var(--mute) }
+table.t td:first-child { width: 46mm; font-weight: 600; color: var(--ink) }
+.chips span { display:inline-block; background:#fff; border:1px solid var(--line); border-radius:99px; padding:.6mm 3mm; font-size:8.8pt; color:var(--ink); margin:0 1.5mm 1.5mm 0 }
+.new { display:inline-block; background:var(--green); color:#fff; border-radius:99px; font-size:7.5pt; padding:.3mm 2mm; margin-left:2mm; vertical-align:middle; letter-spacing:.04em }
+.cta { background: var(--blue); color: #fff; border-radius: 3mm; padding: 9mm; margin-top: 9mm } .cta h2 { color: #fff } .cta p { color: #dbe7ff }
+</style></head><body>
+
+<!-- 1 cover -->
+<section class="page cover">
+  <div class="brand hdr cov"><img src="logo.png" alt="FlowXP"><span>FlowBook</span></div>
+  <div style="margin-top:20mm">
+    <h1>Accounts that keep<br>themselves.</h1>
+    <p style="font-size:17pt;font-weight:600;color:#bcd3ff;margin:-2mm 0 5mm">For builders, developers and every trade.</p>
+    <p class="lead">FlowBook is accounting and GST for Indian businesses, built into FlowXP. Contractors, real-estate developers, electrical and plumbing firms, hardware and material shops, and every other business: pick from ready lists instead of typing, and see every project&rsquo;s money in plain words.</p>
+    <div style="margin-top:6mm"><span class="pill">Projects &amp; sites</span><span class="pill">Flats &amp; stage instalments</span><span class="pill">Work orders &amp; RA bills</span><span class="pill">Retention &amp; advances</span><span class="pill">Ready item list</span><span class="pill">GST invoices &amp; returns</span><span class="pill">WhatsApp &amp; email</span></div>
+  </div>
+  <img class="shot" src="home.jpg" alt="">
+</section>
+
+<!-- 2 industries -->
+<section class="page">
+  <div class="brand hdr"><img src="logo.png" alt="FlowXP"><span>FlowBook</span></div>
+  <div class="tag" style="margin-top:10mm">Made for your trade</div>
+  <h2>One product, set up for the way you work</h2>
+  <p class="lead" style="font-size:11pt;margin-bottom:5mm">Choose your trade on day one and FlowBook loads the items, units and GST codes you will actually use. Nothing to type.</p>
+  <div class="grid g2">
+    <div class="card"><h3>Construction companies</h3><p>One project per site. Material bills, labour and subcontractor work all land on the project, so you see cost against what you have billed the client.</p></div>
+    <div class="card"><h3>Real-estate developers</h3><p>List flats and plots, sell each to a buyer, split the price into stage instalments (booking, slab, plaster, possession) and raise each stage invoice in one click.</p></div>
+    <div class="card"><h3>Contractors &amp; subcontractors</h3><p>Work orders with quantities and rates, then running-account (RA) bills that bill only the work measured since the last bill, with retention held back.</p></div>
+    <div class="card"><h3>Electrical contractors &amp; shops</h3><p>Wires, MCBs, switches, lights, fans and conduits ready to pick, with stock tracked and GST codes filled in.</p></div>
+    <div class="card"><h3>Plumbing contractors &amp; shops</h3><p>Pipes, fittings, valves, taps, tanks and pumps ready to pick. Quote, bill and track what is left in stock.</p></div>
+    <div class="card"><h3>Hardware &amp; building-material dealers</h3><p>Cement, steel, bricks, tiles, paint, plywood and fasteners with stock in hand, purchase orders, vendor bills and GST invoices. Customer dues chased on WhatsApp.</p></div>
+    <div class="card"><h3>Interior, paint &amp; finishing</h3><p>Quotes to invoices, advances from clients, labour by the day, and each job&rsquo;s profit on one screen.</p></div>
+    <div class="card"><h3>Shops, cafes, clinics &amp; services</h3><p>On FlowXP your daily till sales become books automatically. Services bill by quote, invoice or recurring invoice.</p></div>
+  </div>
+  <div class="card soft" style="margin-top:3.5mm"><h3>Also fits</h3><div class="chips"><span>Architects &amp; engineers</span><span>Surveyors</span><span>Tile &amp; flooring dealers</span><span>Sanitary-ware shops</span><span>Paint dealers</span><span>Plywood &amp; timber</span><span>Crane &amp; JCB hire</span><span>Transport &amp; trucking</span><span>Scaffolding hire</span><span>Housing societies</span></div></div>
+  <div class="foot"><span>FlowBook by FlowXP &middot; flowxp.in</span><span>2</span></div>
+</section>
+
+<!-- 3 builders -->
+<section class="page">
+  <div class="brand hdr"><img src="logo.png" alt="FlowXP"><span>FlowBook</span></div>
+  <div class="tag" style="margin-top:10mm">Projects, flats and contractors <span class="new">NEW</span></div>
+  <h2>From the first slab to the last instalment</h2>
+  <div class="grid g2" style="margin-top:3mm">
+    <div class="card"><h3>Projects &amp; sites</h3><p>Give each site a project. Tag bills, invoices and expenses to it and see money in, money out and profit for that site. Cost types such as Materials, Labour, Contractors and Equipment keep the split clear.</p></div>
+    <div class="card"><h3>Flats &amp; plots, sold in stages</h3><p>Add units (A-101, Plot 7), sell to a buyer at an agreed price and split it into stages that total 100%. Raise each stage as a GST invoice when the work reaches it; a cancelled stage can be raised again.</p></div>
+    <div class="card"><h3>Work orders &amp; RA bills</h3><p>Agree the work with a subcontractor or client: description, unit, quantity, rate. Each RA bill takes the measured total to date and bills only the new work. It will not let you go backwards or exceed the contract.</p></div>
+    <div class="card"><h3>Retention held back</h3><p>Set a retention % on a work order (say 5%) and every RA bill holds it automatically. A bill cannot be paid beyond what is payable now; the held amount stays visible until released.</p></div>
+    <div class="card"><h3>Advances</h3><p>Money paid or received ahead of a bill is kept as an advance and applied to the next bill. One card shows every advance and every retention held.</p></div>
+    <div class="card"><h3>Payments due</h3><p>One report of who owes you and whom you owe, by age, as of any date. Send reminders from the same screen.</p></div>
+  </div>
+  <h3 style="margin:5mm 0 1.5mm">Builder view: only what a site office needs</h3>
+  <p style="margin-bottom:3mm;color:var(--mute);font-size:9.8pt">A third view beside Simple and Full shows Projects, flats, bills, payments and stock, and hides the rest. Switch to Full any time.</p>
+  <div class="card soft"><p><b style="color:var(--ink)">Example.</b> Plastering contract with Sharma Contractors: 1,000 sq m internal at &#8377;100 and 500 sq m external at &#8377;200, 5% retention. First RA bill: 400 and 100 measured. FlowBook bills &#8377;60,000 and holds &#8377;3,000. Second bill: internal now at 700. It bills only the new 300 sq m.</p></div>
+  <div class="foot"><span>FlowBook by FlowXP &middot; flowxp.in</span><span>3</span></div>
+</section>
+
+<!-- 4 ready list -->
+<section class="page">
+  <div class="brand hdr"><img src="logo.png" alt="FlowXP"><span>FlowBook</span></div>
+  <div class="tag" style="margin-top:10mm">Pick, don&rsquo;t type</div>
+  <h2>A ready list of what your trade buys and sells</h2>
+  <p class="lead" style="font-size:11pt;margin-bottom:4mm">Over 130 items in ten groups, each with unit, HSN/SAC code and GST rate already filled in. Tick the ones you use, or add a whole group. Goods are tracked in stock from the start.</p>
+  <table class="t">
+    <tr><th>Group</th><th>Examples</th></tr>
+    <tr><td>Cement, sand &amp; concrete</td><td>OPC and PPC cement, river sand, M-sand, aggregates, ready-mix, fly ash</td></tr>
+    <tr><td>Steel &amp; metal</td><td>TMT bars 8&ndash;20 mm, binding wire, MS angle, channel, plate, GI sheet, welding rod</td></tr>
+    <tr><td>Bricks, blocks &amp; masonry</td><td>Red and fly-ash bricks, AAC and hollow blocks, paver blocks, granite, marble, Kota</td></tr>
+    <tr><td>Flooring, tiles &amp; sanitary</td><td>Vitrified and wall tiles, adhesive, grout, basins, toilet seats, tanks, sinks</td></tr>
+    <tr><td>Paint &amp; finishing</td><td>Putty, primer, emulsions, enamel, distemper, waterproofing, thinner</td></tr>
+    <tr><td>Wood, doors &amp; windows</td><td>Plywood, block board, flush doors, frames, aluminium and UPVC windows, glass, locks</td></tr>
+    <tr><td>Electrical</td><td>Copper wire, cables, switches, sockets, MCBs, RCCB, DBs, conduits, LED lights, fans</td></tr>
+    <tr><td>Plumbing</td><td>CPVC, PVC and GI pipes, fittings, valves, taps, shower sets, tanks, pumps</td></tr>
+    <tr><td>Hardware &amp; consumables</td><td>Bolts, screws, wall plugs, sealants, adhesives, gloves, helmets, tarpaulin, diesel</td></tr>
+    <tr><td>Labour &amp; contractors</td><td>Mason, helper, carpenter, electrician, plumber, painter by the day; civil, electrical and plumbing contract work; JCB, truck and scaffolding hire</td></tr>
+  </table>
+  <div class="grid g2" style="margin-top:5mm">
+    <div class="card soft"><h3>One-click first-run setup</h3><p>On the home page choose Builder, Electrician, Plumber, Hardware dealer or other. FlowBook adds that trade&rsquo;s items, turns on the right view and opens Projects.</p></div>
+    <div class="card soft"><h3>No prices pre-filled</h3><p>Rates change by city and by week, so you enter each rate once, on your first bill. HSN and GST codes are the common ones; your accountant can change any of them.</p></div>
+  </div>
+  <div class="foot"><span>FlowBook by FlowXP &middot; flowxp.in</span><span>4</span></div>
+</section>
+
+<!-- 5 core -->
+<section class="page">
+  <div class="brand hdr"><img src="logo.png" alt="FlowXP"><span>FlowBook</span></div>
+  <div class="tag" style="margin-top:10mm">Everything underneath</div>
+  <h2>Full accounting and GST, kept right</h2>
+  <div class="grid g2" style="margin-top:3mm">
+    <div class="card"><h3>Sales</h3><p>GST invoices, quotes, sales orders, credit notes and recurring invoices. Send or remind on WhatsApp or email. Print on A4, A5 or 80&nbsp;mm.</p></div>
+    <div class="card"><h3>Purchases</h3><p>Vendor bills, purchase orders, debit notes and expenses. Input GST is tracked, including reverse charge.</p></div>
+    <div class="card"><h3>Money</h3><p>Record payments and match them to invoices. Import a bank statement (CSV) and match each line.</p></div>
+    <div class="card"><h3>GST, ready for your CA</h3><p>GSTR-1 and GSTR-3B drafts with a check for what the portal usually rejects. Download e-way bill and e-invoice files to upload.</p></div>
+    <div class="card"><h3>Reports</h3><p>Profit and loss, balance sheet, trial balance, who owes you, who you owe, and a built-in &ldquo;books check&rdquo;.</p></div>
+    <div class="card"><h3>Stock, assets, time</h3><p>Items and stock levels, fixed assets with depreciation, staff time billed as invoices, foreign-currency invoices.</p></div>
+  </div>
+  <img class="s" src="reports.jpg" style="margin-top:5mm;height:70mm;object-fit:cover;object-position:top left" alt="">
+  <div class="grid g3" style="margin-top:5mm">
+    <div class="card soft"><h3>One sign-in</h3><p>FlowBook is a page of your FlowXP. No second login, no double entry.</p></div>
+    <div class="card soft"><h3>Sales flow in</h3><p>Till bills from retail, cafe, pharmacy or salon become entries automatically.</p></div>
+    <div class="card soft"><h3>Take your data</h3><p>One click downloads all your data. It is yours.</p></div>
+  </div>
+  <div class="foot"><span>FlowBook by FlowXP &middot; flowxp.in</span><span>5</span></div>
+</section>
+
+<!-- 6 easy + trust -->
+<section class="page">
+  <div class="brand hdr"><img src="logo.png" alt="FlowXP"><span>FlowBook</span></div>
+  <div class="tag" style="margin-top:10mm">Made easy</div>
+  <h2>Built for owners, not only accountants</h2>
+  <div class="grid g3" style="margin:3mm 0 5mm">
+    <div class="card"><h3>Simple, Builder or Full</h3><p>Simple shows the everyday screens. Builder adds sites and flats. Full adds journals, bank and assets. Switch any time.</p></div>
+    <div class="card"><h3>Help on every page</h3><p>Steps for the page you are on, and a word list explaining GST, TDS, retention and ageing in plain language.</p></div>
+    <div class="card"><h3>Ask the assistant</h3><p>&ldquo;Who owes me money?&rdquo; Answers come from your real figures. It only reads; it never changes your books.</p></div>
+  </div>
+  <img class="s" src="gst.jpg" style="height:84mm;object-fit:cover;object-position:top left" alt="">
+  <div class="grid g2" style="margin-top:5mm">
+    <div>
+      <h3>Careful with your numbers</h3>
+      <ul>
+        <li>Every entry balances; the books check proves each figure agrees with its documents.</li>
+        <li>Issued invoices cannot be edited, only cancelled with a record. Closed periods stay closed.</li>
+        <li>Roles control who sees and does what; every change is logged.</li>
+        <li>Each business&rsquo;s data is kept separate from every other.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Honest about its limits</h3>
+      <ul>
+        <li>GST returns and e-invoices are prepared as files for you or your CA to upload. FlowBook does not file for you.</li>
+        <li>Bank statements come in by CSV, not live bank feeds.</li>
+        <li>TDS on contractors (section 194C) is not deducted automatically yet.</li>
+        <li>No payroll yet. Screens are mainly in English.</li>
+        <li>GST rates in the ready list are the common ones; confirm with your CA.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>FlowBook by FlowXP &middot; flowxp.in</span><span>6</span></div>
+</section>
+
+<!-- 7 close -->
+<section class="page">
+  <div class="brand hdr"><img src="logo.png" alt="FlowXP"><span>FlowBook</span></div>
+  <div class="tag" style="margin-top:10mm">At a glance</div>
+  <h2>Who gets what</h2>
+  <table>
+    <tr><th style="width:48mm">If you are</th><th>FlowBook gives you</th></tr>
+    <tr><td><b>A builder or contractor</b></td><td>Projects, work orders, RA bills, retention and advances; cost against billing for every site.</td></tr>
+    <tr><td><b>A real-estate developer</b></td><td>Flats and plots, buyers, stage instalments invoiced in one click, and who has paid what.</td></tr>
+    <tr><td><b>An electrical or plumbing firm</b></td><td>A ready item list, quotes to invoices, stock in hand and customer dues on WhatsApp.</td></tr>
+    <tr><td><b>A hardware or material dealer</b></td><td>Stock, purchase orders, vendor bills, GST invoices and a payments-due list.</td></tr>
+    <tr><td><b>A shop, cafe or service business</b></td><td>Your daily sales turned into real books, GST drafts each month, unpaid invoices chased.</td></tr>
+    <tr><td><b>An accountant or CA</b></td><td>Full view: journals, chart of accounts, trial balance, bank matching and GST files.</td></tr>
+  </table>
+  <h3 style="margin:8mm 0 3mm">Getting started takes minutes</h3>
+  <div class="grid g3">
+    <div class="card soft"><div class="big">1</div><p><b style="color:var(--ink)">Sign up</b><br>Create your FlowXP account and choose FlowBook.</p></div>
+    <div class="card soft"><div class="big">2</div><p><b style="color:var(--ink)">Pick your trade</b><br>One click loads your items and the right view.</p></div>
+    <div class="card soft"><div class="big">3</div><p><b style="color:var(--ink)">Send your first bill</b><br>Pick the customer, tick items, Issue, send on WhatsApp.</p></div>
+  </div>
+  <div class="cta">
+    <h2>See your books in a day, not a month.</h2>
+    <p>Start with a free trial and bring your accountant along. Talk to us about the plan that fits your business.</p>
+    <p style="margin-top:3mm;color:#fff;font-weight:600">flowxp.in</p>
+  </div>
+  <p style="margin-top:6mm;font-size:8.5pt;color:var(--mute)">Screens shown use sample data. GST rules and return dates change; confirm filing decisions with your chartered accountant.</p>
+  <div class="foot"><span>FlowBook by FlowXP &middot; flowxp.in</span><span>7</span></div>
+</section>
+</body></html>
