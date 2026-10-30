@@ -224,6 +224,7 @@ export const DocView = ({ kind }) => {
   const emailOn = useEmailOn();
   const [void_, setVoid] = useState({ date: today(), reason: '' });
   const [apply, setApply] = useState({});
+  const [ret, setRet] = useState('');
   const [trk, setTrk] = useState({});
   const open = useLoad(() => (isNote(kind) && load.data?.status === 'ISSUED' ? o(`/${kind.api === 'credit-notes' ? 'invoices' : 'bills'}?status=ISSUED&partyId=${load.data.party_id}&limit=100`) : Promise.resolve(null)), [load.data?.id, load.data?.status]);
 
@@ -244,6 +245,7 @@ export const DocView = ({ kind }) => {
           {kind.pre && d0.outcome !== 'CONVERTED' && d0.outcome !== 'DECLINED' && <>
             {kind.api === 'quotes' && <Btn onClick={() => convert('SALES_ORDER')}>Make sales order</Btn>}
             {kind.api === 'purchase-orders' ? <Btn kind="primary" onClick={() => convert('BILL')}>Make bill</Btn> : <Btn kind="primary" onClick={() => convert('INVOICE')}>Make invoice</Btn>}</>}
+          {(kind.api === 'bills' || kind.api === 'invoices') && Number(load.data.balance_minor) > 0 && <Btn onClick={() => { setRet(Number(load.data.retention_minor) ? String(load.data.retention_minor) : ''); setPanel(panel === 'retention' ? '' : 'retention'); }}>Retention</Btn>}
           {kind.api === 'invoices' && on('flowbook_einvoice') && <Btn onClick={() => setPanel(panel === 'eway' ? '' : 'eway')}>E-way bill</Btn>}
           {(kind.api === 'invoices' || kind.api === 'credit-notes') && on('flowbook_einvoice') && <Btn onClick={() => setPanel(panel === 'einv' ? '' : 'einv')}>{load.data.einvoice?.status === 'GENERATED' ? 'E-invoice (registered)' : 'E-invoice'}</Btn>}
           {emailOn && on('flowbook_email') && kind.api !== 'bills' && <Btn onClick={() => setPanel(panel === 'email' ? '' : 'email')}>Send email</Btn>}
@@ -252,6 +254,11 @@ export const DocView = ({ kind }) => {
       <Async load={load}>{(d) => (<>
         <Err>{a.error}</Err><Note>{a.done}</Note>
         {panel === 'email' && <EmailForm documentId={id} onDone={() => setSent((n) => n + 1)} onClose={() => setPanel('')} />}
+        {panel === 'retention' && (
+          <Confirm><p>Hold back part of this {kind.one.toLowerCase()} until the work is accepted. It stays owed in full, but only the rest can be {kind.api === 'bills' ? 'paid' : 'collected'} now. Set it to 0 to release it.</p>
+            <div className="form"><Field label="Amount held back (₹)"><input inputMode="decimal" value={ret} onChange={(e) => setRet(e.target.value)} /></Field></div>
+            <Btn kind="primary" busy={a.busy} onClick={() => act(() => o(`/${kind.api}/${id}/retention`, { method: 'POST', body: { amount: ret.trim() || '0' } }), 'Retention saved.')}>Save</Btn></Confirm>
+        )}
         {panel === 'eway' && <EwayPanel id={id} number={d.number} onClose={() => setPanel('')} />}
         {panel === 'einv' && <EinvoicePanel id={id} number={d.number} einvoice={d.einvoice} onClose={() => setPanel('')} onDone={() => load.reload()} />}
         {d.status === 'DRAFT' && d.lines && !kind.pre && <TrackingPanel lines={d.lines} inward={kind.api === 'bills' || kind.api === 'credit-notes'} value={trk} onChange={setTrk} />}
@@ -297,6 +304,7 @@ export const DocView = ({ kind }) => {
             <div className="grand"><span>Total</span><Money v={d.total_minor} /></div>
             {d.currency !== 'INR' && <div><span>Total in {d.currency}</span><span className="num strong">{d.currency} {inr(d.foreign_total_minor)}</span></div>}
             {d.currency !== 'INR' && d.status === 'ISSUED' && !kind.pre && <div><span>Still to settle in {d.currency}</span><span className="num">{d.currency} {inr(d.foreign_balance_minor)}</span></div>}
+            {d.status === 'ISSUED' && !kind.pre && Number(d.retention_minor) > 0 && <div><span>Held as retention</span><Money v={d.retention_minor} /></div>}
             {d.status === 'ISSUED' && !kind.pre && <div><span>Still to settle</span><Money v={d.balance_minor} strong /></div>}
           </div>
           <p className="muted words">{amountInWords(d.total_minor)}</p>

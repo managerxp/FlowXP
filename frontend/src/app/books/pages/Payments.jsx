@@ -13,6 +13,7 @@ export const Payments = () => {
   const nav = useNavigate();
   const [dir, setDir] = useState('');
   const load = useLoad(() => o(`/payments?limit=100${dir ? `&direction=${dir}` : ''}`), [org.id, dir]);
+  const held = useLoad(() => o('/advances-retention'), [org.id]);
   return (
     <Page title="Payments" lead="Money received from customers and paid to vendors." actions={<><Link className="btn primary" to="/payments/new?direction=IN">Money received</Link><Link className="btn" to="/payments/new?direction=OUT">Money paid</Link></>}>
       <Tabs value={dir} onChange={setDir} tabs={[['', 'All'], ['IN', 'Received'], ['OUT', 'Paid']]} />
@@ -29,6 +30,16 @@ export const Payments = () => {
           {d.next && <p className="muted">Showing the latest 100.</p>}
         </Card>
       )}</Async>
+      {held.data && (held.data.retention.length > 0 || held.data.advances.length > 0) && (
+        <Card title="Held back and paid ahead">
+          {held.data.advances.length > 0 && <Table head={['Advance', 'Party', 'Date', '>Not yet matched']}>
+            {held.data.advances.map((p) => <tr key={p.id} className="click" onClick={() => nav(`/payments/${p.id}`)}><td><Link to={`/payments/${p.id}`}>{p.number}</Link> <span className="muted">{p.direction === 'IN' ? 'from customer' : 'to vendor'}</span></td><td>{p.party_name}</td><td>{showDate(p.pay_date)}</td><td className="r"><Money v={p.unallocated_minor} /></td></tr>)}
+          </Table>}
+          {held.data.retention.length > 0 && <Table head={['Retention on', 'Party', 'Project', '>Held back']}>
+            {held.data.retention.map((r) => <tr key={r.id} className="click" onClick={() => nav(`/${r.kind === 'BILL' ? 'purchases' : 'sales'}/${r.id}`)}><td><Link to={`/${r.kind === 'BILL' ? 'purchases' : 'sales'}/${r.id}`}>{r.number}</Link> <span className="muted">{r.kind === 'BILL' ? 'you owe' : 'owed to you'}</span></td><td>{r.party_name}</td><td>{r.project_name || ''}</td><td className="r"><Money v={r.retention_minor} /></td></tr>)}
+          </Table>}
+        </Card>
+      )}
     </Page>
   );
 };

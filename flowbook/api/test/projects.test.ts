@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { withOrg } from '../src/db.ts';
 import type { Db } from '../src/db.ts';
-import { createPayment, deleteDraft, issueDocument, saveDraft, voidDocument, voidPayment } from '../src/documents.ts';
+import { advancesAndRetention, setRetention, createPayment, deleteDraft, issueDocument, saveDraft, voidDocument, voidPayment } from '../src/documents.ts';
 import { createItem } from '../src/masters.ts';
 import { adjust, setTracking } from '../src/stock.ts';
 import type { DocKind } from '../src/documents.ts';
@@ -103,4 +103,30 @@ test('the project dashboard: budget, spent by kind of cost, received, and goods 
   assert.equal(p.budget_left_minor, 5_000_000n - p.cost_minor);
   await run(org, (c) => voidPayment(c, org, pay.id as bigint, { date: '2026-06-07', reason: 'bounced' }, 't'));
   assert.equal((await run(org, (c) => getProject(c, proj)))!.receipts_minor, 0n, 'a voided receipt stops counting');
+});
+
+test('retention holds part of a bill: it cannot be paid until released, and the books still balance', { skip }, async () => {
+  const { org, vend } = await studio();
+  const bill = await run(org, async (c) => {
+    const id = await saveDraft(c, org, null, { kind: 'BILL', partyId: vend, date: '2026-06-02', supplierRef: 'R-1', lines: [{ description: 'Slab work', quantity: '1', unitPrice: '1000', taxCode: 'GST0' }] }, 't');
+    await issueDocument(c, org, 'BILL', id, 't'); return id;
+  });
+  await run(org, (c) => setRetention(c, org, bill, 5_000n, 't'));
+  const pay = (key: string, amt: bigint) => run(org, (c) => createPayment(c, org, { direction: 'OUT', partyId: vend, date: '2026-06-05', mode: 'BANK', amount: amt, allocations: [{ documentId: bill, amount: amt }], idempotencyKey: key }, 't'));
+  await assert.rejects(pay('ret-pay-0001', 100_000n), /held as retention/);
+  await pay('ret-pay-0002', 95_000n);
+  const mid = await run(org, (c) => advancesAndRetention(c));
+  assert.equal(mid.retention.length, 1); assert.equal(mid.retention[0].balance_minor, 5_000n);
+  await assert.rejects(run(org, (c) => setRetention(c, org, bill, 9_000n, 't')), /between zero/);
+  await run(org, (c) => setRetention(c, org, bill, 0n, 't'));
+  await pay('ret-pay-0003', 5_000n);
+  const end = await run(org, (c) => advancesAndRetention(c));
+  assert.equal(end.retention.length, 0);
+});
+
+test('a payment made ahead of the bill shows as an advance until it is applied', { skip }, async () => {
+  const { org, vend } = await studio();
+  await run(org, (c) => createPayment(c, org, { direction: 'OUT', partyId: vend, date: '2026-06-01', mode: 'BANK', amount: 30_000n, idempotencyKey: 'adv-pay-0001' }, 't'));
+  const a = await run(org, (c) => advancesAndRetention(c));
+  assert.equal(a.advances.length, 1); assert.equal(a.advances[0].unallocated_minor, 30_000n);
 });

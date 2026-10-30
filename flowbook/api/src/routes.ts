@@ -3,7 +3,7 @@ import type pg from 'pg';
 import { audit } from './audit.ts';
 import { withOrg } from './db.ts';
 import type { Db } from './db.ts';
-import { ageing, allocatePayment, applyCreditNote, applyDebitNote, convertDocument, createOpeningBalance, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, setOutcome, voidDocument, voidPayment } from './documents.ts';
+import { advancesAndRetention, ageing, allocatePayment, applyCreditNote, applyDebitNote, convertDocument, createOpeningBalance, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, setOutcome, setRetention, voidDocument, voidPayment } from './documents.ts';
 import type { Alloc, DocIn, DocKind } from './documents.ts';
 import { listExpenses, recordExpense, voidExpense } from './expenses.ts';
 import { ewayBill } from './eway.ts';
@@ -329,6 +329,14 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
     await run(req, (c, orgId) => applyCreditNote(c, orgId, BigInt((req.params as { id: string }).id), allocs((req.body as { allocations: { documentId: string; amount: string }[] }).allocations), me(req)));
     return { ok: true };
   });
+
+  /* ---- retention held back on a bill or invoice, and advances not yet applied */
+  for (const [path, perm] of [['invoices', 'invoice'], ['bills', 'bill']] as const) {
+    app.post(`${base}/${path}/:id/retention`, { preHandler: scope(`${perm}.write`), schema: { ...idParam, body: { type: 'object', required: ['amount'], additionalProperties: false, properties: { amount: { type: 'string', pattern: '^\d{1,12}(\.\d{1,2})?$' } } } } }, async (req) => {
+      await run(req, (c, orgId) => setRetention(c, orgId, BigInt((req.params as { id: string }).id), toPaise((req.body as { amount: string }).amount), me(req))); return { ok: true };
+    });
+  }
+  app.get(`${base}/advances-retention`, { preHandler: scope('payment.read') }, async (req) => run(req, (c) => advancesAndRetention(c)));
 
   /* ---- payments */
   app.get(`${base}/payments`, { preHandler: scope('payment.read'), schema: { querystring: { type: 'object', properties: {

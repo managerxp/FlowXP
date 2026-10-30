@@ -208,3 +208,12 @@ test('unknown routes and malformed bodies get clean errors, never a stack trace'
   assert.equal(r.statusCode, 400); assert.ok(!/at .*\.ts/.test(r.body));
   assert.deepEqual(JSON.parse((await app.inject({ method: 'GET', url: '/health' })).body), { ok: true });
 });
+
+test('retention and advances are reachable over HTTP, and bad amounts are refused', { skip }, async () => {
+  const owner = await signUp('Owner3'); const org = await makeOrg(owner.token);
+  const o = (m: string, p: string, body?: unknown) => call(m, `/v1/orgs/${org}/${p}`, { token: owner.token, body });
+  const r = await o('GET', 'advances-retention');
+  assert.equal(r.status, 200); assert.deepEqual(r.body, { retention: [], advances: [] });
+  assert.equal((await o('POST', 'bills/1/retention', { amount: '-5' })).status, 400);
+  assert.notEqual((await o('POST', 'bills/999999/retention', { amount: '5' })).status, 200);
+});

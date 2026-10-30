@@ -168,7 +168,7 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
   return id;
 };
 
-const DOC_COLS = `d.id, d.kind, d.number, d.supplier_ref, d.party_id, p.name AS party_name, d.status, d.issue_date::text AS issue_date, d.due_date::text AS due_date,
+const DOC_COLS = `d.retention_minor, d.id, d.kind, d.number, d.supplier_ref, d.party_id, p.name AS party_name, d.status, d.issue_date::text AS issue_date, d.due_date::text AS due_date,
   d.place_of_supply, d.inter_state, d.subtotal_minor, d.tax_minor, d.round_off_minor, d.outcome, d.converted_document_id, (SELECT x.kind FROM documents x WHERE x.id = d.converted_document_id) AS converted_kind, (SELECT x.kind FROM documents x WHERE x.id = d.related_document_id) AS related_kind, d.tcs_rate_bp, d.tcs_minor, d.tcs_section, d.reverse_charge, d.project_id, d.project_category, d.warehouse_id, d.shipping_bill_no, d.shipping_bill_date::text AS shipping_bill_date, d.port_code, (SELECT w.name FROM warehouses w WHERE w.id = d.warehouse_id) AS warehouse_name, (SELECT pr.name FROM projects pr WHERE pr.id = d.project_id) AS project_name, d.currency, d.fx_rate::text AS fx_rate, d.foreign_total_minor, d.foreign_balance_minor, d.total_minor, d.balance_minor, d.related_document_id, d.journal_entry_id, d.memo`;
 
 export const listDocuments = async (c: Db, kind: DocKind, q: { status?: string; partyId?: bigint; before?: bigint; limit: number }) => (await c.query(
@@ -282,6 +282,30 @@ export const setOutcome = async (c: Db, orgId: bigint, id: bigint, outcome: 'ACC
   await audit(c, orgId, { actor, action: `document.${outcome.toLowerCase()}`, entityType: 'document', entityId: id, detail: { number: d.number } });
 };
 
+/** Hold back part of an issued bill or invoice (retention), or release it by lowering the amount. Nothing is posted: the document stays in payables or receivables in full. */
+export const setRetention = async (c: Db, orgId: bigint, id: bigint, amount: bigint, actor: string) => {
+  const d = (await c.query(`SELECT kind, status, balance_minor, retention_minor, number, currency FROM documents WHERE id = $1 FOR UPDATE`, [id])).rows[0];
+  if (!d) throw gone('document');
+  if (d.kind !== 'BILL' && d.kind !== 'INVOICE') throw new LedgerError('not_allocatable', 'only a bill or an invoice can carry a retention');
+  if (d.status !== 'ISSUED') throw new LedgerError('not_issued', 'only an issued document can carry a retention');
+  if (d.currency !== BASE) throw new LedgerError('foreign_document', 'retention is for rupee documents');
+  if (amount < 0n || amount > (d.balance_minor as bigint)) throw new LedgerError('bad_amount', `retention must be between zero and the ${paiseToString(d.balance_minor)} still outstanding`);
+  await c.query(`UPDATE documents SET retention_minor = $2 WHERE id = $1`, [id, amount]);
+  await audit(c, orgId, { actor, action: 'document.retention', entityType: 'document', entityId: id, detail: { number: d.number, from: paiseToString(d.retention_minor), to: paiseToString(amount) } });
+};
+
+/** What is held back and what is paid in advance, per party: retention on open documents and payments not yet applied to any document. */
+export const advancesAndRetention = async (c: Db) => ({
+  retention: (await c.query(
+    `SELECT d.id, d.kind, d.number, d.party_id, p.name AS party_name, d.issue_date::text AS issue_date, d.total_minor, d.balance_minor, d.retention_minor, pr.name AS project_name
+       FROM documents d JOIN parties p ON p.id = d.party_id LEFT JOIN projects pr ON pr.id = d.project_id
+      WHERE d.status = 'ISSUED' AND d.retention_minor > 0 ORDER BY d.issue_date, d.id`)).rows,
+  advances: (await c.query(
+    `SELECT p.id, p.direction, p.number, p.party_id, pt.name AS party_name, p.pay_date::text AS pay_date, p.amount_minor, p.unallocated_minor
+       FROM payments p JOIN parties pt ON pt.id = p.party_id
+      WHERE p.status <> 'VOID' AND p.unallocated_minor > 0 AND p.currency = 'INR' ORDER BY p.pay_date, p.id`)).rows
+});
+
 /** Turn a sent quote into a sales order or an invoice, or a sales order into an invoice. The new document is a draft with the same lines; nothing is posted until it is issued. */
 export const convertDocument = async (c: Db, orgId: bigint, id: bigint, to: 'SALES_ORDER' | 'INVOICE' | 'BILL', date: string, actor: string) => {
   const d = (await c.query(`SELECT * FROM documents WHERE id = $1 FOR UPDATE`, [id])).rows[0];
@@ -345,12 +369,13 @@ const applyAllocations = async (c: Db, orgId: bigint, src: { type: 'PAYMENT' | '
     if (a.amount <= 0n) throw new LedgerError('bad_amount', 'an allocation must be above zero');
     if (seen.has(a.documentId)) throw new LedgerError('duplicate_allocation', 'a document appears twice in the allocations');
     seen.add(a.documentId);
-    const doc = (await c.query(`SELECT kind, status, party_id, balance_minor, currency FROM documents WHERE id = $1 FOR UPDATE`, [a.documentId])).rows[0];
+    const doc = (await c.query(`SELECT kind, status, party_id, balance_minor, retention_minor, currency FROM documents WHERE id = $1 FOR UPDATE`, [a.documentId])).rows[0];
     if (!doc) throw gone('document');
     if (doc.currency !== BASE) throw new LedgerError('foreign_document', `document ${a.documentId} is in ${doc.currency}; settle it with a payment in that currency`);
     if (doc.kind !== docKind || doc.status !== 'ISSUED') throw new LedgerError('not_allocatable', `document ${a.documentId} is not an issued ${docKind.toLowerCase().replace('_', ' ')}`);
     if (doc.party_id !== src.partyId) throw new LedgerError('party_mismatch', 'the document belongs to a different party');
-    if (a.amount > (doc.balance_minor as bigint)) throw new LedgerError('over_allocation', `document ${a.documentId} has only ${paiseToString(doc.balance_minor)} outstanding`);
+    const due = (doc.balance_minor as bigint) - (doc.retention_minor as bigint);
+    if (a.amount > due) throw new LedgerError('over_allocation', `document ${a.documentId} has only ${paiseToString(due > 0n ? due : 0n)} outstanding` + ((doc.retention_minor as bigint) > 0n ? ` (${paiseToString(doc.retention_minor)} is held as retention)` : ''));
     await c.query(`UPDATE documents SET balance_minor = balance_minor - $2 WHERE id = $1`, [a.documentId, a.amount]);
     await c.query(`INSERT INTO payment_allocations (organization_id, source_type, source_id, document_id, amount_minor) VALUES ($1, $2, $3, $4, $5)`, [orgId, src.type, src.id, a.documentId, a.amount]);
     total += a.amount;
