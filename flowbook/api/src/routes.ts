@@ -20,6 +20,7 @@ import { getEmailSettings, listEmails, saveEmailSettings, sendDocument } from '.
 import type { EmailSettingsIn } from './email.ts';
 import { CURRENCIES, listRates, listRevaluations, rateOn, revalue, reversePending, saveRate } from './fx.ts';
 import { COST_TYPES } from './costtypes.ts';
+import { addFromCatalogue, catalogueFor } from './catalogue.ts';
 import { addUnit, listUnits, raiseStage, sellUnit } from './units.ts';
 import { addTime, createProject, deleteTime, getProject, invoiceTime, listProjects, updateProject } from './projects.ts';
 import { IT_BLOCKS, assetSchedule, setAssetTax, taxDepreciation } from './assets-tax.ts';
@@ -145,6 +146,9 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   /* ---- items */
   app.get(`${base}/items`, { preHandler: scope('item.read') }, async (req) => run(req, async (c) => (await c.query(
     `SELECT id, sku, name, kind, hsn_sac, unit, tax_code, sale_price_minor, purchase_price_minor, active, track_stock, tracking FROM items ORDER BY name LIMIT 1000`)).rows));
+  app.get(`${base}/catalogue`, { preHandler: scope('item.read') }, async (req) => run(req, (c) => catalogueFor(c)));
+  app.post(`${base}/catalogue/add`, { preHandler: scope('item.write'), schema: { body: { type: 'object', required: ['skus'], additionalProperties: false, properties: { skus: { anyOf: [{ type: 'string', enum: ['all'] }, { type: 'array', maxItems: 500, items: { type: 'string', maxLength: 80 } }] } } } } }, async (req) =>
+    ({ added: await run(req, (c, orgId) => addFromCatalogue(c, orgId, (req.body as { skus: string[] | 'all' }).skus, me(req))) }));
   app.post(`${base}/items`, { preHandler: scope('item.write'), schema: { body: { type: 'object', required: ['sku', 'name'], additionalProperties: false, properties: {
     sku: { type: 'string', minLength: 1, maxLength: 60 }, name: { type: 'string', minLength: 1, maxLength: 160 }, kind: { type: 'string', enum: ['GOODS', 'SERVICE'] }, hsnSac: { type: 'string', maxLength: 12 }, unit: { type: 'string', enum: UQC },
     taxCode: { type: 'string', maxLength: 20 }, salePrice: { type: 'string', pattern: AMOUNT }, purchasePrice: { type: 'string', pattern: AMOUNT }, trackStock: { type: 'boolean' }, reorderLevel: { type: 'string', pattern: QTY }, tracking: { type: 'string', enum: ['NONE', 'BATCH', 'SERIAL'] } } } } }, async (req, reply) => {

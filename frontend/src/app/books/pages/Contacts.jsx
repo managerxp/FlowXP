@@ -35,9 +35,10 @@ export const Parties = ({ kind }) => {
   const edit = (p) => { setMore(Boolean(p.pan || p.state_code || p.email || p.credit_days || p.address_line || p.city || p.pincode || p.ship_address_line)); setForm({ id: p.id, kind: p.kind, name: p.name, gstin: p.gstin || '', pan: p.pan || '', stateCode: p.state_code || '', phone: p.phone || '', email: p.email || '', creditDays: p.credit_days ?? '', whatsappOptOut: Boolean(p.whatsapp_opt_out), addressLine: p.address_line || '', city: p.city || '', pincode: p.pincode || '', shipAddressLine: p.ship_address_line || '', shipCity: p.ship_city || '', shipPincode: p.ship_pincode || '' }); };
 
   return (
-    <Page title={`${word[0].toUpperCase()}${word.slice(1)}s`} lead={kind === 'CUSTOMER' ? 'People and businesses you sell to.' : 'People and businesses you buy from.'} actions={<><Btn onClick={() => setImporting(true)}>Import CSV</Btn><Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm(blank(kind)); }}>Add {word}</Btn></>}>
+    <Page title={`${word[0].toUpperCase()}${word.slice(1)}s`} lead={kind === 'CUSTOMER' ? 'People and businesses you sell to.' : 'People and businesses you buy from.'} actions={<><Btn onClick={() => setReady(!ready)}>Add from ready list</Btn><Btn onClick={() => setImporting(true)}>Import CSV</Btn><Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm(blank(kind)); }}>Add {word}</Btn></>}>
       {importing && <CsvImport what="party" partyKind={kind} onDone={() => load.reload()} onClose={() => setImporting(false)} />}
       <Note>{a.done}</Note>
+      {ready && <ReadyList onDone={() => load.reload()} onClose={() => setReady(false)} />}
       {form && (
         <Card title={form.id ? `Edit ${word}` : `New ${word}`}>
           <Err>{a.error}</Err>
@@ -74,10 +75,43 @@ export const Parties = ({ kind }) => {
   );
 };
 
+/* The ready list of building, electrical and plumbing items: tick what the business uses instead of typing it. */
+const ReadyList = ({ onDone, onClose }) => {
+  const { o, org } = useSession();
+  const load = useLoad(() => o('/catalogue'), [org.id]);
+  const a = useAction();
+  const [group, setGroup] = useState(0);
+  const [pick, setPick] = useState({});
+  const chosen = Object.keys(pick).filter((k) => pick[k]);
+  const add = (skus, msg) => a.run(async () => { const r = await o('/catalogue/add', { method: 'POST', body: { skus } }); setPick({}); await load.reload(); onDone(); return r; }, msg);
+  return (
+    <Card title="Add from the ready list"><p className="muted">Cement, steel, bricks, wiring, pipes, paint, labour and more are already listed with their HSN code and GST rate. Tick what you use, or add everything. You enter the price when you first buy it.</p>
+      <Err>{a.error}</Err><Note>{a.done}</Note>
+      <Async load={load}>{(groups) => {
+        const g = groups[Math.min(group, groups.length - 1)];
+        return (<>
+          <div className="seg" role="tablist" style={{ flexWrap: 'wrap' }}>{groups.map((x, i) => <button key={x.group} className={i === group ? 'on' : ''} onClick={() => setGroup(i)}>{x.group}</button>)}</div>
+          <div style={{ columns: '16rem', marginTop: '.75rem' }}>
+            {g.items.map((i) => (
+              <label key={i.sku} className="check" style={{ display: 'block', breakInside: 'avoid', opacity: i.added ? 0.5 : 1 }}>
+                <input type="checkbox" disabled={i.added} checked={i.added || !!pick[i.sku]} onChange={(e) => setPick({ ...pick, [i.sku]: e.target.checked })} /> {i.name} <span className="muted">{i.added ? 'added' : `GST ${i.tax.replace('GST', '')}%`}</span>
+              </label>))}
+          </div>
+          <div className="actions" style={{ marginTop: '.75rem' }}>
+            <Btn kind="primary" busy={a.busy} disabled={!chosen.length} onClick={() => add(chosen, `${chosen.length} added.`)}>Add {chosen.length || ''} selected</Btn>
+            <Btn busy={a.busy} onClick={() => add('all', 'Everything on the list was added.')}>Add everything</Btn>
+            <Btn onClick={onClose}>Close</Btn>
+          </div>
+        </>);
+      }}</Async></Card>
+  );
+};
+
 export const Items = () => {
   const { o, org } = useSession();
   const [form, setForm] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [ready, setReady] = useState(false);
   const load = useLoad(() => o('/items'), [org.id]);
   const rates = useLoad(() => o('/tax-rates'), [org.id]);
   const a = useAction();
@@ -112,7 +146,7 @@ export const Items = () => {
           </form></Card>
       )}
       <Card><Async load={load}>{(rows) => (
-        <Table head={['Code', 'Name', 'Kind', 'HSN/SAC', 'Unit', 'GST', '>Sells at', '>Buys at']} empty={!rows.length && <Empty>No items yet. You can also type lines by hand on an invoice.</Empty>}>
+        <Table head={['Code', 'Name', 'Kind', 'HSN/SAC', 'Unit', 'GST', '>Sells at', '>Buys at']} empty={!rows.length && <Empty>No items yet. Use “Add from ready list” to pick cement, steel, wiring, pipes and more in a few clicks, or type lines by hand on an invoice.</Empty>}>
           {rows.map((i) => (<tr key={i.id}><td>{i.sku}</td><td>{i.name}</td><td>{i.kind === 'SERVICE' ? 'Service' : 'Goods'}</td><td>{i.hsn_sac}</td><td>{unitLabel(i.unit)}</td><td>{i.tax_code}</td><td className="r">{!isZero(i.sale_price_minor) && <Money v={i.sale_price_minor} />}</td><td className="r">{!isZero(i.purchase_price_minor) && <Money v={i.purchase_price_minor} />}</td></tr>))}
         </Table>
       )}</Async></Card>
