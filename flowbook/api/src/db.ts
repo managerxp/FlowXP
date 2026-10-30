@@ -11,6 +11,9 @@ export const SCHEMA = 'flowbook';
    because FlowXP runs in the same process when FlowBook is mounted inside it and reads BIGINT as text. */
 const types = { getTypeParser: (oid: number, format?: 'text' | 'binary') => (oid === 20 ? (v: string) => BigInt(v) : pg.types.getTypeParser(oid as never, format as never)) };
 
+/** The role every request runs as, so row level security and the table grants apply. null when the database user may not create or use that role (a plain user on a shared FlowXP database): requests then run as that user itself, and row level security still applies because the tables force it. */
+let appRole: string | null = 'flowbook_app';
+
 export const createPool = (connectionString: string): pg.Pool => new pg.Pool({ connectionString, options: `-c search_path=${SCHEMA},public`, types: types as never });
 
 /**
@@ -21,7 +24,7 @@ export const withOrg = async <T>(pool: pg.Pool, orgId: bigint, fn: (c: Db) => Pr
   const c = await pool.connect();
   try {
     await c.query('BEGIN');
-    await c.query('SET LOCAL ROLE flowbook_app');
+    if (appRole) await c.query(`SET LOCAL ROLE ${appRole}`);
     await c.query(`SELECT set_config('app.org_id', $1, true)`, [orgId.toString()]);
     const out = await fn(c);
     await c.query('COMMIT');
@@ -34,6 +37,20 @@ export const withOrg = async <T>(pool: pg.Pool, orgId: bigint, fn: (c: Db) => Pr
   }
 };
 
+/** Make the application role usable by this database user, or learn that it cannot be (then the migrations grant to the user itself). */
+const ensureRole = async (c: Db): Promise<boolean> => {
+  try {
+    await c.query('BEGIN');
+    await c.query("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'flowbook_app') THEN CREATE ROLE flowbook_app NOLOGIN; END IF; END $$");
+    await c.query('SET LOCAL ROLE flowbook_app');   // fails if this user may not use the role
+    await c.query('COMMIT');
+    return true;
+  } catch {
+    await c.query('ROLLBACK').catch(() => {});
+    return false;
+  }
+};
+
 const MIGRATIONS = fileURLToPath(new URL('../migrations/', import.meta.url));
 
 /** Forward-only SQL migrations, each applied once, in file order. Run as the database owner. */
@@ -41,6 +58,9 @@ export const migrate = async (pool: pg.Pool): Promise<string[]> => {
   const c = await pool.connect();
   const applied: string[] = [];
   try {
+    appRole = (await ensureRole(c)) ? 'flowbook_app' : null;
+    const me = (await c.query('SELECT current_user AS u')).rows[0].u as string;
+    const sql = (text: string) => (appRole ? text : text.replaceAll("'flowbook_app'", `'${me.replaceAll("'", "''")}'`).replaceAll('flowbook_app', `"${me.replaceAll('"', '""')}"`));
     await c.query(`CREATE SCHEMA IF NOT EXISTS ${SCHEMA}`);
     await c.query('CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())');
     const done = new Set((await c.query('SELECT name FROM schema_migrations')).rows.map((r) => r.name as string));
@@ -48,7 +68,7 @@ export const migrate = async (pool: pg.Pool): Promise<string[]> => {
       if (done.has(file)) continue;
       await c.query('BEGIN');
       try {
-        await c.query(readFileSync(MIGRATIONS + file, 'utf8'));
+        await c.query(sql(readFileSync(MIGRATIONS + file, 'utf8')));
         await c.query('INSERT INTO schema_migrations (name) VALUES ($1)', [file]);
         await c.query('COMMIT');
         applied.push(file);
@@ -58,7 +78,7 @@ export const migrate = async (pool: pg.Pool): Promise<string[]> => {
       }
     }
     // the application role reads the tables of this schema (the table grants are in the migrations)
-    await c.query(`GRANT USAGE ON SCHEMA ${SCHEMA} TO flowbook_app`);
+    await c.query(sql(`GRANT USAGE ON SCHEMA ${SCHEMA} TO flowbook_app`));
   } finally {
     c.release();
   }
