@@ -443,7 +443,12 @@ const AppShell = () => {
      deleted. Sending them to the wizard is the only useful thing to do. */
   if (!business) return <Navigate to="/app/onboarding" replace />;
 
-  const allowed = (item) => (!item.types || item.types.includes(business.business_type))
+  // a FlowBook-only business has no till: only FlowBook, its plan and its account pages are offered
+  const bookOnly = business.business_type === 'FLOWBOOK';
+  const BOOK_PAGES = ['/app/flowbook', '/app/settings', '/app/security', '/app/onboarding'];
+  const bookPage = (item) => !bookOnly || BOOK_PAGES.some((p) => item.to === p || item.to.startsWith(`${p}/`));
+  if (bookOnly && !BOOK_PAGES.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) return <Navigate to="/app/flowbook" replace />;
+  const allowed = (item) => bookPage(item) && (!item.types || item.types.includes(business.business_type))
     && (!item.distributor || business.distributor_enabled)
     && (!item.notTypes || !item.notTypes.includes(business.business_type))
     && (!item.roles || item.roles.includes(business.role))
@@ -487,7 +492,7 @@ const AppShell = () => {
   /* Fit, checked the same way: a typed URL for a screen made for another kind of business (the retail stock
      center opened by a pharmacy) would load and then fail against an API that only serves that trade. Several
      nav entries can share a path (Inventory is listed per trade), so the screen fits if any of them does. */
-  const fits = (item) => (!item.types || item.types.includes(business.business_type))
+  const fits = (item) => bookPage(item) && (!item.types || item.types.includes(business.business_type))
     && (!item.notTypes || !item.notTypes.includes(business.business_type))
     && (!item.distributor || business.distributor_enabled);
   const notHere = owner && !blocked && !allItems.filter((i) => i.to === owner.to).some(fits);

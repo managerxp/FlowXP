@@ -15,6 +15,7 @@ export const setup = async () => {
   try { await admin.connect(); await admin.query(`CREATE DATABASE ${name}`); } catch (e) { skip = `no Postgres available (${(e as Error).message})`; }
   const url = new URL(baseUrl); url.pathname = `/${name}`;
   const pool = createPool(url.toString());
+  pool.on('error', () => {});   // the forced drop at the end cuts idle connections; that is not a failure
   if (!skip) await migrate(pool);
   const cleanup = async () => { await pool.end().catch(() => {}); if (!skip) { await admin.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`).catch(() => {}); } await admin.end().catch(() => {}); };
   return { pool, skip, cleanup };

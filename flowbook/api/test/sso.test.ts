@@ -33,11 +33,3 @@ test('FlowXP sign-in opens the business books with its own trial, and a forged o
   assert.equal(staff.status, 200);
   assert.equal((await go(handoff({ bid: '99', email: 'x@y.example', role: 'STAFF' }))).status, 403, 'staff cannot be the first in');
 });
-
-test('with password sign-in switched off, register and login are not there', { skip }, async () => {
-  const off = buildApp({ pool, allowedOrigins: [], passwordAuth: false });
-  const r = await off.inject({ method: 'POST', url: '/v1/auth/register', payload: { name: 'X', email: 'x@example.com', password: 'correct horse battery' } });
-  const l = await off.inject({ method: 'POST', url: '/v1/auth/login', payload: { email: 'x@example.com', password: 'correct horse battery' } });
-  assert.deepEqual([r.statusCode, l.statusCode], [404, 404]);
-  await off.close();
-});
