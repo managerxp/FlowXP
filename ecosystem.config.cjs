@@ -21,18 +21,7 @@ module.exports = {
       max_memory_restart: '400M',
       kill_timeout: 10000,        // give server.js's own SIGTERM handler time to finish in-flight requests
       time: true
-    },
-    {
-      name: 'flowbook-api',        // FlowBook accounting API; nginx serves its web app at /books and proxies /books/v1 here (port 5200)
-      script: 'src/server.ts',
-      cwd: 'flowbook/api',
-      interpreter: 'node',
-      exec_mode: 'fork',
-      instances: 1,
-      env: { NODE_ENV: 'development' },
-      env_production: { NODE_ENV: 'production' },
-      max_memory_restart: '400M',
-      time: true
     }
+    // FlowBook runs inside the FlowXP API process above (at /books, schema `flowbook`), so it has no process of its own
   ]
 };

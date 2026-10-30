@@ -22,6 +22,7 @@ import { apiLimiter } from './src/middleware/limits.js';
 import './src/modules/scans.js';
 import './src/modules/flowbook/outbox.js';
 import { startWorker, stopWorker } from './src/modules/jobs.js';
+import { embeddedFlowbook } from './src/modules/flowbook/embed.js';
 
 const app = express();
 
@@ -48,6 +49,10 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+/* FlowBook (accounting) runs inside this process at /books, in the same database. It reads its own request body, so it goes before the body parsers. */
+const flowbook = embeddedFlowbook();
+app.use('/books', flowbook.middleware);
 
 /*
  * CORS is an allowlist, not a wildcard. The app and the marketing site are the
@@ -128,6 +133,7 @@ const start = async () => {
   try {
     await initializeDatabase();
     await ensureSuperAdmin();
+    await flowbook.start();   // after FlowXP's own migrations; a failure here never stops FlowXP
   } catch (error) {
     console.error('[server] database initialisation failed:', error.message);
     process.exit(1);
@@ -144,6 +150,7 @@ const start = async () => {
     console.log(`[server] ${signal} — shutting down`);
     stopWorker();
     server.close(async () => {
+      await flowbook.close().catch(() => {});
       await pool.end().catch(() => {});
       process.exit(0);
     });

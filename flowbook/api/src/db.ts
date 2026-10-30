@@ -4,10 +4,14 @@ import pg from 'pg';
 
 export type Db = pg.PoolClient;
 
-// BIGINT columns (ids, paise) come back as bigint, never as a lossy number
-pg.types.setTypeParser(20, (v) => BigInt(v));
+/** FlowBook lives in its own schema of the database, so it can share FlowXP's database without its tables (organizations, payments, ...) meeting FlowXP's. */
+export const SCHEMA = 'flowbook';
 
-export const createPool = (connectionString: string): pg.Pool => new pg.Pool({ connectionString });
+/* BIGINT columns (ids, paise) come back as bigint, never as a lossy number. Set on this pool only (not on pg globally),
+   because FlowXP runs in the same process when FlowBook is mounted inside it and reads BIGINT as text. */
+const types = { getTypeParser: (oid: number, format?: 'text' | 'binary') => (oid === 20 ? (v: string) => BigInt(v) : pg.types.getTypeParser(oid as never, format as never)) };
+
+export const createPool = (connectionString: string): pg.Pool => new pg.Pool({ connectionString, options: `-c search_path=${SCHEMA},public`, types: types as never });
 
 /**
  * Run `fn` as one organization: one transaction, the application role (so row level security applies),
@@ -37,6 +41,7 @@ export const migrate = async (pool: pg.Pool): Promise<string[]> => {
   const c = await pool.connect();
   const applied: string[] = [];
   try {
+    await c.query(`CREATE SCHEMA IF NOT EXISTS ${SCHEMA}`);
     await c.query('CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())');
     const done = new Set((await c.query('SELECT name FROM schema_migrations')).rows.map((r) => r.name as string));
     for (const file of readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort()) {
@@ -52,6 +57,8 @@ export const migrate = async (pool: pg.Pool): Promise<string[]> => {
         throw error;
       }
     }
+    // the application role reads the tables of this schema (the table grants are in the migrations)
+    await c.query(`GRANT USAGE ON SCHEMA ${SCHEMA} TO flowbook_app`);
   } finally {
     c.release();
   }

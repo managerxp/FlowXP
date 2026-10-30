@@ -167,7 +167,7 @@ cd ../web && npm ci && npm run build      # builds with base /books/ into flowbo
 ```
 
 - `FLOWBOOK_SSO_SECRET` is the same long random value in `backend/.env` and `flowbook/api/.env`; `backend/.env` also gets `FLOWBOOK_APP_URL=https://flowxp.in/books`.
-- nginx (`deploy/nginx.conf`) serves `flowbook/web/dist` at `/books/` and proxies `/books/v1/` to port 5200. `ecosystem.config.cjs` has a `flowbook-api` process. FlowBook migrations run when it starts.
+- nginx (`deploy/nginx.conf`) serves `flowbook/web/dist` at `/books/` and proxies `/books/v1/` to the FlowXP API (port 5100): FlowBook runs inside that same process and database, its tables in the `flowbook` schema, so there is no second process or database. Its settings (`FLOWBOOK_SSO_SECRET`, `FLOWBOOK_SECRET_KEY`, `COOKIE_SECURE`...) go in the one backend `.env`. FlowBook migrations run when the API starts. `FLOWBOOK_EMBEDDED=false` switches it off.
 - FlowBook has no login of its own; people arrive from FlowXP's sign-in. In production its own register and login API stays reachable only through `/books/v1`, so block `/books/v1/auth/register` and `/books/v1/auth/login` in nginx if you do not want them (FlowBook's SSO call is `/books/v1/auth/flowxp`).
 
 ## What is not covered here

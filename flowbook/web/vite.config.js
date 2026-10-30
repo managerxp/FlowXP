@@ -5,5 +5,5 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/books/' : '/',   // in production FlowBook lives on the same site, at flowxp.in/books
   plugins: [react()],
-  server: { port: 5300, proxy: { '/v1': 'http://127.0.0.1:5200' } }
+  server: { port: 5300, proxy: { '/v1': { target: 'http://127.0.0.1:5100', rewrite: (p) => `/books${p}` } } }
 }));
