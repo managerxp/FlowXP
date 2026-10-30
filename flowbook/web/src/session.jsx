@@ -27,6 +27,7 @@ export const SessionProvider = ({ children }) => {
   const org = state.orgs.find((x) => String(x.id) === String(orgId)) || state.orgs[0] || null;
   const value = useMemo(() => ({
     ...state, org,
+    on: (feature) => !(org?.features_off || []).includes(feature),   // false when the FlowXP super admin switched that feature off for this business
     o: (path, opts) => api(`/orgs/${org.id}${path}`, opts),
     pick: (id) => { store(() => localStorage.setItem(ORG_KEY, id)); setOrgId(id); },
     refresh,

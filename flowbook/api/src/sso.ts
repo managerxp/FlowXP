@@ -26,6 +26,18 @@ const ROLE: Record<string, string> = { OWNER: 'owner', ADMIN: 'admin' };
 
 /** Find or make the person and the business's books, add them if new, and copy the trial. Returns null for a role that may not open the books. */
 export const signInFromFlowxp = async (pool: pg.Pool, h: Handoff): Promise<{ userId: bigint; orgId: bigint } | null> => {
+  // two handoffs for the same business can arrive together (a double click, a page that opens twice): one at a time, or each would make its own books
+  const lock = await pool.connect();
+  try {
+    await lock.query(`SELECT pg_advisory_lock(hashtext($1))`, [`flowbook-sso:${h.bid}`]);
+    return await signIn(pool, h);
+  } finally {
+    await lock.query(`SELECT pg_advisory_unlock(hashtext($1))`, [`flowbook-sso:${h.bid}`]).catch(() => {});
+    lock.release();
+  }
+};
+
+const signIn = async (pool: pg.Pool, h: Handoff): Promise<{ userId: bigint; orgId: bigint } | null> => {
   let user = (await pool.query(`SELECT id FROM users WHERE lower(email) = lower($1) AND status = 'ACTIVE'`, [h.email])).rows[0];
   if (!user) user = (await pool.query(`INSERT INTO users (email, name, password_hash) VALUES ($1, $2, 'flowxp-sign-in') RETURNING id`, [h.email, h.name || h.email])).rows[0];
   const userId = user.id as bigint;

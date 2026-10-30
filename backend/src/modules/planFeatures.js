@@ -67,6 +67,26 @@ export const PLAN_FEATURES = [
   ['backup_restore', 'Restore from a backup', 'Put the records of a downloaded backup back, adding only what is missing and never changing what is there'],
   // FlowBook link (all business types). Missing key = on.
   ['flowbook', 'FlowBook accounting link', 'Send every sale, return and payment to FlowBook so the books keep themselves'],
+  // FlowBook's own features. The everyday ones (invoices, bills, customers, vendors, items, payments, expenses, profit and loss, settings) are always on;
+  // these advanced ones can be switched off per plan, business type or business, and FlowBook stops serving them (flowbook/api/src/features.ts). Missing key = on.
+  ['flowbook_app', 'FlowBook app', 'Open FlowBook at all. Off: the business cannot sign in to FlowBook and its API answers nothing'],
+  ['flowbook_quotes_orders', 'FlowBook: quotes and orders', 'Quotes, sales orders and purchase orders'],
+  ['flowbook_notes', 'FlowBook: credit and debit notes', 'Corrections to issued invoices and bills'],
+  ['flowbook_recurring', 'FlowBook: recurring invoices', 'Invoices and bills that repeat every month'],
+  ['flowbook_projects', 'FlowBook: projects', 'Time, costs and profit per project'],
+  ['flowbook_bank', 'FlowBook: bank and reconciliation', 'Bank accounts, statement import and matching'],
+  ['flowbook_stock', 'FlowBook: stock and warehouses', 'Stock counts, batches, serial numbers and warehouses'],
+  ['flowbook_assets', 'FlowBook: fixed assets', 'Assets and their depreciation'],
+  ['flowbook_gst', 'FlowBook: GST returns', 'GSTR-1 and GSTR-3B drafts'],
+  ['flowbook_einvoice', 'FlowBook: e-invoice and e-way bill', 'IRN files and e-way bill details'],
+  ['flowbook_currency', 'FlowBook: foreign currency', 'Invoices and bills in other currencies, exchange rates'],
+  ['flowbook_tds_tcs', 'FlowBook: TDS and TCS', 'Tax deducted by customers and tax collected at source'],
+  ['flowbook_journals', 'FlowBook: journals', 'Writing journal entries by hand'],
+  ['flowbook_reports_more', 'FlowBook: balance sheet and statements', 'Balance sheet, trial balance and party statements'],
+  ['flowbook_whatsapp', 'FlowBook: WhatsApp', 'Send invoices and payment reminders on WhatsApp'],
+  ['flowbook_email', 'FlowBook: email', 'Send invoices by email'],
+  ['flowbook_import', 'FlowBook: import from CSV', 'Bring customers and items in from a spreadsheet'],
+  ['flowbook_ai', 'FlowBook assistant', 'Ask questions about your books in plain words inside FlowBook; each question counts against the monthly AI questions of the plan'],
   // Supermarket / retail. Missing key = on.
   ['auto_sku', 'Automatic SKU', 'FlowXP makes each new product\'s SKU (MILK-00001), so nobody has to invent one']
 ];

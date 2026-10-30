@@ -100,8 +100,9 @@ const Ask = ({ page, suggestions }) => {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [available, setAvailable] = useState(null);
+  const [why, setWhy] = useState('');
   const end = useRef(null);
-  useEffect(() => { o('/assistant/status').then((s) => setAvailable(s.available), () => setAvailable(false)); }, [org.id]);
+  useEffect(() => { o('/assistant/status').then((s) => { setAvailable(s.available); setWhy(s.message || ''); }, () => setAvailable(false)); }, [org.id]);
   useEffect(() => { end.current?.scrollIntoView?.({ block: 'end' }); }, [msgs, busy]);
 
   const send = async (question) => {
@@ -117,7 +118,7 @@ const Ask = ({ page, suggestions }) => {
   };
   useEffect(() => { if (pending && available !== null) { clearPending(); if (available) send(pending); } }, [pending, available]);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (available === false) return <p className="notice warn">The assistant is not switched on for your account yet. The <strong>This page</strong> and <strong>Words</strong> tabs still have answers.</p>;
+  if (available === false) return <p className="notice warn">{why || 'The assistant is not switched on for your account yet.'} The <strong>This page</strong> and <strong>Words</strong> tabs still have answers.</p>;
   return (
     <div className="ask">
       <div className="ask-log" aria-live="polite">

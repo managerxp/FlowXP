@@ -33,3 +33,11 @@ test('FlowXP sign-in opens the business books with its own trial, and a forged o
   assert.equal(staff.status, 200);
   assert.equal((await go(handoff({ bid: '99', email: 'x@y.example', role: 'STAFF' }))).status, 403, 'staff cannot be the first in');
 });
+
+test('two handoffs for a new business arriving together make one set of books', { skip }, async () => {
+  const [x, y] = await Promise.all([go(handoff({ bid: '555', sub: '55', email: 'race@shop.example' })), go(handoff({ bid: '555', sub: '55', email: 'race@shop.example' }))]);
+  assert.equal(x.status, 200); assert.equal(y.status, 200);
+  assert.equal(x.body.organizationId, y.body.organizationId);
+  assert.equal((await pool.query(`SELECT count(*)::int AS n FROM organizations WHERE flowxp_business_id = '555'`)).rows[0].n, 1);
+  assert.equal((await pool.query(`SELECT count(*)::int AS n FROM organizations WHERE name = 'Corner Shop' AND flowxp_business_id IS NULL`)).rows[0].n, 0);
+});

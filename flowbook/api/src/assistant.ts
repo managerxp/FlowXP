@@ -15,7 +15,11 @@ import { profitAndLoss } from './reports.ts';
 export type AiBridge = {
   configured: () => boolean;
   /** Anthropic-shaped request and reply: see backend/src/modules/ai/provider.js */
-  complete: (request: { system: string; messages: unknown[]; tools: unknown[]; tier?: string; maxTokens?: number }) => Promise<{ content: Block[]; stopReason?: string }>;
+  complete: (request: { system: string; messages: unknown[]; tools: unknown[]; tier?: string; maxTokens?: number }) => Promise<{ content: Block[]; stopReason?: string; usage?: { input_tokens?: number; output_tokens?: number }; model?: string }>;
+  /** May this business use the assistant now (its plan, its owner's switch, its monthly allowance)? `flowxpBusinessId` is null for books not linked to FlowXP. Unset: always. */
+  gate?: (flowxpBusinessId: string | null) => Promise<{ ok: true; remaining: number | null } | { ok: false; status: number; message: string }>;
+  /** Count one answered question against the business's allowance, with what the provider reported using. */
+  record?: (flowxpBusinessId: string | null, used: { model?: string; input_tokens: number; output_tokens: number }) => Promise<void>;
   /** figures in the answer that none of the tool results explain (optional) */
   ungrounded?: (answer: string, results: unknown[]) => { text: string }[];
   checkNote?: string;
@@ -148,22 +152,33 @@ export const registerAssistant = (app: FastifyInstance, { pool, scope, ai }: Dep
     return ++u.n > PER_HOUR;
   };
 
-  app.get(`${base}/assistant/status`, { preHandler: scope('report.read') }, async () => ({ available: Boolean(ai?.configured()) }));
+  const linked = async (orgId: bigint): Promise<string | null> => (await pool.query(`SELECT flowxp_business_id FROM organizations WHERE id = $1`, [orgId])).rows[0]?.flowxp_business_id ?? null;
+
+  app.get(`${base}/assistant/status`, { preHandler: scope('report.read') }, async (req) => {
+    if (!ai?.configured()) return { available: false };
+    const g = ai.gate ? await ai.gate(await linked(req.org?.id as bigint)) : { ok: true as const, remaining: null };
+    return g.ok ? { available: true, remaining: g.remaining } : { available: false, message: g.message };
+  });
 
   app.post(`${base}/assistant`, { preHandler: scope('report.read') as never, schema: { body: { type: 'object', required: ['question'], additionalProperties: false, properties: {
     question: { type: 'string', minLength: 1, maxLength: 800 }, page: { type: 'string', maxLength: 80 },
     history: { type: 'array', maxItems: 12, items: { type: 'object', required: ['role', 'content'], additionalProperties: false, properties: { role: { type: 'string', enum: ['user', 'assistant'] }, content: { type: 'string', maxLength: 4000 } } } } } } } }, async (req, reply) => {
     if (!ai?.configured()) return reply.code(503).send({ error: { code: 'ai_off', message: 'The assistant is not switched on yet. The help button (?) has quick answers in the meantime.' } });
     const orgId = req.org?.id as bigint;
+    const link = await linked(orgId);
+    const g = ai.gate ? await ai.gate(link) : { ok: true as const, remaining: null };
+    if (!g.ok) return reply.code(g.status).send({ error: { code: 'ai_blocked', message: g.message } });
     if (limited(String(orgId))) return reply.code(429).send({ error: { code: 'busy', message: 'You have asked a lot in the last hour. Please try again a little later.' } });
     const b = req.body as { question: string; page?: string; history?: { role: 'user' | 'assistant'; content: string }[] };
     const name = (await pool.query(`SELECT name FROM organizations WHERE id = $1`, [orgId])).rows[0]?.name ?? 'this business';
     const system = systemPrompt(name, String(req.org?.role), b.page ?? '');
     const messages: unknown[] = [...(b.history ?? []), { role: 'user', content: b.question }];
     const lookups: string[] = []; const facts: unknown[] = [];
+    const spent = { calls: 0, input_tokens: 0, output_tokens: 0, model: undefined as string | undefined };
     try {
       for (let round = 0; round < MAX_ROUNDS; round++) {
         const out = await ai.complete({ system, messages, tools: TOOLS, tier: 'reasoning', maxTokens: 1500 });
+        spent.calls += 1; spent.input_tokens += out.usage?.input_tokens ?? 0; spent.output_tokens += out.usage?.output_tokens ?? 0; spent.model = out.model ?? spent.model;
         const calls = out.content.filter((x) => x.type === 'tool_use');
         if (out.stopReason !== 'tool_use' || !calls.length) {
           const text = out.content.filter((x) => x.type === 'text').map((x) => x.text).join('\n').trim();
@@ -190,6 +205,9 @@ export const registerAssistant = (app: FastifyInstance, { pool, scope, ai }: Dep
     } catch (e) {
       const status = (e as { status?: number }).status;
       return reply.code(status === 429 ? 429 : 502).send({ error: { code: 'ai_error', message: e instanceof Error && (e as { name?: string }).name === 'AIProviderError' ? e.message : 'The assistant could not answer that right now.' } });
+    } finally {
+      // one question is one unit of the allowance, however many lookups it took; a question the provider never answered costs nothing
+      if (spent.calls) await ai.record?.(link, { model: spent.model, input_tokens: spent.input_tokens, output_tokens: spent.output_tokens }).catch((e: unknown) => console.error('[flowbook] could not record assistant use:', e));
     }
   });
 };

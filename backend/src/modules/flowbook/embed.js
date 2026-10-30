@@ -11,6 +11,7 @@
 import config from '../../config/env.js';
 import { complete, isConfigured } from '../ai/provider.js';
 import { CHECK_NOTE, ungrounded } from '../ai/grounding.js';
+import { featuresOff, gate, record } from './gate.js';
 
 export const embeddedFlowbook = () => {
   let booted = null;
@@ -23,7 +24,7 @@ export const embeddedFlowbook = () => {
       const { bootFlowbook } = await import('../../../../flowbook/api/src/boot.ts');
       const origins = [config.appOrigin, ...config.corsOrigins];
       if (config.flowbookAppUrl) origins.push(new URL(config.flowbookAppUrl).origin);
-      booted = await bootFlowbook(config.databaseUrl, origins, { configured: isConfigured, complete, ungrounded, checkNote: CHECK_NOTE });
+      booted = await bootFlowbook(config.databaseUrl, origins, { ai: { configured: isConfigured, complete, ungrounded, checkNote: CHECK_NOTE, gate, record }, featuresOff });
       console.log('[flowbook] running inside the FlowXP API at /books');
     } catch (error) {
       failed = error;

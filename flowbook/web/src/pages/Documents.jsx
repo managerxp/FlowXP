@@ -51,7 +51,7 @@ const blankLine = () => ({ itemId: '', description: '', hsnSac: '', unit: '', qu
 export const DocForm = ({ kind }) => {
   const { id } = useParams();
   const [search] = useSearchParams();
-  const { o, org } = useSession();
+  const { o, org, on } = useSession();
   const nav = useNavigate();
   const a = useAction();
   const simple = useSimple();
@@ -126,7 +126,7 @@ export const DocForm = ({ kind }) => {
             <Field label="Date"><input type="date" value={f.date} onChange={set('date')} required /></Field>
             {!!projects.data?.length && <Field label="Project" hint="Optional: counts towards that project's profit"><select value={f.projectId} onChange={set('projectId')}><option value="">None</option>{projects.data.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>}
             {(warehouses.data || []).filter((w) => w.active).length > 1 && <Field label="Warehouse" hint="Where counted goods on this document come from or go to"><select value={f.warehouseId} onChange={set('warehouseId')}><option value="">Default</option>{warehouses.data.filter((w) => w.active).map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field>}
-            {!isNote(kind) && adv && <Field label="Currency"><select value={f.currency} onChange={(e) => changeCurrency(e.target.value)}><option value="INR">Rupees (₹)</option>{Object.entries(fx.data?.currencies || {}).map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
+            {!isNote(kind) && adv && on('flowbook_currency') && <Field label="Currency"><select value={f.currency} onChange={(e) => changeCurrency(e.target.value)}><option value="INR">Rupees (₹)</option>{Object.entries(fx.data?.currencies || {}).map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
             {f.currency !== 'INR' && kind.api === 'invoices' && <>
               <Field label="Shipping bill no." hint="Export of goods; goes in GSTR-1 (optional until it is filed)"><input value={f.shippingBillNo} onChange={set('shippingBillNo')} maxLength={7} /></Field>
               <Field label="Shipping bill date"><input type="date" value={f.shippingBillDate} onChange={set('shippingBillDate')} /></Field>
@@ -160,7 +160,7 @@ export const DocForm = ({ kind }) => {
               </div>
             ))}
           </div>
-          {kind.api === 'invoices' && adv && <div className="form">
+          {kind.api === 'invoices' && adv && on('flowbook_tds_tcs') && <div className="form">
             <Field label={<Term k="TCS">TCS to collect (%)</Term>} hint="Only if the law requires you to collect tax at source on this sale; charged on value plus GST"><input inputMode="decimal" value={f.tcsRate} onChange={set('tcsRate')} /></Field>
             {Number(f.tcsRate) > 0 && <Field label="TCS section"><select value={f.tcsSection} onChange={set('tcsSection')}><option value="">Not stated</option>{TCS_SECTIONS.map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
           </div>}
@@ -214,7 +214,7 @@ const trackingBody = (lines, value) => lines.filter((l) => l.tracking && l.track
 
 export const DocView = ({ kind }) => {
   const { id } = useParams();
-  const { o, org } = useSession();
+  const { o, org, on } = useSession();
   const nav = useNavigate();
   const load = useLoad(() => o(`/${kind.api}/${id}`), [org.id, kind.api, id]);
   const a = useAction();
@@ -237,15 +237,15 @@ export const DocView = ({ kind }) => {
         {load.data.status === 'ISSUED' && <>
           {kind.paymentDirection && Number(load.data.balance_minor) > 0 && <Link className="btn primary" to={`/payments/new?direction=${kind.paymentDirection}&partyId=${load.data.party_id}&documentId=${id}`}>{kind.paymentDirection === 'IN' ? 'Record payment' : 'Pay this bill'}</Link>}
           {isNote(kind) && Number(load.data.balance_minor) > 0 && <Btn onClick={() => setPanel(panel === 'apply' ? '' : 'apply')}>{kind.api === 'credit-notes' ? 'Apply to invoices' : 'Apply to bills'}</Btn>}
-          {kind.api === 'invoices' && <WhatsappButton kind="INVOICE" documentId={id} label="Send on WhatsApp" onDone={() => setSent((n) => n + 1)} />}
-          {kind.api === 'invoices' && Number(load.data.balance_minor) > 0 && <WhatsappButton kind="REMINDER" documentId={id} label="Remind on WhatsApp" onDone={() => setSent((n) => n + 1)} />}
+          {kind.api === 'invoices' && on('flowbook_whatsapp') && <WhatsappButton kind="INVOICE" documentId={id} label="Send on WhatsApp" onDone={() => setSent((n) => n + 1)} />}
+          {kind.api === 'invoices' && on('flowbook_whatsapp') && Number(load.data.balance_minor) > 0 && <WhatsappButton kind="REMINDER" documentId={id} label="Remind on WhatsApp" onDone={() => setSent((n) => n + 1)} />}
           {kind.pre && !d0.outcome && <><Btn onClick={() => act(() => o(`/${kind.api}/${id}/outcome`, { method: 'POST', body: { outcome: 'ACCEPTED' } }), 'Marked accepted.')}>{kind.who} accepted</Btn><Btn onClick={() => act(() => o(`/${kind.api}/${id}/outcome`, { method: 'POST', body: { outcome: 'DECLINED' } }), 'Marked declined.')}>{kind.who} declined</Btn></>}
           {kind.pre && d0.outcome !== 'CONVERTED' && d0.outcome !== 'DECLINED' && <>
             {kind.api === 'quotes' && <Btn onClick={() => convert('SALES_ORDER')}>Make sales order</Btn>}
             {kind.api === 'purchase-orders' ? <Btn kind="primary" onClick={() => convert('BILL')}>Make bill</Btn> : <Btn kind="primary" onClick={() => convert('INVOICE')}>Make invoice</Btn>}</>}
-          {kind.api === 'invoices' && <Btn onClick={() => setPanel(panel === 'eway' ? '' : 'eway')}>E-way bill</Btn>}
-          {(kind.api === 'invoices' || kind.api === 'credit-notes') && <Btn onClick={() => setPanel(panel === 'einv' ? '' : 'einv')}>{load.data.einvoice?.status === 'GENERATED' ? 'E-invoice (registered)' : 'E-invoice'}</Btn>}
-          {emailOn && kind.api !== 'bills' && <Btn onClick={() => setPanel(panel === 'email' ? '' : 'email')}>Send email</Btn>}
+          {kind.api === 'invoices' && on('flowbook_einvoice') && <Btn onClick={() => setPanel(panel === 'eway' ? '' : 'eway')}>E-way bill</Btn>}
+          {(kind.api === 'invoices' || kind.api === 'credit-notes') && on('flowbook_einvoice') && <Btn onClick={() => setPanel(panel === 'einv' ? '' : 'einv')}>{load.data.einvoice?.status === 'GENERATED' ? 'E-invoice (registered)' : 'E-invoice'}</Btn>}
+          {emailOn && on('flowbook_email') && kind.api !== 'bills' && <Btn onClick={() => setPanel(panel === 'email' ? '' : 'email')}>Send email</Btn>}
           <Btn onClick={() => window.print()}>Print</Btn><Btn kind="danger" onClick={() => setPanel(panel === 'void' ? '' : 'void')}>Void</Btn></>}
       </>}>
       <Async load={load}>{(d) => (<>

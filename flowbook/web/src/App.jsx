@@ -56,6 +56,8 @@ const NAV = [
   { label: 'Setup', items: [['/settings', 'Settings', 'gear']] }
 ];
 /* The Simple view keeps what a shop uses every day; the accountant's screens come back with Full */
+/* the advanced screens the FlowXP super admin can switch off (keys in api/src/features.ts) */
+const NEEDS = { '/quotes': 'flowbook_quotes_orders', '/sales-orders': 'flowbook_quotes_orders', '/purchase-orders': 'flowbook_quotes_orders', '/credit-notes': 'flowbook_notes', '/debit-notes': 'flowbook_notes', '/recurring': 'flowbook_recurring', '/projects': 'flowbook_projects', '/bank': 'flowbook_bank', '/stock': 'flowbook_stock', '/assets': 'flowbook_assets', '/journals': 'flowbook_journals' };
 const SIMPLE = new Set(['/', '/sales', '/customers', '/purchases', '/expenses', '/vendors', '/payments', '/items', '/stock', '/reports', '/settings']);
 const Icon = ({ name }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={ICON[name]} /></svg>;
 
@@ -126,7 +128,7 @@ const TrialBanner = ({ org }) => {
 };
 
 const Shell = () => {
-  const { user, orgs, org, pick, signOut } = useSession();
+  const { user, orgs, org, pick, signOut, on } = useSession();
   const [open, setOpen] = useState(false);
   const simple = useSimple();
   const loc = useLocation();
@@ -140,7 +142,7 @@ const Shell = () => {
           <button className="icon-btn side-close" aria-label="Close menu" onClick={close}>✕</button>
         </div>
         <nav onClick={close}>
-          {NAV.map((g) => ({ ...g, items: simple ? g.items.filter(([to]) => SIMPLE.has(to)) : g.items })).filter((g) => g.items.length).map((g, i) => (
+          {NAV.map((g) => ({ ...g, items: g.items.filter(([to]) => (!simple || SIMPLE.has(to)) && on(NEEDS[to] || 'flowbook_app')) })).filter((g) => g.items.length).map((g, i) => (
             <div key={i} className="nav-group">{g.label && <p className="nav-label">{g.label}</p>}
               {g.items.map(([to, label, icon]) => <NavLink key={to} to={to} end={to === '/'} className="nav-item"><Icon name={icon} />{label}</NavLink>)}</div>
           ))}
@@ -163,7 +165,9 @@ const Shell = () => {
         </header>
       <main key={`${org?.id}`}>
         <TrialBanner org={org} />
-        {!org ? <CreateOrg first /> : (
+        {!org ? <CreateOrg first /> : !on('flowbook_app') ? (
+          <Card title="FlowBook is switched off"><p>FlowBook is not part of this business's plan right now. Contact FlowXP support or upgrade your plan to use it.</p><p><a className="btn" href={`${SITE_URL}/app/settings/subscription`}>See plans in FlowXP</a></p></Card>
+        ) : (
           <Routes location={loc}>
             <Route path="/" element={<Dashboard />} />
             {DOCS.flatMap((d) => [

@@ -209,7 +209,7 @@ export default ({ AddBusiness }) => {
   const [tab, setTab] = useState('biz');
   return (
     <Page title="Settings">
-      <Tabs value={tab} onChange={setTab} tabs={[['biz', 'Business'], ['print', 'Printing'], ['open', 'Opening balances'], ['tax', 'GST rates'], ['periods', 'Closing'], ['team', 'Team'], ['wa', 'WhatsApp'], ['email', 'Email'], ['fx', 'Currencies'], ['flowxp', 'FlowXP'], ['log', 'Activity'], ['new', 'Add business']]} />
+      <Tabs value={tab} onChange={setTab} tabs={[['biz', 'Business'], ['print', 'Printing'], ['open', 'Opening balances'], ['tax', 'GST rates'], ['periods', 'Closing'], ['team', 'Team'], ['wa', 'WhatsApp'], ['email', 'Email'], ['fx', 'Currencies'], ['flowxp', 'FlowXP'], ['log', 'Activity'], ['new', 'Add business']].filter(([k]) => on({ wa: 'flowbook_whatsapp', email: 'flowbook_email', fx: 'flowbook_currency' }[k] || 'flowbook_app'))} />
       {tab === 'biz' && <Business />}{tab === 'print' && <Printing />}{tab === 'open' && <OpeningBalances />}{tab === 'tax' && <TaxRates />}{tab === 'periods' && <Periods />}{tab === 'team' && <Team />}{tab === 'wa' && <WhatsappSettings />}{tab === 'email' && <EmailSettings />}{tab === 'fx' && <CurrencySettings />}{tab === 'flowxp' && <FlowXP />}{tab === 'log' && <Activity />}{tab === 'new' && <AddBusiness />}
     </Page>
   );

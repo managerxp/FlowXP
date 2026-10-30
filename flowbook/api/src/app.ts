@@ -14,6 +14,7 @@ import { registerBookRoutes } from './routes.ts';
 import { registerIntegrationRoutes } from './integration-routes.ts';
 import { registerAssistant } from './assistant.ts';
 import type { AiBridge } from './assistant.ts';
+import { featureLabel, featureOfRoute, featuresInBody } from './features.ts';
 import { setPeriodStatus } from './periods.ts';
 import type { PeriodStatus } from './periods.ts';
 import { TEMPLATES } from './coa.ts';
@@ -38,6 +39,8 @@ export type AppOptions = {
   passwordAuth?: boolean;
   /** The AI provider behind the assistant (the FlowXP API hands in its own). Unset: the assistant says it is not switched on. */
   ai?: AiBridge;
+  /** What the FlowXP super admin has switched off for a FlowXP business (keys of features.ts). Unset: nothing is off. */
+  featuresOff?: (flowxpBusinessId: string) => Promise<string[]>;
 };
 
 const COOKIE = 'fb_session';
@@ -115,11 +118,17 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
     if (!(await authenticate(req, reply))) return;
     const raw = (req.params as { orgId?: string }).orgId ?? '';
     const m = /^\d{1,18}$/.test(raw) ? (await pool.query(
-      `SELECT m.role, o.plan = 'TRIAL' AND o.trial_ends_at <= now() AS trial_over FROM memberships m JOIN organizations o ON o.id = m.organization_id WHERE m.organization_id = $1 AND m.user_id = $2`, [raw, req.session?.userId])).rows[0] : null;
+      `SELECT m.role, o.flowxp_business_id, o.plan = 'TRIAL' AND o.trial_ends_at <= now() AS trial_over FROM memberships m JOIN organizations o ON o.id = m.organization_id WHERE m.organization_id = $1 AND m.user_id = $2`, [raw, req.session?.userId])).rows[0] : null;
     if (!m) { reply.code(404).send({ error: { code: 'not_found', message: 'no such organization' } }); return; }
     if (!can(m.role as Role, permission)) { reply.code(403).send({ error: { code: 'forbidden', message: `your role cannot do this (${permission})` } }); return; }
     // a finished free trial keeps the books readable and exportable but takes no new entries
     if (m.trial_over && req.method !== 'GET' && req.method !== 'HEAD') { reply.code(402).send({ error: { code: 'trial_ended', message: 'your 7-day free trial has ended. Your books are safe and can still be read; pay for your plan in FlowXP (Settings, Subscription) and open FlowBook again' } }); return; }
+    // what the FlowXP super admin switched off for this business: the whole app, or one advanced feature
+    if (opts.featuresOff && m.flowxp_business_id) {
+      const off = new Set(await opts.featuresOff(String(m.flowxp_business_id)));
+      const hit = off.has('flowbook_app') ? 'flowbook_app' : [featureOfRoute(req.routeOptions.url ?? ''), ...featuresInBody(req.body)].find((k) => k && off.has(k));
+      if (hit) { reply.code(403).send({ error: { code: 'feature_off', message: `${featureLabel(hit)} is not part of your plan. You can upgrade your plan in FlowXP.` } }); return; }
+    }
     req.org = { id: BigInt(raw), role: m.role as Role };
   };
   const me = (req: FastifyRequest) => `user:${req.session?.userId}`;
@@ -179,8 +188,9 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
   app.get('/v1/me', async (req, reply) => {
     if (!(await authenticate(req, reply))) return;
     const orgs = (await pool.query(
-      `SELECT o.id, o.name, m.role, o.plan, o.trial_ends_at, GREATEST(0, CEIL(EXTRACT(EPOCH FROM (o.trial_ends_at - now())) / 86400))::int AS trial_days_left FROM memberships m JOIN organizations o ON o.id = m.organization_id WHERE m.user_id = $1 ORDER BY o.name`, [req.session?.userId])).rows;
-    return { user: { id: req.session?.userId, name: req.session?.name, email: req.session?.email }, organizations: orgs };
+      `SELECT o.id, o.name, o.flowxp_business_id, m.role, o.plan, o.trial_ends_at, GREATEST(0, CEIL(EXTRACT(EPOCH FROM (o.trial_ends_at - now())) / 86400))::int AS trial_days_left FROM memberships m JOIN organizations o ON o.id = m.organization_id WHERE m.user_id = $1 ORDER BY o.name`, [req.session?.userId])).rows;
+    const organizations = await Promise.all(orgs.map(async (o) => ({ ...o, features_off: o.flowxp_business_id && opts.featuresOff ? await opts.featuresOff(String(o.flowxp_business_id)) : [] })));
+    return { user: { id: req.session?.userId, name: req.session?.name, email: req.session?.email }, organizations: organizations.map(({ flowxp_business_id: _link, ...o }) => o) };
   });
 
   /* ---- organizations */

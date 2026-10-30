@@ -34,7 +34,7 @@ export const Payments = () => {
 };
 
 export const PaymentForm = () => {
-  const { o, org } = useSession();
+  const { o, org, on } = useSession();
   const [q] = useSearchParams();
   const nav = useNavigate();
   const a = useAction();
@@ -100,7 +100,7 @@ export const PaymentForm = () => {
           <Field label="Date"><input type="date" value={f.date} onChange={set('date')} required /></Field>
           <Field label="How"><select value={f.mode} onChange={set('mode')}><option value="BANK">Bank transfer</option><option value="UPI">UPI</option><option value="CASH">Cash</option><option value="CARD">Card</option></select></Field>
           {!viaBank && <Field label={fxd.docId ? 'Rupees that actually moved (₹)' : 'Amount (₹)'}><input inputMode="decimal" value={f.amount} onChange={set('amount')} required /></Field>}
-          {(!simple || more) && <Field label={<Term k="TDS">{f.direction === 'IN' ? 'TDS the customer deducted (₹)' : 'TDS you deducted (₹)'}</Term>} hint="Optional. The amount above is what actually moved; this is tax held back"><input inputMode="decimal" value={f.tds} onChange={set('tds')} /></Field>}
+          {(!simple || more) && on('flowbook_tds_tcs') && <Field label={<Term k="TDS">{f.direction === 'IN' ? 'TDS the customer deducted (₹)' : 'TDS you deducted (₹)'}</Term>} hint="Optional. The amount above is what actually moved; this is tax held back"><input inputMode="decimal" value={f.tds} onChange={set('tds')} /></Field>}
           {(!simple || more) && Number(f.tds) > 0 && !fxd.docId && <Field label="TDS section"><select value={f.tdsSection} onChange={set('tdsSection')}><option value="">Not stated</option>{TDS_SECTIONS.map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
           <Field label="Reference" hint="Cheque, UTR or note (optional)"><input value={f.reference} onChange={set('reference')} maxLength={80} /></Field>
         </div></Card>

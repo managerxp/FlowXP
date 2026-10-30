@@ -27,6 +27,7 @@ export const checkUrl = (value) => {
    handoff (who they are, which business, and the business's own trial or plan) instead of asking for another password. */
 export const launch = async (req, res) => {
   if (!config.flowbookAppUrl || !config.flowbookSsoSecret) return res.status(503).json({ success: false, message: 'FlowBook is not set up on this server yet' });
+  if (!hasPlanFeature(req.tenant, 'flowbook_app')) return res.status(402).json({ success: false, message: 'FlowBook is switched off for this business. Contact us to turn it on.' });
   // FlowBook is the offer of the business that signed up for FlowBook; a business of another type has it once it is paying (the FlowXP link)
   if (req.tenant.businessType !== 'FLOWBOOK' && !(req.tenant.subscription.status === 'ACTIVE' && hasPlanFeature(req.tenant, 'flowbook'))) {
     return res.status(402).json({ success: false, message: 'FlowBook is not part of this business plan. Start a FlowBook free trial from the FlowBook page, or contact us.' });

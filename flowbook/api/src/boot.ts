@@ -14,8 +14,9 @@ import { startReminderWorker } from './whatsapp.ts';
 export type Booted = { app: FastifyInstance; close: () => Promise<void> };
 
 /** @param extraOrigins browser origins that may make cookie-authenticated changes, on top of ALLOWED_ORIGINS
- *  @param ai the AI provider for the assistant (FlowXP's, when mounted inside it) */
-export const bootFlowbook = async (url: string, extraOrigins: string[] = [], ai?: AiBridge): Promise<Booted> => {
+ *  @param host what the FlowXP API hands in when FlowBook is mounted inside it: its AI provider (with the plan and allowance check) and which features the super admin switched off */
+export type Host = { ai?: AiBridge; featuresOff?: (flowxpBusinessId: string) => Promise<string[]> };
+export const bootFlowbook = async (url: string, extraOrigins: string[] = [], host: Host = {}): Promise<Booted> => {
   const pool = createPool(url);
   if (process.env.RUN_MIGRATIONS !== 'false') console.log('[flowbook] migrations applied:', (await migrate(pool)).join(', ') || 'none');
 
@@ -28,7 +29,8 @@ export const bootFlowbook = async (url: string, extraOrigins: string[] = [], ai?
     allowedOrigins: [...(process.env.ALLOWED_ORIGINS ?? '').split(','), ...extraOrigins].map((s) => s.trim()).filter(Boolean),
     passwordAuth: !production || process.env.FLOWBOOK_PASSWORD_AUTH === 'on',   // in production FlowXP is the only sign-in
     secureCookie: production || process.env.COOKIE_SECURE === 'true',
-    ai
+    ai: host.ai,
+    featuresOff: host.featuresOff
   });
   await app.ready();
   return { app, close: async () => { worker?.stop(); reminders?.stop(); await app.close(); await pool.end(); } };

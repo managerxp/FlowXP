@@ -99,14 +99,16 @@ const SIMPLE_TABS = ['pnl', 'an', 'ar', 'ap', 'gst'];
 
 export default () => {
   const simple = useSimple();
+  const { on } = useSession();
   const { ask } = useHelp();
+  const TAB_NEEDS = { bs: 'flowbook_reports_more', tb: 'flowbook_reports_more', stmt: 'flowbook_reports_more', gst: 'flowbook_gst' };
   const fy = financialYear();
   const [tab, setTab] = useState('pnl');
   const [r, setR] = useState({ from: fy.from, to: today() });
   const asOfOnly = ['bs', 'ar', 'ap'].includes(tab);
   return (
     <Page title="Reports" lead={fy.label + ' by default. Change the dates to look at any period.'} actions={<button className="btn no-print" onClick={() => window.print()}>Print</button>}>
-      <Tabs value={tab} onChange={setTab} tabs={[['pnl', 'Profit and loss'], ['bs', 'Balance sheet'], ['tb', 'Trial balance'], ['an', simple ? 'Sales' : 'Sales analysis'], ['ar', 'Who owes you'], ['ap', 'Who you owe'], ['stmt', 'Party statement'], ['gst', 'GST returns'], ['chk', 'Checks']].filter(([k]) => !simple || SIMPLE_TABS.includes(k))} />
+      <Tabs value={tab} onChange={setTab} tabs={[['pnl', 'Profit and loss'], ['bs', 'Balance sheet'], ['tb', 'Trial balance'], ['an', simple ? 'Sales' : 'Sales analysis'], ['ar', 'Who owes you'], ['ap', 'Who you owe'], ['stmt', 'Party statement'], ['gst', 'GST returns'], ['chk', 'Checks']].filter(([k]) => (!simple || SIMPLE_TABS.includes(k)) && on(TAB_NEEDS[k] || 'flowbook_app'))} />
       <div className="explain-bar no-print">
         <p className="about">{ABOUT[tab][1]}{tab === 'tb' && <> <Term k="TB">What is this?</Term></>}</p>
         <Btn type="button" className="btn small" onClick={() => ask(`Explain my ${ABOUT[tab][0]} ${['gst'].includes(tab) ? 'for this month' : `from ${r.from} to ${r.to}`} in simple words, and tell me if anything needs my attention.`)}>Explain in simple words</Btn>
