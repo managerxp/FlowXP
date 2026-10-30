@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Navigate, NavLink, Route, Routes, useLocation } from './router.jsx';
 import { SessionProvider, useSession } from './session.jsx';
-import { setMode, useSimple } from './mode.js';
+import { setMode, useMode } from './mode.js';
 import { HelpButton, HelpPanel, HelpProvider } from './help.jsx';
 import { download, tablesToCsv } from './csv.js';
 import { Card, Err, Loading } from './ui.jsx';
@@ -42,6 +42,7 @@ const NAV = [
 ];
 /* the advanced screens the FlowXP super admin can switch off (keys in api/src/features.ts) */
 const NEEDS = { '/quotes': 'flowbook_quotes_orders', '/sales-orders': 'flowbook_quotes_orders', '/purchase-orders': 'flowbook_quotes_orders', '/credit-notes': 'flowbook_notes', '/debit-notes': 'flowbook_notes', '/recurring': 'flowbook_recurring', '/projects': 'flowbook_projects', '/bank': 'flowbook_bank', '/stock': 'flowbook_stock', '/assets': 'flowbook_assets', '/journals': 'flowbook_journals' };
+const BUILDER = new Set(['/', '/projects', '/sales', '/customers', '/purchases', '/expenses', '/vendors', '/payments', '/items', '/stock', '/reports', '/settings']);
 const SIMPLE = new Set(['/', '/sales', '/customers', '/purchases', '/expenses', '/vendors', '/payments', '/items', '/stock', '/reports', '/settings']);
 
 /** A section's tab goes to its first visible screen; the screens of the open section are listed under the tabs. */
@@ -58,13 +59,14 @@ const ExportButton = ({ page }) => {
 
 const Frame = () => {
   const { ready, org, on, error } = useSession();
-  const simple = useSimple();
+  const mode = useMode();
+  const simple = mode === 'simple';
   const here = useLocation().pathname;
   if (!ready) return <div className="fb"><Loading /></div>;
   if (!org) return <div className="fb"><Card title="FlowBook"><Err>{error || 'Your books could not be opened.'}</Err></Card></div>;
   if (!on('flowbook_app')) return <div className="fb"><Card title="FlowBook is switched off"><p>FlowBook is not part of this business's plan right now. Contact FlowXP support or upgrade your plan to use it.</p></Card></div>;
 
-  const groups = NAV.map((g) => ({ ...g, items: g.items.filter(([to]) => (!simple || SIMPLE.has(to)) && on(NEEDS[to] || 'flowbook_app')) })).filter((g) => g.items.length);
+  const groups = NAV.map((g) => ({ ...g, items: g.items.filter(([to]) => (mode === 'full' || (mode === 'builder' ? BUILDER : SIMPLE).has(to)) && on(NEEDS[to] || 'flowbook_app')) })).filter((g) => g.items.length);
   const open = (to) => (to === '/' ? here === '/' : here === to || here.startsWith(`${to}/`));
   const current = groups.find((g) => g.items.some(([to]) => open(to)));
   return (
@@ -76,7 +78,8 @@ const Frame = () => {
         <div className="fb-tools">
           <div className="seg" role="group" aria-label="How much to show">
             <button className={simple ? 'on' : ''} aria-pressed={simple} onClick={() => setMode('simple')}>Simple</button>
-            <button className={simple ? '' : 'on'} aria-pressed={!simple} onClick={() => setMode('full')}>Full</button>
+            <button className={mode === 'builder' ? 'on' : ''} aria-pressed={mode === 'builder'} onClick={() => setMode('builder')}>Builder</button>
+            <button className={mode === 'full' ? 'on' : ''} aria-pressed={mode === 'full'} onClick={() => setMode('full')}>Full</button>
           </div>
           <ExportButton page={here} />
           <HelpButton />
@@ -89,7 +92,7 @@ const Frame = () => {
       )}
       {here === '/' && (
         <p className="muted" style={{ margin: '.5rem 0 0', fontSize: '.85rem' }}>
-          {simple ? 'Simple view: everyday screens only. Choose Full to add quotes, sales orders, credit notes, recurring, projects, journals, bank and more.' : 'Full view: every screen, including the accountant’s. Choose Simple to hide the extras.'}
+          {simple ? 'Simple view: everyday screens only. Choose Builder for projects, flats and retention, or Full for everything.' : mode === 'builder' ? 'Builder view: projects, flats and plots, bills, payments and stock. Choose Full to add the accountant’s screens.' : 'Full view: every screen, including the accountant’s. Choose Simple or Builder to hide the extras.'}
         </p>
       )}
       <Routes>

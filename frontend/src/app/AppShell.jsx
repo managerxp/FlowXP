@@ -33,7 +33,7 @@ import CommandPalette from '../components/CommandPalette.jsx';
 import GuideHelper from '../components/GuideHelper.jsx';
 import IncomingDeliveryAlert from '../components/IncomingDeliveryAlert.jsx';
 import { AUTO_PARTS_TYPES, GAMING_TYPES, GYM_TYPES, HOTEL_TYPES, PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
-import { useSimple } from './books/mode.js';
+import { useMode } from './books/mode.js';
 
 /*
  * The sidebar, grouped by the job rather than listed alphabetically: that
@@ -246,7 +246,7 @@ const NAV_GROUPS = [
       { to: '/app/books/purchase-orders', label: 'Purchase orders', icon: ClipboardList, books: true, full: true, feature: 'flowbook_quotes_orders', more: true },
       { to: '/app/books/debit-notes', label: 'Debit notes', icon: Receipt, books: true, full: true, feature: 'flowbook_notes', more: true },
       { to: '/app/books/recurring', label: 'Recurring invoices', icon: CalendarClock, books: true, full: true, feature: 'flowbook_recurring', more: true },
-      { to: '/app/books/projects', label: 'Projects', icon: LayoutGrid, books: true, full: true, feature: 'flowbook_projects', more: true },
+      { to: '/app/books/projects', label: 'Projects', icon: LayoutGrid, books: true, full: true, build: true, feature: 'flowbook_projects', more: true },
       { to: '/app/books/bank', label: 'Bank', icon: Landmark, books: true, full: true, feature: 'flowbook_bank', more: true },
       { to: '/app/books/assets', label: 'Fixed assets', icon: Boxes, books: true, full: true, feature: 'flowbook_assets', more: true },
       { to: '/app/books/journals', label: 'Journals', icon: History, books: true, full: true, feature: 'flowbook_journals', more: true },
@@ -420,7 +420,7 @@ const AppShell = () => {
   const location = useLocation();
   const toast = useToast();
   useEffect(() => { setPrintErrorHandler((message) => toast.error(message)); return () => setPrintErrorHandler(null); }, [toast]);
-  const simpleBooks = useSimple();
+  const booksMode = useMode();
   const [navOpen, setNavOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -473,7 +473,7 @@ const AppShell = () => {
   if (bookOnly && !BOOK_PAGES.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) return <Navigate to="/app/books" replace />;
   // FlowBook (accounting) is part of the app: it is the offer of a business that signed up for it, and any other business has it once it is paying and its plan includes it
   const hasBooks = hasFeature('flowbook_app') && (bookOnly || (business.subscription?.status === 'ACTIVE' && hasFeature('flowbook')));
-  const allowed = (item) => bookPage(item) && (!item.books || hasBooks) && (!item.full || !simpleBooks) && (!item.types || item.types.includes(business.business_type))
+  const allowed = (item) => bookPage(item) && (!item.books || hasBooks) && (!item.full || booksMode === 'full' || (booksMode === 'builder' && item.build)) && (!item.types || item.types.includes(business.business_type))
     && (!item.distributor || business.distributor_enabled)
     && (!item.notTypes || !item.notTypes.includes(business.business_type))
     && (!item.roles || item.roles.includes(business.role))
