@@ -19,6 +19,8 @@ import { subscriptionSummary, newTrialWindow } from '../modules/subscription.js'
 import { recordAudit, recordEvent } from '../modules/events.js';
 import { toRupees } from '../utils/money.js';
 import { hasPermission } from '../middleware/auth.js';
+import config from '../config/env.js';
+import { createPaymentLink, CashfreeError } from '../modules/payments/cashfree.js';
 import { cleanLocale } from '../utils/locales.js';
 import {
   checkBusinessType, checkSignupType, checkEmail, checkGstin, checkName, checkPhone, checkUpiVpa, firstError
@@ -394,6 +396,42 @@ export const getSubscription = async (req, res) => {
   } catch (error) {
     console.error('[business] subscription read failed:', error.message);
     res.status(500).json({ success: false, message: 'Could not load your subscription' });
+  }
+};
+
+/* POST /api/businesses/current/subscription/checkout { plan_code, billing_cycle }
+   Upgrade yourself: a plan that has a listed price gets a Cashfree link at that price. A plan with no listed price
+   ("pricing on request") still goes through the team (admin payment link), so nothing here invents a price. */
+export const checkout = async (req, res) => {
+  if (!hasPermission(req.tenant, 'settings')) return res.status(403).json({ success: false, message: 'Only the owner or a manager can change the plan' });
+  const { plan_code: planCode, billing_cycle: cycle } = req.body || {};
+  if (!['MONTHLY', 'YEARLY'].includes(cycle)) return res.status(400).json({ success: false, message: 'Choose monthly or yearly' });
+  try {
+    const plan = (await pool.query(`SELECT plan_code, name, price_monthly_paise, price_yearly_paise FROM plans WHERE plan_code = $1 AND is_active AND is_public`, [planCode])).rows[0];
+    if (!plan) return res.status(404).json({ success: false, message: 'That plan is not available' });
+    const paise = Number(cycle === 'YEARLY' ? plan.price_yearly_paise : plan.price_monthly_paise);
+    if (!(paise > 0)) return res.status(409).json({ success: false, message: 'This plan is priced with our team. Write to flowxp.manager@gmail.com and we will send a payment link.' });
+    const { rows: [b] } = await pool.query(
+      `SELECT b.name, u.name AS owner_name, u.email AS owner_email, u.phone AS owner_phone FROM businesses b JOIN users u ON u.user_id = b.owner_user_id WHERE b.business_id = $1`, [req.tenant.businessId]);
+    // one open link per business: an older unpaid one is replaced, so there is never a choice of two prices to pay
+    await pool.query(`UPDATE subscription_orders SET status = 'CANCELLED' WHERE business_id = $1 AND status = 'PENDING'`, [req.tenant.businessId]);
+    const order = (await pool.query(
+      `INSERT INTO subscription_orders (business_id, amount_paise, billing_cycle, plan_code, created_by) VALUES ($1,$2,$3,$4,$5) RETURNING order_id`,
+      [req.tenant.businessId, paise, cycle, plan.plan_code, req.auth.userId])).rows[0];
+    const linkId = `flowxp-${order.order_id}`;
+    let link;
+    try {
+      link = await createPaymentLink({ linkId, amount: toRupees(paise), purpose: `FlowXP ${plan.name} plan — ${b.name}`, customerName: b.owner_name, customerEmail: b.owner_email, customerPhone: b.owner_phone, returnUrl: `${config.appOrigin}/app/settings/subscription`, notifyUrl: `${config.appOrigin}/api/webhooks/cashfree` });
+    } catch (error) {
+      await pool.query(`UPDATE subscription_orders SET status = 'CANCELLED' WHERE order_id = $1`, [order.order_id]);
+      return res.status(502).json({ success: false, message: error instanceof CashfreeError ? error.message : 'Could not reach the payment page' });
+    }
+    await pool.query(`UPDATE subscription_orders SET link_id = $1, payment_link_url = $2 WHERE order_id = $3`, [linkId, link.linkUrl, order.order_id]);
+    recordAudit(req, { business_id: req.tenant.businessId, action: 'subscription.checkout_started', resource_type: 'subscription_order', resource_id: order.order_id, metadata: { plan: plan.plan_code, billing_cycle: cycle } });
+    res.json({ success: true, data: { payment_link_url: link.linkUrl } });
+  } catch (error) {
+    console.error('[business] checkout failed:', error.message);
+    res.status(500).json({ success: false, message: 'Could not start the payment' });
   }
 };
 

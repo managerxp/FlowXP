@@ -34,6 +34,17 @@ const Subscription = () => {
   const [data, setData] = useState(null);
   const [plans, setPlans] = useState([]);
   const [error, setError] = useState('');
+  const [cycle, setCycle] = useState('MONTHLY');
+  const [busy, setBusy] = useState('');
+  const [notice, setNotice] = useState('');
+
+  const upgrade = async (planCode) => {
+    setBusy(planCode); setNotice('');
+    try {
+      const r = await api('/businesses/current/subscription/checkout', { method: 'POST', body: { plan_code: planCode, billing_cycle: cycle } });
+      window.location.assign(r.payment_link_url);
+    } catch (caught) { setNotice(caught.message); } finally { setBusy(''); }
+  };
 
   useEffect(() => {
     Promise.all([api('/businesses/current/subscription'), api('/plans')])
@@ -88,35 +99,51 @@ const Subscription = () => {
       </Card>
 
       <div>
-        <h2 className="mb-4 text-sm font-semibold text-ink-900">Plans</h2>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-ink-900">Plans</h2>
+          <div className="inline-flex rounded-lg border border-line p-0.5 text-xs">
+            {['MONTHLY', 'YEARLY'].map((c) => (
+              <button key={c} type="button" onClick={() => setCycle(c)}
+                className={`rounded-md px-3 py-1 font-medium ${cycle === c ? 'bg-brand-600 text-white' : 'text-ink-500'}`}>
+                {c === 'MONTHLY' ? 'Monthly' : 'Yearly'}
+              </button>
+            ))}
+          </div>
+        </div>
+        {notice && <p className="mb-3 text-sm text-danger">{notice}</p>}
         <div className="grid gap-4 sm:grid-cols-2">
-          {plans.map((plan) => (
-            <Card key={plan.plan_code}>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-brand-600">{plan.name}</h3>
-              <p className="mt-1.5 text-sm text-ink-500">{plan.description}</p>
-              <p className="mt-4 text-xl font-bold text-ink-900">
-                {Number(plan.price_monthly_paise)
-                  ? <>{formatMoney(plan.price_monthly_paise)}<span className="text-sm font-normal text-ink-400">/month</span></>
-                  : 'Pricing on request'}
-              </p>
-              {/* There's no self-serve checkout for a fixed price — see the
-                  note at the top of this file. */}
-              <Button
-                variant="secondary"
-                size="sm"
-                className="mt-5 w-full"
-                disabled
-                title="Contact us for a price — we'll send a secure payment link"
-              >
-                Upgrade
-              </Button>
-            </Card>
-          ))}
+          {plans.map((plan) => {
+            const paise = Number(cycle === 'YEARLY' ? plan.price_yearly_paise : plan.price_monthly_paise);
+            const current = data.status === 'ACTIVE' && plan.plan_code === data.plan_code;
+            return (
+              <Card key={plan.plan_code}>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-brand-600">
+                  {plan.name}{current && <span className="ml-2 rounded bg-brand-50 px-1.5 py-0.5 text-[10px] text-brand-600">Your plan</span>}
+                </h3>
+                <p className="mt-1.5 text-sm text-ink-500">{plan.description}</p>
+                <p className="mt-4 text-xl font-bold text-ink-900">
+                  {paise
+                    ? <>{formatMoney(paise)}<span className="text-sm font-normal text-ink-400">/{cycle === 'YEARLY' ? 'year' : 'month'}</span></>
+                    : 'Pricing on request'}
+                </p>
+                {paise ? (
+                  <Button size="sm" className="mt-5 w-full" disabled={current || busy === plan.plan_code} onClick={() => upgrade(plan.plan_code)}>
+                    {current ? 'Current plan' : busy === plan.plan_code ? 'Opening payment…' : data.status === 'ACTIVE' ? 'Switch to this plan' : 'Upgrade'}
+                  </Button>
+                ) : (
+                  <a className="mt-5 block w-full rounded-lg border border-line px-3 py-1.5 text-center text-sm font-medium text-ink-700"
+                     href={`mailto:flowxp.manager@gmail.com?subject=${encodeURIComponent(`FlowXP ${plan.name} plan`)}`}>
+                    Ask for a price
+                  </a>
+                )}
+              </Card>
+            );
+          })}
         </div>
 
         <p className="mt-5 text-xs text-ink-400">
-          Pricing is agreed with our team, not self-serve. Contact flowxp.manager@gmail.com
-          and we'll send a secure payment link for your plan.
+          You pay on Cashfree's secure page; we never see your card or UPI details. The plan switches on as soon as the payment goes through.
+          Questions: flowxp.manager@gmail.com.
         </p>
       </div>
     </div>

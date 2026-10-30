@@ -74,6 +74,7 @@ import pharmacyRoutes from './pharmacy.routes.js';
 import retailRoutes from './retail.routes.js';
 import syncRoutes from './sync.routes.js';
 import * as appErrors from '../controllers/appErrors.controller.js';
+import '../modules/trialReminders.js';   // registers the trial-ending emails with the worker
 
 const router = Router();
 
@@ -202,6 +203,7 @@ router.post('/businesses/current/restore', requireAuth, withBusiness({ requireAc
 router.post('/businesses/current/logo', requireAuth, withBusiness({ requireActive: true }), requireOwner, uploadLogo, business.uploadLogo);
 router.delete('/businesses/current/logo', requireAuth, withBusiness({ requireActive: true }), requireOwner, business.removeLogo);
 router.get('/businesses/current/subscription', requireAuth, withBusiness(), business.getSubscription);
+router.post('/businesses/current/subscription/checkout', requireAuth, withBusiness(), business.checkout);
 
 /* Readable after the trial ends, on purpose — see withBusiness(). */
 router.get('/dashboard', requireAuth, withBusiness(), dashboard.getDashboard);
