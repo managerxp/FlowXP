@@ -27,6 +27,7 @@ import { ChefHat, CheckCircle2, ClipboardList, CloudOff, Minus, PackagePlus, Pau
 import { api, formatCurrency, NetworkError } from '../../lib/api.js';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
 import { withApproval } from '../../lib/approval.js';
+import { getDisplay } from '../../lib/display.js';
 import ModifierPicker, { needsChoices, useModifierGroups } from '../../components/ModifierPicker.jsx';
 import { FIELDS as TALLY_FIELDS } from './TallyInvoice.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -563,6 +564,21 @@ const BillingPage = () => {
     const exchangeOff = exchange ? Math.min(exchange.available, Math.max(0, before - coupon - pointsOff - rewardOff)) : 0;
     return { subtotal, tax, discount, coupon, pointsOff, rewardOff, offers, exchangeOff, before, total: Math.max(0, before - coupon - pointsOff - rewardOff - exchangeOff), gstEnabled };
   }, [billLines, invoiceDiscount, couponInfo, pointsInfo, redeem, business?.gst_enabled, card, promo, exchange]);
+
+  /* The profit on this bill, for people who may see costs and chose to show it on this device: what the lines sell for (before tax, after
+     offers and the bill discount) less what the items cost. Only counted when every line's cost is known; otherwise it says so. */
+  const profit = useMemo(() => {
+    if (!getDisplay().showProfit || !can('reports')) return null;
+    const cost = new Map((products || []).map((p) => [p.product_id, p.unit_cost]));
+    let spent = 0;
+    for (const l of billLines) {
+      const c = l.product_id ? cost.get(l.product_id) : null;
+      if (c == null) return { known: false };
+      spent += Number(l.quantity || 0) * c;
+    }
+    const sold = Math.max(0, totals.subtotal - totals.discount - totals.coupon - totals.pointsOff - totals.rewardOff);
+    return { known: true, amount: sold - spent, pct: sold > 0 ? ((sold - spent) / sold) * 100 : 0 };
+  }, [billLines, products, totals, can]);
 
   // A checked coupon was checked against a particular bill; changing the bill means checking again.
   useEffect(() => { setCouponInfo(null); setCouponError(''); }, [billLines, invoiceDiscount, customerId]);
@@ -1125,6 +1141,9 @@ const BillingPage = () => {
             {totals.rewardOff > 0 && <div className="flex justify-between text-success"><dt>{tr('Free {{reward_item}} (loyalty)', { reward_item: card.reward_item })}</dt><dd>−{formatCurrency(totals.rewardOff)}</dd></div>}
             {totals.offers > 0 && <div className="flex justify-between text-success"><dt>{tr('Offers (already off the lines)')}</dt><dd>−{formatCurrency(totals.offers)}</dd></div>}
             {totals.exchangeOff > 0 && <div className="flex justify-between text-success"><dt>{tr('Exchange credit {{cn_number}}', { cn_number: exchange.cn_number })}</dt><dd>−{formatCurrency(totals.exchangeOff)}</dd></div>}
+            {profit && billLines.length > 0 && (profit.known
+              ? <div className={`flex justify-between ${profit.amount < 0 ? 'text-danger' : 'text-success'}`}><dt>{tr('Profit on this bill (estimate)')}</dt><dd>{formatCurrency(profit.amount)} · {Math.round(profit.pct)}%</dd></div>
+              : <div className="flex justify-between text-ink-400"><dt>{tr('Profit on this bill')}</dt><dd>{tr('cost not known for every item')}</dd></div>)}
             <div className="flex items-baseline justify-between pt-1">
               <dt className="text-small font-semibold text-ink-900">{tr('Total')}</dt>
               <dd className="text-[22px] font-semibold leading-none tracking-tight text-ink-900">{formatCurrency(totals.total)}</dd>

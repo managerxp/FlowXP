@@ -40,6 +40,10 @@ export default function DisplaySettings() {
           </Select>
         </Field>
       </div>
+      <label className="mt-4 flex items-start gap-2.5 text-sm text-ink-700">
+        <input type="checkbox" className="mt-0.5 size-4 accent-brand-600" checked={prefs.showProfit === true} onChange={(e) => change({ showProfit: e.target.checked })} />
+        <span>{tr('Show the profit on the bill while billing')}<span className="block text-caption text-ink-500">{tr('Only for people who can see reports, and only where the cost of the items is known.')}</span></span>
+      </label>
     </Card>
   );
 }

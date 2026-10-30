@@ -5021,5 +5021,20 @@
   "The file is downloaded. Attach it in the WhatsApp chat that opened.": "The file is downloaded. Attach it in the WhatsApp chat that opened.",
   "Accountant WhatsApp number": "Accountant WhatsApp number",
   "WhatsApp": "WhatsApp",
-  "Sent to the customer on WhatsApp.": "Sent to the customer on WhatsApp."
+  "Sent to the customer on WhatsApp.": "Sent to the customer on WhatsApp.",
+  "Profit on this bill (estimate)": "Profit on this bill (estimate)",
+  "Profit on this bill": "Profit on this bill",
+  "cost not known for every item": "cost not known for every item",
+  "Discount given (₹, optional)": "Discount given (₹, optional)",
+  "Cleared from the balance without being paid. It shows in Profit & Loss.": "Cleared from the balance without being paid. It shows in Profit & Loss.",
+  "Show the profit on the bill while billing": "Show the profit on the bill while billing",
+  "Only for people who can see reports, and only where the cost of the items is known.": "Only for people who can see reports, and only where the cost of the items is known.",
+  "Delete this entry?": "Delete this entry?",
+  "Other income": "Other income",
+  "Money received that is not a sale. It is added in Profit & Loss.": "Money received that is not a sale. It is added in Profit & Loss.",
+  "Add income": "Add income",
+  "Nothing recorded in this month.": "Nothing recorded in this month.",
+  "What it was for": "What it was for",
+  "Total other income": "Total other income",
+  "Discounts given at payment": "Discounts given at payment"
 }

@@ -5021,5 +5021,20 @@
   "The file is downloaded. Attach it in the WhatsApp chat that opened.": "ഫയൽ ഡൗൺലോഡ് ചെയ്തു. തുറന്ന WhatsApp ചാറ്റിൽ അത് ചേർക്കുക.",
   "Accountant WhatsApp number": "അക്കൗണ്ടന്റിന്റെ WhatsApp നമ്പർ",
   "WhatsApp": "WhatsApp",
-  "Sent to the customer on WhatsApp.": "ഉപഭോക്താവിന് WhatsApp-ൽ അയച്ചു."
+  "Sent to the customer on WhatsApp.": "ഉപഭോക്താവിന് WhatsApp-ൽ അയച്ചു.",
+  "Profit on this bill (estimate)": "ഈ ബില്ലിലെ ലാഭം (ഏകദേശം)",
+  "Profit on this bill": "ഈ ബില്ലിലെ ലാഭം",
+  "cost not known for every item": "എല്ലാ ഇനങ്ങളുടെയും ചെലവ് അറിയില്ല",
+  "Discount given (₹, optional)": "നൽകിയ കിഴിവ് (₹, ഓപ്ഷണൽ)",
+  "Cleared from the balance without being paid. It shows in Profit & Loss.": "പണം വാങ്ങാതെ ബാക്കിയിൽ നിന്ന് കുറയ്ക്കും. ഇത് ലാഭനഷ്ടത്തിൽ കാണിക്കും.",
+  "Show the profit on the bill while billing": "ബില്ലിടുമ്പോൾ ബില്ലിലെ ലാഭം കാണിക്കുക",
+  "Only for people who can see reports, and only where the cost of the items is known.": "റിപ്പോർട്ടുകൾ കാണാൻ കഴിയുന്നവർക്ക് മാത്രം, ഇനങ്ങളുടെ ചെലവ് അറിയുന്നിടത്ത് മാത്രം.",
+  "Delete this entry?": "ഈ എൻട്രി ഇല്ലാതാക്കണോ?",
+  "Other income": "മറ്റ് വരുമാനം",
+  "Money received that is not a sale. It is added in Profit & Loss.": "വിൽപ്പനയല്ലാത്ത രീതിയിൽ കിട്ടിയ പണം. ഇത് ലാഭനഷ്ടത്തിൽ ചേർക്കും.",
+  "Add income": "വരുമാനം ചേർക്കുക",
+  "Nothing recorded in this month.": "ഈ മാസം ഒന്നും രേഖപ്പെടുത്തിയിട്ടില്ല.",
+  "What it was for": "എന്തിനായിരുന്നു",
+  "Total other income": "ആകെ മറ്റ് വരുമാനം",
+  "Discounts given at payment": "പേയ്‌മെന്റ് സമയത്ത് നൽകിയ കിഴിവ്"
 }

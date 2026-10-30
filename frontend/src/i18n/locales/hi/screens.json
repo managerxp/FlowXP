@@ -5021,5 +5021,20 @@
   "The file is downloaded. Attach it in the WhatsApp chat that opened.": "फ़ाइल डाउनलोड हो गई है। खुले WhatsApp चैट में उसे जोड़ें।",
   "Accountant WhatsApp number": "अकाउंटेंट का WhatsApp नंबर",
   "WhatsApp": "WhatsApp",
-  "Sent to the customer on WhatsApp.": "ग्राहक को WhatsApp पर भेज दिया गया।"
+  "Sent to the customer on WhatsApp.": "ग्राहक को WhatsApp पर भेज दिया गया।",
+  "Profit on this bill (estimate)": "इस बिल पर मुनाफ़ा (अनुमान)",
+  "Profit on this bill": "इस बिल पर मुनाफ़ा",
+  "cost not known for every item": "हर आइटम की लागत पता नहीं",
+  "Discount given (₹, optional)": "दी गई छूट (₹, वैकल्पिक)",
+  "Cleared from the balance without being paid. It shows in Profit & Loss.": "बिना भुगतान के बकाया से घटा दी जाती है। यह लाभ-हानि में दिखती है।",
+  "Show the profit on the bill while billing": "बिलिंग के समय बिल पर मुनाफ़ा दिखाएँ",
+  "Only for people who can see reports, and only where the cost of the items is known.": "केवल उनके लिए जो रिपोर्ट देख सकते हैं, और केवल जहाँ आइटमों की लागत पता है।",
+  "Delete this entry?": "यह प्रविष्टि हटाएँ?",
+  "Other income": "अन्य आय",
+  "Money received that is not a sale. It is added in Profit & Loss.": "वह रकम जो बिक्री नहीं है। यह लाभ-हानि में जोड़ी जाती है।",
+  "Add income": "आय जोड़ें",
+  "Nothing recorded in this month.": "इस महीने कुछ दर्ज नहीं है।",
+  "What it was for": "यह किसलिए था",
+  "Total other income": "कुल अन्य आय",
+  "Discounts given at payment": "भुगतान पर दी गई छूट"
 }

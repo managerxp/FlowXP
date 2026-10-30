@@ -4,7 +4,7 @@
  * printed: the theme only applies on screen, never to paper, and amounts and dates on bills keep their own formats.
  */
 const KEY = 'flowxp_display';
-export const DISPLAY_DEFAULTS = { theme: 'system', date: 'auto', decimals: 2 };
+export const DISPLAY_DEFAULTS = { theme: 'system', date: 'auto', decimals: 2, showProfit: false };   // showProfit: the till shows the profit on the bill being made (for people who may see costs)
 export const THEMES = ['system', 'light', 'dark'];
 export const DATE_FORMATS = ['auto', 'dmy', 'mdy', 'ymd'];   // auto = the browser's own short date, as before
 export const DECIMALS = [0, 1, 2];

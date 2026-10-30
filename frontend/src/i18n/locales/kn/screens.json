@@ -5021,5 +5021,20 @@
   "The file is downloaded. Attach it in the WhatsApp chat that opened.": "ಫೈಲ್ ಡೌನ್‌ಲೋಡ್ ಆಗಿದೆ. ತೆರೆದ WhatsApp ಚಾಟ್‌ನಲ್ಲಿ ಅದನ್ನು ಲಗತ್ತಿಸಿ.",
   "Accountant WhatsApp number": "ಅಕೌಂಟೆಂಟ್ WhatsApp ಸಂಖ್ಯೆ",
   "WhatsApp": "WhatsApp",
-  "Sent to the customer on WhatsApp.": "ಗ್ರಾಹಕರಿಗೆ WhatsApp ನಲ್ಲಿ ಕಳುಹಿಸಲಾಗಿದೆ."
+  "Sent to the customer on WhatsApp.": "ಗ್ರಾಹಕರಿಗೆ WhatsApp ನಲ್ಲಿ ಕಳುಹಿಸಲಾಗಿದೆ.",
+  "Profit on this bill (estimate)": "ಈ ಬಿಲ್‌ನ ಲಾಭ (ಅಂದಾಜು)",
+  "Profit on this bill": "ಈ ಬಿಲ್‌ನ ಲಾಭ",
+  "cost not known for every item": "ಪ್ರತಿ ವಸ್ತುವಿನ ವೆಚ್ಚ ತಿಳಿದಿಲ್ಲ",
+  "Discount given (₹, optional)": "ನೀಡಿದ ರಿಯಾಯಿತಿ (₹, ಐಚ್ಛಿಕ)",
+  "Cleared from the balance without being paid. It shows in Profit & Loss.": "ಹಣ ಪಡೆಯದೆ ಬಾಕಿಯಿಂದ ಕಡಿಮೆ ಮಾಡಲಾಗುತ್ತದೆ. ಇದು ಲಾಭ-ನಷ್ಟದಲ್ಲಿ ಕಾಣಿಸುತ್ತದೆ.",
+  "Show the profit on the bill while billing": "ಬಿಲ್ ಮಾಡುವಾಗ ಬಿಲ್‌ನ ಲಾಭ ತೋರಿಸಿ",
+  "Only for people who can see reports, and only where the cost of the items is known.": "ವರದಿಗಳನ್ನು ನೋಡಬಲ್ಲವರಿಗೆ ಮಾತ್ರ, ಮತ್ತು ವಸ್ತುಗಳ ವೆಚ್ಚ ತಿಳಿದಿರುವಲ್ಲಿ ಮಾತ್ರ.",
+  "Delete this entry?": "ಈ ನಮೂದನ್ನು ಅಳಿಸಬೇಕೆ?",
+  "Other income": "ಇತರ ಆದಾಯ",
+  "Money received that is not a sale. It is added in Profit & Loss.": "ಮಾರಾಟವಲ್ಲದ ರೂಪದಲ್ಲಿ ಬಂದ ಹಣ. ಇದು ಲಾಭ-ನಷ್ಟಕ್ಕೆ ಸೇರುತ್ತದೆ.",
+  "Add income": "ಆದಾಯ ಸೇರಿಸಿ",
+  "Nothing recorded in this month.": "ಈ ತಿಂಗಳು ಏನೂ ದಾಖಲಾಗಿಲ್ಲ.",
+  "What it was for": "ಯಾವುದಕ್ಕಾಗಿ",
+  "Total other income": "ಒಟ್ಟು ಇತರ ಆದಾಯ",
+  "Discounts given at payment": "ಪಾವತಿಯ ಸಮಯದಲ್ಲಿ ನೀಡಿದ ರಿಯಾಯಿತಿ"
 }

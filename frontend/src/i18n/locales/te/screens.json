@@ -5021,5 +5021,20 @@
   "The file is downloaded. Attach it in the WhatsApp chat that opened.": "ఫైల్ డౌన్‌లోడ్ అయింది. తెరుచుకున్న WhatsApp చాట్‌లో జత చేయండి.",
   "Accountant WhatsApp number": "అకౌంటెంట్ WhatsApp నంబర్",
   "WhatsApp": "WhatsApp",
-  "Sent to the customer on WhatsApp.": "కస్టమర్‌కు WhatsApp లో పంపబడింది."
+  "Sent to the customer on WhatsApp.": "కస్టమర్‌కు WhatsApp లో పంపబడింది.",
+  "Profit on this bill (estimate)": "ఈ బిల్లుపై లాభం (అంచనా)",
+  "Profit on this bill": "ఈ బిల్లుపై లాభం",
+  "cost not known for every item": "ప్రతి వస్తువు ఖర్చు తెలియదు",
+  "Discount given (₹, optional)": "ఇచ్చిన తగ్గింపు (₹, ఐచ్ఛికం)",
+  "Cleared from the balance without being paid. It shows in Profit & Loss.": "చెల్లింపు లేకుండా బాకీ నుండి తగ్గిస్తారు. ఇది లాభనష్టాల్లో కనిపిస్తుంది.",
+  "Show the profit on the bill while billing": "బిల్లు చేసేటప్పుడు బిల్లుపై లాభం చూపించు",
+  "Only for people who can see reports, and only where the cost of the items is known.": "రిపోర్టులు చూడగలవారికి మాత్రమే, వస్తువుల ఖర్చు తెలిసిన చోట మాత్రమే.",
+  "Delete this entry?": "ఈ నమోదును తొలగించాలా?",
+  "Other income": "ఇతర ఆదాయం",
+  "Money received that is not a sale. It is added in Profit & Loss.": "అమ్మకం కాని రూపంలో వచ్చిన డబ్బు. ఇది లాభనష్టాల్లో కలుస్తుంది.",
+  "Add income": "ఆదాయం చేర్చు",
+  "Nothing recorded in this month.": "ఈ నెలలో ఏమీ నమోదు కాలేదు.",
+  "What it was for": "దేనికోసం",
+  "Total other income": "మొత్తం ఇతర ఆదాయం",
+  "Discounts given at payment": "చెల్లింపు సమయంలో ఇచ్చిన తగ్గింపు"
 }

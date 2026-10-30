@@ -5021,5 +5021,20 @@
   "The file is downloaded. Attach it in the WhatsApp chat that opened.": "கோப்பு பதிவிறக்கப்பட்டது. திறந்த WhatsApp அரட்டையில் இணைக்கவும்.",
   "Accountant WhatsApp number": "கணக்காளரின் WhatsApp எண்",
   "WhatsApp": "WhatsApp",
-  "Sent to the customer on WhatsApp.": "வாடிக்கையாளருக்கு WhatsApp-இல் அனுப்பப்பட்டது."
+  "Sent to the customer on WhatsApp.": "வாடிக்கையாளருக்கு WhatsApp-இல் அனுப்பப்பட்டது.",
+  "Profit on this bill (estimate)": "இந்த பில்லின் லாபம் (மதிப்பீடு)",
+  "Profit on this bill": "இந்த பில்லின் லாபம்",
+  "cost not known for every item": "எல்லா பொருட்களுக்கும் செலவு தெரியவில்லை",
+  "Discount given (₹, optional)": "கொடுத்த தள்ளுபடி (₹, விருப்பம்)",
+  "Cleared from the balance without being paid. It shows in Profit & Loss.": "பணம் பெறாமல் நிலுவையிலிருந்து குறைக்கப்படும். இது லாப நஷ்டத்தில் தெரியும்.",
+  "Show the profit on the bill while billing": "பில் போடும்போது பில்லின் லாபத்தைக் காட்டு",
+  "Only for people who can see reports, and only where the cost of the items is known.": "அறிக்கைகளைப் பார்க்கக்கூடியவர்களுக்கு மட்டும், பொருட்களின் செலவு தெரிந்த இடத்தில் மட்டும்.",
+  "Delete this entry?": "இந்த பதிவை நீக்கவா?",
+  "Other income": "பிற வருமானம்",
+  "Money received that is not a sale. It is added in Profit & Loss.": "விற்பனை அல்லாத வகையில் பெற்ற பணம். இது லாப நஷ்டத்தில் சேர்க்கப்படும்.",
+  "Add income": "வருமானம் சேர்",
+  "Nothing recorded in this month.": "இந்த மாதம் எதுவும் பதிவாகவில்லை.",
+  "What it was for": "எதற்காக",
+  "Total other income": "மொத்த பிற வருமானம்",
+  "Discounts given at payment": "பணம் செலுத்தும்போது கொடுத்த தள்ளுபடி"
 }
