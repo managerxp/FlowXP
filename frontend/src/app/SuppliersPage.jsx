@@ -14,6 +14,9 @@ import { api, formatCurrency } from '../lib/api.js';
 import { localISO } from '../lib/dates.js';
 import { Alert, Button, Field, Input, Modal, Select, useToast, useDialog, StatCard, EmptyState } from '../components/ui.jsx';
 import { formatDate } from '../lib/display.js';
+import { useAuth } from '../context/AuthContext.jsx';
+import { CLOTHING_TYPES } from '../lib/business.js';
+import SupplierStyles from './clothing/SupplierStyles.jsx';
 
 const day = (d) => (d ? formatDate(String(d).slice(0, 10)) : null);
 const daysSince = (d) => (d ? Math.round((new Date(`${localISO()}T00:00`) - new Date(`${String(d).slice(0, 10)}T00:00`)) / 86400000) : null);
@@ -208,6 +211,7 @@ const OrderRow = ({ po }) => {
 
 const SupplierPanel = ({ supplier: s, onEdit, onBack }) => {
   const navigate = useNavigate();
+  const { business } = useAuth();
   const [orders, setOrders] = useState(null);
   const [error, setError] = useState('');
   const [showAll, setShowAll] = useState(false);
@@ -264,6 +268,8 @@ const SupplierPanel = ({ supplier: s, onEdit, onBack }) => {
         )}
 
         <PriceList supplier={s} />
+
+        {CLOTHING_TYPES.includes(business?.business_type) && <SupplierStyles supplierId={s.supplier_id} />}
 
         <section aria-label="Orders">
           <h3 className="mb-2 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">Orders {orders && <span className="tabular font-normal">· {orders.length}{orders.length === 100 ? '+' : ''}</span>}</h3>

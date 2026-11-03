@@ -5165,5 +5165,10 @@
   "As many as in stock": "ಸ್ಟಾಕ್‌ನಲ್ಲಿ ಇರುವಷ್ಟು",
   "Print {{n}} labels": "{{n}} ಲೇಬಲ್ ಮುದ್ರಿಸಿ",
   "Copies of {{name}}": "{{name}} ಪ್ರತಿಗಳು",
-  "Each tag shows the barcode saved on that size and colour, so the sticker and the stock are the same item. To use your own barcodes, set one on the SKUs and barcodes tab first.": "ಪ್ರತಿ ಟ್ಯಾಗ್‌ನಲ್ಲಿ ಆ ಗಾತ್ರ ಮತ್ತು ಬಣ್ಣದ ಉಳಿಸಿದ ಬಾರ್‌ಕೋಡ್ ಇರುತ್ತದೆ, ಆದ್ದರಿಂದ ಸ್ಟಿಕ್ಕರ್ ಮತ್ತು ಸ್ಟಾಕ್ ಒಂದೇ ಐಟಂ. ನಿಮ್ಮದೇ ಬಾರ್‌ಕೋಡ್ ಬಳಸಲು ಮೊದಲು SKU ಮತ್ತು ಬಾರ್‌ಕೋಡ್ ಟ್ಯಾಬ್‌ನಲ್ಲಿ ಹೊಂದಿಸಿ."
+  "Each tag shows the barcode saved on that size and colour, so the sticker and the stock are the same item. To use your own barcodes, set one on the SKUs and barcodes tab first.": "ಪ್ರತಿ ಟ್ಯಾಗ್‌ನಲ್ಲಿ ಆ ಗಾತ್ರ ಮತ್ತು ಬಣ್ಣದ ಉಳಿಸಿದ ಬಾರ್‌ಕೋಡ್ ಇರುತ್ತದೆ, ಆದ್ದರಿಂದ ಸ್ಟಿಕ್ಕರ್ ಮತ್ತು ಸ್ಟಾಕ್ ಒಂದೇ ಐಟಂ. ನಿಮ್ಮದೇ ಬಾರ್‌ಕೋಡ್ ಬಳಸಲು ಮೊದಲು SKU ಮತ್ತು ಬಾರ್‌ಕೋಡ್ ಟ್ಯಾಬ್‌ನಲ್ಲಿ ಹೊಂದಿಸಿ.",
+  "Usually buys": "ಸಾಮಾನ್ಯವಾಗಿ ಖರೀದಿಸುವುದು",
+  "Sizes and colours": "ಗಾತ್ರ ಮತ್ತು ಬಣ್ಣಗಳು",
+  "Bought most": "ಹೆಚ್ಚು ಖರೀದಿಸಿದ್ದು",
+  "No clothing bought yet.": "ಇನ್ನೂ ಬಟ್ಟೆ ಖರೀದಿಸಿಲ್ಲ.",
+  "{{n}} pieces on {{b}} bills": "{{b}} ಬಿಲ್‌ಗಳಲ್ಲಿ {{n}} ಪೀಸ್"
 }

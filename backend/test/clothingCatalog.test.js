@@ -195,6 +195,26 @@ test('editing a style: identity follows to every variant, prices only when asked
   assert.equal((await rejected(inTx((c) => styles.updateVariant(c, ctx(), other.product_id, { barcode: 'a b' })))).status, 400, 'no spaces');
 });
 
+test('supplier ledger by style: received pieces, spend and sizes per style; open orders and other shops do not count', { skip }, async () => {
+  const sup = (await pool.query(`INSERT INTO suppliers (business_id, name) VALUES ($1, 'Surat Textiles') RETURNING supplier_id`, [S.businessId])).rows[0].supplier_id;
+  const sizes = await pool.query(`SELECT v.product_id, v.size FROM clothing_variants v WHERE v.style_id = $1 AND v.colour = 'Black' AND v.size IN ('M','L') ORDER BY v.sort_order`, [tee]);
+  const po = async (status, date, lines) => {
+    const id = (await pool.query(`INSERT INTO purchase_orders (business_id, branch_id, supplier_id, po_number, po_date, status, total_paise) VALUES ($1, $2, $3, $4, $5, $6, 0) RETURNING po_id`,
+      [S.businessId, S.branchId, sup, `LED-${status}-${date}`, date, status])).rows[0].po_id;
+    for (const [pid, q, cost] of lines) await pool.query(`INSERT INTO purchase_order_items (po_id, product_id, description, quantity, received_quantity, unit_cost_paise, line_total_paise) VALUES ($1, $2, 'x', $3, $3, $4, $5)`, [id, pid, q, cost, q * cost]);
+  };
+  const [m, l] = sizes.rows.map((r) => r.product_id);
+  await po('RECEIVED', '2026-10-01', [[m, 10, 30000], [l, 5, 30000]]);
+  await po('RECEIVED', '2026-10-20', [[m, 10, 33000]]);
+  await po('ORDERED', '2026-10-25', [[l, 50, 30000]]);
+  const out = okBody(await call(ctl.supplierStyles, { params: { id: String(sup) } }));
+  assert.equal(out.length, 1);
+  assert.deepEqual([out[0].pieces, out[0].orders, out[0].spent_paise, out[0].avg_cost_paise], [25, 2, 780000, 31200]);
+  assert.deepEqual(out[0].sizes, [{ size: 'M', pieces: 20 }, { size: 'L', pieces: 5 }]);
+  assert.equal(out[0].last_date.toISOString?.().slice(0, 10) ?? String(out[0].last_date).slice(0, 10), '2026-10-20');
+  assert.equal((await call(ctl.supplierStyles, { params: { id: String(sup) } }, T.tenantFor())).code, 404, 'another shop cannot read it');
+});
+
 test('listing and searching styles: by name, code, SKU and barcode; stock and sold-out count; filters', { skip }, async () => {
   const list = async (q, t = tenant) => okBody(await call(ctl.list, { query: q }, t));
   const all = await list({});
@@ -300,4 +320,21 @@ test('isolation and permissions: another shop gets 404, a cashier cannot change 
   assert.ok(ROLE_PERMISSIONS.MANAGER.includes('products'));
   const wrote = router.stack.filter((l) => l.route && !l.route.methods.get).map((l) => l.route.path);
   assert.ok(wrote.includes('/styles') && wrote.includes('/styles/import') && wrote.includes('/variants/:id'));
+});
+
+test('customer preferences: sizes, colours and styles come from the customer\'s own bills', { skip }, async () => {
+  const cust = (await pool.query(`INSERT INTO customers (business_id, name, phone) VALUES ($1, 'Ananya', '9880000001') RETURNING customer_id`, [S.businessId])).rows[0].customer_id;
+  const none = okBody(await call(ctl.customerPreferences, { params: { id: String(cust) } }));
+  assert.deepEqual([none.pieces, none.bills, none.sizes], [0, 0, []], 'a new customer has no preferences yet');
+  const s = (await styles.getStyle(pool, tenant, tee));
+  const pick = (colour, size) => s.variants.find((v) => v.colour === colour && v.size === size).product_id;
+  const sell = (items) => inTx((db) => createInvoiceInTransaction(db, { businessId: S.businessId, branchId: S.branchId, businessType: 'CLOTHING' }, S.userId, { customerId: cust, items, payment: { amount: 'FULL', method: 'CASH' } }));
+  await sell([{ product_id: pick('Black', 'M'), quantity: 2 }, { product_id: pick('Black', 'L'), quantity: 1 }]);
+  await sell([{ product_id: pick('Black', 'M'), quantity: 1 }, { product_id: pick('White', 'M'), quantity: 1 }]);
+  const p = okBody(await call(ctl.customerPreferences, { params: { id: String(cust) } }));
+  assert.deepEqual([p.pieces, p.bills], [5, 2]);
+  assert.deepEqual(p.sizes.map((x) => [x.size, x.pieces]), [['M', 4], ['L', 1]]);
+  assert.deepEqual(p.colours.map((x) => [x.colour, x.pieces]), [['Black', 4], ['White', 1]]);
+  assert.equal(p.styles[0].pieces, 5);
+  assert.equal((await call(ctl.customerPreferences, { params: { id: String(cust) } }, T.tenantFor())).code, 404, 'another shop cannot read it');
 });

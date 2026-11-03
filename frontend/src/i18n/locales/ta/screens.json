@@ -5165,5 +5165,10 @@
   "As many as in stock": "இருப்பில் உள்ள அளவு",
   "Print {{n}} labels": "{{n}} லேபிள் அச்சிடுங்கள்",
   "Copies of {{name}}": "{{name}} நகல்கள்",
-  "Each tag shows the barcode saved on that size and colour, so the sticker and the stock are the same item. To use your own barcodes, set one on the SKUs and barcodes tab first.": "ஒவ்வொரு டேக்கிலும் அந்த அளவு மற்றும் நிறத்தின் சேமித்த பார்கோடு இருக்கும், எனவே ஸ்டிக்கரும் இருப்பும் ஒரே பொருள். உங்கள் சொந்த பார்கோடுகளைப் பயன்படுத்த முதலில் SKU மற்றும் பார்கோடு தாவலில் அமைக்கவும்."
+  "Each tag shows the barcode saved on that size and colour, so the sticker and the stock are the same item. To use your own barcodes, set one on the SKUs and barcodes tab first.": "ஒவ்வொரு டேக்கிலும் அந்த அளவு மற்றும் நிறத்தின் சேமித்த பார்கோடு இருக்கும், எனவே ஸ்டிக்கரும் இருப்பும் ஒரே பொருள். உங்கள் சொந்த பார்கோடுகளைப் பயன்படுத்த முதலில் SKU மற்றும் பார்கோடு தாவலில் அமைக்கவும்.",
+  "Usually buys": "பொதுவாக வாங்குவது",
+  "Sizes and colours": "அளவுகள் மற்றும் நிறங்கள்",
+  "Bought most": "அதிகம் வாங்கியது",
+  "No clothing bought yet.": "இதுவரை ஆடை எதுவும் வாங்கவில்லை.",
+  "{{n}} pieces on {{b}} bills": "{{b}} பில்களில் {{n}} துண்டுகள்"
 }

@@ -5165,5 +5165,10 @@
   "As many as in stock": "സ്റ്റോക്കിലുള്ളത്ര",
   "Print {{n}} labels": "{{n}} ലേബൽ പ്രിന്റ് ചെയ്യുക",
   "Copies of {{name}}": "{{name}} പകർപ്പുകൾ",
-  "Each tag shows the barcode saved on that size and colour, so the sticker and the stock are the same item. To use your own barcodes, set one on the SKUs and barcodes tab first.": "ഓരോ ടാഗിലും ആ വലിപ്പത്തിന്റെയും നിറത്തിന്റെയും സേവ് ചെയ്ത ബാർകോഡ് ഉണ്ടാകും, അതിനാൽ സ്റ്റിക്കറും സ്റ്റോക്കും ഒരേ ഇനമാണ്. സ്വന്തം ബാർകോഡ് ഉപയോഗിക്കാൻ ആദ്യം SKU, ബാർകോഡ് ടാബിൽ സെറ്റ് ചെയ്യുക."
+  "Each tag shows the barcode saved on that size and colour, so the sticker and the stock are the same item. To use your own barcodes, set one on the SKUs and barcodes tab first.": "ഓരോ ടാഗിലും ആ വലിപ്പത്തിന്റെയും നിറത്തിന്റെയും സേവ് ചെയ്ത ബാർകോഡ് ഉണ്ടാകും, അതിനാൽ സ്റ്റിക്കറും സ്റ്റോക്കും ഒരേ ഇനമാണ്. സ്വന്തം ബാർകോഡ് ഉപയോഗിക്കാൻ ആദ്യം SKU, ബാർകോഡ് ടാബിൽ സെറ്റ് ചെയ്യുക.",
+  "Usually buys": "സാധാരണ വാങ്ങുന്നത്",
+  "Sizes and colours": "വലിപ്പവും നിറങ്ങളും",
+  "Bought most": "ഏറ്റവും കൂടുതൽ വാങ്ങിയത്",
+  "No clothing bought yet.": "ഇതുവരെ വസ്ത്രം വാങ്ങിയിട്ടില്ല.",
+  "{{n}} pieces on {{b}} bills": "{{b}} ബില്ലുകളിലായി {{n}} പീസ്"
 }

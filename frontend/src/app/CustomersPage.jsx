@@ -14,6 +14,9 @@ import { localISO } from '../lib/dates.js';
 import { LoyaltyCard } from '../components/LoyaltyCard.jsx';
 import { Alert, Button, Field, Input, Modal, Select, StatusBadge, useToast, StatCard, EmptyState } from '../components/ui.jsx';
 import { useT } from '../i18n/useT.js';
+import { useAuth } from '../context/AuthContext.jsx';
+import { CLOTHING_TYPES } from '../lib/business.js';
+import CustomerSizes from './clothing/CustomerSizes.jsx';
 import { formatDate } from '../lib/display.js';
 import { CsvImportModal } from './wholesale/parts.jsx';
 
@@ -150,6 +153,7 @@ const BillRow = ({ bill }) => {
 
 const CustomerPanel = ({ customer: c, onEdit, onBack }) => {
   const tr = useT();
+  const { business } = useAuth();
   const [bills, setBills] = useState(null);
   const [loyalty, setLoyalty] = useState(null);
   const [error, setError] = useState('');
@@ -225,6 +229,8 @@ const CustomerPanel = ({ customer: c, onEdit, onBack }) => {
             </div>
           </section>
         )}
+
+        {CLOTHING_TYPES.includes(business?.business_type) && <CustomerSizes customerId={c.customer_id} />}
 
         <section aria-label={tr('Bills')}>
           <h3 className="mb-2 text-caption font-semibold uppercase tracking-[0.12em] text-ink-500">Bills {bills && <span className="tabular font-normal">· {bills.length}{bills.length === 100 ? '+' : ''}</span>}</h3>

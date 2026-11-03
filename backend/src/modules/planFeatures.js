@@ -134,19 +134,22 @@ const GYM_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('gym_'));
 const GAMING_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('gaming_'));
 const AP_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('ap_'));
 const CL_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('cl_'));
+// FlowBook is its own product: an industry business (restaurant, clothing, salon...) does not get it inside FlowXP. Only a FlowBook business has it; an admin can still switch it on for one business or one type.
+const FLOWBOOK_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('flowbook'));
 const NOT_FOOD = ['reservations', 'integrations', 'qr_ordering', 'multi_brand', 'delivery_fleet', 'tables', 'kitchen'];
-const SHOP_OFF = [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, 'wholesale_pricing'];
-const FOOD_OFF = [...SALON_KEYS, ...WHOLESALE_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS];
+const SHOP_OFF = [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, 'wholesale_pricing', ...FLOWBOOK_KEYS];
+const FOOD_OFF = [...SALON_KEYS, ...WHOLESALE_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, ...FLOWBOOK_KEYS];
 export const INDUSTRY_OFF = {
   RESTAURANT: FOOD_OFF, CAFE: FOOD_OFF, RACING: FOOD_OFF, HOTEL: FOOD_OFF,
   GAMING_CAFE: FOOD_OFF.filter((k) => !GAMING_KEYS.includes(k)),                    // a lounge keeps the table floor, kitchen and QR menu for its food and drink
   CLOUD_KITCHEN: [...FOOD_OFF, 'reservations', 'qr_ordering', 'tables'],           // no dining room
-  SALON: [...NOT_FOOD, ...WHOLESALE_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS],                             // appointments, not table bookings
-  GYM: [...NOT_FOOD, ...SALON_KEYS, ...WHOLESALE_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, 'integrations'],
+  SALON: [...NOT_FOOD, ...WHOLESALE_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, ...FLOWBOOK_KEYS],                             // appointments, not table bookings
+  GYM: [...NOT_FOOD, ...SALON_KEYS, ...WHOLESALE_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, 'integrations', ...FLOWBOOK_KEYS],
   AUTO_PARTS: SHOP_OFF.filter((k) => !AP_KEYS.includes(k)),                         // a parts shop is a shop: the till, stock center and batches stay; the parts tools are its own             // members and access; the till and loyalty stay
   RETAIL: SHOP_OFF, SUPERMARKET: SHOP_OFF, PHARMACY: SHOP_OFF,                      // these keep batches and expiry
   ELECTRONICS: [...SHOP_OFF, 'wholesale_batches'], CLOTHING: [...SHOP_OFF.filter((k) => !CL_KEYS.includes(k)), 'wholesale_batches'], SERVICES: [...SHOP_OFF, 'wholesale_batches'],
-  WHOLESALE: [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, 'loyalty'], DISTRIBUTOR: [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, 'loyalty']
+  WHOLESALE: [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, 'loyalty', ...FLOWBOOK_KEYS], DISTRIBUTOR: [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, 'loyalty', ...FLOWBOOK_KEYS],
+  OTHER: FLOWBOOK_KEYS
 };
 
 /** What the industry's own defaults say for this business type, in the same shape as a feature_flags object: { key: false }. */

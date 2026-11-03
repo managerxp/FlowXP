@@ -5165,5 +5165,10 @@
   "As many as in stock": "As many as in stock",
   "Print {{n}} labels": "Print {{n}} labels",
   "Copies of {{name}}": "Copies of {{name}}",
-  "Each tag shows the barcode saved on that size and colour, so the sticker and the stock are the same item. To use your own barcodes, set one on the SKUs and barcodes tab first.": "Each tag shows the barcode saved on that size and colour, so the sticker and the stock are the same item. To use your own barcodes, set one on the SKUs and barcodes tab first."
+  "Each tag shows the barcode saved on that size and colour, so the sticker and the stock are the same item. To use your own barcodes, set one on the SKUs and barcodes tab first.": "Each tag shows the barcode saved on that size and colour, so the sticker and the stock are the same item. To use your own barcodes, set one on the SKUs and barcodes tab first.",
+  "Usually buys": "Usually buys",
+  "Sizes and colours": "Sizes and colours",
+  "Bought most": "Bought most",
+  "No clothing bought yet.": "No clothing bought yet.",
+  "{{n}} pieces on {{b}} bills": "{{n}} pieces on {{b}} bills"
 }

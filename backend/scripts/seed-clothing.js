@@ -105,6 +105,27 @@ const main = async () => {
       } catch (e) { if (!/Not enough stock|insufficient|stock/i.test(e.message)) throw e; }
     }
   }
+  /* Two suppliers who have delivered, so a supplier's "Styles bought" has something to show: the first half of the styles from one, the rest from the other, in two deliveries each. */
+  const sups = [];
+  for (const [name, phone] of [['Tiruppur Knits', '9845011111'], ['Jaipur Loom Traders', '9845022222']]) {
+    sups.push((await pool.query(`INSERT INTO suppliers (business_id, name, phone) VALUES ($1,$2,$3) RETURNING supplier_id`, [businessId, name, phone])).rows[0].supplier_id);
+  }
+  const bought = (await pool.query(
+    `SELECT v.style_id, v.product_id, p.purchase_price_paise FROM clothing_variants v JOIN products p ON p.product_id = v.product_id WHERE v.business_id = $1 ORDER BY v.style_id, v.sort_order`, [businessId])).rows;
+  const styleIds = [...new Set(bought.map((r) => r.style_id))];
+  const half = Math.ceil(styleIds.length / 2);
+  let n = 0;
+  for (const [si, supplier] of sups.entries()) {
+    for (const ago of [40, 12]) {
+      const lines = bought.filter((r) => (si === 0 ? styleIds.indexOf(r.style_id) < half : styleIds.indexOf(r.style_id) >= half) && rand() < 0.7).map((r) => ({ ...r, qty: int(3, 12) }));
+      const total = lines.reduce((t, l) => t + l.qty * Number(l.purchase_price_paise), 0);
+      const po = (await pool.query(
+        `INSERT INTO purchase_orders (business_id, branch_id, supplier_id, po_number, po_date, status, total_paise, balance_due_paise, payment_status) VALUES ($1,$2,$3,$4,$5,'RECEIVED',$6,0,'PAID') RETURNING po_id`,
+        [businessId, store, supplier, `PO-DEMO-${++n}`, dayAgo(ago), total])).rows[0].po_id;
+      for (const l of lines) await pool.query(`INSERT INTO purchase_order_items (po_id, product_id, description, quantity, received_quantity, unit_cost_paise, line_total_paise) VALUES ($1,$2,'Delivery',$3,$3,$4,$5)`, [po, l.product_id, l.qty, l.purchase_price_paise, l.qty * Number(l.purchase_price_paise)]);
+    }
+  }
+
   console.log(`Vastra Fashions ready: ${STYLES.length} styles, ${variantCount} variants, ${bills} bills.\nSign in as clothing@flowxp.test / ${PASSWORD}`);
   await pool.end();
 };

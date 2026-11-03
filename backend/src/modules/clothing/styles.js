@@ -338,6 +338,62 @@ export const updateVariant = async (client, ctx, productId, b) => {
 };
 
 /**
+ * What a supplier has delivered, grouped by style: pieces received, money spent (before GST), average cost a piece, orders, last delivery, and pieces per size.
+ * Counts received stock only (RECEIVED, or the received part of PARTIAL), at the outlet(s) the viewer may see.
+ */
+export const supplierStyles = async (db, tenant, supplierId) => {
+  const params = [tenant.businessId, Number(supplierId)];
+  const scope = tenant.scopeBranchId == null ? '' : (params.push(tenant.scopeBranchId), ` AND po.branch_id = $${params.length}`);
+  if (!(await db.query(`SELECT 1 FROM suppliers WHERE business_id = $1 AND supplier_id = $2`, params.slice(0, 2))).rowCount) throw new ClothingError(404, 'Not found');
+  const { rows } = await db.query(
+    `SELECT s.style_id, s.style_code, s.name, v.size, v.sort_order, po.po_id, po.po_date,
+            COALESCE(i.received_quantity, CASE WHEN po.status = 'RECEIVED' THEN i.quantity ELSE 0 END) AS pieces, i.unit_cost_paise
+       FROM purchase_orders po
+       JOIN purchase_order_items i ON i.po_id = po.po_id
+       JOIN clothing_variants v ON v.product_id = i.product_id AND v.business_id = po.business_id
+       JOIN clothing_styles s ON s.style_id = v.style_id
+      WHERE po.business_id = $1 AND po.supplier_id = $2 AND po.status IN ('RECEIVED','PARTIAL')${scope}`, params);
+  const by = new Map();
+  for (const r of rows) {
+    const pieces = Number(r.pieces); if (!(pieces > 0)) continue;
+    const e = by.get(r.style_id) || { style_id: r.style_id, style_code: r.style_code, name: r.name, pieces: 0, spent_paise: 0, orders: new Set(), last_date: null, sizes: new Map() };
+    e.pieces += pieces; e.spent_paise += Math.round(pieces * Number(r.unit_cost_paise)); e.orders.add(r.po_id);
+    if (!e.last_date || r.po_date > e.last_date) e.last_date = r.po_date;
+    const z = e.sizes.get(r.size) || { size: r.size, sort: r.sort_order, pieces: 0 }; z.pieces += pieces; e.sizes.set(r.size, z);
+    by.set(r.style_id, e);
+  }
+  return withRupees([...by.values()].map((e) => ({
+    style_id: e.style_id, style_code: e.style_code, name: e.name, pieces: e.pieces, spent_paise: e.spent_paise, avg_cost_paise: Math.round(e.spent_paise / e.pieces),
+    orders: e.orders.size, last_date: e.last_date, sizes: [...e.sizes.values()].sort((a, b) => a.sort - b.sort).map(({ size, pieces }) => ({ size, pieces }))
+  })).sort((a, b) => b.spent_paise - a.spent_paise));
+};
+/**
+ * What a customer tends to buy, worked out from their issued bills (nothing to keep up to date): the sizes and colours they take most, the styles they came back for, and when they last bought.
+ * Pieces are counted as billed; returns are not taken off. Sizes are shown as written (M, 32, 6-7Y), most pieces first.
+ */
+export const customerPreferences = async (db, tenant, customerId) => {
+  const params = [tenant.businessId, Number(customerId)];
+  const scope = tenant.scopeBranchId == null ? '' : (params.push(tenant.scopeBranchId), ` AND inv.branch_id = $${params.length}`);
+  if (!(await db.query(`SELECT 1 FROM customers WHERE business_id = $1 AND customer_id = $2`, params.slice(0, 2))).rowCount) throw new ClothingError(404, 'Not found');
+  const { rows } = await db.query(
+    `SELECT s.style_id, s.name AS style_name, v.size, v.colour, v.colour_hex, inv.invoice_id, inv.invoice_date, i.quantity
+       FROM invoices inv JOIN invoice_items i ON i.invoice_id = inv.invoice_id
+       JOIN clothing_variants v ON v.product_id = i.product_id AND v.business_id = inv.business_id JOIN clothing_styles s ON s.style_id = v.style_id
+      WHERE inv.business_id = $1 AND inv.customer_id = $2 AND inv.status = 'ISSUED'${scope}`, params);
+  const tally = (key, extra = () => ({})) => {
+    const m = new Map();
+    for (const r of rows) { const k = r[key]; const e = m.get(k) || { [key === 'style_name' ? 'name' : key]: k, pieces: 0, ...extra(r) }; e.pieces += Number(r.quantity); m.set(k, e); }
+    return [...m.values()].sort((a, b) => b.pieces - a.pieces).slice(0, 4);
+  };
+  return {
+    pieces: rows.reduce((t, r) => t + Number(r.quantity), 0), bills: new Set(rows.map((r) => r.invoice_id)).size,
+    last_date: rows.reduce((d, r) => (!d || r.invoice_date > d ? r.invoice_date : d), null),
+    sizes: tally('size'), colours: tally('colour', (r) => ({ hex: r.colour_hex })), styles: tally('style_name')
+  };
+};
+
+
+/**
  * Bulk import: one row per size/colour, rows with the same style (code, else name) become one style. Columns: style, colour, size, qty, selling_price, purchase_price, mrp, category,
  * brand, gender, hsn, gst. Rows are checked first and nothing is saved if any is wrong; `check` only reports.
  */

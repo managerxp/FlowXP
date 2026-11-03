@@ -5165,5 +5165,10 @@
   "As many as in stock": "స్టాక్‌లో ఉన్నన్ని",
   "Print {{n}} labels": "{{n}} లేబుల్స్ ప్రింట్ చేయండి",
   "Copies of {{name}}": "{{name}} కాపీలు",
-  "Each tag shows the barcode saved on that size and colour, so the sticker and the stock are the same item. To use your own barcodes, set one on the SKUs and barcodes tab first.": "ప్రతి ట్యాగ్‌పై ఆ సైజు, రంగు యొక్క సేవ్ చేసిన బార్‌కోడ్ ఉంటుంది, కాబట్టి స్టిక్కర్ మరియు స్టాక్ ఒకే ఐటెమ్. మీ సొంత బార్‌కోడ్‌లు వాడాలంటే ముందుగా SKU మరియు బార్‌కోడ్ ట్యాబ్‌లో సెట్ చేయండి."
+  "Each tag shows the barcode saved on that size and colour, so the sticker and the stock are the same item. To use your own barcodes, set one on the SKUs and barcodes tab first.": "ప్రతి ట్యాగ్‌పై ఆ సైజు, రంగు యొక్క సేవ్ చేసిన బార్‌కోడ్ ఉంటుంది, కాబట్టి స్టిక్కర్ మరియు స్టాక్ ఒకే ఐటెమ్. మీ సొంత బార్‌కోడ్‌లు వాడాలంటే ముందుగా SKU మరియు బార్‌కోడ్ ట్యాబ్‌లో సెట్ చేయండి.",
+  "Usually buys": "సాధారణంగా కొనేవి",
+  "Sizes and colours": "సైజులు మరియు రంగులు",
+  "Bought most": "ఎక్కువగా కొన్నవి",
+  "No clothing bought yet.": "ఇంకా బట్టలు ఏవీ కొనలేదు.",
+  "{{n}} pieces on {{b}} bills": "{{b}} బిల్లులలో {{n}} పీసులు"
 }

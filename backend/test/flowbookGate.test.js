@@ -18,11 +18,14 @@ test('FlowBook features are listed for the super admin and switched by plan, bus
   assert.ok(PLAN_FEATURE_KEYS.every((k) => k.length <= 32), 'keys fit the override column');
 
   const user = (await pool.query(`INSERT INTO users (name, email, password_hash) VALUES ('o','o@gate.test','x') RETURNING user_id`)).rows[0].user_id;
-  const biz = (await pool.query(`INSERT INTO businesses (name, owner_user_id, business_type, plan_code, subscription_status) VALUES ('Shop',$1,'RETAIL','BUSINESS','ACTIVE') RETURNING business_id`, [user])).rows[0].business_id;
+  const biz = (await pool.query(`INSERT INTO businesses (name, owner_user_id, business_type, plan_code, subscription_status) VALUES ('Books',$1,'FLOWBOOK','BUSINESS','ACTIVE') RETURNING business_id`, [user])).rows[0].business_id;
   const id = String(biz);
 
   assert.equal((await gate(id)).ok, true);
   assert.deepEqual(await featuresOff(id), []);
+  // FlowBook is its own product: an industry business (a shop here) has none of it unless an admin gives it access
+  const shop = (await pool.query(`INSERT INTO businesses (name, owner_user_id, business_type, plan_code, subscription_status) VALUES ('Shop',$1,'CLOTHING','BUSINESS','ACTIVE') RETURNING business_id`, [user])).rows[0].business_id;
+  assert.equal((await gate(String(shop))).ok, false, 'an industry business is not offered FlowBook');
   assert.equal((await gate(null)).ok, false, 'books not linked to a FlowXP business cannot be gated or counted');
 
   // switched off for this one business by the super admin

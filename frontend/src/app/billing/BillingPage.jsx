@@ -38,6 +38,7 @@ import { queueSale } from '../../lib/offline.js';
 import { CLOTHING_TYPES, RESTAURANT_TYPES, RETAIL_TYPES } from '../../lib/business.js';
 import { StylePicker, StyleTile } from '../clothing/TillStylePicker.jsx';
 import ShortcutsModal, { Kbd } from './ShortcutsModal.jsx';
+import { UsualSizes } from '../clothing/CustomerSizes.jsx';
 import UpiCollect from '../../components/UpiCollect.jsx';
 import RoomChargePicker from '../../components/RoomChargePicker.jsx';
 import BarcodeScanner from '../../components/BarcodeScanner.jsx';
@@ -1068,6 +1069,7 @@ const BillingPage = () => {
                 <p className="min-w-0 flex-1 truncate text-small font-medium text-ink-900">{customerName}</p>
                 <button type="button" onClick={clearCustomer} className="text-small font-medium text-ink-500 hover:text-ink-900 pointer-coarse:min-h-11 pointer-coarse:px-2">{tr('Change')}</button>
               </div>
+              {clothing && <UsualSizes customerId={customerId} />}
               {card && <LoyaltyCard card={card} compact />}
               <RewardHint card={card} items={billLines} total={totals.total} onAdd={() => { const p = (products || []).find((x) => x.product_id === card.reward_product_id); if (p) addProduct(p); }} />
               {pointsInfo && <PointsPanel points={pointsInfo} total={Math.max(0, totals.before - totals.coupon)} value={redeem} onChange={setRedeem} />}

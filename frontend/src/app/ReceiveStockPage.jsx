@@ -5,16 +5,18 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Minus, Plus, ScanLine, Search, Trash2, X } from 'lucide-react';
+import { ArrowLeft, FileText, Grid3x3, Minus, Plus, ScanLine, Search, Trash2, X } from 'lucide-react';
 import BarcodeScanner from '../components/BarcodeScanner.jsx';
 import QuickProductModal from '../components/QuickProductModal.jsx';
 import SupplierBillImport from '../components/SupplierBillImport.jsx';
+import ReceiveStyleGrid from './clothing/ReceiveStyleGrid.jsx';
 import { api, formatCurrency } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useIdempotencyKey } from '../lib/idempotency.js';
 import { localSearch } from '../lib/posCatalog.js';
 import { usePosCatalog } from '../lib/usePosCatalog.js';
 import { lookupCode, productDetail, qty as fmtQty } from '../lib/retailStock.js';
+import { CLOTHING_TYPES } from '../lib/business.js';
 import { Alert, Button, Field, Input, Select, useToast } from '../components/ui.jsx';
 
 const METHODS = [['CASH', 'Cash'], ['UPI', 'UPI'], ['BANK_TRANSFER', 'Bank'], ['CARD', 'Card'], ['OTHER', 'Other']];
@@ -33,6 +35,7 @@ const ReceiveStockPage = () => {
   const [supplier, setSupplier] = useState('');
   const [bill, setBill] = useState('');
   const [billDate, setBillDate] = useState('');
+  const [gridding, setGridding] = useState(false);     // clothing: the size x colour grid is open
   const [importing, setImporting] = useState(false);     // the supplier-bill reader is open
   const [allowDup, setAllowDup] = useState(false);       // the person confirmed this bill number is a different delivery
   const [dupBill, setDupBill] = useState(false);         // the server says this supplier's bill number is already recorded
@@ -80,6 +83,10 @@ const ReceiveStockPage = () => {
       add(l.product, l.qty);
       patch(l.product.product_id, { cost: l.cost === '' ? '' : String(l.cost), tax_rate: l.tax_rate === '' ? '' : String(l.tax_rate), ...(l.expiry ? { expiry: l.expiry } : {}), ...(l.batch ? { batch: l.batch } : {}), learn: l.learn });
     }
+  };
+  /* A style's grid: every filled cell is a line of its own; a cost typed there applies to all of them. */
+  const useGrid = (entries, cost) => {
+    for (const e of entries) { add(e.product, e.qty); if (String(cost ?? '').trim() !== '') patch(e.product.product_id, { cost: String(cost).trim() }); }
   };
   const patch = (id, change) => setLines((ls) => ls.map((l) => (l.product_id === id ? { ...l, ...change } : l)));
   const remove = (id) => setLines((ls) => ls.filter((l) => l.product_id !== id));
@@ -153,6 +160,7 @@ const ReceiveStockPage = () => {
 
       <div className="mt-5 flex flex-wrap items-start gap-3">
         <Button size="lg" className="min-h-12" onClick={() => setScanning(true)}><ScanLine aria-hidden="true" className="h-5 w-5" />Scan items</Button>
+        {CLOTHING_TYPES.includes(business?.business_type) && <Button size="lg" variant="secondary" className="min-h-12" onClick={() => setGridding(true)}><Grid3x3 aria-hidden="true" className="h-5 w-5" />Add a style by size</Button>}
         <Button size="lg" variant="secondary" className="min-h-12" onClick={() => setImporting(true)}><FileText aria-hidden="true" className="h-5 w-5" />Read a supplier bill</Button>
         <div className="relative min-w-60 flex-1">
           {pending && (
@@ -246,6 +254,7 @@ const ReceiveStockPage = () => {
           onCreate={(code) => { setScanning(false); setCreating({ barcode: code }); }}
         />
       )}
+      {gridding && <ReceiveStyleGrid onAdd={useGrid} onClose={() => setGridding(false)} />}
       {importing && <SupplierBillImport suppliers={suppliers} categories={cats} search={localSearch} onClose={() => setImporting(false)} onUse={useBill} />}
       {creating && (
         <QuickProductModal

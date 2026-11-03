@@ -5165,5 +5165,10 @@
   "As many as in stock": "जितना स्टॉक में है उतने",
   "Print {{n}} labels": "{{n}} लेबल प्रिंट करें",
   "Copies of {{name}}": "{{name}} की प्रतियाँ",
-  "Each tag shows the barcode saved on that size and colour, so the sticker and the stock are the same item. To use your own barcodes, set one on the SKUs and barcodes tab first.": "हर टैग पर उस साइज़ और रंग का सहेजा हुआ बारकोड होता है, इसलिए स्टिकर और स्टॉक एक ही आइटम हैं। अपने बारकोड इस्तेमाल करने के लिए पहले SKU और बारकोड टैब में उसे सेट करें।"
+  "Each tag shows the barcode saved on that size and colour, so the sticker and the stock are the same item. To use your own barcodes, set one on the SKUs and barcodes tab first.": "हर टैग पर उस साइज़ और रंग का सहेजा हुआ बारकोड होता है, इसलिए स्टिकर और स्टॉक एक ही आइटम हैं। अपने बारकोड इस्तेमाल करने के लिए पहले SKU और बारकोड टैब में उसे सेट करें।",
+  "Usually buys": "आमतौर पर लेते हैं",
+  "Sizes and colours": "साइज़ और रंग",
+  "Bought most": "सबसे ज़्यादा ख़रीदा",
+  "No clothing bought yet.": "अभी तक कोई कपड़ा नहीं ख़रीदा।",
+  "{{n}} pieces on {{b}} bills": "{{b}} बिलों पर {{n}} पीस"
 }

@@ -44,6 +44,8 @@ export default wrapAll({
     audit(req, 'clothing.variant_updated', 'product', id(req), null, { fields: Object.keys(req.body || {}) });
     ok(res, out);
   },
+  customerPreferences: async (req, res) => ok(res, await styles.customerPreferences(pool, req.tenant, id(req))),
+  supplierStyles: async (req, res) => ok(res, await styles.supplierStyles(pool, req.tenant, id(req))),
   importRows: async (req, res) => {
     const out = await inTx((client) => styles.importRows(client, ctx(req), req.body?.rows, { check: req.body?.check === true }));
     if (out.ok && out.saved) audit(req, 'clothing.imported', 'clothing_style', null, null, { styles: out.styles, variants: out.variants });

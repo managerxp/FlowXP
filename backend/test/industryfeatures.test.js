@@ -58,8 +58,16 @@ test('wholesale keeps its own features and drops loyalty, the restaurant set and
   }
 });
 
-test('OTHER and an unknown type have no defaults, so everything is on', () => {
-  assert.deepEqual(flags('OTHER'), {});
+test('FlowBook is its own product: off for every industry, on for a FlowBook business', () => {
+  const book = Object.keys(industryDefaults('RETAIL')).filter((k) => k.startsWith('flowbook'));
+  assert.ok(book.includes('flowbook_app') && book.includes('flowbook'));
+  for (const type of Object.keys(INDUSTRY_OFF)) for (const k of book) assert.equal(flags(type)[k], false, `${type} ${k}`);
+  assert.deepEqual(flags('FLOWBOOK'), {});
+  assert.ok(on(flags('CLOTHING', { typeRow: { flowbook_app: true } }), 'flowbook_app'), 'an admin can still switch it on for a type');
+});
+
+test('OTHER has only FlowBook off; an unknown type has no defaults, so everything is on', () => {
+  assert.deepEqual(Object.keys(flags('OTHER')).filter((k) => !k.startsWith('flowbook')), []);
   assert.deepEqual(flags(undefined), {});
   assert.deepEqual(industryDefaults('NOPE'), {});
 });
