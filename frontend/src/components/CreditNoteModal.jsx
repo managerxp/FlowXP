@@ -5,6 +5,8 @@
  */
 import { useEffect, useState } from 'react';
 import { api, formatCurrency } from '../lib/api.js';
+import { useAuth } from '../context/AuthContext.jsx';
+import { CLOTHING_TYPES } from '../lib/business.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
 import { Alert, Button, Field, Input, Modal, Select, useToast, PageLoader } from './ui.jsx';
 
@@ -18,7 +20,9 @@ const CreditNoteModal = ({ invoice, onClose, onIssued }) => {
   const [reason, setReason] = useState('');
   const [settle, setSettle] = useState('none');       // none | refund
   const [method, setMethod] = useState('CASH');
-  const [restock, setRestock] = useState(false);
+  const { business } = useAuth();
+  // a garment taken back usually goes back on the shelf, in its own size and colour: tick it by default and untick for a damaged one
+  const [restock, setRestock] = useState(CLOTHING_TYPES.includes(business?.business_type));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 

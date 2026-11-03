@@ -257,12 +257,12 @@ export const listStyles = async (db, tenant, q, { limit, offset }) => {
   }
   const base = `FROM clothing_styles s LEFT JOIN categories c ON c.category_id = s.category_id LEFT JOIN brands b ON b.brand_id = s.brand_id
     LEFT JOIN LATERAL (SELECT count(*)::int AS variants, COALESCE(SUM(${stock}), 0) AS stock, MIN(p.selling_price_paise) AS price_from, MAX(p.selling_price_paise) AS price_to,
-        count(*) FILTER (WHERE ${stock} <= 0)::int AS sold_out, array_agg(DISTINCT v.colour) AS colours
+        count(*) FILTER (WHERE ${stock} <= 0)::int AS sold_out, array_agg(DISTINCT v.colour) AS colours, array_agg(p.product_id) AS product_ids
       FROM clothing_variants v JOIN products p ON p.product_id = v.product_id WHERE v.style_id = s.style_id AND p.status = 'ACTIVE') a ON TRUE
     WHERE ${where.join(' AND ')}`;
   const total = Number((await db.query(`SELECT count(*) ${base}`, params)).rows[0].count);
   const rows = (await db.query(
-    `SELECT s.*, c.name AS category_name, b.name AS brand_name, COALESCE(a.variants, 0) AS variants, COALESCE(a.stock, 0) AS stock, a.price_from, a.price_to, COALESCE(a.sold_out, 0) AS sold_out, COALESCE(a.colours, '{}') AS colours
+    `SELECT s.*, c.name AS category_name, b.name AS brand_name, COALESCE(a.variants, 0) AS variants, COALESCE(a.stock, 0) AS stock, a.price_from, a.price_to, COALESCE(a.sold_out, 0) AS sold_out, COALESCE(a.colours, '{}') AS colours, COALESCE(a.product_ids, '{}') AS product_ids
      ${base} ORDER BY s.created_at DESC, s.style_id DESC LIMIT ${limit} OFFSET ${offset}`, params)).rows;
   return { rows: withRupees(rows.map((r) => ({ ...r, stock: Number(r.stock), price_from_paise: r.price_from == null ? null : Number(r.price_from), price_to_paise: r.price_to == null ? null : Number(r.price_to), price_from: undefined, price_to: undefined }))), total };
 };
@@ -326,9 +326,15 @@ export const updateVariant = async (client, ctx, productId, b) => {
     min_stock: b.reorder_level !== undefined ? num(b.reorder_level, 'Reorder level', { min: 0, max: 1000000, required: true }) : Number(v.min_stock)
   };
   if (next.mrp_paise != null && next.selling_price_paise > next.mrp_paise) throw new ClothingError(400, 'The selling price cannot be above the MRP');
-  await client.query(`UPDATE products SET selling_price_paise = $2, purchase_price_paise = $3, mrp_paise = $4, min_stock = $5, updated_at = now() WHERE product_id = $1`,
-    [v.product_id, next.selling_price_paise, next.purchase_price_paise, next.mrp_paise, next.min_stock]);
-  return withRupees({ product_id: v.product_id, ...next });
+  /* The shop's own barcode (a sticker already on the stock): 4-48 characters, no spaces. The trigger moves product_barcodes along; another item holding it is a 409. */
+  let barcode = v.barcode;
+  if (b.barcode !== undefined) {
+    barcode = String(b.barcode ?? '').trim();
+    if (!/^[!-~]{4,48}$/.test(barcode)) throw new ClothingError(400, 'A barcode is 4 to 48 letters or digits, without spaces');
+  }
+  await client.query(`UPDATE products SET selling_price_paise = $2, purchase_price_paise = $3, mrp_paise = $4, min_stock = $5, barcode = $6, updated_at = now() WHERE product_id = $1`,
+    [v.product_id, next.selling_price_paise, next.purchase_price_paise, next.mrp_paise, next.min_stock, barcode]);
+  return withRupees({ product_id: v.product_id, ...next, barcode });
 };
 
 /**

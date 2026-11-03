@@ -5,7 +5,8 @@
  * Making one is a short wizard: details, colours and sizes, prices and opening stock in a size x colour grid, then save. Opening one shows the same grid with live stock.
  */
 import { useMemo, useState } from 'react';
-import { Plus, Search, Upload } from 'lucide-react';
+import { Plus, Printer, Search, Upload } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { qs, useDebounced, useLoad } from '../../lib/salon.js';
@@ -53,10 +54,10 @@ const Grid = ({ matrix }) => {
 /* ── one style ──────────────────────────────────────────────────────────── */
 const VariantRow = ({ v, canEdit, onSaved, card = false }) => {
   const tr = useT();
-  const [price, setPrice] = useState(String(v.selling_price)); const [reorder, setReorder] = useState(String(v.min_stock));
+  const [price, setPrice] = useState(String(v.selling_price)); const [reorder, setReorder] = useState(String(v.min_stock)); const [code, setCode] = useState(v.barcode || '');
   const [busy, run] = useAction();
-  const dirty = price !== String(v.selling_price) || reorder !== String(v.min_stock);
-  const save = () => run(async () => { await api(`/clothing/variants/${v.product_id}`, { method: 'PATCH', body: { selling_price: price, reorder_level: reorder } }); onSaved(); }, 'Saved');
+  const dirty = price !== String(v.selling_price) || reorder !== String(v.min_stock) || code !== (v.barcode || '');
+  const save = () => run(async () => { await api(`/clothing/variants/${v.product_id}`, { method: 'PATCH', body: { selling_price: price, reorder_level: reorder, barcode: code } }); onSaved(); }, 'Saved');
   if (card) {
     return (
       <li className="px-4 py-3">
@@ -64,7 +65,8 @@ const VariantRow = ({ v, canEdit, onSaved, card = false }) => {
           <p className="font-medium text-ink-900"><Swatch hex={v.colour_hex} name={v.colour} /> <span className="ml-1">{v.colour}</span> · {v.size}</p>
           <p className={`tabular text-small ${v.stock <= 0 ? 'font-semibold text-danger' : 'text-ink-700'}`}>{v.stock}</p>
         </div>
-        <p className="tabular text-caption text-ink-500">{v.sku} · {v.barcode}</p>
+        <p className="tabular text-caption text-ink-500">{v.sku}</p>
+        {canEdit ? <Input aria-label={tr('Barcode')} className="mt-1" value={code} onChange={(e) => setCode(e.target.value.replace(/\s/g, ''))} /> : <p className="tabular text-caption text-ink-500">{v.barcode}</p>}
         <div className="mt-2 flex items-end gap-2">
           <label className="flex-1 text-caption text-ink-500">{tr('Price')}{canEdit ? <Input aria-label={tr('Selling price')} inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} /> : <span className="tabular block text-body text-ink-900">{rs(v.selling_price_paise)}</span>}</label>
           <label className="w-24 text-caption text-ink-500">{tr('Reorder')}{canEdit ? <Input aria-label={tr('Reorder level')} inputMode="numeric" value={reorder} onChange={(e) => setReorder(e.target.value)} /> : <span className="tabular block text-body text-ink-900">{v.min_stock}</span>}</label>
@@ -76,7 +78,7 @@ const VariantRow = ({ v, canEdit, onSaved, card = false }) => {
   return (
     <Tr>
       <Td><Swatch hex={v.colour_hex} name={v.colour} /> <span className="ml-1">{v.colour}</span> · <span className="font-medium">{v.size}</span></Td>
-      <Td className="tabular text-caption">{v.sku}<span className="block text-ink-500">{v.barcode}</span></Td>
+      <Td className="tabular text-caption">{v.sku}{canEdit ? <Input aria-label="Barcode" className="mt-1 h-8 text-caption" value={code} onChange={(e) => setCode(e.target.value.replace(/\s/g, ''))} /> : <span className="block text-ink-500">{v.barcode}</span>}</Td>
       <Td className="w-28">{canEdit ? <Input aria-label="Selling price" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} /> : <span className="tabular">{rs(v.selling_price_paise)}</span>}</Td>
       <Td className="w-20">{canEdit ? <Input aria-label="Reorder level" inputMode="numeric" value={reorder} onChange={(e) => setReorder(e.target.value)} /> : <span className="tabular">{v.min_stock}</span>}</Td>
       <Td className={`text-right tabular ${v.stock <= 0 ? 'font-semibold text-danger' : ''}`}>{v.stock}</Td>
@@ -130,10 +132,13 @@ const StyleDetail = ({ id, onClose, onChanged }) => {
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-small text-ink-700">{tr('{{n}} in stock across {{v}} sizes and colours', { n: s.stock, v: s.variants.length })} · {rs(s.selling_price_paise)}{s.mrp_paise ? ` (MRP ${rs(s.mrp_paise)})` : ''}</p>
-            {canEdit && <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Link to={`/app/clothing/labels?styles=${s.style_id}`} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong px-3 text-small font-semibold text-ink-700 hover:bg-surface-2"><Printer aria-hidden="true" className="h-4 w-4" /> {tr('Print tags')}</Link>
+              {canEdit && <>
               {s.status === 'ACTIVE' && <Button size="sm" variant="secondary" onClick={() => setAdding(true)}><Plus aria-hidden="true" className="h-4 w-4" /> {tr('Add colours or sizes')}</Button>}
               <Button size="sm" variant="ghost" onClick={() => setStatus(s.status === 'ACTIVE' ? 'ARCHIVED' : 'ACTIVE')}>{s.status === 'ACTIVE' ? tr('Archive') : tr('Bring back')}</Button>
-            </div>}
+              </>}
+            </div>
           </div>
           <Tabs value={tab} onChange={setTab} tabs={[{ key: 'grid', label: T('Stock by size and colour') }, { key: 'variants', label: T('SKUs and barcodes'), count: s.variants.length }]} />
           {tab === 'grid' && <Grid matrix={s.matrix} />}

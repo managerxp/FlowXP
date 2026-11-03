@@ -184,6 +184,15 @@ test('editing a style: identity follows to every variant, prices only when asked
   const one = okBody(await call(ctl.updateVariant, { params: { id: String(white.product_id) }, body: { selling_price: 599, reorder_level: 8, mrp: 799 } }));
   assert.deepEqual([one.selling_price, one.min_stock], [599, 8]);
   assert.equal((await rejected(inTx((c) => styles.updateVariant(c, ctx(), white.product_id, { selling_price: 900 })))).status, 400, 'selling above MRP');
+
+  /* the shop's own barcode: kept as typed, found by the till's barcode table, and never shared with another item */
+  const mine = okBody(await call(ctl.updateVariant, { params: { id: String(white.product_id) }, body: { barcode: 'MYTAG-0001' } }));
+  assert.equal(mine.barcode, 'MYTAG-0001');
+  assert.equal((await pool.query(`SELECT product_id FROM product_barcodes WHERE barcode = 'MYTAG-0001'`)).rows[0].product_id, white.product_id);
+  assert.equal((await pool.query(`SELECT count(*) FROM product_barcodes WHERE product_id = $1`, [white.product_id])).rows[0].count, '1', 'the old in-store code is replaced');
+  const other = renamed.variants.find((v) => v.product_id !== white.product_id);
+  assert.equal((await rejected(inTx((c) => styles.updateVariant(c, ctx(), other.product_id, { barcode: 'MYTAG-0001' })))).code, '23505', 'a barcode is never on two items');
+  assert.equal((await rejected(inTx((c) => styles.updateVariant(c, ctx(), other.product_id, { barcode: 'a b' })))).status, 400, 'no spaces');
 });
 
 test('listing and searching styles: by name, code, SKU and barcode; stock and sold-out count; filters', { skip }, async () => {
@@ -194,6 +203,7 @@ test('listing and searching styles: by name, code, SKU and barcode; stock and so
   assert.deepEqual([tee1.variants, tee1.stock, tee1.colours.sort()], [18, 57, ['Black', 'Blue', 'Navy', 'White']]);
   assert.equal(tee1.price_from, 599, 'the lowest variant price');
   assert.equal(tee1.sold_out, 18 - 5, 'variants with no stock');
+  assert.equal(tee1.product_ids.length, 18, 'the till needs the variant ids to show how many of a style are on the bill');
   assert.equal((await list({ search: 'classic' })).length, 1);
   assert.equal((await list({ search: 'tee-1' })).length, 1, 'by style code, any case');
   const v = okBody(await call(ctl.get, { params: { id: String(tee) } })).variants[0];

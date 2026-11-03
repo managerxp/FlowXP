@@ -23,7 +23,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ChefHat, CheckCircle2, ClipboardList, CloudOff, Minus, PackagePlus, Pause, Plus, Printer, ScanLine, Search, Split, Trash2, UserRound, X } from 'lucide-react';
+import { ChefHat, CheckCircle2, ClipboardList, CloudOff, Keyboard, Minus, PackagePlus, Pause, Plus, Printer, ScanLine, Search, Split, Trash2, UserRound, X } from 'lucide-react';
 import { api, formatCurrency, NetworkError } from '../../lib/api.js';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
 import { withApproval } from '../../lib/approval.js';
@@ -35,7 +35,9 @@ import { Alert, Button, Input, Modal, Select, humanize, useToast, useDialog } fr
 import { LoyaltyCard, MobileLookup, PointsPanel, RewardHint } from '../../components/LoyaltyCard.jsx';
 import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, setDevicePref } from '../../lib/printing.js';
 import { queueSale } from '../../lib/offline.js';
-import { RESTAURANT_TYPES, RETAIL_TYPES } from '../../lib/business.js';
+import { CLOTHING_TYPES, RESTAURANT_TYPES, RETAIL_TYPES } from '../../lib/business.js';
+import { StylePicker, StyleTile } from '../clothing/TillStylePicker.jsx';
+import ShortcutsModal, { Kbd } from './ShortcutsModal.jsx';
 import UpiCollect from '../../components/UpiCollect.jsx';
 import RoomChargePicker from '../../components/RoomChargePicker.jsx';
 import BarcodeScanner from '../../components/BarcodeScanner.jsx';
@@ -372,6 +374,7 @@ const BillingPage = () => {
   const [split, setSplit] = useState(false);
   const [parts, setParts] = useState([]);                // [{ key, method, amount }] while split
   const [holdOpen, setHoldOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);   // F1: the list of keys
   const [holdLabel, setHoldLabel] = useState('');
   const [heldBills, setHeldBills] = useState([]);
   const [heldOpen, setHeldOpen] = useState(false);
@@ -387,6 +390,7 @@ const BillingPage = () => {
 
   // supermarkets and shops: scanning, quick products, keyboard lines, server-side search and an offline catalogue
   const retail = RETAIL_TYPES.includes(business?.business_type);
+  const clothing = CLOTHING_TYPES.includes(business?.business_type);   // the till shows a style as one tile and asks for the size and colour
   /* Offers (retail): the server prices them when the bill is made; this asks it for the same figures as the cart changes,
      so the cashier and the customer see what each offer took off before charging. */
   const [promoCount, setPromoCount] = useState(0);
@@ -408,6 +412,8 @@ const BillingPage = () => {
   const [cats, setCats] = useState([]);
   const [quick, setQuick] = useState([]);
   const [selKey, setSelKey] = useState(null);           // the selected bill line, for + / − / Delete
+  const [styles, setStyles] = useState(null);           // clothing: the styles the search matched
+  const [pickStyle, setPickStyle] = useState(null);     // clothing: the style whose size and colour grid is open
   const [hi, setHi] = useState(0);                      // the highlighted tile while arrowing through search results
   const [catalog, setCatalog] = useState(catalogInfo);
   const scope = `${business?.business_id}-${outletId}`;
@@ -453,12 +459,13 @@ const BillingPage = () => {
       if (query.trim()) params.set('search', query.trim());
       const picked = category && cats.find((c) => c.name === category);
       if (picked) params.set('category_id', picked.category_id);
+      if (clothing) { params.delete('kind'); try { setStyles(await api(`/clothing/styles?${params}`)); } catch { setStyles([]); } return; }
       try { setProducts(await api(`/products?${params}`)); }
       catch (caught) { setProducts(caught instanceof NetworkError ? localSearch(query, 60, category) : []); }
       setHi(0);
     }, query ? 200 : 0);
     return () => clearTimeout(timer);
-  }, [retail, query, category, cats, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [retail, clothing, query, category, cats, scope]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!retail) return undefined;
@@ -801,17 +808,30 @@ const BillingPage = () => {
      fast cashier expects: F2 customer, F4 discount, F8 payment, and + − Delete and the arrows for the selected line. */
   const chargeRef = useRef(charge); chargeRef.current = charge;
   const keys = useRef({});
-  keys.current = { retail, scanning, quickFor };
+  keys.current = { retail, scanning, quickFor, orderMode, shortcutsOpen };
+  const doRef = useRef({});
+  doRef.current = {
+    held: () => { loadHeld(); setHeldOpen(true); },
+    clear: async () => { if (cartRef.current.length && await dialog.confirm({ title: tr('Clear this bill?'), body: tr('Every item on it is removed.'), confirmLabel: tr('Clear bill'), danger: true })) resetSale(); }
+  };
   useEffect(() => {
     const onKey = (e) => {
       const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
       if (e.key === '/' && !typing && !confirmation) { e.preventDefault(); searchRef.current?.focus(); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !confirmation) { e.preventDefault(); chargeRef.current(); }
-      const { retail: shop, scanning: camera, quickFor: making } = keys.current;
+      const { retail: shop, scanning: camera, quickFor: making, orderMode: ordering, shortcutsOpen: help } = keys.current;
+      if (e.key === 'F1' || (e.key === '?' && !typing && !confirmation)) { e.preventDefault(); setShortcutsOpen((v) => !v); return; }
+      if (help) return;
       if (!shop || confirmation || camera || making !== null || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key === 'F2') { e.preventDefault(); setCustomerOpen(true); }
       else if (e.key === 'F4') { e.preventDefault(); setExtrasOpen(true); setTimeout(() => document.getElementById('bill-discount')?.focus(), 30); }
       else if (e.key === 'F8') { e.preventDefault(); document.getElementById('pay-received')?.focus(); }
+      else if (e.key === 'F3' && !ordering) { e.preventDefault(); setScanning(true); }
+      else if (e.key === 'F5' && !ordering) { e.preventDefault(); addCustomLine(); }
+      else if (e.key === 'F6' && !ordering) { e.preventDefault(); if (cartRef.current.length) setHoldOpen(true); }
+      else if (e.key === 'F7' && !ordering) { e.preventDefault(); doRef.current.held(); }
+      else if (e.key === 'F9') { e.preventDefault(); chargeRef.current(); }
+      else if (e.key === 'F10' && !ordering) { e.preventDefault(); doRef.current.clear(); }
       else if (!typing) {
         const lines = cartRef.current;
         const i = lines.findIndex((l) => l.key === selRef.current);
@@ -864,6 +884,7 @@ const BillingPage = () => {
         pick = found[0];
       } catch { /* not a code: fall through to the name match */ }
     }
+    if (!pick && clothing && styles?.length) { setPickStyle(styles[0].style_id); setQuery(''); return; }
     pick = pick || shown[retail ? hi : 0] || shown[0];
     if (pick && pick.is_available !== false) { choose(pick); setQuery(''); }
   };
@@ -909,8 +930,8 @@ const BillingPage = () => {
               <kbd className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-line px-1.5 text-caption text-ink-400 sm:block">/</kbd>
             )}
           </div>
-          {retail && !orderMode && <Button onClick={() => setScanning(true)} className="h-12 shrink-0"><ScanLine aria-hidden="true" className="h-5 w-5" /><span className="hidden sm:inline">{tr('Scan')}</span><span className="sm:hidden">{tr('Scan')}</span></Button>}
-          {!orderMode && <Button variant="secondary" onClick={addCustomLine} className="h-12 shrink-0"><PackagePlus aria-hidden="true" className="h-4 w-4" /><span className="hidden sm:inline">{tr('Custom item')}</span></Button>}
+          {retail && !orderMode && <Button onClick={() => setScanning(true)} className="h-12 shrink-0"><ScanLine aria-hidden="true" className="h-5 w-5" /><span className="hidden sm:inline">{tr('Scan')}</span><span className="sm:hidden">{tr('Scan')}</span><Kbd className="ml-1 border-white/40 bg-white/20 text-white">F3</Kbd></Button>}
+          {!orderMode && <Button variant="secondary" onClick={addCustomLine} className="h-12 shrink-0"><PackagePlus aria-hidden="true" className="h-4 w-4" /><span className="hidden sm:inline">{tr('Custom item')}</span>{retail && <Kbd>F5</Kbd>}</Button>}
         </div>
 
         {retail && !query && !orderMode && quick.length > 0 && (
@@ -944,7 +965,13 @@ const BillingPage = () => {
         )}
 
         <div className="mt-4 min-h-0 flex-1 lg:overflow-y-auto lg:pr-1">
-          {products === null ? (
+          {clothing && styles !== null && styles.length > 0 ? (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(8.25rem,1fr))] gap-2">
+              {styles.map((st) => <StyleTile key={st.style_id} style={st} inCart={(st.product_ids || []).reduce((n, id) => n + (inCart.get(id) || 0), 0)} onOpen={() => setPickStyle(st.style_id)} />)}
+            </div>
+          ) : clothing && styles !== null ? (
+            <p className="py-10 text-center text-small text-ink-500">{query ? <>Nothing matches “{query}”.{!orderMode && <> <button type="button" onClick={addCustomLine} className="font-medium text-brand-600">{tr('Add it as a custom item')}</button></>}</> : tr('No styles yet.')}</p>
+          ) : products === null || (clothing && styles === null) ? (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(8.25rem,1fr))] gap-2">{Array.from({ length: 12 }).map((_, i) => <div key={i} className="h-[88px] animate-pulse rounded-(--radius-card) bg-surface-3" />)}</div>
           ) : products.length === 0 ? (
             <div className="rounded-(--radius-card) border border-dashed border-line-strong p-10 text-center">
@@ -965,6 +992,8 @@ const BillingPage = () => {
         </div>
       </section>
 
+      {shortcutsOpen && <ShortcutsModal shop={retail} onClose={() => setShortcutsOpen(false)} />}
+      {pickStyle && <StylePicker styleId={pickStyle} inCart={inCart} onAdd={(p) => addProduct(p)} onClose={() => setPickStyle(null)} />}
       {ordersOpen && <OpenOrders orders={openOrders} onPick={openOrder} onClose={() => setOrdersOpen(false)} />}
       {heldOpen && <HeldBills bills={heldBills} onResume={resume} onDiscard={discard} onClose={() => setHeldOpen(false)} />}
       {picking && <ModifierPicker product={picking} onClose={() => setPicking(null)} onConfirm={(ids, selected) => addProduct(picking, ids, selected)} />}
@@ -1008,13 +1037,13 @@ const BillingPage = () => {
               <div className="flex shrink-0 items-center gap-1">
                 {heldBills.length > 0 && (
                   <button type="button" onClick={() => { loadHeld(); setHeldOpen(true); }} className="flex items-center gap-1.5 rounded-md px-2 py-1 text-small font-medium text-ink-700 hover:bg-surface-2 pointer-coarse:min-h-11 pointer-coarse:px-3">
-                   {tr('Resume')}e<span className="tabular rounded-full bg-brand-500 px-1.5 text-[11px] font-semibold text-white">{heldBills.length}</span>
+                   {tr('Resume')}{retail && <Kbd>F7</Kbd>}<span className="tabular rounded-full bg-brand-500 px-1.5 text-[11px] font-semibold text-white">{heldBills.length}</span>
                   </button>
                 )}
                 {cart.length > 0 && (
                   <>
                     <button type="button" onClick={() => setHoldOpen((v) => !v)} aria-expanded={holdOpen} className="flex items-center gap-1 rounded-md px-2 py-1 text-small font-medium text-ink-700 hover:bg-surface-2 pointer-coarse:min-h-11 pointer-coarse:px-3">
-                      <Pause aria-hidden="true" className="h-3.5 w-3.5" />{tr('Hold')}
+                      <Pause aria-hidden="true" className="h-3.5 w-3.5" />{tr('Hold')}{retail && <Kbd>F6</Kbd>}
                     </button>
                     <button type="button" onClick={async () => { if (await dialog.confirm({ title: tr('Clear this bill?'), body: tr('Every item on it is removed.'), confirmLabel: tr('Clear bill'), danger: true })) resetSale(); }} className="rounded-md px-2 py-1 text-small font-medium text-ink-500 hover:text-danger pointer-coarse:min-h-11 pointer-coarse:px-3">{tr('Clear')}</button>
                   </>
@@ -1060,7 +1089,7 @@ const BillingPage = () => {
             <button type="button" onClick={() => setCustomerOpen(true)} className="flex min-h-8 w-full items-center gap-2.5 text-left pointer-coarse:min-h-11">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-2 text-ink-500"><UserRound aria-hidden="true" className="h-3.5 w-3.5" /></span>
               <span className="flex-1 text-caption text-ink-700">{tr('Walk-in customer')}</span>
-              <span className="text-caption font-semibold text-brand-600">{tr('Add customer')}</span>
+              <span className="text-caption font-semibold text-brand-600">{tr('Add customer')} {retail && <Kbd>F2</Kbd>}</span>
             </button>
           )}
         </div>
@@ -1146,7 +1175,7 @@ const BillingPage = () => {
                 {creditError && <p className="text-caption text-danger" role="alert">{creditError}</p>}
               </div>
             ) : (
-              <button type="button" onClick={() => setExtrasOpen(true)} className="inline-flex min-h-7 items-center text-caption font-semibold text-brand-600 hover:text-brand-700 pointer-coarse:min-h-11">{tr('+ Discount, coupon or note')}</button>
+              <button type="button" onClick={() => setExtrasOpen(true)} className="inline-flex min-h-7 items-center text-caption font-semibold text-brand-600 hover:text-brand-700 pointer-coarse:min-h-11">{tr('+ Discount, coupon or note')}{retail && <Kbd className="ml-1.5">F4</Kbd>}</button>
             )}
           </div>
 
@@ -1277,13 +1306,13 @@ const BillingPage = () => {
             </label>
           )}
 
-          <div className="-mx-4 bg-surface px-4 pb-2 pt-2 lg:sticky lg:bottom-0 lg:z-10"><Button onClick={charge} disabled={busy || !billLines.length} className="h-10 w-full text-small">{chargeLabel}</Button></div>
+          <div className="-mx-4 bg-surface px-4 pb-2 pt-2 lg:sticky lg:bottom-0 lg:z-10"><Button onClick={charge} disabled={busy || !billLines.length} className="h-10 w-full text-small">{chargeLabel}{retail && !busy && <Kbd className="ml-2 border-white/40 bg-white/20 text-white">F9</Kbd>}</Button></div>
           {collecting && (
             <UpiCollect invoice={collecting.invoice} amount={collecting.amount} vpa={business.upi_vpa} payee={business.name}
                         onPaid={finishUpi} onLater={() => finishUpi(collecting.invoice)} />
           )}
           <p className="pos-hint mt-2 hidden text-center text-caption text-ink-400 lg:block">
-            {retail ? tr('Ctrl + Enter to charge · / search · F2 customer · F4 discount · F8 payment · + − Del the selected line') : tr('Ctrl + Enter to charge · / to search')}
+            <button type="button" onClick={() => setShortcutsOpen(true)} className="inline-flex items-center gap-1.5 hover:text-ink-700"><Keyboard aria-hidden="true" className="h-3.5 w-3.5" />{tr('Shortcuts')} <Kbd className="!inline">F1</Kbd></button>
           </p>
           <p className="mt-1 text-center text-caption text-ink-400 lg:hidden"><Link to="/app/billing/invoices" className="inline-flex min-h-11 items-center px-3 hover:text-ink-700">{tr('See earlier bills')}</Link></p>
         </div>

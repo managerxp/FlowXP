@@ -20,7 +20,7 @@ export default {
     {
       id: 'variants', title: 'Each size and colour is a real item',
       body: 'A variant is not a note on a style. It is an item of its own: its own SKU, its own barcode, its own stock, its own price if it differs. That is why the till, returns, offers and the stock count all work per size and colour without any special mode.',
-      points: ['SKU made for you from the style, colour and size, like ST00004-BLU-32', 'An in-store barcode (EAN-13) made for you, never reused by another variant or another shop', 'Price, reorder level and stock changed per variant', 'GST at the style’s rate on every variant'],
+      points: ['SKU made for you from the style, colour and size, like ST00004-BLU-32', 'Print price tags with the barcode and price of each size and colour, as many as you have in stock, on an A4 sheet or a label roll', 'Already have your own barcodes on the stock? Type them on the variant and the till scans those', 'An in-store barcode (EAN-13) made for you, never reused by another variant or another shop', 'Price, reorder level and stock changed per variant', 'GST at the style’s rate on every variant'],
       shots: [{ src: p('clothing-skus'), alt: 'FlowXP SKUs and barcodes for a style: each size and colour with its SKU, barcode, price, reorder level and stock.' }]
     },
     {
@@ -52,7 +52,6 @@ export default {
     { group: 'Control', items: ['Owner, manager and cashier roles', 'Only people with permission change the catalogue', 'Each shop sees only its own data', 'Activity log of stock and price changes', 'Two-step login'] }
   ],
   notYet: [
-    'Printing price tags and barcode labels for each size and colour. The barcodes are made and scan at the till; the label printing is not built yet.',
     'Picking the size and colour on the billing screen from a grid. The till finds a variant by scan, name, SKU or barcode today.',
     'Exchanging one size or colour for another in one step. A return and a new bill do it today.',
     'Entering a purchase as a size and colour grid, a supplier ledger by style, and size or colour preferences for each customer.',
