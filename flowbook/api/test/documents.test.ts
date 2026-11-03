@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { withOrg } from '../src/db.ts';
 import type { Db } from '../src/db.ts';
+import { gstr3b } from '../src/gstr.ts';
 import { ageing, allocatePayment, applyCreditNote, createPayment, getDocument, issueDocument, saveDraft, voidDocument, voidPayment } from '../src/documents.ts';
 import type { DocIn } from '../src/documents.ts';
 import { gstinCheckChar, validGstin } from '../src/gst.ts';
@@ -194,4 +195,22 @@ test('one organization cannot see or touch the parties and documents of another'
   await assert.rejects(run(b.org, (c) => saveDraft(c, b.org, null, invoice(a.cust), 't')), { code: 'not_found' });
   const inv = await issue(a.org, invoice(a.cust));
   assert.equal(await run(b.org, (c) => getDocument(c, 'INVOICE', inv.id)), null);
+});
+
+test('credit not allowed under section 17(5): the GST is cost, not credit, in the books and in GSTR-3B, and a debit note follows the bill', { skip }, async () => {
+  const { org, vendor, cust } = await shop();
+  const bill = (extra: Partial<DocIn> = {}): DocIn => ({ kind: 'BILL', partyId: vendor, date: '2026-06-10', lines: [{ description: 'Cement for own building', quantity: '10', unitPrice: '100', taxCode: 'GST18' }], ...extra });
+  const itc = async () => (await run(org, (c) => gstr3b(c, org, '2026-06'))).file.itc_elg;
+  const row = (list: { ty: string }[], ty: string) => list.find((x) => x.ty === ty);
+  await issue(org, bill());   // 1000 + 180 GST, credit allowed
+  const blocked = await issue(org, bill({ itcBlocked: 'CONSTRUCTION', supplierRef: 'B-2' }));
+  assert.equal((await balance(org, 'Input CGST'))?.debitBalance, 9000n, 'only the allowed bill earns credit');
+  assert.equal((await balance(org, 'Purchases'))?.debitBalance, 100000n + 100000n + 18000n, 'the blocked GST is part of the cost');
+  assert.deepEqual([(await itc()).itc_avl.find((x) => x.ty === 'OTH')?.camt, row((await itc()).itc_inelg, 'RUL')?.camt], [90, 90], '3B 4(A) and 4(B)(1)');
+  const note = await issue(org, { kind: 'DEBIT_NOTE', partyId: vendor, date: '2026-06-20', relatedDocumentId: blocked.id, lines: [{ description: 'Returned', quantity: '1', unitPrice: '100', taxCode: 'GST18' }] });
+  assert.equal(note.number.startsWith('DN'), true);
+  assert.equal((await balance(org, 'Input CGST'))?.debitBalance, 9000n, 'the note does not touch credit');
+  assert.equal(row((await itc()).itc_inelg, 'RUL')?.camt, 81, 'it takes back the blocked part');
+  await assert.rejects(() => run(org, (c) => saveDraft(c, org, null, invoice(cust, { itcBlocked: 'OTHER' }), 't')), /purchase bill only/);
+  assert.deepEqual(await run(org, async (c) => [...await reconcile(c, org), ...await documentIssues(c, org)]), []);
 });

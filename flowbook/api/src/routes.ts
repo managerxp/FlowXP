@@ -3,7 +3,7 @@ import type pg from 'pg';
 import { audit } from './audit.ts';
 import { withOrg } from './db.ts';
 import type { Db } from './db.ts';
-import { advancesAndRetention, ageing, exportAll, outstanding, allocatePayment, applyCreditNote, applyDebitNote, convertDocument, createOpeningBalance, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, setOutcome, setRetention, voidDocument, voidPayment } from './documents.ts';
+import { ITC_BLOCKED, advancesAndRetention, ageing, exportAll, outstanding, allocatePayment, applyCreditNote, applyDebitNote, convertDocument, createOpeningBalance, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, setOutcome, setRetention, voidDocument, voidPayment } from './documents.ts';
 import type { Alloc, DocIn, DocKind } from './documents.ts';
 import { listExpenses, recordExpense, voidExpense } from './expenses.ts';
 import { ewayBill } from './eway.ts';
@@ -62,7 +62,7 @@ const line = { type: 'object', additionalProperties: false, properties: {
 const docBody = { type: 'object', required: ['partyId', 'date', 'lines'], additionalProperties: false, properties: {
   partyId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, dueDate: { type: 'string', pattern: DATE }, placeOfSupply: { type: 'string', pattern: '^\\d{2}$' },
   supplierRef: { type: 'string', maxLength: 60 }, relatedDocumentId: { type: 'string', pattern: ID }, memo: { type: 'string', maxLength: 500 }, roundOff: { type: 'boolean' },
-  reverseCharge: { type: 'boolean' }, tcsRateBp: { type: 'integer', minimum: 0, maximum: 2000 }, tcsSection: { type: 'string', maxLength: 30 },
+  reverseCharge: { type: 'boolean' }, tcsRateBp: { type: 'integer', minimum: 0, maximum: 2000 }, tcsSection: { type: 'string', maxLength: 30 }, itcBlocked: { type: 'string', enum: [...ITC_BLOCKED] },
   projectId: { type: 'string', pattern: ID }, projectCategory: { type: 'string', enum: [...COST_TYPES] }, warehouseId: { type: 'string', pattern: ID }, shippingBillNo: { type: 'string', maxLength: 7 }, shippingBillDate: { type: 'string', pattern: DATE }, portCode: { type: 'string', maxLength: 6 }, currency: { type: 'string', pattern: '^[A-Z]{3}$' }, fxRate: { type: 'string', pattern: '^\\d{1,9}(\\.\\d{1,6})?$' },
   lines: { type: 'array', minItems: 1, maxItems: 200, items: line } } };
 const allocBody = { type: 'array', minItems: 1, maxItems: 200, items: { type: 'object', required: ['documentId', 'amount'], additionalProperties: false, properties: {
@@ -70,7 +70,7 @@ const allocBody = { type: 'array', minItems: 1, maxItems: 200, items: { type: 'o
 const allocs = (a: { documentId: string; amount: string }[]): Alloc[] => a.map((x) => ({ documentId: BigInt(x.documentId), amount: toPaise(x.amount) }));
 const voidBody = { type: 'object', required: ['date', 'reason'], additionalProperties: false, properties: { date: { type: 'string', pattern: DATE }, reason: { type: 'string', minLength: 1, maxLength: 300 }, ...override } };
 
-type RawDoc = { projectCategory?: string; shippingBillNo?: string; shippingBillDate?: string; portCode?: string; warehouseId?: string; projectId?: string; currency?: string; fxRate?: string; partyId: string; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string; relatedDocumentId?: string; memo?: string; roundOff?: boolean; reverseCharge?: boolean; tcsRateBp?: number; tcsSection?: string;
+type RawDoc = { projectCategory?: string; shippingBillNo?: string; shippingBillDate?: string; portCode?: string; warehouseId?: string; projectId?: string; currency?: string; fxRate?: string; partyId: string; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string; relatedDocumentId?: string; memo?: string; roundOff?: boolean; reverseCharge?: boolean; tcsRateBp?: number; tcsSection?: string; itcBlocked?: string;
   lines: { itemId?: string; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; unit?: string; inclusive?: boolean }[] };
 const docIn = (kind: DocKind, b: RawDoc): DocIn => ({ ...b, kind, partyId: BigInt(b.partyId), projectId: b.projectId ? BigInt(b.projectId) : undefined, warehouseId: b.warehouseId ? BigInt(b.warehouseId) : undefined, relatedDocumentId: b.relatedDocumentId ? BigInt(b.relatedDocumentId) : undefined,
   lines: b.lines.map((l) => ({ ...l, itemId: l.itemId ? BigInt(l.itemId) : undefined })) });

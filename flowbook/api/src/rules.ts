@@ -79,12 +79,14 @@ export const customerPaymentJournal = (d: { date: string; paymentId: string; par
 });
 
 /** Supplier bill: the cost (or stock) and the input tax are debited, payables credited. Example 4. */
-export const supplierBillJournal = (d: { date: string; billId: string; partyId?: bigint; lines: TaxedLine[]; interState: boolean; stock?: boolean; inventoryNet?: bigint; reverseCharge?: boolean; sourceSystem?: string }): PostInput => {
+export const supplierBillJournal = (d: { date: string; billId: string; partyId?: bigint; lines: TaxedLine[]; interState: boolean; stock?: boolean; inventoryNet?: bigint; reverseCharge?: boolean; blocked?: boolean; sourceSystem?: string }): PostInput => {
   const net = d.lines.reduce((a, l) => a + l.taxable, 0n);
   const tax = taxSplit(d.lines, d.interState);
+  const cost = d.blocked ? tax.total : 0n;   // credit not allowed (section 17(5)): the GST is part of what the purchase cost
+  // ponytail: on stock lines the GST lands in Purchases, not Inventory, so stock value stays the taxable value; refine if a blocked bill is stocked
   return { date: d.date, sourceType: 'bill', sourceId: d.billId, kind: 'BILL', sourceSystem: d.sourceSystem, rulesVersion: RULES_VERSION, memo: `Bill ${d.billId}`,
     // reverse charge: the vendor is owed the price only; the GST is owed to the government (credited as output tax) and claimed back as input credit
-    lines: merge([{ account: d.stock ? 'INVENTORY' : 'PURCHASES', side: 'D', amount: net - (d.inventoryNet ?? 0n) }, { account: 'INVENTORY', side: 'D', amount: d.inventoryNet ?? 0n }, ...taxLines(tax, 'D', 'INPUT'), ...(d.reverseCharge ? taxLines(tax, 'C', 'OUTPUT') : []), { account: 'AP', side: 'C', amount: d.reverseCharge ? net : net + tax.total, partyId: d.partyId }]) };
+    lines: merge([{ account: d.stock ? 'INVENTORY' : 'PURCHASES', side: 'D', amount: net - (d.inventoryNet ?? 0n) + cost }, { account: 'INVENTORY', side: 'D', amount: d.inventoryNet ?? 0n }, ...(d.blocked ? [] : taxLines(tax, 'D', 'INPUT')), ...(d.reverseCharge ? taxLines(tax, 'C', 'OUTPUT') : []), { account: 'AP', side: 'C', amount: d.reverseCharge ? net : net + tax.total, partyId: d.partyId }]) };
 };
 
 /** What a customer owed (INVOICE) or a vendor was owed (BILL) when the books began; the other side is the opening-balance account. */
@@ -96,11 +98,11 @@ export const openingJournal = (d: { date: string; number: string; partyId: bigin
 });
 
 /** Debit note: a vendor's bill reduced. Payables are debited; purchase returns and the input tax that was claimed are credited back. */
-export const debitNoteJournal = (d: { date: string; noteId: string; partyId?: bigint; lines: TaxedLine[]; interState: boolean; inventoryNet?: bigint }): PostInput => {
+export const debitNoteJournal = (d: { date: string; noteId: string; partyId?: bigint; lines: TaxedLine[]; interState: boolean; inventoryNet?: bigint; blocked?: boolean }): PostInput => {
   const net = d.lines.reduce((a, l) => a + l.taxable, 0n);
   const tax = taxSplit(d.lines, d.interState);
   return { date: d.date, sourceType: 'debit_note', sourceId: d.noteId, kind: 'DEBIT_NOTE', rulesVersion: RULES_VERSION, memo: `Debit note ${d.noteId}`,
-    lines: merge([{ account: 'AP', side: 'D', amount: net + tax.total, partyId: d.partyId }, { account: 'PURCHASE_RETURNS', side: 'C', amount: net - (d.inventoryNet ?? 0n) }, { account: 'INVENTORY', side: 'C', amount: d.inventoryNet ?? 0n }, ...taxLines(tax, 'C', 'INPUT')]) };
+    lines: merge([{ account: 'AP', side: 'D', amount: net + tax.total, partyId: d.partyId }, { account: 'PURCHASE_RETURNS', side: 'C', amount: net - (d.inventoryNet ?? 0n) + (d.blocked ? tax.total : 0n) }, { account: 'INVENTORY', side: 'C', amount: d.inventoryNet ?? 0n }, ...(d.blocked ? [] : taxLines(tax, 'C', 'INPUT'))]) };
 };
 
 /** Supplier payment. Example 5. */

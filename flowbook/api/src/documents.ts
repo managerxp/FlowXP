@@ -23,8 +23,10 @@ export type DocIn = {
   /** an export invoice's shipping bill number and date and the port it left from */
   shippingBillNo?: string; shippingBillDate?: string; portCode?: string;
   kind: DocKind; partyId: bigint; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string;
-  relatedDocumentId?: bigint; memo?: string; roundOff?: boolean; reverseCharge?: boolean; tcsRateBp?: number; tcsSection?: string; lines: LineIn[];
+  relatedDocumentId?: bigint; memo?: string; roundOff?: boolean; reverseCharge?: boolean; tcsRateBp?: number; tcsSection?: string; itcBlocked?: string; lines: LineIn[];
 };
+/** Why input credit is not allowed (section 17(5)): a purchase bill with one of these has its GST counted as cost and shown as ineligible credit in GSTR-3B. */
+export const ITC_BLOCKED = ['CONSTRUCTION', 'VEHICLE', 'FOOD_TRAVEL', 'PERSONAL', 'GIFTS_LOST', 'OTHER'] as const;
 type Override = { reason: string };
 
 const PREFIX: Record<DocKind, string> = { INVOICE: 'INV', BILL: 'BILL', CREDIT_NOTE: 'CN', QUOTE: 'QUO', SALES_ORDER: 'SO', PURCHASE_ORDER: 'PO', DEBIT_NOTE: 'DN' };
@@ -112,6 +114,8 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
     const ok = target && (await c.query(`SELECT 1 FROM documents WHERE id = $1 AND kind = $3 AND status = 'ISSUED' AND party_id = $2 AND NOT reverse_charge`, [d.relatedDocumentId, d.partyId, target])).rowCount;
     if (!ok) throw new LedgerError('bad_related_document', d.kind === 'DEBIT_NOTE' ? 'a debit note can only refer to an issued bill of the same vendor (not one under reverse charge)' : 'a credit note can only refer to an issued invoice of the same customer');
   }
+  if (d.itcBlocked && (d.kind !== 'BILL' || !(ITC_BLOCKED as readonly string[]).includes(d.itcBlocked))) throw new LedgerError('bad_itc_reason', 'credit can be marked as not allowed on a purchase bill only, with one of the listed reasons');
+  const blocked = d.kind === 'BILL' ? d.itcBlocked ?? null : d.kind === 'DEBIT_NOTE' && d.relatedDocumentId ? ((await c.query(`SELECT itc_blocked FROM documents WHERE id = $1`, [d.relatedDocumentId])).rows[0]?.itc_blocked as string | null) ?? null : null;
   const currency = d.currency ?? BASE;
   let rateStr = '1'; let rate: bigint | null = null;
   if (currency !== BASE) {
@@ -156,7 +160,7 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
     await c.query(`DELETE FROM document_lines WHERE document_id = $1`, [id]);
   }
   if (d.warehouseId && !(await c.query(`SELECT 1 FROM warehouses WHERE id = $1 AND active`, [d.warehouseId])).rowCount) throw gone('warehouse');
-  await c.query(`UPDATE documents SET warehouse_id = $2, shipping_bill_no = $3, shipping_bill_date = $4, port_code = $5, project_category = $6 WHERE id = $1`, [id, d.warehouseId ?? null, d.shippingBillNo?.trim() || null, d.shippingBillDate || null, d.portCode?.trim() || null, projectCategory]);
+  await c.query(`UPDATE documents SET warehouse_id = $2, shipping_bill_no = $3, shipping_bill_date = $4, port_code = $5, project_category = $6, itc_blocked = $7 WHERE id = $1`, [id, d.warehouseId ?? null, d.shippingBillNo?.trim() || null, d.shippingBillDate || null, d.portCode?.trim() || null, projectCategory, blocked]);
   let no = 0;
   for (const l of lines) {
     no += 1;
@@ -168,7 +172,7 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
   return id;
 };
 
-const DOC_COLS = `d.retention_minor, d.id, d.kind, d.number, d.supplier_ref, d.party_id, p.name AS party_name, d.status, d.issue_date::text AS issue_date, d.due_date::text AS due_date,
+const DOC_COLS = `d.itc_blocked, d.retention_minor, d.id, d.kind, d.number, d.supplier_ref, d.party_id, p.name AS party_name, d.status, d.issue_date::text AS issue_date, d.due_date::text AS due_date,
   d.place_of_supply, d.inter_state, d.subtotal_minor, d.tax_minor, d.round_off_minor, d.outcome, d.converted_document_id, (SELECT x.kind FROM documents x WHERE x.id = d.converted_document_id) AS converted_kind, (SELECT x.kind FROM documents x WHERE x.id = d.related_document_id) AS related_kind, d.tcs_rate_bp, d.tcs_minor, d.tcs_section, d.reverse_charge, d.project_id, d.project_category, d.warehouse_id, d.shipping_bill_no, d.shipping_bill_date::text AS shipping_bill_date, d.port_code, (SELECT w.name FROM warehouses w WHERE w.id = d.warehouse_id) AS warehouse_name, (SELECT pr.name FROM projects pr WHERE pr.id = d.project_id) AS project_name, d.currency, d.fx_rate::text AS fx_rate, d.foreign_total_minor, d.foreign_balance_minor, d.total_minor, d.balance_minor, d.related_document_id, d.journal_entry_id, d.memo`;
 
 export const listDocuments = async (c: Db, kind: DocKind, q: { status?: string; partyId?: bigint; before?: bigint; limit: number }) => (await c.query(
@@ -206,7 +210,7 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
   const milli = (q: bigint) => `${q / 1000n}.${String(q % 1000n).padStart(3, '0')}`;
   await saveDraft(c, orgId, id, {
     kind, currency: doc.currency, fxRate: doc.fx_rate, projectId: doc.project_id ?? undefined, projectCategory: doc.project_category ?? undefined, warehouseId: doc.warehouse_id ?? undefined, shippingBillNo: doc.shipping_bill_no ?? undefined, shippingBillDate: doc.shipping_bill_date ?? undefined, portCode: doc.port_code ?? undefined, partyId: doc.party_id, date: doc.issue_d, dueDate: doc.due_d ?? undefined,
-    placeOfSupply: doc.place_of_supply ?? undefined, supplierRef: doc.supplier_ref ?? undefined, relatedDocumentId: kind === 'CREDIT_NOTE' || kind === 'DEBIT_NOTE' ? doc.related_document_id ?? undefined : undefined, memo: doc.memo ?? undefined, roundOff: doc.round_off_on, tcsRateBp: doc.tcs_rate_bp, tcsSection: doc.tcs_section ?? undefined, reverseCharge: doc.reverse_charge,
+    placeOfSupply: doc.place_of_supply ?? undefined, supplierRef: doc.supplier_ref ?? undefined, relatedDocumentId: kind === 'CREDIT_NOTE' || kind === 'DEBIT_NOTE' ? doc.related_document_id ?? undefined : undefined, memo: doc.memo ?? undefined, roundOff: doc.round_off_on, tcsRateBp: doc.tcs_rate_bp, tcsSection: doc.tcs_section ?? undefined, reverseCharge: doc.reverse_charge, itcBlocked: kind === 'BILL' ? doc.itc_blocked ?? undefined : undefined,
     lines: stored.map((l) => ({ itemId: l.item_id ?? undefined, description: l.description, hsnSac: l.hsn_sac ?? undefined, quantity: milli(l.quantity_milli), unitPrice: paiseToString(l.unit_price_fc_minor ?? l.unit_price_minor), discount: paiseToString(l.discount_fc_minor ?? l.discount_minor), taxCode: l.tax_code, unit: l.unit ?? undefined, inclusive: l.price_includes_tax }))
   }, actor);
   const fresh = (await c.query(`SELECT *, issue_date::text AS d FROM documents WHERE id = $1`, [id])).rows[0];
@@ -235,8 +239,8 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
     else if (kind === 'CREDIT_NOTE') cost.set(t.item_id, await costIn(c, t.item_id, t.qty_milli, fresh.d as string));
   }
   const journal = kind === 'INVOICE' ? saleJournal({ ...common, invoiceId: number, roundOff: fresh.round_off_minor as bigint, tcs: fresh.tcs_minor as bigint })
-    : kind === 'BILL' ? supplierBillJournal({ ...common, billId: number, reverseCharge: fresh.reverse_charge as boolean, inventoryNet: worth })
-    : kind === 'DEBIT_NOTE' ? debitNoteJournal({ ...common, noteId: number, inventoryNet: worth })
+    : kind === 'BILL' ? supplierBillJournal({ ...common, billId: number, reverseCharge: fresh.reverse_charge as boolean, inventoryNet: worth, blocked: Boolean(fresh.itc_blocked) })
+    : kind === 'DEBIT_NOTE' ? debitNoteJournal({ ...common, noteId: number, inventoryNet: worth, blocked: Boolean(fresh.itc_blocked) })
     : creditNoteJournal({ ...common, noteId: number });
   const posted = await post(c, orgId, { ...journal, actor, override });
   await c.query(`UPDATE documents SET status = 'ISSUED', number = $2, journal_entry_id = $3, balance_minor = total_minor, foreign_balance_minor = foreign_total_minor WHERE id = $1`, [id, number, posted.entryId]);

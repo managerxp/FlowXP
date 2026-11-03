@@ -12,7 +12,7 @@ const r2 = (n: number): number => Math.round(n * 100) / 100;
 /** B2C Large: an inter-state sale to an unregistered buyer above this value is listed invoice by invoice (1 lakh from 1 Aug 2024). */
 const b2clLimit = (date: string): bigint => (date >= '2024-08-01' ? 10_000_000n : 25_000_000n);
 
-type Doc = { id: bigint; kind: string; number: string; status: string; issue_date: string; inter_state: boolean; place_of_supply: string | null; total_minor: bigint; round_off_minor: bigint; reverse_charge: boolean; currency: string; shipping_bill_no: string | null; shipping_bill_date: string | null; port_code: string | null; gstin: string | null; state_code: string | null; name: string };
+type Doc = { id: bigint; kind: string; number: string; status: string; issue_date: string; inter_state: boolean; place_of_supply: string | null; total_minor: bigint; round_off_minor: bigint; reverse_charge: boolean; itc_blocked: string | null; currency: string; shipping_bill_no: string | null; shipping_bill_date: string | null; port_code: string | null; gstin: string | null; state_code: string | null; name: string };
 type Ln = { document_id: bigint; hsn_sac: string | null; description: string; unit: string | null; quantity_milli: bigint; taxable_minor: bigint; tax_rate_bp: number; tax_minor: bigint };
 type Tax = { txval: number; iamt: number; camt: number; samt: number; csamt: number };
 type Problem = { level: 'block' | 'warn'; message: string };
@@ -29,7 +29,7 @@ const monthEnd = (month: string): string => new Date(Date.UTC(Number(month.slice
 
 const load = async (c: Db, kinds: string[], month: string, statuses: string[]) => {
   const docs = (await c.query(
-    `SELECT d.id, d.kind, d.number, d.status, d.issue_date::text AS issue_date, d.inter_state, d.place_of_supply, d.total_minor, d.round_off_minor, d.reverse_charge, d.currency, d.shipping_bill_no, d.shipping_bill_date::text AS shipping_bill_date, d.port_code, p.gstin, p.state_code, p.name
+    `SELECT d.id, d.kind, d.number, d.status, d.issue_date::text AS issue_date, d.inter_state, d.place_of_supply, d.total_minor, d.round_off_minor, d.reverse_charge, d.itc_blocked, d.currency, d.shipping_bill_no, d.shipping_bill_date::text AS shipping_bill_date, d.port_code, p.gstin, p.state_code, p.name
        FROM documents d JOIN parties p ON p.id = d.party_id
       WHERE d.kind = ANY($1) AND d.status = ANY($2) AND d.number IS NOT NULL AND NOT d.is_opening AND d.issue_date BETWEEN $3::date AND $4::date ORDER BY d.number`,
     [kinds, statuses, `${month}-01`, monthEnd(month)])).rows as Doc[];
@@ -168,13 +168,13 @@ export const gstr1 = async (c: Db, orgId: bigint, month: string, opts: { hsnDigi
 /** GSTR-3B: outward supplies less credit notes, and the input tax credit on bills. Interest, late fee and table 3.2 (inter-state sales to unregistered buyers) are not worked out. */
 export const gstr3b = async (c: Db, orgId: bigint, month: string) => {
   const org = (await c.query(`SELECT gstin FROM organizations WHERE id = $1`, [orgId])).rows[0] as { gstin: string | null };
-  const out = zero(); const zr = zero(); const nil = zero(); const itc = zero(); const rev = zero();
+  const out = zero(); const zr = zero(); const nil = zero(); const itc = zero(); const rev = zero(); const blocked = zero();
   for (const kinds of [['INVOICE', 'CREDIT_NOTE'], ['BILL', 'DEBIT_NOTE']]) {
     const { docs, linesOf } = await load(c, kinds, month, ['ISSUED']);
     for (const d of docs) for (const l of linesOf(d)) {
       const sign = d.kind === 'CREDIT_NOTE' || d.kind === 'DEBIT_NOTE' ? -1 : 1;
-      if (d.kind === 'DEBIT_NOTE') add(itc, l, d.inter_state, -1);   // credit claimed on the bill is taken back
-      else if (d.kind === 'BILL') { add(itc, l, d.inter_state); if (d.reverse_charge) add(rev, l, d.inter_state); } else if (d.kind === 'INVOICE' && d.currency !== 'INR') add(zr, l, true);   // an export is zero-rated, 3.1(b), whether or not IGST is paid
+      if (d.kind === 'DEBIT_NOTE') add(d.itc_blocked ? blocked : itc, l, d.inter_state, -1);   // credit claimed on the bill is taken back
+      else if (d.kind === 'BILL') { add(d.itc_blocked ? blocked : itc, l, d.inter_state); if (d.reverse_charge) add(rev, l, d.inter_state); } else if (d.kind === 'INVOICE' && d.currency !== 'INR') add(zr, l, true);   // an export is zero-rated, 3.1(b), whether or not IGST is paid
       else if (l.tax_rate_bp === 0) add(nil, l, false, sign); else add(out, l, d.inter_state, sign);
     }
   }
@@ -193,11 +193,12 @@ export const gstr3b = async (c: Db, orgId: bigint, month: string) => {
   for (const r of exp) itc[r.system_key === 'INPUT_IGST' ? 'iamt' : r.system_key === 'INPUT_CGST' ? 'camt' : 'samt'] += rs(r.net);
   const z = { iamt: 0, camt: 0, samt: 0, csamt: 0 };
   const { txval: _taxable, ...credit } = fix(itc);
+  const { txval: _t17, ...credit17 } = fix(blocked);   // section 17(5): 4(B)(1)
   return {
     file: {
       gstin: org.gstin ?? '', ret_period: `${month.slice(5, 7)}${month.slice(0, 4)}`, version: 'GST3.0.4', hash: 'hash',
       sup_details: { osup_det: fix(out), osup_zero: { txval: r2(zr.txval), iamt: r2(zr.iamt), csamt: 0 }, osup_nil_exmp: { txval: r2(nil.txval) }, isup_rev: fix(rev), osup_nongst: { txval: 0 } },
-      itc_elg: { itc_avl: ['IMPG', 'IMPS', 'ISRC', 'ISD'].map((ty) => ({ ty, ...z })).concat([{ ty: 'OTH', ...credit }]), itc_inelg: [{ ty: 'RUL', ...z }, { ty: 'OTH', ...z }] },
+      itc_elg: { itc_avl: ['IMPG', 'IMPS', 'ISRC', 'ISD'].map((ty) => ({ ty, ...z })).concat([{ ty: 'OTH', ...credit }]), itc_inelg: [{ ty: 'RUL', ...credit17 }, { ty: 'OTH', ...z }] },
       inward_sup: { isup_details: [{ ty: 'GST', inter: 0, intra: 0 }, { ty: 'NONGST', inter: 0, intra: 0 }] }
     },
     problems: [...gstinProblem(org.gstin), { level: 'warn' as const, message: 'Zero-rate lines are treated as nil/exempt. Imports, interest and late fee are not included. Reverse-charge tax is in 3.1(d) and also claimed as credit; check the credit is allowed for you. Check every box against your own records before filing.' }]
