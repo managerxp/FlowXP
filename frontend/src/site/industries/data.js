@@ -21,8 +21,9 @@ import pharmacy from './content/pharmacy.js';
 import gym from './content/gym.js';
 import gaming from './content/gaming.js';
 import autoParts from './content/auto-parts.js';
+import clothing from './content/clothing.js';
 
-export const READY = [restaurant, cafe, cloudKitchen, hotel, retail, wholesale, salon, pharmacy, gym, gaming, autoParts];
+export const READY = [restaurant, cafe, cloudKitchen, hotel, retail, wholesale, salon, pharmacy, gym, gaming, autoParts, clothing];
 
 /* Old and alternative addresses that still work. */
 export const ALIASES = { cafes: 'cafe', 'coffee-shop': 'cafe', bakery: 'cafe', 'cafe-and-restaurant': 'restaurant', restaurants: 'restaurant', 'cloud-kitchens': 'cloud-kitchen', distribution: 'wholesale', distributor: 'wholesale', distributors: 'wholesale', 'field-sales': 'wholesale', wholesaler: 'wholesale', wholesalers: 'wholesale', pharmacies: 'pharmacy', salons: 'salon', gyms: 'gym', 'auto-spare-parts': 'auto-parts', 'spare-parts': 'auto-parts', 'auto-parts-shop': 'auto-parts', automobile: 'auto-parts', 'car-parts': 'auto-parts', 'bike-parts': 'auto-parts', 'auto-parts-store': 'auto-parts', 'gaming-lounge': 'gaming', 'gaming-cafe': 'gaming', 'gaming-lounges': 'gaming', ps5: 'gaming', 'pool-hall': 'gaming', snooker: 'gaming', 'game-zone': 'gaming', fitness: 'gym', 'fitness-studio': 'gym', yoga: 'gym', 'health-club': 'gym', hotels: 'hotel', resort: 'hotel', resorts: 'hotel', lodge: 'hotel', guesthouse: 'hotel', 'guest-house': 'hotel', 'hotel-and-restaurant': 'hotel', supermarket: 'retail', supermarkets: 'retail', grocery: 'retail', kirana: 'retail', shops: 'retail', shop: 'retail', stores: 'retail' };

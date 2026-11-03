@@ -215,6 +215,13 @@ const BUSINESSES = [
     src: '/product/parts-vehicles.webp', alt: 'FlowXP vehicle search for a Swift with each part labelled as verified or not verified.'
   },
   {
+    key: 'clothing', label: 'Clothing / Fashion', to: '/industries/clothing',
+    title: 'For garment shops, boutiques and footwear stores',
+    body: 'Add a style once, pick its colours and sizes, and every combination gets its own SKU, barcode and stock.',
+    points: ['Colours and sizes picked from a list, not typed', 'A stock grid for each style: low in amber, sold out in red', 'Scan the tag and exactly that size and colour is billed', 'Import your catalogue, one row per size and colour, checked before it is saved', 'GST at each style’s rate, returns back to the same size'],
+    src: '/product/clothing-grid.webp', alt: 'FlowXP style with stock by size and colour: each colour in a row, each size in a column, low stock in amber and sold out in red.'
+  },
+  {
     key: 'pharmacy', label: 'Pharmacies', to: '/industries/pharmacy',
     title: 'For pharmacies and medical stores',
     body: 'Receive stock with its batch and expiry date, and the till sells the soonest-expiring batch first.',

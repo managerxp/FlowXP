@@ -21,7 +21,8 @@
     "seed:pharmacy": "node scripts/seed-pharmacy.js",
     "seed:distributor": "node scripts/seed-wholesale.js && node scripts/seed-distributor.js",
     "seed:gaming": "node scripts/seed-gaming.js",
-    "seed:autoparts": "node scripts/seed-autoparts.js"
+    "seed:autoparts": "node scripts/seed-autoparts.js",
+    "seed:clothing": "node scripts/seed-clothing.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

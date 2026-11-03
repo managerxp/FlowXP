@@ -25,7 +25,8 @@ import { checkSignupType, checkBusinessType, SIGNUP_TYPES } from '../src/utils/v
 test('a new business can only be one of the built industries; older types are still known', () => {
   for (const t of SIGNUP_TYPES) assert.equal(checkSignupType(t), null, t);
   assert.equal(checkSignupType('GAMING_CAFE'), null, 'the gaming lounge is a built industry');
-  for (const t of ['ELECTRONICS', 'CLOTHING', 'RACING', 'SERVICES', 'OTHER', 'nonsense', '', null]) assert.notEqual(checkSignupType(t), null, String(t));
+  assert.equal(checkSignupType('CLOTHING'), null, 'clothing is a built industry');
+  for (const t of ['ELECTRONICS', 'RACING', 'SERVICES', 'OTHER', 'nonsense', '', null]) assert.notEqual(checkSignupType(t), null, String(t));
   assert.notEqual(checkSignupType('DISTRIBUTOR'), null, 'wholesale and distribution is one signup choice (WHOLESALE)');
   assert.equal(checkBusinessType('DISTRIBUTOR'), null, 'but an existing distributor stays valid');
   for (const t of ['ELECTRONICS', 'OTHER']) assert.equal(checkBusinessType(t), null, `${t} still valid for an existing business`);

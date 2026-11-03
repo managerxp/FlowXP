@@ -21,7 +21,7 @@ import {
   History, Landmark, LayoutDashboard, LayoutGrid, Lock, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
   Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X, Warehouse, PackageCheck, Undo2, HandCoins, ChartBar, ShoppingBag, Tags,
-  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass, BedDouble, Moon, DoorOpen, UsersRound, CalendarCheck, Dumbbell, Gamepad2, Timer, Trophy, Sun, Wrench, BookOpen
+  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass, BedDouble, Moon, DoorOpen, UsersRound, CalendarCheck, Dumbbell, Gamepad2, Timer, Trophy, Sun, Wrench, BookOpen, Shirt
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Avatar, Button, EmptyState, Logo, PageLoader, useToast } from '../components/ui.jsx';
@@ -32,7 +32,7 @@ import { InstallButton, OfflineStatus } from '../components/OfflineStatus.jsx';
 import CommandPalette from '../components/CommandPalette.jsx';
 import GuideHelper from '../components/GuideHelper.jsx';
 import IncomingDeliveryAlert from '../components/IncomingDeliveryAlert.jsx';
-import { AUTO_PARTS_TYPES, GAMING_TYPES, GYM_TYPES, HOTEL_TYPES, PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
+import { AUTO_PARTS_TYPES, CLOTHING_TYPES, GAMING_TYPES, GYM_TYPES, HOTEL_TYPES, PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
 import { useMode } from './books/mode.js';
 
 /*
@@ -54,6 +54,7 @@ const HOTEL = HOTEL_TYPES;
 const GYM = GYM_TYPES;
 const GAMING = GAMING_TYPES;
 const PARTS = AUTO_PARTS_TYPES;
+const CLOTHING = CLOTHING_TYPES;
 const WHOLESALE = WHOLESALE_TYPES;
 const PHARMACY = PHARMACY_TYPES;
 const RETAIL = RETAIL_TYPES;
@@ -119,6 +120,12 @@ const NAV_GROUPS = [
       { to: '/app/salon/memberships', label: 'Memberships & offers', icon: BadgePercent, types: SALON, permission: 'products' },
       { to: '/app/salon/team', label: 'Team & commission', icon: Users, types: SALON, anyPermission: ['staff_commission', 'appointments'] },
       { to: '/app/salon/stock', label: 'Stock & alerts', icon: Boxes, types: SALON, anyPermission: ['inventory', 'reports'] }
+    ]
+  },
+  {
+    label: 'Clothing',
+    items: [
+      { to: '/app/clothing', label: 'Styles and sizes', icon: Shirt, end: true, types: CLOTHING, anyPermission: ['billing', 'products', 'inventory'], feature: 'cl_catalog' }
     ]
   },
   {

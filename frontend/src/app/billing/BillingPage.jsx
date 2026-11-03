@@ -42,6 +42,7 @@ import BarcodeScanner from '../../components/BarcodeScanner.jsx';
 import QuickProductModal from '../../components/QuickProductModal.jsx';
 import { catalogInfo, loadCatalog, localLookup, localSearch, subscribeCatalog, syncCatalog, upsertLocal } from '../../lib/posCatalog.js';
 import { useT, T } from '../../i18n/useT.js';
+import { customPresets, slabRate, GST_RATES } from '../../lib/customItems.js';
 
 /* How the bill is paid. "Pay later" records it unpaid (a customer's credit). */
 const METHODS = [
@@ -105,7 +106,7 @@ const Stepper = ({ value, onChange, label }) => {
 );
 };
 
-const BillLine = ({ line, onChange, onRemove, selected = false, onSelect, offer = null }) => {
+const BillLine = ({ line, onChange, onRemove, selected = false, onSelect, offer = null, presets = [], gstOn = false }) => {
   const tr = useT();
   const [discountOpen, setDiscountOpen] = useState(Boolean(line.discount));
   const label = line.name || 'custom item';
@@ -114,12 +115,29 @@ const BillLine = ({ line, onChange, onRemove, selected = false, onSelect, offer 
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           {line.custom ? (
-            <div className="flex gap-2">
-              <Input placeholder={tr('What is it?')} value={line.name} onChange={(e) => onChange({ name: e.target.value })} aria-label={tr('Custom item description')} className="!py-1.5" />
-              <div className="w-24 shrink-0">
-                <Input type="number" min="0" step="0.01" placeholder={tr('₹ price')} value={line.unit_price || ''} aria-label={tr('Custom item price')}
-                       onChange={(e) => onChange({ unit_price: Number(e.target.value) })} className="!py-1.5 text-right" />
+            <div>
+              <div className="flex gap-2">
+                <Input placeholder={tr('What is it?')} value={line.name} onChange={(e) => onChange({ name: e.target.value })} aria-label={tr('Custom item description')} className="!py-1.5" />
+                <div className="w-24 shrink-0">
+                  <Input type="number" min="0" step="0.01" placeholder={tr('₹ price')} value={line.unit_price || ''} aria-label={tr('Custom item price')}
+                         onChange={(e) => { const price = Number(e.target.value); onChange({ unit_price: price, ...(line.gst_auto ? { tax_rate: slabRate(line.gst_auto, price) } : {}) }); }} className="!py-1.5 text-right" />
+                </div>
               </div>
+              {!line.name && presets.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {presets.map(([name, gst]) => (
+                    <button key={name} type="button" onClick={() => onChange({ name: tr(name), gst_auto: typeof gst === 'string' ? gst : null, tax_rate: typeof gst === 'string' ? slabRate(gst, line.unit_price) : gst })}
+                            className="rounded-full border border-line-strong px-2.5 py-1 text-caption font-medium text-ink-700 hover:bg-surface-2 pointer-coarse:min-h-11">{tr(name)}</button>
+                  ))}
+                </div>
+              )}
+              {gstOn && (
+                <label className="mt-2 flex items-center gap-2 text-caption text-ink-500">{tr('GST')}
+                  <Select aria-label={tr('GST rate of {{label}}', { label })} value={Number(line.tax_rate) || 0} onChange={(e) => onChange({ tax_rate: Number(e.target.value), gst_auto: null })} className="!w-24 !py-1">
+                    {GST_RATES.map((r) => <option key={r} value={r}>{r}%</option>)}
+                  </Select>
+                </label>
+              )}
             </div>
           ) : (
             <p className="text-small font-medium leading-snug text-ink-900">{line.name}</p>
@@ -1076,7 +1094,7 @@ const BillingPage = () => {
             </div>
           ) : (
             <ul className="divide-y divide-line">
-              {cart.map((l) => <BillLine key={l.key} line={l} offer={promo[l.key] || null} selected={retail && l.key === selKey} onSelect={() => setSelKey(l.key)} onChange={(patch) => updateLine(l.key, patch)} onRemove={() => removeLine(l.key)} />)}
+              {cart.map((l) => <BillLine key={l.key} line={l} offer={promo[l.key] || null} presets={customPresets(business?.business_type)} gstOn={Boolean(business?.gst_enabled)} selected={retail && l.key === selKey} onSelect={() => setSelKey(l.key)} onChange={(patch) => updateLine(l.key, patch)} onRemove={() => removeLine(l.key)} />)}
             </ul>
           )}
         </div>

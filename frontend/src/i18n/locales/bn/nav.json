@@ -117,7 +117,9 @@
     "salon_settings": "স্যালন সেটিংস",
     "settings": "সেটিংস",
     "workshop": "ওয়ার্কশপ",
-    "other_income": "অন্যান্য আয়"
+    "other_income": "অন্যান্য আয়",
+    "clothing": "পোশাক",
+    "styles_and_sizes": "স্টাইল ও সাইজ"
   },
   "shell": {
     "yourAccount": "আপনার অ্যাকাউন্ট",

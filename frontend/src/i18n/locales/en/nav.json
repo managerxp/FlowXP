@@ -117,7 +117,9 @@
     "wholesale_settings": "Wholesale settings",
     "salon_settings": "Salon settings",
     "settings": "Settings",
-    "workshop": "Workshop"
+    "workshop": "Workshop",
+    "clothing": "Clothing",
+    "styles_and_sizes": "Styles and sizes"
   },
   "shell": {
     "yourAccount": "Your account",

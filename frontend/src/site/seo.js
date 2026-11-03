@@ -13,7 +13,7 @@ const BRAND = 'FlowXP';
 
 /* Page titles and search phrases per industry. */
 const INDUSTRY_TITLE = {
-  restaurant: 'Restaurant billing software', cafe: 'Café and bakery billing software', 'cloud-kitchen': 'Cloud kitchen software', retail: 'Retail and supermarket billing software', hotel: 'Hotel and resort management software', wholesale: 'Wholesale and distribution software', salon: 'Salon billing software', pharmacy: 'Pharmacy billing software', gym: 'Gym management software', gaming: 'Gaming lounge software', 'auto-parts': 'Auto spare parts shop software'
+  restaurant: 'Restaurant billing software', cafe: 'Café and bakery billing software', 'cloud-kitchen': 'Cloud kitchen software', retail: 'Retail and supermarket billing software', hotel: 'Hotel and resort management software', wholesale: 'Wholesale and distribution software', salon: 'Salon billing software', pharmacy: 'Pharmacy billing software', gym: 'Gym management software', gaming: 'Gaming lounge software', 'auto-parts': 'Auto spare parts shop software', clothing: 'Clothing and fashion shop billing software'
 };
 const INDUSTRY_SEARCH = {
   restaurant: 'Restaurant billing software with POS, table QR ordering, kitchen display, recipes and GST.',
@@ -26,6 +26,7 @@ const INDUSTRY_SEARCH = {
   pharmacy: 'Pharmacy billing software with batch and expiry tracking, purchase entry and GST.',
   gym: 'Gym management software with memberships, QR check-in at the front desk and on the phone, attendance, classes, trainers, reward points and GST billing.',
   gaming: 'Gaming lounge software for PS5 and pool lounges: a timer on every station, rates by players and peak hours, food and drink on the same bill, wallets, bookings and GST.',
+  clothing: 'Clothing shop billing software with every size and colour as its own SKU, barcode and stock, barcode billing at the till, a stock grid by size and colour, CSV import, returns and GST.',
   'auto-parts': 'Auto spare parts shop and garage software: OEM and part number search, vehicle fitment you control, racks and bins, job cards for servicing with labour and parts on one GST invoice, WhatsApp updates to the owner, mechanic payroll and trade credit for garages.'
 };
 
