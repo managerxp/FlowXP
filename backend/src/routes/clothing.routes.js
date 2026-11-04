@@ -29,6 +29,7 @@ router.post('/styles', ...write, edit, cat, ctl.create);
 router.get('/styles/:id', ...read, viewer, cat, ctl.get);
 router.patch('/styles/:id', ...write, edit, cat, ctl.update);
 router.post('/styles/:id/variants', ...write, edit, cat, ctl.addVariants);
+router.get('/analytics', ...read, requireAnyPermission('reports', 'inventory', 'products'), cat, ctl.analytics);
 router.get('/customers/:id/preferences', ...read, requireAnyPermission('billing', 'customers'), cat, ctl.customerPreferences);
 router.get('/suppliers/:id/styles', ...read, requireAnyPermission('purchases', 'suppliers', 'reports'), cat, ctl.supplierStyles);
 router.patch('/variants/:id', ...write, edit, cat, ctl.updateVariant);

@@ -22,6 +22,8 @@ import { Button, Chips, ErrorText, Soft, Title, color, s } from '../../lib/ui.ts
 import { WholesaleHome } from '../../lib/WholesaleHome.tsx';
 import { SalonTill } from '../../lib/SalonTill.tsx';
 import { PharmacyTill } from '../../lib/PharmacyTill.tsx';
+import { ClothingMenu, StyleSheet } from '../../lib/ClothingMenu.tsx';
+import type { StyleRow } from '../../lib/clothing.ts';
 
 /* The till. On a phone: search or scan at the top, then the Menu (tap a tile) or the Bill, with the total and Take payment always at the bottom.
    On a tablet: the menu on the left and the bill on the right, so nothing is a screen away. */
@@ -52,6 +54,7 @@ export default function Sell() {
   const [category, setCategory] = useState<string>('__first__');
   const [tiles, setTiles] = useState<Product[]>([]);
   const [view, setView] = useState<'menu' | 'bill'>('menu');
+  const [openStyle, setOpenStyle] = useState<StyleRow | null>(null);   // clothing: the style whose size and colour grid is open
   const [note, setNote] = useState('');
   const [holding, setHolding] = useState(false);
   const [holdLabel, setHoldLabel] = useState('');
@@ -200,7 +203,7 @@ export default function Sell() {
   const pickRef = useRef(pick); pickRef.current = pick;
   const onPick = useCallback((p: Product) => pickRef.current(p), []);
   const renderTile = useCallback(({ item }: { item: Product }) => <MenuTile item={item} n={inBill.get(item.product_id) ?? 0} cols={cols} onPick={onPick} />, [inBill, cols, onPick]);
-  const Menu = (
+  const CategoryMenu = (
     <View style={{ flex: 1 }}>
       {categories.length > 1 || hasPopular ? (
         <Chips items={[...(hasPopular ? [{ id: POPULAR, label: 'Popular' }] : []), ...categories.map((c) => ({ id: c.name, label: c.name || 'Other' }))]} value={chosen ?? ''} onChange={setCategory} />
@@ -213,6 +216,9 @@ export default function Sell() {
       />
     </View>
   );
+
+  const clothing = business?.business_type === 'CLOTHING';
+  const Menu = clothing ? <View style={{ flex: 1 }}><ClothingMenu cols={cols} search={text} inBill={inBill} onOpen={setOpenStyle} fallback={CategoryMenu} /></View> : CategoryMenu;
 
   const Bill = (
     <FlatList
@@ -295,6 +301,7 @@ export default function Sell() {
       <SafeAreaView style={s.screen} edges={['top', 'right', 'bottom']}>
         {Header}
         {HoldDialog}
+      {openStyle ? <StyleSheet style={openStyle} inBill={inBill} onAdd={(p) => { add(p); }} onClose={() => setOpenStyle(null)} /> : null}
         <View style={{ flex: 1, flexDirection: 'row', borderTopWidth: 1, borderColor: color.line }}>
           <View style={{ flex: 3 }}>{text.trim() ? SearchResults : Menu}</View>
           <View style={{ flex: 2, borderLeftWidth: 1, borderColor: color.line }}>
@@ -311,6 +318,7 @@ export default function Sell() {
     <SafeAreaView style={s.screen} edges={['top']}>
       {Header}
       {HoldDialog}
+      {openStyle ? <StyleSheet style={openStyle} inBill={inBill} onAdd={(p) => { add(p); }} onClose={() => setOpenStyle(null)} /> : null}
       {text.trim() ? SearchResults : (
         <>
           <Chips items={[{ id: 'menu', label: t('Menu') }, { id: 'bill', label: `${t('Bill')} (${qty(sum.itemCount)})` }]} value={view} onChange={setView} />

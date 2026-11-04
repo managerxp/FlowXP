@@ -394,6 +394,71 @@ export const customerPreferences = async (db, tenant, customerId) => {
 
 
 /**
+ * Clothing analytics from the shop's own bills and stock. `days` is the selling window (default 30); `dead_days` is how long without a sale makes stock "dead" (default 60).
+ * Sold = pieces on ISSUED bills in the window (returns are not taken off); revenue and margin are before GST, margin = price less the cost recorded on the bill line.
+ * Stock is what is on hand now (this outlet when scoped). Ageing is days since the variant last sold, or since it was made if it never has.
+ */
+export const analytics = async (db, tenant, q = {}) => {
+  const days = Math.min(365, Math.max(1, Math.floor(Number(q.days)) || 30));
+  const deadDays = Math.min(730, Math.max(7, Math.floor(Number(q.dead_days)) || 60));
+  const sold = [tenant.businessId, days];
+  const soldScope = tenant.scopeBranchId == null ? '' : (sold.push(tenant.scopeBranchId), ` AND inv.branch_id = $${sold.length}`);
+  const sales = (await db.query(
+    `SELECT i.product_id, SUM(i.quantity) AS pieces, SUM(i.line_total_paise - i.tax_amount_paise) AS revenue, SUM(i.quantity * COALESCE(i.unit_cost_paise, 0)) AS cost, COUNT(DISTINCT inv.invoice_id) AS bills
+       FROM invoices inv JOIN invoice_items i ON i.invoice_id = inv.invoice_id JOIN clothing_variants v ON v.product_id = i.product_id AND v.business_id = inv.business_id
+      WHERE inv.business_id = $1 AND inv.status = 'ISSUED' AND inv.invoice_date >= CURRENT_DATE - $2::int${soldScope} GROUP BY i.product_id`, sold)).rows;
+  const byProduct = new Map(sales.map((r) => [r.product_id, r]));
+  const bills = (await db.query(
+    `SELECT COUNT(DISTINCT inv.invoice_id) AS n FROM invoices inv JOIN invoice_items i ON i.invoice_id = inv.invoice_id JOIN clothing_variants v ON v.product_id = i.product_id AND v.business_id = inv.business_id
+      WHERE inv.business_id = $1 AND inv.status = 'ISSUED' AND inv.invoice_date >= CURRENT_DATE - $2::int${soldScope}`, sold)).rows[0].n;
+
+  const params = [tenant.businessId];
+  const stock = stockExpr(tenant, params);
+  const lastScope = tenant.scopeBranchId == null ? '' : ` AND inv.branch_id = $${params.length}`;
+  const variants = (await db.query(
+    `SELECT v.product_id, v.colour, v.colour_hex, v.size, v.sort_order, s.style_id, s.style_code, s.name AS style_name, p.purchase_price_paise, ${stock} AS stock,
+            (SELECT MAX(inv.invoice_date) FROM invoice_items i JOIN invoices inv ON inv.invoice_id = i.invoice_id WHERE i.product_id = v.product_id AND inv.status = 'ISSUED'${lastScope}) AS last_sold,
+            GREATEST(0, CURRENT_DATE - p.created_at::date) AS made_days_ago
+       FROM clothing_variants v JOIN clothing_styles s ON s.style_id = v.style_id JOIN products p ON p.product_id = v.product_id
+      WHERE v.business_id = $1 AND s.status = 'ACTIVE'`, params)).rows;
+
+  const today = new Date(new Date().toISOString().slice(0, 10)).getTime();
+  const group = (key, make) => { const m = new Map(); return { get: (k, extra) => { if (!m.has(k)) m.set(k, make(k, extra)); return m.get(k); }, list: () => [...m.values()] }; };
+  const sizes = group('size', (k) => ({ size: k, pieces: 0, revenue_paise: 0, stock: 0 }));
+  const colours = group('colour', (k, hex) => ({ colour: k, hex, pieces: 0, revenue_paise: 0, stock: 0 }));
+  const styleMap = group('style', (k, v) => ({ style_id: k, style_code: v.style_code, name: v.style_name, pieces: 0, revenue_paise: 0, cost_paise: 0, stock: 0, stock_value_paise: 0, last_sold: null }));
+  const buckets = [[0, 30, '0-30'], [31, 60, '31-60'], [61, 90, '61-90'], [91, Infinity, '91+']].map(([from, to, label]) => ({ label, from, to, pieces: 0, value_paise: 0 }));
+  const dead = [];
+  const totals = { pieces: 0, revenue_paise: 0, cost_paise: 0 };
+
+  for (const v of variants) {
+    const sale = byProduct.get(v.product_id);
+    const pieces = Number(sale?.pieces || 0); const revenue = Number(sale?.revenue || 0); const cost = Number(sale?.cost || 0);
+    const onHand = Math.max(0, Number(v.stock));
+    const value = Math.round(onHand * Number(v.purchase_price_paise || 0));
+    for (const e of [sizes.get(v.size), colours.get(v.colour, v.colour_hex), styleMap.get(v.style_id, v)]) { e.pieces += pieces; e.revenue_paise += revenue; e.stock += onHand; }
+    const st = styleMap.get(v.style_id, v); st.cost_paise += cost; st.stock_value_paise += value;
+    if (v.last_sold && (!st.last_sold || v.last_sold > st.last_sold)) st.last_sold = v.last_sold;
+    totals.pieces += pieces; totals.revenue_paise += revenue; totals.cost_paise += cost;
+    if (onHand > 0) {
+      const age = v.last_sold ? Math.max(0, Math.round((today - new Date(new Date(v.last_sold).toISOString().slice(0, 10)).getTime()) / 86400000)) : Number(v.made_days_ago);
+      const b = buckets.find((x) => age >= x.from && age <= x.to); b.pieces += onHand; b.value_paise += value;
+      if (age >= deadDays) dead.push({ product_id: v.product_id, style_id: v.style_id, style_name: v.style_name, style_code: v.style_code, colour: v.colour, size: v.size, stock: onHand, value_paise: value, last_sold: v.last_sold, days: age, never_sold: !v.last_sold });
+    }
+  }
+  const share = (list) => list.map((e) => ({ ...e, share_pct: totals.pieces ? Math.round((e.pieces / totals.pieces) * 1000) / 10 : 0, sell_through_pct: e.pieces + e.stock ? Math.round((e.pieces / (e.pieces + e.stock)) * 1000) / 10 : 0 })).sort((a, b) => b.pieces - a.pieces || b.stock - a.stock);
+  const styleRows = share(styleMap.list()).map((e) => ({ ...e, margin_paise: e.revenue_paise - e.cost_paise, margin_pct: e.revenue_paise ? Math.round(((e.revenue_paise - e.cost_paise) / e.revenue_paise) * 1000) / 10 : null }));
+  return withRupees({
+    days, dead_days: deadDays, bills: Number(bills),
+    totals: { ...totals, margin_paise: totals.revenue_paise - totals.cost_paise, margin_pct: totals.revenue_paise ? Math.round(((totals.revenue_paise - totals.cost_paise) / totals.revenue_paise) * 1000) / 10 : null,
+              stock: variants.reduce((t, v) => t + Math.max(0, Number(v.stock)), 0), stock_value_paise: styleRows.reduce((t, s) => t + s.stock_value_paise, 0) },
+    sizes: share(sizes.list()), colours: share(colours.list()), styles: styleRows,
+    ageing: buckets.map(({ label, pieces, value_paise }) => ({ label, pieces, value_paise })),
+    dead: dead.sort((a, b) => b.value_paise - a.value_paise).slice(0, 50), dead_total: { variants: dead.length, pieces: dead.reduce((t, d) => t + d.stock, 0), value_paise: dead.reduce((t, d) => t + d.value_paise, 0) }
+  });
+};
+
+/**
  * Bulk import: one row per size/colour, rows with the same style (code, else name) become one style. Columns: style, colour, size, qty, selling_price, purchase_price, mrp, category,
  * brand, gender, hsn, gst. Rows are checked first and nothing is saved if any is wrong; `check` only reports.
  */

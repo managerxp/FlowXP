@@ -338,3 +338,35 @@ test('customer preferences: sizes, colours and styles come from the customer\'s 
   assert.equal(p.styles[0].pieces, 5);
   assert.equal((await call(ctl.customerPreferences, { params: { id: String(cust) } }, T.tenantFor())).code, 404, 'another shop cannot read it');
 });
+
+test('analytics: best sizes and colours, margin by style, ageing and dead stock', { skip }, async () => {
+  const tT = T.tenantFor();
+  const made = await inTx((c) => styles.createStyle(c, { tenant: tT, userId: T.userId }, {
+    name: 'Analytics Tee', gender: 'MEN', hsn_sac: '6109', tax_rate: 5, mrp: 300, selling_price: 200, purchase_price: 100, reorder_level: 1, colours: ['Red', 'Blue'], sizes: ['M', 'L'],
+    stock: [{ colour: 'Red', size: 'M', qty: 10 }, { colour: 'Red', size: 'L', qty: 10 }, { colour: 'Blue', size: 'M', qty: 10 }, { colour: 'Blue', size: 'L', qty: 10 }]
+  }));
+  const id = (colour, size) => made.variants.find((v) => v.colour === colour && v.size === size).product_id;
+  const sell = (items) => inTx((db) => createInvoiceInTransaction(db, { businessId: T.businessId, branchId: T.branchId, businessType: 'CLOTHING' }, T.userId, { items, payment: { amount: 'FULL', method: 'CASH' } }));
+  const empty = okBody(await call(ctl.analytics, { query: {} }, tT));
+  assert.deepEqual([empty.totals.pieces, empty.totals.revenue_paise, empty.sizes.map((x) => x.size).sort()], [0, 0, ['L', 'M']], 'nothing sold yet: zeros, but every size is listed');
+  await sell([{ product_id: id('Red', 'M'), quantity: 3 }, { product_id: id('Blue', 'M'), quantity: 1 }]);
+  const a = okBody(await call(ctl.analytics, { query: { days: '30' } }, tT));
+  assert.deepEqual([a.totals.pieces, a.bills], [4, 1]);
+  assert.deepEqual(a.sizes.map((x) => [x.size, x.pieces, x.stock]), [['M', 4, 16], ['L', 0, 20]], 'M sells, L sits');
+  assert.deepEqual(a.colours.map((x) => [x.colour, x.pieces]), [['Red', 3], ['Blue', 1]]);
+  assert.equal(a.sizes[0].share_pct, 100);
+  assert.equal(a.sizes[0].sell_through_pct, 20, '4 sold of 4 + 16 left');
+  const st = a.styles[0];
+  assert.deepEqual([st.name, st.pieces, st.stock, st.cost_paise], ['Analytics Tee', 4, 36, 4 * 10000]);
+  assert.ok(st.margin_paise > 0 && st.margin_pct > 0 && st.margin_paise === st.revenue_paise - st.cost_paise, 'margin is revenue less cost');
+  assert.equal(a.totals.stock_value_paise, 36 * 10000, 'stock valued at cost');
+  assert.equal(a.dead.length, 0, 'everything is new, nothing is dead yet');
+  // the large sizes were made 100 days ago and never sold
+  await pool.query(`UPDATE products SET created_at = now() - interval '100 days' WHERE product_id IN ($1, $2)`, [id('Red', 'L'), id('Blue', 'L')]);
+  const b = okBody(await call(ctl.analytics, { query: { dead_days: '60' } }, tT));
+  assert.deepEqual(b.dead.map((d) => [d.size, d.stock, d.never_sold]).sort(), [['L', 10, true], ['L', 10, true]]);
+  assert.deepEqual([b.dead_total.pieces, b.dead_total.value_paise], [20, 20 * 10000]);
+  assert.deepEqual(b.ageing.map((x) => [x.label, x.pieces]), [['0-30', 16], ['31-60', 0], ['61-90', 0], ['91+', 20]]);
+  assert.deepEqual(okBody(await call(ctl.analytics, { query: {} })).sizes.map((x) => x.size).includes('M'), true, 'the other shop sees its own figures');
+  assert.equal(okBody(await call(ctl.analytics, { query: { days: 'nope' } }, tT)).days, 30, 'a bad window falls back to 30 days');
+});

@@ -50,6 +50,7 @@ export default function More() {
   const gym = GYM_TYPES.includes(type);
   const salon = type === 'SALON';
   const pharmacy = type === 'PHARMACY';
+  const clothing = type === 'CLOTHING';
   const can = (...k: string[]) => allowed(business, ...k);
 
   const leave = () => {
@@ -73,6 +74,8 @@ export default function More() {
       { left: 'Gym front desk', sub: 'Let members in: scan a pass or find them', icon: 'barbell-outline', go: '/gym', show: gym && can('gym_desk') },
       { left: 'Gym plans', sub: 'What the gym sells, for how long and for how much', icon: 'pricetags-outline', go: '/gym-plans', show: gym && canGymSetup((p) => allowed(business, p)) },
       { left: 'Gym settings', sub: 'Check-in rules, hours, holidays and the entrance QR', icon: 'settings-outline', go: '/gym-settings', show: gym && canGymSetup((p) => allowed(business, p)) },
+      { left: 'Styles and sizes', sub: 'Each product with every size and colour, and what is left', icon: 'shirt-outline', go: '/clothing', show: clothing && can('billing', 'inventory', 'products') },
+      { left: 'Clothing insights', sub: 'What sells, what earns and what sits', icon: 'stats-chart-outline', go: '/clothing-insights', show: clothing && can('reports', 'inventory', 'products') },
       { left: 'Find a part', sub: 'By name, barcode or any part number: price, stock and shelf', icon: 'search-outline', go: '/parts', show: parts && can('billing', 'parts_catalog', 'warehouse', 'inventory') },
       { left: 'Parts for a vehicle', sub: 'What fits a car or bike, each marked verified or not', icon: 'car-outline', go: '/parts-vehicle', show: parts && can('billing', 'parts_catalog', 'warehouse') },
       { left: 'Front desk', sub: 'Arrivals, who is in the house, rooms and guest bills', icon: 'bed-outline', go: '/hotel', show: hotel && can('front_desk', 'housekeeping') },

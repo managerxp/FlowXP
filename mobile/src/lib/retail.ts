@@ -1,5 +1,6 @@
 /* Shops with batches and use-by dates (supermarket, retail): which businesses, and how an expiring batch reads. */
-export const RETAIL_TYPES = ['SUPERMARKET', 'RETAIL', 'AUTO_PARTS'];
+export const RETAIL_TYPES = ['SUPERMARKET', 'RETAIL', 'AUTO_PARTS', 'CLOTHING'];   // the same four as the website
+export const CLOTHING_TYPES = ['CLOTHING'];
 
 export type ExpiryRow = { batch_id: number; name: string; unit: string | null; batch_no: string; expiry_date: string; qty_on_hand: number; days_left: number; cost: number; value: number };
 export type ExpirySummary = { summary: { expired: number; expiring: number; expired_value: number }; rows: ExpiryRow[] };

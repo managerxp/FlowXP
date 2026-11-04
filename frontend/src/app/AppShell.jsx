@@ -125,7 +125,8 @@ const NAV_GROUPS = [
   {
     label: 'Clothing',
     items: [
-      { to: '/app/clothing', label: 'Styles and sizes', icon: Shirt, end: true, types: CLOTHING, anyPermission: ['billing', 'products', 'inventory'], feature: 'cl_catalog' }
+      { to: '/app/clothing', label: 'Styles and sizes', icon: Shirt, end: true, types: CLOTHING, anyPermission: ['billing', 'products', 'inventory'], feature: 'cl_catalog' },
+      { to: '/app/clothing/insights', label: 'Clothing insights', icon: ChartColumn, end: true, types: CLOTHING, anyPermission: ['reports', 'inventory', 'products'], feature: 'cl_catalog' }
     ]
   },
   {

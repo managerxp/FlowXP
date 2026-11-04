@@ -9,7 +9,7 @@ export const DELETE_URL = 'https://flowxp.in/delete-account';
 export const BUSINESS_TYPES: readonly (readonly [string, string])[] = [
   ['RESTAURANT', 'Restaurant'], ['CAFE', 'Café'], ['CLOUD_KITCHEN', 'Cloud kitchen'], ['HOTEL', 'Hotel and restaurant'], ['RETAIL', 'Retail shop'],
   ['SUPERMARKET', 'Supermarket'], ['PHARMACY', 'Pharmacy'], ['SALON', 'Salon'], ['GYM', 'Gym'], ['GAMING_CAFE', 'Gaming lounge'],
-  ['AUTO_PARTS', 'Auto spare parts'], ['WHOLESALE', 'Wholesale and distribution']
+  ['AUTO_PARTS', 'Auto spare parts'], ['CLOTHING', 'Clothing and fashion'], ['WHOLESALE', 'Wholesale and distribution']
 ];
 
 export type SignupForm = { name: string; email: string; phone: string; password: string; businessName: string; businessType: string; agreed: boolean; alsoService: boolean };

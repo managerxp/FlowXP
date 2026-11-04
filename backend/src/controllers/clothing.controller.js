@@ -44,6 +44,7 @@ export default wrapAll({
     audit(req, 'clothing.variant_updated', 'product', id(req), null, { fields: Object.keys(req.body || {}) });
     ok(res, out);
   },
+  analytics: async (req, res) => ok(res, await styles.analytics(pool, req.tenant, req.query)),
   customerPreferences: async (req, res) => ok(res, await styles.customerPreferences(pool, req.tenant, id(req))),
   supplierStyles: async (req, res) => ok(res, await styles.supplierStyles(pool, req.tenant, id(req))),
   importRows: async (req, res) => {

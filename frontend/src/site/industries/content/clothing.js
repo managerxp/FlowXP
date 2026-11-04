@@ -52,10 +52,7 @@ export default {
     { group: 'Control', items: ['Owner, manager and cashier roles', 'Only people with permission change the catalogue', 'Each shop sees only its own data', 'Activity log of stock and price changes', 'Two-step login'] }
   ],
   notYet: [
-    'Picking the size and colour on the billing screen from a grid. The till finds a variant by scan, name, SKU or barcode today.',
     'Exchanging one size or colour for another in one step. A return and a new bill do it today.',
-    'Entering a purchase as a size and colour grid, a supplier ledger by style, and size or colour preferences for each customer.',
-    'Reports for best-selling sizes and colours, stock ageing and dead stock by style.',
     'Importing old bills and ledgers from Tally or other tools. Items and stock come across; past bills stay in the old tool.'
   ],
   faq: [
