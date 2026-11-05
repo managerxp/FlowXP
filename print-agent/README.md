@@ -14,7 +14,16 @@ one-tap receipts, automatic kitchen tickets, or a drawer that opens on cash.
 - [Node.js](https://nodejs.org) 18 or newer on the till computer.
 - This folder (`print-agent`) copied to that computer.
 
-## Start it
+## Easiest on Windows: install it once
+
+Double-click **`install-windows.cmd`** (needs Node.js; it installs it with winget if missing). It copies the agent to
+`%LOCALAPPDATA%\FlowXP\print-agent` and makes it **start by itself, hidden, every time you sign in** (a launcher in your Startup folder; it logs to `agent.log`). Then in FlowXP
+(Business settings, Silent printing, *Silent, through the print agent*) press **Connect to the print agent**: FlowXP
+fetches the token from the agent itself, nothing to type. The agent only gives its token to the FlowXP address it was
+installed for (default `https://flowxp.in`; use `install-windows.cmd https://your.address` for another, or put addresses in
+a `.origins` file beside the agent). Remove it with `powershell -File install-windows.ps1 -Remove`.
+
+## Start it by hand (any system, or while testing)
 
 Pick a long secret (this is the "token"); FlowXP will ask for the same one.
 
@@ -51,7 +60,9 @@ macOS/Linux use a launchd/systemd service.
 | Printer | Target to enter |
 |---|---|
 | Network / Wi-Fi / Ethernet printer | `tcp://192.168.1.50:9100` (its IP address; print its self-test page to see it; port is almost always 9100) |
-| USB printer on **Windows** | Share the printer in Windows (Printers, Properties, Sharing), then `share://PC-NAME/ShareName` |
+| USB printer on **Windows** (this computer) | `winprint://PrinterName`, the name shown in Windows Printers (e.g. `winprint://TVS-E%20RP%203230`; spaces as `%20`). No sharing needed. |
+| Bluetooth printer paired with this Windows PC, no driver ("Driver is unavailable" is fine) | `com://COM13`, the printer's outgoing port. "Find printers on this computer" in FlowXP lists it as "Name (Bluetooth)". The printer must be on and in range. |
+| Printer shared by another Windows PC | `share://PC-NAME/ShareName` |
 | Printer on **macOS / Linux** (CUPS) | `lp://PrinterName` (see `lpstat -p`) |
 | USB printer as a device file (Linux) | `file:///dev/usb/lp0` |
 

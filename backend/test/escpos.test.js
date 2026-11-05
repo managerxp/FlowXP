@@ -49,6 +49,17 @@ test('a receipt has the shop, the lines, the totals, the payments and a cut', ()
   assert.ok(!has(out, 0x1b, 0x70, 0x00, 0x19, 0xfa));                             // no drawer unless asked
 });
 
+test('a middle dot prints as a dash (not "?"); the tax lines can be switched off; a union territory prints UTGST', () => {
+  assert.equal(ascii("Men's Belt · Brown · Free Size"), "Men's Belt - Brown - Free Size");
+  const base = { business: business1, invoice: invoice({ items: [{ description: 'Belt · Brown', quantity: 1, unit_price: 100, line_total: 112 }], balance_due: 0 }) };
+  const on = textOf(receiptBytes({ ...base, settings: {} }, { cols: 32 }));
+  assert.ok(on.includes('Belt - Brown') && !on.includes('?') && on.includes('Subtotal') && on.includes('CGST') && on.includes('SGST'));
+  const off = textOf(receiptBytes({ ...base, settings: { show_tax_lines: false } }, { cols: 32 }));
+  assert.ok(!off.includes('Subtotal') && !off.includes('CGST') && !off.includes('SGST') && off.includes('TOTAL'));
+  const ut = textOf(receiptBytes({ business: { ...business1, state: 'Chandigarh' }, invoice: { ...base.invoice, outlet: { ...base.invoice.outlet, state: 'Chandigarh' } }, settings: {} }, { cols: 32 }));
+  assert.ok(ut.includes('UTGST') && !/\bSGST/.test(ut.replace('UTGST', '')));
+});
+
 test('no line is longer than the paper, and long names wrap', () => {
   for (const cols of [32, 48]) {
     const out = receiptBytes({ business: business1, settings: {}, invoice: invoice({ balance_due: 0 }) }, { cols });

@@ -16,7 +16,8 @@ const ESC = 0x1b; const GS = 0x1d; const LF = 0x0a;
 export const ascii = (value) => String(value ?? '')
   .replace(/₹/g, 'Rs ')
   .normalize('NFD').replace(/[̀-ͯ]/g, '')
-  .replace(/[‘’]/g, '\'').replace(/[“”]/g, '"').replace(/[–—]/g, '-').replace(/×/g, 'x').replace(/•/g, '*').replace(/★/g, '*')
+  .replace(/[‘’]/g, '\'').replace(/[“”]/g, '"').replace(/[–—‑−]/g, '-').replace(/×/g, 'x').replace(/•/g, '*').replace(/★/g, '*')
+  .replace(/[·∙⋅|]/g, '-').replace(/…/g, '...').replace(/[  ]/g, ' ').replace(/½/g, '1/2').replace(/°/g, 'deg')   // the middle dot in "Belt · Brown · Free Size" used to print as "?"
   .replace(/[^\x20-\x7e\n]/g, '?');
 
 export const COLS = { 58: 32, 80: 48 };
@@ -108,8 +109,11 @@ const oneReceipt = ({ business, settings = {}, invoice }, { cols = 48, drawer = 
   }
   j.rule();
 
-  j.pair('Subtotal', money(invoice.subtotal));
-  for (const [label, v] of [['CGST', invoice.cgst], [taxName(outlet?.state || business.state), invoice.sgst], ['IGST', invoice.igst]]) if (v > 0) j.pair(label, money(v));
+  // "Show the tax lines" off: no Subtotal and no CGST / SGST (UTGST) / IGST rows. The item amounts already include the tax, so they add up to the total.
+  if (settings.show_tax_lines !== false) {
+    j.pair('Subtotal', money(invoice.subtotal));
+    for (const [label, v] of [['CGST', invoice.cgst], [taxName(outlet?.state || business.state), invoice.sgst], ['IGST', invoice.igst]]) if (v > 0) j.pair(label, money(v));
+  }
   const hand = invoice.discount - invoice.coupon_discount;
   if (hand > 0) j.pair('Discount', `-${money(hand)}`);
   if (invoice.coupon_discount > 0) j.pair(`Coupon ${invoice.coupon_code}`, `-${money(invoice.coupon_discount)}`);

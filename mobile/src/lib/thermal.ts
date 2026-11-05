@@ -30,7 +30,12 @@ export const readPrefs = async (): Promise<PrinterPrefs> => {
 };
 export const savePrefs = async (prefs: PrinterPrefs) => { await kvSet(PREFS, JSON.stringify(prefs)).catch(() => {}); };
 
-export const readMode = async (): Promise<PrinterMode> => { const m = await kvGet(MODE).catch(() => null); return m === 'rawbt' || m === 'direct' ? m : 'system'; };
+/** Never chosen by hand + a printer is saved = print straight to it (no phone print screen). A saved printer is how a person says "use this one". */
+export const readMode = async (): Promise<PrinterMode> => {
+  const m = await kvGet(MODE).catch(() => null);
+  if (m === 'rawbt' || m === 'direct' || m === 'system') return m;
+  try { return JSON.parse((await kvGet('printers_list')) || '[]').length ? 'direct' : 'system'; } catch { return 'system'; }
+};
 export const setMode = async (mode: PrinterMode) => { await kvSet(MODE, mode).catch(() => {}); };
 
 /** The link RawBT listens for: the receipt's bytes, base64. */

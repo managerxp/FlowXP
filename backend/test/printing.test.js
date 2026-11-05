@@ -137,7 +137,7 @@ test('saving one receipt option keeps the others, and the defaults fill the gaps
   assert.equal((await patch({ footer: 'Thanks!' })).code, 200);
   assert.equal((await patch({ paper_width: 99 })).code, 400);
   const shown = (await call(business.getCurrent)).body.data.receipt_settings;
-  assert.deepEqual(shown, { paper_width: 58, footer: 'Thanks!', show_gstin: true, show_upi_qr: true, show_loyalty: true, show_logo: true, logo_url: null, auto_cut: true, copies: 1, extra_lines: 3, invoice_print: INVOICE_PRINT_DEFAULTS });
+  assert.deepEqual(shown, { paper_width: 58, footer: 'Thanks!', show_gstin: true, show_upi_qr: true, show_loyalty: true, show_logo: true, show_tax_lines: true, logo_url: null, auto_cut: true, copies: 1, extra_lines: 3, invoice_print: INVOICE_PRINT_DEFAULTS });
   assert.equal((await patch({ show_upi_qr: false })).code, 200);
   assert.equal((await call(business.getCurrent)).body.data.receipt_settings.show_upi_qr, false);
   assert.equal((await call(business.getCurrent)).body.data.receipt_settings.paper_width, 58, 'still 58 mm');
@@ -170,7 +170,9 @@ test('a printer is checked and its address made ready for the agent', () => {
   assert.equal(ok({ name: 'Dialog', connection: 'BROWSER', address: 'ignored' }).address, '');
   assert.match(cleanPrinter({ name: '', connection: 'USB', address: 'lp://x' }).error, /name/);
   assert.match(cleanPrinter({ name: 'A', connection: 'WIFI', address: 'x' }).error, /connected/);
-  assert.match(cleanPrinter({ name: 'A', connection: 'USB', address: 'POS80' }).error, /share:\/\//);
+  assert.match(cleanPrinter({ name: 'A', connection: 'USB', address: 'POS80' }).error, /winprint:\/\//);
+  assert.equal(ok({ name: 'Counter', connection: 'USB', address: 'winprint://TVS-E%20RP%203230' }).address, 'winprint://TVS-E%20RP%203230');
+  assert.equal(ok({ name: 'Counter', connection: 'BLUETOOTH', address: 'com://COM13' }).address, 'com://COM13');
   assert.match(cleanPrinter({ name: 'A', connection: 'NETWORK', address: '' }).error, /address/);
   assert.match(cleanPrinter({ name: 'A', connection: 'USB', address: 'lp://x', paper_width: 72 }).error, /58 or 80/);
   assert.deepEqual(cleanPrinter({ is_active: false }, { partial: true }).printer, { is_active: false }, 'an edit checks only what it sends');

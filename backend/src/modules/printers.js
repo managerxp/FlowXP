@@ -10,7 +10,7 @@
 export const CONNECTIONS = ['NETWORK', 'USB', 'BLUETOOTH', 'BROWSER'];
 export const ROLES = ['receipt', 'takeaway', 'drawer', 'kot'];
 
-const LOCAL = /^(share|lp|file):\/\/\S+$/i;
+const LOCAL = /^(winprint|com|share|lp|file):\/\/\S+$/i;
 
 /** Check a printer; `partial` (an edit) only checks what was sent. Returns { printer } with only the known keys, or { error }. */
 export const cleanPrinter = (input, { partial = false } = {}) => {
@@ -42,7 +42,7 @@ export const cleanPrinter = (input, { partial = false } = {}) => {
       try { url = new URL(/^tcp:\/\//i.test(address) ? address : `tcp://${address}`); } catch { return { error: 'That network address is not valid. Use something like 192.168.1.50 or 192.168.1.50:9100' }; }
       if (!url.hostname) return { error: 'That network address is not valid. Use something like 192.168.1.50 or 192.168.1.50:9100' };
       address = `tcp://${url.hostname}:${url.port || 9100}`;
-    } else if (!LOCAL.test(address)) return { error: 'A USB or Bluetooth printer needs an address like share://localhost/PrinterName (Windows) or lp://PrinterName (Mac, Linux)' };
+    } else if (!LOCAL.test(address)) return { error: 'A USB or Bluetooth printer needs an address like winprint://PrinterName or com://COM13 (Windows), or lp://PrinterName (Mac, Linux)' };
     if (address.length > 200) return { error: 'The printer address is too long' };
     out.address = address;
   }

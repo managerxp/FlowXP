@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pencil, Plus, Printer, Trash2 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { getDevicePrefs, testPrint } from '../lib/printing.js';
+import { agentPrinters, getDevicePrefs, testPrint } from '../lib/printing.js';
 import { Alert, Button, Card, Field, Input, Modal, Select, useToast } from '../components/ui.jsx';
 import { useT, T } from '../i18n/useT.js';
 
@@ -16,13 +16,20 @@ const CONNECTIONS = { NETWORK: T('WiFi / LAN (network)'), USB: T('USB (on this c
 const HINTS = {
   NETWORK: T('The printer\'s IP address from its self-test slip, such as 192.168.1.50. Port 9100 is used unless you add one.'),
   USB: T('The printer must be installed on the till computer that does the printing.'),
-  BLUETOOTH: T('Pair the printer with the till computer first (Windows: Settings → Bluetooth & devices), install it as a printer, then enter its name here.'),
+  BLUETOOTH: T('Pair the printer with the till computer first (Windows: Settings → Bluetooth & devices), then press "Find printers on this computer" and pick it.'),
   BROWSER: T('Nothing to set up: bills open the normal print window, where a person chooses the printer.')
 };
 
 /* USB / Bluetooth addresses the print agent understands, built from what a person types: share://computer/Name on Windows, lp://Name on Mac and Linux */
-const localAddress = (os, host, name) => (os === 'windows' ? `share://${host.trim() || 'localhost'}/${encodeURIComponent(name.trim())}` : `lp://${encodeURIComponent(name.trim())}`);
+const localAddress = (os, host, name) => {
+  const h = host.trim() || 'localhost'; const n = encodeURIComponent(name.trim());
+  if (os !== 'windows') return `lp://${n}`;
+  if (/^COM\d{1,3}$/i.test(name.trim())) return `com://${name.trim().toUpperCase()}`;   // a paired Bluetooth printer with no driver
+  return h.toLowerCase() === 'localhost' ? `winprint://${n}` : `share://${h}/${n}`;   // this computer: no sharing needed
+};
 const parseLocal = (address = '') => {
+  const com = /^com:\/\/(COM\d+)$/i.exec(address); if (com) return { os: 'windows', host: 'localhost', name: com[1].toUpperCase() };
+  const wp = /^winprint:\/\/(.+)$/i.exec(address); if (wp) return { os: 'windows', host: 'localhost', name: decodeURIComponent(wp[1]) };
   const win = /^share:\/\/([^/]+)\/(.+)$/i.exec(address); if (win) return { os: 'windows', host: win[1], name: decodeURIComponent(win[2]) };
   const lp = /^lp:\/\/(.+)$/i.exec(address); if (lp) return { os: 'unix', host: '', name: decodeURIComponent(lp[1]) };
   return { os: 'windows', host: 'localhost', name: address.startsWith('file://') ? address : '' };
@@ -39,6 +46,17 @@ const PrinterForm = ({ printer, onSaved, onClose }) => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const set = (k) => (e) => setF((o) => ({ ...o, [k]: e.target.value }));
+  const [found, setFound] = useState(null);
+  const [looking, setLooking] = useState(false);
+  const find = async () => {   // the printers this computer knows, asked of the print agent (set up under "Silent printing")
+    setLooking(true); setError('');
+    try { setFound(await agentPrinters(getDevicePrefs())); } catch (caught) { setFound(null); setError(caught.message); } finally { setLooking(false); }
+  };
+  const pickFound = (target) => {   // winprint://Name and lp://Name give the name; com://COM13 gives the port
+    if (!target) return;
+    const m = /^(?:winprint|lp|com):\/\/(.+)$/i.exec(target);
+    setF((o) => ({ ...o, os: target.startsWith('lp:') ? 'unix' : 'windows', host: 'localhost', pname: decodeURIComponent(m[1]) }));
+  };
   const save = async (e) => {
     e.preventDefault(); setBusy(true); setError('');
     const address = f.connection === 'NETWORK' ? f.network : f.connection === 'BROWSER' ? '' : localAddress(f.os, f.host, f.pname);
@@ -61,8 +79,14 @@ const PrinterForm = ({ printer, onSaved, onClose }) => {
         {f.connection === 'NETWORK' && <Field id="pr_net" label={tr('Printer address')}><Input id="pr_net" value={f.network} placeholder="192.168.1.50" onChange={set('network')} autoComplete="off" required /></Field>}
         {(f.connection === 'USB' || f.connection === 'BLUETOOTH') && (
           <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2 flex flex-wrap items-center gap-2">
+              <Button type="button" variant="secondary" size="sm" disabled={looking} onClick={find}>{tr('Find printers on this computer')}</Button>
+              {found && (found.length === 0
+                ? <span className="text-small text-ink-500">{tr('No printers are installed on this computer yet. Pair or plug in the printer first.')}</span>
+                : <Select aria-label={tr('Printers on this computer')} value="" onChange={(e) => pickFound(e.target.value)}><option value="">—</option>{found.map((x) => <option key={x.target} value={x.target}>{x.name}</option>)}</Select>)}
+            </div>
             <Field id="pr_os" label={tr('Till computer is')}><Select id="pr_os" value={f.os} onChange={set('os')}><option value="windows">Windows</option><option value="unix">{tr('Mac or Linux')}</option></Select></Field>
-            <Field id="pr_pname" label={tr('Printer name')} hint={tr('As your computer lists it (the shared name on Windows).')}><Input id="pr_pname" value={f.pname} onChange={set('pname')} autoComplete="off" required /></Field>
+            <Field id="pr_pname" label={tr('Printer name')} hint={tr('Exactly as your computer lists it (on Windows: Settings → Printers & scanners). A Bluetooth printer with no driver: its COM port, such as COM13.')}><Input id="pr_pname" value={f.pname} onChange={set('pname')} autoComplete="off" required /></Field>
             {f.os === 'windows' && <Field id="pr_host" label={tr('Computer name')} hint={tr('Leave as "localhost" for the computer the agent runs on.')}><Input id="pr_host" value={f.host} onChange={set('host')} autoComplete="off" /></Field>}
           </div>
         )}
@@ -85,6 +109,7 @@ export default function PrintersSettings() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const { hasFeature } = useAuth();
+  const kitchen = hasFeature('kitchen');   // KOT, stations and takeaway slips only exist for food businesses
 
   const load = useCallback(async () => {
     try {
@@ -115,7 +140,7 @@ export default function PrintersSettings() {
     setBusy(`t${p.printer_id}`); setError(''); setNote('');
     try {
       const prefs = getDevicePrefs();
-      if (prefs.printMode !== 'agent') throw new Error(tr('Silent printing is not switched on for this computer. Set it up under "Silent printing and cash drawer" below, then test again.'));
+      if (prefs.printMode !== 'agent' && prefs.printMode !== 'rawbt') throw new Error(tr('Silent printing is not switched on for this computer. Set it up under "Silent printing and cash drawer" below, then test again.'));
       await testPrint(prefs, { printerId: p.printer_id });
       setNote(tr('Sent a test page to {{name}}. If nothing prints, check its address and that the print agent can reach it.', { name: p.name }));
     } catch (caught) { setError(caught.message); }
@@ -131,14 +156,16 @@ export default function PrintersSettings() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-bold text-ink-900">{tr('Printers')}</h2>
-          <p className="mt-1 text-sm text-ink-500">{tr('List the printers at this outlet, then choose which one prints the receipt, takeaway bills, the cash drawer and each kitchen station. Everything keeps working as before until you set this up.')}</p>
+          <p className="mt-1 text-sm text-ink-500">{kitchen
+            ? tr('List the printers at this outlet, then choose which one prints the receipt, takeaway bills, the cash drawer and each kitchen station. Everything keeps working as before until you set this up.')
+            : tr('List the printers at this outlet, then choose which one prints the receipt and opens the cash drawer. Everything keeps working as before until you set this up.')}</p>
         </div>
         <Button type="button" onClick={() => setForm({})}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add printer')}</Button>
       </div>
       <div className="mt-3 space-y-2"><Alert>{error}</Alert>{note && <p className="text-sm text-success" role="status">{note}</p>}</div>
 
       {!data ? null : data.printers.length === 0 ? (
-        <p className="mt-4 rounded-md bg-surface-2 p-4 text-sm text-ink-700">{tr('No printers yet. Add your counter printer first, then a kitchen or bar printer if you have them.')}</p>
+        <p className="mt-4 rounded-md bg-surface-2 p-4 text-sm text-ink-700">{kitchen ? tr('No printers yet. Add your counter printer first, then a kitchen or bar printer if you have them.') : tr('No printers yet. Add your counter printer.')}</p>
       ) : (
         <ul className="mt-4 divide-y divide-line rounded-md border border-line">
           {data.printers.map((p) => (
@@ -159,12 +186,14 @@ export default function PrintersSettings() {
       {printers.length > 0 && (
         <div className="mt-6 border-t border-line pt-4">
           <p className="text-sm font-semibold text-ink-900">{tr('Which printer prints what')}</p>
-          <p className="mb-3 text-xs text-ink-500">{tr('Leave a choice empty to use the next one down: takeaway and the cash drawer use the receipt printer, and a station uses the kitchen printer. With nothing chosen at all, this computer\'s own addresses (below) or the browser print window are used.')}</p>
+          <p className="mb-3 text-xs text-ink-500">{kitchen
+            ? tr('Leave a choice empty to use the next one down: takeaway and the cash drawer use the receipt printer, and a station uses the kitchen printer. With nothing chosen at all, this computer\'s own addresses (below) or the browser print window are used.')
+            : tr('Leave the cash drawer empty to use the receipt printer. With nothing chosen at all, this computer\'s own address (below) or the browser print window is used.')}</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field id="rt_receipt" label={tr('Receipts')}><Select id="rt_receipt" {...pick('receipt')}>{choices(tr('Not set'))}</Select></Field>
-            <Field id="rt_takeaway" label={tr('Takeaway and parcel bills')}><Select id="rt_takeaway" {...pick('takeaway')}>{choices(tr('Same as receipts'))}</Select></Field>
+            {kitchen && <Field id="rt_takeaway" label={tr('Takeaway and parcel bills')}><Select id="rt_takeaway" {...pick('takeaway')}>{choices(tr('Same as receipts'))}</Select></Field>}
             <Field id="rt_drawer" label={tr('Cash drawer')}><Select id="rt_drawer" {...pick('drawer')}>{choices(tr('Same as receipts'))}</Select></Field>
-            {stations.length > 0 && <Field id="rt_kot" label={tr('Kitchen tickets (every station without its own)')}><Select id="rt_kot" {...pick('kot')}>{choices(tr('Not set'))}</Select></Field>}
+            {kitchen && stations.length > 0 && <Field id="rt_kot" label={tr('Kitchen tickets (every station without its own)')}><Select id="rt_kot" {...pick('kot')}>{choices(tr('Not set'))}</Select></Field>}
           </div>
           {stations.length > 0 && (
             <div className="mt-4">

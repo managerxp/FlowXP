@@ -129,8 +129,8 @@ export const ReceiptPage = () => {
         ))}
         {salon?.gift_cards.map((g) => <p key={g.code} className="mt-1 font-bold">Gift card {g.code} · {g.amount.toFixed(2)}</p>)}
         <Rule />
-        <Row left="Subtotal" right={invoice.subtotal.toFixed(2)} />
-        {taxRows.map(([label, v]) => <Row key={label} left={label} right={v.toFixed(2)} />)}
+        {s.show_tax_lines !== false && <><Row left="Subtotal" right={invoice.subtotal.toFixed(2)} />
+          {taxRows.map(([label, v]) => <Row key={label} left={label} right={v.toFixed(2)} />)}</>}
         {handDiscount > 0 && <Row left="Discount" right={`-${handDiscount.toFixed(2)}`} />}
         {invoice.coupon_discount > 0 && <Row left={`Coupon ${invoice.coupon_code}`} right={`-${invoice.coupon_discount.toFixed(2)}`} />}
         {invoice.loyalty_discount > 0 && <Row left="Loyalty reward" right={`-${invoice.loyalty_discount.toFixed(2)}`} />}

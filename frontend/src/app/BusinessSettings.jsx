@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { PageHeader, Card, Field, Input, Select, Textarea, Button, Alert, useToast, PageLoader } from '../components/ui.jsx';
-import { getDevicePrefs, setDevicePref, testPrint } from '../lib/printing.js';
+import { agentPrinters, getDevicePrefs, pairAgent, RAWBT_STORE, setDevicePref, testPrint } from '../lib/printing.js';
 import { COUNTRIES, regionsFor, subdivisionLabel } from '../lib/states.js';
 import PincodeHint from '../components/PincodeHint.jsx';
 import InvoicePrintSettings from './InvoicePrintSettings.jsx';
@@ -117,6 +117,8 @@ const LogoSetting = ({ logoUrl, onChange }) => {
 /* Silent printing: this computer's print agent, printers and cash drawer. Remembered in this browser only. */
 const SilentPrinting = () => {
   const tr = useT();
+  const { hasFeature } = useAuth();
+  const kitchen = hasFeature('kitchen');   // only food businesses have a kitchen printer
   const [p, setP] = useState(getDevicePrefs);
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -124,6 +126,21 @@ const SilentPrinting = () => {
   const text = (key, label, hint, placeholder) => (
     <Field id={`sp-${key}`} label={tr(label)} hint={tr(hint)}><Input id={`sp-${key}`} value={p[key]} placeholder={tr(placeholder)} onChange={(e) => set(key, e.target.value.trim())} autoComplete="off" /></Field>
   );
+  const connect = async (quiet = false) => {
+    setBusy(true); setResult(null);
+    try { set('agentToken', await pairAgent(p.agentUrl)); setResult({ ok: true, message: tr('Connected to the print agent.') }); }
+    catch (caught) { if (!quiet) setResult({ ok: false, message: caught.message }); }
+    finally { setBusy(false); }
+  };
+  // switching silent printing on with no token yet: try to pair by itself
+  useEffect(() => { if (p.printMode === 'agent' && !p.agentToken) connect(true); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [p.printMode]);
+  const [found, setFound] = useState(null);
+  const find = async () => {
+    setBusy(true); setResult(null);
+    try { setFound(await agentPrinters(p)); }
+    catch (caught) { setFound(null); setResult({ ok: false, message: caught.message }); }
+    finally { setBusy(false); }
+  };
   const run = async (drawer) => {
     setBusy(true); setResult(null);
     try { await testPrint(p, { drawer }); setResult({ ok: true, message: drawer ? 'Sent. The page should print and the drawer open.' : 'Sent. A test page should be printing.' }); }
@@ -138,15 +155,41 @@ const SilentPrinting = () => {
         <Select id="sp-mode" value={p.printMode} onChange={(e) => set('printMode', e.target.value)}>
           <option value="browser">{tr('From the browser (print dialog)')}</option>
           <option value="agent">{tr('Silent, through the print agent')}</option>
+          <option value="rawbt">{tr('Android tablet or phone, through the RawBT app')}</option>
         </Select>
       </Field>
+      {p.printMode === 'rawbt' && (
+        <div className="mt-3 space-y-3">
+          <ol className="list-decimal space-y-1 pl-5 text-sm text-ink-700">
+            <li>{tr('Install the free RawBT app from the Play Store, and pair the printer in the tablet\'s Bluetooth settings.')} <a className="font-semibold text-brand-600" href={RAWBT_STORE} target="_blank" rel="noreferrer">{tr('Get RawBT')}</a></li>
+            <li>{tr('Open RawBT, choose the printer once, and turn on its option to print without asking.')}</li>
+            <li>{tr('Press "Print a test page" below. If Android asks which app to open, choose RawBT and "Always": after that, receipts print with no pop-up.')}</li>
+          </ol>
+          <label className="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={p.openDrawer} onChange={(e) => set('openDrawer', e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> {tr('Open the cash drawer when a cash payment is taken')}</label>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => run(false)}>{tr('Print a test page')}</Button>
+            <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => run(true)}>{tr('Test the cash drawer')}</Button>
+          </div>
+          {result && <p className={`text-sm ${result.ok ? 'text-success' : 'text-danger'}`} role="status">{result.message}</p>}
+        </div>
+      )}
       {p.printMode === 'agent' && (
         <div className="mt-3 space-y-3">
+          {!p.agentToken && <Button type="button" size="sm" disabled={busy} onClick={() => connect()}>{tr('Connect to the print agent')}</Button>}
           <div className="grid gap-3 sm:grid-cols-2">
             {text('agentUrl', 'Print agent address', 'Where the agent listens on this computer.', 'http://127.0.0.1:9101')}
             {text('agentToken', 'Agent token', 'The secret the agent was started with.', '')}
-            {text('receiptTarget', 'Receipt printer', 'tcp://192.168.1.50:9100, share://PC-NAME/PrinterName, lp://PrinterName', 'tcp://192.168.1.50:9100')}
-            {text('kotTarget', 'Kitchen printer (optional)', 'Leave empty to use the receipt printer.', '')}
+            {text('receiptTarget', 'Counter printer', 'tcp://192.168.1.50:9100, winprint://PrinterName (USB on this computer), lp://PrinterName', 'tcp://192.168.1.50:9100')}
+            {kitchen && text('kotTarget', 'Kitchen printer (optional)', 'Leave empty to use the counter printer.', '')}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="secondary" size="sm" disabled={busy || !p.agentToken} onClick={find}>{tr('Find printers on this computer')}</Button>
+            {found && (found.length === 0
+              ? <span className="text-sm text-ink-500">{tr('No printers are installed on this computer yet. Pair or plug in the printer first.')}</span>
+              : <Select aria-label={tr('Printers on this computer')} value="" onChange={(e) => e.target.value && set('receiptTarget', e.target.value)}>
+                <option value="">{tr('Use one as the counter printer…')}</option>
+                {found.map((x) => <option key={x.target} value={x.target}>{x.name}</option>)}
+              </Select>)}
           </div>
           <label className="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={p.openDrawer} onChange={(e) => set('openDrawer', e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> {tr('Open the cash drawer when a cash payment is taken')}</label>
           <div className="flex flex-wrap items-center gap-2">
@@ -164,6 +207,8 @@ const SilentPrinting = () => {
 const ReceiptSettings = ({ initial }) => {
   const tr = useT();
   const toast = useToast();
+  const { hasFeature } = useAuth();
+  const kitchen = hasFeature('kitchen');
   const [s, setS] = useState(initial);
   const [device, setDevice] = useState(getDevicePrefs);
   const [busy, setBusy] = useState(false);
@@ -185,14 +230,14 @@ const ReceiptSettings = ({ initial }) => {
 
   return (
     <Card className="mt-6">
-      <h2 className="text-base font-bold text-ink-900">{tr('Receipts and kitchen slips')}</h2>
+      <h2 className="text-base font-bold text-ink-900">{kitchen ? tr('Receipts and kitchen slips') : tr('Receipts')}</h2>
       <p className="mt-1 text-sm text-ink-500">{tr('Prints from the browser to any printer, including 58 mm and 80 mm receipt printers. Pick the printer in the print dialog.')}</p>
       <form onSubmit={save} className="mt-4 space-y-4">
         <Alert>{error}</Alert>
         <Field id="paper" label={tr('Paper width')}><Select id="paper" value={s.paper_width} onChange={(e) => setS((x) => ({ ...x, paper_width: Number(e.target.value) }))}><option value={80}>{tr('80 mm (standard)')}</option><option value={58}>{tr('58 mm (narrow)')}</option></Select></Field>
         <Field id="footer" label={tr('Footer message')} hint={tr('Printed at the bottom of every receipt.')}><Input id="footer" value={s.footer} onChange={(e) => setS((x) => ({ ...x, footer: e.target.value }))} maxLength={200} /></Field>
         <LogoSetting logoUrl={s.logo_url} onChange={(url) => setS((x) => ({ ...x, logo_url: url }))} />
-        <div className="space-y-2">{flag('show_logo', 'Print the logo at the top of receipts')}{flag('show_gstin', 'Show the GSTIN on receipts')}{flag('show_upi_qr', 'Show a UPI QR for any unpaid balance')}{flag('show_loyalty', 'Show the customer’s loyalty card line')}{flag('auto_cut', T('Cut the paper after each receipt'))}</div>
+        <div className="space-y-2">{flag('show_logo', 'Print the logo at the top of receipts')}{flag('show_gstin', 'Show the GSTIN on receipts')}{flag('show_tax_lines', T('Show the tax lines (CGST and SGST, UTGST or IGST) on receipts'))}{flag('show_upi_qr', 'Show a UPI QR for any unpaid balance')}{flag('show_loyalty', 'Show the customer’s loyalty card line')}{flag('auto_cut', T('Cut the paper after each receipt'))}</div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="copies" label={tr('Copies of each receipt')}><Select id="copies" value={s.copies ?? 1} onChange={(e) => setS((x) => ({ ...x, copies: Number(e.target.value) }))}>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</Select></Field>
           <Field id="extra_lines" label={tr('Blank lines after the receipt')}><Select id="extra_lines" value={s.extra_lines ?? 3} onChange={(e) => setS((x) => ({ ...x, extra_lines: Number(e.target.value) }))}>{[0, 1, 2, 3, 4, 5, 6, 8, 10].map((n) => <option key={n} value={n}>{n}</option>)}</Select></Field>
@@ -214,7 +259,7 @@ const ReceiptSettings = ({ initial }) => {
       <div className="mt-6 border-t border-line pt-4">
         <p className="text-sm font-semibold text-ink-900">{tr('This device')}</p>
         <p className="mb-2 text-xs text-ink-500">{tr('Remembered in this browser only, so the counter and the kitchen can behave differently.')}</p>
-        <div className="space-y-2">{deviceFlag('autoPrintReceipt', 'Print the receipt automatically after billing')}{deviceFlag('autoPrintKot', 'Print the KOT automatically when an order is sent to the kitchen')}{deviceFlag('kitchenSound', 'Play a sound for new and late kitchen tickets')}</div>
+        <div className="space-y-2">{deviceFlag('autoPrintReceipt', 'Print the receipt automatically after billing')}{kitchen && deviceFlag('autoPrintKot', 'Print the KOT automatically when an order is sent to the kitchen')}{kitchen && deviceFlag('kitchenSound', 'Play a sound for new and late kitchen tickets')}</div>
       </div>
     </Card>
   );
