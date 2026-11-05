@@ -101,8 +101,29 @@ test('the receipt is built from the server\'s invoice: lines, GST, round-off, pa
     payments: [{ method: 'CASH', amount: 200 }]
   };
   const text = receiptText(inv, 'Shop');
-  for (const want of ['Shop', 'MG Road', '12 MG Road, Bengaluru', 'GSTIN 29ABCDE1234F1Z5', 'INV-0042', '2026-10-07', 'Asha', 'Parle-G Biscuit', '2 x ₹10.00', '1.5 x ₹120.00', 'Discount', '-₹10.00', 'GST', '₹9.50', 'Round off', 'TOTAL', '₹200.00', 'CASH', 'Thank you']) assert.ok(text.includes(want), `missing ${want}`);
+  for (const want of ['Shop', 'MG Road', '12 MG Road, Bengaluru', 'GSTIN 29ABCDE1234F1Z5', 'INV-0042', '2026-10-07', 'Asha', 'Parle-G', 'Biscuit', 'Item', 'Qty', 'Rate', 'Amount', '10.00', '120.00', 'Items: 2', 'Total Qty: 3.5', 'You saved Rs 10.00', 'Discount', '-₹10.00', 'GST', '₹9.50', 'Round off', 'TOTAL', '₹200.00', 'CASH', 'Thank you']) assert.ok(text.includes(want), `missing ${want}`);
   assert.equal(text.includes('Balance due'), false);
   for (const line of text.split('\n')) if (!line.includes('Tata Tea')) assert.ok(line.length <= 32, `too wide: ${line}`);
   assert.ok(receiptText({ ...inv, balance_due: 50 }, 'Shop').includes('Balance due'));
+});
+
+test('the phone receipt matches the website: Qty/Rate/Amount table, UTGST, savings, and the tax-lines switch', () => {
+  const inv: Invoice = {
+    invoice_id: 2, invoice_number: 'INV-0201', invoice_date: '2026-11-05', subtotal: 2647, discount: 0, tax: 317.88, cgst: 158.94, sgst: 158.94, igst: 0, tax_name: 'UTGST', receipt: { show_tax_lines: true },
+    round_off: 0, total: 2964.88, amount_paid: 2964.88, balance_due: 0,
+    items: [{ description: "Men's Leather Belt - Brown - Free Size", quantity: 2, unit: 'pc', unit_price: 699, discount: 50, tax_rate: 12, tax_amount: 162, cess: 0, line_total: 1510 }],
+    payments: [{ method: 'CASH', amount: 2964.88 }]
+  };
+  for (const width of [32, 48]) {
+    const lines = receiptText(inv, 'Shop', width).split('\n');
+    assert.ok(lines.every((l) => l.length <= width), 'fits the paper');
+    assert.ok(lines.some((l) => /^Item\s+Qty\s+Rate\s+Amount$/.test(l)));
+    assert.ok(lines.some((l) => /\s2 pc\s+699\.00\s+1348\.00$/.test(l)), 'qty, rate and the amount before tax (1,398 less the 50 discount)');
+    assert.ok(lines.some((l) => /^\s+Discount\s+-50\.00$/.test(l)));
+    assert.ok(lines.some((l) => l.startsWith('UTGST')) && !lines.some((l) => l.startsWith('SGST')));
+    assert.ok(lines.includes('You saved Rs 50.00'));
+  }
+  // switch off: no Subtotal / tax rows, and the item amount includes the tax (adds up to the total)
+  const off = receiptText({ ...inv, receipt: { show_tax_lines: false } }, 'Shop', 48);
+  assert.ok(!/Subtotal|CGST|UTGST|GST/.test(off.replace('Rs', '')) && /1510\.00/.test(off));
 });

@@ -75,7 +75,7 @@ export default function Pay() {
         ? await api.post<{ invoice_id: number }>(`/orders/${orderId}/bill`, roomChargeBody({ apply_promotions: true }, g.booking_id), { idempotencyKey: roomKey.current })
         : await api.post<{ invoice_id: number }>('/invoices', roomChargeBody(saleBody(cart, { method: 'CASH', payNowPaise: 0 }, { kitchen: toKitchen, customerId: null }), g.booking_id), { idempotencyKey: roomKey.current });
       if (!orderId) clearSale();
-      router.replace({ pathname: '/receipt', params: { id: String(invoice.invoice_id) } });
+      router.replace({ pathname: '/receipt', params: { fresh: '1', id: String(invoice.invoice_id) } });
     } catch (e) {
       setError(e instanceof NetworkError ? 'No internet. Charging a room needs a connection, and nothing was charged. Tap again when it is back.' : e instanceof ApiError ? e.message : 'Could not charge the room');
     } finally { setBusy(false); }
@@ -90,7 +90,7 @@ export default function Pay() {
     setBusy(true); setError('');
     try {
       const invoice = await api.post<{ invoice_id: number }>(`/orders/${orderId}/bill`, { ...(plan.payNowPaise === 0 ? {} : { payment: { method, amount: plan.payNowPaise ? plan.payNowPaise / 100 : 'FULL', ...(reference.trim() ? { reference_number: reference.trim() } : {}) } }), apply_promotions: true }, { idempotencyKey: orderKey.current });
-      router.replace({ pathname: '/receipt', params: { id: String(invoice.invoice_id), change: change > 0 ? String(change) : '' } });
+      router.replace({ pathname: '/receipt', params: { fresh: '1', id: String(invoice.invoice_id), change: change > 0 ? String(change) : '' } });
     } catch (e) {
       setError(e instanceof NetworkError ? 'No internet. The order is still open and nothing was billed. Tap again when the internet is back. It will not be billed twice.' : e instanceof ApiError ? e.message : 'Could not make the bill');
     } finally { setBusy(false); }
@@ -109,9 +109,9 @@ export default function Pay() {
       clearSale(); markDone('first_bill');
       if (taken.kind === 'queued') {
         await refreshCounts(); void syncAll();
-        router.replace({ pathname: '/receipt', params: { local: taken.entry.id, change: change > 0 ? String(change) : '' } });
+        router.replace({ pathname: '/receipt', params: { fresh: '1', local: taken.entry.id, change: change > 0 ? String(change) : '' } });
       } else {
-        router.replace({ pathname: '/receipt', params: { id: String(taken.invoiceId), change: change > 0 ? String(change) : '' } });
+        router.replace({ pathname: '/receipt', params: { fresh: '1', id: String(taken.invoiceId), change: change > 0 ? String(change) : '' } });
       }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Could not make the bill. Tap again. It will not be billed twice.');

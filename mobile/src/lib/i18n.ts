@@ -554,6 +554,8 @@ export const HI: Record<string, string> = {
   'Copies': 'कॉपियाँ',
   'Print the logo at the top of receipts': 'रसीदों के ऊपर लोगो छापें',
   'Show the GSTIN on receipts': 'रसीदों पर GSTIN दिखाएँ',
+
+  'Show the tax lines (CGST and SGST, UTGST or IGST) on receipts': 'रसीद पर टैक्स की पंक्तियाँ दिखाएँ (CGST और SGST, UTGST या IGST)',
   'Show a UPI QR for any unpaid balance': 'बकाया राशि के लिए UPI QR दिखाएँ',
   'Show the customer\'s loyalty card line': 'ग्राहक की लॉयल्टी कार्ड लाइन दिखाएँ',
   // staff and outlets
@@ -1611,6 +1613,10 @@ export const HI: Record<string, string> = {
   'Forecast': 'पूर्वानुमान',
   'Date': 'तारीख़',
   'OK': 'ठीक है',
+
+  'Receipt printed': 'रसीद प्रिंट हो गई',
+
+  'Could not reach the printer. Tap Print the bill to try again.': 'प्रिंटर तक नहीं पहुँच सके। फिर से कोशिश के लिए "बिल प्रिंट करें" दबाएँ।',
   'Cancellations': 'रद्दीकरण',
   'Refunds': 'रिफ़ंड',
   'Needs attention': 'ध्यान चाहिए',

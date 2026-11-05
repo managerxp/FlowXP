@@ -31,15 +31,15 @@ export const profilePatch = (before: Profile, after: Profile): Record<string, st
 
 /* ── receipt and tax-invoice details ─────────────────────────────────────── */
 export type Receipt = {
-  paper_width: 58 | 80; footer: string; show_logo: boolean; show_gstin: boolean; show_upi_qr: boolean; show_loyalty: boolean; auto_cut: boolean; copies: number; extra_lines: number;
+  paper_width: 58 | 80; footer: string; show_logo: boolean; show_gstin: boolean; show_upi_qr: boolean; show_loyalty: boolean; show_tax_lines: boolean; auto_cut: boolean; copies: number; extra_lines: number;
   pan: string; bank_name: string; bank_account: string; bank_ifsc: string; bank_branch: string; accountant_email: string; terms: string;
 };
 export const RECEIPT_DEFAULTS: Receipt = {
-  paper_width: 80, footer: 'Thank you! Visit again.', show_logo: true, show_gstin: true, show_upi_qr: true, show_loyalty: true, auto_cut: true, copies: 1, extra_lines: 3,
+  paper_width: 80, footer: 'Thank you! Visit again.', show_logo: true, show_gstin: true, show_upi_qr: true, show_loyalty: true, show_tax_lines: true, auto_cut: true, copies: 1, extra_lines: 3,
   pan: '', bank_name: '', bank_account: '', bank_ifsc: '', bank_branch: '', accountant_email: '', terms: ''
 };
 export const TOGGLES: [keyof Receipt, string][] = [
-  ['show_logo', 'Print the logo at the top of receipts'], ['show_gstin', 'Show the GSTIN on receipts'], ['show_upi_qr', 'Show a UPI QR for any unpaid balance'],
+  ['show_logo', 'Print the logo at the top of receipts'], ['show_gstin', 'Show the GSTIN on receipts'], ['show_tax_lines', 'Show the tax lines (CGST and SGST, UTGST or IGST) on receipts'], ['show_upi_qr', 'Show a UPI QR for any unpaid balance'],
   ['show_loyalty', "Show the customer's loyalty card line"], ['auto_cut', 'Cut the paper after each receipt']
 ];
 

@@ -101,7 +101,7 @@ export function PharmacyTill() {
     try {
       const out = await api.post<PharmacyQuote>('/pharmacy/pos/invoices', body, { idempotencyKey: key.current, timeoutMs: 8000 });
       finish();
-      router.replace({ pathname: '/receipt', params: { id: String(out.invoice.invoice_id) } });
+      router.replace({ pathname: '/receipt', params: { fresh: '1', id: String(out.invoice.invoice_id) } });
     } catch (e) {
       if (unreachable(e) && scope) {
         // no usable connection: keep the sale on this phone, hand over the medicine, and send it later with the same key
@@ -109,7 +109,7 @@ export function PharmacyTill() {
         if (!entry) { setProblem('Too many bills are waiting to send. Connect to the internet before making more.'); setBusy(false); return; }
         for (const l of lines) if (l.product.track_inventory) await scope.catalog.setLocal(l.product.product_id, { stockDelta: -l.quantity });
         finish(); void refreshCounts(); void syncAll();
-        router.replace({ pathname: '/receipt', params: { local: entry.id } });
+        router.replace({ pathname: '/receipt', params: { fresh: '1', local: entry.id } });
         setBusy(false); return;
       } setProblem(e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'Could not take the payment'); }
     finally { setBusy(false); }

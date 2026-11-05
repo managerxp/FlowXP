@@ -366,6 +366,8 @@ export const ML: Record<string, string> = {
   'Copies': 'പകർപ്പുകൾ',
   'Print the logo at the top of receipts': 'രസീതുകളുടെ മുകളിൽ ലോഗോ അച്ചടിക്കുക',
   'Show the GSTIN on receipts': 'രസീതുകളിൽ GSTIN കാണിക്കുക',
+
+  'Show the tax lines (CGST and SGST, UTGST or IGST) on receipts': 'രസീതുകളിൽ നികുതി വരികൾ കാണിക്കുക (CGST, SGST, UTGST അല്ലെങ്കിൽ IGST)',
   'Show a UPI QR for any unpaid balance': 'ബാക്കി തുകയ്ക്ക് UPI QR കാണിക്കുക',
   'Show the customer\'s loyalty card line': 'ഉപഭോക്താവിന്റെ ലോയൽറ്റി കാർഡ് വരി കാണിക്കുക',
   // staff and outlets
@@ -1457,6 +1459,8 @@ export const ML: Record<string, string> = {
   'Date': 'തീയതി',
   'Add': 'ചേർക്കുക',
   'OK': 'ശരി',
+  'Receipt printed': 'രസീത് പ്രിന്റ് ചെയ്തു',
+  'Could not reach the printer. Tap Print the bill to try again.': 'പ്രിന്ററിൽ എത്താൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കാൻ "ബിൽ പ്രിന്റ് ചെയ്യുക" അമർത്തുക.',
   'Cancellations': 'റദ്ദാക്കലുകൾ',
   'Refunds': 'റീഫണ്ടുകൾ',
   'Needs attention': 'ശ്രദ്ധ ആവശ്യമാണ്',
@@ -3282,6 +3286,8 @@ export const TA: Record<string, string> = {
   'Copies': 'நகல்கள்',
   'Print the logo at the top of receipts': 'ரசீதுகளின் மேலே லோகோவை அச்சிடு',
   'Show the GSTIN on receipts': 'ரசீதுகளில் GSTIN ஐக் காட்டு',
+
+  'Show the tax lines (CGST and SGST, UTGST or IGST) on receipts': 'ரசீதுகளில் வரி வரிகளைக் காட்டு (CGST மற்றும் SGST, UTGST அல்லது IGST)',
   'Show a UPI QR for any unpaid balance': 'நிலுவைத் தொகைக்கு UPI QR ஐக் காட்டு',
   'Show the customer\'s loyalty card line': 'வாடிக்கையாளரின் லாயல்டி அட்டை வரியைக் காட்டு',
   // staff and outlets
@@ -4373,6 +4379,8 @@ export const TA: Record<string, string> = {
   'Date': 'தேதி',
   'Add': 'சேர்',
   'OK': 'சரி',
+  'Receipt printed': 'ரசீது அச்சிடப்பட்டது',
+  'Could not reach the printer. Tap Print the bill to try again.': 'பிரிண்டரை அடைய முடியவில்லை. மீண்டும் முயற்சிக்க "பில்லை அச்சிடு" என்பதைத் தட்டவும்.',
   'Cancellations': 'ரத்துகள்',
   'Refunds': 'திருப்பிக் கொடுத்தல்கள்',
   'Needs attention': 'கவனம் தேவை',
@@ -6198,6 +6206,8 @@ export const BN: Record<string, string> = {
   'Copies': 'কপি',
   'Print the logo at the top of receipts': 'রসিদের ওপরে লোগো ছাপুন',
   'Show the GSTIN on receipts': 'রসিদে GSTIN দেখান',
+
+  'Show the tax lines (CGST and SGST, UTGST or IGST) on receipts': 'রসিদে ট্যাক্সের লাইনগুলো দেখান (CGST ও SGST, UTGST বা IGST)',
   'Show a UPI QR for any unpaid balance': 'বকেয়ার জন্য UPI QR দেখান',
   'Show the customer\'s loyalty card line': 'গ্রাহকের লয়্যালটি কার্ড লাইন দেখান',
   // staff and outlets
@@ -7289,6 +7299,8 @@ export const BN: Record<string, string> = {
   'Date': 'তারিখ',
   'Add': 'যোগ করুন',
   'OK': 'ঠিক আছে',
+  'Receipt printed': 'রসিদ প্রিন্ট হয়েছে',
+  'Could not reach the printer. Tap Print the bill to try again.': 'প্রিন্টারে পৌঁছানো গেল না। আবার চেষ্টা করতে "বিল প্রিন্ট করুন" চাপুন।',
   'Cancellations': 'বাতিল',
   'Refunds': 'ফেরত',
   'Needs attention': 'মনোযোগ প্রয়োজন',
@@ -9114,6 +9126,8 @@ export const TE: Record<string, string> = {
   'Copies': 'కాపీలు',
   'Print the logo at the top of receipts': 'రసీదుల పైన లోగో ముద్రించండి',
   'Show the GSTIN on receipts': 'రసీదులపై GSTIN చూపించండి',
+
+  'Show the tax lines (CGST and SGST, UTGST or IGST) on receipts': 'రసీదులపై పన్ను వరుసలను చూపించండి (CGST మరియు SGST, UTGST లేదా IGST)',
   'Show a UPI QR for any unpaid balance': 'బాకీ మొత్తానికి UPI QR చూపించండి',
   'Show the customer\'s loyalty card line': 'కస్టమర్ లాయల్టీ కార్డ్ లైన్ చూపించండి',
   // staff and outlets
@@ -10205,6 +10219,8 @@ export const TE: Record<string, string> = {
   'Date': 'తేదీ',
   'Add': 'జోడించండి',
   'OK': 'సరే',
+  'Receipt printed': 'రసీదు ప్రింట్ అయింది',
+  'Could not reach the printer. Tap Print the bill to try again.': 'ప్రింటర్‌ను చేరుకోలేకపోయాం. మళ్లీ ప్రయత్నించడానికి "బిల్లు ప్రింట్ చేయండి" నొక్కండి.',
   'Cancellations': 'రద్దులు',
   'Refunds': 'రీఫండ్‌లు',
   'Needs attention': 'శ్రద్ధ అవసరం',
@@ -12030,6 +12046,8 @@ export const KN: Record<string, string> = {
   'Copies': 'ಪ್ರತಿಗಳು',
   'Print the logo at the top of receipts': 'ರಸೀದಿಗಳ ಮೇಲ್ಭಾಗದಲ್ಲಿ ಲೋಗೋ ಮುದ್ರಿಸಿ',
   'Show the GSTIN on receipts': 'ರಸೀದಿಗಳಲ್ಲಿ GSTIN ತೋರಿಸಿ',
+
+  'Show the tax lines (CGST and SGST, UTGST or IGST) on receipts': 'ರಸೀದಿಗಳಲ್ಲಿ ತೆರಿಗೆ ಸಾಲುಗಳನ್ನು ತೋರಿಸಿ (CGST ಮತ್ತು SGST, UTGST ಅಥವಾ IGST)',
   'Show a UPI QR for any unpaid balance': 'ಬಾಕಿ ಮೊತ್ತಕ್ಕೆ UPI QR ತೋರಿಸಿ',
   'Show the customer\'s loyalty card line': 'ಗ್ರಾಹಕರ ಲಾಯಲ್ಟಿ ಕಾರ್ಡ್ ಸಾಲು ತೋರಿಸಿ',
   // staff and outlets
@@ -13121,6 +13139,8 @@ export const KN: Record<string, string> = {
   'Date': 'ದಿನಾಂಕ',
   'Add': 'ಸೇರಿಸಿ',
   'OK': 'ಸರಿ',
+  'Receipt printed': 'ರಸೀದಿ ಮುದ್ರಿತವಾಗಿದೆ',
+  'Could not reach the printer. Tap Print the bill to try again.': 'ಪ್ರಿಂಟರ್ ತಲುಪಲು ಆಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲು "ಬಿಲ್ ಮುದ್ರಿಸಿ" ಒತ್ತಿ.',
   'Cancellations': 'ರದ್ದತಿಗಳು',
   'Refunds': 'ಮರುಪಾವತಿಗಳು',
   'Needs attention': 'ಗಮನ ಬೇಕು',

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, Share, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -23,7 +23,7 @@ import { Button, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
 /* The bill as FlowXP made it (its number, GST and round-off), or, for a sale still waiting to be sent, the provisional receipt, plainly
    marked. When a waiting sale is sent, this screen switches to the real bill by itself. */
 export default function Receipt() {
-  const { id, local, change } = useLocalSearchParams<{ id?: string; local?: string; change?: string }>();
+  const { id, local, change, fresh } = useLocalSearchParams<{ id?: string; local?: string; change?: string; fresh?: string }>();
   const session = useSession();
   const scope = useScope();
   const sync = useSyncState();
@@ -37,7 +37,8 @@ export default function Receipt() {
   const [sentNote, setSentNote] = useState('');
   const [sending, setSending] = useState(false);
   const [paper, setPaper] = useState<Paper>('58');
-  useEffect(() => { void kvGet('paper').then((p) => setPaper(p === '80' ? '80' : '58')); }, []);
+  const [paperReady, setPaperReady] = useState(false);
+  useEffect(() => { void kvGet('paper').then((p) => { setPaper(p === '80' ? '80' : '58'); setPaperReady(true); }); }, []);
 
   // a queued sale: read it from the phone; once it has been sent it has an invoice, and we show that instead
   useEffect(() => {
@@ -53,6 +54,19 @@ export default function Receipt() {
   const owed = invoice && invoice.balance_due > 0 ? toPaise(invoice.balance_due) : 0;
   const text = invoice ? receiptText(invoice, name, COLUMNS[paper]) : pending ? pendingReceiptText(pending, name, COLUMNS[paper]) : '';
   const waiting = !invoice && pending && pending.state !== 'sent';
+  // A sale just charged prints by itself when a thermal printer is saved on this phone: no button, no phone print screen. "Receipt printed" and OK is all the till sees.
+  const [printedNote, setPrintedNote] = useState(false);
+  const auto = useRef(false);
+  useEffect(() => {
+    if (!fresh || !paperReady || !text || auto.current || (!invoice && !pending)) return;
+    auto.current = true;
+    void (async () => {
+      const mode = await (await import('../lib/thermal.ts')).readMode();
+      if (mode === 'system') return;   // no thermal printer set up: the Print button is still there
+      try { await printReceipt(text, paper, { noDialog: true, ...(owed && business?.upi_vpa ? { qr: upiPayLink(business.upi_vpa, business.name, owed) } : {}) }); setPrintedNote(true); }
+      catch { setPrintError(t('Could not reach the printer. Tap Print the bill to try again.')); }
+    })();
+  }, [fresh, paperReady, text, invoice, pending]);   // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <SafeAreaView style={s.screen}>
       <Page max={560}>
@@ -75,7 +89,8 @@ export default function Receipt() {
         <ErrorText>{error}</ErrorText>
         {error ? <Button title="Try again" kind="quiet" onPress={load} /> : null}
         {text ? <View style={[s.card]}><Text selectable style={{ fontFamily: 'monospace', fontSize: 13, color: color.ink }}>{text}</Text></View> : null}
-        <Button title={invoice?.table_name ? 'Back to the tables' : 'Next customer: new bill'} onPress={() => router.replace(invoice?.table_name ? '/tables' : '/sell')} />
+        {printedNote ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok, fontWeight: '700', textAlign: 'center' }}>{t('Receipt printed')}</Text> : null}
+        <Button title={printedNote ? t('OK') : invoice?.table_name ? 'Back to the tables' : 'Next customer: new bill'} onPress={() => router.replace(invoice?.table_name ? '/tables' : '/sell')} />
         {text ? <Button title="Print the bill" kind="quiet" onPress={() => { setPrintError(''); void kvGet('paper').then((p) => printReceipt(text, p === '80' ? '80' : '58', owed && business?.upi_vpa ? { qr: upiPayLink(business.upi_vpa, business.name, owed) } : {})).then((how) => { if (how === 'fallback') setPrintError(t("Could not reach the printer, so the bill went to the phone's print screen instead.")); }).catch((e: Error) => setPrintError(e.message)); }} /> : null}
         <ErrorText>{printError}</ErrorText>
         {text ? <Button title="Send the bill" kind="quiet" onPress={() => { void Share.share({ message: text }); }} /> : null}

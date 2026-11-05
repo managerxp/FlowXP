@@ -31,7 +31,8 @@ export const receiptHtml = (text: string, paper: Paper, qr?: string): { html: st
 export type Printed = 'printer' | 'screen' | 'fallback';
 
 /** `qr` is a payment link (a UPI one for the amount due): it is printed as a QR code at the foot of the receipt, by the printer's own QR command or as a picture on the print screen. */
-export const printReceipt = async (text: string, paper: Paper, options: EscposOptions = {}): Promise<Printed> => {
+/** `noDialog`: when the thermal printer cannot be used, throw instead of opening the phone's print screen (a sale just charged prints by itself and must not pop a dialog). */
+export const printReceipt = async (text: string, paper: Paper, options: EscposOptions & { noDialog?: boolean } = {}): Promise<Printed> => {
   const thermal = await import('./thermal.ts');
   const prefs = await thermal.readPrefs();
   const withPrefs: EscposOptions = { cut: prefs.cut, copies: prefs.copies, extraLines: prefs.extraLines, ...options, drawer: options.drawer ?? prefs.drawer };
@@ -45,6 +46,7 @@ export const printReceipt = async (text: string, paper: Paper, options: EscposOp
     tried = true;
     try { await thermal.printViaRawBT(text, paper, withPrefs); return 'printer'; } catch { /* fall through to the print screen */ }
   }
+  if (options.noDialog && tried) throw new Error('Could not reach the printer.');
   const Print = await import('expo-print');
   const { html, width } = receiptHtml(text, paper, options.qr);
   await Print.printAsync({ html, width });

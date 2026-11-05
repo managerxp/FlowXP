@@ -118,7 +118,7 @@ export function SalonTill() {
     try {
       const out = await api.post<{ invoice: { invoice_id: number } }>('/salon/pos/invoices', saleBody(lines, customer?.id ?? null, apptId, quote.total, method, reference, extras, plan.payNowPaise), { idempotencyKey: key.current });
       clearSale(); setLines([]); setApptId(null); setOfferCode(''); setPoints(''); setGift(null); setGiftCode(''); setHow('FULL'); setNowText(''); key.current = newKey();
-      router.replace({ pathname: '/receipt', params: { id: String(out.invoice.invoice_id) } });
+      router.replace({ pathname: '/receipt', params: { fresh: '1', id: String(out.invoice.invoice_id) } });
     } catch (e) { setProblem(e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'Could not take the payment'); }
     finally { setBusy(false); }
   };

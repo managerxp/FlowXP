@@ -89,7 +89,7 @@ export default function VanSale() {
       const r = await sendOrQueue<{ invoice_id: number; invoice_number: string; review?: string[] }>(deps, { id: key.current, label: `Van sale to ${customer.name}, about ${money(total)}`, method: 'POST', path: `/distributor/vehicles/${vehicle}/sell`, body });
       if (r.kind === 'full') { setProblem('Too many changes are waiting to send. Connect to the internet before selling more.'); return; }
       void refreshCounts(); void syncAll();
-      if (r.kind === 'sent') router.replace({ pathname: '/receipt', params: { id: String(r.data.invoice_id) } });
+      if (r.kind === 'sent') router.replace({ pathname: '/receipt', params: { fresh: '1', id: String(r.data.invoice_id) } });
       else setSaved(`The sale to ${customer.name} (about ${money(total)}) is saved on this phone. It is sent by itself when the signal is back, and gets its real bill number then.`);
     } catch (e) { setProblem(e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'Could not make the sale'); }
     finally { setBusy(false); }

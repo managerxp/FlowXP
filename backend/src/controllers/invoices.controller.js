@@ -15,7 +15,7 @@ import { onInvoiceCancelled } from '../modules/salon/hooks.js';
 import { onInvoiceCancelled as onGymInvoiceCancelled, onInvoicePaid as onGymInvoicePaid } from '../modules/gym/memberships.js';
 import { returnWalletForCancelled } from '../modules/gaming/wallet.js';
 import pool from '../config/database.js';
-import { placeOfSupply } from '../modules/gst/states.js';
+import { placeOfSupply, taxName } from '../modules/gst/states.js';
 import { withDefaults } from '../modules/invoicePrint.js';
 import { recordAudit } from '../modules/events.js';
 import { toPaise, toRupees } from '../utils/money.js';
@@ -307,6 +307,9 @@ export const get = async (req, res) => {
       customer_state_code: placeOfSupply(rows[0].customer_gstin, rows[0].print_extra?.buyer_state ?? rows[0].customer_state),
       consignee_state_code: placeOfSupply(null, rows[0].print_extra?.consignee_state),
       loyalty_message: loyaltyCard,
+      // how the receipt names the state tax (UTGST in a union territory) and whether it lists the tax lines, so the phone prints the same bill as the website
+      tax_name: taxName(rows[0].business_state),
+      receipt: { show_tax_lines: rows[0].business_receipt?.show_tax_lines !== false, show_hsn: rows[0].business_receipt?.show_hsn === true },
       // what a tax invoice prints besides the bill: PAN, bank details, terms (Business settings > Receipts)
       invoice_print: withDefaults(rows[0].business_receipt?.invoice_print),
       print_details: Object.fromEntries(['pan', 'bank_name', 'bank_account', 'bank_ifsc', 'bank_branch', 'terms'].map((k) => [k, rows[0].business_receipt?.[k] || ''])),
