@@ -11,7 +11,7 @@ const rs = (paise: bigint): number => Math.round(Number(paise)) / 100;
 
 export const ewayBill = async (c: Db, orgId: bigint, invoiceId: bigint, t: Transport) => {
   const d = (await c.query(
-    `SELECT d.id, d.number, d.status, d.kind, d.issue_date::text AS date, d.inter_state, d.place_of_supply, d.subtotal_minor, d.tax_minor, d.round_off_minor, d.total_minor,
+    `SELECT d.id, d.number, d.status, d.kind, d.issue_date::text AS date, d.inter_state, d.place_of_supply, d.subtotal_minor, d.tax_minor, d.cess_minor, d.round_off_minor, d.total_minor,
             p.gstin AS to_gstin, p.state_code AS to_state, p.address_line AS to_addr, p.city AS to_city, p.pincode AS to_pin,
             p.ship_address_line, p.ship_city, p.ship_pincode
        FROM documents d JOIN parties p ON p.id = d.party_id WHERE d.id = $1`, [invoiceId])).rows[0];
@@ -27,7 +27,7 @@ export const ewayBill = async (c: Db, orgId: bigint, invoiceId: bigint, t: Trans
   if (t.vehicleNo && !/^[A-Z]{2}\d{1,2}[A-Z]{0,3}\d{4}$/.test(t.vehicleNo.replace(/[\s-]/g, '').toUpperCase())) problems.push('the vehicle number does not look right (like MH12AB1234)');
   if (problems.length) throw new LedgerError('eway_incomplete', `Cannot make the file yet: ${problems.join('; ')}.`);
 
-  const lines = (await c.query(`SELECT description, hsn_sac, unit, quantity_milli, taxable_minor, tax_rate_bp FROM document_lines WHERE document_id = $1 ORDER BY line_no`, [invoiceId])).rows;
+  const lines = (await c.query(`SELECT description, hsn_sac, unit, quantity_milli, taxable_minor, tax_rate_bp, cess_rate_bp FROM document_lines WHERE document_id = $1 ORDER BY line_no`, [invoiceId])).rows;
   const noHsn = lines.filter((l) => !l.hsn_sac).length;
   const toState = Number(d.place_of_supply ?? d.to_state ?? org.state_code);
   return {
@@ -38,12 +38,12 @@ export const ewayBill = async (c: Db, orgId: bigint, invoiceId: bigint, t: Trans
         fromGstin: org.gstin, fromAddr1: (org.address_line ?? '').slice(0, 120), fromPlace: org.city ?? '', fromPincode: Number(org.pincode), fromStateCode: Number(org.state_code),
         toGstin: d.to_gstin ?? 'URP', toAddr1: (d.ship_address_line ?? d.to_addr ?? '').slice(0, 120), toPlace: d.ship_city ?? d.to_city ?? '', toPincode: Number(toPin), toStateCode: toState,
         totalValue: rs(d.subtotal_minor),
-        cgstValue: d.inter_state ? 0 : rs(d.tax_minor / 2n), sgstValue: d.inter_state ? 0 : rs(d.tax_minor - d.tax_minor / 2n), igstValue: d.inter_state ? rs(d.tax_minor) : 0, cessValue: 0,
+        cgstValue: d.inter_state ? 0 : rs(d.tax_minor / 2n), sgstValue: d.inter_state ? 0 : rs(d.tax_minor - d.tax_minor / 2n), igstValue: d.inter_state ? rs(d.tax_minor) : 0, cessValue: rs(d.cess_minor),
         totInvValue: rs(d.total_minor), transMode: t.mode ?? 1, transDistance: t.distanceKm, transporterName: t.transporterName ?? '', transporterId: t.transporterId ?? '',
         transDocNo: t.transDocNo ?? '', transDocDate: t.transDocDate ? slash(t.transDocDate) : '', vehicleNo: (t.vehicleNo ?? '').replace(/[\s-]/g, '').toUpperCase(), vehicleType: 'R',
         itemList: lines.map((l, i) => ({
           itemNo: i + 1, productName: l.description, productDesc: l.description, hsnCode: Number(l.hsn_sac) || 0, quantity: Number(l.quantity_milli) / 1000, qtyUnit: l.unit ?? 'OTH', taxableAmount: rs(l.taxable_minor),
-          cgstRate: d.inter_state ? 0 : l.tax_rate_bp / 200, sgstRate: d.inter_state ? 0 : l.tax_rate_bp / 200, igstRate: d.inter_state ? l.tax_rate_bp / 100 : 0, cessRate: 0
+          cgstRate: d.inter_state ? 0 : l.tax_rate_bp / 200, sgstRate: d.inter_state ? 0 : l.tax_rate_bp / 200, igstRate: d.inter_state ? l.tax_rate_bp / 100 : 0, cessRate: l.cess_rate_bp / 100
         }))
       }]
     },

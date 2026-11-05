@@ -73,6 +73,32 @@ const Gstr3b = ({ month }) => {
   }}</Async>;
 };
 
+const LateCharges = ({ month }) => {
+  const { o, org } = useSession();
+  const [f, setF] = useState({ form: 'GSTR3B', filedOn: today(), paidOn: today(), band: 'UPTO_1_5CR' });
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const qs = new URLSearchParams({ month, form: f.form, band: f.band, ...(f.filedOn && { filedOn: f.filedOn }), ...(f.paidOn && f.form === 'GSTR3B' && { paidOn: f.paidOn }) });
+  const load = useLoad(() => o(`/gst/late-charges?${qs}`), [org.id, month, f.form, f.filedOn, f.paidOn, f.band]);
+  return (<>
+    <Card title="When did you file and pay?"><div className="form">
+      <Field label="Return"><select value={f.form} onChange={set('form')}><option value="GSTR3B">GSTR-3B (summary)</option><option value="GSTR1">GSTR-1 (sales)</option></select></Field>
+      <Field label="Filed on"><input type="date" value={f.filedOn} onChange={set('filedOn')} /></Field>
+      {f.form === 'GSTR3B' && <Field label="Tax paid on"><input type="date" value={f.paidOn} onChange={set('paidOn')} /></Field>}
+      <Field label="Last year's turnover"><select value={f.band} onChange={set('band')}><option value="UPTO_1_5CR">Up to ₹1.5 crore</option><option value="UPTO_5CR">₹1.5 to ₹5 crore</option><option value="ABOVE_5CR">Above ₹5 crore</option></select></Field>
+    </div></Card>
+    <Async load={load}>{(d) => (
+      <Card title={`${d.form === 'GSTR1' ? 'GSTR-1' : 'GSTR-3B'} for ${month}, due ${showDate(d.dueOn)}`}>
+        <Table head={['', '>Days late', '>Amount']}>
+          <tr><td>Late fee (₹{d.lateFee.perDay} a day, up to ₹{d.lateFee.cap})</td><td className="r">{d.daysLateFiling}</td><td className="r num">{rupees(d.lateFee.total)}</td></tr>
+          {d.form === 'GSTR3B' && <tr><td>Interest ({d.interest.pct}% a year on ₹{rupees(d.taxPaidLate)})</td><td className="r">{d.interest.days}</td><td className="r num">{rupees(d.interest.amount)}</td></tr>}
+          <tr className="total"><td colSpan={2}>Total to check</td><td className="r num">{rupees(d.total)}</td></tr>
+        </Table>
+        <ul className="problems">{d.assumptions.map((a) => <li key={a} className="warn">{a}</li>)}</ul>
+      </Card>
+    )}</Async>
+  </>);
+};
+
 export const GstReturns = () => {
   const [month, setMonth] = useState(today().slice(0, 7));
   const [form, setForm] = useState('1');
@@ -80,8 +106,8 @@ export const GstReturns = () => {
     <Card className="no-print"><div className="form">
       <Field label="Month"><input type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} /></Field>
     </div></Card>
-    <Tabs value={form} onChange={setForm} tabs={[['1', 'GSTR-1 (sales)'], ['3b', 'GSTR-3B (summary)'], ['e', 'E-invoices']]} />
-    {form === '1' ? <Gstr1 month={month} /> : form === 'e' ? <Einvoices month={month} /> : <Gstr3b month={month} />}
+    <Tabs value={form} onChange={setForm} tabs={[['1', 'GSTR-1 (sales)'], ['3b', 'GSTR-3B (summary)'], ['late', 'Late fee and interest'], ['e', 'E-invoices']]} />
+    {form === '1' ? <Gstr1 month={month} /> : form === 'e' ? <Einvoices month={month} /> : form === 'late' ? <LateCharges month={month} /> : <Gstr3b month={month} />}
   </>);
 };
 

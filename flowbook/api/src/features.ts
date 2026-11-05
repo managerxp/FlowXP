@@ -38,7 +38,7 @@ const BY_SEGMENT: Record<string, string> = {
 /** Which advanced feature a route belongs to (null: an everyday one). `url` is the route pattern, e.g. /v1/orgs/:orgId/quotes/:id/issue. */
 export const featureOfRoute = (url: string): string | null => {
   const rest = url.replace(/^\/v1\/orgs\/:orgId\/?/, '').split('/');
-  if (rest[0] === 'reports') return rest[1] === 'trial-balance' || rest[1] === 'balance-sheet' ? 'flowbook_reports_more' : null;
+  if (rest[0] === 'reports') return rest[1] === 'trial-balance' || rest[1] === 'balance-sheet' || rest[1] === 'cash-flow' ? 'flowbook_reports_more' : null;
   if (rest[0] === 'parties' && rest[2] === 'statement') return 'flowbook_reports_more';
   if (rest[0] === 'invoices' && rest[2] === 'eway-bill') return 'flowbook_einvoice';
   return BY_SEGMENT[rest[0] ?? ''] ?? null;

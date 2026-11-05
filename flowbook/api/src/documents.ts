@@ -17,8 +17,12 @@ import type { Tender } from './rules.ts';
 
 export type DocKind = 'INVOICE' | 'BILL' | 'CREDIT_NOTE' | 'QUOTE' | 'SALES_ORDER' | 'PURCHASE_ORDER' | 'DEBIT_NOTE';
 const POSTS_NOTHING = (k: DocKind): boolean => k === 'QUOTE' || k === 'SALES_ORDER' || k === 'PURCHASE_ORDER';
-export type LineIn = { itemId?: bigint; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; unit?: string; inclusive?: boolean };
+export type LineIn = { itemId?: bigint; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; cessBp?: number; unit?: string; inclusive?: boolean };
+/** A normal sale, a supply to an SEZ unit (IGST paid, or not under a letter of undertaking), or a deemed export. Sales and credit notes only. */
+export const SUPPLY_TYPES = ['REGULAR', 'SEZ_WITH_PAY', 'SEZ_WITHOUT_PAY', 'DEEMED_EXPORT'] as const;
+export type SupplyType = (typeof SUPPLY_TYPES)[number];
 export type DocIn = {
+  supplyType?: SupplyType;
   currency?: string; fxRate?: string; projectId?: bigint; projectCategory?: string; warehouseId?: bigint;
   /** an export invoice's shipping bill number and date and the port it left from */
   shippingBillNo?: string; shippingBillDate?: string; portCode?: string;
@@ -55,14 +59,14 @@ const toMilli = (text: string): bigint => {
   return v;
 };
 
-type Priced = { itemId: bigint | null; description: string; hsnSac: string | null; qtyMilli: bigint; unitPrice: bigint; discount: bigint; taxable: bigint; unit: string | null; taxCode: string; rateBp: number; tax: bigint; inclusive: boolean; unitPriceFc: bigint | null; discountFc: bigint | null; grossFc: bigint | null };
+type Priced = { itemId: bigint | null; description: string; hsnSac: string | null; qtyMilli: bigint; unitPrice: bigint; discount: bigint; taxable: bigint; unit: string | null; taxCode: string; rateBp: number; tax: bigint; cessBp: number; cess: bigint; inclusive: boolean; unitPriceFc: bigint | null; discountFc: bigint | null; grossFc: bigint | null };
 
 /** Prices lines with the tax rate in force on the document date, so an old invoice never changes when a rate does. */
 const priceLines = async (c: Db, kind: DocKind, lines: LineIn[], date: string, fx: bigint | null): Promise<Priced[]> => {
   if (lines.length === 0) throw new LedgerError('no_lines', 'a document needs at least one line');
   const out: Priced[] = [];
   for (const l of lines) {
-    const item = l.itemId ? (await c.query(`SELECT name, hsn_sac, unit, tax_code, sale_price_minor, purchase_price_minor FROM items WHERE id = $1 AND active`, [l.itemId])).rows[0] : null;
+    const item = l.itemId ? (await c.query(`SELECT name, hsn_sac, unit, tax_code, cess_rate_bp, sale_price_minor, purchase_price_minor FROM items WHERE id = $1 AND active`, [l.itemId])).rows[0] : null;
     if (l.itemId && !item) throw gone('item');
     const description = l.description?.trim() || (item?.name as string | undefined);
     if (!description) throw new LedgerError('description_required', 'each line needs an item or a description');
@@ -84,21 +88,24 @@ const priceLines = async (c: Db, kind: DocKind, lines: LineIn[], date: string, f
     const gross = grossFc !== null ? toBase(grossFc) : roundDiv(qtyMilli * unitPrice, 1000n);
     if (discount > gross) throw new LedgerError('discount_too_large', 'a discount cannot exceed the line amount');
     const rateBp = rate.rate_bp as number;
+    const cessBp = l.cessBp ?? (item?.cess_rate_bp as number | undefined) ?? 0;
+    if (!Number.isInteger(cessBp) || cessBp < 0 || cessBp > 100_000) throw new LedgerError('bad_cess_rate', 'the cess rate must be between 0 and 1000 percent');
     const inclusive = Boolean(l.inclusive);
     // an inclusive line's amount is what the customer pays: tax is carved out of it, so the total is exactly the typed amount
-    const taxable = inclusive ? roundDiv((gross - discount) * 10_000n, 10_000n + BigInt(rateBp)) : gross - discount;
-    const tax = inclusive ? gross - discount - taxable : taxOn(taxable, rateBp);
-    out.push({ itemId: l.itemId ?? null, description, hsnSac: l.hsnSac ?? (item?.hsn_sac as string | null) ?? null, qtyMilli, unitPrice: fx ? toBase(fcUnit as bigint) : unitPrice, discount, taxable, unit: l.unit ?? (item?.unit as string | null) ?? null, taxCode, rateBp, tax, inclusive, unitPriceFc: fcUnit, discountFc: fx ? discountFc : null, grossFc });
+    const taxable = inclusive ? roundDiv((gross - discount) * 10_000n, 10_000n + BigInt(rateBp) + BigInt(cessBp)) : gross - discount;
+    const cess = cessBp ? taxOn(taxable, cessBp) : 0n;
+    const tax = inclusive ? gross - discount - taxable - cess : taxOn(taxable, rateBp);
+    out.push({ itemId: l.itemId ?? null, description, hsnSac: l.hsnSac ?? (item?.hsn_sac as string | null) ?? null, qtyMilli, unitPrice: fx ? toBase(fcUnit as bigint) : unitPrice, discount, taxable, unit: l.unit ?? (item?.unit as string | null) ?? null, taxCode, rateBp, tax, cessBp, cess, inclusive, unitPriceFc: fcUnit, discountFc: fx ? discountFc : null, grossFc });
   }
   return out;
 };
 
 const partyFor = async (c: Db, id: bigint, role: 'CUSTOMER' | 'VENDOR') => {
-  const p = (await c.query(`SELECT kind, active, state_code, credit_days FROM parties WHERE id = $1`, [id])).rows[0];
+  const p = (await c.query(`SELECT kind, active, state_code, credit_days, gstin FROM parties WHERE id = $1`, [id])).rows[0];
   if (!p) throw gone('party');
   if (!p.active) throw new LedgerError('inactive_party', 'that party is inactive');
   if (p.kind !== 'BOTH' && p.kind !== role) throw new LedgerError('wrong_party_kind', `that party is not a ${role.toLowerCase()}`);
-  return p as { state_code: string | null; credit_days: number };
+  return p as { state_code: string | null; credit_days: number; gstin: string | null };
 };
 const roleOf = (kind: DocKind): 'CUSTOMER' | 'VENDOR' => (kind === 'BILL' || kind === 'PURCHASE_ORDER' || kind === 'DEBIT_NOTE' ? 'VENDOR' : 'CUSTOMER');
 
@@ -116,6 +123,14 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
   }
   if (d.itcBlocked && (d.kind !== 'BILL' || !(ITC_BLOCKED as readonly string[]).includes(d.itcBlocked))) throw new LedgerError('bad_itc_reason', 'credit can be marked as not allowed on a purchase bill only, with one of the listed reasons');
   const blocked = d.kind === 'BILL' ? d.itcBlocked ?? null : d.kind === 'DEBIT_NOTE' && d.relatedDocumentId ? ((await c.query(`SELECT itc_blocked FROM documents WHERE id = $1`, [d.relatedDocumentId])).rows[0]?.itc_blocked as string | null) ?? null : null;
+  let supply: SupplyType = d.supplyType ?? 'REGULAR';
+  if (d.kind === 'CREDIT_NOTE' && d.relatedDocumentId) supply = ((await c.query(`SELECT supply_type FROM documents WHERE id = $1`, [d.relatedDocumentId])).rows[0]?.supply_type as SupplyType | undefined) ?? 'REGULAR';   // a note follows its invoice
+  if (!(SUPPLY_TYPES as readonly string[]).includes(supply)) throw new LedgerError('bad_supply_type', 'unknown type of supply');
+  if (supply !== 'REGULAR') {
+    if (d.kind !== 'INVOICE' && d.kind !== 'CREDIT_NOTE') throw new LedgerError('supply_type_unsupported', 'an SEZ or deemed-export supply is set on sales invoices only');
+    if (!party.gstin) throw new LedgerError('supply_needs_gstin', 'an SEZ unit or the recipient of a deemed export must have a GSTIN; add it to the customer');
+    if ((d.currency ?? BASE) !== BASE) throw new LedgerError('supply_type_unsupported', 'an SEZ or deemed-export sale is in rupees; a foreign-currency sale is an export');
+  }
   const currency = d.currency ?? BASE;
   let rateStr = '1'; let rate: bigint | null = null;
   if (currency !== BASE) {
@@ -131,19 +146,21 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
   const lines = await priceLines(c, d.kind, d.lines, d.date, rate);
   const org = (await c.query(`SELECT state_code FROM organizations WHERE id = $1`, [orgId])).rows[0];
   const place = d.placeOfSupply ?? party.state_code;
-  const interState = (currency !== BASE && d.kind === 'INVOICE') || Boolean(org?.state_code && place && org.state_code !== place);   // an export is always IGST
+  const interState = (currency !== BASE && d.kind === 'INVOICE') || supply === 'SEZ_WITH_PAY' || supply === 'SEZ_WITHOUT_PAY' || Boolean(org?.state_code && place && org.state_code !== place);   // an export is always IGST
   const subtotal = lines.reduce((a, l) => a + l.taxable, 0n);
   const tax = lines.reduce((a, l) => a + l.tax, 0n);
+  const cess = lines.reduce((a, l) => a + l.cess, 0n);
+  if (supply === 'SEZ_WITHOUT_PAY' && tax + cess > 0n) throw new LedgerError('sez_tax_without_payment', 'a sale to an SEZ without payment of tax carries no GST: choose a zero-rate tax code, or choose "SEZ, tax paid"');
   if (d.reverseCharge && d.kind !== 'BILL') throw new LedgerError('reverse_charge_unsupported', 'reverse charge applies to purchase bills only');
   if (d.tcsRateBp && d.kind !== 'INVOICE') throw new LedgerError('tcs_unsupported', 'TCS is collected on sales invoices only');
   const tcsRate = d.tcsRateBp ?? 0;
   if (!Number.isInteger(tcsRate) || tcsRate < 0 || tcsRate > 2000) throw new LedgerError('bad_tcs_rate', 'the TCS rate must be between 0 and 20 percent');
-  const tcs = roundDiv((subtotal + tax) * BigInt(tcsRate), 10_000n);
-  const roundOff = d.roundOff ? roundDiv(subtotal + tax + tcs, 100n) * 100n - (subtotal + tax + tcs) : 0n;
+  const tcs = roundDiv((subtotal + tax + cess) * BigInt(tcsRate), 10_000n);
+  const roundOff = d.roundOff ? roundDiv(subtotal + tax + cess + tcs, 100n) * 100n - (subtotal + tax + cess + tcs) : 0n;
   // the foreign total the customer sees: each line's price in that currency, plus the tax converted back (unless the price already includes it)
-  const foreignTotal = rate ? lines.reduce((a, l) => a + (l.grossFc as bigint) - (l.discountFc as bigint) + (l.inclusive || d.reverseCharge ? 0n : roundDiv(l.tax * 1_000_000n, rate)), 0n) + roundDiv(tcs * 1_000_000n, rate) : null;
+  const foreignTotal = rate ? lines.reduce((a, l) => a + (l.grossFc as bigint) - (l.discountFc as bigint) + (l.inclusive || d.reverseCharge ? 0n : roundDiv((l.tax + l.cess) * 1_000_000n, rate)), 0n) + roundDiv(tcs * 1_000_000n, rate) : null;
   const due = d.kind === 'CREDIT_NOTE' || d.kind === 'DEBIT_NOTE' ? null : d.dueDate ?? addDays(d.date, party.credit_days);
-  const fields = [d.partyId, d.date, due, place ?? null, interState, d.supplierRef ?? null, d.relatedDocumentId ?? null, d.memo ?? null, Boolean(d.roundOff), subtotal, tax, roundOff, subtotal + (d.reverseCharge ? 0n : tax) + tcs + roundOff, tcsRate, tcs, tcsRate ? d.tcsSection ?? null : null, Boolean(d.reverseCharge), currency, rateStr, foreignTotal, d.projectId ?? null];
+  const fields = [d.partyId, d.date, due, place ?? null, interState, d.supplierRef ?? null, d.relatedDocumentId ?? null, d.memo ?? null, Boolean(d.roundOff), subtotal, tax, roundOff, subtotal + (d.reverseCharge ? 0n : tax + cess) + tcs + roundOff, tcsRate, tcs, tcsRate ? d.tcsSection ?? null : null, Boolean(d.reverseCharge), currency, rateStr, foreignTotal, d.projectId ?? null];
   if (id === null) {
     id = (await c.query(
       `INSERT INTO documents (organization_id, kind, created_by, party_id, issue_date, due_date, place_of_supply, inter_state, supplier_ref, related_document_id, memo, round_off_on, subtotal_minor, tax_minor, round_off_minor, total_minor, tcs_rate_bp, tcs_minor, tcs_section, reverse_charge, currency, fx_rate, foreign_total_minor, project_id)
@@ -161,19 +178,20 @@ export const saveDraft = async (c: Db, orgId: bigint, id: bigint | null, d: DocI
   }
   if (d.warehouseId && !(await c.query(`SELECT 1 FROM warehouses WHERE id = $1 AND active`, [d.warehouseId])).rowCount) throw gone('warehouse');
   await c.query(`UPDATE documents SET warehouse_id = $2, shipping_bill_no = $3, shipping_bill_date = $4, port_code = $5, project_category = $6, itc_blocked = $7 WHERE id = $1`, [id, d.warehouseId ?? null, d.shippingBillNo?.trim() || null, d.shippingBillDate || null, d.portCode?.trim() || null, projectCategory, blocked]);
+  await c.query(`UPDATE documents SET cess_minor = $2, supply_type = $3 WHERE id = $1`, [id, cess, supply]);
   let no = 0;
   for (const l of lines) {
     no += 1;
     await c.query(
-      `INSERT INTO document_lines (organization_id, document_id, line_no, item_id, description, hsn_sac, quantity_milli, unit_price_minor, discount_minor, taxable_minor, tax_code, tax_rate_bp, tax_minor, unit, price_includes_tax, unit_price_fc_minor, discount_fc_minor)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
-      [orgId, id, no, l.itemId, l.description, l.hsnSac, l.qtyMilli, l.unitPrice, l.discount, l.taxable, l.taxCode, l.rateBp, l.tax, l.unit, l.inclusive, l.unitPriceFc, l.discountFc]);
+      `INSERT INTO document_lines (organization_id, document_id, line_no, item_id, description, hsn_sac, quantity_milli, unit_price_minor, discount_minor, taxable_minor, tax_code, tax_rate_bp, tax_minor, unit, price_includes_tax, unit_price_fc_minor, discount_fc_minor, cess_rate_bp, cess_minor)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+      [orgId, id, no, l.itemId, l.description, l.hsnSac, l.qtyMilli, l.unitPrice, l.discount, l.taxable, l.taxCode, l.rateBp, l.tax, l.unit, l.inclusive, l.unitPriceFc, l.discountFc, l.cessBp, l.cess]);
   }
   return id;
 };
 
-const DOC_COLS = `d.itc_blocked, d.retention_minor, d.id, d.kind, d.number, d.supplier_ref, d.party_id, p.name AS party_name, d.status, d.issue_date::text AS issue_date, d.due_date::text AS due_date,
-  d.place_of_supply, d.inter_state, d.subtotal_minor, d.tax_minor, d.round_off_minor, d.outcome, d.converted_document_id, (SELECT x.kind FROM documents x WHERE x.id = d.converted_document_id) AS converted_kind, (SELECT x.kind FROM documents x WHERE x.id = d.related_document_id) AS related_kind, d.tcs_rate_bp, d.tcs_minor, d.tcs_section, d.reverse_charge, d.project_id, d.project_category, d.warehouse_id, d.shipping_bill_no, d.shipping_bill_date::text AS shipping_bill_date, d.port_code, (SELECT w.name FROM warehouses w WHERE w.id = d.warehouse_id) AS warehouse_name, (SELECT pr.name FROM projects pr WHERE pr.id = d.project_id) AS project_name, d.currency, d.fx_rate::text AS fx_rate, d.foreign_total_minor, d.foreign_balance_minor, d.total_minor, d.balance_minor, d.related_document_id, d.journal_entry_id, d.memo`;
+const DOC_COLS = `d.supply_type, d.itc_blocked, d.retention_minor, d.id, d.kind, d.number, d.supplier_ref, d.party_id, p.name AS party_name, d.status, d.issue_date::text AS issue_date, d.due_date::text AS due_date,
+  d.place_of_supply, d.inter_state, d.subtotal_minor, d.tax_minor, d.cess_minor, d.round_off_minor, d.outcome, d.converted_document_id, (SELECT x.kind FROM documents x WHERE x.id = d.converted_document_id) AS converted_kind, (SELECT x.kind FROM documents x WHERE x.id = d.related_document_id) AS related_kind, d.tcs_rate_bp, d.tcs_minor, d.tcs_section, d.reverse_charge, d.project_id, d.project_category, d.warehouse_id, d.shipping_bill_no, d.shipping_bill_date::text AS shipping_bill_date, d.port_code, (SELECT w.name FROM warehouses w WHERE w.id = d.warehouse_id) AS warehouse_name, (SELECT pr.name FROM projects pr WHERE pr.id = d.project_id) AS project_name, d.currency, d.fx_rate::text AS fx_rate, d.foreign_total_minor, d.foreign_balance_minor, d.total_minor, d.balance_minor, d.related_document_id, d.journal_entry_id, d.memo`;
 
 export const listDocuments = async (c: Db, kind: DocKind, q: { status?: string; partyId?: bigint; before?: bigint; limit: number }) => (await c.query(
   `SELECT ${DOC_COLS} FROM documents d JOIN parties p ON p.id = d.party_id
@@ -184,7 +202,7 @@ export const getDocument = async (c: Db, kind: DocKind, id: bigint) => {
   const doc = (await c.query(`SELECT ${DOC_COLS} FROM documents d JOIN parties p ON p.id = d.party_id WHERE d.id = $1 AND d.kind = $2`, [id, kind])).rows[0];
   if (!doc) return null;
   const lines = (await c.query(
-    `SELECT id, line_no, item_id, description, hsn_sac, round(quantity_milli::numeric / 1000, 3)::text AS quantity, unit_price_minor, discount_minor, taxable_minor, tax_code, tax_rate_bp, tax_minor, unit, price_includes_tax, unit_price_fc_minor, discount_fc_minor,
+    `SELECT id, line_no, item_id, description, hsn_sac, round(quantity_milli::numeric / 1000, 3)::text AS quantity, unit_price_minor, discount_minor, taxable_minor, tax_code, tax_rate_bp, tax_minor, cess_rate_bp, cess_minor, unit, price_includes_tax, unit_price_fc_minor, discount_fc_minor,
             (SELECT i.tracking FROM items i WHERE i.id = document_lines.item_id) AS tracking
        FROM document_lines WHERE document_id = $1 ORDER BY line_no`, [id])).rows;
   const allocations = (await c.query(`SELECT source_type, source_id, amount_minor, voided_at IS NOT NULL AS voided FROM payment_allocations WHERE document_id = $1 ORDER BY id`, [id])).rows;
@@ -209,12 +227,12 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
   const stored = (await c.query(`SELECT * FROM document_lines WHERE document_id = $1 ORDER BY line_no`, [id])).rows;
   const milli = (q: bigint) => `${q / 1000n}.${String(q % 1000n).padStart(3, '0')}`;
   await saveDraft(c, orgId, id, {
-    kind, currency: doc.currency, fxRate: doc.fx_rate, projectId: doc.project_id ?? undefined, projectCategory: doc.project_category ?? undefined, warehouseId: doc.warehouse_id ?? undefined, shippingBillNo: doc.shipping_bill_no ?? undefined, shippingBillDate: doc.shipping_bill_date ?? undefined, portCode: doc.port_code ?? undefined, partyId: doc.party_id, date: doc.issue_d, dueDate: doc.due_d ?? undefined,
+    kind, supplyType: doc.supply_type, currency: doc.currency, fxRate: doc.fx_rate, projectId: doc.project_id ?? undefined, projectCategory: doc.project_category ?? undefined, warehouseId: doc.warehouse_id ?? undefined, shippingBillNo: doc.shipping_bill_no ?? undefined, shippingBillDate: doc.shipping_bill_date ?? undefined, portCode: doc.port_code ?? undefined, partyId: doc.party_id, date: doc.issue_d, dueDate: doc.due_d ?? undefined,
     placeOfSupply: doc.place_of_supply ?? undefined, supplierRef: doc.supplier_ref ?? undefined, relatedDocumentId: kind === 'CREDIT_NOTE' || kind === 'DEBIT_NOTE' ? doc.related_document_id ?? undefined : undefined, memo: doc.memo ?? undefined, roundOff: doc.round_off_on, tcsRateBp: doc.tcs_rate_bp, tcsSection: doc.tcs_section ?? undefined, reverseCharge: doc.reverse_charge, itcBlocked: kind === 'BILL' ? doc.itc_blocked ?? undefined : undefined,
-    lines: stored.map((l) => ({ itemId: l.item_id ?? undefined, description: l.description, hsnSac: l.hsn_sac ?? undefined, quantity: milli(l.quantity_milli), unitPrice: paiseToString(l.unit_price_fc_minor ?? l.unit_price_minor), discount: paiseToString(l.discount_fc_minor ?? l.discount_minor), taxCode: l.tax_code, unit: l.unit ?? undefined, inclusive: l.price_includes_tax }))
+    lines: stored.map((l) => ({ itemId: l.item_id ?? undefined, description: l.description, hsnSac: l.hsn_sac ?? undefined, quantity: milli(l.quantity_milli), unitPrice: paiseToString(l.unit_price_fc_minor ?? l.unit_price_minor), discount: paiseToString(l.discount_fc_minor ?? l.discount_minor), taxCode: l.tax_code, cessBp: l.cess_rate_bp, unit: l.unit ?? undefined, inclusive: l.price_includes_tax }))
   }, actor);
   const fresh = (await c.query(`SELECT *, issue_date::text AS d FROM documents WHERE id = $1`, [id])).rows[0];
-  const lines = (await c.query(`SELECT taxable_minor, tax_rate_bp FROM document_lines WHERE document_id = $1`, [id])).rows;
+  const lines = (await c.query(`SELECT taxable_minor, tax_rate_bp, cess_rate_bp FROM document_lines WHERE document_id = $1`, [id])).rows;
   const total = fresh.total_minor as bigint;
   if (total <= 0n) throw new LedgerError('zero_total', 'a document with nothing to pay cannot be issued');
   if (kind === 'BILL' && fresh.supplier_ref) {
@@ -227,7 +245,7 @@ export const issueDocument = async (c: Db, orgId: bigint, kind: DocKind, id: big
     await audit(c, orgId, { actor, action: 'document.issued', entityType: 'document', entityId: id, detail: { kind, number, total: paiseToString(total) } });
     return { number, entryNo: null as string | null };
   }
-  const taxed = lines.map((l) => ({ taxable: l.taxable_minor as bigint, rateBp: l.tax_rate_bp as number }));
+  const taxed = lines.map((l) => ({ taxable: l.taxable_minor as bigint, rateBp: l.tax_rate_bp as number, cessBp: l.cess_rate_bp as number }));
   const common = { date: fresh.d as string, partyId: fresh.party_id as bigint, lines: taxed, interState: fresh.inter_state as boolean };
   // goods that are counted: what they cost is worked out first (it may refuse for lack of stock), the moves are recorded once the entries exist
   const tracked = kind === 'BILL' || kind === 'DEBIT_NOTE' || kind === 'INVOICE' || kind === 'CREDIT_NOTE' ? await trackedLines(c, id) : [];
@@ -323,7 +341,7 @@ export const convertDocument = async (c: Db, orgId: bigint, id: bigint, to: 'SAL
   const milli = (q: bigint) => `${q / 1000n}.${String(q % 1000n).padStart(3, '0')}`;
   const newId = await saveDraft(c, orgId, null, {
     kind: to, currency: d.currency, fxRate: d.fx_rate, projectId: d.project_id ?? undefined, projectCategory: d.project_category ?? undefined, warehouseId: d.warehouse_id ?? undefined, partyId: d.party_id, date, placeOfSupply: d.place_of_supply ?? undefined, memo: d.memo ?? undefined, roundOff: d.round_off_on,
-    lines: stored.map((l) => ({ itemId: l.item_id ?? undefined, description: l.description, hsnSac: l.hsn_sac ?? undefined, quantity: milli(l.quantity_milli), unitPrice: paiseToString(l.unit_price_fc_minor ?? l.unit_price_minor), discount: paiseToString(l.discount_fc_minor ?? l.discount_minor), taxCode: l.tax_code, unit: l.unit ?? undefined, inclusive: l.price_includes_tax }))
+    lines: stored.map((l) => ({ itemId: l.item_id ?? undefined, description: l.description, hsnSac: l.hsn_sac ?? undefined, quantity: milli(l.quantity_milli), unitPrice: paiseToString(l.unit_price_fc_minor ?? l.unit_price_minor), discount: paiseToString(l.discount_fc_minor ?? l.discount_minor), taxCode: l.tax_code, cessBp: l.cess_rate_bp, unit: l.unit ?? undefined, inclusive: l.price_includes_tax }))
   }, actor);
   await c.query(`UPDATE documents SET related_document_id = $2 WHERE id = $1`, [newId, id]);
   await c.query(`UPDATE documents SET outcome = 'CONVERTED', converted_document_id = $2 WHERE id = $1`, [id, newId]);

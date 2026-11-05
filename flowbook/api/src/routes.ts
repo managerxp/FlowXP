@@ -3,12 +3,12 @@ import type pg from 'pg';
 import { audit } from './audit.ts';
 import { withOrg } from './db.ts';
 import type { Db } from './db.ts';
-import { ITC_BLOCKED, advancesAndRetention, ageing, exportAll, outstanding, allocatePayment, applyCreditNote, applyDebitNote, convertDocument, createOpeningBalance, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, setOutcome, setRetention, voidDocument, voidPayment } from './documents.ts';
-import type { Alloc, DocIn, DocKind } from './documents.ts';
+import { ITC_BLOCKED, SUPPLY_TYPES, advancesAndRetention, ageing, exportAll, outstanding, allocatePayment, applyCreditNote, applyDebitNote, convertDocument, createOpeningBalance, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, setOutcome, setRetention, voidDocument, voidPayment } from './documents.ts';
+import type { Alloc, DocIn, DocKind, SupplyType } from './documents.ts';
 import { listExpenses, recordExpense, voidExpense } from './expenses.ts';
 import { ewayBill } from './eway.ts';
 import { buildEinvoice, cancelIrn, einvoiceBulk, einvoiceList, recordIrn } from './einvoice.ts';
-import { gstr1, gstr3b } from './gstr.ts';
+import { gstr1, gstr3b, lateCharges } from './gstr.ts';
 import { PROFILE_COLUMNS, saveExtras } from './profile.ts';
 import type { ProfileExtras } from './profile.ts';
 import { IMPORT_LIMIT, importItems, importParties } from './import.ts';
@@ -58,11 +58,11 @@ type Deps = { pool: pg.Pool; scope: Scope; me: (req: FastifyRequest) => string }
 
 const line = { type: 'object', additionalProperties: false, properties: {
   itemId: { type: 'string', pattern: ID }, description: { type: 'string', maxLength: 300 }, hsnSac: { type: 'string', maxLength: 12 },
-  quantity: { type: 'string', pattern: QTY }, unitPrice: { type: 'string', pattern: AMOUNT }, discount: { type: 'string', pattern: AMOUNT }, taxCode: { type: 'string', maxLength: 20 }, unit: { type: 'string', enum: UQC }, inclusive: { type: 'boolean' } } };
+  quantity: { type: 'string', pattern: QTY }, unitPrice: { type: 'string', pattern: AMOUNT }, discount: { type: 'string', pattern: AMOUNT }, taxCode: { type: 'string', maxLength: 20 }, cessBp: { type: 'integer', minimum: 0, maximum: 100000 }, unit: { type: 'string', enum: UQC }, inclusive: { type: 'boolean' } } };
 const docBody = { type: 'object', required: ['partyId', 'date', 'lines'], additionalProperties: false, properties: {
   partyId: { type: 'string', pattern: ID }, date: { type: 'string', pattern: DATE }, dueDate: { type: 'string', pattern: DATE }, placeOfSupply: { type: 'string', pattern: '^\\d{2}$' },
   supplierRef: { type: 'string', maxLength: 60 }, relatedDocumentId: { type: 'string', pattern: ID }, memo: { type: 'string', maxLength: 500 }, roundOff: { type: 'boolean' },
-  reverseCharge: { type: 'boolean' }, tcsRateBp: { type: 'integer', minimum: 0, maximum: 2000 }, tcsSection: { type: 'string', maxLength: 30 }, itcBlocked: { type: 'string', enum: [...ITC_BLOCKED] },
+  supplyType: { enum: [...SUPPLY_TYPES] }, reverseCharge: { type: 'boolean' }, tcsRateBp: { type: 'integer', minimum: 0, maximum: 2000 }, tcsSection: { type: 'string', maxLength: 30 }, itcBlocked: { type: 'string', enum: [...ITC_BLOCKED] },
   projectId: { type: 'string', pattern: ID }, projectCategory: { type: 'string', enum: [...COST_TYPES] }, warehouseId: { type: 'string', pattern: ID }, shippingBillNo: { type: 'string', maxLength: 7 }, shippingBillDate: { type: 'string', pattern: DATE }, portCode: { type: 'string', maxLength: 6 }, currency: { type: 'string', pattern: '^[A-Z]{3}$' }, fxRate: { type: 'string', pattern: '^\\d{1,9}(\\.\\d{1,6})?$' },
   lines: { type: 'array', minItems: 1, maxItems: 200, items: line } } };
 const allocBody = { type: 'array', minItems: 1, maxItems: 200, items: { type: 'object', required: ['documentId', 'amount'], additionalProperties: false, properties: {
@@ -70,8 +70,8 @@ const allocBody = { type: 'array', minItems: 1, maxItems: 200, items: { type: 'o
 const allocs = (a: { documentId: string; amount: string }[]): Alloc[] => a.map((x) => ({ documentId: BigInt(x.documentId), amount: toPaise(x.amount) }));
 const voidBody = { type: 'object', required: ['date', 'reason'], additionalProperties: false, properties: { date: { type: 'string', pattern: DATE }, reason: { type: 'string', minLength: 1, maxLength: 300 }, ...override } };
 
-type RawDoc = { projectCategory?: string; shippingBillNo?: string; shippingBillDate?: string; portCode?: string; warehouseId?: string; projectId?: string; currency?: string; fxRate?: string; partyId: string; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string; relatedDocumentId?: string; memo?: string; roundOff?: boolean; reverseCharge?: boolean; tcsRateBp?: number; tcsSection?: string; itcBlocked?: string;
-  lines: { itemId?: string; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; unit?: string; inclusive?: boolean }[] };
+type RawDoc = { supplyType?: SupplyType; projectCategory?: string; shippingBillNo?: string; shippingBillDate?: string; portCode?: string; warehouseId?: string; projectId?: string; currency?: string; fxRate?: string; partyId: string; date: string; dueDate?: string; placeOfSupply?: string; supplierRef?: string; relatedDocumentId?: string; memo?: string; roundOff?: boolean; reverseCharge?: boolean; tcsRateBp?: number; tcsSection?: string; itcBlocked?: string;
+  lines: { itemId?: string; description?: string; hsnSac?: string; quantity?: string; unitPrice?: string; discount?: string; taxCode?: string; cessBp?: number; unit?: string; inclusive?: boolean }[] };
 const docIn = (kind: DocKind, b: RawDoc): DocIn => ({ ...b, kind, partyId: BigInt(b.partyId), projectId: b.projectId ? BigInt(b.projectId) : undefined, warehouseId: b.warehouseId ? BigInt(b.warehouseId) : undefined, relatedDocumentId: b.relatedDocumentId ? BigInt(b.relatedDocumentId) : undefined,
   lines: b.lines.map((l) => ({ ...l, itemId: l.itemId ? BigInt(l.itemId) : undefined })) });
 
@@ -146,13 +146,13 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
 
   /* ---- items */
   app.get(`${base}/items`, { preHandler: scope('item.read') }, async (req) => run(req, async (c) => (await c.query(
-    `SELECT id, sku, name, kind, hsn_sac, unit, tax_code, sale_price_minor, purchase_price_minor, active, track_stock, tracking FROM items ORDER BY name LIMIT 1000`)).rows));
+    `SELECT id, sku, name, kind, hsn_sac, unit, tax_code, cess_rate_bp, sale_price_minor, purchase_price_minor, active, track_stock, tracking FROM items ORDER BY name LIMIT 1000`)).rows));
   app.get(`${base}/catalogue`, { preHandler: scope('item.read') }, async (req) => run(req, (c) => catalogueFor(c)));
   app.post(`${base}/catalogue/add`, { preHandler: scope('item.write'), schema: { body: { type: 'object', required: ['skus'], additionalProperties: false, properties: { skus: { anyOf: [{ type: 'string', enum: ['all'] }, { type: 'array', maxItems: 500, items: { type: 'string', maxLength: 80 } }] } } } } }, async (req) =>
     ({ added: await run(req, (c, orgId) => addFromCatalogue(c, orgId, (req.body as { skus: string[] | 'all' }).skus, me(req))) }));
   app.post(`${base}/items`, { preHandler: scope('item.write'), schema: { body: { type: 'object', required: ['sku', 'name'], additionalProperties: false, properties: {
     sku: { type: 'string', minLength: 1, maxLength: 60 }, name: { type: 'string', minLength: 1, maxLength: 160 }, kind: { type: 'string', enum: ['GOODS', 'SERVICE'] }, hsnSac: { type: 'string', maxLength: 12 }, unit: { type: 'string', enum: UQC },
-    taxCode: { type: 'string', maxLength: 20 }, salePrice: { type: 'string', pattern: AMOUNT }, purchasePrice: { type: 'string', pattern: AMOUNT }, trackStock: { type: 'boolean' }, reorderLevel: { type: 'string', pattern: QTY }, tracking: { type: 'string', enum: ['NONE', 'BATCH', 'SERIAL'] } } } } }, async (req, reply) => {
+    taxCode: { type: 'string', maxLength: 20 }, cessBp: { type: 'integer', minimum: 0, maximum: 100000 }, salePrice: { type: 'string', pattern: AMOUNT }, purchasePrice: { type: 'string', pattern: AMOUNT }, trackStock: { type: 'boolean' }, reorderLevel: { type: 'string', pattern: QTY }, tracking: { type: 'string', enum: ['NONE', 'BATCH', 'SERIAL'] } } } } }, async (req, reply) => {
     const { trackStock, reorderLevel, tracking, ...item } = req.body as Parameters<typeof createItem>[2] & { trackStock?: boolean; reorderLevel?: string; tracking?: 'NONE' | 'BATCH' | 'SERIAL' };
     const id = await run(req, async (c, orgId) => {
       const made = await createItem(c, orgId, item, me(req));
@@ -572,6 +572,11 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   });
   app.get(`${base}/gst/gstr3b`, { preHandler: scope('report.read'), schema: { querystring: { type: 'object', required: ['month'], properties: { month } } } }, async (req) =>
     run(req, (c, orgId) => gstr3b(c, orgId, (req.query as { month: string }).month)));
+  const rupeeAmt = { type: 'number', minimum: 0, maximum: 100_000_000 };
+  app.get(`${base}/gst/late-charges`, { preHandler: scope('report.read'), schema: { querystring: { type: 'object', required: ['month', 'form'], additionalProperties: false, properties: {
+    month, form: { enum: ['GSTR1', 'GSTR3B'] }, filedOn: { type: 'string', pattern: DATE }, paidOn: { type: 'string', pattern: DATE }, dueOn: { type: 'string', pattern: DATE }, nil: { type: 'boolean' },
+    band: { enum: ['UPTO_1_5CR', 'UPTO_5CR', 'ABOVE_5CR'] }, taxLate: rupeeAmt, feePerDay: rupeeAmt, feeCap: rupeeAmt, interestPct: { type: 'number', minimum: 0, maximum: 100 } } } } }, async (req) =>
+    run(req, (c, orgId) => lateCharges(c, orgId, req.query as Parameters<typeof lateCharges>[2])));
   app.get(`${base}/parties/:id/statement`, { preHandler: scope('report.read'), schema: { ...idParam, querystring: { type: 'object', required: ['from', 'to'], properties: { from: { type: 'string', pattern: DATE }, to: { type: 'string', pattern: DATE } } } } }, async (req) => {
     const q = req.query as { from: string; to: string };
     return run(req, (c) => partyStatement(c, BigInt((req.params as { id: string }).id), q.from, q.to));

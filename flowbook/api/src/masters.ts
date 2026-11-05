@@ -58,7 +58,7 @@ export const updateParty = async (c: Db, orgId: bigint, id: bigint, p: Partial<P
   return true;
 };
 
-export type ItemIn = { sku: string; name: string; kind?: 'GOODS' | 'SERVICE'; hsnSac?: string; taxCode?: string; salePrice?: string; purchasePrice?: string; unit?: string };
+export type ItemIn = { sku: string; name: string; kind?: 'GOODS' | 'SERVICE'; hsnSac?: string; taxCode?: string; cessBp?: number; salePrice?: string; purchasePrice?: string; unit?: string };
 
 export const createItem = async (c: Db, orgId: bigint, i: ItemIn, actor: string): Promise<bigint> => {
   if (i.taxCode) {
@@ -67,8 +67,8 @@ export const createItem = async (c: Db, orgId: bigint, i: ItemIn, actor: string)
   }
   if (i.unit && !UQC.includes(i.unit)) throw new LedgerError('bad_unit', `${i.unit} is not a unit code the GST portal knows`);
   const row = (await c.query(
-    `INSERT INTO items (organization_id, sku, name, kind, hsn_sac, tax_code, sale_price_minor, purchase_price_minor, unit) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT DO NOTHING RETURNING id`,
-    [orgId, i.sku, i.name.trim(), i.kind ?? 'GOODS', i.hsnSac ?? null, i.taxCode ?? null, toPaise(i.salePrice ?? '0'), toPaise(i.purchasePrice ?? '0'), i.unit ?? null])).rows[0];
+    `INSERT INTO items (organization_id, sku, name, kind, hsn_sac, tax_code, sale_price_minor, purchase_price_minor, unit, cess_rate_bp) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT DO NOTHING RETURNING id`,
+    [orgId, i.sku, i.name.trim(), i.kind ?? 'GOODS', i.hsnSac ?? null, i.taxCode ?? null, toPaise(i.salePrice ?? '0'), toPaise(i.purchasePrice ?? '0'), i.unit ?? null, i.cessBp ?? 0])).rows[0];
   if (!row) throw new LedgerError('sku_taken', `SKU ${i.sku} already exists`);
   await audit(c, orgId, { actor, action: 'item.created', entityType: 'item', entityId: row.id as bigint, detail: { sku: i.sku } });
   return row.id as bigint;

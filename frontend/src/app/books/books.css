@@ -185,6 +185,20 @@
   .fb-sheet footer { display: flex; justify-content: space-between; margin-top: 2rem; }
   .fb-sheet.thermal { font-size: 9pt; } .fb-sheet.thermal header, .fb-sheet.thermal .meta { flex-direction: column; } .fb-sheet.thermal h1 { text-align: left; font-size: 1.2em; } .fb-sheet.thermal .sum { width: 100%; }
 }
+/* the same paper look while the PDF is drawn: the sheet is shown off screen for a moment */
+  .fb-sheet.capture { display: block; color: #000; background: #fff; font-size: 11pt; line-height: 1.4; --accent: #1a56db; }
+  .fb-sheet.capture header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; border-bottom: 2px solid var(--accent); padding-bottom: .5rem; margin-bottom: .75rem; }
+  .fb-sheet.capture h1 { margin: 0; font-size: 1.5em; color: var(--accent); text-align: right; } .fb-sheet.capture .biz { font-size: 1.25em; }
+  .fb-sheet.capture .meta { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .75rem; } .fb-sheet.capture .meta > div, .fb-sheet.capture .meta dl { margin: 0; }
+  .fb-sheet.capture .meta strong, .fb-sheet.capture .meta .muted { display: block; } .fb-sheet.capture .meta .muted { color: #555; font-size: .85em; }
+  .fb-sheet.capture dl { display: grid; grid-template-columns: auto auto; gap: 0 .75rem; } .fb-sheet.capture dt { color: #555; } .fb-sheet.capture dd { margin: 0; }
+  .fb-sheet.capture table { width: 100%; border-collapse: collapse; } .fb-sheet.capture th { background: var(--accent); color: #fff; text-align: left; }
+  .fb-sheet.capture th, .fb-sheet.capture td { padding: .25rem .4rem; border-bottom: 1px solid #ccc; } .fb-sheet.capture .r { text-align: right; }
+  .fb-sheet.capture .sum { margin: .5rem 0 0 auto; width: 16rem; } .fb-sheet.capture .sum div { display: flex; justify-content: space-between; padding: .1rem 0; }
+  .fb-sheet.capture .sum .grand { border-top: 2px solid var(--accent); font-weight: 700; font-size: 1.1em; margin-top: .25rem; padding-top: .25rem; }
+  .fb-sheet.capture .words { font-style: italic; } .fb-sheet.capture .small { font-size: .85em; }
+  .fb-sheet.capture footer { display: flex; justify-content: space-between; margin-top: 2rem; }
+  .fb-sheet.capture.thermal { font-size: 9pt; } .fb-sheet.capture.thermal header, .fb-sheet.capture.thermal .meta { flex-direction: column; } .fb-sheet.capture.thermal h1 { text-align: left; font-size: 1.2em; } .fb-sheet.capture.thermal .sum { width: 100%; }
 
 /* ---- simple / full switch, help button and panel, inline word explanations, assistant chat */
 .mode-switch { flex: none; padding: .75rem .875rem 1rem; border-top: 1px solid var(--line); }

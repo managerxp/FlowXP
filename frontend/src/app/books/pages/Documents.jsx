@@ -6,7 +6,7 @@ import { COST_TYPES, ITC_REASONS, STATES, TCS_SECTIONS, UNITS, addDays, amountIn
 import { useSession } from '../session.jsx';
 import { useSimple } from '../mode.js';
 import { Term } from '../help.jsx';
-import { DocSheet, EwayPanel } from './Print.jsx';
+import { DocSheet, EwayPanel, savePdf } from './Print.jsx';
 import { EinvoicePanel } from './Einvoice.jsx';
 import { WhatsappButton, WhatsappLog } from './Whatsapp.jsx';
 import { EmailForm, EmailLog, useEmailOn } from './Email.jsx';
@@ -46,7 +46,7 @@ export const DocList = ({ kind }) => {
 };
 
 const isNote = (kind) => kind.api === 'credit-notes' || kind.api === 'debit-notes';   // reduces what a customer owes (credit) or what you owe a vendor (debit)
-const blankLine = () => ({ itemId: '', description: '', hsnSac: '', unit: '', quantity: '1', unitPrice: '', discount: '', taxCode: 'GST18', inclusive: false });
+const blankLine = () => ({ itemId: '', description: '', hsnSac: '', unit: '', quantity: '1', unitPrice: '', discount: '', taxCode: 'GST18', cessRate: '', inclusive: false });
 
 export const DocForm = ({ kind }) => {
   const { id } = useParams();
@@ -62,7 +62,7 @@ export const DocForm = ({ kind }) => {
   const fx = useLoad(() => o('/exchange-rates'), [org.id]);
   const rates = useLoad(() => o('/tax-rates'), [org.id]);
   const existing = useLoad(() => (id ? o(`/${kind.api}/${id}`) : Promise.resolve(null)), [org.id, id]);
-  const [f, setF] = useState({ partyId: '', date: today(), dueDate: '', placeOfSupply: '', supplierRef: '', relatedDocumentId: '', memo: '', roundOff: true, tcsRate: '', tcsSection: '', reverseCharge: false, itcBlocked: '', currency: 'INR', fxRate: '', projectId: '', projectCategory: 'Materials', warehouseId: '', shippingBillNo: '', shippingBillDate: '', portCode: '', lines: [blankLine()] });
+  const [f, setF] = useState({ partyId: '', date: today(), dueDate: '', placeOfSupply: '', supplierRef: '', relatedDocumentId: '', memo: '', roundOff: true, tcsRate: '', tcsSection: '', reverseCharge: false, supplyType: 'REGULAR', itcBlocked: '', currency: 'INR', fxRate: '', projectId: '', projectCategory: 'Materials', warehouseId: '', shippingBillNo: '', shippingBillDate: '', portCode: '', lines: [blankLine()] });
   const warehouses = useLoad(() => (['quotes', 'sales-orders', 'purchase-orders'].includes(kind.api) ? Promise.resolve([]) : o('/warehouses')), [org.id]);
   const projects = useLoad(() => (isNote(kind) || kind.api === 'purchase-orders' ? Promise.resolve([]) : o('/projects?status=ACTIVE')), [org.id]);
   const invoices = useLoad(() => (isNote(kind) && f.partyId ? o(`/${kind.api === 'credit-notes' ? 'invoices' : 'bills'}?status=ISSUED&partyId=${f.partyId}&limit=100`) : Promise.resolve(null)), [org.id, f.partyId, kind.api]);
@@ -71,7 +71,7 @@ export const DocForm = ({ kind }) => {
     const d = existing.data;
     if (!d) return;
     setF({ shippingBillNo: d.shipping_bill_no || '', shippingBillDate: d.shipping_bill_date || '', portCode: d.port_code || '', warehouseId: d.warehouse_id ? String(d.warehouse_id) : '', projectId: d.project_id ? String(d.project_id) : '', projectCategory: d.project_category || 'Materials', currency: d.currency || 'INR', fxRate: d.currency && d.currency !== 'INR' ? String(d.fx_rate).replace(/0+$/, '').replace(/\.$/, '') : '', partyId: String(d.party_id), date: d.issue_date || today(), dueDate: d.due_date || '', placeOfSupply: d.place_of_supply || '', supplierRef: d.supplier_ref || '', relatedDocumentId: d.related_document_id ? String(d.related_document_id) : '',
-      memo: d.memo || '', reverseCharge: Boolean(d.reverse_charge), itcBlocked: d.itc_blocked || '', tcsRate: d.tcs_rate_bp ? String(d.tcs_rate_bp / 100) : '', tcsSection: d.tcs_section || '', roundOff: Number(d.round_off_minor) !== 0 || d.status === 'DRAFT', lines: d.lines.map((l) => ({ itemId: l.item_id ? String(l.item_id) : '', description: l.description || '', hsnSac: l.hsn_sac || '', unit: l.unit || '', quantity: l.quantity, unitPrice: l.unit_price_fc_minor ?? l.unit_price_minor, discount: Number(l.discount_fc_minor ?? l.discount_minor) ? (l.discount_fc_minor ?? l.discount_minor) : '', taxCode: l.tax_code || '', inclusive: Boolean(l.price_includes_tax) })) });
+      memo: d.memo || '', reverseCharge: Boolean(d.reverse_charge), supplyType: d.supply_type || 'REGULAR', itcBlocked: d.itc_blocked || '', tcsRate: d.tcs_rate_bp ? String(d.tcs_rate_bp / 100) : '', tcsSection: d.tcs_section || '', roundOff: Number(d.round_off_minor) !== 0 || d.status === 'DRAFT', lines: d.lines.map((l) => ({ itemId: l.item_id ? String(l.item_id) : '', description: l.description || '', hsnSac: l.hsn_sac || '', unit: l.unit || '', quantity: l.quantity, unitPrice: l.unit_price_fc_minor ?? l.unit_price_minor, discount: Number(l.discount_fc_minor ?? l.discount_minor) ? (l.discount_fc_minor ?? l.discount_minor) : '', taxCode: l.tax_code || '', cessRate: l.cess_rate_bp ? String(l.cess_rate_bp / 100) : '', inclusive: Boolean(l.price_includes_tax) })) });
   }, [existing.data]);
   useEffect(() => {   // a document that already uses one of those options must show it
     const d = existing.data;
@@ -83,7 +83,7 @@ export const DocForm = ({ kind }) => {
   const setLine = (i, patch) => setF({ ...f, lines: f.lines.map((l, n) => (n === i ? { ...l, ...patch } : l)) });
   const pickItem = (i, itemId) => {
     const it = (items.data || []).find((x) => String(x.id) === itemId);
-    setLine(i, it ? { itemId, description: it.name, hsnSac: it.hsn_sac || '', unit: it.unit || '', taxCode: it.tax_code || 'GST18', unitPrice: f.currency !== 'INR' ? '' : (kind.api === 'bills' || kind.api === 'purchase-orders' ? it.purchase_price_minor : it.sale_price_minor) || '' } : { itemId: '' });
+    setLine(i, it ? { itemId, description: it.name, hsnSac: it.hsn_sac || '', unit: it.unit || '', taxCode: it.tax_code || 'GST18', cessRate: it.cess_rate_bp ? String(it.cess_rate_bp / 100) : '', unitPrice: f.currency !== 'INR' ? '' : (kind.api === 'bills' || kind.api === 'purchase-orders' ? it.purchase_price_minor : it.sale_price_minor) || '' } : { itemId: '' });
   };
   const codes = [...new Set((rates.data || []).map((r) => r.code))];
 
@@ -93,9 +93,10 @@ export const DocForm = ({ kind }) => {
       const body = { partyId: f.partyId, date: f.date, roundOff: f.currency !== 'INR' ? false : f.roundOff, ...(f.currency !== 'INR' && { currency: f.currency, fxRate: f.fxRate }), memo: f.memo || undefined, ...(f.projectId && { projectId: f.projectId }), ...(f.projectId && ['bills', 'debit-notes'].includes(kind.api) && { projectCategory: f.projectCategory }), ...(f.warehouseId && { warehouseId: f.warehouseId }), ...(f.currency !== 'INR' && kind.api === 'invoices' && { ...(f.shippingBillNo && { shippingBillNo: f.shippingBillNo }), ...(f.shippingBillDate && { shippingBillDate: f.shippingBillDate }), ...(f.portCode && { portCode: f.portCode }) }), dueDate: f.dueDate || undefined, placeOfSupply: f.placeOfSupply || undefined,
         supplierRef: kind.api === 'bills' ? f.supplierRef || undefined : undefined, relatedDocumentId: isNote(kind) ? f.relatedDocumentId || undefined : undefined,
         ...(kind.api === 'bills' && f.reverseCharge && { reverseCharge: true }),
+        ...(kind.api === 'invoices' && f.supplyType !== 'REGULAR' && f.currency === 'INR' && { supplyType: f.supplyType }),
         ...(kind.api === 'bills' && f.itcBlocked && { itcBlocked: f.itcBlocked }),
         ...(kind.api === 'invoices' && Number(f.tcsRate) > 0 && { tcsRateBp: Math.round(Number(f.tcsRate) * 100), ...(f.tcsSection && { tcsSection: f.tcsSection }) }),
-        lines: f.lines.map((l) => ({ itemId: l.itemId || undefined, description: l.description || undefined, hsnSac: l.hsnSac || undefined, unit: l.unit || undefined, quantity: String(l.quantity), unitPrice: String(l.unitPrice || '0'), discount: l.discount ? String(l.discount) : undefined, taxCode: l.taxCode || undefined, ...(l.inclusive && { inclusive: true }) })) };
+        lines: f.lines.map((l) => ({ itemId: l.itemId || undefined, description: l.description || undefined, hsnSac: l.hsnSac || undefined, unit: l.unit || undefined, quantity: String(l.quantity), unitPrice: String(l.unitPrice || '0'), discount: l.discount ? String(l.discount) : undefined, taxCode: l.taxCode || undefined, ...(Number(l.cessRate) > 0 && { cessBp: Math.round(Number(l.cessRate) * 100) }), ...(l.inclusive && { inclusive: true }) })) };
       const out = id ? await o(`/${kind.api}/${id}`, { method: 'PUT', body }) : await o(`/${kind.api}`, { method: 'POST', body });
       nav(`/${kind.path}/${out.id}`);
     });
@@ -158,6 +159,7 @@ export const DocForm = ({ kind }) => {
                 <Field label={l.inclusive ? `Price with GST (${cs})` : `Price (${cs})`} hint={!adv ? undefined : <label className="check"><input type="checkbox" checked={l.inclusive} onChange={(e) => setLine(i, { inclusive: e.target.checked })} /> GST is in this price</label>}><input inputMode="decimal" value={l.unitPrice} onChange={(e) => setLine(i, { unitPrice: e.target.value })} required /></Field>
                 {adv && <Field label={`Discount (${cs})`}><input inputMode="decimal" value={l.discount} onChange={(e) => setLine(i, { discount: e.target.value })} /></Field>}
                 <Field label={<Term k="GST">GST</Term>}><select value={l.taxCode} onChange={(e) => setLine(i, { taxCode: e.target.value })}>{codes.length ? codes.map((c) => <option key={c}>{c}</option>) : <option>{l.taxCode}</option>}</select></Field>
+                {(adv || Number(l.cessRate) > 0) && <Field label={<Term k="Cess">Cess (%)</Term>} hint={adv ? 'Only for goods like tobacco or aerated drinks' : undefined}><input inputMode="decimal" value={l.cessRate} onChange={(e) => setLine(i, { cessRate: e.target.value })} /></Field>}
                 <Btn type="button" className="btn small danger" disabled={f.lines.length === 1} onClick={() => setF({ ...f, lines: f.lines.filter((_, n) => n !== i) })} aria-label="Remove line">Remove</Btn>
               </div>
             ))}
@@ -166,6 +168,7 @@ export const DocForm = ({ kind }) => {
             <Field label={<Term k="TCS">TCS to collect (%)</Term>} hint="Only if the law requires you to collect tax at source on this sale; charged on value plus GST"><input inputMode="decimal" value={f.tcsRate} onChange={set('tcsRate')} /></Field>
             {Number(f.tcsRate) > 0 && <Field label="TCS section"><select value={f.tcsSection} onChange={set('tcsSection')}><option value="">Not stated</option>{TCS_SECTIONS.map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>}
           </div>}
+          {kind.api === 'invoices' && (adv || f.supplyType !== 'REGULAR') && f.currency === 'INR' && <Field label={<Term k="SEZ">Type of sale</Term>} hint="Only for a customer with a GSTIN. Choose a zero-rate tax code when selling to an SEZ without tax."><select value={f.supplyType} onChange={set('supplyType')}><option value="REGULAR">Normal sale</option><option value="SEZ_WITH_PAY">To an SEZ unit, with IGST</option><option value="SEZ_WITHOUT_PAY">To an SEZ unit, without tax (LUT)</option><option value="DEEMED_EXPORT">Deemed export</option></select></Field>}
           {kind.api === 'bills' && adv && <p className="check"><input id="rcm" type="checkbox" checked={f.reverseCharge} onChange={set('reverseCharge')} /><label htmlFor="rcm">Reverse charge: the vendor charges no GST, I pay it to the government and claim it back</label></p>}
           {kind.api === 'bills' && <Field label="GST credit" hint="Some GST cannot be claimed back (section 17(5)). Then it is counted as part of the cost and shown as not allowed in your GST return."><select value={f.itcBlocked} onChange={set('itcBlocked')}>{ITC_REASONS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select></Field>}
           {adv && <p className="check"><input id="ro" type="checkbox" checked={f.roundOff} onChange={set('roundOff')} /><label htmlFor="ro">Round the total to the nearest rupee</label></p>}
@@ -251,7 +254,7 @@ export const DocView = ({ kind }) => {
           {kind.api === 'invoices' && on('flowbook_einvoice') && <Btn onClick={() => setPanel(panel === 'eway' ? '' : 'eway')}>E-way bill</Btn>}
           {(kind.api === 'invoices' || kind.api === 'credit-notes') && on('flowbook_einvoice') && <Btn onClick={() => setPanel(panel === 'einv' ? '' : 'einv')}>{load.data.einvoice?.status === 'GENERATED' ? 'E-invoice (registered)' : 'E-invoice'}</Btn>}
           {emailOn && on('flowbook_email') && kind.api !== 'bills' && <Btn onClick={() => setPanel(panel === 'email' ? '' : 'email')}>Send email</Btn>}
-          <Btn onClick={() => window.print()}>Print</Btn><Btn kind="danger" onClick={() => setPanel(panel === 'void' ? '' : 'void')}>Void</Btn></>}
+          <Btn onClick={() => window.print()}>Print</Btn><Btn onClick={() => act(() => savePdf(`${load.data.number || kind.api}.pdf`), 'PDF saved.')}>Download PDF</Btn><Btn kind="danger" onClick={() => setPanel(panel === 'void' ? '' : 'void')}>Void</Btn></>}
       </>}>
       <Async load={load}>{(d) => (<>
         <Err>{a.error}</Err><Note>{a.done}</Note>
@@ -301,7 +304,7 @@ export const DocView = ({ kind }) => {
             {d.lines.map((l) => (<tr key={l.id}><td>{l.line_no}</td><td>{l.description}</td><td>{l.hsn_sac}</td><td className="r">{l.quantity}{l.unit ? ' ' + unitLabel(l.unit) : ''}</td><td className="r num">{inr(l.unit_price_minor)}</td><td>{l.tax_code} {l.tax_rate_bp != null ? `(${l.tax_rate_bp / 100}%)` : ''}</td><td className="r num">{inr(l.taxable_minor)}</td><td className="r num">{inr(l.tax_minor)}</td></tr>))}
           </Table>
           <div className="totals">
-            <div><span>Subtotal</span><Money v={d.subtotal_minor} /></div><div><span>Tax</span><Money v={d.tax_minor} /></div>
+            <div><span>Subtotal</span><Money v={d.subtotal_minor} /></div><div><span>Tax</span><Money v={d.tax_minor} /></div>{Number(d.cess_minor) > 0 && <div><span>Cess</span><Money v={d.cess_minor} /></div>}
             {Number(d.tcs_minor) > 0 && <div><span>TCS{d.tcs_section ? ` (${d.tcs_section})` : ''}</span><Money v={d.tcs_minor} /></div>}
             {Number(d.round_off_minor) !== 0 && <div><span>Round off</span><Money v={d.round_off_minor} /></div>}
             <div className="grand"><span>Total</span><Money v={d.total_minor} /></div>

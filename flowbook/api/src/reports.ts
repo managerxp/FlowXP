@@ -101,3 +101,46 @@ export const reconcile = async (c: Db, orgId: bigint): Promise<string[]> => {
   if (broken !== null) issues.push(`audit chain broken at row ${broken}`);
   return issues;
 };
+
+/* Cash flow (direct method): every entry that moved money in a cash, bank, UPI or card account, grouped by what the money was for.
+   The other lines of the entry say what for; when one entry has several (a sale with GST), the cash is split between them in proportion. */
+const CASH_KEYS = ['CASH', 'BANK', 'UPI_CLEARING', 'CARD_CLEARING'];
+const sectionOf = (type: string, key: string | null): 'investing' | 'financing' | 'operating' =>
+  key === 'FIXED_ASSETS' || key === 'ACCUM_DEPRECIATION' || key === 'ASSET_SALE_GAIN_LOSS' ? 'investing' : type === 'EQUITY' ? 'financing' : 'operating';
+
+export const cashFlow = async (c: Db, orgId: bigint, from: string, to: string) => {
+  const cashIds = (await c.query(`SELECT id FROM accounts WHERE organization_id = $1 AND type = 'ASSET' AND (is_bank OR system_key = ANY($2))`, [orgId, CASH_KEYS])).rows.map((r) => r.id as bigint);
+  const sumCash = async (a: string, b: string) => BigInt((await c.query(
+    `SELECT COALESCE(SUM(CASE WHEN l.side = 'D' THEN l.base_amount_minor ELSE -l.base_amount_minor END), 0)::text AS n
+       FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'POSTED'
+      WHERE l.organization_id = $1 AND l.account_id = ANY($2) AND e.posting_date BETWEEN $3::date AND $4::date`, [orgId, cashIds, a, b])).rows[0].n);
+  const opening = await sumCash(BEGINNING, new Date(new Date(`${from}T00:00:00Z`).getTime() - 86400000).toISOString().slice(0, 10));
+  const lines = (await c.query(
+    `SELECT l.entry_id, l.account_id, l.side, l.base_amount_minor::bigint AS amt, a.name, a.type, a.system_key
+       FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'POSTED'
+       JOIN accounts a ON a.id = l.account_id
+      WHERE l.organization_id = $1 AND e.posting_date BETWEEN $2::date AND $3::date
+        AND l.entry_id IN (SELECT entry_id FROM journal_lines WHERE organization_id = $1 AND account_id = ANY($4))
+      ORDER BY l.entry_id, l.line_no`, [orgId, from, to, cashIds])).rows as { entry_id: string; account_id: bigint; side: 'D' | 'C'; amt: bigint; name: string; type: string; system_key: string | null }[];
+  const byEntry = new Map<string, typeof lines>();
+  for (const l of lines) byEntry.set(String(l.entry_id), [...(byEntry.get(String(l.entry_id)) ?? []), l]);
+  const cash = new Set(cashIds.map(String));
+  const buckets = new Map<string, { section: string; name: string; in: bigint; out: bigint }>();
+  const put = (section: string, name: string, v: bigint) => { const k = `${section}|${name}`; const b = buckets.get(k) ?? { section, name, in: 0n, out: 0n }; if (v > 0n) b.in += v; else b.out += -v; buckets.set(k, b); };
+  for (const ls of byEntry.values()) {
+    const net = ls.filter((l) => cash.has(String(l.account_id))).reduce((a, l) => a + (l.side === 'D' ? l.amt : -l.amt), 0n);
+    if (net === 0n) continue;
+    // the lines that explain the cash: on the opposite side of the money
+    const others = ls.filter((l) => !cash.has(String(l.account_id)) && l.side === (net > 0n ? 'C' : 'D'));
+    const abs = net > 0n ? net : -net; const sign = net > 0n ? 1n : -1n;
+    if (!others.length) { put('operating', 'Other', net); continue; }
+    const total = others.reduce((a, l) => a + l.amt, 0n); let left = abs;
+    others.forEach((l, i) => { const share = i === others.length - 1 ? left : (abs * l.amt) / total; left -= share; put(sectionOf(l.type, l.system_key), l.name, sign * share); });
+  }
+  const rows = [...buckets.values()];
+  const section = (s: string) => { const r = rows.filter((x) => x.section === s).sort((a, b) => a.name.localeCompare(b.name)); const i = r.reduce((a, x) => a + x.in, 0n); const o = r.reduce((a, x) => a + x.out, 0n); return { rows: r, totalIn: i, totalOut: o, net: i - o }; };
+  const operating = section('operating'); const investing = section('investing'); const financing = section('financing');
+  const change = operating.net + investing.net + financing.net;
+  const closing = opening + change;
+  return { opening, operating, investing, financing, change, closing, matchesBooks: closing === await sumCash(BEGINNING, to) };
+};

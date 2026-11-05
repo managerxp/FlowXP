@@ -9,7 +9,7 @@ import { paiseToString, toPaise } from './money.ts';
 import { can, ROLES } from './permissions.ts';
 import type { Role } from './permissions.ts';
 import { provisionOrganization } from './provision.ts';
-import { balanceSheet, documentIssues, partyBalances, profitAndLoss, reconcile, trialBalance } from './reports.ts';
+import { balanceSheet, cashFlow, documentIssues, partyBalances, profitAndLoss, reconcile, trialBalance } from './reports.ts';
 import { registerBookRoutes } from './routes.ts';
 import { registerIntegrationRoutes } from './integration-routes.ts';
 import { registerAssistant } from './assistant.ts';
@@ -328,6 +328,10 @@ export const buildApp = (opts: AppOptions): FastifyInstance => {
   });
   app.get(`${orgRoute}/reports/balance-sheet`, { preHandler: scope('report.read'), schema: { querystring: { type: 'object', required: ['asOf'], properties: { asOf: { type: 'string', pattern: DATE } } } } }, async (req) =>
     withOrg(pool, req.org?.id as bigint, (c) => balanceSheet(c, req.org?.id as bigint, (req.query as { asOf: string }).asOf)));
+  app.get(`${orgRoute}/reports/cash-flow`, { preHandler: scope('report.read'), schema: { querystring: { type: 'object', required: ['from', 'to'], properties: { from: { type: 'string', pattern: DATE }, to: { type: 'string', pattern: DATE } } } } }, async (req) => {
+    const q = req.query as { from: string; to: string };
+    return withOrg(pool, req.org?.id as bigint, (c) => cashFlow(c, req.org?.id as bigint, q.from, q.to));
+  });
   app.get(`${orgRoute}/reports/party-balances`, { preHandler: scope('report.read'), schema: { querystring: { type: 'object', required: ['account', 'to'], properties: {
     account: { type: 'string', enum: ['AR', 'AP'] }, to: { type: 'string', pattern: DATE } } } } }, async (req) => {
     const q = req.query as { account: string; to: string };

@@ -6,18 +6,19 @@ import type { LineInput, PostInput, Side } from './ledger.ts';
 
 export type Tender = 'CASH' | 'BANK' | 'UPI' | 'CARD';
 const TENDER_ACCOUNT: Record<Tender, string> = { CASH: 'CASH', BANK: 'BANK', UPI: 'UPI_CLEARING', CARD: 'CARD_CLEARING' };
-export type TaxedLine = { taxable: bigint; rateBp: number };
+export type TaxedLine = { taxable: bigint; rateBp: number; cessBp?: number };
 export const RULES_VERSION = 1;
 
 /** Tax on each line, split into CGST + SGST (same state) or IGST (other state). CGST is half, SGST the rest, so they always add up. */
 const taxSplit = (lines: TaxedLine[], interState: boolean) => {
-  let cgst = 0n; let sgst = 0n; let igst = 0n; let rateBp = 0;
+  let cgst = 0n; let sgst = 0n; let igst = 0n; let cess = 0n; let rateBp = 0;
   for (const l of lines) {
     const tax = taxOn(l.taxable, l.rateBp);
     rateBp = Math.max(rateBp, l.rateBp);
+    cess += l.cessBp ? taxOn(l.taxable, l.cessBp) : 0n;
     if (interState) igst += tax; else { const half = tax / 2n; cgst += half; sgst += tax - half; }
   }
-  return { cgst, sgst, igst, rateBp, total: cgst + sgst + igst };
+  return { cgst, sgst, igst, cess, rateBp, total: cgst + sgst + igst + cess };
 };
 
 const merge = (lines: LineInput[]): LineInput[] => {
@@ -33,7 +34,8 @@ const merge = (lines: LineInput[]): LineInput[] => {
 const taxLines = (t: ReturnType<typeof taxSplit>, side: Side, prefix: 'OUTPUT' | 'INPUT'): LineInput[] => [
   { account: `${prefix}_CGST`, side, amount: t.cgst, taxRateBp: t.rateBp },
   { account: `${prefix}_SGST`, side, amount: t.sgst, taxRateBp: t.rateBp },
-  { account: `${prefix}_IGST`, side, amount: t.igst, taxRateBp: t.rateBp }
+  { account: `${prefix}_IGST`, side, amount: t.igst, taxRateBp: t.rateBp },
+  { account: `${prefix}_CESS`, side, amount: t.cess }
 ];
 
 export type SaleDoc = { date: string; invoiceId: string; partyId?: bigint; lines: TaxedLine[]; interState: boolean; tcs?: bigint; tenders?: { mode: Tender; amount: bigint }[]; roundOff?: bigint; sourceSystem?: string };

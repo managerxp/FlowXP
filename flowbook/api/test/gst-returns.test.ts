@@ -116,3 +116,21 @@ test('a foreign-currency invoice is an export: its own GSTR-1 table, with or wit
   assert.deepEqual(b.file.sup_details.osup_det, { txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 }, 'not in domestic taxable supplies');
   assert.equal(b.file.sup_details.osup_nil_exmp.txval, 0);
 });
+
+test('credit notes to buyers without a GSTIN: CDNUR after a large inter-state sale, otherwise off the small-sale table; 3B table 3.2 lists the sales', { skip }, async () => {
+  const { org, walkIn } = await shop();
+  const line = (q: string) => [{ description: 'Tea', hsnSac: '0902', unit: 'KGS', quantity: q, unitPrice: '400', taxCode: 'GST5' }];
+  const big = await issue(org, { kind: 'INVOICE', partyId: walkIn, date: '2026-06-05', lines: line('300') });      // 1,26,000 to another state: B2CL
+  const small = await issue(org, { kind: 'INVOICE', partyId: walkIn, date: '2026-06-06', lines: line('10') });     // 4,200: B2CS
+  await issue(org, { kind: 'CREDIT_NOTE', partyId: walkIn, date: '2026-06-20', relatedDocumentId: big, lines: line('50') });
+  await issue(org, { kind: 'CREDIT_NOTE', partyId: walkIn, date: '2026-06-21', relatedDocumentId: small, lines: line('2') });
+  const r = await run(org, (c) => gstr1(c, org, '2026-06'));
+  const f = r.file as unknown as { cdnur: { typ: string; ntty: string; val: number; itms: { itm_det: { txval: number; iamt: number } }[] }[]; b2cs: { txval: number; iamt: number }[] };
+  assert.equal(f.cdnur.length, 1); assert.equal(f.cdnur[0]?.typ, 'B2CL'); assert.equal(f.cdnur[0]?.val, 21000);
+  assert.equal(f.cdnur[0]?.itms[0]?.itm_det.txval, 20000); assert.equal(f.cdnur[0]?.itms[0]?.itm_det.iamt, 1000);
+  assert.equal(f.b2cs[0]?.txval, 3200);   // 4,000 sold less 800 taken back
+  assert.match(r.problems.map((p) => p.message).join('\n'), /taken off the small-sale table/);
+  const b = await run(org, (c) => gstr3b(c, org, '2026-06'));
+  const t32 = (b.file as unknown as { inter_sup: { unreg_details: { pos: string; txval: number; iamt: number }[] } }).inter_sup.unreg_details;
+  assert.deepEqual(t32, [{ pos: '29', txval: 120000 + 4000 - 20000 - 800, iamt: 6000 + 200 - 1000 - 40 }]);
+});

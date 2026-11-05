@@ -15,6 +15,8 @@ export const GLOSSARY = {
   GSTIN: ['GSTIN', 'Your 15-character GST registration number. It decides how tax is split on invoices. Leave it empty if you are not registered for GST.'],
   HSN: ['HSN / SAC code', 'A number that says what kind of goods (HSN) or service (SAC) this is. GST returns ask for it. If you do not know it, leave it as it is: the item usually fills it in.'],
   POS: ['Place of supply', 'The state the sale is delivered to. Same state as your business: tax is split as CGST + SGST. Different state: it is one IGST. "Automatic" works it out from the customer.'],
+  SEZ: ['Special Economic Zone', 'A sale to a unit in an SEZ is zero-rated. You can charge IGST and claim it back as a refund, or sell without tax under a letter of undertaking. Either way the customer needs a GSTIN, and the return lists it as an SEZ sale. A deemed export is a sale of goods that count as exports without leaving India, such as to an export-oriented unit; tax is charged as usual.'],
+  Cess: ['Cess', 'An extra tax on top of GST for some goods, such as tobacco, aerated drinks and large cars. It is a percentage of the price before tax. It is shown on its own line and goes in its own column of your GST return.'],
   CGST: ['CGST, SGST, IGST', 'The three parts GST can be split into. Same-state sales have CGST + SGST (half each). Sales to another state have IGST (all of it).'],
   TDS: ['TDS', 'Tax that a customer keeps back from your payment and deposits with the government for you. You then claim it later. Only fill it in if the customer actually deducted it.'],
   TCS: ['TCS', 'Tax collected at source: extra tax some sellers must collect on top of the sale. Leave it empty unless the law requires it for what you sell.'],

@@ -17,7 +17,7 @@ export type Built = { id: string; number: string; file: Record<string, unknown> 
 /** The IRP file for one issued invoice or credit note, with every reason it cannot be sent yet. `file` is null when the document does not qualify at all. */
 export const buildEinvoice = async (c: Db, orgId: bigint, docId: bigint): Promise<Built> => {
   const d = (await c.query(
-    `SELECT d.id, d.kind, d.number, d.status, d.issue_date::text AS date, d.inter_state, d.place_of_supply, d.subtotal_minor, d.tax_minor, d.round_off_minor, d.total_minor, d.currency, d.related_document_id,
+    `SELECT d.supply_type, d.id, d.kind, d.number, d.status, d.issue_date::text AS date, d.inter_state, d.place_of_supply, d.subtotal_minor, d.tax_minor, d.round_off_minor, d.total_minor, d.currency, d.related_document_id,
             p.name AS buyer, p.gstin AS buyer_gstin, p.state_code AS buyer_state, p.address_line AS buyer_addr, p.city AS buyer_city, p.pincode AS buyer_pin,
             r.number AS prec_no, r.issue_date::text AS prec_date
        FROM documents d JOIN parties p ON p.id = d.party_id LEFT JOIN documents r ON r.id = d.related_document_id WHERE d.id = $1`, [docId])).rows[0];
@@ -42,7 +42,7 @@ export const buildEinvoice = async (c: Db, orgId: bigint, docId: bigint): Promis
   if (d.kind === 'CREDIT_NOTE' && !d.prec_no) problems.push('a credit note needs the invoice it is against (choose it on the note)');
 
   const lines = (await c.query(
-    `SELECT l.description, l.hsn_sac, l.unit, l.quantity_milli, l.discount_minor, l.taxable_minor, l.tax_rate_bp, l.tax_minor,
+    `SELECT l.description, l.hsn_sac, l.unit, l.quantity_milli, l.discount_minor, l.taxable_minor, l.tax_rate_bp, l.tax_minor, l.cess_rate_bp, l.cess_minor,
             COALESCE((SELECT i.kind = 'SERVICE' FROM items i WHERE i.id = l.item_id), false) AS service
        FROM document_lines l WHERE l.document_id = $1 ORDER BY l.line_no`, [docId])).rows;
   lines.forEach((l, i) => {
@@ -59,20 +59,21 @@ export const buildEinvoice = async (c: Db, orgId: bigint, docId: bigint): Promis
     const gross = (l.taxable_minor as bigint) + (l.discount_minor as bigint);   // before discount, tax excluded
     const tax = l.tax_minor as bigint;
     const half = tax / 2n;
+    const cess = l.cess_minor as bigint;
     return {
       SlNo: String(i + 1), PrdDesc: String(l.description).slice(0, 300), IsServc: l.service ? 'Y' : 'N', HsnCd: l.hsn_sac ?? '', Qty: qty, Unit: l.unit ?? 'OTH',
       UnitPrice: Math.round((rs(gross) / qty) * 1000) / 1000, TotAmt: rs(gross), Discount: rs(l.discount_minor), AssAmt: rs(l.taxable_minor), GstRt: l.tax_rate_bp / 100,
-      IgstAmt: inter ? rs(tax) : 0, CgstAmt: inter ? 0 : rs(half), SgstAmt: inter ? 0 : rs(tax - half), CesRt: 0, CesAmt: 0, TotItemVal: rs((l.taxable_minor as bigint) + tax)
+      IgstAmt: inter ? rs(tax) : 0, CgstAmt: inter ? 0 : rs(half), SgstAmt: inter ? 0 : rs(tax - half), CesRt: (l.cess_rate_bp as number) / 100, CesAmt: rs(cess), TotItemVal: rs((l.taxable_minor as bigint) + tax + cess)
     };
   });
-  const sum = (k: 'AssAmt' | 'IgstAmt' | 'CgstAmt' | 'SgstAmt' | 'Discount'): number => items.reduce((s, x) => s + Math.round(x[k] * 100), 0) / 100;
-  const val = { AssVal: sum('AssAmt'), CgstVal: sum('CgstAmt'), SgstVal: sum('SgstAmt'), IgstVal: sum('IgstAmt'), CesVal: 0, Discount: sum('Discount'), RndOffAmt: rs(d.round_off_minor), TotInvVal: rs(d.total_minor) };
-  const check = Math.round((val.AssVal + val.CgstVal + val.SgstVal + val.IgstVal + val.RndOffAmt) * 100) - Number(d.total_minor);
+  const sum = (k: 'AssAmt' | 'IgstAmt' | 'CgstAmt' | 'SgstAmt' | 'CesAmt' | 'Discount'): number => items.reduce((s, x) => s + Math.round(x[k] * 100), 0) / 100;
+  const val = { AssVal: sum('AssAmt'), CgstVal: sum('CgstAmt'), SgstVal: sum('SgstAmt'), IgstVal: sum('IgstAmt'), CesVal: sum('CesAmt'), Discount: sum('Discount'), RndOffAmt: rs(d.round_off_minor), TotInvVal: rs(d.total_minor) };
+  const check = Math.round((val.AssVal + val.CgstVal + val.SgstVal + val.IgstVal + val.CesVal + val.RndOffAmt) * 100) - Number(d.total_minor);
   if (Math.abs(check) > 100) problems.push('the line figures do not add up to the invoice total; check the document before sending');
 
   const file = {
     Version: '1.1',
-    TranDtls: { TaxSch: 'GST', SupTyp: 'B2B', RegRev: 'N', IgstOnIntra: 'N' },
+    TranDtls: { TaxSch: 'GST', SupTyp: ({ SEZ_WITH_PAY: 'SEZWP', SEZ_WITHOUT_PAY: 'SEZWOP', DEEMED_EXPORT: 'DEXP' } as Record<string, string>)[d.supply_type as string] ?? 'B2B', RegRev: 'N', IgstOnIntra: 'N' },
     DocDtls: { Typ: TYPE[d.kind as string], No: d.number, Dt: slash(d.date) },
     SellerDtls: { Gstin: org.gstin, LglNm: org.legal_name ?? org.name, Addr1: String(org.address_line ?? '').slice(0, 100), Loc: String(org.city ?? '').slice(0, 50), Pin: Number(org.pincode), Stcd: stateOf(org.state_code) },
     BuyerDtls: { Gstin: d.buyer_gstin, LglNm: d.buyer, Pos: posState, Addr1: String(d.buyer_addr ?? '').slice(0, 100), Loc: String(d.buyer_city ?? '').slice(0, 50), Pin: Number(d.buyer_pin), Stcd: stateOf(d.buyer_state ?? posState) },

@@ -12,8 +12,8 @@ const r2 = (n: number): number => Math.round(n * 100) / 100;
 /** B2C Large: an inter-state sale to an unregistered buyer above this value is listed invoice by invoice (1 lakh from 1 Aug 2024). */
 const b2clLimit = (date: string): bigint => (date >= '2024-08-01' ? 10_000_000n : 25_000_000n);
 
-type Doc = { id: bigint; kind: string; number: string; status: string; issue_date: string; inter_state: boolean; place_of_supply: string | null; total_minor: bigint; round_off_minor: bigint; reverse_charge: boolean; itc_blocked: string | null; currency: string; shipping_bill_no: string | null; shipping_bill_date: string | null; port_code: string | null; gstin: string | null; state_code: string | null; name: string };
-type Ln = { document_id: bigint; hsn_sac: string | null; description: string; unit: string | null; quantity_milli: bigint; taxable_minor: bigint; tax_rate_bp: number; tax_minor: bigint };
+type Doc = { supply_type: string; id: bigint; kind: string; number: string; status: string; issue_date: string; inter_state: boolean; place_of_supply: string | null; total_minor: bigint; round_off_minor: bigint; reverse_charge: boolean; itc_blocked: string | null; currency: string; shipping_bill_no: string | null; shipping_bill_date: string | null; port_code: string | null; gstin: string | null; state_code: string | null; name: string; related_total_minor: bigint | null; related_date: string | null };
+type Ln = { document_id: bigint; hsn_sac: string | null; description: string; unit: string | null; quantity_milli: bigint; taxable_minor: bigint; tax_rate_bp: number; tax_minor: bigint; cess_minor: bigint };
 type Tax = { txval: number; iamt: number; camt: number; samt: number; csamt: number };
 type Problem = { level: 'block' | 'warn'; message: string };
 const zero = (): Tax => ({ txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 });
@@ -21,20 +21,24 @@ const zero = (): Tax => ({ txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 });
 const add = (t: Tax, l: Ln, inter: boolean, sign = 1): void => {
   const half = l.tax_minor / 2n;
   t.txval += sign * rs(l.taxable_minor);
+  t.csamt += sign * rs(l.cess_minor);
   if (inter) t.iamt += sign * rs(l.tax_minor); else { t.camt += sign * rs(half); t.samt += sign * rs(l.tax_minor - half); }
 };
 const fix = (t: Tax): Tax => ({ txval: r2(t.txval), iamt: r2(t.iamt), camt: r2(t.camt), samt: r2(t.samt), csamt: r2(t.csamt) });
+/** The invoice type the portal wants for a supply to an SEZ unit or a deemed export; null for a normal sale. */
+const INV_TYP: Record<string, string> = { SEZ_WITH_PAY: 'SEWP', SEZ_WITHOUT_PAY: 'SEWOP', DEEMED_EXPORT: 'DE' };
+const isSez = (t: string): boolean => t === 'SEZ_WITH_PAY' || t === 'SEZ_WITHOUT_PAY';
 const gstDate = (iso: string): string => `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
 const monthEnd = (month: string): string => new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).toISOString().slice(0, 10);
 
 const load = async (c: Db, kinds: string[], month: string, statuses: string[]) => {
   const docs = (await c.query(
-    `SELECT d.id, d.kind, d.number, d.status, d.issue_date::text AS issue_date, d.inter_state, d.place_of_supply, d.total_minor, d.round_off_minor, d.reverse_charge, d.itc_blocked, d.currency, d.shipping_bill_no, d.shipping_bill_date::text AS shipping_bill_date, d.port_code, p.gstin, p.state_code, p.name
+    `SELECT d.supply_type, d.id, d.kind, d.number, d.status, d.issue_date::text AS issue_date, d.inter_state, d.place_of_supply, d.total_minor, d.round_off_minor, d.reverse_charge, d.itc_blocked, d.currency, d.shipping_bill_no, (SELECT x.total_minor FROM documents x WHERE x.id = d.related_document_id) AS related_total_minor, (SELECT x.issue_date::text FROM documents x WHERE x.id = d.related_document_id) AS related_date, d.shipping_bill_date::text AS shipping_bill_date, d.port_code, p.gstin, p.state_code, p.name
        FROM documents d JOIN parties p ON p.id = d.party_id
       WHERE d.kind = ANY($1) AND d.status = ANY($2) AND d.number IS NOT NULL AND NOT d.is_opening AND d.issue_date BETWEEN $3::date AND $4::date ORDER BY d.number`,
     [kinds, statuses, `${month}-01`, monthEnd(month)])).rows as Doc[];
   const lines = docs.length ? (await c.query(
-    `SELECT document_id, hsn_sac, description, unit, quantity_milli, taxable_minor, tax_rate_bp, tax_minor FROM document_lines WHERE document_id = ANY($1) ORDER BY document_id, line_no`,
+    `SELECT document_id, hsn_sac, description, unit, quantity_milli, taxable_minor, tax_rate_bp, tax_minor, cess_minor FROM document_lines WHERE document_id = ANY($1) ORDER BY document_id, line_no`,
     [docs.map((d) => d.id)])).rows as Ln[] : [];
   const byDoc = new Map<string, Ln[]>();
   for (const l of lines) byDoc.set(String(l.document_id), [...(byDoc.get(String(l.document_id)) ?? []), l]);
@@ -67,11 +71,12 @@ export const gstr1 = async (c: Db, orgId: bigint, month: string, opts: { hsnDigi
   const b2b = new Map<string, { ctin: string; inv: unknown[] }>();
   const cdnr = new Map<string, { ctin: string; nt: unknown[] }>();
   const b2cl = new Map<string, { pos: string; inv: unknown[] }>();
+  const cdnur: unknown[] = [];
   const b2cs = new Map<string, { sply_ty: string; pos: string; rt: number } & Tax>();
   const exp = new Map<string, unknown[]>();
   const isExport = (d: Doc): boolean => d.kind === 'INVOICE' && d.currency !== 'INR';
   let exportCount = 0; let exportNoBill = 0; let exportIntra = 0;
-  let creditToUnregistered = 0;
+  let creditToUnregistered = 0; let creditNetted = 0;
   let largeCount = 0;
   const badRates = new Set<number>();
 
@@ -87,16 +92,32 @@ export const gstr1 = async (c: Db, orgId: bigint, month: string, opts: { hsnDigi
       if (!d.inter_state) exportIntra += 1;
       const key = taxed ? 'WPAY' : 'WOPAY';
       exp.set(key, [...(exp.get(key) ?? []), { inum: d.number, idt: gstDate(d.issue_date), val: val(d), ...(d.port_code ? { sbpcode: d.port_code } : {}), ...(d.shipping_bill_no ? { sbnum: d.shipping_bill_no } : {}), ...(d.shipping_bill_date ? { sbdt: gstDate(d.shipping_bill_date) } : {}),
-        itms: [...m].map(([rt, t]) => ({ txval: r2(t.txval), rt, iamt: r2(t.iamt), csamt: 0 })) }]);
+        itms: [...m].map(([rt, t]) => ({ txval: r2(t.txval), rt, iamt: r2(t.iamt), csamt: r2(t.csamt) })) }]);
       exportCount += 1;
     } else if (d.kind === 'CREDIT_NOTE') {
-      if (!d.gstin) { creditToUnregistered += 1; continue; }
+      if (!d.gstin) {
+        // to a buyer without a GSTIN: CDNUR when the sale it takes back was a large inter-state one (B2CL); otherwise it is taken off the small-sale table
+        const baseTotal = d.related_total_minor ?? d.total_minor; const baseDate = d.related_date ?? d.issue_date;
+        if (d.inter_state && baseTotal > b2clLimit(baseDate)) {
+          cdnur.push({ typ: 'B2CL', ntty: 'C', nt_num: d.number, nt_dt: gstDate(d.issue_date), val: val(d), pos: pos(d), itms: itms(rateMap(d), true) });
+          creditToUnregistered += 1;
+        } else {
+          for (const [rt, t] of rateMap(d)) {
+            const key = `${d.inter_state ? 'INTER' : 'INTRA'}|${pos(d)}|${rt}`;
+            const e = b2cs.get(key) ?? { sply_ty: d.inter_state ? 'INTER' : 'INTRA', pos: pos(d), rt, ...zero() };
+            for (const k of ['txval', 'iamt', 'camt', 'samt', 'csamt'] as const) e[k] -= t[k];
+            b2cs.set(key, e);
+          }
+          creditNetted += 1;
+        }
+        continue;
+      }
       const e = cdnr.get(d.gstin) ?? { ctin: d.gstin, nt: [] };
-      e.nt.push({ ntty: 'C', nt_num: d.number, nt_dt: gstDate(d.issue_date), val: val(d), pos: pos(d), rchrg: 'N', inv_typ: 'R', itms: itms(rateMap(d)) });
+      e.nt.push({ ntty: 'C', nt_num: d.number, nt_dt: gstDate(d.issue_date), val: val(d), pos: pos(d), rchrg: 'N', inv_typ: INV_TYP[d.supply_type] ?? 'R', itms: itms(rateMap(d)) });
       cdnr.set(d.gstin, e);
     } else if (d.gstin) {
       const e = b2b.get(d.gstin) ?? { ctin: d.gstin, inv: [] };
-      e.inv.push({ inum: d.number, idt: gstDate(d.issue_date), val: val(d), pos: pos(d), rchrg: 'N', inv_typ: 'R', itms: itms(rateMap(d)) });
+      e.inv.push({ inum: d.number, idt: gstDate(d.issue_date), val: val(d), pos: pos(d), rchrg: 'N', inv_typ: INV_TYP[d.supply_type] ?? 'R', itms: itms(rateMap(d)) });
       b2b.set(d.gstin, e);
     } else if (d.inter_state && d.total_minor > b2clLimit(d.issue_date)) {
       const e = b2cl.get(pos(d)) ?? { pos: pos(d), inv: [] };
@@ -115,7 +136,7 @@ export const gstr1 = async (c: Db, orgId: bigint, month: string, opts: { hsnDigi
   if (badRates.size) block(`Tax rate(s) the portal does not accept: ${[...badRates].join(', ')}%. Accepted: ${RATES.join(', ')}%.`);
   if (exportNoBill) warn(`${exportNoBill} export invoice(s) with goods are missing the shipping bill number, date or port code. The portal asks for them once the shipping bill is filed.`);
   if (exportIntra) warn(`${exportIntra} export invoice(s) were booked as CGST/SGST. An export is IGST: the file shows it as IGST, so it will not match the books.`);
-  if (creditToUnregistered) warn(`${creditToUnregistered} credit note(s) to customers without a GSTIN are not in this file (the portal wants them in a separate table, CDNUR, which is not built yet).`);
+  if (creditNetted) warn(`${creditNetted} credit note(s) to customers without a GSTIN are taken off the small-sale table (B2CS) as negative amounts, because the sale they take back was not a large inter-state one.`);
 
   // HSN summary: one row per HSN, rate and unit; credit notes take away. A line with no HSN cannot be listed.
   const hsn = new Map<string, { hsn_sc: string; desc: string; uqc: string; qty: number; rt: number } & Tax>();
@@ -155,7 +176,7 @@ export const gstr1 = async (c: Db, orgId: bigint, month: string, opts: { hsnDigi
     file: {
       gstin: org.gstin ?? '', fp: `${month.slice(5, 7)}${month.slice(0, 4)}`, gt: 0, cur_gt: 0, version: 'GST3.1.6', hash: 'hash',
       b2b: [...b2b.values()], b2cs: [...b2cs.values()].map((e) => ({ ...e, ...fix(e) })),
-      ...(b2cl.size ? { b2cl: [...b2cl.values()] } : {}), ...(cdnr.size ? { cdnr: [...cdnr.values()] } : {}),
+      ...(b2cl.size ? { b2cl: [...b2cl.values()] } : {}), ...(cdnr.size ? { cdnr: [...cdnr.values()] } : {}), ...(cdnur.length ? { cdnur } : {}),
       ...(exp.size ? { exp: [...exp].map(([exp_typ, inv]) => ({ exp_typ, inv })) } : {}),
       hsn: { data: [...hsn.values()].map((e, i) => ({ num: i + 1, ...e, ...fix(e), qty: r2(e.qty) })) },
       doc_issue: { doc_det: natures.map((n) => ({ doc_num: n, docs: [...series.values()].filter((s) => s.nature === n).map((s, i) => ({ num: i + 1, from: s.from, to: s.to, totnum: s.total, cancel: s.cancelled, net_issue: s.total - s.cancelled })) })) }
@@ -165,9 +186,59 @@ export const gstr1 = async (c: Db, orgId: bigint, month: string, opts: { hsnDigi
   };
 };
 
-/** GSTR-3B: outward supplies less credit notes, and the input tax credit on bills. Interest, late fee and table 3.2 (inter-state sales to unregistered buyers) are not worked out. */
+/* ── late fee and interest ──────────────────────────────────────────────────
+   A guide to check, not a figure to pay: the rates and caps below are the usual statutory ones, are returned in `assumptions`, and every one can be overridden.
+   Not covered: quarterly (QRMP) due dates, due dates moved by notification or a holiday, interest on credit wrongly taken (24%). */
+export type Band = 'UPTO_1_5CR' | 'UPTO_5CR' | 'ABOVE_5CR';
+const LATE_CAP: Record<Band, number> = { UPTO_1_5CR: 2000, UPTO_5CR: 5000, ABOVE_5CR: 10000 };
+const dayNo = (iso: string): number => Math.floor(Date.parse(`${iso}T00:00:00Z`) / 86_400_000);
+/** Monthly due date: GSTR-1 on the 11th and GSTR-3B on the 20th of the next month. */
+export const gstDue = (form: 'GSTR1' | 'GSTR3B', month: string): string => {
+  const y = Number(month.slice(0, 4)); const m = Number(month.slice(5, 7));
+  return new Date(Date.UTC(y, m, form === 'GSTR1' ? 11 : 20)).toISOString().slice(0, 10);
+};
+/** Late fee: a daily amount (half CGST, half SGST) up to a cap; a nil return pays less. */
+export const gstLateFee = (daysLate: number, o: { nil?: boolean; band?: Band; perDay?: number; cap?: number } = {}) => {
+  const perDay = o.perDay ?? (o.nil ? 20 : 50);
+  const cap = o.cap ?? (o.nil ? 500 : LATE_CAP[o.band ?? 'UPTO_1_5CR']);
+  const total = Math.min(Math.max(0, daysLate) * perDay, cap);
+  const cgst = Math.floor(total / 2);
+  return { perDay, cap, total, cgst, sgst: total - cgst };
+};
+/** Interest: simple interest on the tax paid late, by the day. The portal rounds to the rupee. */
+export const gstInterest = (taxRupees: number, daysLate: number, pct = 18): number => (taxRupees > 0 && daysLate > 0 ? Math.round((taxRupees * pct / 100 * daysLate) / 365) : 0);
+
+export const lateCharges = async (c: Db, orgId: bigint, q: { month: string; form: 'GSTR1' | 'GSTR3B'; filedOn?: string; paidOn?: string; nil?: boolean; band?: Band; dueOn?: string; taxLate?: number; interestPct?: number; feePerDay?: number; feeCap?: number }) => {
+  const due = q.dueOn ?? gstDue(q.form, q.month);
+  const late = (on?: string): number => (on ? Math.max(0, dayNo(on) - dayNo(due)) : 0);
+  // tax payable in cash: tax on sales less credit on bills, as the 3B draft works it out
+  const { file } = await gstr3b(c, orgId, q.month);
+  const sum = (t: { iamt: number; camt: number; samt: number; csamt: number }) => t.iamt + t.camt + t.samt + t.csamt;
+  const credit = file.itc_elg.itc_avl.find((x) => x.ty === 'OTH') as { iamt: number; camt: number; samt: number; csamt: number };
+  const cash = Math.max(0, r2(sum(file.sup_details.osup_det) - sum(credit)));
+  const taxLate = q.taxLate ?? cash;
+  const feeDays = late(q.filedOn); const intDays = late(q.paidOn);
+  const fee = gstLateFee(feeDays, { nil: q.nil ?? (file.sup_details.osup_det.txval === 0 && cash === 0), band: q.band, perDay: q.feePerDay, cap: q.feeCap });
+  const pct = q.interestPct ?? 18;
+  const interest = q.form === 'GSTR3B' ? gstInterest(taxLate, intDays, pct) : 0;
+  return {
+    form: q.form, month: q.month, dueOn: due, filedOn: q.filedOn ?? null, paidOn: q.paidOn ?? null,
+    daysLateFiling: feeDays, daysLatePayment: q.form === 'GSTR3B' ? intDays : 0,
+    cashTax: cash, taxPaidLate: taxLate,
+    lateFee: { ...fee, days: feeDays },
+    interest: { pct, days: q.form === 'GSTR3B' ? intDays : 0, amount: interest },
+    total: fee.total + interest,
+    assumptions: [`Due date ${due}: GSTR-1 is the 11th and GSTR-3B the 20th of the next month (monthly filers). Quarterly filers and notified extensions differ; type the real due date to override.`,
+      `Late fee ₹${fee.perDay} a day (half CGST, half SGST), capped at ₹${fee.cap}. Nil returns pay less. The cap depends on last year's turnover.`,
+      `Interest ${pct}% a year on the tax paid late, counted from the day after the due date. It applies to GSTR-3B tax only.`,
+      'Ask your accountant to confirm the figures before paying. This does not file or pay anything.']
+  };
+};
+
+/** GSTR-3B: outward supplies less credit notes, and the input tax credit on bills. Table 3.2 lists inter-state sales to buyers without a GSTIN; interest and late fee are worked out separately by lateCharges. */
 export const gstr3b = async (c: Db, orgId: bigint, month: string) => {
   const org = (await c.query(`SELECT gstin FROM organizations WHERE id = $1`, [orgId])).rows[0] as { gstin: string | null };
+  const unreg = new Map<string, { pos: string; txval: number; iamt: number }>();
   const out = zero(); const zr = zero(); const nil = zero(); const itc = zero(); const rev = zero(); const blocked = zero();
   for (const kinds of [['INVOICE', 'CREDIT_NOTE'], ['BILL', 'DEBIT_NOTE']]) {
     const { docs, linesOf } = await load(c, kinds, month, ['ISSUED']);
@@ -175,7 +246,12 @@ export const gstr3b = async (c: Db, orgId: bigint, month: string) => {
       const sign = d.kind === 'CREDIT_NOTE' || d.kind === 'DEBIT_NOTE' ? -1 : 1;
       if (d.kind === 'DEBIT_NOTE') add(d.itc_blocked ? blocked : itc, l, d.inter_state, -1);   // credit claimed on the bill is taken back
       else if (d.kind === 'BILL') { add(d.itc_blocked ? blocked : itc, l, d.inter_state); if (d.reverse_charge) add(rev, l, d.inter_state); } else if (d.kind === 'INVOICE' && d.currency !== 'INR') add(zr, l, true);   // an export is zero-rated, 3.1(b), whether or not IGST is paid
-      else if (l.tax_rate_bp === 0) add(nil, l, false, sign); else add(out, l, d.inter_state, sign);
+      else if (isSez(d.supply_type)) add(zr, l, true, sign);   // a supply to an SEZ unit is zero-rated, 3.1(b), with or without IGST
+      else if (l.tax_rate_bp === 0) add(nil, l, false, sign); else {
+        add(out, l, d.inter_state, sign);
+        // table 3.2: inter-state sales to buyers without a GSTIN, by place of supply (credit notes take away)
+        if (d.inter_state && !d.gstin) { const p = d.place_of_supply ?? d.state_code ?? ''; const e = unreg.get(p) ?? { pos: p, txval: 0, iamt: 0 }; e.txval += sign * rs(l.taxable_minor); e.iamt += sign * rs(l.tax_minor); unreg.set(p, e); }
+      }
     }
   }
   // an asset sold with GST is an outward supply of the month it was sold in
@@ -187,20 +263,21 @@ export const gstr3b = async (c: Db, orgId: bigint, month: string) => {
   const exp = (await c.query(
     `SELECT a.system_key, COALESCE(SUM(CASE WHEN l.side = 'D' THEN l.base_amount_minor ELSE -l.base_amount_minor END), 0)::bigint AS net
        FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'POSTED' JOIN accounts a ON a.id = l.account_id
-      WHERE a.system_key IN ('INPUT_CGST', 'INPUT_SGST', 'INPUT_IGST') AND e.posting_date BETWEEN $1::date AND $2::date
+      WHERE a.system_key IN ('INPUT_CGST', 'INPUT_SGST', 'INPUT_IGST', 'INPUT_CESS') AND e.posting_date BETWEEN $1::date AND $2::date
         AND (e.source_type = 'expense' OR EXISTS (SELECT 1 FROM journal_entries o WHERE o.id = e.reverses_entry_id AND o.source_type = 'expense'))
       GROUP BY a.system_key`, [`${month}-01`, monthEnd(month)])).rows as { system_key: string; net: bigint }[];
-  for (const r of exp) itc[r.system_key === 'INPUT_IGST' ? 'iamt' : r.system_key === 'INPUT_CGST' ? 'camt' : 'samt'] += rs(r.net);
+  for (const r of exp) itc[r.system_key === 'INPUT_IGST' ? 'iamt' : r.system_key === 'INPUT_CGST' ? 'camt' : r.system_key === 'INPUT_CESS' ? 'csamt' : 'samt'] += rs(r.net);
   const z = { iamt: 0, camt: 0, samt: 0, csamt: 0 };
   const { txval: _taxable, ...credit } = fix(itc);
   const { txval: _t17, ...credit17 } = fix(blocked);   // section 17(5): 4(B)(1)
   return {
     file: {
       gstin: org.gstin ?? '', ret_period: `${month.slice(5, 7)}${month.slice(0, 4)}`, version: 'GST3.0.4', hash: 'hash',
-      sup_details: { osup_det: fix(out), osup_zero: { txval: r2(zr.txval), iamt: r2(zr.iamt), csamt: 0 }, osup_nil_exmp: { txval: r2(nil.txval) }, isup_rev: fix(rev), osup_nongst: { txval: 0 } },
+      sup_details: { osup_det: fix(out), osup_zero: { txval: r2(zr.txval), iamt: r2(zr.iamt), csamt: r2(zr.csamt) }, osup_nil_exmp: { txval: r2(nil.txval) }, isup_rev: fix(rev), osup_nongst: { txval: 0 } },
       itc_elg: { itc_avl: ['IMPG', 'IMPS', 'ISRC', 'ISD'].map((ty) => ({ ty, ...z })).concat([{ ty: 'OTH', ...credit }]), itc_inelg: [{ ty: 'RUL', ...credit17 }, { ty: 'OTH', ...z }] },
+      ...(unreg.size ? { inter_sup: { unreg_details: [...unreg.values()].map((e) => ({ pos: e.pos, txval: r2(e.txval), iamt: r2(e.iamt) })) } } : {}),
       inward_sup: { isup_details: [{ ty: 'GST', inter: 0, intra: 0 }, { ty: 'NONGST', inter: 0, intra: 0 }] }
     },
-    problems: [...gstinProblem(org.gstin), { level: 'warn' as const, message: 'Zero-rate lines are treated as nil/exempt. Imports, interest and late fee are not included. Reverse-charge tax is in 3.1(d) and also claimed as credit; check the credit is allowed for you. Check every box against your own records before filing.' }]
+    problems: [...gstinProblem(org.gstin), { level: 'warn' as const, message: 'Zero-rate lines are treated as nil/exempt. Imports are not included, and interest and late fee are shown separately. Reverse-charge tax is in 3.1(d) and also claimed as credit; check the credit is allowed for you. Check every box against your own records before filing.' }]
   };
 };

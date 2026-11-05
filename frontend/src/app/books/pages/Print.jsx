@@ -1,13 +1,24 @@
 /* The paper copy of an invoice, bill, credit note or receipt. It sits outside the app root, is hidden on screen and is the only thing shown when printing. */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLoad } from '../api.js';
 import { STATES, amountInWords, inr, showDate, unitLabel } from '../lib.js';
 import { useSession } from '../session.jsx';
+import { downloadPdf } from '../../../lib/pdf.js';
 import { Btn, Confirm, Err, Field, Note, useAction } from '../ui.jsx';
 
 const SIZE = { A4: 'A4', A5: 'A5', THERMAL: '80mm 297mm' };
 const DEFAULTS = { paper: 'A4', accent: '#1a56db', title: '', showHsn: true, showBank: true, showTerms: true, showUnit: true };
+
+/** Save the paper copy as a PDF: show it off screen for a moment (it is hidden on screen), draw it, hide it again. */
+export const savePdf = async (filename) => {
+  const el = document.querySelector('.fb-sheet');
+  if (!el) throw new Error('Nothing to save');
+  const old = el.getAttribute('style') || '';
+  el.classList.add('capture');
+  Object.assign(el.style, { display: 'block', position: 'fixed', left: '-10000px', top: '0', width: '794px' });
+  try { await downloadPdf(el, filename); } finally { el.classList.remove('capture'); el.setAttribute('style', old); }
+};
 
 const useSheet = (partyId) => {
   const { o, org } = useSession();
@@ -39,6 +50,18 @@ const Parties = ({ party, label }) => (
 );
 
 /** kind: { one, who } from the document screens; d: the document as the API returns it. */
+/** A UPI QR for what is still owed: scanned in any UPI app, it fills in the amount. Not a gateway: the payment is recorded by hand. */
+const UpiQr = ({ vpa, name, amount, note }) => {
+  const [src, setSrc] = useState('');
+  useEffect(() => {
+    let live = true;
+    const link = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(name)}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
+    import('qrcode').then((q) => q.toDataURL(link, { margin: 1, width: 160 })).then((u) => { if (live) setSrc(u); }).catch(() => {});
+    return () => { live = false; };
+  }, [vpa, name, amount, note]);
+  return src ? <div className="small"><img src={src} alt="Pay by UPI" width="96" height="96" /><div>Scan to pay by UPI</div></div> : null;
+};
+
 export const DocSheet = ({ kind, d }) => {
   const { p, party, s, ready } = useSheet(d.party_id);
   if (!ready) return null;
@@ -59,6 +82,7 @@ export const DocSheet = ({ kind, d }) => {
       <div className="sum">
         <div><span>Subtotal</span><span>{inr(d.subtotal_minor)}</span></div>
         {d.inter_state ? <div><span>IGST</span><span>{inr(d.tax_minor)}</span></div> : <><div><span>CGST</span><span>{inr(Number(d.tax_minor) / 2)}</span></div><div><span>SGST</span><span>{inr(Number(d.tax_minor) / 2)}</span></div></>}
+        {Number(d.cess_minor) > 0 && <div><span>Cess</span><span>{inr(d.cess_minor)}</span></div>}
         {Number(d.tcs_minor) > 0 && <div><span>TCS</span><span>{inr(d.tcs_minor)}</span></div>}
         {Number(d.round_off_minor) !== 0 && <div><span>Round off</span><span>{inr(d.round_off_minor)}</span></div>}
         <div className="grand"><span>Total</span><span>₹{inr(d.total_minor)}</span></div>
@@ -66,6 +90,7 @@ export const DocSheet = ({ kind, d }) => {
       </div>
       <p className="words">{amountInWords(d.total_minor)}</p>
       {s.showBank && (p.bank_account || p.upi_id) && <p className="small"><strong>Pay to</strong> {[p.bank_name, p.bank_account && `A/c ${p.bank_account}`, p.bank_ifsc && `IFSC ${p.bank_ifsc}`, p.upi_id && `UPI ${p.upi_id}`].filter(Boolean).join(' · ')}</p>}
+      {kind.api === 'invoices' && s.showBank && p.upi_id && Number(d.balance_minor) > 0 && <UpiQr vpa={p.upi_id} name={p.legal_name || p.name} amount={Number(d.balance_minor) / 100} note={String(d.number || 'Invoice').slice(0, 50)} />}
       {s.showTerms && p.terms && <p className="small"><strong>Terms</strong> {p.terms}</p>}
       <footer><span>Thank you.</span><span>For {p.legal_name || p.name}<br /><br />Authorised signatory</span></footer>
     </Shell>

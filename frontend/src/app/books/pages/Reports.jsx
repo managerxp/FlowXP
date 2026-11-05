@@ -37,6 +37,23 @@ const ProfitLoss = ({ r }) => {
     </Table></Card>)}</Async>;
 };
 
+const CashFlow = ({ r }) => {
+  const { o, org } = useSession();
+  const load = useLoad(() => o(`/reports/cash-flow?from=${r.from}&to=${r.to}`), [org.id, r.from, r.to]);
+  const part = (title, s) => !s.rows.length ? null : <>
+    <tr><td colSpan={2}><strong>{title}</strong></td></tr>
+    {s.rows.map((x) => <tr key={x.name}><td>{x.name}</td><td className="r"><Money v={BigInt(x.in) - BigInt(x.out)} /></td></tr>)}
+    <tr className="total"><td>Net from {title.toLowerCase()}</td><td className="r"><Money v={s.net} /></td></tr></>;
+  return <Async load={load}>{(d) => (
+    <Card>{!d.matchesBooks && <p className="notice bad">The closing cash does not match the books. This should never happen; contact support.</p>}
+      <Table head={['', '>Amount']}>
+        <tr><td>Cash and bank at the start</td><td className="r"><Money v={d.opening} /></td></tr>
+        {part('Day-to-day business', d.operating)}{part('Assets bought and sold', d.investing)}{part('Owner and loans', d.financing)}
+        <tr className="total"><td>Money in less money out</td><td className="r"><Money v={d.change} /></td></tr>
+        <tr className="total"><td>Cash and bank at the end</td><td className="r"><Money v={d.closing} strong /></td></tr>
+      </Table></Card>)}</Async>;
+};
+
 const BalanceSheet = ({ r }) => {
   const { o, org } = useSession();
   const load = useLoad(() => o(`/reports/balance-sheet?asOf=${r.to}`), [org.id, r.to]);
@@ -101,6 +118,7 @@ const ABOUT = {
   ap: ['Who you owe', 'Vendor bills you have not paid yet, and how late they are.'],
   gst: ['GST returns', 'The GST figures for the month, ready to copy into the GST portal.'],
   bs: ['Balance sheet', 'What the business owns and owes on the date you choose.'],
+  cf: ['Cash flow', 'Where the money in your cash and bank accounts came from and where it went.'],
   tb: ['Trial balance', 'Every account with its total. The two sides must match; your accountant uses this to check the books.'],
   stmt: ['Party statement', 'Everything bought, sold and paid with one customer or vendor.'],
   chk: ['Checks', 'Makes sure every figure in the books agrees with its invoices, bills and payments.']
@@ -111,20 +129,20 @@ export default () => {
   const simple = useSimple();
   const { on } = useSession();
   const { ask } = useHelp();
-  const TAB_NEEDS = { bs: 'flowbook_reports_more', tb: 'flowbook_reports_more', stmt: 'flowbook_reports_more', gst: 'flowbook_gst' };
+  const TAB_NEEDS = { bs: 'flowbook_reports_more', cf: 'flowbook_reports_more', tb: 'flowbook_reports_more', stmt: 'flowbook_reports_more', gst: 'flowbook_gst' };
   const fy = financialYear();
   const [tab, setTab] = useState('pnl');
   const [r, setR] = useState({ from: fy.from, to: today() });
   const asOfOnly = ['bs', 'ar', 'ap', 'due'].includes(tab);
   return (
     <Page title="Reports" lead={fy.label + ' by default. Change the dates to look at any period.'} actions={<button className="btn no-print" onClick={() => window.print()}>Print</button>}>
-      <Tabs value={tab} onChange={setTab} tabs={[['pnl', 'Profit and loss'], ['bs', 'Balance sheet'], ['tb', 'Trial balance'], ['an', simple ? 'Sales' : 'Sales analysis'], ['ar', 'Who owes you'], ['ap', 'Who you owe'], ['due', 'Payments due'], ['stmt', 'Party statement'], ['gst', 'GST returns'], ['chk', 'Checks']].filter(([k]) => (!simple || SIMPLE_TABS.includes(k)) && on(TAB_NEEDS[k] || 'flowbook_app'))} />
+      <Tabs value={tab} onChange={setTab} tabs={[['pnl', 'Profit and loss'], ['bs', 'Balance sheet'], ['cf', 'Cash flow'], ['tb', 'Trial balance'], ['an', simple ? 'Sales' : 'Sales analysis'], ['ar', 'Who owes you'], ['ap', 'Who you owe'], ['due', 'Payments due'], ['stmt', 'Party statement'], ['gst', 'GST returns'], ['chk', 'Checks']].filter(([k]) => (!simple || SIMPLE_TABS.includes(k)) && on(TAB_NEEDS[k] || 'flowbook_app'))} />
       <div className="explain-bar no-print">
         <p className="about">{ABOUT[tab][1]}{tab === 'tb' && <> <Term k="TB">What is this?</Term></>}</p>
         <Btn type="button" className="btn small" onClick={() => ask(`Explain my ${ABOUT[tab][0]} ${['gst'].includes(tab) ? 'for this month' : `from ${r.from} to ${r.to}`} in simple words, and tell me if anything needs my attention.`)}>Explain in simple words</Btn>
       </div>
       {!['chk', 'gst'].includes(tab) && <Range r={r} set={setR} one={asOfOnly} />}
-      {tab === 'pnl' && <ProfitLoss r={r} />}{tab === 'bs' && <BalanceSheet r={r} />}{tab === 'tb' && <TrialBalance r={r} />}
+      {tab === 'pnl' && <ProfitLoss r={r} />}{tab === 'bs' && <BalanceSheet r={r} />}{tab === 'cf' && <CashFlow r={r} />}{tab === 'tb' && <TrialBalance r={r} />}
       {tab === 'an' && <Analysis r={r} />}{tab === 'ar' && <Ageing r={r} type="receivables" />}{tab === 'ap' && <Ageing r={r} type="payables" />}{tab === 'due' && <><Due r={r} type="payables" /><Due r={r} type="receivables" /></>}{tab === 'chk' && <Checks />}{tab === 'gst' && <GstReturns />}{tab === 'stmt' && <Statement r={r} />}
     </Page>
   );

@@ -119,12 +119,12 @@ export const Items = () => {
   const save = (e) => {
     e.preventDefault();
     a.run(async () => {
-      await o('/items', { method: 'POST', body: { sku: form.sku, name: form.name, kind: form.kind, ...(form.hsnSac && { hsnSac: form.hsnSac }), ...(form.unit && { unit: form.unit }), taxCode: form.taxCode, ...(form.salePrice && { salePrice: form.salePrice }), ...(form.purchasePrice && { purchasePrice: form.purchasePrice }), ...(form.kind === 'GOODS' && form.trackStock && { trackStock: true, ...(form.tracking && form.tracking !== 'NONE' && { tracking: form.tracking }), ...(form.reorderLevel && { reorderLevel: form.reorderLevel }) }) } });
+      await o('/items', { method: 'POST', body: { sku: form.sku, name: form.name, kind: form.kind, ...(form.hsnSac && { hsnSac: form.hsnSac }), ...(form.unit && { unit: form.unit }), taxCode: form.taxCode, ...(Number(form.cessRate) > 0 && { cessBp: Math.round(Number(form.cessRate) * 100) }), ...(form.salePrice && { salePrice: form.salePrice }), ...(form.purchasePrice && { purchasePrice: form.purchasePrice }), ...(form.kind === 'GOODS' && form.trackStock && { trackStock: true, ...(form.tracking && form.tracking !== 'NONE' && { tracking: form.tracking }), ...(form.reorderLevel && { reorderLevel: form.reorderLevel }) }) } });
       setForm(null); await load.reload();
     }, 'Item added.');
   };
   return (
-    <Page title="Items" lead="Products and services you sell or buy. Pick them on a line to fill in the price and GST." actions={<><Btn onClick={() => setReady(!ready)}>Add from ready list</Btn><Btn onClick={() => setImporting(true)}>Import CSV</Btn><Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm({ sku: '', name: '', kind: 'GOODS', hsnSac: '', unit: 'NOS', taxCode: 'GST18', salePrice: '', purchasePrice: '', trackStock: false, reorderLevel: '' }); }}>Add item</Btn></>}>
+    <Page title="Items" lead="Products and services you sell or buy. Pick them on a line to fill in the price and GST." actions={<><Btn onClick={() => setReady(!ready)}>Add from ready list</Btn><Btn onClick={() => setImporting(true)}>Import CSV</Btn><Btn kind="primary" onClick={() => { a.setError(''); a.setDone(''); setForm({ sku: '', name: '', kind: 'GOODS', hsnSac: '', unit: 'NOS', taxCode: 'GST18', cessRate: '', salePrice: '', purchasePrice: '', trackStock: false, reorderLevel: '' }); }}>Add item</Btn></>}>
       {importing && <CsvImport what="item" onDone={() => load.reload()} onClose={() => setImporting(false)} />}
       <Note>{a.done}</Note>
       {ready && <ReadyList onDone={() => load.reload()} onClose={() => setReady(false)} />}
@@ -137,6 +137,7 @@ export const Items = () => {
             <Field label="HSN / SAC"><input value={form.hsnSac} onChange={set('hsnSac')} maxLength={12} /></Field>
             <Field label="Unit" hint="Needed for the GST return"><select value={form.unit} onChange={set('unit')}>{UNITS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select></Field>
             <Field label="GST"><select value={form.taxCode} onChange={set('taxCode')}>{(codes.length ? codes : ['GST18']).map((c) => <option key={c}>{c}</option>)}</select></Field>
+            <Field label="Cess (%)" hint="Only for goods like tobacco or aerated drinks"><input inputMode="decimal" value={form.cessRate} onChange={set('cessRate')} /></Field>
             <Field label="Selling price (₹)"><input inputMode="decimal" value={form.salePrice} onChange={set('salePrice')} /></Field>
             <Field label="Buying price (₹)"><input inputMode="decimal" value={form.purchasePrice} onChange={set('purchasePrice')} /></Field>
             {form.kind === 'GOODS' && <p className="check wide"><input id="trk" type="checkbox" checked={form.trackStock} onChange={(e) => setForm({ ...form, trackStock: e.target.checked })} /><label htmlFor="trk">Count its stock (buying adds, selling takes away)</label></p>}
