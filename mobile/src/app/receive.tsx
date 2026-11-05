@@ -10,6 +10,9 @@ import { useLoad } from '../lib/useLoad.ts';
 import type { Product } from '../lib/catalog.ts';
 import { receiveBody, receiveProblem, receiveTotalPaise, type ReceiveLine, type Supplier } from '../lib/buying.ts';
 import { rupees } from '../lib/money.ts';
+import { gstView } from '../lib/gst.ts';
+import { currentBusiness, useSession } from '../lib/session.ts';
+import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
 
@@ -26,6 +29,8 @@ export default function Receive() {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState('');
   const [made, setMade] = useState('');
+  const canReverse = gstView(currentBusiness(useSession())).reverseCharge;   // only when the owner switched it on in the GST options
+  const [reverse, setReverse] = useState(false);
   const [key] = useState(newKey());   // one key for this delivery: a double tap records it once
 
   useEffect(() => {
@@ -44,7 +49,7 @@ export default function Receive() {
     if (bad) return setProblem(bad);
     setBusy(true); setProblem('');
     try {
-      const po = await api.post<{ po_number: string }>('/purchases', receiveBody(lines, supplier === '0' ? null : Number(supplier), billNo, paid, 'CASH'), { idempotencyKey: key });
+      const po = await api.post<{ po_number: string }>('/purchases', receiveBody(lines, supplier === '0' ? null : Number(supplier), billNo, paid, 'CASH', canReverse && reverse), { idempotencyKey: key });
       setMade(`${po.po_number} recorded. Stock is updated.`);
       void syncAll();
     } catch (e) { setProblem(e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'Could not record the delivery'); }
@@ -89,6 +94,7 @@ export default function Receive() {
             {lines.length ? (
               <View style={{ padding: 16, gap: 10 }}>
                 <Soft>About {rupees(receiveTotalPaise(lines))} before GST.</Soft>
+                {canReverse ? <Button title={t('Tax payable on reverse charge')} kind="quiet" selected={reverse} onPress={() => setReverse((v) => !v)} /> : null}
                 <TextInput style={s.input} value={paid} onChangeText={setPaid} keyboardType="decimal-pad" placeholder="Paid now, in cash (optional)" accessibilityLabel="Paid now" />
                 <ErrorText>{problem}</ErrorText>
                 <Button title="Record the delivery" onPress={() => { void save(); }} busy={busy} />

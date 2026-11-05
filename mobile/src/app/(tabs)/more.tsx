@@ -21,7 +21,8 @@ import { AUTO_PARTS_TYPES } from '../../lib/parts.ts';
 import { workshopOn } from '../../lib/workshopExtras.ts';
 import { GAMING_TYPES } from '../../lib/gaming.ts';
 import { GYM_TYPES } from '../../lib/gym.ts';
-import { allowed } from '../../lib/access.ts';
+import { allowed, hasFeature } from '../../lib/access.ts';
+import { hasBooks } from '../../lib/flowbook.ts';
 import { useSyncState } from '../../lib/sync.ts';
 import { appVersion } from '../../lib/crash.ts';
 import { SyncBadge } from '../../lib/SyncBadge.tsx';
@@ -73,6 +74,7 @@ export default function More() {
       { left: 'What we earned', sub: 'Labour and parts earned, by day and mechanic', icon: 'stats-chart-outline', go: '/job-earnings', show: can('billing') },
       { left: 'Reports', sub: 'How much you earned, and download it', icon: 'stats-chart-outline', go: '/reports', show: can('reports') },
       { left: 'Expenses', sub: 'Rent, salary, electricity: what you spent', icon: 'receipt-outline', go: '/expenses', show: can('expenses') },
+      { left: 'Other income', sub: 'Interest, rent received, scrap: money in that is not from a bill', icon: 'cash-outline', go: '/other-income', show: can('expenses') && hasFeature(business, 'other_income') },
       { left: 'Messaging', sub: 'WhatsApp or SMS: vehicle ready, estimate, offers', icon: 'chatbubbles-outline', go: '/messaging', show: canMessaging(business?.role) },
       { left: 'Notifications', sub: 'Weekly summary, alerts, and what to be told about', icon: 'notifications-outline', go: '/notifications' }
     ] },
@@ -153,6 +155,8 @@ export default function More() {
     ] },
     { title: 'Your business', items: [
       { left: 'Expenses', sub: 'Rent, salary, electricity: what you spent', icon: 'receipt-outline', go: '/expenses', show: can('expenses') },
+      { left: 'Other income', sub: 'Interest, rent received, scrap: money in that is not from a bill', icon: 'cash-outline', go: '/other-income', show: can('expenses') && hasFeature(business, 'other_income') },
+      { left: 'FlowBook', sub: 'Your accounts at a glance', icon: 'book-outline', go: '/flowbook', show: can('reports') && hasBooks(business) },
       { left: 'Reports', sub: 'How much you sold, and what sells best', icon: 'stats-chart-outline', go: '/reports', show: can('reports') },
       { left: 'More reports', sub: 'Day Book, profit and loss, GST, stock, who owes you', icon: 'document-text-outline', go: '/biz-reports', show: can('reports', 'gst', 'inventory') },
       { left: 'GST filing', sub: 'GSTR-1 file, GSTR-3B figures, e-invoice', icon: 'document-attach-outline', go: '/gst-filing', show: canManageTeam(business?.role) && can('gst') },
@@ -184,6 +188,7 @@ export default function More() {
       { left: 'Profitability', sub: 'What your sales leave after food cost, fees and commission', icon: 'trending-up-outline', go: '/profitability', show: food && can('reports') },
       { left: 'Forecast', sub: 'The week ahead, and what to buy for it', icon: 'analytics-outline', go: '/forecast', show: food && can('reports') },
       { left: 'Revenue leakage', sub: 'Unusual discounts, cancellations, refunds and wastage', icon: 'shield-outline', go: '/leakage', show: food && can('settings') },
+      { left: 'Reviews', sub: 'What customers said after their bill', icon: 'star-outline', go: '/reviews', show: can('settings') && hasFeature(business, 'reviews') },
       { left: 'Kitchen performance', sub: 'How long dishes take', icon: 'timer-outline', go: '/kitchen-performance', show: food && can('reports') },
       { left: 'Outlets', sub: 'Your places, and how they compare', icon: 'storefront-outline', go: '/outlets', show: canManageTeam(business?.role) && OUTLET_TYPES.includes(business?.business_type ?? '') },
       { left: 'Report a problem', sub: 'Tell FlowXP something went wrong', icon: 'bug-outline', go: '/report' },

@@ -47,7 +47,7 @@ test('two-step codes: six digits (spaces allowed) or a recovery code with a dash
 });
 
 test('a new password is checked before sending; the server has the last word', () => {
-  assert.equal(passwordProblem('', 'longenoughpass'), 'Enter your current password.'); assert.match(passwordProblem('old', 'short'), /at least 10/); assert.match(passwordProblem('samepassword1', 'samepassword1'), /different/);
+  assert.equal(passwordProblem('', 'longenoughpass'), 'Enter your current password.'); assert.match(passwordProblem('old', 'short'), /at least 8/); assert.match(passwordProblem('samepassword1', 'samepassword1'), /different/);
   assert.equal(passwordProblem('oldpassword', 'brandnewpass1'), ''); assert.deepEqual(changePasswordBody('a', 'b'), { current_password: 'a', new_password: 'b' });
 });
 

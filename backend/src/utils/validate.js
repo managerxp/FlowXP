@@ -32,9 +32,9 @@ export const checkName = (value, field = 'Name') => {
  * an attacker's wordlist and to nobody else. Eight characters is the floor
  * that keeps bcrypt's work factor meaningful.
  */
-export const PASSWORD_MIN = 10;
+export const PASSWORD_MIN = 8;
 // The passwords people reach for first; length alone lets "password123" through. Compared lower-case, ignoring spaces.
-const COMMON = new Set(['password', 'password1', 'password12', 'password123', 'password1234', 'passw0rd123', 'qwertyuiop', 'qwerty1234', 'qwerty12345', 'qwerty123456', '1234567890', '12345678910', '0123456789', '1111111111', '0000000000', 'abcdefghij', 'abcd123456', 'iloveyou123', 'welcome123', 'welcome1234', 'admin12345', 'administrator', 'letmein1234', 'changeme123', 'india12345', 'india123456', 'flowxp1234', 'flowxp12345', 'flowxp123456']);
+const COMMON = new Set(['12345678', '123456789', 'qwerty123', 'abc12345', 'iloveyou', 'welcome1', 'admin123', 'letmein1', 'password', 'password', 'password1', 'password12', 'password123', 'password1234', 'passw0rd123', 'qwertyuiop', 'qwerty1234', 'qwerty12345', 'qwerty123456', '1234567890', '12345678910', '0123456789', '1111111111', '0000000000', 'abcdefghij', 'abcd123456', 'iloveyou123', 'welcome123', 'welcome1234', 'admin12345', 'administrator', 'letmein1234', 'changeme123', 'india12345', 'india123456', 'flowxp1234', 'flowxp12345', 'flowxp123456']);
 const REPEATED = /^(.)\1+$/;
 export const checkPassword = (value) => {
   const v = String(value ?? '');

@@ -20,6 +20,9 @@ const money = (r: number) => rupees(toPaise(r));
 
 /** Column widths of the item table: Qty, Rate, Amount on the right, the name column gets the rest (the same as the website's receipt). */
 const tableWidths = (width: number) => { const w = width >= 48 ? [7, 9, 10] : [7, 8, 9]; return { w, leftW: width - w[0] - w[1] - w[2] }; };
+const plain = (r: number) => (Math.round(r * 100) / 100).toFixed(2);
+/** One row of the item table: name column, then Qty, Rate and Amount right-aligned. */
+const tableRow = (width: number) => { const { w, leftW } = tableWidths(width); return (left: string, q: string, rate: string, amount: string) => left.slice(0, leftW).padEnd(leftW) + q.slice(0, w[0]).padStart(w[0]) + rate.slice(0, w[1]).padStart(w[1]) + amount.slice(0, w[2]).padStart(w[2]); };
 /** Break text into rows of at most `width` characters; a longer word is split. */
 const wordWrap = (text: string, width: number): string[] => {
   const rows: string[] = []; let row = '';
@@ -49,9 +52,8 @@ export const receiptLines = (inv: Invoice, businessName: string, width = WIDTH):
   // Item / Qty / Rate / Amount, as on the website's receipt: the name wraps inside its own column and the numbers sit on its last row.
   // The amount is before tax while the tax lines are shown (rows add up to the Subtotal), and with tax when they are hidden (rows add up to the Total).
   const showTax = inv.receipt?.show_tax_lines !== false;
-  const { w, leftW } = tableWidths(width);
-  const plain = (r: number) => (Math.round(r * 100) / 100).toFixed(2);
-  const cells = (left: string, q: string, rate: string, amount: string) => left.slice(0, leftW).padEnd(leftW) + q.slice(0, w[0]).padStart(w[0]) + rate.slice(0, w[1]).padStart(w[1]) + amount.slice(0, w[2]).padStart(w[2]);
+  const { leftW } = tableWidths(width);
+  const cells = tableRow(width);
   out.push(cells('Item', 'Qty', 'Rate', 'Amount'));
   out.push('-'.repeat(width));
   let totalQty = 0; let lineSaved = 0;
@@ -99,11 +101,19 @@ export const pendingReceiptLines = (e: { local_no: string; taken_at: number; pre
   const out: string[] = [businessName, '*** PENDING BILL ***', 'Not final. The real bill number and GST', 'come when it reaches FlowXP.', 'No kitchen ticket was made: tell them.', '-'.repeat(width)];
   out.push(row(e.local_no, new Date(e.taken_at).toISOString().slice(0, 10)));
   out.push('-'.repeat(width));
+  // the same Item / Qty / Rate / Amount table as the real bill (amounts before tax, as worked out on this phone)
+  const cells = tableRow(width); const leftW = tableWidths(width).leftW;
+  out.push(cells('Item', 'Qty', 'Rate', 'Amount'));
+  out.push('-'.repeat(width));
+  let totalQty = 0;
   for (const l of e.preview.lines) {
-    out.push(l.name);
-    out.push(row(`  ${qty(l.quantity)} x ${rupees(l.unitPricePaise)}`, rupees(Math.round(l.unitPricePaise * l.quantity))));
+    totalQty += l.quantity;
+    const names = wordWrap(l.name, leftW); const last = names.pop() ?? '';
+    for (const n of names) out.push(n);
+    out.push(cells(last, qty(l.quantity), plain(l.unitPricePaise / 100), plain(Math.round(l.unitPricePaise * l.quantity) / 100)));
   }
   out.push('-'.repeat(width));
+  out.push(row(`Items: ${e.preview.lines.length}`, `Total Qty: ${qty(totalQty)}`));
   out.push(row('Subtotal', rupees(e.preview.subtotalPaise)));
   out.push(row('GST (about)', rupees(e.preview.taxPaise)));
   if (e.preview.cessPaise) out.push(row('Cess (about)', rupees(e.preview.cessPaise)));

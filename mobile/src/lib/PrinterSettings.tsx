@@ -16,8 +16,10 @@ export default function PrinterSettings({ paper }: { paper: Paper }) {
   const [problem, setProblem] = useState('');
   const [busy, setBusy] = useState(false);
   const [prefs, setPrefs] = useState<PrinterPrefs>(DEFAULT_PREFS);
+  const [more, setMore] = useState(false);   // the technical choices stay folded away
+  const [saved, setSaved] = useState('');     // the printer that prints the customer's receipt
 
-  useEffect(() => { void readMode().then(setModeState); void readPrefs().then(setPrefs); }, []);
+  useEffect(() => { void readMode().then(setModeState); void readPrefs().then(setPrefs); void import('./printerLink.ts').then((m) => m.readPrinters()).then((l) => setSaved(l.find((x) => x.jobs.includes('receipt'))?.name ?? '')).catch(() => {}); }, []);
   const change = (patch: Partial<PrinterPrefs>) => { const next = { ...prefs, ...patch }; setPrefs(next); void savePrefs(next); };
 
   const choose = async (m: PrinterMode) => {
@@ -36,41 +38,47 @@ export default function PrinterSettings({ paper }: { paper: Paper }) {
   return (
     <View style={{ gap: 8 }}>
       <Text style={{ fontWeight: '700', color: color.ink }}>{t('Receipt printer')}</Text>
-      <Soft>{mode === 'rawbt'
-        ? t('Printing straight to your thermal printer through the RawBT app.')
-        : t("Printing with the phone's print screen: it works with any printer the phone can reach (Wi-Fi, USB, or Bluetooth through the printer maker's app).")}</Soft>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        <Button title={t('Phone print screen')} selected={mode === 'system'} onPress={() => { void choose('system'); }} style={{ flex: 1 }} />
-        <Button title={t('Thermal printer (RawBT)')} selected={mode === 'rawbt'} onPress={() => { void choose('rawbt'); }} style={{ flex: 1 }} />
-      </View>
-      {mode === 'rawbt' ? <Soft>{t('One time: install the free RawBT app, switch your printer on, and connect it inside RawBT (Bluetooth or USB). After that, FlowXP prints to it with no questions.')}</Soft> : null}
-      {mode !== 'system' ? (
-        <View style={{ gap: 8 }}>
-          <Text style={{ fontWeight: '700', color: color.ink }}>{t('Cut the paper after each receipt')}</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Button title={t('Cut')} selected={prefs.cut} onPress={() => change({ cut: true })} style={{ flex: 1 }} />
-            <Button title={t('Do not cut')} selected={!prefs.cut} onPress={() => change({ cut: false })} style={{ flex: 1 }} />
-          </View>
-          <Text style={{ fontWeight: '700', color: color.ink }}>{t('Copies of each receipt')}</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {[1, 2, 3].map((n) => <Button key={n} title={String(n)} selected={prefs.copies === n} onPress={() => change({ copies: n })} style={{ flex: 1 }} />)}
-          </View>
-          <Text style={{ fontWeight: '700', color: color.ink }}>{t('Blank lines after the receipt')}</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {[0, 3, 5, 8].map((n) => <Button key={n} title={String(n)} selected={prefs.extraLines === n} onPress={() => change({ extraLines: n })} style={{ flex: 1 }} />)}
-          </View>
-          <Text style={{ fontWeight: '700', color: color.ink }}>{t('Open the cash drawer with each receipt')}</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Button title={t('Off')} selected={!prefs.drawer} onPress={() => change({ drawer: false })} style={{ flex: 1 }} />
-            <Button title={t('On')} selected={prefs.drawer} onPress={() => change({ drawer: true })} style={{ flex: 1 }} />
-          </View>
-        </View>
-      ) : null}
-      <Button title={t('Printers')} kind="quiet" onPress={() => router.push('/printers')} />
-      <Button title={t('Get the RawBT app')} kind="quiet" onPress={() => { void getRawBT(); }} />
+      <Soft>{saved ? t('Printing to {name}.', { name: saved }) : mode === 'rawbt' ? t('Printing straight to your thermal printer through the RawBT app.') : t('No thermal printer set up yet.')}</Soft>
+      <Button title={t('Set up my printer')} onPress={() => router.push('/printers')} />
       <Button title={t('Print a test receipt')} kind="quiet" onPress={() => { void test(); }} busy={busy} />
       <ErrorText>{problem}</ErrorText>
       {note ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok }}>{note}</Text> : null}
+      {more ? (
+        <View style={{ gap: 8 }}>
+        <Soft>{mode === 'rawbt'
+          ? t('Printing straight to your thermal printer through the RawBT app.')
+          : t("Printing with the phone's print screen: it works with any printer the phone can reach (Wi-Fi, USB, or Bluetooth through the printer maker's app).")}</Soft>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Button title={t('Phone print screen')} selected={mode === 'system'} onPress={() => { void choose('system'); }} style={{ flex: 1 }} />
+          <Button title={t('Thermal printer (RawBT)')} selected={mode === 'rawbt'} onPress={() => { void choose('rawbt'); }} style={{ flex: 1 }} />
+        </View>
+        {mode === 'rawbt' ? <Soft>{t('One time: install the free RawBT app, switch your printer on, and connect it inside RawBT (Bluetooth or USB). After that, FlowXP prints to it with no questions.')}</Soft> : null}
+        {mode !== 'system' ? (
+          <View style={{ gap: 8 }}>
+            <Text style={{ fontWeight: '700', color: color.ink }}>{t('Cut the paper after each receipt')}</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Button title={t('Cut')} selected={prefs.cut} onPress={() => change({ cut: true })} style={{ flex: 1 }} />
+              <Button title={t('Do not cut')} selected={!prefs.cut} onPress={() => change({ cut: false })} style={{ flex: 1 }} />
+            </View>
+            <Text style={{ fontWeight: '700', color: color.ink }}>{t('Copies of each receipt')}</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {[1, 2, 3].map((n) => <Button key={n} title={String(n)} selected={prefs.copies === n} onPress={() => change({ copies: n })} style={{ flex: 1 }} />)}
+            </View>
+            <Text style={{ fontWeight: '700', color: color.ink }}>{t('Blank lines after the receipt')}</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {[0, 3, 5, 8].map((n) => <Button key={n} title={String(n)} selected={prefs.extraLines === n} onPress={() => change({ extraLines: n })} style={{ flex: 1 }} />)}
+            </View>
+            <Text style={{ fontWeight: '700', color: color.ink }}>{t('Open the cash drawer with each receipt')}</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Button title={t('Off')} selected={!prefs.drawer} onPress={() => change({ drawer: false })} style={{ flex: 1 }} />
+              <Button title={t('On')} selected={prefs.drawer} onPress={() => change({ drawer: true })} style={{ flex: 1 }} />
+            </View>
+          </View>
+        ) : null}
+        <Button title={t('Printers')} kind="quiet" onPress={() => router.push('/printers')} />
+        <Button title={t('Get the RawBT app')} kind="quiet" onPress={() => { void getRawBT(); }} />
+        </View>
+      ) : <Button title={t('More options')} kind="quiet" onPress={() => setMore(true)} />}
     </View>
   );
 }

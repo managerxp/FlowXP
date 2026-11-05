@@ -10,8 +10,21 @@ import { printSettings, type PrintSettings } from './taxInvoice.ts';
 /** What GET /businesses/current answers that these screens use. */
 export type BusinessRecord = {
   name: string; email: string | null; phone: string | null; address: string | null; city: string | null; state: string | null; postal_code: string | null; gstin: string | null; gst_enabled: boolean;
+  invoice_prefix?: string | null; credit_note_prefix?: string | null; debit_note_prefix?: string | null; po_prefix?: string | null;
   receipt_settings: Record<string, unknown> & { invoice_print?: Partial<PrintSettings> }; gst_settings?: Partial<GstOptions>;
 };
+
+/* Document numbers: the letters before the running number of each kind of document (INV-0001). Changing one keeps the numbering going. */
+export const NUMBER_KINDS = [['invoice_prefix', 'Invoices and bills', 'INV'], ['credit_note_prefix', 'Credit notes (sale returns)', 'CN'], ['debit_note_prefix', 'Debit notes (purchase returns)', 'DN'], ['po_prefix', 'Purchase orders', 'PO']] as const;
+export type Numbers = Record<typeof NUMBER_KINDS[number][0], string>;
+export const numbersOf = (b: Partial<Record<keyof Numbers, string | null>>): Numbers => Object.fromEntries(NUMBER_KINDS.map(([k, , d]) => [k, b[k] || d])) as Numbers;
+/** Only what changed, trimmed; null when nothing did. A blank prefix is not sent (the server keeps the old one). */
+export const numbersPatch = (before: Numbers, after: Numbers): Partial<Numbers> | null => {
+  const out: Partial<Numbers> = {};
+  for (const [k] of NUMBER_KINDS) if (after[k].trim() && after[k].trim() !== before[k]) out[k] = after[k].trim();
+  return Object.keys(out).length ? out : null;
+};
+export const numberExample = (prefix: string, fallback: string): string => `${(prefix.trim() || fallback).toUpperCase()}-0001`;
 
 export const PROFILE_FIELDS = ['name', 'phone', 'email', 'address', 'city', 'state', 'postal_code', 'gstin'] as const;
 export type ProfileKey = typeof PROFILE_FIELDS[number];
@@ -117,6 +130,7 @@ export const stateSuggestions = (typed: string): string[] => {
 
 /** Every fixed text these screens show, so the language tests can check each is translated (the screens reach t() only at run time). */
 export const SETTINGS_TEXTS: string[] = [
+  'Document numbers', 'The letters before each number. Changing one keeps the numbering going; documents already made keep their number.', 'Invoices and bills', 'Credit notes (sale returns)', 'Debit notes (purchase returns)', 'Purchase orders',
   'Business settings', 'Details, receipt, GST and invoice (owner)', 'Only the owner can change business settings.', 'Business details', 'Receipt and tax invoice details', 'What prints on receipts, and the PAN, bank details and terms a tax invoice carries.',
   'GST options', 'Enable only what applies to your business. Everything is disabled until you switch it on, and your bills stay as they are until then.', 'Invoice print', 'How your A4 and A5 invoices look.',
   'Save', 'Saved', 'Nothing changed.', 'Could not save. Check the connection and try again.', 'Optional. Only needed if you charge GST.', 'Paper width', 'Copies of each receipt', 'Blank lines after the receipt',

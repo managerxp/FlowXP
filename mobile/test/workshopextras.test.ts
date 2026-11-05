@@ -44,7 +44,7 @@ test('quick racks: the numbers, the code and the sentence', () => {
 test('the customer file: CSV with quotes, the file check and the result lines', () => {
   const rows = parseCsv('﻿Name,Phone,Address\r\n"Ravi, Motors",98765 43210,"12 ""Main"" Road"\r\nAnil,,\r\n\r\n');
   assert.deepEqual(rows, [{ Name: 'Ravi, Motors', Phone: '98765 43210', Address: '12 "Main" Road' }, { Name: 'Anil', Phone: '', Address: '' }]); assert.deepEqual(parseCsv('Name\n'), []);
-  assert.equal(importFileProblem('c.csv', 100), ''); assert.notEqual(importFileProblem('c.xlsx', 100), ''); assert.equal(importFileProblem('c.csv', 9 * 1024 * 1024), 'That file is too large');
+  assert.equal(importFileProblem('c.csv', 100), ''); assert.equal(importFileProblem('c.xlsx', 100), ''); assert.notEqual(importFileProblem('c.pdf', 100), ''); assert.equal(importFileProblem('c.csv', 9 * 1024 * 1024), 'That file is too large');
   const c = { rows: 3, to_create: 2, already_here: 1, total_errors: 0, errors: [], applied: false, created: 0 };
   assert.equal(checkLine(c), '2 to add, 1 already here.'); assert.equal(canImport(c), true); assert.equal(canImport({ ...c, total_errors: 1 }), false); assert.equal(canImport({ ...c, applied: true, created: 2 }), false); assert.equal(canImport(null), false);
   assert.equal(checkLine({ ...c, applied: true, created: 2 }), '2 customers were added.');

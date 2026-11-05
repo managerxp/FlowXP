@@ -28,4 +28,4 @@ export const hashToken = (token: string): string => createHash('sha256').update(
 export const DUMMY_HASH = await hashPassword('flowbook-dummy-password');
 
 export const passwordProblem = (password: string): string | null =>
-  password.length < 10 ? 'use at least 10 characters' : password.length > 200 ? 'that password is too long' : null;
+  password.length < 8 ? 'use at least 8 characters' : password.length > 200 ? 'that password is too long' : null;

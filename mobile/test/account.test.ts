@@ -14,7 +14,7 @@ test('the form says what is wrong, one thing at a time, before anything is sent'
   assert.match(signupProblem({ ...good, email: 'asha@' }), /email/);
   assert.match(signupProblem({ ...good, phone: '12' }), /mobile/);
   assert.equal(signupProblem({ ...good, phone: '' }), '', 'the mobile number is optional');
-  assert.match(signupProblem({ ...good, password: 'short' }), /10 characters/);
+  assert.match(signupProblem({ ...good, password: 'short' }), /8 characters/);
   assert.match(signupProblem({ ...good, businessName: '' }), /business/);
   assert.match(signupProblem({ ...good, businessType: '' }), /kind of business/);
   assert.match(signupProblem({ ...good, businessType: 'BANK' }), /kind of business/);
@@ -39,7 +39,7 @@ test('common email slips are caught and mended', () => {
   assert.equal(suggestEmail('asha@example.com'), null);
   assert.equal(suggestEmail('not an email'), null);
   assert.equal(emailLooksRight('a@b.co'), true); assert.equal(emailLooksRight('a@b'), false);
-  assert.equal(passwordProblem('1234567890'), ''); assert.notEqual(passwordProblem('123456789'), '');
+  assert.equal(passwordProblem('12345678'), ''); assert.notEqual(passwordProblem('1234567'), '');
   assert.equal(phoneProblem('+91 98450 00001'), '');
 });
 
@@ -57,7 +57,7 @@ test('a new password needs the email, the code, ten characters and the same pass
   assert.equal(resetProblem('a@example.com', '123456', 'longenough1', 'longenough1'), '');
   assert.match(resetProblem('a', '123456', 'longenough1', 'longenough1'), /email/);
   assert.match(resetProblem('a@example.com', '1', 'longenough1', 'longenough1'), /6-digit/);
-  assert.match(resetProblem('a@example.com', '123456', 'short', 'short'), /10 characters/);
+  assert.match(resetProblem('a@example.com', '123456', 'short', 'short'), /8 characters/);
   assert.match(resetProblem('a@example.com', '123456', 'longenough1', 'longenough2'), /not the same/);
   assert.deepEqual(resetBody(' a@example.com ', '123 456', 'longenough1'), { email: 'a@example.com', code: '123456', password: 'longenough1' });
 });

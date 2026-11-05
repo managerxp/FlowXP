@@ -54,6 +54,8 @@ const Toolbar = ({ back, width, setWidth, children }) => (
   </div>
 );
 
+/* name takes the rest; Qty, Rate and Amount are fixed-width columns */
+const ROWS = 'grid-cols-[1fr_auto_auto_auto] gap-x-2';
 const Rule = () => <div className="my-2 border-t border-dashed border-ink-400" />;
 const Row = ({ left, right, bold }) => <div className={`flex justify-between gap-2 ${bold ? 'font-bold' : ''}`}><span>{left}</span><span className="shrink-0">{right}</span></div>;
 const stamp = (iso) => new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -95,8 +97,11 @@ export const ReceiptPage = () => {
   const outlet = invoice.outlet;
   const gstin = (outlet?.gstin || biz.gstin);
   const address = [outlet?.address || biz.address, outlet?.city || biz.city].filter(Boolean).join(', ');
-  const taxRows = [['CGST', invoice.cgst], [stateTaxName(outlet?.state || biz.state), invoice.sgst], ['IGST', invoice.igst]].filter(([, v]) => v > 0);
+  const taxRows = [['CGST', invoice.cgst], [invoice.tax_name || stateTaxName(outlet?.state || biz.state), invoice.sgst], ['IGST', invoice.igst]].filter(([, v]) => v > 0);
   const handDiscount = invoice.discount - invoice.coupon_discount;
+  const showTax = s.show_tax_lines !== false;
+  const totalQty = invoice.items.reduce((n, i) => n + i.quantity, 0);
+  const saved = invoice.items.reduce((n, i) => n + (i.discount || 0), 0) + invoice.discount;
 
   return (
     <div>
@@ -119,14 +124,22 @@ export const ReceiptPage = () => {
         {invoice.customer_name && <p>Guest: {invoice.customer_name}{invoice.customer_phone ? ` (${invoice.customer_phone})` : ''}</p>}
         {invoice.status === 'CANCELLED' && <p className="mt-1 text-center text-sm font-bold">*** CANCELLED ***</p>}
         <Rule />
-        <Row left="Item" right="Amount" bold />
+        {/* Item / Qty / Rate / Amount, the same table as the thermal printer's receipt */}
+        <div className={`grid ${ROWS} font-bold`}><span>Item</span><span className="text-right">Qty</span><span className="text-right">Rate</span><span className="text-right">Amount</span></div>
+        <Rule />
         {invoice.items.map((i) => (
-          <div key={i.item_id} className="mt-1">
-            <p>{i.description}</p>
-            {salon?.lines.find((l) => l.item_id === i.item_id)?.staff_name && <p className="text-[0.9em]">{`  by ${salon.lines.find((l) => l.item_id === i.item_id).staff_name}`}</p>}
-            <Row left={`  ${i.quantity} × ${i.unit_price.toFixed(2)}`} right={i.line_total.toFixed(2)} />
+          <div key={i.item_id} className={`mt-1 grid ${ROWS}`}>
+            <span className="break-words">{i.description}
+              {salon?.lines.find((l) => l.item_id === i.item_id)?.staff_name && <span className="block text-[0.9em]">{`by ${salon.lines.find((l) => l.item_id === i.item_id).staff_name}`}</span>}
+              {s.show_hsn === true && i.hsn && <span className="block text-[0.9em]">HSN {i.hsn}</span>}
+              {i.discount > 0 && <span className="block text-[0.9em]">Discount -{i.discount.toFixed(2)}</span>}</span>
+            <span className="text-right">{i.quantity}{i.unit && i.unit.length <= 3 ? ` ${i.unit}` : ''}</span>
+            <span className="text-right">{i.unit_price.toFixed(2)}</span>
+            <span className="text-right">{(showTax ? i.line_total - (i.tax_amount || 0) - (i.cess || 0) : i.line_total).toFixed(2)}</span>
           </div>
         ))}
+        <Rule />
+        <Row left={`Items: ${invoice.items.length}`} right={`Total Qty: ${totalQty}`} />
         {salon?.gift_cards.map((g) => <p key={g.code} className="mt-1 font-bold">Gift card {g.code} · {g.amount.toFixed(2)}</p>)}
         <Rule />
         {s.show_tax_lines !== false && <><Row left="Subtotal" right={invoice.subtotal.toFixed(2)} />
@@ -138,6 +151,7 @@ export const ReceiptPage = () => {
         {invoice.round_off !== 0 && <Row left="Round off" right={`${invoice.round_off > 0 ? '+' : '-'}${Math.abs(invoice.round_off).toFixed(2)}`} />}
         <Rule />
         <div className="text-sm"><Row left="TOTAL" right={formatCurrency(invoice.total)} bold /></div>
+        {saved > 0 && <p className="mt-1">You saved Rs {saved.toFixed(2)}</p>}
         {invoice.payments.map((p) => <Row key={p.payment_id} left={`Paid (${humanize(p.method)})`} right={p.amount.toFixed(2)} />)}
         {invoice.refunded > 0 && <Row left="Refunded" right={`-${invoice.refunded.toFixed(2)}`} />}
         {unpaid && <Row left="BALANCE DUE" right={invoice.balance_due.toFixed(2)} bold />}

@@ -59,8 +59,9 @@ export const poProblem = (supplierId: number | null, lines: BLine[]): string => 
   if (live.some((l) => l.unit_cost.trim() !== '' && !(Number(l.unit_cost) >= 0))) return 'A cost is not a number';
   return '';
 };
-export const poBody = (supplierId: number, lines: BLine[], extra: { expected?: string; notes?: string } = {}) => ({
+export const poBody = (supplierId: number, lines: BLine[], extra: { expected?: string; notes?: string; reverse?: boolean } = {}) => ({
   supplier_id: supplierId,
+  ...(extra.reverse ? { reverse_charge: true } : {}),
   items: lines.filter((l) => Number(l.quantity) > 0).map((l) => ({ product_id: l.product.product_id, quantity: Number(l.quantity), ...(l.unit_name ? { unit_name: l.unit_name } : {}), ...(l.unit_cost.trim() !== '' ? { unit_cost: Number(l.unit_cost) } : {}) })),
   ...(extra.expected?.trim() ? { expected_date: extra.expected.trim() } : {}), ...(extra.notes?.trim() ? { notes: extra.notes.trim() } : {})
 });

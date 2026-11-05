@@ -21,6 +21,7 @@ import MetricCard from '../components/MetricCard.jsx';
 import { RETAIL_TYPES } from '../lib/business.js';
 import { useSwr } from '../lib/useSwr.js';
 import { useT, T } from '../i18n/useT.js';
+import { getDevicePrefs } from '../lib/printing.js';
 import { formatDate } from '../lib/display.js';
 
 const greeting = () => {
@@ -404,6 +405,10 @@ const RecentBills = ({ bills }) => {
 
 const Setup = ({ setup }) => {
   const tr = useT();
+  // the printer is a per-computer choice (kept in this browser), so this optional step is added here and not counted in the server's progress
+  const prefs = getDevicePrefs();
+  const printerDone = prefs.printMode === 'rawbt' || (prefs.printMode === 'agent' && Boolean(prefs.agentToken) && Boolean(prefs.receiptTarget));
+  const items = [...setup.checklist, { key: 'printer', label: T('Connect your receipt printer'), done: printerDone, href: '/app/settings/business#printer-setup', optional: true }];
   return (
   <Card className="p-5 sm:p-6">
     <div className="flex items-center justify-between gap-4">
@@ -417,7 +422,7 @@ const Setup = ({ setup }) => {
       <div className="h-full rounded-full bg-brand-500 transition-[width] duration-(--duration-slow)" style={{ width: `${(setup.done_count / setup.total_count) * 100}%` }} />
     </div>
     <ul className="mt-3 divide-y divide-line">
-      {setup.checklist.map((item) => (
+      {items.map((item) => (
         <li key={item.key} className="flex items-center gap-3 py-3">
           <span aria-hidden="true" className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${item.done ? 'bg-success text-white' : 'border border-line-strong'}`}>{item.done ? '✓' : ''}</span>
           <span className={`flex-1 text-small ${item.done ? 'text-ink-500 line-through' : 'text-ink-900'}`}>

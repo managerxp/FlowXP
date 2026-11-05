@@ -5,7 +5,7 @@ import { currentBusiness, useSession, api } from '../lib/session.ts';
 import { allowed } from '../lib/access.ts';
 import { t } from '../lib/i18n.ts';
 import { Card, Msg, Panel, SetupShell, useAct } from '../lib/formKit.tsx';
-import { canImport, checkLine, errorLines, importFileProblem, parseCsv, type CustomerCheck } from '../lib/workshopExtras.ts';
+import { canImport, checkLine, errorLines, importFileProblem, parseCsv, rowsFromGrid, type CustomerCheck } from '../lib/workshopExtras.ts';
 import { Button, Line, Soft, color } from '../lib/ui.tsx';
 
 /* Customers from a file (Tally, Vyapar, Busy or Excel saved as CSV): checked first, imported only when every row is good. People already here are skipped. */
@@ -17,12 +17,18 @@ export default function CustomersImportScreen() {
 
   const choose = async () => {
     a.setError('');
-    const out = await DocumentPicker.getDocumentAsync({ type: ['text/csv', 'text/comma-separated-values', 'application/csv', 'text/plain', 'application/octet-stream'], copyToCacheDirectory: true });
+    const out = await DocumentPicker.getDocumentAsync({ type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv', 'text/comma-separated-values', 'application/csv', 'text/plain', 'application/octet-stream'], copyToCacheDirectory: true });
     if (out.canceled || !out.assets?.length) return;
     const f = out.assets[0];
     const problem = importFileProblem(f.name, f.size ?? null);
     if (problem) { a.setError(t(problem)); return; }
-    const rows = parseCsv(await (await fetch(f.uri)).text());
+    let rows: Record<string, string>[];
+    try {
+      if (/.xlsx$/i.test(f.name)) {
+        const { default: readExcel } = await import('read-excel-file/universal');
+        rows = rowsFromGrid(((await readExcel(await (await fetch(f.uri)).arrayBuffer()))[0]?.data ?? []) as unknown[][]);
+      } else rows = parseCsv(await (await fetch(f.uri)).text());
+    } catch { a.setError(t('That file has no rows. The first line must be the column names.')); return; }
     if (!rows.length) { a.setError(t('That file has no rows. The first line must be the column names.')); return; }
     setFile({ name: f.name, rows }); setCheck(null);
   };

@@ -139,7 +139,7 @@ export default function JobCardScreen() {
           <Card>
             <Field label="Customer pays"><Chips items={PAY_METHODS.map((m) => ({ id: m.id, label: t(m.label) }))} value={pay.method} onChange={(v) => setPay({ ...pay, method: v })} /></Field>
             {pay.method !== 'CREDIT' ? <Input label="Amount" hint="Blank: the whole bill" numeric value={pay.amount} onChange={(v) => setPay({ ...pay, amount: v })} max={9} /> : null}
-            <Button title="Make the bill" busy={a.busy} onPress={() => { void a.run(billProblem(pay.method, pay.amount), async () => { const out = await api.post<{ invoice: { invoice_id: number } }>(`/autoparts/jobcards/${id}/bill`, billBody(pay.method, pay.amount)); job.reload(); router.push({ pathname: '/receipt', params: { id: String(out.invoice.invoice_id) } }); }, 'Bill made'); }} />
+            <Button title="Make the bill" busy={a.busy} onPress={() => { void a.run(billProblem(pay.method, pay.amount), async () => { const out = await api.post<{ invoice: { invoice_id: number } }>(`/autoparts/jobcards/${id}/bill`, billBody(pay.method, pay.amount)); job.reload(); router.push({ pathname: '/receipt', params: { fresh: '1', id: String(out.invoice.invoice_id) } }); }, 'Bill made'); }} />
           </Card>
         ) : null}
         {garage && j.status === 'BILLED' ? (j.delivered_at ? <Soft>{t('Delivered')}</Soft> : <Button title="Hand over the vehicle" kind="quiet" busy={a.busy} onPress={() => { void a.run('', async () => { await api.post(`/autoparts/jobcards/${id}/deliver`, {}); job.reload(); }, 'Saved'); }} />) : null}

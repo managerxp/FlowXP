@@ -25,7 +25,7 @@ export const suggestEmail = (email: string): string | null => {
   return fixed ? `${m[1]}@${fixed}` : null;
 };
 /** At least ten characters, as the website asks. */
-export const passwordProblem = (password: string): string => (password.length < 10 ? 'The password needs at least 10 characters.' : '');
+export const passwordProblem = (password: string): string => (password.length < 8 ? 'The password needs at least 8 characters.' : '');
 export const phoneProblem = (phone: string): string => (phone.trim() && !/^[+]?[\d\s-]{8,15}$/.test(phone.trim()) ? 'Check the mobile number.' : '');
 
 /** What is wrong with the form, first thing first, or an empty string. */

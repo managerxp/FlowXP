@@ -232,7 +232,7 @@ test('spending uses the oldest points first, and respects stock and the minimum'
   await rules(G, { visit_points: 0, min_redeem_points: 20 });
   const m = await addMember(pool, G, { name: 'Spender' });
   await addMembership(pool, G, m, { start: day(TODAY, -5), end: day(TODAY, 300) });
-  await pool.query(`INSERT INTO gym_points_ledger (business_id, member_id, kind, points, remaining, expires_on, reason, source_type, source_ref) VALUES ($1,$2,'EARN',50,50,'2026-12-01','VISIT','TEST','a'), ($1,$2,'EARN',50,50,'2026-11-01','VISIT','TEST','b'), ($1,$2,'EARN',50,50,NULL,'VISIT','TEST','c')`, [G.businessId, m]);
+  await pool.query(`INSERT INTO gym_points_ledger (business_id, member_id, kind, points, remaining, expires_on, reason, source_type, source_ref) VALUES ($1,$2,'EARN',50,50,'${day(TODAY, 60)}','VISIT','TEST','a'), ($1,$2,'EARN',50,50,'${day(TODAY, 30)}','VISIT','TEST','b'), ($1,$2,'EARN',50,50,NULL,'VISIT','TEST','c')`, [G.businessId, m]);
   const cheap = ok(await G.call(api.rewardCreate, { body: { name: 'Towel', points_cost: 10, kind: 'ITEM' } }), 201);
   const shake = ok(await G.call(api.rewardCreate, { body: { name: 'Shake', points_cost: 60, kind: 'ITEM', stock: 1 } }), 201);
   assert.equal((await G.call(api.redeem, { params: { id: m }, body: { reward_id: cheap.reward_id } })).code, 409, 'below the minimum to spend');

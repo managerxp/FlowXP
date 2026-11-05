@@ -150,7 +150,7 @@ test('offline, the sale is kept with the SAME body (kitchen flag included); when
   assert.equal(entry.body.send_to_kitchen, true, 'the retry must equal the first attempt');
   assert.equal(entry.preview.lines[0].name, 'Cafe Latte (Regular, Oat, Extra shot)'); assert.equal(entry.preview.lines[0].unitPricePaise, 16000 + 2000 + 4000 + 4000);
   const pending = pendingReceiptText(entry, 'Brew & Bloom');
-  assert.ok(pending.includes('Cafe Latte (Regular, Oat, Extra shot)') && pending.includes('No kitchen ticket was made'));
+  assert.ok(pending.includes('Latte') && pending.includes('Oat') && pending.includes('No kitchen ticket was made'));
   server.state.down = false;
   assert.deepEqual(await outbox.flush(sendEntry(server.api)), { sent: 1, failed: 0, stopped: null });
   assert.equal(server.state.sales[0].headers['X-Offline-Sale'], '1');

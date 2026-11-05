@@ -8,6 +8,9 @@ import { goBack } from '../lib/nav.ts';
 import { useLoad } from '../lib/useLoad.ts';
 import { addBLine, dropBLine, factorOf, lineCostRupees, orderEstimatePaise, poBody, poProblem, setBCost, setBQty, setBUnit, type BLine, type BuyProduct, type PO, type Supplier } from '../lib/purchasing.ts';
 import { qty, rupees, toPaise } from '../lib/money.ts';
+import { gstView } from '../lib/gst.ts';
+import { currentBusiness, useSession } from '../lib/session.ts';
+import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import { SearchBox } from '../lib/SearchBox.tsx';
 import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
@@ -23,6 +26,8 @@ export default function NewPurchaseOrder() {
   const [lines, setLines] = useState<BLine[]>([]);
   const [expected, setExpected] = useState('');
   const [notes, setNotes] = useState('');
+  const canReverse = gstView(currentBusiness(useSession())).reverseCharge;   // only when the owner switched it on in the GST options
+  const [reverse, setReverse] = useState(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState('');
   const [key, setKey] = useState(newKey());   // one key for this order: a double tap makes one order
@@ -41,7 +46,7 @@ export default function NewPurchaseOrder() {
     if (bad) return setProblem(bad);
     setBusy(true); setProblem('');
     try {
-      const po = await api.post<PO>('/wholesale/purchase-orders', poBody(supplierId!, lines, { expected, notes }), { idempotencyKey: key });
+      const po = await api.post<PO>('/wholesale/purchase-orders', poBody(supplierId!, lines, { expected, notes, reverse: canReverse && reverse }), { idempotencyKey: key });
       router.replace({ pathname: '/purchase-order/[id]', params: { id: String(po.po_id) } });
     } catch (e) { setProblem(e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'Could not save the order'); }
     finally { setBusy(false); }
@@ -84,6 +89,7 @@ export default function NewPurchaseOrder() {
             <View style={{ padding: 16, gap: 10 }}>
               <Soft>{`About ${money(orderEstimatePaise(lines) / 100)} before GST`}</Soft>
               <TextInput style={s.input} value={expected} onChangeText={setExpected} placeholder="Expected by, like 2026-10-20 (optional)" accessibilityLabel="Expected by" autoCapitalize="none" />
+              {canReverse ? <Button title={t('Tax payable on reverse charge')} kind="quiet" selected={reverse} onPress={() => setReverse((v) => !v)} /> : null}
               <TextInput style={s.input} value={notes} onChangeText={setNotes} placeholder="A note for the supplier (optional)" accessibilityLabel="Note" />
               <ErrorText>{problem}</ErrorText>
               <Button title="Save the order" onPress={() => { void save(); }} busy={busy} disabled={Boolean(bad)} />

@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { checkPassword } from '../src/utils/validate.js';
 import { isFresh } from '../src/modules/payments/cashfree.js';
 
-test('passwords: 10 or more, and not an obvious one', () => {
-  assert.notEqual(checkPassword('short123'), null);
+test('passwords: 8 or more, and not an obvious one', () => {
+  assert.notEqual(checkPassword('short12'), null);
   assert.notEqual(checkPassword('Password123'), null);
   assert.notEqual(checkPassword('1234567890'), null);
   assert.notEqual(checkPassword('aaaaaaaaaaaa'), null);

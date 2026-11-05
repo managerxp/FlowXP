@@ -17,7 +17,7 @@ const DEFAULTS = {
   // Silent printing through the print agent on this computer (see print-agent/README.md)
   printMode: 'browser', agentUrl: 'http://127.0.0.1:9101', agentToken: '', receiptTarget: '', kotTarget: '', openDrawer: false,
   // When a silent print fails, open the browser print window so the receipt is not lost (off: just say it failed)
-  dialogFallback: true
+  dialogFallback: false
 };
 
 export const getDevicePrefs = () => {

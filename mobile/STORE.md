@@ -102,7 +102,7 @@ What the app and server already do, and what only you can do. "Checked" means it
 
 | Policy area | State |
 |---|---|
-| **Account creation** | In the app: Start your free trial (name, email, optional mobile, password of 10 or more characters, business name and kind, agree to Terms and Privacy Policy), then a 6-digit email code. Same server rules as the website. Checked live: `mobile/scripts/signup-live.mts`. |
+| **Account creation** | In the app: Start your free trial (name, email, optional mobile, password of 8 or more characters, business name and kind, agree to Terms and Privacy Policy), then a 6-digit email code. Same server rules as the website. Checked live: `mobile/scripts/signup-live.mts`. |
 | **Account deletion (in the app)** | Settings, Delete my account: password (and the sign-in code if two-step sign-in is on). The only owner of a business is told to hand it over or leave a request that support follows up. Also a website form for people who cannot sign in: https://flowxp.in/delete-account. **Enter this URL in the Play Console under "Data deletion".** |
 | **Problem reports** | "Report a problem" (Settings, More, the error screen) sends what the person types plus the app version, phone type, and their name, email and business so FlowXP can reply. Add this to the privacy policy and to the Data safety form (Personal info and App info and performance: collected, required for the feature, not shared). Kept 180 days. Crash reports stay anonymous and are kept 30 days. |
 | **Privacy policy** | https://flowxp.in/privacy, linked on the sign-in screen, the sign-up screen and in Settings. Must describe exactly what the Data safety form says (below), including crash reports, the push address, optional location and the AI assistant. |

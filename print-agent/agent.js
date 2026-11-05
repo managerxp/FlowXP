@@ -55,11 +55,13 @@ const capture = (cmd, args) => new Promise((resolve, reject) => {
 });
 
 /** The printers installed on this computer, as FlowXP targets: [{ name, target, port }]. USB and Bluetooth printers both show up here once installed. */
+/** Windows' built-in "printers" that only make files: never the till printer, so they are left out of the list. */
+const VIRTUAL = /^(Fax|Microsoft (Print to PDF|XPS Document Writer)|OneNote|Send To OneNote|Adobe PDF)/i;
 export const listPrinters = async () => {
   if (process.platform === 'win32') {
     const json = await capture('powershell', ['-NoProfile', '-NonInteractive', '-Command', 'Get-Printer | Select-Object Name,PortName | ConvertTo-Json -Compress']);
     const rows = [].concat(json.trim() ? JSON.parse(json) : []);
-    const queues = rows.filter((r) => NAME_OK.test(r.Name)).map((r) => ({ name: r.Name, port: r.PortName, target: `winprint://${encodeURIComponent(r.Name)}` }));
+    const queues = rows.filter((r) => NAME_OK.test(r.Name) && !VIRTUAL.test(r.Name)).map((r) => ({ name: r.Name, port: r.PortName, target: `winprint://${encodeURIComponent(r.Name)}` }));
     // paired Bluetooth devices that have an outgoing serial port: a printer with no driver still shows up here. The port belongs to the device whose address is in its id.
     const bt = await capture('powershell', ['-NoProfile', '-NonInteractive', '-Command',
       `$ports = Get-PnpDevice -Class Ports -PresentOnly; Get-PnpDevice -Class Bluetooth -PresentOnly | Where-Object { $_.InstanceId -match '^BTHENUM\\\\DEV_([0-9A-F]{12})' } | ForEach-Object { $mac = $Matches[1]; $c = $ports | Where-Object { $_.InstanceId -match "$mac" + '_C0' } | Select-Object -First 1; if ($c -and $c.FriendlyName -match '\\((COM\\d+)\\)') { [pscustomobject]@{ Name = $_.FriendlyName; Port = $Matches[1] } } } | ConvertTo-Json -Compress`]).catch(() => '');

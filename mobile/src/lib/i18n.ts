@@ -73,7 +73,7 @@ export const HI: Record<string, string> = {
   'Why? (optional, for your records)': 'क्यों? (वैकल्पिक, आपके रिकॉर्ड के लिए)',
   'Add a part: scan, or type a name or number': 'पार्ट जोड़ें: स्कैन करें, या नाम या नंबर लिखें', 'Another part': 'दूसरा पार्ट', 'Bin code': 'बिन कोड', 'Bin code, like WH-A-R12-B07': 'बिन कोड, जैसे WH-A-R12-B07', 'Book the receipt': 'रसीद दर्ज करें', 'Cost each, in rupees': 'प्रति नग लागत, रुपये में', 'Find parts for a vehicle': 'गाड़ी के पार्ट खोजें', 'Look': 'देखें', 'Move between bins': 'बिन के बीच शिफ्ट करें', 'Part, like brake pad': 'पार्ट, जैसे ब्रेक पैड', 'Put away': 'शेल्फ पर रखें', 'Scan the bin label': 'बिन का लेबल स्कैन करें', 'Scan the label': 'लेबल स्कैन करें', 'See the Put away list': 'शेल्फ पर रखने की सूची देखें', 'Supplier invoice number (the same one cannot be booked twice)': 'सप्लायर का इनवॉइस नंबर (एक ही दो बार दर्ज नहीं हो सकता)', 'The part: name, code or part number': 'पार्ट: नाम, कोड या पार्ट नंबर', 'Year': 'साल', 'Find a part': 'पार्ट खोजें', 'Parts for a vehicle': 'गाड़ी के पार्ट', 'Racks and bins': 'रैक और बिन', 'Receive parts': 'पार्ट रिसीव करें',
   'Cancel the session': 'सेशन रद्द करें', 'It is them, let them in': 'यही हैं, अंदर आने दें', 'Pause': 'रोकें', 'Scan a pass': 'पास स्कैन करें', 'Start': 'शुरू करें', 'Start the timer': 'टाइमर शुरू करें', 'Started by mistake': 'गलती से शुरू हुआ', 'Stop': 'बंद करें', 'Undo stop': 'बंद करना वापस लें', 'Lounge board': 'लाउंज बोर्ड', 'Gym front desk': 'जिम फ्रंट डेस्क',
-  'Ask us to delete it instead': 'हमसे हटवाएँ', 'Back to sign in': 'साइन इन पर वापस', 'Business name': 'व्यवसाय का नाम', 'Change my password': 'मेरा पासवर्ड बदलें', 'Code from your authenticator app, or a recovery code': 'ऑथेंटिकेटर ऐप का कोड, या रिकवरी कोड', 'Create my account': 'मेरा अकाउंट बनाएँ', 'Go to sign in': 'साइन इन पर जाएँ', 'I already have an account': 'मेरा अकाउंट पहले से है', 'New password again': 'नया पासवर्ड फिर से', 'New password, at least 10 characters': 'नया पासवर्ड, कम से कम 10 अक्षर', 'Password, at least 10 characters': 'पासवर्ड, कम से कम 10 अक्षर', 'Send a new code': 'नया कोड भेजें', 'Send me a code': 'मुझे कोड भेजें', 'Start your 7-day free trial': '7 दिन का मुफ़्त ट्रायल शुरू करें', 'Verify and continue': 'सत्यापित करें और आगे बढ़ें', 'Wrong email? Go back': 'गलत ईमेल? वापस जाएँ', 'Your name': 'आपका नाम', 'Your password': 'आपका पासवर्ड',
+  'Ask us to delete it instead': 'हमसे हटवाएँ', 'Back to sign in': 'साइन इन पर वापस', 'Business name': 'व्यवसाय का नाम', 'Change my password': 'मेरा पासवर्ड बदलें', 'Code from your authenticator app, or a recovery code': 'ऑथेंटिकेटर ऐप का कोड, या रिकवरी कोड', 'Create my account': 'मेरा अकाउंट बनाएँ', 'Go to sign in': 'साइन इन पर जाएँ', 'I already have an account': 'मेरा अकाउंट पहले से है', 'New password again': 'नया पासवर्ड फिर से', 'New password, at least 8 characters': 'नया पासवर्ड, कम से कम 8 अक्षर', 'Password, at least 8 characters': 'पासवर्ड, कम से कम 8 अक्षर', 'Send a new code': 'नया कोड भेजें', 'Send me a code': 'मुझे कोड भेजें', 'Start your 7-day free trial': '7 दिन का मुफ़्त ट्रायल शुरू करें', 'Verify and continue': 'सत्यापित करें और आगे बढ़ें', 'Wrong email? Go back': 'गलत ईमेल? वापस जाएँ', 'Your name': 'आपका नाम', 'Your password': 'आपका पासवर्ड',
   'For example: I tapped Cash on a bill of 3 items and the screen froze.': 'जैसे: 3 आइटम के बिल पर कैश दबाया और स्क्रीन अटक गई।', 'Machine-translated and not yet checked by a native speaker. Anything not translated yet is shown in English.': 'मशीन से अनुवादित, अभी किसी मूल वक्ता ने नहीं जाँचा। जो अनुवादित नहीं है वह अंग्रेज़ी में दिखता है।', 'Report a problem': 'समस्या बताएँ', 'Send the report': 'रिपोर्ट भेजें', 'No internet': 'इंटरनेट नहीं है', 'This needs a connection. Check your Wi-Fi or mobile data, then try again. Bills you make are saved on this phone and sent later.': 'इसके लिए इंटरनेट चाहिए। वाई-फ़ाई या मोबाइल डेटा जाँचें, फिर दोबारा कोशिश करें। आपके बने बिल फ़ोन में सुरक्षित रहते हैं और बाद में भेजे जाते हैं।', 'Starting FlowXP': 'FlowXP शुरू हो रहा है',
   'Give it anyway': 'फिर भी दे दें', 'The room is not clean yet': 'कमरा अभी साफ़ नहीं है', 'Check in anyway': 'फिर भी चेक-इन करें', 'Wait': 'रुकें', 'Move guest': 'मेहमान को शिफ्ट करें', 'New booking': 'नई बुकिंग', 'Walk-in': 'वॉक-इन', 'Save the booking': 'बुकिंग सेव करें', 'Check them in': 'चेक-इन करें', 'Add a charge': 'चार्ज जोड़ें', 'Add to the bill': 'बिल में जोड़ें', 'Move to another room': 'दूसरे कमरे में भेजें', 'Mark as no-show': 'नो-शो मार्क करें', 'Cancel the booking': 'बुकिंग रद्द करें', 'Void the charge': 'चार्ज हटाएँ', 'Guest name, or search a guest you know': 'मेहमान का नाम, या जाना-पहचाना मेहमान खोजें', 'Advance in rupees (optional)': 'एडवांस रुपये में (वैकल्पिक)', 'Notes (optional)': 'नोट्स (वैकल्पिक)', 'Why?': 'क्यों?', 'Why is it cancelled?': 'रद्द क्यों हुई?', 'Why? (optional)': 'क्यों? (वैकल्पिक)',
  'Change': 'बदलें', 'GST % (0 if none)': 'जीएसटी % (नहीं तो 0)', 'Price in rupees, each': 'कीमत रुपये में, प्रति नग', 'Quantity': 'मात्रा', 'What is it for? (Laundry, minibar, taxi)': 'किसलिए है? (लॉन्ड्री, मिनीबार, टैक्सी)',
@@ -659,7 +659,7 @@ export const HI: Record<string, string> = {
   'Password and devices': 'पासवर्ड और डिवाइस',
   'Current password': 'मौजूदा पासवर्ड',
   'New password': 'नया पासवर्ड',
-  'At least 10 characters': 'कम से कम 10 अक्षर',
+  'At least 8 characters': 'कम से कम 8 अक्षर',
   'Password changed. Your other devices were signed out.': 'पासवर्ड बदल गया। आपके बाकी डिवाइस साइन आउट हो गए।',
   'Lost a phone, or used a shared computer? End every other session at once.': 'फ़ोन खो गया, या साझा कंप्यूटर इस्तेमाल किया? बाकी हर सेशन एक साथ खत्म करें।',
   'Sign out everywhere else': 'बाकी हर जगह से साइन आउट करें',
@@ -709,7 +709,7 @@ export const HI: Record<string, string> = {
   'Enter your password and a code.': 'अपना पासवर्ड और एक कोड डालें।',
   'Change password': 'पासवर्ड बदलें',
   'Enter your current password.': 'अपना मौजूदा पासवर्ड डालें।',
-  'The new password needs at least 10 characters.': 'नए पासवर्ड में कम से कम 10 अक्षर होने चाहिए।',
+  'The new password needs at least 8 characters.': 'नए पासवर्ड में कम से कम 8 अक्षर होने चाहिए।',
   'Choose a different password from the current one.': 'मौजूदा पासवर्ड से अलग पासवर्ड चुनें।',
   'Staff at the till ask for this PIN to cancel a bill or give a large discount.': 'बिल रद्द करने या बड़ी छूट देने के लिए काउंटर का स्टाफ़ यह PIN माँगता है।',
   'Remove PIN': 'PIN हटाएँ',
@@ -1613,6 +1613,86 @@ export const HI: Record<string, string> = {
   'Forecast': 'पूर्वानुमान',
   'Date': 'तारीख़',
   'OK': 'ठीक है',
+  'Your accounts at a glance': 'आपके खाते एक नज़र में',
+  'FlowBook': 'FlowBook',
+  'Your accounts at a glance. Make invoices and file GST on the website.': 'आपके खाते एक नज़र में। इनवॉइस बनाना और GST फ़ाइल करना वेबसाइट पर करें।',
+  'Customers owe you': 'ग्राहकों पर आपका बकाया',
+  'of which overdue': 'जिसमें से देय तारीख़ निकल चुकी',
+  'You owe vendors': 'आप पर विक्रेताओं का बकाया',
+  'Profit this year': 'इस साल का मुनाफ़ा',
+  'Latest invoices': 'हाल के इनवॉइस',
+  'No invoices yet. Create your first one on the website.': 'अभी कोई इनवॉइस नहीं। पहला वेबसाइट पर बनाएँ।',
+  'Your books need a look:': 'आपके खातों को देखने की ज़रूरत है:',
+  'Books check: every figure agrees with its documents.': 'खातों की जाँच: हर आँकड़ा अपने दस्तावेज़ों से मेल खाता है।',
+  'FlowBook is not switched on for this business.': 'इस बिज़नेस के लिए FlowBook चालू नहीं है।',
+  'Document numbers': 'दस्तावेज़ नंबर',
+  'The letters before each number. Changing one keeps the numbering going; documents already made keep their number.': 'हर नंबर से पहले के अक्षर। बदलने पर गिनती चलती रहती है; बन चुके दस्तावेज़ अपना नंबर रखते हैं।',
+  'Invoices and bills': 'इनवॉइस और बिल',
+  'Credit notes (sale returns)': 'क्रेडिट नोट (बिक्री वापसी)',
+  'Debit notes (purchase returns)': 'डेबिट नोट (खरीद वापसी)',
+  'Purchase orders': 'खरीद ऑर्डर',
+
+  'Other income': 'अन्य आय',
+
+  'Interest, rent received, scrap: money in that is not from a bill': 'ब्याज, मिला किराया, कबाड़: बिक्री के अलावा आया पैसा',
+
+  'Add income': 'आय जोड़ें',
+
+  'Remove this income?': 'यह आय हटाएँ?',
+
+  'It is taken off your income.': 'यह आपकी आय से हट जाएगी।',
+
+  'No income in this time. Tap Add income when you receive money that is not from a bill.': 'इस अवधि में कोई आय नहीं। बिक्री के अलावा पैसा मिले तो आय जोड़ें दबाएँ।',
+
+  'Interest': 'ब्याज',
+
+  'Rent received': 'मिला किराया',
+
+  'Refund received': 'रिफ़ंड मिला',
+
+  'Choose what it was for': 'चुनें यह किसलिए था',
+
+  'Enter the amount': 'राशि लिखें',
+
+  'Received by': 'किस तरह मिला',
+
+  'Reviews': 'समीक्षाएँ',
+
+  'What customers said after their bill': 'बिल के बाद ग्राहकों ने क्या कहा',
+
+  'Average {avg} out of 5, from {n} ratings shown.': 'औसत 5 में से {avg}, दिखाई गई {n} रेटिंग से।',
+
+  'No feedback yet. It appears here once a customer rates their bill.': 'अभी कोई फ़ीडबैक नहीं। ग्राहक के बिल को रेट करते ही यहाँ दिखेगा।',
+
+  'A customer': 'एक ग्राहक',
+
+  'No comment left.': 'कोई टिप्पणी नहीं छोड़ी।',
+
+  'Replied': 'जवाब दिया गया',
+
+  'Write a reply, or let Flow AI draft one': 'जवाब लिखें, या Flow AI से ड्राफ़्ट करवाएँ',
+
+  'Draft with Flow AI': 'Flow AI से ड्राफ़्ट करें',
+
+  'Drafting…': 'ड्राफ़्ट हो रहा है…',
+
+  'Send reply': 'जवाब भेजें',
+
+  'Reply sent': 'जवाब भेज दिया',
+
+  'Write a reply first': 'पहले जवाब लिखें',
+
+  'Keep the reply under 1000 characters': 'जवाब 1000 अक्षरों से कम रखें',
+
+  'Set up my printer': 'मेरा प्रिंटर सेट करें',
+
+  'More options': 'और विकल्प',
+
+  'Printing to {name}.': '{name} पर प्रिंट हो रहा है।',
+
+  'No thermal printer set up yet.': 'अभी कोई थर्मल प्रिंटर सेट नहीं है।',
+
+  'Take the UPI payment, then tap the button below. The bill prints by itself.': 'UPI भुगतान लें, फिर नीचे का बटन दबाएँ। बिल अपने आप प्रिंट हो जाएगा।',
 
   'Receipt printed': 'रसीद प्रिंट हो गई',
 
@@ -2928,7 +3008,7 @@ export const HI: Record<string, string> = {
   'Choose the customer file': 'ग्राहकों की फ़ाइल चुनें',
   'Check the file': 'फ़ाइल जाँचें',
   'Import the customers': 'ग्राहक आयात करें',
-  'Choose a CSV file. In Excel, use Save as, CSV.': 'CSV फ़ाइल चुनें। Excel में Save as, CSV इस्तेमाल करें।',
+  'Choose a CSV or Excel (.xlsx) file.': 'CSV या Excel (.xlsx) फ़ाइल चुनें।',
   'That file is too large': 'वह फ़ाइल बहुत बड़ी है',
   '{n} rows have a problem. Fix them in the file and choose it again.': '{n} पंक्तियों में गड़बड़ी है। फ़ाइल में ठीक करें और दोबारा चुनें।',
   '{n} customers were added.': '{n} ग्राहक जोड़े गए।',

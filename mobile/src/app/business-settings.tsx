@@ -7,7 +7,7 @@ import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import {
-  ACCENTS, COPY_LABELS, OPTION_ROWS, PROFILE_FIELDS, SHOW_OPTIONS, TOGGLES, gstOf, gstPatch, printOf, printPatch, profileOf, profilePatch, receiptOf, receiptPatch, stateSuggestions,
+  ACCENTS, COPY_LABELS, NUMBER_KINDS, OPTION_ROWS, PROFILE_FIELDS, SHOW_OPTIONS, TOGGLES, gstOf, gstPatch, numberExample, numbersOf, numbersPatch, printOf, printPatch, profileOf, profilePatch, receiptOf, receiptPatch, stateSuggestions,
   type BusinessRecord, type Gst, type Profile, type Receipt
 } from '../lib/bizSettings.ts';
 import type { GstOptions } from '../lib/gst.ts';
@@ -119,6 +119,21 @@ const GstCard = ({ rec, reload }: { rec: BusinessRecord; reload: () => Promise<v
   );
 };
 
+const NumbersCard = ({ rec, reload }: { rec: BusinessRecord; reload: () => Promise<void> }) => {
+  const before = numbersOf(rec);
+  const [n, setN] = useState(before);
+  return (
+    <Card title="Document numbers" hint="The letters before each number. Changing one keeps the numbering going; documents already made keep their number." save={async () => { const d = numbersPatch(before, n); if (!d) return t('Nothing changed.'); await patch(d); await reload(); return null; }}>
+      {NUMBER_KINDS.map(([k, label, fallback]) => (
+        <View key={k}>
+          <TextField label={label} value={n[k]} onChange={(v) => setN((o) => ({ ...o, [k]: v }))} max={12} caps />
+          <Soft>{numberExample(n[k], fallback)}</Soft>
+        </View>
+      ))}
+    </Card>
+  );
+};
+
 const PrintCard = ({ rec, reload }: { rec: BusinessRecord; reload: () => Promise<void> }) => {
   const before = printOf(rec);
   const [p, setP] = useState<PrintSettings>(before);
@@ -167,6 +182,7 @@ export default function BusinessSettingsScreen() {
             <ReceiptCard key={`r${version}`} rec={rec} reload={reload} />
             <GstCard key={`g${version}`} rec={rec} reload={reload} />
             <PrintCard key={`p${version}`} rec={rec} reload={reload} />
+            <NumbersCard key={`n${version}`} rec={rec} reload={reload} />
           </ScrollView>
         ) : null}
       </Page>

@@ -10,10 +10,11 @@
  * as a UPI QR sticker taped to the counter.
  */
 import { useEffect, useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { PageHeader, Card, Field, Input, Select, Textarea, Button, Alert, useToast, PageLoader } from '../components/ui.jsx';
-import { agentPrinters, getDevicePrefs, pairAgent, RAWBT_STORE, setDevicePref, testPrint } from '../lib/printing.js';
+import { agentPrinters, agentStatus, getDevicePrefs, pairAgent, RAWBT_STORE, setDevicePref, testPrint } from '../lib/printing.js';
 import { COUNTRIES, regionsFor, subdivisionLabel } from '../lib/states.js';
 import PincodeHint from '../components/PincodeHint.jsx';
 import InvoicePrintSettings from './InvoicePrintSettings.jsx';
@@ -128,13 +129,27 @@ const SilentPrinting = () => {
   );
   const connect = async (quiet = false) => {
     setBusy(true); setResult(null);
-    try { set('agentToken', await pairAgent(p.agentUrl)); setResult({ ok: true, message: tr('Connected to the print agent.') }); }
+    try { const token = await pairAgent(p.agentUrl); set('agentToken', token); setReady(true); setFound(await agentPrinters({ ...p, agentToken: token })); setResult({ ok: true, message: tr('Connected to the print agent.') }); }
     catch (caught) { if (!quiet) setResult({ ok: false, message: caught.message }); }
     finally { setBusy(false); }
   };
-  // switching silent printing on with no token yet: try to pair by itself
-  useEffect(() => { if (p.printMode === 'agent' && !p.agentToken) connect(true); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [p.printMode]);
+  useEffect(() => { if (window.location.hash === '#printer-setup') document.getElementById('printer-setup')?.scrollIntoView(); }, []);
   const [found, setFound] = useState(null);
+  const [ready, setReady] = useState(false);   // is the print helper on this computer answering?
+  // choosing this computer: pair by itself, check the helper answers and list the printers, so the owner only has to pick one
+  useEffect(() => {
+    if (p.printMode !== 'agent') return;
+    (async () => {
+      let prefs = p;
+      try {
+        if (!p.agentToken) { const token = await pairAgent(p.agentUrl); set('agentToken', token); prefs = { ...p, agentToken: token }; }
+        else await agentStatus(p);
+        setReady(true);
+      } catch { setReady(false); return; }
+      try { setFound(await agentPrinters(prefs)); } catch { /* the helper is there; the list can be asked for again */ }
+    })();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [p.printMode]);
   const find = async () => {
     setBusy(true); setResult(null);
     try { setFound(await agentPrinters(p)); }
@@ -148,14 +163,14 @@ const SilentPrinting = () => {
     finally { setBusy(false); }
   };
   return (
-    <div className="mt-6 border-t border-line pt-4">
+    <div id="printer-setup" className="mt-6 border-t border-line pt-4">
       <p className="text-sm font-semibold text-ink-900">{tr('Silent printing and cash drawer (this computer)')}</p>
-      <p className="mb-3 text-xs text-ink-500">{tr('Prints straight to the receipt printer with no print dialog, and opens the cash drawer. Needs the small FlowXP print agent running on this computer (see print-agent/README.md). Without it, receipts print from the browser as before.')}</p>
+      <p className="mb-3 text-xs text-ink-500">{tr('Choose how receipts print on this computer. The bill prints the moment you charge, with no print window.')}</p>
       <Field id="sp-mode" label={tr('Printing')}>
         <Select id="sp-mode" value={p.printMode} onChange={(e) => set('printMode', e.target.value)}>
-          <option value="browser">{tr('From the browser (print dialog)')}</option>
-          <option value="agent">{tr('Silent, through the print agent')}</option>
-          <option value="rawbt">{tr('Android tablet or phone, through the RawBT app')}</option>
+          <option value="browser">{tr('With the browser print window')}</option>
+          <option value="agent">{tr('On this computer, with no print window')}</option>
+          <option value="rawbt">{tr('On an Android tablet or phone (RawBT app)')}</option>
         </Select>
       </Field>
       {p.printMode === 'rawbt' && (
@@ -165,7 +180,9 @@ const SilentPrinting = () => {
             <li>{tr('Open RawBT, choose the printer once, and turn on its option to print without asking.')}</li>
             <li>{tr('Press "Print a test page" below. If Android asks which app to open, choose RawBT and "Always": after that, receipts print with no pop-up.')}</li>
           </ol>
-          <label className="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={p.dialogFallback !== false} onChange={(e) => set('dialogFallback', e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> {tr('If the printer cannot be reached, open the browser print window instead')}</label>
+          <details className="rounded-lg border border-line px-3 py-2"><summary className="cursor-pointer text-sm font-semibold text-ink-700">{tr('Advanced')}</summary><div className="mt-3">
+            <label className="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={p.dialogFallback !== false} onChange={(e) => set('dialogFallback', e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> {tr('If the printer cannot be reached, open the browser print window instead')}</label>
+          </div></details>
           <label className="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={p.openDrawer} onChange={(e) => set('openDrawer', e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> {tr('Open the cash drawer when a cash payment is taken')}</label>
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => run(false)}>{tr('Print a test page')}</Button>
@@ -175,31 +192,56 @@ const SilentPrinting = () => {
         </div>
       )}
       {p.printMode === 'agent' && (
-        <div className="mt-3 space-y-3">
-          <p className="text-sm text-ink-500"><a className="inline-flex min-h-9 items-center rounded-lg border border-line bg-surface px-3 font-semibold text-brand-600 hover:bg-surface-2" href={`/api/print/agent.zip?origin=${encodeURIComponent(window.location.origin)}`} download>{tr('Download the print agent')}</a> {tr('Windows: unzip it and double-click install-windows.cmd, once on this computer. It then starts by itself.')}</p>
-          {!p.agentToken && <Button type="button" size="sm" disabled={busy} onClick={() => connect()}>{tr('Connect to the print agent')}</Button>}
-          <div className="grid gap-3 sm:grid-cols-2">
-            {text('agentUrl', 'Print agent address', 'Where the agent listens on this computer.', 'http://127.0.0.1:9101')}
-            {text('agentToken', 'Agent token', 'The secret the agent was started with.', '')}
-            {text('receiptTarget', 'Counter printer', 'tcp://192.168.1.50:9100, winprint://PrinterName (USB on this computer), lp://PrinterName', 'tcp://192.168.1.50:9100')}
-            {kitchen && text('kotTarget', 'Kitchen printer (optional)', 'Leave empty to use the counter printer.', '')}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="secondary" size="sm" disabled={busy || !p.agentToken} onClick={find}>{tr('Find printers on this computer')}</Button>
-            {found && (found.length === 0
-              ? <span className="text-sm text-ink-500">{tr('No printers are installed on this computer yet. Pair or plug in the printer first.')}</span>
-              : <Select aria-label={tr('Printers on this computer')} value="" onChange={(e) => e.target.value && set('receiptTarget', e.target.value)}>
-                <option value="">{tr('Use one as the counter printer…')}</option>
-                {found.map((x) => <option key={x.target} value={x.target}>{x.name}</option>)}
-              </Select>)}
-          </div>
-          <label className="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={p.dialogFallback !== false} onChange={(e) => set('dialogFallback', e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> {tr('If the printer cannot be reached, open the browser print window instead')}</label>
-          <label className="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={p.openDrawer} onChange={(e) => set('openDrawer', e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> {tr('Open the cash drawer when a cash payment is taken')}</label>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="secondary" size="sm" disabled={busy || !p.agentToken} onClick={() => run(false)}>{tr('Print a test page')}</Button>
-            <Button type="button" variant="secondary" size="sm" disabled={busy || !p.agentToken} onClick={() => run(true)}>{tr('Test the cash drawer')}</Button>
-          </div>
+        <div className="mt-3 space-y-4">
+          {ready ? (
+            <p className="flex items-center gap-2 text-sm font-semibold text-success"><CheckCircle2 aria-hidden="true" className="h-4 w-4" />{tr('The print helper is running on this computer.')}</p>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm text-ink-700">{tr('The print helper is not running on this computer yet.')}</p>
+              <p className="text-sm text-ink-500"><a className="inline-flex min-h-9 items-center rounded-lg border border-line bg-surface px-3 font-semibold text-brand-600 hover:bg-surface-2" href={`/api/print/agent.zip?origin=${encodeURIComponent(window.location.origin)}`} download>{tr('Download the print agent')}</a> {tr('Windows: unzip it and double-click install-windows.cmd, once on this computer. It then starts by itself.')}</p>
+              <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => connect()}>{tr('Connect to the print agent')}</Button>
+            </div>
+          )}
+          {ready && (
+            <div className="space-y-3">
+              {found && found.length === 0 && <p className="text-sm text-ink-500">{tr('No printers are installed on this computer yet. Pair or plug in the printer first.')}</p>}
+              {found && found.length > 0 && (
+                <Field id="sp-printer" label={tr('Your printer')}>
+                  <Select id="sp-printer" value={found.some((x) => x.target === p.receiptTarget) ? p.receiptTarget : ''} onChange={(e) => e.target.value && set('receiptTarget', e.target.value)}>
+                    <option value="">{tr('Choose your printer…')}</option>
+                    {found.map((x) => <option key={x.target} value={x.target}>{x.name}</option>)}
+                  </Select>
+                </Field>
+              )}
+              {kitchen && found && found.length > 0 && (
+                <Field id="sp-kitchen" label={tr('Kitchen printer (optional)')}>
+                  <Select id="sp-kitchen" value={found.some((x) => x.target === p.kotTarget) ? p.kotTarget : ''} onChange={(e) => set('kotTarget', e.target.value)}>
+                    <option value="">{tr('Same as the counter printer')}</option>
+                    {found.map((x) => <option key={x.target} value={x.target}>{x.name}</option>)}
+                  </Select>
+                </Field>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" size="sm" disabled={busy || !p.receiptTarget} onClick={() => run(false)}>{tr('Print a test page')}</Button>
+                <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={find}>{tr('Search again')}</Button>
+              </div>
+              <label className="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={p.openDrawer} onChange={(e) => set('openDrawer', e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> {tr('Open the cash drawer when a cash payment is taken')}</label>
+            </div>
+          )}
           {result && <p className={`text-sm ${result.ok ? 'text-success' : 'text-danger'}`} role="status">{result.message}</p>}
+          <details className="rounded-lg border border-line px-3 py-2">
+            <summary className="cursor-pointer text-sm font-semibold text-ink-700">{tr('Advanced')}</summary>
+            <div className="mt-3 space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {text('agentUrl', 'Print agent address', 'Where the agent listens on this computer.', 'http://127.0.0.1:9101')}
+                {text('agentToken', 'Agent token', 'The secret the agent was started with.', '')}
+                {text('receiptTarget', 'Counter printer', 'tcp://192.168.1.50:9100, winprint://PrinterName (USB on this computer), lp://PrinterName', 'tcp://192.168.1.50:9100')}
+                {kitchen && text('kotTarget', 'Kitchen printer (optional)', 'Leave empty to use the counter printer.', '')}
+              </div>
+              <label className="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={p.dialogFallback !== false} onChange={(e) => set('dialogFallback', e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> {tr('If the printer cannot be reached, open the browser print window instead')}</label>
+              <Button type="button" variant="secondary" size="sm" disabled={busy || !p.agentToken} onClick={() => run(true)}>{tr('Test the cash drawer')}</Button>
+            </div>
+          </details>
         </div>
       )}
     </div>
@@ -235,7 +277,9 @@ const ReceiptSettings = ({ initial }) => {
     <Card className="mt-6">
       <h2 className="text-base font-bold text-ink-900">{kitchen ? tr('Receipts and kitchen slips') : tr('Receipts')}</h2>
       <p className="mt-1 text-sm text-ink-500">{tr('Prints from the browser to any printer, including 58 mm and 80 mm receipt printers. Pick the printer in the print dialog.')}</p>
-      <form onSubmit={save} className="mt-4 space-y-4">
+      <SilentPrinting />
+      <p className="mt-6 text-sm font-semibold text-ink-900">{tr('What prints on the bill')}</p>
+      <form onSubmit={save} className="mt-3 space-y-4">
         <Alert>{error}</Alert>
         <Field id="paper" label={tr('Paper width')}><Select id="paper" value={s.paper_width} onChange={(e) => setS((x) => ({ ...x, paper_width: Number(e.target.value) }))}><option value={80}>{tr('80 mm (standard)')}</option><option value={58}>{tr('58 mm (narrow)')}</option></Select></Field>
         <Field id="footer" label={tr('Footer message')} hint={tr('Printed at the bottom of every receipt.')}><Input id="footer" value={s.footer} onChange={(e) => setS((x) => ({ ...x, footer: e.target.value }))} maxLength={200} /></Field>
@@ -245,8 +289,9 @@ const ReceiptSettings = ({ initial }) => {
           <Field id="copies" label={tr('Copies of each receipt')}><Select id="copies" value={s.copies ?? 1} onChange={(e) => setS((x) => ({ ...x, copies: Number(e.target.value) }))}>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</Select></Field>
           <Field id="extra_lines" label={tr('Blank lines after the receipt')}><Select id="extra_lines" value={s.extra_lines ?? 3} onChange={(e) => setS((x) => ({ ...x, extra_lines: Number(e.target.value) }))}>{[0, 1, 2, 3, 4, 5, 6, 8, 10].map((n) => <option key={n} value={n}>{n}</option>)}</Select></Field>
         </div>
-        <div className="space-y-4 border-t border-line pt-4">
-          <p className="text-sm font-semibold text-ink-900">{tr('Printed on tax invoices')}</p>
+        <details className="border-t border-line pt-4">
+          <summary className="cursor-pointer text-sm font-semibold text-ink-900">{tr('Printed on tax invoices')}</summary>
+          <div className="mt-4 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field id="pan" label={tr('PAN')}><Input id="pan" maxLength={10} value={s.pan ?? ''} onChange={(e) => setS((x) => ({ ...x, pan: e.target.value.toUpperCase() }))} /></Field>
             <Field id="bank_name" label={tr('Bank name')}><Input id="bank_name" maxLength={80} value={s.bank_name ?? ''} onChange={(e) => setS((x) => ({ ...x, bank_name: e.target.value }))} /></Field>
@@ -255,10 +300,10 @@ const ReceiptSettings = ({ initial }) => {
             <Field id="bank_branch" label={tr('Bank branch')}><Input id="bank_branch" maxLength={80} value={s.bank_branch ?? ''} onChange={(e) => setS((x) => ({ ...x, bank_branch: e.target.value }))} /></Field>
           </div>
           <Field id="terms" label={tr('Terms and conditions')}><Textarea id="terms" rows={4} maxLength={1000} value={s.terms ?? ''} onChange={(e) => setS((x) => ({ ...x, terms: e.target.value }))} /></Field>
-        </div>
+          </div>
+        </details>
         <Button type="submit" disabled={busy}>{busy ? tr('Saving…') : tr('Save receipt settings')}</Button>
       </form>
-      <SilentPrinting />
       <div className="mt-6 border-t border-line pt-4">
         <p className="text-sm font-semibold text-ink-900">{tr('This device')}</p>
         <p className="mb-2 text-xs text-ink-500">{tr('Remembered in this browser only, so the counter and the kitchen can behave differently.')}</p>

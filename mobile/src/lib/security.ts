@@ -57,9 +57,9 @@ export const recoveryText = (codes: string[]): string => `FlowXP recovery codes 
 export const codesLow = (left: number): boolean => left <= 2;
 
 /* ── password ────────────────────────────────────────────────────────────── */
-export const MIN_PASSWORD = 10;
+export const MIN_PASSWORD = 8;
 /** Why a new password is not good enough yet, or '' when it is (the server decides finally). */
-export const passwordProblem = (current: string, next: string): string => (!current ? 'Enter your current password.' : next.length < MIN_PASSWORD ? 'The new password needs at least 10 characters.' : next === current ? 'Choose a different password from the current one.' : '');
+export const passwordProblem = (current: string, next: string): string => (!current ? 'Enter your current password.' : next.length < MIN_PASSWORD ? 'The new password needs at least 8 characters.' : next === current ? 'Choose a different password from the current one.' : '');
 export const changePasswordBody = (current: string, next: string) => ({ current_password: current, new_password: next });
 
 /* ── approval PIN and rules ──────────────────────────────────────────────── */
@@ -84,7 +84,7 @@ export const SECURITY_TEXTS: string[] = [
   'Your business requires two-step verification for owners and admins. Set it up to continue using FlowXP.', 'Set up two-step verification', 'Open the authenticator app', 'Or enter this key by hand in your authenticator app:', 'Enter the 6-digit code it shows to confirm.', 'Code from your app', 'Turn on',
   'Save these recovery codes now', 'Each works once if you lose your phone. They are shown only this time. Keep them somewhere safe, not on the same phone.', 'Save the codes', 'I have saved them', '{n} recovery codes left', '1 recovery code left', '· get new ones soon',
   'New recovery codes', 'Turn off two-step verification', 'Your password', 'A code, or a recovery code', 'Turn off', 'Two-step verification is off', 'Enter your password and a code.',
-  'Password and devices', 'Current password', 'New password', 'At least 10 characters', 'Change password', 'Enter your current password.', 'The new password needs at least 10 characters.', 'Choose a different password from the current one.', 'Password changed. Your other devices were signed out.',
+  'Password and devices', 'Current password', 'New password', 'At least 8 characters', 'Change password', 'Enter your current password.', 'The new password needs at least 8 characters.', 'Choose a different password from the current one.', 'Password changed. Your other devices were signed out.',
   'Lost a phone, or used a shared computer? End every other session at once.', 'Sign out everywhere else', 'Sign out everywhere else?', 'Every other device and tab is signed out. You stay signed in here.', 'Sign out others', 'Every other device was signed out', 'Cancel',
   'Your approval PIN', 'Staff at the till ask for this PIN to cancel a bill or give a large discount.', 'You have a PIN set.', 'You have not set one yet, so nobody can ask you.', 'PIN', 'New PIN', '4 to 8 digits', 'Set PIN', 'Change PIN', 'Remove PIN', 'The PIN is 4 to 8 digits.', 'PIN saved', 'PIN removed',
   'Manager approval at the till', 'Owners, admins and managers are never held back. Everyone else needs one of them to type in their PIN.', 'Biggest discount staff may give alone (%)', 'Of the bill, for discounts typed in at the till. Offers you set up are not counted.', 'Enter a number from 0 to 100.',

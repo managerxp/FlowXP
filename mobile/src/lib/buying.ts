@@ -38,9 +38,10 @@ export type Supplier = { supplier_id: number; name: string; phone: string | null
 export type ReceiveLine = { product_id: number; name: string; quantity: string; unit_cost: string; tax_rate: number; expiry: string };
 
 /** What receiving stock sends. A line with no quantity is left out; an expiry date goes only if typed. */
-export const receiveBody = (lines: ReceiveLine[], supplierId: number | null, billNo: string, paid: string, method: string) => ({
+export const receiveBody = (lines: ReceiveLine[], supplierId: number | null, billNo: string, paid: string, method: string, reverse = false) => ({
   ...(supplierId ? { supplier_id: supplierId } : {}),
   ...(billNo.trim() ? { supplier_invoice_no: billNo.trim() } : {}),
+  ...(reverse ? { reverse_charge: true } : {}),   // the GST is the buyer's to pay, not added to what the supplier is owed
   items: lines.filter((l) => Number(l.quantity) > 0).map((l) => ({
     product_id: l.product_id, quantity: Number(l.quantity), unit_cost: Number(l.unit_cost) || 0, tax_rate: l.tax_rate, ...(l.expiry.trim() ? { expiry_date: l.expiry.trim() } : {})
   })),

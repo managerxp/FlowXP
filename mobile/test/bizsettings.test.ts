@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ACCENTS, COPY_LABELS, INDIA_STATES, OPTION_ROWS, RECEIPT_DEFAULTS, SETTINGS_TEXTS, SHOW_OPTIONS, gstOf, gstPatch, printOf, printPatch, profileOf, profilePatch, receiptOf, receiptPatch, stateSuggestions,
+  ACCENTS, COPY_LABELS, INDIA_STATES, OPTION_ROWS, RECEIPT_DEFAULTS, SETTINGS_TEXTS, SHOW_OPTIONS, gstOf, gstPatch, numberExample, numbersOf, numbersPatch, printOf, printPatch, profileOf, profilePatch, receiptOf, receiptPatch, stateSuggestions,
   type BusinessRecord
 } from '../src/lib/bizSettings.ts';
 import { HI } from '../src/lib/i18n.ts';
@@ -55,6 +55,14 @@ test('state suggestions match the server\'s state table, so a state picked here 
   assert.deepEqual(stateSuggestions('kar'), ['Karnataka']); assert.deepEqual(stateSuggestions('Karnataka'), []); assert.deepEqual(stateSuggestions(''), []);
   assert.equal(stateSuggestions('pra')[0], 'Andhra Pradesh'.startsWith('pra') ? 'Andhra Pradesh' : stateSuggestions('pra')[0]);
   assert.ok(stateSuggestions('a').length <= 5);
+});
+
+test('document numbers: the prefixes, what changed, and the example', () => {
+  const before = numbersOf({ invoice_prefix: 'INV', po_prefix: null });
+  assert.deepEqual(before, { invoice_prefix: 'INV', credit_note_prefix: 'CN', debit_note_prefix: 'DN', po_prefix: 'PO' });
+  assert.equal(numbersPatch(before, { ...before }), null);
+  assert.deepEqual(numbersPatch(before, { ...before, invoice_prefix: ' SAL ', po_prefix: '  ' }), { invoice_prefix: 'SAL' });
+  assert.equal(numberExample('sal', 'INV'), 'SAL-0001'); assert.equal(numberExample('', 'INV'), 'INV-0001');
 });
 
 test('every text on the business settings screens is translated into all six languages', () => {

@@ -130,7 +130,7 @@ const Password = () => {
   return (
     <Card title="Password and devices">
       <Field label="Current password" value={form.current} onChange={(v) => setForm((o) => ({ ...o, current: v }))} secure />
-      <Field label="New password" value={form.next} onChange={(v) => setForm((o) => ({ ...o, next: v }))} secure hint="At least 10 characters" />
+      <Field label="New password" value={form.next} onChange={(v) => setForm((o) => ({ ...o, next: v }))} secure hint="At least 8 characters" />
       <ErrorText>{error}</ErrorText>
       {done ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok }}>{done}</Text> : null}
       <Button title="Change password" onPress={() => { void save(); }} busy={busy} />

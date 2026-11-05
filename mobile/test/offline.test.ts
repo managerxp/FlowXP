@@ -234,7 +234,7 @@ test('no signal, a timeout, or a dead gateway: the sale is kept, with a provisio
     const e = (taken as { entry: Awaited<ReturnType<typeof outbox.get>> }).entry!;
     assert.equal(e.state, 'pending'); assert.deepEqual(e.preview, previewOf(cartOf(), 'CASH')); assert.equal(e.preview.totalPaise, 12600);
     const text = pendingReceiptText(e, 'Shop');
-    for (const want of ['*** PENDING BILL ***', 'Not final', e.local_no, 'Tea', '2 x ₹50.00', 'Biscuit', 'TOTAL (about)', '₹126.00']) assert.ok(text.includes(want), `missing ${want}`);
+    for (const want of ['*** PENDING BILL ***', 'Not final', e.local_no, 'Tea', 'Qty', '50.00', '100.00', 'Biscuit', 'TOTAL (about)', '₹126.00']) assert.ok(text.includes(want), `missing ${want}`);
     // signal back: it goes out with the same body, marked offline
     server.state.down = false; server.state.hang = false; server.state.status = 0;
     assert.deepEqual(await outbox.flush(sendEntry(server.api)), { sent: 1, failed: 0, stopped: null });

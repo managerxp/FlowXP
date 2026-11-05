@@ -119,6 +119,9 @@ export default function Pay() {
   };
 
   const vpa = business?.upi_vpa;
+  // a thermal printer saved on this phone: the bill prints by itself after the sale, so UPI works like cash (take the payment, confirm, done), as on the website
+  const [hasPrinter, setHasPrinter] = useState(false);
+  useEffect(() => { void import('../lib/thermal.ts').then((m) => m.readMode()).then((m) => setHasPrinter(m !== 'system')); }, []);
   const [printing, setPrinting] = useState(false);
   const [printNote, setPrintNote] = useState('');
   const [printProblem, setPrintProblem] = useState('');
@@ -138,7 +141,9 @@ export default function Pay() {
   const upiNow = plan.payNowPaise ?? total;
   const upiPanel = method === 'UPI' && how !== 'LATER' ? (
     <View style={[s.card, { gap: 10 }]}>
-      {vpa ? (
+      {hasPrinter ? (
+        <Soft>{t('Take the UPI payment, then tap the button below. The bill prints by itself.')}</Soft>
+      ) : vpa ? (
         <>
           <Soft>{t('The bill is printed with a QR code for exactly {amount}. The customer scans the paper and their UPI app opens with the amount filled in.', { amount: rupees(upiNow) })}</Soft>
           <Button title={t('Print the bill with the UPI QR')} onPress={() => { void printUpiBill(); }} busy={printing} disabled={total <= 0 || !plan.ok} />

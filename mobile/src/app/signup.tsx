@@ -51,7 +51,7 @@ export default function Signup() {
               {mend ? <Pressable accessibilityRole="button" onPress={() => set('email', mend)} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: color.warn }}>{`Did you mean ${mend}? Tap to use it.`}</Text></Pressable> : <Soft>We send a 6-digit code here to confirm it is yours.</Soft>}
               <TextInput style={s.input} value={f.phone} onChangeText={(v) => set('phone', v)} placeholder="Mobile number (optional)" keyboardType="phone-pad" autoComplete="tel" accessibilityLabel="Mobile number" />
               <View>
-                <TextInput style={[s.input, { paddingRight: 84 }]} value={f.password} onChangeText={(v) => set('password', v)} placeholder="Password, at least 10 characters" secureTextEntry={!show} autoComplete="new-password" autoCapitalize="none" accessibilityLabel="Password" />
+                <TextInput style={[s.input, { paddingRight: 84 }]} value={f.password} onChangeText={(v) => set('password', v)} placeholder="Password, at least 8 characters" secureTextEntry={!show} autoComplete="new-password" autoCapitalize="none" accessibilityLabel="Password" />
                 <Pressable accessibilityRole="button" accessibilityLabel={show ? 'Hide password' : 'Show password'} onPress={() => setShow((v) => !v)} style={{ position: 'absolute', right: 0, top: 0, bottom: 0, minWidth: 72, alignItems: 'center', justifyContent: 'center' }}>
                   <Text style={{ color: color.brand, fontWeight: '700' }}>{show ? 'Hide' : 'Show'}</Text>
                 </Pressable>

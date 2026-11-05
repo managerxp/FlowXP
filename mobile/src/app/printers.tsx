@@ -28,8 +28,9 @@ export default function Printers() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState('');
+  const [more, setMore] = useState(false);   // the technical choices (how it prints, a Wi-Fi printer) stay folded away
 
-  useEffect(() => { void readPrinters().then(setList); void readMode().then(setModeState); void printingAvailable().then(setAvailable); }, []);
+  useEffect(() => { void readPrinters().then(setList); void readMode().then(setModeState); void printingAvailable().then((a) => { setAvailable(a); if (a) void pairedPrinters().then(setPaired).catch(() => {}); }); }, []);   // the paired printers are listed straight away: the owner only has to tap theirs
   const commit = useCallback((next: SavedPrinter[]) => {
     setList(next); void savePrinters(next);
     const receipt = next.find((p) => p.jobs.includes('receipt'));
@@ -39,7 +40,7 @@ export default function Printers() {
   const chooseMode = async (m: PrinterMode) => { await setMode(m); setModeState(m); setError(''); };
   const add = (p: Omit<SavedPrinter, 'id' | 'jobs' | 'paper'>) => {
     if ((list?.length ?? 0) >= MAX_PRINTERS && !list?.some((x) => x.address.toLowerCase() === p.address.toLowerCase())) { setError(t('You can keep up to {n} printers.', { n: MAX_PRINTERS })); return; }
-    commit(upsertPrinter(list ?? [], { ...p, id: newId(), paper: '58', jobs: [] }));
+    commit(upsertPrinter(list ?? [], { ...p, id: newId(), paper: '58', jobs: (list ?? []).some((x) => x.jobs.includes('receipt')) ? [] : ['receipt'] }));   // the first printer prints the customer's receipt, with no switch to find
     setError(''); setNote(t('Saved'));
     if (mode !== 'direct') void chooseMode('direct');
   };
@@ -66,8 +67,12 @@ export default function Printers() {
           <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
             <Soft>{t('Connect a Bluetooth or Wi-Fi thermal printer, and choose what each one prints.')}</Soft>
             {!available ? <Soft>{t('Printing straight to a printer needs the FlowXP development app. In the Expo Go test copy, use the phone print screen or RawBT in Settings.')}</Soft> : null}
-            <Chips items={[{ id: 'direct', label: 'Straight to my printers' }, { id: 'system', label: 'Phone print screen' }, { id: 'rawbt', label: 'Through RawBT' }]} value={mode} onChange={(m: PrinterMode) => { void chooseMode(m); }} />
-            {mode === 'direct' ? <Soft>{t('Receipts go straight to a connected printer. If it cannot be reached, the bill goes to the phone print screen so printing is never stuck.')}</Soft> : null}
+            {more ? (
+              <>
+                <Chips items={[{ id: 'direct', label: 'Straight to my printers' }, { id: 'system', label: 'Phone print screen' }, { id: 'rawbt', label: 'Through RawBT' }]} value={mode} onChange={(m: PrinterMode) => { void chooseMode(m); }} />
+                {mode === 'direct' ? <Soft>{t('Receipts go straight to a connected printer. If it cannot be reached, the bill goes to the phone print screen so printing is never stuck.')}</Soft> : null}
+              </>
+            ) : null}
 
             {list.length === 0 ? <Soft>{t('No printers yet.')}</Soft> : null}
             {list.map((p) => (
@@ -100,11 +105,15 @@ export default function Printers() {
             {paired && paired.length === 0 ? <Soft>{t("No Bluetooth printers found. Switch the printer on and pair it in the phone's Bluetooth settings.")}</Soft> : null}
             {paired?.map((d) => <Line key={d.address} left={d.name} sub={d.address} icon="bluetooth-outline" onPress={() => add({ name: nameOf(d.name, d.address), kind: 'bluetooth', address: d.address, port: DEFAULT_PORT })} />)}
 
-            <SectionTitle>Add a Wi-Fi printer</SectionTitle>
-            <TextInput style={s.input} value={label} onChangeText={setLabel} placeholder={t('Printer name')} maxLength={40} accessibilityLabel={t('Printer name')} />
-            <TextInput style={s.input} value={host} onChangeText={setHost} placeholder="192.168.1.50" autoCapitalize="none" autoCorrect={false} keyboardType="numbers-and-punctuation" accessibilityLabel={t('Address on the network')} />
-            <TextInput style={s.input} value={port} onChangeText={(v) => setPort(v.replace(/\D/g, ''))} keyboardType="numeric" maxLength={5} accessibilityLabel={t('Port')} />
-            <Button title="Add this printer" onPress={addNetwork} />
+            {more ? (
+              <>
+                <SectionTitle>Add a Wi-Fi printer</SectionTitle>
+                <TextInput style={s.input} value={label} onChangeText={setLabel} placeholder={t('Printer name')} maxLength={40} accessibilityLabel={t('Printer name')} />
+                <TextInput style={s.input} value={host} onChangeText={setHost} placeholder="192.168.1.50" autoCapitalize="none" autoCorrect={false} keyboardType="numbers-and-punctuation" accessibilityLabel={t('Address on the network')} />
+                <TextInput style={s.input} value={port} onChangeText={(v) => setPort(v.replace(/\D/g, ''))} keyboardType="numeric" maxLength={5} accessibilityLabel={t('Port')} />
+                <Button title="Add this printer" onPress={addNetwork} />
+              </>
+            ) : <Button title={t('More options')} kind="quiet" onPress={() => setMore(true)} />}
           </ScrollView>
         )}
       </Page>

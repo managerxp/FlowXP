@@ -56,7 +56,7 @@ export default function Forgot() {
             <>
               <Soft>If that email has an account, a code is on its way. It can take a minute. Check your spam folder too.</Soft>
               <TextInput style={s.input} value={code} onChangeText={setCode} placeholder="6-digit code" keyboardType="number-pad" maxLength={8} accessibilityLabel="Six-digit code" />
-              <TextInput style={s.input} value={password} onChangeText={setPassword} placeholder="New password, at least 10 characters" secureTextEntry autoCapitalize="none" autoComplete="new-password" accessibilityLabel="New password" />
+              <TextInput style={s.input} value={password} onChangeText={setPassword} placeholder="New password, at least 8 characters" secureTextEntry autoCapitalize="none" autoComplete="new-password" accessibilityLabel="New password" />
               <TextInput style={s.input} value={again} onChangeText={setAgain} placeholder="New password again" secureTextEntry autoCapitalize="none" autoComplete="new-password" accessibilityLabel="New password again" />
               <ErrorText>{error}</ErrorText>
               <Button title="Change my password" onPress={() => { void reset(); }} busy={busy} disabled={!code.trim() || !password} />

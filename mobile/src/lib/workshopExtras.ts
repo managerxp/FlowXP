@@ -55,7 +55,7 @@ export const storeCode = (store: string): string => store.trim().replace(/[^A-Za
 export const quickRacksSummary = (f: QuickRacks): string => t('This makes {racks} racks and {total} bins. The first bin will be called {code}.', { racks: Number(f.racks), total: Number(f.racks) * Number(f.bins), code: `${storeCode(f.store)}-R01-A` });
 
 /* ── customers from a file ──────────────────────────────────────────────── */
-/** A CSV into rows keyed by its first line. Quotes and commas inside quotes are handled; Excel files are not read on the phone. */
+/** A CSV into rows keyed by its first line. Quotes and commas inside quotes are handled; */
 export const parseCsv = (text: string): Record<string, string>[] => {
   const grid: string[][] = []; let row: string[] = []; let cell = ''; let quoted = false;
   const src = text.replace(/^﻿/, '');
@@ -69,7 +69,14 @@ export const parseCsv = (text: string): Record<string, string>[] => {
   const head = grid[0].map((h) => h.trim());
   return grid.slice(1).map((r) => Object.fromEntries(head.map((h, i) => [h, (r[i] ?? '').trim()])));
 };
-export const importFileProblem = (name: string, size: number | null): string => (!/\.csv$/i.test(name) ? 'Choose a CSV file. In Excel, use Save as, CSV.' : size != null && size > 5 * 1024 * 1024 ? 'That file is too large' : '');
+/** Rows of an Excel sheet (first row = column names) as the same shape parseCsv gives; empty rows dropped, dates become YYYY-MM-DD, numbers become text. */
+export const rowsFromGrid = (grid: unknown[][]): Record<string, string>[] => {
+  const cell = (v: unknown) => (v == null ? '' : v instanceof Date ? (Number.isNaN(v.getTime()) ? '' : v.toISOString().slice(0, 10)) : String(v).trim());
+  const rows = grid.map((r) => r.map(cell)).filter((r) => r.some((c) => c !== ''));
+  const [head, ...body] = rows;
+  return head ? body.map((r) => Object.fromEntries(head.map((h, i) => [h, r[i] ?? '']))) : [];
+};
+export const importFileProblem = (name: string, size: number | null): string => (!/\.(csv|xlsx)$/i.test(name) ? 'Choose a CSV or Excel (.xlsx) file.' : size != null && size > 5 * 1024 * 1024 ? 'That file is too large' : '');
 export type CustomerCheck = { rows: number; to_create: number; already_here: number; total_errors: number; errors: { row: number; message: string }[]; applied: boolean; created: number };
 export const checkLine = (c: CustomerCheck): string => (c.total_errors > 0 ? t('{n} rows have a problem. Fix them in the file and choose it again.', { n: c.total_errors })
   : c.applied ? t('{n} customers were added.', { n: c.created }) : t('{add} to add, {skip} already here.', { add: c.to_create, skip: c.already_here }));
@@ -134,7 +141,7 @@ export const EXTRAS_TEXTS: string[] = [
   'Create racks and bins', 'This makes {racks} racks and {total} bins. The first bin will be called {code}.', 'Name your store or godown', 'Racks from 1 to 40 and bins from 1 to 26 in each rack, as whole numbers', 'Today', 'This month', '{n} rows', 'Main store',
   // customers
   'Import customers', 'Bring your customers from Tally, Vyapar, Busy or Excel. Save the file as CSV first. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.',
-  'Choose the customer file', 'Check the file', 'Import the customers', 'Choose a CSV file. In Excel, use Save as, CSV.', 'That file is too large', 'That file has no rows. The first line must be the column names.',
+  'Choose the customer file', 'Check the file', 'Import the customers', 'Choose a CSV or Excel (.xlsx) file.', 'That file is too large', 'That file has no rows. The first line must be the column names.',
   '{n} rows have a problem. Fix them in the file and choose it again.', '{n} customers were added.', '{add} to add, {skip} already here.', 'Row {n}',
   // tabs and groups
   'Workshop', 'Jobs',

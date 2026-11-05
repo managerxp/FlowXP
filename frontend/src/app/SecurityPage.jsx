@@ -153,7 +153,7 @@ const Password = () => {
       <h2 className="text-base font-bold text-ink-900">{tr('Password and devices')}</h2>
       <form onSubmit={save} className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <Field id="pw-cur" label={tr('Current password')}><Input id="pw-cur" type="password" value={form.current_password} onChange={(e) => setForm((f) => ({ ...f, current_password: e.target.value }))} autoComplete="current-password" required /></Field>
-        <Field id="pw-new" label={tr('New password')} hint={tr('At least 10 characters')}><Input id="pw-new" type="password" value={form.new_password} onChange={(e) => setForm((f) => ({ ...f, new_password: e.target.value }))} autoComplete="new-password" required /></Field>
+        <Field id="pw-new" label={tr('New password')} hint={tr('At least 8 characters')}><Input id="pw-new" type="password" value={form.new_password} onChange={(e) => setForm((f) => ({ ...f, new_password: e.target.value }))} autoComplete="new-password" required /></Field>
         <Button type="submit" disabled={busy}>{tr('Change')}</Button>
       </form>
       <Alert>{error}</Alert>
