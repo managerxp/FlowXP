@@ -3,7 +3,7 @@
  * business and outlet go as claims in headers (the server verifies them), and a sale carries an Idempotency-Key so a retry after a
  * dropped connection returns the same invoice instead of billing twice.
  */
-
+import { t } from './i18n.ts';
 export class ApiError extends Error {
   status: number; code?: string; data?: unknown;
   constructor(message: string, status: number, code?: string, data?: unknown) { super(message); this.name = 'ApiError'; this.status = status; this.code = code; this.data = data; }
@@ -52,7 +52,7 @@ export const createApi = ({ baseUrl, getSession, onToken, onUnauthorized, onNetw
     if (!response.ok || !json || json.success === false) {
       // a wrong password is a 401 too, and must say so rather than sign the person out
       if (response.status === 401 && !signIn) onUnauthorized?.();
-      throw new ApiError(json?.message || `The server answered ${response.status}`, response.status, json?.code, json?.data);
+      throw new ApiError(json?.code === 'TRIAL_ENDED' ? t('This account is not active, so changes are paused. Everything you made is still here to read.') : json?.message || `The server answered ${response.status}`, response.status, json?.code, json?.data);
     }
     return json;
   };

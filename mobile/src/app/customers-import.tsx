@@ -37,7 +37,7 @@ export default function CustomersImportScreen() {
   return (
     <SetupShell title="Import customers" sub="A CSV file of customers: names, phones, credit limits" ok={allowed(me, 'customers')} denied="You do not have access to customers.">
       <Panel>
-        <Soft>{t('Bring your customers from Tally, Vyapar, Busy or Excel. Save the file as CSV first. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.')}</Soft>
+        <Soft>{t('Bring your customers from Tally, Vyapar, Busy or Excel. Use a CSV or Excel (.xlsx) file. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.')}</Soft>
         <Button title="Choose the customer file" kind="quiet" onPress={() => { void choose(); }} />
         {file ? <Line left={file.name} sub={t('{n} rows', { n: file.rows.length })} /> : null}
         <Msg a={a} />

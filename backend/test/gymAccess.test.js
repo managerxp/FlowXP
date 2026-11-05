@@ -195,23 +195,25 @@ test('a card with an expiry date stops at it', { skip }, async () => {
 });
 
 test('a phone pass works once, for a minute, and a copy of it is worth nothing', { skip }, async () => {
+  // real time on purpose: the server sweeps pass tokens that expired more than a day ago by the real clock, so tokens dated in the past would vanish
+  const real = new Date(); const rtoday = real.toISOString().slice(0, 10); const rat = (seconds) => new Date(real.getTime() + seconds * 1000);
   const m = await addMember(pool, A, { name: 'Esha' });
-  await addMembership(pool, A, m, { start: day(TODAY, -5), end: day(TODAY, 25) });
-  const pass = await inTx((db) => creds.issuePass(db, { businessId: A.businessId, memberId: m, now: NOW }));
+  await addMembership(pool, A, m, { start: day(rtoday, -5), end: day(rtoday, 25) });
+  const pass = await inTx((db) => creds.issuePass(db, { businessId: A.businessId, memberId: m, now: real }));
   assert.match(pass.code, /^FXD1\.[A-Za-z0-9_-]{32}$/);
   assert.equal(pass.ttl_seconds, 60);
-  const first = await scan(A, { code: pass.code, now: at(10) });
+  const first = await scan(A, { code: pass.code, now: rat(10) });
   assert.equal(first.decision, 'APPROVED');
-  const replay = await scan(A, { code: pass.code, now: at(12) });
+  const replay = await scan(A, { code: pass.code, now: rat(12) });
   assert.equal(replay.reason, REASON.INVALID_CREDENTIAL, 'the same screenshot again');
-  const stale = await inTx((db) => creds.issuePass(db, { businessId: A.businessId, memberId: m, now: NOW }));
-  assert.equal((await scan(A, { code: stale.code, now: at(61) })).reason, REASON.CREDENTIAL_EXPIRED, 'a minute later');
+  const stale = await inTx((db) => creds.issuePass(db, { businessId: A.businessId, memberId: m, now: real }));
+  assert.equal((await scan(A, { code: stale.code, now: rat(61) })).reason, REASON.CREDENTIAL_EXPIRED, 'a minute later');
   const t = (await pool.query(`SELECT token_hash FROM gym_pass_tokens`)).rows;
   assert.ok(t.every((r) => r.token_hash.length === 64), 'only hashes are kept');
   // revoking the phone pass kills every token for it
-  const fresh = await inTx((db) => creds.issuePass(db, { businessId: A.businessId, memberId: m, now: at(100) }));
+  const fresh = await inTx((db) => creds.issuePass(db, { businessId: A.businessId, memberId: m, now: rat(100) }));
   await inTx((db) => creds.revokeAll(db, { businessId: A.businessId, memberId: m, userId: A.userId, reason: 'Lost phone' }));
-  assert.equal((await scan(A, { code: fresh.code, now: at(110) })).reason, REASON.CREDENTIAL_REVOKED);
+  assert.equal((await scan(A, { code: fresh.code, now: rat(110) })).reason, REASON.CREDENTIAL_REVOKED);
 });
 
 test('a second scan inside the cooldown is a repeat, not a second visit; after it, it is another visit', { skip }, async () => {

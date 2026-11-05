@@ -84,7 +84,7 @@ export default function More() {
       { left: 'Settings', sub: 'Printer, updates, this phone', icon: 'settings-outline', go: '/settings' },
       { left: 'Business settings', sub: 'Details, receipt, GST and invoice (owner)', icon: 'business-outline', go: '/business-settings', show: business?.role === 'OWNER' },
       { left: 'Team logins', sub: 'Who can sign in, their role and outlet', icon: 'people-circle-outline', go: '/staff', show: canManageTeam(business?.role) },
-      { left: 'Subscription', sub: 'Your plan, trial and payment link', icon: 'card-outline', go: '/subscription', show: canSubscription(business?.role) },
+      { left: 'Subscription', sub: 'Your plan and trial', icon: 'card-outline', go: '/subscription', show: canSubscription(business?.role) },
       { left: 'Security', sub: 'Two-step verification, password, sign-ins', icon: 'shield-checkmark-outline', go: '/security' },
       { left: 'Report a problem', sub: 'Tell FlowXP something went wrong', icon: 'bug-outline', go: '/report' },
       { left: 'Switch outlet', sub: outlet?.name ?? '', icon: 'swap-vertical-outline', go: '/choose', show: several }
@@ -183,7 +183,7 @@ export default function More() {
       { left: 'Messaging', sub: 'WhatsApp or SMS: bills, bookings, offers', icon: 'chatbubbles-outline', go: '/messaging', show: canMessaging(business?.role) },
       { left: 'Options & add-ons', sub: 'Sizes, levels and add-ons for dishes', icon: 'options-outline', go: '/option-groups', show: food && canOptions((p) => allowed(business, p)) },
       { left: 'Credit and debit notes', sub: 'Goods that came back, and goods sent back to suppliers', icon: 'receipt-outline', go: '/notes', show: !wholesale && (can('purchases') || can('refunds')) },
-      { left: 'Subscription', sub: 'Your plan, trial and payment link', icon: 'card-outline', go: '/subscription', show: canSubscription(business?.role) },
+      { left: 'Subscription', sub: 'Your plan and trial', icon: 'card-outline', go: '/subscription', show: canSubscription(business?.role) },
       { left: 'Delivery platforms and settlements', sub: 'Connect Zomato, Swiggy and others, and check what they paid', icon: 'bicycle-outline', go: '/delivery-platforms', show: food && canDelivery((p) => allowed(business, p)) },
       { left: 'Profitability', sub: 'What your sales leave after food cost, fees and commission', icon: 'trending-up-outline', go: '/profitability', show: food && can('reports') },
       { left: 'Forecast', sub: 'The week ahead, and what to buy for it', icon: 'analytics-outline', go: '/forecast', show: food && can('reports') },

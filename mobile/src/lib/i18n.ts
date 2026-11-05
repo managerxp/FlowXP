@@ -1613,6 +1613,12 @@ export const HI: Record<string, string> = {
   'Forecast': 'पूर्वानुमान',
   'Date': 'तारीख़',
   'OK': 'ठीक है',
+
+  'Your plan and trial': 'आपका प्लान और ट्रायल',
+
+  'Your trial has ended. Everything you created is still here and still readable.': 'आपका ट्रायल खत्म हो गया है। आपने जो कुछ बनाया वह अब भी यहाँ है और पढ़ा जा सकता है।',
+
+  'This account is not active, so changes are paused. Everything you made is still here to read.': 'यह खाता सक्रिय नहीं है, इसलिए बदलाव रुके हुए हैं। आपने जो बनाया वह अब भी पढ़ने के लिए यहाँ है।',
   'Your accounts at a glance': 'आपके खाते एक नज़र में',
   'FlowBook': 'FlowBook',
   'Your accounts at a glance. Make invoices and file GST on the website.': 'आपके खाते एक नज़र में। इनवॉइस बनाना और GST फ़ाइल करना वेबसाइट पर करें।',
@@ -3004,7 +3010,7 @@ export const HI: Record<string, string> = {
   'Racks from 1 to 40 and bins from 1 to 26 in each rack, as whole numbers': 'रैक 1 से 40 और हर रैक में बिन 1 से 26, पूरी संख्या में',
   '{n} rows': '{n} पंक्तियाँ',
   'Main store': 'मुख्य दुकान',
-  'Bring your customers from Tally, Vyapar, Busy or Excel. Save the file as CSV first. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.': 'अपने ग्राहक Tally, Vyapar, Busy या Excel से लाएँ। पहले फ़ाइल को CSV में सेव करें। जो लोग पहले से यहाँ हैं (वही फ़ोन, या फ़ोन न होने पर वही नाम) छोड़ दिए जाते हैं। ग्राहक पर कितना बकाया है यह उनके बिना चुकाए बिलों से निकलता है, इसलिए वह आयात नहीं होता।',
+  'Bring your customers from Tally, Vyapar, Busy or Excel. Use a CSV or Excel (.xlsx) file. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.': 'अपने ग्राहक Tally, Vyapar, Busy या Excel से लाएँ। CSV या Excel (.xlsx) फ़ाइल इस्तेमाल करें। जो लोग पहले से यहाँ हैं (वही फ़ोन, या फ़ोन न होने पर वही नाम) छोड़ दिए जाते हैं। ग्राहक पर कितना बकाया है यह उसके बिना चुकाए बिलों से निकलता है, इसलिए इसे इम्पोर्ट नहीं किया जाता।',
   'Choose the customer file': 'ग्राहकों की फ़ाइल चुनें',
   'Check the file': 'फ़ाइल जाँचें',
   'Import the customers': 'ग्राहक आयात करें',

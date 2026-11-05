@@ -140,7 +140,7 @@ export const EXTRAS_TEXTS: string[] = [
   'Set up my racks in one step', 'Tell us how many racks and bins you have. We name them for you (R01, R02 ... and bins A, B, C ...). You can change it later.', 'Name of your store or godown', 'How many racks', 'Bins in each rack', 'A bin is one small place on a rack where a part sits.',
   'Create racks and bins', 'This makes {racks} racks and {total} bins. The first bin will be called {code}.', 'Name your store or godown', 'Racks from 1 to 40 and bins from 1 to 26 in each rack, as whole numbers', 'Today', 'This month', '{n} rows', 'Main store',
   // customers
-  'Import customers', 'Bring your customers from Tally, Vyapar, Busy or Excel. Save the file as CSV first. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.',
+  'Import customers', 'Bring your customers from Tally, Vyapar, Busy or Excel. Use a CSV or Excel (.xlsx) file. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.',
   'Choose the customer file', 'Check the file', 'Import the customers', 'Choose a CSV or Excel (.xlsx) file.', 'That file is too large', 'That file has no rows. The first line must be the column names.',
   '{n} rows have a problem. Fix them in the file and choose it again.', '{n} customers were added.', '{add} to add, {skip} already here.', 'Row {n}',
   // tabs and groups

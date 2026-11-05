@@ -235,11 +235,10 @@ test('audience segments: lapsed customers and those one visit from a reward', { 
 });
 
 test('billing a known customer sends their bill, and a nudge when the next visit is free', { skip }, async () => {
-  const before = (await pool.query(`SELECT COUNT(*)::int AS n FROM messages WHERE business_id = $1 AND kind = 'BILL'`, [A.biz])).rows[0].n;
   const meera = await A.customer('Meera', '9876500020');
   const inv = await A.bill(meera, '2026-01-10');
   await until(async () => (await pool.query(`SELECT 1 FROM messages WHERE business_id = $1 AND customer_id = $2 AND kind = 'BILL'`, [A.biz, meera])).rows.length);
-  assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM messages WHERE business_id = $1 AND kind = 'BILL'`, [A.biz])).rows[0].n, before + 1);
+  assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM messages WHERE customer_id = $1 AND kind = 'BILL'`, [meera])).rows[0].n, 1);   // this customer's own bill message, once (the business-wide count moves when an earlier test's send lands late)
   assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM messages WHERE customer_id = $1 AND kind = 'LOYALTY_NEXT'`, [meera])).rows[0].n, 0);   // 1 stamp of 3: not yet
 
   await A.bill(meera, '2026-01-11');

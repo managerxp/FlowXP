@@ -49,7 +49,7 @@ Copy-Item $vbs $startup -Force            # Windows runs everything in this fold
 Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\wscript.exe') -ArgumentList "`"$vbs`""
 
 $up = $false
-foreach ($i in 1..15) { Start-Sleep -Seconds 1; if (Get-NetTCPConnection -LocalPort 9101 -State Listen -ErrorAction SilentlyContinue) { $up = $true; break } }
+foreach ($i in 1..30) { Start-Sleep -Seconds 1; if (Get-NetTCPConnection -LocalPort 9101 -State Listen -ErrorAction SilentlyContinue) { $up = $true; break } }
 if ($up) {
   Write-Host 'Done. The FlowXP print agent is running and will start by itself whenever you sign in to Windows.'
   Write-Host 'Now open FlowXP, Business settings, Silent printing, and press "Connect to the print agent".'

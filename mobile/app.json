@@ -76,6 +76,8 @@
           "android": {
             "enableProguardInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
             "usesCleartextTraffic": false
           }
         }

@@ -1459,6 +1459,12 @@ export const ML: Record<string, string> = {
   'Date': 'തീയതി',
   'Add': 'ചേർക്കുക',
   'OK': 'ശരി',
+
+  'Your plan and trial': 'നിങ്ങളുടെ പ്ലാനും ട്രയലും',
+
+  'Your trial has ended. Everything you created is still here and still readable.': 'നിങ്ങളുടെ ട്രയൽ അവസാനിച്ചു. നിങ്ങൾ ഉണ്ടാക്കിയതെല്ലാം ഇപ്പോഴും ഇവിടെയുണ്ട്, വായിക്കാം.',
+
+  'This account is not active, so changes are paused. Everything you made is still here to read.': 'ഈ അക്കൗണ്ട് സജീവമല്ല, അതിനാൽ മാറ്റങ്ങൾ നിർത്തിവച്ചിരിക്കുന്നു. നിങ്ങൾ ഉണ്ടാക്കിയതെല്ലാം വായിക്കാൻ ഇപ്പോഴും ഇവിടെയുണ്ട്.',
   'Your accounts at a glance': 'നിങ്ങളുടെ കണക്കുകൾ ഒറ്റനോട്ടത്തിൽ',
   'FlowBook': 'FlowBook',
   'Your accounts at a glance. Make invoices and file GST on the website.': 'നിങ്ങളുടെ കണക്കുകൾ ഒറ്റനോട്ടത്തിൽ. ഇൻവോയ്സ് ഉണ്ടാക്കലും GST ഫയൽ ചെയ്യലും വെബ്സൈറ്റിൽ ചെയ്യുക.',
@@ -2863,7 +2869,7 @@ export const ML: Record<string, string> = {
   'Racks from 1 to 40 and bins from 1 to 26 in each rack, as whole numbers': 'റാക്കുകൾ 1 മുതൽ 40 വരെയും ഓരോ റാക്കിലെ ബിന്നുകൾ 1 മുതൽ 26 വരെയും, പൂർണ്ണസംഖ്യകളായി',
   '{n} rows': '{n} വരികൾ',
   'Main store': 'പ്രധാന കട',
-  'Bring your customers from Tally, Vyapar, Busy or Excel. Save the file as CSV first. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.': 'നിങ്ങളുടെ ഉപഭോക്താക്കളെ Tally, Vyapar, Busy അല്ലെങ്കിൽ Excel-ൽ നിന്ന് കൊണ്ടുവരിക. ആദ്യം ഫയൽ CSV ആയി സേവ് ചെയ്യുക. ഇതിനകം ഇവിടെ ഉള്ളവരെ (അതേ ഫോൺ, ഫോൺ ഇല്ലെങ്കിൽ അതേ പേര്) ഒഴിവാക്കും. ഉപഭോക്താവ് നൽകാനുള്ളത് അവരുടെ അടയ്ക്കാത്ത ബില്ലുകളിൽ നിന്നാണ് കണക്കാക്കുന്നത്, അതിനാൽ അത് ഇറക്കുമതി ചെയ്യില്ല.',
+  'Bring your customers from Tally, Vyapar, Busy or Excel. Use a CSV or Excel (.xlsx) file. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.': 'നിങ്ങളുടെ ഉപഭോക്താക്കളെ Tally, Vyapar, Busy അല്ലെങ്കിൽ Excel-ൽ നിന്ന് കൊണ്ടുവരിക. CSV അല്ലെങ്കിൽ Excel (.xlsx) ഫയൽ ഉപയോഗിക്കുക. ഇവിടെ ഇതിനകം ഉള്ളവരെ (അതേ ഫോൺ, ഫോൺ ഇല്ലെങ്കിൽ അതേ പേര്) ഒഴിവാക്കും. ഒരു ഉപഭോക്താവ് നൽകാനുള്ളത് അവരുടെ അടയ്ക്കാത്ത ബില്ലുകളിൽ നിന്ന് കണക്കാക്കുന്നതിനാൽ അത് ഇമ്പോർട്ട് ചെയ്യില്ല.',
   'Choose the customer file': 'ഉപഭോക്താക്കളുടെ ഫയൽ തിരഞ്ഞെടുക്കുക',
   'Check the file': 'ഫയൽ പരിശോധിക്കുക',
   'Import the customers': 'ഉപഭോക്താക്കളെ ഇറക്കുമതി ചെയ്യുക',
@@ -4431,6 +4437,12 @@ export const TA: Record<string, string> = {
   'Date': 'தேதி',
   'Add': 'சேர்',
   'OK': 'சரி',
+
+  'Your plan and trial': 'உங்கள் திட்டமும் சோதனையும்',
+
+  'Your trial has ended. Everything you created is still here and still readable.': 'உங்கள் சோதனை முடிந்துவிட்டது. நீங்கள் உருவாக்கியவை அனைத்தும் இன்னும் இங்கே உள்ளன, படிக்கலாம்.',
+
+  'This account is not active, so changes are paused. Everything you made is still here to read.': 'இந்தக் கணக்கு செயலில் இல்லை, எனவே மாற்றங்கள் நிறுத்தப்பட்டுள்ளன. நீங்கள் உருவாக்கியவை படிக்க இன்னும் இங்கே உள்ளன.',
   'Your accounts at a glance': 'உங்கள் கணக்குகள் ஒரே பார்வையில்',
   'FlowBook': 'FlowBook',
   'Your accounts at a glance. Make invoices and file GST on the website.': 'உங்கள் கணக்குகள் ஒரே பார்வையில். இன்வாய்ஸ் உருவாக்குவதும் GST தாக்கல் செய்வதும் இணையதளத்தில்.',
@@ -5835,7 +5847,7 @@ export const TA: Record<string, string> = {
   'Racks from 1 to 40 and bins from 1 to 26 in each rack, as whole numbers': 'ரேக்குகள் 1 முதல் 40 வரை, ஒவ்வொரு ரேக்கிலும் பின்கள் 1 முதல் 26 வரை, முழு எண்களாக',
   '{n} rows': '{n} வரிசைகள்',
   'Main store': 'முக்கியக் கடை',
-  'Bring your customers from Tally, Vyapar, Busy or Excel. Save the file as CSV first. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.': 'உங்கள் வாடிக்கையாளர்களை Tally, Vyapar, Busy அல்லது Excel-இல் இருந்து கொண்டு வாருங்கள். முதலில் கோப்பை CSV ஆகச் சேமியுங்கள். ஏற்கனவே இங்கே உள்ளவர்கள் (அதே தொலைபேசி, தொலைபேசி இல்லையெனில் அதே பெயர்) தவிர்க்கப்படுவார்கள். வாடிக்கையாளர் தர வேண்டியது அவர்களின் செலுத்தப்படாத பில்களிலிருந்து கணக்கிடப்படுகிறது, எனவே அது இறக்குமதி ஆகாது.',
+  'Bring your customers from Tally, Vyapar, Busy or Excel. Use a CSV or Excel (.xlsx) file. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.': 'உங்கள் வாடிக்கையாளர்களை Tally, Vyapar, Busy அல்லது Excel-இலிருந்து கொண்டு வாருங்கள். CSV அல்லது Excel (.xlsx) கோப்பைப் பயன்படுத்துங்கள். ஏற்கனவே இங்கே இருப்பவர்கள் (அதே தொலைபேசி, தொலைபேசி இல்லையெனில் அதே பெயர்) தவிர்க்கப்படுவார்கள். வாடிக்கையாளர் தர வேண்டியது அவர்களின் செலுத்தப்படாத பில்களிலிருந்து கணக்கிடப்படுவதால் அது இறக்குமதி செய்யப்படாது.',
   'Choose the customer file': 'வாடிக்கையாளர் கோப்பைத் தேர்ந்தெடுக்கவும்',
   'Check the file': 'கோப்பைச் சரிபாருங்கள்',
   'Import the customers': 'வாடிக்கையாளர்களை இறக்குமதி செய்',
@@ -7403,6 +7415,12 @@ export const BN: Record<string, string> = {
   'Date': 'তারিখ',
   'Add': 'যোগ করুন',
   'OK': 'ঠিক আছে',
+
+  'Your plan and trial': 'আপনার প্ল্যান ও ট্রায়াল',
+
+  'Your trial has ended. Everything you created is still here and still readable.': 'আপনার ট্রায়াল শেষ হয়েছে। আপনার তৈরি সবকিছু এখনও এখানে আছে এবং পড়া যায়।',
+
+  'This account is not active, so changes are paused. Everything you made is still here to read.': 'এই অ্যাকাউন্ট সক্রিয় নয়, তাই পরিবর্তন থেমে আছে। আপনার তৈরি সবকিছু পড়ার জন্য এখনও এখানে আছে।',
   'Your accounts at a glance': 'আপনার হিসাব এক নজরে',
   'FlowBook': 'FlowBook',
   'Your accounts at a glance. Make invoices and file GST on the website.': 'আপনার হিসাব এক নজরে। ইনভয়েস বানানো ও GST ফাইল ওয়েবসাইটে করুন।',
@@ -8807,7 +8825,7 @@ export const BN: Record<string, string> = {
   'Racks from 1 to 40 and bins from 1 to 26 in each rack, as whole numbers': 'র‍্যাক ১ থেকে ৪০ এবং প্রতি র‍্যাকে বিন ১ থেকে ২৬, পূর্ণ সংখ্যায়',
   '{n} rows': '{n}টি সারি',
   'Main store': 'প্রধান দোকান',
-  'Bring your customers from Tally, Vyapar, Busy or Excel. Save the file as CSV first. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.': 'আপনার গ্রাহকদের Tally, Vyapar, Busy বা Excel থেকে আনুন। আগে ফাইলটি CSV হিসেবে সেভ করুন। যাঁরা আগে থেকেই এখানে আছেন (একই ফোন, ফোন না থাকলে একই নাম) তাঁদের বাদ দেওয়া হয়। গ্রাহকের কত বাকি তা তাঁদের অপরিশোধিত বিল থেকে হিসাব হয়, তাই তা আমদানি হয় না।',
+  'Bring your customers from Tally, Vyapar, Busy or Excel. Use a CSV or Excel (.xlsx) file. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.': 'আপনার গ্রাহকদের Tally, Vyapar, Busy বা Excel থেকে আনুন। CSV বা Excel (.xlsx) ফাইল ব্যবহার করুন। যাঁরা আগে থেকেই এখানে আছেন (একই ফোন, ফোন না থাকলে একই নাম) তাঁদের বাদ দেওয়া হয়। গ্রাহকের কাছে কত পাওনা তা তাঁদের অপরিশোধিত বিল থেকে হিসাব হয়, তাই তা ইমপোর্ট হয় না।',
   'Choose the customer file': 'গ্রাহকের ফাইল বেছে নিন',
   'Check the file': 'ফাইল যাচাই করুন',
   'Import the customers': 'গ্রাহক আমদানি করুন',
@@ -10375,6 +10393,12 @@ export const TE: Record<string, string> = {
   'Date': 'తేదీ',
   'Add': 'జోడించండి',
   'OK': 'సరే',
+
+  'Your plan and trial': 'మీ ప్లాన్ మరియు ట్రయల్',
+
+  'Your trial has ended. Everything you created is still here and still readable.': 'మీ ట్రయల్ ముగిసింది. మీరు సృష్టించినవన్నీ ఇంకా ఇక్కడే ఉన్నాయి, చదవవచ్చు.',
+
+  'This account is not active, so changes are paused. Everything you made is still here to read.': 'ఈ ఖాతా సక్రియంగా లేదు, కాబట్టి మార్పులు ఆగాయి. మీరు సృష్టించినవన్నీ చదవడానికి ఇంకా ఇక్కడే ఉన్నాయి.',
   'Your accounts at a glance': 'మీ ఖాతాలు ఒక్క చూపులో',
   'FlowBook': 'FlowBook',
   'Your accounts at a glance. Make invoices and file GST on the website.': 'మీ ఖాతాలు ఒక్క చూపులో. ఇన్వాయిస్‌లు చేయడం, GST ఫైల్ చేయడం వెబ్‌సైట్‌లో చేయండి.',
@@ -11779,7 +11803,7 @@ export const TE: Record<string, string> = {
   'Racks from 1 to 40 and bins from 1 to 26 in each rack, as whole numbers': 'రాక్‌లు 1 నుండి 40, ప్రతి రాక్‌లో బిన్‌లు 1 నుండి 26, పూర్ణ సంఖ్యలుగా',
   '{n} rows': '{n} అడ్డు వరుసలు',
   'Main store': 'ప్రధాన దుకాణం',
-  'Bring your customers from Tally, Vyapar, Busy or Excel. Save the file as CSV first. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.': 'మీ కస్టమర్లను Tally, Vyapar, Busy లేదా Excel నుండి తీసుకురండి. ముందు ఫైల్‌ను CSV గా సేవ్ చేయండి. ఇప్పటికే ఇక్కడ ఉన్నవారిని (అదే ఫోన్, ఫోన్ లేకపోతే అదే పేరు) వదిలేస్తాం. కస్టమర్ ఇవ్వాల్సినది వారి చెల్లించని బిల్లుల నుండి లెక్కించబడుతుంది, కాబట్టి అది దిగుమతి కాదు.',
+  'Bring your customers from Tally, Vyapar, Busy or Excel. Use a CSV or Excel (.xlsx) file. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.': 'మీ కస్టమర్లను Tally, Vyapar, Busy లేదా Excel నుండి తీసుకురండి. CSV లేదా Excel (.xlsx) ఫైల్ ఉపయోగించండి. ఇప్పటికే ఇక్కడ ఉన్నవారిని (అదే ఫోన్, ఫోన్ లేకపోతే అదే పేరు) వదిలేస్తాము. కస్టమర్ ఇవ్వాల్సినది వారి చెల్లించని బిల్లుల నుండి లెక్కిస్తాము, కాబట్టి అది దిగుమతి కాదు.',
   'Choose the customer file': 'కస్టమర్ల ఫైల్‌ను ఎంచుకోండి',
   'Check the file': 'ఫైల్‌ను తనిఖీ చేయండి',
   'Import the customers': 'కస్టమర్లను దిగుమతి చేయండి',
@@ -13347,6 +13371,12 @@ export const KN: Record<string, string> = {
   'Date': 'ದಿನಾಂಕ',
   'Add': 'ಸೇರಿಸಿ',
   'OK': 'ಸರಿ',
+
+  'Your plan and trial': 'ನಿಮ್ಮ ಪ್ಲಾನ್ ಮತ್ತು ಟ್ರಯಲ್',
+
+  'Your trial has ended. Everything you created is still here and still readable.': 'ನಿಮ್ಮ ಟ್ರಯಲ್ ಮುಗಿದಿದೆ. ನೀವು ರಚಿಸಿದ್ದೆಲ್ಲವೂ ಇನ್ನೂ ಇಲ್ಲಿದೆ ಮತ್ತು ಓದಬಹುದು.',
+
+  'This account is not active, so changes are paused. Everything you made is still here to read.': 'ಈ ಖಾತೆ ಸಕ್ರಿಯವಾಗಿಲ್ಲ, ಆದ್ದರಿಂದ ಬದಲಾವಣೆಗಳು ನಿಲ್ಲಿಸಲಾಗಿದೆ. ನೀವು ರಚಿಸಿದ್ದೆಲ್ಲವೂ ಓದಲು ಇನ್ನೂ ಇಲ್ಲಿದೆ.',
   'Your accounts at a glance': 'ನಿಮ್ಮ ಲೆಕ್ಕಗಳು ಒಂದು ನೋಟದಲ್ಲಿ',
   'FlowBook': 'FlowBook',
   'Your accounts at a glance. Make invoices and file GST on the website.': 'ನಿಮ್ಮ ಲೆಕ್ಕಗಳು ಒಂದು ನೋಟದಲ್ಲಿ. ಇನ್‌ವಾಯ್ಸ್ ಮಾಡುವುದು ಮತ್ತು GST ಸಲ್ಲಿಸುವುದು ವೆಬ್‌ಸೈಟ್‌ನಲ್ಲಿ ಮಾಡಿ.',
@@ -14751,7 +14781,7 @@ export const KN: Record<string, string> = {
   'Racks from 1 to 40 and bins from 1 to 26 in each rack, as whole numbers': 'ರ‍್ಯಾಕ್‌ಗಳು 1 ರಿಂದ 40, ಪ್ರತಿ ರ‍್ಯಾಕ್‌ನಲ್ಲಿ ಬಿನ್‌ಗಳು 1 ರಿಂದ 26, ಪೂರ್ಣ ಸಂಖ್ಯೆಗಳಲ್ಲಿ',
   '{n} rows': '{n} ಸಾಲುಗಳು',
   'Main store': 'ಮುಖ್ಯ ಅಂಗಡಿ',
-  'Bring your customers from Tally, Vyapar, Busy or Excel. Save the file as CSV first. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.': 'ನಿಮ್ಮ ಗ್ರಾಹಕರನ್ನು Tally, Vyapar, Busy ಅಥವಾ Excel ನಿಂದ ತನ್ನಿ. ಮೊದಲು ಫೈಲ್ ಅನ್ನು CSV ಆಗಿ ಸೇವ್ ಮಾಡಿ. ಈಗಾಗಲೇ ಇಲ್ಲಿರುವವರನ್ನು (ಅದೇ ಫೋನ್, ಫೋನ್ ಇಲ್ಲದಿದ್ದರೆ ಅದೇ ಹೆಸರು) ಬಿಟ್ಟುಬಿಡಲಾಗುತ್ತದೆ. ಗ್ರಾಹಕರು ಕೊಡಬೇಕಾದದ್ದು ಅವರ ಪಾವತಿಸದ ಬಿಲ್‌ಗಳಿಂದ ಲೆಕ್ಕವಾಗುತ್ತದೆ, ಆದ್ದರಿಂದ ಅದನ್ನು ಆಮದು ಮಾಡುವುದಿಲ್ಲ.',
+  'Bring your customers from Tally, Vyapar, Busy or Excel. Use a CSV or Excel (.xlsx) file. People already here (same phone, or same name when there is no phone) are skipped. What a customer owes is worked out from their unpaid bills, so it is not imported.': 'ನಿಮ್ಮ ಗ್ರಾಹಕರನ್ನು Tally, Vyapar, Busy ಅಥವಾ Excel ನಿಂದ ತನ್ನಿ. CSV ಅಥವಾ Excel (.xlsx) ಫೈಲ್ ಬಳಸಿ. ಈಗಾಗಲೇ ಇಲ್ಲಿರುವವರನ್ನು (ಅದೇ ಫೋನ್, ಫೋನ್ ಇಲ್ಲದಿದ್ದರೆ ಅದೇ ಹೆಸರು) ಬಿಡಲಾಗುತ್ತದೆ. ಗ್ರಾಹಕರು ಕೊಡಬೇಕಾದದ್ದು ಅವರ ಪಾವತಿಸದ ಬಿಲ್‌ಗಳಿಂದ ಲೆಕ್ಕಿಸಲಾಗುತ್ತದೆ, ಆದ್ದರಿಂದ ಅದನ್ನು ಆಮದು ಮಾಡಲಾಗುವುದಿಲ್ಲ.',
   'Choose the customer file': 'ಗ್ರಾಹಕರ ಫೈಲ್ ಆರಿಸಿ',
   'Check the file': 'ಫೈಲ್ ಪರಿಶೀಲಿಸಿ',
   'Import the customers': 'ಗ್ರಾಹಕರನ್ನು ಆಮದು ಮಾಡಿ',

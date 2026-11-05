@@ -263,6 +263,15 @@ export const startCampaign = async (db, { businessId, customers, text, createdBy
 const quiet = (label, work) => Promise.resolve().then(work).catch((error) => console.error(`[messaging] ${label} failed:`, error.message));
 
 /** After a bill: send it to the customer, and nudge them when their next visit earns the reward. */
+/* Two bills of one customer made close together must not both see "the next visit is free" and both send the nudge: this customer's checks run one after the other. */
+const lanes = new Map();
+const oneAtATime = (key, work) => {
+  const run = (lanes.get(key) || Promise.resolve()).catch(() => {}).then(work);
+  lanes.set(key, run);
+  run.finally(() => { if (lanes.get(key) === run) lanes.delete(key); }).catch(() => {});
+  return run;
+};
+
 export const afterBill = (businessId, invoiceId) => quiet('bill message', async () => {
   const settings = await getSettings(pool, businessId);
   if (settings.channel === 'OFF') return;
@@ -273,7 +282,7 @@ export const afterBill = (businessId, invoiceId) => quiet('bill message', async 
 
   if (settings.bill_auto) await sendBill(pool, { businessId, invoiceId });
 
-  if (settings.loyalty_nudge) {
+  if (settings.loyalty_nudge) await oneAtATime(inv.customer_id, async () => {
     const program = await getProgram(pool, businessId);
     if (!isLive(program)) return;
     const progress = await progressFor(pool, businessId, inv.customer_id, program, inv.d);
@@ -283,7 +292,7 @@ export const afterBill = (businessId, invoiceId) => quiet('bill message', async 
     if (recent) return;
     const business = (await pool.query(`SELECT name FROM businesses WHERE business_id = $1`, [businessId])).rows[0];
     await send(pool, { businessId, customerId: inv.customer_id, phone: customer.phone, kind: 'LOYALTY_NEXT', values: { name: customer.name || 'there', business: business.name, reward: card.reward_item } });
-  }
+  });
 });
 
 const guestContext = async (businessId, branchId) => {

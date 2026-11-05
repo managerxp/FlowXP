@@ -16,5 +16,7 @@ Checked 2026-10-09 against the policy text on the website (`frontend/src/site/Le
 
 6. **Phone alerts (added 2026-10-09).** The app now stores the phone's notification address on FlowXP's servers with the person's account, and sends alerts through Expo's push service and Google's Firebase Cloud Messaging. The policy should say: what the address is, that alerts go through those two providers, that it is removed on sign-out or when alerts are switched off, and that alerts contain only business information (an order, a table, a stock item), never customers' phone numbers. In Play's Data Safety form this is "Device or other IDs", collected, linked to the person, for app functionality, not shared for ads. The row is already in `STORE.md`.
 
+7. **Bluetooth printing and file picking (added 2026-11-05).** The app finds the phone's paired Bluetooth printers and prints to the one chosen; the choice stays on the phone and nothing is sent to FlowXP. The Bluetooth library adds the Bluetooth permissions and a fine-location permission for older Android. Say in the policy that the app uses Bluetooth only to print and that files are opened only when the person picks them (customer import, backup restore).
+
 ## Not something I can do
 Publishing the policy, submitting the form, and the Play Console declarations (content rating, target audience, ads: none) are yours.
