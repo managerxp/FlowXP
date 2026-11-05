@@ -94,8 +94,9 @@ export const printReceipt = async (invoiceId, { cash = false, upi = null } = {})
     const target = targetFor(job.target, prefs.receiptTarget, prefs);
     if (!target) { openPrint('receipt', invoiceId, extra); return false; }
     await sendToAgent(target, job.data, prefs);
+    return true;   // printed silently: the screen says so and stays where it is
   } catch (error) { onPrintError(`Receipt not printed: ${error.message}`); if (prefs.dialogFallback !== false) openPrint('receipt', invoiceId, extra); }
-  return null;
+  return false;
 };
 
 /** Is silent printing set up on this computer? Then a UPI bill can print by itself the moment it is saved (a browser print tab needs a click). */
