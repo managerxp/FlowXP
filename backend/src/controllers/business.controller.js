@@ -7,6 +7,7 @@
  * details on Thursday. Every field below is therefore optional at the schema
  * level — the wizard asks for them, it does not withhold the product.
  */
+import { GARAGE_KINDS } from '../modules/mechanic/types.js';
 import { cleanGstSettings, withGstDefaults } from '../modules/gstOptions.js';
 import { cleanInvoicePrint, withDefaults } from '../modules/invoicePrint.js';
 import { backupZip } from '../modules/backup.js';
@@ -48,8 +49,8 @@ export const createBusiness = async (req, res) => {
     const business = (await client.query(
       `INSERT INTO businesses
          (name, business_type, owner_user_id, subscription_status, plan_code,
-          trial_started_at, trial_ends_at, workshop_mode)
-       VALUES ($1,$2,$3,'TRIAL','TRIAL',$4,$5,$6)
+          trial_started_at, trial_ends_at, workshop_mode, garage_kind)
+       VALUES ($1,$2,$3,'TRIAL','TRIAL',$4,$5,$6,$7)
        RETURNING *`,
       [
         String(name).trim(),
@@ -57,7 +58,8 @@ export const createBusiness = async (req, res) => {
         req.auth.userId,
         trial.trial_started_at,
         trial.trial_ends_at,
-        req.body?.workshop_mode === true
+        req.body?.workshop_mode === true || String(business_type).toUpperCase() === 'MECHANIC',
+        String(business_type).toUpperCase() === 'MECHANIC' ? (GARAGE_KINDS.includes(String(req.body?.garage_kind).toUpperCase()) ? String(req.body.garage_kind).toUpperCase() : 'BOTH') : null
       ]
     )).rows[0];
 

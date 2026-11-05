@@ -234,6 +234,7 @@ const NAV_GROUPS = [
       { to: '/app/profitability', label: 'Profitability', icon: TrendingUp, types: RESTAURANT_TYPES, permission: 'reports', feature: 'advanced_reports', more: true },
       { to: '/app/forecast', label: 'Forecast', icon: ChartLine, types: RESTAURANT_TYPES, permission: 'reports', feature: 'advanced_reports', more: true },
       { to: '/app/leakage', label: 'Leakage', icon: ShieldAlert, types: RESTAURANT_TYPES, permission: 'settings', feature: 'advanced_reports', more: true },
+      { to: '/app/money', label: 'Money In and Out', icon: Receipt, types: ['MECHANIC'], anyPermission: ['payments', 'expenses'] },
       { to: '/app/expenses', label: 'Expenses', icon: Receipt, permission: 'expenses', feature: 'expenses', more: true },
       { to: '/app/other-income', label: 'Other income', icon: HandCoins, permission: 'expenses', feature: 'other_income', more: true },
       { to: '/app/gst', label: 'GST filing', icon: Landmark, roles: ['OWNER', 'ADMIN'], more: true },
@@ -283,6 +284,9 @@ const SYSTEM_ITEMS = [
   { to: '/app/salon/settings', label: 'Salon settings', icon: SlidersHorizontal, types: SALON, permission: 'settings' },
   { to: '/app/settings', label: 'Settings', icon: Settings, roles: ['OWNER'] }
 ];
+
+const GARAGE_NAV = ['/app', '/app/parts/jobs', '/app/customers', '/app/parts/catalogue', '/app/parts/receive', '/app/money', '/app/billing', '/app/reports', '/app/messaging', '/app/parts/staff'];
+const GARAGE_MORE = ['/app/parts/vehicles', '/app/expenses', '/app/other-income', '/app/returns'];   // under "More": still one click away, never in the way
 
 const COLLAPSE_KEY = 'flowxp.nav.collapsed';
 const readCollapsed = () => { try { return localStorage.getItem(COLLAPSE_KEY) === '1'; } catch { return false; } };
@@ -496,13 +500,18 @@ const AppShell = () => {
     && (!item.anyPermission || item.anyPermission.some(can))
     && (!item.feature || hasFeature(item.feature));
   /* Mechanic mode: a garage works from its job cards, so the group is called Workshop, job cards and the mechanics come first, and the warehouse tools (racks, trade accounts) move under "More". */
-  const workshopFirst = business.business_type === 'AUTO_PARTS' && business.workshop_mode !== false;
+  const workshopFirst = (business.business_type === 'AUTO_PARTS' && business.workshop_mode !== false) || business.business_type === 'MECHANIC';
   const WORKSHOP_RANK = { '/app/parts/jobs': 0, '/app/parts/staff': 1, '/app/parts/vehicles': 2, '/app/parts/catalogue': 3 };
   const adapt = (group) => (!workshopFirst || group.label !== 'Spare parts' ? group : {
     ...group, label: 'Workshop',
     items: group.items.map((i) => (['/app/parts/warehouse', '/app/parts/trade'].includes(i.to) ? { ...i, more: true } : i)).sort((a, b) => (WORKSHOP_RANK[a.to] ?? 9) - (WORKSHOP_RANK[b.to] ?? 9))
   });
-  const groups = NAV_GROUPS.map(adapt).map((group) => ({ ...group, items: group.items.filter(allowed) })).filter((group) => group.items.length > 0);
+  /* A garage gets one short list, no headings: the home, job cards, customers, parts, money and staff. No stock, GST filing, loyalty, reviews or reports to wade through. */
+  const garageItems = NAV_GROUPS.flatMap((g) => g.items);
+  const groups = business.business_type === 'MECHANIC'
+    ? [{ items: [...GARAGE_NAV.map((to) => { const i = garageItems.find((x) => x.to === to); return i && to === '/app/messaging' ? { ...i, more: false, feature: undefined } : i; }),   // Messaging stays visible without the plan: its page explains the extra plan
+       ...GARAGE_MORE.map((to) => { const i = garageItems.find((x) => x.to === to); return i && { ...i, more: true, types: undefined, notTypes: undefined }; })].filter((i) => i && allowed(i)) }].filter((g) => g.items.length > 0)
+    : NAV_GROUPS.map(adapt).map((group) => ({ ...group, items: group.items.filter(allowed) })).filter((group) => group.items.length > 0);
   const systemItems = SYSTEM_ITEMS.filter(allowed);
   /* The sidebar shows the daily screens; the rest sit under "More" (still one click away, and always in Ctrl K). */
   const mainGroups = groups.map((g) => ({ ...g, items: g.items.filter((i) => !i.more) })).filter((g) => g.items.length > 0);

@@ -26,10 +26,15 @@ export const PHARMACY_TYPES = ['PHARMACY'];
 export const isDistributor = (business) => isWholesale(business) && Boolean(business?.distributor_enabled);
 
 /* Supermarkets and retail shops: the generic products/billing screens, with generated SKUs, any number of barcodes and an MRP. */
-export const RETAIL_TYPES = ['SUPERMARKET', 'RETAIL', 'AUTO_PARTS', 'CLOTHING'];
+export const RETAIL_TYPES = ['SUPERMARKET', 'RETAIL', 'AUTO_PARTS', 'MECHANIC', 'CLOTHING'];
 
 /* Automotive spare parts: the retail till and stock center, plus the parts catalogue, racks and bins, receiving and counts. */
-export const AUTO_PARTS_TYPES = ['AUTO_PARTS'];
+export const AUTO_PARTS_TYPES = ['AUTO_PARTS', 'MECHANIC'];
+
+/* A mechanic garage (bike, car or both): the parts shop's engines with the workshop always on, and its own simple home screen. */
+export const isGarage = (business) => business?.business_type === 'MECHANIC';
+/* A parts shop or a garage. */
+export const isPartsBusiness = (business) => AUTO_PARTS_TYPES.includes(business?.business_type);
 
 /* Clothing shops: the retail till and stock center, plus styles with size and colour variants. */
 export const CLOTHING_TYPES = ['CLOTHING'];

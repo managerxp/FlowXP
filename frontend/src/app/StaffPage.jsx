@@ -211,7 +211,7 @@ const StaffPage = () => {
   const hotel = business?.business_type === 'HOTEL';
   const gym = business?.business_type === 'GYM';
   const gaming = business?.business_type === 'GAMING_CAFE';
-  const parts = business?.business_type === 'AUTO_PARTS';
+  const parts = ['AUTO_PARTS', 'MECHANIC'].includes(business?.business_type);
   const roles = Object.keys(ROLES).filter((r) => (isOwner || !GROUP_ROLES.includes(r)) && (gaming || !GAMING_ONLY.includes(r)) && (parts || !PARTS_ONLY.includes(r)) && (
     gym ? !NOT_FOR_SALON.includes(r) && !SALON_ONLY.includes(r) && !WHOLESALE_ONLY.includes(r) && !PHARMACY_ONLY.includes(r) && !HOTEL_ONLY.includes(r)
     : salon ? !NOT_FOR_SALON.includes(r) && !WHOLESALE_ONLY.includes(r) && !PHARMACY_ONLY.includes(r) && !HOTEL_ONLY.includes(r) && !GYM_ONLY.includes(r)

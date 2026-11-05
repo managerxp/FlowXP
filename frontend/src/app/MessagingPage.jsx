@@ -3,6 +3,7 @@
  * Bills, booking confirmations and "table ready" go out on their own once the channel is on.
  */
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Badge, Button, Card, Field, ListState, PageHeader, Select, Table, Td, Textarea, Th, Thead, Tr, useToast, humanize, useDialog } from '../components/ui.jsx';
@@ -56,7 +57,7 @@ const Settings = () => {
           </Select>
         </Field>
         <div className={`mt-4 space-y-3 ${settings.channel === 'OFF' ? 'opacity-50' : ''}`}>
-          {TOGGLES.filter(([key]) => key !== 'job_updates' || business?.business_type === 'AUTO_PARTS').map(([key, label, hint]) => (
+          {TOGGLES.filter(([key]) => key !== 'job_updates' || ['AUTO_PARTS', 'MECHANIC'].includes(business?.business_type)).map(([key, label, hint]) => (
             <label key={key} className="flex items-start gap-3 text-sm">
               <input type="checkbox" className="mt-1" checked={settings[key]} disabled={settings.channel === 'OFF'} onChange={(e) => save({ [key]: e.target.checked })} />
               <span><span className="font-medium text-ink-900">{label}</span><span className="block text-xs text-ink-500">{hint}</span></span>
@@ -180,6 +181,21 @@ const Log = () => {
 
 const MessagingPage = () => {
   const [tab, setTab] = useState('settings');
+  const { hasFeature } = useAuth();
+  // the entry stays in the menu so the owner can see what it is; without the messaging plan it says so, plainly, instead of failing
+  if (!hasFeature('messaging')) {
+    return (
+      <div>
+        <PageHeader title="Messaging" lead="Send bills, booking updates and offers to customers on WhatsApp or SMS." />
+        <Card className="max-w-xl space-y-3 p-5">
+          <p className="text-body font-semibold text-ink-900">WhatsApp messages come with an extra plan.</p>
+          <p className="text-sm text-ink-700">With it, your customers get a message by themselves when their vehicle is received, when the estimate is ready, when it is ready to collect, and before the next service is due. You can also send an offer to all your customers, or only to those who have not visited for a while.</p>
+          <p className="text-sm text-ink-700">Until then, the job card still has WhatsApp buttons: they open WhatsApp with the message already written, and you press send.</p>
+          <Link to="/app/settings/subscription" className="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700">See the plans</Link>
+        </Card>
+      </div>
+    );
+  }
   return (
     <div>
       <PageHeader title="Messaging" lead="Send bills, booking updates and offers to customers on WhatsApp or SMS." />

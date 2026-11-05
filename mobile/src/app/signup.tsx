@@ -69,6 +69,20 @@ export default function Signup() {
                 ))}
               </View>
 
+              {f.businessType === 'MECHANIC' ? (
+                <View style={{ gap: 8 }}>
+                  <Text style={{ color: color.ink, fontWeight: '600' }}>{t('What do you repair?')}</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {([['BIKE', 'Bikes and scooters'], ['CAR', 'Cars'], ['BOTH', 'Bikes and cars']] as const).map(([value, label]) => (
+                      <Pressable key={value} accessibilityRole="radio" accessibilityState={{ selected: f.garageKind === value }} onPress={() => set('garageKind', value)}
+                        style={{ minHeight: 48, paddingHorizontal: 14, justifyContent: 'center', borderRadius: 24, borderWidth: 1, borderColor: f.garageKind === value ? color.brand : color.line, backgroundColor: f.garageKind === value ? color.brand : color.card }}>
+                        <Text style={{ color: f.garageKind === value ? '#fff' : color.ink, fontWeight: '600' }}>{t(label)}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
               {f.businessType === 'AUTO_PARTS' ? (
                 <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: f.alsoService }} onPress={() => set('alsoService', !f.alsoService)} style={{ flexDirection: 'row', gap: 10, alignItems: 'center', minHeight: 48 }}>
                   <View style={{ width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: color.brand, backgroundColor: f.alsoService ? color.brand : 'transparent', alignItems: 'center', justifyContent: 'center' }}>{f.alsoService ? <Text style={{ color: '#fff', fontWeight: '700' }}>✓</Text> : null}</View>

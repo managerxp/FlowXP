@@ -291,7 +291,7 @@ const CustomersPage = () => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('recent');
-  const [editing, setEditing] = useState(null);
+  const [editing, setEditing] = useState(params.get('add') === '1' ? {} : null);   // from a shortcut (the garage home)
   const [importing, setImporting] = useState(false);
 
   // ponytail: loads every active customer and filters here; page it on the server when a business has thousands

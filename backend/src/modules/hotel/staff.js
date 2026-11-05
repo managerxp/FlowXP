@@ -10,6 +10,7 @@
  */
 import { HotelError, addDaysISO, daysBetween, getProperty } from './common.js';
 import { businessToday } from '../../utils/dates.js';
+import { isParts } from '../mechanic/types.js';
 
 /** The date the staff screens start on: a hotel's own business date (it moves with the night audit), any other business's calendar day. The same staff engine serves both. */
 export const staffToday = async (db, tenant) => (tenant.businessType === 'HOTEL' ? (await getProperty(db, tenant)).business_date : businessToday(tenant.businessId, db));
@@ -21,8 +22,8 @@ const DEFAULT_SHIFTS = [['Morning', '07:00', '15:00'], ['Evening', '15:00', '23:
 /* what a new spare parts workshop starts with instead (the lists can be changed freely) */
 const PARTS_DEPARTMENTS = ['Workshop', 'Parts counter', 'Stores', 'Accounts', 'Management'];
 const PARTS_SHIFTS = [['Day', '09:00', '18:00'], ['Late', '12:00', '21:00']];
-const departmentsFor = (tenant) => (tenant.businessType === 'AUTO_PARTS' ? PARTS_DEPARTMENTS : DEFAULT_DEPARTMENTS);
-const shiftsFor = (tenant) => (tenant.businessType === 'AUTO_PARTS' ? PARTS_SHIFTS : DEFAULT_SHIFTS);
+const departmentsFor = (tenant) => (isParts(tenant.businessType) ? PARTS_DEPARTMENTS : DEFAULT_DEPARTMENTS);
+const shiftsFor = (tenant) => (isParts(tenant.businessType) ? PARTS_SHIFTS : DEFAULT_SHIFTS);
 
 /* ── departments and shifts ────────────────────────────────────────────── */
 

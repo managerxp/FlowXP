@@ -14,6 +14,7 @@ import { shouldOfferTour } from '../../lib/onboarding.ts';
 import { KITCHEN_TYPES } from '../../lib/cart.ts';
 import { t } from '../../lib/i18n.ts';
 import { allowed } from '../../lib/access.ts';
+import GarageHome from '../../lib/GarageHome.tsx';
 import { useEffect } from 'react';
 import { Button, Empty, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
 
@@ -59,7 +60,13 @@ const Quick = ({ icon, label, go }: { icon: IconName; label: string; go: () => v
   </Pressable>
 );
 
+/* A mechanic garage has its own home: the vehicles in the garage and the day's money. Every other business keeps the sales home. */
 export default function Home() {
+  const business = currentBusiness(useSession());
+  return business?.business_type === 'MECHANIC' ? <GarageHome /> : <ShopHome />;
+}
+
+function ShopHome() {
   const session = useSession();
   const business = currentBusiness(session);
   const outlet = business?.outlets.find((o) => o.branch_id === session.branchId);

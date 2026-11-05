@@ -65,7 +65,7 @@ const DISTRIBUTOR_ONLY = ['DISTRIBUTOR_ADMIN', 'FIELD_SALES', 'COLLECTION_EXECUT
 export const rolesFor = (businessType: string | undefined, isOwner: boolean, distributorEnabled = false): string[] => {
   const t = businessType ?? '';
   const salon = t === 'SALON'; const wholesale = ['WHOLESALE', 'DISTRIBUTOR'].includes(t); const pharmacy = t === 'PHARMACY'; const hotel = t === 'HOTEL'; const gym = t === 'GYM';
-  const gaming = t === 'GAMING_CAFE'; const parts = t === 'AUTO_PARTS';
+  const gaming = t === 'GAMING_CAFE'; const parts = t === 'AUTO_PARTS' || t === 'MECHANIC';
   const none = (...lists: string[][]) => (r: string) => lists.every((l) => !l.includes(r));
   const kind = gym ? none(NOT_FOR_SALON, SALON_ONLY, WHOLESALE_ONLY, PHARMACY_ONLY, HOTEL_ONLY)
     : salon ? none(NOT_FOR_SALON, WHOLESALE_ONLY, PHARMACY_ONLY, HOTEL_ONLY, GYM_ONLY)

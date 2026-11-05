@@ -242,7 +242,7 @@ export const requireAuth = async (req, res, next) => {
               b.name, b.business_type, b.status AS business_status,
               b.subscription_status, b.plan_code, b.billing_cycle,
               b.trial_started_at, b.trial_ends_at, b.next_billing_date,
-              b.currency, b.onboarding_step, b.gst_enabled, b.gst_settings, b.require_2fa_admins, b.upi_vpa, b.default_language, b.discount_cap_pct, b.cancel_needs_approval, b.workshop_mode,
+              b.currency, b.onboarding_step, b.gst_enabled, b.gst_settings, b.require_2fa_admins, b.upi_vpa, b.default_language, b.discount_cap_pct, b.cancel_needs_approval, b.workshop_mode, b.garage_kind,
               -- feature_flags come from the business's PINNED plan version, not the plan's current
               -- (possibly since-changed) values — see modules/planFeatures.js and migration 0038.
               COALESCE(pv.feature_flags, p.feature_flags, '{}'::jsonb) AS feature_flags,
@@ -370,6 +370,7 @@ export const withBusiness = (options = {}) => async (req, res, next) => {
     currency: membership.currency,
     gstEnabled: membership.gst_enabled,
     onboardingStep: membership.onboarding_step,
+    garageKind: membership.garage_kind ?? null,   // a mechanic garage: BIKE, CAR or BOTH
     role: membership.role,
     permissions: membership.permissions || {},
     // manager approval (modules/approvals.js): the biggest typed-in discount staff may give alone, and whether cancelling a bill needs a manager's PIN

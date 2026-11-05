@@ -45,7 +45,7 @@ export default function Pay() {
   const sum = totals(cart, offers.byKey, gst, levies);
   // billing a table's order instead of the till's bill: the order is on the server and the server prices it
   const { order: orderId } = useLocalSearchParams<{ order?: string }>();
-  const taxDetails = business?.business_type === 'AUTO_PARTS' && !orderId;
+  const taxDetails = (business?.business_type === 'AUTO_PARTS' || business?.business_type === 'MECHANIC') && !orderId;
   const order = useLoad<Order>(`order:${session.businessId}:${session.branchId}:${orderId}`, () => api.get<Order>(`/orders/${orderId}`), Boolean(orderId));
   const orderKey = useRef(newKey());   // one key for billing this order: a retry after a dropped signal returns the same invoice
   const ot = order.data ? orderTotals(order.data) : null;

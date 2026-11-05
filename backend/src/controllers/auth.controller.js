@@ -7,6 +7,7 @@
  * business, or a business with no owner, is a support ticket that has to be
  * fixed by hand in psql.
  */
+import { GARAGE_KINDS } from '../modules/mechanic/types.js';
 import { withGstDefaults } from '../modules/gstOptions.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
@@ -120,10 +121,10 @@ export const signup = async (req, res) => {
     const business = (await client.query(
       `INSERT INTO businesses
          (name, business_type, owner_user_id, email, phone,
-          subscription_status, plan_code, plan_version_id, trial_started_at, trial_ends_at, workshop_mode)
+          subscription_status, plan_code, plan_version_id, trial_started_at, trial_ends_at, workshop_mode, garage_kind)
        VALUES ($1,$2,$3,$4,$5,'TRIAL','TRIAL',
                (SELECT plan_version_id FROM plan_versions WHERE plan_code = 'TRIAL' AND effective_to IS NULL),
-               $6,$7,$8)
+               $6,$7,$8,$9)
        RETURNING *`,
       [
         String(business_name).trim(),
@@ -133,7 +134,8 @@ export const signup = async (req, res) => {
         phone ? String(phone).trim() : null,
         trial.trial_started_at,
         trial.trial_ends_at,
-        req.body?.workshop_mode === true   // a spare parts shop that also services vehicles says so at signup; Settings can change it
+        req.body?.workshop_mode === true || String(business_type).toUpperCase() === 'MECHANIC',   // a spare parts shop that also services vehicles says so at signup; a garage always does
+        String(business_type).toUpperCase() === 'MECHANIC' ? (GARAGE_KINDS.includes(String(req.body?.garage_kind).toUpperCase()) ? String(req.body.garage_kind).toUpperCase() : 'BOTH') : null
       ]
     )).rows[0];
 
@@ -197,7 +199,7 @@ const sessionPayload = async (user) => {
   const businesses = (await pool.query(
     `SELECT bu.role, b.business_id, b.name, b.business_type, b.currency, b.onboarding_step,
             b.subscription_status, b.plan_code, b.billing_cycle,
-            b.trial_started_at, b.trial_ends_at, b.next_billing_date, b.workshop_mode
+            b.trial_started_at, b.trial_ends_at, b.next_billing_date, b.workshop_mode, b.garage_kind
      FROM business_users bu
      JOIN businesses b ON b.business_id = bu.business_id
      WHERE bu.user_id = $1 AND bu.status = 'ACTIVE' AND b.status <> 'CLOSED'
@@ -448,6 +450,7 @@ export const me = async (req, res) => {
         gst_options: withGstDefaults(m.gst_settings),   // the GST options switched on (composite, cess, TCS, TDS, reverse charge)
         // a distributor, or a wholesaler who switched the distributor features on: the app shows the Distributor menu
         distributor_enabled: Boolean(m.distributor_enabled),
+        garage_kind: m.garage_kind ?? null,   // a mechanic garage: BIKE, CAR or BOTH
         workshop_mode: Boolean(m.workshop_mode),   // a parts shop that also services vehicles: job cards, labour, staff
         default_language: m.default_language ?? null,   // what this business's staff see until they choose their own
         upi_vpa: m.upi_vpa || null,   // the till shows a UPI QR for this ID

@@ -9,11 +9,11 @@ export const DELETE_URL = 'https://flowxp.in/delete-account';
 export const BUSINESS_TYPES: readonly (readonly [string, string])[] = [
   ['RESTAURANT', 'Restaurant'], ['CAFE', 'Café'], ['CLOUD_KITCHEN', 'Cloud kitchen'], ['HOTEL', 'Hotel and restaurant'], ['RETAIL', 'Retail shop'],
   ['SUPERMARKET', 'Supermarket'], ['PHARMACY', 'Pharmacy'], ['SALON', 'Salon'], ['GYM', 'Gym'], ['GAMING_CAFE', 'Gaming lounge'],
-  ['AUTO_PARTS', 'Auto spare parts'], ['CLOTHING', 'Clothing and fashion'], ['WHOLESALE', 'Wholesale and distribution']
+  ['AUTO_PARTS', 'Auto spare parts'], ['MECHANIC', 'Mechanic garage (bike, car)'], ['CLOTHING', 'Clothing and fashion'], ['WHOLESALE', 'Wholesale and distribution']
 ];
 
-export type SignupForm = { name: string; email: string; phone: string; password: string; businessName: string; businessType: string; agreed: boolean; alsoService: boolean };
-export const emptySignup = (): SignupForm => ({ name: '', email: '', phone: '', password: '', businessName: '', businessType: '', agreed: false, alsoService: false });
+export type SignupForm = { name: string; email: string; phone: string; password: string; businessName: string; businessType: string; agreed: boolean; alsoService: boolean; garageKind: 'BIKE' | 'CAR' | 'BOTH' };
+export const emptySignup = (): SignupForm => ({ name: '', email: '', phone: '', password: '', businessName: '', businessType: '', agreed: false, alsoService: false, garageKind: 'BOTH' });
 
 export const emailLooksRight = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
 /** The common slips: gmial.com, gmail.con, hotmial.com. Returns the address with the slip mended, or null. */
@@ -43,7 +43,9 @@ export const signupBody = (f: SignupForm) => ({
   name: f.name.trim(), email: f.email.trim(), ...(f.phone.trim() ? { phone: f.phone.trim() } : {}), password: f.password,
   business_name: f.businessName.trim(), business_type: f.businessType, accepted_terms: f.agreed,
   // a spare parts shop that also services vehicles starts with mechanic mode on (Settings can change it)
-  ...(f.businessType === 'AUTO_PARTS' && f.alsoService ? { workshop_mode: true } : {})
+  ...(f.businessType === 'AUTO_PARTS' && f.alsoService ? { workshop_mode: true } : {}),
+  // a mechanic garage says what it repairs; its workshop is always on
+  ...(f.businessType === 'MECHANIC' ? { garage_kind: f.garageKind } : {})
 });
 
 /** The 6-digit code from the email, with spaces and dashes forgiven. */

@@ -370,3 +370,38 @@ test('analytics: best sizes and colours, margin by style, ageing and dead stock'
   assert.deepEqual(okBody(await call(ctl.analytics, { query: {} })).sizes.map((x) => x.size).includes('M'), true, 'the other shop sees its own figures');
   assert.equal(okBody(await call(ctl.analytics, { query: { days: 'nope' } }, tT)).days, 30, 'a bad window falls back to 30 days');
 });
+
+test('branch transfer grid: several sizes and colours move to another outlet in one go, all or nothing', { skip }, async () => {
+  const [main, other] = S.branchIds;
+  const st = await make({ ...TEE, name: 'Transfer Tee', stock: [{ colour: 'Black', size: 'M', qty: 10 }, { colour: 'White', size: 'M', qty: 4 }] });
+  const ids = Object.fromEntries(st.variants.map((v) => [`${v.colour}-${v.size}`, v.product_id]));
+  const view = okBody(await call(ctl.outlets, { params: { id: st.style_id } }));
+  assert.equal(view.outlets.length, 2);
+  assert.equal(view.outlets.find((o) => o.branch_id === main).stock, 14);
+  assert.equal(view.outlets.find((o) => o.branch_id === other).stock, 0);
+
+  const sent = okBody(await call(ctl.transfer, { params: { id: st.style_id }, body: { from_branch_id: main, to_branch_id: other, items: [{ product_id: ids['Black-M'], quantity: 6 }, { product_id: ids['White-M'], quantity: 4 }, { product_id: ids['Black-L'], quantity: 0 }] } }), 201);
+  assert.deepEqual(sent, { moved: 2, pieces: 10 });
+  assert.equal(await onHand(ids['Black-M']), 4);
+  assert.equal(await onHand(ids['Black-M'], other), 6);
+  assert.equal(await onHand(ids['White-M'], other), 4);
+
+  // one line short of stock: nothing at all moves
+  const err = await (call(ctl.transfer, { params: { id: st.style_id }, body: { from_branch_id: main, to_branch_id: other, items: [{ product_id: ids['Black-M'], quantity: 1 }, { product_id: ids['White-M'], quantity: 1 }] } }));
+  assert.equal((await err).code, 409);
+  assert.equal(await onHand(ids['Black-M']), 4, 'the first line was rolled back');
+  // bad input
+  assert.equal((await call(ctl.transfer, { params: { id: st.style_id }, body: { from_branch_id: main, to_branch_id: main, items: [{ product_id: ids['Black-M'], quantity: 1 }] } })).code, 400);
+  assert.equal((await call(ctl.transfer, { params: { id: st.style_id }, body: { from_branch_id: main, to_branch_id: other, items: [] } })).code, 400);
+  assert.equal((await call(ctl.transfer, { params: { id: st.style_id }, body: { from_branch_id: main, to_branch_id: other, items: [{ product_id: ids['Black-M'], quantity: 1.5 }] } })).code, 400);
+  // a product of another style, and another shop's style
+  const tee2 = await make({ ...TEE, name: 'Other Tee', stock: [{ colour: 'Black', size: 'M', qty: 5 }] });
+  assert.equal((await call(ctl.transfer, { params: { id: st.style_id }, body: { from_branch_id: main, to_branch_id: other, items: [{ product_id: tee2.variants[0].product_id, quantity: 1 }] } })).code, 404);
+  assert.equal((await call(ctl.outlets, { params: { id: st.style_id } }, T.tenantFor())).code, 404);
+  // a person pinned to the other outlet cannot send from Main
+  const pinned = S.tenantFor('MANAGER', { branchId: other, pinned: true });
+  assert.equal((await call(ctl.transfer, { params: { id: st.style_id }, body: { from_branch_id: main, to_branch_id: other, items: [{ product_id: ids['Black-M'], quantity: 1 }] } }, pinned)).code, 403);
+  // the router asks for the inventory permission
+  const r = router.stack.find((l) => l.route?.path === '/styles/:id/transfer' && l.route.methods.post);
+  assert.ok(r, 'route exists');
+});

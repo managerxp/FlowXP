@@ -30,6 +30,7 @@ import { asInvoice, BillingError, createInvoiceInTransaction, paymentReference, 
 import { HotelError } from '../modules/hotel/common.js';
 import { postInvoiceToRoom, roomGuestCustomer } from '../modules/hotel/roomCharge.js';
 import { insertOrderItems, nextNumber, OrderItemsError, sendKotCore } from './orders.controller.js';
+import { isParts } from '../modules/mechanic/types.js';
 
 /* ==========================================================================
    POST /api/invoices
@@ -130,7 +131,7 @@ export const create = async (req, res) => {
     }
 
     // a parts counter that sold offline: say so on the bill, and flag any part the sale left below zero so someone checks the shelf
-    if (isOffline(req) && req.tenant.businessType === 'AUTO_PARTS') {
+    if (isOffline(req) && isParts(req.tenant.businessType)) {
       const short = (await client.query(
         `SELECT p.name, bs.quantity FROM invoice_items ii JOIN products p ON p.product_id = ii.product_id JOIN branch_stock bs ON bs.product_id = ii.product_id AND bs.branch_id = $2
          WHERE ii.invoice_id = $1 AND bs.quantity < 0`, [invoice.invoice_id, req.tenant.branchId])).rows;

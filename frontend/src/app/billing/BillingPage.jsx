@@ -358,7 +358,7 @@ const BillingPage = () => {
   const [invoiceDiscount, setInvoiceDiscount] = useState('');
   const [notes, setNotes] = useState('');
   const [dispatch, setDispatch] = useState({});          // Tally invoice details for this sale (consignee, delivery, dispatch, payment terms); hardware only
-  const tallyBill = business?.business_type === 'AUTO_PARTS';
+  const tallyBill = ['AUTO_PARTS', 'MECHANIC'].includes(business?.business_type);
   const gstOpt = business?.gst_enabled ? (business.gst_options || {}) : {};   // composite, TCS, TDS, reverse charge as the owner switched them (Settings > GST options)
   const [levies, setLevies] = useState({});                                    // { tcs, tds, reverse_charge }: ticked on this bill
   const [method, setMethod] = useState('CASH');

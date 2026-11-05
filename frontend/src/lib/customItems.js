@@ -15,7 +15,7 @@ const FOOD = [[T('Tea'), 5], [T('Coffee'), 5], [T('Meal'), 5], [T('Snacks'), 5],
 const SALON = [[T('Haircut'), 18], [T('Shave'), 18], [T('Facial'), 18], [T('Hair colour'), 18], [T('Massage'), 18]];
 const AUTO = [[T('Labour'), 18], [T('Spare part'), 18], [T('Oil'), 18]];
 
-const BY_TYPE = { CLOTHING: CLOTHING, RESTAURANT: FOOD, CAFE: FOOD, CLOUD_KITCHEN: FOOD, SALON: SALON, AUTO_PARTS: AUTO };
+const BY_TYPE = { CLOTHING: CLOTHING, RESTAURANT: FOOD, CAFE: FOOD, CLOUD_KITCHEN: FOOD, SALON: SALON, AUTO_PARTS: AUTO, MECHANIC: AUTO };
 
 /** [[name, gst]] for the business type; gst is a rate or a slab key. Empty when the shop has no usual ones. */
 export const customPresets = (businessType) => BY_TYPE[businessType] || [];

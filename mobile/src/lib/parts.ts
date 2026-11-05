@@ -1,7 +1,7 @@
 /* The spare parts counter and storeroom on a phone: find a part by any number, see where it sits, find parts for a vehicle, put received stock on a shelf, move it between bins,
    and receive a delivery. The server decides (stock, fitment, prices); these only shape what a screen shows and sends. Online only: bins and receipts are shared by the whole shop. */
 
-export const AUTO_PARTS_TYPES = ['AUTO_PARTS'];
+export const AUTO_PARTS_TYPES = ['AUTO_PARTS', 'MECHANIC'];   // a parts shop or a mechanic garage
 
 export type PartRow = {
   product_id: number; name: string; sku: string | null; barcode?: string | null; selling_price_paise: number; mrp_paise: number | null; purchase_price_paise?: number; stock?: number;

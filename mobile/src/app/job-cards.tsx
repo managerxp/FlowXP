@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { TextInput } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { currentBusiness, useSession, api } from '../lib/session.ts';
 import { allowed } from '../lib/access.ts';
 import { t } from '../lib/i18n.ts';
 import { Card, Field, Input, Msg, Panel, SetupShell, useAct, useList } from '../lib/formKit.tsx';
 import { canJobCards, customerProblem, dueLine, emptyJob, jobSub, newJobBody, newJobProblem, promiseDays, suggestMakes, suggestModels, vehicleOf, type JobRow, type NewJobForm, type VehicleTree } from '../lib/jobCards.ts';
+import { garageTypes, isGarage, mergeNames, suggestNames, type MasterBrands, type MasterModels } from '../lib/garage.ts';
 import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, s } from '../lib/ui.tsx';
 
 type Cust = { customer_id: number; name: string; phone: string | null };
@@ -51,7 +52,17 @@ export default function JobCardsScreen() {
   const due = useList<{ job_id: number; vehicle_reg: string; make: string | null; model: string | null; next_service_on: string; overdue: boolean; customer_name: string | null }[]>(tab === 'due' ? '/autoparts/jobcards/due?days=30' : null);
   const makes = useList<VehicleTree>('/autoparts/vehicles');
   const mech = useList<{ employee_id: number; name: string }[]>('/autoparts/jobcards/mechanics');
+  const garage = isGarage(me?.business_type);
+  const kinds = garage ? garageTypes(me?.garage_kind) : TYPES;   // a garage repairs what it said at sign-up: bikes, cars or both
   const [form, setForm] = useState<NewJobForm | null>(null);
+  const { new: openNew } = useLocalSearchParams<{ new?: string }>();
+  useEffect(() => { if (openNew === '1' && ok) setForm({ ...emptyJob(), vehicle_type: kinds[0].id }); }, [openNew]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // a garage also picks from the vehicle master (every Indian bike and car, old and new): the brands of this kind, and the models of the typed brand
+  const mtype = form?.vehicle_type === 'BIKE' ? 'BIKE' : 'CAR';
+  const [typedMake, setTypedMake] = useState('');
+  useEffect(() => { const timer = setTimeout(() => setTypedMake(form?.make.trim() ?? ''), 300); return () => clearTimeout(timer); }, [form?.make]);
+  const masterBrands = useList<MasterBrands>(garage && form ? `/autoparts/vehicle-master?type=${mtype}` : null);
+  const masterModels = useList<MasterModels>(garage && form && typedMake.length > 1 ? `/autoparts/vehicle-master?type=${mtype}&brand=${encodeURIComponent(typedMake)}` : null);
   const a = useAct();
   const set = (patch: Partial<NewJobForm>) => form && setForm({ ...form, ...patch });
   const tree = makes.data ?? [];
@@ -64,18 +75,18 @@ export default function JobCardsScreen() {
           <Chips items={[{ id: 'LIVE', label: 'In the workshop' }, { id: 'READY', label: 'Ready' }, { id: 'BILLED', label: 'Billed' }, { id: 'ALL', label: 'All' }]} value={show} onChange={setShow} />
           {list.error && !list.data ? <Failed message={list.error} onRetry={list.reload} /> : !list.data ? <Loading /> : (
             <Panel>
-              <Button title="New job card" onPress={() => { a.setError(''); setForm(emptyJob()); }} />
+              <Button title="New job card" onPress={() => { a.setError(''); setForm({ ...emptyJob(), vehicle_type: kinds[0].id }); }} />
               {list.data.length === 0 ? <><Soft>{t('No job cards here.')}</Soft><Soft>{t('Open a card when a vehicle comes in.')}</Soft></> : null}
               {list.data.map((j) => <Line key={j.job_id} left={`${j.job_no} · ${vehicleOf(j)}`} sub={jobSub(j)} onPress={() => router.push({ pathname: '/job-card/[id]', params: { id: String(j.job_id) } })} />)}
               {form ? (
                 <Card>
                   <CustomerFind form={form} set={set} />
                   <Input label="Registration number" upper value={form.vehicle_reg} onChange={(v) => set({ vehicle_reg: v })} max={20} placeholder="KA01AB1234" />
-                  <Field label="Vehicle"><Chips items={TYPES} value={form.vehicle_type} onChange={(v) => set({ vehicle_type: v, make: '', model: '' })} /></Field>
+                  <Field label="Vehicle"><Chips items={kinds} value={form.vehicle_type} onChange={(v) => set({ vehicle_type: v, make: '', model: '' })} /></Field>
                   <Input label="Company" hint="Pick from the list or type it. A new one is remembered." value={form.make} onChange={(v) => set({ make: v, model: '' })} max={60} placeholder="Hero, Honda, Maruti Suzuki" />
-                  {suggestMakes(tree, form.vehicle_type, form.make).map((n) => <Line key={n} left={n} onPress={() => set({ make: n, model: '' })} />)}
+                  {(garage ? suggestNames(mergeNames(tree.filter((m) => m.vehicle_type === form.vehicle_type).map((m) => m.name), (masterBrands.data?.brands ?? []).map((b) => b.brand)), form.make, 10) : suggestMakes(tree, form.vehicle_type, form.make)).map((n) => <Line key={n} left={n} onPress={() => set({ make: n, model: '' })} />)}
                   <Input label="Model" value={form.model} onChange={(v) => set({ model: v })} max={80} placeholder="Splendor Plus, Swift" />
-                  {suggestModels(tree, form.vehicle_type, form.make, form.model).map((n) => <Line key={n} left={n} onPress={() => set({ model: n })} />)}
+                  {(garage ? suggestNames(mergeNames(suggestModels(tree, form.vehicle_type, form.make, '', 500), (masterModels.data?.models ?? []).map((m) => m.model)), form.model, 10) : suggestModels(tree, form.vehicle_type, form.make, form.model)).map((n) => <Line key={n} left={n} onPress={() => set({ model: n })} />)}
                   <Input label="Model number or variant (optional)" value={form.variant} onChange={(v) => set({ variant: v })} max={60} placeholder="VXI, 110cc, Disc" />
                   <Input label="Year (optional)" numeric value={form.vehicle_year} onChange={(v) => set({ vehicle_year: v })} max={4} />
                   <Input label="Odometer (km)" numeric value={form.odometer_km} onChange={(v) => set({ odometer_km: v })} max={7} />

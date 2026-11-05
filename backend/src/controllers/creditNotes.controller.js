@@ -24,6 +24,7 @@ import { isRetail } from '../modules/retailSettings.js';
 import { refundToWallet } from '../modules/gaming/wallet.js';
 import { branchFilter } from '../utils/scope.js';
 import { toQuantity, toRupees } from '../utils/money.js';
+import { isParts } from '../modules/mechanic/types.js';
 
 const METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER', 'WALLET'];   // WALLET (back to the player's prepaid balance) is for a gaming lounge only
 const bad = (res, message, status = 400) => res.status(status).json({ success: false, message });
@@ -58,7 +59,7 @@ export const issueCreditNote = async (client, req) => {
   if (method === 'WALLET' && req.tenant.businessType !== 'GAMING_CAFE') throw new NoteError(400, 'Unknown refund method');
   // a parts shop says why the part came back and what becomes of it
   let ret = null;
-  if (req.tenant.businessType === 'AUTO_PARTS') {
+  if (isParts(req.tenant.businessType)) {
     try { ret = await parseReturn(client, req.tenant, body); } catch (error) { if (error.name === 'PartsError') throw new NoteError(error.status, error.message); throw error; }
   }
   const scope = [req.tenant.businessId, req.params.id];

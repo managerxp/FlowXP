@@ -51,7 +51,7 @@ export const runServiceDue = async ({ force = false } = {}) => {
             COALESCE((SELECT jsonb_object_agg(feature_key, enabled) FROM business_feature_overrides o WHERE o.business_id = b.business_id AND (o.expires_at IS NULL OR o.expires_at > now())), '{}'::jsonb) AS overrides
        FROM businesses b LEFT JOIN plans p ON p.plan_code = b.plan_code LEFT JOIN plan_versions pv ON pv.plan_version_id = b.plan_version_id
        LEFT JOIN business_type_features btf ON btf.business_type = b.business_type AND btf.plan_code = b.plan_code
-      WHERE b.status = 'ACTIVE' AND b.business_type = 'AUTO_PARTS' AND b.messaging_settings->>'channel' IN ('WHATSAPP','SMS')`)).rows;
+      WHERE b.status = 'ACTIVE' AND b.business_type IN ('AUTO_PARTS','MECHANIC') AND b.messaging_settings->>'channel' IN ('WHATSAPP','SMS')`)).rows;
   let sent = 0;
   for (const b of shops) {
     try {

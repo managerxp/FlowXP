@@ -11,7 +11,7 @@ import { Line, Soft, s } from '../lib/ui.tsx';
 export default function HelpFindScreen() {
   const me = currentBusiness(useSession());
   const [q, setQ] = useState('');
-  const rows = findTasks(q, { parts: me?.business_type === 'AUTO_PARTS', workshop: workshopOn(me), owner: me?.role === 'OWNER' });
+  const rows = findTasks(q, { parts: me?.business_type === 'AUTO_PARTS' || me?.business_type === 'MECHANIC', workshop: workshopOn(me), owner: me?.role === 'OWNER' });
   return (
     <SetupShell title="Help me find" sub="What do you want to do?" ok denied="">
       <Panel>

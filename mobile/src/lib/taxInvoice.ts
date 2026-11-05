@@ -23,7 +23,7 @@ export type TaxInvoice = {
 export type TaxBusiness = { name: string; email?: string | null; receipt_settings?: { logo_url?: string | null } | null };
 
 /** Business types whose bills default to the tax-invoice layout (the website's TALLY_TYPES); the owner can force either layout in invoice print settings. */
-export const TALLY_TYPES = ['WHOLESALE', 'DISTRIBUTOR', 'AUTO_PARTS', 'ELECTRONICS'];
+export const TALLY_TYPES = ['WHOLESALE', 'DISTRIBUTOR', 'AUTO_PARTS', 'MECHANIC', 'ELECTRONICS'];
 export const usesTaxInvoice = (invoice: Pick<TaxInvoice, 'invoice_print'> | null, businessType: string | undefined): boolean => {
   const layout = invoice?.invoice_print?.layout ?? 'auto';
   return layout === 'tally' || (layout === 'auto' && TALLY_TYPES.includes(businessType ?? ''));

@@ -60,6 +60,35 @@ export default function More() {
     Alert.alert(`${unsent} bill${unsent === 1 ? ' has' : 's have'} not been sent yet`, 'They stay safe on this phone. They are sent after you sign in again at this outlet.', [{ text: 'Stay', style: 'cancel' }, { text: 'Sign out', onPress: go }]);
   };
 
+  /* A mechanic garage sees a short list: its customers and parts, money and reports, messaging, staff and this phone. No stock, GST filing, loyalty or other industries. */
+  const garageGroups: { title: string; items: Item[] }[] = [
+    { title: 'Garage', items: [
+      { left: 'Labour and services', sub: 'What you charge for work: oil change, alignment', icon: 'pricetag-outline', go: '/job-services', show: can('billing') },
+      { left: 'Customers', sub: 'Their vehicles, bills and what they still owe', icon: 'person-outline', go: '/customers', show: can('customers', 'billing') },
+      { left: 'Find a part', sub: 'By name, barcode or any part number: price, stock and shelf', icon: 'search-outline', go: '/parts', show: can('billing', 'parts_catalog', 'warehouse', 'inventory') },
+      { left: 'Receive parts', sub: 'A delivery: accepted, damaged and rejected counted apart', icon: 'download-outline', go: '/parts-receive', show: can('grn') },
+      { left: 'Staff', sub: 'People, attendance and payroll', icon: 'people-circle-outline', go: '/workshop-staff', show: can('hr', 'payroll') }
+    ] },
+    { title: 'Your business', items: [
+      { left: 'What we earned', sub: 'Labour and parts earned, by day and mechanic', icon: 'stats-chart-outline', go: '/job-earnings', show: can('billing') },
+      { left: 'Reports', sub: 'How much you earned, and download it', icon: 'stats-chart-outline', go: '/reports', show: can('reports') },
+      { left: 'Expenses', sub: 'Rent, salary, electricity: what you spent', icon: 'receipt-outline', go: '/expenses', show: can('expenses') },
+      { left: 'Messaging', sub: 'WhatsApp or SMS: vehicle ready, estimate, offers', icon: 'chatbubbles-outline', go: '/messaging', show: canMessaging(business?.role) },
+      { left: 'Notifications', sub: 'Weekly summary, alerts, and what to be told about', icon: 'notifications-outline', go: '/notifications' }
+    ] },
+    { title: 'This phone', items: [
+      { left: 'Help me find', sub: 'Tell me where things are: say what you want to do', icon: 'help-buoy-outline', go: '/help-find' },
+      { left: 'Printers', sub: 'Bluetooth and Wi-Fi printers: receipt and kitchen ticket', icon: 'print-outline', go: '/printers' },
+      { left: 'Settings', sub: 'Printer, updates, this phone', icon: 'settings-outline', go: '/settings' },
+      { left: 'Business settings', sub: 'Details, receipt, GST and invoice (owner)', icon: 'business-outline', go: '/business-settings', show: business?.role === 'OWNER' },
+      { left: 'Team logins', sub: 'Who can sign in, their role and outlet', icon: 'people-circle-outline', go: '/staff', show: canManageTeam(business?.role) },
+      { left: 'Subscription', sub: 'Your plan, trial and payment link', icon: 'card-outline', go: '/subscription', show: canSubscription(business?.role) },
+      { left: 'Security', sub: 'Two-step verification, password, sign-ins', icon: 'shield-checkmark-outline', go: '/security' },
+      { left: 'Report a problem', sub: 'Tell FlowXP something went wrong', icon: 'bug-outline', go: '/report' },
+      { left: 'Switch outlet', sub: outlet?.name ?? '', icon: 'swap-vertical-outline', go: '/choose', show: several }
+    ] }
+  ];
+
   const groups: { title: string; items: Item[] }[] = [
     { title: 'Workshop', items: [
       { left: 'Job cards', sub: 'Vehicles in for service: parts, labour and one bill', icon: 'build-outline', go: '/job-cards', show: parts && workshop && can('billing') },
@@ -172,7 +201,7 @@ export default function More() {
             <Soft>{session.user?.email}</Soft>
             <SyncBadge />
           </View>
-          {groups.map((g) => {
+          {(business?.business_type === 'MECHANIC' ? garageGroups : groups).map((g) => {
             const items = g.items.filter((i) => i.show !== false);
             return items.length ? (
               <View key={g.title}>

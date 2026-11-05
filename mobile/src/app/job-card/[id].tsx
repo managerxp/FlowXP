@@ -11,6 +11,7 @@ import {
   JOB_STATUS_LABEL, PAY_METHODS, billBody, billProblem, canBill, canJobCards, datesBody, datesProblem, estimateLines, promiseDays, isLive, labourBody, labourProblem, lineSub, lineText, misfits, quantityProblem, stepsFor, vehicleOf, type JobFull
 } from '../../lib/jobCards.ts';
 import { serviceLabourBody, shareFor, type Service } from '../../lib/workshopExtras.ts';
+import { FUEL_LEVELS, isGarage } from '../../lib/garage.ts';
 import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, s } from '../../lib/ui.tsx';
 
 type Found = { product_id: number; name: string; sku: string | null; selling_price_paise: number; stock?: number };
@@ -54,6 +55,8 @@ export default function JobCardScreen() {
   const mech = useList<{ employee_id: number; name: string }[]>('/autoparts/jobcards/mechanics');
   const [dates, setDates] = useState<{ promised_on?: string; next_service_on?: string }>({});
   const [qty, setQty] = useState<{ id: number; v: string } | null>(null);
+  const [belongings, setBelongings] = useState<string | null>(null);
+  const garage = isGarage(me?.business_type);   // Checking, fuel and belongings, the customer's yes and handing over are for a garage only
   const a = useAct();
   const j = job.data;
   const body = !j ? (job.error ? <Failed message={job.error} onRetry={job.reload} /> : <Loading />) : (() => {
@@ -93,7 +96,15 @@ export default function JobCardScreen() {
             {Object.keys(dates).length ? <Button title="Save" busy={a.busy} onPress={() => { void a.run(datesProblem(dates), async () => { await api.call(`/autoparts/jobcards/${id}`, { method: 'PUT', body: datesBody(dates) }); setDates({}); job.reload(); }, 'Saved'); }} /> : null}
           </Card>
         ) : null}
-        {live ? stepsFor(j.status).map((st) => <Button key={st.status} title={st.label} kind="quiet" busy={a.busy} onPress={() => { void a.run('', async () => { await api.post(`/autoparts/jobcards/${id}/status`, { status: st.status }); job.reload(); }, 'Saved'); }} />) : null}
+        {garage && live ? (
+          <Card>
+            <Field label="Fuel in the tank"><Chips items={[{ id: '', label: t('Not noted') }, ...FUEL_LEVELS.map((x) => ({ id: x.id, label: x.id === 'FULL' ? t('Full') : x.label }))]} value={j.fuel_level ?? ''} onChange={(v) => { void a.run('', async () => { await api.call(`/autoparts/jobcards/${id}`, { method: 'PUT', body: { fuel_level: v || null } }); job.reload(); }, 'Saved'); }} /></Field>
+            <Input label="Things left in the vehicle" value={belongings ?? j.belongings ?? ''} onChange={setBelongings} max={500} />
+            {belongings !== null && belongings !== (j.belongings ?? '') ? <Button title="Save" busy={a.busy} onPress={() => { void a.run('', async () => { await api.call(`/autoparts/jobcards/${id}`, { method: 'PUT', body: { belongings } }); setBelongings(null); job.reload(); }, 'Saved'); }} /> : null}
+          </Card>
+        ) : null}
+        {garage && live && j.lines.length > 0 ? (j.estimate_approved_at ? <Soft>{`${t('Estimate approved')} · ${j.estimate_approved_by ?? ''}`}</Soft> : <Button title="Customer approved the estimate" kind="quiet" busy={a.busy} onPress={() => { void a.run('', async () => { await api.post(`/autoparts/jobcards/${id}/approve-estimate`, {}); job.reload(); }, 'Saved'); }} />) : null}
+        {live ? stepsFor(j.status, me?.business_type === 'MECHANIC').map((st) => <Button key={st.status} title={st.label} kind="quiet" busy={a.busy} onPress={() => { void a.run('', async () => { await api.post(`/autoparts/jobcards/${id}/status`, { status: st.status }); job.reload(); }, 'Saved'); }} />) : null}
 
         <SectionTitle>Parts</SectionTitle>
         {j.lines.length === 0 ? <Soft>{t('Nothing on the card yet.')}</Soft> : null}
@@ -131,6 +142,7 @@ export default function JobCardScreen() {
             <Button title="Make the bill" busy={a.busy} onPress={() => { void a.run(billProblem(pay.method, pay.amount), async () => { const out = await api.post<{ invoice: { invoice_id: number } }>(`/autoparts/jobcards/${id}/bill`, billBody(pay.method, pay.amount)); job.reload(); router.push({ pathname: '/receipt', params: { id: String(out.invoice.invoice_id) } }); }, 'Bill made'); }} />
           </Card>
         ) : null}
+        {garage && j.status === 'BILLED' ? (j.delivered_at ? <Soft>{t('Delivered')}</Soft> : <Button title="Hand over the vehicle" kind="quiet" busy={a.busy} onPress={() => { void a.run('', async () => { await api.post(`/autoparts/jobcards/${id}/deliver`, {}); job.reload(); }, 'Saved'); }} />) : null}
         {j.status === 'BILLED' && j.invoice_id ? <Button title="Open the bill" onPress={() => router.push({ pathname: '/receipt', params: { id: String(j.invoice_id) } })} /> : null}
         {live ? <Button title="Cancel the job" kind="danger" onPress={() => confirm(t('Cancel this job?'), t('Every part held for it goes back on the shelf.'), 'Cancel the job', () => { void a.run('', async () => { await api.post(`/autoparts/jobcards/${id}/status`, { status: 'CANCELLED' }); job.reload(); }, 'Saved'); })} /> : null}
       </Panel>

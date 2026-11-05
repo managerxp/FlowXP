@@ -9,11 +9,12 @@ import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Selec
 import { Chips, NumberField, Panel, Tabs, useAction } from '../salon/parts.jsx';
 import { T, useT } from '../../i18n/useT.js';
 import { WorkshopToday } from './PartsHome.jsx';
+import Suggest from './Suggest.jsx';
 
 const STATUS = {
-  OPEN: [T('Waiting'), 'neutral'], IN_PROGRESS: [T('Being worked on'), 'brand'], WAITING_PARTS: [T('Waiting for parts'), 'warning'], READY: [T('Ready'), 'success'], BILLED: [T('Billed'), 'neutral'], CANCELLED: [T('Cancelled'), 'danger']
+  OPEN: [T('Waiting'), 'neutral'], CHECKING: [T('Checking'), 'brand'], IN_PROGRESS: [T('Being worked on'), 'brand'], WAITING_PARTS: [T('Waiting for parts'), 'warning'], READY: [T('Ready'), 'success'], BILLED: [T('Billed'), 'neutral'], CANCELLED: [T('Cancelled'), 'danger']
 };
-const LIVE = ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS', 'READY'];
+const LIVE = ['OPEN', 'CHECKING', 'IN_PROGRESS', 'WAITING_PARTS', 'READY'];
 const METHODS = [['CASH', T('Cash')], ['UPI', T('UPI')], ['CARD', T('Card')], ['BANK_TRANSFER', T('Bank transfer')], ['CREDIT', T('Pay later')]];
 const StatusBadge = ({ s }) => { const tr = useT(); return <Badge tone={STATUS[s]?.[1] || 'neutral'}>{STATUS[s]?.[0] ? tr(STATUS[s][0]) : s}</Badge>; };
 const vehicleName = (j) => [j.make, j.model].filter(Boolean).join(' ');
@@ -44,13 +45,23 @@ const CustomerFind = ({ value, onChange }) => {
 const NewJob = ({ onClose, onSaved }) => {
   const tr = useT();
   const [customer, setCustomer] = useState(null);
-  const [f, setF] = useState({ vehicle_reg: '', vehicle_type: 'CAR', make: '', model: '', variant: '', vehicle_year: '', odometer_km: '', complaint: '', mechanic_id: '', promised_on: '' });
+  const { business } = useAuth();
+  const garage = business?.business_type === 'MECHANIC';
+  const kinds = garage ? (business.garage_kind === 'BIKE' ? ['BIKE'] : business.garage_kind === 'CAR' ? ['CAR'] : ['CAR', 'BIKE']) : null;   // what this garage repairs
+  const [f, setF] = useState({ vehicle_reg: '', vehicle_type: kinds ? kinds[0] : 'CAR', make: '', model: '', variant: '', vehicle_year: '', odometer_km: '', complaint: '', mechanic_id: '', promised_on: '' });
   const veh = useLoad('/autoparts/vehicles'); const mech = useLoad('/autoparts/jobcards/mechanics');
   const [error, setError] = useState(''); const [busy, run] = useAction();
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
   // companies of this kind of vehicle, and the models of the company that is typed or picked: suggestions only, anything can be typed
   const makes = (veh.data || []).filter((mk) => mk.vehicle_type === f.vehicle_type);
   const chosen = makes.find((mk) => mk.name.toLowerCase() === f.make.trim().toLowerCase());
+  // a garage also picks from the vehicle master (every Indian bike and car, old and new); what the garage has typed before is listed too
+  const mtype = f.vehicle_type === 'BIKE' ? 'BIKE' : 'CAR'; const typedMake = useDebounced(f.make.trim(), 300);
+  const masterBrands = useLoad(garage ? `/autoparts/vehicle-master${qs({ type: mtype })}` : null);
+  const masterModels = useLoad(garage && typedMake.length > 1 ? `/autoparts/vehicle-master${qs({ type: mtype, brand: typedMake })}` : null);
+  const uniq = (names) => [...new Map(names.filter(Boolean).map((n) => [n.toLowerCase(), n])).values()];
+  const makeNames = uniq([...makes.map((mk) => mk.name), ...(masterBrands.data?.brands || []).map((b) => b.brand)]);
+  const modelNames = uniq([...(chosen?.models || []).map((m) => m.name), ...(masterModels.data?.models || []).map((m) => m.model)]);
   const save = () => run(async () => {
     setError('');
     try { onSaved(await api('/autoparts/jobcards', { method: 'POST', body: { customer_id: customer.customer_id, vehicle_reg: f.vehicle_reg, vehicle_type: f.vehicle_type, make: f.make.trim() || undefined, model: f.model.trim() || undefined, variant: f.variant.trim() || undefined, vehicle_year: f.vehicle_year === '' ? undefined : Number(f.vehicle_year), odometer_km: f.odometer_km === '' ? undefined : Number(f.odometer_km), complaint: f.complaint || undefined, mechanic_id: f.mechanic_id ? Number(f.mechanic_id) : undefined, promised_on: f.promised_on || undefined } })); } catch (e) { setError(e.message); }
@@ -62,9 +73,9 @@ const NewJob = ({ onClose, onSaved }) => {
         <Field id="jc-cust" label={tr('Customer')}><CustomerFind value={customer} onChange={setCustomer} /></Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="jc-reg" label={tr('Registration number')}><Input id="jc-reg" value={f.vehicle_reg} onChange={(e) => setF((x) => ({ ...x, vehicle_reg: e.target.value.toUpperCase() }))} placeholder={tr('KA01AB1234')} maxLength={20} /></Field>
-          <Field id="jc-type" label={tr('Vehicle')}><Select id="jc-type" value={f.vehicle_type} onChange={(e) => setF((x) => ({ ...x, vehicle_type: e.target.value, make: '', model: '' }))}>{VEHICLE_TYPES.map(([v, l]) => <option key={v} value={v}>{tr(l)}</option>)}</Select></Field>
-          <Field id="jc-make" label={tr('Company')} hint={tr('Pick from the list or type it. A new one is remembered.')}><Input id="jc-make" list="jc-makes" value={f.make} onChange={(e) => setF((x) => ({ ...x, make: e.target.value, model: '' }))} placeholder={tr('Hero, Honda, Maruti Suzuki')} maxLength={60} autoComplete="off" /><datalist id="jc-makes">{makes.map((mk) => <option key={mk.make_id} value={mk.name} />)}</datalist></Field>
-          <Field id="jc-model" label={tr('Model')} hint={tr('Type the model, or pick one of this company.')}><Input id="jc-model" list="jc-models" value={f.model} onChange={set('model')} placeholder={tr('Splendor Plus, Swift')} maxLength={80} autoComplete="off" /><datalist id="jc-models">{(chosen?.models || []).map((m) => <option key={m.model_id} value={m.name} />)}</datalist></Field>
+          <Field id="jc-type" label={tr('Vehicle')}><Select id="jc-type" value={f.vehicle_type} onChange={(e) => setF((x) => ({ ...x, vehicle_type: e.target.value, make: '', model: '' }))}>{VEHICLE_TYPES.filter(([v]) => !kinds || kinds.includes(v)).map(([v, l]) => <option key={v} value={v}>{tr(l)}</option>)}</Select></Field>
+          <Field id="jc-make" label={tr('Company')} hint={tr('Tap the box to see the list, or start typing. A new one is remembered.')}><Suggest id="jc-make" label={tr('Company')} value={f.make} options={makeNames} onChange={(v) => setF((x) => ({ ...x, make: v, model: v.trim().toLowerCase() === x.make.trim().toLowerCase() ? x.model : '' }))} placeholder={tr('Hero, Honda, Maruti Suzuki')} maxLength={60} /></Field>
+          <Field id="jc-model" label={tr('Model')} hint={tr('Tap to see this company\'s models, or type it.')}><Suggest id="jc-model" label={tr('Model')} value={f.model} options={modelNames} onChange={(v) => setF((x) => ({ ...x, model: v }))} placeholder={tr('Splendor Plus, Swift')} maxLength={80} /></Field>
           <Field id="jc-variant" label={tr('Model number or variant (optional)')}><Input id="jc-variant" value={f.variant} onChange={set('variant')} placeholder={tr('VXI, 110cc, Disc')} maxLength={60} /></Field>
           <NumberField id="jc-year" label={tr('Year (optional)')} step={1} value={f.vehicle_year} onChange={(v) => setF((x) => ({ ...x, vehicle_year: v }))} />
           <NumberField id="jc-km" label={tr('Odometer')} suffix="km" step={1} value={f.odometer_km} onChange={(v) => setF((x) => ({ ...x, odometer_km: v }))} />
@@ -99,7 +110,8 @@ const JobDetail = ({ id, onClose, onChanged }) => {
   const tr = useT();
   const navigate = useNavigate();
   const dialog = useDialog();
-  const { can, hasFeature } = useAuth();
+  const { can, hasFeature, business } = useAuth();
+  const garage = business?.business_type === 'MECHANIC';   // Checking, the customer's yes, handing over and fuel notes are for a garage only
   const [note, setNote] = useState('');
   const job = useLoad(`/autoparts/jobcards/${id}`);
   const mech = useLoad('/autoparts/jobcards/mechanics');
@@ -148,10 +160,22 @@ const JobDetail = ({ id, onClose, onChanged }) => {
         </div>
         {live && (
           <div className="flex flex-wrap gap-2">
+            {garage && j.status !== 'CHECKING' && j.status !== 'IN_PROGRESS' && <Button size="sm" variant="secondary" onClick={() => setStatus('CHECKING')}>{tr('Start checking')}</Button>}
             {j.status !== 'IN_PROGRESS' && <Button size="sm" variant="secondary" onClick={() => setStatus('IN_PROGRESS')}>{tr('Start work')}</Button>}
             {j.status !== 'WAITING_PARTS' && <Button size="sm" variant="secondary" onClick={() => setStatus('WAITING_PARTS')}>{tr('Waiting for parts')}</Button>}
             {j.status !== 'READY' && <Button size="sm" variant="secondary" onClick={() => setStatus('READY')}>{tr('Mark ready')}</Button>}
             <Button size="sm" variant="ghost" onClick={async () => { if (await dialog.confirm({ title: tr('Cancel this job?'), body: tr('Every part held for it goes back on the shelf.'), confirmLabel: tr('Cancel the job'), danger: true })) setStatus('CANCELLED'); }}>{tr('Cancel job')}</Button>
+          </div>
+        )}
+        {garage && j.status === 'BILLED' && (
+          <div className="flex flex-wrap items-center gap-2 text-small">
+            {j.delivered_at ? <Badge tone="success">{tr('Delivered')}</Badge> : <Button size="sm" variant="secondary" onClick={() => act(() => api(`/autoparts/jobcards/${id}/deliver`, { method: 'POST' }))}>{tr('Hand over the vehicle')}</Button>}
+          </div>
+        )}
+        {garage && live && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field id="jd-fuel" label={tr('Fuel in the tank')}><Select id="jd-fuel" value={j.fuel_level ?? ''} onChange={(e) => put({ fuel_level: e.target.value || null })}><option value="">{tr('Not noted')}</option>{[['EMPTY', '0'], ['QUARTER', '¼'], ['HALF', '½'], ['THREE_Q', '¾'], ['FULL', tr('Full')]].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
+            <Field id="jd-bel" label={tr('Things left in the vehicle')}><Input id="jd-bel" defaultValue={j.belongings || ''} onBlur={(e) => e.target.value !== (j.belongings || '') && put({ belongings: e.target.value })} /></Field>
           </div>
         )}
         {live && (
@@ -162,6 +186,13 @@ const JobDetail = ({ id, onClose, onChanged }) => {
           </div>
         )}
 
+        {garage && live && j.lines.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-small">
+            {j.estimate_approved_at
+              ? <Badge tone="success">{tr('Estimate approved')} · {j.estimate_approved_by}</Badge>
+              : <Button size="sm" variant="secondary" onClick={() => act(() => api(`/autoparts/jobcards/${id}/approve-estimate`, { method: 'POST', body: {} }))}>{tr('Customer approved the estimate')}</Button>}
+          </div>
+        )}
         <Panel title={tr('Parts and labour')}>
           {j.lines.length === 0 ? <p className="text-small text-ink-500">{tr('Nothing on the card yet.')}</p> : (
             <Table>
@@ -287,11 +318,12 @@ const Earnings = () => {
 
 export default function PartsJobCards() {
   const tr = useT();
-  const { can } = useAuth();
+  const { can, business } = useAuth();
+  const garage = business?.business_type === 'MECHANIC';   // a garage keeps it simple: its home already shows the day, so no "Workshop today" panel here
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') || 'jobs';
   const [status, setStatus] = useState('LIVE'); const [term, setTerm] = useState(''); const q = useDebounced(term, 250);
-  const [adding, setAdding] = useState(false); const [open, setOpen] = useState(null); const [stamp, setStamp] = useState(0);
+  const [adding, setAdding] = useState(params.get('new') === '1'); const [open, setOpen] = useState(null); const [stamp, setStamp] = useState(0);
   const list = useLoad(`/autoparts/jobcards${qs({ status, q, k: stamp })}`);
   useEffect(() => { setStamp((n) => n); }, []);
   const rows = Array.isArray(list.data) ? list.data : [];
@@ -300,7 +332,7 @@ export default function PartsJobCards() {
       <PageHeader title={tr('Job cards')} lead={tr('Vehicles in for service: the parts fitted, the labour, and one bill.')}
         action={can('billing') && <Button onClick={() => setAdding(true)}><Plus aria-hidden="true" className="h-4 w-4" /> {tr('New job card')}</Button>} />
       <Tabs value={tab} onChange={(k) => setParams(k === 'jobs' ? {} : { tab: k })} tabs={[{ key: 'jobs', label: T('Jobs') }, { key: 'due', label: T('Services due') }, { key: 'services', label: T('Labour and services') }, { key: 'earnings', label: T('What we earned') }]} />
-      {tab === 'jobs' && <div className="mb-5"><WorkshopToday /></div>}
+      {tab === 'jobs' && !garage && <div className="mb-5"><WorkshopToday /></div>}
       {tab === 'due' ? <Due /> : tab === 'services' ? <Services /> : tab === 'earnings' ? <Earnings /> : (
         <>
           <div className="mb-4 flex flex-wrap items-center gap-3">

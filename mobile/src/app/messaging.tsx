@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
+import { hasFeature } from '../lib/access.ts';
 import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
@@ -34,7 +36,7 @@ const Settings = () => {
     <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 32 }}>
       {!provider.connected ? <Soft>{t('No messaging service is connected on the server yet, so messages are only recorded as skipped. Ask whoever runs the server to set it up.')}</Soft> : <Soft>{t('Connected: {name}', { name: provider.name ?? '' })}</Soft>}
       <View style={{ gap: 4 }}><Text style={{ color: color.soft, fontSize: 13 }}>{t('Send messages by')}</Text><Chips items={CHANNELS} value={settings.channel} onChange={(c: Channel) => { void save({ channel: c }); }} /></View>
-      {TOGGLES.filter((x) => x.key !== 'job_updates' || me?.business_type === 'AUTO_PARTS').map((x) => (
+      {TOGGLES.filter((x) => x.key !== 'job_updates' || me?.business_type === 'AUTO_PARTS' || me?.business_type === 'MECHANIC').map((x) => (
         <View key={x.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, opacity: off ? 0.5 : 1 }}>
           <View style={{ flex: 1, gap: 2 }}><Text style={{ color: color.ink, fontWeight: '600' }}>{t(x.label)}</Text><Soft>{t(x.hint)}</Soft></View>
           <Switch value={settings[x.key]} disabled={off} onValueChange={(v) => { void save({ [x.key]: v }); }} accessibilityLabel={t(x.label)} />
@@ -148,7 +150,15 @@ export default function Messaging() {
     <SafeAreaView style={s.screen}>
       <Page max={640}>
         <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Title>Messaging</Title><Button title="Back" kind="quiet" onPress={() => goBack()} /></View>
-        {!canMessaging(me?.role) ? <Empty>Messaging is for owners and admins.</Empty> : (
+        {!canMessaging(me?.role) ? <Empty>Messaging is for owners and admins.</Empty> : !hasFeature(me, 'messaging') ? (
+          // the entry stays so the owner can see what it is; without the messaging plan it says so, plainly, instead of failing
+          <View style={{ padding: 16, gap: 10 }}>
+            <Text style={{ color: color.ink, fontSize: 17, fontWeight: '700' }}>{t('WhatsApp messages come with an extra plan.')}</Text>
+            <Soft>{t('With it, customers get a message by themselves when their vehicle is received, when it is ready and before the next service. You can also send them offers.')}</Soft>
+            <Soft>{t('Until then, the WhatsApp buttons on a job card open WhatsApp with the message ready, and you press send.')}</Soft>
+            <Button title="See the plans" onPress={() => router.push('/subscription')} />
+          </View>
+        ) : (
           <>
             <Chips items={[{ id: 'settings', label: 'Settings' }, { id: 'offer', label: 'Send an offer' }, { id: 'log', label: 'Message log' }]} value={tab} onChange={setTab} />
             {tab === 'settings' ? <Settings /> : tab === 'offer' ? <SendOffer /> : <Log />}

@@ -44,6 +44,12 @@ export default wrapAll({
     audit(req, 'clothing.variant_updated', 'product', id(req), null, { fields: Object.keys(req.body || {}) });
     ok(res, out);
   },
+  outlets: async (req, res) => ok(res, await styles.styleOutlets(pool, req.tenant, id(req))),
+  transfer: async (req, res) => {
+    const out = await inTx((client) => styles.transferGrid(client, ctx(req), id(req), req.body || {}));
+    audit(req, 'clothing.style_transferred', 'clothing_style', id(req), null, { from: req.body?.from_branch_id, to: req.body?.to_branch_id, ...out });
+    ok(res, out, 201);
+  },
   analytics: async (req, res) => ok(res, await styles.analytics(pool, req.tenant, req.query)),
   customerPreferences: async (req, res) => ok(res, await styles.customerPreferences(pool, req.tenant, id(req))),
   supplierStyles: async (req, res) => ok(res, await styles.supplierStyles(pool, req.tenant, id(req))),

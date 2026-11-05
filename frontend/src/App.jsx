@@ -177,6 +177,8 @@ const ClothingStyles = lazy(() => import('./app/clothing/ClothingStyles.jsx'));
 const ClothingInsights = lazy(() => import('./app/clothing/ClothingInsights.jsx'));
 const ClothingLabels = lazy(() => import('./app/clothing/ClothingLabels.jsx'));
 const PartsHome = lazy(() => import('./app/autoparts/PartsHome.jsx'));
+const GarageHome = lazy(() => import('./app/autoparts/GarageHome.jsx'));
+const GarageMoney = lazy(() => import('./app/autoparts/GarageMoney.jsx'));
 const PartsCatalogue = lazy(() => import('./app/autoparts/PartsCatalogue.jsx'));
 const PartsVehicles = lazy(() => import('./app/autoparts/PartsVehicles.jsx'));
 const PartsWarehouse = lazy(() => import('./app/autoparts/PartsWarehouse.jsx'));
@@ -251,6 +253,7 @@ const HomeRoute = () => {
   if (business?.business_type === 'GYM') return <GymDashboard />;
   if (business?.business_type === 'GAMING_CAFE') return <GamingDashboard />;
   // a garage (mechanic mode) opens on its job cards; a parts-only shop on the stock overview
+  if (business?.business_type === 'MECHANIC') return <GarageHome />;   // a mechanic garage: its own simple home
   if (business?.business_type === 'AUTO_PARTS') return business.workshop_mode !== false ? <Navigate to="/app/parts/jobs" replace /> : <PartsHome />;
   if (business?.business_type === 'PHARMACY') return <PharmacyDashboard />;
   if (['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type)) return business?.distributor_enabled ? <DistributorDashboard /> : <WholesaleDashboard />;
@@ -396,6 +399,7 @@ const App = () => (
       <Route path="parts/warehouse" element={<PartsWarehouse />} />
       <Route path="parts/receive" element={<PartsReceive />} />
       <Route path="parts/jobs" element={<PartsJobCards />} />
+      <Route path="money" element={<GarageMoney />} />
       <Route path="parts/staff" element={<HotelStaff />} />
       <Route path="parts/trade" element={<PartsTrade />} />
       <Route path="parts/reports" element={<PartsReports />} />

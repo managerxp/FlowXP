@@ -122,6 +122,9 @@ router.get('/parts/:id/ledger', ...read, any('reports', 'inventory', 'warehouse'
 /* -- workshop job cards: a vehicle in for service, its parts and labour, one bill. The counter ('billing') runs them; billing a card is billing. ------------------------- */
 router.get('/jobcards', ...read, can('billing'), jobF, jobs.list);
 router.get('/jobcards/due', ...read, can('billing'), jobF, jobs.due);
+router.get('/garage/money', ...read, any('payments', 'expenses', 'reports'), jobF, jobs.garageMoney);
+router.get('/garage/today', ...read, any('billing', 'reports'), jobF, jobs.garageToday);
+router.get('/vehicle-master', ...read, can('billing'), jobF, jobs.vehicleMaster);
 router.get('/jobcards/mechanics', ...read, can('billing'), jobF, jobs.mechanics);
 router.get('/jobcards/report', ...read, can('billing'), jobF, jobs.report);
 router.get('/jobcards/services', ...read, can('billing'), jobF, jobs.services);
@@ -133,6 +136,8 @@ router.get('/jobcards/:id/share', ...read, can('billing'), jobF, jobs.share);
 router.post('/jobcards/:id/send-update', ...write, can('billing'), jobF, jobs.sendUpdate);   // estimate / received / ready, from the shop's WhatsApp channel (plan with messaging)
 router.put('/jobcards/:id', ...write, can('billing'), jobF, jobs.update);
 router.post('/jobcards/:id/status', ...write, can('billing'), jobF, jobs.status);
+router.post('/jobcards/:id/approve-estimate', ...write, can('billing'), jobF, jobs.approve);
+router.post('/jobcards/:id/deliver', ...write, can('billing'), jobF, jobs.deliver);
 router.post('/jobcards/:id/lines', ...write, can('billing'), jobF, jobs.lineAdd);
 router.put('/jobcards/lines/:id', ...write, can('billing'), jobF, jobs.lineUpdate);
 router.delete('/jobcards/lines/:id', ...write, can('billing'), jobF, jobs.lineRemove);

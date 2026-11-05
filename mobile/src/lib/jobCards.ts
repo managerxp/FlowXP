@@ -6,8 +6,8 @@ import { FIT_LABEL, vehicleText } from './parts.ts';
 
 export const canJobCards = (can: (p: string) => boolean): boolean => can('billing');
 
-export const JOB_STATUS_LABEL: Record<string, string> = { OPEN: 'Waiting', IN_PROGRESS: 'Being worked on', WAITING_PARTS: 'Waiting for parts', READY: 'Ready', BILLED: 'Billed', CANCELLED: 'Cancelled' };
-export const LIVE_STATUSES = ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS', 'READY'];
+export const JOB_STATUS_LABEL: Record<string, string> = { OPEN: 'Waiting', CHECKING: 'Checking', IN_PROGRESS: 'Being worked on', WAITING_PARTS: 'Waiting for parts', READY: 'Ready', BILLED: 'Billed', CANCELLED: 'Cancelled' };
+export const LIVE_STATUSES = ['OPEN', 'CHECKING', 'IN_PROGRESS', 'WAITING_PARTS', 'READY'];
 export const isLive = (status: string): boolean => LIVE_STATUSES.includes(status);
 
 export type JobRow = {
@@ -16,6 +16,7 @@ export type JobRow = {
 };
 export type JobLine = { line_id: number; kind: 'PART' | 'LABOUR'; product_id: number | null; description: string; sku: string | null; quantity: number; unit_price_paise: number; tax_rate: number; held: boolean; fitment: string | null; amount_paise: number };
 export type JobFull = JobRow & {
+  estimate_approved_at?: string | null; estimate_approved_by?: string | null; delivered_at?: string | null; fuel_level?: string | null; belongings?: string | null;
   model_id: number | null; vehicle_year: number | null; odometer_km: number | null; complaint: string | null; mechanic_id: number | null; next_service_on: string | null; invoice_id: number | null; earlier_visits: number;
   lines: JobLine[]; estimate: { parts_paise: number; labour_paise: number; tax_paise: number; total_paise: number };
 };
@@ -84,8 +85,9 @@ export const misfits = (lines: JobLine[]): string[] => lines.filter((l) => l.fit
 export const estimateLines = (e: JobFull['estimate']): [string, string][] => [[t('Parts'), rupees(e.parts_paise)], [t('Labour'), rupees(e.labour_paise)], [t('GST'), rupees(e.tax_paise)], [t('Estimate'), rupees(e.total_paise)]];
 
 /* ── moving a card along ─────────────────────────────────────────────────── */
-export const NEXT_STEPS: { status: string; label: string }[] = [{ status: 'IN_PROGRESS', label: 'Start work' }, { status: 'WAITING_PARTS', label: 'Waiting for parts' }, { status: 'READY', label: 'Mark ready' }];
-export const stepsFor = (status: string) => NEXT_STEPS.filter((s) => s.status !== status);
+export const NEXT_STEPS: { status: string; label: string }[] = [{ status: 'CHECKING', label: 'Start checking' }, { status: 'IN_PROGRESS', label: 'Start work' }, { status: 'WAITING_PARTS', label: 'Waiting for parts' }, { status: 'READY', label: 'Mark ready' }];
+/** Checking is a garage step; a parts shop's job card goes straight to work. */
+export const stepsFor = (status: string, garage = false) => NEXT_STEPS.filter((s) => s.status !== status && (garage || s.status !== 'CHECKING'));
 export const canBill = (j: Pick<JobFull, 'status' | 'lines'>): boolean => isLive(j.status) && j.lines.length > 0;
 export const PAY_METHODS: { id: string; label: string }[] = [{ id: 'CASH', label: 'Cash' }, { id: 'UPI', label: 'UPI' }, { id: 'CARD', label: 'Card' }, { id: 'BANK_TRANSFER', label: 'Bank transfer' }, { id: 'CREDIT', label: 'Pay later' }];
 export const billProblem = (method: string, amount: string): string => (method !== 'CREDIT' && amount.trim() !== '' && !(Number.isFinite(Number(amount)) && Number(amount) > 0) ? 'The amount paid is above zero' : '');

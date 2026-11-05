@@ -26,7 +26,7 @@ import { useT, T } from '../../i18n/useT.js';
 
 const METHODS = [['CASH', T('Cash')], ['UPI', 'UPI'], ['CARD', T('Card')], ['BANK_TRANSFER', T('Bank')], ['CREDIT', T('Credit')], ['OTHER', T('Other')]];
 const METHOD_LABEL = Object.fromEntries(METHODS);
-const TALLY_TYPES = ['WHOLESALE', 'DISTRIBUTOR', 'AUTO_PARTS', 'ELECTRONICS'];
+const TALLY_TYPES = ['WHOLESALE', 'DISTRIBUTOR', 'AUTO_PARTS', 'MECHANIC', 'ELECTRONICS'];
 const qty = (n) => Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 3 });
 const longDate = (d) => formatDate(d);
 

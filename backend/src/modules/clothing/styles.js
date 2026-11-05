@@ -5,6 +5,7 @@
  * exchanges and offers treat it like any other product. Opening stock goes through moveStock and the ledger, as it does everywhere.
  */
 import { moveStock } from '../stock.js';
+import { TransferError, transferStock } from '../transfers.js';
 import {
   ClothingError, DEFAULT_CATEGORIES, DEFAULT_SIZE_SETS, GENDERS, COMMON_COLOURS, colourCode, hexOf, like, money, num, oneOf, sizeCode, storeBarcode, text, withRupees
 } from './common.js';
@@ -284,6 +285,47 @@ export const getStyle = async (db, tenant, styleId) => {
   const grid = {};
   for (const v of variants) (grid[v.colour] ??= {})[v.size] = { product_id: v.product_id, stock: v.stock, sku: v.sku, barcode: v.barcode, selling_price_paise: Number(v.selling_price_paise), low: v.stock <= v.min_stock };
   return withRupees({ ...style, variants, matrix: { colours, sizes, grid }, stock: variants.reduce((a, v) => a + v.stock, 0) });
+};
+
+/** Where a style's stock is: every active outlet with its piece count, and each size/colour with its count at each outlet. Feeds the transfer grid. */
+export const styleOutlets = async (db, tenant, styleId) => {
+  const style = (await db.query(`SELECT style_id, style_code, name FROM clothing_styles WHERE business_id = $1 AND style_id = $2`, [tenant.businessId, Number(styleId)])).rows[0];
+  if (!style) throw new ClothingError(404, 'Not found');
+  const outlets = (await db.query(`SELECT branch_id, name FROM branches WHERE business_id = $1 AND status = 'ACTIVE' ORDER BY branch_id`, [tenant.businessId])).rows;
+  const rows = (await db.query(
+    `SELECT v.product_id, v.colour, v.colour_hex, v.size, bs.branch_id, bs.quantity FROM clothing_variants v JOIN products p ON p.product_id = v.product_id
+       LEFT JOIN branch_stock bs ON bs.product_id = v.product_id WHERE v.style_id = $1 AND p.status = 'ACTIVE' ORDER BY v.sort_order`, [style.style_id])).rows;
+  const variants = new Map();
+  for (const r of rows) {
+    const v = variants.get(r.product_id) ?? { product_id: r.product_id, colour: r.colour, colour_hex: r.colour_hex, size: r.size, by_outlet: {} };
+    if (r.branch_id != null) v.by_outlet[r.branch_id] = Number(r.quantity);
+    variants.set(r.product_id, v);
+  }
+  const list = [...variants.values()];
+  return { ...style, outlets: outlets.map((o) => ({ ...o, stock: list.reduce((a, v) => a + (v.by_outlet[o.branch_id] ?? 0), 0) })), variants: list };
+};
+
+/** Move several sizes and colours of one style from one outlet to another in one go. All or nothing. */
+export const transferGrid = async (client, ctx, styleId, b) => {
+  const { tenant, userId } = ctx;
+  const from = Number(b.from_branch_id); const to = Number(b.to_branch_id);
+  if (!from || !to || from === to) throw new ClothingError(400, 'Choose two different outlets');
+  if (tenant.pinned && from !== tenant.branchId) throw new ClothingError(403, 'You can only send stock from your own outlet');
+  const items = (Array.isArray(b.items) ? b.items : []).map((i) => ({ product_id: Number(i.product_id), quantity: Number(i.quantity) })).filter((i) => i.quantity > 0);
+  if (!items.length) throw new ClothingError(400, 'Enter how many to send of at least one size');
+  if (items.some((i) => !Number.isInteger(i.product_id) || !Number.isInteger(i.quantity))) throw new ClothingError(400, 'Pieces must be whole numbers');
+  if (new Set(items.map((i) => i.product_id)).size !== items.length) throw new ClothingError(400, 'A size and colour is listed twice');
+  const own = (await client.query(`SELECT v.product_id FROM clothing_variants v JOIN clothing_styles s ON s.style_id = v.style_id WHERE s.business_id = $1 AND s.style_id = $2 AND v.product_id = ANY($3::int[])`,
+    [tenant.businessId, Number(styleId), items.map((i) => i.product_id)])).rows.length;
+  if (own !== items.length) throw new ClothingError(404, 'Not found');
+  const notes = b.notes ? String(b.notes).trim().slice(0, 200) : null;
+  try {
+    for (const i of items) await transferStock(client, { businessId: tenant.businessId, from, to, productId: i.product_id, quantity: i.quantity, notes, userId });
+  } catch (error) {
+    if (error instanceof TransferError) throw new ClothingError(error.status, error.message);
+    throw error;
+  }
+  return { moved: items.length, pieces: items.reduce((a, i) => a + i.quantity, 0) };
 };
 
 /* ── changing ──────────────────────────────────────────────────────────────────────────────────── */

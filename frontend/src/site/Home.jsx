@@ -215,6 +215,13 @@ const BUSINESSES = [
     src: '/product/parts-vehicles.webp', alt: 'FlowXP vehicle search for a Swift with each part labelled as verified or not verified.'
   },
   {
+    key: 'mechanic', label: 'Mechanic / Garage', to: '/industries/mechanic',
+    title: 'For bike, scooter and car garages',
+    body: 'Open a job card when the vehicle arrives, tell the customer on WhatsApp, and bill it when the work is done.',
+    points: ['Pick the company and model from a list of Indian bikes and cars, or type it', 'One card from Waiting to Ready, with the customer\'s yes to the estimate on record', 'Labour from your own list in one tap, spare parts by name or code', 'Money in and money out in plain words, with cash in hand'],
+    src: '/product/mechanic-jobcard.webp', alt: 'FlowXP job card with the status steps, estimate approved, labour lines and the estimate total.'
+  },
+  {
     key: 'clothing', label: 'Clothing / Fashion', to: '/industries/clothing',
     title: 'For garment shops, boutiques and footwear stores',
     body: 'Add a style once, pick its colours and sizes, and every combination gets its own SKU, barcode and stock.',

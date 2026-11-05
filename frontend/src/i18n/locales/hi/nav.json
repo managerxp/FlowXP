@@ -120,7 +120,8 @@
     "other_income": "अन्य आय",
     "clothing": "कपड़े",
     "styles_and_sizes": "स्टाइल और साइज़",
-    "clothing_insights": "कपड़ों की जानकारी"
+    "clothing_insights": "कपड़ों की जानकारी",
+    "money_in_and_out": "पैसा आया और गया"
   },
   "shell": {
     "yourAccount": "आपका अकाउंट",

@@ -6,6 +6,7 @@
  * A spare part is a `products` row. Nothing here keeps a second copy of its name, price or stock.
  */
 import pool from '../../config/database.js';
+import { PARTS_TYPES } from '../mechanic/types.js';
 
 export { text, int, num, money, oneOf, bool, isoDate, idList, paging, like, audit, diff, ok, page } from '../salon/common.js';
 
@@ -35,7 +36,7 @@ export const wrap = (fn) => async (req, res, next) => {
 };
 export const wrapAll = (handlers) => Object.fromEntries(Object.entries(handlers).map(([k, fn]) => [k, wrap(fn)]));
 
-export const PARTS_TYPES = ['AUTO_PARTS'];
+export { PARTS_TYPES };   // a parts shop or a garage (modules/mechanic/types.js)
 /** Parts endpoints exist only for a parts shop: any other business type gets the same answer as a missing route. */
 export const partsOnly = (req, res, next) => {
   if (!PARTS_TYPES.includes(req.tenant?.businessType)) return res.status(404).json({ success: false, message: 'Not found' });

@@ -39,7 +39,7 @@ export const SHARE_CHOICES: { id: string; label: string }[] = [
 /** Which messages make sense now: not an estimate with nothing on the card, not a bill before there is one. */
 export const shareFor = (j: { status: string; lines: unknown[]; invoice_id: number | null; customer_phone: string | null }): { id: string; label: string }[] => {
   if (!j.customer_phone) return [];
-  const live = ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS', 'READY'].includes(j.status);
+  const live = ['OPEN', 'CHECKING', 'IN_PROGRESS', 'WAITING_PARTS', 'READY'].includes(j.status);
   return SHARE_CHOICES.filter((c) => (c.id === 'bill' ? j.status === 'BILLED' && j.invoice_id != null : c.id === 'estimate' ? live && j.lines.length > 0 : live));
 };
 

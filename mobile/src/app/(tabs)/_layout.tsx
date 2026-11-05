@@ -31,8 +31,11 @@ export default function TabsLayout() {
   // a salon works from its appointments and clients: both get a place in the sidebar; the phone's bar holds five, so there Clients stays in More and Products makes room
   const salon = business?.business_type === 'SALON';
   // a garage (a parts shop in mechanic mode) works from its job cards: they get a place on the bar next to Home, and Products moves into More to keep the bar to five
-  const garage = business?.business_type === 'AUTO_PARTS' && workshopOn(business) && allowed(business, 'billing');
+  const garage = (business?.business_type === 'MECHANIC' || (business?.business_type === 'AUTO_PARTS' && workshopOn(business))) && allowed(business, 'billing');
+  // a mechanic garage bills from its job cards and keeps its money on the bar: no counter till, no product list
+  const mechanic = business?.business_type === 'MECHANIC';
   const hidden = [
+    ...(mechanic ? ['sell'] : []), ...(mechanic && allowed(business, 'payments', 'expenses') ? [] : ['money']),
     ...(food || garage ? ['products'] : []), ...(food ? [] : ['tables']), ...(noSell ? ['sell', 'tables', 'sales'] : []), ...(!allowed(business, 'products', 'inventory') ? ['products'] : []),
     ...(salon && allowed(business, 'appointments') ? [] : ['appointments']), ...(salon ? [] : ['salon-clients']),
     ...(salon && !wide ? ['products', 'salon-clients'] : [])
@@ -51,7 +54,8 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="home" options={tab('Home', 'home-outline', 'home')} />
       <Tabs.Screen name="jobs" options={{ ...tab('Jobs', 'build-outline', 'build'), href: garage ? undefined : null }} />
-      <Tabs.Screen name="sell" options={{ ...tab('Sell', 'cart-outline', 'cart'), href: noSell ? null : undefined }} />
+      <Tabs.Screen name="money" options={{ ...tab('Money', 'wallet-outline', 'wallet'), href: hidden.includes('money') ? null : undefined }} />
+      <Tabs.Screen name="sell" options={{ ...tab('Sell', 'cart-outline', 'cart'), href: noSell || mechanic ? null : undefined }} />
       <Tabs.Screen name="tables" options={{ ...tab(diningRoom ? 'Tables' : 'Orders', 'grid-outline', 'grid'), href: food && !noSell ? undefined : null }} />
       <Tabs.Screen name="appointments" options={{ ...tab('Appointments', 'calendar-outline', 'calendar'), tabBarLabelStyle: { fontSize: 11, fontWeight: '600' }, href: hidden.includes('appointments') ? null : undefined }} />
       <Tabs.Screen name="salon-clients" options={{ ...tab('Clients', 'heart-outline', 'heart'), href: hidden.includes('salon-clients') ? null : undefined }} />

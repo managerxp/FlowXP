@@ -18,7 +18,7 @@ import { Check, Shot } from '../site/parts.jsx';
 /* Mirrors SIGNUP_TYPES in the API (backend/src/utils/validate.js): only the businesses FlowXP is built for. Older accounts of other types keep working.
    The API validates against it. A mismatch here is a 400 the
    user cannot fix, so the two lists must be changed together. */
-const BUSINESS_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'GYM', 'GAMING_CAFE', 'AUTO_PARTS', 'CLOTHING', 'WHOLESALE'];   // labels: auth:types.<CODE>
+const BUSINESS_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'GYM', 'GAMING_CAFE', 'AUTO_PARTS', 'MECHANIC', 'CLOTHING', 'WHOLESALE'];   // labels: auth:types.<CODE>
 
 /* Why a first-time visitor can trust this screen, shown beside the form. */
 const ASIDES = {   // text: auth:aside.<name>.title / p1..p3 / alt
@@ -304,6 +304,19 @@ export const Signup = () => {
               ))}
             </div>
           </div>
+          {form.business_type === 'MECHANIC' && (
+            <div>
+              <p className="text-small font-medium text-ink-900">{t('signup.garageKindLabel')}</p>
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {['BIKE', 'CAR', 'BOTH'].map((k) => (
+                  <label key={k} className={`flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2.5 text-center text-small font-medium has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-500 ${(form.garage_kind || 'BOTH') === k ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>
+                    <input type="radio" name="garage_kind" value={k} checked={(form.garage_kind || 'BOTH') === k} onChange={set('garage_kind')} className="sr-only" />
+                    {t(`signup.garageKind.${k}`)}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
           {form.business_type === 'AUTO_PARTS' && (
             <label className="flex items-start gap-2.5 text-sm text-ink-700">
               <input type="checkbox" checked={Boolean(form.workshop_mode)} onChange={(e) => setForm((f) => ({ ...f, workshop_mode: e.target.checked }))} className="mt-0.5" />

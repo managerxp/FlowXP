@@ -17,8 +17,12 @@ import { hasPermission } from '../../middleware/auth.js';
 
 /** SAC 998714: maintenance and repair services of motor vehicles. ponytail: one code for all labour; a per-service code if a shop bills other kinds of service. */
 export const LABOUR_SAC = '998714';
-export const JOB_STATUSES = ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS', 'READY', 'BILLED', 'CANCELLED'];
-export const LIVE = ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS', 'READY'];
+export const JOB_STATUSES = ['OPEN', 'CHECKING', 'IN_PROGRESS', 'WAITING_PARTS', 'READY', 'BILLED', 'CANCELLED'];
+/** The garage's extra steps (Checking, the customer's yes, handing over, fuel and belongings) belong to a MECHANIC business only; a parts shop's job card stays as it was. */
+const isGarage = (tenant) => tenant.businessType === 'MECHANIC';
+const garageOnly = (tenant) => { if (!isGarage(tenant)) throw new PartsError(404, 'Not found'); };
+
+export const LIVE = ['OPEN', 'CHECKING', 'IN_PROGRESS', 'WAITING_PARTS', 'READY'];
 const q3 = (n) => Math.round(Number(n) * 1000) / 1000;
 const branchOf = (tenant) => {
   const id = tenant.scopeBranchId ?? tenant.branchId;
@@ -89,14 +93,15 @@ const shapeJob = (r) => ({
   job_id: r.job_id, job_no: r.job_no, status: r.status, customer_id: r.customer_id, customer_name: r.customer_name, customer_phone: r.customer_phone, vehicle_reg: r.vehicle_reg, vehicle_type: r.vehicle_type,
   make: r.make, model: r.model, variant: r.variant, model_id: r.model_id, vehicle_year: r.vehicle_year, odometer_km: r.odometer_km, complaint: r.complaint, diagnosis: r.diagnosis, notes: r.notes,
   mechanic_id: r.mechanic_id, mechanic_name: r.mechanic_name, promised_on: r.promised_on, next_service_on: r.next_service_on, next_service_km: r.next_service_km, invoice_id: r.invoice_id,
-  opened_at: r.opened_at, ready_at: r.ready_at, billed_at: r.billed_at
+  opened_at: r.opened_at, ready_at: r.ready_at, billed_at: r.billed_at,
+  estimate_approved_at: r.estimate_approved_at, estimate_approved_by: r.estimate_approved_by, delivered_at: r.delivered_at, fuel_level: r.fuel_level, belongings: r.belongings
 });
 
 export const listJobs = async (db, tenant, { status = 'LIVE', q = null, reg = null, customerId = null, mechanicId = null, limit = 50, offset = 0, like }) => {
   const args = [tenant.businessId]; const where = ['j.business_id = $1'];
   if (tenant.scopeBranchId != null) { args.push(tenant.scopeBranchId); where.push(`j.branch_id = $${args.length}`); }
   const st = String(status || 'LIVE').toUpperCase();
-  if (st === 'LIVE') where.push(`j.status IN ('OPEN','IN_PROGRESS','WAITING_PARTS','READY')`);
+  if (st === 'LIVE') where.push(`j.status IN ('OPEN','CHECKING','IN_PROGRESS','WAITING_PARTS','READY')`);
   else if (st !== 'ALL') { args.push(oneOf(st, 'Status', JOB_STATUSES, { required: true })); where.push(`j.status = $${args.length}`); }
   if (q) { args.push(like(q)); where.push(`(j.job_no ILIKE $${args.length} OR j.vehicle_reg ILIKE $${args.length} OR c.name ILIKE $${args.length} OR c.phone ILIKE $${args.length})`); }
   if (reg) { args.push(String(reg).toUpperCase().replace(/\s+/g, '')); where.push(`upper(replace(j.vehicle_reg, ' ', '')) = $${args.length}`); }
@@ -179,6 +184,8 @@ const jobFields = async (db, tenant, b, { creating, current = null }) => {
   if (b.odometer_km !== undefined) f.odometer_km = b.odometer_km === null || b.odometer_km === '' ? null : int(b.odometer_km, 'Odometer', { min: 0, max: 5000000 });
   if (b.complaint !== undefined) f.complaint = text(b.complaint, 'Complaint', { max: 2000 });
   if (b.diagnosis !== undefined) f.diagnosis = text(b.diagnosis, 'Diagnosis', { max: 2000 });
+  if (isGarage(tenant) && b.fuel_level !== undefined) f.fuel_level = b.fuel_level === null || b.fuel_level === '' ? null : oneOf(b.fuel_level, 'Fuel', ['EMPTY', 'QUARTER', 'HALF', 'THREE_Q', 'FULL']);
+  if (isGarage(tenant) && b.belongings !== undefined) f.belongings = text(b.belongings, 'Things left in the vehicle', { max: 500 });
   if (b.notes !== undefined) f.notes = text(b.notes, 'Notes', { max: 2000 });
   if (b.promised_on !== undefined) f.promised_on = isoDate(b.promised_on, 'Promised date') || null;
   if (b.next_service_on !== undefined) f.next_service_on = isoDate(b.next_service_on, 'Next service date') || null;
@@ -222,10 +229,31 @@ const releaseHolds = async (db, tenant, jobId) => {
 
 export const setStatus = async (db, tenant, id, status) => {
   const job = await jobRow(db, tenant, id, { lock: true });
-  const next = oneOf(status, 'Status', ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS', 'READY', 'CANCELLED'], { required: true });
+  const next = oneOf(status, 'Status', isGarage(tenant) ? ['OPEN', 'CHECKING', 'IN_PROGRESS', 'WAITING_PARTS', 'READY', 'CANCELLED'] : ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS', 'READY', 'CANCELLED'], { required: true });
   ensureLive(job);
   if (next === 'CANCELLED') await releaseHolds(db, tenant, job.job_id);
   await db.query(`UPDATE job_cards SET status = $2::varchar, ready_at = CASE WHEN $2::varchar = 'READY' THEN COALESCE(ready_at, now()) ELSE ready_at END WHERE job_id = $1`, [job.job_id, next]);
+  return getJob(db, tenant, job.job_id);
+};
+
+/** The customer said yes to the estimate (on the phone, in person, on WhatsApp): record when and how, so there is no argument at billing. */
+export const approveEstimate = async (db, tenant, id, b = {}) => {
+  garageOnly(tenant);
+  const job = await jobRow(db, tenant, id, { lock: true });
+  ensureLive(job);
+  const count = (await db.query(`SELECT COUNT(*)::int AS n FROM job_card_lines WHERE job_id = $1`, [job.job_id])).rows[0].n;
+  if (!count) throw new PartsError(400, 'Add the parts or labour first, so there is an estimate to approve');
+  const how = text(b.how, 'How', { max: 60 }) || 'Customer said yes';
+  await db.query(`UPDATE job_cards SET estimate_approved_at = now(), estimate_approved_by = $2 WHERE job_id = $1`, [job.job_id, how]);
+  return getJob(db, tenant, job.job_id);
+};
+
+/** The vehicle left the garage with the customer: only a billed job can be handed over, once. */
+export const deliverJob = async (db, tenant, id) => {
+  garageOnly(tenant);
+  const job = await jobRow(db, tenant, id, { lock: true });
+  if (job.status !== 'BILLED') throw new PartsError(409, 'Bill the job before handing the vehicle over');
+  await db.query(`UPDATE job_cards SET delivered_at = COALESCE(delivered_at, now()) WHERE job_id = $1`, [job.job_id]);
   return getJob(db, tenant, job.job_id);
 };
 

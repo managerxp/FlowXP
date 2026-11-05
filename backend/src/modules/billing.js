@@ -35,6 +35,7 @@ import { hasPlanFeature } from './planFeatures.js';
 import { PointsError, addEntry, earnFor, getPoints, redemption, standing, tierFor } from './points.js';
 import { spend as spendWallet } from './gaming/wallet.js';
 import { checkCredit as partsCredit, fulfilForSale, reservedMap, tradePrices } from './autoparts/sales.js';
+import { isParts } from './mechanic/types.js';
 
 export class BillingError extends Error {
   constructor(status, message, extra = {}) {
@@ -236,9 +237,9 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   const outletStock = await stockAt(client, tenant.branchId, productIds);
   const outletSettings = await outletSettingsFor(client, tenant.branchId, productIds);
   // a parts shop: stock held for customers is not for sale to others, and a customer on a trade price list pays that price
-  const isParts = tenant.businessType === 'AUTO_PARTS';
-  const held = isParts ? await reservedMap(client, tenant.branchId, productIds, customer?.customer_id ?? null) : null;
-  const trade = isParts && customer ? await tradePrices(client, tenant.businessId, customer.customer_id, productIds) : new Map();
+  const isPartsShop = isParts(tenant.businessType);
+  const held = isPartsShop ? await reservedMap(client, tenant.branchId, productIds, customer?.customer_id ?? null) : null;
+  const trade = isPartsShop && customer ? await tradePrices(client, tenant.businessId, customer.customer_id, productIds) : new Map();
 
   // Combos sell as one line but use up their components (stock and recipes).
   const combos = await loadCombos(client, tenant.businessId, productIds);
@@ -263,7 +264,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       // a line sold in a larger unit (a carton of 24 boxes) moves `unit_factor` times as much stock as its quantity
       const factor = raw.unit_factor != null ? Number(raw.unit_factor) : 1;
       if (!Number.isFinite(factor) || factor <= 0) throw new BillingError(400, 'The unit conversion must be above zero');
-      if (isParts && factor !== 1) throw new BillingError(400, `${product.name}: parts are sold by the piece`);
+      if (isPartsShop && factor !== 1) throw new BillingError(400, `${product.name}: parts are sold by the piece`);
       stockFactor = factor;
       const free = held ? outletStock.get(product.product_id) - Math.max(0, held.get(product.product_id).reserved - held.get(product.product_id).own) : outletStock.get(product.product_id);
       if (product.track_inventory && !input.allowNegativeStock && free < quantity * factor - 1e-9) {
@@ -467,7 +468,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   ];
   const paidPaise = takenPayments.reduce((s, p) => s + p.amountPaise, 0);
   const balancePaise = finalTotalPaise - paidPaise;
-  if (isParts && customer && balancePaise > 0) {
+  if (isPartsShop && customer && balancePaise > 0) {
     // a garage account: the part of the bill left unpaid is credit, and the customer's limit applies (WARN is shown by the till beforehand, BLOCK is refused here)
     const credit = await partsCredit(client, tenant.businessId, customer.customer_id, balancePaise);
     if (credit.level === 'BLOCK' && !input.creditOverride) throw new BillingError(409, credit.reasons[0], { code: 'CREDIT_LIMIT' });
@@ -511,7 +512,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     // stockHandledElsewhere: the goods are not in this outlet's stock (a distributor's van holds them), so selling them here must not take them out of it
     if (line.trackInventory && !input.stockHandledElsewhere) {
       const stockQty = Math.round(line.quantity * line.stockFactor * 1000) / 1000;
-      if (isParts && customer) await fulfilForSale(client, { branchId: tenant.branchId, customerId: customer.customer_id, productId: line.product_id, qty: stockQty });
+      if (isPartsShop && customer) await fulfilForSale(client, { branchId: tenant.branchId, customerId: customer.customer_id, productId: line.product_id, qty: stockQty });
       await moveStock(client, { businessId: tenant.businessId, branchId: tenant.branchId, productId: line.product_id, delta: -stockQty });
       await client.query(
         `INSERT INTO inventory_transactions (business_id, branch_id, product_id, transaction_type, quantity, reference_type, reference_id, created_by)

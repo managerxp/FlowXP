@@ -8,7 +8,7 @@ import { localISO } from './dates.js';
 import { useLoad } from './salon.js';
 
 let parts = false;
-export const setStaffMode = (businessType) => { parts = businessType === 'AUTO_PARTS'; };
+export const setStaffMode = (businessType) => { parts = businessType === 'AUTO_PARTS' || businessType === 'MECHANIC'; };
 const route = (path) => (parts && path ? path.replace('/hotel/staff', '/autoparts/staff') : path);
 
 export const staffApi = (path, options) => api(route(path), options);

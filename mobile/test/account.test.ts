@@ -5,7 +5,7 @@ import { BUSINESS_TYPES, cleanCode, codeProblem, deleteBody, deleteProblem, emai
 const good = { ...emptySignup(), name: ' Asha Rao ', email: ' asha@example.com ', phone: '9845000001', password: 'longenough1', businessName: ' Sharma Auto Parts ', businessType: 'AUTO_PARTS', agreed: true };
 
 test('every business type the server lets sign up is offered, with the same names as the website', () => {
-  assert.deepEqual(BUSINESS_TYPES.map(([v]) => v), ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'GYM', 'GAMING_CAFE', 'AUTO_PARTS', 'CLOTHING', 'WHOLESALE']);
+  assert.deepEqual(BUSINESS_TYPES.map(([v]) => v), ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'GYM', 'GAMING_CAFE', 'AUTO_PARTS', 'MECHANIC', 'CLOTHING', 'WHOLESALE']);
 });
 
 test('the form says what is wrong, one thing at a time, before anything is sent', () => {
@@ -69,4 +69,11 @@ test('deleting the account needs the password, and the code when there is two-st
   assert.deepEqual(deleteBody('pw', ''), { password: 'pw' });
   assert.deepEqual(deleteBody('pw', '123456'), { password: 'pw', code: '123456' });
   assert.deepEqual(deleteBody('pw', 'ABCD-EFGH'), { password: 'pw', recovery_code: 'ABCD-EFGH' });
+});
+
+test('a mechanic garage says what it repairs; a parts shop sends no garage kind', () => {
+  const body = signupBody({ ...good, businessType: 'MECHANIC', garageKind: 'BIKE' });
+  assert.equal(body.business_type, 'MECHANIC');
+  assert.equal((body as { garage_kind?: string }).garage_kind, 'BIKE');
+  assert.equal((signupBody({ ...good, businessType: 'AUTO_PARTS' }) as { garage_kind?: string }).garage_kind, undefined);
 });

@@ -80,7 +80,7 @@ test('the gaming plan switches are on for a lounge and off for every other kind 
   const lounge = industryDefaults('GAMING_CAFE');
   for (const k of keys) assert.equal(lounge[k], undefined, `${k} stays on for a lounge`);
   assert.equal(lounge.gym_access, false, 'and the gym tools are off');
-  for (const type of Object.keys(INDUSTRY_OFF).filter((t) => t !== 'GAMING_CAFE')) {
+  for (const type of Object.keys(INDUSTRY_OFF).filter((t) => t !== 'GAMING_CAFE' && t !== 'OTHER')) {   // OTHER has no industry defaults except FlowBook off
     for (const k of keys) assert.equal(industryDefaults(type)[k], false, `${k} is off for ${type}`);
   }
   // a plan can still switch a gaming feature off, and the lounge keeps the table floor and kitchen for its food and drink

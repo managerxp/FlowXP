@@ -32,6 +32,7 @@ test('lines, warnings and the estimate', () => {
 
 test('moving along and billing', () => {
   assert.deepEqual(stepsFor('OPEN').map((x) => x.status), ['IN_PROGRESS', 'WAITING_PARTS', 'READY']); assert.deepEqual(stepsFor('READY').map((x) => x.status), ['IN_PROGRESS', 'WAITING_PARTS']);
+  assert.deepEqual(stepsFor('OPEN', true).map((x) => x.status), ['CHECKING', 'IN_PROGRESS', 'WAITING_PARTS', 'READY'], 'a garage has the Checking step');
   assert.equal(isLive('READY'), true); assert.equal(isLive('BILLED'), false);
   const j = { status: 'READY', lines: [part] } as Pick<JobFull, 'status' | 'lines'>;
   assert.equal(canBill(j), true); assert.equal(canBill({ ...j, lines: [] }), false); assert.equal(canBill({ ...j, status: 'BILLED' }), false);

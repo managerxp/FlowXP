@@ -5,7 +5,7 @@
  * Making one is a short wizard: details, colours and sizes, prices and opening stock in a size x colour grid, then save. Opening one shows the same grid with live stock.
  */
 import { useMemo, useState } from 'react';
-import { Plus, Printer, Search, Upload } from 'lucide-react';
+import { ArrowRightLeft, Plus, Printer, Search, Upload } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -108,13 +108,67 @@ const AddMore = ({ style, onClose, onSaved }) => {
   );
 };
 
+/* Move stock: send several sizes and colours of this style from one outlet to another in one go (all or nothing). */
+const MoveStock = ({ style, onClose, onSaved }) => {
+  const tr = useT();
+  const { outletId, pinned } = useAuth();
+  const l = useLoad(`/clothing/styles/${style.style_id}/outlets`);
+  const [from, setFrom] = useState(''); const [to, setTo] = useState(''); const [qty, setQty] = useState({});
+  const [error, setError] = useState(''); const [busy, run] = useAction();
+  const d = l.data;
+  const outlets = d?.outlets || [];
+  const src = from || String((outletId && outletId !== 'all' ? outletId : null) ?? outlets.find((o) => o.stock > 0)?.branch_id ?? outlets[0]?.branch_id ?? '');
+  const dst = to && to !== src ? to : String(outlets.find((o) => String(o.branch_id) !== src)?.branch_id ?? '');
+  const have = (v) => v.by_outlet[src] || 0;
+  const cell = (c, z) => d?.variants.find((v) => v.colour === c && v.size === z);
+  const items = (d?.variants || []).map((v) => ({ product_id: v.product_id, quantity: Number(qty[v.product_id] || 0) })).filter((i) => i.quantity > 0);
+  const pieces = items.reduce((a, i) => a + i.quantity, 0);
+  const colours = d ? [...new Map(d.variants.map((v) => [v.colour, v.colour_hex])).entries()] : [];
+  const sizes = d ? [...new Set(d.variants.map((v) => v.size))] : [];
+  const send = () => run(async () => {
+    setError('');
+    try { const out = await api(`/clothing/styles/${style.style_id}/transfer`, { method: 'POST', body: { from_branch_id: Number(src), to_branch_id: Number(dst), items } }); onSaved(out, outlets.find((o) => String(o.branch_id) === dst)?.name); } catch (e) { setError(e.message); }
+  });
+  return (
+    <Modal wide title={`${tr('Move stock')} · ${style.name}`} onClose={onClose} footer={<><Button variant="secondary" onClick={onClose}>{tr('Cancel')}</Button><Button onClick={send} loading={busy} disabled={!pieces || !dst}>{tr('Send')}{pieces ? ` (${pieces})` : ''}</Button></>}>
+      <ListState loading={l.loading && !d} error={l.error} />
+      {d && (
+        <div className="space-y-4">
+          <Alert>{error}</Alert>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field id="mv-f" label={tr('From')}><Select id="mv-f" value={src} disabled={pinned} onChange={(e) => { setFrom(e.target.value); setQty({}); }}>{outlets.map((o) => <option key={o.branch_id} value={o.branch_id}>{o.name} ({o.stock})</option>)}</Select></Field>
+            <Field id="mv-t" label={tr('To')}><Select id="mv-t" value={dst} onChange={(e) => setTo(e.target.value)}>{outlets.filter((o) => String(o.branch_id) !== src).map((o) => <option key={o.branch_id} value={o.branch_id}>{o.name} ({o.stock})</option>)}</Select></Field>
+          </div>
+          <p className="text-small text-ink-500">{tr('Type how many of each to send. The grey number is what the sending outlet has.')}</p>
+          <div className="overflow-x-auto rounded-lg border border-line">
+            <table className="w-full text-small">
+              <thead><tr className="bg-surface-2 text-left text-caption text-ink-500"><th className="px-3 py-2 font-semibold">{tr('Colour')}</th>{sizes.map((z) => <th key={z} className="px-2 py-2 text-center font-semibold">{z}</th>)}</tr></thead>
+              <tbody>{colours.map(([c, hex]) => (
+                <tr key={c} className="border-t border-line">
+                  <td className="whitespace-nowrap px-3 py-1.5 font-medium"><Swatch hex={hex} name={c} /> <span className="ml-1">{c}</span></td>
+                  {sizes.map((z) => { const v = cell(c, z); if (!v) return <td key={z} className="px-1 py-1 text-center text-ink-400">–</td>; const max = have(v); return (
+                    <td key={z} className="px-1 py-1 text-center">
+                      <Input aria-label={`${c} ${z}`} className="w-16 text-center" inputMode="numeric" disabled={max <= 0} value={qty[v.product_id] ?? ''} onChange={(e) => setQty({ ...qty, [v.product_id]: String(Math.min(max, Number(e.target.value.replace(/[^0-9]/g, '') || 0)) || '') })} />
+                      <div className="text-caption tabular text-ink-400">{max}</div>
+                    </td>); })}
+                </tr>))}</tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+};
+
 const StyleDetail = ({ id, onClose, onChanged }) => {
   const tr = useT();
   const { can } = useAuth();
   const canEdit = can('products');
+  const { business } = useAuth();
+  const canMove = can('inventory') && (business?.outlets?.length || 0) > 1;
   const toast = useToast();
   const l = useLoad(`/clothing/styles/${id}`);
-  const [tab, setTab] = useState('grid'); const [adding, setAdding] = useState(false);
+  const [tab, setTab] = useState('grid'); const [adding, setAdding] = useState(false); const [moving, setMoving] = useState(false);
   const s = l.data;
   const reload = () => { l.reload(); onChanged?.(); };
   const setStatus = (status) => api(`/clothing/styles/${id}`, { method: 'PATCH', body: { status } }).then(() => { toast.success(status === 'ARCHIVED' ? 'Archived' : 'Brought back'); reload(); }).catch((e) => toast.error(e.message));
@@ -134,6 +188,7 @@ const StyleDetail = ({ id, onClose, onChanged }) => {
             <p className="text-small text-ink-700">{tr('{{n}} in stock across {{v}} sizes and colours', { n: s.stock, v: s.variants.length })} · {rs(s.selling_price_paise)}{s.mrp_paise ? ` (MRP ${rs(s.mrp_paise)})` : ''}</p>
             <div className="flex flex-wrap gap-2">
               <Link to={`/app/clothing/labels?styles=${s.style_id}`} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong px-3 text-small font-semibold text-ink-700 hover:bg-surface-2"><Printer aria-hidden="true" className="h-4 w-4" /> {tr('Print tags')}</Link>
+              {canMove && s.status === 'ACTIVE' && <Button size="sm" variant="secondary" onClick={() => setMoving(true)}><ArrowRightLeft aria-hidden="true" className="h-4 w-4" /> {tr('Move stock')}</Button>}
               {canEdit && <>
               {s.status === 'ACTIVE' && <Button size="sm" variant="secondary" onClick={() => setAdding(true)}><Plus aria-hidden="true" className="h-4 w-4" /> {tr('Add colours or sizes')}</Button>}
               <Button size="sm" variant="ghost" onClick={() => setStatus(s.status === 'ACTIVE' ? 'ARCHIVED' : 'ACTIVE')}>{s.status === 'ACTIVE' ? tr('Archive') : tr('Bring back')}</Button>
@@ -151,6 +206,7 @@ const StyleDetail = ({ id, onClose, onChanged }) => {
             </Table></div>
             </>
           )}
+          {moving && <MoveStock style={s} onClose={() => setMoving(false)} onSaved={(out, name) => { setMoving(false); toast.success(`${out.pieces} pieces sent to ${name}`); reload(); }} />}
           {adding && <AddMore style={s} onClose={() => setAdding(false)} onSaved={(out) => { setAdding(false); toast.success(out.variants.length ? `${out.variants.length} added` : 'Nothing new to add'); reload(); }} />}
         </div>
       )}

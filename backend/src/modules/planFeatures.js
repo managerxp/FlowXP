@@ -145,6 +145,7 @@ export const INDUSTRY_OFF = {
   CLOUD_KITCHEN: [...FOOD_OFF, 'reservations', 'qr_ordering', 'tables'],           // no dining room
   SALON: [...NOT_FOOD, ...WHOLESALE_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, ...FLOWBOOK_KEYS],                             // appointments, not table bookings
   GYM: [...NOT_FOOD, ...SALON_KEYS, ...WHOLESALE_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, 'integrations', ...FLOWBOOK_KEYS],
+  MECHANIC: SHOP_OFF.filter((k) => !AP_KEYS.includes(k)),                           // a garage runs on the parts engines with the workshop always on
   AUTO_PARTS: SHOP_OFF.filter((k) => !AP_KEYS.includes(k)),                         // a parts shop is a shop: the till, stock center and batches stay; the parts tools are its own             // members and access; the till and loyalty stay
   RETAIL: SHOP_OFF, SUPERMARKET: SHOP_OFF, PHARMACY: SHOP_OFF,                      // these keep batches and expiry
   ELECTRONICS: [...SHOP_OFF, 'wholesale_batches'], CLOTHING: [...SHOP_OFF.filter((k) => !CL_KEYS.includes(k)), 'wholesale_batches'], SERVICES: [...SHOP_OFF, 'wholesale_batches'],
