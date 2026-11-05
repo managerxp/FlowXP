@@ -5265,5 +5265,7 @@
   "Connected to the print agent.": "ప్రింట్ ఏజెంట్‌కు కనెక్ట్ అయ్యింది.",
   "Show the tax lines (CGST and SGST, UTGST or IGST) on receipts": "రసీదులపై పన్ను వరుసలను చూపండి (CGST మరియు SGST, UTGST లేదా IGST)",
   "If the printer cannot be reached, open the browser print window instead": "ప్రింటర్‌ను చేరుకోలేకపోతే, బదులుగా బ్రౌజర్ ప్రింట్ విండోను తెరవండి",
-  "Receipt printed": "రసీదు ప్రింట్ అయింది"
+  "Receipt printed": "రసీదు ప్రింట్ అయింది",
+  "Download the print agent": "ప్రింట్ ఏజెంట్‌ను డౌన్‌లోడ్ చేయండి",
+  "Windows: unzip it and double-click install-windows.cmd, once on this computer. It then starts by itself.": "Windows: దీన్ని అన్‌జిప్ చేసి, ఈ కంప్యూటర్‌లో ఒకసారి install-windows.cmd‌ను డబుల్ క్లిక్ చేయండి. ఆ తర్వాత అది తనంతట తానే ప్రారంభమవుతుంది."
 }

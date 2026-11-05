@@ -2,7 +2,7 @@
 # by itself (hidden) every time this user signs in (a launcher in the user's Startup folder: no admin rights needed).
 # Run it once: double-click install-windows.cmd. Remove it with -Remove.
 param(
-  [string]$Origins = 'https://flowxp.in,https://www.flowxp.in',   # the FlowXP web address(es) allowed to print and to pair
+  [string]$Origins = '',   # the FlowXP web address(es) allowed to print and to pair; empty: the .origins file the website put in the download, else flowxp.in
   [switch]$Remove
 )
 $ErrorActionPreference = 'Stop'
@@ -35,6 +35,7 @@ Stop-Agent
 # Copy the agent here (a token made on an earlier install is kept)
 New-Item -ItemType Directory -Force $dir | Out-Null
 foreach ($f in 'agent.js', 'winprint.ps1', 'comprint.ps1', 'package.json') { Copy-Item (Join-Path $PSScriptRoot $f) $dir -Force }
+if (-not $Origins) { $given = Join-Path $PSScriptRoot '.origins'; $Origins = if (Test-Path $given) { (Get-Content $given -Raw).Trim() } else { 'https://flowxp.in,https://www.flowxp.in' } }
 Set-Content -Path (Join-Path $dir '.origins') -Value $Origins -Encoding ASCII
 
 # A tiny launcher that starts the agent with no window and keeps what it prints in agent.log (wscript is the plain way to run something hidden)

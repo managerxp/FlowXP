@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth, withBusiness, requireAnyPermission, requirePermission } from '../middleware/auth.js';
 import * as print from '../controllers/escpos.controller.js';
 import * as printers from '../controllers/printers.controller.js';
+import { agentZip } from '../modules/agentZip.js';
 
 const router = Router();
 const till = [requireAuth, withBusiness(), requirePermission('billing')];
@@ -11,6 +12,8 @@ router.get('/invoices/:id/escpos', ...till, print.receipt);
 router.get('/kitchen/kots/:id/escpos', ...floor, print.kot);
 router.get('/print/test', ...till, print.test);
 router.get('/print/drawer', ...till, print.drawer);
+// the print agent itself (no secrets in it: the token is made on the till computer); `origin` is the website the button was clicked on
+router.get('/print/agent.zip', (req, res) => { res.set({ 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment; filename="flowxp-print-agent.zip"' }).send(agentZip(String(req.query.origin || ''))); });
 
 // the Printers screen: who may change it is whoever holds 'settings' (owner and admins); the print jobs above read the routing themselves
 const setup = [requireAuth, withBusiness({ requireActive: true }), requirePermission('settings')];

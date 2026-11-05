@@ -5265,5 +5265,7 @@
   "Connected to the print agent.": "ಪ್ರಿಂಟ್ ಏಜೆಂಟ್‌ಗೆ ಸಂಪರ್ಕವಾಯಿತು.",
   "Show the tax lines (CGST and SGST, UTGST or IGST) on receipts": "ರಸೀದಿಗಳಲ್ಲಿ ತೆರಿಗೆ ಸಾಲುಗಳನ್ನು ತೋರಿಸಿ (CGST ಮತ್ತು SGST, UTGST ಅಥವಾ IGST)",
   "If the printer cannot be reached, open the browser print window instead": "ಪ್ರಿಂಟರ್ ತಲುಪಲು ಸಾಧ್ಯವಾಗದಿದ್ದರೆ, ಬದಲಿಗೆ ಬ್ರೌಸರ್ ಪ್ರಿಂಟ್ ವಿಂಡೋ ತೆರೆಯಿರಿ",
-  "Receipt printed": "ರಸೀದಿ ಮುದ್ರಿತವಾಗಿದೆ"
+  "Receipt printed": "ರಸೀದಿ ಮುದ್ರಿತವಾಗಿದೆ",
+  "Download the print agent": "ಪ್ರಿಂಟ್ ಏಜೆಂಟ್ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ",
+  "Windows: unzip it and double-click install-windows.cmd, once on this computer. It then starts by itself.": "Windows: ಇದನ್ನು ಅನ್‌ಜಿಪ್ ಮಾಡಿ ಮತ್ತು ಈ ಕಂಪ್ಯೂಟರ್‌ನಲ್ಲಿ ಒಮ್ಮೆ install-windows.cmd ಮೇಲೆ ಡಬಲ್-ಕ್ಲಿಕ್ ಮಾಡಿ. ನಂತರ ಅದು ತಾನಾಗಿಯೇ ಪ್ರಾರಂಭವಾಗುತ್ತದೆ."
 }

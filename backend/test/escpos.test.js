@@ -306,3 +306,12 @@ test('copies, blank lines and auto-cut follow the receipt settings', () => {
   const withDrawer = make({ copies: 2 }, { drawer: true });
   assert.equal(withDrawer.toString('latin1').split(String.fromCharCode(0x1b, 0x70)).length - 1, 1, 'the drawer opens once');
 });
+
+test('the print agent zip holds the agent files and the origin it was asked for', async () => {
+  const { agentZip } = await import('../src/modules/agentZip.js');
+  const z = agentZip('https://shop.example.com');
+  assert.equal(z.readUInt32LE(0), 0x04034b50);
+  const s = z.toString('latin1');
+  for (const f of ['agent.js', 'install-windows.cmd', 'winprint.ps1', '.origins', 'https://shop.example.com']) assert.ok(s.includes(f), f);
+  assert.ok(!agentZip('javascript:alert(1)').toString('latin1').includes('print-agent/.origins'));   // only a plain web address is accepted
+});

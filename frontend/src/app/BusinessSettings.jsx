@@ -176,6 +176,7 @@ const SilentPrinting = () => {
       )}
       {p.printMode === 'agent' && (
         <div className="mt-3 space-y-3">
+          <p className="text-sm text-ink-500"><a className="inline-flex min-h-9 items-center rounded-lg border border-line bg-surface px-3 font-semibold text-brand-600 hover:bg-surface-2" href={`/api/print/agent.zip?origin=${encodeURIComponent(window.location.origin)}`} download>{tr('Download the print agent')}</a> {tr('Windows: unzip it and double-click install-windows.cmd, once on this computer. It then starts by itself.')}</p>
           {!p.agentToken && <Button type="button" size="sm" disabled={busy} onClick={() => connect()}>{tr('Connect to the print agent')}</Button>}
           <div className="grid gap-3 sm:grid-cols-2">
             {text('agentUrl', 'Print agent address', 'Where the agent listens on this computer.', 'http://127.0.0.1:9101')}

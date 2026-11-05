@@ -5265,5 +5265,7 @@
   "Connected to the print agent.": "Connected to the print agent.",
   "Show the tax lines (CGST and SGST, UTGST or IGST) on receipts": "Show the tax lines (CGST and SGST, UTGST or IGST) on receipts",
   "If the printer cannot be reached, open the browser print window instead": "If the printer cannot be reached, open the browser print window instead",
-  "Receipt printed": "Receipt printed"
+  "Receipt printed": "Receipt printed",
+  "Download the print agent": "Download the print agent",
+  "Windows: unzip it and double-click install-windows.cmd, once on this computer. It then starts by itself.": "Windows: unzip it and double-click install-windows.cmd, once on this computer. It then starts by itself."
 }

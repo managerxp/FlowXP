@@ -5265,5 +5265,7 @@
   "Connected to the print agent.": "பிரிண்ட் ஏஜெண்டுடன் இணைக்கப்பட்டது.",
   "Show the tax lines (CGST and SGST, UTGST or IGST) on receipts": "ரசீதுகளில் வரி வரிகளைக் காட்டுக (CGST மற்றும் SGST, UTGST அல்லது IGST)",
   "If the printer cannot be reached, open the browser print window instead": "பிரிண்டரை அடைய முடியாவிட்டால், அதற்குப் பதிலாக உலாவியின் அச்சு சாளரத்தைத் திறக்கவும்",
-  "Receipt printed": "ரசீது அச்சிடப்பட்டது"
+  "Receipt printed": "ரசீது அச்சிடப்பட்டது",
+  "Download the print agent": "பிரிண்ட் ஏஜென்ட்டைப் பதிவிறக்குக",
+  "Windows: unzip it and double-click install-windows.cmd, once on this computer. It then starts by itself.": "Windows: இதை அன்சிப் செய்து, இந்தக் கணினியில் ஒருமுறை install-windows.cmd-ஐ இருமுறை கிளிக் செய்யுங்கள். அதன் பிறகு அது தானாகவே தொடங்கும்."
 }

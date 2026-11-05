@@ -5265,5 +5265,7 @@
   "Connected to the print agent.": "प्रिंट एजेंट से जुड़ गया।",
   "Show the tax lines (CGST and SGST, UTGST or IGST) on receipts": "रसीद पर टैक्स की पंक्तियाँ दिखाएँ (CGST और SGST, UTGST या IGST)",
   "If the printer cannot be reached, open the browser print window instead": "अगर प्रिंटर तक पहुँचा न जा सके, तो इसके बजाय ब्राउज़र की प्रिंट विंडो खोलें",
-  "Receipt printed": "रसीद प्रिंट हो गई"
+  "Receipt printed": "रसीद प्रिंट हो गई",
+  "Download the print agent": "प्रिंट एजेंट डाउनलोड करें",
+  "Windows: unzip it and double-click install-windows.cmd, once on this computer. It then starts by itself.": "Windows: इसे अनज़िप करें और इस कंप्यूटर पर एक बार install-windows.cmd पर डबल-क्लिक करें। इसके बाद यह अपने आप शुरू हो जाएगा।"
 }
