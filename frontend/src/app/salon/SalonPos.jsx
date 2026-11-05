@@ -19,7 +19,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
 import { withApproval } from '../../lib/approval.js';
 import { queueSale, useOnline } from '../../lib/offline.js';
-import { getDevicePrefs, printReceipt } from '../../lib/printing.js';
+import { autoReceipt, getDevicePrefs, printReceipt } from '../../lib/printing.js';
 import { PAYMENT_LABEL, dateText, useDebounced, useLoad } from '../../lib/salon.js';
 import { readOffline, saveOffline } from '../../lib/salonOffline.js';
 import { Alert, Badge, Button, EmptyState, Field, Input, Modal, PageHeader, PageLoader, Select, Textarea, useToast, useDialog } from '../../components/ui.jsx';
@@ -506,7 +506,7 @@ const SalonPos = () => {
     try {
       const result = await withApproval(dialog, (approval) => api('/salon/pos/invoices', { method: 'POST', body: approval ? { ...body, approval } : body, idempotencyKey: idem.get() }), idem.settle);
       idem.settle(null);
-      if (getDevicePrefs().autoPrintReceipt) printReceipt(result.invoice.invoice_id);
+      if (autoReceipt()) printReceipt(result.invoice.invoice_id);
       setDone({ result });
     } catch (error) {
       idem.settle(error);

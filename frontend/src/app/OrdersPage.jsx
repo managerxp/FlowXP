@@ -21,7 +21,7 @@ import UpiCollect from '../components/UpiCollect.jsx';
 import RoomChargePicker from '../components/RoomChargePicker.jsx';
 import FoodMark from '../components/FoodMark.jsx';
 import { LoyaltyCard, MobileLookup, PointsPanel, RewardHint } from '../components/LoyaltyCard.jsx';
-import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, setDevicePref } from '../lib/printing.js';
+import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, setDevicePref, autoReceipt, silentPrinting } from '../lib/printing.js';
 import ModifierPicker, { needsChoices, useModifierGroups } from '../components/ModifierPicker.jsx';
 import { AnimatedNumber, Alert, Badge, Button, Field, Input, Modal, Select, humanize, useToast, useDialog, StatCard } from '../components/ui.jsx';
 import { platformName } from '../lib/business.js';
@@ -489,7 +489,7 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
   const partial = !payLater && amount != null && amount < total;
   const change = method === 'CASH' && amount != null && amount > total ? amount - total : 0;
   // UPI with the business's UPI ID set: bill first, then a QR for exactly what the bill came to
-  const upiQr = method === 'UPI' && Boolean(business?.upi_vpa);
+  const upiQr = method === 'UPI' && Boolean(business?.upi_vpa) && !silentPrinting();
 
   const billOrder = async () => {
     if (toRoom && !room) { setError(tr('Choose the guest whose room this is charged to')); return; }
@@ -510,7 +510,7 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
       if (toRoom) toast.success(tr('Charged to {{label}}', { label: room.label }));
       if (upiQr) { setCollecting({ invoice, amount: partial ? amount : undefined }); onChanged(); return; }
       const cash = method === 'CASH' && !payLater;
-      if (getDevicePrefs().autoPrintReceipt) printReceipt(invoice.invoice_id, { cash });
+      if (autoReceipt()) printReceipt(invoice.invoice_id, { cash });
       else if (cash && getDevicePrefs().openDrawer) openDrawer();
       setDone({ ...invoice, change: method === 'CASH' && amount != null ? Math.max(0, Math.round((amount - invoice.total) * 100) / 100) : 0 });
       onChanged();
@@ -520,7 +520,7 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
 
   const finishUpi = (invoice) => {
     setCollecting(null); setDone({ ...invoice, change: 0 });
-    if (getDevicePrefs().autoPrintReceipt) printReceipt(invoice.invoice_id, { cash: false });
+    if (autoReceipt()) printReceipt(invoice.invoice_id, { cash: false });
   };
   if (collecting) {
     return (

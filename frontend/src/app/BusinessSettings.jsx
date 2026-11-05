@@ -165,6 +165,7 @@ const SilentPrinting = () => {
             <li>{tr('Open RawBT, choose the printer once, and turn on its option to print without asking.')}</li>
             <li>{tr('Press "Print a test page" below. If Android asks which app to open, choose RawBT and "Always": after that, receipts print with no pop-up.')}</li>
           </ol>
+          <label className="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={p.dialogFallback !== false} onChange={(e) => set('dialogFallback', e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> {tr('If the printer cannot be reached, open the browser print window instead')}</label>
           <label className="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={p.openDrawer} onChange={(e) => set('openDrawer', e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> {tr('Open the cash drawer when a cash payment is taken')}</label>
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => run(false)}>{tr('Print a test page')}</Button>
@@ -191,6 +192,7 @@ const SilentPrinting = () => {
                 {found.map((x) => <option key={x.target} value={x.target}>{x.name}</option>)}
               </Select>)}
           </div>
+          <label className="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={p.dialogFallback !== false} onChange={(e) => set('dialogFallback', e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> {tr('If the printer cannot be reached, open the browser print window instead')}</label>
           <label className="flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={p.openDrawer} onChange={(e) => set('openDrawer', e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-500)]" /> {tr('Open the cash drawer when a cash payment is taken')}</label>
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="secondary" size="sm" disabled={busy || !p.agentToken} onClick={() => run(false)}>{tr('Print a test page')}</Button>

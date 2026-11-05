@@ -30,21 +30,29 @@ class Job {
   big(on) { return this.raw(GS, 0x21, on ? 0x11 : 0x00); }
   text(s = '') { for (const b of Buffer.from(ascii(s), 'latin1')) this.out.push(b); return this; }
   line(s = '') { return this.text(s).raw(LF); }
-  wrap(s, indent = 0) {
-    const width = this.cols - indent; const pad = ' '.repeat(indent);
-    let row = '';
+  wrap(s, indent = 0) { const pad = ' '.repeat(indent); for (const l of this.wrapLines(s, this.cols - indent)) this.line(pad + l); return this; }
+  /** Break text into rows of at most `width` characters (long words are split). */
+  wrapLines(s, width) {
+    const rows = []; let row = '';
     for (const word of ascii(s).split(/\s+/).filter(Boolean)) {
-      if (word.length > width) { if (row) { this.line(pad + row); row = ''; } for (let i = 0; i < word.length; i += width) this.line(pad + word.slice(i, i + width)); continue; }
-      if ((row + ' ' + word).trim().length > width) { this.line(pad + row); row = word; } else row = (row + ' ' + word).trim();
+      if (word.length > width) { if (row) { rows.push(row); row = ''; } for (let i = 0; i < word.length; i += width) rows.push(word.slice(i, i + width)); continue; }
+      if ((row + ' ' + word).trim().length > width) { rows.push(row); row = word; } else row = (row + ' ' + word).trim();
     }
-    if (row) this.line(pad + row);
-    return this;
+    if (row) rows.push(row);
+    return rows;
   }
   /** "left ........ right", the right side never cut off. */
   pair(left, right) {
     const r = ascii(right); const l = ascii(left);
     const room = this.cols - r.length - 1;
     return this.line((l.length > room ? l.slice(0, Math.max(0, room)) : l).padEnd(this.cols - r.length) + r);
+  }
+  /** An item-table row: optional left text, then Qty, Rate and Amount right-aligned in fixed columns (wider on 80 mm paper). */
+  tableWidths() { const w = this.cols >= 48 ? [7, 9, 10] : [7, 8, 9]; return { w, leftW: this.cols - w[0] - w[1] - w[2] }; }
+  table(left, qty, rate, amount) {
+    const { w, leftW } = this.tableWidths();
+    const fit = (s, n) => ascii(s).slice(0, n).padStart(n);
+    return this.line(ascii(left).slice(0, leftW).padEnd(leftW) + fit(qty, w[0]) + fit(rate, w[1]) + fit(amount, w[2]));
   }
   /** Run `fn` with the width halved: double-width text takes two columns per character. */
   half(fn) { const full = this.cols; this.cols = Math.floor(full / 2); try { fn(this); } finally { this.cols = full; } return this; }
@@ -102,15 +110,28 @@ const oneReceipt = ({ business, settings = {}, invoice }, { cols = 48, drawer = 
   if (invoice.status === 'CANCELLED') j.align('center').bold(true).line('*** CANCELLED ***').bold(false).align('left');
   j.rule();
 
-  j.bold(true).pair('Item', 'Amount').bold(false);
+  // Item table: Qty, Rate and Amount in columns. The amount is before tax when the tax lines are shown (so the rows add up to the Subtotal) and with tax when they are hidden (so they add up to the Total).
+  const showTax = settings.show_tax_lines !== false;
+  const qtyText = (i) => { const q = String(Number(Number(i.quantity).toFixed(3))); return q; };
+  j.bold(true).table('Item', 'Qty', 'Rate', 'Amount').bold(false);
+  j.rule();
+  let totalQty = 0; let lineSaved = 0;
   for (const i of invoice.items) {
-    j.wrap(i.description);
-    j.pair(`  ${i.quantity} x ${money(i.unit_price)}`, money(i.line_total));
+    const amount = showTax ? Number(i.line_total) - Number(i.tax_amount || 0) - Number(i.cess || 0) : Number(i.line_total);
+    totalQty += Number(i.quantity) || 0; lineSaved += Number(i.discount) || 0;
+    // The name wraps inside the left column, so it never runs under Qty / Rate / Amount; the numbers sit on its last row.
+    const nameRows = j.wrapLines(i.description, j.tableWidths().leftW);
+    const last = nameRows.pop() ?? '';
+    for (const r of nameRows) j.line(r);
+    if (i.hsn && settings.show_hsn === true) { if (last) j.line(last); j.line(`  HSN ${i.hsn}`); }
+    j.table(i.hsn && settings.show_hsn === true ? '' : last, `${qtyText(i)}${i.unit && String(i.unit).length <= 3 ? ` ${i.unit}` : ''}`, money(i.unit_price), money(amount));
+    if (Number(i.discount) > 0) j.pair('  Discount', `-${money(i.discount)}`);
   }
   j.rule();
+  j.pair(`Items: ${invoice.items.length}`, `Total Qty: ${String(Number(totalQty.toFixed(3)))}`);
 
   // "Show the tax lines" off: no Subtotal and no CGST / SGST (UTGST) / IGST rows. The item amounts already include the tax, so they add up to the total.
-  if (settings.show_tax_lines !== false) {
+  if (showTax) {
     j.pair('Subtotal', money(invoice.subtotal));
     for (const [label, v] of [['CGST', invoice.cgst], [taxName(outlet?.state || business.state), invoice.sgst], ['IGST', invoice.igst]]) if (v > 0) j.pair(label, money(v));
   }
@@ -122,6 +143,9 @@ const oneReceipt = ({ business, settings = {}, invoice }, { cols = 48, drawer = 
   if (invoice.round_off) j.pair('Round off', `${invoice.round_off > 0 ? '+' : '-'}${money(Math.abs(invoice.round_off))}`);
   j.rule();
   j.bold(true).big(true).half(() => j.pair('TOTAL', money(invoice.total))).big(false).bold(false);
+  // everything the customer was given off, in one line: discounts on the lines (promos and free loyalty items are in these) plus the bill's own discount (which already holds the coupon and points)
+  const saved = lineSaved + Number(invoice.discount || 0);
+  if (saved > 0) j.align('center').bold(true).line(`You saved Rs ${money(saved)}`).bold(false).align('left');
   for (const p of invoice.payments || []) j.pair(`Paid (${String(p.method).replace('_', ' ')})`, money(p.amount));
   if (invoice.refunded > 0) j.pair('Refunded', `-${money(invoice.refunded)}`);
   const due = invoice.status === 'ISSUED' && invoice.balance_due > 0;
@@ -132,7 +156,8 @@ const oneReceipt = ({ business, settings = {}, invoice }, { cols = 48, drawer = 
   if (due && business.upi_vpa && (collecting != null || settings.show_upi_qr !== false)) {
     const amount = collecting ?? invoice.balance_due;
     const upi = `upi://pay?pa=${encodeURIComponent(business.upi_vpa)}&pn=${encodeURIComponent(business.name)}&am=${money(amount)}&cu=INR&tn=${encodeURIComponent(invoice.invoice_number)}`;
-    j.align('center').feed(1).qr(upi, 5).line(collecting != null ? `Scan to pay Rs.${money(amount)} by UPI` : 'Scan to pay the balance').align('left');
+    // centred, a blank line either side of the QR, and the centring is sent again before the caption (some printers drop it after printing a QR)
+    j.align('center').feed(1).qr(upi, 6).feed(1).align('center').line(collecting != null ? `Scan to pay Rs.${money(amount)} by UPI` : 'Scan to pay the balance').feed(1).align('left');
   }
   if (settings.show_loyalty !== false && invoice.loyalty_message) j.rule().align('center').wrap(`* ${invoice.loyalty_message}`).align('left');
   if (invoice.points_earned > 0) j.align('center').line(`Points earned: ${invoice.points_earned}`).align('left');

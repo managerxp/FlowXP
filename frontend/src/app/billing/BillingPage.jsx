@@ -33,7 +33,7 @@ import { FIELDS as TALLY_FIELDS } from './TallyInvoice.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Alert, Button, Input, Modal, Select, humanize, useToast, useDialog } from '../../components/ui.jsx';
 import { LoyaltyCard, MobileLookup, PointsPanel, RewardHint } from '../../components/LoyaltyCard.jsx';
-import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, setDevicePref } from '../../lib/printing.js';
+import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, setDevicePref, autoReceipt, silentPrinting } from '../../lib/printing.js';
 import { queueSale } from '../../lib/offline.js';
 import { CLOTHING_TYPES, RESTAURANT_TYPES, RETAIL_TYPES } from '../../lib/business.js';
 import { StylePicker, StyleTile } from '../clothing/TillStylePicker.jsx';
@@ -178,7 +178,7 @@ const BillLine = ({ line, onChange, onRemove, selected = false, onSelect, offer 
 
 /* ── After charging ────────────────────────────────────────────────────── */
 
-const Done = ({ confirmation, change, onNew, onView }) => {
+const Done = ({ confirmation, change, printed, onNew, onView }) => {
   const tr = useT();
   const newRef = useRef(null);
   useEffect(() => { newRef.current?.focus(); }, []);
@@ -226,7 +226,8 @@ const Done = ({ confirmation, change, onNew, onView }) => {
         </div>
 
         <div className="mt-7 grid gap-2">
-          <Button ref={newRef} size="lg" onClick={onNew}>{tr('New sale')}</Button>
+          {printed && <p className="mb-1 flex items-center justify-center gap-1.5 text-small font-semibold text-success"><Printer aria-hidden="true" className="h-4 w-4" />{tr('Receipt printed')}</p>}
+          <Button ref={newRef} size="lg" onClick={onNew}>{printed ? tr('OK') : tr('New sale')}</Button>
           {!offline && (
             <div className="grid grid-cols-2 gap-2">
               <Button variant="secondary" onClick={() => printReceipt(confirmation.invoice_id)}><Printer aria-hidden="true" className="h-4 w-4" />{tr('Print')}</Button>
@@ -337,6 +338,7 @@ const BillingPage = () => {
   const { business, outletId, can, hasFeature } = useAuth();
   const navigate = useNavigate();
   const searchRef = useRef(null);
+  const [printed, setPrinted] = useState(false);
 
   const [products, setProducts] = useState(null);
   const [category, setCategory] = useState('');
@@ -648,7 +650,7 @@ const BillingPage = () => {
   const cashChange = method === 'CASH' && amount != null && amount > totals.total ? amount - totals.total : 0;
   const partial = !payLater && amount != null && amount < totals.total;
   // UPI with the business's own UPI ID set: save the bill first, then show a QR for exactly what it came to
-  const upiQr = !split && method === 'UPI' && Boolean(business?.upi_vpa);
+  const upiQr = !split && method === 'UPI' && Boolean(business?.upi_vpa) && !silentPrinting();   // with a printer set up, UPI is recorded like cash and the bill prints by itself: no QR screen
   const fixedParts = parts.slice(0, -1).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   const lastPart = parts[parts.length - 1];
   const lastFixed = lastPart && lastPart.amount !== '' ? Number(lastPart.amount) || 0 : null;
@@ -665,7 +667,7 @@ const BillingPage = () => {
 
   const resetSale = () => {
     setCart([]); setCustomerId(''); setCustomerName(''); setCard(null); setPointsInfo(null); setRedeem(''); setCustomerOpen(false); setInvoiceDiscount(''); setCouponCode(''); setCouponInfo(null); setCouponError('');
-    setNotes(''); setDispatch({}); setLevies({}); setExtrasOpen(false); setReceived(''); setCardRef(''); setMethod('CASH'); setRoom(null); setConfirmation(null); setChange(0); setError(''); setQuery('');
+    setNotes(''); setDispatch({}); setLevies({}); setExtrasOpen(false); setReceived(''); setCardRef(''); setMethod('CASH'); setRoom(null); setConfirmation(null); setPrinted(false); setChange(0); setError(''); setQuery('');
     setSplit(false); setParts([]); setHoldOpen(false); setHoldLabel(''); setCollecting(null);
     setSendWa(true); setOrderId(null); setOrder(null); setExchange(null); setPromo({});
     setTimeout(() => searchRef.current?.focus(), 0);
@@ -738,7 +740,7 @@ const BillingPage = () => {
       setChange(!split && method === 'CASH' && amount != null ? Math.max(0, Math.round((amount - invoice.total) * 100) / 100) : 0);
       setConfirmation(toRoom ? { ...invoice, room_label: room.label } : invoice);
       const cash = split ? parts.some((p) => p.method === 'CASH') : method === 'CASH' && !payLater;
-      if (getDevicePrefs().autoPrintReceipt) printReceipt(invoice.invoice_id, { cash });
+      if (autoReceipt()) printReceipt(invoice.invoice_id, { cash }).then(setPrinted);
       else if (cash && getDevicePrefs().openDrawer) openDrawer();
     } catch (caught) {
       // No connection: keep the sale on this device and send it when the connection is back (see lib/offlineQueue.js)
@@ -892,11 +894,11 @@ const BillingPage = () => {
 
   const finishUpi = (invoice) => {
     setCollecting(null); setChange(0); setConfirmation(invoice);
-    if (getDevicePrefs().autoPrintReceipt) printReceipt(invoice.invoice_id, { cash: false });
+    if (autoReceipt()) printReceipt(invoice.invoice_id, { cash: false }).then(setPrinted);
   };
 
   if (confirmation) {
-    return <Done confirmation={confirmation} change={change} onNew={resetSale} onView={() => navigate(`/app/billing/invoices/${confirmation.invoice_id}`)} />;
+    return <Done confirmation={confirmation} change={change} printed={printed} onNew={resetSale} onView={() => navigate(`/app/billing/invoices/${confirmation.invoice_id}`)} />;
   }
 
   const itemCount = billLines.reduce((s, l) => s + Number(l.quantity || 0), 0);

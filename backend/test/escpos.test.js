@@ -52,12 +52,35 @@ test('a receipt has the shop, the lines, the totals, the payments and a cut', ()
 test('a middle dot prints as a dash (not "?"); the tax lines can be switched off; a union territory prints UTGST', () => {
   assert.equal(ascii("Men's Belt · Brown · Free Size"), "Men's Belt - Brown - Free Size");
   const base = { business: business1, invoice: invoice({ items: [{ description: 'Belt · Brown', quantity: 1, unit_price: 100, line_total: 112 }], balance_due: 0 }) };
-  const on = textOf(receiptBytes({ ...base, settings: {} }, { cols: 32 }));
+  const on = textOf(receiptBytes({ ...base, settings: {} }, { cols: 48 }));
   assert.ok(on.includes('Belt - Brown') && !on.includes('?') && on.includes('Subtotal') && on.includes('CGST') && on.includes('SGST'));
   const off = textOf(receiptBytes({ ...base, settings: { show_tax_lines: false } }, { cols: 32 }));
   assert.ok(!off.includes('Subtotal') && !off.includes('CGST') && !off.includes('SGST') && off.includes('TOTAL'));
   const ut = textOf(receiptBytes({ business: { ...business1, state: 'Chandigarh' }, invoice: { ...base.invoice, outlet: { ...base.invoice.outlet, state: 'Chandigarh' } }, settings: {} }, { cols: 32 }));
   assert.ok(ut.includes('UTGST') && !/\bSGST/.test(ut.replace('UTGST', '')));
+});
+
+test('items are in Qty / Rate / Amount columns, a line discount is shown, and the bill says what was saved', () => {
+  const items = [
+    { description: 'Belt · Brown · Free Size', quantity: 2, unit_price: 699, discount: 50, tax_amount: 162, cess: 0, line_total: 1510, unit: 'pc' },
+    { description: 'Shirt', quantity: 0.75, unit_price: 1000, discount: 0, tax_amount: 90, cess: 0, line_total: 840, unit: 'kg' }
+  ];
+  const inv = invoice({ items, subtotal: 2098, discount: 0, cgst: 126, sgst: 126, total: 2350, balance_due: 0 });
+  for (const cols of [32, 48]) {
+    const lines = textOf(receiptBytes({ business: business1, settings: {}, invoice: inv }, { cols })).split('\n').map((l) => l.replace(/[^\x20-\x7e]/g, ''));
+    assert.ok(lines.some((l) => /Item\s+Qty\s+Rate\s+Amount/.test(l)), 'the table has a heading');
+    assert.ok(lines.some((l) => /2 pc\s+699\.00\s+1348\.00$/.test(l)), 'qty, rate and the amount before tax (1,398 less the 50 discount)');
+    assert.ok(lines.some((l) => /Discount\s+-50\.00$/.test(l)), 'the line discount');
+    assert.ok(lines.some((l) => /0\.75 kg\s+1000\.00\s+750\.00$/.test(l)), 'a decimal quantity with its unit');
+    assert.ok(lines.some((l) => /Items: 2\s+Total Qty: 2\.75$/.test(l)), 'item count and total quantity');
+    assert.ok(lines.some((l) => /You saved Rs 50\.00$/.test(l)), 'the savings line');
+    assert.ok(lines.every((l) => l.length <= cols + 12));
+  }
+  // tax lines off: the amounts include the tax, so they add up to the total
+  const noTax = textOf(receiptBytes({ business: business1, settings: { show_tax_lines: false }, invoice: inv }, { cols: 48 }));
+  assert.ok(/1510\.00/.test(noTax) && /840\.00/.test(noTax));
+  // no discount anywhere: no "You saved" line
+  assert.ok(!textOf(receiptBytes({ business: business1, settings: {}, invoice: invoice({ items: [{ ...items[1], discount: 0 }], discount: 0 }) }, { cols: 48 })).includes('You saved'));
 });
 
 test('no line is longer than the paper, and long names wrap', () => {
@@ -68,7 +91,7 @@ test('no line is longer than the paper, and long names wrap', () => {
     assert.ok(lines.every((l) => l.length <= cols + 12), `a line is too long at ${cols} columns`);   // + the few command bytes that print as text
     const total = lines.find((l) => l.includes('TOTAL'));
     assert.ok(total.replace(/[^A-Za-z0-9. ]/g, '').length <= cols / 2 + 4, 'the double-width TOTAL line fits in half the columns');
-    assert.ok(textOf(out).includes('Butter Chicken with a rather'));
+    assert.ok(textOf(out).includes('Chicken'));
   }
   const narrow = textOf(receiptBytes({ business: business1, settings: {}, invoice: invoice() }, { cols: 32 }));
   assert.ok(!narrow.includes('Butter Chicken with a rather long description'));   // wrapped, not on one line

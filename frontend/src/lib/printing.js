@@ -15,7 +15,9 @@ const DEFAULTS = {
   // A loud repeating ring for an incoming Zomato/Swiggy/ONDC/Magicpin order waiting to be accepted
   deliveryRingSound: true,
   // Silent printing through the print agent on this computer (see print-agent/README.md)
-  printMode: 'browser', agentUrl: 'http://127.0.0.1:9101', agentToken: '', receiptTarget: '', kotTarget: '', openDrawer: false
+  printMode: 'browser', agentUrl: 'http://127.0.0.1:9101', agentToken: '', receiptTarget: '', kotTarget: '', openDrawer: false,
+  // When a silent print fails, open the browser print window so the receipt is not lost (off: just say it failed)
+  dialogFallback: true
 };
 
 export const getDevicePrefs = () => {
@@ -47,13 +49,13 @@ export const RAWBT_STORE = 'https://play.google.com/store/apps/details?id=ru.a40
 const sendToRawbt = async (data) => { window.location.assign(`rawbt:base64,${data}`); await new Promise((r) => setTimeout(r, 700)); };   // a pause so slips sent one after another are not merged
 
 const agent = async (path, { method = 'GET', body, prefs = getDevicePrefs() } = {}) => {
+  const call = (token) => fetch(`${prefs.agentUrl.replace(/\/$/, '')}${path}`, {
+    method, headers: { authorization: `Bearer ${token}`, ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined
+  });
   let response;
-  try {
-    response = await fetch(`${prefs.agentUrl.replace(/\/$/, '')}${path}`, {
-      method, headers: { authorization: `Bearer ${prefs.agentToken}`, ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined
-    });
-  } catch {
-    throw new Error('Cannot reach the print agent on this computer. Is it running?');
+  try { response = await call(prefs.agentToken); } catch { throw new Error('Cannot reach the print agent on this computer. Is it running?'); }
+  if (response.status === 401) {   // the agent was reinstalled and has a new token: pair again by itself and retry once
+    try { const token = await pairAgent(prefs.agentUrl); setDevicePref('agentToken', token); response = await call(token); } catch { /* keep the 401 and its message */ }
   }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || 'The print agent refused the job');
@@ -84,14 +86,14 @@ const targetFor = (routed, own, prefs = getDevicePrefs()) => {
 export const printReceipt = async (invoiceId, { cash = false, upi = null } = {}) => {
   const prefs = getDevicePrefs();
   const extra = upi ? `&upi=${upi}` : '';   // `upi` (rupees): the bill carries a QR for exactly that amount
-  if (!silentOn(prefs)) return openPrint('receipt', invoiceId, extra);
+  if (!silentOn(prefs)) { openPrint('receipt', invoiceId, extra); return false; }
   try {
     const d = cash && prefs.openDrawer ? '?drawer=1' : '';
     const job = await api(`/invoices/${invoiceId}/escpos${d}${upi ? `${d ? '&' : '?'}upi=${upi}` : ''}`);
     const target = targetFor(job.target, prefs.receiptTarget, prefs);
-    if (!target) return openPrint('receipt', invoiceId, extra);
+    if (!target) { openPrint('receipt', invoiceId, extra); return false; }
     await sendToAgent(target, job.data, prefs);
-  } catch (error) { onPrintError(`Receipt not printed: ${error.message}`); openPrint('receipt', invoiceId, extra); }
+  } catch (error) { onPrintError(`Receipt not printed: ${error.message}`); if (prefs.dialogFallback !== false) openPrint('receipt', invoiceId, extra); }
   return null;
 };
 
@@ -110,7 +112,7 @@ export const printKot = async (kotId) => {
       if (target) await sendToAgent(target, slip.data, prefs); else browserNeeded = true;
     }
     if (browserNeeded) openPrint('kot', kotId);   // a station set to the print dialog (or with no printer at all) uses the browser view
-  } catch (error) { onPrintError(`Kitchen ticket not printed: ${error.message}`); openPrint('kot', kotId); }
+  } catch (error) { onPrintError(`Kitchen ticket not printed: ${error.message}`); if (prefs.dialogFallback !== false) openPrint('kot', kotId); }
   return null;
 };
 
@@ -174,3 +176,6 @@ export const ringAlarm = () => {
     }
   } catch { /* no audio available: the banner still shows */ }
 };
+
+/** Should a saved bill print by itself? Yes when the till has a printer set up (silent printing), or the device asks for it. */
+export const autoReceipt = () => getDevicePrefs().autoPrintReceipt || silentOn(getDevicePrefs());

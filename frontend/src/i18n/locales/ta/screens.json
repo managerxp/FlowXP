@@ -5263,5 +5263,7 @@
   "Pair the printer with the till computer first (Windows: Settings → Bluetooth & devices), then press \"Find printers on this computer\" and pick it.": "முதலில் பிரிண்டரை டில் கணினியுடன் இணைக்கவும் (Windows: Settings → Bluetooth & devices), பின்னர் \"இந்தக் கணினியில் உள்ள பிரிண்டர்களைத் தேடுக\" ஐ அழுத்தி அதைத் தேர்ந்தெடுக்கவும்.",
   "Connect to the print agent": "பிரிண்ட் ஏஜெண்டுடன் இணைக்கவும்",
   "Connected to the print agent.": "பிரிண்ட் ஏஜெண்டுடன் இணைக்கப்பட்டது.",
-  "Show the tax lines (CGST and SGST, UTGST or IGST) on receipts": "ரசீதுகளில் வரி வரிகளைக் காட்டுக (CGST மற்றும் SGST, UTGST அல்லது IGST)"
+  "Show the tax lines (CGST and SGST, UTGST or IGST) on receipts": "ரசீதுகளில் வரி வரிகளைக் காட்டுக (CGST மற்றும் SGST, UTGST அல்லது IGST)",
+  "If the printer cannot be reached, open the browser print window instead": "பிரிண்டரை அடைய முடியாவிட்டால், அதற்குப் பதிலாக உலாவியின் அச்சு சாளரத்தைத் திறக்கவும்",
+  "Receipt printed": "ரசீது அச்சிடப்பட்டது"
 }

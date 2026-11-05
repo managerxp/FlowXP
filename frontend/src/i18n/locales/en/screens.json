@@ -5263,5 +5263,7 @@
   "Pair the printer with the till computer first (Windows: Settings → Bluetooth & devices), then press \"Find printers on this computer\" and pick it.": "Pair the printer with the till computer first (Windows: Settings → Bluetooth & devices), then press \"Find printers on this computer\" and pick it.",
   "Connect to the print agent": "Connect to the print agent",
   "Connected to the print agent.": "Connected to the print agent.",
-  "Show the tax lines (CGST and SGST, UTGST or IGST) on receipts": "Show the tax lines (CGST and SGST, UTGST or IGST) on receipts"
+  "Show the tax lines (CGST and SGST, UTGST or IGST) on receipts": "Show the tax lines (CGST and SGST, UTGST or IGST) on receipts",
+  "If the printer cannot be reached, open the browser print window instead": "If the printer cannot be reached, open the browser print window instead",
+  "Receipt printed": "Receipt printed"
 }
