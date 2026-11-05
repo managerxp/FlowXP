@@ -46,7 +46,8 @@ const agentOn = (p = getDevicePrefs()) => p.printMode === 'agent' && Boolean(p.a
 const rawbtOn = (p = getDevicePrefs()) => p.printMode === 'rawbt';
 const silentOn = (p = getDevicePrefs()) => rawbtOn(p) || agentOn(p);
 export const RAWBT_STORE = 'https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter';
-const sendToRawbt = async (data) => { window.location.assign(`rawbt:base64,${data}`); await new Promise((r) => setTimeout(r, 700)); };   // a pause so slips sent one after another are not merged
+/* Chrome on Android ignores a bare rawbt: link that is not opened straight from a tap, so the job goes as an Android intent aimed at the RawBT app itself (no "open with" question either). */
+const sendToRawbt = async (data) => { window.location.assign(/Android/i.test(navigator.userAgent) ? `intent:base64,${data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;` : `rawbt:base64,${data}`); await new Promise((r) => setTimeout(r, 700)); };   // a pause so slips sent one after another are not merged
 
 const agent = async (path, { method = 'GET', body, prefs = getDevicePrefs() } = {}) => {
   const call = (token) => fetch(`${prefs.agentUrl.replace(/\/$/, '')}${path}`, {
