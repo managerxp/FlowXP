@@ -94,6 +94,8 @@ const RetailSettings = ({ onClose, onChanged }) => {
 
 /* ── Add / edit ───────────────────────────────────────────────────────── */
 
+const NAME_LANGS = [['hi', 'Hindi'], ['ml', 'Malayalam'], ['ta', 'Tamil'], ['bn', 'Bengali'], ['te', 'Telugu'], ['kn', 'Kannada']];
+
 const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail, autoSku, onSaved, onClose, onCreateCategory, onCreateBrand }) => {
   const tr = useT();
   const { business: shop } = useAuth();
@@ -106,6 +108,8 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail
   const [newBrand, setNewBrand] = useState('');
   const [addingBrand, setAddingBrand] = useState(false);
   const isEdit = Boolean(initial.product_id);
+  const [names, setNames] = useState(initial.name_i18n || {});
+  const [namesTouched, setNamesTouched] = useState(false);
   const sold = !isRestaurant || form.kind === 'DISH';
   const set = (field) => (e) => { const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value; setForm((f) => ({ ...f, [field]: value })); };
 
@@ -142,6 +146,7 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail
         description: form.description || null, food_type: sold ? (form.food_type || null) : null,
         track_inventory: form.track_inventory, min_stock: form.min_stock,
         ...(brands ? { brand_id: form.brand_id || null } : {}),
+        ...(namesTouched ? { name_i18n: names } : {}),
         ...(isRestaurant ? { kind: form.kind, lead_time_days: Number(form.lead_time_days) || 0 } : {})
       };
       const result = isEdit
@@ -177,6 +182,17 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail
               </Field>
             )}
           </div>
+          {isEdit && (
+            <details className="rounded-lg border border-line px-3 py-2">
+              <summary className="cursor-pointer text-small font-medium text-ink-700">{tr('Name in other languages')}</summary>
+              <p className="mt-1 text-caption text-ink-500">{tr('Filled in automatically when you save. Change one to correct it.')}</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {NAME_LANGS.map(([code, label]) => (
+                  <Field key={code} id={'nm-' + code} label={label}><Input id={'nm-' + code} value={names[code] || ''} onChange={(e) => { setNames((n) => ({ ...n, [code]: e.target.value })); setNamesTouched(true); }} /></Field>
+                ))}
+              </div>
+            </details>
+          )}
           {isRestaurant && form.kind !== 'DISH' && <p className="-mt-2 text-caption text-ink-500">{form.kind === 'INGREDIENT' ? tr('Bought and stocked, used up by recipes, never sold on its own.') : tr('Boxes, bags and cups: stocked like an ingredient.')}</p>}
           <Field id="category_id" label={tr('Category')}>
             {addingCategory ? (

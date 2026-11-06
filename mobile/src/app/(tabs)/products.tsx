@@ -6,7 +6,7 @@ import { useScope } from '../../lib/local.ts';
 import { currentBusiness, useSession } from '../../lib/session.ts';
 import { KITCHEN_TYPES } from '../../lib/cart.ts';
 import { useSyncState } from '../../lib/sync.ts';
-import type { Product } from '../../lib/catalog.ts';
+import { pname, type Product } from '../../lib/catalog.ts';
 import { qty, rupees, toPaise } from '../../lib/money.ts';
 import { Page, ColumnList } from '../../lib/responsive.tsx';
 import { Hint } from '../../lib/learn.tsx';
@@ -16,7 +16,7 @@ const PAGE = 60;
 
 const ProductRow = memo(({ p }: { p: Product }) => (
   <Line
-    left={p.name} right={rupees(toPaise(p.selling_price))}
+    left={pname(p)} right={rupees(toPaise(p.selling_price))}
     sub={[p.category_name, p.track_inventory ? `about ${qty(p.current_stock ?? 0)} in stock` : null, p.is_available ? null : 'not available here'].filter(Boolean).join(' · ') || ' '}
     onPress={() => router.push({ pathname: '/product/[id]', params: { id: String(p.product_id) } })}
   />

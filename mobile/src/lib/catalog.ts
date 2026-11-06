@@ -1,3 +1,4 @@
+import { getLang } from './i18n.ts';
 /*
  * The till's copy of the catalogue, kept in the phone's SQLite so scanning and searching work with no connection, answer at once, and
  * survive the app being closed. The server stays the authority: this is for FINDING products and showing hints (stock is a hint); a
@@ -16,7 +17,7 @@ import type { Db } from './db.ts';
 import type { Group } from './options.ts';
 
 export type Product = {
-  product_id: number; name: string; sku: string | null; barcodes: string[]; unit: string | null;
+  product_id: number; name: string; /** the name in the other app languages, when known */ name_i18n?: Record<string, string>; sku: string | null; barcodes: string[]; unit: string | null;
   selling_price: number; mrp: number | null; tax_rate: number; /** compensation cess %, when the business charges it */ cess_rate?: number; track_inventory: boolean; current_stock: number | null;
   category_name: string | null; is_available: boolean; modifier_group_ids: number[];
   /** Only a pharmacy's medicines: what it is, and whether it needs a prescription or keeps batches and use-by dates. */
@@ -227,3 +228,6 @@ export const createCatalog = (db: Db) => {
 };
 
 export type Catalog = ReturnType<typeof createCatalog>;
+
+/** A product name in the language the app is showing, else the name as typed. */
+export const pname = (p: { name: string; name_i18n?: Record<string, string> }): string => p.name_i18n?.[getLang()] || p.name;

@@ -31,6 +31,7 @@ import { getDisplay } from '../../lib/display.js';
 import ModifierPicker, { needsChoices, useModifierGroups } from '../../components/ModifierPicker.jsx';
 import { FIELDS as TALLY_FIELDS } from './TallyInvoice.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { usePname } from '../../i18n/productName.js';
 import { Alert, Button, Input, Modal, Select, humanize, useToast, useDialog } from '../../components/ui.jsx';
 import { LoyaltyCard, MobileLookup, PointsPanel, RewardHint } from '../../components/LoyaltyCard.jsx';
 import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, setDevicePref, autoReceipt, silentPrinting } from '../../lib/printing.js';
@@ -64,6 +65,7 @@ const matches = (p, q) => p.name.toLowerCase().includes(q) || p.sku?.toLowerCase
 
 const ProductTile = ({ product, inCart, onAdd, highlight = false }) => {
   const tr = useT();
+  const pname = usePname();
   const off = product.is_available === false;
   return (
     <button
@@ -79,7 +81,7 @@ const ProductTile = ({ product, inCart, onAdd, highlight = false }) => {
           {inCart}<span className="sr-only"> {tr('in the bill')}</span>
         </span>
       )}
-      <span className="line-clamp-2 pr-6 text-small font-medium leading-snug text-ink-900">{product.name}</span>
+      <span className="line-clamp-2 pr-6 text-small font-medium leading-snug text-ink-900">{pname(product)}</span>
       <span className="mt-2 flex flex-wrap items-end justify-between gap-x-2 gap-y-0.5">
         <span className="tabular shrink-0 text-small font-semibold text-ink-900">{formatCurrency(product.selling_price)}</span>
         <span className="ml-auto text-right text-[11px] leading-tight text-ink-500">
@@ -111,6 +113,7 @@ const Stepper = ({ value, onChange, label }) => {
 
 const BillLine = ({ line, onChange, onRemove, selected = false, onSelect, offer = null, presets = [], gstOn = false }) => {
   const tr = useT();
+  const pname = usePname();
   const [discountOpen, setDiscountOpen] = useState(Boolean(line.discount));
   const label = line.name || 'custom item';
   return (
@@ -143,7 +146,7 @@ const BillLine = ({ line, onChange, onRemove, selected = false, onSelect, offer 
               )}
             </div>
           ) : (
-            <p className="text-small font-medium leading-snug text-ink-900">{line.name}</p>
+            <p className="text-small font-medium leading-snug text-ink-900">{pname(line)}</p>
           )}
           <p className="tabular mt-0.5 text-caption text-ink-500">
             {formatCurrency(line.unit_price)} each
@@ -334,6 +337,7 @@ const OrderBillLine = ({ line, onQty }) => {
 
 const BillingPage = () => {
   const tr = useT();
+  const pname = usePname();
   const dialog = useDialog();
   const { business, outletId, can, hasFeature } = useAuth();
   const navigate = useNavigate();
@@ -539,7 +543,7 @@ const BillingPage = () => {
       const existing = c.find((l) => l.product_id === product.product_id && l.sig === sig);
       if (existing) return c.map((l) => (l === existing ? { ...l, quantity: Number(l.quantity || 0) + 1 } : l));
       return [...c, {
-        key: keySeq++, sig, modifier_ids: modifierIds, product_id: product.product_id,
+        key: keySeq++, sig, modifier_ids: modifierIds, product_id: product.product_id, name_i18n: selected.length ? undefined : product.name_i18n,
         name: selected.length ? `${product.name} (${selected.map((m) => m.name).join(', ')})` : product.name, unit: product.unit,
         unit_price: product.selling_price + delta, quantity: 1, discount: 0, tax_rate: product.tax_rate,
         track_inventory: product.track_inventory, current_stock: product.current_stock
@@ -944,7 +948,7 @@ const BillingPage = () => {
               {quick.map((p) => (
                 <button key={p.product_id} type="button" onClick={() => choose(p)} disabled={p.is_available === false}
                         className="flex min-h-12 shrink-0 flex-col items-start justify-center rounded-lg border border-brand-500/30 bg-brand-50 px-3 py-1.5 text-left hover:border-brand-500 disabled:opacity-50 pointer-coarse:min-h-14">
-                  <span className="max-w-36 truncate text-small font-semibold text-ink-900">{p.name}</span>
+                  <span className="max-w-36 truncate text-small font-semibold text-ink-900">{pname(p)}</span>
                   <span className="tabular text-caption text-ink-600">{formatCurrency(p.selling_price)}</span>
                 </button>
               ))}

@@ -11,7 +11,7 @@ import { add, clearSale, setCustomer, setKitchen, setOffers, setQty, useSale } f
 import { KITCHEN_TYPES, lineName, linePricePaise, totals, type Line } from '../../lib/cart.ts';
 import { noOffers, previewOffers } from '../../lib/offers.ts';
 import { qty, rupees, toPaise } from '../../lib/money.ts';
-import type { Product } from '../../lib/catalog.ts';
+import { pname, type Product } from '../../lib/catalog.ts';
 import { SyncBadge } from '../../lib/SyncBadge.tsx';
 import { Hint, markDone } from '../../lib/learn.tsx';
 import { t } from '../../lib/i18n.ts';
@@ -33,7 +33,7 @@ const MenuTile = memo(({ item, n, cols, onPick }: { item: Product; n: number; co
     style={({ pressed }) => [{ flex: 1 / cols, minHeight: 84, padding: 10, borderRadius: 12, borderWidth: n ? 2 : 1, borderColor: n ? color.brand : color.line, backgroundColor: n ? color.tint : item.is_available ? color.card : color.wash, justifyContent: 'space-between' }, pressed && { backgroundColor: color.press }]}
   >
     {n ? <View style={{ position: 'absolute', top: 6, right: 6, minWidth: 26, height: 26, borderRadius: 13, paddingHorizontal: 6, backgroundColor: color.brand, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>{qty(n)}</Text></View> : null}
-    <Text numberOfLines={2} style={{ fontSize: 15, fontWeight: '600', color: item.is_available ? color.ink : color.soft, paddingRight: n ? 28 : 0 }}>{item.name}</Text>
+    <Text numberOfLines={2} style={{ fontSize: 15, fontWeight: '600', color: item.is_available ? color.ink : color.soft, paddingRight: n ? 28 : 0 }}>{pname(item)}</Text>
     <Text style={{ color: color.soft }}>{item.is_available ? rupees(toPaise(item.selling_price)) : 'Not available'}{item.modifier_group_ids.length ? ' · options' : ''}</Text>
   </Pressable>
 ));
@@ -190,7 +190,7 @@ export default function Sell() {
       renderItem={({ item }) => (
         <Pressable accessibilityRole="button" accessibilityLabel={`${item.name}, ${rupees(toPaise(item.selling_price))}`} onPress={() => pick(item)} style={{ minHeight: 56, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: inBill.get(item.product_id) ? color.tint : color.card, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View style={{ flex: 1, paddingRight: 8 }}>
-            <Text style={{ fontSize: 16, color: color.ink }}>{item.name}{inBill.get(item.product_id) ? `  ·  ${qty(inBill.get(item.product_id) ?? 0)} on the bill` : ''}</Text>
+            <Text style={{ fontSize: 16, color: color.ink }}>{pname(item)}{inBill.get(item.product_id) ? `  ·  ${qty(inBill.get(item.product_id) ?? 0)} on the bill` : ''}</Text>
             <Soft>{item.track_inventory ? `about ${qty(item.current_stock ?? 0)} in stock` : item.category_name || ' '}</Soft>
           </View>
           <Text style={{ fontSize: 16, fontWeight: '600', color: color.ink }}>{rupees(toPaise(item.selling_price))}</Text>

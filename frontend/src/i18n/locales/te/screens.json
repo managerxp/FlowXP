@@ -5276,5 +5276,7 @@
   "Kitchen printer (optional)": "వంటగది ప్రింటర్ (ఐచ్ఛికం)",
   "Choose how receipts print on this computer. The bill prints the moment you charge, with no print window.": "ఈ కంప్యూటర్‌లో రసీదు ఎలా ప్రింట్ కావాలో ఎంచుకోండి. ఛార్జ్ చేయగానే బిల్లు ప్రింట్ అవుతుంది, ప్రింట్ విండో తెరుచుకోదు.",
   "What prints on the bill": "బిల్లుపై ఏమి ప్రింట్ అవుతుంది",
-  "Connect your receipt printer": "మీ రసీదు ప్రింటర్‌ను కనెక్ట్ చేయండి"
+  "Connect your receipt printer": "మీ రసీదు ప్రింటర్‌ను కనెక్ట్ చేయండి",
+  "Name in other languages": "ఇతర భాషల్లో పేరు",
+  "Filled in automatically when you save. Change one to correct it.": "సేవ్ చేసినప్పుడు తనంతట తానే నిండుతుంది. సరిచేయడానికి ఏదైనా మార్చండి."
 }

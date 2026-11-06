@@ -10,6 +10,7 @@ import pool from '../config/database.js';
 import { hasPermission } from '../middleware/auth.js';
 import { recordAudit } from '../modules/events.js';
 import { toPaise, toRupees } from '../utils/money.js';
+import { cleanNames, fillNames } from '../modules/ai/productNames.js';
 import { checkName, firstError } from '../utils/validate.js';
 import { moveStock, stockAt } from '../modules/stock.js';
 import { outletSettingsFor } from '../modules/menu.js';
@@ -100,6 +101,7 @@ const asProduct = (row) => ({
   brand_name: row.brand_name,
   supplier_id: row.supplier_id,
   name: row.name,
+  name_i18n: row.name_i18n || {},
   kind: row.kind,
   food_type: row.food_type || null,
   is_combo: Boolean(row.is_combo),
@@ -332,6 +334,8 @@ export const create = async (req, res) => {
     }
 
     recordAudit(req, { action: 'product.created', resource_type: 'product', resource_id: productId, metadata: { sku, sku_generated: Boolean(generate), barcode, erp_code: erpCode, ...(body._via ? { via: body._via } : {}) } });
+    if (body.name_i18n) await pool.query('UPDATE products SET name_i18n = $3::jsonb WHERE business_id = $1 AND product_id = $2', [req.tenant.businessId, productId, JSON.stringify(cleanNames(body.name_i18n))]);
+    else void fillNames(req.tenant.businessId, productId, String(body.name).trim());
     const { rows: full } = await pool.query(`${SELECT} AND p.product_id = $2`, [req.tenant.businessId, productId]);
     res.status(201).json({ success: true, data: asProduct(full[0]) });
   } catch (dbError) {
@@ -383,7 +387,7 @@ const posShape = async (rows, tenant) => {
     const p = asProduct(r);
     const d = details.get(r.product_id);
     return {
-      product_id: p.product_id, name: p.name, sku: p.sku, barcodes: barcodes.get(r.product_id), unit: p.unit, selling_price: p.selling_price, mrp: p.mrp, tax_rate: p.tax_rate, cess_rate: p.cess_rate,
+      product_id: p.product_id, name: p.name, name_i18n: p.name_i18n, sku: p.sku, barcodes: barcodes.get(r.product_id), unit: p.unit, selling_price: p.selling_price, mrp: p.mrp, tax_rate: p.tax_rate, cess_rate: p.cess_rate,
       track_inventory: p.track_inventory, current_stock: p.current_stock, category_name: p.category_name, is_quick: p.is_quick, is_available: p.is_available, modifier_group_ids: p.modifier_group_ids,
       ...(['WHOLESALE', 'DISTRIBUTOR'].includes(tenant.businessType) ? { wholesale: wholesale.get(r.product_id) ?? null } : {}),
       ...(tenant.businessType === 'PHARMACY' ? {
@@ -534,6 +538,8 @@ export const update = async (req, res) => {
     if (String(a) !== String(b)) changes[field.replace('_paise', '')] = { from: field.endsWith('_paise') && a != null ? toRupees(a) : a, to: field.endsWith('_paise') && b != null ? toRupees(b) : b };
   }
   recordAudit(req, { action: 'product.updated', resource_type: 'product', resource_id: req.params.id, metadata: { fields: Object.keys(body), changes } });
+  if ('name_i18n' in body) await pool.query('UPDATE products SET name_i18n = $3::jsonb WHERE business_id = $1 AND product_id = $2', [req.tenant.businessId, req.params.id, JSON.stringify(cleanNames(body.name_i18n))]);
+  else if (changes.name) { await pool.query("UPDATE products SET name_i18n = '{}' WHERE business_id = $1 AND product_id = $2", [req.tenant.businessId, req.params.id]); void fillNames(req.tenant.businessId, Number(req.params.id), rows[0].name); }
   const { rows: full } = await pool.query(`${SELECT} AND p.product_id = $2`, [req.tenant.businessId, req.params.id]);
   res.json({ success: true, data: asProduct(full[0]) });
 };

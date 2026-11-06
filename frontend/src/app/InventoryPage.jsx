@@ -8,6 +8,7 @@
  * wastage, a transfer. Writes need a real outlet, so the all-outlets view is
  * read-only here.
  */
+import { pnameNow } from '../i18n/productName.js';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowDownLeft, ArrowLeft, ArrowRightLeft, ArrowUpRight, ClipboardCheck, PackagePlus, Search, Trash2, Boxes } from 'lucide-react';
@@ -429,7 +430,7 @@ const ItemPanel = ({ item, refreshKey, canWrite, multiOutlet, allView, onAction,
       <div className="border-b border-line p-4 sm:p-6">
         <button type="button" onClick={onBack} className="mb-3 flex items-center gap-1.5 text-small font-medium text-ink-500 hover:text-ink-900 xl:hidden"><ArrowLeft className="h-4 w-4" />{tr('All items')}</button>
         <p className="text-caption font-medium text-ink-500">{KINDS[item.kind] ? KINDS[item.kind].replace(/s$/, '') : tr('Stock item')}</p>
-        <h2 className="mt-0.5 text-title font-semibold text-ink-900">{item.name}</h2>
+        <h2 className="mt-0.5 text-title font-semibold text-ink-900">{pnameNow(item)}</h2>
         <div className="mt-3 flex items-end justify-between gap-4">
           <p>
             <AnimatedNumber value={item.current_stock} format={qty} className={`text-[32px] font-semibold leading-none tracking-tight transition-colors duration-(--duration-normal) ${s === 'out' ? 'text-danger' : s === 'low' ? 'text-warning' : 'text-ink-900'}`} />
@@ -495,7 +496,7 @@ const ItemRow = ({ item, active, onOpen }) => (
     <button type="button" onClick={onOpen} aria-current={active ? 'true' : undefined}
             className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 px-4 py-3 text-left transition-colors duration-(--duration-fast) ${active ? 'bg-brand-50' : 'hover:bg-surface-2'}`}>
       <span className="min-w-0">
-        <span className="flex items-center gap-2"><span className="truncate text-small font-semibold text-ink-900">{item.name}</span><StateLabel item={item} /></span>
+        <span className="flex items-center gap-2"><span className="truncate text-small font-semibold text-ink-900">{pnameNow(item)}</span><StateLabel item={item} /></span>
         <span className="block max-w-[14rem]"><Meter item={item} /></span>
       </span>
       <span className="text-right">
