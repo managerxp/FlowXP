@@ -19,6 +19,7 @@ import MenuImportModal from '../components/MenuImportModal.jsx';
 import FoodMark, { FOOD_TYPES } from '../components/FoodMark.jsx';
 import { Alert, Button, Field, Input, Modal, Select, Textarea, useToast, useDialog, EmptyState } from '../components/ui.jsx';
 import { useT } from '../i18n/useT.js';
+import { pnameNow } from '../i18n/productName.js';
 
 const KIND_LABELS = { DISH: 'Sold item', INGREDIENT: 'Ingredient', PACKAGING: 'Packaging' };
 const UNITS = ['pc', 'plate', 'kg', 'g', 'litre', 'ml', 'box', 'pack', 'dozen', 'hour', 'service'];
@@ -458,7 +459,7 @@ const RecipeEditor = ({ dish, onClose }) => {
                 <div key={i} className="grid gap-2 sm:grid-cols-[1fr_6rem_6rem_5rem_auto]">
                   <Select aria-label={tr('Ingredient')} value={r.ingredient_id} onChange={(e) => setRow(i, 'ingredient_id', e.target.value)}>
                     <option value="">{tr('Choose ingredient…')}</option>
-                    {ingredients.map((p) => <option key={p.product_id} value={p.product_id}>{p.name} ({p.unit})</option>)}
+                    {ingredients.map((p) => <option key={p.product_id} value={p.product_id}>{pnameNow(p)} ({p.unit})</option>)}
                   </Select>
                   <Input aria-label={tr('Quantity')} type="number" min="0" step="0.001" placeholder={tr('Qty')} value={r.quantity} onChange={(e) => setRow(i, 'quantity', e.target.value)} />
                   <Input aria-label={tr('Wastage percent')} type="number" min="0" max="99" step="0.5" placeholder={tr('Waste %')} value={r.wastage_pct} onChange={(e) => setRow(i, 'wastage_pct', e.target.value)} />
@@ -539,7 +540,7 @@ const ComboEditor = ({ dish, onClose }) => {
                 <div key={i} className="grid gap-2 sm:grid-cols-[1fr_6rem_6rem_auto]">
                   <Select aria-label={tr('Item')} value={r.product_id} onChange={(e) => setRow(i, 'product_id', e.target.value)}>
                     <option value="">{tr('Choose item…')}</option>
-                    {items?.map((p) => <option key={p.product_id} value={p.product_id}>{p.name}</option>)}
+                    {items?.map((p) => <option key={p.product_id} value={p.product_id}>{pnameNow(p)}</option>)}
                   </Select>
                   <Input aria-label={tr('Quantity')} type="number" min="0" step="0.5" value={r.quantity} onChange={(e) => setRow(i, 'quantity', e.target.value)} />
                   <span className="tabular self-center text-right text-caption text-ink-500">{formatCurrency((Number(r.quantity) || 0) * price(r.product_id))}</span>
@@ -600,7 +601,7 @@ const ProductPanel = ({ product: p, refreshKey, groups, isRestaurant, retail, ca
         <button type="button" onClick={onBack} className="mb-3 flex items-center gap-1.5 text-small font-medium text-ink-500 hover:text-ink-900 xl:hidden"><ArrowLeft className="h-4 w-4" />{tr('All products')}</button>
         {dish && !archived && <div className="mb-4"><ImageUploader product={p} onUploaded={onPhoto} large /></div>}
         <p className="text-caption font-medium text-ink-500">{[isRestaurant && KIND_LABELS[p.kind], p.category_name].filter(Boolean).join(' · ') || 'No category'}</p>
-        <h2 className="mt-0.5 flex items-center gap-2 text-title font-semibold text-ink-900"><FoodMark type={p.food_type} size={16} />{p.name}</h2>
+        <h2 className="mt-0.5 flex items-center gap-2 text-title font-semibold text-ink-900"><FoodMark type={p.food_type} size={16} />{pnameNow(p)}</h2>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {archived && <span className="rounded bg-surface-2 px-1.5 py-0.5 text-caption font-semibold text-ink-500">{tr('Archived')}</span>}
           {p.is_combo && <span className="rounded bg-brand-50 px-1.5 py-0.5 text-caption font-semibold text-brand-700">{tr('Combo')}</span>}
@@ -738,7 +739,7 @@ const ProductRow = ({ p, active, isRestaurant, onOpen }) => {
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-x-1.5">
             <FoodMark type={p.food_type} size={12} />
-            <span className={`truncate text-small font-semibold ${p.status === 'ACTIVE' ? 'text-ink-900' : 'text-ink-500'}`}>{p.name}</span>
+            <span className={`truncate text-small font-semibold ${p.status === 'ACTIVE' ? 'text-ink-900' : 'text-ink-500'}`}>{pnameNow(p)}</span>
             {p.is_combo && <span className="rounded bg-brand-50 px-1 text-caption font-semibold text-brand-700">{tr('Combo')}</span>}
             {p.is_available === false && <span className="rounded bg-warning/10 px-1 text-caption font-semibold text-warning">{tr('Off here')}</span>}
           </span>

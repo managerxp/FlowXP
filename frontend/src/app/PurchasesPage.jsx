@@ -19,6 +19,7 @@ import { useIdempotencyKey } from '../lib/idempotency.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Button, Field, Input, Modal, Select, useToast, useDialog, EmptyState } from '../components/ui.jsx';
 import { useT, T } from '../i18n/useT.js';
+import { pnameNow } from '../i18n/productName.js';
 
 const METHODS = [['CASH', T('Cash')], ['UPI', 'UPI'], ['BANK_TRANSFER', T('Bank')], ['CARD', T('Card')], ['OTHER', T('Other')]];
 const METHOD_LABEL = { ...Object.fromEntries(METHODS), CREDIT: 'Credit' };
@@ -164,7 +165,7 @@ const PurchaseForm = ({ products, suppliers, onSaved, onClose }) => {
                 <div className="flex min-w-0 gap-2 max-sm:col-span-3">
                   <Select aria-label={tr('Item')} value={l.product_id} onChange={(e) => pick(l.key, e.target.value)} className="min-w-0">
                     <option value="">{tr('Something not in your list…')}</option>
-                    {products.map((p) => <option key={p.product_id} value={p.product_id}>{p.name}</option>)}
+                    {products.map((p) => <option key={p.product_id} value={p.product_id}>{pnameNow(p)}</option>)}
                   </Select>
                   {!l.product_id && <Input aria-label={tr('Description')} placeholder={tr('What is it?')} value={l.description} onChange={(e) => setLine(l.key, { description: e.target.value })} className="min-w-0" />}
                 </div>

@@ -7,6 +7,7 @@ import { X } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Badge, Button, Card, Field, Input, ListState, Modal, PageHeader, Select, useToast, useDialog } from '../components/ui.jsx';
+import { pnameNow } from '../i18n/productName.js';
 
 const TONE = { PENDING: 'brand', PARTIAL: 'warning', FULFILLED: 'success', REJECTED: 'danger', CANCELLED: 'neutral', CLOSED: 'neutral' };
 const when = (iso) => new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short' });
@@ -40,7 +41,7 @@ const NewRequest = ({ outlets, outletId, onDone, onClose }) => {
           {rows.map((r, i) => (
             <div key={i} className="grid grid-cols-12 gap-2">
               <Select className="col-span-7" aria-label="Item" value={r.product_id} onChange={(e) => setRow(i, 'product_id', e.target.value)}>
-                <option value="">Choose item…</option>{products.map((p) => <option key={p.product_id} value={p.product_id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
+                <option value="">Choose item…</option>{products.map((p) => <option key={p.product_id} value={p.product_id}>{pnameNow(p)}{p.unit ? ` (${p.unit})` : ''}</option>)}
               </Select>
               <Input className="col-span-4" type="number" min="0" step="0.001" placeholder="How much" value={r.quantity} onChange={(e) => setRow(i, 'quantity', e.target.value)} aria-label="Quantity" />
               <button type="button" className="col-span-1 flex h-9 items-center justify-center rounded-md text-ink-400 hover:bg-danger/10 hover:text-danger" onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))} aria-label="Remove"><X aria-hidden="true" className="h-4 w-4" /></button>

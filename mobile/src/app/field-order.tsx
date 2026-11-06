@@ -9,7 +9,7 @@ import { kvGet, kvSet, useScope } from '../lib/local.ts';
 import { useSale } from '../lib/sale.ts';
 import { dayOf } from '../lib/till.ts';
 import { refreshCounts, syncAll } from '../lib/sync.ts';
-import type { Product } from '../lib/catalog.ts';
+import { pname, type Product } from '../lib/catalog.ts';
 import { addFLine, dropFLine, ensureVisit, estimateOrder, loadKnownPrices, rememberShopPrices, fieldOrderBody, fieldOrderProblem, pieceRupees, sendOrQueue, setFQty, setFUnit, unitFactor, type FLine, type KnownPrices } from '../lib/field.ts';
 import { creditText, previewBody, shortLines, type WPreview } from '../lib/wholesale.ts';
 import { qty, rupees, toPaise } from '../lib/money.ts';
@@ -98,7 +98,7 @@ export default function FieldOrder() {
               <SearchBox value={text} onChange={setText} placeholder="Search a product by name, code or barcode" label="Search a product" />
             </View>
             {found.map((p) => (
-              <Line key={p.product_id} left={p.name} sub={`${p.current_stock != null ? `${qty(p.current_stock)} in stock` : ''}${(p.wholesale?.moq ?? 1) > 1 ? ` · minimum ${p.wholesale?.moq}` : ''}`.replace(/^ · /, '')} right={money(pieceRupees(p))}
+              <Line key={p.product_id} left={pname(p)} sub={`${p.current_stock != null ? `${qty(p.current_stock)} in stock` : ''}${(p.wholesale?.moq ?? 1) > 1 ? ` · minimum ${p.wholesale?.moq}` : ''}`.replace(/^ · /, '')} right={money(pieceRupees(p))}
                 onPress={() => { edit(addFLine(lines, p)); setText(''); setFound([]); }} />
             ))}
 

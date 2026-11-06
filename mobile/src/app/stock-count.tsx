@@ -11,7 +11,7 @@ import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { qty } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
-import type { Product } from '../lib/catalog.ts';
+import { pname, type Product } from '../lib/catalog.ts';
 import {
   QUICK_GST, QUICK_UNITS, appliedText, applyText, canCount, canQuickAdd, emptyQuick, quickBody, quickProblem, itemSub, scanEntry, scanNote, scopeText, signed, statusLabel, typedEntry, varianceText,
   type CountDetail, type CountEntry, type CountedBack, type CountItem, type QuickForm
@@ -163,7 +163,7 @@ export default function StockCount() {
               <View style={{ paddingHorizontal: 16, gap: 8 }}>
                 <Button title="Scan items" onPress={() => { setNote(''); setScanning(true); }} />
                 <TextInput style={s.input} value={query} onChangeText={setQuery} placeholder={t('Search a product to count it (+1)')} autoCorrect={false} accessibilityLabel={t('Search a product to count it (+1)')} />
-                {found.map((p) => <Line key={p.product_id} left={p.name} sub={[p.sku, p.barcodes?.[0]].filter(Boolean).join(' · ')} onPress={() => { void countOne(p); }} />)}
+                {found.map((p) => <Line key={p.product_id} left={pname(p)} sub={[p.sku, p.barcodes?.[0]].filter(Boolean).join(' · ')} onPress={() => { void countOne(p); }} />)}
               </View>
             ) : null}
             {note ? <Soft style={{ padding: 16 }}>{note}</Soft> : null}

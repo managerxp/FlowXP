@@ -10,7 +10,7 @@ import { useSale } from '../lib/sale.ts';
 import { dayOf } from '../lib/till.ts';
 import { refreshCounts, syncAll } from '../lib/sync.ts';
 import { useLoad } from '../lib/useLoad.ts';
-import type { Product } from '../lib/catalog.ts';
+import { pname, type Product } from '../lib/catalog.ts';
 import { addFLine, dropFLine, ensureVisit, estimateOrder, loadKnownPrices, rememberShopPrices, sendOrQueue, setFQty, setFUnit, unitFactor, type FLine, type KnownPrices } from '../lib/field.ts';
 import { PAY_LABEL, leftOnVan, lineRupees, overVan, pendingOnVan, stockByProduct, vanSaleBody, vanSaleProblem, type PayMode, type VanDetail } from '../lib/van.ts';
 import { creditText, previewBody, type WPreview } from '../lib/wholesale.ts';
@@ -116,7 +116,7 @@ export default function VanSale() {
               <SearchBox value={text} onChange={setText} placeholder="Search what the van carries" label="Search the van" />
             </View>
             {shown.slice(0, 12).map((p) => (
-              <Line key={p.product_id} left={p.name} sub={`${qty(left.get(p.product_id) ?? 0)} ${p.unit ?? ''} on the van`} right={money(lineRupees(products.get(p.product_id)!, null))}
+              <Line key={p.product_id} left={pname(p)} sub={`${qty(left.get(p.product_id) ?? 0)} ${p.unit ?? ''} on the van`} right={money(lineRupees(products.get(p.product_id)!, null))}
                 onPress={() => { edit(addFLine(lines, products.get(p.product_id)!)); setText(''); }} />
             ))}
             {van.data && stock.length === 0 ? <Empty>The van is empty. Stock is loaded at the warehouse.</Empty> : null}

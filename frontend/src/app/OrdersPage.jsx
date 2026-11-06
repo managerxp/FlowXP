@@ -26,6 +26,7 @@ import ModifierPicker, { needsChoices, useModifierGroups } from '../components/M
 import { AnimatedNumber, Alert, Badge, Button, Field, Input, Modal, Select, humanize, useToast, useDialog, StatCard } from '../components/ui.jsx';
 import { platformName } from '../lib/business.js';
 import { useT, T } from '../i18n/useT.js';
+import { pnameNow } from '../i18n/productName.js';
 
 const TYPE_LABEL = { DINE_IN: 'Dine-in', TAKEAWAY: 'Takeaway', DELIVERY: 'Delivery' };
 const TYPE_ICON = { DINE_IN: UtensilsCrossed, TAKEAWAY: ShoppingBag, DELIVERY: Bike };
@@ -349,7 +350,7 @@ const MenuPicker = ({ products, counts, onAdd, onClose, title }) => {
             return (
               <button key={p.product_id} type="button" onClick={() => onAdd(p)}
                       className={`relative flex min-h-[84px] flex-col justify-between rounded-(--radius-card) border p-3 text-left transition-colors duration-(--duration-fast) active:bg-brand-50 ${n ? 'border-brand-500 bg-brand-50/60' : 'border-line bg-surface hover:border-ink-400'}`}>
-                <span className="flex items-start gap-1.5 pr-6"><span className="mt-[3px]"><FoodMark type={p.food_type} size={12} /></span><span className="line-clamp-2 text-small font-semibold text-ink-900">{p.name}</span></span>
+                <span className="flex items-start gap-1.5 pr-6"><span className="mt-[3px]"><FoodMark type={p.food_type} size={12} /></span><span className="line-clamp-2 text-small font-semibold text-ink-900">{pnameNow(p)}</span></span>
                 <span className="mt-2 flex items-baseline justify-between gap-1">
                   <span className="tabular text-small text-ink-700">{formatCurrency(p.selling_price)}</span>
                   {p.modifier_group_ids?.length > 0 && <span className="text-caption text-ink-500">{tr('options')}</span>}
@@ -678,7 +679,7 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
               {results.map((p) => (
                 <li key={p.product_id}>
                   <button type="button" onClick={() => choose(p)} className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-small hover:bg-surface-2">
-                    <span className="font-medium text-ink-900">{p.name}{p.modifier_group_ids?.length ? <span className="ml-2 text-caption text-ink-500">{tr('options')}</span> : null}</span>
+                    <span className="font-medium text-ink-900">{pnameNow(p)}{p.modifier_group_ids?.length ? <span className="ml-2 text-caption text-ink-500">{tr('options')}</span> : null}</span>
                     <span className="tabular font-semibold text-ink-900">{formatCurrency(p.selling_price)}</span>
                   </button>
                 </li>

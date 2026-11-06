@@ -7,7 +7,7 @@ import { useScope } from '../lib/local.ts';
 import { add } from '../lib/sale.ts';
 import { ApiError, newKey } from '../lib/api.ts';
 import { api } from '../lib/session.ts';
-import type { Product } from '../lib/catalog.ts';
+import { pname, type Product } from '../lib/catalog.ts';
 import { initialChoice, missing, picked, toggle, type Chosen, type Group } from '../lib/options.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Button, Soft, Title, color, s } from '../lib/ui.tsx';
@@ -53,7 +53,7 @@ export default function Options() {
   return (
     <SafeAreaView style={s.screen}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 18 }}>
-        <Title>{product.name}</Title>
+        <Title>{pname(product)}</Title>
         {groups.length === 0 ? <Soft>This drink has options that are not on this phone yet. Connect once so they can be downloaded.</Soft> : null}
         {groups.map((g) => (
           <View key={g.group_id} style={{ gap: 8 }}>

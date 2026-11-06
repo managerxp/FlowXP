@@ -18,6 +18,7 @@ import { usePosCatalog } from '../lib/usePosCatalog.js';
 import { lookupCode, productDetail, qty as fmtQty } from '../lib/retailStock.js';
 import { CLOTHING_TYPES } from '../lib/business.js';
 import { Alert, Button, Field, Input, Select, useToast } from '../components/ui.jsx';
+import { pnameNow } from '../i18n/productName.js';
 
 const METHODS = [['CASH', 'Cash'], ['UPI', 'UPI'], ['BANK_TRANSFER', 'Bank'], ['CARD', 'Card'], ['OTHER', 'Other']];
 const num = (v) => (v === '' || v == null ? 0 : Number(v));
@@ -63,7 +64,7 @@ const ReceiveStockPage = () => {
     setLines((ls) => {
       known = ls.some((l) => l.product_id === product.product_id);
       if (known) return ls.map((l) => (l.product_id === product.product_id ? { ...l, qty: num(l.qty) + by } : l));
-      return [{ product_id: product.product_id, name: product.name, unit: product.unit || 'pc', sku: product.sku, qty: by, cost: '', tax_rate: '', track_expiry: false, expiry: '', batch: '', loaded: false }, ...ls];
+      return [{ product_id: product.product_id, name: product.name, name_i18n: product.name_i18n, unit: product.unit || 'pc', sku: product.sku, qty: by, cost: '', tax_rate: '', track_expiry: false, expiry: '', batch: '', loaded: false }, ...ls];
     });
     if (!known) {
       productDetail(product.product_id).then((d) => setLines((ls) => ls.map((l) => (l.product_id === d.product_id
@@ -176,7 +177,7 @@ const ReceiveStockPage = () => {
               {matches.map((p, i) => (
                 <li key={p.product_id} role="option" aria-selected={i === hit}>
                   <button type="button" onClick={() => choose(p)} className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 text-left text-small ${i === hit ? 'bg-surface-2' : 'hover:bg-surface-2'}`}>
-                    <span className="min-w-0 truncate font-medium text-ink-900">{p.name}</span><span className="shrink-0 text-caption text-ink-500">{p.sku}</span>
+                    <span className="min-w-0 truncate font-medium text-ink-900">{pnameNow(p)}</span><span className="shrink-0 text-caption text-ink-500">{p.sku}</span>
                   </button>
                 </li>
               ))}
@@ -192,7 +193,7 @@ const ReceiveStockPage = () => {
           {lines.map((l) => (
             <li key={l.product_id} className="rounded-(--radius-card) border border-line bg-surface p-4">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0"><p className="font-medium text-ink-900">{l.name}</p><p className="text-caption text-ink-500">{l.sku}</p></div>
+                <div className="min-w-0"><p className="font-medium text-ink-900">{pnameNow(l)}</p><p className="text-caption text-ink-500">{l.sku}</p></div>
                 <button type="button" onClick={() => remove(l.product_id)} aria-label={`Remove ${l.name}`} className="-mr-1 -mt-1 flex h-11 w-11 items-center justify-center rounded-lg text-ink-400 hover:bg-surface-2 hover:text-danger"><Trash2 aria-hidden="true" className="h-4 w-4" /></button>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-[auto_8rem_6rem_1fr]">

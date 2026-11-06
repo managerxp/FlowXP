@@ -7,7 +7,7 @@ import { goBack } from '../lib/nav.ts';
 import { syncAll } from '../lib/sync.ts';
 import { useScope } from '../lib/local.ts';
 import { useLoad } from '../lib/useLoad.ts';
-import type { Product } from '../lib/catalog.ts';
+import { pname, type Product } from '../lib/catalog.ts';
 import { receiveBody, receiveProblem, receiveTotalPaise, type ReceiveLine, type Supplier } from '../lib/buying.ts';
 import { rupees } from '../lib/money.ts';
 import { gstView } from '../lib/gst.ts';
@@ -76,7 +76,7 @@ export default function Receive() {
               <TextInput style={s.input} value={billNo} onChangeText={setBillNo} placeholder="Supplier's bill number (optional)" accessibilityLabel="Supplier bill number" />
               <TextInput style={s.input} value={text} onChangeText={setText} placeholder="Search an item to add" accessibilityLabel="Search an item" autoCorrect={false} />
             </View>
-            {found.map((p) => <Line key={p.product_id} left={p.name} sub="Tap to add" onPress={() => add(p)} />)}
+            {found.map((p) => <Line key={p.product_id} left={pname(p)} sub="Tap to add" onPress={() => add(p)} />)}
             {lines.length === 0 ? <Empty>Search an item above and tap it to add it to this delivery.</Empty> : null}
             {lines.map((l) => (
               <View key={l.product_id} style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: color.card }}>
