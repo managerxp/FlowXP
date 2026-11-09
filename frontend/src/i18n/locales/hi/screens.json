@@ -5278,5 +5278,17 @@
   "What prints on the bill": "बिल पर क्या छपता है",
   "Connect your receipt printer": "अपना रसीद प्रिंटर जोड़ें",
   "Name in other languages": "दूसरी भाषाओं में नाम",
-  "Filled in automatically when you save. Change one to correct it.": "सेव करने पर अपने-आप भर जाता है। सुधारने के लिए कोई भी बदलें।"
+  "Filled in automatically when you save. Change one to correct it.": "सेव करने पर अपने-आप भर जाता है। सुधारने के लिए कोई भी बदलें।",
+  "Menu on / off": "मेन्यू चालू / बंद",
+  "Switch a dish off when it runs out. It stops being sold at this outlet until you switch it back on.": "कोई डिश खत्म हो जाए तो उसे बंद कर दें। दोबारा चालू करने तक इस आउटलेट पर वह नहीं बिकेगी।",
+  "Search dishes": "डिश खोजें",
+  "All dishes": "सभी डिश",
+  "No dishes yet. Add them under Products first.": "अभी कोई डिश नहीं है। पहले उत्पादों में जोड़ें।",
+  "Everything is switched on.": "सब कुछ चालू है।",
+  "No dish matches.": "कोई डिश नहीं मिली।",
+  "Off at this outlet": "इस आउटलेट पर बंद",
+  "Bill printed. Waiting for payment": "बिल छप गया। भुगतान का इंतज़ार",
+  "Bill sent to the printer": "बिल प्रिंटर को भेजा गया",
+  "Print the bill": "बिल प्रिंट करें",
+  "View the order": "ऑर्डर देखें"
 }

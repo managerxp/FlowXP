@@ -73,6 +73,7 @@ const Subscription = lazy(() => import('./app/Subscription.jsx'));
 const BusinessSettings = lazy(() => import('./app/BusinessSettings.jsx'));
 const ProductsPage = lazy(() => import('./app/ProductsPage.jsx'));
 const ModifiersPage = lazy(() => import('./app/ModifiersPage.jsx'));
+const MenuAvailability = lazy(() => import('./app/MenuAvailability.jsx'));
 const ProfitabilityPage = lazy(() => import('./app/ProfitabilityPage.jsx'));
 const LeakagePage = lazy(() => import('./app/LeakagePage.jsx'));
 const ForecastPage = lazy(() => import('./app/ForecastPage.jsx'));
@@ -114,6 +115,7 @@ const AIManagerPage = lazy(() => import('./app/AIManagerPage.jsx'));
 const ActivityPage = lazy(() => import('./app/ActivityPage.jsx'));
 const ReceiptPage = lazy(() => import('./app/PrintPages.jsx').then((m) => ({ default: m.ReceiptPage })));
 const KotPage = lazy(() => import('./app/PrintPages.jsx').then((m) => ({ default: m.KotPage })));
+const RunningBillPage = lazy(() => import('./app/PrintPages.jsx').then((m) => ({ default: m.RunningBillPage })));
 const StaffPage = lazy(() => import('./app/StaffPage.jsx'));
 
 /* The wholesale module (WHOLESALE and DISTRIBUTOR). Its screens live in app/wholesale/ and load only for those businesses. */
@@ -319,6 +321,7 @@ const App = () => (
       <Route path="print/credit-note/:id" element={<CreditNotePrint />} />
       <Route path="products" element={<ProductsPage />} />
       <Route path="modifiers" element={<ModifiersPage />} />
+      <Route path="menu-availability" element={<MenuAvailability />} />
       <Route path="profitability" element={<ProfitabilityPage />} />
       <Route path="leakage" element={<LeakagePage />} />
       <Route path="forecast" element={<ForecastPage />} />
@@ -357,6 +360,7 @@ const App = () => (
       <Route path="ai" element={<AIManagerPage />} />
       <Route path="print/receipt/:id" element={<ReceiptPage />} />
       <Route path="print/kot/:id" element={<KotPage />} />
+      <Route path="print/bill/:id" element={<RunningBillPage />} />
       <Route path="staff" element={<StaffPage />} />
 
       <Route path="wholesale/orders" element={<WholesaleOrders />} />

@@ -5278,5 +5278,17 @@
   "What prints on the bill": "ബില്ലിൽ എന്താണ് പ്രിന്റ് ചെയ്യുന്നത്",
   "Connect your receipt printer": "നിങ്ങളുടെ രസീത് പ്രിന്റർ ബന്ധിപ്പിക്കുക",
   "Name in other languages": "മറ്റ് ഭാഷകളിലെ പേര്",
-  "Filled in automatically when you save. Change one to correct it.": "സേവ് ചെയ്യുമ്പോൾ സ്വയം നിറയും. തിരുത്താൻ ഏതെങ്കിലും മാറ്റുക."
+  "Filled in automatically when you save. Change one to correct it.": "സേവ് ചെയ്യുമ്പോൾ സ്വയം നിറയും. തിരുത്താൻ ഏതെങ്കിലും മാറ്റുക.",
+  "Menu on / off": "മെനു ഓൺ / ഓഫ്",
+  "Switch a dish off when it runs out. It stops being sold at this outlet until you switch it back on.": "ഒരു വിഭവം തീർന്നാൽ ഓഫ് ചെയ്യുക. വീണ്ടും ഓൺ ചെയ്യുന്നതുവരെ ഈ ഔട്ട്‌ലെറ്റിൽ അത് വിൽക്കില്ല.",
+  "Search dishes": "വിഭവങ്ങൾ തിരയുക",
+  "All dishes": "എല്ലാ വിഭവങ്ങളും",
+  "No dishes yet. Add them under Products first.": "ഇതുവരെ വിഭവങ്ങളില്ല. ആദ്യം ഉൽപ്പന്നങ്ങളിൽ ചേർക്കുക.",
+  "Everything is switched on.": "എല്ലാം ഓണാണ്.",
+  "No dish matches.": "ഒരു വിഭവവും ഒത്തുവരുന്നില്ല.",
+  "Off at this outlet": "ഈ ഔട്ട്‌ലെറ്റിൽ ഓഫ്",
+  "Bill printed. Waiting for payment": "ബിൽ പ്രിന്റ് ചെയ്തു. പണമടയ്ക്കാൻ കാത്തിരിക്കുന്നു",
+  "Bill sent to the printer": "ബിൽ പ്രിന്ററിലേക്ക് അയച്ചു",
+  "Print the bill": "ബിൽ പ്രിന്റ് ചെയ്യുക",
+  "View the order": "ഓർഡർ കാണുക"
 }

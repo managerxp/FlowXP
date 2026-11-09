@@ -25,7 +25,7 @@ const asTable = (row) => ({
   open_order_number: row.open_order_number,
   // how long the table has been sitting, what is on it, and where the kitchen is with it
   open_order: row.open_order_id ? {
-    opened_at: row.open_order_created_at,
+    opened_at: row.open_order_created_at, bill_printed_at: row.open_bill_printed_at ?? null, order_type: row.open_order_type ?? null,
     items: Number(row.open_qty || 0), estimate: toRupees(row.open_paise || 0),
     not_sent: row.not_sent || 0, cooking: row.cooking || 0, ready: row.ready || 0
   } : null,
@@ -57,7 +57,7 @@ export const list = async (req, res) => {
   const values = [req.tenant.businessId];
   const scope = branchFilter(req.tenant, 't.branch_id', values);
   const { rows } = await pool.query(
-    `SELECT t.*, o.order_id AS open_order_id, o.order_number AS open_order_number, o.created_at AS open_order_created_at, s.*,
+    `SELECT t.*, o.order_id AS open_order_id, o.order_number AS open_order_number, o.created_at AS open_order_created_at, o.bill_printed_at AS open_bill_printed_at, o.order_type AS open_order_type, s.*,
             w.name AS waiter_name, nr.reserved_at AS next_res_at, nr.guest_name AS next_res_guest, nr.party_size AS next_res_party
      FROM dining_tables t
      LEFT JOIN users w ON w.user_id = t.waiter_user_id

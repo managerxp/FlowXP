@@ -5278,5 +5278,17 @@
   "What prints on the bill": "బిల్లుపై ఏమి ప్రింట్ అవుతుంది",
   "Connect your receipt printer": "మీ రసీదు ప్రింటర్‌ను కనెక్ట్ చేయండి",
   "Name in other languages": "ఇతర భాషల్లో పేరు",
-  "Filled in automatically when you save. Change one to correct it.": "సేవ్ చేసినప్పుడు తనంతట తానే నిండుతుంది. సరిచేయడానికి ఏదైనా మార్చండి."
+  "Filled in automatically when you save. Change one to correct it.": "సేవ్ చేసినప్పుడు తనంతట తానే నిండుతుంది. సరిచేయడానికి ఏదైనా మార్చండి.",
+  "Menu on / off": "మెనూ ఆన్ / ఆఫ్",
+  "Switch a dish off when it runs out. It stops being sold at this outlet until you switch it back on.": "ఒక వంటకం అయిపోతే దాన్ని ఆఫ్ చేయండి. మళ్లీ ఆన్ చేసే వరకు ఈ అవుట్‌లెట్‌లో అది అమ్మబడదు.",
+  "Search dishes": "వంటకాలను వెతకండి",
+  "All dishes": "అన్ని వంటకాలు",
+  "No dishes yet. Add them under Products first.": "ఇంకా వంటకాలు లేవు. ముందు ఉత్పత్తుల్లో జోడించండి.",
+  "Everything is switched on.": "అన్నీ ఆన్‌లో ఉన్నాయి.",
+  "No dish matches.": "ఏ వంటకమూ సరిపోలలేదు.",
+  "Off at this outlet": "ఈ అవుట్‌లెట్‌లో ఆఫ్",
+  "Bill printed. Waiting for payment": "బిల్లు ప్రింట్ అయింది. చెల్లింపు కోసం ఎదురుచూస్తోంది",
+  "Bill sent to the printer": "బిల్లు ప్రింటర్‌కు పంపబడింది",
+  "Print the bill": "బిల్లు ప్రింట్ చేయండి",
+  "View the order": "ఆర్డర్ చూడండి"
 }

@@ -15,10 +15,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
-import { CalendarClock, Clock, Printer, QrCode, Settings2, Sparkles, Users } from 'lucide-react';
+import { CalendarClock, Clock, Printer, QrCode, Search, Settings2, ShoppingBag, Sparkles, ToggleRight, Users } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Button, Field, Input, Modal, Select, useToast, useDialog, StatCard } from '../components/ui.jsx';
+import OrderQuickActions from '../components/OrderQuickActions.jsx';
 
 const POLL_MS = 20000;
 const LONG_MIN = 90;
@@ -33,6 +34,7 @@ const initials = (name) => String(name || '').split(/\s+/).filter(Boolean).slice
 const stateOf = (t) => {
   if (t.open_order_id) {
     const o = t.open_order;
+    if (o.bill_printed_at) return 'printed';   // the guest has the bill: it only needs paying
     return o.ready > 0 || o.not_sent > 0 || minutesSince(o.opened_at) >= LONG_MIN ? 'attention' : 'busy';
   }
   if (t.status === 'CLEANING') return 'cleaning';
@@ -43,7 +45,8 @@ const stateOf = (t) => {
 const FILTERS = [
   { key: 'all', label: 'All' },
   { key: 'free', label: 'Free', dot: 'bg-success', test: (s) => s === 'free' },
-  { key: 'busy', label: 'Occupied', dot: 'bg-brand-500', test: (s) => s === 'busy' || s === 'attention' },
+  { key: 'busy', label: 'Occupied', dot: 'bg-brand-500', test: (s) => s === 'busy' || s === 'attention' || s === 'printed' },
+  { key: 'printed', label: 'Bill printed', dot: 'bg-success', test: (s) => s === 'printed' },
   { key: 'attention', label: 'Needs attention', dot: 'bg-danger', test: (s) => s === 'attention' },
   { key: 'booked', label: 'Booked soon', dot: 'bg-warning', test: (s) => s === 'booked' },
   { key: 'cleaning', label: 'Being cleaned', dot: 'bg-ink-400', test: (s) => s === 'cleaning' }
@@ -177,7 +180,7 @@ const TableSettings = ({ table, zones, waiters, businessName, onClose, onSaved }
 };
 
 /* One table on the floor. Every state reads in words as well as colour. */
-const TableTile = ({ table, onOpen, onSettings, onClean, starting }) => {
+const TableTile = ({ table, onOpen, onSettings, onClean, onPrinted, starting }) => {
   const o = table.open_order;
   const state = stateOf(table);
   const busy = Boolean(table.open_order_id);
@@ -189,10 +192,11 @@ const TableTile = ({ table, onOpen, onSettings, onClean, starting }) => {
     free: 'border-line bg-surface hover:border-success',
     busy: 'border-brand-500/30 bg-brand-50 hover:border-brand-500',
     attention: 'border-brand-500/30 bg-brand-50 hover:border-brand-500',
+    printed: 'border-success/40 bg-success/10 hover:border-success',
     booked: 'border-warning/40 bg-warning/5 hover:border-warning',
     cleaning: 'border-dashed border-line-strong bg-surface-2 hover:border-ink-400'
   }[state];
-  const stripe = { free: 'bg-success', busy: 'bg-brand-500', attention: long ? 'bg-danger' : 'bg-brand-500', booked: 'bg-warning', cleaning: 'bg-ink-400' }[state];
+  const stripe = { free: 'bg-success', busy: 'bg-brand-500', attention: long ? 'bg-danger' : 'bg-brand-500', printed: 'bg-success', booked: 'bg-warning', cleaning: 'bg-ink-400' }[state];
 
   return (
     <div className={`group relative flex min-h-[148px] flex-col overflow-hidden rounded-(--radius-card) border shadow-sm transition-colors duration-(--duration-fast) ${look}`}>
@@ -220,7 +224,8 @@ const TableTile = ({ table, onOpen, onSettings, onClean, starting }) => {
               </span>
             )}
             <span className="mt-1.5 block text-caption font-semibold">
-              {o.ready > 0 ? <span className="text-success">{o.ready} ready to serve</span>
+              {o.bill_printed_at ? <span className="text-success">Bill printed. Waiting for payment</span>
+                : o.ready > 0 ? <span className="text-success">{o.ready} ready to serve</span>
                 : o.not_sent > 0 ? <span className="text-warning">{o.not_sent} not sent to the kitchen</span>
                 : o.cooking > 0 ? <span className="font-medium text-ink-700">{o.cooking} cooking</span>
                 : long ? <span className="text-danger">Seated {age(mins)}. Offer the bill?</span>
@@ -241,6 +246,7 @@ const TableTile = ({ table, onOpen, onSettings, onClean, starting }) => {
           </span>
         )}
       </button>
+      {busy && <OrderQuickActions orderId={table.open_order_id} canPrint={Number(o.items) > 0} onView={onOpen} onPrinted={onPrinted} />}
       {state === 'cleaning' && (
         <button type="button" onClick={onClean} className="absolute bottom-3 right-3 flex items-center gap-1 rounded-md border border-line-strong bg-surface px-2 py-1 text-caption font-semibold text-ink-700 hover:border-success hover:text-success">
           <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />Ready
@@ -250,7 +256,7 @@ const TableTile = ({ table, onOpen, onSettings, onClean, starting }) => {
         <span aria-hidden="true" title={table.waiter_name} className="absolute right-11 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-surface text-[10px] font-bold text-ink-700 ring-1 ring-line">{initials(table.waiter_name)}</span>
       )}
       <button type="button" onClick={onSettings} aria-label={`${table.name} settings and QR code`}
-              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-lg text-ink-400 hover:bg-surface hover:text-ink-700">
+              className="absolute right-1 top-1 flex h-11 w-11 items-center justify-center rounded-lg text-ink-400 hover:bg-surface hover:text-ink-700">
         <Settings2 className="h-4 w-4" />
       </button>
     </div>
@@ -274,6 +280,13 @@ const TablesPage = () => {
   const [mineOnly, setMineOnly] = useState(false);
   const [filter, setFilter] = useState('all');
   const [zone, setZone] = useState('all');
+  const [find, setFind] = useState('');
+  const startTakeaway = async () => {
+    setStarting('takeaway');
+    try { const order = await api('/orders', { method: 'POST', body: { order_type: 'TAKEAWAY' } }); navigate(`/app/orders?order=${order.order_id}`); }
+    catch (caught) { toast.error(caught.message); }
+    finally { setStarting(null); }
+  };
 
   const load = () => api('/tables').then((rows) => { setTables(rows); setError(''); }).catch((e) => setError(e.message));
   useEffect(() => { load(); const t = setInterval(load, POLL_MS); return () => clearInterval(t); }, []);
@@ -325,11 +338,19 @@ const TablesPage = () => {
           <p className="mt-1 text-small text-ink-500">Tap a free table to seat guests, or a busy one to open its order.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={startTakeaway} disabled={starting === 'takeaway'}><ShoppingBag aria-hidden="true" className="h-4 w-4" />New takeaway</Button>
+          <Button variant="secondary" to="/app/orders">All orders</Button>
+          <Button variant="secondary" to="/app/menu-availability"><ToggleRight aria-hidden="true" className="h-4 w-4" />Menu on / off</Button>
           <Button variant="ghost" to="/app/reservations"><CalendarClock aria-hidden="true" className="h-4 w-4" />Reservations</Button>
           {all.length > 0 && <Button variant="secondary" onClick={async () => { if (!(await printQrCards(all, business?.name))) toast.error('Allow pop-ups to print the QR cards'); }}><Printer aria-hidden="true" className="h-4 w-4" />Print QR cards</Button>}
           <Button onClick={() => setShowAdd(true)}>Add table</Button>
         </div>
       </div>
+
+      <form role="search" onSubmit={(e) => { e.preventDefault(); if (find.trim()) navigate(`/app/orders?find=${encodeURIComponent(find.trim())}`); }} className="mb-4 flex max-w-md items-center gap-2">
+        <label className="relative min-w-0 flex-1"><span className="sr-only">Find an order</span><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" /><Input value={find} onChange={(e) => setFind(e.target.value)} placeholder="Find an order by number or name" className="pl-9" /></label>
+        <Button type="submit" variant="secondary">Find</Button>
+      </form>
 
       {tables && all.length > 0 && (
         <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
@@ -393,7 +414,7 @@ const TablesPage = () => {
               </h2>
             )}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {list.map((t) => <TableTile key={t.table_id} table={t} starting={starting === t.table_id} onOpen={() => openTable(t)} onSettings={() => setSettingsFor(t)} onClean={() => setClean(t)} />)}
+              {list.map((t) => <TableTile key={t.table_id} table={t} starting={starting === t.table_id} onOpen={() => openTable(t)} onSettings={() => setSettingsFor(t)} onClean={() => setClean(t)} onPrinted={load} />)}
             </div>
           </section>
         ))}

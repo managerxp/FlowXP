@@ -25,6 +25,9 @@ router.get('/products/lookup/:code', ...authed, read, products.lookup);
 // a field rep (sales_orders) keeps the catalogue on the phone too, to take an order with no signal; a warehouse worker (fulfilment) to scan items while picking
 router.get('/products/pos-catalog', ...authed, requireAnyPermission('products', 'billing', 'sales_orders', 'fulfilment'), products.posCatalog);
 router.post('/products/quick', requireAuth, withBusiness({ requireActive: true }), requirePermission('billing'), requirePermission('product_quick_add'), requireOutlet, idempotent(), products.quickCreate);
+const floorSwitch = [requireAuth, withBusiness({ requireActive: true }), requireAnyPermission('products', 'billing')];
+router.get('/products/availability', ...authed, read, products.availability);   // before /products/:id
+router.patch('/products/:id/availability', ...floorSwitch, products.setAvailability);
 router.get('/products/:id', ...authed, read, products.get);
 router.get('/products/:id/identifiers', ...authed, read, identity.identifiers);
 router.post('/products/:id/barcodes', ...write, identity.addBarcodeTo);

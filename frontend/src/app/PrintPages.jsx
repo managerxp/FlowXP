@@ -231,6 +231,70 @@ export const KotPage = () => {
   );
 };
 
+/* ── running bill of an open order (before it is paid) ───────────────────── */
+
+export const RunningBillPage = () => {
+  const { id } = useParams();
+  const [order, setOrder] = useState(null);
+  const [biz, setBiz] = useState(null);
+  const [error, setError] = useState('');
+  const [width, setWidth] = useState(null);
+
+  useEffect(() => {
+    Promise.all([api(`/orders/${id}`), api('/businesses/current')])
+      .then(([o, b]) => { setOrder(o); setBiz(b); setWidth((w) => w ?? b.receipt_settings.paper_width); })
+      .catch((e) => setError(e.message));
+  }, [id]);
+  usePrintOnLoad(Boolean(order));
+  // printing it (or its preview being printed) marks the table "bill printed" on the floor
+  useEffect(() => {
+    const done = () => { api(`/orders/${id}/bill-printed`, { method: 'POST' }).catch(() => {}); };
+    window.addEventListener('afterprint', done);
+    return () => window.removeEventListener('afterprint', done);
+  }, [id]);
+
+  if (error) return <Alert>{error}</Alert>;
+  if (!order) return <p className="text-sm text-ink-400">Preparing the bill…</p>;
+
+  const items = order.items.filter((i) => i.status !== 'CANCELLED' && !i.billed);
+  const gstOn = Boolean(biz?.gst_enabled);
+  const subtotal = items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+  const gst = gstOn ? items.reduce((s, i) => s + i.quantity * i.unit_price * (Number(i.tax_rate || 0) / 100), 0) : 0;
+  const where = order.order_type === 'DINE_IN' ? (order.table_name ? `Table ${order.table_name}` : 'Dine-in') : order.order_type === 'DELIVERY' ? 'Delivery' : 'Takeaway';
+
+  return (
+    <div>
+      <PrintStyles width={width} />
+      <Toolbar back="/app/tables" width={width} setWidth={setWidth} />
+      <div className={`paper mx-auto rounded-lg border border-line bg-white p-3 font-mono text-[12px] text-black shadow-sm ${PAPER[width]}`}>
+        <p className="text-center text-base font-extrabold">{biz?.name}</p>
+        {biz?.address && <p className="text-center text-[11px]">{[biz.address, biz.city].filter(Boolean).join(', ')}</p>}
+        {biz?.phone && <p className="text-center text-[11px]">Ph: {biz.phone}</p>}
+        {gstOn && biz?.gstin && biz.receipt_settings?.show_gstin !== false && <p className="text-center text-[11px]">GSTIN: {biz.gstin}</p>}
+        <p className="mt-1 border-y border-black py-0.5 text-center text-sm font-bold">BILL (NOT YET PAID)</p>
+        <Row left={`Order ${order.order_number}`} right={where} />
+        <p className="text-[11px]">{stamp(order.created_at)}</p>
+        {order.customer_name && <p className="text-[11px]">Guest: {order.customer_name}</p>}
+        <Rule />
+        <div className={`grid ${ROWS} font-bold`}><span>Item</span><span className="text-right">Qty</span><span className="text-right">Rate</span><span className="text-right">Amount</span></div>
+        <Rule />
+        {items.map((i) => (
+          <div key={i.order_item_id} className={`grid ${ROWS}`}>
+            <span className="min-w-0 break-words">{i.description}</span>
+            <span className="text-right tabular-nums">{i.quantity}</span>
+            <span className="text-right tabular-nums">{i.unit_price.toFixed(2)}</span>
+            <span className="text-right tabular-nums">{(i.quantity * i.unit_price).toFixed(2)}</span>
+          </div>
+        ))}
+        <Rule />
+        {gstOn && gst > 0 && (<><Row left="Subtotal" right={subtotal.toFixed(2)} /><Row left="GST" right={gst.toFixed(2)} /></>)}
+        <Row left="TOTAL" right={formatCurrency(Math.round(subtotal + gst))} bold />
+        <p className="mt-2 text-center text-[11px]">Pay at the counter. Thank you!</p>
+      </div>
+    </div>
+  );
+};
+
 /* ── credit note ─────────────────────────────────────────────────────────── */
 
 export const CreditNotePage = () => {

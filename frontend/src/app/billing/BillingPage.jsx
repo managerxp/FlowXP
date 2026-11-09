@@ -34,7 +34,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { usePname } from '../../i18n/productName.js';
 import { Alert, Button, Input, Modal, Select, humanize, useToast, useDialog } from '../../components/ui.jsx';
 import { LoyaltyCard, MobileLookup, PointsPanel, RewardHint } from '../../components/LoyaltyCard.jsx';
-import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, setDevicePref, autoReceipt, silentPrinting } from '../../lib/printing.js';
+import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, setDevicePref, autoReceipt } from '../../lib/printing.js';
 import { queueSale } from '../../lib/offline.js';
 import { CLOTHING_TYPES, RESTAURANT_TYPES, RETAIL_TYPES } from '../../lib/business.js';
 import { StylePicker, StyleTile } from '../clothing/TillStylePicker.jsx';
@@ -654,7 +654,7 @@ const BillingPage = () => {
   const cashChange = method === 'CASH' && amount != null && amount > totals.total ? amount - totals.total : 0;
   const partial = !payLater && amount != null && amount < totals.total;
   // UPI with the business's own UPI ID set: save the bill first, then show a QR for exactly what it came to
-  const upiQr = !split && method === 'UPI' && Boolean(business?.upi_vpa) && !silentPrinting();   // with a printer set up, UPI is recorded like cash and the bill prints by itself: no QR screen
+  const upiQr = !split && method === 'UPI' && Boolean(business?.upi_vpa);   // the QR window opens for every UPI payment; with a printer set up the bill prints by itself from there, carrying the same QR
   const fixedParts = parts.slice(0, -1).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   const lastPart = parts[parts.length - 1];
   const lastFixed = lastPart && lastPart.amount !== '' ? Number(lastPart.amount) || 0 : null;

@@ -21,7 +21,8 @@ import UpiCollect from '../components/UpiCollect.jsx';
 import RoomChargePicker from '../components/RoomChargePicker.jsx';
 import FoodMark from '../components/FoodMark.jsx';
 import { LoyaltyCard, MobileLookup, PointsPanel, RewardHint } from '../components/LoyaltyCard.jsx';
-import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, setDevicePref, autoReceipt, silentPrinting } from '../lib/printing.js';
+import OrderQuickActions from '../components/OrderQuickActions.jsx';
+import { getDevicePrefs, openDrawer, printKot as printKotSlip, printReceipt, setDevicePref, autoReceipt } from '../lib/printing.js';
 import ModifierPicker, { needsChoices, useModifierGroups } from '../components/ModifierPicker.jsx';
 import { AnimatedNumber, Alert, Badge, Button, Field, Input, Modal, Select, humanize, useToast, useDialog, StatCard } from '../components/ui.jsx';
 import { platformName } from '../lib/business.js';
@@ -490,7 +491,7 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
   const partial = !payLater && amount != null && amount < total;
   const change = method === 'CASH' && amount != null && amount > total ? amount - total : 0;
   // UPI with the business's UPI ID set: bill first, then a QR for exactly what the bill came to
-  const upiQr = method === 'UPI' && Boolean(business?.upi_vpa) && !silentPrinting();
+  const upiQr = method === 'UPI' && Boolean(business?.upi_vpa);
 
   const billOrder = async () => {
     if (toRoom && !room) { setError(tr('Choose the guest whose room this is charged to')); return; }
@@ -814,7 +815,7 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
 
 const FILTERS = [['ALL', T('All')], ['DINE_IN', T('Dine-in')], ['TAKEAWAY', T('Takeaway')], ['DELIVERY', T('Delivery')]];
 
-const OrderCard = ({ order, active, onOpen }) => {
+const OrderCard = ({ order, active, onOpen, onPrinted }) => {
   const tr = useT();
   const Icon = TYPE_ICON[order.order_type] || ShoppingBag;
   const s = order.summary || { items: 0, estimate: 0, not_sent: 0, cooking: 0, ready: 0 };
@@ -823,16 +824,17 @@ const OrderCard = ({ order, active, onOpen }) => {
   const n = Number(s.items || 0);
   const sub = [title.includes(order.order_number) ? null : order.order_number, order.external_order_number ? `${platformName(order.platform)} ${order.external_order_number}` : null, n ? `${n} item${n === 1 ? '' : 's'}` : null, order.customer_name, order.waiter_name, order.brand_name, order.rider_name].filter(Boolean).join(' · ');
   const pendingAccept = order.status === 'PENDING_ACCEPT';
-  const stripe = pendingAccept ? 'bg-danger' : mins >= LONG_MIN ? 'bg-danger' : s.ready > 0 ? 'bg-success' : s.not_sent > 0 ? 'bg-warning' : 'bg-brand-500';
+  const stripe = pendingAccept ? 'bg-danger' : order.bill_printed_at ? 'bg-success' : mins >= LONG_MIN ? 'bg-danger' : s.ready > 0 ? 'bg-success' : s.not_sent > 0 ? 'bg-warning' : 'bg-brand-500';
   const status = pendingAccept ? <span className="font-bold text-danger">{tr('Awaiting accept or reject')}</span>
+    : order.bill_printed_at ? <span className="text-success">{tr('Bill printed. Waiting for payment')}</span>
     : s.ready > 0 ? <span className="text-success">{tr('{{ready}} ready to serve', { ready: s.ready })}</span>
     : s.not_sent > 0 ? <span className="text-warning">{tr('{{not_sent}} not sent to the kitchen', { not_sent: s.not_sent })}</span>
     : s.cooking > 0 ? <span className="text-ink-700">{tr('{{cooking}} cooking', { cooking: s.cooking })}</span>
     : !s.items ? <span className="text-ink-500">{tr('Nothing added yet')}</span>
     : <span className="text-ink-500">{tr('All served')}</span>;
   return (
-    <button type="button" onClick={onOpen} aria-current={active ? 'true' : undefined}
-            className={`relative flex w-full flex-col gap-2 overflow-hidden rounded-(--radius-card) border bg-surface p-3 pt-3.5 text-left shadow-sm transition-colors duration-(--duration-fast) ${active ? 'border-brand-500 ring-1 ring-brand-500' : 'border-line hover:border-line-strong'}`}>
+    <div className={`relative overflow-hidden rounded-(--radius-card) border bg-surface shadow-sm transition-colors duration-(--duration-fast) ${active ? 'border-brand-500 ring-1 ring-brand-500' : 'border-line hover:border-line-strong'}`}>
+    <button type="button" onClick={onOpen} aria-current={active ? 'true' : undefined} className="flex w-full flex-col gap-2 p-3 pt-3.5 text-left">
       <span aria-hidden="true" className={`absolute inset-x-0 top-0 h-1 ${stripe}`} />
       <span className="flex items-start gap-2.5">
         <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${order.order_type === 'DINE_IN' ? 'bg-brand-50 text-brand-600' : 'bg-ink-900 text-white'}`}><Icon aria-hidden="true" className="h-4 w-4" /></span>
@@ -848,6 +850,8 @@ const OrderCard = ({ order, active, onOpen }) => {
         <span className="tabular shrink-0 text-small font-bold text-ink-900">{s.items ? formatCurrency(s.estimate) : ''}</span>
       </span>
     </button>
+    {!pendingAccept && <OrderQuickActions orderId={order.order_id} canPrint={n > 0} onView={onOpen} onPrinted={onPrinted} />}
+    </div>
   );
 };
 
@@ -864,7 +868,7 @@ const OrdersPage = () => {
   const [filter, setFilter] = useState('ALL');
   const [picking, setPicking] = useState(false);
   const [starting, setStarting] = useState(false);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(params.get('find') || '');
   const [attention, setAttention] = useState(false);
 
   const load = () => api('/orders?open_only=true').then((rows) => { setOrders(rows); setError(''); }).catch((e) => setError(e.message));
@@ -961,7 +965,7 @@ const OrdersPage = () => {
             </div>
           ) : (
             <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(230px,1fr))]">
-              {shown.map((o) => <OrderCard key={o.order_id} order={o} active={o.order_id === selected} onOpen={() => open(o.order_id)} />)}
+              {shown.map((o) => <OrderCard key={o.order_id} order={o} active={o.order_id === selected} onOpen={() => open(o.order_id)} onPrinted={load} />)}
             </div>
           )}
         </div>

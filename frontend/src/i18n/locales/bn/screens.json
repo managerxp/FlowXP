@@ -5278,5 +5278,17 @@
   "What prints on the bill": "বিলে কী ছাপা হয়",
   "Connect your receipt printer": "আপনার রসিদ প্রিন্টার যুক্ত করুন",
   "Name in other languages": "অন্য ভাষায় নাম",
-  "Filled in automatically when you save. Change one to correct it.": "সংরক্ষণ করলে নিজে থেকেই ভরে যায়। ঠিক করতে যেকোনোটি বদলান।"
+  "Filled in automatically when you save. Change one to correct it.": "সংরক্ষণ করলে নিজে থেকেই ভরে যায়। ঠিক করতে যেকোনোটি বদলান।",
+  "Menu on / off": "মেনু চালু / বন্ধ",
+  "Switch a dish off when it runs out. It stops being sold at this outlet until you switch it back on.": "কোনো পদ শেষ হয়ে গেলে সেটি বন্ধ করুন। আবার চালু না করা পর্যন্ত এই আউটলেটে সেটি বিক্রি হবে না।",
+  "Search dishes": "পদ খুঁজুন",
+  "All dishes": "সব পদ",
+  "No dishes yet. Add them under Products first.": "এখনও কোনো পদ নেই। আগে পণ্যে যোগ করুন।",
+  "Everything is switched on.": "সবকিছু চালু আছে।",
+  "No dish matches.": "কোনো পদ মেলেনি।",
+  "Off at this outlet": "এই আউটলেটে বন্ধ",
+  "Bill printed. Waiting for payment": "বিল ছাপা হয়েছে। টাকার অপেক্ষায়",
+  "Bill sent to the printer": "বিল প্রিন্টারে পাঠানো হয়েছে",
+  "Print the bill": "বিল ছাপুন",
+  "View the order": "অর্ডার দেখুন"
 }

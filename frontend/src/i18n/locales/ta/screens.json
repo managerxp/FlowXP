@@ -5278,5 +5278,17 @@
   "What prints on the bill": "பில்லில் என்ன அச்சாகும்",
   "Connect your receipt printer": "உங்கள் ரசீது பிரிண்டரை இணைக்கவும்",
   "Name in other languages": "பிற மொழிகளில் பெயர்",
-  "Filled in automatically when you save. Change one to correct it.": "சேமிக்கும்போது தானாக நிரம்பும். திருத்த ஏதாவது ஒன்றை மாற்றுங்கள்."
+  "Filled in automatically when you save. Change one to correct it.": "சேமிக்கும்போது தானாக நிரம்பும். திருத்த ஏதாவது ஒன்றை மாற்றுங்கள்.",
+  "Menu on / off": "மெனு ஆன் / ஆஃப்",
+  "Switch a dish off when it runs out. It stops being sold at this outlet until you switch it back on.": "ஒரு உணவு தீர்ந்துவிட்டால் அதை ஆஃப் செய்யுங்கள். மீண்டும் ஆன் செய்யும் வரை இந்தக் கடையில் அது விற்கப்படாது.",
+  "Search dishes": "உணவுகளைத் தேடு",
+  "All dishes": "அனைத்து உணவுகள்",
+  "No dishes yet. Add them under Products first.": "இன்னும் உணவுகள் இல்லை. முதலில் பொருட்களில் சேர்க்கவும்.",
+  "Everything is switched on.": "எல்லாம் ஆன் ஆகவே உள்ளது.",
+  "No dish matches.": "எந்த உணவும் பொருந்தவில்லை.",
+  "Off at this outlet": "இந்தக் கடையில் ஆஃப்",
+  "Bill printed. Waiting for payment": "பில் அச்சிடப்பட்டது. பணம் செலுத்த காத்திருக்கிறது",
+  "Bill sent to the printer": "பில் அச்சுப்பொறிக்கு அனுப்பப்பட்டது",
+  "Print the bill": "பில்லை அச்சிடு",
+  "View the order": "ஆர்டரைப் பார்"
 }

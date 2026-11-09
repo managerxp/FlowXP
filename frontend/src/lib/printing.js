@@ -102,6 +102,20 @@ export const printReceipt = async (invoiceId, { cash = false, upi = null } = {})
 /** Is silent printing set up on this computer? Then a UPI bill can print by itself the moment it is saved (a browser print tab needs a click). */
 export const silentPrinting = () => silentOn(getDevicePrefs());
 
+/** Print the running bill of an open order (before it is paid): silently when the agent is set up, else the browser print view. */
+export const printBill = async (orderId) => {
+  const prefs = getDevicePrefs();
+  if (!silentOn(prefs)) { openPrint('bill', orderId); return false; }
+  try {
+    const job = await api(`/orders/${orderId}/escpos`);
+    const target = targetFor(job.target, prefs.receiptTarget, prefs);
+    if (!target) { openPrint('bill', orderId); return false; }
+    await sendToAgent(target, job.data, prefs);
+    return true;
+  } catch (error) { onPrintError(`Bill not printed: ${error.message}`); if (prefs.dialogFallback !== false) openPrint('bill', orderId); }
+  return false;
+};
+
 /** Print a kitchen ticket, one slip per station, each to the printer its station is routed to. */
 export const printKot = async (kotId) => {
   const prefs = getDevicePrefs();

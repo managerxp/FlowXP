@@ -636,3 +636,45 @@ export const setOutletSettings = async (req, res) => {
   recordAudit(req, { action: 'product.outlet_settings', resource_type: 'product', resource_id: req.params.id, metadata: { branch_id: branchId, price_paise: pricePaise, is_available: available } });
   res.json({ success: true });
 };
+
+/* ==========================================================================
+   Menu on/off: one switch per item at the person's own outlet.
+   GET   /api/products/availability?q=  every sellable item with is_available (and how many are off)
+   PATCH /api/products/:id/availability { is_available }  keeps the outlet's own price if it has one
+   ========================================================================== */
+export const availability = async (req, res) => {
+  const branchId = req.tenant.branchId;
+  if (!branchId) return fail(res, 400, 'Choose an outlet first');
+  const values = [req.tenant.businessId, branchId];
+  let like = '';
+  const q = String(req.query.q || '').trim().slice(0, 60);
+  if (q) { values.push('%' + q.replace(/[\\%_]/g, (c) => '\\' + c) + '%'); like = ` AND p.name ILIKE $${values.length}`; }
+  const { rows } = await pool.query(
+    `SELECT p.product_id, p.name, p.name_i18n, p.food_type, c.name AS category_name, COALESCE(s.is_available, TRUE) AS is_available
+     FROM products p
+     LEFT JOIN categories c ON c.category_id = p.category_id
+     LEFT JOIN product_branch_settings s ON s.product_id = p.product_id AND s.branch_id = $2
+     WHERE p.business_id = $1 AND p.status = 'ACTIVE' AND p.kind NOT IN ('SERVICE','INGREDIENT','PACKAGING')${like}
+     ORDER BY c.name NULLS LAST, p.name, p.product_id LIMIT 1000`, values);
+  res.json({ success: true, data: { items: rows.map((r) => ({ product_id: r.product_id, name: r.name, name_i18n: r.name_i18n || {}, food_type: r.food_type, category_name: r.category_name, is_available: r.is_available })), off: rows.filter((r) => !r.is_available).length } });
+};
+
+export const setAvailability = async (req, res) => {
+  if (typeof req.body?.is_available !== 'boolean') return fail(res, 400, 'Say whether the item is on or off');
+  const branchId = req.tenant.branchId;
+  if (!branchId) return fail(res, 400, 'Choose an outlet first');
+  const own = await pool.query(`SELECT 1 FROM products WHERE product_id = $1 AND business_id = $2`, [req.params.id, req.tenant.businessId]);
+  if (!own.rows.length) return fail(res, 404, 'Not found');
+  const on = req.body.is_available;
+  if (on) {
+    // back on: forget the setting unless the outlet keeps its own price
+    await pool.query(`UPDATE product_branch_settings SET is_available = TRUE WHERE product_id = $1 AND branch_id = $2`, [req.params.id, branchId]);
+    await pool.query(`DELETE FROM product_branch_settings WHERE product_id = $1 AND branch_id = $2 AND price_paise IS NULL`, [req.params.id, branchId]);
+  } else {
+    await pool.query(
+      `INSERT INTO product_branch_settings (product_id, branch_id, price_paise, is_available) VALUES ($1,$2,NULL,FALSE)
+       ON CONFLICT (product_id, branch_id) DO UPDATE SET is_available = FALSE`, [req.params.id, branchId]);
+  }
+  recordAudit(req, { action: 'product.availability', resource_type: 'product', resource_id: req.params.id, metadata: { branch_id: branchId, is_available: on } });
+  res.json({ success: true, data: { product_id: Number(req.params.id), is_available: on } });
+};

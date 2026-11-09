@@ -198,3 +198,38 @@ export const testPage = ({ cols = 48, drawer = false } = {}) => {
   if (drawer) j.line('The cash drawer should open now.').drawer();
   return j.feed(1).cut().bytes();
 };
+
+/**
+ * The running bill of an open order, handed to the guest before it is paid. It is a copy of what the till will charge
+ * (lines at their price, GST added on top where the business charges it), marked so it is not mistaken for the final bill.
+ * order: { order_number, order_type, table_name, customer_name, created_at, items: [{ description, quantity, unit_price, tax_rate }] }
+ */
+export const prebillBytes = ({ business, settings = {}, order, gstOn = false }, { cols = 48, cut = true } = {}) => {
+  const j = new Job(cols);
+  j.align('center').bold(true).big(true).half(() => j.wrap(business.name)).big(false).bold(false);
+  const address = [business.address, business.city].filter(Boolean).join(', ');
+  if (address) j.wrap(address);
+  if (business.phone) j.line(`Ph: ${business.phone}`);
+  if (settings.show_gstin !== false && business.gst_enabled && business.gstin) j.line(`GSTIN: ${business.gstin}`);
+  j.bold(true).line('BILL (NOT YET PAID)').bold(false).align('left').rule();
+  const where = order.order_type === 'DINE_IN' ? (order.table_name ? `Table ${order.table_name}` : 'Dine-in') : order.order_type === 'DELIVERY' ? 'Delivery' : 'Takeaway';
+  j.pair(`Order ${order.order_number}`, where);
+  j.line(stamp(order.created_at));
+  if (order.customer_name) j.wrap(`Guest: ${order.customer_name}`);
+  j.rule().bold(true).table('Item', 'Qty', 'Rate', 'Amount').bold(false).rule();
+  let subtotal = 0; let gst = 0; let qtyTotal = 0;
+  for (const i of order.items) {
+    const amount = Number(i.quantity) * Number(i.unit_price);
+    subtotal += amount; qtyTotal += Number(i.quantity);
+    if (gstOn) gst += amount * (Number(i.tax_rate || 0) / 100);
+    const rows = j.wrapLines(i.description, j.tableWidths().leftW); const last = rows.pop() ?? '';
+    for (const r of rows) j.line(r);
+    j.table(last, String(Number(Number(i.quantity).toFixed(3))), money(i.unit_price), money(amount));
+  }
+  j.rule().pair(`Items: ${order.items.length}`, `Total Qty: ${String(Number(qtyTotal.toFixed(3)))}`);
+  if (gstOn && gst > 0) { j.pair('Subtotal', money(subtotal)); j.pair('GST', money(gst)); }
+  j.rule().bold(true).big(true).half(() => j.pair('TOTAL', money(Math.round(subtotal + gst)))).big(false).bold(false);
+  j.align('center').feed(1).line('Pay at the counter. Thank you!').align('left');
+  const blank = Number.isInteger(settings.extra_lines) ? settings.extra_lines : 3;
+  return (cut && settings.auto_cut !== false ? j.cut(blank) : j.feed(Math.max(blank, 2))).bytes();
+};

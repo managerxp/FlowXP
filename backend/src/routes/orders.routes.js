@@ -31,6 +31,7 @@ router.patch('/:id/rider', ...write, deliveryFeature, orders.setRider);
 router.post('/:id/delivery-status', ...write, deliveryFeature, orders.setDeliveryStatus);
 router.post('/:id/cancel', ...write, orders.cancelOrder);
 router.post('/:id/bill', ...write, idempotent(), orders.bill);
+router.post('/:id/bill-printed', ...write, orders.markBillPrinted);
 router.post('/:id/transfer', ...write, idempotent(), tabs.transfer);
 router.post('/:id/merge', ...write, idempotent(), tabs.merge);
 router.post('/:id/split', ...write, idempotent(), tabs.split);

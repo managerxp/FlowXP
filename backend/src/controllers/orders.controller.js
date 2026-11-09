@@ -208,6 +208,7 @@ const asOrder = (row) => ({
   out_for_delivery_at: row.out_for_delivery_at ?? null,
   delivered_at: row.delivered_at ?? null,
   status: row.status,
+  bill_printed_at: row.bill_printed_at ?? null,
   notes: row.notes,
   rejection_reason: row.rejection_reason ?? null,
   invoice_id: row.invoice_id,
@@ -396,7 +397,7 @@ export const addItems = async (req, res) => {
       throw itemError;
     }
 
-    await client.query(`UPDATE orders SET updated_at = CURRENT_TIMESTAMP WHERE order_id = $1`, [order.order_id]);
+    await client.query(`UPDATE orders SET updated_at = CURRENT_TIMESTAMP, bill_printed_at = NULL WHERE order_id = $1`, [order.order_id]);   // new items: the printed bill is out of date
     await client.query('COMMIT');
     res.status(201).json({ success: true, data: inserted.map(asOrderItem) });
   } catch (error) {
@@ -869,4 +870,15 @@ export const setDeliveryStatus = async (req, res) => {
   await pool.query(`UPDATE orders SET ${column} = COALESCE(${column}, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE order_id = $1`, [order.order_id]);
   recordAudit(req, { action: 'order.delivery_status', resource_type: 'order', resource_id: order.order_id, metadata: { status } });
   return get({ ...req, params: { id: order.order_id } }, res);
+};
+
+/* POST /api/orders/:id/bill-printed — the running bill was printed from the browser view; the floor shows the table as "bill printed" */
+export const markBillPrinted = async (req, res) => {
+  const values = [req.tenant.businessId, req.params.id, OPEN_STATUSES];
+  const { rowCount } = await pool.query(
+    `UPDATE orders SET bill_printed_at = CURRENT_TIMESTAMP WHERE business_id = $1 AND order_id = $2 AND status = ANY($3::text[])${branchFilter(req.tenant, 'branch_id', values)}`,
+    values
+  );
+  if (!rowCount) return res.status(404).json({ success: false, message: 'Not found' });
+  res.json({ success: true });
 };

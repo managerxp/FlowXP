@@ -5278,5 +5278,17 @@
   "What prints on the bill": "What prints on the bill",
   "Connect your receipt printer": "Connect your receipt printer",
   "Name in other languages": "Name in other languages",
-  "Filled in automatically when you save. Change one to correct it.": "Filled in automatically when you save. Change one to correct it."
+  "Filled in automatically when you save. Change one to correct it.": "Filled in automatically when you save. Change one to correct it.",
+  "Menu on / off": "Menu on / off",
+  "Switch a dish off when it runs out. It stops being sold at this outlet until you switch it back on.": "Switch a dish off when it runs out. It stops being sold at this outlet until you switch it back on.",
+  "Search dishes": "Search dishes",
+  "All dishes": "All dishes",
+  "No dishes yet. Add them under Products first.": "No dishes yet. Add them under Products first.",
+  "Everything is switched on.": "Everything is switched on.",
+  "No dish matches.": "No dish matches.",
+  "Off at this outlet": "Off at this outlet",
+  "Bill printed. Waiting for payment": "Bill printed. Waiting for payment",
+  "Bill sent to the printer": "Bill sent to the printer",
+  "Print the bill": "Print the bill",
+  "View the order": "View the order"
 }

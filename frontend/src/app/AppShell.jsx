@@ -18,7 +18,7 @@ import LanguageSelect from '../i18n/LanguageSelect.jsx';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
   ArrowLeftRight, BadgePercent, Tag, Boxes, CalendarClock, CalendarDays, ChartColumn, ChartLine, ChefHat, ChevronDown, ClipboardList, FileText, Gift,
-  History, Landmark, LayoutDashboard, LayoutGrid, Lock, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
+  History, Landmark, LayoutDashboard, LayoutGrid, Lock, ToggleRight, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
   Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X, Warehouse, PackageCheck, Undo2, HandCoins, ChartBar, ShoppingBag, Tags,
   Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass, BedDouble, Moon, DoorOpen, UsersRound, CalendarCheck, Dumbbell, Gamepad2, Timer, Trophy, Sun, Wrench, BookOpen, Shirt
@@ -193,6 +193,7 @@ const NAV_GROUPS = [
     label: 'Restaurant',
     items: [
       { to: '/app/tables', label: 'Tables', icon: LayoutGrid, types: DINE_IN_TYPES, permission: 'billing', feature: 'tables' },
+      { to: '/app/menu-availability', label: 'Menu on / off', icon: ToggleRight, types: RESTAURANT_TYPES, anyPermission: ['billing', 'products'] },
       { to: '/app/kitchen', label: 'Kitchen', icon: ChefHat, types: RESTAURANT_TYPES, anyPermission: ['billing', 'kitchen'], feature: 'kitchen' },
       { to: '/app/reservations', label: 'Reservations', icon: CalendarClock, types: DINE_IN_TYPES, permission: 'billing', feature: 'reservations', more: true }
     ]

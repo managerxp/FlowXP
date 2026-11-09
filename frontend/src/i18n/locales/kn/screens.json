@@ -5278,5 +5278,17 @@
   "What prints on the bill": "ಬಿಲ್‌ನಲ್ಲಿ ಏನು ಮುದ್ರಣವಾಗುತ್ತದೆ",
   "Connect your receipt printer": "ನಿಮ್ಮ ರಸೀದಿ ಪ್ರಿಂಟರ್ ಸಂಪರ್ಕಿಸಿ",
   "Name in other languages": "ಇತರ ಭಾಷೆಗಳಲ್ಲಿ ಹೆಸರು",
-  "Filled in automatically when you save. Change one to correct it.": "ಉಳಿಸಿದಾಗ ತಾನಾಗಿ ತುಂಬುತ್ತದೆ. ಸರಿಪಡಿಸಲು ಯಾವುದನ್ನಾದರೂ ಬದಲಿಸಿ."
+  "Filled in automatically when you save. Change one to correct it.": "ಉಳಿಸಿದಾಗ ತಾನಾಗಿ ತುಂಬುತ್ತದೆ. ಸರಿಪಡಿಸಲು ಯಾವುದನ್ನಾದರೂ ಬದಲಿಸಿ.",
+  "Menu on / off": "ಮೆನು ಆನ್ / ಆಫ್",
+  "Switch a dish off when it runs out. It stops being sold at this outlet until you switch it back on.": "ಒಂದು ಖಾದ್ಯ ಮುಗಿದರೆ ಅದನ್ನು ಆಫ್ ಮಾಡಿ. ಮತ್ತೆ ಆನ್ ಮಾಡುವವರೆಗೆ ಈ ಔಟ್‌ಲೆಟ್‌ನಲ್ಲಿ ಅದು ಮಾರಾಟವಾಗುವುದಿಲ್ಲ.",
+  "Search dishes": "ಖಾದ್ಯಗಳನ್ನು ಹುಡುಕಿ",
+  "All dishes": "ಎಲ್ಲಾ ಖಾದ್ಯಗಳು",
+  "No dishes yet. Add them under Products first.": "ಇನ್ನೂ ಖಾದ್ಯಗಳಿಲ್ಲ. ಮೊದಲು ಉತ್ಪನ್ನಗಳಲ್ಲಿ ಸೇರಿಸಿ.",
+  "Everything is switched on.": "ಎಲ್ಲವೂ ಆನ್ ಆಗಿದೆ.",
+  "No dish matches.": "ಯಾವುದೇ ಖಾದ್ಯ ಹೊಂದಿಕೆಯಾಗಲಿಲ್ಲ.",
+  "Off at this outlet": "ಈ ಔಟ್‌ಲೆಟ್‌ನಲ್ಲಿ ಆಫ್",
+  "Bill printed. Waiting for payment": "ಬಿಲ್ ಮುದ್ರಿತವಾಗಿದೆ. ಪಾವತಿಗಾಗಿ ಕಾಯುತ್ತಿದೆ",
+  "Bill sent to the printer": "ಬಿಲ್ ಪ್ರಿಂಟರ್‌ಗೆ ಕಳುಹಿಸಲಾಗಿದೆ",
+  "Print the bill": "ಬಿಲ್ ಮುದ್ರಿಸಿ",
+  "View the order": "ಆರ್ಡರ್ ನೋಡಿ"
 }

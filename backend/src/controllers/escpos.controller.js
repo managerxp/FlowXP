@@ -4,7 +4,8 @@
  */
 import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
-import { COLS, drawerBytes, kotSlips, receiptBytes, testPage } from '../modules/escpos.js';
+import { COLS, drawerBytes, kotSlips, prebillBytes, receiptBytes, testPage } from '../modules/escpos.js';
+import * as ordersCtl from './orders.controller.js';
 import * as invoices from './invoices.controller.js';
 import * as kitchen from './kitchen.controller.js';
 import { loadFor } from './printers.controller.js';
@@ -45,6 +46,22 @@ export const receipt = async (req, res) => {
   const printer = await routeFor(req, ['TAKEAWAY', 'DELIVERY'].includes(kind) ? 'takeaway' : 'receipt');
   const bytes = receiptBytes({ business, settings: business.receipt_settings || {}, invoice: got.body.data },
     { cols: await width(req, printer), drawer: req.query.drawer === '1', upi: req.query.upi != null ? Number(req.query.upi) : null });
+  res.json({ success: true, data: { data: b64(bytes), bytes: bytes.length, target: targetOf(printer), printer: printer?.name ?? null } });
+};
+
+/* GET /api/orders/:id/escpos?cols=&mark=0 — the running bill of an open order, for the guest. Printing it marks the order "bill printed" (mark=0 does not). */
+export const prebill = async (req, res) => {
+  const got = await capture(ordersCtl.get, req);
+  if (got.status !== 200) return res.status(got.status).json(got.body);
+  const order = got.body.data;
+  if (['BILLED', 'CANCELLED', 'MERGED'].includes(order.status)) return res.status(400).json({ success: false, message: 'This order is already billed or cancelled' });
+  const items = order.items.filter((i) => i.status !== 'CANCELLED' && !i.billed);
+  if (!items.length) return res.status(400).json({ success: false, message: 'Add an item before printing the bill' });
+  const business = (await pool.query(
+    `SELECT name, gstin, address, city, phone, gst_enabled, receipt_settings FROM businesses WHERE business_id = $1`, [req.tenant.businessId])).rows[0];
+  const printer = await routeFor(req, ['TAKEAWAY', 'DELIVERY'].includes(order.order_type) ? 'takeaway' : 'receipt');
+  const bytes = prebillBytes({ business, settings: business.receipt_settings || {}, order: { ...order, items }, gstOn: Boolean(business.gst_enabled) }, { cols: await width(req, printer) });
+  if (req.query.mark !== '0') await pool.query(`UPDATE orders SET bill_printed_at = CURRENT_TIMESTAMP WHERE order_id = $1 AND business_id = $2`, [order.order_id, req.tenant.businessId]);
   res.json({ success: true, data: { data: b64(bytes), bytes: bytes.length, target: targetOf(printer), printer: printer?.name ?? null } });
 };
 
