@@ -23,6 +23,7 @@ import { hasPermission } from '../middleware/auth.js';
 import config from '../config/env.js';
 import { createPaymentLink, CashfreeError } from '../modules/payments/cashfree.js';
 import { cleanLocale } from '../utils/locales.js';
+import { canStartFresh, startFresh } from '../modules/startFresh.js';
 import {
   checkBusinessType, checkSignupType, checkEmail, checkGstin, checkName, checkPhone, checkUpiVpa, firstError
 } from '../utils/validate.js';
@@ -503,4 +504,19 @@ export const downloadBackup = async (req, res) => {
   res.set('Content-Type', 'application/zip');
   res.set('Content-Disposition', `attachment; filename="flowxp-backup-${await businessToday(req.tenant.businessId)}.zip"`);
   res.send(bytes);
+};
+
+/* GET /businesses/current/start-fresh: may this owner still wipe the trial data? */
+export const startFreshStatus = async (req, res) => res.json({ success: true, data: { allowed: await canStartFresh(pool, req.tenant.businessId) } });
+
+/* POST /businesses/current/start-fresh { confirm: 'START FRESH' }: owner only, trial only, one transaction */
+export const startFreshRun = async (req, res) => {
+  if (String(req.body?.confirm || '').trim().toUpperCase() !== 'START FRESH') return res.status(400).json({ success: false, message: 'Type START FRESH to confirm.' });
+  if (!(await canStartFresh(pool, req.tenant.businessId))) return res.status(409).json({ success: false, message: 'Start fresh is only available during the free trial, before the first paid plan.' });
+  const client = await pool.connect();
+  let cleared;
+  try { await client.query('BEGIN'); cleared = await startFresh(client, req.tenant.businessId); await client.query('COMMIT'); }
+  catch (error) { await client.query('ROLLBACK').catch(() => {}); throw error; } finally { client.release(); }
+  recordAudit(req, { action: 'business.start_fresh', resource_type: 'business', resource_id: req.tenant.businessId, metadata: { cleared } });
+  res.json({ success: true, message: 'Your trial data is cleared. Numbering starts again from 1.', data: { cleared } });
 };

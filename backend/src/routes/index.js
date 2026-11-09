@@ -199,6 +199,8 @@ router.post('/auth/logout', (req, res) => {
 
 router.get('/businesses/current', requireAuth, withBusiness(), business.getCurrent);
 router.patch('/businesses/current', requireAuth, withBusiness({ requireActive: true }), requireOwner, business.updateCurrent);
+router.get('/businesses/current/start-fresh', requireAuth, withBusiness(), requireOwner, business.startFreshStatus);
+router.post('/businesses/current/start-fresh', requireAuth, withBusiness({ requireActive: true }), requireOwner, business.startFreshRun);
 router.put('/businesses/current/workshop-mode', requireAuth, withBusiness({ requireActive: true }), requireOwner, business.setWorkshopMode);
 router.get('/businesses/current/backup', requireAuth, withBusiness(), requireOwner, backupLimiter, business.downloadBackup);
 router.post('/businesses/current/restore', requireAuth, withBusiness({ requireActive: true }), requireOwner, restoreLimiter, requirePlanFeature('backup_restore'), express.raw({ type: '*/*', limit: '60mb' }), business.restoreBackup);

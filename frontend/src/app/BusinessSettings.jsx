@@ -24,6 +24,7 @@ import DocumentNumbersSettings from './DocumentNumbersSettings.jsx';
 import { useDirty, useUnsavedWarning } from '../lib/unsaved.js';
 import PrintersSettings from './PrintersSettings.jsx';
 import BackupSettings from './BackupSettings.jsx';
+import StartFreshSettings from './StartFreshSettings.jsx';
 import MechanicModeSettings from './MechanicModeSettings.jsx';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGES, writeStored } from '../i18n/config.js';
@@ -443,6 +444,7 @@ const BusinessSettings = () => {
       <InvoicePrintSettings initial={form.receipt_settings} />
       <DisplaySettings />
       <BackupSettings />
+      <StartFreshSettings />
     </div>
   );
 };

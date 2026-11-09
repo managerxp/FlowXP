@@ -5290,5 +5290,12 @@
   "Bill printed. Waiting for payment": "பில் அச்சிடப்பட்டது. பணம் செலுத்த காத்திருக்கிறது",
   "Bill sent to the printer": "பில் அச்சுப்பொறிக்கு அனுப்பப்பட்டது",
   "Print the bill": "பில்லை அச்சிடு",
-  "View the order": "ஆர்டரைப் பார்"
+  "View the order": "ஆர்டரைப் பார்",
+  "Start fresh": "புதிதாகத் தொடங்கு",
+  "Start fresh?": "புதிதாகத் தொடங்கவா?",
+  "Done trying FlowXP? Clear the practice bills and stock history and begin real work from bill number 1. Only possible during the free trial.": "FlowXP-ஐ முயன்று பார்த்துவிட்டீர்களா? பயிற்சி பில்கள் மற்றும் ஸ்டாக் வரலாற்றை அழித்து பில் எண் 1 முதல் உண்மையான வேலையைத் தொடங்குங்கள். இலவச சோதனைக் காலத்தில் மட்டுமே சாத்தியம்.",
+  "This deletes every bill, order, payment, purchase, expense and stock movement made so far, and cannot be undone. Products, customers, staff and settings stay. Stock goes back to 0 so you can count it again.": "இதுவரை செய்த அனைத்து பில்கள், ஆர்டர்கள், கட்டணங்கள், கொள்முதல்கள், செலவுகள் மற்றும் ஸ்டாக் நகர்வுகள் நீக்கப்படும், இதைத் திரும்பப் பெற முடியாது. பொருட்கள், வாடிக்கையாளர்கள், ஊழியர்கள், அமைப்புகள் அப்படியே இருக்கும். மீண்டும் எண்ணுவதற்காக ஸ்டாக் 0 ஆகும்.",
+  "Type START FRESH to confirm": "உறுதிப்படுத்த START FRESH என தட்டச்சு செய்யவும்",
+  "Delete and start fresh": "நீக்கிவிட்டுப் புதிதாகத் தொடங்கு",
+  "Your trial data is cleared. Numbering starts again from 1.": "உங்கள் சோதனைத் தரவு அழிக்கப்பட்டது. எண்ணிடல் மீண்டும் 1 முதல் தொடங்கும்."
 }

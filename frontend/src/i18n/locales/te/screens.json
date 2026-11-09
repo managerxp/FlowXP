@@ -5290,5 +5290,12 @@
   "Bill printed. Waiting for payment": "బిల్లు ప్రింట్ అయింది. చెల్లింపు కోసం ఎదురుచూస్తోంది",
   "Bill sent to the printer": "బిల్లు ప్రింటర్‌కు పంపబడింది",
   "Print the bill": "బిల్లు ప్రింట్ చేయండి",
-  "View the order": "ఆర్డర్ చూడండి"
+  "View the order": "ఆర్డర్ చూడండి",
+  "Start fresh": "కొత్తగా ప్రారంభించండి",
+  "Start fresh?": "కొత్తగా ప్రారంభించాలా?",
+  "Done trying FlowXP? Clear the practice bills and stock history and begin real work from bill number 1. Only possible during the free trial.": "FlowXP ప్రయత్నించడం పూర్తయిందా? ప్రాక్టీస్ బిల్లులు, స్టాక్ చరిత్రను తొలగించి బిల్లు నంబర్ 1 నుండి అసలు పని మొదలుపెట్టండి. ఉచిత ట్రయల్ సమయంలో మాత్రమే సాధ్యం.",
+  "This deletes every bill, order, payment, purchase, expense and stock movement made so far, and cannot be undone. Products, customers, staff and settings stay. Stock goes back to 0 so you can count it again.": "ఇప్పటివరకు చేసిన అన్ని బిల్లులు, ఆర్డర్లు, చెల్లింపులు, కొనుగోళ్లు, ఖర్చులు, స్టాక్ కదలికలు తొలగించబడతాయి, దీన్ని తిరిగి పొందలేరు. ఉత్పత్తులు, కస్టమర్లు, సిబ్బంది, సెట్టింగ్‌లు అలాగే ఉంటాయి. మళ్లీ లెక్కించడానికి స్టాక్ 0 అవుతుంది.",
+  "Type START FRESH to confirm": "నిర్ధారించడానికి START FRESH అని టైప్ చేయండి",
+  "Delete and start fresh": "తొలగించి కొత్తగా ప్రారంభించండి",
+  "Your trial data is cleared. Numbering starts again from 1.": "మీ ట్రయల్ డేటా తొలగించబడింది. నంబరింగ్ మళ్లీ 1 నుండి మొదలవుతుంది."
 }

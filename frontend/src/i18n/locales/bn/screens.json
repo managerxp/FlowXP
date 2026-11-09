@@ -5290,5 +5290,12 @@
   "Bill printed. Waiting for payment": "বিল ছাপা হয়েছে। টাকার অপেক্ষায়",
   "Bill sent to the printer": "বিল প্রিন্টারে পাঠানো হয়েছে",
   "Print the bill": "বিল ছাপুন",
-  "View the order": "অর্ডার দেখুন"
+  "View the order": "অর্ডার দেখুন",
+  "Start fresh": "নতুন করে শুরু করুন",
+  "Start fresh?": "নতুন করে শুরু করবেন?",
+  "Done trying FlowXP? Clear the practice bills and stock history and begin real work from bill number 1. Only possible during the free trial.": "FlowXP ব্যবহার করে দেখা হয়ে গেছে? অনুশীলনের বিল ও স্টকের ইতিহাস মুছে বিল নম্বর ১ থেকে আসল কাজ শুরু করুন। শুধু বিনামূল্যে ট্রায়ালের সময় সম্ভব।",
+  "This deletes every bill, order, payment, purchase, expense and stock movement made so far, and cannot be undone. Products, customers, staff and settings stay. Stock goes back to 0 so you can count it again.": "এখন পর্যন্ত সব বিল, অর্ডার, পেমেন্ট, ক্রয়, খরচ ও স্টক চলাচল মুছে যাবে, এটি ফেরানো যাবে না। পণ্য, গ্রাহক, কর্মী ও সেটিংস থাকবে। আবার গুনতে স্টক ০ হয়ে যাবে।",
+  "Type START FRESH to confirm": "নিশ্চিত করতে START FRESH লিখুন",
+  "Delete and start fresh": "মুছে নতুন করে শুরু করুন",
+  "Your trial data is cleared. Numbering starts again from 1.": "আপনার ট্রায়ালের তথ্য মুছে গেছে। নম্বর আবার ১ থেকে শুরু হবে।"
 }
