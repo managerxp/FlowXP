@@ -3182,6 +3182,21 @@ export const HI: Record<string, string> = {
   'Ask another outlet for stock, or send what it asked for': 'दूसरे आउटलेट से स्टॉक माँगें, या उसका माँगा भेजें',
   'Choose the outlet you are asking.': 'जिस आउटलेट से माँग रहे हैं उसे चुनें।',
   'Add an item and how much of it you need.': 'एक आइटम जोड़ें और बताएँ कितना चाहिए।',
+  'Print labels': 'लेबल प्रिंट करें',
+  'Price tags with a barcode': 'बारकोड वाले दाम के टैग',
+  'Price tags with a barcode, for the shelf or the pack.': 'शेल्फ या पैक के लिए बारकोड वाले दाम के टैग।',
+  'No barcode or item code yet': 'अभी बारकोड या कोड नहीं',
+  'No barcode or item code yet. Add one on the product to print its label.': 'अभी बारकोड या कोड नहीं है। लेबल छापने के लिए उत्पाद में जोड़ें।',
+  'How many labels': 'कितने लेबल',
+  'Share the labels': 'लेबल साझा करें',
+  'Could not print the labels.': 'लेबल प्रिंट नहीं हो सके।',
+  'Label size': 'लेबल का आकार',
+  'A4 sheet (3 across)': 'A4 शीट (3 एक साथ)',
+  'Label roll 50 × 25 mm': 'लेबल रोल 50 × 25 मिमी',
+  'Show the MRP': 'MRP दिखाएँ',
+  'Print {n} labels': '{n} लेबल प्रिंट करें',
+  'Save as PDF and share': 'PDF बनाकर साझा करें',
+  'Search for an item above to make labels for it.': 'लेबल बनाने के लिए ऊपर कोई आइटम खोजें।',
 };
 
 /** Languages that have a dictionary. */
