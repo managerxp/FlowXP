@@ -7,7 +7,7 @@ import { isWholesale } from '../../lib/retail.ts';
 import { kvGet, kvSet, useScope } from '../../lib/local.ts';
 import { bump, parseUsage, popular, trim, type Usage } from '../../lib/billing.ts';
 import { startAutoSync, syncAll, useSyncState } from '../../lib/sync.ts';
-import { add, clearSale, setCustomer, setKitchen, setOffers, setQty, useSale } from '../../lib/sale.ts';
+import { add, addCustomItem, clearSale, setCustomer, setKitchen, setOffers, setQty, useSale } from '../../lib/sale.ts';
 import { KITCHEN_TYPES, lineName, linePricePaise, totals, type Line } from '../../lib/cart.ts';
 import { noOffers, previewOffers } from '../../lib/offers.ts';
 import { qty, rupees, toPaise } from '../../lib/money.ts';
@@ -19,6 +19,7 @@ import { ApiError, newKey } from '../../lib/api.ts';
 import { estimateOf, holdBill, toSnapshot, type HeldRow } from '../../lib/held.ts';
 import { useWide } from '../../lib/responsive.tsx';
 import { Button, Chips, ErrorText, Soft, Title, color, s } from '../../lib/ui.tsx';
+import CustomItem from '../../lib/CustomItem.tsx';
 import { WholesaleHome } from '../../lib/WholesaleHome.tsx';
 import { SalonTill } from '../../lib/SalonTill.tsx';
 import { PharmacyTill } from '../../lib/PharmacyTill.tsx';
@@ -57,6 +58,7 @@ export default function Sell() {
   const [openStyle, setOpenStyle] = useState<StyleRow | null>(null);   // clothing: the style whose size and colour grid is open
   const [note, setNote] = useState('');
   const [holding, setHolding] = useState(false);
+  const [otherOpen, setOtherOpen] = useState(false);   // the "Add another item" sheet
   const [holdLabel, setHoldLabel] = useState('');
   const [heldCount, setHeldCount] = useState(0);
   const [usage, setUsage] = useState<Usage>({});
@@ -175,6 +177,7 @@ export default function Sell() {
         <TextInput style={[s.input, { flex: 1 }]} value={text} onChangeText={setText} onSubmitEditing={submit} placeholder={kitchenShop ? 'Search for an item' : 'Search or scan a barcode'} returnKeyType="search" autoCorrect={false} accessibilityLabel="Search products" />
         {kitchenShop ? null : <Button title="Scan" kind="quiet" onPress={() => router.push('/scan')} />}
       </View>
+      <Button title={t('+ Add another item')} kind="quiet" onPress={() => setOtherOpen(true)} />
       {empty && sync.busy ? <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><ActivityIndicator /><Soft>Getting the products… {sync.progress}</Soft></View> : null}
       {empty && !sync.busy ? <Soft>No products on this phone yet. Connect once so they can be downloaded.</Soft> : null}
       {empty && !sync.busy ? <Button title="Download now" kind="quiet" onPress={() => { void syncAll(); }} /> : null}
@@ -276,6 +279,8 @@ export default function Sell() {
   );
 
   const HoldDialog = (
+    <>
+    <CustomItem open={otherOpen} businessType={business?.business_type ?? ''} gstOn={business?.gst_enabled === true} onAdd={(name, paise, quantity, rate) => { addCustomItem(name, paise, quantity, rate); setView('bill'); }} onClose={() => setOtherOpen(false)} />
     <Modal visible={holding} transparent animationType="fade" onRequestClose={() => setHolding(false)}>
       <View style={{ flex: 1, backgroundColor: '#0f172a99', justifyContent: 'center', padding: 24 }}>
         <View style={[s.card, { gap: 12, padding: 18 }]}>
@@ -289,6 +294,7 @@ export default function Sell() {
         </View>
       </View>
     </Modal>
+    </>
   );
 
   if (business?.business_type === 'SALON') return <SalonTill />;

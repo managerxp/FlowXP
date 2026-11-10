@@ -5,7 +5,7 @@
  * new sale, so a new key.
  */
 import { createStore, useStore } from './store.ts';
-import { addProduct, emptyCart, setQuantity, type Cart } from './cart.ts';
+import { addCustom, addProduct, emptyCart, setQuantity, type Cart } from './cart.ts';
 import type { Picked } from './options.ts';
 import type { Product } from './catalog.ts';
 import { newKey } from './api.ts';
@@ -20,6 +20,8 @@ export const setCustomer = (customer: SaleCustomer | null) => saleStore.set({ cu
 export const setOffers = (offers: OffersResult) => saleStore.set({ offers });
 
 export const add = (product: Product, by = 1, options?: Picked) => saleStore.set((s) => ({ cart: addProduct(s.cart, product, by, options), key: null, offers: noOffers() }));
+/** A one-off line (name, price, quantity, GST rate). */
+export const addCustomItem = (name: string, pricePaise: number, quantity: number, taxRate: number) => saleStore.set((s) => ({ cart: addCustom(s.cart, name, pricePaise, quantity, taxRate), key: null, offers: noOffers() }));
 export const setQty = (lineKey: string, quantity: number) => saleStore.set((s) => ({ cart: setQuantity(s.cart, lineKey, quantity), key: null, offers: noOffers() }));
 /** A new sale. Whether it goes to the kitchen is the cashier's setting and stays. */
 export const clearSale = () => saleStore.set({ cart: emptyCart(), key: null, offers: noOffers(), customer: null });

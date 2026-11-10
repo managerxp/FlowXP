@@ -7,7 +7,7 @@
  * the same list marked "on this phone". A phone-only held bill is not shared and is not sent to the server later.
  */
 import { NetworkError, newKey, type Api } from './api.ts';
-import { addProduct, emptyCart, linePricePaise, lineKey, lineName, totals, type Cart } from './cart.ts';
+import { addCustom, addProduct, emptyCart, linePricePaise, lineKey, lineName, totals, type Cart } from './cart.ts';
 import type { Product } from './catalog.ts';
 import type { Db } from './db.ts';
 import type { Group } from './options.ts';
@@ -24,7 +24,7 @@ export type HeldRow = { hold_id: number | string; label: string | null; bill: He
 /** What goes to the server: the cart as the website's till would have saved it. */
 export const toSnapshot = (cart: Cart, customer: { id: number; name: string } | null): HeldBill => ({
   lines: cart.lines.map((l) => ({
-    product_id: l.product.product_id, custom: false, name: lineName(l), unit: l.product.unit ?? '', unit_price: linePricePaise(l) / 100, quantity: l.quantity, discount: 0,
+    product_id: l.product.custom ? null : l.product.product_id, custom: l.product.custom === true, name: lineName(l), unit: l.product.unit ?? '', unit_price: linePricePaise(l) / 100, quantity: l.quantity, discount: 0,
     tax_rate: l.product.tax_rate, modifier_ids: l.modifierIds, sig: [...l.modifierIds].sort((a, b) => a - b).join(','),
     track_inventory: l.product.track_inventory, current_stock: l.product.current_stock ?? 0
   })),
@@ -37,7 +37,7 @@ export type Resolved = { cart: Cart; customer: { id: number; name: string } | nu
 
 /**
  * Put a held bill back on the till. Each line is looked up in this phone's catalogue by its product id (the price is the current one, the
- * server prices the sale anyway); a line whose product is gone, or a custom line, is left out and named so the cashier knows.
+ * server prices the sale anyway); a line whose product is gone is left out (a custom line is put back as typed) and named so the cashier knows.
  */
 export const fromSnapshot = async (
   bill: HeldBill,
@@ -46,7 +46,7 @@ export const fromSnapshot = async (
 ): Promise<Resolved> => {
   let cart = emptyCart(); const skipped: string[] = [];
   for (const l of bill.lines) {
-    if (l.custom || !l.product_id) { skipped.push(`${l.name || 'A custom item'} (custom items are only on the website till)`); continue; }
+    if (l.custom || !l.product_id) { cart = addCustom(cart, l.name, Math.round(l.unit_price * 100), l.quantity, l.tax_rate || 0, -(cart.lines.length + 1) - Date.now()); continue; }
     const product = await find(l.product_id);
     if (!product) { skipped.push(`${l.name || `Product ${l.product_id}`} (no longer on the menu)`); continue; }
     let options;

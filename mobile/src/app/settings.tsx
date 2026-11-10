@@ -12,6 +12,7 @@ import PrinterSettings from '../lib/PrinterSettings.tsx';
 import UpiSettings from '../lib/UpiSettings.tsx';
 import DisplaySettings from '../lib/DisplaySettings.tsx';
 import BackupSettings from '../lib/BackupSettings.tsx';
+import StartFreshSettings from '../lib/StartFreshSettings.tsx';
 import { canBackUp } from '../lib/backup.ts';
 import { Page } from '../lib/responsive.tsx';
 import { Button, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
@@ -119,6 +120,7 @@ export default function Settings() {
         <LanguagePicker />
         <DisplaySettings />
         {canBackUp(business?.role) ? <BackupSettings /> : null}
+        {canBackUp(business?.role) ? <StartFreshSettings /> : null}
         <Button title="Back" onPress={() => goBack()} />
       </ScrollView>
       </Page>

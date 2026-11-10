@@ -40,8 +40,10 @@ export default function Printers() {
   const chooseMode = async (m: PrinterMode) => { await setMode(m); setModeState(m); setError(''); };
   const add = (p: Omit<SavedPrinter, 'id' | 'jobs' | 'paper'>) => {
     if ((list?.length ?? 0) >= MAX_PRINTERS && !list?.some((x) => x.address.toLowerCase() === p.address.toLowerCase())) { setError(t('You can keep up to {n} printers.', { n: MAX_PRINTERS })); return; }
-    commit(upsertPrinter(list ?? [], { ...p, id: newId(), paper: '58', jobs: (list ?? []).some((x) => x.jobs.includes('receipt')) ? [] : ['receipt'] }));   // the first printer prints the customer's receipt, with no switch to find
+    const fresh: SavedPrinter = { ...p, id: newId(), paper: '58', jobs: (list ?? []).some((x) => x.jobs.includes('receipt')) ? [] : ['receipt'] };
+    commit(upsertPrinter(list ?? [], fresh));   // the first printer prints the customer's receipt, with no switch to find
     setError(''); setNote(t('Saved'));
+    void test(fresh);   // and a test slip comes out straight away, so the person sees at once that it works
     if (mode !== 'direct') void chooseMode('direct');
   };
   const loadPaired = async () => { setError(''); setNote(''); try { setPaired(await pairedPrinters()); } catch (e) { setError(t(e instanceof Error ? e.message : 'Could not print.')); } };

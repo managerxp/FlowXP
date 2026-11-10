@@ -26,6 +26,12 @@ export const addProduct = (cart: Cart, product: Product, by = 1, options?: Picke
   return { lines: [...cart.lines, { key, product, quantity: by, modifierIds, modifierNames: options?.names ?? [], deltaPaise: options?.deltaPaise ?? 0 }] };
 };
 
+/** A one-off line typed at the till: a name and a price, with the GST the person chose (0 when the shop does not charge GST). Billed by description, not by product. */
+export const addCustom = (cart: Cart, name: string, pricePaise: number, quantity: number, taxRate: number, id = -Date.now()): Cart => ({
+  lines: [...cart.lines, { key: `custom:${id}`, quantity, modifierIds: [], modifierNames: [], deltaPaise: 0,
+    product: { product_id: id, name: name.trim() || 'Item', sku: null, barcodes: [], unit: null, selling_price: pricePaise / 100, mrp: null, tax_rate: taxRate, track_inventory: false, current_stock: null, category_name: null, is_available: true, modifier_group_ids: [], custom: true } }]
+});
+
 /** Set a line's quantity; zero or less removes it. */
 export const setQuantity = (cart: Cart, key: string, quantity: number): Cart => ({
   lines: quantity > 0 ? cart.lines.map((l) => (l.key === key ? { ...l, quantity } : l)) : cart.lines.filter((l) => l.key !== key)
@@ -58,7 +64,9 @@ export const totals = (cart: Cart, offers: Map<string, number> = new Map(), gst?
 /** What POST /invoices takes: ids, quantities and chosen option ids only. The server prices every line itself. */
 /** `payNowPaise`: undefined = the whole bill; 0 = nothing now (the bill is left unpaid, the customer's credit); else what is taken now and the rest is owed. */
 export const saleBody = (cart: Cart, payment: { method: string; reference?: string; payNowPaise?: number | null }, { kitchen = false, customerId, levies, gst, printDetails, sendWhatsapp = true }: { kitchen?: boolean; customerId?: number | null; /** false = this bill is not sent to the customer on WhatsApp (plans with messaging) */ sendWhatsapp?: boolean; levies?: Levies; gst?: GstView; /** consignee / dispatch details for the GST tax invoice (hardware shops); see lib/taxInvoice.ts */ printDetails?: Record<string, string> | null } = {}) => ({
-  items: cart.lines.map((l) => ({ product_id: l.product.product_id, quantity: l.quantity, ...(l.modifierIds.length ? { modifier_ids: l.modifierIds } : {}) })),
+  items: cart.lines.map((l) => (l.product.custom
+    ? { description: l.product.name, quantity: l.quantity, unit_price: l.product.selling_price, tax_rate: l.product.tax_rate }
+    : { product_id: l.product.product_id, quantity: l.quantity, ...(l.modifierIds.length ? { modifier_ids: l.modifierIds } : {}) })),
   ...(payment.payNowPaise === 0 ? {} : { payment: { method: payment.method, amount: payment.payNowPaise ? payment.payNowPaise / 100 : 'FULL', ...(payment.reference ? { reference_number: payment.reference } : {}) } }),
   apply_promotions: true,
   ...(customerId ? { customer_id: customerId } : {}),

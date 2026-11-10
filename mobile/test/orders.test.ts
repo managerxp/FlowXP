@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { SCHEMA as CATALOG_SCHEMA, createCatalog } from '../src/lib/catalog.ts';
 import { SCHEMA as OUTBOX_SCHEMA } from '../src/lib/outbox.ts';
 import { SCHEMA as HELD_SCHEMA, createHeld, estimateOf, fromSnapshot, holdBill, toSnapshot } from '../src/lib/held.ts';
-import { addProduct, emptyCart, lineName } from '../src/lib/cart.ts';
+import { addProduct, emptyCart, lineName, saleBody } from '../src/lib/cart.ts';
 import { picked, type Group } from '../src/lib/options.ts';
 import { ApiError } from '../src/lib/api.ts';
 import { byZone, liveItems, orderTotals, tableState, type Order, type OrderItem, type TableRow } from '../src/lib/orders.ts';
@@ -39,9 +39,10 @@ test('resuming puts the lines back from the phone\'s menu; a custom item, a remo
   bill.lines.push({ ...bill.lines[1], product_id: 999, name: 'Old special' });
   bill.lines.push({ ...bill.lines[0], modifier_ids: [77], name: 'Cafe Latte (Jumbo)' });
   const r = await fromSnapshot(bill, (id) => catalog.byId(id), (p) => catalog.groupsFor(p));
-  assert.deepEqual(r.cart.lines.map((l) => [lineName(l), l.quantity]), [['Cafe Latte (Large)', 2], ['Blueberry Muffin', 1]]);
+  assert.deepEqual(r.cart.lines.map((l) => [lineName(l), l.quantity]), [['Cafe Latte (Large)', 2], ['Blueberry Muffin', 1], ['Birthday candle', 1]]);
+  assert.deepEqual(saleBody(r.cart, { method: 'CASH' }).items[2], { description: 'Birthday candle', quantity: 1, unit_price: muffin.selling_price, tax_rate: muffin.tax_rate }, 'a custom line is billed by description and price');
   assert.deepEqual(r.customer, { id: 257, name: 'Aanya' });
-  assert.equal(r.skipped.length, 3); assert.ok(r.skipped[0].includes('Birthday candle') && r.skipped[1].includes('Old special') && r.skipped[2].includes('options have changed'));
+  assert.equal(r.skipped.length, 2); assert.ok(r.skipped[0].includes('Old special') && r.skipped[1].includes('options have changed'));
   assert.equal((await fromSnapshot({ ...bill, customer_id: null, lines: [] }, (id) => catalog.byId(id), (p) => catalog.groupsFor(p))).customer, null);
 });
 

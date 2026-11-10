@@ -20,6 +20,8 @@ export type Product = {
   product_id: number; name: string; /** the name in the other app languages, when known */ name_i18n?: Record<string, string>; sku: string | null; barcodes: string[]; unit: string | null;
   selling_price: number; mrp: number | null; tax_rate: number; /** compensation cess %, when the business charges it */ cess_rate?: number; track_inventory: boolean; current_stock: number | null;
   category_name: string | null; is_available: boolean; modifier_group_ids: number[];
+  /** A one-off line typed at the till (not in the catalogue): its product_id is a negative number made on the phone, and it is sent to the server as a description and a price. */
+  custom?: boolean;
   /** Only a pharmacy's medicines: what it is, and whether it needs a prescription or keeps batches and use-by dates. */
   /** Only a wholesaler's products: the wholesale price, the minimum order and the carton sizes. */
   wholesale?: { wholesale_price: number | null; moq: number; sale_unit: string | null; units: { unit_name: string; factor: number }[] } | null;
