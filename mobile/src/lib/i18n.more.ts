@@ -3353,7 +3353,15 @@ export const ML: Record<string, string> = {
   'What to buy, what sells, stock age and value': 'എന്ത് വാങ്ങണം, എന്ത് വിൽക്കുന്നു, സ്റ്റോക്കിന്റെ പഴക്കവും മൂല്യവും',
   'Price lists for garages and trade, and parts held for customers': 'ഗാരേജുകൾക്കും ട്രേഡിനുമുള്ള വില പട്ടിക, ഉപഭോക്താക്കൾക്കായി മാറ്റിവച്ച പാർട്സ്',
   'Sales, buying, stock and money, pick a report': 'വിൽപ്പന, വാങ്ങൽ, സ്റ്റോക്ക്, പണം; ഒരു റിപ്പോർട്ട് തിരഞ്ഞെടുക്കുക',
-};
+
+  'Waiting to print': 'പ്രിന്റ് കാത്തിരിക്കുന്നവ',
+  'These did not print. Print them again when the printer is ready.': 'ഇവ പ്രിന്റ് ആയില്ല. പ്രിന്റർ തയ്യാറാകുമ്പോൾ വീണ്ടും പ്രിന്റ് ചെയ്യുക.',
+  'Print again': 'വീണ്ടും പ്രിന്റ് ചെയ്യുക',
+  'Check the connection': 'കണക്ഷൻ പരിശോധിക്കുക',
+  'The printer answered. It is ready.': 'പ്രിന്റർ പ്രതികരിച്ചു. അത് തയ്യാറാണ്.',
+  'Receipt': 'രസീത്',
+  'Bill before payment': 'പണമടയ്ക്കുന്നതിന് മുമ്പുള്ള ബിൽ',
+  'Printed.': 'പ്രിന്റ് ചെയ്തു.',};
 
 /** Tamil: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const TA: Record<string, string> = {
@@ -6708,7 +6716,15 @@ export const TA: Record<string, string> = {
   'What to buy, what sells, stock age and value': 'என்ன வாங்க வேண்டும், என்ன விற்கிறது, இருப்பின் வயதும் மதிப்பும்',
   'Price lists for garages and trade, and parts held for customers': 'கேரேஜ், வர்த்தகத்துக்கான விலைப் பட்டியல்கள், வாடிக்கையாளருக்காக ஒதுக்கிய பாகங்கள்',
   'Sales, buying, stock and money, pick a report': 'விற்பனை, வாங்கல், இருப்பு, பணம்; ஒரு அறிக்கையைத் தேர்ந்தெடுங்கள்',
-};
+
+  'Waiting to print': 'அச்சுக்குக் காத்திருப்பவை',
+  'These did not print. Print them again when the printer is ready.': 'இவை அச்சாகவில்லை. அச்சுப்பொறி தயாரானதும் மீண்டும் அச்சிடுங்கள்.',
+  'Print again': 'மீண்டும் அச்சிடு',
+  'Check the connection': 'இணைப்பைச் சரிபார்',
+  'The printer answered. It is ready.': 'அச்சுப்பொறி பதிலளித்தது. அது தயாராக உள்ளது.',
+  'Receipt': 'ரசீது',
+  'Bill before payment': 'பணம் செலுத்துவதற்கு முந்தைய பில்',
+  'Printed.': 'அச்சிடப்பட்டது.',};
 
 /** Bengali: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const BN: Record<string, string> = {
@@ -10063,7 +10079,15 @@ export const BN: Record<string, string> = {
   'What to buy, what sells, stock age and value': 'কী কিনতে হবে, কী বিক্রি হয়, স্টকের বয়স ও মূল্য',
   'Price lists for garages and trade, and parts held for customers': 'গ্যারেজ ও ট্রেডের দামের তালিকা, আর গ্রাহকদের জন্য রাখা পার্টস',
   'Sales, buying, stock and money, pick a report': 'বিক্রি, কেনা, স্টক ও টাকা; একটি রিপোর্ট বেছে নিন',
-};
+
+  'Waiting to print': 'প্রিন্টের অপেক্ষায়',
+  'These did not print. Print them again when the printer is ready.': 'এগুলো প্রিন্ট হয়নি। প্রিন্টার তৈরি হলে আবার প্রিন্ট করুন।',
+  'Print again': 'আবার প্রিন্ট করুন',
+  'Check the connection': 'সংযোগ পরীক্ষা করুন',
+  'The printer answered. It is ready.': 'প্রিন্টার সাড়া দিয়েছে। এটি তৈরি।',
+  'Receipt': 'রসিদ',
+  'Bill before payment': 'পেমেন্টের আগের বিল',
+  'Printed.': 'প্রিন্ট হয়েছে।',};
 
 /** Telugu: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const TE: Record<string, string> = {
@@ -13418,7 +13442,15 @@ export const TE: Record<string, string> = {
   'What to buy, what sells, stock age and value': 'ఏమి కొనాలి, ఏమి అమ్ముడవుతుంది, స్టాక్ వయసు మరియు విలువ',
   'Price lists for garages and trade, and parts held for customers': 'గ్యారేజ్‌లు, ట్రేడ్ కోసం ధరల జాబితాలు, కస్టమర్ల కోసం ఉంచిన భాగాలు',
   'Sales, buying, stock and money, pick a report': 'అమ్మకాలు, కొనుగోళ్లు, స్టాక్, డబ్బు; ఒక నివేదికను ఎంచుకోండి',
-};
+
+  'Waiting to print': 'ప్రింట్ కోసం వేచి ఉన్నవి',
+  'These did not print. Print them again when the printer is ready.': 'ఇవి ప్రింట్ కాలేదు. ప్రింటర్ సిద్ధమైనప్పుడు మళ్లీ ప్రింట్ చేయండి.',
+  'Print again': 'మళ్లీ ప్రింట్ చేయండి',
+  'Check the connection': 'కనెక్షన్ తనిఖీ చేయండి',
+  'The printer answered. It is ready.': 'ప్రింటర్ స్పందించింది. అది సిద్ధంగా ఉంది.',
+  'Receipt': 'రసీదు',
+  'Bill before payment': 'చెల్లింపుకు ముందు బిల్లు',
+  'Printed.': 'ప్రింట్ అయింది.',};
 
 /** Kannada: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const KN: Record<string, string> = {
@@ -16773,4 +16805,12 @@ export const KN: Record<string, string> = {
   'What to buy, what sells, stock age and value': 'ಏನು ಖರೀದಿಸಬೇಕು, ಏನು ಮಾರಾಟವಾಗುತ್ತದೆ, ಸ್ಟಾಕ್ ವಯಸ್ಸು ಮತ್ತು ಮೌಲ್ಯ',
   'Price lists for garages and trade, and parts held for customers': 'ಗ್ಯಾರೇಜ್ ಮತ್ತು ಟ್ರೇಡ್‌ಗೆ ಬೆಲೆ ಪಟ್ಟಿಗಳು, ಗ್ರಾಹಕರಿಗಾಗಿ ಇಟ್ಟ ಭಾಗಗಳು',
   'Sales, buying, stock and money, pick a report': 'ಮಾರಾಟ, ಖರೀದಿ, ಸ್ಟಾಕ್, ಹಣ; ಒಂದು ವರದಿ ಆರಿಸಿ',
-};
+
+  'Waiting to print': 'ಮುದ್ರಣಕ್ಕಾಗಿ ಕಾಯುತ್ತಿರುವವು',
+  'These did not print. Print them again when the printer is ready.': 'ಇವು ಮುದ್ರಣವಾಗಿಲ್ಲ. ಪ್ರಿಂಟರ್ ಸಿದ್ಧವಾದಾಗ ಮತ್ತೆ ಮುದ್ರಿಸಿ.',
+  'Print again': 'ಮತ್ತೆ ಮುದ್ರಿಸಿ',
+  'Check the connection': 'ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ',
+  'The printer answered. It is ready.': 'ಪ್ರಿಂಟರ್ ಪ್ರತಿಕ್ರಿಯಿಸಿತು. ಅದು ಸಿದ್ಧವಾಗಿದೆ.',
+  'Receipt': 'ರಸೀದಿ',
+  'Bill before payment': 'ಪಾವತಿಗೆ ಮೊದಲಿನ ಬಿಲ್',
+  'Printed.': 'ಮುದ್ರಿಸಲಾಗಿದೆ.',};

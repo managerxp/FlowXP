@@ -6,8 +6,10 @@ import { t } from '../lib/i18n.ts';
 import { kvSet } from '../lib/local.ts';
 import { Page } from '../lib/responsive.tsx';
 import { COLUMNS, escposBytes } from '../lib/escpos.ts';
-import { readMode, setMode, type PrinterMode } from '../lib/thermal.ts';
-import { readPrinters, savePrinters, pairedPrinters, printingAvailable, scanPrinters, sendToPrinter, type Found } from '../lib/printerLink.ts';
+import { readMode, readPrefs, setMode, type PrinterMode } from '../lib/thermal.ts';
+import { api } from '../lib/session.ts';
+import { KIND_LABEL, type FailedJob } from '../lib/printQueue.ts';
+import { checkPrinter, dropFailed, printBillDirect, printKitchenDirect, printReceiptDirect, readFailed, readPrinters, savePrinters, pairedPrinters, printingAvailable, scanPrinters, sendToPrinter, type Found } from '../lib/printerLink.ts';
 import {
   DEFAULT_PORT, JOBS, MAX_PRINTERS, hostProblem, nameOf, newId, portProblem, printerLine, removePrinter, setJob, setPaper, upsertPrinter, type SavedPrinter
 } from '../lib/printerSetup.ts';
@@ -28,9 +30,10 @@ export default function Printers() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState('');
+  const [failed, setFailed] = useState<FailedJob[]>([]);
   const [more, setMore] = useState(false);   // the technical choices (how it prints, a Wi-Fi printer) stay folded away
 
-  useEffect(() => { void readPrinters().then(setList); void readMode().then(setModeState); void printingAvailable().then((a) => { setAvailable(a); if (a) void pairedPrinters().then(setPaired).catch(() => {}); }); }, []);   // the paired printers are listed straight away: the owner only has to tap theirs
+  useEffect(() => { void readFailed().then(setFailed); void readPrinters().then(setList); void readMode().then(setModeState); void printingAvailable().then((a) => { setAvailable(a); if (a) void pairedPrinters().then(setPaired).catch(() => {}); }); }, []);   // the paired printers are listed straight away: the owner only has to tap theirs
   const commit = useCallback((next: SavedPrinter[]) => {
     setList(next); void savePrinters(next);
     const receipt = next.find((p) => p.jobs.includes('receipt'));
@@ -58,6 +61,20 @@ export default function Printers() {
     setError(''); setNote(''); setBusy(p.id);
     try { await sendToPrinter(p, escposBytes(testText(p), p.paper, { extraLines: 3 })); setNote(t('Test sent. If nothing printed, check the printer is on, in range, and has paper.')); }
     catch (e) { setError(t(e instanceof Error ? e.message : 'Could not print.')); } finally { setBusy(''); }
+  };
+  const check = async (p: SavedPrinter) => {
+    setError(''); setNote(''); setBusy(p.id);
+    try { await checkPrinter(p); setNote(t('The printer answered. It is ready.')); }
+    catch (e) { setError(t(e instanceof Error ? e.message : 'Could not print.')); } finally { setBusy(''); }
+  };
+  const again = async (j: FailedJob) => {
+    setError(''); setNote(''); setBusy(j.id);
+    try {
+      if (j.kind === 'receipt') { const prefs = await readPrefs(); await printReceiptDirect(j.text ?? '', { cut: prefs.cut, copies: prefs.copies, extraLines: prefs.extraLines, drawer: false, ...(j.qr ? { qr: j.qr } : {}) }); }
+      else if (j.kind === 'kot') await printKitchenDirect(api, j.ref ?? 0, false);
+      else await printBillDirect(api, j.ref ?? 0, false);
+      setFailed(await dropFailed(j.id)); setNote(t('Printed.'));
+    } catch (e) { setError(t(e instanceof Error ? e.message : 'Could not print.')); } finally { setBusy(''); }
   };
   const remove = (p: SavedPrinter) => Alert.alert(t('Remove “{name}”?', { name: p.name }), '', [{ text: t('Cancel'), style: 'cancel' }, { text: t('Remove'), style: 'destructive', onPress: () => commit(removePrinter(list ?? [], p.id)) }]);
 
@@ -91,10 +108,26 @@ export default function Printers() {
                 ))}
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <View style={{ flex: 1 }}><Button title="Print a test" kind="quiet" onPress={() => { void test(p); }} busy={busy === p.id} /></View>
-                  <View style={{ flex: 1 }}><Button title="Remove" kind="danger" onPress={() => remove(p)} /></View>
+                  <View style={{ flex: 1 }}><Button title="Check the connection" kind="quiet" onPress={() => { void check(p); }} busy={busy === p.id} /></View>
                 </View>
+                <Button title="Remove" kind="danger" onPress={() => remove(p)} />
               </View>
             ))}
+            {failed.length ? (
+              <>
+                <SectionTitle>Waiting to print</SectionTitle>
+                <Soft>{t('These did not print. Print them again when the printer is ready.')}</Soft>
+                {failed.map((j) => (
+                  <View key={j.id} style={[s.card, { gap: 8 }]}>
+                    <Line left={t(KIND_LABEL[j.kind])} sub={new Date(j.at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} icon="print-outline" />
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <View style={{ flex: 1 }}><Button title="Print again" onPress={() => { void again(j); }} busy={busy === j.id} /></View>
+                      <View style={{ flex: 1 }}><Button title="Remove" kind="quiet" onPress={() => { void dropFailed(j.id).then(setFailed); }} /></View>
+                    </View>
+                  </View>
+                ))}
+              </>
+            ) : null}
             <ErrorText>{error}</ErrorText>
             {note ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok }}>{note}</Text> : null}
 

@@ -7,10 +7,17 @@
 import { PermissionsAndroid, Platform } from 'react-native';
 import { kvGet, kvSet } from './local.ts';
 import { escposBytes, toBase64, type EscposOptions } from './escpos.ts';
+import { addJob, cleanJobs, newJobId, removeJob, type FailedJob } from './printQueue.ts';
 import { chunks, cleanPrinters, colsFor, linkProblem, printerFor, type SavedPrinter } from './printerSetup.ts';
 
 export const readPrinters = async (): Promise<SavedPrinter[]> => { try { return cleanPrinters(JSON.parse((await kvGet('printers_list')) || '[]')); } catch { return []; } };
 export const savePrinters = async (list: SavedPrinter[]): Promise<void> => { await kvSet('printers_list', JSON.stringify(list)).catch(() => {}); };
+
+/* ── prints that failed, kept to print again ── */
+export const readFailed = async (): Promise<FailedJob[]> => { try { return cleanJobs(JSON.parse((await kvGet('print_failed')) || '[]'), Date.now()); } catch { return []; } };
+const saveFailed = async (list: FailedJob[]) => { await kvSet('print_failed', JSON.stringify(list)).catch(() => {}); };
+export const keepFailed = async (job: Omit<FailedJob, 'id' | 'at'>): Promise<void> => { const now = Date.now(); await saveFailed(addJob(await readFailed(), { ...job, id: newJobId(now), at: now }, now)); };
+export const dropFailed = async (id: string): Promise<FailedJob[]> => { const next = removeJob(await readFailed(), id); await saveFailed(next); return next; };
 
 export type Found = { name: string; address: string };
 
@@ -66,6 +73,14 @@ const sendNetwork = async (host: string, port: number, bytes: Uint8Array): Promi
   });
 };
 
+/** Whether a saved printer can be reached right now, without printing anything. Throws a sentence a person can act on. */
+export const checkPrinter = async (printer: SavedPrinter): Promise<void> => {
+  try {
+    if (printer.kind === 'bluetooth') { const RN = await bt(); const d = await RN.connectToDevice(printer.address, { delimiter: '', charset: 'binary' } as never); await d.disconnect().catch(() => {}); }
+    else await sendNetwork(printer.address, printer.port, new Uint8Array(0));
+  } catch (e) { throw new Error(linkProblem(printer.kind, e)); }
+};
+
 /** Send bytes to a saved printer. Throws a sentence a person can act on. */
 export const sendToPrinter = async (printer: SavedPrinter, bytes: Uint8Array): Promise<void> => {
   try { if (printer.kind === 'bluetooth') await sendBluetooth(printer.address, bytes); else await sendNetwork(printer.address, printer.port, bytes); }
@@ -82,19 +97,23 @@ export const printReceiptDirect = async (text: string, options: EscposOptions = 
 };
 
 /** The kitchen's slips for one sent order (the server makes them, one per station), to the kitchen printer. Returns false when no printer is set for the kitchen. */
-export const printKitchenDirect = async (api: { get: <T>(path: string) => Promise<T> }, kotId: number): Promise<boolean> => {
+export const printKitchenDirect = async (api: { get: <T>(path: string) => Promise<T> }, kotId: number, keep = true): Promise<boolean> => {
   const printer = printerFor(await readPrinters(), 'kot');
   if (!printer) return false;
-  const { slips } = await api.get<{ slips: { data: string }[] }>(`/kitchen/kots/${kotId}/escpos?cols=${colsFor(printer.paper)}`);
-  for (const slip of slips) await sendToPrinter(printer, Uint8Array.from(atob(slip.data), (c) => c.charCodeAt(0)));
-  return slips.length > 0;
+  try {
+    const { slips } = await api.get<{ slips: { data: string }[] }>(`/kitchen/kots/${kotId}/escpos?cols=${colsFor(printer.paper)}`);
+    for (const slip of slips) await sendToPrinter(printer, Uint8Array.from(atob(slip.data), (c) => c.charCodeAt(0)));
+    return slips.length > 0;
+  } catch (e) { if (keep) await keepFailed({ kind: 'kot', ref: kotId }); throw e; }
 };
 
 /** The running bill of an open order (before payment), straight to the receipt printer. The server makes it and marks the order "bill printed". Returns false when no printer is set for receipts. */
-export const printBillDirect = async (api: { get: <T>(path: string) => Promise<T> }, orderId: number): Promise<boolean> => {
+export const printBillDirect = async (api: { get: <T>(path: string) => Promise<T> }, orderId: number, keep = true): Promise<boolean> => {
   const printer = printerFor(await readPrinters(), 'receipt');
   if (!printer) return false;
-  const { data } = await api.get<{ data: string }>(`/orders/${orderId}/escpos?cols=${colsFor(printer.paper)}`);
-  await sendToPrinter(printer, Uint8Array.from(atob(data), (c) => c.charCodeAt(0)));
-  return true;
+  try {
+    const { data } = await api.get<{ data: string }>(`/orders/${orderId}/escpos?cols=${colsFor(printer.paper)}`);
+    await sendToPrinter(printer, Uint8Array.from(atob(data), (c) => c.charCodeAt(0)));
+    return true;
+  } catch (e) { if (keep) await keepFailed({ kind: 'bill', ref: orderId }); throw e; }
 };

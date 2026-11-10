@@ -96,5 +96,6 @@ export const PRINTER_TEXTS: string[] = [
   'Allow FlowXP to use Bluetooth (nearby devices) in the phone settings, then try again.', 'Switch Bluetooth on, then try again.', 'Could not reach the printer. Check that it is switched on, in range, and paired in the phone\'s Bluetooth settings.',
   'Could not reach the printer. Check that it is switched on, on the same Wi-Fi as this phone, and that the address is right.', 'You can keep up to {n} printers.',
   'Receipts go straight to a connected printer. If it cannot be reached, the bill goes to the phone print screen so printing is never stuck.', 'Straight to my printers', 'Phone print screen', 'Through RawBT',
+  'Waiting to print', 'These did not print. Print them again when the printer is ready.', 'Print again', 'Check the connection', 'The printer answered. It is ready.', 'Receipt', 'Bill before payment', 'Printed.',
   'Kitchen ticket sent to the printer.', 'Could not print the kitchen ticket. The order was still sent to the kitchen.'
 ];

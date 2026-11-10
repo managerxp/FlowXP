@@ -3462,7 +3462,15 @@ export const HI: Record<string, string> = {
   'What to buy, what sells, stock age and value': 'क्या खरीदें, क्या बिकता है, स्टॉक की उम्र और कीमत',
   'Price lists for garages and trade, and parts held for customers': 'गैराज और ट्रेड के लिए प्राइस लिस्ट, और ग्राहकों के लिए रोके गए पार्ट्स',
   'Sales, buying, stock and money, pick a report': 'बिक्री, खरीद, स्टॉक और पैसा, कोई रिपोर्ट चुनें',
-};
+
+  'Waiting to print': 'प्रिंट के इंतज़ार में',
+  'These did not print. Print them again when the printer is ready.': 'ये प्रिंट नहीं हुए। प्रिंटर तैयार होने पर इन्हें फिर से प्रिंट करें।',
+  'Print again': 'फिर से प्रिंट करें',
+  'Check the connection': 'कनेक्शन जाँचें',
+  'The printer answered. It is ready.': 'प्रिंटर ने जवाब दिया। वह तैयार है।',
+  'Receipt': 'रसीद',
+  'Bill before payment': 'भुगतान से पहले का बिल',
+  'Printed.': 'प्रिंट हो गया।',};
 
 /** Languages that have a dictionary. */
 export const DICTS: Partial<Record<Lang, Record<string, string>>> = { hi: HI, ml: ML, ta: TA, bn: BN, te: TE, kn: KN };

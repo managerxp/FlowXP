@@ -40,13 +40,16 @@ export const printReceipt = async (text: string, paper: Paper, options: EscposOp
   const mode = await thermal.readMode();
   if (mode === 'direct') {
     tried = true;
-    try { await (await import('./printerLink.ts')).printReceiptDirect(text, withPrefs); return 'printer'; } catch { /* fall through to the print screen */ }
+    try { await (await import('./printerLink.ts')).printReceiptDirect(text, withPrefs); return 'printer'; } catch {
+      /* a sale just charged prints by itself with no print screen to fall back to: keep the receipt to print again from Printers; otherwise the print screen below takes it */
+      if (options.noDialog) await (await import('./printerLink.ts')).keepFailed({ kind: 'receipt', text, paper, ...(options.qr ? { qr: options.qr } : {}) }).catch(() => {});
+    }
   }
   if (mode === 'rawbt') {
     tried = true;
     try { await thermal.printViaRawBT(text, paper, withPrefs); return 'printer'; } catch { /* fall through to the print screen */ }
   }
-  if (options.noDialog && tried) throw new Error('Could not reach the printer.');
+  if (options.noDialog && tried) throw new Error('Could not reach the printer. It is kept in Printers to print again.');
   const Print = await import('expo-print');
   const { html, width } = receiptHtml(text, paper, options.qr);
   await Print.printAsync({ html, width });
