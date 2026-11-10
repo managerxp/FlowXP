@@ -102,6 +102,10 @@ export default function More() {
     { title: 'Sell', items: [
       { left: 'Gaming set-up', sub: 'Stations, rates, offers and the lounge rules', icon: 'construct-outline', go: '/gaming-setup', show: gaming && canGamingSetup((p) => allowed(business, p)) },
       { left: 'Lounge board', sub: 'Every station with its timer: start, pause, stop, take payment', icon: 'game-controller-outline', go: '/gaming', show: gaming && can('gaming_desk', 'gaming_setup') },
+      { left: 'Bookings', sub: 'Who has a station and when; start the timer when they arrive', icon: 'calendar-number-outline', go: '/gaming-bookings', show: gaming && can('gaming_desk', 'gaming_setup') },
+      { left: 'Players', sub: 'Find a player, add one, top up a prepaid wallet', icon: 'person-add-outline', go: '/gaming-players', show: gaming && can('gaming_desk', 'gaming_setup') },
+      { left: 'Tournaments', sub: 'Entries, entry fees and check-in', icon: 'trophy-outline', go: '/gaming-tournaments', show: gaming && can('gaming_desk', 'gaming_setup') },
+      { left: 'Lounge takings', sub: 'Gaming time against food and drink, hours played, best stations', icon: 'stats-chart-outline', go: '/gaming-reports', show: gaming && can('gaming_setup', 'reports') },
       { left: 'Gym front desk', sub: 'Let members in: scan a pass or find them', icon: 'barbell-outline', go: '/gym', show: gym && can('gym_desk') },
       { left: 'Gym members', sub: 'Find a member, sell or renew a membership, freeze it, add a new member', icon: 'people-outline', go: '/gym-members', show: gym && can('gym_members', 'gym_desk') },
       { left: 'Who came today', sub: 'Visits so far today, and who is still inside', icon: 'time-outline', go: '/gym-attendance', show: gym && can('gym_desk', 'gym_members') },
