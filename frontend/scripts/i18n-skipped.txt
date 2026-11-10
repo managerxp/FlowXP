@@ -99,32 +99,10 @@ src/app/gym/MemberExtras.jsx:42  text mixed with values or inline elements: They
 src/app/gym/MemberExtras.jsx:42  text mixed with values or inline elements: points. Free days are added to the running membership straig
 src/app/gym/MemberExtras.jsx:68  text with a conditional or element value: Sell
 src/app/gym/MemberExtras.jsx:166  text with a conditional or element value: Day
-src/app/hotel/BanquetCalendar.jsx:48  text with a conditional or element value: seats
-src/app/hotel/BanquetCalendar.jsx:55  title= template with values
-src/app/hotel/BookingDetail.jsx:45  label= template with values
-src/app/hotel/BookingDetail.jsx:144  text with a conditional or element value: night
-src/app/hotel/BookingDetail.jsx:257  text with a conditional or element value: to
-src/app/hotel/BookingDetail.jsx:287  text with a conditional or element value: adult
-src/app/hotel/BookingForm.jsx:146  text with a conditional or element value: ID, nationality and company details
-src/app/hotel/EventDetail.jsx:172  text with a conditional or element value: guests
-src/app/hotel/EventDetail.jsx:197  text with a conditional or element value: to
-src/app/hotel/EventForm.jsx:71  text with a conditional or element value: stay
-src/app/hotel/HotelCalendar.jsx:33  title= template with values
-src/app/hotel/HotelDashboard.jsx:61  child template with values: `${d.arrivals_late} booking${d.arrivals_late === 1 ? ' was' 
-src/app/hotel/HotelNightAudit.jsx:42  text mixed with values or inline elements: room charge
-src/app/hotel/HotelNightAudit.jsx:42  text mixed with values or inline elements: posted
-src/app/hotel/HotelNightAudit.jsx:57  text with a conditional or element value: room
-src/app/hotel/HotelNightAudit.jsx:72  text mixed with values or inline elements: Close
-src/app/hotel/HotelReports.jsx:91  title= template with values
-src/app/hotel/HotelReports.jsx:182  text with a conditional or element value: function
-src/app/hotel/HotelRooms.jsx:73  text mixed with values or inline elements: Next:
-src/app/hotel/HotelSetup.jsx:73  toast with values
-src/app/hotel/HotelSetup.jsx:189  text with a conditional or element value: to
-src/app/hotel/HotelSetup.jsx:201  text mixed with values or inline elements: Rate a night for each room type
-src/app/hotel/HotelStaff.jsx:106  text with a conditional or element value: Left
-src/app/hotel/HotelStaff.jsx:203  text with a conditional or element value: to
-src/app/hotel/StaffPayroll.jsx:89  child template with values: `${run0.unmarked_days} day${run0.unmarked_days === 1 ? '' : 
-src/app/hotel/StaffTime.jsx:73  aria-label= template with values
+src/app/hr/Staff.jsx:106  text with a conditional or element value: Left
+src/app/hr/Staff.jsx:203  text with a conditional or element value: to
+src/app/hr/StaffPayroll.jsx:89  child template with values: `${run0.unmarked_days} day${run0.unmarked_days === 1 ? '' : 
+src/app/hr/StaffTime.jsx:73  aria-label= template with values
 src/app/pharmacy/parts.jsx:116  text with a conditional or element value: No active batch in stock for this product
 src/app/pharmacy/parts.jsx:121  text with a conditional or element value: left
 src/app/pharmacy/PharmacyPos.jsx:152  text mixed with values or inline elements: Pay later

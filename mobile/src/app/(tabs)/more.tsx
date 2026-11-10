@@ -14,9 +14,7 @@ import { canSubscription } from '../../lib/subscription.ts';
 import { canDelivery } from '../../lib/platforms.ts';
 import { canGymSetup } from '../../lib/gymSetup.ts';
 import { canSalonSetup } from '../../lib/salonSetup.ts';
-import { canHotelSetup } from '../../lib/hotelSetup.ts';
 import { canGamingSetup } from '../../lib/gamingSetup.ts';
-import { HOTEL_TYPES } from '../../lib/hotel.ts';
 import { AUTO_PARTS_TYPES } from '../../lib/parts.ts';
 import { workshopOn } from '../../lib/workshopExtras.ts';
 import { GAMING_TYPES } from '../../lib/gaming.ts';
@@ -44,7 +42,6 @@ export default function More() {
   const wholesale = isWholesale(business);
   const distributor = isDistributor(business);
   const retail = RETAIL_TYPES.includes(type);
-  const hotel = HOTEL_TYPES.includes(type);
   const parts = AUTO_PARTS_TYPES.includes(type);
   const workshop = workshopOn(business);
   const gaming = GAMING_TYPES.includes(type);
@@ -118,12 +115,6 @@ export default function More() {
       { left: 'Clothing insights', sub: 'What sells, what earns and what sits', icon: 'stats-chart-outline', go: '/clothing-insights', show: clothing && can('reports', 'inventory', 'products') },
       { left: 'Find a part', sub: 'By name, barcode or any part number: price, stock and shelf', icon: 'search-outline', go: '/parts', show: parts && can('billing', 'parts_catalog', 'warehouse', 'inventory') },
       { left: 'Parts for a vehicle', sub: 'What fits a car or bike, each marked verified or not', icon: 'car-outline', go: '/parts-vehicle', show: parts && can('billing', 'parts_catalog', 'warehouse') },
-      { left: 'Front desk', sub: 'Arrivals, who is in the house, rooms and guest bills', icon: 'bed-outline', go: '/hotel', show: hotel && can('front_desk', 'housekeeping') },
-      { left: 'Close the day', sub: 'Night audit: settle arrivals, charge the night, move the date on', icon: 'moon-outline', go: '/hotel-audit', show: hotel && can('night_audit') },
-      { left: 'Hotel figures', sub: 'How full, how much earned, who has paid, who owes', icon: 'stats-chart-outline', go: '/hotel-reports', show: hotel && can('reports', 'front_desk') },
-      { left: 'Banquet events', sub: 'Halls, guests and what is paid; take an advance', icon: 'wine-outline', go: '/hotel-banquet', show: hotel && can('banquet', 'hotel_setup', 'front_desk') },
-      { left: 'Staff today', sub: 'Who is in, mark attendance, answer leave requests', icon: 'people-circle-outline', go: '/hotel-staff', show: hotel && can('hr', 'hotel_setup') },
-      { left: 'Hotel set-up', sub: 'Rooms, rates, banquet and the property\'s rules', icon: 'construct-outline', go: '/hotel-setup', show: hotel && canHotelSetup((p) => allowed(business, p)) },
       { left: 'New online orders', sub: 'Zomato, Swiggy, QR and website orders waiting to be accepted', icon: 'notifications-outline', go: '/incoming', show: food && can('billing', 'kitchen') },
       { left: 'Deliveries', sub: 'Open deliveries, their riders and where each has got to', icon: 'bicycle-outline', go: '/deliveries', show: food && can('billing', 'kitchen') },
       { left: 'Kitchen screen', sub: 'What to make, what is ready to serve', icon: 'restaurant-outline', go: '/kitchen', show: food },

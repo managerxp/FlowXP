@@ -18,7 +18,7 @@ import { Check, Shot } from '../site/parts.jsx';
 /* Mirrors SIGNUP_TYPES in the API (backend/src/utils/validate.js): only the businesses FlowXP is built for. Older accounts of other types keep working.
    The API validates against it. A mismatch here is a 400 the
    user cannot fix, so the two lists must be changed together. */
-const BUSINESS_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'GYM', 'GAMING_CAFE', 'AUTO_PARTS', 'MECHANIC', 'CLOTHING', 'WHOLESALE'];   // labels: auth:types.<CODE>
+const BUSINESS_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'GYM', 'GAMING_CAFE', 'AUTO_PARTS', 'MECHANIC', 'CLOTHING', 'WHOLESALE'];   // labels: auth:types.<CODE>
 
 /* Why a first-time visitor can trust this screen, shown beside the form. */
 const ASIDES = {   // text: auth:aside.<name>.title / p1..p3 / alt

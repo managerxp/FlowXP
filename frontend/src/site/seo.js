@@ -13,13 +13,12 @@ const BRAND = 'FlowXP';
 
 /* Page titles and search phrases per industry. */
 const INDUSTRY_TITLE = {
-  restaurant: 'Restaurant billing software', cafe: 'Café and bakery billing software', 'cloud-kitchen': 'Cloud kitchen software', retail: 'Retail and supermarket billing software', hotel: 'Hotel and resort management software', wholesale: 'Wholesale and distribution software', salon: 'Salon billing software', pharmacy: 'Pharmacy billing software', gym: 'Gym management software', gaming: 'Gaming lounge software', 'auto-parts': 'Auto spare parts shop software', clothing: 'Clothing and fashion shop billing software', mechanic: 'Garage and mechanic job card software'
+  restaurant: 'Restaurant billing software', cafe: 'Café and bakery billing software', 'cloud-kitchen': 'Cloud kitchen software', retail: 'Retail and supermarket billing software', wholesale: 'Wholesale and distribution software', salon: 'Salon billing software', pharmacy: 'Pharmacy billing software', gym: 'Gym management software', gaming: 'Gaming lounge software', 'auto-parts': 'Auto spare parts shop software', clothing: 'Clothing and fashion shop billing software', mechanic: 'Garage and mechanic job card software'
 };
 const INDUSTRY_SEARCH = {
   restaurant: 'Restaurant billing software with POS, table QR ordering, kitchen display, recipes and GST.',
   cafe: 'Café and bakery billing software with a fast counter, size, milk and sugar options, a barista screen, recipes, a visit card and GST.',
   'cloud-kitchen': 'Cloud kitchen software for delivery orders, several brands, recipes, payouts and GST.',
-  hotel: 'Hotel management software with bookings, front desk, housekeeping, night audit, GST invoices, banquet, staff and the standard hotel reports.',
   retail: 'Retail and supermarket billing software with barcode scanning, expiry tracking, stock counts, offers, returns and GST.',
   wholesale: 'Wholesale and distribution software with credit limits, batches, purchase orders, field sales, beats, schemes, vans and GST.',
   salon: 'Salon billing software with appointments, staff commission, memberships and product stock.',
@@ -34,7 +33,7 @@ const INDUSTRY_SEARCH = {
 const PAGES = {
   '/': ['AI billing, inventory and GST software for Indian businesses', 'FlowXP is billing and POS software for shops, restaurants, salons, gyms, gaming lounges, pharmacies and wholesalers. Billing, stock and GST in one place, with a daily note on what is selling and what needs you.'],
   '/features': ['Billing, inventory, GST and reports in one place', 'GST billing, payments, stock, purchases, customers, reports and roles in one system. See every FlowXP feature with real screens.'],
-  '/industries': ['Billing software for your kind of business', 'FlowXP for restaurants, cafés, cloud kitchens, hotels, supermarkets and shops, wholesalers and distributors, salons, gyms, gaming lounges, auto spare parts shops and pharmacies, each with the tools that trade needs.'],
+  '/industries': ['Billing software for your kind of business', 'FlowXP for restaurants, cafés, cloud kitchens, supermarkets and shops, wholesalers and distributors, salons, gyms, gaming lounges, auto spare parts shops and pharmacies, each with the tools that trade needs.'],
   '/ai': ['Flow AI, the AI manager in your billing software', 'Ask your business a question in plain words. Flow AI answers from your own sales, stock and payments, and says when a figure is an estimate.'],
   '/flowbook': ['FlowBook: accounting that follows your billing', 'FlowBook is the ManagerXP accounting product for Indian businesses: GST invoices, stock, bank, fixed assets, profit and loss and a balance sheet, with a simple view, help on every page and an assistant that explains your reports. Try it free for 7 days.'],
   '/guide': ['Setup guide and import from Tally, Vyapar, Busy', 'First-day setup in nine steps, and how to bring your items and stock into FlowXP from Tally, Vyapar, Busy, Marg, Zoho or a spreadsheet.'],

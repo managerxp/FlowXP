@@ -14,7 +14,6 @@
     "seed:salon": "node scripts/seed-salon.js",
     "seed:cafe": "node scripts/seed-cafe.js",
     "seed:supermarket": "node scripts/seed-supermarket.js",
-    "seed:hotel": "node scripts/seed-hotel.js",
     "seed:gym": "node scripts/seed-gym.js",
     "seed:cloudkitchen": "node scripts/seed-cloudkitchen.js",
     "seed:live": "node scripts/seed-live.js",

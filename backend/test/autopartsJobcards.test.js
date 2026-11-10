@@ -9,7 +9,7 @@ import { addPart, makeShop } from './helpers/autoparts.js';
 const { pool, skip, cleanup } = await setupTestDb();
 const { runMigrations } = await import('../src/config/migrate.js');
 const jobs = (await import('../src/controllers/autopartsJobcards.controller.js')).default;
-const staff = (await import('../src/controllers/hotelStaff.controller.js')).default;
+const staff = (await import('../src/controllers/hr.controller.js')).default;
 const { estimateOf } = await import('../src/modules/autoparts/jobcards.js');
 
 test.after(cleanup);

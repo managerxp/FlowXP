@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react';
 import { useToast, Button, Input, ListState, Select } from '../../components/ui.jsx';
 import { staffApi as api, useStaffLoad as useLoad } from '../../lib/staffBase.js';
-import { addDays, longDate, qs, shortDay, timeText } from '../../lib/hotel.js';
+import { addDays, longDate, qs, shortDay, timeText } from '../../lib/hr.js';
 import { weekStart } from '../../lib/salon.js';
 import { useAction } from '../salon/parts.jsx';
 import { useT, T } from '../../i18n/useT.js';
@@ -12,14 +12,14 @@ import { useT, T } from '../../i18n/useT.js';
 export const Roster = () => {
   const tr = useT();
   const toast = useToast();
-  const dash = useLoad('/hotel/dashboard');
+  const dash = useLoad('/dashboard');
   const [from, setFrom] = useState(null);
   const [dept, setDept] = useState('');
   const [edits, setEdits] = useState({});
   const [busy, run] = useAction();
   const start = from || (dash.data ? weekStart(dash.data.business_date) : null);
-  const depts = useLoad('/hotel/staff/departments');
-  const r = useLoad(start ? `/hotel/staff/roster${qs({ from: start, to: addDays(start, 6), dept_id: dept })}` : null);
+  const depts = useLoad('/staff/departments');
+  const r = useLoad(start ? `/staff/roster${qs({ from: start, to: addDays(start, 6), dept_id: dept })}` : null);
   const days = useMemo(() => (start ? Array.from({ length: 7 }, (_, i) => addDays(start, i)) : []), [start]);
   const d = r.data;
   const entryOf = (emp, date) => d?.entries.find((e) => e.employee_id === emp && e.work_date === date);
@@ -31,7 +31,7 @@ export const Roster = () => {
   const save = async () => {
     const entries = Object.entries(edits).filter(([, v]) => v !== '').map(([k, v]) => { const [emp, date] = k.split('|'); return { employee_id: Number(emp), work_date: date, shift_id: v === 'OFF' ? null : Number(v) }; });
     if (!entries.length) { setEdits({}); return; }
-    const out = await run(() => api('/hotel/staff/roster', { method: 'PUT', body: { entries } }), 'Roster saved');
+    const out = await run(() => api('/staff/roster', { method: 'PUT', body: { entries } }), 'Roster saved');
     if (out) { setEdits({}); r.reload(); }
   };
   const fillUsual = () => {
@@ -44,7 +44,7 @@ export const Roster = () => {
     setEdits(next);
   };
   const copyNext = async () => {
-    const out = await run(() => api('/hotel/staff/roster/copy-week', { method: 'POST', body: { from: start, to: addDays(start, 7) } }), 'Copied to next week');
+    const out = await run(() => api('/staff/roster/copy-week', { method: 'POST', body: { from: start, to: addDays(start, 7) } }), 'Copied to next week');
     if (out) toast.success(tr('{{changed}} entries copied', { changed: out.changed }));
   };
 
@@ -95,12 +95,12 @@ const TONE = { PRESENT: 'text-success', ABSENT: 'text-danger', HALF_DAY: 'text-w
 
 export const Attendance = () => {
   const tr = useT();
-  const dash = useLoad('/hotel/dashboard');
+  const dash = useLoad('/dashboard');
   const [date, setDate] = useState('');
   const [edits, setEdits] = useState({});
   const [busy, run] = useAction();
   const day = date || dash.data?.business_date;
-  const r = useLoad(day ? `/hotel/staff/attendance${qs({ date: day })}` : null);
+  const r = useLoad(day ? `/staff/attendance${qs({ date: day })}` : null);
   const rows = r.data?.rows || [];
   const get = (row) => ({ status: row.status || '', overtime: row.overtime_minutes ? String(row.overtime_minutes / 60) : '', ...(edits[row.employee_id] || {}) });
   const set = (id, patch) => setEdits((x) => ({ ...x, [id]: { ...(x[id] || {}), ...patch } }));
@@ -113,7 +113,7 @@ export const Attendance = () => {
   });
   const save = async () => {
     const entries = Object.entries(edits).map(([id, v]) => ({ employee_id: Number(id), status: v.status || null, overtime_minutes: v.overtime ? Math.round(Number(v.overtime) * 60) : 0, note: v.note || undefined }));
-    const out = await run(() => api('/hotel/staff/attendance', { method: 'PUT', body: { date: day, entries } }), 'Attendance saved');
+    const out = await run(() => api('/staff/attendance', { method: 'PUT', body: { date: day, entries } }), 'Attendance saved');
     if (out) { setEdits({}); r.reload(); }
   };
 

@@ -32,7 +32,7 @@ import { InstallButton, OfflineStatus } from '../components/OfflineStatus.jsx';
 import CommandPalette from '../components/CommandPalette.jsx';
 import GuideHelper from '../components/GuideHelper.jsx';
 import IncomingDeliveryAlert from '../components/IncomingDeliveryAlert.jsx';
-import { AUTO_PARTS_TYPES, CLOTHING_TYPES, GAMING_TYPES, GYM_TYPES, HOTEL_TYPES, PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
+import { AUTO_PARTS_TYPES, CLOTHING_TYPES, GAMING_TYPES, GYM_TYPES, PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
 import { useMode } from './books/mode.js';
 
 /*
@@ -50,7 +50,6 @@ import { useMode } from './books/mode.js';
 const DINE_IN_TYPES = RESTAURANT_TYPES.filter((t) => t !== 'CLOUD_KITCHEN');
 
 const SALON = ['SALON'];
-const HOTEL = HOTEL_TYPES;
 const GYM = GYM_TYPES;
 const GAMING = GAMING_TYPES;
 const PARTS = AUTO_PARTS_TYPES;
@@ -165,19 +164,6 @@ const NAV_GROUPS = [
       { to: '/app/gym/rewards', label: 'Rewards', icon: Gift, types: GYM, anyPermission: ['gym_desk', 'gym_setup'], feature: 'gym_rewards' },
       { to: '/app/gym/attendance', label: 'Attendance', icon: CalendarCheck, types: GYM, anyPermission: ['gym_desk', 'gym_setup', 'gym_trainer'], feature: 'gym_access' },
       { to: '/app/gym/settings', label: 'Gym settings', icon: Settings, types: GYM, permission: 'gym_setup' }
-    ]
-  },
-  {
-    label: 'Hotel',
-    items: [
-      { to: '/app/hotel/bookings', label: 'Bookings', icon: ClipboardList, types: HOTEL, anyPermission: ['front_desk', 'night_audit'] },
-      { to: '/app/hotel/calendar', label: 'Calendar', icon: CalendarDays, types: HOTEL, anyPermission: ['front_desk', 'night_audit', 'housekeeping'] },
-      { to: '/app/hotel/rooms', label: 'Rooms & housekeeping', icon: BedDouble, types: HOTEL, anyPermission: ['housekeeping', 'front_desk', 'night_audit'] },
-      { to: '/app/hotel/banquet', label: 'Banquet', icon: CalendarClock, types: HOTEL, anyPermission: ['banquet', 'front_desk'] },
-      { to: '/app/hotel/staff', label: 'Staff', icon: Users, types: HOTEL, anyPermission: ['hr', 'payroll'] },
-      { to: '/app/hotel/night-audit', label: 'Night audit', icon: Moon, types: HOTEL, permission: 'night_audit' },
-      { to: '/app/hotel/reports', label: 'Hotel reports', icon: ChartColumn, types: HOTEL, anyPermission: ['reports', 'night_audit', 'front_desk'] },
-      { to: '/app/hotel/setup', label: 'Rooms & rates', icon: Settings, types: HOTEL, permission: 'hotel_setup' }
     ]
   },
   {

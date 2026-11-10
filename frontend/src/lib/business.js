@@ -1,8 +1,5 @@
 /* Business types that run a kitchen: they get orders, tables, modifiers, recipes. */
-export const RESTAURANT_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'GAMING_CAFE', 'RACING'];
-
-/* Hotels (with a restaurant): the hotel module (rooms, bookings, front desk, housekeeping, night audit, reports) on top of the restaurant screens. */
-export const HOTEL_TYPES = ['HOTEL'];
+export const RESTAURANT_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE', 'RACING'];
 
 /* Gyms: members, memberships, QR cards and phone passes, the front desk and attendance, on top of the general till. */
 export const GYM_TYPES = ['GYM'];

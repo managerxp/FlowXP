@@ -51,7 +51,6 @@ lines.push('## The closing line of the bill (variable {{7}})', '', 'The line bef
 lines.push('## Still to build (not templates in FlowXP yet)', '',
   '| Industry | Message | When it should go |', '|---|---|---|',
   '| Restaurants, cafés | Order ready (token), out for delivery | Takeaway ready; delivery rider assigned |',
-  '| Hotels | Booking confirmed, check-in reminder, thank you after check-out | On booking; the day before arrival; after departure |',
   '| Pharmacies | Refill reminder, order ready | From the medicine\'s usual duration; when an order is packed |',
   '| Gaming lounges | Booking confirmed, session ending, wallet low | On booking; 10 minutes before the end; below a set balance |',
   '| Retail, supermarkets | Back in stock, offer | When a wanted item arrives; campaigns |',

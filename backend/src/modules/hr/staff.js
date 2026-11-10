@@ -1,5 +1,5 @@
 /*
- * Hotel staff: departments, shifts, employees, the weekly roster, daily attendance, leave, the monthly payroll sheet, and who cleans which room.
+ * Staff: departments, shifts, employees, the weekly roster, daily attendance, leave, the monthly payroll sheet.
  *
  * Attendance is what happened. A day with no attendance row is "not marked": on a weekly off it counts as the weekly off, anywhere else it is flagged in payroll so it is
  * settled before the sheet is finalised, and meanwhile it is paid as present (the cautious mistake: a person is never short-paid because someone forgot to tap).
@@ -8,16 +8,16 @@
  * For a DAILY one: the daily rate x days worked plus paid leave. Overtime is paid at the hourly rate (a day's pay / 8) x the run's overtime factor. Allowances and
  * deductions are typed by hand while the run is a draft. This is a payroll SHEET: PF, ESI, professional tax and TDS are not worked out.
  */
-import { HotelError, addDaysISO, daysBetween, getProperty } from './common.js';
+import { HrError, addDaysISO, daysBetween } from './common.js';
 import { businessToday } from '../../utils/dates.js';
 import { isParts } from '../mechanic/types.js';
 
-/** The date the staff screens start on: a hotel's own business date (it moves with the night audit), any other business's calendar day. The same staff engine serves both. */
-export const staffToday = async (db, tenant) => (tenant.businessType === 'HOTEL' ? (await getProperty(db, tenant)).business_date : businessToday(tenant.businessId, db));
+/** The date the staff screens start on: the real calendar day of the business. */
+export const staffToday = async (db, tenant) => businessToday(tenant.businessId, db);
 
 export const ATT_STATUS = ['PRESENT', 'ABSENT', 'HALF_DAY', 'LEAVE', 'UNPAID_LEAVE', 'WEEKLY_OFF', 'HOLIDAY'];
 export const LEAVE_KINDS = ['CASUAL', 'SICK', 'PAID', 'UNPAID'];
-const DEFAULT_DEPARTMENTS = ['Front office', 'Housekeeping', 'Food and beverage', 'Kitchen', 'Banquet', 'Maintenance', 'Security', 'Accounts', 'Management'];
+const DEFAULT_DEPARTMENTS = ['Front office', 'Food and beverage', 'Kitchen', 'Maintenance', 'Security', 'Accounts', 'Management'];
 const DEFAULT_SHIFTS = [['Morning', '07:00', '15:00'], ['Evening', '15:00', '23:00'], ['Night', '23:00', '07:00']];
 /* what a new spare parts workshop starts with instead (the lists can be changed freely) */
 const PARTS_DEPARTMENTS = ['Workshop', 'Parts counter', 'Stores', 'Accounts', 'Management'];
@@ -37,7 +37,7 @@ export const listDepartments = async (db, tenant) => {
 export const saveDepartment = async (db, tenant, id, name) => {
   if (id) {
     const r = (await db.query(`UPDATE hr_departments SET name = $3 WHERE dept_id = $1 AND branch_id = $2 RETURNING *`, [id, tenant.branchId, name])).rows[0];
-    if (!r) throw new HotelError(404, 'Department not found');
+    if (!r) throw new HrError(404, 'Department not found');
     return r;
   }
   return (await db.query(`INSERT INTO hr_departments (business_id, branch_id, name) VALUES ($1,$2,$3) RETURNING *`, [tenant.businessId, tenant.branchId, name])).rows[0];
@@ -45,9 +45,9 @@ export const saveDepartment = async (db, tenant, id, name) => {
 
 export const archiveDepartment = async (db, tenant, id) => {
   const used = (await db.query(`SELECT 1 FROM hr_employees WHERE dept_id = $1 AND status = 'ACTIVE' LIMIT 1`, [id])).rowCount;
-  if (used) throw new HotelError(409, 'People still work in this department');
+  if (used) throw new HrError(409, 'People still work in this department');
   const { rowCount } = await db.query(`UPDATE hr_departments SET is_active = FALSE WHERE dept_id = $1 AND branch_id = $2`, [id, tenant.branchId]);
-  if (!rowCount) throw new HotelError(404, 'Department not found');
+  if (!rowCount) throw new HrError(404, 'Department not found');
 };
 
 export const listShifts = async (db, tenant) => {
@@ -59,7 +59,7 @@ export const listShifts = async (db, tenant) => {
 export const saveShift = async (db, tenant, id, v) => {
   if (id) {
     const r = (await db.query(`UPDATE hr_shifts SET name=$3, start_time=$4, end_time=$5 WHERE shift_id=$1 AND branch_id=$2 RETURNING *`, [id, tenant.branchId, v.name, v.start_time, v.end_time])).rows[0];
-    if (!r) throw new HotelError(404, 'Shift not found');
+    if (!r) throw new HrError(404, 'Shift not found');
     return r;
   }
   return (await db.query(`INSERT INTO hr_shifts (business_id, branch_id, name, start_time, end_time) VALUES ($1,$2,$3,$4,$5) RETURNING *`, [tenant.businessId, tenant.branchId, v.name, v.start_time, v.end_time])).rows[0];
@@ -67,7 +67,7 @@ export const saveShift = async (db, tenant, id, v) => {
 
 export const archiveShift = async (db, tenant, id) => {
   const { rowCount } = await db.query(`UPDATE hr_shifts SET is_active = FALSE WHERE shift_id = $1 AND branch_id = $2`, [id, tenant.branchId]);
-  if (!rowCount) throw new HotelError(404, 'Shift not found');
+  if (!rowCount) throw new HrError(404, 'Shift not found');
 };
 
 /* ── employees ─────────────────────────────────────────────────────────── */
@@ -85,7 +85,7 @@ export const listEmployees = async (db, tenant, { status = 'ACTIVE', deptId = nu
 
 export const getEmployee = async (db, tenant, id, { withPay = false } = {}) => {
   const r = (await db.query(`${EMP_SQL} WHERE e.employee_id = $1 AND e.branch_id = $2`, [id, tenant.branchId])).rows[0];
-  if (!r) throw new HotelError(404, 'Employee not found');
+  if (!r) throw new HrError(404, 'Employee not found');
   return withPay ? r : { ...r, salary_paise: undefined, bank_account: undefined };
 };
 
@@ -95,9 +95,9 @@ const nextCode = async (db, tenant) => {
 };
 
 const checkRefs = async (db, tenant, v) => {
-  if (v.dept_id) { const ok = (await db.query(`SELECT 1 FROM hr_departments WHERE dept_id = $1 AND branch_id = $2`, [v.dept_id, tenant.branchId])).rowCount; if (!ok) throw new HotelError(400, 'Department not found'); }
-  if (v.default_shift_id) { const ok = (await db.query(`SELECT 1 FROM hr_shifts WHERE shift_id = $1 AND branch_id = $2`, [v.default_shift_id, tenant.branchId])).rowCount; if (!ok) throw new HotelError(400, 'Shift not found'); }
-  if (v.user_id) { const ok = (await db.query(`SELECT 1 FROM business_users WHERE user_id = $1 AND business_id = $2`, [v.user_id, tenant.businessId])).rowCount; if (!ok) throw new HotelError(400, 'That login is not part of this business'); }
+  if (v.dept_id) { const ok = (await db.query(`SELECT 1 FROM hr_departments WHERE dept_id = $1 AND branch_id = $2`, [v.dept_id, tenant.branchId])).rowCount; if (!ok) throw new HrError(400, 'Department not found'); }
+  if (v.default_shift_id) { const ok = (await db.query(`SELECT 1 FROM hr_shifts WHERE shift_id = $1 AND branch_id = $2`, [v.default_shift_id, tenant.branchId])).rowCount; if (!ok) throw new HrError(400, 'Shift not found'); }
+  if (v.user_id) { const ok = (await db.query(`SELECT 1 FROM business_users WHERE user_id = $1 AND business_id = $2`, [v.user_id, tenant.businessId])).rowCount; if (!ok) throw new HrError(400, 'That login is not part of this business'); }
 };
 
 const COLS = ['name', 'phone', 'email', 'dept_id', 'designation', 'joined_on', 'status', 'pay_type', 'salary_paise', 'weekly_off', 'default_shift_id', 'user_id', 'id_type', 'id_number', 'address', 'emergency_contact', 'bank_account', 'notes'];
@@ -106,7 +106,7 @@ export const saveEmployee = async (db, tenant, id, v) => {
   await checkRefs(db, tenant, v);
   if (id) {
     const before = (await db.query(`SELECT * FROM hr_employees WHERE employee_id = $1 AND branch_id = $2 FOR UPDATE`, [id, tenant.branchId])).rows[0];
-    if (!before) throw new HotelError(404, 'Employee not found');
+    if (!before) throw new HrError(404, 'Employee not found');
     const m = { ...before, ...Object.fromEntries(Object.entries(v).filter(([, x]) => x !== undefined)) };
     const left = m.status === 'INACTIVE' ? (v.left_on || before.left_on || null) : null;
     const { rows } = await db.query(`UPDATE hr_employees SET ${COLS.map((c, i) => `${c} = $${i + 3}`).join(', ')}, left_on = $${COLS.length + 3} WHERE employee_id = $1 AND branch_id = $2 RETURNING *`, [id, tenant.branchId, ...COLS.map((c) => m[c] ?? null), left]);
@@ -121,7 +121,7 @@ export const saveEmployee = async (db, tenant, id, v) => {
 /* ── roster ────────────────────────────────────────────────────────────── */
 
 export const getRoster = async (db, tenant, { from, to, deptId = null }) => {
-  if (daysBetween(from, to) > 62) throw new HotelError(400, 'Look at up to 62 days at a time');
+  if (daysBetween(from, to) > 62) throw new HrError(400, 'Look at up to 62 days at a time');
   const employees = (await db.query(`SELECT e.employee_id, e.emp_code, e.name, e.designation, e.weekly_off, e.default_shift_id, d.name AS department FROM hr_employees e LEFT JOIN hr_departments d ON d.dept_id = e.dept_id WHERE e.branch_id = $1 AND e.status = 'ACTIVE' ${deptId ? 'AND e.dept_id = $2' : ''} ORDER BY d.name NULLS LAST, e.name`, deptId ? [tenant.branchId, deptId] : [tenant.branchId])).rows;
   const entries = (await db.query(`SELECT employee_id, work_date::text AS work_date, shift_id FROM hr_roster WHERE branch_id = $1 AND work_date >= $2 AND work_date <= $3`, [tenant.branchId, from, to])).rows;
   const leaves = (await db.query(`SELECT employee_id, from_date::text AS from_date, to_date::text AS to_date, kind FROM hr_leaves WHERE branch_id = $1 AND status = 'APPROVED' AND from_date <= $3 AND to_date >= $2`, [tenant.branchId, from, to])).rows;
@@ -131,13 +131,13 @@ export const getRoster = async (db, tenant, { from, to, deptId = null }) => {
 /** Set shifts: [{ employee_id, work_date, shift_id | null }]. A null shift is a day off. */
 export const setRoster = async (client, tenant, entries) => {
   if (!entries.length) return 0;
-  if (entries.length > 1000) throw new HotelError(400, 'Send up to 1,000 changes at a time');
+  if (entries.length > 1000) throw new HrError(400, 'Send up to 1,000 changes at a time');
   const ids = [...new Set(entries.map((e) => e.employee_id))];
   const ok = (await client.query(`SELECT employee_id FROM hr_employees WHERE branch_id = $1 AND employee_id = ANY($2::int[])`, [tenant.branchId, ids])).rows.length;
-  if (ok !== ids.length) throw new HotelError(400, 'One of the employees was not found');
+  if (ok !== ids.length) throw new HrError(400, 'One of the employees was not found');
   const shifts = new Set((await client.query(`SELECT shift_id FROM hr_shifts WHERE branch_id = $1`, [tenant.branchId])).rows.map((r) => r.shift_id));
   for (const e of entries) {
-    if (e.shift_id != null && !shifts.has(e.shift_id)) throw new HotelError(400, 'Shift not found');
+    if (e.shift_id != null && !shifts.has(e.shift_id)) throw new HrError(400, 'Shift not found');
     await client.query(`INSERT INTO hr_roster (business_id, branch_id, employee_id, work_date, shift_id) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (employee_id, work_date) DO UPDATE SET shift_id = EXCLUDED.shift_id`, [tenant.businessId, tenant.branchId, e.employee_id, e.work_date, e.shift_id ?? null]);
   }
   return entries.length;
@@ -172,10 +172,10 @@ export const markAttendance = async (client, tenant, userId, date, entries) => {
   if (!entries.length) return 0;
   const ids = [...new Set(entries.map((e) => e.employee_id))];
   const ok = (await client.query(`SELECT employee_id FROM hr_employees WHERE branch_id = $1 AND employee_id = ANY($2::int[])`, [tenant.branchId, ids])).rows.length;
-  if (ok !== ids.length) throw new HotelError(400, 'One of the employees was not found');
+  if (ok !== ids.length) throw new HrError(400, 'One of the employees was not found');
   for (const e of entries) {
     if (!e.status) { await client.query(`DELETE FROM hr_attendance WHERE employee_id = $1 AND work_date = $2`, [e.employee_id, date]); continue; }
-    if (!ATT_STATUS.includes(e.status)) throw new HotelError(400, 'Choose present, absent, half day, leave or a day off');
+    if (!ATT_STATUS.includes(e.status)) throw new HrError(400, 'Choose present, absent, half day, leave or a day off');
     await client.query(
       `INSERT INTO hr_attendance (business_id, branch_id, employee_id, work_date, status, in_time, out_time, overtime_minutes, note, marked_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
        ON CONFLICT (employee_id, work_date) DO UPDATE SET status = EXCLUDED.status, in_time = EXCLUDED.in_time, out_time = EXCLUDED.out_time, overtime_minutes = EXCLUDED.overtime_minutes, note = EXCLUDED.note, marked_by = EXCLUDED.marked_by, marked_at = CURRENT_TIMESTAMP`,
@@ -209,11 +209,11 @@ export const listLeaves = async (db, tenant, { status = null }) =>
 
 export const requestLeave = async (db, tenant, userId, v) => {
   const e = (await db.query(`SELECT 1 FROM hr_employees WHERE employee_id = $1 AND branch_id = $2 AND status = 'ACTIVE'`, [v.employee_id, tenant.branchId])).rowCount;
-  if (!e) throw new HotelError(400, 'Employee not found');
-  if (!LEAVE_KINDS.includes(v.kind)) throw new HotelError(400, 'Choose a kind of leave');
-  if (daysBetween(v.from_date, v.to_date) > 60) throw new HotelError(400, 'Leave can be up to 60 days at a time');
+  if (!e) throw new HrError(400, 'Employee not found');
+  if (!LEAVE_KINDS.includes(v.kind)) throw new HrError(400, 'Choose a kind of leave');
+  if (daysBetween(v.from_date, v.to_date) > 60) throw new HrError(400, 'Leave can be up to 60 days at a time');
   const clash = (await db.query(`SELECT 1 FROM hr_leaves WHERE employee_id = $1 AND status IN ('PENDING','APPROVED') AND from_date <= $3 AND to_date >= $2 LIMIT 1`, [v.employee_id, v.from_date, v.to_date])).rowCount;
-  if (clash) throw new HotelError(409, 'This person already has leave on some of those days');
+  if (clash) throw new HrError(409, 'This person already has leave on some of those days');
   return (await db.query(`INSERT INTO hr_leaves (business_id, branch_id, employee_id, from_date, to_date, kind, reason, requested_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
     [tenant.businessId, tenant.branchId, v.employee_id, v.from_date, v.to_date, v.kind, v.reason || null, userId])).rows[0];
 };
@@ -221,9 +221,9 @@ export const requestLeave = async (db, tenant, userId, v) => {
 /** Approve or reject. Approving marks every day of the leave in attendance (paid or unpaid), leaving a day already marked present alone. */
 export const decideLeave = async (client, tenant, userId, id, { approve, cancel = false }) => {
   const l = (await client.query(`SELECT *, from_date::text AS from_date, to_date::text AS to_date FROM hr_leaves WHERE leave_id = $1 AND branch_id = $2 FOR UPDATE`, [id, tenant.branchId])).rows[0];
-  if (!l) throw new HotelError(404, 'Leave not found');
+  if (!l) throw new HrError(404, 'Leave not found');
   const status = cancel ? 'CANCELLED' : approve ? 'APPROVED' : 'REJECTED';
-  if (cancel ? !['PENDING', 'APPROVED'].includes(l.status) : l.status !== 'PENDING') throw new HotelError(409, cancel ? 'This leave cannot be cancelled' : 'This leave has already been decided');
+  if (cancel ? !['PENDING', 'APPROVED'].includes(l.status) : l.status !== 'PENDING') throw new HrError(409, cancel ? 'This leave cannot be cancelled' : 'This leave has already been decided');
   await client.query(`UPDATE hr_leaves SET status = $2, decided_by = $3, decided_at = CURRENT_TIMESTAMP WHERE leave_id = $1`, [id, status, userId]);
   const mark = l.kind === 'UNPAID' ? 'UNPAID_LEAVE' : 'LEAVE';
   for (let d = l.from_date; d <= l.to_date; d = addDaysISO(d, 1)) {
@@ -277,7 +277,7 @@ const buildSlip = async (db, tenant, run, e, today) => {
 /** Make (or redo, while it is a draft) the month's payroll sheet from attendance. Hand-typed allowances, deductions and notes are kept. */
 export const generatePayroll = async (client, tenant, userId, month, { overtimeFactor = 1.5 } = {}) => {
   let run = (await client.query(`SELECT * FROM hr_payroll_runs WHERE branch_id = $1 AND month = $2 FOR UPDATE`, [tenant.branchId, month])).rows[0];
-  if (run?.status === 'FINAL') throw new HotelError(409, `Payroll for ${month} has been finalised`);
+  if (run?.status === 'FINAL') throw new HrError(409, `Payroll for ${month} has been finalised`);
   if (!run) run = (await client.query(`INSERT INTO hr_payroll_runs (business_id, branch_id, month, overtime_factor, created_by) VALUES ($1,$2,$3,$4,$5) RETURNING *`, [tenant.businessId, tenant.branchId, month, overtimeFactor, userId])).rows[0];
   else await client.query(`UPDATE hr_payroll_runs SET overtime_factor = $2 WHERE run_id = $1`, [run.run_id, overtimeFactor]);
   run = { ...run, overtime_factor: overtimeFactor };
@@ -317,43 +317,20 @@ export const getRun = async (db, tenant, month) => {
 
 export const adjustSlip = async (client, tenant, slipId, { allowances_paise, deductions_paise, note }) => {
   const s = (await client.query(`SELECT p.*, r.status FROM hr_payslips p JOIN hr_payroll_runs r ON r.run_id = p.run_id WHERE p.payslip_id = $1 AND r.branch_id = $2 FOR UPDATE OF p`, [slipId, tenant.branchId])).rows[0];
-  if (!s) throw new HotelError(404, 'Payslip not found');
-  if (s.status === 'FINAL') throw new HotelError(409, 'This payroll has been finalised');
+  if (!s) throw new HrError(404, 'Payslip not found');
+  if (s.status === 'FINAL') throw new HrError(409, 'This payroll has been finalised');
   const a = allowances_paise ?? Number(s.allowances_paise); const d = deductions_paise ?? Number(s.deductions_paise);
   await client.query(`UPDATE hr_payslips SET allowances_paise = $2, deductions_paise = $3, net_pay_paise = base_pay_paise + overtime_pay_paise + $2 - $3, note = $4 WHERE payslip_id = $1`, [slipId, a, d, note === undefined ? s.note : note]);
 };
 
 export const finalizeRun = async (client, tenant, userId, month, { force = false } = {}) => {
   const run = (await client.query(`SELECT * FROM hr_payroll_runs WHERE branch_id = $1 AND month = $2 FOR UPDATE`, [tenant.branchId, month])).rows[0];
-  if (!run) throw new HotelError(404, 'Make the payroll sheet first');
-  if (run.status === 'FINAL') throw new HotelError(409, 'This payroll has already been finalised');
+  if (!run) throw new HrError(404, 'Make the payroll sheet first');
+  if (run.status === 'FINAL') throw new HrError(409, 'This payroll has already been finalised');
   const unmarked = Number((await client.query(`SELECT COALESCE(SUM(days_unmarked), 0) AS n FROM hr_payslips WHERE run_id = $1`, [run.run_id])).rows[0].n);
-  if (unmarked > 0 && !force) throw new HotelError(409, `${unmarked} day${unmarked === 1 ? '' : 's'} have no attendance marked. They are paid as present. Mark them first, or finalise anyway.`, { code: 'UNMARKED_DAYS', data: { unmarked_days: unmarked } });
+  if (unmarked > 0 && !force) throw new HrError(409, `${unmarked} day${unmarked === 1 ? '' : 's'} have no attendance marked. They are paid as present. Mark them first, or finalise anyway.`, { code: 'UNMARKED_DAYS', data: { unmarked_days: unmarked } });
   await client.query(`UPDATE hr_payroll_runs SET status = 'FINAL', finalized_by = $2, finalized_at = CURRENT_TIMESTAMP WHERE run_id = $1`, [run.run_id, userId]);
 };
-
-/* ── who cleans which room ─────────────────────────────────────────────── */
-
-export const assignRooms = async (client, tenant, { date, employeeId, roomIds }) => {
-  if (employeeId != null) {
-    const e = (await client.query(`SELECT 1 FROM hr_employees WHERE employee_id = $1 AND branch_id = $2 AND status = 'ACTIVE'`, [employeeId, tenant.branchId])).rowCount;
-    if (!e) throw new HotelError(400, 'Employee not found');
-  }
-  const rooms = (await client.query(`SELECT room_id FROM rooms WHERE branch_id = $1 AND room_id = ANY($2::int[])`, [tenant.branchId, roomIds])).rows.length;
-  if (rooms !== roomIds.length) throw new HotelError(400, 'One of the rooms was not found');
-  for (const roomId of roomIds) {
-    if (employeeId == null) await client.query(`DELETE FROM hk_assignments WHERE room_id = $1 AND work_date = $2`, [roomId, date]);
-    else await client.query(`INSERT INTO hk_assignments (business_id, branch_id, room_id, employee_id, work_date) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (room_id, work_date) DO UPDATE SET employee_id = EXCLUDED.employee_id`, [tenant.businessId, tenant.branchId, roomId, employeeId, date]);
-  }
-  return roomIds.length;
-};
-
-export const listAssignments = async (db, tenant, date) =>
-  (await db.query(`SELECT a.room_id, a.employee_id, e.name AS employee FROM hk_assignments a JOIN hr_employees e ON e.employee_id = a.employee_id WHERE a.branch_id = $1 AND a.work_date = $2`, [tenant.branchId, date])).rows;
-
-/** People in housekeeping who could be given rooms. */
-export const housekeepers = async (db, tenant) =>
-  (await db.query(`SELECT e.employee_id, e.name FROM hr_employees e JOIN hr_departments d ON d.dept_id = e.dept_id WHERE e.branch_id = $1 AND e.status = 'ACTIVE' AND lower(d.name) = 'housekeeping' ORDER BY e.name`, [tenant.branchId])).rows;
 
 /* ── a few numbers for the staff screen ────────────────────────────────── */
 

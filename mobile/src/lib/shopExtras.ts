@@ -58,3 +58,5 @@ export const periodFor = (id: 'today' | 'month' | 'last30', today = new Date()):
   return { from: iso(from), to: iso(today) };
 };
 export const reportPath = (def: Pick<ReportDef, 'key' | 'period'>, p: { from: string; to: string }): string => `/wholesale/reports/${def.key}?${def.period ? `from=${p.from}&` : ''}to=${p.to}`;
+
+export const rs = (paise: number | string | null | undefined): string => `₹${Math.round(Number(paise || 0) / 100).toLocaleString('en-IN')}`;

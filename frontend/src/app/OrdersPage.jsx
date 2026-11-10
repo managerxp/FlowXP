@@ -18,7 +18,6 @@ import { api, formatCurrency } from '../lib/api.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import UpiCollect from '../components/UpiCollect.jsx';
-import RoomChargePicker from '../components/RoomChargePicker.jsx';
 import FoodMark from '../components/FoodMark.jsx';
 import { LoyaltyCard, MobileLookup, PointsPanel, RewardHint } from '../components/LoyaltyCard.jsx';
 import OrderQuickActions from '../components/OrderQuickActions.jsx';
@@ -403,7 +402,6 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
   const [brands, setBrands] = useState([]);
   const [riders, setRiders] = useState([]);
   const [method, setMethod] = useState('CASH');
-  const [room, setRoom] = useState(null);   // the in-house guest a bill is charged to (a hotel's restaurant)
   const [received, setReceived] = useState('');
   const [done, setDone] = useState(null);         // the invoice, once billed
   const [collecting, setCollecting] = useState(null);   // billed, waiting for its UPI payment
@@ -482,10 +480,9 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
   const subtotal = open.reduce((sum, i) => sum + Number(i.line_total), 0);
   const gst = open.reduce((sum, i) => sum + withTax(i, i.line_total), 0) - subtotal;
   const total = Math.max(0, Math.round((subtotal + gst - rewardOff) * 100) / 100);
-  const toRoom = method === 'ROOM';
-  const payLater = method === 'LATER' || toRoom;   // neither takes money at the table
+  const payLater = method === 'LATER';   // neither takes money at the table
   // a lounge player's prepaid balance pays first; whatever it does not cover goes the way the buttons below say
-  const walletPart = wallet > 0 && useWallet && !toRoom ? Math.min(wallet, total) : 0;
+  const walletPart = wallet > 0 && useWallet ? Math.min(wallet, total) : 0;
   const walletAll = walletPart > 0 && walletPart >= total;
   const amount = received === '' ? null : Number(received);
   const partial = !payLater && amount != null && amount < total;
@@ -494,7 +491,6 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
   const upiQr = method === 'UPI' && Boolean(business?.upi_vpa);
 
   const billOrder = async () => {
-    if (toRoom && !room) { setError(tr('Choose the guest whose room this is charged to')); return; }
     setBusy(true); setError('');
     try {
       const invoice = await api(`/orders/${orderId}/bill`, {
@@ -502,14 +498,12 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
         body: {
           coupon_code: couponCode.trim() || undefined,
           redeem_points: Number(redeem) > 0 ? Number(redeem) : undefined,
-          charge_to_booking_id: toRoom ? room.booking_id : undefined,
           ...(walletPart > 0
             ? (walletAll ? { payment: { method: 'WALLET', amount: 'FULL' } } : { payments: [{ method: 'WALLET', amount: walletPart }, ...(payLater ? [] : [{ method, amount: 'REST' }])] })
             : { payment: payLater || upiQr ? undefined : { method, amount: amount ?? 'FULL' } })
         }
       });
       billKey.settle();
-      if (toRoom) toast.success(tr('Charged to {{label}}', { label: room.label }));
       if (upiQr) { setCollecting({ invoice, amount: partial ? amount : undefined }); onChanged(); return; }
       const cash = method === 'CASH' && !payLater;
       if (autoReceipt()) printReceipt(invoice.invoice_id, { cash });
@@ -773,13 +767,12 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
           </div>
 
           <div role="radiogroup" aria-label={tr('How is it paid?')} className="mt-3 grid grid-cols-3 gap-1.5">
-            {(business?.business_type === 'HOTEL' ? [...METHODS, ['ROOM', T('To room')]] : METHODS).map(([value, label]) => (
+            {METHODS.map(([value, label]) => (
               <button key={value} type="button" role="radio" aria-checked={method === value} onClick={() => { setMethod(value); setReceived(''); }}
                       className={`h-9 rounded-lg border text-small font-medium ${method === value ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>{tr(label)}</button>
             ))}
           </div>
-          {toRoom && <RoomChargePicker value={room} onChange={setRoom} />}
-          {wallet > 0 && !toRoom && (
+          {wallet > 0 && (
             <label className="mt-2 flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2 text-small text-brand-700">
               <input type="checkbox" checked={useWallet} onChange={(e) => setUseWallet(e.target.checked)} />
               Pay {formatCurrency(Math.min(wallet, total))} from the wallet ({formatCurrency(wallet)} available){!walletAll && !payLater ? `, the rest by ${(METHODS.find(([v]) => v === method) || [])[1] || method}` : ''}
@@ -797,7 +790,7 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
           )}
           {pendingCount > 0 && <p className="mt-2 text-caption text-warning">{pendingCount} item{pendingCount === 1 ? ' has' : tr('s have')} not been sent to the kitchen yet.</p>}
           <Button onClick={billOrder} disabled={busy || total === 0} size="lg" className="mt-3 h-11 w-full">
-            {busy ? tr('Working…') : toRoom ? (room ? `Charge ${formatCurrency(total)} to ${room.label}` : tr('Choose a room')) : payLater ? `Save bill · ${formatCurrency(total)} unpaid` : upiQr ? `Bill and show UPI QR · ${formatCurrency(partial ? amount : total)}` : partial ? `Take ${formatCurrency(amount)} · rest due` : `${billedCount ? 'Bill the rest' : 'Bill'} · ${formatCurrency(total)}`}
+            {busy ? tr('Working…') : payLater ? `Save bill · ${formatCurrency(total)} unpaid` : upiQr ? `Bill and show UPI QR · ${formatCurrency(partial ? amount : total)}` : partial ? `Take ${formatCurrency(amount)} · rest due` : `${billedCount ? 'Bill the rest' : 'Bill'} · ${formatCurrency(total)}`}
           </Button>
         </div>
       )}

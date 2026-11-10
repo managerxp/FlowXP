@@ -11,7 +11,6 @@ export const ROLES: Record<string, string> = {
   SALES_MANAGER: 'Sales manager', SALES_EXECUTIVE: 'Sales executive', WAREHOUSE_MANAGER: 'Warehouse manager', WAREHOUSE_STAFF: 'Warehouse staff', PURCHASE_MANAGER: 'Purchase manager',
   DISTRIBUTOR_ADMIN: 'Distributor admin', FIELD_SALES: 'Field sales rep', COLLECTION_EXECUTIVE: 'Collection executive', DELIVERY_MANAGER: 'Delivery manager',
   PHARMACIST: 'Pharmacist', SALES_STAFF: 'Sales staff', GRN_MANAGER: 'GRN manager', AUDITOR: 'Auditor',
-  FRONT_DESK: 'Front desk', HOUSEKEEPER: 'Housekeeper', HOUSEKEEPING_SUPERVISOR: 'Housekeeping supervisor', NIGHT_AUDITOR: 'Night auditor',
   GYM_RECEPTIONIST: 'Gym front desk', TRAINER: 'Trainer', GAMING_ATTENDANT: 'Gaming attendant', STOREKEEPER: 'Storekeeper', PARTS_COUNTER: 'Parts counter'
 };
 export const ROLE_HELP: Record<string, string> = {
@@ -22,10 +21,6 @@ export const ROLE_HELP: Record<string, string> = {
   RECEPTIONIST: 'Books appointments, bills clients and looks after the client book.',
   STYLIST: 'Sees their own appointments and moves clients through the service. No billing or money.',
   ACCOUNTANT: 'Billing records, payments, expenses, GST and reports. Cannot change the catalogue or the team.',
-  FRONT_DESK: 'Hotel bookings, check-in and check-out, the guest bill and payments. Can mark rooms clean or dirty.',
-  HOUSEKEEPER: 'Sees the rooms and marks them clean, dirty or out of order. Nothing else.',
-  HOUSEKEEPING_SUPERVISOR: 'Housekeeping, and can set up rooms and rates.',
-  NIGHT_AUDITOR: "Closes the hotel's day, takes payments and reads the hotel reports.",
   GYM_RECEPTIONIST: 'Scans cards and phones, checks members in, signs members up and sells memberships. Cannot change plans or settings.',
   STOREKEEPER: 'Receives goods, puts stock away in racks and bins, moves and counts it. Cannot change prices or see margins.',
   PARTS_COUNTER: 'Sells parts at the counter, looks them up by vehicle or part number, takes payments. Cannot change stock or prices.',
@@ -47,12 +42,11 @@ export const ROLE_HELP: Record<string, string> = {
 };
 /** Owners and admins always see every outlet; these roles belong to exactly one outlet (the server pins them). */
 export const GROUP_ROLES = ['OWNER', 'ADMIN'];
-export const FLOOR_ROLES = ['GYM_RECEPTIONIST', 'TRAINER', 'GAMING_ATTENDANT', 'STOREKEEPER', 'PARTS_COUNTER', 'FRONT_DESK', 'HOUSEKEEPER', 'HOUSEKEEPING_SUPERVISOR', 'NIGHT_AUDITOR', 'CASHIER', 'WAITER', 'KITCHEN', 'STAFF', 'DELIVERY', 'RECEPTIONIST', 'STYLIST', 'ACCOUNTANT', 'WAREHOUSE_STAFF', 'SALES_EXECUTIVE', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'PHARMACIST', 'SALES_STAFF', 'GRN_MANAGER', 'AUDITOR'];
+export const FLOOR_ROLES = ['GYM_RECEPTIONIST', 'TRAINER', 'GAMING_ATTENDANT', 'STOREKEEPER', 'PARTS_COUNTER', 'CASHIER', 'WAITER', 'KITCHEN', 'STAFF', 'DELIVERY', 'RECEPTIONIST', 'STYLIST', 'ACCOUNTANT', 'WAREHOUSE_STAFF', 'SALES_EXECUTIVE', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'PHARMACIST', 'SALES_STAFF', 'GRN_MANAGER', 'AUDITOR'];
 
 const SALON_ONLY = ['RECEPTIONIST', 'STYLIST'];
 const WHOLESALE_ONLY = ['SALES_MANAGER', 'SALES_EXECUTIVE', 'WAREHOUSE_MANAGER', 'WAREHOUSE_STAFF', 'PURCHASE_MANAGER', 'DISTRIBUTOR_ADMIN', 'FIELD_SALES', 'COLLECTION_EXECUTIVE', 'DELIVERY_MANAGER'];
 const PHARMACY_ONLY = ['PHARMACIST', 'SALES_STAFF', 'GRN_MANAGER', 'AUDITOR'];
-const HOTEL_ONLY = ['FRONT_DESK', 'HOUSEKEEPER', 'HOUSEKEEPING_SUPERVISOR', 'NIGHT_AUDITOR'];
 const GYM_ONLY = ['GYM_RECEPTIONIST', 'TRAINER'];
 const GAMING_ONLY = ['GAMING_ATTENDANT'];
 const PARTS_ONLY = ['STOREKEEPER', 'PARTS_COUNTER'];
@@ -64,27 +58,26 @@ const DISTRIBUTOR_ONLY = ['DISTRIBUTOR_ADMIN', 'FIELD_SALES', 'COLLECTION_EXECUT
 /** The roles that make sense for this kind of business (a salon has no kitchen, a restaurant no stylists); an admin cannot hand out the top roles. */
 export const rolesFor = (businessType: string | undefined, isOwner: boolean, distributorEnabled = false): string[] => {
   const t = businessType ?? '';
-  const salon = t === 'SALON'; const wholesale = ['WHOLESALE', 'DISTRIBUTOR'].includes(t); const pharmacy = t === 'PHARMACY'; const hotel = t === 'HOTEL'; const gym = t === 'GYM';
+  const salon = t === 'SALON'; const wholesale = ['WHOLESALE', 'DISTRIBUTOR'].includes(t); const pharmacy = t === 'PHARMACY'; const gym = t === 'GYM';
   const gaming = t === 'GAMING_CAFE'; const parts = t === 'AUTO_PARTS' || t === 'MECHANIC';
   const none = (...lists: string[][]) => (r: string) => lists.every((l) => !l.includes(r));
-  const kind = gym ? none(NOT_FOR_SALON, SALON_ONLY, WHOLESALE_ONLY, PHARMACY_ONLY, HOTEL_ONLY)
-    : salon ? none(NOT_FOR_SALON, WHOLESALE_ONLY, PHARMACY_ONLY, HOTEL_ONLY, GYM_ONLY)
-      : hotel ? none(SALON_ONLY, WHOLESALE_ONLY, PHARMACY_ONLY, GYM_ONLY)
-        : wholesale ? (r: string) => none(NOT_FOR_WHOLESALE, SALON_ONLY, PHARMACY_ONLY, HOTEL_ONLY, GYM_ONLY)(r) && (distributorEnabled || !DISTRIBUTOR_ONLY.includes(r))
-          : pharmacy ? none(NOT_FOR_PHARMACY, SALON_ONLY, WHOLESALE_ONLY, HOTEL_ONLY, GYM_ONLY)
-            : none(SALON_ONLY, WHOLESALE_ONLY, PHARMACY_ONLY, HOTEL_ONLY, GYM_ONLY);
+  const kind = gym ? none(NOT_FOR_SALON, SALON_ONLY, WHOLESALE_ONLY, PHARMACY_ONLY)
+    : salon ? none(NOT_FOR_SALON, WHOLESALE_ONLY, PHARMACY_ONLY, GYM_ONLY)
+        : wholesale ? (r: string) => none(NOT_FOR_WHOLESALE, SALON_ONLY, PHARMACY_ONLY, GYM_ONLY)(r) && (distributorEnabled || !DISTRIBUTOR_ONLY.includes(r))
+          : pharmacy ? none(NOT_FOR_PHARMACY, SALON_ONLY, WHOLESALE_ONLY, GYM_ONLY)
+            : none(SALON_ONLY, WHOLESALE_ONLY, PHARMACY_ONLY, GYM_ONLY);
   return Object.keys(ROLES).filter((r) => (isOwner || !GROUP_ROLES.includes(r)) && (gaming || !GAMING_ONLY.includes(r)) && (parts || !PARTS_ONLY.includes(r)) && kind(r));
 };
 
 /** Owners and admins manage the team and the outlets (the server insists on the 'settings' permission and, for outlets, a group-level person). */
 export const canManageTeam = (role: string | undefined): boolean => role === 'OWNER' || role === 'ADMIN';
 /** The business types the website offers Outlets for. */
-export const OUTLET_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'GAMING_CAFE', 'RACING', 'WHOLESALE', 'DISTRIBUTOR', 'PHARMACY'];
+export const OUTLET_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE', 'RACING', 'WHOLESALE', 'DISTRIBUTOR', 'PHARMACY'];
 
 /* ── people ──────────────────────────────────────────────────────────────── */
 export type Person = { user_id: number; name: string; email: string; phone?: string | null; role: string; status: string; branch_id: number | null; branch_name: string | null; is_you: boolean; custom_permissions: number };
-/** Roles the server has that nobody can be given from the website or the phone yet (hotel banquet and HR): shown by name when someone already has one. */
-const DISPLAY_ONLY: Record<string, string> = { BANQUET_MANAGER: 'Banquet manager', HR_MANAGER: 'HR manager' };
+/** Roles the server has that nobody can be given from the website or the phone yet (HR): shown by name when someone already has one. */
+const DISPLAY_ONLY: Record<string, string> = { HR_MANAGER: 'HR manager' };
 export const roleLabel = (role: string): string => ROLES[role] ?? DISPLAY_ONLY[role] ?? role;
 export const statusLabel = (status: string): string => (status === 'ACTIVE' ? 'Active' : status === 'DISABLED' ? 'Disabled' : 'Invited');
 

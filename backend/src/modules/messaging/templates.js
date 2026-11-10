@@ -13,7 +13,7 @@
 export const CLOSING = {
   RESTAURANT: 'We hope you enjoyed your meal.', CLOUD_KITCHEN: 'We hope you enjoyed your meal.', CAFE: 'We hope you enjoyed your coffee and your time with us.',
   RETAIL: 'We hope you found everything you were looking for.', SUPERMARKET: 'We hope you found everything you were looking for.', ELECTRONICS: 'We hope you enjoy your new purchase.', CLOTHING: 'We hope you love what you picked.',
-  PHARMACY: 'Wishing you good health.', SALON: 'We hope you love your new look.', GYM: 'Keep going, we will see you at the gym.', HOTEL: 'We hope you enjoyed your stay.',
+  PHARMACY: 'Wishing you good health.', SALON: 'We hope you love your new look.', GYM: 'Keep going, we will see you at the gym.',
   GAMING_CAFE: 'Thanks for playing, see you again.', AUTO_PARTS: 'Drive safe, and see you again soon.', MECHANIC: 'Drive safe, and see you again soon.', RACING: 'Thanks for racing with us.',
   WHOLESALE: 'We value your business and look forward to your next order.', DISTRIBUTOR: 'We value your business and look forward to your next order.',
   SERVICES: 'It was a pleasure to serve you.', OTHER: 'We hope to serve you again soon.'

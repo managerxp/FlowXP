@@ -40,7 +40,7 @@ test('the closing line of a bill: the shop\'s own words, else one for its kind o
   assert.equal(closingLine('SOMETHING_NEW', undefined), CLOSING.OTHER);
   assert.equal(closingLine('CAFE', '  Thank you!\n\nVisit   us again.  '), 'Thank you! Visit us again.', 'the shop\'s own words, on one line');
   assert.equal(closingLine('CAFE', 'x'.repeat(500)).length, 160);
-  for (const type of ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'HOTEL', 'GYM', 'SERVICES', 'ELECTRONICS', 'CLOTHING', 'GAMING_CAFE', 'AUTO_PARTS', 'RACING', 'WHOLESALE', 'DISTRIBUTOR', 'OTHER']) assert.ok(CLOSING[type], `${type} has a closing line`);
+  for (const type of ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'GYM', 'SERVICES', 'ELECTRONICS', 'CLOTHING', 'GAMING_CAFE', 'AUTO_PARTS', 'RACING', 'WHOLESALE', 'DISTRIBUTOR', 'OTHER']) assert.ok(CLOSING[type], `${type} has a closing line`);
 });
 
 test('a Meta body never starts or ends with a variable, and the gym subscription and payment reminders carry labels', async () => {

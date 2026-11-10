@@ -23,7 +23,7 @@ const TASKS = [
   { text: T('Receive parts from a supplier'), to: ['/app/parts/receive', '/app/purchases', '/app/wholesale/purchasing', '/app/pharmacy/grn'], words: 'receive delivery supplier purchase goods stock in grn' },
   { text: T('Open a job card for a vehicle'), to: ['/app/parts/jobs'], words: 'job card servicing service vehicle bike car workshop mechanic' },
   { text: T('Find parts that fit a vehicle'), to: ['/app/parts/vehicles'], words: 'vehicle fit fitment make model bike car' },
-  { text: T('Add staff, attendance and payroll'), to: ['/app/parts/staff', '/app/hotel/staff', '/app/staff', '/app/salon/team'], words: 'staff employee mechanic attendance salary payroll shift login role' },
+  { text: T('Add staff, attendance and payroll'), to: ['/app/parts/staff', '/app/staff', '/app/salon/team'], words: 'staff employee mechanic attendance salary payroll shift login role' },
   { text: T('Loyalty points: how many a customer earns'), to: ['/app/loyalty'], words: 'loyalty points earn reward tier redeem' },
   { text: T('Make a coupon or offer code'), to: ['/app/loyalty', '/app/offers'], words: 'coupon offer code discount promo voucher' },
   { text: T('See sales and reports'), to: ['/app/reports', '/app/parts/reports', '/app/wholesale/reports', '/app/salon/reports'], words: 'report reports sales today profit summary' },

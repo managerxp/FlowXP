@@ -11,7 +11,7 @@ import { PageHeader, Card, Button, Alert, Badge, useToast, useDialog } from '../
 const when = (iso) => (iso ? new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '');
 const STATUS = { NEW: ['New', 'danger'], SEEN: ['Seen', 'warning'], FIXED: ['Fixed', 'success'], IGNORED: ['Ignored', 'neutral'] };
 const CATEGORY = { BROKE: 'Something broke', WRONG: 'A wrong figure', SLOW: 'Too slow', IDEA: 'An idea', OTHER: 'Something else' };
-const TYPES = { RESTAURANT: 'Restaurant', CAFE: 'Café', CLOUD_KITCHEN: 'Cloud kitchen', HOTEL: 'Hotel', RETAIL: 'Retail', SUPERMARKET: 'Supermarket', PHARMACY: 'Pharmacy', SALON: 'Salon', GYM: 'Gym', GAMING_CAFE: 'Gaming lounge', AUTO_PARTS: 'Auto parts', WHOLESALE: 'Wholesale', DISTRIBUTOR: 'Distributor' };
+const TYPES = { RESTAURANT: 'Restaurant', CAFE: 'Café', CLOUD_KITCHEN: 'Cloud kitchen', RETAIL: 'Retail', SUPERMARKET: 'Supermarket', PHARMACY: 'Pharmacy', SALON: 'Salon', GYM: 'Gym', GAMING_CAFE: 'Gaming lounge', AUTO_PARTS: 'Auto parts', WHOLESALE: 'Wholesale', DISTRIBUTOR: 'Distributor' };
 
 const StatusButtons = ({ status, busy, onSet }) => (
   <div className="flex flex-wrap gap-2">

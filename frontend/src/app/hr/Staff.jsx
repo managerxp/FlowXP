@@ -1,14 +1,14 @@
 /*
- * Hotel staff, in one place: the people (records, department, shift and, for those allowed, pay), the weekly roster, daily attendance, leave, the monthly payroll sheet, and
+ * Staff, in one place: the people (records, department, shift and, for those allowed, pay), the weekly roster, daily attendance, leave, the monthly payroll sheet, and
  * the departments and shifts behind it. Pay is only shown to people with the payroll permission.
  */
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Pencil, Plus, Trash2, UserPlus } from 'lucide-react';
 import { formatCurrency } from '../../lib/api.js';
-import { setStaffMode, staffApi as api, useStaffLoad as useLoad } from '../../lib/staffBase.js';
+import { staffApi as api, useStaffLoad as useLoad } from '../../lib/staffBase.js';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { ID_TYPES, longDate, qs, timeText, useDebounced } from '../../lib/hotel.js';
+import { ID_TYPES, longDate, qs, timeText, useDebounced } from '../../lib/hr.js';
 import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, StatCard, Table, Td, Textarea, Th, Thead, Tr, useDialog, useToast } from '../../components/ui.jsx';
 import { Chips, Panel, Tabs, useAction } from '../salon/parts.jsx';
 import { Attendance, Roster } from './StaffTime.jsx';
@@ -39,7 +39,7 @@ const EmployeeForm = ({ initial, depts, shifts, canPay, onClose, onSaved }) => {
       address: f.address || undefined, emergency_contact: f.emergency_contact || undefined, notes: f.notes || undefined, status: f.status, ...(f.status === 'INACTIVE' && f.left_on ? { left_on: f.left_on } : {}),
       ...(canPay ? { pay_type: f.pay_type, salary: f.salary === '' ? 0 : Number(f.salary), bank_account: f.bank_account || undefined } : {})
     };
-    const out = await run(() => api(edit ? `/hotel/staff/employees/${initial.employee_id}` : '/hotel/staff/employees', { method: edit ? 'PUT' : 'POST', body }).catch((c) => { setError(c.message); throw c; }), 'Saved');
+    const out = await run(() => api(edit ? `/staff/employees/${initial.employee_id}` : '/staff/employees', { method: edit ? 'PUT' : 'POST', body }).catch((c) => { setError(c.message); throw c; }), 'Saved');
     if (out) onSaved();
   };
   return (
@@ -87,8 +87,8 @@ const People = ({ canPay, canHr, depts, shifts }) => {
   const [text, setText] = useState('');
   const q = useDebounced(text, 250);
   const [form, setForm] = useState(null);
-  const head = useLoad('/hotel/staff/headcount');
-  const list = useLoad(`/hotel/staff/employees${qs({ status, dept_id: dept, q: q.trim() })}`);
+  const head = useLoad('/staff/headcount');
+  const list = useLoad(`/staff/employees${qs({ status, dept_id: dept, q: q.trim() })}`);
   const rows = list.data || [];
   const h = head.data;
   const reload = () => { list.reload(); head.reload(); };
@@ -131,7 +131,7 @@ const LeaveForm = ({ people, onClose, onSaved }) => {
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
   const submit = async (e) => {
     e.preventDefault(); setError('');
-    const out = await run(() => api('/hotel/staff/leaves', { method: 'POST', body: { ...f, employee_id: Number(f.employee_id), reason: f.reason || undefined, to_date: f.to_date || f.from_date } }).catch((c) => { setError(c.message); throw c; }), 'Leave recorded');
+    const out = await run(() => api('/staff/leaves', { method: 'POST', body: { ...f, employee_id: Number(f.employee_id), reason: f.reason || undefined, to_date: f.to_date || f.from_date } }).catch((c) => { setError(c.message); throw c; }), 'Leave recorded');
     if (out) onSaved();
   };
   return (
@@ -156,9 +156,9 @@ const Leaves = ({ canHr }) => {
   const toast = useToast();
   const [status, setStatus] = useState('');
   const [open, setOpen] = useState(false);
-  const leaves = useLoad(`/hotel/staff/leaves${qs({ status })}`);
-  const people = useLoad('/hotel/staff/employees');
-  const decide = async (l, action) => { try { await api(`/hotel/staff/leaves/${l.leave_id}/decide`, { method: 'POST', body: { action } }); toast.success(action === 'APPROVE' ? tr('Approved: the days are marked') : action === 'REJECT' ? tr('Rejected') : tr('Cancelled')); leaves.reload(); } catch (e) { toast.error(e.message); } };
+  const leaves = useLoad(`/staff/leaves${qs({ status })}`);
+  const people = useLoad('/staff/employees');
+  const decide = async (l, action) => { try { await api(`/staff/leaves/${l.leave_id}/decide`, { method: 'POST', body: { action } }); toast.success(action === 'APPROVE' ? tr('Approved: the days are marked') : action === 'REJECT' ? tr('Rejected') : tr('Cancelled')); leaves.reload(); } catch (e) { toast.error(e.message); } };
   const rows = leaves.data || [];
   return (
     <div className="space-y-4">
@@ -179,26 +179,26 @@ const Setup = ({ canHr }) => {
   const tr = useT();
   const dialog = useDialog();
   const toast = useToast();
-  const depts = useLoad('/hotel/staff/departments');
-  const shifts = useLoad('/hotel/staff/shifts');
+  const depts = useLoad('/staff/departments');
+  const shifts = useLoad('/staff/shifts');
   const [shift, setShift] = useState(null);
   const [busy, run] = useAction();
   const [error, setError] = useState('');
   const addDept = async () => {
     const name = await dialog.prompt({ title: tr('Add a department'), label: tr('Name'), confirmLabel: tr('Add') });
     if (!name) return;
-    try { await api('/hotel/staff/departments', { method: 'POST', body: { name } }); depts.reload(); } catch (e) { toast.error(e.message); }
+    try { await api('/staff/departments', { method: 'POST', body: { name } }); depts.reload(); } catch (e) { toast.error(e.message); }
   };
   const removeDept = async (d) => {
     if (!(await dialog.confirm({ title: `Remove ${d.name}?`, confirmLabel: tr('Remove'), danger: true }))) return;
-    try { await api(`/hotel/staff/departments/${d.dept_id}`, { method: 'DELETE' }); depts.reload(); } catch (e) { toast.error(e.message); }
+    try { await api(`/staff/departments/${d.dept_id}`, { method: 'DELETE' }); depts.reload(); } catch (e) { toast.error(e.message); }
   };
   const saveShift = async (e) => {
     e.preventDefault(); setError('');
-    const out = await run(() => api(shift.shift_id ? `/hotel/staff/shifts/${shift.shift_id}` : '/hotel/staff/shifts', { method: shift.shift_id ? 'PUT' : 'POST', body: { name: shift.name, start_time: shift.start_time, end_time: shift.end_time } }).catch((c) => { setError(c.message); throw c; }), 'Saved');
+    const out = await run(() => api(shift.shift_id ? `/staff/shifts/${shift.shift_id}` : '/staff/shifts', { method: shift.shift_id ? 'PUT' : 'POST', body: { name: shift.name, start_time: shift.start_time, end_time: shift.end_time } }).catch((c) => { setError(c.message); throw c; }), 'Saved');
     if (out) { setShift(null); shifts.reload(); }
   };
-  const removeShift = async (s) => { try { await api(`/hotel/staff/shifts/${s.shift_id}`, { method: 'DELETE' }); shifts.reload(); } catch (e) { toast.error(e.message); } };
+  const removeShift = async (s) => { try { await api(`/staff/shifts/${s.shift_id}`, { method: 'DELETE' }); shifts.reload(); } catch (e) { toast.error(e.message); } };
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <Panel title={tr('Departments')} action={canHr && <Button size="sm" variant="secondary" onClick={addDept}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add')}</Button>}>
@@ -222,16 +222,15 @@ const Setup = ({ canHr }) => {
   );
 };
 
-export default function HotelStaff() {
+export default function Staff() {
   const tr = useT();
   const { can, business } = useAuth();
-  setStaffMode(business?.business_type);   // a hotel and a spare parts workshop share these pages (lib/staffBase.js)
   const [params, setParams] = useSearchParams();
   const canHr = can('hr'); const canPay = can('payroll');
   const tabs = [{ key: 'people', label: T('People') }, ...(canHr ? [{ key: 'roster', label: T('Roster') }, { key: 'attendance', label: T('Attendance') }] : []), { key: 'leave', label: T('Leave') }, ...(canPay ? [{ key: 'payroll', label: T('Payroll') }] : []), { key: 'setup', label: T('Departments and shifts') }];
   const tab = tabs.some((t) => t.key === params.get('tab')) ? params.get('tab') : 'people';
-  const depts = useLoad('/hotel/staff/departments');
-  const shifts = useLoad('/hotel/staff/shifts');
+  const depts = useLoad('/staff/departments');
+  const shifts = useLoad('/staff/shifts');
   return (
     <div>
       <PageHeader title={tr('Staff')} lead={tr('Who works here, when they work, who turned up, who was away and what they are paid.')} />

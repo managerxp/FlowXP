@@ -16,7 +16,7 @@ test('a distributor always has the field extras, whatever the flag says', () => 
 });
 
 test('no other business type is wholesale or distributor, even with the flag set', () => {
-  for (const t of ['RETAIL', 'AUTO_PARTS', 'RESTAURANT', 'PHARMACY', 'SALON', 'HOTEL']) {
+  for (const t of ['RETAIL', 'AUTO_PARTS', 'RESTAURANT', 'PHARMACY', 'SALON']) {
     assert.equal(isWholesale({ business_type: t }), false);
     assert.equal(isDistributor({ business_type: t, distributor_enabled: true }), false);
   }

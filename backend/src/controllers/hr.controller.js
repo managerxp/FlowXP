@@ -1,17 +1,17 @@
 /*
- * Hotel staff endpoints, mounted at /api/hotel/staff (see hotel.routes.js). Records, roster, attendance and leave need 'hr'; salary and payroll need 'payroll', so a
+ * Staff endpoints, mounted at /api/autoparts/staff (see autoparts.routes.js). Records, roster, attendance and leave need 'hr'; salary and payroll need 'payroll', so a
  * department head can run the roster without seeing what anyone is paid. Money comes in as rupees and goes out as paise and rupees.
  */
 import pool from '../config/database.js';
 import { withTransaction } from '../modules/wholesale/common.js';
-import { HotelError, audit, int, isoDate, like, money, num, ok, oneOf, phone, text, withRupees, wrapAll } from '../modules/hotel/common.js';
+import { HrError, audit, int, isoDate, like, money, num, ok, oneOf, phone, text, withRupees, wrapAll } from '../modules/hr/common.js';
 import { hasPermission } from '../middleware/auth.js';
-import * as hr from '../modules/hotel/staff.js';
+import * as hr from '../modules/hr/staff.js';
 import { addDaysISO } from '../utils/dates.js';
 
 const out = (res, data, status = 200) => ok(res, withRupees(data), status);
-const time = (v, field) => { if (v == null || v === '') return null; const s = String(v).slice(0, 5); if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(s)) throw new HotelError(400, `${field} must be a time like 09:30`); return s; };
-const month = (v) => { const m = String(v ?? '').slice(0, 7); if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(m)) throw new HotelError(400, 'Choose a month'); return m; };
+const time = (v, field) => { if (v == null || v === '') return null; const s = String(v).slice(0, 5); if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(s)) throw new HrError(400, `${field} must be a time like 09:30`); return s; };
+const month = (v) => { const m = String(v ?? '').slice(0, 7); if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(m)) throw new HrError(400, 'Choose a month'); return m; };
 const canSeePay = (req) => hasPermission(req.tenant, 'payroll');
 
 const employeeInput = (b) => {
@@ -43,7 +43,7 @@ export default wrapAll({
   saveShift: async (req, res) => {
     const b = req.body || {};
     const start = time(b.start_time, 'Start time'); const end = time(b.end_time, 'End time');
-    if (!start || !end) throw new HotelError(400, 'Give the shift a start and an end time');
+    if (!start || !end) throw new HrError(400, 'Give the shift a start and an end time');
     const s = await withTransaction((c) => hr.saveShift(c, req.tenant, req.params.id ? Number(req.params.id) : null, { name: text(b.name, 'Name', { required: true, max: 40 }), start_time: start, end_time: end }));
     out(res, s, req.params.id ? 200 : 201);
   },
@@ -60,12 +60,12 @@ export default wrapAll({
     const v = employeeInput(b);
     // pay is set only by someone allowed to see it
     if (b.salary !== undefined || b.bank_account !== undefined) {
-      if (!canSeePay(req)) throw new HotelError(403, 'You do not have access to salaries');
+      if (!canSeePay(req)) throw new HrError(403, 'You do not have access to salaries');
       if (b.salary !== undefined) v.salary_paise = money(b.salary, 'The salary') ?? 0;
       if (b.bank_account !== undefined) v.bank_account = text(b.bank_account, 'Bank account', { max: 40 });
     }
     const id = req.params.id ? Number(req.params.id) : null;
-    if (!id && !v.name) throw new HotelError(400, 'Name is required');
+    if (!id && !v.name) throw new HrError(400, 'Name is required');
     const e = await withTransaction((c) => hr.saveEmployee(c, req.tenant, id, v));
     audit(req, id ? 'hr.employee_updated' : 'hr.employee_created', 'hr_employee', e.employee_id, null, { name: e.name });
     out(res, await hr.getEmployee(pool, req.tenant, e.employee_id, { withPay: canSeePay(req) }), id ? 200 : 201);
@@ -116,7 +116,7 @@ export default wrapAll({
   requestLeave: async (req, res) => {
     const b = req.body || {};
     const from_date = isoDate(b.from_date, 'From', { required: true }); const to_date = isoDate(b.to_date, 'To', { required: true });
-    if (to_date < from_date) throw new HotelError(400, 'The last day cannot be before the first');
+    if (to_date < from_date) throw new HrError(400, 'The last day cannot be before the first');
     const l = await hr.requestLeave(pool, req.tenant, req.auth.userId, { employee_id: int(b.employee_id, 'Employee', { required: true, min: 1 }), from_date, to_date, kind: oneOf(b.kind, 'Kind of leave', hr.LEAVE_KINDS, { required: true }), reason: text(b.reason, 'Reason', { max: 300 }) ?? undefined });
     audit(req, 'hr.leave_requested', 'hr_leave', l.leave_id, null, { from_date, to_date });
     out(res, l, 201);
@@ -149,21 +149,5 @@ export default wrapAll({
     await withTransaction((c) => hr.finalizeRun(c, req.tenant, req.auth.userId, m, { force: req.body?.force === true }));
     audit(req, 'hr.payroll_finalized', 'hr_payroll_run', null, null, { month: m });
     out(res, await hr.getRun(pool, req.tenant, m));
-  },
-
-  /* ── who cleans which room ──────────────────────────────────── */
-  housekeepers: async (req, res) => out(res, await hr.housekeepers(pool, req.tenant)),
-  assignments: async (req, res) => {
-    const property = { business_date: await hr.staffToday(pool, req.tenant) };
-    out(res, await hr.listAssignments(pool, req.tenant, isoDate(req.query.date, 'Date') || property.business_date));
-  },
-  assign: async (req, res) => {
-    const b = req.body || {};
-    const property = { business_date: await hr.staffToday(pool, req.tenant) };
-    const roomIds = [...new Set((Array.isArray(b.room_ids) ? b.room_ids : []).map((x) => int(x, 'Room', { required: true, min: 1 })))];
-    if (!roomIds.length) throw new HotelError(400, 'Choose the rooms');
-    const n = await withTransaction((c) => hr.assignRooms(c, req.tenant, { date: isoDate(b.date, 'Date') || property.business_date, employeeId: b.employee_id ? int(b.employee_id, 'Employee', { min: 1 }) : null, roomIds }));
-    audit(req, 'hotel.rooms_assigned', 'hk_assignment', null, null, { rooms: n, employee_id: b.employee_id || null });
-    ok(res, { assigned: n });
   }
 });

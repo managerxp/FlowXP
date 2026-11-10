@@ -117,6 +117,7 @@ const ReceiptPage = lazy(() => import('./app/PrintPages.jsx').then((m) => ({ def
 const KotPage = lazy(() => import('./app/PrintPages.jsx').then((m) => ({ default: m.KotPage })));
 const RunningBillPage = lazy(() => import('./app/PrintPages.jsx').then((m) => ({ default: m.RunningBillPage })));
 const StaffPage = lazy(() => import('./app/StaffPage.jsx'));
+const WorkshopStaff = lazy(() => import('./app/hr/Staff.jsx'));
 
 /* The wholesale module (WHOLESALE and DISTRIBUTOR). Its screens live in app/wholesale/ and load only for those businesses. */
 const WholesaleDashboard = lazy(() => import('./app/wholesale/WholesaleDashboard.jsx'));
@@ -202,20 +203,6 @@ const GamingTournaments = lazy(() => import('./app/gaming/GamingTournaments.jsx'
 /* What a member opens on their own phone (the gym's page, and the page the entrance QR opens). No login, no app chrome. */
 const GymPortal = lazy(() => import('./public/GymPortal.jsx'));
 
-/* The hotel module (business type HOTEL). Its screens live in app/hotel/ and load only for a hotel. */
-const HotelDashboard = lazy(() => import('./app/hotel/HotelDashboard.jsx'));
-const HotelBookings = lazy(() => import('./app/hotel/HotelBookings.jsx'));
-const HotelBookingDetail = lazy(() => import('./app/hotel/BookingDetail.jsx'));
-const HotelCalendar = lazy(() => import('./app/hotel/HotelCalendar.jsx'));
-const HotelRooms = lazy(() => import('./app/hotel/HotelRooms.jsx'));
-const HotelNightAudit = lazy(() => import('./app/hotel/HotelNightAudit.jsx'));
-const HotelReports = lazy(() => import('./app/hotel/HotelReports.jsx'));
-const HotelSetup = lazy(() => import('./app/hotel/HotelSetup.jsx'));
-const BanquetEvents = lazy(() => import('./app/hotel/BanquetEvents.jsx'));
-const BanquetEventDetail = lazy(() => import('./app/hotel/EventDetail.jsx'));
-const BanquetCalendar = lazy(() => import('./app/hotel/BanquetCalendar.jsx'));
-const BanquetPrint = lazy(() => import('./app/hotel/BanquetPrint.jsx'));
-const HotelStaff = lazy(() => import('./app/hotel/HotelStaff.jsx'));
 
 /* The pharmacy module (business type PHARMACY). Its screens live in app/pharmacy/ and load only for a pharmacy. */
 const PharmacyDashboard = lazy(() => import('./app/pharmacy/PharmacyDashboard.jsx'));
@@ -251,7 +238,6 @@ const RequireAuth = ({ children }) => {
 const HomeRoute = () => {
   const { business } = useAuth();
   if (business?.business_type === 'SALON') return <SalonDashboard />;
-  if (business?.business_type === 'HOTEL') return <HotelDashboard />;
   if (business?.business_type === 'GYM') return <GymDashboard />;
   if (business?.business_type === 'GAMING_CAFE') return <GamingDashboard />;
   // a garage (mechanic mode) opens on its job cards; a parts-only shop on the stock overview
@@ -404,7 +390,7 @@ const App = () => (
       <Route path="parts/receive" element={<PartsReceive />} />
       <Route path="parts/jobs" element={<PartsJobCards />} />
       <Route path="money" element={<GarageMoney />} />
-      <Route path="parts/staff" element={<HotelStaff />} />
+      <Route path="parts/staff" element={<WorkshopStaff />} />
       <Route path="parts/trade" element={<PartsTrade />} />
       <Route path="parts/reports" element={<PartsReports />} />
       <Route path="parts/labels" element={<LocationLabels />} />
@@ -425,18 +411,6 @@ const App = () => (
       <Route path="gym/classes" element={<GymClasses />} />
       <Route path="gym/rewards" element={<GymRewards />} />
 
-      <Route path="hotel/bookings" element={<HotelBookings />} />
-      <Route path="hotel/bookings/:id" element={<HotelBookingDetail />} />
-      <Route path="hotel/calendar" element={<HotelCalendar />} />
-      <Route path="hotel/rooms" element={<HotelRooms />} />
-      <Route path="hotel/night-audit" element={<HotelNightAudit />} />
-      <Route path="hotel/reports" element={<HotelReports />} />
-      <Route path="hotel/setup" element={<HotelSetup />} />
-      <Route path="hotel/staff" element={<HotelStaff />} />
-      <Route path="hotel/banquet" element={<BanquetEvents />} />
-      <Route path="hotel/banquet/calendar" element={<BanquetCalendar />} />
-      <Route path="hotel/banquet/events/:id" element={<BanquetEventDetail />} />
-      <Route path="hotel/banquet/events/:id/print" element={<BanquetPrint />} />
       <Route path="salon/pos" element={<SalonPos />} />
       <Route path="salon/appointments" element={<SalonAppointments />} />
       <Route path="salon/clients" element={<SalonClients />} />

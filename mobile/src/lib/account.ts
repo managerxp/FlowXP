@@ -7,7 +7,7 @@ export const DELETE_URL = 'https://flowxp.in/delete-account';
 
 /** The kinds of business that can sign up (the server's list), in the words the website uses. */
 export const BUSINESS_TYPES: readonly (readonly [string, string])[] = [
-  ['RESTAURANT', 'Restaurant'], ['CAFE', 'Café'], ['CLOUD_KITCHEN', 'Cloud kitchen'], ['HOTEL', 'Hotel and restaurant'], ['RETAIL', 'Retail shop'],
+  ['RESTAURANT', 'Restaurant'], ['CAFE', 'Café'], ['CLOUD_KITCHEN', 'Cloud kitchen'], ['RETAIL', 'Retail shop'],
   ['SUPERMARKET', 'Supermarket'], ['PHARMACY', 'Pharmacy'], ['SALON', 'Salon'], ['GYM', 'Gym'], ['GAMING_CAFE', 'Gaming lounge'],
   ['AUTO_PARTS', 'Auto spare parts'], ['MECHANIC', 'Mechanic garage (bike, car)'], ['CLOTHING', 'Clothing and fashion'], ['WHOLESALE', 'Wholesale and distribution']
 ];

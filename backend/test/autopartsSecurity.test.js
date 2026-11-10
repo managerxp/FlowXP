@@ -64,7 +64,7 @@ test('the parts features exist for a parts shop and for no other business type',
   const keys = ['ap_catalog', 'ap_racks', 'ap_grn', 'ap_transfers', 'ap_counts', 'ap_pricing', 'ap_intelligence', 'ap_jobcards', 'ap_staff'];
   const parts = industryDefaults('AUTO_PARTS');
   for (const k of keys) assert.notEqual(parts[k], false, `${k} is on for AUTO_PARTS`);
-  for (const t of ['RESTAURANT', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'WHOLESALE', 'SALON', 'GYM', 'GAMING_CAFE', 'HOTEL']) {
+  for (const t of ['RESTAURANT', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'WHOLESALE', 'SALON', 'GYM', 'GAMING_CAFE']) {
     const d = industryDefaults(t);
     for (const k of keys) assert.equal(d[k], false, `${k} is off for ${t}`);
   }

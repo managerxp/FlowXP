@@ -64,7 +64,7 @@ test('every gaming route is behind a permission, and each role gets only what it
 
 test('gaming routes exist only for a gaming lounge', { skip }, async () => {
   const guard = find('GET', '/board').stack[2];
-  for (const type of ['SALON', 'GYM', 'RESTAURANT', 'CAFE', 'HOTEL', 'RETAIL']) {
+  for (const type of ['SALON', 'GYM', 'RESTAURANT', 'CAFE', 'RETAIL']) {
     const res = fakeRes(); let passed = false;
     guard({ tenant: { businessType: type } }, res, () => { passed = true; });
     assert.equal(passed, false, type);

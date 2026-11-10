@@ -592,7 +592,6 @@ The line before "Thank you for choosing us." changes with the business. If the s
 | PHARMACY | Wishing you good health. |
 | SALON | We hope you love your new look. |
 | GYM | Keep going, we will see you at the gym. |
-| HOTEL | We hope you enjoyed your stay. |
 | GAMING_CAFE | Thanks for playing, see you again. |
 | AUTO_PARTS | Drive safe, and see you again soon. |
 | RACING | Thanks for racing with us. |
@@ -606,7 +605,6 @@ The line before "Thank you for choosing us." changes with the business. If the s
 | Industry | Message | When it should go |
 |---|---|---|
 | Restaurants, cafés | Order ready (token), out for delivery | Takeaway ready; delivery rider assigned |
-| Hotels | Booking confirmed, check-in reminder, thank you after check-out | On booking; the day before arrival; after departure |
 | Pharmacies | Refill reminder, order ready | From the medicine's usual duration; when an order is packed |
 | Gaming lounges | Booking confirmed, session ending, wallet low | On booking; 10 minutes before the end; below a set balance |
 | Retail, supermarkets | Back in stock, offer | When a wanted item arrives; campaigns |

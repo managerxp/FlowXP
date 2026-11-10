@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, BedDouble, Car, ChevronDown, Coffee, CookingPot, Dumbbell, Gamepad2, Pill, Scissors, Shirt, Wrench, ShoppingBasket, Store, UtensilsCrossed, Warehouse } from 'lucide-react';
+import { ArrowRight, Car, ChevronDown, Coffee, CookingPot, Dumbbell, Gamepad2, Pill, Scissors, Shirt, Wrench, ShoppingBasket, Store, UtensilsCrossed, Warehouse } from 'lucide-react';
 import { Button, Container, Logo } from '../components/ui.jsx';
 import { InstallButton } from '../components/InstallButton.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -52,7 +52,7 @@ const itemClass = (active, open = false) =>
   `after:absolute after:inset-x-2.5 xl:after:inset-x-3.5 after:bottom-1 after:h-0.5 after:rounded-full after:bg-brand-500 after:transition-opacity after:duration-(--duration-fast) ` +
   `${active ? 'text-ink-900 after:opacity-100' : 'text-ink-500 after:opacity-0 hover:bg-surface-2 hover:text-ink-900'} ${open ? 'bg-surface-2 text-ink-900' : ''}`;
 
-const ICONS = { restaurant: UtensilsCrossed, cafe: Coffee, 'cloud-kitchen': CookingPot, hotel: BedDouble, retail: ShoppingBasket, wholesale: Warehouse, salon: Scissors, gym: Dumbbell, gaming: Gamepad2, 'auto-parts': Wrench, clothing: Shirt, mechanic: Car, pharmacy: Pill };
+const ICONS = { restaurant: UtensilsCrossed, cafe: Coffee, 'cloud-kitchen': CookingPot, retail: ShoppingBasket, wholesale: Warehouse, salon: Scissors, gym: Dumbbell, gaming: Gamepad2, 'auto-parts': Wrench, clothing: Shirt, mechanic: Car, pharmacy: Pill };
 const IconTile = ({ slug, className = '' }) => {
   const Icon = ICONS[slug] || Store;
   return <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600 ${className}`}><Icon aria-hidden="true" className="h-[18px] w-[18px]" strokeWidth={1.75} /></span>;

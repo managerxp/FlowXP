@@ -20,7 +20,6 @@ test('a business is offered only the roles that make sense for it, and an admin 
   assert.ok(rest.includes('WAITER') && rest.includes('KITCHEN') && rest.includes('OWNER')); assert.ok(!rest.includes('STYLIST') && !rest.includes('PHARMACIST') && !rest.includes('FIELD_SALES') && !rest.includes('TRAINER') && !rest.includes('GAMING_ATTENDANT') && !rest.includes('STOREKEEPER'));
   const salon = rolesFor('SALON', true); assert.ok(salon.includes('STYLIST') && salon.includes('RECEPTIONIST')); assert.ok(!salon.includes('WAITER') && !salon.includes('KITCHEN') && !salon.includes('DELIVERY'));
   const pharmacy = rolesFor('PHARMACY', true); assert.ok(pharmacy.includes('PHARMACIST') && pharmacy.includes('GRN_MANAGER')); assert.ok(!pharmacy.includes('WAITER'));
-  const hotel = rolesFor('HOTEL', true); assert.ok(hotel.includes('FRONT_DESK') && hotel.includes('NIGHT_AUDITOR') && hotel.includes('WAITER')); assert.ok(!hotel.includes('STYLIST'));
   assert.ok(rolesFor('GYM', true).includes('TRAINER') && !rolesFor('GYM', true).includes('WAITER'));
   assert.ok(rolesFor('GAMING_CAFE', true).includes('GAMING_ATTENDANT') && !rolesFor('RESTAURANT', true).includes('GAMING_ATTENDANT'));
   assert.ok(rolesFor('AUTO_PARTS', true).includes('PARTS_COUNTER') && !rolesFor('RESTAURANT', true).includes('PARTS_COUNTER'));

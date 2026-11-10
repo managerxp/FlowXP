@@ -19,7 +19,7 @@ import recv from '../controllers/autopartsReceiving.controller.js';
 import sell from '../controllers/autopartsSales.controller.js';
 import rets from '../controllers/autopartsReturns.controller.js';
 import rep from '../controllers/autopartsReports.controller.js';
-import staff from '../controllers/hotelStaff.controller.js';
+import staff from '../controllers/hr.controller.js';
 import jobs from '../controllers/autopartsJobcards.controller.js';
 
 const router = Router();
@@ -143,7 +143,7 @@ router.put('/jobcards/lines/:id', ...write, can('billing'), jobF, jobs.lineUpdat
 router.delete('/jobcards/lines/:id', ...write, can('billing'), jobF, jobs.lineRemove);
 router.post('/jobcards/:id/bill', ...write, can('billing'), jobF, idempotent(), jobs.bill);
 
-/* -- staff and payroll: the same engine a hotel uses (controllers/hotelStaff.controller.js), without the housekeeping routes. 'hr' covers records, roster, attendance and
+/* -- staff and payroll: the engine in controllers/hr.controller.js. 'hr' covers records, roster, attendance and
       leave; 'payroll' covers pay. A mechanic is an employee here, and a job card can name one. ------------------------------ */
 const hrAny = any('hr', 'payroll');
 router.get('/staff/headcount', ...read, hrAny, staffF, staff.headcount);

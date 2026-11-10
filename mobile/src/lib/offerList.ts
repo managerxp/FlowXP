@@ -23,7 +23,7 @@ export const OFFER_DAYS: { label: string; day: number }[] = [{ label: 'Mon', day
 
 /** Who may see and change offers: the products or settings permission (owners have both). */
 export const canOffers = (can: (perm: string) => boolean): boolean => can('products') || can('settings');
-export const OFFER_TYPES_EXTRA = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'GAMING_CAFE'];   // plus the shops, which come from retail.ts
+export const OFFER_TYPES_EXTRA = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE'];   // plus the shops, which come from retail.ts
 
 /* ── how an offer reads in the list ──────────────────────────────────────── */
 const price = (n: number | null): string => rupees(toPaise(n ?? 0));

@@ -187,13 +187,6 @@ const BUSINESSES = [
     src: '/product/salon-pos.webp', alt: 'FlowXP salon billing with services and the team member doing each, a client on the bill and payment methods.'
   },
   {
-    key: 'hotel', label: 'Hotels and resorts', to: '/industries/hotel',
-    title: 'For hotels, resorts and guest houses',
-    body: 'Take bookings, check guests in and out, keep one bill for the room, the restaurant and the extras, and close the day with night audit.',
-    points: ['Calendar of every room, with no double booking', 'Guest bill with GST by slab, UTGST in union territories', 'Housekeeping status for every room', 'Banquet halls and events with an event order', 'Occupancy, ADR and RevPAR reports'],
-    src: '/product/hotel-frontdesk.webp', alt: 'FlowXP front desk for a hotel with arrivals, departures, guests staying, occupancy and rooms to clean.'
-  },
-  {
     key: 'gym', label: 'Gyms and studios', to: '/industries/gym',
     title: 'For gyms, fitness studios and yoga centres',
     body: 'Sell memberships on a GST invoice, check members in by QR, and see who is coming and who has gone quiet.',

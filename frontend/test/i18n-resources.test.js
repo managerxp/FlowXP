@@ -77,7 +77,7 @@ test('every translation key used in the source exists in English', () => {
 
 test('keys built from a variable have every value they can take', () => {
   const auth = enKeys.auth;
-  for (const t of ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'GYM', 'GAMING_CAFE', 'AUTO_PARTS', 'WHOLESALE']) assert.ok(auth.has(`types.${t}`), `types.${t}`);
+  for (const t of ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'GYM', 'GAMING_CAFE', 'AUTO_PARTS', 'WHOLESALE']) assert.ok(auth.has(`types.${t}`), `types.${t}`);
   for (const r of ['no_account', 'verify_first', 'unverified_google', 'not_allowed', 'cancelled', 'unavailable', 'failed']) assert.ok(auth.has(`google.${r}`), `google.${r}`);
   for (const a of ['signup', 'login']) for (const k of ['title', 'p1', 'p2', 'p3', 'alt']) assert.ok(auth.has(`aside.${a}.${k}`), `aside.${a}.${k}`);
   for (const k of ['product', 'industries', 'aiManager', 'integrations', 'pricing', 'about']) assert.ok(enKeys.site.has(`header.${k}`), `header.${k}`);

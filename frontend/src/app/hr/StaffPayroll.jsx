@@ -23,7 +23,7 @@ const SlipForm = ({ slip, onClose, onSaved }) => {
   const net = Number(slip.base_pay_paise) / 100 + Number(slip.overtime_pay_paise) / 100 + (Number(f.allowances) || 0) - (Number(f.deductions) || 0);
   const submit = async (e) => {
     e.preventDefault(); setError('');
-    const out = await run(() => api(`/hotel/staff/payslips/${slip.payslip_id}`, { method: 'PUT', body: { allowances: Number(f.allowances) || 0, deductions: Number(f.deductions) || 0, note: f.note } }).catch((c) => { setError(c.message); throw c; }), 'Saved');
+    const out = await run(() => api(`/staff/payslips/${slip.payslip_id}`, { method: 'PUT', body: { allowances: Number(f.allowances) || 0, deductions: Number(f.deductions) || 0, note: f.note } }).catch((c) => { setError(c.message); throw c; }), 'Saved');
     if (out) onSaved();
   };
   return (
@@ -46,23 +46,23 @@ export default function Payroll() {
   const tr = useT();
   const dialog = useDialog();
   const toast = useToast();
-  const dash = useLoad('/hotel/dashboard');
+  const dash = useLoad('/dashboard');
   const [month, setMonth] = useState('');
   const [factor, setFactor] = useState('1.5');
   const [slip, setSlip] = useState(null);
   const [busy, run] = useAction();
   const m = month || (dash.data ? dash.data.business_date.slice(0, 7) : null);
-  const r = useLoad(m ? `/hotel/staff/payroll/${m}` : null);
+  const r = useLoad(m ? `/staff/payroll/${m}` : null);
   const run0 = r.data;
   if (!m || !run0) return <ListState loading={r.loading || dash.loading} error={r.error || dash.error} />;
   const made = Boolean(run0.status);
   const final = run0.status === 'FINAL';
-  const generate = async () => { const out = await run(() => api('/hotel/staff/payroll', { method: 'POST', body: { month: m, overtime_factor: Number(factor) || 1.5 } }), 'Payroll sheet made'); if (out) r.reload(); };
+  const generate = async () => { const out = await run(() => api('/staff/payroll', { method: 'POST', body: { month: m, overtime_factor: Number(factor) || 1.5 } }), 'Payroll sheet made'); if (out) r.reload(); };
   const finalize = async () => {
     if (!(await dialog.confirm({ title: `Finalise ${monthName(m)}?`, body: tr('The sheet is locked. Allowances, deductions and attendance for the month can no longer change the pay.'), confirmLabel: tr('Finalise') }))) return;
-    try { await api('/hotel/staff/payroll/finalize', { method: 'POST', body: { month: m } }); toast.success(tr('Payroll finalised')); r.reload(); } catch (e) {
+    try { await api('/staff/payroll/finalize', { method: 'POST', body: { month: m } }); toast.success(tr('Payroll finalised')); r.reload(); } catch (e) {
       if (e.code === 'UNMARKED_DAYS' && (await dialog.confirm({ title: tr('Some days are not marked'), body: `${e.message} Finalise anyway?`, confirmLabel: tr('Finalise anyway'), danger: true }))) {
-        try { await api('/hotel/staff/payroll/finalize', { method: 'POST', body: { month: m, force: true } }); toast.success(tr('Payroll finalised')); r.reload(); } catch (e2) { toast.error(e2.message); }
+        try { await api('/staff/payroll/finalize', { method: 'POST', body: { month: m, force: true } }); toast.success(tr('Payroll finalised')); r.reload(); } catch (e2) { toast.error(e2.message); }
       } else if (e.code !== 'UNMARKED_DAYS') toast.error(e.message);
     }
   };

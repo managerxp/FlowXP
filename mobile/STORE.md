@@ -30,9 +30,9 @@ Drafts for the owner to review. The data-safety answers are declarations to Goog
 > Print or share
 > - Print the receipt to any printer your phone can reach, 58 mm or 80 mm paper, or share it
 >
-> Create your account in the app and start a 7-day free trial. Your business type switches on the tools it needs: restaurants and cafés (tables, kitchen screen, online orders, deliveries), hotels (front desk, rooms, guest bills), wholesalers and distributors (orders, credit, warehouse, field sales and vans), pharmacies, salons, gyms (front desk check-in), gaming lounges (station timers), and auto spare parts shops (part numbers, vehicle fitment, racks and bins, receiving).
+> Create your account in the app and start a 7-day free trial. Your business type switches on the tools it needs: restaurants and cafés (tables, kitchen screen, online orders, deliveries), rooms, guest bills), wholesalers and distributors (orders, credit, warehouse, field sales and vans), pharmacies, salons, gyms (front desk check-in), gaming lounges (station timers), and auto spare parts shops (part numbers, vehicle fitment, racks and bins, receiving).
 >
-> Some set-up and reports are on the website: card machine connection, hotel night audit and banquets, gym and lounge set-up, and the full reports.
+> Some set-up and reports are on the website: card machine connection, gym and lounge set-up, and the full reports.
 
 **Category:** Business. **Tags:** point of sale, billing, inventory, GST. **Contact:** the support email on flowxp.in. **Website:** https://flowxp.in. **Privacy policy:** https://flowxp.in/privacy
 

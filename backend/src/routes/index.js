@@ -63,7 +63,6 @@ import locationsRoutes from './locations.routes.js';
 import { uploadLogo } from '../middleware/upload.js';
 import publicOrderingRoutes from './publicOrdering.routes.js';
 import salonRoutes from './salon.routes.js';
-import hotelRoutes from './hotel.routes.js';
 import gymRoutes from './gym.routes.js';
 import gamingRoutes from './gaming.routes.js';
 import autopartsRoutes from './autoparts.routes.js';
@@ -260,7 +259,6 @@ router.use('/clothing', clothingRoutes);   // the clothing catalogue (CLOTHING b
 router.use('/autoparts', autopartsRoutes);   // the automotive spare parts module (AUTO_PARTS businesses only): parts catalogue, fitment, racks and bins, receiving, counts
 router.use('/gaming', gamingRoutes);        // the gaming lounge module (GAMING_CAFE businesses only): stations, timed sessions, rates, wallet, bookings
 router.use('/gym', gymRoutes);              // the gym module (GYM businesses only): members, memberships, QR cards, reception scanning, attendance
-router.use('/hotel', hotelRoutes);          // the hotel module (HOTEL businesses only): front office, housekeeping, folio, night audit, reports
 router.use('/pharmacy', pharmacyRoutes);    // the pharmacy module (PHARMACY businesses only)
 router.use('/retail', retailRoutes);        // supermarket / retail settings (SUPERMARKET and RETAIL businesses only)
 

@@ -29,7 +29,7 @@ const setResetCode = (email: string) => {
 };
 
 // 1. every business kind the app offers can sign up and lands in its own business
-const kinds = ['HOTEL', 'GYM']; // the server allows 5 sign-ups an hour per address, so a sample; the other kinds share the same code path
+const kinds = ['GYM', 'SALON']; // the server allows 5 sign-ups an hour per address, so a sample; the other kinds share the same code path
 must(kinds.every((k) => BUSINESS_TYPES.some(([v]) => v === k)), 'the app offers these');
 console.log('kinds the app offers:', kinds.join(', '));
 const accounts: { email: string; password: string; kind: string }[] = [];

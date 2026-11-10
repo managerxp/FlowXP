@@ -5,7 +5,7 @@ import { BUSINESS_TYPES, cleanCode, codeProblem, deleteBody, deleteProblem, emai
 const good = { ...emptySignup(), name: ' Asha Rao ', email: ' asha@example.com ', phone: '9845000001', password: 'longenough1', businessName: ' Sharma Auto Parts ', businessType: 'AUTO_PARTS', agreed: true };
 
 test('every business type the server lets sign up is offered, with the same names as the website', () => {
-  assert.deepEqual(BUSINESS_TYPES.map(([v]) => v), ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'HOTEL', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'GYM', 'GAMING_CAFE', 'AUTO_PARTS', 'MECHANIC', 'CLOTHING', 'WHOLESALE']);
+  assert.deepEqual(BUSINESS_TYPES.map(([v]) => v), ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'RETAIL', 'SUPERMARKET', 'PHARMACY', 'SALON', 'GYM', 'GAMING_CAFE', 'AUTO_PARTS', 'MECHANIC', 'CLOTHING', 'WHOLESALE']);
 });
 
 test('the form says what is wrong, one thing at a time, before anything is sent', () => {

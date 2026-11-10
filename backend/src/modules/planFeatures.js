@@ -140,7 +140,7 @@ const NOT_FOOD = ['reservations', 'integrations', 'qr_ordering', 'multi_brand', 
 const SHOP_OFF = [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, 'wholesale_pricing', ...FLOWBOOK_KEYS];
 const FOOD_OFF = [...SALON_KEYS, ...WHOLESALE_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, ...FLOWBOOK_KEYS];
 export const INDUSTRY_OFF = {
-  RESTAURANT: FOOD_OFF, CAFE: FOOD_OFF, RACING: FOOD_OFF, HOTEL: FOOD_OFF,
+  RESTAURANT: FOOD_OFF, CAFE: FOOD_OFF, RACING: FOOD_OFF,
   GAMING_CAFE: FOOD_OFF.filter((k) => !GAMING_KEYS.includes(k)),                    // a lounge keeps the table floor, kitchen and QR menu for its food and drink
   CLOUD_KITCHEN: [...FOOD_OFF, 'reservations', 'qr_ordering', 'tables'],           // no dining room
   SALON: [...NOT_FOOD, ...WHOLESALE_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, ...FLOWBOOK_KEYS],                             // appointments, not table bookings
