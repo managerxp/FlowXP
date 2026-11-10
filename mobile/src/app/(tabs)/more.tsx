@@ -67,6 +67,8 @@ export default function More() {
       { left: 'Labour and services', sub: 'What you charge for work: oil change, alignment', icon: 'pricetag-outline', go: '/job-services', show: can('billing') },
       { left: 'Customers', sub: 'Their vehicles, bills and what they still owe', icon: 'person-outline', go: '/customers', show: can('customers', 'billing') },
       { left: 'Find a part', sub: 'By name, barcode or any part number: price, stock and shelf', icon: 'search-outline', go: '/parts', show: can('billing', 'parts_catalog', 'warehouse', 'inventory') },
+      { left: 'Parts reports', sub: 'What to buy, what sells, stock age and value', icon: 'analytics-outline', go: '/parts-reports', show: parts && can('reports', 'inventory', 'purchases') },
+      { left: 'Trade prices', sub: 'Price lists for garages and trade, and parts held for customers', icon: 'pricetags-outline', go: '/parts-trade', show: parts && can('billing', 'price_change', 'inventory') },
       { left: 'Receive parts', sub: 'A delivery: accepted, damaged and rejected counted apart', icon: 'download-outline', go: '/parts-receive', show: can('grn') },
       { left: 'Staff', sub: 'People, attendance and payroll', icon: 'people-circle-outline', go: '/workshop-staff', show: can('hr', 'payroll') }
     ] },
@@ -158,6 +160,7 @@ export default function More() {
       { left: 'Stock requests', sub: 'Ask another outlet for stock, or send what it asked for', icon: 'git-pull-request-outline', go: '/stock-requests', show: several && can('inventory') },
       { left: 'Moving stock', sub: 'Send goods between warehouses, and receive them', icon: 'swap-horizontal-outline', go: '/transfers', show: wholesale && can('inventory', 'fulfilment') },
       { left: 'Wholesale settings', sub: 'Credit rules, stock rules, messages and salespeople', icon: 'settings-outline', go: '/wholesale-settings', show: wholesale && can('settings') },
+      { left: 'Wholesale reports', sub: 'Sales, buying, stock and money, pick a report', icon: 'document-text-outline', go: '/wholesale-reports', show: wholesale && can('reports') },
       { left: 'Price lists', sub: 'Who pays what, and offer prices', icon: 'pricetags-outline', go: '/price-lists', show: wholesale && can('pricing', 'sales_orders') },
       { left: 'Suppliers and stock coming in', sub: 'Who you buy from, and receive a delivery', icon: 'people-outline', go: '/suppliers', show: can('suppliers', 'purchases', 'inventory') }
     ] },
@@ -179,6 +182,7 @@ export default function More() {
       { left: 'Service menu', sub: 'What you offer, its price and how long it takes', icon: 'cut-outline', go: '/salon-services', show: salon && can('products') },
       { left: 'Memberships and packages', sub: 'What you sell besides single services', icon: 'ribbon-outline', go: '/salon-plans', show: salon && can('products') },
       { left: 'Salon settings', sub: 'Hours, booking, tax, loyalty, reminders and campaigns', icon: 'options-outline', go: '/salon-settings', show: salon && canSalonSetup(business?.role) },
+      { left: 'Salon stock', sub: 'What is running low or expiring, batches on the shelf, add stock', icon: 'flask-outline', go: '/salon-stock', show: salon && can('inventory', 'reports') },
       { left: 'Salon reports', sub: 'Today at a glance, and every report', icon: 'stats-chart-outline', go: '/salon-reports', show: salon },
       { left: 'Team', sub: 'Who is in today, and commission', icon: 'people-circle-outline', go: '/salon-team', show: salon }
     ] },
