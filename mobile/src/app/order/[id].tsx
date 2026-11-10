@@ -7,6 +7,7 @@ import { api, useSession } from '../../lib/session.ts';
 import { goBack } from '../../lib/nav.ts';
 import { t as tr } from '../../lib/i18n.ts';
 import { readMode } from '../../lib/thermal.ts';
+import { printRunningBill } from '../../lib/printBill.ts';
 import { useLoad } from '../../lib/useLoad.ts';
 import { ITEM_LABEL, itemName, orderTotals, type Order, type OrderItem } from '../../lib/orders.ts';
 import { qty, rupees, toPaise } from '../../lib/money.ts';
@@ -127,6 +128,9 @@ export default function OrderScreen() {
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <Button title="Customer" kind="quiet" onPress={() => router.push({ pathname: '/customers', params: { pick: `order-${id}` } })} />
               <Button title="Table" kind="quiet" onPress={() => router.push({ pathname: '/order/table', params: { id: String(id) } })} />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Button style={{ flex: 1 }} title={o.bill_printed_at ? tr('Bill printed. Print again') : tr('Print the bill')} kind="quiet" onPress={() => { setBusy('bill'); setProblem(''); setNote(''); printRunningBill(Number(id)).then((m) => { setNote(m); void order.refresh(); }).catch((e) => setProblem(e instanceof Error ? e.message : tr('Could not print.'))).finally(() => setBusy('')); }} busy={busy === 'bill'} disabled={t.lines === 0} />
               <Button title="Bill and pay" onPress={() => router.push({ pathname: '/pay', params: { order: String(id) } })} disabled={t.lines === 0} style={{ flex: 1 }} />
             </View>
             <Pressable accessibilityRole="button" onPress={cancelOrder} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: color.danger, textAlign: 'center' }}>Cancel the whole order</Text></Pressable>

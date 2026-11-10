@@ -3144,6 +3144,20 @@ export const HI: Record<string, string> = {
   'With it, customers get a message by themselves when their vehicle is received, when it is ready and before the next service. You can also send them offers.': 'इससे ग्राहक को अपने आप संदेश जाता है: गाड़ी आने पर, तैयार होने पर और अगली सर्विस से पहले। आप उन्हें ऑफ़र भी भेज सकते हैं।',
   'Until then, the WhatsApp buttons on a job card open WhatsApp with the message ready, and you press send.': 'तब तक जॉब कार्ड के WhatsApp बटन संदेश तैयार करके WhatsApp खोलते हैं, आप बस भेज दें।',
   'See the plans': 'प्लान देखें',
+  'Menu on / off': 'मेन्यू चालू / बंद',
+  'Switch a dish off when it runs out. It stops being sold at this outlet until you switch it back on.': 'कोई डिश खत्म हो जाए तो उसे बंद कर दें। दोबारा चालू करने तक इस आउटलेट पर वह नहीं बिकेगी।',
+  'All dishes': 'सभी डिश',
+  'Could not change it.': 'बदल नहीं सका।',
+  'No dishes yet. Add them under Products first.': 'अभी कोई डिश नहीं है। पहले उत्पादों में जोड़ें।',
+  'Everything is switched on.': 'सब कुछ चालू है।',
+  'No dish matches.': 'कोई डिश नहीं मिली।',
+  'Off at this outlet': 'इस आउटलेट पर बंद',
+  'Switch a dish off when it runs out': 'डिश खत्म हो तो बंद करें',
+  'Bill sent to the printer': 'बिल प्रिंटर को भेजा गया',
+  'No printer is set up yet. Open More, then Settings, then Set up my printer.': 'अभी कोई प्रिंटर सेट नहीं है। और, फिर सेटिंग्स, फिर "मेरा प्रिंटर सेट करें" खोलें।',
+  'Bill printed. Print again': 'बिल छप गया। दोबारा छापें',
+  'Bill printed. Waiting for payment': 'बिल छप गया। भुगतान का इंतज़ार',
+  'Bill printed': 'बिल छप गया',
 };
 
 /** Languages that have a dictionary. */

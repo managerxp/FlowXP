@@ -87,3 +87,12 @@ export const printKitchenDirect = async (api: { get: <T>(path: string) => Promis
   for (const slip of slips) await sendToPrinter(printer, Uint8Array.from(atob(slip.data), (c) => c.charCodeAt(0)));
   return slips.length > 0;
 };
+
+/** The running bill of an open order (before payment), straight to the receipt printer. The server makes it and marks the order "bill printed". Returns false when no printer is set for receipts. */
+export const printBillDirect = async (api: { get: <T>(path: string) => Promise<T> }, orderId: number): Promise<boolean> => {
+  const printer = printerFor(await readPrinters(), 'receipt');
+  if (!printer) return false;
+  const { data } = await api.get<{ data: string }>(`/orders/${orderId}/escpos?cols=${colsFor(printer.paper)}`);
+  await sendToPrinter(printer, Uint8Array.from(atob(data), (c) => c.charCodeAt(0)));
+  return true;
+};

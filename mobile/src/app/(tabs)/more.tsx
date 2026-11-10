@@ -189,6 +189,7 @@ export default function More() {
       { left: 'Forecast', sub: 'The week ahead, and what to buy for it', icon: 'analytics-outline', go: '/forecast', show: food && can('reports') },
       { left: 'Revenue leakage', sub: 'Unusual discounts, cancellations, refunds and wastage', icon: 'shield-outline', go: '/leakage', show: food && can('settings') },
       { left: 'Reviews', sub: 'What customers said after their bill', icon: 'star-outline', go: '/reviews', show: can('settings') && hasFeature(business, 'reviews') },
+      { left: 'Menu on / off', sub: 'Switch a dish off when it runs out', icon: 'toggle-outline', go: '/menu-availability', show: food && (can('billing') || can('products')) },
       { left: 'Kitchen performance', sub: 'How long dishes take', icon: 'timer-outline', go: '/kitchen-performance', show: food && can('reports') },
       { left: 'Outlets', sub: 'Your places, and how they compare', icon: 'storefront-outline', go: '/outlets', show: canManageTeam(business?.role) && OUTLET_TYPES.includes(business?.business_type ?? '') },
       { left: 'Report a problem', sub: 'Tell FlowXP something went wrong', icon: 'bug-outline', go: '/report' },

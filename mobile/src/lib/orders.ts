@@ -1,7 +1,7 @@
 /* Table orders: what the floor and an order look like, and the sums the order screen shows. The server owns the order; these only read it. */
 import { toPaise } from './money.ts';
 
-export type TableOrderSummary = { opened_at: string; items: number; estimate: number; not_sent: number; cooking: number; ready: number };
+export type TableOrderSummary = { /** when its bill was printed before payment (cleared when items are added) */ bill_printed_at?: string | null; opened_at: string; items: number; estimate: number; not_sent: number; cooking: number; ready: number };
 export type TableRow = {
   table_id: number; name: string; zone: string | null; seats: number | null; status: string;
   open_order_id: number | null; open_order_number: string | null; open_order: TableOrderSummary | null;
@@ -13,7 +13,7 @@ export type OrderItem = {
 };
 export type Order = {
   order_id: number; order_number: string; order_type: string; table_id: number | null; table_name: string | null; customer_id: number | null; customer_name: string | null;
-  status: string; notes: string | null; items: OrderItem[]; summary?: { items: number; lines: number; estimate: number; not_sent: number; cooking: number; ready: number };
+  status: string; notes: string | null; bill_printed_at?: string | null; items: OrderItem[]; summary?: { items: number; lines: number; estimate: number; not_sent: number; cooking: number; ready: number };
 };
 
 export type TableState = 'free' | 'reserved' | 'new' | 'cooking' | 'ready' | 'served';

@@ -10,6 +10,8 @@ import { rupees, toPaise } from '../../lib/money.ts';
 import { ago } from '../../lib/ranges.ts';
 import { Page, useWide } from '../../lib/responsive.tsx';
 import { Hint, markDone } from '../../lib/learn.tsx';
+import { printRunningBill } from '../../lib/printBill.ts';
+import { t as tr } from '../../lib/i18n.ts';
 import { Button, Empty, ErrorText, Failed, Loading, SavedNote, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
 
 const TONE: Record<TableState, { bg: string; border: string; ink: string }> = {
@@ -34,6 +36,14 @@ export default function Tables() {
   const [busy, setBusy] = useState<number | 'new' | null>(null);
   const [problem, setProblem] = useState('');
   const [zone, setZone] = useState<string | null>(null);
+  const [note, setNote] = useState('');
+  const [printing, setPrinting] = useState<number | null>(null);
+  const printBill = async (orderId: number) => {
+    setPrinting(orderId); setProblem(''); setNote('');
+    try { setNote(await printRunningBill(orderId)); void floor.refresh(); void open.refresh(); }
+    catch (e) { setProblem(e instanceof Error ? e.message : tr('Could not print.')); }
+    finally { setPrinting(null); }
+  };
 
   // the kitchen moves while you stand there: refresh every 15 seconds while this tab is showing
   const [focused, setFocused] = useState(false);
@@ -80,7 +90,7 @@ export default function Tables() {
           <SavedNote at={floor.savedAt} />
           {diningRoom ? <Hint id="tables" /> : null}
           {floor.error && !floor.data ? <Failed message={floor.error} onRetry={() => { void floor.refresh(); }} /> : null}
-          <View style={{ paddingHorizontal: 16 }}><ErrorText>{problem}</ErrorText></View>
+          <View style={{ paddingHorizontal: 16 }}><ErrorText>{problem}</ErrorText>{note ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok, fontWeight: '600' }}>{note}</Text> : null}</View>
           {floor.busy && !floor.data ? <Loading what="Loading the floor" /> : null}
 
           {groups.length > 1 ? (
@@ -116,6 +126,8 @@ export default function Tables() {
                         <Text style={{ fontWeight: '700', color: tone.ink }}>{busy === t.table_id ? 'Opening…' : STATE_LABEL[st]}</Text>
                         {o ? <Text style={{ color: color.soft }}>{o.items} items · {rupees(toPaise(o.estimate))} · {ago(new Date(o.opened_at).getTime())}</Text> : null}
                         {o && o.ready > 0 ? <Text style={{ color: color.ok, fontWeight: '600' }}>{o.ready} ready to serve</Text> : null}
+                        {o?.bill_printed_at ? <Text style={{ color: color.warn, fontWeight: '600' }}>{tr('Bill printed. Waiting for payment')}</Text> : null}
+                        {o && t.open_order_id ? <Pressable accessibilityRole="button" accessibilityLabel={tr('Print the bill')} onPress={() => { void printBill(t.open_order_id as number); }} style={{ marginTop: 6, minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: color.line, backgroundColor: color.card, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontWeight: '600', color: color.brand }}>{printing === t.open_order_id ? '…' : tr('Print the bill')}</Text></Pressable> : null}
                         {!o && t.next_reservation ? <Text style={{ color: color.warn }}>{t.next_reservation.guest_name ?? 'Booked'} at {new Date(t.next_reservation.reserved_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text> : null}
                       </View>
                     </Pressable>
@@ -141,7 +153,11 @@ export default function Tables() {
                     <Text style={{ fontSize: 16, color: color.ink }}>{o.order_number} · {o.order_type === 'DELIVERY' ? 'Delivery' : 'Takeaway'}</Text>
                     <Soft>{o.summary ? `${o.summary.items} items${o.summary.ready ? ` · ${o.summary.ready} ready` : ''}${o.summary.not_sent ? ` · ${o.summary.not_sent} not sent` : ''}` : o.status}{o.customer_name ? ` · ${o.customer_name}` : ''}</Soft>
                   </View>
-                  <Text style={{ fontWeight: '600', color: color.ink }}>{o.summary ? rupees(toPaise(o.summary.estimate)) : ''}</Text>
+                  <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                    <Text style={{ fontWeight: '600', color: color.ink }}>{o.summary ? rupees(toPaise(o.summary.estimate)) : ''}</Text>
+                    {o.bill_printed_at ? <Text style={{ color: color.warn, fontSize: 12, fontWeight: '600' }}>{tr('Bill printed')}</Text> : null}
+                    <Pressable accessibilityRole="button" accessibilityLabel={tr('Print the bill')} onPress={() => { void printBill(o.order_id); }} style={{ minHeight: 40, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: color.line, justifyContent: 'center' }}><Text style={{ fontWeight: '600', color: color.brand }}>{printing === o.order_id ? '…' : tr('Print the bill')}</Text></Pressable>
+                  </View>
                 </Pressable>
               ))}
             </>
