@@ -9,7 +9,7 @@ import { setupTestDb } from './helpers/db.js';
 
 const { pool, skip, cleanup } = await setupTestDb();
 const { runMigrations } = await import('../src/config/migrate.js');
-const { ascii, receiptBytes, kotSlips, testPage, drawerBytes } = await import('../src/modules/escpos.js');
+const { ascii, receiptBytes, kotSlips, testPage, drawerBytes, validLogoBits } = await import('../src/modules/escpos.js');
 const { createAgent, send } = await import('../../print-agent/agent.js');
 const invoices = await import('../src/controllers/invoices.controller.js');
 const orders = await import('../src/controllers/orders.controller.js');
@@ -47,6 +47,17 @@ test('a receipt has the shop, the lines, the totals, the payments and a cut', ()
   assert.deepEqual([...out.subarray(0, 2)], [0x1b, 0x40]);                       // starts with a reset
   assert.ok(has(out, 0x1d, 0x56, 0x42, 0x03));                                    // ends with a cut
   assert.ok(!has(out, 0x1b, 0x70, 0x00, 0x19, 0xfa));                             // no drawer unless asked
+});
+
+test('a logo made of dots is printed first as a picture, only when it is valid and the logo is on', () => {
+  const logo = { w: 16, h: 2, data: Buffer.from([0xff, 0x00, 0x0f, 0xf0]).toString('base64') };
+  assert.ok(validLogoBits(logo));
+  assert.ok(!validLogoBits({ ...logo, h: 3 }) && !validLogoBits({ ...logo, w: 12 }) && !validLogoBits({ ...logo, w: 392 }) && !validLogoBits(null));
+  const withLogo = receiptBytes({ business: business1, settings: { logo_bits: logo }, invoice: invoice() }, { cols: 32 });
+  const at = withLogo.indexOf(Buffer.from([0x1d, 0x76, 0x30, 0x00, 2, 0, 2, 0, 0xff, 0x00, 0x0f, 0xf0]));
+  assert.ok(at >= 2 && at < 8, 'the picture comes right after the reset and the centring');
+  assert.ok(!has(receiptBytes({ business: business1, settings: { logo_bits: logo, show_logo: false }, invoice: invoice() }, { cols: 32 }), 0x1d, 0x76, 0x30));
+  assert.ok(!has(receiptBytes({ business: business1, settings: { logo_bits: { ...logo, h: 9 } }, invoice: invoice() }, { cols: 32 }), 0x1d, 0x76, 0x30));
 });
 
 test('a middle dot prints as a dash (not "?"); the tax lines can be switched off; a union territory prints UTGST', () => {

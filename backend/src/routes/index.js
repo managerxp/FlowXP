@@ -204,6 +204,7 @@ router.put('/businesses/current/workshop-mode', requireAuth, withBusiness({ requ
 router.get('/businesses/current/backup', requireAuth, withBusiness(), requireOwner, backupLimiter, business.downloadBackup);
 router.post('/businesses/current/restore', requireAuth, withBusiness({ requireActive: true }), requireOwner, restoreLimiter, requirePlanFeature('backup_restore'), express.raw({ type: '*/*', limit: '60mb' }), business.restoreBackup);
 router.post('/businesses/current/logo', requireAuth, withBusiness({ requireActive: true }), requireOwner, uploadLogo, business.uploadLogo);
+router.put('/businesses/current/logo-bits', requireAuth, withBusiness({ requireActive: true }), requireOwner, business.setLogoBits);
 router.delete('/businesses/current/logo', requireAuth, withBusiness({ requireActive: true }), requireOwner, business.removeLogo);
 router.get('/businesses/current/subscription', requireAuth, withBusiness(), business.getSubscription);
 router.post('/businesses/current/subscription/checkout', requireAuth, withBusiness(), business.checkout);

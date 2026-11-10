@@ -76,7 +76,9 @@ export const sendToPrinter = async (printer: SavedPrinter, bytes: Uint8Array): P
 export const printReceiptDirect = async (text: string, options: EscposOptions = {}): Promise<void> => {
   const printer = printerFor(await readPrinters(), 'receipt');
   if (!printer) throw new Error('No printer is set for receipts.');
-  await sendToPrinter(printer, escposBytes(text, printer.paper, options));
+  let logo = options.logo;
+  if (logo === undefined) { try { const { api } = await import('./session.ts'); logo = await (await import('./printLogo.ts')).printLogo(api); } catch { logo = null; } }
+  await sendToPrinter(printer, escposBytes(text, printer.paper, { ...options, logo }));
 };
 
 /** The kitchen's slips for one sent order (the server makes them, one per station), to the kitchen printer. Returns false when no printer is set for the kitchen. */

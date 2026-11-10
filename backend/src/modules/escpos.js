@@ -22,6 +22,16 @@ export const ascii = (value) => String(value ?? '')
 
 export const COLS = { 58: 32, 80: 48 };
 
+/** A logo already turned into black and white dots by the browser: { w, h, data } where data is base64 of h rows of w/8 bytes, left dot in the top bit, 1 = black.
+    w is at most 384 dots (the whole width of 58 mm paper; on 80 mm paper it is centred), h at most 200. Anything else is not printed. */
+export const MAX_LOGO_W = 384; export const MAX_LOGO_H = 200;
+export const validLogoBits = (b) => {
+  if (!b || typeof b !== 'object') return false;
+  const { w, h, data } = b;
+  if (!Number.isInteger(w) || !Number.isInteger(h) || w < 8 || w > MAX_LOGO_W || w % 8 || h < 1 || h > MAX_LOGO_H || typeof data !== 'string') return false;
+  return /^[A-Za-z0-9+/]+={0,2}$/.test(data) && Buffer.from(data, 'base64').length === (w / 8) * h;
+};
+
 class Job {
   constructor(cols) { this.cols = cols; this.out = [0x1b, 0x40]; }   // ESC @ : reset
   raw(...bytes) { this.out.push(...bytes); return this; }
@@ -58,6 +68,13 @@ class Job {
   half(fn) { const full = this.cols; this.cols = Math.floor(full / 2); try { fn(this); } finally { this.cols = full; } return this; }
   rule(ch = '-') { return this.line(ch.repeat(this.cols)); }
   feed(n = 1) { return this.raw(ESC, 0x64, n); }
+  /** A black-and-white picture (GS v 0): see validLogoBits for the shape. */
+  raster({ w, h, data }) {
+    const wb = w / 8;
+    this.raw(GS, 0x76, 0x30, 0x00, wb & 0xff, wb >> 8, h & 0xff, h >> 8);
+    for (const b of Buffer.from(data, 'base64')) this.out.push(b);
+    return this;
+  }
   cut(feed = 3) { return this.feed(feed).raw(GS, 0x56, 0x42, 0x03); }
   /** The printer's own QR code (model 2). */
   qr(data, size = 5) {
@@ -96,6 +113,7 @@ const oneReceipt = ({ business, settings = {}, invoice }, { cols = 48, drawer = 
   const gstin = outlet?.gstin || business.gstin;
   const address = [outlet?.address || business.address, outlet?.city || business.city].filter(Boolean).join(', ');
 
+  if (settings.show_logo !== false && validLogoBits(settings.logo_bits)) j.align('center').raster(settings.logo_bits).line();
   j.align('center').bold(true).big(true).half(() => j.wrap(business.name)).big(false).bold(false);
   if (outlet?.name) j.bold(true).line(outlet.name).bold(false);
   if (address) j.wrap(address);

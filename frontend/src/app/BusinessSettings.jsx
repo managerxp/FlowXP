@@ -9,6 +9,7 @@
  * gateway connection, just the business's own receiving address, the same
  * as a UPI QR sticker taped to the counter.
  */
+import { fileToBits } from '../lib/logoBits.js';
 import { useEffect, useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { api } from '../lib/api.js';
@@ -90,6 +91,7 @@ const LogoSetting = ({ logoUrl, onChange }) => {
       const body = new FormData(); body.append('logo', file);
       const r = await api('/businesses/current/logo', { method: 'POST', body });
       onChange(r.logo_url); toast.success(tr('Logo saved'));
+      try { await api('/businesses/current/logo-bits', { method: 'PUT', body: await fileToBits(file) }); } catch { /* the picture still prints from the browser; only the thermal copy is missing */ }
     } catch (caught) { setError(caught.message); }
     finally { setBusy(false); e.target.value = ''; }
   };
@@ -111,7 +113,7 @@ const LogoSetting = ({ logoUrl, onChange }) => {
         </label>
         {logoUrl && <button type="button" className="text-sm font-semibold text-danger" onClick={remove} disabled={busy}>{tr('Remove')}</button>}
       </div>
-      <p className="mt-1 text-xs text-ink-500">PNG, JPEG or WebP up to 2 MB. A simple black-and-white logo prints best; it appears on receipts printed from the browser (silent thermal printing shows the business name in large text).</p>
+      <p className="mt-1 text-xs text-ink-500">PNG, JPEG or WebP up to 2 MB. A simple black-and-white logo prints best; it is printed at the top of receipts, from the browser and on thermal printers.</p>
     </div>
   );
 };

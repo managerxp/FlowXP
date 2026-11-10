@@ -54,12 +54,30 @@ export const qrBytes = (data: string, paper: Paper): number[] => {
 };
 
 /** Initialise, the lines, an optional QR code, `extraLines` blank lines to feed the paper past the tear bar, and a partial cut. `drawer` also opens a cash drawer wired to the printer (once, however many copies). `copies` prints the whole receipt that many times. */
-export type EscposOptions = { cut?: boolean; drawer?: boolean; qr?: string; extraLines?: number; copies?: number };
-export const escposBytes = (text: string, paper: Paper, { cut = true, drawer = false, qr, extraLines = 3, copies = 1 }: EscposOptions = {}): Uint8Array => {
+/** The business logo as black and white dots, made by the website when the logo was uploaded: h rows of w/8 bytes, base64, left dot in the top bit, 1 = black. */
+export type LogoBits = { w: number; h: number; data: string };
+/** Whether a logo is something a printer can be sent: a whole number of bytes per row, at most 384 x 200 dots, exactly the bytes it says. */
+export const validLogo = (l: unknown): l is LogoBits => {
+  const b = l as LogoBits | null | undefined;
+  if (!b || !Number.isInteger(b.w) || !Number.isInteger(b.h) || b.w < 8 || b.w > 384 || b.w % 8 || b.h < 1 || b.h > 200 || typeof b.data !== 'string') return false;
+  return /^[A-Za-z0-9+/]+={0,2}$/.test(b.data) && Math.floor((b.data.length * 3) / 4) - (b.data.endsWith('==') ? 2 : b.data.endsWith('=') ? 1 : 0) === (b.w / 8) * b.h;
+};
+const fromBase64 = (s: string): number[] => {
+  const out: number[] = [];
+  for (let i = 0; i < s.length; i += 4) {
+    const n = [0, 1, 2, 3].map((k) => (s[i + k] === '=' || s[i + k] === undefined ? 0 : B64.indexOf(s[i + k])));
+    const v = (n[0] << 18) | (n[1] << 12) | (n[2] << 6) | n[3];
+    out.push((v >> 16) & 255); if (s[i + 2] !== '=') out.push((v >> 8) & 255); if (s[i + 3] !== '=') out.push(v & 255);
+  }
+  return out;
+};
+export type EscposOptions = { cut?: boolean; drawer?: boolean; qr?: string; extraLines?: number; copies?: number; logo?: LogoBits | null };
+export const escposBytes = (text: string, paper: Paper, { cut = true, drawer = false, qr, extraLines = 3, copies = 1, logo }: EscposOptions = {}): Uint8Array => {
   const feed = Math.max(0, Math.min(10, Math.round(extraLines)));
   const one = (withDrawer: boolean): number[] => {
     const bytes: number[] = [ESC, 0x40];                 // initialise
     if (withDrawer) bytes.push(ESC, 0x70, 0x00, 0x19, 0xfa);   // pulse pin 2
+    if (validLogo(logo)) { const wb = logo.w / 8; bytes.push(ESC, 0x61, 0x01, GS, 0x76, 0x30, 0x00, wb & 255, wb >> 8, logo.h & 255, logo.h >> 8, ...fromBase64(logo.data), LF, ESC, 0x61, 0x00); }   // the logo, centred, first
     for (const raw of printable(text).split('\n')) {
       for (const line of fitLine(raw, COLUMNS[paper])) { for (const ch of line) bytes.push(ch.charCodeAt(0)); bytes.push(LF); }
     }
