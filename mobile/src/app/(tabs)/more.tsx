@@ -143,6 +143,7 @@ export default function More() {
       { left: 'Medicines and items', sub: 'Add, change and price what you stock', icon: 'medkit-outline', go: '/medicine-admin', show: pharmacy && can('products') },
       { left: 'Buying', sub: 'Orders to suppliers, and goods coming in', icon: 'cart-outline', go: '/purchasing', show: wholesale && can('purchases') },
       { left: 'Warehouse', sub: 'Pick, pack and send out orders', icon: 'business-outline', go: '/warehouse', show: wholesale },
+      { left: 'Stock requests', sub: 'Ask another outlet for stock, or send what it asked for', icon: 'git-pull-request-outline', go: '/stock-requests', show: several && can('inventory') },
       { left: 'Moving stock', sub: 'Send goods between warehouses, and receive them', icon: 'swap-horizontal-outline', go: '/transfers', show: wholesale && can('inventory', 'fulfilment') },
       { left: 'Wholesale settings', sub: 'Credit rules, stock rules, messages and salespeople', icon: 'settings-outline', go: '/wholesale-settings', show: wholesale && can('settings') },
       { left: 'Price lists', sub: 'Who pays what, and offer prices', icon: 'pricetags-outline', go: '/price-lists', show: wholesale && can('pricing', 'sales_orders') },
