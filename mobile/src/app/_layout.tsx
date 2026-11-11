@@ -6,6 +6,7 @@ import { restoreSession, useSession } from '../lib/session.ts';
 import { OfflineBar } from '../lib/OfflineBar.tsx';
 import { HelpButton } from '../lib/HelpButton.tsx';
 import { Logo } from '../lib/Logo.tsx';
+import { AppLockGate } from '../lib/AppLock.tsx';
 import { flushBugReports } from '../lib/bugsend.ts';
 import { installAlerts, syncAlerts } from '../lib/push.ts';
 import { installCrashReporting, reportError } from '../lib/crash.ts';
@@ -58,6 +59,7 @@ export default function Layout() {
         <Stack.Screen name="options" options={{ presentation: 'modal' }} />
       </Stack>
       <HelpButton />
+      <AppLockGate />
     </>
   );
 }

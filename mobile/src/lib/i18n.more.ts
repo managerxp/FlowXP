@@ -3308,7 +3308,16 @@ export const ML: Record<string, string> = {
   'Line under the business name': 'സ്ഥാപനത്തിന്റെ പേരിന് താഴെയുള്ള വരി',
   'Payment received and balance due': 'ലഭിച്ച പണവും ബാക്കി തുകയും',
   'What the customer saved': 'ഉപഭോക്താവ് ലാഭിച്ചത്',
-  'Send statement on WhatsApp': 'WhatsApp-ൽ സ്റ്റേറ്റ്മെന്റ് അയയ്ക്കുക',};
+  'Send statement on WhatsApp': 'WhatsApp-ൽ സ്റ്റേറ്റ്മെന്റ് അയയ്ക്കുക',
+  'Enter your PIN': 'നിങ്ങളുടെ PIN നൽകുക',
+  'That PIN is not right': 'ആ PIN ശരിയല്ല',
+  'Forgot PIN? Sign out': 'PIN മറന്നോ? സൈൻ ഔട്ട് ചെയ്യുക',
+  'App lock': 'ആപ്പ് ലോക്ക്',
+  'Ask for a 4-digit PIN when the app opens or when you come back after a while. The PIN stays on this phone.': 'ആപ്പ് തുറക്കുമ്പോഴോ കുറച്ചു സമയത്തിന് ശേഷം തിരികെ വരുമ്പോഴോ 4 അക്ക PIN ചോദിക്കുക. PIN ഈ ഫോണിൽ മാത്രം ഇരിക്കും.',
+  'Enter 4 digits': '4 അക്കങ്ങൾ നൽകുക',
+  'Save PIN': 'PIN സേവ് ചെയ്യുക',
+  'Turn on App lock': 'ആപ്പ് ലോക്ക് ഓണാക്കുക',
+  'Turn off App lock': 'ആപ്പ് ലോക്ക് ഓഫാക്കുക',};
 
 /** Tamil: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const TA: Record<string, string> = {
@@ -6618,7 +6627,16 @@ export const TA: Record<string, string> = {
   'Line under the business name': 'வணிகப் பெயருக்குக் கீழ் உள்ள வரி',
   'Payment received and balance due': 'பெற்ற பணமும் நிலுவையும்',
   'What the customer saved': 'வாடிக்கையாளர் சேமித்தது',
-  'Send statement on WhatsApp': 'WhatsApp-இல் கணக்கு அறிக்கையை அனுப்பு',};
+  'Send statement on WhatsApp': 'WhatsApp-இல் கணக்கு அறிக்கையை அனுப்பு',
+  'Enter your PIN': 'உங்கள் PIN ஐ உள்ளிடுங்கள்',
+  'That PIN is not right': 'அந்த PIN சரியில்லை',
+  'Forgot PIN? Sign out': 'PIN மறந்துவிட்டதா? வெளியேறுங்கள்',
+  'App lock': 'ஆப் பூட்டு',
+  'Ask for a 4-digit PIN when the app opens or when you come back after a while. The PIN stays on this phone.': 'ஆப் திறக்கும்போது அல்லது சிறிது நேரம் கழித்து திரும்பும்போது 4 இலக்க PIN கேட்கவும். PIN இந்த போனிலேயே இருக்கும்.',
+  'Enter 4 digits': '4 இலக்கங்களை உள்ளிடுங்கள்',
+  'Save PIN': 'PIN ஐச் சேமி',
+  'Turn on App lock': 'ஆப் பூட்டை இயக்கு',
+  'Turn off App lock': 'ஆப் பூட்டை நிறுத்து',};
 
 /** Bengali: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const BN: Record<string, string> = {
@@ -9928,7 +9946,16 @@ export const BN: Record<string, string> = {
   'Line under the business name': 'ব্যবসার নামের নিচের লাইন',
   'Payment received and balance due': 'প্রাপ্ত পেমেন্ট ও বকেয়া',
   'What the customer saved': 'গ্রাহক যত বাঁচিয়েছেন',
-  'Send statement on WhatsApp': 'WhatsApp-এ স্টেটমেন্ট পাঠান',};
+  'Send statement on WhatsApp': 'WhatsApp-এ স্টেটমেন্ট পাঠান',
+  'Enter your PIN': 'আপনার PIN দিন',
+  'That PIN is not right': 'PIN সঠিক নয়',
+  'Forgot PIN? Sign out': 'PIN ভুলে গেছেন? সাইন আউট করুন',
+  'App lock': 'অ্যাপ লক',
+  'Ask for a 4-digit PIN when the app opens or when you come back after a while. The PIN stays on this phone.': 'অ্যাপ খুললে বা কিছুক্ষণ পরে ফিরলে ৪ সংখ্যার PIN চাইবে। PIN এই ফোনেই থাকে।',
+  'Enter 4 digits': '৪টি সংখ্যা দিন',
+  'Save PIN': 'PIN সেভ করুন',
+  'Turn on App lock': 'অ্যাপ লক চালু করুন',
+  'Turn off App lock': 'অ্যাপ লক বন্ধ করুন',};
 
 /** Telugu: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const TE: Record<string, string> = {
@@ -13238,7 +13265,16 @@ export const TE: Record<string, string> = {
   'Line under the business name': 'వ్యాపార పేరు కింద లైన్',
   'Payment received and balance due': 'అందిన చెల్లింపు మరియు బాకీ',
   'What the customer saved': 'కస్టమర్ ఆదా చేసింది',
-  'Send statement on WhatsApp': 'WhatsApp లో స్టేట్‌మెంట్ పంపండి',};
+  'Send statement on WhatsApp': 'WhatsApp లో స్టేట్‌మెంట్ పంపండి',
+  'Enter your PIN': 'మీ PIN నమోదు చేయండి',
+  'That PIN is not right': 'ఆ PIN సరైనది కాదు',
+  'Forgot PIN? Sign out': 'PIN మర్చిపోయారా? సైన్ అవుట్ చేయండి',
+  'App lock': 'యాప్ లాక్',
+  'Ask for a 4-digit PIN when the app opens or when you come back after a while. The PIN stays on this phone.': 'యాప్ తెరిచినప్పుడు లేదా కొంతసేపటి తర్వాత తిరిగి వచ్చినప్పుడు 4 అంకెల PIN అడుగుతుంది. PIN ఈ ఫోన్‌లోనే ఉంటుంది.',
+  'Enter 4 digits': '4 అంకెలు నమోదు చేయండి',
+  'Save PIN': 'PIN సేవ్ చేయండి',
+  'Turn on App lock': 'యాప్ లాక్ ఆన్ చేయండి',
+  'Turn off App lock': 'యాప్ లాక్ ఆఫ్ చేయండి',};
 
 /** Kannada: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const KN: Record<string, string> = {
@@ -16548,4 +16584,13 @@ export const KN: Record<string, string> = {
   'Line under the business name': 'ವ್ಯಾಪಾರದ ಹೆಸರಿನ ಕೆಳಗಿನ ಸಾಲು',
   'Payment received and balance due': 'ಸ್ವೀಕರಿಸಿದ ಪಾವತಿ ಮತ್ತು ಬಾಕಿ',
   'What the customer saved': 'ಗ್ರಾಹಕರು ಉಳಿಸಿದ್ದು',
-  'Send statement on WhatsApp': 'WhatsApp ನಲ್ಲಿ ಸ್ಟೇಟ್‌ಮೆಂಟ್ ಕಳುಹಿಸಿ',};
+  'Send statement on WhatsApp': 'WhatsApp ನಲ್ಲಿ ಸ್ಟೇಟ್‌ಮೆಂಟ್ ಕಳುಹಿಸಿ',
+  'Enter your PIN': 'ನಿಮ್ಮ PIN ನಮೂದಿಸಿ',
+  'That PIN is not right': 'ಆ PIN ಸರಿಯಿಲ್ಲ',
+  'Forgot PIN? Sign out': 'PIN ಮರೆತಿರಾ? ಸೈನ್ ಔಟ್ ಮಾಡಿ',
+  'App lock': 'ಆ್ಯಪ್ ಲಾಕ್',
+  'Ask for a 4-digit PIN when the app opens or when you come back after a while. The PIN stays on this phone.': 'ಆ್ಯಪ್ ತೆರೆದಾಗ ಅಥವಾ ಸ್ವಲ್ಪ ಹೊತ್ತಿನ ನಂತರ ಹಿಂತಿರುಗಿದಾಗ 4 ಅಂಕಿಯ PIN ಕೇಳುತ್ತದೆ. PIN ಈ ಫೋನ್‌ನಲ್ಲೇ ಇರುತ್ತದೆ.',
+  'Enter 4 digits': '4 ಅಂಕಿಗಳನ್ನು ನಮೂದಿಸಿ',
+  'Save PIN': 'PIN ಉಳಿಸಿ',
+  'Turn on App lock': 'ಆ್ಯಪ್ ಲಾಕ್ ಆನ್ ಮಾಡಿ',
+  'Turn off App lock': 'ಆ್ಯಪ್ ಲಾಕ್ ಆಫ್ ಮಾಡಿ',};

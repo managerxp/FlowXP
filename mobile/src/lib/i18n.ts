@@ -3417,7 +3417,16 @@ export const HI: Record<string, string> = {
   'Line under the business name': 'व्यवसाय के नाम के नीचे की पंक्ति',
   'Payment received and balance due': 'प्राप्त भुगतान और बकाया',
   'What the customer saved': 'ग्राहक ने कितना बचाया',
-  'Send statement on WhatsApp': 'WhatsApp पर स्टेटमेंट भेजें',};
+  'Send statement on WhatsApp': 'WhatsApp पर स्टेटमेंट भेजें',
+  'Enter your PIN': 'अपना PIN डालें',
+  'That PIN is not right': 'यह PIN सही नहीं है',
+  'Forgot PIN? Sign out': 'PIN भूल गए? साइन आउट करें',
+  'App lock': 'ऐप लॉक',
+  'Ask for a 4-digit PIN when the app opens or when you come back after a while. The PIN stays on this phone.': 'ऐप खुलने पर या कुछ देर बाद लौटने पर 4 अंकों का PIN माँगें। PIN इसी फ़ोन में रहता है।',
+  'Enter 4 digits': '4 अंक डालें',
+  'Save PIN': 'PIN सेव करें',
+  'Turn on App lock': 'ऐप लॉक चालू करें',
+  'Turn off App lock': 'ऐप लॉक बंद करें',};
 
 /** Languages that have a dictionary. */
 export const DICTS: Partial<Record<Lang, Record<string, string>>> = { hi: HI, ml: ML, ta: TA, bn: BN, te: TE, kn: KN };

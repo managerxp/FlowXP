@@ -11,6 +11,7 @@ import type { Paper } from '../lib/print.ts';
 import PrinterSettings from '../lib/PrinterSettings.tsx';
 import UpiSettings from '../lib/UpiSettings.tsx';
 import DisplaySettings from '../lib/DisplaySettings.tsx';
+import AppLockSettings from '../lib/AppLock.tsx';
 import BackupSettings from '../lib/BackupSettings.tsx';
 import StartFreshSettings from '../lib/StartFreshSettings.tsx';
 import { canBackUp } from '../lib/backup.ts';
@@ -119,6 +120,7 @@ export default function Settings() {
         <Text style={{ fontWeight: '700', color: color.ink }}>{t('Language')}</Text>
         <LanguagePicker />
         <DisplaySettings />
+        <AppLockSettings />
         {canBackUp(business?.role) ? <BackupSettings /> : null}
         {canBackUp(business?.role) ? <StartFreshSettings /> : null}
         <Button title="Back" onPress={() => goBack()} />
