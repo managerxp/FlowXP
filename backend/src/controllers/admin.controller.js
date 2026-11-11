@@ -8,6 +8,7 @@
  */
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
+import { deleteBusinessForever, removeBusinessFiles } from '../modules/deleteBusiness.js';
 import pool from '../config/database.js';
 import { signToken } from '../middleware/auth.js';
 import { decryptSecret, lockedMinutes, recordLogin, recoveryCodesLeft, useRecoveryCode, verifyTotp } from '../modules/security.js';
@@ -369,6 +370,36 @@ export const updateBusinessStatus = async (req, res) => {
     console.error('[admin] update business status failed:', error.message);
     res.status(500).json({ success: false, message: 'Could not update this business' });
   }
+};
+
+/* ==========================================================================
+   DELETE /api/admin/businesses/:id { confirm_name, delete_users? } — erase a business and everything in it from the database, for good.
+   The name must be typed exactly, so a slip of the finger cannot do it. People who belonged to this shop alone are erased too (unless delete_users is false),
+   so they can sign up again and get a new free trial.
+   ========================================================================== */
+export const deleteBusiness = async (req, res) => {
+  const businessId = Number(req.params.id);
+  if (!Number.isInteger(businessId)) return res.status(404).json({ success: false, message: 'Not found' });
+  const client = await pool.connect();
+  let done;
+  try {
+    await client.query('BEGIN');
+    const name = (await client.query(`SELECT name FROM businesses WHERE business_id = $1`, [businessId])).rows[0]?.name;
+    if (!name) { await client.query('ROLLBACK'); return res.status(404).json({ success: false, message: 'Not found' }); }
+    if (String(req.body?.confirm_name ?? '').trim().toLowerCase() !== name.trim().toLowerCase()) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: 'Type the exact business name to delete it' });
+    }
+    done = await deleteBusinessForever(client, businessId, { deleteUsers: req.body?.delete_users !== false });
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('[admin] delete business failed:', error.message);
+    return res.status(500).json({ success: false, message: 'Could not delete this business' });
+  } finally { client.release(); }
+  removeBusinessFiles(businessId, done.files).catch(() => {});
+  recordAudit(req, { business_id: null, action: 'admin.business_deleted', resource_type: 'business', resource_id: businessId, metadata: { name: done.name, users_deleted: done.users_deleted } });
+  res.json({ success: true, data: { name: done.name, users_deleted: done.users_deleted } });
 };
 
 /* ==========================================================================

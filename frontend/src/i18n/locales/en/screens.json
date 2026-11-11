@@ -4874,5 +4874,6 @@
   "Type START FRESH to confirm": "Type START FRESH to confirm",
   "Delete and start fresh": "Delete and start fresh",
   "Your trial data is cleared. Numbering starts again from 1.": "Your trial data is cleared. Numbering starts again from 1.",
-  "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.": "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again."
+  "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.": "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.",
+  "The kitchen uses the kitchen screen (switch off if it only uses printed tickets)": "The kitchen uses the kitchen screen (switch off if it only uses printed tickets)"
 }

@@ -205,3 +205,34 @@ test('performance: averages, on-time share, and how an item compares with the pe
   const other = await B.call(kitchen.performanceReport);
   assert.equal(other.body.data.overall.lines, 0);                    // B sees none of A's kitchen
 });
+
+test('a kitchen that only uses printed tickets: sent lines never wait on the screen', { skip }, async () => {
+  const tb = await B.table('P1'); const naan = await B.dish('Naan');
+  await pool.query(`UPDATE businesses SET receipt_settings = receipt_settings || '{"kitchen_screen": false}'::jsonb WHERE business_id = $1`, [B.biz]);
+  const id = await B.open(tb, [{ product_id: naan, quantity: 2 }]);
+  const sent = await B.call(orders.sendKot, { params: { id }, body: {} });
+  assert.equal(sent.code, 201, JSON.stringify(sent.body));
+  const line = (await pool.query(`SELECT status, served_at, ready_at, kot_id FROM order_items WHERE order_id = $1`, [id])).rows[0];
+  assert.equal(line.status, 'SERVED'); assert.ok(line.served_at); assert.equal(line.ready_at, null); assert.ok(line.kot_id);   // finished at once, still tied to its ticket for printing
+  assert.equal((await B.call(kitchen.tickets)).body.data.tickets.length, 0);                                                 // nothing piles up on the screen
+  await pool.query(`UPDATE businesses SET receipt_settings = receipt_settings || '{"kitchen_screen": true}'::jsonb WHERE business_id = $1`, [B.biz]);
+  const tb2 = await B.table('P2'); const id2 = await B.open(tb2, [{ product_id: naan, quantity: 1 }]);
+  await B.call(orders.sendKot, { params: { id: id2 }, body: {} });
+  assert.equal((await B.call(kitchen.tickets)).body.data.tickets.length, 1);                                                 // screen on: it shows as before
+});
+
+test('super admin delete: the name must match, then the business and its people are gone, other shops and shared people stay', { skip }, async () => {
+  const admin = await import('../src/controllers/admin.controller.js');
+  const C = await makeBusiness('c'); const D = await makeBusiness('d');
+  const t = await C.table('X1'); const d = await C.dish('Tea'); await C.open(t, [{ product_id: d, quantity: 1 }]);
+  const del = async (id, body) => { const res = fakeRes(); await admin.deleteBusiness({ params: { id }, body, auth: { userId: 1 }, headers: {}, ip: '127.0.0.1' }, res); return res; };
+  assert.equal((await del(C.biz, { confirm_name: 'nope' })).code, 400);                      // wrong name: nothing happens
+  assert.equal((await pool.query(`SELECT 1 FROM businesses WHERE business_id = $1`, [C.biz])).rowCount, 1);
+  const owner = (await pool.query(`SELECT owner_user_id FROM businesses WHERE business_id = $1`, [C.biz])).rows[0].owner_user_id;
+  const res = await del(C.biz, { confirm_name: ' C ' });
+  assert.equal(res.code, 200, JSON.stringify(res.body));
+  for (const table of ['businesses', 'orders', 'order_items', 'products', 'dining_tables', 'branches']) assert.equal((await pool.query(`SELECT 1 FROM ${table} WHERE business_id = $1`, [C.biz]).catch(() => ({ rowCount: 0 }))).rowCount, 0, table);
+  assert.equal((await pool.query(`SELECT 1 FROM users WHERE user_id = $1`, [owner])).rowCount, 0);          // the owner can sign up again
+  assert.equal((await pool.query(`SELECT 1 FROM businesses WHERE business_id = $1`, [D.biz])).rowCount, 1); // another shop untouched
+  assert.equal((await del(C.biz, { confirm_name: 'c' })).code, 404);
+});

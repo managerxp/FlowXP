@@ -134,9 +134,12 @@ export const sendKotCore = async (client, { businessId, orderId, createdBy = nul
   )).rows[0];
 
   const ids = pending.map((i) => i.order_item_id);
+  /* A kitchen that only uses the printed ticket has no screen to tick dishes off, so they would pile up there for ever: with the screen switched off
+     (Settings > receipts) the lines are finished the moment they are sent. ready_at stays empty, so the kitchen timing reports are not skewed by it. */
+  const screen = (await client.query(`SELECT receipt_settings->>'kitchen_screen' AS shown FROM businesses WHERE business_id = $1`, [businessId])).rows[0]?.shown !== 'false';
   await client.query(
-    `UPDATE order_items SET kot_id = $1, status = 'PREPARING', sent_at = CURRENT_TIMESTAMP WHERE order_item_id = ANY($2::int[])`,
-    [kot.kot_id, ids]
+    `UPDATE order_items SET kot_id = $1, status = $3::varchar, sent_at = CURRENT_TIMESTAMP, served_at = CASE WHEN $3::varchar = 'SERVED' THEN CURRENT_TIMESTAMP END WHERE order_item_id = ANY($2::int[])`,
+    [kot.kot_id, ids, screen ? 'PREPARING' : 'SERVED']
   );
   await client.query(
     `UPDATE orders SET status = 'PREPARING', updated_at = CURRENT_TIMESTAMP WHERE order_id = $1 AND status = 'OPEN'`,

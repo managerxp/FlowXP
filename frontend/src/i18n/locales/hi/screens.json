@@ -4874,5 +4874,6 @@
   "Type START FRESH to confirm": "पुष्टि के लिए START FRESH लिखें",
   "Delete and start fresh": "हटाएँ और नए सिरे से शुरू करें",
   "Your trial data is cleared. Numbering starts again from 1.": "आपका ट्रायल डेटा साफ़ हो गया। नंबरिंग फिर से 1 से शुरू होगी।",
-  "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.": "लोगो सेव हो गया, पर थर्मल रसीद के लिए तैयार नहीं हो सका। फिर से अपलोड करके देखें।"
+  "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.": "लोगो सेव हो गया, पर थर्मल रसीद के लिए तैयार नहीं हो सका। फिर से अपलोड करके देखें।",
+  "The kitchen uses the kitchen screen (switch off if it only uses printed tickets)": "रसोई किचन स्क्रीन इस्तेमाल करती है (सिर्फ़ छपे टिकट इस्तेमाल हों तो बंद करें)"
 }

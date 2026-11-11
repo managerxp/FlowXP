@@ -213,7 +213,7 @@ const EDITABLE = {
 };
 
 /* Receipt printing preferences: every key checked, unknown keys dropped. */
-export const RECEIPT_DEFAULTS = { paper_width: 80, footer: 'Thank you! Visit again.', show_gstin: true, show_upi_qr: true, show_loyalty: true, show_logo: true, show_tax_lines: true, logo_url: null, auto_cut: true, copies: 1, extra_lines: 3 };
+export const RECEIPT_DEFAULTS = { paper_width: 80, footer: 'Thank you! Visit again.', show_gstin: true, show_upi_qr: true, show_loyalty: true, show_logo: true, show_tax_lines: true, logo_url: null, auto_cut: true, kitchen_screen: true, copies: 1, extra_lines: 3 };
 export const cleanReceiptSettings = (input) => {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: 'Receipt settings must be an object' };
   const out = {};
@@ -226,7 +226,7 @@ export const cleanReceiptSettings = (input) => {
     if (footer.length > 200) return { error: 'The footer is too long (200 characters at most)' };
     out.footer = footer;
   }
-  for (const key of ['show_gstin', 'show_upi_qr', 'show_loyalty', 'show_logo', 'show_tax_lines', 'auto_cut']) if (key in input) out[key] = input[key] === true;
+  for (const key of ['show_gstin', 'show_upi_qr', 'show_loyalty', 'show_logo', 'show_tax_lines', 'auto_cut', 'kitchen_screen']) if (key in input) out[key] = input[key] === true;
   const whole = (key, lo, hi, what) => {
     if (!(key in input)) return null;
     const n = Number(input[key]);

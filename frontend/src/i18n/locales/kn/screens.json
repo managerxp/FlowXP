@@ -4874,5 +4874,6 @@
   "Type START FRESH to confirm": "ಖಚಿತಪಡಿಸಲು START FRESH ಎಂದು ಟೈಪ್ ಮಾಡಿ",
   "Delete and start fresh": "ಅಳಿಸಿ ಹೊಸದಾಗಿ ಪ್ರಾರಂಭಿಸಿ",
   "Your trial data is cleared. Numbering starts again from 1.": "ನಿಮ್ಮ ಟ್ರಯಲ್ ಡೇಟಾ ಅಳಿಸಲಾಗಿದೆ. ಸಂಖ್ಯಾಕ್ರಮ ಮತ್ತೆ 1 ರಿಂದ ಪ್ರಾರಂಭವಾಗುತ್ತದೆ.",
-  "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.": "ಲೋಗೋ ಉಳಿಸಲಾಗಿದೆ, ಆದರೆ ಥರ್ಮಲ್ ರಸೀದಿಗಳಿಗೆ ಸಿದ್ಧಪಡಿಸಲು ಆಗಲಿಲ್ಲ. ಮತ್ತೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ ನೋಡಿ."
+  "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.": "ಲೋಗೋ ಉಳಿಸಲಾಗಿದೆ, ಆದರೆ ಥರ್ಮಲ್ ರಸೀದಿಗಳಿಗೆ ಸಿದ್ಧಪಡಿಸಲು ಆಗಲಿಲ್ಲ. ಮತ್ತೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ ನೋಡಿ.",
+  "The kitchen uses the kitchen screen (switch off if it only uses printed tickets)": "ಅಡುಗೆಮನೆ ಕಿಚನ್ ಸ್ಕ್ರೀನ್ ಬಳಸುತ್ತದೆ (ಮುದ್ರಿತ ಟಿಕೆಟ್ ಮಾತ್ರ ಆದರೆ ಆಫ್ ಮಾಡಿ)"
 }

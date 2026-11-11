@@ -36,7 +36,7 @@ export const tickets = async (req, res) => {
        WHERE o.business_id = $1 AND oi.sent_at IS NOT NULL${scope}
          AND (o.status IN ('OPEN','PREPARING','READY','SERVED') OR (o.status = 'BILLED' AND oi.status IN ('PREPARING','READY') AND oi.sent_at > now() - interval '6 hours'))
          AND (oi.status IN ('PREPARING','READY')
-              OR (oi.status = 'SERVED' AND oi.served_at > now() - interval '2 hours')
+              OR (oi.status = 'SERVED' AND oi.ready_at IS NOT NULL AND oi.served_at > now() - interval '2 hours')   -- served with no ready time = finished on send (print-only kitchen)
               OR (oi.status = 'CANCELLED' AND oi.cancelled_at > now() - ($2 || ' minutes')::interval))
        ORDER BY (k.priority = 'RUSH') DESC, oi.sent_at, oi.order_item_id`,
       values

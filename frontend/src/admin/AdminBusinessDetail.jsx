@@ -4,7 +4,7 @@
  * it's built, what it's paid.
  */
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { adminApi } from '../lib/adminApi.js';
 import { formatCurrency } from '../lib/api.js';
 import { Card, PageHeader, StatusBadge, Badge, Button, Alert, Field, Input, Select, Table, Thead, Th, Td, Tr, useToast, useDialog, PageLoader } from '../components/ui.jsx';
@@ -555,6 +555,34 @@ const DetailField = ({ label, value }) => (
   </div>
 );
 
+/* Erases the business and everything in it from the database. The exact name has to be typed. */
+const DeleteForever = ({ business, businessId }) => {
+  const [name, setName] = useState('');
+  const [alsoPeople, setAlsoPeople] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const toast = useToast();
+  const remove = async () => {
+    setBusy(true); setError('');
+    try {
+      const r = await adminApi(`/businesses/${businessId}`, { method: 'DELETE', body: { confirm_name: name, delete_users: alsoPeople } });
+      toast.success(`${r.name} was deleted${r.users_deleted ? `, with ${r.users_deleted} ${r.users_deleted === 1 ? 'person' : 'people'}` : ''}`);
+      navigate('/superadmin/businesses');
+    } catch (err) { setError(err.message); setBusy(false); }
+  };
+  return (
+    <Card className="border-red-200 p-5 lg:col-span-2">
+      <h2 className="mb-1 text-sm font-bold uppercase tracking-wide text-red-700">Delete this business for good</h2>
+      <p className="mb-3 text-sm text-ink-500">Erases the business and all its bills, orders, stock, staff and settings from the database. This cannot be undone. Use it to remove a test or abandoned account, or to let someone start again with a fresh free trial.</p>
+      <Alert>{error}</Alert>
+      <label className="mb-3 flex items-center gap-2 text-sm text-ink-700"><input type="checkbox" checked={alsoPeople} onChange={(e) => setAlsoPeople(e.target.checked)} /> Also delete the people who belong only to this business, so they can sign up again with the same email</label>
+      <Field id="confirm-name" label={`Type “${business.name}” to confirm`}><Input id="confirm-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" /></Field>
+      <Button variant="danger" className="mt-3" disabled={busy || name.trim().toLowerCase() !== business.name.trim().toLowerCase()} onClick={remove}>Delete forever</Button>
+    </Card>
+  );
+};
+
 const AdminBusinessDetail = () => {
   const { id } = useParams();
   const [business, setBusiness] = useState(null);
@@ -661,6 +689,7 @@ const AdminBusinessDetail = () => {
         <BusinessAddons businessId={id} businessType={business.business_type} />
         <TrialAndNotes businessId={id} onChanged={load} />
         <History businessId={id} />
+        <DeleteForever business={business} businessId={id} />
       </div>
 
       <div className="mt-6">

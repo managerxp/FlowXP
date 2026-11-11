@@ -1310,3 +1310,7 @@ Failed prints are kept, not lost: `mobile/src/lib/printQueue.ts` (pure list: las
 - Logo upload (`POST /businesses/current/logo`) now carries the thermal dots (`bits` field, one write); the answer has `thermal: true/false` and the web/phone say so when false. `PUT .../logo-bits` is gone.
 - Phone: a queued failed print is forgotten when the same print later succeeds; Wi-Fi "Check the connection" only connects (no bytes sent); the receipt logo is read from the kept copy and refreshed in the background (daily), so printing never waits on the network.
 - Known unrelated failure: backend test "points expire…" fails on a clean tree too (date dependent).
+
+## Kitchen screen switch + super admin delete (2026-11-11)
+- `receipt_settings.kitchen_screen` (default true). Off = printed-ticket-only kitchen: `sendKotCore` marks lines SERVED at once (ready_at stays NULL, so timing reports ignore them) and `kitchen/tickets` hides SERVED lines with no ready_at. Still open: cancel slip / failed-print warning for the kitchen.
+- Super admin `DELETE /api/admin/businesses/:id {confirm_name, delete_users}` (modules/deleteBusiness.js): deletes the businesses row (every business table cascades), then users who belong only to it (so they can re-signup and get a fresh trial; no trial-abuse tracking exists), then uploaded files. Console: "Delete this business for good" on the business page, typed name required. The database is shared-schema (business_id columns), so there is no per-business schema to drop.

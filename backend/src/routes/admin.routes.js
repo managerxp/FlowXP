@@ -51,6 +51,7 @@ router.get('/stats', admin.getStats);
 router.get('/businesses', admin.listBusinesses);
 router.get('/businesses/:id', admin.getBusiness);
 router.patch('/businesses/:id/status', admin.updateBusinessStatus);
+router.delete('/businesses/:id', admin.deleteBusiness);   // erases the business and its data for good; the exact name must be typed
 router.patch('/businesses/:id/plan', admin.updateBusinessPlan);
 router.get('/businesses/:id/history', admin.businessHistory);
 router.get('/businesses/:id/overrides', admin.listBusinessOverrides);
