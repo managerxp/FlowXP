@@ -8,3 +8,7 @@ backend/uploads/
 backups/
 .claude/
 print-agent/.token
+
+# design-tool data and marketing assets: kept on disk, not part of the product repo
+.agents/
+flowxp-social/

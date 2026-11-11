@@ -15,7 +15,7 @@
     "country-region-data": "^4.1.0",
     "html2canvas": "^1.4.1",
     "i18next": "^26.4.4",
-    "jspdf": "^2.5.2",
+    "jspdf": "^4.2.1",
     "lucide-react": "^1.48.0",
     "motion": "^14.0.0",
     "qrcode": "^1.5.4",
@@ -31,7 +31,6 @@
     "@tailwindcss/vite": "^4.2.1",
     "@vitejs/plugin-react": "^5.1.1",
     "magic-string": "^1.4.3",
-    "playwright": "^1.64.1",
     "tailwindcss": "^4.2.1",
     "vite": "^7.3.1"
   }

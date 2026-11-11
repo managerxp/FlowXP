@@ -594,6 +594,7 @@ The line before "Thank you for choosing us." changes with the business. If the s
 | GYM | Keep going, we will see you at the gym. |
 | GAMING_CAFE | Thanks for playing, see you again. |
 | AUTO_PARTS | Drive safe, and see you again soon. |
+| MECHANIC | Drive safe, and see you again soon. |
 | RACING | Thanks for racing with us. |
 | WHOLESALE | We value your business and look forward to your next order. |
 | DISTRIBUTOR | We value your business and look forward to your next order. |

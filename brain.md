@@ -1351,7 +1351,7 @@ Already built (no code needed): web Reports page has Day Book, All transactions,
 Still missing: Cashflow, Balance Sheet, Trial Balance and Bank statement (need cash/bank accounts, a real accounting decision), GSTR-9, Form 27EQ, loan statement, batch/serial report, sale/purchase order reports, scheduled weekly AI summary, anomaly flags, report share to the accountant by WhatsApp.
 
 ## WhatsApp templates list (2026-11-11)
-Only `flowxp_bill` is approved in Meta. `backend/scripts/whatsapp-templates-doc.mjs` writes `docs/whatsapp-templates.md`: the other 39 templates to create, most needed first (balance due, offer, loyalty, bookings, wholesale, workshop...), with exact text, variable order and sample values, generated from `modules/messaging/templates.js`. Re-run after any template change. Estimates are not sent by template yet (shared by wa.me from the shop's own number).
+Only `flowxp_bill` is approved in Meta. `backend/scripts/whatsapp-templates-doc.mjs` writes `WHATSAPP_TEMPLATES.md` (root): all 40 templates with exact text, variables and Meta samples, grouped by industry, generated from `modules/messaging/templates.js`. Re-run after any template change. Estimates are not sent by template yet (shared by wa.me from the shop's own number).
 
 ## PENDING WORK: master list (2026-11-11). Work through it in this order; commit and push once at the very end (owner's instruction)
 Unpushed commits so far (Feature): fc9dcc2, 377e80e, 1d6c3f6, 3cba745 (estimates), d1c0b80 (GST 40%), ab08f2d (app lock), acfe8fa, d27c5dc. Push `Feature` and `Feature:develop` only when the owner says so.
@@ -1366,7 +1366,7 @@ Unpushed commits so far (Feature): fc9dcc2, 377e80e, 1d6c3f6, 3cba745 (estimates
 7. Earlier review: three code-review findings were never re-reported through ReportFindings; re-run `/code-review` over the unpushed commits before pushing.
 
 ### B. Owner to-dos (cannot be done by Claude)
-- WhatsApp: create the 39 remaining templates in Meta from `docs/whatsapp-templates.md` (only `flowxp_bill` is approved); balance due first.
+- WhatsApp: create the 39 remaining templates in Meta from `WHATSAPP_TEMPLATES.md` (only `flowxp_bill` is approved); balance due first.
 - VPS: pull `develop`, restart pm2 `FlowXP-Backend`; migrations 0120-0124 run on start. 0122 (drop hotel) needs a backup first and `DROP_HOTEL_DATA=yes` if any hotel records exist.
 - Run `node scripts/fill-product-names.mjs` from backend (product name translations).
 - Mobile release: `eas init`, `eas credentials`, `eas update:configure`.
@@ -1391,3 +1391,9 @@ Phone: `app/estimates.tsx` (list, new estimate with free lines, Share via the sh
 - Block 7 audit correction: the web unsaved-changes warning already exists (`lib/unsaved.js`, used by the settings forms). Fingerprint/face unlock, web screen lock and editable currency stay undone.
 - Block 8: Cash flow report. `GET /reports/cashflow` (`ledgerReports.cashflow`): money in (payments received, other income) and out (supplier payments, expenses, refunds) by payment method and by day; credit sales are not cash; no opening balance. Web Reports > "Cash flow" (`CashflowReport` in ReportsPage.jsx), 7-language strings. Test `test/cashflow.test.js`. Balance Sheet, Trial Balance and a true Bank statement still need cash/bank accounts (design decision).
 - Tax-on-MRP and user-defined tax rate names: skipped pending an owner decision.
+
+## Mobile release pipeline (2026-11-11)
+`.github/workflows/mobile.yml`: checks (typecheck, a11y, tests, expo-doctor, android export) on every `mobile/` change; OTA (`eas update --channel production`) on push to main or by hand; manual build + submit to Google Play internal track (draft) using secrets `EXPO_TOKEN` and `PLAY_SERVICE_ACCOUNT_JSON`. CI (`ci.yml`) now also runs on pushes to `develop`. Guide with the owner's one-time setup: `docs/mobile-release.md`. Not yet done by the owner: `eas init`, `eas update:configure`, first keystore build, first manual Play upload, service account, GitHub secrets.
+
+## Audit and cleanup (2026-11-11)
+Ponytail audit + security sweep. Done: backend `npm audit fix` (body-parser, multer, nodemailer, qs: 0 vulnerabilities), `jspdf` upgraded (web audit 0), unused `playwright` and `react-native-qrcode-svg` removed, `backend/wire_approvals.py` deleted, GST rate list imported from `lib/customItems.js` instead of repeated, `.agents/` and `flowxp-social/` untracked (kept on disk, in .gitignore), mobile release pipeline (`.github/workflows/mobile.yml`, `docs/mobile-release.md`). Left: `motion` + `reactbits` animation components could become CSS; root `.md` sprawl could move to `docs/`; production-mode checks on the live VPS; the delivery-platform webhooks are still unsigned (mocks only).

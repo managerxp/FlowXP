@@ -1,0 +1,103 @@
+name: Mobile
+
+# Checks the phone app on every change, pushes over-the-air updates when the app's JavaScript changes on main,
+# and builds + sends a new version to Google Play when you start it by hand. One-time setup: docs/mobile-release.md.
+on:
+  pull_request:
+    paths: ["mobile/**", ".github/workflows/mobile.yml"]
+  push:
+    branches: [main, master, develop]
+    paths: ["mobile/**"]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "What to do"
+        type: choice
+        options: [ota-update, build-and-submit-to-play, build-apk-only]
+        default: ota-update
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: false   # never cancel a build or an update half way
+
+defaults:
+  run:
+    working-directory: mobile
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run a11y
+      - run: npm test
+      - run: npx expo-doctor
+      - run: npx expo export --platform android --output-dir dist   # the app must bundle
+
+  # Over-the-air: an update of the app's JavaScript reaches phones that already have this app version, without Play review.
+  # Only for changes that need no new native code. A change to a native package, a permission or app.json plugins needs a new build
+  # (and a bump of "version" in app.json, which also starts a new update line: runtimeVersion follows the app version).
+  ota:
+    needs: check
+    if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || (github.event_name == 'workflow_dispatch' && inputs.action == 'ota-update')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: mobile-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - name: Publish the update to the production channel
+        run: eas update --channel production --message "${{ github.sha }}" --non-interactive
+
+  # A new store version. Started by hand. Needs the one-time setup (first upload done in the Play Console, credentials in EAS).
+  build:
+    needs: check
+    if: github.event_name == 'workflow_dispatch' && (inputs.action == 'build-and-submit-to-play' || inputs.action == 'build-apk-only')
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: mobile-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - name: Google Play service account key
+        if: inputs.action == 'build-and-submit-to-play'
+        env:
+          PLAY_KEY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          test -n "$PLAY_KEY" || { echo "Add the PLAY_SERVICE_ACCOUNT_JSON secret first (docs/mobile-release.md)"; exit 1; }
+          printf '%s' "$PLAY_KEY" > play-service-account.json
+      - name: Build the Play Store bundle and send it to Google Play (internal track, as a draft)
+        if: inputs.action == 'build-and-submit-to-play'
+        run: eas build --platform android --profile production --non-interactive --wait --auto-submit
+      - name: Build an installable APK
+        if: inputs.action == 'build-apk-only'
+        run: eas build --platform android --profile preview --non-interactive --wait
+      - name: Remove the key
+        if: always()
+        run: rm -f play-service-account.json
