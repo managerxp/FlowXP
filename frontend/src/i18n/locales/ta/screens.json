@@ -4888,5 +4888,21 @@
   "Remembered in this browser only.": "இந்த உலாவியில் மட்டும் நினைவில் வைக்கப்படும்.",
   "Payment received and balance due": "பெற்ற பணமும் நிலுவையும்",
   "What the customer saved": "வாடிக்கையாளர் சேமித்தது",
-  "Send statement on WhatsApp": "WhatsApp-இல் கணக்கு அறிக்கையை அனுப்பு"
+  "Send statement on WhatsApp": "WhatsApp-இல் கணக்கு அறிக்கையை அனுப்பு",
+  "Estimates": "மதிப்பீடுகள்",
+  "Send a price before the sale. When the customer agrees, turn it into an invoice in one tap.": "விற்பனைக்கு முன் விலையை அனுப்புங்கள். வாடிக்கையாளர் ஒப்புக்கொண்டால் ஒரே தட்டலில் இன்வாய்ஸ் ஆக்குங்கள்.",
+  "New estimate": "புதிய மதிப்பீடு",
+  "No estimates yet.": "இன்னும் மதிப்பீடுகள் இல்லை.",
+  "valid until": "வரை செல்லும்",
+  "Make invoice": "இன்வாய்ஸ் உருவாக்கு",
+  "Make an invoice from this estimate?": "இந்த மதிப்பீட்டிலிருந்து இன்வாய்ஸ் உருவாக்கவா?",
+  "Invoice made": "இன்வாய்ஸ் உருவானது",
+  "Cancel this estimate?": "இந்த மதிப்பீட்டை ரத்து செய்யவா?",
+  "Cancel estimate": "மதிப்பீட்டை ரத்து செய்",
+  "Open invoice": "இன்வாய்ஸைத் திற",
+  "Walk-in / type a name": "நேரடி வாடிக்கையாளர் / பெயர் எழுதுங்கள்",
+  "Other item": "வேறு பொருள்",
+  "Name of the item or service": "பொருள் அல்லது சேவையின் பெயர்",
+  "Add another item": "மற்றொரு பொருளைச் சேர்",
+  "Invoiced": "இன்வாய்ஸ் ஆனது"
 }

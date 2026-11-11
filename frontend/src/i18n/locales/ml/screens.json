@@ -4888,5 +4888,21 @@
   "Remembered in this browser only.": "ഈ ബ്രൗസറിൽ മാത്രം ഓർമ്മിക്കുന്നു.",
   "Payment received and balance due": "ലഭിച്ച പണവും ബാക്കി തുകയും",
   "What the customer saved": "ഉപഭോക്താവ് ലാഭിച്ചത്",
-  "Send statement on WhatsApp": "WhatsApp-ൽ സ്റ്റേറ്റ്മെന്റ് അയയ്ക്കുക"
+  "Send statement on WhatsApp": "WhatsApp-ൽ സ്റ്റേറ്റ്മെന്റ് അയയ്ക്കുക",
+  "Estimates": "എസ്റ്റിമേറ്റുകൾ",
+  "Send a price before the sale. When the customer agrees, turn it into an invoice in one tap.": "വിൽപ്പനയ്ക്ക് മുമ്പ് വില അയയ്ക്കുക. ഉപഭോക്താവ് സമ്മതിച്ചാൽ ഒരു ടാപ്പിൽ ഇൻവോയ്സ് ആക്കുക.",
+  "New estimate": "പുതിയ എസ്റ്റിമേറ്റ്",
+  "No estimates yet.": "എസ്റ്റിമേറ്റുകളൊന്നുമില്ല.",
+  "valid until": "വരെ സാധുവാണ്",
+  "Make invoice": "ഇൻവോയ്സ് ഉണ്ടാക്കുക",
+  "Make an invoice from this estimate?": "ഈ എസ്റ്റിമേറ്റിൽ നിന്ന് ഇൻവോയ്സ് ഉണ്ടാക്കണോ?",
+  "Invoice made": "ഇൻവോയ്സ് ഉണ്ടാക്കി",
+  "Cancel this estimate?": "ഈ എസ്റ്റിമേറ്റ് റദ്ദാക്കണോ?",
+  "Cancel estimate": "എസ്റ്റിമേറ്റ് റദ്ദാക്കുക",
+  "Open invoice": "ഇൻവോയ്സ് തുറക്കുക",
+  "Walk-in / type a name": "വാക്ക്-ഇൻ / പേര് എഴുതുക",
+  "Other item": "മറ്റൊരു ഇനം",
+  "Name of the item or service": "ഇനത്തിന്റെയോ സേവനത്തിന്റെയോ പേര്",
+  "Add another item": "മറ്റൊരു ഇനം ചേർക്കുക",
+  "Invoiced": "ഇൻവോയ്സ് ആക്കി"
 }

@@ -1328,3 +1328,10 @@ Failed prints are kept, not lost: `mobile/src/lib/printQueue.ts` (pure list: las
 
 ## Block 4 audit (2026-11-11)
 Already built: accountant pack (ZIP download + email, web Reports + phone), party statement and sales/purchases by party (web Reports, phone biz-report), customer import (web + phone), "Owes you" lists with a WhatsApp reminder per customer (Reports owes report, phone customer screen, `POST /messaging/balance-share` and `/send-balance`). Built now: `POST /messaging/statement-share {customer_id, days?}` (statement of account as a WhatsApp message from the shop's own number; `statementText` / `statementShare` in modules/messaging) with "Send statement on WhatsApp" on the web customer panel and the phone customer screen; "Remind on WhatsApp" added to the web customer panel. Not built: automatic due-date reminders (needs Meta-approved templates and due dates on retail bills).
+
+## Block 5: estimates / quotations (2026-11-11)
+Audit: other income, wholesale sales orders + delivery challan, and workshop job-card estimates already existed; held bills exist. The gap was a plain estimate for retail-type businesses.
+- Migration 0124: `estimates` table (items JSONB as typed, discount, valid_until, status OPEN/CONVERTED/CANCELLED, invoice_id) + `businesses.estimate_prefix/estimate_next_number` (EST-0001 via `nextNumber`).
+- Backend `controllers/estimates.controller.js` + `routes/estimates.routes.js` (`/estimates`: list, create, `:id/convert`, `:id/cancel`), gated by plan feature `estimates` (off for food and wholesale/distributor, which have their own order flow) and `billing` permission. Convert bills the quoted lines through `createInvoiceInTransaction` (tax, stock, loyalty as at the till) inside one locked transaction, so it can only happen once. Included in backup + start-fresh. Test: `test/estimates.test.js`.
+- Web: `app/EstimatesPage.jsx` (list, new-estimate form, Make invoice, cancel), nav "Estimates" under More, 7-language strings.
+- Not built: phone screen, print/WhatsApp share of an estimate, proforma and generic delivery challan for non-wholesale types (an estimate covers the pre-sale price; challan stays wholesale-only).

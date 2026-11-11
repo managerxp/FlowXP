@@ -4888,5 +4888,21 @@
   "Remembered in this browser only.": "ఈ బ్రౌజర్‌లో మాత్రమే గుర్తుంచుకోబడుతుంది.",
   "Payment received and balance due": "అందిన చెల్లింపు మరియు బాకీ",
   "What the customer saved": "కస్టమర్ ఆదా చేసింది",
-  "Send statement on WhatsApp": "WhatsApp లో స్టేట్‌మెంట్ పంపండి"
+  "Send statement on WhatsApp": "WhatsApp లో స్టేట్‌మెంట్ పంపండి",
+  "Estimates": "అంచనాలు (కొటేషన్లు)",
+  "Send a price before the sale. When the customer agrees, turn it into an invoice in one tap.": "అమ్మకానికి ముందు ధర పంపండి. కస్టమర్ ఒప్పుకుంటే ఒక్క ట్యాప్‌తో ఇన్వాయిస్ చేయండి.",
+  "New estimate": "కొత్త అంచనా",
+  "No estimates yet.": "ఇంకా అంచనాలు లేవు.",
+  "valid until": "వరకు చెల్లుతుంది",
+  "Make invoice": "ఇన్వాయిస్ చేయండి",
+  "Make an invoice from this estimate?": "ఈ అంచనా నుండి ఇన్వాయిస్ చేయాలా?",
+  "Invoice made": "ఇన్వాయిస్ తయారైంది",
+  "Cancel this estimate?": "ఈ అంచనాను రద్దు చేయాలా?",
+  "Cancel estimate": "అంచనా రద్దు చేయండి",
+  "Open invoice": "ఇన్వాయిస్ తెరవండి",
+  "Walk-in / type a name": "వాక్-ఇన్ / పేరు రాయండి",
+  "Other item": "ఇతర వస్తువు",
+  "Name of the item or service": "వస్తువు లేదా సేవ పేరు",
+  "Add another item": "మరో వస్తువు జోడించండి",
+  "Invoiced": "ఇన్వాయిస్ అయింది"
 }

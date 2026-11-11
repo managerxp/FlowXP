@@ -224,6 +224,7 @@ const NAV_GROUPS = [
       { to: '/app/leakage', label: 'Leakage', icon: ShieldAlert, types: RESTAURANT_TYPES, permission: 'settings', feature: 'advanced_reports', more: true },
       { to: '/app/money', label: 'Money In and Out', icon: Receipt, types: ['MECHANIC'], anyPermission: ['payments', 'expenses'] },
       { to: '/app/expenses', label: 'Expenses', icon: Receipt, permission: 'expenses', feature: 'expenses', more: true },
+      { to: '/app/estimates', label: 'Estimates', icon: FileText, permission: 'billing', feature: 'estimates', more: true },
       { to: '/app/other-income', label: 'Other income', icon: HandCoins, permission: 'expenses', feature: 'other_income', more: true },
       { to: '/app/gst', label: 'GST filing', icon: Landmark, roles: ['OWNER', 'ADMIN'], more: true },
       { to: '/app/ai', label: 'Flow AI', icon: Sparkles, permission: 'ai', feature: 'ai' }

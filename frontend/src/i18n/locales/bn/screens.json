@@ -4888,5 +4888,21 @@
   "Remembered in this browser only.": "শুধু এই ব্রাউজারে মনে রাখা হয়।",
   "Payment received and balance due": "প্রাপ্ত পেমেন্ট ও বকেয়া",
   "What the customer saved": "গ্রাহক যত বাঁচিয়েছেন",
-  "Send statement on WhatsApp": "WhatsApp-এ স্টেটমেন্ট পাঠান"
+  "Send statement on WhatsApp": "WhatsApp-এ স্টেটমেন্ট পাঠান",
+  "Estimates": "এস্টিমেট",
+  "Send a price before the sale. When the customer agrees, turn it into an invoice in one tap.": "বিক্রির আগে দাম পাঠান। ক্রেতা রাজি হলে এক ট্যাপে ইনভয়েস বানান।",
+  "New estimate": "নতুন এস্টিমেট",
+  "No estimates yet.": "এখনও কোনো এস্টিমেট নেই।",
+  "valid until": "পর্যন্ত বৈধ",
+  "Make invoice": "ইনভয়েস বানান",
+  "Make an invoice from this estimate?": "এই এস্টিমেট থেকে ইনভয়েস বানাবেন?",
+  "Invoice made": "ইনভয়েস তৈরি হয়েছে",
+  "Cancel this estimate?": "এই এস্টিমেট বাতিল করবেন?",
+  "Cancel estimate": "এস্টিমেট বাতিল করুন",
+  "Open invoice": "ইনভয়েস খুলুন",
+  "Walk-in / type a name": "ওয়াক-ইন / নাম লিখুন",
+  "Other item": "অন্য আইটেম",
+  "Name of the item or service": "আইটেম বা সেবার নাম",
+  "Add another item": "আরেকটি আইটেম যোগ করুন",
+  "Invoiced": "ইনভয়েস হয়েছে"
 }

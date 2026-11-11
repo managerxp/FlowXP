@@ -4888,5 +4888,21 @@
   "Remembered in this browser only.": "ಈ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಮಾತ್ರ ನೆನಪಿನಲ್ಲಿರುತ್ತದೆ.",
   "Payment received and balance due": "ಸ್ವೀಕರಿಸಿದ ಪಾವತಿ ಮತ್ತು ಬಾಕಿ",
   "What the customer saved": "ಗ್ರಾಹಕರು ಉಳಿಸಿದ್ದು",
-  "Send statement on WhatsApp": "WhatsApp ನಲ್ಲಿ ಸ್ಟೇಟ್‌ಮೆಂಟ್ ಕಳುಹಿಸಿ"
+  "Send statement on WhatsApp": "WhatsApp ನಲ್ಲಿ ಸ್ಟೇಟ್‌ಮೆಂಟ್ ಕಳುಹಿಸಿ",
+  "Estimates": "ಅಂದಾಜುಗಳು",
+  "Send a price before the sale. When the customer agrees, turn it into an invoice in one tap.": "ಮಾರಾಟಕ್ಕೂ ಮೊದಲು ಬೆಲೆ ಕಳುಹಿಸಿ. ಗ್ರಾಹಕರು ಒಪ್ಪಿದರೆ ಒಂದೇ ಟ್ಯಾಪ್‌ನಲ್ಲಿ ಇನ್‌ವಾಯ್ಸ್ ಮಾಡಿ.",
+  "New estimate": "ಹೊಸ ಅಂದಾಜು",
+  "No estimates yet.": "ಇನ್ನೂ ಅಂದಾಜುಗಳಿಲ್ಲ.",
+  "valid until": "ವರೆಗೆ ಮಾನ್ಯ",
+  "Make invoice": "ಇನ್‌ವಾಯ್ಸ್ ಮಾಡಿ",
+  "Make an invoice from this estimate?": "ಈ ಅಂದಾಜಿನಿಂದ ಇನ್‌ವಾಯ್ಸ್ ಮಾಡಬೇಕೆ?",
+  "Invoice made": "ಇನ್‌ವಾಯ್ಸ್ ಆಯಿತು",
+  "Cancel this estimate?": "ಈ ಅಂದಾಜನ್ನು ರದ್ದುಮಾಡಬೇಕೆ?",
+  "Cancel estimate": "ಅಂದಾಜು ರದ್ದುಮಾಡಿ",
+  "Open invoice": "ಇನ್‌ವಾಯ್ಸ್ ತೆರೆಯಿರಿ",
+  "Walk-in / type a name": "ವಾಕ್-ಇನ್ / ಹೆಸರು ಬರೆಯಿರಿ",
+  "Other item": "ಬೇರೆ ವಸ್ತು",
+  "Name of the item or service": "ವಸ್ತು ಅಥವಾ ಸೇವೆಯ ಹೆಸರು",
+  "Add another item": "ಇನ್ನೊಂದು ವಸ್ತು ಸೇರಿಸಿ",
+  "Invoiced": "ಇನ್‌ವಾಯ್ಸ್ ಆಗಿದೆ"
 }

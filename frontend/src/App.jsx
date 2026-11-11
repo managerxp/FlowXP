@@ -88,6 +88,7 @@ const OffersPage = lazy(() => import('./app/OffersPage.jsx'));
 const StockCountPage = lazy(() => import('./app/StockCountPage.jsx'));
 const ExpensesPage = lazy(() => import('./app/ExpensesPage.jsx'));
 const OtherIncomePage = lazy(() => import('./app/OtherIncomePage.jsx'));
+const EstimatesPage = lazy(() => import('./app/EstimatesPage.jsx'));
 const PurchasesPage = lazy(() => import('./app/PurchasesPage.jsx'));
 const PaymentsPage = lazy(() => import('./app/PaymentsPage.jsx'));
 const ReportsPage = lazy(() => import('./app/ReportsPage.jsx'));
@@ -323,6 +324,7 @@ const App = () => (
       <Route path="purchases" element={<PurchasesPage />} />
       <Route path="expenses" element={<ExpensesPage />} />
       <Route path="other-income" element={<OtherIncomePage />} />
+      <Route path="estimates" element={<EstimatesPage />} />
       <Route path="payments" element={<PaymentsPage />} />
       <Route path="reports" element={<ReportsPage />} />
       <Route path="orders" element={<OrdersPage />} />

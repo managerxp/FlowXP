@@ -6,7 +6,7 @@
  */
 const WIPE = [   // children before parents; each has a business_id column
   'refunds', 'credit_notes', 'debit_notes', 'payments', 'invoices', 'orders', 'held_bills', 'inventory_transactions',
-  'expenses', 'other_income', 'purchase_orders', 'loyalty_events', 'points_ledger', 'customer_feedback', 'reservations', 'waitlist_entries',
+  'expenses', 'other_income', 'estimates', 'purchase_orders', 'loyalty_events', 'points_ledger', 'customer_feedback', 'reservations', 'waitlist_entries',
   'stock_counts', 'stock_transfers', 'transfer_requests', 'messages', 'notifications',
 ];
 

@@ -4888,5 +4888,21 @@
   "Remembered in this browser only.": "Remembered in this browser only.",
   "Payment received and balance due": "Payment received and balance due",
   "What the customer saved": "What the customer saved",
-  "Send statement on WhatsApp": "Send statement on WhatsApp"
+  "Send statement on WhatsApp": "Send statement on WhatsApp",
+  "Estimates": "Estimates",
+  "Send a price before the sale. When the customer agrees, turn it into an invoice in one tap.": "Send a price before the sale. When the customer agrees, turn it into an invoice in one tap.",
+  "New estimate": "New estimate",
+  "No estimates yet.": "No estimates yet.",
+  "valid until": "valid until",
+  "Make invoice": "Make invoice",
+  "Make an invoice from this estimate?": "Make an invoice from this estimate?",
+  "Invoice made": "Invoice made",
+  "Cancel this estimate?": "Cancel this estimate?",
+  "Cancel estimate": "Cancel estimate",
+  "Open invoice": "Open invoice",
+  "Walk-in / type a name": "Walk-in / type a name",
+  "Other item": "Other item",
+  "Name of the item or service": "Name of the item or service",
+  "Add another item": "Add another item",
+  "Invoiced": "Invoiced"
 }

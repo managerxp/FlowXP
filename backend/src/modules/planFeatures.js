@@ -19,6 +19,7 @@ export const PLAN_FEATURES = [
   ['purchases', 'Purchasing & suppliers', 'Purchase orders, supplier price lists, debit notes'],
   ['expenses', 'Expenses', 'Recording and reporting business expenses'],
   ['other_income', 'Other income', 'Money received that is not a sale (interest, rent, commission), counted in profit and loss'],
+  ['estimates', 'Estimates & quotations', 'Priced offers with a valid-until date that turn into an invoice in one tap'],
   ['ai', 'Flow AI', 'The AI manager chat, briefings and menu-photo import'],
   ['advanced_reports', 'Advanced reports', 'Profitability, revenue leakage and demand forecast'],
   ['integrations', 'Delivery integrations', 'Zomato/Swiggy/ONDC/Magicpin order sync and webhooks'],
@@ -138,7 +139,7 @@ const CL_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('cl_'));
 const FLOWBOOK_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('flowbook'));
 const NOT_FOOD = ['reservations', 'integrations', 'qr_ordering', 'multi_brand', 'delivery_fleet', 'tables', 'kitchen'];
 const SHOP_OFF = [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, 'wholesale_pricing', ...FLOWBOOK_KEYS];
-const FOOD_OFF = [...SALON_KEYS, ...WHOLESALE_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, ...FLOWBOOK_KEYS];
+const FOOD_OFF = ['estimates', ...SALON_KEYS, ...WHOLESALE_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, ...FLOWBOOK_KEYS];
 export const INDUSTRY_OFF = {
   RESTAURANT: FOOD_OFF, CAFE: FOOD_OFF, RACING: FOOD_OFF,
   GAMING_CAFE: FOOD_OFF.filter((k) => !GAMING_KEYS.includes(k)),                    // a lounge keeps the table floor, kitchen and QR menu for its food and drink
@@ -149,7 +150,7 @@ export const INDUSTRY_OFF = {
   AUTO_PARTS: SHOP_OFF.filter((k) => !AP_KEYS.includes(k)),                         // a parts shop is a shop: the till, stock center and batches stay; the parts tools are its own             // members and access; the till and loyalty stay
   RETAIL: SHOP_OFF, SUPERMARKET: SHOP_OFF, PHARMACY: SHOP_OFF,                      // these keep batches and expiry
   ELECTRONICS: [...SHOP_OFF, 'wholesale_batches'], CLOTHING: [...SHOP_OFF.filter((k) => !CL_KEYS.includes(k)), 'wholesale_batches'], SERVICES: [...SHOP_OFF, 'wholesale_batches'],
-  WHOLESALE: [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, 'loyalty', ...FLOWBOOK_KEYS], DISTRIBUTOR: [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, 'loyalty', ...FLOWBOOK_KEYS],
+  WHOLESALE: [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, 'loyalty', 'estimates', ...FLOWBOOK_KEYS], DISTRIBUTOR: [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, 'loyalty', 'estimates', ...FLOWBOOK_KEYS],
   OTHER: FLOWBOOK_KEYS
 };
 

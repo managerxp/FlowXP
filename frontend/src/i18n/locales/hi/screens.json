@@ -4888,5 +4888,21 @@
   "Remembered in this browser only.": "सिर्फ़ इसी ब्राउज़र में याद रखा जाता है।",
   "Payment received and balance due": "प्राप्त भुगतान और बकाया",
   "What the customer saved": "ग्राहक ने कितना बचाया",
-  "Send statement on WhatsApp": "WhatsApp पर स्टेटमेंट भेजें"
+  "Send statement on WhatsApp": "WhatsApp पर स्टेटमेंट भेजें",
+  "Estimates": "अनुमान (कोटेशन)",
+  "Send a price before the sale. When the customer agrees, turn it into an invoice in one tap.": "बिक्री से पहले दाम भेजें। ग्राहक मान जाए तो एक टैप में इनवॉइस बना दें।",
+  "New estimate": "नया अनुमान",
+  "No estimates yet.": "अभी कोई अनुमान नहीं।",
+  "valid until": "तक मान्य",
+  "Make invoice": "इनवॉइस बनाएँ",
+  "Make an invoice from this estimate?": "इस अनुमान से इनवॉइस बनाएँ?",
+  "Invoice made": "इनवॉइस बन गया",
+  "Cancel this estimate?": "यह अनुमान रद्द करें?",
+  "Cancel estimate": "अनुमान रद्द करें",
+  "Open invoice": "इनवॉइस खोलें",
+  "Walk-in / type a name": "वॉक-इन / नाम लिखें",
+  "Other item": "दूसरा आइटम",
+  "Name of the item or service": "आइटम या सेवा का नाम",
+  "Add another item": "एक और आइटम जोड़ें",
+  "Invoiced": "इनवॉइस बना"
 }
