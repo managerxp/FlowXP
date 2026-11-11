@@ -49,7 +49,7 @@ export const printReceipt = async (text: string, paper: Paper, options: EscposOp
     tried = true;
     try { await thermal.printViaRawBT(text, paper, withPrefs); return 'printer'; } catch { /* fall through to the print screen */ }
   }
-  if (options.noDialog && tried) throw new Error('Could not reach the printer. It is kept in Printers to print again.');
+  if (options.noDialog && tried) throw new Error('Could not reach the printer.');
   const Print = await import('expo-print');
   const { html, width } = receiptHtml(text, paper, options.qr);
   await Print.printAsync({ html, width });

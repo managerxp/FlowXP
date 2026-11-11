@@ -4873,5 +4873,6 @@
   "This deletes every bill, order, payment, purchase, expense and stock movement made so far, and cannot be undone. Products, customers, staff and settings stay. Stock goes back to 0 so you can count it again.": "अब तक के सभी बिल, ऑर्डर, भुगतान, खरीद, खर्च और स्टॉक की हलचल हट जाएगी, और इसे वापस नहीं किया जा सकता। उत्पाद, ग्राहक, स्टाफ और सेटिंग्स बनी रहेंगी। स्टॉक 0 हो जाएगा ताकि आप उसे दोबारा गिन सकें।",
   "Type START FRESH to confirm": "पुष्टि के लिए START FRESH लिखें",
   "Delete and start fresh": "हटाएँ और नए सिरे से शुरू करें",
-  "Your trial data is cleared. Numbering starts again from 1.": "आपका ट्रायल डेटा साफ़ हो गया। नंबरिंग फिर से 1 से शुरू होगी।"
+  "Your trial data is cleared. Numbering starts again from 1.": "आपका ट्रायल डेटा साफ़ हो गया। नंबरिंग फिर से 1 से शुरू होगी।",
+  "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.": "लोगो सेव हो गया, पर थर्मल रसीद के लिए तैयार नहीं हो सका। फिर से अपलोड करके देखें।"
 }

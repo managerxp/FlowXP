@@ -17,6 +17,8 @@ export const savePrinters = async (list: SavedPrinter[]): Promise<void> => { awa
 export const readFailed = async (): Promise<FailedJob[]> => { try { return cleanJobs(JSON.parse((await kvGet('print_failed')) || '[]'), Date.now()); } catch { return []; } };
 const saveFailed = async (list: FailedJob[]) => { await kvSet('print_failed', JSON.stringify(list)).catch(() => {}); };
 export const keepFailed = async (job: Omit<FailedJob, 'id' | 'at'>): Promise<void> => { const now = Date.now(); await saveFailed(addJob(await readFailed(), { ...job, id: newJobId(now), at: now }, now)); };
+/** The same thing printed fine some other way (a manual tap, a retry): forget its waiting copy so it is not printed twice. */
+export const forgetFailed = async (match: (j: FailedJob) => boolean): Promise<void> => { const list = await readFailed(); const next = list.filter((j) => !match(j)); if (next.length !== list.length) await saveFailed(next); };
 export const dropFailed = async (id: string): Promise<FailedJob[]> => { const next = removeJob(await readFailed(), id); await saveFailed(next); return next; };
 
 export type Found = { name: string; address: string };
@@ -73,11 +75,19 @@ const sendNetwork = async (host: string, port: number, bytes: Uint8Array): Promi
   });
 };
 
+const connectNetwork = (host: string, port: number): Promise<void> => import('react-native-tcp-socket').then(({ default: TcpSocket }) => new Promise<void>((resolve, reject) => {
+  let done = false;
+  const finish = (error?: Error) => { if (done) return; done = true; try { socket.destroy(); } catch { /* already closed */ } if (error) reject(error); else resolve(); };
+  const socket = TcpSocket.createConnection({ host, port, timeout: 5000 } as never, () => finish());
+  socket.on('error', (e: Error) => finish(e));
+  socket.on('timeout', () => finish(new Error('timeout')));
+}));
+
 /** Whether a saved printer can be reached right now, without printing anything. Throws a sentence a person can act on. */
 export const checkPrinter = async (printer: SavedPrinter): Promise<void> => {
   try {
     if (printer.kind === 'bluetooth') { const RN = await bt(); const d = await RN.connectToDevice(printer.address, { delimiter: '', charset: 'binary' } as never); await d.disconnect().catch(() => {}); }
-    else await sendNetwork(printer.address, printer.port, new Uint8Array(0));
+    else await connectNetwork(printer.address, printer.port);
   } catch (e) { throw new Error(linkProblem(printer.kind, e)); }
 };
 
@@ -94,6 +104,7 @@ export const printReceiptDirect = async (text: string, options: EscposOptions = 
   let logo = options.logo;
   if (logo === undefined) { try { const { api } = await import('./session.ts'); logo = await (await import('./printLogo.ts')).printLogo(api); } catch { logo = null; } }
   await sendToPrinter(printer, escposBytes(text, printer.paper, { ...options, logo }));
+  await forgetFailed((j) => j.kind === 'receipt' && j.text === text).catch(() => {});
 };
 
 /** The kitchen's slips for one sent order (the server makes them, one per station), to the kitchen printer. Returns false when no printer is set for the kitchen. */
@@ -103,6 +114,7 @@ export const printKitchenDirect = async (api: { get: <T>(path: string) => Promis
   try {
     const { slips } = await api.get<{ slips: { data: string }[] }>(`/kitchen/kots/${kotId}/escpos?cols=${colsFor(printer.paper)}`);
     for (const slip of slips) await sendToPrinter(printer, Uint8Array.from(atob(slip.data), (c) => c.charCodeAt(0)));
+    await forgetFailed((j) => j.kind === 'kot' && j.ref === kotId).catch(() => {});
     return slips.length > 0;
   } catch (e) { if (keep) await keepFailed({ kind: 'kot', ref: kotId }); throw e; }
 };
@@ -114,6 +126,7 @@ export const printBillDirect = async (api: { get: <T>(path: string) => Promise<T
   try {
     const { data } = await api.get<{ data: string }>(`/orders/${orderId}/escpos?cols=${colsFor(printer.paper)}`);
     await sendToPrinter(printer, Uint8Array.from(atob(data), (c) => c.charCodeAt(0)));
+    await forgetFailed((j) => j.kind === 'bill' && j.ref === orderId).catch(() => {});
     return true;
   } catch (e) { if (keep) await keepFailed({ kind: 'bill', ref: orderId }); throw e; }
 };

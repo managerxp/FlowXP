@@ -283,10 +283,19 @@ test('a logo is stored, replaced and removed, and shows in the receipt settings'
   assert.equal((await A.call(business.uploadLogo, {})).code, 400);           // no file
   const again = await A.call(business.uploadLogo, { file: { buffer: png, mimetype: 'image/png' } });
   assert.notEqual(again.body.data.logo_url, up.body.data.logo_url);
+  assert.equal(up.body.data.thermal, false);                                // no dots sent: the thermal copy is missing, and the answer says so
+  const dots = { w: 8, h: 2, data: Buffer.from([0xf0, 0x0f]).toString('base64') };
+  const withDots = await A.call(business.uploadLogo, { file: { buffer: png, mimetype: 'image/png' }, body: { bits: JSON.stringify(dots) } });
+  assert.equal(withDots.body.data.thermal, true);
+  assert.deepEqual((await pool.query(`SELECT receipt_settings->'logo_bits' AS b FROM businesses WHERE business_id = $1`, [A.biz])).rows[0].b, dots);
+  const bad = await A.call(business.uploadLogo, { file: { buffer: png, mimetype: 'image/png' }, body: { bits: JSON.stringify({ ...dots, h: 5 }) } });
+  assert.equal(bad.body.data.thermal, false);
+  assert.equal((await pool.query(`SELECT receipt_settings->'logo_bits' AS b FROM businesses WHERE business_id = $1`, [A.biz])).rows[0].b, null);   // old dots never outlive their picture
 
   assert.equal((await A.call(business.removeLogo)).body.data.logo_url, null);
   const after = (await pool.query(`SELECT receipt_settings FROM businesses WHERE business_id = $1`, [A.biz])).rows[0].receipt_settings;
   assert.equal('logo_url' in after, false);
+  assert.equal('logo_bits' in after, false);
   assert.equal(business.cleanReceiptSettings({ show_logo: false }).settings.show_logo, false);
 });
 

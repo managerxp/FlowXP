@@ -3294,7 +3294,8 @@ export const ML: Record<string, string> = {
   'The printer answered. It is ready.': 'പ്രിന്റർ പ്രതികരിച്ചു. അത് തയ്യാറാണ്.',
   'Receipt': 'രസീത്',
   'Bill before payment': 'പണമടയ്ക്കുന്നതിന് മുമ്പുള്ള ബിൽ',
-  'Printed.': 'പ്രിന്റ് ചെയ്തു.',};
+  'Printed.': 'പ്രിന്റ് ചെയ്തു.',
+  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'ലോഗോ സേവ് ചെയ്തു. തെർമൽ രസീതുകളിൽ പ്രിന്റ് ചെയ്യാൻ വെബ്സൈറ്റിൽ നിന്ന് ഒരു തവണ അപ്‌ലോഡ് ചെയ്യുക.',};
 
 /** Tamil: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const TA: Record<string, string> = {
@@ -6590,7 +6591,8 @@ export const TA: Record<string, string> = {
   'The printer answered. It is ready.': 'அச்சுப்பொறி பதிலளித்தது. அது தயாராக உள்ளது.',
   'Receipt': 'ரசீது',
   'Bill before payment': 'பணம் செலுத்துவதற்கு முந்தைய பில்',
-  'Printed.': 'அச்சிடப்பட்டது.',};
+  'Printed.': 'அச்சிடப்பட்டது.',
+  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'லோகோ சேமிக்கப்பட்டது. தெர்மல் ரசீதுகளில் அச்சிட, இணையதளத்தில் ஒருமுறை பதிவேற்றுங்கள்.',};
 
 /** Bengali: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const BN: Record<string, string> = {
@@ -9886,7 +9888,8 @@ export const BN: Record<string, string> = {
   'The printer answered. It is ready.': 'প্রিন্টার সাড়া দিয়েছে। এটি তৈরি।',
   'Receipt': 'রসিদ',
   'Bill before payment': 'পেমেন্টের আগের বিল',
-  'Printed.': 'প্রিন্ট হয়েছে।',};
+  'Printed.': 'প্রিন্ট হয়েছে।',
+  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'লোগো সেভ হয়েছে। থার্মাল রসিদে ছাপতে একবার ওয়েবসাইট থেকে আপলোড করুন।',};
 
 /** Telugu: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const TE: Record<string, string> = {
@@ -13182,7 +13185,8 @@ export const TE: Record<string, string> = {
   'The printer answered. It is ready.': 'ప్రింటర్ స్పందించింది. అది సిద్ధంగా ఉంది.',
   'Receipt': 'రసీదు',
   'Bill before payment': 'చెల్లింపుకు ముందు బిల్లు',
-  'Printed.': 'ప్రింట్ అయింది.',};
+  'Printed.': 'ప్రింట్ అయింది.',
+  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'లోగో సేవ్ అయింది. థర్మల్ రసీదులపై ప్రింట్ చేయడానికి, వెబ్‌సైట్ నుండి ఒకసారి అప్‌లోడ్ చేయండి.',};
 
 /** Kannada: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const KN: Record<string, string> = {
@@ -16478,4 +16482,5 @@ export const KN: Record<string, string> = {
   'The printer answered. It is ready.': 'ಪ್ರಿಂಟರ್ ಪ್ರತಿಕ್ರಿಯಿಸಿತು. ಅದು ಸಿದ್ಧವಾಗಿದೆ.',
   'Receipt': 'ರಸೀದಿ',
   'Bill before payment': 'ಪಾವತಿಗೆ ಮೊದಲಿನ ಬಿಲ್',
-  'Printed.': 'ಮುದ್ರಿಸಲಾಗಿದೆ.',};
+  'Printed.': 'ಮುದ್ರಿಸಲಾಗಿದೆ.',
+  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'ಲೋಗೋ ಉಳಿಸಲಾಗಿದೆ. ಥರ್ಮಲ್ ರಸೀದಿಗಳಲ್ಲಿ ಮುದ್ರಿಸಲು, ವೆಬ್‌ಸೈಟ್‌ನಿಂದ ಒಮ್ಮೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ.',};

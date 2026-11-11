@@ -4873,5 +4873,6 @@
   "This deletes every bill, order, payment, purchase, expense and stock movement made so far, and cannot be undone. Products, customers, staff and settings stay. Stock goes back to 0 so you can count it again.": "এখন পর্যন্ত সব বিল, অর্ডার, পেমেন্ট, ক্রয়, খরচ ও স্টক চলাচল মুছে যাবে, এটি ফেরানো যাবে না। পণ্য, গ্রাহক, কর্মী ও সেটিংস থাকবে। আবার গুনতে স্টক ০ হয়ে যাবে।",
   "Type START FRESH to confirm": "নিশ্চিত করতে START FRESH লিখুন",
   "Delete and start fresh": "মুছে নতুন করে শুরু করুন",
-  "Your trial data is cleared. Numbering starts again from 1.": "আপনার ট্রায়ালের তথ্য মুছে গেছে। নম্বর আবার ১ থেকে শুরু হবে।"
+  "Your trial data is cleared. Numbering starts again from 1.": "আপনার ট্রায়ালের তথ্য মুছে গেছে। নম্বর আবার ১ থেকে শুরু হবে।",
+  "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.": "লোগো সেভ হয়েছে, কিন্তু থার্মাল রসিদের জন্য তৈরি করা যায়নি। আবার আপলোড করে দেখুন।"
 }

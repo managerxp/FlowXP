@@ -89,9 +89,10 @@ const LogoSetting = ({ logoUrl, onChange }) => {
     setBusy(true); setError('');
     try {
       const body = new FormData(); body.append('logo', file);
+      try { body.append('bits', JSON.stringify(await fileToBits(file))); } catch { /* the picture still prints from the browser; the answer below says the thermal copy is missing */ }
       const r = await api('/businesses/current/logo', { method: 'POST', body });
-      onChange(r.logo_url); toast.success(tr('Logo saved'));
-      try { await api('/businesses/current/logo-bits', { method: 'PUT', body: await fileToBits(file) }); } catch { /* the picture still prints from the browser; only the thermal copy is missing */ }
+      onChange(r.logo_url);
+      if (r.thermal === false) toast.error(tr('Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.')); else toast.success(tr('Logo saved'));
     } catch (caught) { setError(caught.message); }
     finally { setBusy(false); e.target.value = ''; }
   };

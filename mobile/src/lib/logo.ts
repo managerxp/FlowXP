@@ -21,7 +21,7 @@ export const logoSrc = (url: string | null | undefined, apiUrl: string): string 
 export const logoUrlOf = (receiptSettings: Record<string, unknown> | undefined): string | null => { const u = receiptSettings?.logo_url; return typeof u === 'string' && u ? u : null; };
 
 export const LOGO_TEXTS: string[] = [
-  'Logo', 'No logo yet', 'Choose a logo', 'Replace the logo', 'Remove the logo', 'Logo saved', 'Logo removed', 'PNG, JPEG or WebP up to 2 MB. A simple black-and-white logo prints best.',
+  'Logo saved. To print it on thermal receipts, upload it once from the website.', 'Logo', 'No logo yet', 'Choose a logo', 'Replace the logo', 'Remove the logo', 'Logo saved', 'Logo removed', 'PNG, JPEG or WebP up to 2 MB. A simple black-and-white logo prints best.',
   'The logo must be a PNG, JPEG or WebP image', 'The logo must be 2 MB or smaller', 'Could not save the logo. Check the connection and try again.', 'Working…'
 ];
 export const logoWorking = (): string => t('Working…');

@@ -4873,5 +4873,6 @@
   "This deletes every bill, order, payment, purchase, expense and stock movement made so far, and cannot be undone. Products, customers, staff and settings stay. Stock goes back to 0 so you can count it again.": "This deletes every bill, order, payment, purchase, expense and stock movement made so far, and cannot be undone. Products, customers, staff and settings stay. Stock goes back to 0 so you can count it again.",
   "Type START FRESH to confirm": "Type START FRESH to confirm",
   "Delete and start fresh": "Delete and start fresh",
-  "Your trial data is cleared. Numbering starts again from 1.": "Your trial data is cleared. Numbering starts again from 1."
+  "Your trial data is cleared. Numbering starts again from 1.": "Your trial data is cleared. Numbering starts again from 1.",
+  "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.": "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again."
 }

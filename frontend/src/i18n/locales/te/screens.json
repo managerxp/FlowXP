@@ -4873,5 +4873,6 @@
   "This deletes every bill, order, payment, purchase, expense and stock movement made so far, and cannot be undone. Products, customers, staff and settings stay. Stock goes back to 0 so you can count it again.": "ఇప్పటివరకు చేసిన అన్ని బిల్లులు, ఆర్డర్లు, చెల్లింపులు, కొనుగోళ్లు, ఖర్చులు, స్టాక్ కదలికలు తొలగించబడతాయి, దీన్ని తిరిగి పొందలేరు. ఉత్పత్తులు, కస్టమర్లు, సిబ్బంది, సెట్టింగ్‌లు అలాగే ఉంటాయి. మళ్లీ లెక్కించడానికి స్టాక్ 0 అవుతుంది.",
   "Type START FRESH to confirm": "నిర్ధారించడానికి START FRESH అని టైప్ చేయండి",
   "Delete and start fresh": "తొలగించి కొత్తగా ప్రారంభించండి",
-  "Your trial data is cleared. Numbering starts again from 1.": "మీ ట్రయల్ డేటా తొలగించబడింది. నంబరింగ్ మళ్లీ 1 నుండి మొదలవుతుంది."
+  "Your trial data is cleared. Numbering starts again from 1.": "మీ ట్రయల్ డేటా తొలగించబడింది. నంబరింగ్ మళ్లీ 1 నుండి మొదలవుతుంది.",
+  "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.": "లోగో సేవ్ అయింది, కానీ థర్మల్ రసీదుల కోసం సిద్ధం చేయలేకపోయాం. మళ్లీ అప్‌లోడ్ చేసి చూడండి."
 }

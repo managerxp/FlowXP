@@ -27,9 +27,9 @@ export default function LogoSetting({ url, onChange }: { url: string | null; onC
       const form = new FormData();
       form.append('logo', { uri: a.uri, name: logoFileName(mime), type: LOGO_TYPES.includes(mime.toLowerCase()) ? mime : 'image/jpeg' } as never);
       const res = await fetch(`${API_URL}/api/businesses/current/logo`, { method: 'POST', headers: authHeaders(sessionStore.get()), body: form });
-      const json = (await res.json().catch(() => ({}))) as { data?: { logo_url?: string }; message?: string };
+      const json = (await res.json().catch(() => ({}))) as { data?: { logo_url?: string; thermal?: boolean }; message?: string };
       if (!res.ok || !json.data?.logo_url) { setError(json.message || t('Could not save the logo. Check the connection and try again.')); return; }
-      onChange(json.data.logo_url); setNote(t('Logo saved'));
+      onChange(json.data.logo_url); setNote(t(json.data.thermal === false ? 'Logo saved. To print it on thermal receipts, upload it once from the website.' : 'Logo saved'));
     } catch { setError(t('Could not save the logo. Check the connection and try again.')); } finally { setBusy(false); }
   };
   const remove = async () => {

@@ -4873,5 +4873,6 @@
   "This deletes every bill, order, payment, purchase, expense and stock movement made so far, and cannot be undone. Products, customers, staff and settings stay. Stock goes back to 0 so you can count it again.": "ഇതുവരെയുള്ള എല്ലാ ബില്ലുകളും ഓർഡറുകളും പേയ്‌മെന്റുകളും വാങ്ങലുകളും ചെലവുകളും സ്റ്റോക്ക് നീക്കങ്ങളും ഇല്ലാതാകും, ഇത് തിരിച്ചെടുക്കാനാകില്ല. ഉൽപ്പന്നങ്ങൾ, ഉപഭോക്താക്കൾ, ജീവനക്കാർ, ക്രമീകരണങ്ങൾ നിലനിൽക്കും. വീണ്ടും എണ്ണാൻ സ്റ്റോക്ക് 0 ആകും.",
   "Type START FRESH to confirm": "സ്ഥിരീകരിക്കാൻ START FRESH എന്ന് ടൈപ്പ് ചെയ്യുക",
   "Delete and start fresh": "ഇല്ലാതാക്കി പുതുതായി തുടങ്ങുക",
-  "Your trial data is cleared. Numbering starts again from 1.": "നിങ്ങളുടെ ട്രയൽ ഡാറ്റ മായ്ച്ചു. നമ്പറിംഗ് വീണ്ടും 1 മുതൽ തുടങ്ങും."
+  "Your trial data is cleared. Numbering starts again from 1.": "നിങ്ങളുടെ ട്രയൽ ഡാറ്റ മായ്ച്ചു. നമ്പറിംഗ് വീണ്ടും 1 മുതൽ തുടങ്ങും.",
+  "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.": "ലോഗോ സേവ് ചെയ്തു, പക്ഷേ തെർമൽ രസീതുകൾക്കായി തയ്യാറാക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും അപ്‌ലോഡ് ചെയ്ത് നോക്കുക."
 }

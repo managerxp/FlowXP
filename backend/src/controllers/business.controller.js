@@ -460,20 +460,14 @@ export const uploadLogo = async (req, res) => {
     console.error('[business] logo upload failed:', error.message);
     return res.status(502).json({ success: false, message: 'Could not save the logo. Try again in a moment.' });
   }
-  await pool.query('UPDATE businesses SET receipt_settings = receipt_settings || $1::jsonb, updated_at = CURRENT_TIMESTAMP WHERE business_id = $2', [JSON.stringify({ logo_url: url }), req.tenant.businessId]);
-  await pool.query("UPDATE businesses SET receipt_settings = receipt_settings - 'logo_bits' WHERE business_id = $1", [req.tenant.businessId]);   // the old picture's dots no longer match
+  // The black and white dots for thermal printers come with the picture (the website makes them in the browser) and are saved in the same write. A picture without valid dots
+  // replaces the old ones with nothing, because the old dots would print the previous logo; the answer says so (`thermal: false`) so the screen can tell the person.
+  let bits = null;
+  try { const sent = typeof req.body?.bits === 'string' ? JSON.parse(req.body.bits) : null; if (validLogoBits(sent)) bits = { w: sent.w, h: sent.h, data: sent.data }; } catch { /* no dots */ }
+  await pool.query("UPDATE businesses SET receipt_settings = (receipt_settings - 'logo_bits') || $1::jsonb, updated_at = CURRENT_TIMESTAMP WHERE business_id = $2", [JSON.stringify({ logo_url: url, ...(bits ? { logo_bits: bits } : {}) }), req.tenant.businessId]);
   if (old) removeFile(old, req.tenant.businessId);
   recordAudit(req, { action: 'business.logo_uploaded', resource_type: 'business', resource_id: req.tenant.businessId });
-  res.json({ success: true, data: { logo_url: url } });
-};
-
-/* PUT /api/businesses/current/logo-bits { w, h, data } — the logo as black and white dots for thermal printers, made by the browser from the uploaded picture */
-export const setLogoBits = async (req, res) => {
-  const { w, h, data } = req.body ?? {};
-  const bits = { w, h, data };
-  if (!validLogoBits(bits)) return res.status(400).json({ success: false, message: 'The logo dots are not valid' });
-  await pool.query('UPDATE businesses SET receipt_settings = receipt_settings || $1::jsonb, updated_at = CURRENT_TIMESTAMP WHERE business_id = $2', [JSON.stringify({ logo_bits: bits }), req.tenant.businessId]);
-  res.json({ success: true, data: { logo_bits: bits } });
+  res.json({ success: true, data: { logo_url: url, thermal: Boolean(bits) } });
 };
 
 /* DELETE /api/businesses/current/logo */

@@ -1304,3 +1304,9 @@ Failed prints are kept, not lost: `mobile/src/lib/printQueue.ts` (pure list: las
 
 ## OTA updates (prepared 2026-11-11, not live yet)
 `expo-updates` is installed and `mobile/app.json` has `runtimeVersion: { policy: "appVersion" }` and `updates: { checkAutomatically: "ON_LOAD", fallbackToCacheTimeout: 0 }`. Still missing, needs the owner's Expo login: `cd mobile && eas init` (writes `extra.eas.projectId`, which push alerts need too), then `eas update:configure` (writes `updates.url`). After that: build once (`eas build --profile production`), and later JS-only fixes go out with `eas update --channel production --message "..."` (channels are already in eas.json). An OTA update only reaches builds with the same app version (runtime version); a change to native code or `version` needs a new store build. An update downloads on launch and applies on the next launch.
+
+## Review fixes (2026-11-11)
+- Migration 0122 refuses to drop the hotel tables while bookings/folio/banquet/guest records exist; run with `DROP_HOTEL_DATA=yes` after a backup. It also turns HOTEL businesses into RESTAURANT and maps hotel-only roles (FRONT_DESK→CASHIER, NIGHT_AUDITOR→ACCOUNTANT, housekeeping/banquet→STAFF).
+- Logo upload (`POST /businesses/current/logo`) now carries the thermal dots (`bits` field, one write); the answer has `thermal: true/false` and the web/phone say so when false. `PUT .../logo-bits` is gone.
+- Phone: a queued failed print is forgotten when the same print later succeeds; Wi-Fi "Check the connection" only connects (no bytes sent); the receipt logo is read from the kept copy and refreshed in the background (daily), so printing never waits on the network.
+- Known unrelated failure: backend test "points expire…" fails on a clean tree too (date dependent).
