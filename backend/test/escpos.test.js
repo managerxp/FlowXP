@@ -335,3 +335,16 @@ test('the print agent zip holds the agent files and the origin it was asked for'
   for (const f of ['agent.js', 'install-windows.cmd', 'winprint.ps1', '.origins', 'https://shop.example.com']) assert.ok(s.includes(f), f);
   assert.ok(!agentZip('javascript:alert(1)').toString('latin1').includes('print-agent/.origins'));   // only a plain web address is accepted
 });
+
+test('receipt extras: a line under the name, the phone, total quantity, amount in words and terms can each be switched', async () => {
+  const { rupeesInWords } = await import('../src/modules/amountWords.js');
+  assert.equal(rupeesInWords(2120.34), 'Two Thousand One Hundred Twenty Rupees and Thirty Four Paise Only');
+  assert.equal(rupeesInWords(0), 'Zero Rupees Only');
+  assert.equal(rupeesInWords(1234567), 'Twelve Lakh Thirty Four Thousand Five Hundred Sixty Seven Rupees Only');
+  const base = { business: { ...business1, phone: '9876543210' }, invoice: invoice({ items: [{ description: 'Tea', quantity: 2, unit_price: 100, line_total: 224 }], total: 224, balance_due: 0 }) };
+  const plain = textOf(receiptBytes({ ...base, settings: {} }, { cols: 48 }));
+  assert.ok(plain.includes('Ph: 99999') && plain.includes('Total Qty: 2') && !plain.includes('Rupees') && !plain.includes('Terms:'));   // defaults: the bill is as it was
+  const full = textOf(receiptBytes({ ...base, settings: { header_text: 'Pure Veg since 1985', show_phone: false, show_total_qty: false, show_amount_words: true, show_terms: true, terms: 'No returns on food.' } }, { cols: 48 }));
+  assert.ok(full.includes('Pure Veg since 1985') && !full.includes('Ph:') && !full.includes('Total Qty') && full.includes('Two Hundred Twenty Four Rupees Only') && full.includes('Terms: No returns on food.'));
+  assert.ok(!textOf(receiptBytes({ ...base, settings: { show_terms: true } }, { cols: 48 })).includes('Terms:'));                        // switched on with nothing written: nothing printed
+});

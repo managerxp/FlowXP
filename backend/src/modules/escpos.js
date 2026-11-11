@@ -9,6 +9,7 @@
  */
 
 import { taxName } from './gst/states.js';
+import { rupeesInWords } from './amountWords.js';
 
 const ESC = 0x1b; const GS = 0x1d; const LF = 0x0a;
 
@@ -117,7 +118,8 @@ const oneReceipt = ({ business, settings = {}, invoice }, { cols = 48, drawer = 
   j.align('center').bold(true).big(true).half(() => j.wrap(business.name)).big(false).bold(false);
   if (outlet?.name) j.bold(true).line(outlet.name).bold(false);
   if (address) j.wrap(address);
-  if (outlet?.phone || business.phone) j.line(`Ph: ${outlet?.phone || business.phone}`);
+  if (settings.header_text) j.wrap(settings.header_text);
+  if (settings.show_phone !== false && (outlet?.phone || business.phone)) j.line(`Ph: ${outlet?.phone || business.phone}`);
   if (settings.show_gstin !== false && business.gst_enabled && gstin) j.line(`GSTIN: ${gstin}`);
   j.align('left').rule();
 
@@ -146,7 +148,7 @@ const oneReceipt = ({ business, settings = {}, invoice }, { cols = 48, drawer = 
     if (Number(i.discount) > 0) j.pair('  Discount', `-${money(i.discount)}`);
   }
   j.rule();
-  j.pair(`Items: ${invoice.items.length}`, `Total Qty: ${String(Number(totalQty.toFixed(3)))}`);
+  j.pair(`Items: ${invoice.items.length}`, settings.show_total_qty === false ? '' : `Total Qty: ${String(Number(totalQty.toFixed(3)))}`);
 
   // "Show the tax lines" off: no Subtotal and no CGST / SGST (UTGST) / IGST rows. The item amounts already include the tax, so they add up to the total.
   if (showTax) {
@@ -161,6 +163,7 @@ const oneReceipt = ({ business, settings = {}, invoice }, { cols = 48, drawer = 
   if (invoice.round_off) j.pair('Round off', `${invoice.round_off > 0 ? '+' : '-'}${money(Math.abs(invoice.round_off))}`);
   j.rule();
   j.bold(true).big(true).half(() => j.pair('TOTAL', money(invoice.total))).big(false).bold(false);
+  if (settings.show_amount_words === true) j.wrap(rupeesInWords(invoice.total));
   // everything the customer was given off, in one line: discounts on the lines (promos and free loyalty items are in these) plus the bill's own discount (which already holds the coupon and points)
   const saved = lineSaved + Number(invoice.discount || 0);
   if (saved > 0) j.align('center').bold(true).line(`You saved Rs ${money(saved)}`).bold(false).align('left');
@@ -179,6 +182,7 @@ const oneReceipt = ({ business, settings = {}, invoice }, { cols = 48, drawer = 
   }
   if (settings.show_loyalty !== false && invoice.loyalty_message) j.rule().align('center').wrap(`* ${invoice.loyalty_message}`).align('left');
   if (invoice.points_earned > 0) j.align('center').line(`Points earned: ${invoice.points_earned}`).align('left');
+  if (settings.show_terms === true && settings.terms) j.rule().wrap(`Terms: ${settings.terms}`);
   if (settings.footer) j.rule().align('center').wrap(settings.footer).align('left');
 
   if (drawer) j.drawer();

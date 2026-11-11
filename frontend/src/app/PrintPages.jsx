@@ -13,6 +13,10 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { api, formatCurrency } from '../lib/api.js';
 import { Alert, Button, humanize } from '../components/ui.jsx';
+import { wholeInWords } from './billing/TallyInvoice.jsx';
+
+/* 2120.34 becomes "Two Thousand One Hundred Twenty Rupees and Thirty Four Paise Only" (the thermal printer's wording) */
+const rupeesInWords = (amount) => { const paise = Math.round(Math.abs(Number(amount) || 0) * 100); const p = paise % 100; return `${wholeInWords(Math.floor(paise / 100))} Rupees${p ? ` and ${wholeInWords(p)} Paise` : ''} Only`; };
 
 const PAPER = { 58: 'w-[58mm]', 80: 'w-[80mm]' };
 
@@ -113,7 +117,8 @@ export const ReceiptPage = () => {
           <p className="text-sm font-bold uppercase">{biz.name}</p>
           {outlet && <p className="font-semibold">{outlet.name}</p>}
           {address && <p>{address}</p>}
-          {(outlet?.phone || biz.phone) && <p>Ph: {outlet?.phone || biz.phone}</p>}
+          {s.header_text && <p>{s.header_text}</p>}
+          {s.show_phone !== false && (outlet?.phone || biz.phone) && <p>Ph: {outlet?.phone || biz.phone}</p>}
           {s.show_gstin && biz.gst_enabled && gstin && <p>GSTIN: {gstin}</p>}
         </div>
         <Rule />
@@ -139,7 +144,7 @@ export const ReceiptPage = () => {
           </div>
         ))}
         <Rule />
-        <Row left={`Items: ${invoice.items.length}`} right={`Total Qty: ${totalQty}`} />
+        <Row left={`Items: ${invoice.items.length}`} right={s.show_total_qty === false ? '' : `Total Qty: ${totalQty}`} />
         {salon?.gift_cards.map((g) => <p key={g.code} className="mt-1 font-bold">Gift card {g.code} · {g.amount.toFixed(2)}</p>)}
         <Rule />
         {s.show_tax_lines !== false && <><Row left="Subtotal" right={invoice.subtotal.toFixed(2)} />
@@ -151,6 +156,7 @@ export const ReceiptPage = () => {
         {invoice.round_off !== 0 && <Row left="Round off" right={`${invoice.round_off > 0 ? '+' : '-'}${Math.abs(invoice.round_off).toFixed(2)}`} />}
         <Rule />
         <div className="text-sm"><Row left="TOTAL" right={formatCurrency(invoice.total)} bold /></div>
+        {s.show_amount_words === true && <p className="mt-1">{rupeesInWords(invoice.total)}</p>}
         {saved > 0 && <p className="mt-1">You saved Rs {saved.toFixed(2)}</p>}
         {invoice.payments.map((p) => <Row key={p.payment_id} left={`Paid (${humanize(p.method)})`} right={p.amount.toFixed(2)} />)}
         {invoice.refunded > 0 && <Row left="Refunded" right={`-${invoice.refunded.toFixed(2)}`} />}
@@ -159,6 +165,7 @@ export const ReceiptPage = () => {
           <div className="mt-2 text-center"><img src={qr} alt="UPI payment QR" className="mx-auto h-28 w-28" /><p>{upiAmount ? `Scan to pay ₹${upiAmount.toFixed(2)} by UPI` : 'Scan to pay the balance'}</p></div>
         )}
         {s.show_loyalty && invoice.loyalty_message && <><Rule /><p className="text-center">★ {invoice.loyalty_message}</p></>}
+        {s.show_terms === true && s.terms && <><Rule /><p className="whitespace-pre-line">Terms: {s.terms}</p></>}
         {s.footer && <><Rule /><p className="whitespace-pre-line text-center">{s.footer}</p></>}
       </div>
     </div>

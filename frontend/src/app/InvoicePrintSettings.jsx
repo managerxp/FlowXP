@@ -31,6 +31,8 @@ const sample = (date, details) => ({
   subtotal: 245, tax: 44.1, cgst: 22.05, sgst: 22.05, igst: 0, round_off: 0, total: 289.1, amount_paid: 289.1, balance_due: 0, order_number: null, notes: ''
 });
 
+const TALLY_TYPES = ['WHOLESALE', 'DISTRIBUTOR', 'AUTO_PARTS', 'MECHANIC', 'ELECTRONICS'];   // the same list the invoice page uses to pick the tax-invoice layout
+
 export default function InvoicePrintSettings({ initial }) {
   const tr = useT();
   const toast = useToast();
@@ -58,13 +60,14 @@ export default function InvoicePrintSettings({ initial }) {
       <form onSubmit={save} className="mt-4 space-y-4">
         <Alert>{error}</Alert>
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field id="ip_layout" label={tr('Layout')}>
+          {/* the Tally-style tax invoice is for trade businesses (wholesale, auto parts, electronics); a shop, salon or clinic has the standard bill only */}
+          {(TALLY_TYPES.includes(business?.business_type) || s.layout === 'tally') && <Field id="ip_layout" label={tr('Layout')}>
             <Select id="ip_layout" value={s.layout} onChange={(e) => set({ layout: e.target.value })}>
               <option value="auto">{tr('Automatic (tax invoice for trade businesses)')}</option>
               <option value="standard">{tr('Standard bill')}</option>
               <option value="tally">{tr('Tax invoice (Tally style)')}</option>
             </Select>
-          </Field>
+          </Field>}
           <Field id="ip_paper" label={tr('Paper')}><Select id="ip_paper" value={s.paper} onChange={(e) => set({ paper: e.target.value })}><option value="A4">A4</option><option value="A5">A5</option></Select></Field>
           <Field id="ip_size" label={tr('Text size')}>
             <Select id="ip_size" value={s.text_size} onChange={(e) => set({ text_size: e.target.value })}>

@@ -302,7 +302,12 @@ export const get = async (req, res) => {
       loyalty_message: loyaltyCard,
       // how the receipt names the state tax (UTGST in a union territory) and whether it lists the tax lines, so the phone prints the same bill as the website
       tax_name: taxName(rows[0].business_state),
-      receipt: { show_tax_lines: rows[0].business_receipt?.show_tax_lines !== false, show_hsn: rows[0].business_receipt?.show_hsn === true },
+      receipt: {
+        show_tax_lines: rows[0].business_receipt?.show_tax_lines !== false, show_hsn: rows[0].business_receipt?.show_hsn === true,
+        // the extra receipt options (Business settings > Receipts), so the phone prints the same bill as the website and the thermal printer
+        header_text: rows[0].business_receipt?.header_text || '', show_phone: rows[0].business_receipt?.show_phone !== false, show_total_qty: rows[0].business_receipt?.show_total_qty !== false,
+        show_amount_words: rows[0].business_receipt?.show_amount_words === true, show_terms: rows[0].business_receipt?.show_terms === true, terms: rows[0].business_receipt?.terms || ''
+      },
       // what a tax invoice prints besides the bill: PAN, bank details, terms (Business settings > Receipts)
       invoice_print: withDefaults(rows[0].business_receipt?.invoice_print),
       print_details: Object.fromEntries(['pan', 'bank_name', 'bank_account', 'bank_ifsc', 'bank_branch', 'terms'].map((k) => [k, rows[0].business_receipt?.[k] || ''])),

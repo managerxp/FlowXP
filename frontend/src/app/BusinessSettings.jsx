@@ -252,6 +252,9 @@ const SilentPrinting = () => {
   );
 };
 
+/* A restaurant, cafe or cloud kitchen prints a till receipt, never an A4 tax invoice, so the invoice settings are for every other kind of business. */
+const InvoiceSettingsUnlessFood = ({ initial }) => { const { hasFeature } = useAuth(); return hasFeature('kitchen') ? null : <InvoicePrintSettings initial={initial} />; };
+
 /* What every receipt and kitchen slip looks like (business-wide), and what THIS device does automatically. */
 const ReceiptSettings = ({ initial }) => {
   const tr = useT();
@@ -287,13 +290,14 @@ const ReceiptSettings = ({ initial }) => {
         <Alert>{error}</Alert>
         <Field id="paper" label={tr('Paper width')}><Select id="paper" value={s.paper_width} onChange={(e) => setS((x) => ({ ...x, paper_width: Number(e.target.value) }))}><option value={80}>{tr('80 mm (standard)')}</option><option value={58}>{tr('58 mm (narrow)')}</option></Select></Field>
         <Field id="footer" label={tr('Footer message')} hint={tr('Printed at the bottom of every receipt.')}><Input id="footer" value={s.footer} onChange={(e) => setS((x) => ({ ...x, footer: e.target.value }))} maxLength={200} /></Field>
+        <Field id="header_text" label={tr('Line under the business name')} hint={tr('For example "Pure Veg" or a slogan. Leave empty for none.')}><Input id="header_text" value={s.header_text ?? ''} onChange={(e) => setS((x) => ({ ...x, header_text: e.target.value }))} maxLength={80} /></Field>
         <LogoSetting logoUrl={s.logo_url} onChange={(url) => setS((x) => ({ ...x, logo_url: url }))} />
-        <div className="space-y-2">{flag('show_logo', 'Print the logo at the top of receipts')}{flag('show_gstin', 'Show the GSTIN on receipts')}{flag('show_tax_lines', T('Show the tax lines (CGST and SGST, UTGST or IGST) on receipts'))}{flag('show_upi_qr', 'Show a UPI QR for any unpaid balance')}{flag('show_loyalty', 'Show the customer’s loyalty card line')}{flag('auto_cut', T('Cut the paper after each receipt'))}{flag('kitchen_screen', T('The kitchen uses the kitchen screen (switch off if it only uses printed tickets)'))}</div>
+        <div className="space-y-2">{flag('show_logo', 'Print the logo at the top of receipts')}{flag('show_gstin', 'Show the GSTIN on receipts')}{flag('show_tax_lines', T('Show the tax lines (CGST and SGST, UTGST or IGST) on receipts'))}{flag('show_upi_qr', 'Show a UPI QR for any unpaid balance')}{flag('show_loyalty', 'Show the customer’s loyalty card line')}{flag('auto_cut', T('Cut the paper after each receipt'))}{flag('show_phone', T('Show the phone number on receipts'))}{flag('show_total_qty', T('Show the total quantity on receipts'))}{flag('show_amount_words', T('Print the amount in words under the total'))}{!kitchen && flag('show_terms', T('Print the terms and conditions at the bottom'))}{kitchen && flag('kitchen_screen', T('The kitchen uses the kitchen screen (switch off if it only uses printed tickets)'))}</div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="copies" label={tr('Copies of each receipt')}><Select id="copies" value={s.copies ?? 1} onChange={(e) => setS((x) => ({ ...x, copies: Number(e.target.value) }))}>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</Select></Field>
           <Field id="extra_lines" label={tr('Blank lines after the receipt')}><Select id="extra_lines" value={s.extra_lines ?? 3} onChange={(e) => setS((x) => ({ ...x, extra_lines: Number(e.target.value) }))}>{[0, 1, 2, 3, 4, 5, 6, 8, 10].map((n) => <option key={n} value={n}>{n}</option>)}</Select></Field>
         </div>
-        <details className="border-t border-line pt-4">
+        {!kitchen && <details className="border-t border-line pt-4">
           <summary className="cursor-pointer text-sm font-semibold text-ink-900">{tr('Printed on tax invoices')}</summary>
           <div className="mt-4 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -305,12 +309,12 @@ const ReceiptSettings = ({ initial }) => {
           </div>
           <Field id="terms" label={tr('Terms and conditions')}><Textarea id="terms" rows={4} maxLength={1000} value={s.terms ?? ''} onChange={(e) => setS((x) => ({ ...x, terms: e.target.value }))} /></Field>
           </div>
-        </details>
+        </details>}
         <Button type="submit" disabled={busy}>{busy ? tr('Saving…') : tr('Save receipt settings')}</Button>
       </form>
       <div className="mt-6 border-t border-line pt-4">
         <p className="text-sm font-semibold text-ink-900">{tr('This device')}</p>
-        <p className="mb-2 text-xs text-ink-500">{tr('Remembered in this browser only, so the counter and the kitchen can behave differently.')}</p>
+        <p className="mb-2 text-xs text-ink-500">{kitchen ? tr('Remembered in this browser only, so the counter and the kitchen can behave differently.') : tr('Remembered in this browser only.')}</p>
         <div className="space-y-2">{deviceFlag('autoPrintReceipt', 'Print the receipt automatically after billing')}{kitchen && deviceFlag('autoPrintKot', 'Print the KOT automatically when an order is sent to the kitchen')}{kitchen && deviceFlag('kitchenSound', 'Play a sound for new and late kitchen tickets')}</div>
       </div>
     </Card>
@@ -444,7 +448,7 @@ const BusinessSettings = () => {
       <ReceiptSettings initial={form.receipt_settings} />
       <GstOptionsSettings />
       <DocumentNumbersSettings />
-      <InvoicePrintSettings initial={form.receipt_settings} />
+      <InvoiceSettingsUnlessFood initial={form.receipt_settings} />
       <DisplaySettings />
       <BackupSettings />
       <StartFreshSettings />

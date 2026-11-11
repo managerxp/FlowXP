@@ -4878,5 +4878,12 @@
   "The kitchen uses the kitchen screen (switch off if it only uses printed tickets)": "ಅಡುಗೆಮನೆ ಕಿಚನ್ ಸ್ಕ್ರೀನ್ ಬಳಸುತ್ತದೆ (ಮುದ್ರಿತ ಟಿಕೆಟ್ ಮಾತ್ರ ಆದರೆ ಆಫ್ ಮಾಡಿ)",
   "Kitchen tickets that did not print: {{n}}. The kitchen may not know about them.": "ಮುದ್ರಣವಾಗದ ಕಿಚನ್ ಟಿಕೆಟ್‌ಗಳು: {{n}}. ಅಡುಗೆಮನೆಗೆ ಇವು ತಿಳಿದಿಲ್ಲದಿರಬಹುದು.",
   "Print again": "ಮತ್ತೆ ಮುದ್ರಿಸಿ",
-  "Dismiss": "ಮುಚ್ಚಿ"
+  "Dismiss": "ಮುಚ್ಚಿ",
+  "Show the phone number on receipts": "ರಸೀದಿಯಲ್ಲಿ ಫೋನ್ ಸಂಖ್ಯೆ ತೋರಿಸಿ",
+  "Show the total quantity on receipts": "ರಸೀದಿಯಲ್ಲಿ ಒಟ್ಟು ಪ್ರಮಾಣ ತೋರಿಸಿ",
+  "Print the amount in words under the total": "ಒಟ್ಟಿನ ಕೆಳಗೆ ಮೊತ್ತವನ್ನು ಅಕ್ಷರಗಳಲ್ಲಿ ಮುದ್ರಿಸಿ",
+  "Print the terms and conditions at the bottom": "ಕೆಳಗೆ ನಿಯಮ ಮತ್ತು ಷರತ್ತುಗಳನ್ನು ಮುದ್ರಿಸಿ",
+  "Line under the business name": "ವ್ಯಾಪಾರದ ಹೆಸರಿನ ಕೆಳಗಿನ ಸಾಲು",
+  "For example \"Pure Veg\" or a slogan. Leave empty for none.": "ಉದಾ. \"ಶುದ್ಧ ಸಸ್ಯಾಹಾರ\" ಅಥವಾ ಘೋಷವಾಕ್ಯ. ಬೇಡವಾದರೆ ಖಾಲಿ ಬಿಡಿ.",
+  "Remembered in this browser only.": "ಈ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಮಾತ್ರ ನೆನಪಿನಲ್ಲಿರುತ್ತದೆ."
 }

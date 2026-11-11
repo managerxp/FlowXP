@@ -3408,7 +3408,13 @@ export const HI: Record<string, string> = {
   'The kitchen ticket did not print. Tell the kitchen, or print it again from Printers.': 'किचन टिकट प्रिंट नहीं हुआ। रसोई को बताएँ, या प्रिंटर्स से फिर प्रिंट करें।',
   'The cancel slip did not print. Tell the kitchen not to make it.': 'रद्द पर्ची प्रिंट नहीं हुई। रसोई को बताएँ कि इसे न बनाएँ।',
   'Kitchen slips did not print': 'किचन पर्चियाँ प्रिंट नहीं हुईं',
-  'Tap to open Printers and print them again': 'प्रिंटर्स खोलकर उन्हें फिर प्रिंट करने के लिए टैप करें',};
+  'Tap to open Printers and print them again': 'प्रिंटर्स खोलकर उन्हें फिर प्रिंट करने के लिए टैप करें',
+  'Show the phone number on receipts': 'रसीद पर फ़ोन नंबर दिखाएँ',
+  'Show the total quantity on receipts': 'रसीद पर कुल मात्रा दिखाएँ',
+  'Print the amount in words under the total': 'कुल के नीचे रकम शब्दों में छापें',
+  'Print the terms and conditions at the bottom': 'नीचे नियम और शर्तें छापें',
+  'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'रसोई किचन स्क्रीन इस्तेमाल करती है (सिर्फ़ छपे टिकट इस्तेमाल हों तो बंद करें)',
+  'Line under the business name': 'व्यवसाय के नाम के नीचे की पंक्ति',};
 
 /** Languages that have a dictionary. */
 export const DICTS: Partial<Record<Lang, Record<string, string>>> = { hi: HI, ml: ML, ta: TA, bn: BN, te: TE, kn: KN };

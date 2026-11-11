@@ -213,7 +213,7 @@ const EDITABLE = {
 };
 
 /* Receipt printing preferences: every key checked, unknown keys dropped. */
-export const RECEIPT_DEFAULTS = { paper_width: 80, footer: 'Thank you! Visit again.', show_gstin: true, show_upi_qr: true, show_loyalty: true, show_logo: true, show_tax_lines: true, logo_url: null, auto_cut: true, kitchen_screen: true, copies: 1, extra_lines: 3 };
+export const RECEIPT_DEFAULTS = { paper_width: 80, footer: 'Thank you! Visit again.', show_gstin: true, show_upi_qr: true, show_loyalty: true, show_logo: true, show_tax_lines: true, logo_url: null, auto_cut: true, kitchen_screen: true, show_phone: true, show_total_qty: true, show_amount_words: false, show_terms: false, header_text: '', copies: 1, extra_lines: 3 };
 export const cleanReceiptSettings = (input) => {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: 'Receipt settings must be an object' };
   const out = {};
@@ -226,7 +226,7 @@ export const cleanReceiptSettings = (input) => {
     if (footer.length > 200) return { error: 'The footer is too long (200 characters at most)' };
     out.footer = footer;
   }
-  for (const key of ['show_gstin', 'show_upi_qr', 'show_loyalty', 'show_logo', 'show_tax_lines', 'auto_cut', 'kitchen_screen']) if (key in input) out[key] = input[key] === true;
+  for (const key of ['show_gstin', 'show_upi_qr', 'show_loyalty', 'show_logo', 'show_tax_lines', 'auto_cut', 'kitchen_screen', 'show_phone', 'show_total_qty', 'show_amount_words', 'show_terms']) if (key in input) out[key] = input[key] === true;
   const whole = (key, lo, hi, what) => {
     if (!(key in input)) return null;
     const n = Number(input[key]);
@@ -242,7 +242,7 @@ export const cleanReceiptSettings = (input) => {
     out[key] = pattern ? v.toUpperCase() : v; return null;
   };
   const badText = text('pan', 10, 'PAN', /^[A-Z]{5}[0-9]{4}[A-Z]$/) || text('bank_name', 80, 'Bank name') || text('bank_account', 24, 'Account number', /^[0-9A-Z -]{4,24}$/)
-    || text('bank_ifsc', 11, 'IFSC code', /^[A-Z]{4}0[A-Z0-9]{6}$/) || text('bank_branch', 80, 'Bank branch') || text('accountant_email', 160, 'The accountant email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/) || text('terms', 1000, 'The terms and conditions');
+    || text('bank_ifsc', 11, 'IFSC code', /^[A-Z]{4}0[A-Z0-9]{6}$/) || text('bank_branch', 80, 'Bank branch') || text('accountant_email', 160, 'The accountant email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/) || text('terms', 1000, 'The terms and conditions') || text('header_text', 80, 'The line under the business name');
   if (badText) return { error: badText };
   const bad = whole('copies', 1, 5, 'Copies') || whole('extra_lines', 0, 10, 'Blank lines');
   if (bad) return { error: bad };

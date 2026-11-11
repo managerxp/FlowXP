@@ -7,7 +7,8 @@ import { kvSet } from '../lib/local.ts';
 import { Page } from '../lib/responsive.tsx';
 import { COLUMNS, escposBytes } from '../lib/escpos.ts';
 import { readMode, readPrefs, setMode, type PrinterMode } from '../lib/thermal.ts';
-import { api } from '../lib/session.ts';
+import { api, currentBusiness, useSession } from '../lib/session.ts';
+import { hasFeature } from '../lib/access.ts';
 import { KIND_LABEL, type FailedJob } from '../lib/printQueue.ts';
 import { checkPrinter, dropFailed, printBillDirect, printKitchenDirect, printReceiptDirect, readFailed, readPrinters, savePrinters, pairedPrinters, printingAvailable, scanPrinters, sendToPrinter, type Found } from '../lib/printerLink.ts';
 import {
@@ -19,6 +20,7 @@ const testText = (p: SavedPrinter) => { const w = COLUMNS[p.paper]; return ['Flo
 
 /* The printers connected to this phone: a Bluetooth or Wi-Fi thermal printer, its paper, and what it prints (the receipt, the kitchen ticket). */
 export default function Printers() {
+  const kitchen = hasFeature(currentBusiness(useSession()), 'kitchen');   // only a restaurant, cafe or cloud kitchen has a kitchen ticket
   const [list, setList] = useState<SavedPrinter[] | null>(null);
   const [mode, setModeState] = useState<PrinterMode>('system');
   const [available, setAvailable] = useState(true);
@@ -100,7 +102,7 @@ export default function Printers() {
                 <Text style={{ color: color.soft, fontSize: 13 }}>{t('Paper')}</Text>
                 <Chips items={[{ id: '58', label: '58 mm paper' }, { id: '80', label: '80 mm paper' }]} value={p.paper} onChange={(paper) => commit(setPaper(list, p.id, paper))} />
                 <Text style={{ color: color.soft, fontSize: 13 }}>{t('What it prints')}</Text>
-                {JOBS.map((j) => (
+                {JOBS.filter((j) => kitchen || j.id !== 'kot').map((j) => (
                   <View key={j.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <View style={{ flex: 1 }}><Text style={{ color: color.ink, fontWeight: '600' }}>{t(j.label)}</Text><Soft>{t(j.hint)}</Soft></View>
                     <Switch value={p.jobs.includes(j.id)} onValueChange={(on) => commit(setJob(list, p.id, j.id, on))} accessibilityLabel={t(j.label)} />

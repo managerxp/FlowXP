@@ -3299,7 +3299,13 @@ export const ML: Record<string, string> = {
   'The kitchen ticket did not print. Tell the kitchen, or print it again from Printers.': 'അടുക്കള ടിക്കറ്റ് പ്രിന്റ് ആയില്ല. അടുക്കളയെ അറിയിക്കുക, അല്ലെങ്കിൽ പ്രിന്ററുകളിൽ നിന്ന് വീണ്ടും പ്രിന്റ് ചെയ്യുക.',
   'The cancel slip did not print. Tell the kitchen not to make it.': 'റദ്ദാക്കൽ സ്ലിപ്പ് പ്രിന്റ് ആയില്ല. ഇത് ഉണ്ടാക്കരുതെന്ന് അടുക്കളയെ അറിയിക്കുക.',
   'Kitchen slips did not print': 'അടുക്കള സ്ലിപ്പുകൾ പ്രിന്റ് ആയില്ല',
-  'Tap to open Printers and print them again': 'പ്രിന്ററുകൾ തുറന്ന് വീണ്ടും പ്രിന്റ് ചെയ്യാൻ ടാപ്പ് ചെയ്യുക',};
+  'Tap to open Printers and print them again': 'പ്രിന്ററുകൾ തുറന്ന് വീണ്ടും പ്രിന്റ് ചെയ്യാൻ ടാപ്പ് ചെയ്യുക',
+  'Show the phone number on receipts': 'രസീതിൽ ഫോൺ നമ്പർ കാണിക്കുക',
+  'Show the total quantity on receipts': 'രസീതിൽ ആകെ അളവ് കാണിക്കുക',
+  'Print the amount in words under the total': 'ആകെ തുകയ്ക്ക് താഴെ തുക അക്ഷരത്തിൽ അച്ചടിക്കുക',
+  'Print the terms and conditions at the bottom': 'താഴെ നിബന്ധനകളും വ്യവസ്ഥകളും അച്ചടിക്കുക',
+  'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'അടുക്കള കിച്ചൻ സ്ക്രീൻ ഉപയോഗിക്കുന്നു (അച്ചടിച്ച ടിക്കറ്റ് മാത്രമാണെങ്കിൽ ഓഫ് ചെയ്യുക)',
+  'Line under the business name': 'സ്ഥാപനത്തിന്റെ പേരിന് താഴെയുള്ള വരി',};
 
 /** Tamil: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const TA: Record<string, string> = {
@@ -6600,7 +6606,13 @@ export const TA: Record<string, string> = {
   'The kitchen ticket did not print. Tell the kitchen, or print it again from Printers.': 'சமையலறை டிக்கெட் அச்சாகவில்லை. சமையலறைக்குச் சொல்லுங்கள், அல்லது அச்சுப்பொறிகளில் மீண்டும் அச்சிடுங்கள்.',
   'The cancel slip did not print. Tell the kitchen not to make it.': 'ரத்து சீட்டு அச்சாகவில்லை. இதைச் செய்ய வேண்டாம் என்று சமையலறைக்குச் சொல்லுங்கள்.',
   'Kitchen slips did not print': 'சமையலறை சீட்டுகள் அச்சாகவில்லை',
-  'Tap to open Printers and print them again': 'அச்சுப்பொறிகளைத் திறந்து மீண்டும் அச்சிட தட்டவும்',};
+  'Tap to open Printers and print them again': 'அச்சுப்பொறிகளைத் திறந்து மீண்டும் அச்சிட தட்டவும்',
+  'Show the phone number on receipts': 'ரசீதில் தொலைபேசி எண்ணைக் காட்டு',
+  'Show the total quantity on receipts': 'ரசீதில் மொத்த அளவைக் காட்டு',
+  'Print the amount in words under the total': 'மொத்தத்திற்குக் கீழ் தொகையை எழுத்தில் அச்சிடு',
+  'Print the terms and conditions at the bottom': 'கீழே விதிமுறைகள் மற்றும் நிபந்தனைகளை அச்சிடு',
+  'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'சமையலறை கிச்சன் திரையைப் பயன்படுத்துகிறது (அச்சிட்ட டிக்கெட் மட்டுமே என்றால் அணைக்கவும்)',
+  'Line under the business name': 'வணிகப் பெயருக்குக் கீழ் உள்ள வரி',};
 
 /** Bengali: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const BN: Record<string, string> = {
@@ -9901,7 +9913,13 @@ export const BN: Record<string, string> = {
   'The kitchen ticket did not print. Tell the kitchen, or print it again from Printers.': 'কিচেন টিকিট প্রিন্ট হয়নি। রান্নাঘরকে জানান, অথবা প্রিন্টার থেকে আবার প্রিন্ট করুন।',
   'The cancel slip did not print. Tell the kitchen not to make it.': 'বাতিল স্লিপ প্রিন্ট হয়নি। রান্নাঘরকে বলুন এটি না বানাতে।',
   'Kitchen slips did not print': 'কিচেন স্লিপ প্রিন্ট হয়নি',
-  'Tap to open Printers and print them again': 'প্রিন্টার খুলে আবার প্রিন্ট করতে ট্যাপ করুন',};
+  'Tap to open Printers and print them again': 'প্রিন্টার খুলে আবার প্রিন্ট করতে ট্যাপ করুন',
+  'Show the phone number on receipts': 'রসিদে ফোন নম্বর দেখান',
+  'Show the total quantity on receipts': 'রসিদে মোট পরিমাণ দেখান',
+  'Print the amount in words under the total': 'মোটের নিচে টাকার অঙ্ক কথায় ছাপুন',
+  'Print the terms and conditions at the bottom': 'নিচে শর্তাবলি ছাপুন',
+  'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'রান্নাঘর কিচেন স্ক্রিন ব্যবহার করে (শুধু ছাপা টিকিট হলে বন্ধ করুন)',
+  'Line under the business name': 'ব্যবসার নামের নিচের লাইন',};
 
 /** Telugu: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const TE: Record<string, string> = {
@@ -13202,7 +13220,13 @@ export const TE: Record<string, string> = {
   'The kitchen ticket did not print. Tell the kitchen, or print it again from Printers.': 'కిచెన్ టికెట్ ప్రింట్ కాలేదు. వంటగదికి చెప్పండి, లేదా ప్రింటర్స్ నుండి మళ్లీ ప్రింట్ చేయండి.',
   'The cancel slip did not print. Tell the kitchen not to make it.': 'రద్దు స్లిప్ ప్రింట్ కాలేదు. దీన్ని చేయవద్దని వంటగదికి చెప్పండి.',
   'Kitchen slips did not print': 'కిచెన్ స్లిప్‌లు ప్రింట్ కాలేదు',
-  'Tap to open Printers and print them again': 'ప్రింటర్స్ తెరిచి మళ్లీ ప్రింట్ చేయడానికి నొక్కండి',};
+  'Tap to open Printers and print them again': 'ప్రింటర్స్ తెరిచి మళ్లీ ప్రింట్ చేయడానికి నొక్కండి',
+  'Show the phone number on receipts': 'రసీదులో ఫోన్ నంబర్ చూపండి',
+  'Show the total quantity on receipts': 'రసీదులో మొత్తం పరిమాణం చూపండి',
+  'Print the amount in words under the total': 'మొత్తం కింద మొత్తాన్ని అక్షరాల్లో ప్రింట్ చేయండి',
+  'Print the terms and conditions at the bottom': 'కింద నిబంధనలు మరియు షరతులు ప్రింట్ చేయండి',
+  'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'వంటగది కిచెన్ స్క్రీన్ వాడుతుంది (ప్రింట్ టికెట్లు మాత్రమే అయితే ఆఫ్ చేయండి)',
+  'Line under the business name': 'వ్యాపార పేరు కింద లైన్',};
 
 /** Kannada: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const KN: Record<string, string> = {
@@ -16503,4 +16527,10 @@ export const KN: Record<string, string> = {
   'The kitchen ticket did not print. Tell the kitchen, or print it again from Printers.': 'ಕಿಚನ್ ಟಿಕೆಟ್ ಮುದ್ರಣವಾಗಲಿಲ್ಲ. ಅಡುಗೆಮನೆಗೆ ತಿಳಿಸಿ, ಅಥವಾ ಪ್ರಿಂಟರ್ಸ್‌ನಿಂದ ಮತ್ತೆ ಮುದ್ರಿಸಿ.',
   'The cancel slip did not print. Tell the kitchen not to make it.': 'ರದ್ದು ಚೀಟಿ ಮುದ್ರಣವಾಗಲಿಲ್ಲ. ಇದನ್ನು ಮಾಡಬೇಡಿ ಎಂದು ಅಡುಗೆಮನೆಗೆ ತಿಳಿಸಿ.',
   'Kitchen slips did not print': 'ಕಿಚನ್ ಚೀಟಿಗಳು ಮುದ್ರಣವಾಗಲಿಲ್ಲ',
-  'Tap to open Printers and print them again': 'ಪ್ರಿಂಟರ್ಸ್ ತೆರೆದು ಮತ್ತೆ ಮುದ್ರಿಸಲು ಟ್ಯಾಪ್ ಮಾಡಿ',};
+  'Tap to open Printers and print them again': 'ಪ್ರಿಂಟರ್ಸ್ ತೆರೆದು ಮತ್ತೆ ಮುದ್ರಿಸಲು ಟ್ಯಾಪ್ ಮಾಡಿ',
+  'Show the phone number on receipts': 'ರಸೀದಿಯಲ್ಲಿ ಫೋನ್ ಸಂಖ್ಯೆ ತೋರಿಸಿ',
+  'Show the total quantity on receipts': 'ರಸೀದಿಯಲ್ಲಿ ಒಟ್ಟು ಪ್ರಮಾಣ ತೋರಿಸಿ',
+  'Print the amount in words under the total': 'ಒಟ್ಟಿನ ಕೆಳಗೆ ಮೊತ್ತವನ್ನು ಅಕ್ಷರಗಳಲ್ಲಿ ಮುದ್ರಿಸಿ',
+  'Print the terms and conditions at the bottom': 'ಕೆಳಗೆ ನಿಯಮ ಮತ್ತು ಷರತ್ತುಗಳನ್ನು ಮುದ್ರಿಸಿ',
+  'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'ಅಡುಗೆಮನೆ ಕಿಚನ್ ಸ್ಕ್ರೀನ್ ಬಳಸುತ್ತದೆ (ಮುದ್ರಿತ ಟಿಕೆಟ್ ಮಾತ್ರ ಆದರೆ ಆಫ್ ಮಾಡಿ)',
+  'Line under the business name': 'ವ್ಯಾಪಾರದ ಹೆಸರಿನ ಕೆಳಗಿನ ಸಾಲು',};

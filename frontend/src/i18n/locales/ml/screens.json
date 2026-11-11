@@ -4878,5 +4878,12 @@
   "The kitchen uses the kitchen screen (switch off if it only uses printed tickets)": "അടുക്കള കിച്ചൻ സ്ക്രീൻ ഉപയോഗിക്കുന്നു (അച്ചടിച്ച ടിക്കറ്റ് മാത്രമാണെങ്കിൽ ഓഫ് ചെയ്യുക)",
   "Kitchen tickets that did not print: {{n}}. The kitchen may not know about them.": "പ്രിന്റ് ആകാത്ത അടുക്കള ടിക്കറ്റുകൾ: {{n}}. അടുക്കളയ്ക്ക് ഇവ അറിയില്ലായിരിക്കാം.",
   "Print again": "വീണ്ടും പ്രിന്റ് ചെയ്യുക",
-  "Dismiss": "ഒഴിവാക്കുക"
+  "Dismiss": "ഒഴിവാക്കുക",
+  "Show the phone number on receipts": "രസീതിൽ ഫോൺ നമ്പർ കാണിക്കുക",
+  "Show the total quantity on receipts": "രസീതിൽ ആകെ അളവ് കാണിക്കുക",
+  "Print the amount in words under the total": "ആകെ തുകയ്ക്ക് താഴെ തുക അക്ഷരത്തിൽ അച്ചടിക്കുക",
+  "Print the terms and conditions at the bottom": "താഴെ നിബന്ധനകളും വ്യവസ്ഥകളും അച്ചടിക്കുക",
+  "Line under the business name": "സ്ഥാപനത്തിന്റെ പേരിന് താഴെയുള്ള വരി",
+  "For example \"Pure Veg\" or a slogan. Leave empty for none.": "ഉദാഹരണത്തിന് \"ശുദ്ധ വെജ്\" അല്ലെങ്കിൽ ഒരു മുദ്രാവാക്യം. ഒന്നും വേണ്ടെങ്കിൽ ഒഴിച്ചിടുക.",
+  "Remembered in this browser only.": "ഈ ബ്രൗസറിൽ മാത്രം ഓർമ്മിക്കുന്നു."
 }

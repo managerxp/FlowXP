@@ -1,11 +1,15 @@
 /* A receipt as plain text from the server's own invoice (GET /invoices/:id), for the screen and for sharing. Printing comes later. */
 import { rupeesExact as rupees, toPaise, qty } from './money.ts';
 import type { Preview } from './outbox.ts';
+import { wholeInWords } from './taxInvoice.ts';
+
+/** 2120.34 becomes "Two Thousand One Hundred Twenty Rupees and Thirty Four Paise Only", the same wording as the thermal printer's receipt. */
+export const rupeesInWords = (amount: number): string => { const paise = Math.round(Math.abs(amount) * 100); const p = paise % 100; return `${wholeInWords(Math.floor(paise / 100))} Rupees${p ? ` and ${wholeInWords(p)} Paise` : ''} Only`; };
 
 export type InvoiceLine = { description: string; quantity: number; unit_price: number; discount: number; tax_rate: number; line_total: number; tax_amount?: number; cess?: number; unit?: string | null; hsn?: string | null };
 export type Invoice = {
   invoice_id: number; invoice_number: string; invoice_date: string; customer_name?: string | null; customer_phone?: string | null; customer_gstin?: string | null; eway_bill_no?: string | null; cashier?: string | null;
-  /** the website's receipt: tax split by name (UTGST in a union territory) and the Show-the-tax-lines switch */ cgst?: number; sgst?: number; igst?: number; tax_name?: string; receipt?: { show_tax_lines?: boolean; show_hsn?: boolean };
+  /** the website's receipt: tax split by name (UTGST in a union territory) and the Show-the-tax-lines switch */ cgst?: number; sgst?: number; igst?: number; tax_name?: string; receipt?: { show_tax_lines?: boolean; show_hsn?: boolean; header_text?: string; show_phone?: boolean; show_total_qty?: boolean; show_amount_words?: boolean; show_terms?: boolean; terms?: string };
   subtotal: number; discount: number; tax: number; /** GST options (website: GST options): cess and TCS are inside the total, TDS is held back by the customer */ cess?: number; tcs?: number; tds?: number; reverse_charge?: boolean; bill_of_supply?: boolean; round_off: number; total: number; amount_paid: number; balance_due: number;
   order_number?: string | null; table_name?: string | null;
   outlet?: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; city?: string | null } | null;
@@ -42,6 +46,9 @@ export const receiptLines = (inv: Invoice, businessName: string, width = WIDTH):
   if (inv.outlet?.name && inv.outlet.name !== businessName) out.push(inv.outlet.name);
   const place = [inv.outlet?.address || inv.seller?.address, inv.outlet?.city || inv.seller?.city].filter(Boolean).join(', ');
   if (place) out.push(place);
+  if (inv.receipt?.header_text) out.push(...wordWrap(inv.receipt.header_text, width));
+  const phone = inv.outlet?.phone || inv.seller?.phone;
+  if (phone && inv.receipt?.show_phone !== false) out.push(`Ph: ${phone}`);
   const gstin = inv.outlet?.gstin || inv.seller?.gstin;
   if (gstin) out.push(`GSTIN ${gstin}`);
   out.push('-'.repeat(width));
@@ -69,7 +76,7 @@ export const receiptLines = (inv: Invoice, businessName: string, width = WIDTH):
     if (l.discount > 0) out.push(row('  Discount', `-${plain(l.discount)}`));
   }
   out.push('-'.repeat(width));
-  out.push(row(`Items: ${inv.items.length}`, `Total Qty: ${qty(totalQty)}`));
+  out.push(row(`Items: ${inv.items.length}`, inv.receipt?.show_total_qty === false ? '' : `Total Qty: ${qty(totalQty)}`));
   const split: [string, number | undefined][] = [['CGST', inv.cgst], [inv.tax_name || 'SGST', inv.sgst], ['IGST', inv.igst]];
   if (showTax) {
     out.push(row('Subtotal', money(inv.subtotal)));
@@ -83,12 +90,14 @@ export const receiptLines = (inv: Invoice, businessName: string, width = WIDTH):
   if (inv.tcs) out.push(row('TCS', money(inv.tcs)));
   if (inv.round_off) out.push(row('Round off', money(inv.round_off)));
   out.push(row('TOTAL', money(inv.total)));
+  if (inv.receipt?.show_amount_words === true) out.push(...wordWrap(rupeesInWords(inv.total), width));
   if (lineSaved + inv.discount > 0) out.push(`You saved Rs ${plain(lineSaved + inv.discount)}`);
   if (inv.tds) out.push(row('TDS held back', money(inv.tds)));
   if (inv.reverse_charge) out.push('Tax payable on reverse charge');
   for (const p of inv.payments) out.push(row(p.method, money(p.amount)));
   if (inv.balance_due > 0) out.push(row('Balance due', money(inv.balance_due)));
   out.push('-'.repeat(width));
+  if (inv.receipt?.show_terms === true && inv.receipt.terms) { out.push(...wordWrap(`Terms: ${inv.receipt.terms}`, width)); out.push('-'.repeat(width)); }
   out.push('Thank you');
   return out;
 };

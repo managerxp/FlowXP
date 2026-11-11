@@ -4,10 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api.ts';
 import { api, currentBusiness, loadMe, useSession } from '../lib/session.ts';
 import { goBack } from '../lib/nav.ts';
+import { hasFeature } from '../lib/access.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import {
-  ACCENTS, COPY_LABELS, NUMBER_KINDS, OPTION_ROWS, PROFILE_FIELDS, SHOW_OPTIONS, TOGGLES, gstOf, gstPatch, numberExample, numbersOf, numbersPatch, printOf, printPatch, profileOf, profilePatch, receiptOf, receiptPatch, stateSuggestions,
+  ACCENTS, COPY_LABELS, KITCHEN_TOGGLE, NUMBER_KINDS, TAX_INVOICE_TYPES, TERMS_TOGGLE, OPTION_ROWS, PROFILE_FIELDS, SHOW_OPTIONS, TOGGLES, gstOf, gstPatch, numberExample, numbersOf, numbersPatch, printOf, printPatch, profileOf, profilePatch, receiptOf, receiptPatch, stateSuggestions,
   type BusinessRecord, type Gst, type Profile, type Receipt
 } from '../lib/bizSettings.ts';
 import type { GstOptions } from '../lib/gst.ts';
@@ -75,7 +76,7 @@ const Details = ({ rec, reload }: { rec: BusinessRecord; reload: () => Promise<v
   );
 };
 
-const ReceiptCard = ({ rec, reload }: { rec: BusinessRecord; reload: () => Promise<void> }) => {
+const ReceiptCard = ({ rec, reload, food }: { rec: BusinessRecord; reload: () => Promise<void>; food: boolean }) => {
   const before = receiptOf(rec);
   const [r, setR] = useState<Receipt>(before);
   const set = <K extends keyof Receipt>(k: K, v: Receipt[K]) => setR((o) => ({ ...o, [k]: v }));
@@ -86,18 +87,21 @@ const ReceiptCard = ({ rec, reload }: { rec: BusinessRecord; reload: () => Promi
       <Text style={{ color: color.soft, fontSize: 13 }}>{t('Paper width')}</Text>
       <Chips items={[{ id: '58', label: '58 mm' }, { id: '80', label: '80 mm' }]} value={String(r.paper_width)} onChange={(v) => set('paper_width', Number(v) as 58 | 80)} />
       {text('footer', 'Footer message', { max: 200 })}
-      {TOGGLES.map(([k, label]) => <Toggle key={k} label={label} value={Boolean(r[k])} onChange={(v) => set(k, v as never)} />)}
+      {text('header_text', 'Line under the business name', { max: 80 })}
+      {[...TOGGLES, ...(food ? [KITCHEN_TOGGLE] : [TERMS_TOGGLE])].map(([k, label]) => <Toggle key={k} label={label} value={Boolean(r[k])} onChange={(v) => set(k, v as never)} />)}
       <Text style={{ color: color.soft, fontSize: 13 }}>{t('Copies of each receipt')}</Text>
       <Chips items={['1', '2', '3', '4', '5'].map((n) => ({ id: n, label: n }))} value={String(r.copies)} onChange={(v) => set('copies', Number(v))} />
       <Text style={{ color: color.soft, fontSize: 13 }}>{t('Blank lines after the receipt')}</Text>
       <Chips items={['0', '1', '2', '3', '5', '8'].map((n) => ({ id: n, label: n }))} value={String(r.extra_lines)} onChange={(v) => set('extra_lines', Number(v))} />
-      {text('pan', 'PAN', { max: 10, caps: true })}
-      {text('bank_name', 'Bank name', { max: 80 })}
-      {text('bank_account', 'Account number', { max: 24 })}
-      {text('bank_ifsc', 'IFSC', { max: 11, caps: true })}
-      {text('bank_branch', 'Bank branch', { max: 80 })}
-      {text('accountant_email', 'Accountant email', { keyboard: 'email-address', max: 160 })}
-      {text('terms', 'Terms and conditions', { big: true, max: 1000 })}
+      {food ? null : <>
+        {text('pan', 'PAN', { max: 10, caps: true })}
+        {text('bank_name', 'Bank name', { max: 80 })}
+        {text('bank_account', 'Account number', { max: 24 })}
+        {text('bank_ifsc', 'IFSC', { max: 11, caps: true })}
+        {text('bank_branch', 'Bank branch', { max: 80 })}
+        {text('accountant_email', 'Accountant email', { keyboard: 'email-address', max: 160 })}
+        {text('terms', 'Terms and conditions', { big: true, max: 1000 })}
+      </>}
     </Card>
   );
 };
@@ -134,14 +138,16 @@ const NumbersCard = ({ rec, reload }: { rec: BusinessRecord; reload: () => Promi
   );
 };
 
-const PrintCard = ({ rec, reload }: { rec: BusinessRecord; reload: () => Promise<void> }) => {
+const PrintCard = ({ rec, reload, trade }: { rec: BusinessRecord; reload: () => Promise<void>; trade: boolean }) => {
   const before = printOf(rec);
   const [p, setP] = useState<PrintSettings>(before);
   const set = (patchP: Partial<PrintSettings>) => setP((o) => ({ ...o, ...patchP }));
   return (
     <Card title="Invoice print" hint="How your A4 and A5 invoices look." save={async () => { const d = printPatch(before, p); if (!d) return t('Nothing changed.'); await patch(d); await reload(); return null; }}>
-      <Text style={{ color: color.soft, fontSize: 13 }}>{t('Layout')}</Text>
-      <Chips items={[{ id: 'auto', label: 'Automatic' }, { id: 'standard', label: 'Standard bill' }, { id: 'tally', label: 'Tax invoice (Tally style)' }]} value={p.layout} onChange={(v) => set({ layout: v })} />
+      {trade || p.layout === 'tally' ? <>
+        <Text style={{ color: color.soft, fontSize: 13 }}>{t('Layout')}</Text>
+        <Chips items={[{ id: 'auto', label: 'Automatic' }, { id: 'standard', label: 'Standard bill' }, { id: 'tally', label: 'Tax invoice (Tally style)' }]} value={p.layout} onChange={(v) => set({ layout: v })} />
+      </> : null}
       <Text style={{ color: color.soft, fontSize: 13 }}>{t('Paper')}</Text>
       <Chips items={[{ id: 'A4', label: 'A4' }, { id: 'A5', label: 'A5' }]} value={p.paper} onChange={(v) => set({ paper: v as 'A4' | 'A5' })} />
       <Text style={{ color: color.soft, fontSize: 13 }}>{t('Text size')}</Text>
@@ -163,6 +169,8 @@ const PrintCard = ({ rec, reload }: { rec: BusinessRecord; reload: () => Promise
 export default function BusinessSettingsScreen() {
   const session = useSession();
   const owner = currentBusiness(session)?.role === 'OWNER';
+  const food = hasFeature(currentBusiness(session), 'kitchen');   // a restaurant, cafe or cloud kitchen: kitchen settings, no A4 tax invoice
+  const trade = TAX_INVOICE_TYPES.includes(currentBusiness(session)?.business_type ?? '');
   const [rec, setRec] = useState<BusinessRecord | null>(null);
   const [error, setError] = useState('');
   const [version, setVersion] = useState(0);   // a new copy from the server starts each card again, so it shows what was really saved
@@ -179,9 +187,9 @@ export default function BusinessSettingsScreen() {
         {owner && rec ? (
           <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled">
             <Details key={`d${version}`} rec={rec} reload={reload} />
-            <ReceiptCard key={`r${version}`} rec={rec} reload={reload} />
+            <ReceiptCard key={`r${version}`} rec={rec} reload={reload} food={food} />
             <GstCard key={`g${version}`} rec={rec} reload={reload} />
-            <PrintCard key={`p${version}`} rec={rec} reload={reload} />
+            {food ? null : <PrintCard key={`p${version}`} rec={rec} reload={reload} trade={trade} />}
             <NumbersCard key={`n${version}`} rec={rec} reload={reload} />
           </ScrollView>
         ) : null}

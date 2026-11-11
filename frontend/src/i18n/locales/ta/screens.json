@@ -4878,5 +4878,12 @@
   "The kitchen uses the kitchen screen (switch off if it only uses printed tickets)": "சமையலறை கிச்சன் திரையைப் பயன்படுத்துகிறது (அச்சிட்ட டிக்கெட் மட்டுமே என்றால் அணைக்கவும்)",
   "Kitchen tickets that did not print: {{n}}. The kitchen may not know about them.": "அச்சாகாத சமையலறை டிக்கெட்டுகள்: {{n}}. சமையலறைக்கு இவை தெரியாமல் இருக்கலாம்.",
   "Print again": "மீண்டும் அச்சிடு",
-  "Dismiss": "மூடு"
+  "Dismiss": "மூடு",
+  "Show the phone number on receipts": "ரசீதில் தொலைபேசி எண்ணைக் காட்டு",
+  "Show the total quantity on receipts": "ரசீதில் மொத்த அளவைக் காட்டு",
+  "Print the amount in words under the total": "மொத்தத்திற்குக் கீழ் தொகையை எழுத்தில் அச்சிடு",
+  "Print the terms and conditions at the bottom": "கீழே விதிமுறைகள் மற்றும் நிபந்தனைகளை அச்சிடு",
+  "Line under the business name": "வணிகப் பெயருக்குக் கீழ் உள்ள வரி",
+  "For example \"Pure Veg\" or a slogan. Leave empty for none.": "எ.கா. \"சுத்த சைவம்\" அல்லது ஒரு வாசகம். வேண்டாமெனில் காலியாக விடுங்கள்.",
+  "Remembered in this browser only.": "இந்த உலாவியில் மட்டும் நினைவில் வைக்கப்படும்."
 }

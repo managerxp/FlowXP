@@ -44,17 +44,24 @@ export const profilePatch = (before: Profile, after: Profile): Record<string, st
 
 /* ── receipt and tax-invoice details ─────────────────────────────────────── */
 export type Receipt = {
-  paper_width: 58 | 80; footer: string; show_logo: boolean; show_gstin: boolean; show_upi_qr: boolean; show_loyalty: boolean; show_tax_lines: boolean; auto_cut: boolean; copies: number; extra_lines: number;
+  paper_width: 58 | 80; footer: string; show_logo: boolean; show_gstin: boolean; show_upi_qr: boolean; show_loyalty: boolean; show_tax_lines: boolean; auto_cut: boolean; show_phone: boolean; show_total_qty: boolean; show_amount_words: boolean; show_terms: boolean; kitchen_screen: boolean; header_text: string; copies: number; extra_lines: number;
   pan: string; bank_name: string; bank_account: string; bank_ifsc: string; bank_branch: string; accountant_email: string; terms: string;
 };
 export const RECEIPT_DEFAULTS: Receipt = {
-  paper_width: 80, footer: 'Thank you! Visit again.', show_logo: true, show_gstin: true, show_upi_qr: true, show_loyalty: true, show_tax_lines: true, auto_cut: true, copies: 1, extra_lines: 3,
+  paper_width: 80, footer: 'Thank you! Visit again.', show_logo: true, show_gstin: true, show_upi_qr: true, show_loyalty: true, show_tax_lines: true, auto_cut: true, show_phone: true, show_total_qty: true, show_amount_words: false, show_terms: false, kitchen_screen: true, header_text: '', copies: 1, extra_lines: 3,
   pan: '', bank_name: '', bank_account: '', bank_ifsc: '', bank_branch: '', accountant_email: '', terms: ''
 };
 export const TOGGLES: [keyof Receipt, string][] = [
   ['show_logo', 'Print the logo at the top of receipts'], ['show_gstin', 'Show the GSTIN on receipts'], ['show_tax_lines', 'Show the tax lines (CGST and SGST, UTGST or IGST) on receipts'], ['show_upi_qr', 'Show a UPI QR for any unpaid balance'],
-  ['show_loyalty', "Show the customer's loyalty card line"], ['auto_cut', 'Cut the paper after each receipt']
+  ['show_loyalty', "Show the customer's loyalty card line"], ['auto_cut', 'Cut the paper after each receipt'],
+  ['show_phone', 'Show the phone number on receipts'], ['show_total_qty', 'Show the total quantity on receipts'], ['show_amount_words', 'Print the amount in words under the total']
 ];
+/** Only for businesses that are not a restaurant, cafe or cloud kitchen: the terms printed on the receipt come from the tax-invoice details. */
+export const TERMS_TOGGLE: [keyof Receipt, string] = ['show_terms', 'Print the terms and conditions at the bottom'];
+/** Only for businesses with a kitchen. */
+export const KITCHEN_TOGGLE: [keyof Receipt, string] = ['kitchen_screen', 'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)'];
+/** The Tally-style tax invoice is for trade businesses; every other kind has the standard bill. */
+export const TAX_INVOICE_TYPES = ['WHOLESALE', 'DISTRIBUTOR', 'AUTO_PARTS', 'MECHANIC', 'ELECTRONICS'];
 
 export const receiptOf = (b: BusinessRecord): Receipt => {
   const r = b.receipt_settings ?? {};

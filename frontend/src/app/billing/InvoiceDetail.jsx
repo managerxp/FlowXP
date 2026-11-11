@@ -175,7 +175,7 @@ const InvoiceDetail = () => {
   const tr = useT();
   const dialog = useDialog();
   const { id } = useParams();
-  const { business } = useAuth();
+  const { business, hasFeature } = useAuth();
   const toast = useToast();
   const [invoice, setInvoice] = useState(null);
   const [error, setError] = useState('');
@@ -256,7 +256,7 @@ const InvoiceDetail = () => {
         <Link to="/app/billing/invoices" className="flex items-center gap-1.5 text-small font-medium text-ink-500 hover:text-ink-900"><ArrowLeft className="h-4 w-4" />{tr('All invoices')}</Link>
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={() => printReceipt(id)}><Receipt aria-hidden="true" className="h-4 w-4" />{tr('Receipt')}</Button>
-          <Button variant="secondary" onClick={() => setTally(!tally)}>{tally ? 'Standard bill' : 'Tally style'}</Button>
+          {!hasFeature('kitchen') && <Button variant="secondary" onClick={() => setTally(!tally)}>{tally ? 'Standard bill' : 'Tally style'}</Button>}   {/* a restaurant prints a till receipt, not a tax invoice */}
           <Button variant="secondary" loading={pdfBusy} onClick={savePdf}><Download aria-hidden="true" className="h-4 w-4" />{tr('Download PDF')}</Button>
           <Button variant="secondary" onClick={() => (tally ? setPreview(true) : window.print())}><Printer aria-hidden="true" className="h-4 w-4" />{tr('A4 / PDF')}</Button>
           {issued && <Button variant="secondary" onClick={sendBill}><MessageCircle aria-hidden="true" className="h-4 w-4" />{tr('Send')}</Button>}
