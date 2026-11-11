@@ -15,6 +15,7 @@ router.post('/messaging/messages/:id/resend', ...write('settings'), m.resendHand
 router.post('/messaging/send-bill', ...write('billing'), m.sendBillHandler);
 router.post('/messaging/bill-share', ...write('billing'), m.billShareHandler);
 router.post('/messaging/balance-share', ...write('billing'), m.balanceShareHandler);
+router.post('/messaging/statement-share', ...write('billing'), m.statementShareHandler);
 router.post('/messaging/send-balance', ...write('billing'), m.sendBalanceHandler);
 router.post('/messaging/campaigns/preview', ...read('settings'), m.preview);
 router.post('/messaging/campaigns', ...write('settings'), m.campaign);

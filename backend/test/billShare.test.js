@@ -57,6 +57,16 @@ test('the share message says what is due, and the WhatsApp link goes to the cust
   assert.equal((await balanceShare(pool, { businessId: biz, customerId: clear })).code, 409);
   assert.equal((await balanceShare(pool, { businessId: biz, customerId: 999999 })).code, 404);
 
+  // the customer's statement through the handler: what the reports screen shows, as a WhatsApp message to Ravi's number
+  const messagingCtl = await import('../src/controllers/messaging.controller.js');
+  const res = { code: 200, body: null, status(c) { this.code = c; return this; }, json(x) { this.body = x; return this; } };
+  await messagingCtl.statementShareHandler({ tenant: { businessId: biz, branchId: branch, scopeBranchId: null, role: 'OWNER', permissions: {} }, auth: { userId: owner }, body: { customer_id: ravi, days: 30 }, query: {}, headers: {} }, res);
+  assert.equal(res.code, 200, JSON.stringify(res.body));
+  assert.match(res.body.data.text, /^Hi Ravi, your statement from Spice Shop/); assert.match(res.body.data.text, /You owe: ₹350/); assert.equal(res.body.data.phone, '919876543210');
+  const missing = { code: 200, body: null, status(c) { this.code = c; return this; }, json(x) { this.body = x; return this; } };
+  await messagingCtl.statementShareHandler({ tenant: { businessId: biz, branchId: branch, scopeBranchId: null, role: 'OWNER', permissions: {} }, auth: { userId: owner }, body: { customer_id: 999999 }, query: {}, headers: {} }, missing);
+  assert.equal(missing.code, 404);
+
   // the same reminder sent from the business's own number: refused when messaging is off, recorded (here as skipped: no provider in tests) when on
   assert.equal((await sendBalance(pool, { businessId: biz, customerId: ravi })).skipped, 'OFF');
   await pool.query(`UPDATE businesses SET messaging_settings = '{"channel":"WHATSAPP"}' WHERE business_id = $1`, [biz]);

@@ -8,6 +8,9 @@ import { recordAudit } from '../modules/events.js';
 import { branchFilter } from '../utils/scope.js';
 import { channelsAvailable, isConnected, providerName } from '../modules/messaging/provider.js';
 import { KINDS, TEMPLATES, metaBody } from '../modules/messaging/templates.js';
+import * as ledgerReports from './ledgerReports.controller.js';
+import { addDaysISO, businessToday } from '../utils/dates.js';
+import { statementShare } from '../modules/messaging/index.js';
 import { SEGMENTS, audience, balanceShare, billShare, cleanSettings, getSettings, resend, sendBalance, sendBill, startCampaign, trialUsage } from '../modules/messaging/index.js';
 
 const bad = (res, message, status = 400) => res.status(status).json({ success: false, message });
@@ -76,6 +79,20 @@ export const balanceShareHandler = async (req, res) => {
   const r = await balanceShare(pool, { businessId: req.tenant.businessId, customerId: id });
   if (r.problem) return bad(res, r.problem, r.code);
   res.json({ success: true, data: r });
+};
+
+/* POST /api/messaging/statement-share { customer_id, days? }: the customer's statement of account (default the last 90 days) as a WhatsApp message to send from the shop's own number */
+export const statementShareHandler = async (req, res) => {
+  const id = Number(req.body?.customer_id);
+  if (!id) return bad(res, 'Choose a customer');
+  const days = Math.min(400, Math.max(1, Number(req.body?.days) || 90));
+  const to = await businessToday(req.tenant.businessId);
+  let out = null;
+  const fake = { status(code) { out = { code }; return fake; }, json(body) { out = { ...(out || { code: 200 }), body }; return fake; } };
+  await ledgerReports.partyStatement({ ...req, query: { kind: 'customer', id: String(id), from: addDaysISO(to, -days), to } }, fake);
+  if (out?.code !== 200) return bad(res, out?.body?.message || 'Could not make the statement', out?.code || 500);
+  const biz = (await pool.query('SELECT name FROM businesses WHERE business_id = $1', [req.tenant.businessId])).rows[0];
+  res.json({ success: true, data: statementShare(out.body.data, biz?.name || '', out.body.data.party.phone) });
 };
 
 /* POST /api/messaging/send-balance { customer_id }: the payment reminder, sent from the business's own number */

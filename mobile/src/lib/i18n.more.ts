@@ -3307,7 +3307,8 @@ export const ML: Record<string, string> = {
   'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'അടുക്കള കിച്ചൻ സ്ക്രീൻ ഉപയോഗിക്കുന്നു (അച്ചടിച്ച ടിക്കറ്റ് മാത്രമാണെങ്കിൽ ഓഫ് ചെയ്യുക)',
   'Line under the business name': 'സ്ഥാപനത്തിന്റെ പേരിന് താഴെയുള്ള വരി',
   'Payment received and balance due': 'ലഭിച്ച പണവും ബാക്കി തുകയും',
-  'What the customer saved': 'ഉപഭോക്താവ് ലാഭിച്ചത്',};
+  'What the customer saved': 'ഉപഭോക്താവ് ലാഭിച്ചത്',
+  'Send statement on WhatsApp': 'WhatsApp-ൽ സ്റ്റേറ്റ്മെന്റ് അയയ്ക്കുക',};
 
 /** Tamil: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const TA: Record<string, string> = {
@@ -6616,7 +6617,8 @@ export const TA: Record<string, string> = {
   'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'சமையலறை கிச்சன் திரையைப் பயன்படுத்துகிறது (அச்சிட்ட டிக்கெட் மட்டுமே என்றால் அணைக்கவும்)',
   'Line under the business name': 'வணிகப் பெயருக்குக் கீழ் உள்ள வரி',
   'Payment received and balance due': 'பெற்ற பணமும் நிலுவையும்',
-  'What the customer saved': 'வாடிக்கையாளர் சேமித்தது',};
+  'What the customer saved': 'வாடிக்கையாளர் சேமித்தது',
+  'Send statement on WhatsApp': 'WhatsApp-இல் கணக்கு அறிக்கையை அனுப்பு',};
 
 /** Bengali: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const BN: Record<string, string> = {
@@ -9925,7 +9927,8 @@ export const BN: Record<string, string> = {
   'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'রান্নাঘর কিচেন স্ক্রিন ব্যবহার করে (শুধু ছাপা টিকিট হলে বন্ধ করুন)',
   'Line under the business name': 'ব্যবসার নামের নিচের লাইন',
   'Payment received and balance due': 'প্রাপ্ত পেমেন্ট ও বকেয়া',
-  'What the customer saved': 'গ্রাহক যত বাঁচিয়েছেন',};
+  'What the customer saved': 'গ্রাহক যত বাঁচিয়েছেন',
+  'Send statement on WhatsApp': 'WhatsApp-এ স্টেটমেন্ট পাঠান',};
 
 /** Telugu: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const TE: Record<string, string> = {
@@ -13234,7 +13237,8 @@ export const TE: Record<string, string> = {
   'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'వంటగది కిచెన్ స్క్రీన్ వాడుతుంది (ప్రింట్ టికెట్లు మాత్రమే అయితే ఆఫ్ చేయండి)',
   'Line under the business name': 'వ్యాపార పేరు కింద లైన్',
   'Payment received and balance due': 'అందిన చెల్లింపు మరియు బాకీ',
-  'What the customer saved': 'కస్టమర్ ఆదా చేసింది',};
+  'What the customer saved': 'కస్టమర్ ఆదా చేసింది',
+  'Send statement on WhatsApp': 'WhatsApp లో స్టేట్‌మెంట్ పంపండి',};
 
 /** Kannada: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const KN: Record<string, string> = {
@@ -16543,4 +16547,5 @@ export const KN: Record<string, string> = {
   'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'ಅಡುಗೆಮನೆ ಕಿಚನ್ ಸ್ಕ್ರೀನ್ ಬಳಸುತ್ತದೆ (ಮುದ್ರಿತ ಟಿಕೆಟ್ ಮಾತ್ರ ಆದರೆ ಆಫ್ ಮಾಡಿ)',
   'Line under the business name': 'ವ್ಯಾಪಾರದ ಹೆಸರಿನ ಕೆಳಗಿನ ಸಾಲು',
   'Payment received and balance due': 'ಸ್ವೀಕರಿಸಿದ ಪಾವತಿ ಮತ್ತು ಬಾಕಿ',
-  'What the customer saved': 'ಗ್ರಾಹಕರು ಉಳಿಸಿದ್ದು',};
+  'What the customer saved': 'ಗ್ರಾಹಕರು ಉಳಿಸಿದ್ದು',
+  'Send statement on WhatsApp': 'WhatsApp ನಲ್ಲಿ ಸ್ಟೇಟ್‌ಮೆಂಟ್ ಕಳುಹಿಸಿ',};

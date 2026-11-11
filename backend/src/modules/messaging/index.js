@@ -192,6 +192,29 @@ export const balanceShare = async (db, { businessId, customerId }) => {
 };
 
 /**
+ * A customer's statement of account as a WhatsApp message: the opening balance, the latest movements and what is owed now. `data` is what
+ * GET /reports/party-statement gives (rupees). Pure, so it is tested without a database.
+ */
+export const statementText = (data, businessName) => {
+  const rs = (n) => `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: Number.isInteger(Number(n)) ? 0 : 2, maximumFractionDigits: 2 })}`;
+  const day = (d) => String(d instanceof Date ? d.toISOString() : d).slice(0, 10);
+  const shown = data.lines.slice(-12);
+  const rows = shown.map((l) => `${day(l.date)} ${l.type} ${l.number ?? ''}: ${l.debit > 0 ? `+${rs(l.debit)}` : `-${rs(l.credit)}`}`.replace(/\s+:/, ':'));
+  return [`Hi ${data.party.name || 'there'}, your statement from ${businessName} (${data.range.from} to ${data.range.to}).`,
+    `Opening balance: ${rs(data.opening_balance)}`,
+    ...(data.lines.length > shown.length ? [`(${data.lines.length - shown.length} earlier entries not listed)`] : []), ...rows,
+    data.closing_balance > 0 ? `You owe: ${rs(data.closing_balance)}. Please pay when you can. Thank you!` : data.closing_balance < 0 ? `We owe you: ${rs(-data.closing_balance)}. Thank you!` : 'Nothing is due. Thank you!'].join('\n');
+};
+
+/** A WhatsApp address for a customer's statement, ready to send from the shop's own WhatsApp. */
+export const statementShare = (data, businessName, phone) => {
+  const text = statementText(data, businessName);
+  const digits = normalisePhone(phone);
+  const to = digits ? `${config.messaging.countryCode}${digits}` : null;
+  return { text, closing: data.closing_balance, phone: to, wa_url: `https://wa.me/${to || ''}?text=${encodeURIComponent(text)}` };
+};
+
+/**
  * The same payment reminder as balanceShare, sent by the messaging service from the business's own WhatsApp/SMS number (a service message: it is
  * sent whether or not the customer opted out of offers). Returns what send() returns, or { problem, code }.
  */

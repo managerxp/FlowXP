@@ -14,7 +14,7 @@ import type { Customer } from '../../lib/types.ts';
 import { rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
 import { canRemind, reminderSentText, type BillSent } from '../../lib/messaging.ts';
-import { remindOnWhatsApp } from '../../lib/share.ts';
+import { remindOnWhatsApp, sendStatementOnWhatsApp } from '../../lib/share.ts';
 import { Button, Chips, Empty, ErrorText, Failed, Line, SavedNote, SectionTitle, Soft, Stat, Title, color, s } from '../../lib/ui.tsx';
 
 const money = (r: number) => rupees(toPaise(r));
@@ -74,6 +74,7 @@ export default function CustomerDetail() {
                 <Button title="Start a bill" onPress={() => { setCustomer({ id: c.customer_id, name: c.name, phone: c.phone }); router.navigate('/sell'); }} style={{ flex: 1 }} />
                 {c.phone ? <Button title="Call" kind="quiet" onPress={() => { void Linking.openURL(`tel:${c.phone}`); }} /> : null}
               </View>
+              {c.phone ? <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}><Button title="Send statement on WhatsApp" kind="quiet" onPress={() => { setRemindError(''); sendStatementOnWhatsApp(api, c.customer_id).catch((e: Error) => setRemindError(e.message)); }} /></View> : null}
               {canRemind(c.phone, c.outstanding_balance) ? (
                 <View style={{ gap: 8, paddingHorizontal: 16, paddingBottom: 8 }}>
                   <Button title="Send a reminder from FlowXP" onPress={() => { setRemindNote(''); setRemindError(''); setReminding(true); api.post<BillSent>('/messaging/send-balance', { customer_id: c.customer_id }).then((m) => setRemindNote(reminderSentText(m))).catch((e: Error) => setRemindError(e.message)).finally(() => setReminding(false)); }} busy={reminding} />

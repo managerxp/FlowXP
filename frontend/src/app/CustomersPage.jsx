@@ -151,8 +151,18 @@ const BillRow = ({ bill }) => {
   );
 };
 
+/* WhatsApp opened on the customer's number with a message ready (the shop's own WhatsApp, no messaging service needed). The window is opened first so the browser does not block it. */
+const openWhatsApp = async (path, body) => {
+  const win = window.open('', '_blank');
+  try {
+    const r = await api(path, { method: 'POST', body });
+    if (win) { win.opener = null; win.location.href = r.wa_url; } else window.location.href = r.wa_url;
+  } catch (caught) { win?.close(); throw caught; }
+};
+
 const CustomerPanel = ({ customer: c, onEdit, onBack }) => {
   const tr = useT();
+  const toast = useToast();
   const { business } = useAuth();
   const [bills, setBills] = useState(null);
   const [loyalty, setLoyalty] = useState(null);
@@ -189,6 +199,8 @@ const CustomerPanel = ({ customer: c, onEdit, onBack }) => {
         <div className="mt-4 flex gap-2">
           <Button size="sm" to={`/app/billing?customer=${c.customer_id}`}>{tr('New bill')}</Button>
           <Button size="sm" variant="secondary" onClick={onEdit}>{tr('Edit details')}</Button>
+          {c.phone && c.outstanding_balance > 0 && <Button size="sm" variant="secondary" onClick={() => openWhatsApp('/messaging/balance-share', { customer_id: c.customer_id }).catch((e) => toast.error(e.message))}>{tr('Remind on WhatsApp')}</Button>}
+          {c.phone && c.bills > 0 && <Button size="sm" variant="secondary" onClick={() => openWhatsApp('/messaging/statement-share', { customer_id: c.customer_id }).catch((e) => toast.error(e.message))}>{tr('Send statement on WhatsApp')}</Button>}
         </div>
       </div>
 

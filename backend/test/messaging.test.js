@@ -293,3 +293,18 @@ test('the log is per business and can be filtered', { skip }, async () => {
   assert.match(templates.find((t) => t.kind === 'BILL').body, /\{\{7\}\}/);
   assert.doesNotMatch(templates.find((t) => t.kind === 'BILL').body, /\{\{8\}\}/, 'the link is the button now, not a variable');
 });
+
+test('a customer statement as a message: opening balance, the latest movements, and what is owed', async () => {
+  const { statementText, statementShare } = await import('../src/modules/messaging/index.js');
+  const data = { party: { name: 'Asha', phone: '9876543210' }, range: { from: '2026-08-12', to: '2026-11-10' }, opening_balance: 500, closing_balance: 1200,
+    lines: [{ date: '2026-09-01', type: 'Sale', number: 'INV-1', debit: 1000, credit: 0 }, { date: '2026-09-05', type: 'Payment in', number: '#7', debit: 0, credit: 300 }] };
+  const text = statementText(data, 'Sri Stores');
+  assert.match(text, /Hi Asha, your statement from Sri Stores \(2026-08-12 to 2026-11-10\)/);
+  assert.match(text, /Opening balance: ₹500/); assert.match(text, /2026-09-01 Sale INV-1: \+₹1,000/); assert.match(text, /2026-09-05 Payment in #7: -₹300/); assert.match(text, /You owe: ₹1,200/);
+  assert.match(statementText({ ...data, closing_balance: 0 }, 'Sri Stores'), /Nothing is due/);
+  assert.match(statementText({ ...data, closing_balance: -50 }, 'Sri Stores'), /We owe you: ₹50/);
+  const many = { ...data, lines: Array.from({ length: 20 }, (_, i) => ({ date: '2026-10-01', type: 'Sale', number: `INV-${i}`, debit: 10, credit: 0 })) };
+  assert.match(statementText(many, 'S'), /8 earlier entries not listed/);
+  const share = statementShare(data, 'Sri Stores', '9876543210');
+  assert.ok(share.wa_url.startsWith('https://wa.me/91') && share.wa_url.includes(encodeURIComponent('Opening balance')) && share.closing === 1200);
+});

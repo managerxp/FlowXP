@@ -67,6 +67,12 @@ export const remindOnWhatsApp = async (api: Api, customerId: number): Promise<vo
   try { await Linking.openURL(r.wa_url); } catch { await Share.share({ message: r.text }); }
 };
 
+/** WhatsApp opened on the customer's number with their statement of account (the last 90 days) ready; the share sheet with the same words if it cannot be opened. */
+export const sendStatementOnWhatsApp = async (api: Api, customerId: number): Promise<void> => {
+  const r = await api.post<BalanceShare>('/messaging/statement-share', { customer_id: customerId });
+  try { await Linking.openURL(r.wa_url); } catch { await Share.share({ message: r.text }); }
+};
+
 /** Write some text to a file in the phone's cache and open the share sheet on it (the e-way bill's JSON). */
 export const shareTextFile = async (fileName: string, content: string, mimeType: string, uti: string, dialogTitle: string): Promise<void> => {
   const Files = await import('expo-file-system');
