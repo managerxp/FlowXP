@@ -4875,5 +4875,8 @@
   "Delete and start fresh": "ഇല്ലാതാക്കി പുതുതായി തുടങ്ങുക",
   "Your trial data is cleared. Numbering starts again from 1.": "നിങ്ങളുടെ ട്രയൽ ഡാറ്റ മായ്ച്ചു. നമ്പറിംഗ് വീണ്ടും 1 മുതൽ തുടങ്ങും.",
   "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.": "ലോഗോ സേവ് ചെയ്തു, പക്ഷേ തെർമൽ രസീതുകൾക്കായി തയ്യാറാക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും അപ്‌ലോഡ് ചെയ്ത് നോക്കുക.",
-  "The kitchen uses the kitchen screen (switch off if it only uses printed tickets)": "അടുക്കള കിച്ചൻ സ്ക്രീൻ ഉപയോഗിക്കുന്നു (അച്ചടിച്ച ടിക്കറ്റ് മാത്രമാണെങ്കിൽ ഓഫ് ചെയ്യുക)"
+  "The kitchen uses the kitchen screen (switch off if it only uses printed tickets)": "അടുക്കള കിച്ചൻ സ്ക്രീൻ ഉപയോഗിക്കുന്നു (അച്ചടിച്ച ടിക്കറ്റ് മാത്രമാണെങ്കിൽ ഓഫ് ചെയ്യുക)",
+  "Kitchen tickets that did not print: {{n}}. The kitchen may not know about them.": "പ്രിന്റ് ആകാത്ത അടുക്കള ടിക്കറ്റുകൾ: {{n}}. അടുക്കളയ്ക്ക് ഇവ അറിയില്ലായിരിക്കാം.",
+  "Print again": "വീണ്ടും പ്രിന്റ് ചെയ്യുക",
+  "Dismiss": "ഒഴിവാക്കുക"
 }

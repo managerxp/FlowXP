@@ -4875,5 +4875,8 @@
   "Delete and start fresh": "Delete and start fresh",
   "Your trial data is cleared. Numbering starts again from 1.": "Your trial data is cleared. Numbering starts again from 1.",
   "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.": "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.",
-  "The kitchen uses the kitchen screen (switch off if it only uses printed tickets)": "The kitchen uses the kitchen screen (switch off if it only uses printed tickets)"
+  "The kitchen uses the kitchen screen (switch off if it only uses printed tickets)": "The kitchen uses the kitchen screen (switch off if it only uses printed tickets)",
+  "Kitchen tickets that did not print: {{n}}. The kitchen may not know about them.": "Kitchen tickets that did not print: {{n}}. The kitchen may not know about them.",
+  "Print again": "Print again",
+  "Dismiss": "Dismiss"
 }

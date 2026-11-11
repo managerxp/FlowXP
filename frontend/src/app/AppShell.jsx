@@ -32,6 +32,7 @@ import { InstallButton, OfflineStatus } from '../components/OfflineStatus.jsx';
 import CommandPalette from '../components/CommandPalette.jsx';
 import GuideHelper from '../components/GuideHelper.jsx';
 import IncomingDeliveryAlert from '../components/IncomingDeliveryAlert.jsx';
+import KitchenPrintWarning from '../components/KitchenPrintWarning.jsx';
 import { AUTO_PARTS_TYPES, CLOTHING_TYPES, GAMING_TYPES, GYM_TYPES, PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
 import { useMode } from './books/mode.js';
 
@@ -534,6 +535,7 @@ const AppShell = () => {
   return (
     <div className="flex min-h-full flex-col bg-page">
       <IncomingDeliveryAlert />
+      <KitchenPrintWarning />
       <div className="print:hidden"><SubscriptionBanner subscription={business.subscription} /></div>
       <OfflineStatus />
 

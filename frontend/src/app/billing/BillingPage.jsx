@@ -526,7 +526,8 @@ const BillingPage = () => {
   const setOrderQty = async (line, quantity) => {
     setError('');
     try {
-      await api(`/orders/${orderId}/items/${line.order_item_id}`, { method: 'PATCH', body: Number(quantity) > 0 ? { quantity: Number(quantity) } : { status: 'CANCELLED' } });
+      const out = await api(`/orders/${orderId}/items/${line.order_item_id}`, { method: 'PATCH', body: Number(quantity) > 0 ? { quantity: Number(quantity) } : { status: 'CANCELLED' } });
+      if (out?.cancel_kot_id && getDevicePrefs().autoPrintKot) printKotSlip(out.cancel_kot_id);
       await loadOrder();
     } catch (caught) { setError(caught.message); }
   };

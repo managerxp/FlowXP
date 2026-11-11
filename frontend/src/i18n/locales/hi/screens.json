@@ -4875,5 +4875,8 @@
   "Delete and start fresh": "हटाएँ और नए सिरे से शुरू करें",
   "Your trial data is cleared. Numbering starts again from 1.": "आपका ट्रायल डेटा साफ़ हो गया। नंबरिंग फिर से 1 से शुरू होगी।",
   "Logo saved, but it could not be prepared for thermal receipts. Try uploading it again.": "लोगो सेव हो गया, पर थर्मल रसीद के लिए तैयार नहीं हो सका। फिर से अपलोड करके देखें।",
-  "The kitchen uses the kitchen screen (switch off if it only uses printed tickets)": "रसोई किचन स्क्रीन इस्तेमाल करती है (सिर्फ़ छपे टिकट इस्तेमाल हों तो बंद करें)"
+  "The kitchen uses the kitchen screen (switch off if it only uses printed tickets)": "रसोई किचन स्क्रीन इस्तेमाल करती है (सिर्फ़ छपे टिकट इस्तेमाल हों तो बंद करें)",
+  "Kitchen tickets that did not print: {{n}}. The kitchen may not know about them.": "जो किचन टिकट प्रिंट नहीं हुए: {{n}}। हो सकता है रसोई को इनका पता न हो।",
+  "Print again": "फिर से प्रिंट करें",
+  "Dismiss": "हटाएँ"
 }

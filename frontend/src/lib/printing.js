@@ -116,6 +116,15 @@ export const printBill = async (orderId) => {
   return false;
 };
 
+/* Kitchen tickets that did not reach a printer. A toast fades; the kitchen may be waiting for a ticket that never came, so these stay on screen (the shell shows them) until they print or are dismissed. */
+let failedKots = [];
+const failedListeners = new Set();
+const setFailedKots = (next) => { failedKots = next; failedListeners.forEach((f) => f()); };
+export const subscribeFailedKots = (f) => { failedListeners.add(f); return () => failedListeners.delete(f); };
+export const getFailedKots = () => failedKots;
+export const dismissFailedKots = () => setFailedKots([]);
+export const reprintFailedKots = () => Promise.all(failedKots.map((id) => printKot(id)));
+
 /** Print a kitchen ticket, one slip per station, each to the printer its station is routed to. */
 export const printKot = async (kotId) => {
   const prefs = getDevicePrefs();
@@ -128,7 +137,8 @@ export const printKot = async (kotId) => {
       if (target) await sendToAgent(target, slip.data, prefs); else browserNeeded = true;
     }
     if (browserNeeded) openPrint('kot', kotId);   // a station set to the print dialog (or with no printer at all) uses the browser view
-  } catch (error) { onPrintError(`Kitchen ticket not printed: ${error.message}`); if (prefs.dialogFallback !== false) openPrint('kot', kotId); }
+    if (failedKots.includes(kotId)) setFailedKots(failedKots.filter((id) => id !== kotId));
+  } catch (error) { onPrintError(`Kitchen ticket not printed: ${error.message}`); if (!failedKots.includes(kotId)) setFailedKots([...failedKots, kotId]); if (prefs.dialogFallback !== false) openPrint('kot', kotId); }
   return null;
 };
 

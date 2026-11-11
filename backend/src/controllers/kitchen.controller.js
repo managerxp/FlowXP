@@ -85,7 +85,7 @@ export const printableKot = async (req, res) => {
   const values = [req.params.id, req.tenant.businessId];
   const scope = branchFilter(req.tenant, 'o.branch_id', values);
   const kot = (await pool.query(
-    `SELECT k.kot_id, k.kot_number, k.priority, k.created_at, o.order_id, o.order_number, o.order_type, o.platform, o.external_order_number, o.notes AS order_notes,
+    `SELECT k.kot_id, k.kot_number, k.priority, k.created_at, k.is_cancel, o.order_id, o.order_number, o.order_type, o.platform, o.external_order_number, o.notes AS order_notes,
             t.name AS table_name, br.name AS outlet_name, COALESCE(c.name, o.guest_name) AS customer_name
      FROM kot_tickets k JOIN orders o ON o.order_id = k.order_id
      LEFT JOIN dining_tables t ON t.table_id = o.table_id LEFT JOIN branches br ON br.branch_id = o.branch_id LEFT JOIN customers c ON c.customer_id = o.customer_id
@@ -96,7 +96,7 @@ export const printableKot = async (req, res) => {
   const items = (await pool.query(
     `SELECT oi.product_id, oi.description, oi.quantity, oi.modifiers, oi.kitchen_notes, oi.station_id, COALESCE(s.name, 'Kitchen') AS station_name, COALESCE(s.sort_order, 999) AS sort
      FROM order_items oi LEFT JOIN kitchen_stations s ON s.station_id = oi.station_id
-     WHERE oi.kot_id = $1 AND oi.status <> 'CANCELLED' ORDER BY COALESCE(s.sort_order, 999), oi.order_item_id`, [kot.kot_id]
+     WHERE ${kot.is_cancel ? 'oi.cancel_kot_id' : "oi.kot_id"} = $1 ${kot.is_cancel ? '' : "AND oi.status <> 'CANCELLED'"} ORDER BY COALESCE(s.sort_order, 999), oi.order_item_id`, [kot.kot_id]
   )).rows;
 
   const combos = await loadCombos(pool, req.tenant.businessId, [...new Set(items.map((i) => i.product_id).filter(Boolean))]);
@@ -109,7 +109,7 @@ export const printableKot = async (req, res) => {
   res.json({
     success: true,
     data: {
-      kot_id: kot.kot_id, kot_number: kot.kot_number, priority: kot.priority, created_at: kot.created_at,
+      kot_id: kot.kot_id, kot_number: kot.kot_number, cancelled: kot.is_cancel, priority: kot.priority, created_at: kot.created_at,
       order_number: kot.order_number, order_type: kot.order_type, platform: kot.platform, platform_order_number: kot.external_order_number, table_name: kot.table_name,
       outlet: kot.outlet_name, customer: kot.customer_name, order_notes: kot.order_notes, stations
     }

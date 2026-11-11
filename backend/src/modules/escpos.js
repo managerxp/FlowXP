@@ -193,7 +193,8 @@ export const kotSlips = (kot, { cols = 48, drawer = false } = {}) => {
   return kot.stations.map((slip) => {
     const j = new Job(cols);
     j.align('center').bold(true).big(true).half(() => j.wrap(kot.kot_number)).big(false).line(where);
-    if (kot.priority === 'RUSH') j.big(true).line('** RUSH **').big(false);
+    if (kot.cancelled) j.big(true).line('** CANCELLED **').big(false).bold(true).line('DO NOT MAKE').bold(false);
+    else if (kot.priority === 'RUSH') j.big(true).line('** RUSH **').big(false);
     j.bold(false).line(`${kot.order_number}${kot.outlet ? ` - ${kot.outlet}` : ''}`).line(stamp(kot.created_at)).align('left');
     j.bold(true).align('center').line(`[ ${slip.name} ]`).align('left').bold(false).rule();
     for (const i of slip.items) {

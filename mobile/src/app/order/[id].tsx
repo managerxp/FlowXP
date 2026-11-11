@@ -44,10 +44,18 @@ export default function OrderScreen() {
     finally { setBusy(''); }
   };
 
-  const setQtyOf = (i: OrderItem, quantity: number) => act(`item-${i.order_item_id}`, async () => {
-    await api.call(`/orders/${id}/items/${i.order_item_id}`, { method: 'PATCH', body: quantity > 0 ? { quantity } : { status: 'CANCELLED' } });
-  });
-  const setStatus = (i: OrderItem, status: OrderItem['status']) => act(`item-${i.order_item_id}`, async () => { await api.call(`/orders/${id}/items/${i.order_item_id}`, { method: 'PATCH', body: { status } }); });
+  /* A dish cancelled after it went to the kitchen gets a CANCELLED slip. On a phone with a kitchen printer it prints at once; if it cannot, the screen says so in red, because the kitchen would go on cooking it. */
+  const printCancelSlip = async (kotId: number | null | undefined): Promise<boolean> => {
+    if (!kotId || (await readMode()) !== 'direct') return true;
+    try { await (await import('../../lib/printerLink.ts')).printKitchenDirect(api, kotId); return true; }
+    catch { setProblem(tr('The cancel slip did not print. Tell the kitchen not to make it.')); return false; }
+  };
+  const patchItem = async (i: OrderItem, body: Record<string, unknown>) => {
+    const out = await api.call<{ cancel_kot_id?: number | null }>(`/orders/${id}/items/${i.order_item_id}`, { method: 'PATCH', body });
+    await printCancelSlip(out.data?.cancel_kot_id);
+  };
+  const setQtyOf = (i: OrderItem, quantity: number) => act(`item-${i.order_item_id}`, () => patchItem(i, quantity > 0 ? { quantity } : { status: 'CANCELLED' }));
+  const setStatus = (i: OrderItem, status: OrderItem['status']) => act(`item-${i.order_item_id}`, () => patchItem(i, { status }));
   const cancelItem = (i: OrderItem) => Alert.alert('Cancel this item?', `${itemName(i)} was already sent to the kitchen. It comes off the bill.`, [{ text: 'Keep it', style: 'cancel' }, { text: 'Cancel item', style: 'destructive', onPress: () => { void setStatus(i, 'CANCELLED'); } }]);
 
   const send = () => act('send', async () => {
@@ -56,14 +64,14 @@ export default function OrderScreen() {
     const kotId = kot?.kot_id ?? kot?.kot?.kot_id;
     if (kotId && (await readMode()) === 'direct') {   // a kitchen printer on this phone: the ticket prints itself; a failure never undoes the order
       try { if (await (await import('../../lib/printerLink.ts')).printKitchenDirect(api, kotId)) note += ` ${tr('Kitchen ticket sent to the printer.')}`; }
-      catch { note += ` ${tr('Could not print the kitchen ticket. The order was still sent to the kitchen.')}`; }
+      catch { setProblem(tr('The kitchen ticket did not print. Tell the kitchen, or print it again from Printers.')); }
     }
     setNote(note);
   });
 
   const cancelOrder = () => Alert.alert('Cancel the whole order?', 'Every item comes off and the table is freed. Items already billed stay billed.', [
     { text: 'Keep it', style: 'cancel' },
-    { text: 'Cancel order', style: 'destructive', onPress: () => { void act('cancel', async () => { await api.call(`/orders/${id}/cancel`, { method: 'POST', body: {} }); goBack(); }); } }
+    { text: 'Cancel order', style: 'destructive', onPress: () => { void act('cancel', async () => { const out = await api.call<{ cancel_kot_id?: number | null }>(`/orders/${id}/cancel`, { method: 'POST', body: {} }); if (await printCancelSlip(out.data?.cancel_kot_id)) goBack(); }); } }
   ]);
 
   const title = o ? (o.table_name ?? (o.order_type === 'DELIVERY' ? 'Delivery' : 'Takeaway')) : 'Order';

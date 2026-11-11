@@ -3404,7 +3404,11 @@ export const HI: Record<string, string> = {
   'Receipt': 'रसीद',
   'Bill before payment': 'भुगतान से पहले का बिल',
   'Printed.': 'प्रिंट हो गया।',
-  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'लोगो सेव हो गया। इसे थर्मल रसीद पर छापने के लिए, वेबसाइट से एक बार अपलोड करें।',};
+  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'लोगो सेव हो गया। इसे थर्मल रसीद पर छापने के लिए, वेबसाइट से एक बार अपलोड करें।',
+  'The kitchen ticket did not print. Tell the kitchen, or print it again from Printers.': 'किचन टिकट प्रिंट नहीं हुआ। रसोई को बताएँ, या प्रिंटर्स से फिर प्रिंट करें।',
+  'The cancel slip did not print. Tell the kitchen not to make it.': 'रद्द पर्ची प्रिंट नहीं हुई। रसोई को बताएँ कि इसे न बनाएँ।',
+  'Kitchen slips did not print': 'किचन पर्चियाँ प्रिंट नहीं हुईं',
+  'Tap to open Printers and print them again': 'प्रिंटर्स खोलकर उन्हें फिर प्रिंट करने के लिए टैप करें',};
 
 /** Languages that have a dictionary. */
 export const DICTS: Partial<Record<Lang, Record<string, string>>> = { hi: HI, ml: ML, ta: TA, bn: BN, te: TE, kn: KN };

@@ -3295,7 +3295,11 @@ export const ML: Record<string, string> = {
   'Receipt': 'രസീത്',
   'Bill before payment': 'പണമടയ്ക്കുന്നതിന് മുമ്പുള്ള ബിൽ',
   'Printed.': 'പ്രിന്റ് ചെയ്തു.',
-  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'ലോഗോ സേവ് ചെയ്തു. തെർമൽ രസീതുകളിൽ പ്രിന്റ് ചെയ്യാൻ വെബ്സൈറ്റിൽ നിന്ന് ഒരു തവണ അപ്‌ലോഡ് ചെയ്യുക.',};
+  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'ലോഗോ സേവ് ചെയ്തു. തെർമൽ രസീതുകളിൽ പ്രിന്റ് ചെയ്യാൻ വെബ്സൈറ്റിൽ നിന്ന് ഒരു തവണ അപ്‌ലോഡ് ചെയ്യുക.',
+  'The kitchen ticket did not print. Tell the kitchen, or print it again from Printers.': 'അടുക്കള ടിക്കറ്റ് പ്രിന്റ് ആയില്ല. അടുക്കളയെ അറിയിക്കുക, അല്ലെങ്കിൽ പ്രിന്ററുകളിൽ നിന്ന് വീണ്ടും പ്രിന്റ് ചെയ്യുക.',
+  'The cancel slip did not print. Tell the kitchen not to make it.': 'റദ്ദാക്കൽ സ്ലിപ്പ് പ്രിന്റ് ആയില്ല. ഇത് ഉണ്ടാക്കരുതെന്ന് അടുക്കളയെ അറിയിക്കുക.',
+  'Kitchen slips did not print': 'അടുക്കള സ്ലിപ്പുകൾ പ്രിന്റ് ആയില്ല',
+  'Tap to open Printers and print them again': 'പ്രിന്ററുകൾ തുറന്ന് വീണ്ടും പ്രിന്റ് ചെയ്യാൻ ടാപ്പ് ചെയ്യുക',};
 
 /** Tamil: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const TA: Record<string, string> = {
@@ -6592,7 +6596,11 @@ export const TA: Record<string, string> = {
   'Receipt': 'ரசீது',
   'Bill before payment': 'பணம் செலுத்துவதற்கு முந்தைய பில்',
   'Printed.': 'அச்சிடப்பட்டது.',
-  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'லோகோ சேமிக்கப்பட்டது. தெர்மல் ரசீதுகளில் அச்சிட, இணையதளத்தில் ஒருமுறை பதிவேற்றுங்கள்.',};
+  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'லோகோ சேமிக்கப்பட்டது. தெர்மல் ரசீதுகளில் அச்சிட, இணையதளத்தில் ஒருமுறை பதிவேற்றுங்கள்.',
+  'The kitchen ticket did not print. Tell the kitchen, or print it again from Printers.': 'சமையலறை டிக்கெட் அச்சாகவில்லை. சமையலறைக்குச் சொல்லுங்கள், அல்லது அச்சுப்பொறிகளில் மீண்டும் அச்சிடுங்கள்.',
+  'The cancel slip did not print. Tell the kitchen not to make it.': 'ரத்து சீட்டு அச்சாகவில்லை. இதைச் செய்ய வேண்டாம் என்று சமையலறைக்குச் சொல்லுங்கள்.',
+  'Kitchen slips did not print': 'சமையலறை சீட்டுகள் அச்சாகவில்லை',
+  'Tap to open Printers and print them again': 'அச்சுப்பொறிகளைத் திறந்து மீண்டும் அச்சிட தட்டவும்',};
 
 /** Bengali: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const BN: Record<string, string> = {
@@ -9889,7 +9897,11 @@ export const BN: Record<string, string> = {
   'Receipt': 'রসিদ',
   'Bill before payment': 'পেমেন্টের আগের বিল',
   'Printed.': 'প্রিন্ট হয়েছে।',
-  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'লোগো সেভ হয়েছে। থার্মাল রসিদে ছাপতে একবার ওয়েবসাইট থেকে আপলোড করুন।',};
+  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'লোগো সেভ হয়েছে। থার্মাল রসিদে ছাপতে একবার ওয়েবসাইট থেকে আপলোড করুন।',
+  'The kitchen ticket did not print. Tell the kitchen, or print it again from Printers.': 'কিচেন টিকিট প্রিন্ট হয়নি। রান্নাঘরকে জানান, অথবা প্রিন্টার থেকে আবার প্রিন্ট করুন।',
+  'The cancel slip did not print. Tell the kitchen not to make it.': 'বাতিল স্লিপ প্রিন্ট হয়নি। রান্নাঘরকে বলুন এটি না বানাতে।',
+  'Kitchen slips did not print': 'কিচেন স্লিপ প্রিন্ট হয়নি',
+  'Tap to open Printers and print them again': 'প্রিন্টার খুলে আবার প্রিন্ট করতে ট্যাপ করুন',};
 
 /** Telugu: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const TE: Record<string, string> = {
@@ -13186,7 +13198,11 @@ export const TE: Record<string, string> = {
   'Receipt': 'రసీదు',
   'Bill before payment': 'చెల్లింపుకు ముందు బిల్లు',
   'Printed.': 'ప్రింట్ అయింది.',
-  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'లోగో సేవ్ అయింది. థర్మల్ రసీదులపై ప్రింట్ చేయడానికి, వెబ్‌సైట్ నుండి ఒకసారి అప్‌లోడ్ చేయండి.',};
+  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'లోగో సేవ్ అయింది. థర్మల్ రసీదులపై ప్రింట్ చేయడానికి, వెబ్‌సైట్ నుండి ఒకసారి అప్‌లోడ్ చేయండి.',
+  'The kitchen ticket did not print. Tell the kitchen, or print it again from Printers.': 'కిచెన్ టికెట్ ప్రింట్ కాలేదు. వంటగదికి చెప్పండి, లేదా ప్రింటర్స్ నుండి మళ్లీ ప్రింట్ చేయండి.',
+  'The cancel slip did not print. Tell the kitchen not to make it.': 'రద్దు స్లిప్ ప్రింట్ కాలేదు. దీన్ని చేయవద్దని వంటగదికి చెప్పండి.',
+  'Kitchen slips did not print': 'కిచెన్ స్లిప్‌లు ప్రింట్ కాలేదు',
+  'Tap to open Printers and print them again': 'ప్రింటర్స్ తెరిచి మళ్లీ ప్రింట్ చేయడానికి నొక్కండి',};
 
 /** Kannada: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const KN: Record<string, string> = {
@@ -16483,4 +16499,8 @@ export const KN: Record<string, string> = {
   'Receipt': 'ರಸೀದಿ',
   'Bill before payment': 'ಪಾವತಿಗೆ ಮೊದಲಿನ ಬಿಲ್',
   'Printed.': 'ಮುದ್ರಿಸಲಾಗಿದೆ.',
-  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'ಲೋಗೋ ಉಳಿಸಲಾಗಿದೆ. ಥರ್ಮಲ್ ರಸೀದಿಗಳಲ್ಲಿ ಮುದ್ರಿಸಲು, ವೆಬ್‌ಸೈಟ್‌ನಿಂದ ಒಮ್ಮೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ.',};
+  'Logo saved. To print it on thermal receipts, upload it once from the website.': 'ಲೋಗೋ ಉಳಿಸಲಾಗಿದೆ. ಥರ್ಮಲ್ ರಸೀದಿಗಳಲ್ಲಿ ಮುದ್ರಿಸಲು, ವೆಬ್‌ಸೈಟ್‌ನಿಂದ ಒಮ್ಮೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ.',
+  'The kitchen ticket did not print. Tell the kitchen, or print it again from Printers.': 'ಕಿಚನ್ ಟಿಕೆಟ್ ಮುದ್ರಣವಾಗಲಿಲ್ಲ. ಅಡುಗೆಮನೆಗೆ ತಿಳಿಸಿ, ಅಥವಾ ಪ್ರಿಂಟರ್ಸ್‌ನಿಂದ ಮತ್ತೆ ಮುದ್ರಿಸಿ.',
+  'The cancel slip did not print. Tell the kitchen not to make it.': 'ರದ್ದು ಚೀಟಿ ಮುದ್ರಣವಾಗಲಿಲ್ಲ. ಇದನ್ನು ಮಾಡಬೇಡಿ ಎಂದು ಅಡುಗೆಮನೆಗೆ ತಿಳಿಸಿ.',
+  'Kitchen slips did not print': 'ಕಿಚನ್ ಚೀಟಿಗಳು ಮುದ್ರಣವಾಗಲಿಲ್ಲ',
+  'Tap to open Printers and print them again': 'ಪ್ರಿಂಟರ್ಸ್ ತೆರೆದು ಮತ್ತೆ ಮುದ್ರಿಸಲು ಟ್ಯಾಪ್ ಮಾಡಿ',};

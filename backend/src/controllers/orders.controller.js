@@ -113,6 +113,18 @@ export const insertOrderItems = async (client, businessId, orderId, rawItems) =>
   return inserted;
 };
 
+/** Cancelled lines that were already in the kitchen get a "CANCELLED" ticket of their own, so a kitchen that cooks from printed slips knows to stop.
+    itemIds are lines just cancelled; only those that had been sent count. Returns the ticket's id, or null when nothing had gone to the kitchen. */
+export const makeCancelSlip = async (client, { businessId, orderId, itemIds, createdBy = null }) => {
+  if (!itemIds.length) return null;
+  const sent = (await client.query(`SELECT order_item_id FROM order_items WHERE order_item_id = ANY($1::int[]) AND order_id = $2 AND sent_at IS NOT NULL`, [itemIds, orderId])).rows.map((r) => r.order_item_id);
+  if (!sent.length) return null;
+  const number = await nextNumber(client, businessId, "'KOT'", 'kot_next_number');
+  const kot = (await client.query(`INSERT INTO kot_tickets (business_id, order_id, kot_number, created_by, is_cancel) VALUES ($1,$2,$3,$4,TRUE) RETURNING kot_id`, [businessId, orderId, number, createdBy])).rows[0];
+  await client.query(`UPDATE order_items SET cancel_kot_id = $1 WHERE order_item_id = ANY($2::int[])`, [kot.kot_id, sent]);
+  return kot.kot_id;
+};
+
 /** The core of sendKot(): group every still-PENDING item into a new ticket.
     Returns null when there is nothing pending (sendKot()'s HTTP handler turns
     that into a 400; a caller that just added items itself never hits null). */
@@ -359,7 +371,7 @@ export const get = async (req, res) => {
   )).rows;
 
   const kots = (await pool.query(
-    `SELECT kot_id, kot_number, created_at FROM kot_tickets WHERE order_id = $1 ORDER BY kot_id`, [req.params.id]
+    `SELECT kot_id, kot_number, created_at FROM kot_tickets WHERE order_id = $1 AND NOT is_cancel ORDER BY kot_id`, [req.params.id]
   )).rows;
 
   res.json({ success: true, data: { ...asOrder(rows[0]), items: items.map(asOrderItem), kots } });
@@ -445,6 +457,9 @@ export const updateItem = async (req, res) => {
     fields.push(`cancelled_at = CASE WHEN $${n}::varchar = 'CANCELLED' THEN CURRENT_TIMESTAMP ELSE NULL END`);
   }
   if (!fields.length) return res.status(400).json({ success: false, message: 'Nothing to update' });
+  const wasLive = body.status === 'CANCELLED'
+    ? (await pool.query(`SELECT 1 FROM order_items WHERE order_item_id = $1 AND order_id = $2 AND status IN ('PREPARING','READY') AND sent_at IS NOT NULL`, [req.params.itemId, req.params.id])).rowCount > 0
+    : false;
 
   values.push(req.params.itemId, req.params.id, req.tenant.businessId);
   // number the three before the outlet filter adds its own parameter (it used to shift them, so at
@@ -459,7 +474,8 @@ export const updateItem = async (req, res) => {
     values
   );
   if (!rows.length) return res.status(404).json({ success: false, message: 'Not found' });
-  res.json({ success: true, data: asOrderItem(rows[0]) });
+  const cancelKotId = wasLive ? await makeCancelSlip(pool, { businessId: req.tenant.businessId, orderId: rows[0].order_id, itemIds: [rows[0].order_item_id], createdBy: req.auth?.userId }).catch(() => null) : null;
+  res.json({ success: true, data: { ...asOrderItem(rows[0]), cancel_kot_id: cancelKotId } });
 };
 
 /* ==========================================================================
@@ -630,6 +646,7 @@ export const updateStatus = async (req, res) => {
    POST /api/orders/:id/cancel — close the tab with no bill
    ========================================================================== */
 export const cancelOrder = async (req, res) => {
+  let cancelKotId = null;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -641,7 +658,8 @@ export const cancelOrder = async (req, res) => {
     if (!order) { await client.query('ROLLBACK'); return res.status(404).json({ success: false, message: 'Not found, or already closed' }); }
     await assertNoLiveSession(client, [order.order_id]);
 
-    await client.query(`UPDATE order_items SET status = 'CANCELLED', cancelled_at = CURRENT_TIMESTAMP WHERE order_id = $1 AND invoice_id IS NULL AND status NOT IN ('SERVED','CANCELLED')`, [order.order_id]);
+    const gone = (await client.query(`UPDATE order_items SET status = 'CANCELLED', cancelled_at = CURRENT_TIMESTAMP WHERE order_id = $1 AND invoice_id IS NULL AND status NOT IN ('SERVED','CANCELLED') RETURNING order_item_id, status, sent_at`, [order.order_id])).rows;
+    cancelKotId = await makeCancelSlip(client, { businessId: req.tenant.businessId, orderId: order.order_id, itemIds: gone.filter((g) => g.sent_at).map((g) => g.order_item_id), createdBy: req.auth?.userId });
     // If part of the tab was already billed, cancelling the rest closes it as billed, not cancelled.
     const last = (await client.query(`SELECT invoice_id FROM order_items WHERE order_id = $1 AND invoice_id IS NOT NULL ORDER BY invoice_id DESC LIMIT 1`, [order.order_id])).rows[0];
     await client.query(
@@ -650,7 +668,7 @@ export const cancelOrder = async (req, res) => {
     );
     await client.query('COMMIT');
     recordAudit(req, { action: 'order.cancelled', resource_type: 'order', resource_id: req.params.id, metadata: { partly_billed: Boolean(last) } });
-    res.json({ success: true });
+    res.json({ success: true, data: { cancel_kot_id: cancelKotId } });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     if (error instanceof TabError) return res.status(error.status).json({ success: false, message: error.message });

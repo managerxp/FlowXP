@@ -11,6 +11,7 @@ import { ago } from '../../lib/ranges.ts';
 import { Page, useWide } from '../../lib/responsive.tsx';
 import { Hint, markDone } from '../../lib/learn.tsx';
 import { printRunningBill } from '../../lib/printBill.ts';
+import { readFailed } from '../../lib/printerLink.ts';
 import { t as tr } from '../../lib/i18n.ts';
 import { Button, Empty, ErrorText, Failed, Loading, SavedNote, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
 
@@ -47,7 +48,8 @@ export default function Tables() {
 
   // the kitchen moves while you stand there: refresh every 15 seconds while this tab is showing
   const [focused, setFocused] = useState(false);
-  useFocusEffect(useCallback(() => { setFocused(true); return () => setFocused(false); }, []));
+  const [unprinted, setUnprinted] = useState(0);   // kitchen slips that never reached a printer: the kitchen may not know about them
+  useFocusEffect(useCallback(() => { setFocused(true); void readFailed().then((l) => setUnprinted(l.filter((j) => j.kind === 'kot').length)); return () => setFocused(false); }, []));
   useEffect(() => {
     if (!focused) return;
     const t = setInterval(() => { void floor.refresh(); void open.refresh(); void waiting.refresh(); }, 15000);
@@ -136,6 +138,13 @@ export default function Tables() {
               </View>
             </View>
           ))}
+
+          {unprinted > 0 ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={tr('Kitchen slips did not print')} onPress={() => router.push('/printers')} style={{ margin: 16, minHeight: 56, borderRadius: 12, backgroundColor: color.danger, paddingHorizontal: 16, justifyContent: 'center' }}>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>{tr('Kitchen slips did not print')}</Text>
+              <Text style={{ color: '#fff' }}>{tr('Tap to open Printers and print them again')}</Text>
+            </Pressable>
+          ) : null}
 
           {waiting.data && waiting.data.length > 0 ? (
             <Pressable accessibilityRole="button" accessibilityLabel={`${waiting.data.length} new online orders waiting`} onPress={() => router.push('/incoming')} style={{ margin: 16, minHeight: 56, borderRadius: 12, backgroundColor: color.danger, paddingHorizontal: 16, justifyContent: 'center' }}>

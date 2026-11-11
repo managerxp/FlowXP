@@ -236,3 +236,24 @@ test('super admin delete: the name must match, then the business and its people 
   assert.equal((await pool.query(`SELECT 1 FROM businesses WHERE business_id = $1`, [D.biz])).rowCount, 1); // another shop untouched
   assert.equal((await del(C.biz, { confirm_name: 'c' })).code, 404);
 });
+
+test('a dish cancelled after it went to the kitchen gets a CANCELLED slip of its own; a dish never sent does not', { skip }, async () => {
+  const { kotSlips } = await import('../src/modules/escpos.js');
+  const E = await makeBusiness('e'); const tb = await E.table('Q1'); const naan = await E.dish('Naan'); const tea = await E.dish('Tea');
+  const id = await E.open(tb, [{ product_id: naan, quantity: 2 }]);
+  await E.call(orders.sendKot, { params: { id }, body: {} });
+  await E.call(orders.addItems, { params: { id }, body: { items: [{ product_id: tea, quantity: 1 }] } });               // added, not sent
+  const items = (await pool.query(`SELECT order_item_id, description FROM order_items WHERE order_id = $1 ORDER BY order_item_id`, [id])).rows;
+  const unsent = await E.call(orders.updateItem, { params: { id, itemId: items[1].order_item_id }, body: { status: 'CANCELLED' } });
+  assert.equal(unsent.body.data.cancel_kot_id, null);                                                                          // the kitchen never heard of it
+  const sentOne = await E.call(orders.updateItem, { params: { id, itemId: items[0].order_item_id }, body: { status: 'CANCELLED' } });
+  const kotId = sentOne.body.data.cancel_kot_id; assert.ok(kotId);
+  const slip = (await E.call(kitchen.printableKot, { params: { id: kotId } })).body.data;
+  assert.equal(slip.cancelled, true); assert.equal(slip.stations[0].items[0].description, 'Naan'); assert.equal(slip.stations[0].items[0].quantity, 2);
+  assert.match(Buffer.from(kotSlips(slip)[0].bytes).toString('latin1'), /CANCELLED[\s\S]*DO NOT MAKE/);
+  assert.equal((await E.call(orders.get, { params: { id } })).body.data.kots.every((k) => k.kot_id !== kotId), true);   // the order's ticket list shows only real kitchen tickets
+  const id2 = await E.open(await E.table('Q2'), [{ product_id: naan, quantity: 1 }]);
+  await E.call(orders.sendKot, { params: { id: id2 }, body: {} });
+  const whole = await E.call(orders.cancelOrder, { params: { id: id2 } });
+  assert.ok(whole.body.data.cancel_kot_id);                                                                                   // cancelling the whole tab tells the kitchen too
+});

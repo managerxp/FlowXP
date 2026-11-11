@@ -445,7 +445,7 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
   const setQty = (item, quantity) => run(() => api(`/orders/${orderId}/items/${item.order_item_id}`, { method: 'PATCH', body: { quantity } }));
   const cancelItem = async (item) => {
     if (item.status !== 'PENDING' && !(await dialog.confirm({ title: `Cancel ${item.description}?`, body: tr('The kitchen will see it as cancelled.'), confirmLabel: tr('Cancel item'), cancelLabel: tr('Keep item'), danger: true }))) return;
-    run(() => api(`/orders/${orderId}/items/${item.order_item_id}`, { method: 'PATCH', body: { status: 'CANCELLED' } }));
+    run(async () => { const out = await api(`/orders/${orderId}/items/${item.order_item_id}`, { method: 'PATCH', body: { status: 'CANCELLED' } }); if (out?.cancel_kot_id && printKot) printKotSlip(out.cancel_kot_id); });   // a kitchen that cooks from slips gets a CANCELLED slip
   };
   const setWaiter = (id) => run(() => api(`/orders/${orderId}/waiter`, { method: 'PATCH', body: { waiter_user_id: id ? Number(id) : null } }));
   const setBrand = (id) => run(() => api(`/orders/${orderId}/brand`, { method: 'PATCH', body: { brand_id: id ? Number(id) : null } }));
@@ -454,7 +454,7 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
   const attachCustomer = (customer) => run(async () => { await api(`/orders/${orderId}/customer`, { method: 'PATCH', body: { customer_id: customer?.customer_id ?? null } }); setChangingCustomer(false); });
   const cancelOrder = async () => {
     if (!(await dialog.confirm({ title: tr('Cancel this whole order?'), body: tr('Items not yet billed are cancelled and the kitchen is told.'), confirmLabel: tr('Cancel order'), cancelLabel: tr('Keep order'), danger: true }))) return;
-    run(async () => { await api(`/orders/${orderId}/cancel`, { method: 'POST' }); toast.success(tr('Order cancelled')); onBack(); });
+    run(async () => { const out = await api(`/orders/${orderId}/cancel`, { method: 'POST' }); if (out?.cancel_kot_id && printKot) printKotSlip(out.cancel_kot_id); toast.success(tr('Order cancelled')); onBack(); });
   };
 
   const pendingCount = order?.items.filter((i) => i.status === 'PENDING').length || 0;
