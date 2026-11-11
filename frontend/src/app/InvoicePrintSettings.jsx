@@ -15,7 +15,7 @@ import { useT, T } from '../i18n/useT.js';
 const SHOW_LABELS = {
   logo: T('Logo'), email: T('Company e-mail'), pan: T('Company PAN'), hsn: T('HSN/SAC column'), unit: T('Unit of measure'), rate_incl_tax: T('Rate including tax column'),
   disc_pct: T('Discount % column'), total_qty: T('Total quantity'), amount_in_words: T('Total in words'), tax_summary: T('Tax summary by HSN'), bank: T('Bank details'),
-  terms: T('Terms and conditions'), signature: T('Signature block'), received_by: T('Received by / Delivered by lines'), eoe: T('E. & O.E.')
+  terms: T('Terms and conditions'), signature: T('Signature block'), received_by: T('Received by / Delivered by lines'), payment_mode: T('Payment received and balance due'), you_saved: T('What the customer saved'), eoe: T('E. & O.E.')
 };
 const COPY_TEXT = { 'Original for Recipient': T('Original for Recipient'), 'Duplicate for Transporter': T('Duplicate for Transporter'), 'Triplicate for Supplier': T('Triplicate for Supplier') };
 const COLOUR_TEXT = { Black: T('Black'), Blue: T('Blue'), Green: T('Green'), Red: T('Red'), Purple: T('Purple'), Orange: T('Orange') };

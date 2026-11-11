@@ -3305,7 +3305,9 @@ export const ML: Record<string, string> = {
   'Print the amount in words under the total': 'ആകെ തുകയ്ക്ക് താഴെ തുക അക്ഷരത്തിൽ അച്ചടിക്കുക',
   'Print the terms and conditions at the bottom': 'താഴെ നിബന്ധനകളും വ്യവസ്ഥകളും അച്ചടിക്കുക',
   'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'അടുക്കള കിച്ചൻ സ്ക്രീൻ ഉപയോഗിക്കുന്നു (അച്ചടിച്ച ടിക്കറ്റ് മാത്രമാണെങ്കിൽ ഓഫ് ചെയ്യുക)',
-  'Line under the business name': 'സ്ഥാപനത്തിന്റെ പേരിന് താഴെയുള്ള വരി',};
+  'Line under the business name': 'സ്ഥാപനത്തിന്റെ പേരിന് താഴെയുള്ള വരി',
+  'Payment received and balance due': 'ലഭിച്ച പണവും ബാക്കി തുകയും',
+  'What the customer saved': 'ഉപഭോക്താവ് ലാഭിച്ചത്',};
 
 /** Tamil: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const TA: Record<string, string> = {
@@ -6612,7 +6614,9 @@ export const TA: Record<string, string> = {
   'Print the amount in words under the total': 'மொத்தத்திற்குக் கீழ் தொகையை எழுத்தில் அச்சிடு',
   'Print the terms and conditions at the bottom': 'கீழே விதிமுறைகள் மற்றும் நிபந்தனைகளை அச்சிடு',
   'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'சமையலறை கிச்சன் திரையைப் பயன்படுத்துகிறது (அச்சிட்ட டிக்கெட் மட்டுமே என்றால் அணைக்கவும்)',
-  'Line under the business name': 'வணிகப் பெயருக்குக் கீழ் உள்ள வரி',};
+  'Line under the business name': 'வணிகப் பெயருக்குக் கீழ் உள்ள வரி',
+  'Payment received and balance due': 'பெற்ற பணமும் நிலுவையும்',
+  'What the customer saved': 'வாடிக்கையாளர் சேமித்தது',};
 
 /** Bengali: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const BN: Record<string, string> = {
@@ -9919,7 +9923,9 @@ export const BN: Record<string, string> = {
   'Print the amount in words under the total': 'মোটের নিচে টাকার অঙ্ক কথায় ছাপুন',
   'Print the terms and conditions at the bottom': 'নিচে শর্তাবলি ছাপুন',
   'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'রান্নাঘর কিচেন স্ক্রিন ব্যবহার করে (শুধু ছাপা টিকিট হলে বন্ধ করুন)',
-  'Line under the business name': 'ব্যবসার নামের নিচের লাইন',};
+  'Line under the business name': 'ব্যবসার নামের নিচের লাইন',
+  'Payment received and balance due': 'প্রাপ্ত পেমেন্ট ও বকেয়া',
+  'What the customer saved': 'গ্রাহক যত বাঁচিয়েছেন',};
 
 /** Telugu: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const TE: Record<string, string> = {
@@ -13226,7 +13232,9 @@ export const TE: Record<string, string> = {
   'Print the amount in words under the total': 'మొత్తం కింద మొత్తాన్ని అక్షరాల్లో ప్రింట్ చేయండి',
   'Print the terms and conditions at the bottom': 'కింద నిబంధనలు మరియు షరతులు ప్రింట్ చేయండి',
   'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'వంటగది కిచెన్ స్క్రీన్ వాడుతుంది (ప్రింట్ టికెట్లు మాత్రమే అయితే ఆఫ్ చేయండి)',
-  'Line under the business name': 'వ్యాపార పేరు కింద లైన్',};
+  'Line under the business name': 'వ్యాపార పేరు కింద లైన్',
+  'Payment received and balance due': 'అందిన చెల్లింపు మరియు బాకీ',
+  'What the customer saved': 'కస్టమర్ ఆదా చేసింది',};
 
 /** Kannada: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const KN: Record<string, string> = {
@@ -16533,4 +16541,6 @@ export const KN: Record<string, string> = {
   'Print the amount in words under the total': 'ಒಟ್ಟಿನ ಕೆಳಗೆ ಮೊತ್ತವನ್ನು ಅಕ್ಷರಗಳಲ್ಲಿ ಮುದ್ರಿಸಿ',
   'Print the terms and conditions at the bottom': 'ಕೆಳಗೆ ನಿಯಮ ಮತ್ತು ಷರತ್ತುಗಳನ್ನು ಮುದ್ರಿಸಿ',
   'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'ಅಡುಗೆಮನೆ ಕಿಚನ್ ಸ್ಕ್ರೀನ್ ಬಳಸುತ್ತದೆ (ಮುದ್ರಿತ ಟಿಕೆಟ್ ಮಾತ್ರ ಆದರೆ ಆಫ್ ಮಾಡಿ)',
-  'Line under the business name': 'ವ್ಯಾಪಾರದ ಹೆಸರಿನ ಕೆಳಗಿನ ಸಾಲು',};
+  'Line under the business name': 'ವ್ಯಾಪಾರದ ಹೆಸರಿನ ಕೆಳಗಿನ ಸಾಲು',
+  'Payment received and balance due': 'ಸ್ವೀಕರಿಸಿದ ಪಾವತಿ ಮತ್ತು ಬಾಕಿ',
+  'What the customer saved': 'ಗ್ರಾಹಕರು ಉಳಿಸಿದ್ದು',};

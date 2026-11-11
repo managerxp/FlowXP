@@ -3414,7 +3414,9 @@ export const HI: Record<string, string> = {
   'Print the amount in words under the total': 'कुल के नीचे रकम शब्दों में छापें',
   'Print the terms and conditions at the bottom': 'नीचे नियम और शर्तें छापें',
   'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)': 'रसोई किचन स्क्रीन इस्तेमाल करती है (सिर्फ़ छपे टिकट इस्तेमाल हों तो बंद करें)',
-  'Line under the business name': 'व्यवसाय के नाम के नीचे की पंक्ति',};
+  'Line under the business name': 'व्यवसाय के नाम के नीचे की पंक्ति',
+  'Payment received and balance due': 'प्राप्त भुगतान और बकाया',
+  'What the customer saved': 'ग्राहक ने कितना बचाया',};
 
 /** Languages that have a dictionary. */
 export const DICTS: Partial<Record<Lang, Record<string, string>>> = { hi: HI, ml: ML, ta: TA, bn: BN, te: TE, kn: KN };

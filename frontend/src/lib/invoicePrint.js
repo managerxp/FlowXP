@@ -9,14 +9,14 @@ export const ACCENTS = [['#111827', 'Black'], ['#1d4ed8', 'Blue'], ['#047857', '
 export const SHOW_OPTIONS = [
   ['logo', 'Logo'], ['email', 'Company e-mail'], ['pan', 'Company PAN'], ['hsn', 'HSN/SAC column'], ['unit', 'Unit of measure'], ['rate_incl_tax', 'Rate including tax column'],
   ['disc_pct', 'Discount % column'], ['total_qty', 'Total quantity'], ['amount_in_words', 'Total in words'], ['tax_summary', 'Tax summary by HSN'], ['bank', 'Bank details'],
-  ['terms', 'Terms and conditions'], ['signature', 'Signature block'], ['received_by', 'Received by / Delivered by lines'], ['eoe', 'E. & O.E.']
+  ['terms', 'Terms and conditions'], ['signature', 'Signature block'], ['payment_mode', 'Payment received and balance due'], ['you_saved', 'What the customer saved'], ['received_by', 'Received by / Delivered by lines'], ['eoe', 'E. & O.E.']
 ];
 
 export const INVOICE_PRINT_DEFAULTS = {
   layout: 'auto', paper: 'A4', text_size: 'medium', accent: '#111827', copies: [],
   declaration: 'We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.',
   signature_text: 'Authorised Signatory', footer_note: 'This is a Computer Generated Invoice',
-  show: { logo: true, email: true, pan: true, hsn: true, unit: true, rate_incl_tax: true, disc_pct: true, total_qty: true, amount_in_words: true, tax_summary: true, bank: true, terms: true, signature: true, received_by: false, eoe: true }
+  show: { logo: true, email: true, pan: true, hsn: true, unit: true, rate_incl_tax: true, disc_pct: true, total_qty: true, amount_in_words: true, tax_summary: true, bank: true, terms: true, signature: true, received_by: false, payment_mode: false, you_saved: false, eoe: true }
 };
 
 export const withDefaults = (stored) => {

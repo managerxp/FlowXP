@@ -106,6 +106,7 @@ export default function TallyInvoice({ invoice, business, outlet, seller, onSave
   const place = (o) => [o?.address, o?.city].filter(Boolean).join(', ');
   const gstin = outlet?.gstin || seller?.gstin;
   const sellerHome = outlet?.address ? outlet : seller;
+  const savedAmount = (invoice.items || []).reduce((n, i) => n + Number(i.discount || 0), 0) + Number(invoice.discount || 0);
   const methods = [...new Set((invoice.payments || []).map((p) => p.method))].join(', ');
   const buyerAddress = x.buyer_address ?? invoice.customer_address;
   const buyerState = x.buyer_state ?? invoice.customer_state;
@@ -214,6 +215,12 @@ export default function TallyInvoice({ invoice, business, outlet, seller, onSave
             </div>
           )}
 
+          {(sh.payment_mode || sh.you_saved) && (
+            <div className="border border-t-0 border-(color:--acc) p-1.5">
+              {sh.payment_mode && <p>{(invoice.payments || []).length ? `Received: ${invoice.payments.map((p) => `${String(p.method).replace('_', ' ')} ${money(p.amount)}`).join(', ')}` : 'Received: nothing yet'}{invoice.balance_due > 0 && <b>{` · Balance due: ${money(invoice.balance_due)}`}</b>}</p>}
+              {sh.you_saved && savedAmount > 0 && <p>You saved Rs {money(savedAmount)}</p>}
+            </div>
+          )}
           {sh.tax_summary && <>
           <table className="w-full border-collapse border border-t-0 border-(color:--acc)">
             <thead>

@@ -8,7 +8,7 @@
 export const COPY_LABELS = ['Original for Recipient', 'Duplicate for Transporter', 'Triplicate for Supplier'];
 export const ACCENTS = ['#111827', '#1d4ed8', '#047857', '#b91c1c', '#7c3aed', '#c2410c'];   // ink, blue, green, red, purple, orange
 
-export const SHOW_KEYS = ['logo', 'email', 'pan', 'hsn', 'unit', 'rate_incl_tax', 'disc_pct', 'total_qty', 'amount_in_words', 'tax_summary', 'bank', 'terms', 'signature', 'received_by', 'eoe'];
+export const SHOW_KEYS = ['logo', 'email', 'pan', 'hsn', 'unit', 'rate_incl_tax', 'disc_pct', 'total_qty', 'amount_in_words', 'tax_summary', 'bank', 'terms', 'signature', 'received_by', 'eoe', 'payment_mode', 'you_saved'];
 
 export const INVOICE_PRINT_DEFAULTS = {
   layout: 'auto',            // auto = the Tally-style tax invoice for trade businesses, the standard bill for the rest
@@ -19,7 +19,7 @@ export const INVOICE_PRINT_DEFAULTS = {
   declaration: 'We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.',
   signature_text: 'Authorised Signatory',
   footer_note: 'This is a Computer Generated Invoice',
-  show: { logo: true, email: true, pan: true, hsn: true, unit: true, rate_incl_tax: true, disc_pct: true, total_qty: true, amount_in_words: true, tax_summary: true, bank: true, terms: true, signature: true, received_by: false, eoe: true }
+  show: { logo: true, email: true, pan: true, hsn: true, unit: true, rate_incl_tax: true, disc_pct: true, total_qty: true, amount_in_words: true, tax_summary: true, bank: true, terms: true, signature: true, received_by: false, eoe: true, payment_mode: false, you_saved: false }
 };
 
 /** The stored settings laid over the defaults, so a missing key is never undefined. */

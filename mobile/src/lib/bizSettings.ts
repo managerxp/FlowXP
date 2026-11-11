@@ -97,7 +97,7 @@ export const COPY_LABELS = ['Original for Recipient', 'Duplicate for Transporter
 export const SHOW_OPTIONS: [string, string][] = [
   ['logo', 'Logo'], ['email', 'Company e-mail'], ['pan', 'Company PAN'], ['hsn', 'HSN/SAC column'], ['unit', 'Unit of measure'], ['rate_incl_tax', 'Rate including tax column'],
   ['disc_pct', 'Discount % column'], ['total_qty', 'Total quantity'], ['amount_in_words', 'Total in words'], ['tax_summary', 'Tax summary by HSN'], ['bank', 'Bank details'],
-  ['terms', 'Terms and conditions'], ['signature', 'Signature block'], ['received_by', 'Received by / Delivered by lines'], ['eoe', 'E. & O.E.']
+  ['terms', 'Terms and conditions'], ['signature', 'Signature block'], ['payment_mode', 'Payment received and balance due'], ['you_saved', 'What the customer saved'], ['received_by', 'Received by / Delivered by lines'], ['eoe', 'E. & O.E.']
 ];
 export const printOf = (b: BusinessRecord): PrintSettings => printSettings(b.receipt_settings?.invoice_print);
 

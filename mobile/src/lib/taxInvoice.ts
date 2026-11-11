@@ -18,7 +18,7 @@ export type TaxInvoice = {
   outlet?: { name?: string; address?: string | null; phone?: string | null; gstin?: string | null; city?: string | null } | null;
   seller?: { state?: string | null; state_code?: string | null; gstin?: string | null; address?: string | null; city?: string | null; phone?: string | null };
   print_extra?: Record<string, string>; print_details?: Record<string, string>; invoice_print?: Partial<PrintSettings>;
-  items: TaxItem[]; payments: { method: string }[];
+  items: TaxItem[]; payments: { method: string; amount?: number }[];
 };
 export type TaxBusiness = { name: string; email?: string | null; receipt_settings?: { logo_url?: string | null } | null };
 
@@ -71,7 +71,7 @@ const dated = (iso: string): string => { const [y, m, d] = String(iso).slice(0, 
 export const PAPER_WIDTH = { A4: 760, A5: 540 } as const;
 const TEXT_PX = { small: 11, medium: 12, large: 13.5 } as const;
 const COPY_LABELS = ['Original for Recipient', 'Duplicate for Transporter', 'Triplicate for Supplier'];
-const DEFAULT_SHOW = { logo: true, email: true, pan: true, hsn: true, unit: true, rate_incl_tax: true, disc_pct: true, total_qty: true, amount_in_words: true, tax_summary: true, bank: true, terms: true, signature: true, received_by: true, eoe: true };
+const DEFAULT_SHOW = { logo: true, email: true, pan: true, hsn: true, unit: true, rate_incl_tax: true, disc_pct: true, total_qty: true, amount_in_words: true, tax_summary: true, bank: true, terms: true, signature: true, received_by: true, eoe: true, payment_mode: false, you_saved: false };
 export const printSettings = (stored: Partial<PrintSettings> | undefined): PrintSettings => ({
   layout: 'auto', paper: 'A4', text_size: 'medium', accent: '#111827', declaration: 'We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.',
   signature_text: 'Authorised Signatory', footer_note: 'This is a Computer Generated Invoice', ...stored, copies: Array.isArray(stored?.copies) ? stored!.copies : [], show: { ...DEFAULT_SHOW, ...(stored?.show ?? {}) }
@@ -101,6 +101,7 @@ export const taxInvoiceHtml = (invoice: TaxInvoice, business: TaxBusiness): { ht
   const gstin = outlet?.gstin || seller?.gstin;
   const home = outlet?.address ? outlet : seller;
   const methods = [...new Set((invoice.payments ?? []).map((p) => p.method))].join(', ');
+  const savedAmount = invoice.items.reduce((n, i) => n + Number(i.discount || 0), 0) + Number(invoice.discount || 0);
   const buyerAddress = x.buyer_address ?? invoice.customer_address; const buyerState = x.buyer_state ?? invoice.customer_state; const buyerEmail = x.buyer_email ?? invoice.customer_email;
   const hasConsignee = Boolean(x.consignee_name || x.consignee_address || x.consignee_state);
   const stateLine = (name?: string | null, code?: string | null) => (name ? `<p>State Name : ${esc(name)}${code ? `, Code : ${esc(code)}` : ''}</p>` : '');
@@ -171,6 +172,7 @@ export const taxInvoiceHtml = (invoice: TaxInvoice, business: TaxBusiness): { ht
     </tbody>
   </table>
   ${sh.amount_in_words || sh.eoe ? `<div style="display:flex;justify-content:space-between;border:1px solid var(--acc);border-top:0;padding:5px"><div>${sh.amount_in_words ? `<p style="font-size:10px">Amount Chargeable (in words)</p><p style="font-weight:bold">${esc(inWords(invoice.total))}</p>` : ''}</div>${sh.eoe ? '<p style="font-style:italic">E. &amp; O.E</p>' : ''}</div>` : ''}
+  ${sh.payment_mode || sh.you_saved ? `<div style="border:1px solid var(--acc);border-top:0;padding:5px">${sh.payment_mode ? `<p>${(invoice.payments || []).length ? `Received: ${(invoice.payments || []).map((p) => `${esc(String(p.method).replace('_', ' '))} ${money(p.amount ?? 0)}`).join(', ')}` : 'Received: nothing yet'}${invoice.balance_due > 0 ? ` &middot; <b>Balance due: ${money(invoice.balance_due)}</b>` : ''}</p>` : ''}${sh.you_saved && savedAmount > 0 ? `<p>You saved Rs ${money(savedAmount)}</p>` : ''}</div>` : ''}
   ${sh.tax_summary ? `<table style="width:100%;border-collapse:collapse;border:1px solid var(--acc);border-top:0">
     <thead><tr style="text-align:center"><th style="${cell}" rowspan="2">HSN/SAC</th><th style="${cell}" rowspan="2">Taxable Value</th>${igst ? `<th style="${cell}" colspan="2">IGST</th>` : `<th style="${cell}" colspan="2">CGST</th><th style="${cell}" colspan="2">SGST/UTGST</th>`}<th style="${cell}" rowspan="2">Total Tax Amount</th></tr>
     <tr style="text-align:center">${(igst ? [0] : [0, 1]).map(() => `<th style="${cell}">Rate</th><th style="${cell}">Amount</th>`).join('')}</tr></thead>
