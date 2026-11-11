@@ -72,7 +72,7 @@ export const confirm = async (req, res) => {
   if (list.length > MAX_ITEMS) return bad(res, `Add at most ${MAX_ITEMS} items at a time`);
   const onDuplicate = body.on_duplicate === 'update_price' ? 'update_price' : 'skip';
   const taxRate = Number(body.tax_rate ?? 0);
-  if (!(taxRate >= 0 && taxRate <= 28)) return bad(res, 'GST rate must be between 0 and 28');
+  if (!(taxRate >= 0 && taxRate <= 40)) return bad(res, 'GST rate must be between 0 and 40');
 
   // Validate everything first: one bad row rejects the batch with its row number, and nothing is half-saved.
   const clean = [];

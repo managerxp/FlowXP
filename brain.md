@@ -1335,3 +1335,8 @@ Audit: other income, wholesale sales orders + delivery challan, and workshop job
 - Backend `controllers/estimates.controller.js` + `routes/estimates.routes.js` (`/estimates`: list, create, `:id/convert`, `:id/cancel`), gated by plan feature `estimates` (off for food and wholesale/distributor, which have their own order flow) and `billing` permission. Convert bills the quoted lines through `createInvoiceInTransaction` (tax, stock, loyalty as at the till) inside one locked transaction, so it can only happen once. Included in backup + start-fresh. Test: `test/estimates.test.js`.
 - Web: `app/EstimatesPage.jsx` (list, new-estimate form, Make invoice, cancel), nav "Estimates" under More, 7-language strings.
 - Not built: phone screen, print/WhatsApp share of an estimate, proforma and generic delivery challan for non-wholesale types (an estimate covers the pre-sale price; challan stays wholesale-only).
+
+## Block 6 audit: GST depth (2026-11-11)
+Already built: CESS (per-product `cess_rate`), composite scheme (Bill of Supply, no tax), TCS, TDS, reverse charge on sales and purchases (`modules/gstOptions.js`, migrations 0106/0108), tax-inclusive pricing, HSN snapshot, GSTR-1/3B, MRP ceiling check. A named-rate picker exists (`GST_RATES`).
+- Gap fixed: the picker offered only 0/5/12/18/28, but GST 2.0 added a 40% slab (and 3% for gold). Lists are now 0/3/5/12/18/28/40 (web ProductsPage, QuickProductModal, customItems; phone customItems; menu import limit 40).
+- Not built: tax calculated on MRP (rare, pharma/FMCG only; needs an owner decision), user-defined named rates.

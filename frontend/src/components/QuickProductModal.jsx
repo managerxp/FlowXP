@@ -59,7 +59,7 @@ const QuickProductModal = ({ barcode, categories, onCreated, onCancel, onUseExis
           <Field id="qp-mrp" label="MRP (₹)" hint="Printed price, optional"><Input id="qp-mrp" type="number" inputMode="decimal" min="0" step="0.01" value={form.mrp} onChange={set('mrp')} /></Field>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field id="qp-gst" label="GST"><Select id="qp-gst" value={form.tax_rate} onChange={set('tax_rate')}>{[0, 5, 12, 18, 28].map((r) => <option key={r} value={r}>{r}%</option>)}</Select></Field>
+          <Field id="qp-gst" label="GST"><Select id="qp-gst" value={form.tax_rate} onChange={set('tax_rate')}>{[0, 3, 5, 12, 18, 28, 40].map((r) => <option key={r} value={r}>{r}%</option>)}</Select></Field>
           <Field id="qp-unit" label="Sold in"><Select id="qp-unit" value={form.unit} onChange={set('unit')}>{UNITS.map((u) => <option key={u} value={u}>{u}</option>)}</Select></Field>
         </div>
         <Field id="qp-stock" label="On the shelf now (optional)" hint="Leave blank to start counting stock later. It can be sold either way."><Input id="qp-stock" type="number" inputMode="decimal" min="0" step="0.001" value={form.opening_stock} onChange={set('opening_stock')} /></Field>

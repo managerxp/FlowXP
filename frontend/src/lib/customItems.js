@@ -19,4 +19,4 @@ const BY_TYPE = { CLOTHING: CLOTHING, RESTAURANT: FOOD, CAFE: FOOD, CLOUD_KITCHE
 
 /** [[name, gst]] for the business type; gst is a rate or a slab key. Empty when the shop has no usual ones. */
 export const customPresets = (businessType) => BY_TYPE[businessType] || [];
-export const GST_RATES = [0, 5, 12, 18, 28];
+export const GST_RATES = [0, 3, 5, 12, 18, 28, 40];

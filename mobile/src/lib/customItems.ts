@@ -7,6 +7,6 @@ const AUTO: Preset[] = [{ name: 'Labour', gst: 18 }, { name: 'Spare part', gst: 
 const BY_TYPE: Record<string, Preset[]> = { CLOTHING, RESTAURANT: FOOD, CAFE: FOOD, CLOUD_KITCHEN: FOOD, SALON, AUTO_PARTS: AUTO, MECHANIC: AUTO };
 
 export const customPresets = (businessType: string): Preset[] => BY_TYPE[businessType] ?? [];
-export const GST_RATES = [0, 5, 12, 18, 28];
+export const GST_RATES = [0, 3, 5, 12, 18, 28, 40];
 /** The GST rate for a pick at this price (a slab follows the price of one piece). */
 export const presetRate = (gst: Preset['gst'], pricePaise: number): number => (gst === 'APPAREL' ? (pricePaise > 250000 ? 18 : 5) : gst);

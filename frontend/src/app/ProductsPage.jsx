@@ -259,7 +259,7 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail
               <Input id="purchase_price" type="number" min="0" step="0.01" value={form.purchase_price} onChange={set('purchase_price')} />
             </Field>
             <Field id="tax_rate" label={tr('GST')}>
-              <Select id="tax_rate" value={form.tax_rate} onChange={set('tax_rate')}>{[0, 5, 12, 18, 28].map((r) => <option key={r} value={r}>{r}%</option>)}</Select>
+              <Select id="tax_rate" value={form.tax_rate} onChange={set('tax_rate')}>{[0, 3, 5, 12, 18, 28, 40].map((r) => <option key={r} value={r}>{r}%</option>)}</Select>
             </Field>
             {cessOn && <Field id="cess_rate" label={tr('Cess (%)')} hint={tr('Added on top of GST')}><Input id="cess_rate" type="number" min="0" max="100" step="0.01" value={form.cess_rate ?? ''} onChange={set('cess_rate')} /></Field>}
           </div>
