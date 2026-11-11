@@ -16,8 +16,8 @@ import { deliver } from './provider.js';
 import { getPlatformSetting } from '../platformSettings.js';
 import { TEMPLATES, render } from './templates.js';
 
-export const DEFAULT_SETTINGS = { channel: 'OFF', bill_auto: true, reservation_updates: true, waitlist_updates: true, loyalty_nudge: true, job_updates: true };
-const BOOLEANS = ['bill_auto', 'reservation_updates', 'waitlist_updates', 'loyalty_nudge', 'job_updates'];
+export const DEFAULT_SETTINGS = { channel: 'OFF', bill_auto: true, reservation_updates: true, waitlist_updates: true, loyalty_nudge: true, job_updates: true, due_reminders: false };
+const BOOLEANS = ['bill_auto', 'reservation_updates', 'waitlist_updates', 'loyalty_nudge', 'job_updates', 'due_reminders'];
 export const CAMPAIGN_LIMIT = 1000;
 export const TRIAL_MESSAGE_LIMIT = 5;   // WhatsApp messages a business on a free trial may send in all; the Super Admin's Settings, Messaging can change it
 // a sign-in code is never counted or held back: the person cannot get in without it

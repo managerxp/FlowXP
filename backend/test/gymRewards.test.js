@@ -221,8 +221,8 @@ test('points expire: they leave the balance on their date, cannot be spent, and 
   const cat = ok(await G.call(api.rewardCreate, { body: { name: 'Shake', points_cost: 10, kind: 'ITEM' } }), 201);
   await assert.rejects(inTx((db) => rewards.redeem(db, { businessId: G.businessId, memberId: m, rewardId: cat.reward_id, userId: G.userId, now: at(60) })), /0 points/, 'expired points cannot be spent');
   // posting the expiry makes the ledger agree with the balance, and doing it twice does nothing
-  await inTx((db) => rewards.sweepExpired(db, G.businessId, m, '2026-12-31'));
-  await inTx((db) => rewards.sweepExpired(db, G.businessId, m, '2026-12-31'));
+  await inTx((db) => rewards.sweepExpired(db, G.businessId, m, day(TODAY, 60)));
+  await inTx((db) => rewards.sweepExpired(db, G.businessId, m, day(TODAY, 60)));
   assert.equal(await total(G, m), 0);
   assert.equal((await entries(G, m)).filter((e) => e.kind === 'EXPIRE').length, 2);
 });

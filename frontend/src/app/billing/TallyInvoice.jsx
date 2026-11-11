@@ -114,8 +114,8 @@ export default function TallyInvoice({ invoice, business, outlet, seller, onSave
   const hasConsignee = Boolean(x.consignee_name || x.consignee_address || x.consignee_state);
   const stateLine = (name, code) => (name ? <p>State Name : {name}{code ? `, Code : ${code}` : ''}</p> : null);
   const date = new Date(`${String(invoice.invoice_date).slice(0, 10)}T00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }).replace(/ /g, '-');
-  const cols = 5 + (sh.hsn ? 1 : 0) + (sh.rate_incl_tax ? 1 : 0) + (sh.disc_pct ? 1 : 0);   // Sl, description, quantity, rate (per), amount, and the optional three
-  const labelSpan = sh.hsn ? 3 : 2;
+  const cols = (sh.serial_no ? 5 : 4) + (sh.hsn ? 1 : 0) + (sh.rate_incl_tax ? 1 : 0) + (sh.disc_pct ? 1 : 0);   // Sl, description, quantity, rate (per), amount, and the optional three
+  const labelSpan = (sh.hsn ? 3 : 2) - (sh.serial_no ? 0 : 1);
   const unitOf = (l) => (sh.unit ? ` ${l.unit || 'nos'}` : '');
   const gridCell = (label, value, extra = '') => <div className={`${box} ${extra}`}><p className="text-[10px]">{label}</p><p className="font-bold">{value}</p></div>;
 
@@ -129,7 +129,7 @@ export default function TallyInvoice({ invoice, business, outlet, seller, onSave
         <article key={label || 'single'} style={{ '--z': zoom, '--acc': cfg.accent, width: pageW, fontSize: TEXT_PX[cfg.text_size] || 12 }}
                  className={`light-sheet mx-auto bg-white p-4 leading-snug text-ink-900 [zoom:var(--z)] print:!w-full print:p-0 print:[zoom:1] ${ci < copies.length - 1 ? 'mb-6 print:mb-0 print:break-after-page' : ''} ${ci > 0 ? 'hidden print:block' : ''}`}>
           {label && <p className="text-right text-[10px] font-semibold uppercase tracking-wide">{label}</p>}
-          <p className="mb-1 text-center text-[1.25em] font-bold text-(--acc)">{invoice.tax > 0 && !invoice.bill_of_supply ? 'Tax Invoice' : 'Bill of Supply'}</p>
+          <p className="mb-1 text-center text-[1.25em] font-bold text-(--acc)">{cfg.doc_title || (invoice.tax > 0 && !invoice.bill_of_supply ? 'Tax Invoice' : 'Bill of Supply')}</p>
           {invoice.reverse_charge && <p className="mb-1 text-center text-[0.85em] font-semibold">Tax is payable on reverse charge</p>}
           <div className="grid grid-cols-2 border border-b-0 border-r-0 border-(color:--acc)">
             <div className="border-b border-r border-(color:--acc) p-1.5">
@@ -175,7 +175,7 @@ export default function TallyInvoice({ invoice, business, outlet, seller, onSave
           <table className="w-full border-collapse border border-(color:--acc)">
             <thead>
               <tr className="text-center">
-                <th className={`${cell} font-semibold`}>Sl</th><th className={`${cell} font-semibold`}>Description of Goods</th>{sh.hsn && <th className={`${cell} font-semibold`}>HSN/SAC</th>}
+                {sh.serial_no && <th className={`${cell} font-semibold`}>Sl</th>}<th className={`${cell} font-semibold`}>Description of Goods</th>{sh.hsn && <th className={`${cell} font-semibold`}>HSN/SAC</th>}
                 <th className={`${cell} font-semibold`}>Quantity</th>
                 {sh.rate_incl_tax && <th className={`${cell} font-semibold`}>Rate<br /><span className="text-[9px] font-normal">(Incl. of Tax)</span></th>}
                 <th className={`${cell} font-semibold`}>Rate<br /><span className="text-[9px] font-normal">(per)</span></th>
@@ -185,7 +185,7 @@ export default function TallyInvoice({ invoice, business, outlet, seller, onSave
             <tbody>
               {lines.map((l, n) => (
                 <tr key={l.item_id} className="align-top">
-                  <td className={`${cell} border-y-0 text-center`}>{n + 1}</td>
+                  {sh.serial_no && <td className={`${cell} border-y-0 text-center`}>{n + 1}</td>}
                   <td className={`${cell} border-y-0 font-semibold`}>{l.description}</td>
                   {sh.hsn && <td className={`${cell} border-y-0 text-center`}>{l.hsn}</td>}
                   <td className={`${cell} border-y-0 text-right font-semibold`}>{qtyText(l.quantity)}{unitOf(l)}</td>
@@ -215,6 +215,7 @@ export default function TallyInvoice({ invoice, business, outlet, seller, onSave
             </div>
           )}
 
+          {sh.party_balance && invoice.customer_balance > 0 && <p className="border border-t-0 border-(color:--acc) p-1.5">Total balance with us: Rs {money(invoice.customer_balance)}</p>}
           {(sh.payment_mode || sh.you_saved) && (
             <div className="border border-t-0 border-(color:--acc) p-1.5">
               {sh.payment_mode && <p>{(invoice.payments || []).length ? `Received: ${invoice.payments.map((p) => `${String(p.method).replace('_', ' ')} ${money(p.amount)}`).join(', ')}` : 'Received: nothing yet'}{invoice.balance_due > 0 && <b>{` · Balance due: ${money(invoice.balance_due)}`}</b>}</p>}

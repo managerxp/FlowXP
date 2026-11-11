@@ -4904,5 +4904,14 @@
   "Other item": "Other item",
   "Name of the item or service": "Name of the item or service",
   "Add another item": "Add another item",
-  "Invoiced": "Invoiced"
+  "Invoiced": "Invoiced",
+  "Serial number column": "Serial number column",
+  "Customer's total balance": "Customer's total balance",
+  "Document name": "Document name",
+  "Tax Invoice": "Tax Invoice",
+  "Share on WhatsApp": "Share on WhatsApp",
+  "Cash flow": "Cash flow",
+  "Money in and out, by how it was paid": "Money in and out, by how it was paid",
+  "Money that actually moved. Unpaid bills are not counted.": "Money that actually moved. Unpaid bills are not counted.",
+  "By how it was paid": "By how it was paid"
 }

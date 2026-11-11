@@ -1352,3 +1352,42 @@ Still missing: Cashflow, Balance Sheet, Trial Balance and Bank statement (need c
 
 ## WhatsApp templates list (2026-11-11)
 Only `flowxp_bill` is approved in Meta. `backend/scripts/whatsapp-templates-doc.mjs` writes `docs/whatsapp-templates.md`: the other 39 templates to create, most needed first (balance due, offer, loyalty, bookings, wholesale, workshop...), with exact text, variable order and sample values, generated from `modules/messaging/templates.js`. Re-run after any template change. Estimates are not sent by template yet (shared by wa.me from the shop's own number).
+
+## PENDING WORK: master list (2026-11-11). Work through it in this order; commit and push once at the very end (owner's instruction)
+Unpushed commits so far (Feature): fc9dcc2, 377e80e, 1d6c3f6, 3cba745 (estimates), d1c0b80 (GST 40%), ab08f2d (app lock), acfe8fa, d27c5dc. Push `Feature` and `Feature:develop` only when the owner says so.
+
+### A. Build, in order
+1. Block 2 leftovers (invoice print): serial-number toggle, party balance on the invoice, page numbers, A4 versions of the standard (non-Tally) bill, international amount wording, custom document names.
+2. Estimates follow-up: phone screen, print + WhatsApp share of an estimate, (optional) proforma; generic delivery challan for non-wholesale types only if the owner wants it.
+3. Block 3 leftover: automatic payment-due reminders (needs the `flowxp_balance_due` template approved and a due date for retail bills).
+4. Block 6 leftovers: tax-on-MRP (owner decision first), user-defined named tax rates.
+5. Block 7 leftovers: fingerprint/face unlock (`expo-local-authentication`, needs a native rebuild), web screen lock, unsaved-changes warning, editable currency (probably skip: India-only).
+6. Block 8 leftovers: Cashflow / Balance Sheet / Trial Balance / Bank statement (needs cash and bank accounts: design decision first), GSTR-9, Form 27EQ, loan statement, batch/serial report, sale/purchase order reports, weekly AI summary, anomaly flags, share reports with the accountant on WhatsApp.
+7. Earlier review: three code-review findings were never re-reported through ReportFindings; re-run `/code-review` over the unpushed commits before pushing.
+
+### B. Owner to-dos (cannot be done by Claude)
+- WhatsApp: create the 39 remaining templates in Meta from `docs/whatsapp-templates.md` (only `flowxp_bill` is approved); balance due first.
+- VPS: pull `develop`, restart pm2 `FlowXP-Backend`; migrations 0120-0124 run on start. 0122 (drop hotel) needs a backup first and `DROP_HOTEL_DATA=yes` if any hotel records exist.
+- Run `node scripts/fill-product-names.mjs` from backend (product name translations).
+- Mobile release: `eas init`, `eas credentials`, `eas update:configure`.
+- Real-device testing: Bluetooth/WiFi/USB printers (58 and 80 mm), cancel slip and failed-print warning, App lock, logo on thermal.
+- Native-speaker review of the machine translations (hi, ml, ta, bn, te, kn).
+
+### C. Known issues
+- Backend test "points expire" fails on a clean tree (date-dependent, not caused by recent work); messaging bill/job-card tests are flaky only in the full run.
+- Cancel slips print only from the device that cancels.
+- Full backend test run takes over 10 minutes; run files individually.
+
+### Done: A1 invoice print leftovers (2026-11-11, uncommitted)
+Tax invoice (A4/A5, web + phone) gained: `serial_no` column toggle (default on), `party_balance` line ("Total balance with us", from `customer_balance` in GET invoice, off by default), `doc_title` (custom heading replacing Tax Invoice / Bill of Supply, max 40). Skipped on purpose: page numbers (invoices are one sheet, browsers add their own page footers) and international amount wording (India-only product).
+
+### Done: A2 estimates follow-up (2026-11-11, uncommitted)
+Phone: `app/estimates.tsx` (list, new estimate with free lines, Share via the share sheet, Make invoice, Cancel), `lib/estimates.ts` (checks + message text), More menu entry gated by `billing` + feature `estimates`; test `test/estimates.test.ts`; 6-language strings. Web: "Share on WhatsApp" button on an open estimate. Not built: picking catalogue items on the phone (free-text lines only), print of an estimate, proforma, non-wholesale delivery challan.
+
+### Done: A3 automatic payment-due reminders (2026-11-11, uncommitted)
+`backend/src/modules/messaging/dueReminders.js`: a worker scan (every 6 h) sends the existing BALANCE_DUE message (`sendBalance`) to customers with an unpaid bill 7+ days old, at most once a week each (read from the message log), max 50 per business per run. Off until the owner ticks "Remind customers who owe money" (messaging setting `due_reminders`, web Messaging page + phone Messaging settings; hidden for wholesale/distributor, which have due dates and their own reminders). Needs the messaging channel on and the `flowxp_balance_due` template approved in Meta (SMS works without). Test `test/dueReminders.test.js`.
+
+### Done: A5/A6 slice (2026-11-11, uncommitted)
+- Block 7 audit correction: the web unsaved-changes warning already exists (`lib/unsaved.js`, used by the settings forms). Fingerprint/face unlock, web screen lock and editable currency stay undone.
+- Block 8: Cash flow report. `GET /reports/cashflow` (`ledgerReports.cashflow`): money in (payments received, other income) and out (supplier payments, expenses, refunds) by payment method and by day; credit sales are not cash; no opening balance. Web Reports > "Cash flow" (`CashflowReport` in ReportsPage.jsx), 7-language strings. Test `test/cashflow.test.js`. Balance Sheet, Trial Balance and a true Bank statement still need cash/bank accounts (design decision).
+- Tax-on-MRP and user-defined tax rate names: skipped pending an owner decision.

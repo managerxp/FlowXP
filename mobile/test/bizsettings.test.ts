@@ -46,7 +46,7 @@ test('invoice print: the stored settings over the defaults; copies stay in the u
   const d = printPatch(before, { ...before, layout: 'tally', copies: ['Triplicate for Supplier', 'Original for Recipient'], show: { ...before.show, bank: true }, declaration: '  Declared  ' })!.receipt_settings.invoice_print;
   assert.equal(d.layout, 'tally'); assert.deepEqual(d.copies, ['Original for Recipient', 'Triplicate for Supplier']); assert.equal(d.show!.bank, true); assert.equal(d.declaration, 'Declared');
   assert.equal('paper' in d, false, 'what did not change is not sent');
-  assert.ok(ACCENTS.every(([hex]) => /^#[0-9a-f]{6}$/.test(hex))); assert.equal(COPY_LABELS.length, 3); assert.equal(SHOW_OPTIONS.length, 17);
+  assert.ok(ACCENTS.every(([hex]) => /^#[0-9a-f]{6}$/.test(hex))); assert.equal(COPY_LABELS.length, 3); assert.equal(SHOW_OPTIONS.length, 19);
 });
 
 test('state suggestions match the server\'s state table, so a state picked here always counts for GST', () => {

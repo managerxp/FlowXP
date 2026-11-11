@@ -687,6 +687,49 @@ const DiscountReport = ({ d, period }) => {
   );
 };
 
+const METHOD_TEXT = { CASH: T('Cash'), UPI: 'UPI', CARD: T('Card'), BANK_TRANSFER: T('Bank'), OTHER: T('Other'), WALLET: T('Wallet') };
+
+/* Cash flow: money that really moved, by how it was paid and by day (ledgerReports.controller.js cashflow). Unpaid bills are not cash. */
+const CashflowReport = ({ d, period }) => {
+  const tr = useT();
+  const name = (m) => (METHOD_TEXT[m] ? tr(METHOD_TEXT[m]) : String(m).replace('_', ' '));
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Tile label={tr('Money in')} value={formatCurrency(d.total.money_in)} />
+        <Tile label={tr('Money out')} value={formatCurrency(d.total.money_out)} />
+        <Tile label={tr('Net')} value={formatCurrency(d.total.net)} note={tr('Money that actually moved. Unpaid bills are not counted.')} />
+      </div>
+      <Section title={tr('By how it was paid')} action={<CsvButton name={`cashflow-by-method-${period.from}-to-${period.to}`} head={['Method', 'Money in', 'Money out', 'Net']} rows={d.by_method.map((r) => [r.method, r.money_in, r.money_out, r.net])} />}>
+        {d.by_method.length ? (
+          <table className="w-full text-small">
+            <thead><tr className="border-b border-line"><th className={TH}>{tr('Method')}</th><th className={`${TH} text-right`}>{tr('Money in')}</th><th className={`${TH} text-right`}>{tr('Money out')}</th><th className={`${TH} text-right`}>{tr('Net')}</th></tr></thead>
+            <tbody className="divide-y divide-line">
+              {d.by_method.map((r) => (
+                <tr key={r.method}><td className="px-2 py-2 text-ink-900">{name(r.method)}</td><td className="tabular px-2 py-2 text-right">{formatCurrency(r.money_in)}</td><td className="tabular px-2 py-2 text-right">{formatCurrency(r.money_out)}</td><td className="tabular px-2 py-2 text-right font-medium text-ink-900">{formatCurrency(r.net)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        ) : <p className="text-small text-ink-500">{tr('Nothing found for this period.')}</p>}
+      </Section>
+      <Section title={tr('By day')} action={<CsvButton name={`cashflow-by-day-${period.from}-to-${period.to}`} head={['Date', 'Money in', 'Money out', 'Net']} rows={d.by_day.map((r) => [r.date, r.money_in, r.money_out, r.net])} />}>
+        {d.by_day.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[420px] text-small">
+              <thead><tr className="border-b border-line"><th className={TH}>{tr('Date')}</th><th className={`${TH} text-right`}>{tr('Money in')}</th><th className={`${TH} text-right`}>{tr('Money out')}</th><th className={`${TH} text-right`}>{tr('Net')}</th></tr></thead>
+              <tbody className="divide-y divide-line">
+                {d.by_day.map((r) => (
+                  <tr key={r.date}><td className="px-2 py-2 text-ink-700">{formatDate(r.date)}</td><td className="tabular px-2 py-2 text-right">{formatCurrency(r.money_in)}</td><td className="tabular px-2 py-2 text-right">{formatCurrency(r.money_out)}</td><td className="tabular px-2 py-2 text-right font-medium text-ink-900">{formatCurrency(r.net)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <p className="text-small text-ink-500">{tr('Nothing found for this period.')}</p>}
+      </Section>
+    </div>
+  );
+};
+
 /* ── GST reports: summary by HSN / SAC, by rate, and the purchase register (gstReports.controller.js) ── */
 
 const TAX_HEAD = ['CGST', 'SGST', 'IGST'];
@@ -1412,6 +1455,7 @@ const REPORTS = [
   { key: 'profit-bills', label: T('Bill-wise profit'), text: T('Profit on every bill'), dated: true, path: '/reports/profit/bills', Render: (props) => <ProfitListReport {...props} kind="bills" /> },
   { key: 'profit-items', label: T('Item-wise profit'), text: T('Profit on every item sold'), dated: true, path: '/reports/profit/items', Render: (props) => <ProfitListReport {...props} kind="items" /> },
   { key: 'profit-parties', label: T('Party-wise profit'), text: T('Profit by customer'), dated: true, path: '/reports/profit/parties', Render: (props) => <ProfitListReport {...props} kind="parties" /> },
+  { key: 'cashflow', label: T('Cash flow'), text: T('Money in and out, by how it was paid'), dated: true, path: '/reports/cashflow', Render: CashflowReport },
   { key: 'discounts', label: T('Discount report'), text: T('Discounts given on bills'), dated: true, Render: DiscountReport },
   { key: 'gst-hsn', label: T('Sale summary by HSN'), text: T('Tax by HSN code and rate'), dated: true, own: true, Render: (props) => <GstSummaryReport {...props} by="hsn" /> },
   { key: 'gst-sac', label: T('SAC report'), text: T('Tax on services, by SAC code'), dated: true, own: true, Render: (props) => <GstSummaryReport {...props} by="sac" /> },

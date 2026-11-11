@@ -73,6 +73,7 @@ export default function More() {
       { left: 'What we earned', sub: 'Labour and parts earned, by day and mechanic', icon: 'stats-chart-outline', go: '/job-earnings', show: can('billing') },
       { left: 'Reports', sub: 'How much you earned, and download it', icon: 'stats-chart-outline', go: '/reports', show: can('reports') },
       { left: 'Expenses', sub: 'Rent, salary, electricity: what you spent', icon: 'receipt-outline', go: '/expenses', show: can('expenses') },
+      { left: 'Estimates', sub: 'A price before the sale: share it, then make the invoice', icon: 'document-text-outline', go: '/estimates', show: can('billing') && hasFeature(business, 'estimates') },
       { left: 'Other income', sub: 'Interest, rent received, scrap: money in that is not from a bill', icon: 'cash-outline', go: '/other-income', show: can('expenses') && hasFeature(business, 'other_income') },
       { left: 'Messaging', sub: 'WhatsApp or SMS: vehicle ready, estimate, offers', icon: 'chatbubbles-outline', go: '/messaging', show: canMessaging(business?.role) },
       { left: 'Notifications', sub: 'Weekly summary, alerts, and what to be told about', icon: 'notifications-outline', go: '/notifications' }
@@ -162,6 +163,7 @@ export default function More() {
     ] },
     { title: 'Your business', items: [
       { left: 'Expenses', sub: 'Rent, salary, electricity: what you spent', icon: 'receipt-outline', go: '/expenses', show: can('expenses') },
+      { left: 'Estimates', sub: 'A price before the sale: share it, then make the invoice', icon: 'document-text-outline', go: '/estimates', show: can('billing') && hasFeature(business, 'estimates') },
       { left: 'Other income', sub: 'Interest, rent received, scrap: money in that is not from a bill', icon: 'cash-outline', go: '/other-income', show: can('expenses') && hasFeature(business, 'other_income') },
       { left: 'FlowBook', sub: 'Your accounts at a glance', icon: 'book-outline', go: '/flowbook', show: can('reports') && hasBooks(business) },
       { left: 'Reports', sub: 'How much you sold, and what sells best', icon: 'stats-chart-outline', go: '/reports', show: can('reports') },

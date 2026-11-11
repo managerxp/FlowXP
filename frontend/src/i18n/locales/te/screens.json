@@ -4904,5 +4904,14 @@
   "Other item": "ఇతర వస్తువు",
   "Name of the item or service": "వస్తువు లేదా సేవ పేరు",
   "Add another item": "మరో వస్తువు జోడించండి",
-  "Invoiced": "ఇన్వాయిస్ అయింది"
+  "Invoiced": "ఇన్వాయిస్ అయింది",
+  "Serial number column": "క్రమ సంఖ్య కాలమ్",
+  "Customer's total balance": "కస్టమర్ మొత్తం బాకీ",
+  "Document name": "పత్రం పేరు",
+  "Tax Invoice": "ట్యాక్స్ ఇన్వాయిస్",
+  "Share on WhatsApp": "WhatsApp లో షేర్ చేయండి",
+  "Cash flow": "క్యాష్ ఫ్లో",
+  "Money in and out, by how it was paid": "డబ్బు వచ్చినది, వెళ్లినది, చెల్లింపు విధానం ప్రకారం",
+  "Money that actually moved. Unpaid bills are not counted.": "నిజంగా కదిలిన డబ్బు. చెల్లించని బిల్లులు లెక్కలోకి రావు.",
+  "By how it was paid": "చెల్లింపు విధానం ప్రకారం"
 }

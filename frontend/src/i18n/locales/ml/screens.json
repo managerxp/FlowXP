@@ -4904,5 +4904,14 @@
   "Other item": "മറ്റൊരു ഇനം",
   "Name of the item or service": "ഇനത്തിന്റെയോ സേവനത്തിന്റെയോ പേര്",
   "Add another item": "മറ്റൊരു ഇനം ചേർക്കുക",
-  "Invoiced": "ഇൻവോയ്സ് ആക്കി"
+  "Invoiced": "ഇൻവോയ്സ് ആക്കി",
+  "Serial number column": "സീരിയൽ നമ്പർ കോളം",
+  "Customer's total balance": "ഉപഭോക്താവിന്റെ ആകെ ബാക്കി",
+  "Document name": "രേഖയുടെ പേര്",
+  "Tax Invoice": "ടാക്സ് ഇൻവോയ്സ്",
+  "Share on WhatsApp": "WhatsApp-ൽ പങ്കിടുക",
+  "Cash flow": "ക്യാഷ് ഫ്ലോ",
+  "Money in and out, by how it was paid": "പണം വന്നതും പോയതും, അടച്ച രീതിയനുസരിച്ച്",
+  "Money that actually moved. Unpaid bills are not counted.": "യഥാർഥത്തിൽ നീങ്ങിയ പണം. അടയ്ക്കാത്ത ബില്ലുകൾ ഉൾപ്പെടുത്തില്ല.",
+  "By how it was paid": "അടച്ച രീതിയനുസരിച്ച്"
 }

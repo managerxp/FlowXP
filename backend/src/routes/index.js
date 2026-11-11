@@ -77,6 +77,7 @@ import retailRoutes from './retail.routes.js';
 import syncRoutes from './sync.routes.js';
 import * as appErrors from '../controllers/appErrors.controller.js';
 import '../modules/trialReminders.js';   // registers the trial-ending emails with the worker
+import '../modules/messaging/dueReminders.js';   // registers the weekly reminders for customers who owe money
 
 const router = Router();
 

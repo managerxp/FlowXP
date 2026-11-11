@@ -4904,5 +4904,14 @@
   "Other item": "दूसरा आइटम",
   "Name of the item or service": "आइटम या सेवा का नाम",
   "Add another item": "एक और आइटम जोड़ें",
-  "Invoiced": "इनवॉइस बना"
+  "Invoiced": "इनवॉइस बना",
+  "Serial number column": "क्रम संख्या कॉलम",
+  "Customer's total balance": "ग्राहक का कुल बकाया",
+  "Document name": "दस्तावेज़ का नाम",
+  "Tax Invoice": "टैक्स इनवॉइस",
+  "Share on WhatsApp": "WhatsApp पर भेजें",
+  "Cash flow": "कैश फ़्लो",
+  "Money in and out, by how it was paid": "पैसा आया और गया, भुगतान के तरीके से",
+  "Money that actually moved. Unpaid bills are not counted.": "जो पैसा सच में आया-गया। बकाया बिल गिने नहीं जाते।",
+  "By how it was paid": "भुगतान के तरीके से"
 }

@@ -15,7 +15,7 @@ import { useT, T } from '../i18n/useT.js';
 const SHOW_LABELS = {
   logo: T('Logo'), email: T('Company e-mail'), pan: T('Company PAN'), hsn: T('HSN/SAC column'), unit: T('Unit of measure'), rate_incl_tax: T('Rate including tax column'),
   disc_pct: T('Discount % column'), total_qty: T('Total quantity'), amount_in_words: T('Total in words'), tax_summary: T('Tax summary by HSN'), bank: T('Bank details'),
-  terms: T('Terms and conditions'), signature: T('Signature block'), received_by: T('Received by / Delivered by lines'), payment_mode: T('Payment received and balance due'), you_saved: T('What the customer saved'), eoe: T('E. & O.E.')
+  terms: T('Terms and conditions'), signature: T('Signature block'), received_by: T('Received by / Delivered by lines'), payment_mode: T('Payment received and balance due'), you_saved: T('What the customer saved'), serial_no: T('Serial number column'), party_balance: T('Customer\'s total balance'), eoe: T('E. & O.E.')
 };
 const COPY_TEXT = { 'Original for Recipient': T('Original for Recipient'), 'Duplicate for Transporter': T('Duplicate for Transporter'), 'Triplicate for Supplier': T('Triplicate for Supplier') };
 const COLOUR_TEXT = { Black: T('Black'), Blue: T('Blue'), Green: T('Green'), Red: T('Red'), Purple: T('Purple'), Orange: T('Orange') };
@@ -108,6 +108,7 @@ export default function InvoicePrintSettings({ initial }) {
         <Field id="ip_decl" label={tr('Declaration')}><Textarea id="ip_decl" rows={2} maxLength={400} value={s.declaration} onChange={(e) => set({ declaration: e.target.value })} /></Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="ip_sig" label={tr('Signature line')}><Input id="ip_sig" maxLength={60} value={s.signature_text} onChange={(e) => set({ signature_text: e.target.value })} /></Field>
+          <Field id="ip_title" label={tr('Document name')}><Input id="ip_title" maxLength={40} placeholder={tr('Tax Invoice')} value={s.doc_title || ''} onChange={(e) => set({ doc_title: e.target.value })} /></Field>
           <Field id="ip_foot" label={tr('Footer line')}><Input id="ip_foot" maxLength={120} value={s.footer_note} onChange={(e) => set({ footer_note: e.target.value })} /></Field>
         </div>
         <Button type="submit" disabled={busy}>{busy ? tr('Saving…') : tr('Save invoice print settings')}</Button>

@@ -7,7 +7,7 @@
  */
 export type TaxItem = { item_id?: number; /** compensation cess on the line: inside line_total, not part of the taxable value */ cess?: number; description: string; quantity: number; unit_price: number; discount: number; tax_rate: number; tax_amount: number; line_total: number; hsn?: string | null; unit?: string | null };
 export type PrintSettings = {
-  layout: string; paper: 'A4' | 'A5'; text_size: 'small' | 'medium' | 'large'; accent: string; copies: string[]; declaration: string; signature_text: string; footer_note: string;
+  layout: string; paper: 'A4' | 'A5'; text_size: 'small' | 'medium' | 'large'; accent: string; copies: string[]; declaration: string; signature_text: string; footer_note: string; doc_title?: string;
   show: Record<string, boolean>;
 };
 export type TaxInvoice = {
@@ -18,7 +18,7 @@ export type TaxInvoice = {
   outlet?: { name?: string; address?: string | null; phone?: string | null; gstin?: string | null; city?: string | null } | null;
   seller?: { state?: string | null; state_code?: string | null; gstin?: string | null; address?: string | null; city?: string | null; phone?: string | null };
   print_extra?: Record<string, string>; print_details?: Record<string, string>; invoice_print?: Partial<PrintSettings>;
-  items: TaxItem[]; payments: { method: string; amount?: number }[];
+  items: TaxItem[]; payments: { method: string; amount?: number }[]; customer_balance?: number;
 };
 export type TaxBusiness = { name: string; email?: string | null; receipt_settings?: { logo_url?: string | null } | null };
 
@@ -71,7 +71,7 @@ const dated = (iso: string): string => { const [y, m, d] = String(iso).slice(0, 
 export const PAPER_WIDTH = { A4: 760, A5: 540 } as const;
 const TEXT_PX = { small: 11, medium: 12, large: 13.5 } as const;
 const COPY_LABELS = ['Original for Recipient', 'Duplicate for Transporter', 'Triplicate for Supplier'];
-const DEFAULT_SHOW = { logo: true, email: true, pan: true, hsn: true, unit: true, rate_incl_tax: true, disc_pct: true, total_qty: true, amount_in_words: true, tax_summary: true, bank: true, terms: true, signature: true, received_by: true, eoe: true, payment_mode: false, you_saved: false };
+const DEFAULT_SHOW = { logo: true, email: true, pan: true, hsn: true, unit: true, rate_incl_tax: true, disc_pct: true, total_qty: true, amount_in_words: true, tax_summary: true, bank: true, terms: true, signature: true, received_by: true, eoe: true, payment_mode: false, you_saved: false, serial_no: true, party_balance: false };
 export const printSettings = (stored: Partial<PrintSettings> | undefined): PrintSettings => ({
   layout: 'auto', paper: 'A4', text_size: 'medium', accent: '#111827', declaration: 'We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.',
   signature_text: 'Authorised Signatory', footer_note: 'This is a Computer Generated Invoice', ...stored, copies: Array.isArray(stored?.copies) ? stored!.copies : [], show: { ...DEFAULT_SHOW, ...(stored?.show ?? {}) }
@@ -105,8 +105,8 @@ export const taxInvoiceHtml = (invoice: TaxInvoice, business: TaxBusiness): { ht
   const buyerAddress = x.buyer_address ?? invoice.customer_address; const buyerState = x.buyer_state ?? invoice.customer_state; const buyerEmail = x.buyer_email ?? invoice.customer_email;
   const hasConsignee = Boolean(x.consignee_name || x.consignee_address || x.consignee_state);
   const stateLine = (name?: string | null, code?: string | null) => (name ? `<p>State Name : ${esc(name)}${code ? `, Code : ${esc(code)}` : ''}</p>` : '');
-  const cols = 5 + (sh.hsn ? 1 : 0) + (sh.rate_incl_tax ? 1 : 0) + (sh.disc_pct ? 1 : 0);
-  const labelSpan = sh.hsn ? 3 : 2;
+  const cols = (sh.serial_no ? 5 : 4) + (sh.hsn ? 1 : 0) + (sh.rate_incl_tax ? 1 : 0) + (sh.disc_pct ? 1 : 0);
+  const labelSpan = (sh.hsn ? 3 : 2) - (sh.serial_no ? 0 : 1);
   const unitOf = (l: { unit?: string | null }) => (sh.unit ? ` ${esc(l.unit || 'nos')}` : '');
   const cell = 'border:1px solid var(--acc);padding:3px 5px';
   const open = 'border:1px solid var(--acc);border-top:0;border-bottom:0;padding:3px 5px';   // item rows: only the vertical lines
@@ -118,7 +118,7 @@ export const taxInvoiceHtml = (invoice: TaxInvoice, business: TaxBusiness): { ht
   const sheet = (label: string | null, last: boolean) => `
 <article style="width:${width}px;margin:0 auto;padding:12px;font-size:${TEXT_PX[cfg.text_size] ?? 12}px;line-height:1.35;color:#111;background:#fff;--acc:${acc};box-sizing:border-box;${last ? '' : 'page-break-after:always;'}">
   ${label ? `<p style="text-align:right;font-size:10px;font-weight:600;text-transform:uppercase">${esc(label)}</p>` : ''}
-  <p style="text-align:center;font-size:1.25em;font-weight:bold;color:var(--acc);margin:0 0 4px">${isTax ? 'Tax Invoice' : 'Bill of Supply'}</p>
+  <p style="text-align:center;font-size:1.25em;font-weight:bold;color:var(--acc);margin:0 0 4px">${esc(cfg.doc_title || (isTax ? 'Tax Invoice' : 'Bill of Supply'))}</p>
   ${invoice.reverse_charge ? '<p style="text-align:center;font-size:.85em;font-weight:600;margin:0 0 4px">Tax is payable on reverse charge</p>' : ''}
   <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--acc);border-bottom:0;border-right:0">
     <div style="border-bottom:1px solid var(--acc);border-right:1px solid var(--acc);padding:5px">
@@ -156,13 +156,13 @@ export const taxInvoiceHtml = (invoice: TaxInvoice, business: TaxBusiness): { ht
   </div>
   <table style="width:100%;border-collapse:collapse;border:1px solid var(--acc)">
     <thead><tr style="text-align:center">
-      <th style="${cell}">Sl</th><th style="${cell}">Description of Goods</th>${sh.hsn ? `<th style="${cell}">HSN/SAC</th>` : ''}<th style="${cell}">Quantity</th>
+      ${sh.serial_no ? `<th style="${cell}">Sl</th>` : ''}<th style="${cell}">Description of Goods</th>${sh.hsn ? `<th style="${cell}">HSN/SAC</th>` : ''}<th style="${cell}">Quantity</th>
       ${sh.rate_incl_tax ? `<th style="${cell}">Rate<br/><span style="font-size:9px;font-weight:normal">(Incl. of Tax)</span></th>` : ''}<th style="${cell}">Rate<br/><span style="font-size:9px;font-weight:normal">(per)</span></th>
       ${sh.disc_pct ? `<th style="${cell}">Disc. %</th>` : ''}<th style="${cell}">Amount</th>
     </tr></thead>
     <tbody>
       ${lines.map((l, n) => `<tr style="vertical-align:top">
-        <td style="${open};text-align:center">${n + 1}</td><td style="${open};font-weight:600">${esc(l.description)}</td>${sh.hsn ? `<td style="${open};text-align:center">${esc(l.hsn)}</td>` : ''}
+        ${sh.serial_no ? `<td style="${open};text-align:center">${n + 1}</td>` : ''}<td style="${open};font-weight:600">${esc(l.description)}</td>${sh.hsn ? `<td style="${open};text-align:center">${esc(l.hsn)}</td>` : ''}
         <td style="${open};text-align:right;font-weight:600">${qtyText(l.quantity)}${unitOf(l)}</td>${sh.rate_incl_tax ? `<td style="${open};text-align:right">${money(l.gross)}</td>` : ''}
         <td style="${open};text-align:right">${money(l.unit_price)}${unitOf(l)}</td>${sh.disc_pct ? `<td style="${open};text-align:right">${l.discPct > 0 ? money(l.discPct) : ''}</td>` : ''}
         <td style="${open};text-align:right;font-weight:600">${money(l.taxable)}</td></tr>`).join('')}
@@ -172,6 +172,7 @@ export const taxInvoiceHtml = (invoice: TaxInvoice, business: TaxBusiness): { ht
     </tbody>
   </table>
   ${sh.amount_in_words || sh.eoe ? `<div style="display:flex;justify-content:space-between;border:1px solid var(--acc);border-top:0;padding:5px"><div>${sh.amount_in_words ? `<p style="font-size:10px">Amount Chargeable (in words)</p><p style="font-weight:bold">${esc(inWords(invoice.total))}</p>` : ''}</div>${sh.eoe ? '<p style="font-style:italic">E. &amp; O.E</p>' : ''}</div>` : ''}
+  ${sh.party_balance && Number(invoice.customer_balance) > 0 ? `<p style="border:1px solid var(--acc);border-top:0;padding:5px">Total balance with us: Rs ${money(Number(invoice.customer_balance))}</p>` : ''}
   ${sh.payment_mode || sh.you_saved ? `<div style="border:1px solid var(--acc);border-top:0;padding:5px">${sh.payment_mode ? `<p>${(invoice.payments || []).length ? `Received: ${(invoice.payments || []).map((p) => `${esc(String(p.method).replace('_', ' '))} ${money(p.amount ?? 0)}`).join(', ')}` : 'Received: nothing yet'}${invoice.balance_due > 0 ? ` &middot; <b>Balance due: ${money(invoice.balance_due)}</b>` : ''}</p>` : ''}${sh.you_saved && savedAmount > 0 ? `<p>You saved Rs ${money(savedAmount)}</p>` : ''}</div>` : ''}
   ${sh.tax_summary ? `<table style="width:100%;border-collapse:collapse;border:1px solid var(--acc);border-top:0">
     <thead><tr style="text-align:center"><th style="${cell}" rowspan="2">HSN/SAC</th><th style="${cell}" rowspan="2">Taxable Value</th>${igst ? `<th style="${cell}" colspan="2">IGST</th>` : `<th style="${cell}" colspan="2">CGST</th><th style="${cell}" colspan="2">SGST/UTGST</th>`}<th style="${cell}" rowspan="2">Total Tax Amount</th></tr>

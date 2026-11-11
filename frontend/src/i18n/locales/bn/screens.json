@@ -4904,5 +4904,14 @@
   "Other item": "অন্য আইটেম",
   "Name of the item or service": "আইটেম বা সেবার নাম",
   "Add another item": "আরেকটি আইটেম যোগ করুন",
-  "Invoiced": "ইনভয়েস হয়েছে"
+  "Invoiced": "ইনভয়েস হয়েছে",
+  "Serial number column": "ক্রমিক নম্বর কলাম",
+  "Customer's total balance": "ক্রেতার মোট বাকি",
+  "Document name": "নথির নাম",
+  "Tax Invoice": "ট্যাক্স ইনভয়েস",
+  "Share on WhatsApp": "WhatsApp-এ শেয়ার করুন",
+  "Cash flow": "ক্যাশ ফ্লো",
+  "Money in and out, by how it was paid": "টাকা এসেছে ও গেছে, পরিশোধের মাধ্যম অনুযায়ী",
+  "Money that actually moved. Unpaid bills are not counted.": "যে টাকা সত্যিই নড়েছে। বাকি বিল গণনা হয় না।",
+  "By how it was paid": "পরিশোধের মাধ্যম অনুযায়ী"
 }

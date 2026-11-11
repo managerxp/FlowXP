@@ -169,3 +169,48 @@ export const byParty = async (req, res) => {
     }
   });
 };
+
+/* Cash flow: the money that actually moved in the period, by how it was paid (cash, UPI, card, bank) and by day. In = payments received (at the till and
+   against old bills) and other income; out = supplier payments, expenses and refunds. Bills not yet paid are not cash and are left out. It shows
+   movement, not a bank balance: FlowXP keeps no opening balance for cash or bank. */
+export const cashflow = async (req, res) => {
+  const businessId = req.tenant.businessId;
+  const { from, to } = await range(req.query, businessId);
+  const o = outletSql(req, 'x.branch_id');
+  const rows = (await pool.query(
+    `SELECT txn_date, method, SUM(in_paise)::bigint AS in_paise, SUM(out_paise)::bigint AS out_paise FROM (
+       SELECT x.payment_date AS txn_date, x.payment_method AS method,
+              CASE WHEN x.po_id IS NULL AND x.supplier_id IS NULL THEN x.amount_paise ELSE 0 END AS in_paise,
+              CASE WHEN x.po_id IS NULL AND x.supplier_id IS NULL THEN 0 ELSE x.amount_paise END AS out_paise
+       FROM payments x WHERE x.business_id = $1 AND x.payment_date BETWEEN $2 AND $3 AND x.payment_method <> 'CREDIT'${o.sql}
+       UNION ALL
+       SELECT x.expense_date, x.payment_method, 0, x.amount_paise FROM expenses x WHERE x.business_id = $1 AND x.expense_date BETWEEN $2 AND $3${o.sql}
+       UNION ALL
+       SELECT x.income_date, x.payment_method, x.amount_paise, 0 FROM other_income x WHERE x.business_id = $1 AND x.income_date BETWEEN $2 AND $3${o.sql}
+       UNION ALL
+       SELECT (r.created_at AT TIME ZONE COALESCE(b.timezone, 'Asia/Kolkata'))::date, r.method, 0, r.amount_paise
+       FROM refunds r JOIN invoices x ON x.invoice_id = r.invoice_id JOIN businesses b ON b.business_id = x.business_id
+       WHERE x.business_id = $1 AND (r.created_at AT TIME ZONE COALESCE(b.timezone, 'Asia/Kolkata'))::date BETWEEN $2 AND $3${o.sql}
+     ) t GROUP BY txn_date, method ORDER BY txn_date`,
+    [businessId, from, to, ...o.args]
+  )).rows;
+
+  const byMethod = new Map(); const byDay = new Map();
+  for (const r of rows) {
+    const m = byMethod.get(r.method) || { method: r.method, money_in: 0, money_out: 0 };
+    m.money_in += Number(r.in_paise); m.money_out += Number(r.out_paise); byMethod.set(r.method, m);
+    const key = String(r.txn_date).slice(0, 10);
+    const d = byDay.get(key) || { date: key, money_in: 0, money_out: 0 };
+    d.money_in += Number(r.in_paise); d.money_out += Number(r.out_paise); byDay.set(key, d);
+  }
+  const fin = (x) => ({ ...x, money_in: toRupees(x.money_in), money_out: toRupees(x.money_out), net: toRupees(x.money_in - x.money_out) });
+  const methods = [...byMethod.values()].map(fin);
+  res.json({
+    success: true,
+    data: {
+      range: { from, to },
+      total: fin({ money_in: [...byMethod.values()].reduce((s, m) => s + m.money_in, 0), money_out: [...byMethod.values()].reduce((s, m) => s + m.money_out, 0) }),
+      by_method: methods, by_day: [...byDay.values()].map(fin)
+    }
+  });
+};

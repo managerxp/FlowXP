@@ -281,6 +281,9 @@ export const get = async (req, res) => {
     }
   }
 
+  const customerBalance = rows[0].customer_id
+    ? Number((await pool.query(`SELECT COALESCE(SUM(balance_due_paise), 0) AS due FROM invoices WHERE business_id = $1 AND customer_id = $2 AND status = 'ISSUED'`, [req.tenant.businessId, rows[0].customer_id])).rows[0].due)
+    : 0;
   const creditNotes = (await pool.query(`SELECT cn_id, cn_number, cn_date, total_paise, reason FROM credit_notes WHERE invoice_id = $1 ORDER BY cn_id`, [req.params.id])).rows;
 
   res.json({
@@ -289,6 +292,7 @@ export const get = async (req, res) => {
       ...asInvoice(rows[0]),
       credit_notes: creditNotes.map((c) => ({ cn_id: c.cn_id, cn_number: c.cn_number, date: c.cn_date, total: toRupees(c.total_paise), reason: c.reason })),
       created_at: rows[0].created_at,
+      customer_balance: toRupees(customerBalance),
       cashier: rows[0].cashier_name, order_number: rows[0].order_number, table_name: rows[0].table_name,
       // the delivery platform's own order id (e.g. Zomato's #6350), so a receipt can be matched back to their app
       platform: rows[0].platform, platform_order_number: rows[0].external_order_number,

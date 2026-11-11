@@ -16,6 +16,7 @@ const TOGGLES = [
   ['reservation_updates', 'Booking confirmations and cancellations', 'When a reservation with a mobile number is made or cancelled.'],
   ['waitlist_updates', 'Waitlist updates', 'When someone joins the waitlist and when their table is ready.'],
   ['loyalty_nudge', 'Loyalty reminder', 'When a customer\'s next visit earns their free item (at most once a week).'],
+  ['due_reminders', 'Remind customers who owe money', 'Once a week, to customers whose bill has been unpaid for 7 days or more. Uses the Remind message.'],
   ['job_updates', 'Workshop job card updates', 'Vehicle received, vehicle ready, and a reminder three days before the next service (auto parts shops).']
 ];
 
@@ -57,7 +58,7 @@ const Settings = () => {
           </Select>
         </Field>
         <div className={`mt-4 space-y-3 ${settings.channel === 'OFF' ? 'opacity-50' : ''}`}>
-          {TOGGLES.filter(([key]) => key !== 'job_updates' || ['AUTO_PARTS', 'MECHANIC'].includes(business?.business_type)).map(([key, label, hint]) => (
+          {TOGGLES.filter(([key]) => (key !== 'job_updates' || ['AUTO_PARTS', 'MECHANIC'].includes(business?.business_type)) && (key !== 'due_reminders' || !['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type))).map(([key, label, hint]) => (
             <label key={key} className="flex items-start gap-3 text-sm">
               <input type="checkbox" className="mt-1" checked={settings[key]} disabled={settings.channel === 'OFF'} onChange={(e) => save({ [key]: e.target.checked })} />
               <span><span className="font-medium text-ink-900">{label}</span><span className="block text-xs text-ink-500">{hint}</span></span>

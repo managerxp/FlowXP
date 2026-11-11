@@ -30,6 +30,7 @@ router.get('/gst/register', requireAuth, withBusiness(), requirePermission('gst'
 router.get('/transactions', ...authed, ledger.transactions);
 router.get('/party-statement', ...authed, ledger.partyStatement);
 router.get('/by-party', ...authed, ledger.byParty);
+router.get('/cashflow', ...authed, ledger.cashflow);
 router.get('/profit/bills', ...authed, profit.profitByBill);
 router.get('/profit/items', ...authed, profit.profitByItem);
 router.get('/profit/parties', ...authed, profit.profitByParty);

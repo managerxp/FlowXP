@@ -11,6 +11,9 @@ import { Alert, Button, Field, Input, Modal, Select, useDialog, useToast } from 
 import { useT, T } from '../i18n/useT.js';
 
 const STATUS = { OPEN: T('Open'), CONVERTED: T('Invoiced'), CANCELLED: T('Cancelled') };
+const shareText = (r) => [`Estimate ${r.estimate_number}`, ...(r.customer_name ? [`For: ${r.customer_name}`] : []), '',
+  ...r.items.map((i, n) => `${n + 1}. ${i.description}  ${i.quantity} x ${formatCurrency(i.unit_price)} = ${formatCurrency(i.quantity * i.unit_price)}`),
+  ...(r.discount > 0 ? ['', `Discount: ${formatCurrency(r.discount)}`] : []), '', `Total: ${formatCurrency(r.total)}`, ...(r.valid_until ? [`Valid until: ${r.valid_until}`] : [])].join('\n');
 const blankLine = () => ({ product_id: '', description: '', quantity: '1', unit_price: '' });
 const blank = () => ({ customer_id: '', customer_name: '', valid_until: '', discount: '', notes: '', items: [blankLine()] });
 
@@ -83,6 +86,7 @@ const EstimatesPage = () => {
                 <span className="tabular text-small font-semibold text-ink-900">{formatCurrency(r.total)}</span>
                 {r.status === 'OPEN' && (
                   <>
+                    <Button size="sm" variant="secondary" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(shareText(r))}`, '_blank', 'noopener')}>{tr('Share on WhatsApp')}</Button>
                     <Button size="sm" onClick={() => makeInvoice(r)}>{tr('Make invoice')}</Button>
                     <Button size="sm" variant="secondary" aria-label={tr('Cancel estimate')} onClick={() => cancel(r)}><Trash2 className="size-4" aria-hidden="true" /></Button>
                   </>

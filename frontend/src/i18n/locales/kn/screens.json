@@ -4904,5 +4904,14 @@
   "Other item": "ಬೇರೆ ವಸ್ತು",
   "Name of the item or service": "ವಸ್ತು ಅಥವಾ ಸೇವೆಯ ಹೆಸರು",
   "Add another item": "ಇನ್ನೊಂದು ವಸ್ತು ಸೇರಿಸಿ",
-  "Invoiced": "ಇನ್‌ವಾಯ್ಸ್ ಆಗಿದೆ"
+  "Invoiced": "ಇನ್‌ವಾಯ್ಸ್ ಆಗಿದೆ",
+  "Serial number column": "ಕ್ರಮ ಸಂಖ್ಯೆ ಕಾಲಮ್",
+  "Customer's total balance": "ಗ್ರಾಹಕರ ಒಟ್ಟು ಬಾಕಿ",
+  "Document name": "ದಾಖಲೆಯ ಹೆಸರು",
+  "Tax Invoice": "ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್",
+  "Share on WhatsApp": "WhatsApp ನಲ್ಲಿ ಹಂಚಿಕೊಳ್ಳಿ",
+  "Cash flow": "ನಗದು ಹರಿವು",
+  "Money in and out, by how it was paid": "ಹಣ ಬಂದದ್ದು ಮತ್ತು ಹೋದದ್ದು, ಪಾವತಿ ವಿಧಾನದ ಪ್ರಕಾರ",
+  "Money that actually moved. Unpaid bills are not counted.": "ನಿಜವಾಗಿ ಚಲಿಸಿದ ಹಣ. ಪಾವತಿಯಾಗದ ಬಿಲ್‌ಗಳನ್ನು ಎಣಿಸಲಾಗುವುದಿಲ್ಲ.",
+  "By how it was paid": "ಪಾವತಿ ವಿಧಾನದ ಪ್ರಕಾರ"
 }

@@ -4904,5 +4904,14 @@
   "Other item": "வேறு பொருள்",
   "Name of the item or service": "பொருள் அல்லது சேவையின் பெயர்",
   "Add another item": "மற்றொரு பொருளைச் சேர்",
-  "Invoiced": "இன்வாய்ஸ் ஆனது"
+  "Invoiced": "இன்வாய்ஸ் ஆனது",
+  "Serial number column": "வரிசை எண் நெடுவரிசை",
+  "Customer's total balance": "வாடிக்கையாளரின் மொத்த நிலுவை",
+  "Document name": "ஆவணத்தின் பெயர்",
+  "Tax Invoice": "வரி இன்வாய்ஸ்",
+  "Share on WhatsApp": "WhatsApp-ல் பகிர்",
+  "Cash flow": "பணப் புழக்கம்",
+  "Money in and out, by how it was paid": "பணம் வந்ததும் போனதும், செலுத்திய முறைப்படி",
+  "Money that actually moved. Unpaid bills are not counted.": "உண்மையில் நகர்ந்த பணம். செலுத்தப்படாத பில்கள் கணக்கில் இல்லை.",
+  "By how it was paid": "செலுத்திய முறைப்படி"
 }
