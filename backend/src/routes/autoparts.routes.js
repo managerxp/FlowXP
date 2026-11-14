@@ -20,6 +20,9 @@ import sell from '../controllers/autopartsSales.controller.js';
 import rets from '../controllers/autopartsReturns.controller.js';
 import rep from '../controllers/autopartsReports.controller.js';
 import staff from '../controllers/hr.controller.js';
+import rateLimit from 'express-rate-limit';
+import { uploadPlatePhoto } from '../middleware/upload.js';
+import plate from '../controllers/autopartsPlate.controller.js';
 import jobs from '../controllers/autopartsJobcards.controller.js';
 
 const router = Router();
@@ -120,6 +123,10 @@ router.get('/parts/:id/together', ...read, viewer, intelF, rep.together);
 router.get('/parts/:id/ledger', ...read, any('reports', 'inventory', 'warehouse', 'valuation'), cat, rep.ledger);
 
 /* -- workshop job cards: a vehicle in for service, its parts and labour, one bill. The counter ('billing') runs them; billing a card is billing. ------------------------- */
+/* reading a plate costs an AI request, so a person is limited on top of the plan's monthly allowance */
+const plateLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => `u${req.auth?.userId ?? req.ip}`, message: { success: false, message: 'Too many photos in a short time. Type the number or try again in a few minutes.' } });
+router.post('/jobcards/plate-scan', ...write, can('billing'), jobF, plateLimiter, uploadPlatePhoto, plate.scan,
+  (error, _req, res, _next) => res.status(400).json({ success: false, message: error.message || 'Could not read that photo' }));
 router.get('/jobcards', ...read, can('billing'), jobF, jobs.list);
 router.get('/jobcards/due', ...read, can('billing'), jobF, jobs.due);
 router.get('/garage/money', ...read, any('payments', 'expenses', 'reports'), jobF, jobs.garageMoney);

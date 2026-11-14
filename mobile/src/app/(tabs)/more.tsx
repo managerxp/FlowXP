@@ -86,6 +86,7 @@ export default function More() {
       { left: 'Team logins', sub: 'Who can sign in, their role and outlet', icon: 'people-circle-outline', go: '/staff', show: canManageTeam(business?.role) },
       { left: 'Subscription', sub: 'Your plan and trial', icon: 'card-outline', go: '/subscription', show: canSubscription(business?.role) },
       { left: 'Security', sub: 'Two-step verification, password, sign-ins', icon: 'shield-checkmark-outline', go: '/security' },
+      { left: 'Help and support', sub: 'Ask FlowXP a question and read the answer', icon: 'help-buoy-outline', go: '/support' },
       { left: 'Report a problem', sub: 'Tell FlowXP something went wrong', icon: 'bug-outline', go: '/report' },
       { left: 'Switch outlet', sub: outlet?.name ?? '', icon: 'swap-vertical-outline', go: '/choose', show: several }
     ] }

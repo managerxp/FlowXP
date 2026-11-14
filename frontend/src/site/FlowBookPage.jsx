@@ -1,5 +1,5 @@
 /*
- * /flowbook: ManagerXP's accounting product. The screens are real FlowBook (a demo shop's books), and the page says
+ * /flowbook: ManagerXP's business management app. The screens are real FlowBook (a demo shop), and the page says
  * plainly what works and what is not built, so nothing here claims a filing or a bank connection that does not exist.
  * The buttons use the FlowXP sign-up and login; FlowXP then opens FlowBook signed in.
  */
@@ -20,10 +20,10 @@ const Flow = () => (
       <Node title="Purchases" body="Supplier bills and stock" />
     </div>
     <Connector />
-    <Node strong title="FlowBook" body="One ledger, posted once" />
+    <Node strong title="FlowBook" body="Your business in one place" />
     <Connector />
     <div className="space-y-3">
-      <Node title="Statements" body="Profit and loss, balance sheet" />
+      <Node title="Reports" body="Sales, profit, who owes you" />
       <Node title="GST" body="GSTR-1 and 3B figures" />
       <Node title="Your accountant" body="Exports and a full trail" />
     </div>
@@ -34,20 +34,20 @@ const Steps = () => (
   <div className="grid items-center gap-3 sm:grid-cols-[1fr_auto_1fr_auto_1fr]">
     <Node title="1. Sign up" body="One FlowXP account. No card." />
     <Connector />
-    <Node title="2. Open FlowBook" body="Signed in for you. Your books are ready." />
+    <Node title="2. Open FlowBook" body="Signed in for you. Ready to use." />
     <Connector />
     <Node strong title="3. Use it for 7 days" body="Everything works. Read-only after, never deleted." />
   </div>
 );
 
 const WORKS = [
-  { title: 'Double-entry ledger', body: 'Every figure leads back to the bill, payment or journal behind it. Mistakes are reversed visibly, never edited away.' },
+  { title: 'Every figure traceable', body: 'Every number leads back to the bill, payment or entry behind it. Mistakes are reversed visibly, never edited away.' },
   { title: 'Invoices, bills and quotes', body: 'GST invoices with the right tax split, returns, credit and debit notes, and payments matched to what they settle.' },
   { title: 'Stock', body: 'Average cost, warehouses with transfers, batches with expiry and serial numbers.' },
   { title: 'Bank and reconciliation', body: 'Rupee and foreign-currency accounts, transfers, and statement matching.' },
   { title: 'Foreign currency', body: 'Dollar invoices and receipts, exchange gain or loss, and revaluation at period end.' },
-  { title: 'Fixed assets', body: 'Depreciation from the books, and the Income Tax Act block schedule for your return.' },
-  { title: 'GST returns prepared', body: 'GSTR-1 (including exports) and GSTR-3B figures that match the ledger, as JSON for your accountant.' },
+  { title: 'Fixed assets', body: 'Depreciation worked out for you, and the Income Tax Act block schedule for your return.' },
+  { title: 'GST returns prepared', body: 'GSTR-1 (including exports) and GSTR-3B figures that match your bills, as JSON for your accountant.' },
   { title: 'Controls', body: 'Lock a closed month, roles for your team, and a record of who changed what.' }
 ];
 
@@ -55,9 +55,9 @@ const EASY = [
   { title: 'Simple view, by default', body: 'You see only what a shop needs every day: invoices, payments, parties, items and reports. One tap on Full view brings back everything your accountant uses.' },
   { title: 'A short get-started list', body: 'The home screen walks you through the first steps: add your details, your first customer and item, your first invoice.' },
   { title: 'Help on every page', body: 'The ? button explains the page you are on and what to do next, in plain words.' },
-  { title: 'Words explained', body: 'Terms like GSTIN, HSN, ledger or reconciliation have a tap-to-read meaning right where they appear.' },
-  { title: 'An assistant that reads your books', body: 'Ask “who owes me money?”, “what was my profit this month?” or “explain this report”. It answers from your own figures and can only read. It never changes anything.' },
-  { title: 'Figures it double-checks', body: 'Every rupee amount in an answer is checked against your books, and the assistant says so when it cannot match one.' },
+  { title: 'Words explained', body: 'Terms like GSTIN, HSN or reconciliation have a tap-to-read meaning right where they appear.' },
+  { title: 'An assistant that reads your business', body: 'Ask “who owes me money?”, “what was my profit this month?” or “explain this report”. It answers from your own figures and can only read. It never changes anything.' },
+  { title: 'Figures it double-checks', body: 'Every rupee amount in an answer is checked against your records, and the assistant says so when it cannot match one.' },
   { title: 'Your plan decides what shows', body: 'Advanced parts such as bank, stock, GST, foreign currency and journals can be switched on or off per plan. Turned-off parts disappear for your team and are refused by FlowBook itself.' },
   { title: 'One sign-in', body: 'Your FlowXP account opens FlowBook directly. No second password. The assistant uses your plan’s AI allowance, the same one as the rest of FlowXP.' }
 ];
@@ -72,9 +72,9 @@ const FlowBookPage = () => (
   <>
     <PageHero
       eyebrow="FlowBook"
-      title="Accounting that follows your billing."
-      lead="Real books for an Indian business: invoices, GST, stock, bank and statements. Simple enough to use without being an accountant, with help and an assistant on every page."
-      points={['7-day free trial', 'No card needed', 'Every figure traceable']}
+      title="Run your whole business in one place."
+      lead="Invoices, quotes, customers, suppliers, stock, payments and reports for an Indian business, connected to your FlowXP till. Simple enough to use without training, with help and an assistant on every page."
+      points={['7-day free trial', 'No card needed', 'Connected to FlowXP']}
       split="6-6"
       visual={<Shot src="/product/flowbook-home.webp" alt="FlowBook home: sales, money in and out, and what needs attention" size={FULL} eager />}
     >
@@ -82,13 +82,13 @@ const FlowBookPage = () => (
       <Button {...login} size="lg" variant="secondary">Log in</Button>
     </PageHero>
 
-    <Section title="FlowXP writes it, FlowBook keeps it."
+    <Section title="FlowXP bills it, FlowBook keeps track."
              lead="Sales, returns, payments and purchases arrive from FlowXP once. Nothing is typed twice and nothing is counted twice.">
       <Flow />
     </Section>
 
     <Section className="border-t border-line bg-surface" title="See it working."
-             lead="These are real screens from a demo shop's books.">
+             lead="These are real screens from a demo shop.">
       <div className="space-y-20">
         <FeatureRow eyebrow="Sales and GST" title="Invoices that carry the tax."
                     body="Issue GST invoices, take payments against them, and see who still owes you."
@@ -102,18 +102,18 @@ const FlowBookPage = () => (
                     body="Average cost, several warehouses, and batches with expiry that sell first-expiry-first-out."
                     points={['Quantity per warehouse', 'Batch and serial numbers', 'Never sells what you do not have']}
                     aside={<Shot src="/product/flowbook-stock.webp" alt="FlowBook stock levels by item and warehouse" size={FULL} />} />
-        <FeatureRow flip eyebrow="Fixed assets" title="Depreciation, books and tax."
+        <FeatureRow flip eyebrow="Fixed assets" title="Depreciation, for your records and your tax."
                     body="Book depreciation year by year, and the Income Tax Act block schedule for your return."
                     points={['Half rate for assets used under 180 days', 'Gain or loss when a block ends', 'Have your CA confirm the block rates']}
                     aside={<Shot src="/product/flowbook-assets.webp" alt="FlowBook fixed assets with the income tax block schedule" size={FULL} />} />
-        <FeatureRow eyebrow="Reports and GST" title="Statements and returns, from one ledger."
-                    body="Profit and loss, balance sheet, trial balance, and GSTR-1 and 3B figures that match."
+        <FeatureRow eyebrow="Reports and GST" title="Reports and returns your accountant can use."
+                    body="Profit and loss, who owes you, stock value, and GSTR-1 and 3B figures that match your bills."
                     points={['Exports with shipping bill details', 'Warnings for what is missing', 'Download for your accountant']}
-                    aside={<Shot src="/product/flowbook-gst.webp" alt="FlowBook GST returns prepared from the books" size={FULL} />} />
+                    aside={<Shot src="/product/flowbook-gst.webp" alt="FlowBook GST returns prepared from your bills" size={FULL} />} />
       </div>
     </Section>
 
-    <Section className="border-t border-line bg-surface" title="Made for people who are not accountants."
+    <Section className="border-t border-line bg-surface" title="Made for people who run a shop, not a finance team."
              lead="Open it as a shopkeeper and it stays out of your way. Open it as an accountant and it is all there.">
       <CellGrid items={EASY} cols="sm:grid-cols-2 lg:grid-cols-4" />
     </Section>
@@ -126,7 +126,7 @@ const FlowBookPage = () => (
       <CellGrid items={NOT_YET} cols="sm:grid-cols-3" />
     </Section>
 
-    <Section title="Start in a minute." lead="The trial is the whole product for seven days. After that your books stay readable; to keep adding entries, contact us.">
+    <Section title="Start in a minute." lead="The trial is the whole product for seven days. After that your records stay readable; to keep adding entries, contact us.">
       <Steps />
       <div className="mt-10 grid items-center gap-8 lg:grid-cols-12">
         <ul className="space-y-2.5 lg:col-span-5">
@@ -138,7 +138,7 @@ const FlowBookPage = () => (
       </div>
     </Section>
 
-    <FinalCta title="Try FlowBook for 7 days." lead="Free, no card. Your books stay yours." primary={trial} />
+    <FinalCta title="Try FlowBook for 7 days." lead="Free, no card. Your data stays yours." primary={trial} />
   </>
 );
 

@@ -9,6 +9,7 @@ const write = (perm) => [requireAuth, withBusiness({ requireActive: true }), fea
 
 router.get('/messaging/settings', ...read('settings'), m.getSettingsHandler);
 router.put('/messaging/settings', ...write('settings'), m.putSettings);
+router.get('/messaging/wallet', ...read('settings'), m.wallet);
 router.get('/messaging/templates', ...read('settings'), m.templates);
 router.get('/messaging/messages', ...read('settings'), m.list);
 router.post('/messaging/messages/:id/resend', ...write('settings'), m.resendHandler);

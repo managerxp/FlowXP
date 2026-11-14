@@ -21,7 +21,7 @@ import {
   History, Landmark, LayoutDashboard, LayoutGrid, Lock, ToggleRight, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
   Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X, Warehouse, PackageCheck, Undo2, HandCoins, ChartBar, ShoppingBag, Tags,
-  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass, BedDouble, Moon, DoorOpen, UsersRound, CalendarCheck, Dumbbell, Gamepad2, Timer, Trophy, Sun, Wrench, BookOpen, Shirt
+  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass, BedDouble, Moon, DoorOpen, UsersRound, CalendarCheck, Dumbbell, Gamepad2, Timer, Trophy, Sun, Wrench, BookOpen, Shirt, LifeBuoy
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Avatar, Button, EmptyState, Logo, PageLoader, useToast } from '../components/ui.jsx';
@@ -266,6 +266,7 @@ const SYSTEM_ITEMS = [
   { to: '/app/integrations', label: 'Integrations', icon: Plug, types: RESTAURANT_TYPES, permission: 'settings', more: true },
   { to: '/app/settlements', label: 'Settlements', icon: ArrowLeftRight, types: RESTAURANT_TYPES, permission: 'settings', feature: 'integrations', more: true },
   // personal account security (password, 2FA, sessions) — every role manages their own
+  { to: '/app/support', label: 'Help and support', icon: LifeBuoy, more: true },
   { to: '/app/security', label: 'Security', icon: Shield, more: true },
   // the business's own identity/GSTIN/logo can only be SAVED by the owner (see business.routes.js),
   // so showing it to anyone else is a form they can look at but never use

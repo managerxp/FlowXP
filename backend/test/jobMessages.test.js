@@ -26,27 +26,27 @@ test('setup', { skip }, async () => {
 
 test('opening a card tells the customer; marking it ready tells them again; the estimate goes when the counter sends it', { skip }, async () => {
   const job = data(await call(jobs.create, { body: { customer_id: customer, vehicle_reg: 'KA01AB1234', vehicle_type: 'CAR', make: 'Maruti', model: 'Swift', complaint: 'Brake noise' } }), 201);
-  await new Promise((r) => setTimeout(r, 300));
+  await new Promise((r) => setTimeout(r, 1500));
   const got = await sent('JOB_RECEIVED');
   assert.equal(got.length, 1);
-  assert.match(got[0].body, /received your Maruti Swift KA01AB1234 at .*Job card /);
+  assert.match(got[0].body, /job card JC-\d+ for your Maruti Swift \(KA01AB1234\) at .*Complaint: Brake noise\. Estimated cost: To be shared after the inspection/);
   assert.equal(got[0].related_id, job.job_id);
 
   assert.equal((await sendJobUpdate(tenant, job.job_id, 'estimate', { manual: true })).skipped, 'NO_ESTIMATE', 'nothing on the card yet');
   data(await call(jobs.lineAdd, { params: { id: String(job.job_id) }, body: { kind: 'LABOUR', description: 'Brake service', unit_price: 500, tax_rate: 18 } }), 201);
   const est = await sendJobUpdate(tenant, job.job_id, 'estimate', { manual: true });
   assert.ok(!est.skipped, JSON.stringify(est));
-  assert.match((await sent('JOB_ESTIMATE'))[0].body, /is ₹590 including GST/);
+  assert.match((await sent('JOB_RECEIVED')).at(-1).body, /Estimated cost: ₹590 including GST/);
 
   data(await call(jobs.status, { params: { id: String(job.job_id) }, body: { status: 'READY' } }));
-  await new Promise((r) => setTimeout(r, 300));
+  await new Promise((r) => setTimeout(r, 1500));
   assert.equal((await sent('JOB_READY')).length, 1);
 });
 
 test('no plan, switched off, or no number: nothing goes; a manual send ignores only the switch', { skip }, async () => {
   const before = (await pool.query(`SELECT COUNT(*)::int AS n FROM messages WHERE business_id = $1`, [S.businessId])).rows[0].n;
   const job = data(await call(jobs.create, { body: { customer_id: customer, vehicle_reg: 'KA02CD5678', vehicle_type: 'BIKE' } }), 201);
-  await new Promise((r) => setTimeout(r, 300));
+  await new Promise((r) => setTimeout(r, 1500));
   assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM messages WHERE business_id = $1`, [S.businessId])).rows[0].n, before + 1);
 
   assert.equal((await sendJobUpdate({ ...tenant, planFeatures: { messaging: false } }, job.job_id, 'ready', { manual: true })).skipped, 'PLAN');

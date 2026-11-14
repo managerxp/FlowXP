@@ -3,6 +3,7 @@
  * The rules (who may be messaged, what is recorded) live in modules/messaging; this file
  * validates input, applies outlet scope and shapes responses.
  */
+import { walletSettings, balanceOf, gate } from '../modules/messaging/wallet.js';
 import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
 import { branchFilter } from '../utils/scope.js';
@@ -103,6 +104,8 @@ export const sendBalanceHandler = async (req, res) => {
   if (r.problem) return bad(res, r.problem, r.code);
   if (r.skipped === 'OFF') return bad(res, 'Turn messaging on first (Messaging settings)', 409);
   if (r.skipped === 'TRIAL_LIMIT') return bad(res, 'Your free trial includes a limited number of WhatsApp messages and they are used up. Upgrade to keep sending.', 402);
+  if (r.skipped === 'MARKETING_OFF') return bad(res, 'Offers and reminders are switched off in Messaging settings.', 409);
+  if (r.skipped === 'NO_CREDIT') return bad(res, 'Your WhatsApp credit has run out. Ask FlowXP to top it up.', 402);
   if (r.skipped === 'NO_PHONE') return bad(res, 'This customer has no mobile number to send to');
   recordAudit(req, { action: 'messaging.balance_sent', resource_type: 'customer', resource_id: id, metadata: { status: r.status } });
   res.status(201).json({ success: true, data: r });
@@ -119,6 +122,8 @@ export const sendBillHandler = async (req, res) => {
   if (r.problem) return bad(res, r.problem, r.code);
   if (r.skipped === 'OFF') return bad(res, 'Turn messaging on first (Messaging settings)', 409);
   if (r.skipped === 'TRIAL_LIMIT') return bad(res, 'Your free trial includes a limited number of WhatsApp messages and they are used up. Upgrade to keep sending.', 402);
+  if (r.skipped === 'MARKETING_OFF') return bad(res, 'Offers and reminders are switched off in Messaging settings.', 409);
+  if (r.skipped === 'NO_CREDIT') return bad(res, 'Your WhatsApp credit has run out. Ask FlowXP to top it up.', 402);
   if (r.skipped === 'NO_PHONE') return bad(res, 'Enter a valid 10-digit mobile number');
   recordAudit(req, { action: 'messaging.bill_sent', resource_type: 'invoice', resource_id: id, metadata: { status: r.status } });
   res.status(201).json({ success: true, data: r });
@@ -163,4 +168,11 @@ export const setOptOut = async (req, res) => {
   if (!rowCount) return bad(res, 'Not found', 404);
   recordAudit(req, { action: 'customer.marketing_opt_out', resource_type: 'customer', resource_id: req.params.id, metadata: { opt_out: optOut } });
   res.json({ success: true, data: { customer_id: Number(req.params.id), marketing_opt_out: optOut } });
+};
+
+/* GET /api/messaging/wallet: the balance the owner can spend on WhatsApp, and the latest entries */
+export const wallet = async (req, res) => {
+  const id = req.tenant.businessId;
+  const [s, bal, rows] = await Promise.all([walletSettings(), balanceOf(pool, id), pool.query(`SELECT amount_paise, kind, note, balance_after_paise, created_at FROM wallet_ledger WHERE business_id = $1 ORDER BY entry_id DESC LIMIT 30`, [id])]);
+  res.json({ success: true, data: { required: (await gate(pool, id, 'BILL')) !== null, balance_paise: bal, prices_paise: s.prices, entries: rows.rows } });
 };

@@ -35,6 +35,9 @@ export const uploadBillFiles = multer({
   limits: { fileSize: 10 * 1024 * 1024, files: 5 }
 }).array('files', 5);
 
+/* A number-plate photo: read once by the AI service, never kept. */
+export const uploadPlatePhoto = multer({ storage: multer.memoryStorage(), fileFilter, limits: { fileSize: 8 * 1024 * 1024 } }).single('image');
+
 /* A business logo for receipts: one small image. */
 export const uploadLogo = multer({
   storage: multer.memoryStorage(),

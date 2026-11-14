@@ -1,28 +1,19 @@
 /*
- * Two independent gates decide whether a business has a feature at all —
- * its plan ("did they pay for this") and its business type on that plan
- * ("does this apply to a Salon on Starter" — owner's request, 2026-09-29:
- * business-type gating is now its own switch per (type, plan) pair, not one
- * switch that applied to every plan), combined server-side by
- * backend/src/modules/planFeatures.js's effectiveFeatureFlags(). Neither is
- * the `features` marketing bullet list on Plans, which stays cosmetic.
- * Missing/unset = on, so a (type, plan) pair nobody has touched here keeps
- * working exactly as before.
+ * Which features each kind of business has, on each plan.
+ *
+ * Two switches decide it, combined on the server (backend/src/modules/planFeatures.js):
+ *   - the PLAN's switch: did they pay for this (applies to every kind of business on that plan);
+ *   - the BUSINESS TYPE's switch for that plan: does this feature belong to a Salon on Growth.
+ * A feature is on only when both allow it. This screen shows the result per kind of business, so a restaurant
+ * lists restaurant tools, a salon lists salon tools, and so on, and never changes one kind of business when
+ * you meant another. A cell the plan has switched off is locked and says so; change it under "By plan".
  */
-import { useEffect, useState } from 'react';
-import { Check, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Check, Lock, X } from 'lucide-react';
 import { adminApi } from '../lib/adminApi.js';
-import { PageHeader, Card, Alert, Field, Select, useToast } from '../components/ui.jsx';
+import { PageHeader, Card, Alert, Field, Input, Select, Button, useToast } from '../components/ui.jsx';
 import { BUSINESS_TYPE_LABEL, BUSINESS_TYPES } from './businessTypes.js';
 
-/*
- * A bigger, higher-contrast switch than the first pass — that one was
- * functionally correct (verified with getComputedStyle: 2px vs 22px
- * translate) but too small and too low-contrast against a white card to read
- * at a glance across several columns, which is what "not looking good" meant.
- * A ring on the off state and an icon in the knob both read without
- * hovering or squinting.
- */
 const Toggle = ({ on, busy, onClick, label }) => (
   <button
     type="button"
@@ -46,97 +37,201 @@ const Toggle = ({ on, busy, onClick, label }) => (
   </button>
 );
 
-/* One grid, reused for the plan view and the business-type view: rows are
-   features, columns are whatever `columns` names ({ id, label }), and the
-   caller decides how a cell reads its own on/off state and where a toggle
-   goes on the wire. */
-const FeatureGrid = ({ features, columns, isOn, onToggle, busyCell }) => (
-  <Card className="overflow-x-auto p-0">
-    <table className="w-full min-w-[760px] border-collapse text-sm">
-      <thead>
-        <tr className="border-b border-line bg-surface-2 text-left text-xs font-semibold uppercase tracking-wide text-ink-400">
-          <th className="py-3 pl-5 pr-4">Feature</th>
-          {columns.map((c) => (
-            <th key={c.id} className="border-l border-line px-3 py-3 text-center">{c.label}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {features.map((f, i) => (
-          <tr key={f.key} className={`border-b border-line last:border-0 ${i % 2 ? 'bg-surface-2/40' : ''}`}>
-            <td className="py-3.5 pl-5 pr-4">
-              <p className="font-medium text-ink-900">{f.label}</p>
-              <p className="text-xs text-ink-400">{f.description}</p>
-            </td>
-            {columns.map((c) => (
-              <td key={c.id} className="border-l border-line px-3 py-3.5 text-center">
-                <div className="flex justify-center">
-                  <Toggle
-                    on={isOn(c, f)}
-                    busy={busyCell === `${c.id}:${f.key}`}
-                    onClick={() => onToggle(c, f)}
-                    label={`${f.label} for ${c.label}`}
-                  />
-                </div>
-              </td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </Card>
+const FeatureName = ({ f }) => (
+  <>
+    <p className="font-medium text-ink-900">{f.label}</p>
+    <p className="text-xs text-ink-400">{f.description}</p>
+  </>
 );
 
-const TABS = [
-  { id: 'plan', label: 'By plan' },
-  { id: 'type', label: 'By business type' }
-];
+const Head = ({ plans, children, last }) => (
+  <thead>
+    <tr className="border-b border-line bg-surface-2 text-left text-xs font-semibold uppercase tracking-wide text-ink-400">
+      <th className="py-3 pl-5 pr-4">{children}</th>
+      {plans.map((p) => <th key={p.plan_code} className="w-28 border-l border-line px-3 py-3 text-center">{p.name}</th>)}
+      {last && <th className="w-28 border-l border-line px-3 py-3 text-center">{last}</th>}
+    </tr>
+  </thead>
+);
+
+/* ── By business type ───────────────────────────────────────────────────── */
+const ByType = ({ features, plans, types, setTypes, goPlan }) => {
+  const toast = useToast();
+  const [type, setType] = useState('RESTAURANT');
+  const [search, setSearch] = useState('');
+  const [busy, setBusy] = useState(null);
+
+  const rows = useMemo(() => Object.fromEntries(types.filter((t) => t.business_type === type).map((t) => [t.plan_code, t])), [types, type]);
+  const industryOff = rows[plans[0]?.plan_code]?.industry_off || [];
+  const flagOf = (plan, key) => rows[plan.plan_code]?.feature_flags?.[key];
+  const planOff = (plan, key) => plan.feature_flags?.[key] === false;
+  const isOn = (plan, key) => !planOff(plan, key) && flagOf(plan, key) !== false;
+
+  const q = search.trim().toLowerCase();
+  const matches = (f) => !q || `${f.label} ${f.description}`.toLowerCase().includes(q);
+  // a tool belongs to this kind of business unless its industry default is off and nobody has switched it on here
+  const belongs = (f) => !industryOff.includes(f.key) || plans.some((p) => flagOf(p, f.key) === true);
+  const mine = features.filter((f) => belongs(f) && matches(f));
+  const others = features.filter((f) => !belongs(f) && matches(f));
+
+  const groupsOf = (list) => {
+    const out = [];
+    for (const f of list) {
+      let g = out.find((x) => x.key === f.group);
+      if (!g) { g = { key: f.group, label: f.group_label, items: [] }; out.push(g); }
+      g.items.push(f);
+    }
+    return out;
+  };
+
+  const write = async (plan, key, value) => {
+    const updated = await adminApi(`/business-type-features/${type}/${plan.plan_code}`, { method: 'PATCH', body: { feature_flags: { [key]: value } } });
+    const base = Object.fromEntries(industryOff.map((k) => [k, false]));
+    setTypes((all) => all.map((t) => (t.business_type === type && t.plan_code === plan.plan_code ? { ...t, feature_flags: { ...base, ...updated.feature_flags } } : t)));
+  };
+
+  const toggle = async (plan, f) => {
+    setBusy(`${plan.plan_code}:${f.key}`);
+    try { await write(plan, f.key, !isOn(plan, f.key)); } catch (err) { toast.error(err.message); } finally { setBusy(null); }
+  };
+
+  const allPlans = async (f, value) => {
+    setBusy(`all:${f.key}`);
+    try { for (const p of plans) if (!planOff(p, f.key) && isOn(p, f.key) !== value) await write(p, f.key, value); } catch (err) { toast.error(err.message); } finally { setBusy(null); }
+  };
+
+  const Table = ({ list }) => (
+    <Card className="overflow-x-auto p-0">
+      <table className="w-full min-w-[640px] border-collapse text-sm">
+        <Head plans={plans} last="All plans">Feature</Head>
+        {groupsOf(list).map((g) => (
+          <tbody key={g.key}>
+            <tr className="bg-surface-2/60"><td colSpan={plans.length + 2} className="py-2 pl-5 text-xs font-semibold uppercase tracking-wide text-ink-500">{g.label}</td></tr>
+            {g.items.map((f) => {
+              const unlocked = plans.filter((p) => !planOff(p, f.key));
+              const everyOn = unlocked.length > 0 && unlocked.every((p) => isOn(p, f.key));
+              return (
+                <tr key={f.key} className="border-b border-line last:border-0">
+                  <td className="py-3 pl-5 pr-4"><FeatureName f={f} /></td>
+                  {plans.map((p) => (
+                    <td key={p.plan_code} className="border-l border-line px-3 py-3 text-center">
+                      {planOff(p, f.key) ? (
+                        <button type="button" onClick={goPlan} title={`${p.name} does not include this for any business. Change it under By plan.`} className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-1 text-xs text-ink-500 hover:text-ink-900">
+                          <Lock aria-hidden="true" className="h-3 w-3" />Not in plan
+                        </button>
+                      ) : (
+                        <div className="flex justify-center"><Toggle on={isOn(p, f.key)} busy={busy === `${p.plan_code}:${f.key}`} onClick={() => toggle(p, f)} label={`${f.label} for ${BUSINESS_TYPE_LABEL[type]} on ${p.name}`} /></div>
+                      )}
+                    </td>
+                  ))}
+                  <td className="border-l border-line px-3 py-3 text-center">
+                    {unlocked.length > 0 && <Button size="sm" variant="ghost" disabled={busy === `all:${f.key}`} onClick={() => allPlans(f, !everyOn)}>{everyOn ? 'All off' : 'All on'}</Button>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        ))}
+      </table>
+    </Card>
+  );
+
+  return (
+    <>
+      <div className="mb-4 flex flex-wrap items-end gap-3">
+        <div className="w-full max-w-xs">
+          <Field id="business-type-picker" label="Kind of business">
+            <Select id="business-type-picker" value={type} onChange={(e) => setType(e.target.value)}>
+              {BUSINESS_TYPES.map((t) => <option key={t} value={t}>{BUSINESS_TYPE_LABEL[t] || t}</option>)}
+            </Select>
+          </Field>
+        </div>
+        <div className="w-full max-w-xs">
+          <Field id="feature-search" label="Find a feature"><Input id="feature-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Type to filter" /></Field>
+        </div>
+      </div>
+      <p className="mb-3 text-sm text-ink-500">
+        These are the tools that belong to a <b>{BUSINESS_TYPE_LABEL[type]}</b>. A switch here changes only {BUSINESS_TYPE_LABEL[type]} businesses on that plan, and takes effect straight away.
+      </p>
+      {mine.length ? <Table list={mine} /> : <p className="text-sm text-ink-500">Nothing matches.</p>}
+      {others.length > 0 && (
+        <details className="mt-5">
+          <summary className="cursor-pointer text-sm font-semibold text-ink-700">Tools made for other kinds of business ({others.length})</summary>
+          <p className="my-2 text-sm text-ink-500">Off for {BUSINESS_TYPE_LABEL[type]} by default. Turn one on only if this kind of business really needs it.</p>
+          <Table list={others} />
+        </details>
+      )}
+    </>
+  );
+};
+
+/* ── By plan ────────────────────────────────────────────────────────────── */
+const ByPlan = ({ features, plans, setPlans }) => {
+  const toast = useToast();
+  const [busy, setBusy] = useState(null);
+
+  const toggle = async (plan, f) => {
+    const on = plan.feature_flags?.[f.key] !== false;
+    if (on && !window.confirm(`Turn off "${f.label}" on ${plan.name}? Every kind of business on ${plan.name} loses it.`)) return;
+    setBusy(`${plan.plan_code}:${f.key}`);
+    try {
+      const updated = await adminApi(`/plans/${plan.plan_code}`, { method: 'PATCH', body: { feature_flags: { [f.key]: !on } } });
+      setPlans((rows) => rows.map((p) => (p.plan_code === plan.plan_code ? { ...p, feature_flags: updated.feature_flags } : p)));
+    } catch (err) { toast.error(err.message); } finally { setBusy(null); }
+  };
+
+  const groups = [];
+  for (const f of features) {
+    let g = groups.find((x) => x.key === f.group);
+    if (!g) { g = { key: f.group, label: f.group_label, items: [] }; groups.push(g); }
+    g.items.push(f);
+  }
+
+  return (
+    <>
+      <p className="mb-3 text-sm text-ink-500">What each plan includes. A switch here applies to <b>every kind of business</b> on that plan. To change one kind of business only, use By business type.</p>
+      <div className="space-y-4">
+        {groups.map((g, i) => (
+          <details key={g.key} open={i === 0}>
+            <summary className="mb-2 cursor-pointer text-sm font-semibold text-ink-800">{g.label} <span className="font-normal text-ink-400">({g.items.length})</span></summary>
+            <Card className="overflow-x-auto p-0">
+              <table className="w-full min-w-[560px] border-collapse text-sm">
+                <Head plans={plans}>Feature</Head>
+                <tbody>
+                  {g.items.map((f) => (
+                    <tr key={f.key} className="border-b border-line last:border-0">
+                      <td className="py-3 pl-5 pr-4"><FeatureName f={f} /></td>
+                      {plans.map((p) => (
+                        <td key={p.plan_code} className="border-l border-line px-3 py-3 text-center">
+                          <div className="flex justify-center"><Toggle on={p.feature_flags?.[f.key] !== false} busy={busy === `${p.plan_code}:${f.key}`} onClick={() => toggle(p, f)} label={`${f.label} on ${p.name}`} /></div>
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          </details>
+        ))}
+      </div>
+    </>
+  );
+};
+
+const TABS = [{ id: 'type', label: 'By business type' }, { id: 'plan', label: 'By plan' }];
 
 const AdminFeatures = () => {
-  const toast = useToast();
-  const [tab, setTab] = useState('plan');
+  const [tab, setTab] = useState('type');
   const [plans, setPlans] = useState(null);
   const [types, setTypes] = useState(null);
-  const [selectedType, setSelectedType] = useState('RESTAURANT');
   const [features, setFeatures] = useState(null);
   const [error, setError] = useState('');
-  const [busyCell, setBusyCell] = useState(null); // `${columnId}:${featureKey}` while saving
 
   useEffect(() => {
     Promise.all([adminApi('/plans'), adminApi('/business-type-features'), adminApi('/plan-features')])
-      .then(([p, t, f]) => { setPlans(p); setTypes(t); setFeatures(f); })
+      .then(([p, t, f]) => { setPlans(p.filter((x) => x.is_public)); setTypes(t); setFeatures(f); })
       .catch((err) => setError(err.message));
   }, []);
-
-  const togglePlan = async (column, feature) => {
-    const cellId = `${column.id}:${feature.key}`;
-    const current = column.feature_flags?.[feature.key] !== false;
-    setBusyCell(cellId);
-    try {
-      const updated = await adminApi(`/plans/${column.id}`, { method: 'PATCH', body: { feature_flags: { [feature.key]: !current } } });
-      setPlans((rows) => rows.map((p) => (p.plan_code === column.id ? { ...p, feature_flags: updated.feature_flags } : p)));
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setBusyCell(null);
-    }
-  };
-
-  // column.id here is "TYPE:PLAN" (see the columns built below) — the two are split back
-  // apart for the PATCH, since a toggle is specific to that one (business type, plan) pair.
-  const toggleType = async (column, feature) => {
-    const cellId = `${column.id}:${feature.key}`;
-    const current = column.feature_flags?.[feature.key] !== false;
-    setBusyCell(cellId);
-    try {
-      const updated = await adminApi(`/business-type-features/${column.type}/${column.plan_code}`, { method: 'PATCH', body: { feature_flags: { [feature.key]: !current } } });
-      setTypes((rows) => rows.map((t) => (t.business_type === column.type && t.plan_code === column.plan_code ? { ...t, feature_flags: updated.feature_flags } : t)));
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setBusyCell(null);
-    }
-  };
 
   const ready = plans && types && features;
 
@@ -144,63 +239,21 @@ const AdminFeatures = () => {
     <div>
       <PageHeader
         title="Features"
-        lead="What's available to a business — by the plan it pays for, or by the kind of business it is. Turning one off blocks it right away, no restart needed."
+        lead="What each kind of business can use, on each plan. A switch takes effect straight away, no restart needed."
       />
       {error && <Alert>{error}</Alert>}
 
       <div className="mb-4 inline-flex rounded-lg border border-line bg-surface p-1">
         {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors duration-(--duration-fast) ${
-              tab === t.id ? 'bg-brand-600 text-white' : 'text-ink-500 hover:text-ink-900'
-            }`}
-          >
+          <button key={t.id} type="button" onClick={() => setTab(t.id)}
+            className={`rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors duration-(--duration-fast) ${tab === t.id ? 'bg-brand-600 text-white' : 'text-ink-500 hover:text-ink-900'}`}>
             {t.label}
           </button>
         ))}
       </div>
 
-      {ready && tab === 'plan' && (
-        <FeatureGrid
-          features={features}
-          // The 3-plan ladder only — Trial (everything's already on) and a retired plan add columns
-          // nobody is actually on, matching what AdminPlans.jsx now shows by default.
-          columns={plans.filter((p) => p.is_public).map((p) => ({ id: p.plan_code, label: p.name, feature_flags: p.feature_flags }))}
-          isOn={(c, f) => c.feature_flags?.[f.key] !== false}
-          onToggle={togglePlan}
-          busyCell={busyCell}
-        />
-      )}
-
-      {ready && tab === 'type' && (
-        <>
-          <div className="mb-4 max-w-xs">
-            <Field id="business-type-picker" label="Business type">
-              <Select id="business-type-picker" value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
-                {BUSINESS_TYPES.map((t) => (
-                  <option key={t} value={t}>{BUSINESS_TYPE_LABEL[t] || t}</option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <FeatureGrid
-            features={features}
-            columns={types
-              .filter((t) => t.business_type === selectedType)
-              .map((t) => ({ id: `${t.business_type}:${t.plan_code}`, type: t.business_type, plan_code: t.plan_code, label: t.plan_name, feature_flags: t.feature_flags }))}
-            isOn={(c, f) => c.feature_flags?.[f.key] !== false}
-            onToggle={toggleType}
-            busyCell={busyCell}
-          />
-        </>
-      )}
-
-      <p className="mt-4 text-xs text-ink-400">
-        A feature needs to be on in both the plan and the business type on that plan to actually work — each independently gates it. In the business-type view, a feature shown off because it does not suit that industry (a salon has no kitchen display, a pharmacy has no table bookings) can be switched on for that type and plan. A single business can still be forced on or off from its own page.
-      </p>
+      {ready && tab === 'type' && <ByType features={features} plans={plans} types={types} setTypes={setTypes} goPlan={() => setTab('plan')} />}
+      {ready && tab === 'plan' && <ByPlan features={features} plans={plans} setPlans={setPlans} />}
     </div>
   );
 };

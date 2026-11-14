@@ -17,7 +17,7 @@ import { recordAudit } from '../modules/events.js';
 import { toRupees, toPaise } from '../utils/money.js';
 import { normaliseEmail, BUSINESS_TYPES } from '../utils/validate.js';
 import { createPaymentLink as cashfreeCreateLink, CashfreeError } from '../modules/payments/cashfree.js';
-import { industryDefaults, PLAN_FEATURES, PLAN_FEATURE_KEYS } from '../modules/planFeatures.js';
+import { industryDefaults, INDUSTRY_OFF, PLAN_FEATURES, PLAN_FEATURE_KEYS, FEATURE_GROUPS, featureGroup } from '../modules/planFeatures.js';
 import config from '../config/env.js';
 
 const BUSINESS_STATUSES = ['ACTIVE', 'SUSPENDED', 'CLOSED'];
@@ -205,6 +205,16 @@ export const getStats = async (_req, res) => {
 /* ==========================================================================
    GET /api/admin/businesses — every tenant, searchable
    ========================================================================== */
+/* "Needs attention" views for the client list: each is a condition on the businesses row (alias b). */
+const ATTENTION = {
+  trial_ending: `b.subscription_status = 'TRIAL' AND b.trial_ends_at BETWEEN CURRENT_TIMESTAMP AND CURRENT_TIMESTAMP + INTERVAL '7 days'`,
+  expired: `(b.subscription_status = 'EXPIRED' OR (b.subscription_status = 'TRIAL' AND b.trial_ends_at < CURRENT_TIMESTAMP))`,
+  low_credit: `b.subscription_status = 'ACTIVE' AND b.wallet_paise < 2000`,
+  unpaid: `EXISTS (SELECT 1 FROM admin_documents d WHERE d.business_id = b.business_id AND d.kind = 'INVOICE' AND d.status = 'SENT')`,
+  followup_due: `b.follow_up_on IS NOT NULL AND b.follow_up_on <= CURRENT_DATE`,
+  quiet: `b.created_at < CURRENT_TIMESTAMP - INTERVAL '14 days' AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.business_id = b.business_id AND i.created_at > CURRENT_TIMESTAMP - INTERVAL '14 days')`
+};
+
 export const listBusinesses = async (req, res) => {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
@@ -227,6 +237,10 @@ export const listBusinesses = async (req, res) => {
     if (type && BUSINESS_TYPES.includes(type)) { params.push(type); where.push(`b.business_type = $${params.length}`); }
     const sub = String(req.query.subscription_status || '').trim().toUpperCase();
     if (sub && SUBSCRIPTION_STATUSES.includes(sub)) { params.push(sub); where.push(`b.subscription_status = $${params.length}`); }
+    const tag = String(req.query.tag || '').trim().toLowerCase();
+    if (tag) { params.push(tag); where.push(`$${params.length} = ANY(b.admin_tags)`); }
+    const attn = ATTENTION[String(req.query.attention || '')];
+    if (attn) where.push(attn);
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
     const countResult = await pool.query(
@@ -240,8 +254,11 @@ export const listBusinesses = async (req, res) => {
     const { rows } = await pool.query(
       `SELECT b.business_id, b.name, b.business_type, b.status, b.subscription_status,
               b.plan_code, b.billing_cycle, b.trial_ends_at, b.next_billing_date,
-              b.currency, b.created_at,
-              u.user_id AS owner_user_id, u.name AS owner_name, u.email AS owner_email
+              b.currency, b.created_at, b.wallet_paise, b.admin_tags, b.follow_up_on::text AS follow_up_on, b.follow_up_note,
+              u.user_id AS owner_user_id, u.name AS owner_name, u.email AS owner_email, COALESCE(b.phone, u.phone) AS contact_phone,
+              (SELECT COUNT(*)::int FROM messages m WHERE m.business_id = b.business_id AND m.channel = 'WHATSAPP' AND m.status = 'SENT' AND m.created_at > CURRENT_TIMESTAMP - INTERVAL '30 days') AS wa_sent_30d,
+              (SELECT MAX(i.created_at) FROM invoices i WHERE i.business_id = b.business_id) AS last_bill_at,
+              (SELECT COALESCE(SUM((d.totals->>'total_paise')::bigint), 0) FROM admin_documents d WHERE d.business_id = b.business_id AND d.kind = 'INVOICE' AND d.status = 'SENT') AS unpaid_paise
        FROM businesses b
        JOIN users u ON u.user_id = b.owner_user_id
        ${whereSql}
@@ -261,8 +278,17 @@ export const listBusinesses = async (req, res) => {
           currency: b.currency,
           created_at: b.created_at,
           owner: { user_id: b.owner_user_id, name: b.owner_name, email: b.owner_email },
+          phone: b.contact_phone,
+          wallet_paise: Number(b.wallet_paise),
+          tags: b.admin_tags || [],
+          follow_up_on: b.follow_up_on,
+          follow_up_note: b.follow_up_note,
+          wa_sent_30d: b.wa_sent_30d,
+          last_bill_at: b.last_bill_at,
+          unpaid_paise: Number(b.unpaid_paise),
           subscription: subscriptionSummary(b)
         })),
+        attention: Object.fromEntries(await Promise.all(Object.entries(ATTENTION).map(async ([k, cond]) => [k, (await pool.query(`SELECT COUNT(*)::int AS n FROM businesses b WHERE b.status <> 'CLOSED' AND ${cond}`)).rows[0].n]))),
         page,
         page_size: pageSize,
         total: countResult.rows[0].n
@@ -272,6 +298,28 @@ export const listBusinesses = async (req, res) => {
     console.error('[admin] list businesses failed:', error.message);
     res.status(500).json({ success: false, message: 'Could not load businesses' });
   }
+};
+
+/* PATCH /api/admin/businesses/:id/crm { tags?, follow_up_on?, follow_up_note? }: the owner's own notes on a client */
+export const updateClientCrm = async (req, res) => {
+  const id = Number(req.params.id); const b = req.body || {};
+  const sets = []; const params = [id];
+  if (b.tags !== undefined) {
+    if (!Array.isArray(b.tags)) return res.status(400).json({ success: false, message: 'Tags must be a list.' });
+    const tags = [...new Set(b.tags.map((t) => String(t).trim().toLowerCase().slice(0, 24)).filter(Boolean))].slice(0, 10);
+    params.push(tags); sets.push(`admin_tags = $${params.length}`);
+  }
+  if (b.follow_up_on !== undefined) {
+    const v = b.follow_up_on ? String(b.follow_up_on).slice(0, 10) : null;
+    if (v && (!/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(Date.parse(v)))) return res.status(400).json({ success: false, message: 'That follow-up date is not a date.' });
+    params.push(v); sets.push(`follow_up_on = $${params.length}`);
+  }
+  if (b.follow_up_note !== undefined) { params.push(String(b.follow_up_note || '').trim().slice(0, 200) || null); sets.push(`follow_up_note = $${params.length}`); }
+  if (!sets.length) return res.status(400).json({ success: false, message: 'Nothing to change.' });
+  const row = (await pool.query(`UPDATE businesses SET ${sets.join(', ')} WHERE business_id = $1 RETURNING admin_tags, follow_up_on::text AS follow_up_on, follow_up_note`, params)).rows[0];
+  if (!row) return res.status(404).json({ success: false, message: 'Business not found' });
+  recordAudit(req, { business_id: id, action: 'admin.client_notes_changed', resource_type: 'business', resource_id: id, metadata: {} });
+  res.json({ success: true, data: { tags: row.admin_tags, follow_up_on: row.follow_up_on, follow_up_note: row.follow_up_note } });
 };
 
 /* ==========================================================================
@@ -307,6 +355,9 @@ export const getBusiness = async (req, res) => {
       data: {
         business_id: business.business_id,
         name: business.name,
+        tags: business.admin_tags || [],
+        follow_up_on: business.follow_up_on ? new Date(business.follow_up_on).toLocaleDateString('en-CA') : null,
+        follow_up_note: business.follow_up_note || '',
         business_type: business.business_type,
         distributor_enabled: business.business_type === 'DISTRIBUTOR' || Boolean(wholesaleMode.rows[0]?.distributor_enabled),
         status: business.status,
@@ -632,12 +683,13 @@ export const listPlans = async (_req, res) => {
 
 /** Feature toggles, straight from the admin page: { loyalty: true, ai: false, ... }, unknown keys or non-boolean values refused. */
 export const planFeatureCatalog = (_req, res) => {
-  res.json({ success: true, data: PLAN_FEATURES.map(([key, label, description]) => ({ key, label, description })) });
+  const groups = Object.fromEntries(FEATURE_GROUPS);
+  res.json({ success: true, data: PLAN_FEATURES.map(([key, label, description]) => ({ key, label, description, group: featureGroup(key), group_label: groups[featureGroup(key)] })) });
 };
 
 export const updatePlan = async (req, res) => {
   const planCode = String(req.params.code || '').toUpperCase();
-  const { name, description, price_monthly, price_yearly, is_public, is_active, feature_flags: featureFlags } = req.body || {};
+  const { name, description, price_monthly, price_yearly, is_public, is_active, feature_flags: featureFlags, limits, features } = req.body || {};
 
   const fields = [];
   const params = [];
@@ -652,6 +704,27 @@ export const updatePlan = async (req, res) => {
   if (price_yearly != null) set('price_yearly_paise', Math.round(Number(price_yearly) * 100));
   if (is_public != null) set('is_public', Boolean(is_public));
   if (is_active != null) set('is_active', Boolean(is_active));
+
+  // limits: users, outlets, AI questions a month; null or blank means unlimited
+  if (limits != null) {
+    if (typeof limits !== 'object' || Array.isArray(limits)) return res.status(400).json({ success: false, message: 'limits must be an object' });
+    const clean = {};
+    for (const key of ['users', 'outlets', 'ai_queries']) {
+      if (!(key in limits)) continue;
+      const v = limits[key];
+      if (v === null || v === '') { clean[key] = null; continue; }
+      const n = Number(v);
+      if (!Number.isInteger(n) || n < 0 || n > 1000000) return res.status(400).json({ success: false, message: `${key.replace('_', ' ')} must be a whole number, or blank for unlimited` });
+      clean[key] = n;
+    }
+    params.push(JSON.stringify(clean));
+    fields.push(`limits = COALESCE(limits, '{}'::jsonb) || $${params.length}::jsonb`);
+  }
+  // features: the bullet list the pricing page shows
+  if (features != null) {
+    if (!Array.isArray(features) || features.length > 12 || features.some((f) => typeof f !== 'string' || !f.trim() || f.length > 120)) return res.status(400).json({ success: false, message: 'Give up to 12 short lines' });
+    set('features', JSON.stringify(features.map((f) => f.trim())));
+  }
 
   if (featureFlags != null) {
     if (typeof featureFlags !== 'object' || Array.isArray(featureFlags)) {
@@ -674,7 +747,7 @@ export const updatePlan = async (req, res) => {
   // (every existing business, and anyone who joined before this change) keeps what they had —
   // name/description/is_public/is_active are catalog metadata, not something a customer is
   // "grandfathered" into, so they update `plans` directly with no version.
-  const versionRelevant = price_monthly != null || price_yearly != null || featureFlags != null;
+  const versionRelevant = price_monthly != null || price_yearly != null || featureFlags != null || limits != null;
 
   const client = versionRelevant ? await pool.connect() : pool;
   try {
@@ -770,7 +843,7 @@ export const listBusinessTypeFeatures = async (_req, res) => {
     const data = [];
     for (const type of BUSINESS_TYPES) {
       for (const plan of plans) {
-        data.push({ business_type: type, plan_code: plan.plan_code, plan_name: plan.name, feature_flags: { ...industryDefaults(type), ...(byKey.get(`${type}:${plan.plan_code}`) || {}) } });
+        data.push({ business_type: type, plan_code: plan.plan_code, plan_name: plan.name, industry_off: INDUSTRY_OFF[type] || [], feature_flags: { ...industryDefaults(type), ...(byKey.get(`${type}:${plan.plan_code}`) || {}) } });
       }
     }
     res.json({ success: true, data });

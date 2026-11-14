@@ -36,7 +36,7 @@ const BusinessTypePicker = ({ value, onChange }) => (
 
 const emptyDraft = { name: '', description: '', price_monthly: 0, price_yearly: 0, business_types: [] };
 
-const AddonCard = ({ addon, onSave, onDelete }) => {
+const AddonCard = ({ addon, feature, onSave, onDelete }) => {
   const toast = useToast();
   const [form, setForm] = useState({
     name: addon.name, description: addon.description || '', price_monthly: addon.price_monthly, price_yearly: addon.price_yearly,
@@ -78,7 +78,7 @@ const AddonCard = ({ addon, onSave, onDelete }) => {
   return (
     <Card>
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xs text-ink-400">{addon.addon_key}</p>
+        <p className="text-xs text-ink-400">{feature ? `Unlocks: ${feature.label}` : 'A service, not a feature'}</p>
         <Badge tone={addon.is_active ? 'success' : 'neutral'}>{addon.is_active ? 'Active' : 'Inactive'}</Badge>
       </div>
 
@@ -114,21 +114,35 @@ const AddonCard = ({ addon, onSave, onDelete }) => {
   );
 };
 
-const NewAddonForm = ({ onCreate }) => {
+const NewAddonForm = ({ onCreate, features, taken }) => {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [key, setKey] = useState('');
+  const [serviceKey, setServiceKey] = useState('');
   const [draft, setDraft] = useState(emptyDraft);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  const groups = [];
+  for (const f of features) {
+    let g = groups.find((x) => x.label === f.group_label);
+    if (!g) { g = { label: f.group_label, items: [] }; groups.push(g); }
+    g.items.push(f);
+  }
+  const pick = (value) => {
+    setKey(value);
+    const f = features.find((x) => x.key === value);
+    // a feature fills in its own name and description; the owner can still change them
+    if (f) setDraft((d) => ({ ...d, name: d.name || f.label, description: d.description || f.description }));
+  };
 
   const create = async () => {
     setError('');
     setBusy(true);
     try {
-      await onCreate({ addon_key: key, ...draft, price_monthly: Number(draft.price_monthly), price_yearly: Number(draft.price_yearly) });
+      await onCreate({ addon_key: key === '__service' ? serviceKey : key, ...draft, price_monthly: Number(draft.price_monthly), price_yearly: Number(draft.price_yearly) });
       toast.success(`${draft.name} created`);
-      setKey(''); setDraft(emptyDraft); setOpen(false);
+      setKey(''); setServiceKey(''); setDraft(emptyDraft); setOpen(false);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -143,9 +157,22 @@ const NewAddonForm = ({ onCreate }) => {
       <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-ink-400">New add-on</h3>
       {error && <Alert>{error}</Alert>}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Field id="new-key" label="Key (e.g. onboarding_help)">
-          <Input id="new-key" value={key} onChange={(e) => setKey(e.target.value)} placeholder="onboarding_help" />
+        <Field id="new-key" label="What it unlocks" hint="Pick the feature this add-on switches on for the business.">
+          <Select id="new-key" value={key} onChange={(e) => pick(e.target.value)}>
+            <option value="">Choose a feature…</option>
+            {groups.map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.items.map((f) => <option key={f.key} value={f.key} disabled={taken.includes(f.key)}>{f.label}{taken.includes(f.key) ? ' (already an add-on)' : ''}</option>)}
+              </optgroup>
+            ))}
+            <option value="__service">A service, not a feature (setup help, training…)</option>
+          </Select>
         </Field>
+        {key === '__service' && (
+          <Field id="new-skey" label="Short name for it" hint="Letters and numbers, for example onboarding_help">
+            <Input id="new-skey" value={serviceKey} onChange={(e) => setServiceKey(e.target.value)} placeholder="onboarding_help" />
+          </Field>
+        )}
         <Field id="new-name" label="Name">
           <Input id="new-name" value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} placeholder="Onboarding help" />
         </Field>
@@ -166,7 +193,7 @@ const NewAddonForm = ({ onCreate }) => {
         <BusinessTypePicker value={draft.business_types} onChange={(v) => setDraft((d) => ({ ...d, business_types: v }))} />
       </div>
       <div className="mt-4 flex gap-2">
-        <Button disabled={busy || !key.trim() || !draft.name.trim()} onClick={create}>{busy ? 'Creating…' : 'Create'}</Button>
+        <Button disabled={busy || !key || (key === '__service' && !serviceKey.trim()) || !draft.name.trim()} onClick={create}>{busy ? 'Creating…' : 'Create'}</Button>
         <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
       </div>
     </Card>
@@ -175,11 +202,12 @@ const NewAddonForm = ({ onCreate }) => {
 
 const AdminAddons = () => {
   const [addons, setAddons] = useState(null);
+  const [features, setFeatures] = useState([]);
   const [filterType, setFilterType] = useState('');
   const [error, setError] = useState('');
 
   const load = () => adminApi('/addons').then(setAddons).catch((err) => setError(err.message));
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); adminApi('/plan-features').then(setFeatures).catch(() => {}); }, []);
 
   const onSave = async (key, body) => {
     const updated = await adminApi(`/addons/${key}`, { method: 'PATCH', body });
@@ -208,8 +236,8 @@ const AdminAddons = () => {
 
       {addons && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {visible.map((addon) => <AddonCard key={addon.addon_key} addon={addon} onSave={onSave} onDelete={onDelete} />)}
-          <NewAddonForm onCreate={onCreate} />
+          {visible.map((addon) => <AddonCard key={addon.addon_key} addon={addon} feature={features.find((f) => f.key === addon.addon_key)} onSave={onSave} onDelete={onDelete} />)}
+          <NewAddonForm onCreate={onCreate} features={features} taken={(addons || []).map((a) => a.addon_key)} />
         </div>
       )}
     </div>

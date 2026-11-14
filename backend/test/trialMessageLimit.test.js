@@ -28,7 +28,7 @@ test('a sign-in code is never held back or counted', { skip }, async () => {
   const owner = (await pool.query(`INSERT INTO users (name, email, password_hash) VALUES ('Ravi','o@tl2.test','x') RETURNING user_id`)).rows[0].user_id;
   const biz = (await pool.query(`INSERT INTO businesses (name, owner_user_id, business_type, state, subscription_status, messaging_settings) VALUES ('Gym',$1,'GYM','Karnataka','TRIAL',$2) RETURNING business_id`, [owner, JSON.stringify({ channel: 'WHATSAPP' })])).rows[0].business_id;
   await pool.query(`INSERT INTO platform_settings (setting_key, value) VALUES ('messaging', '{"trialMessageLimit":"1"}'::jsonb) ON CONFLICT (setting_key) DO UPDATE SET value = EXCLUDED.value`);
-  const otp = () => send(pool, { businessId: biz, phone: '9845011133', kind: 'GYM_OTP', values: { name: 'Ravi', business: 'Gym', code: '123456' } });
+  const otp = () => send(pool, { businessId: biz, phone: '9845011133', kind: 'OTP', values: { name: 'Ravi', business: 'Gym', code: '123456' } });
   await otp(); await otp(); await otp();
   assert.deepEqual(await trialUsage(pool, biz), { used: 0, limit: 1 }, 'codes do not count');
   assert.ok(!(await send(pool, { businessId: biz, phone: '9845011133', kind: 'WAITLIST_READY', values: { name: 'Ravi', business: 'Gym' } })).skipped);

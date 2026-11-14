@@ -13,7 +13,7 @@ const OWN = { name: 'Asha', business: 'Red Oven Pizza House', total: '₹460.00'
 const GYM = { business: 'Iron House Fitness', plan: 'Quarterly Plan', date: '30 Nov 2026', amount: '₹4,500', start: '01 Sep 2026', end: '30 Nov 2026' };   // gym wording needs gym-like samples for Meta's review
 const sampleOf = (kind, v) => (kind.startsWith('GYM_') && v in GYM ? GYM[v] : ['BILL'].includes(kind) && v in OWN ? OWN[v] : SAMPLE[v] ?? 'Sample');
 const GROUPS = [
-  ['Bills and balances (every kind of business)', (k) => ['BILL', 'BALANCE_DUE', 'REVIEW_REPLY', 'LOYALTY_NEXT', 'OFFER'].includes(k)],
+  ['Common to every kind of business (bills, sign-in code, balances, loyalty)', (k) => ['BILL', 'OTP', 'BALANCE_DUE', 'REVIEW_REPLY', 'LOYALTY_NEXT', 'LOYALTY_POINTS', 'OFFER'].includes(k)],
   ['Restaurants and cafés', (k) => k.startsWith('RESERVATION') || k.startsWith('WAITLIST')],
   ['Salons', (k) => k.startsWith('SALON_')],
   ['Gyms', (k) => k.startsWith('GYM_')],
@@ -34,13 +34,14 @@ for (const [title, test] of GROUPS) {
     const body = metaBody(kind).replace(/\n/g, '\n');
     lines.push(`### \`${t.name}\` (${kind})`, '', `**Category:** ${t.promo ? 'Marketing' : 'Utility'}`, '', '**Body:**', '', '```', body, '```', '');
     lines.push(`**Samples:** ${t.vars.map((v, i) => `{{${i + 1}}} ${v} = \`${sampleOf(kind, v)}\``).join(', ')}`, '');
-    if (t.urlButtons) {
+    if (kind === 'OTP') lines.push('Created with named variables ({{code}}, {{text}}): FlowXP sends them by name, so keep those two names exactly.', '');
+    else if (t.urlButtons) {
       lines.push('**Buttons (Call to action, Visit website, URL type Dynamic):**', '');
       lines.push(`- \`View Invoice\`: \`https://YOUR-DOMAIN/bill/{{1}}\`, sample \`https://YOUR-DOMAIN/bill/abc123\``);
       if (t.urlButtons.length > 1) lines.push('- `Rate Us`: `https://YOUR-DOMAIN/r/{{1}}`, sample `https://YOUR-DOMAIN/r/abc123` (the Google review page of the shop; the bill when the shop has no review link)');
       lines.push('');
     }
-    if (['GYM_SUBSCRIBED', 'GYM_EXPIRY', 'GYM_MONTH_START', 'GYM_EXPIRED', 'GYM_PAYMENT_DUE'].includes(kind)) lines.push('**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.', '');
+    if (['JOB_RECEIVED', 'JOB_READY', 'SERVICE_DUE', 'LOYALTY_POINTS', 'LOYALTY_NEXT', 'REVIEW_REPLY', 'GYM_SUBSCRIBED', 'GYM_EXPIRY', 'GYM_MONTH_START', 'GYM_EXPIRED', 'GYM_PAYMENT_DUE'].includes(kind)) lines.push('**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.', '');
     if (['BILL'].includes(kind)) lines.push('**Header:** none. **Footer:** `Billing powered by FlowXP`. Button texts are free: `View Bill` / `Rate Us` or `View Invoice` / `Rate Your Experience`.', '');
     if (kind === 'BILL') lines.push('One template for every shop. The Rate Us button opens the Google review page the shop saved (Settings, Business details, Google review link), or the bill when there is none.', '');
   }
@@ -54,6 +55,6 @@ lines.push('## Still to build (not templates in FlowXP yet)', '',
   '| Pharmacies | Refill reminder, order ready | From the medicine\'s usual duration; when an order is packed |',
   '| Gaming lounges | Booking confirmed, session ending, wallet low | On booking; 10 minutes before the end; below a set balance |',
   '| Retail, supermarkets | Back in stock, offer | When a wanted item arrives; campaigns |',
-  '| Gyms | Reward points (template exists, not sent yet) | When points are earned |', '');
+  '');
 fs.writeFileSync(new URL('../../WHATSAPP_TEMPLATES.md', import.meta.url), lines.join('\n'));
 console.log(`${KINDS.length} templates written to WHATSAPP_TEMPLATES.md`);

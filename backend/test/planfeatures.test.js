@@ -14,6 +14,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import bcrypt from 'bcryptjs';
 import { setupTestDb } from './helpers/db.js';
+import { restoreLegacyPlans } from './helpers/legacyPlans.js';
 
 const { pool, skip, cleanup } = await setupTestDb();
 const { runMigrations } = await import('../src/config/migrate.js');
@@ -75,6 +76,7 @@ const runsThrough = async (middleware, tenant) => {
 
 test('setup', { skip }, async () => {
   await runMigrations(pool);
+  await restoreLegacyPlans(pool);
   await makeOwner('starter-owner', 'STARTER');
   await makeOwner('growth-owner', 'GROWTH');
   await makeOwner('business-owner', 'BUSINESS');

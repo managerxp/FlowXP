@@ -10,7 +10,7 @@ import { send, getSettings } from '../messaging/index.js';
 import { hasPlanFeature, effectiveFeatureFlags } from '../planFeatures.js';
 import { getJob } from './jobcards.js';
 
-const KIND = { received: 'JOB_RECEIVED', estimate: 'JOB_ESTIMATE', ready: 'JOB_READY' };
+const KIND = { received: 'JOB_RECEIVED', estimate: 'JOB_RECEIVED', ready: 'JOB_READY' };
 const rupees = (paise) => `₹${(Number(paise) / 100).toLocaleString('en-IN', { minimumFractionDigits: Number.isInteger(Number(paise) / 100) ? 0 : 2, maximumFractionDigits: 2 })}`;
 const vehicleOf = (j) => [[j.make, j.model].filter(Boolean).join(' '), j.vehicle_reg].filter(Boolean).join(' ') || 'vehicle';
 
@@ -28,9 +28,13 @@ export const sendJobUpdate = async (tenant, jobId, event, { manual = false, crea
     if (event === 'estimate' && !job.lines.length) return { skipped: 'NO_ESTIMATE' };
     const business = (await pool.query(`SELECT name FROM businesses WHERE business_id = $1`, [tenant.businessId])).rows[0];
     const values = {
-      name: job.customer_name || 'there', business: business.name, vehicle: vehicleOf(job), job_no: job.job_no,
-      ...(event === 'received' ? { when: job.promised_on || 'as soon as the work is done' } : {}),
-      ...(event === 'estimate' ? { total: rupees(job.estimate.total_paise) } : {})
+      name: job.customer_name || 'there', business: business.name, job_no: job.job_no,
+      reg: job.vehicle_reg,
+      vehicle: [job.make, job.model, job.variant].filter(Boolean).join(' ') || String(job.vehicle_type || 'vehicle').toLowerCase(),
+      when: job.promised_on || 'as soon as the work is done',
+      odometer: job.odometer_km != null ? `${Number(job.odometer_km).toLocaleString('en-IN')} km` : 'Not noted',
+      complaint: String(job.complaint || '').replace(/\s+/g, ' ').trim().slice(0, 150) || 'As discussed at the counter',
+      total: job.lines.length ? `${rupees(job.estimate.total_paise)} including GST` : (event === 'ready' ? 'Will be shared at the counter' : 'To be shared after the inspection')
     };
     return await send(pool, { businessId: tenant.businessId, branchId: job.branch_id ?? null, customerId: job.customer_id, phone: job.customer_phone, kind: KIND[event], values, related: { type: 'job_card', id: job.job_id }, createdBy });
   } catch (error) {

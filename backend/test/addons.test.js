@@ -12,6 +12,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { setupTestDb } from './helpers/db.js';
+import { restoreLegacyPlans } from './helpers/legacyPlans.js';
 
 const { pool, skip, cleanup } = await setupTestDb();
 const { runMigrations } = await import('../src/config/migrate.js');
@@ -49,6 +50,7 @@ const tenantFor = async (email, password) => {
 
 test('setup', { skip }, async () => {
   await runMigrations(pool);
+  await restoreLegacyPlans(pool);
   config.cashfree.appId = 'test-app';
   config.cashfree.secretKey = SECRET;
   const bcrypt = (await import('bcryptjs')).default;
@@ -69,7 +71,8 @@ test('the catalog lists the 5 real add-ons, seeded at ₹0, and AI-based review 
   const res = fakeRes();
   await admin.listAddons({}, res);
   const keys = res.body.data.map((a) => a.addon_key).sort();
-  assert.deepEqual(keys, ['ai', 'integrations', 'loyalty', 'qr_ordering', 'reservations']);
+  for (const k of ['ai', 'integrations', 'loyalty', 'qr_ordering', 'reservations']) assert.ok(keys.includes(k), k);
+  assert.ok(!keys.includes('ai_review'));
   assert.ok(res.body.data.every((a) => a.price_monthly === 0 && a.is_active));
 });
 

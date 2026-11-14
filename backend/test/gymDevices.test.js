@@ -57,6 +57,7 @@ test('setup', { skip }, async () => {
   server = http.createServer(app);
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${server.address().port}`;
+  await pool.query(`DELETE FROM business_type_features WHERE business_type = 'GYM'`);
   A = await makeGym(pool, 'devA', { branches: 2 });
   B = await makeGym(pool, 'devB');
 });

@@ -9,17 +9,28 @@ import { api, formatCurrency } from '../lib/api.js';
 import { formatDate } from '../lib/display.js';
 import { Alert, Button, Field, Input, Modal, Select, useDialog, useToast } from '../components/ui.jsx';
 import { useT, T } from '../i18n/useT.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const STATUS = { OPEN: T('Open'), CONVERTED: T('Invoiced'), CANCELLED: T('Cancelled') };
 const shareText = (r) => [`Estimate ${r.estimate_number}`, ...(r.customer_name ? [`For: ${r.customer_name}`] : []), '',
   ...r.items.map((i, n) => `${n + 1}. ${i.description}  ${i.quantity} x ${formatCurrency(i.unit_price)} = ${formatCurrency(i.quantity * i.unit_price)}`),
   ...(r.discount > 0 ? ['', `Discount: ${formatCurrency(r.discount)}`] : []), '', `Total: ${formatCurrency(r.total)}`, ...(r.valid_until ? [`Valid until: ${r.valid_until}`] : [])].join('\n');
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+/* A clean one-page estimate in its own window, opened on the print dialog (Save as PDF works from there). */
+const printEstimate = (r, shop) => {
+  const w = window.open('', '_blank');
+  if (!w) return;
+  const rows = r.items.map((i, n) => `<tr><td>${n + 1}</td><td>${esc(i.description)}</td><td class="r">${i.quantity}</td><td class="r">${formatCurrency(i.unit_price)}</td><td class="r">${formatCurrency(i.quantity * i.unit_price)}</td></tr>`).join('');
+  w.document.write(`<!doctype html><meta charset="utf-8"><title>${esc(r.estimate_number)}</title><style>body{font:14px system-ui,sans-serif;margin:32px;color:#111}h1{font-size:20px;margin:0}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border-bottom:1px solid #ccc;padding:6px 8px;text-align:left}.r{text-align:right}.t{font-weight:700}</style><h1>${esc(shop)}</h1><p>Estimate ${esc(r.estimate_number)}${r.customer_name ? ' &middot; ' + esc(r.customer_name) : ''}${r.valid_until ? ' &middot; valid until ' + esc(r.valid_until) : ''}</p><table><tr><th>#</th><th>Item</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Amount</th></tr>${rows}${r.discount > 0 ? `<tr><td colspan="4" class="r">Discount</td><td class="r">- ${formatCurrency(r.discount)}</td></tr>` : ''}<tr class="t"><td colspan="4" class="r">Total</td><td class="r">${formatCurrency(r.total)}</td></tr></table>${r.notes ? `<p>${esc(r.notes)}</p>` : ''}`);
+  w.document.close(); w.focus(); w.print();
+};
 const blankLine = () => ({ product_id: '', description: '', quantity: '1', unit_price: '' });
 const blank = () => ({ customer_id: '', customer_name: '', valid_until: '', discount: '', notes: '', items: [blankLine()] });
 
 const EstimatesPage = () => {
   const { t: tr } = useT();
   const toast = useToast();
+  const { business } = useAuth();
   const dialog = useDialog();
   const [rows, setRows] = useState(null);
   const [products, setProducts] = useState([]);
@@ -86,6 +97,7 @@ const EstimatesPage = () => {
                 <span className="tabular text-small font-semibold text-ink-900">{formatCurrency(r.total)}</span>
                 {r.status === 'OPEN' && (
                   <>
+                    <Button size="sm" variant="secondary" onClick={() => printEstimate(r, business?.name || '')}>{tr('Print')}</Button>
                     <Button size="sm" variant="secondary" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(shareText(r))}`, '_blank', 'noopener')}>{tr('Share on WhatsApp')}</Button>
                     <Button size="sm" onClick={() => makeInvoice(r)}>{tr('Make invoice')}</Button>
                     <Button size="sm" variant="secondary" aria-label={tr('Cancel estimate')} onClick={() => cancel(r)}><Trash2 className="size-4" aria-hidden="true" /></Button>

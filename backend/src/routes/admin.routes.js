@@ -13,7 +13,9 @@ import * as admin from '../controllers/admin.controller.js';
 import * as settings from '../controllers/settings.controller.js';
 import * as appErrors from '../controllers/appErrors.controller.js';
 import * as support from '../controllers/adminSupport.controller.js';
+import * as tickets from '../controllers/support.controller.js';
 import * as messaging from '../controllers/adminMessaging.controller.js';
+import * as docs from '../controllers/adminDocuments.controller.js';
 
 const router = Router();
 
@@ -41,9 +43,26 @@ router.patch('/app-errors/status', appErrors.setCrashStatus);
 router.get('/bug-reports', appErrors.reports);   // what people typed under "Report a problem"
 router.patch('/bug-reports/:id', appErrors.setReportStatus);
 router.get('/bug-summary', appErrors.summary);
+router.get('/support/tickets', tickets.adminList);
+router.get('/support/tickets/:id', tickets.adminGet);
+router.post('/support/tickets/:id/reply', tickets.adminReply);
+router.patch('/support/tickets/:id', tickets.adminSetStatus);
 
 router.get('/messaging/usage', messaging.usage);   // WhatsApp sent per business and Meta's estimated charge
 router.get('/businesses/:id/messaging', messaging.businessUsage);
+router.get('/documents', docs.list);
+router.post('/documents', docs.create);
+router.get('/documents/client/:businessId', docs.clientOf);
+router.get('/documents/:id', docs.get);
+router.put('/documents/:id', docs.update);
+router.post('/documents/:id/status', docs.setStatus);
+router.post('/documents/:id/convert', docs.convert);
+router.post('/documents/:id/email', docs.emailDocument);
+router.post('/documents/:id/payment-link', idempotent((req) => `admin:${req.auth.userId}`), docs.paymentLink);
+router.get('/company', docs.getCompany);
+router.put('/company', docs.saveCompany);
+router.get('/businesses/:id/wallet', messaging.getWallet);
+router.post('/businesses/:id/wallet', messaging.topUpWallet);
 
 router.get('/me', admin.me);
 router.get('/stats', admin.getStats);
@@ -51,6 +70,7 @@ router.get('/stats', admin.getStats);
 router.get('/businesses', admin.listBusinesses);
 router.get('/businesses/:id', admin.getBusiness);
 router.patch('/businesses/:id/status', admin.updateBusinessStatus);
+router.patch('/businesses/:id/crm', admin.updateClientCrm);
 router.delete('/businesses/:id', admin.deleteBusiness);   // erases the business and its data for good; the exact name must be typed
 router.patch('/businesses/:id/plan', admin.updateBusinessPlan);
 router.get('/businesses/:id/history', admin.businessHistory);

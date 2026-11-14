@@ -11,6 +11,7 @@ import { recordAudit } from '../modules/events.js';
 import crypto from 'node:crypto';
 import { webhookSecrets } from '../modules/messaging/provider.js';
 import { applyWhatsappEvents } from '../modules/messaging/index.js';
+import { DOC_LINK_PREFIX, markPaid } from './adminDocuments.controller.js';
 
 const CYCLE_INTERVAL = { MONTHLY: '30 days', YEARLY: '365 days' };
 const ADDON_LINK_PREFIX = 'flowxp-addon-'; // see admin.controller.js's createAddonLink — how a link is told apart from a plan subscription's
@@ -91,6 +92,23 @@ export const cashfree = async (req, res) => {
   const linkId = data.link_id ?? data.link?.link_id;
   const linkStatus = data.link_status ?? data.link?.link_status;
   if (!linkId) return res.json({ success: true }); // not a link event we act on — ack it so Cashfree stops retrying
+
+  // an invoice from the Super Admin's own builder: paid means the invoice is paid, and any WhatsApp credit on it is loaded
+  if (linkId.startsWith(DOC_LINK_PREFIX)) {
+    try {
+      const id = Number(linkId.slice(DOC_LINK_PREFIX.length).split('-')[0]);
+      if (linkStatus === 'PAID' && Number.isInteger(id)) {
+        const paid = await markPaid(id, { note: 'Cashfree' });
+        if (paid) recordAudit(req, { business_id: paid.business_id, action: 'admin.invoice_paid_online', resource_type: 'admin_document', resource_id: id, metadata: { number: paid.doc_number, credit_loaded: paid.credit_loaded } });
+      } else if (linkStatus === 'EXPIRED') {
+        await pool.query(`UPDATE admin_documents SET link_id = NULL, payment_link_url = NULL WHERE link_id = $1`, [linkId]);   // a new link can be made
+      }
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('[webhooks] invoice payment handling failed:', error.message);
+      return res.status(500).json({ success: false });   // Cashfree retries
+    }
+  }
 
   const isAddon = linkId.startsWith(ADDON_LINK_PREFIX);
   const table = isAddon ? 'addon_orders' : 'subscription_orders';

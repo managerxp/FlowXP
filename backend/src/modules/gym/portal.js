@@ -100,9 +100,9 @@ const sendCode = async (gym, phone, code) => {
   const channels = await channelsAvailable();
   const channel = channels.includes('SMS') ? 'SMS' : channels[0];
   if (!channel) throw new Error('no messaging provider is set up');
-  const message = render('GYM_OTP', { business: gym.name, code });
+  const message = render('OTP', { business: gym.name, code });
   const digits = String(phone).replace(/\D/g, '');
-  await deliver({ channel, to: digits.length === 10 ? `${config.messaging.countryCode}${digits}` : digits, kind: 'GYM_OTP', text: message.text, template: message.template });
+  await deliver({ channel, to: digits.length === 10 ? `${config.messaging.countryCode}${digits}` : digits, kind: 'OTP', text: message.text, template: message.template });
 };
 
 /**

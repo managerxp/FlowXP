@@ -74,9 +74,10 @@ const AdminMessages = () => {
         <div className="w-40"><Input type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} aria-label="To date" /></div>
       </div>
       {t && (
-        <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
           <Stat label="Sent" value={t.sent} hint={`${t.failed} failed`} />
           <Stat label="Estimated Meta cost" value={rs(t.cost)} />
+          <Stat label="Charged to clients" value={rs(t.charged)} hint={`${rs(t.charged - t.cost)} margin`} />
           <Stat label="Utility" value={t.UTILITY} hint={`${rs(data.rates.UTILITY)} each`} />
           <Stat label="OTP" value={t.AUTHENTICATION} hint={`${rs(data.rates.AUTHENTICATION)} each`} />
           <Stat label="Marketing" value={t.MARKETING} hint={`${rs(data.rates.MARKETING)} each`} />
@@ -85,11 +86,11 @@ const AdminMessages = () => {
       <ListState loading={!data && !error} error={error} empty={data?.businesses.length === 0} emptyLabel="No WhatsApp messages in this period." skeleton={<SkeletonRows rows={6} columns={7} />} />
       {data?.businesses.length > 0 && (
         <Table>
-          <Thead><Th>Business</Th><Th>Type</Th><Th>Sent</Th><Th>Utility</Th><Th>OTP</Th><Th>Marketing</Th><Th>Failed</Th><Th>Est. cost</Th></Thead>
+          <Thead><Th>Business</Th><Th>Type</Th><Th>Sent</Th><Th>Utility</Th><Th>OTP</Th><Th>Marketing</Th><Th>Failed</Th><Th>Est. cost</Th><Th>Charged</Th><Th>Credit left</Th></Thead>
           <tbody>
             {data.businesses.map((b) => (
               <Tr key={b.business_id} className="cursor-pointer" onClick={() => setParams({ business: String(b.business_id) })}>
-                <Td>{b.name}</Td><Td className="text-xs">{b.business_type}</Td><Td>{b.sent}</Td><Td>{b.UTILITY}</Td><Td>{b.AUTHENTICATION}</Td><Td>{b.MARKETING}</Td><Td>{b.failed}</Td><Td className="font-semibold">{rs(b.cost)}</Td>
+                <Td>{b.name}</Td><Td className="text-xs">{b.business_type}</Td><Td>{b.sent}</Td><Td>{b.UTILITY}</Td><Td>{b.AUTHENTICATION}</Td><Td>{b.MARKETING}</Td><Td>{b.failed}</Td><Td className="font-semibold">{rs(b.cost)}</Td><Td>{rs(b.charged)}</Td><Td>{rs(b.wallet_paise / 100)}</Td>
               </Tr>
             ))}
           </tbody>

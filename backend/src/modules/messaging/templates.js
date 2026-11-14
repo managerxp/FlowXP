@@ -60,7 +60,25 @@ export const TEMPLATES = {
   LOYALTY_NEXT: {
     name: 'flowxp_loyalty_next', promo: true,
     vars: ['name', 'business', 'reward'],
+    body: (p) => `Hi ${p.name},
+
+Your next visit to *_${p.business}_* earns a free ${p.reward}!
+
+Reply STOP to opt out.`,
     text: (p) => `Hi ${p.name}, your next visit to ${p.business} earns a free ${p.reward}! Reply STOP to opt out.`
+  },
+  LOYALTY_POINTS: {
+    name: 'flowxp_loyalty_points', promo: false,
+    vars: ['name', 'business', 'earned', 'balance'],
+    body: (p) => `Hi ${p.name},
+
+Thank you for visiting *_${p.business}_*.
+
+*Points earned:* ${p.earned}
+*Your balance:* ${p.balance} points
+
+Use them on your next visit.`,
+    text: (p) => `Hi ${p.name}, thank you for visiting ${p.business}. You earned ${p.earned} reward points on this bill. Your balance is ${p.balance} points. Use them on your next visit.`
   },
   OFFER: {
     name: 'flowxp_offer', promo: true,
@@ -162,17 +180,26 @@ export const TEMPLATES = {
   REVIEW_REPLY: {
     name: 'flowxp_review_reply', promo: false,
     vars: ['name', 'business', 'reply'],
-    text: (p) => `Hi ${p.name}, ${p.business}: ${p.reply} Thank you for your feedback.`
+    body: (p) => `Hi ${p.name},
+
+*_${p.business}_* has replied to your feedback:
+
+${p.reply}
+
+Thank you for telling us what you think.`,
+    text: (p) => `Hi ${p.name}, ${p.business} has replied to your feedback: ${p.reply} Thank you for telling us what you think.`
   },
-  // Gym. Kinds stay within the messages.kind column (24 characters). The sign-in code is never stored in the messages table.
-  GYM_OTP: {
-    name: 'flowxp_gym_otp', promo: false,
-    vars: ['business', 'code'],
-    text: (p) => `Your ${p.business} sign-in code is ${p.code}. It works for 10 minutes. Do not share it with anyone.`
+  // The sign-in code (any industry's customer portal) is never stored in the messages table.
+  OTP: {
+    // created in Meta with named variables {{code}} and {{text}}, so the values are sent by name
+    name: 'flow_otp', promo: false,
+    vars: ['code', 'business'], paramNames: ['code', 'text'], lang: 'en_US',   // Meta made this one in English (US)
+    body: (p) => `OTP Code: ${p.code}. This is your OTP code for ${p.business}. For your security, do not share this code.`,
+    text: (p) => `OTP Code: ${p.code}. This is your OTP code for ${p.business}. For your security, do not share this code.`
   },
   GYM_WELCOME: {
     name: 'flowxp_gym_welcome', promo: false,
-    vars: ['name', 'business', 'code'],
+    vars: ['business', 'name', 'code'],
     text: (p) => `Welcome to ${p.business}, ${p.name}! Your member code is ${p.code}. We are glad to have you.`
   },
   GYM_SUBSCRIBED: {
@@ -210,29 +237,50 @@ export const TEMPLATES = {
     vars: ['name', 'business', 'class', 'when'],
     text: (p) => `Hi ${p.name}, a reminder: ${p.class} at ${p.business} on ${p.when}. See you there.`
   },
-  GYM_REWARD: {
-    name: 'flowxp_gym_reward', promo: false,
-    vars: ['name', 'business', 'points'],
-    text: (p) => `Hi ${p.name}, you now have ${p.points} reward points at ${p.business}. Ask at the desk what they can get you.`
-  },
-  JOB_RECEIVED: {
-    name: 'flowxp_job_received', promo: false,
-    vars: ['name', 'business', 'vehicle', 'job_no', 'when'],
-    text: (p) => `Hi ${p.name}, we have received your ${p.vehicle} at ${p.business}. Job card ${p.job_no}. Expected ready: ${p.when}. We will keep you updated. Thank you.`
-  },
-  JOB_ESTIMATE: {
-    name: 'flowxp_job_estimate', promo: false,
-    vars: ['name', 'business', 'vehicle', 'job_no', 'total'],
-    text: (p) => `Hi ${p.name}, the estimate for your ${p.vehicle} at ${p.business} (job card ${p.job_no}) is ${p.total} including GST. Please reply to approve the work. Thank you.`
+  JOB_RECEIVED: {   // the one job card message: sent when the card is opened (cost "to be shared") and again when the estimate is sent
+    name: 'flowxp_job_card', promo: false,
+    vars: ['name', 'business', 'job_no', 'vehicle', 'reg', 'odometer', 'complaint', 'total', 'when'],
+    body: (p) => `Hi ${p.name},
+
+Here is the job card for your vehicle at *_${p.business}_*.
+
+*Job card:* ${p.job_no}
+*Vehicle:* ${p.vehicle}
+*Registration:* ${p.reg}
+*Odometer:* ${p.odometer}
+*Complaint:* ${p.complaint}
+*Estimated cost:* ${p.total}
+*Expected ready:* ${p.when}
+
+The final bill may change if more work is needed, and we will tell you first. Thank you.`,
+    text: (p) => `Hi ${p.name}, job card ${p.job_no} for your ${p.vehicle} (${p.reg}) at ${p.business}. Odometer: ${p.odometer}. Complaint: ${p.complaint}. Estimated cost: ${p.total}. Expected ready: ${p.when}. The final bill may change if more work is needed, and we will tell you first. Thank you.`
   },
   JOB_READY: {
     name: 'flowxp_job_ready', promo: false,
-    vars: ['name', 'business', 'vehicle', 'job_no'],
-    text: (p) => `Hi ${p.name}, your ${p.vehicle} is ready at ${p.business} (job card ${p.job_no}). You can collect it now. Thank you.`
+    vars: ['name', 'business', 'job_no', 'vehicle', 'reg', 'total'],
+    body: (p) => `Hi ${p.name},
+
+Good news, your vehicle is ready at *_${p.business}_*.
+
+*Job card:* ${p.job_no}
+*Vehicle:* ${p.vehicle}
+*Registration:* ${p.reg}
+*Amount to pay:* ${p.total}
+
+You can collect it now. Please show this message or your job card. Thank you.`,
+    text: (p) => `Hi ${p.name}, your ${p.vehicle} (${p.reg}) is ready at ${p.business} (job card ${p.job_no}). Amount to pay: ${p.total}. You can collect it now. Thank you.`
   },
   SERVICE_DUE: {
     name: 'flowxp_service_due', promo: false,
     vars: ['name', 'business', 'vehicle', 'date'],
+    body: (p) => `Hi ${p.name},
+
+Your vehicle is due for its next service.
+
+*Vehicle:* ${p.vehicle}
+*Due on:* ${p.date}
+
+Call or visit *_${p.business}_* to book it. Thank you.`,
     text: (p) => `Hi ${p.name}, your ${p.vehicle} is due for its next service on ${p.date}. Call or visit ${p.business} to book it. Thank you.`
   },
   GYM_INACTIVE: {
@@ -249,12 +297,12 @@ export const render = (kind, values) => {
   const t = TEMPLATES[kind];
   if (!t) throw new Error(`Unknown message kind ${kind}`);
   for (const v of [...t.vars, ...(t.urlButtons || []), ...(t.also || []), ...(t.headerVar ? [t.headerVar] : [])]) if (values[v] == null || String(values[v]).trim() === '') throw new Error(`Message ${kind} needs ${v}`);
-  return { text: t.text(values), promo: t.promo, template: { name: t.name, params: t.vars.map((v) => String(values[v])), ...(t.headerVar ? { header: String(values[t.headerVar]) } : {}), ...(t.urlButtons ? { buttons: t.urlButtons.map((v) => String(values[v])) } : {}) } };
+  return { text: t.text(values), promo: t.promo, template: { name: t.name, ...(t.paramNames ? { paramNames: t.paramNames } : {}), ...(t.lang ? { lang: t.lang } : {}), params: t.vars.map((v) => String(values[v])), ...(t.headerVar ? { header: String(values[t.headerVar]) } : {}), ...(t.urlButtons ? { buttons: t.urlButtons.map((v) => String(values[v])) } : {}) } };
 };
 
 /** The template as the owner pastes it into Meta: variables as {{1}}, {{2}}... */
 export const metaBody = (kind) => {
   const t = TEMPLATES[kind];
-  const placeholders = Object.fromEntries(t.vars.map((v, i) => [v, `{{${i + 1}}}`]));
+  const placeholders = Object.fromEntries(t.vars.map((v, i) => [v, `{{${t.paramNames?.[i] ?? i + 1}}}`]));
   return (t.body || t.text)(placeholders);
 };

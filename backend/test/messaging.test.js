@@ -45,7 +45,7 @@ test('the closing line of a bill: the shop\'s own words, else one for its kind o
 
 test('a Meta body never starts or ends with a variable, and the gym subscription and payment reminders carry labels', async () => {
   const { TEMPLATES, metaBody } = await import('../src/modules/messaging/templates.js');
-  for (const kind of Object.keys(TEMPLATES)) {
+  for (const kind of Object.keys(TEMPLATES).filter((k) => k !== 'OTP')) {   // an Authentication template is Meta's own fixed wording, which starts with the code
     const b = metaBody(kind);
     assert.ok(!/^\{\{\d+\}\}/.test(b) && !/\{\{\d+\}\}[.!?\s]*$/.test(b), `${kind} starts or ends with a variable`);
   }
@@ -55,7 +55,7 @@ test('a Meta body never starts or ends with a variable, and the gym subscription
 
 test('the Meta template text uses numbered variables in order', () => {
   assert.equal(metaBody('WAITLIST_READY'), 'Hi {{1}}, your table at {{2}} is ready. Please come to the host desk.');
-  for (const kind of Object.keys(TEMPLATES)) assert.match(metaBody(kind), /\{\{1\}\}/);
+  for (const kind of Object.keys(TEMPLATES).filter((k) => k !== 'OTP')) assert.match(metaBody(kind), /\{\{1\}\}/);   // OTP has named variables
 });
 
 test('phone numbers become international, once', () => {

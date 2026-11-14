@@ -6,7 +6,7 @@ Category: **Utility** for everything except the ones marked **Marketing** (offer
 
 Rules Meta enforces: no variable at the very start or end of the body; samples for every variable; no promotional wording in a Utility template.
 
-## Bills and balances (every kind of business)
+## Common to every kind of business (bills, sign-in code, balances, loyalty)
 
 ### `flowxp_bill` (BILL)
 
@@ -50,10 +50,37 @@ One template for every shop. The Rate Us button opens the Google review page the
 **Body:**
 
 ```
-Hi {{1}}, your next visit to {{2}} earns a free {{3}}! Reply STOP to opt out.
+Hi {{1}},
+
+Your next visit to *_{{2}}_* earns a free {{3}}!
+
+Reply STOP to opt out.
 ```
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} reward = `free coffee`
+
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
+
+### `flowxp_loyalty_points` (LOYALTY_POINTS)
+
+**Category:** Utility
+
+**Body:**
+
+```
+Hi {{1}},
+
+Thank you for visiting *_{{2}}_*.
+
+*Points earned:* {{3}}
+*Your balance:* {{4}} points
+
+Use them on your next visit.
+```
+
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} earned = `Sample`, {{4}} balance = `Sample`
+
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
 
 ### `flowxp_offer` (OFFER)
 
@@ -86,10 +113,32 @@ Hi {{1}}, a gentle reminder from {{2}}: {{3}} is due on your account. Unpaid: {{
 **Body:**
 
 ```
-Hi {{1}}, {{2}}: {{3}} Thank you for your feedback.
+Hi {{1}},
+
+*_{{2}}_* has replied to your feedback:
+
+{{3}}
+
+Thank you for telling us what you think.
 ```
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} reply = `Thank you for your kind words.`
+
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
+
+### `flow_otp` (OTP)
+
+**Category:** Utility
+
+**Body:**
+
+```
+OTP Code: {{code}}. This is your OTP code for {{text}}. For your security, do not share this code.
+```
+
+**Samples:** {{1}} code = `GYM-0042`, {{2}} business = `Red Oven Pizza House`
+
+Created with named variables ({{code}}, {{text}}): FlowXP sends them by name, so keep those two names exactly.
 
 ## Restaurants and cafés
 
@@ -265,18 +314,6 @@ Hi {{1}}, a gentle reminder that {{4}} is still due on bill {{3}} at {{2}}. Than
 
 ## Gyms
 
-### `flowxp_gym_otp` (GYM_OTP)
-
-**Category:** Utility
-
-**Body:**
-
-```
-Your {{1}} sign-in code is {{2}}. It works for 10 minutes. Do not share it with anyone.
-```
-
-**Samples:** {{1}} business = `Iron House Fitness`, {{2}} code = `GYM-0042`
-
 ### `flowxp_gym_welcome` (GYM_WELCOME)
 
 **Category:** Utility
@@ -284,10 +321,10 @@ Your {{1}} sign-in code is {{2}}. It works for 10 minutes. Do not share it with 
 **Body:**
 
 ```
-Welcome to {{2}}, {{1}}! Your member code is {{3}}. We are glad to have you.
+Welcome to {{1}}, {{2}}! Your member code is {{3}}. We are glad to have you.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} code = `GYM-0042`
+**Samples:** {{1}} business = `Iron House Fitness`, {{2}} name = `Asha`, {{3}} code = `GYM-0042`
 
 ### `flowxp_gym_subscribed` (GYM_SUBSCRIBED)
 
@@ -416,18 +453,6 @@ Hi {{1}}, a reminder: {{3}} at {{2}} on {{4}}. See you there.
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} class = `Morning yoga`, {{4}} when = `Sat 24 Oct, 6:30 pm`
 
-### `flowxp_gym_reward` (GYM_REWARD)
-
-**Category:** Utility
-
-**Body:**
-
-```
-Hi {{1}}, you now have {{3}} reward points at {{2}}. Ask at the desk what they can get you.
-```
-
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} points = `240`
-
 ### `flowxp_gym_inactive` (GYM_INACTIVE)
 
 **Category:** Marketing
@@ -442,29 +467,31 @@ Hi {{1}}, we have not seen you at {{2}} for {{3}} days. We would love to have yo
 
 ## Auto parts and garages
 
-### `flowxp_job_received` (JOB_RECEIVED)
+### `flowxp_job_card` (JOB_RECEIVED)
 
 **Category:** Utility
 
 **Body:**
 
 ```
-Hi {{1}}, we have received your {{3}} at {{2}}. Job card {{4}}. Expected ready: {{5}}. We will keep you updated. Thank you.
+Hi {{1}},
+
+Here is the job card for your vehicle at *_{{2}}_*.
+
+*Job card:* {{3}}
+*Vehicle:* {{4}}
+*Registration:* {{5}}
+*Odometer:* {{6}}
+*Complaint:* {{7}}
+*Estimated cost:* {{8}}
+*Expected ready:* {{9}}
+
+The final bill may change if more work is needed, and we will tell you first. Thank you.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} vehicle = `KA01 AB 1234`, {{4}} job_no = `Sample`, {{5}} when = `Sat 24 Oct, 6:30 pm`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} job_no = `Sample`, {{4}} vehicle = `KA01 AB 1234`, {{5}} reg = `Sample`, {{6}} odometer = `Sample`, {{7}} complaint = `Sample`, {{8}} total = `₹460.00`, {{9}} when = `Sat 24 Oct, 6:30 pm`
 
-### `flowxp_job_estimate` (JOB_ESTIMATE)
-
-**Category:** Utility
-
-**Body:**
-
-```
-Hi {{1}}, the estimate for your {{3}} at {{2}} (job card {{4}}) is {{5}} including GST. Please reply to approve the work. Thank you.
-```
-
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} vehicle = `KA01 AB 1234`, {{4}} job_no = `Sample`, {{5}} total = `₹460.00`
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
 
 ### `flowxp_job_ready` (JOB_READY)
 
@@ -473,10 +500,21 @@ Hi {{1}}, the estimate for your {{3}} at {{2}} (job card {{4}}) is {{5}} includi
 **Body:**
 
 ```
-Hi {{1}}, your {{3}} is ready at {{2}} (job card {{4}}). You can collect it now. Thank you.
+Hi {{1}},
+
+Good news, your vehicle is ready at *_{{2}}_*.
+
+*Job card:* {{3}}
+*Vehicle:* {{4}}
+*Registration:* {{5}}
+*Amount to pay:* {{6}}
+
+You can collect it now. Please show this message or your job card. Thank you.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} vehicle = `KA01 AB 1234`, {{4}} job_no = `Sample`
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} job_no = `Sample`, {{4}} vehicle = `KA01 AB 1234`, {{5}} reg = `Sample`, {{6}} total = `₹460.00`
+
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
 
 ### `flowxp_service_due` (SERVICE_DUE)
 
@@ -485,10 +523,19 @@ Hi {{1}}, your {{3}} is ready at {{2}} (job card {{4}}). You can collect it now.
 **Body:**
 
 ```
-Hi {{1}}, your {{3}} is due for its next service on {{4}}. Call or visit {{2}} to book it. Thank you.
+Hi {{1}},
+
+Your vehicle is due for its next service.
+
+*Vehicle:* {{3}}
+*Due on:* {{4}}
+
+Call or visit *_{{2}}_* to book it. Thank you.
 ```
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} vehicle = `KA01 AB 1234`, {{4}} date = `22 Oct 2026`
+
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
 
 ## Wholesale and distribution
 
@@ -609,4 +656,3 @@ The line before "Thank you for choosing us." changes with the business. If the s
 | Pharmacies | Refill reminder, order ready | From the medicine's usual duration; when an order is packed |
 | Gaming lounges | Booking confirmed, session ending, wallet low | On booking; 10 minutes before the end; below a set balance |
 | Retail, supermarkets | Back in stock, offer | When a wanted item arrives; campaigns |
-| Gyms | Reward points (template exists, not sent yet) | When points are earned |

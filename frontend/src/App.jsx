@@ -46,9 +46,13 @@ const AdminDeletions = lazy(() => import('./admin/AdminDeletions.jsx'));
 const AdminSettings = lazy(() => import('./admin/AdminSettings.jsx'));
 const AdminSecurity = lazy(() => import('./admin/AdminSecurity.jsx'));
 const AdminBugs = lazy(() => import('./admin/AdminBugs.jsx'));
+const AdminSupport = lazy(() => import('./admin/AdminSupport.jsx'));
+const SupportPage = lazy(() => import('./app/SupportPage.jsx'));
 const AdminUsers = lazy(() => import('./admin/AdminUsers.jsx'));
 const AdminActivity = lazy(() => import('./admin/AdminActivity.jsx'));
 const AdminMessages = lazy(() => import('./admin/AdminMessages.jsx'));
+const AdminInvoices = lazy(() => import('./admin/AdminDocuments.jsx').then((m) => ({ default: m.AdminInvoices })));
+const AdminQuotations = lazy(() => import('./admin/AdminDocuments.jsx').then((m) => ({ default: m.AdminQuotations })));
 
 /* One AdminAuthProvider instance shared by the login screen and the shell —
    two separate providers would each hold their own state, so signing in on
@@ -313,6 +317,7 @@ const App = () => (
       <Route path="leakage" element={<LeakagePage />} />
       <Route path="forecast" element={<ForecastPage />} />
       <Route path="notifications" element={<NotificationsPage />} />
+      <Route path="support" element={<SupportPage />} />
       <Route path="customers" element={<CustomersPage />} />
       <Route path="suppliers" element={<SuppliersPage />} />
       <Route path="inventory" element={<InventoryPage />} />
@@ -479,9 +484,12 @@ const App = () => (
         <Route path="addons" element={<AdminAddons />} />
         <Route path="deletions" element={<AdminDeletions />} />
         <Route path="bugs" element={<AdminBugs />} />
+        <Route path="support" element={<AdminSupport />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="activity" element={<AdminActivity />} />
         <Route path="messages" element={<AdminMessages />} />
+        <Route path="invoices" element={<AdminInvoices />} />
+        <Route path="quotations" element={<AdminQuotations />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="security" element={<AdminSecurity />} />
       </Route>

@@ -57,15 +57,27 @@ const PlanCard = ({ plan, onSave }) => {
   const toast = useToast();
   const [monthly, setMonthly] = useState(plan.price_monthly);
   const [yearly, setYearly] = useState(plan.price_yearly);
+  const lim = plan.limits || {};
+  const [users, setUsers] = useState(lim.users ?? '');
+  const [outlets, setOutlets] = useState(lim.outlets ?? '');
+  const [ai, setAi] = useState(lim.ai_queries ?? '');
+  const [list, setList] = useState((plan.features || []).join('\n'));
   const [saving, setSaving] = useState(false);
 
-  const dirty = Number(monthly) !== plan.price_monthly || Number(yearly) !== plan.price_yearly;
+  const same = (a, b) => String(a ?? '') === String(b ?? '');
+  const limitsChanged = !same(users, lim.users) || !same(outlets, lim.outlets) || !same(ai, lim.ai_queries);
+  const listChanged = list.trim() !== (plan.features || []).join('\n');
+  const dirty = Number(monthly) !== plan.price_monthly || Number(yearly) !== plan.price_yearly || limitsChanged || listChanged;
 
   const save = async () => {
     setSaving(true);
     try {
-      await onSave(plan.plan_code, { price_monthly: Number(monthly), price_yearly: Number(yearly) });
-      toast.success(`${plan.name} price saved`);
+      await onSave(plan.plan_code, {
+        price_monthly: Number(monthly), price_yearly: Number(yearly),
+        ...(limitsChanged ? { limits: { users, outlets, ai_queries: ai } } : {}),
+        ...(listChanged ? { features: list.split('\n').map((l) => l.trim()).filter(Boolean) } : {})
+      });
+      toast.success(`${plan.name} saved`);
     } finally {
       setSaving(false);
     }
@@ -105,9 +117,18 @@ const PlanCard = ({ plan, onSave }) => {
         </Field>
       </div>
 
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        <Field id={`${plan.plan_code}-u`} label="Users" hint="Blank = unlimited"><Input id={`${plan.plan_code}-u`} type="number" min="0" value={users} onChange={(e) => setUsers(e.target.value)} /></Field>
+        <Field id={`${plan.plan_code}-o`} label="Outlets" hint="Blank = unlimited"><Input id={`${plan.plan_code}-o`} type="number" min="0" value={outlets} onChange={(e) => setOutlets(e.target.value)} /></Field>
+        <Field id={`${plan.plan_code}-a`} label="AI questions / month" hint="Blank = unlimited"><Input id={`${plan.plan_code}-a`} type="number" min="0" value={ai} onChange={(e) => setAi(e.target.value)} /></Field>
+      </div>
+      <Field id={`${plan.plan_code}-f`} label="What the pricing page lists" hint="One line each, up to 12">
+        <textarea id={`${plan.plan_code}-f`} rows={6} className="w-full rounded-lg border border-line-strong bg-surface p-2 text-sm" value={list} onChange={(e) => setList(e.target.value)} />
+      </Field>
+
       <div className="mt-4 flex items-center gap-3">
         <Button size="sm" disabled={!dirty || saving} onClick={save}>
-          {saving ? 'Saving…' : 'Save price'}
+          {saving ? 'Saving…' : 'Save changes'}
         </Button>
       </div>
       <PriceHistory planCode={plan.plan_code} refreshKey={`${plan.price_monthly_paise}:${plan.price_yearly_paise}`} />

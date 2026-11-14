@@ -86,7 +86,7 @@
         "expo-image-picker",
         {
           "photosPermission": "FlowXP uses your photos only to choose your business logo.",
-          "cameraPermission": false,
+          "cameraPermission": "FlowXP uses the camera to read a vehicle number plate. The photo is deleted straight after.",
           "microphonePermission": false
         }
       ],

@@ -30,6 +30,109 @@ const SUBSCRIPTION_STATUSES = ['TRIAL', 'ACTIVE', 'EXPIRED', 'CANCELLED', 'SUSPE
  * plan — see modules/planFeatures.js — unlike the payment-link form's own
  * plan_code field below, which is only ever a display label.
  */
+/* WhatsApp credit: the client pays FlowXP, the Super Admin loads it here; each message then takes its price from it. */
+const WalletPanel = ({ businessId }) => {
+  const toast = useToast();
+  const [w, setW] = useState(null);
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = () => adminApi(`/businesses/${businessId}/wallet`).then(setW).catch((e) => setError(e.message));
+  useEffect(() => { load(); }, [businessId]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const rs = (p) => `₹${(p / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const msgs = (paise) => w ? { normal: Math.floor(paise / Math.max(1, w.prices_paise.UTILITY)), marketing: Math.floor(paise / Math.max(1, w.prices_paise.MARKETING)) } : { normal: 0, marketing: 0 };
+  const n = (v) => v.toLocaleString('en-IN');
+  const add = async () => {
+    setError(''); setBusy(true);
+    try {
+      const r = await adminApi(`/businesses/${businessId}/wallet`, { method: 'POST', body: { amount: Number(amount), note } });
+      const m = msgs(r.balance_paise);
+      setAmount(''); setNote(''); toast.success(`Credit updated: ${n(m.normal)} normal or ${n(m.marketing)} marketing messages now`); await load();
+    }
+    catch (e) { setError(e.message); } finally { setBusy(false); }
+  };
+  if (!w) return <Card className="p-5"><Alert>{error}</Alert></Card>;
+  return (
+    <Card className="p-5">
+      <h2 className="font-semibold text-ink-900">WhatsApp credit</h2>
+      {!w.required && <p className="mt-1 text-xs text-ink-500">Credit is switched off in Settings, Messaging, so sending is not limited yet. You can still load credit in advance.</p>}
+      <p className="mt-2 text-2xl font-semibold text-ink-900">{rs(w.balance_paise)}</p>
+      <p className="text-xs text-ink-500">That is about {n(msgs(w.balance_paise).normal)} normal messages (bills, updates) or {n(msgs(w.balance_paise).marketing)} marketing messages (offers, loyalty reminders). Sign-in codes are free.</p>
+      <Alert>{error}</Alert>
+      <div className="mt-3 grid gap-3 sm:grid-cols-[8rem_1fr_auto]">
+        <Field id="w-amt" label="Amount paid (₹)" hint="Negative takes some back"><Input id="w-amt" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="500" /></Field>
+        <Field id="w-note" label="Note"><Input id="w-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="UPI ref, invoice no." maxLength={200} /></Field>
+        <div className="self-end"><Button onClick={add} disabled={busy || !Number(amount)}>Load credit</Button></div>
+      </div>
+      {Number(amount) > 0 && (
+        <div className="mt-3 rounded-lg bg-brand-50 p-3 text-sm text-ink-700" role="status">
+          <p className="font-semibold text-ink-900">{rs(Math.round(Number(amount) * 100))} loaded would give them</p>
+          <ul className="mt-1 space-y-0.5">
+            <li><b>{n(msgs(Math.round(Number(amount) * 100)).normal)}</b> normal messages <span className="text-ink-500">(bills, booking and payment updates) at {rs(w.prices_paise.UTILITY)} each</span></li>
+            <li><b>{n(msgs(Math.round(Number(amount) * 100)).marketing)}</b> marketing messages <span className="text-ink-500">(offers, loyalty reminders) at {rs(w.prices_paise.MARKETING)} each</span></li>
+          </ul>
+          <p className="mt-1 text-xs text-ink-500">Together with the {rs(w.balance_paise)} already there: {n(msgs(w.balance_paise + Math.round(Number(amount) * 100)).normal)} normal or {n(msgs(w.balance_paise + Math.round(Number(amount) * 100)).marketing)} marketing. Sign-in codes are free.</p>
+        </div>
+      )}
+      {w.entries.length > 0 && (
+        <ul className="mt-3 space-y-1">{w.entries.slice(0, 15).map((e) => <li key={e.entry_id} className="flex justify-between text-xs text-ink-600"><span>{new Date(e.created_at).toLocaleString('en-IN')} · {e.kind === 'MESSAGE' ? e.note || 'Message' : e.note || (e.kind === 'TOPUP' ? 'Credit added' : 'Adjustment')}</span><span>{e.amount_paise > 0 ? '+' : ''}{rs(e.amount_paise)} → {rs(e.balance_after_paise)}</span></li>)}</ul>
+      )}
+    </Card>
+  );
+};
+
+/* The owner's own notes on a client: tags like "vip" or "renewal due", and the next date to get in touch. */
+const ClientNotes = ({ business, businessId }) => {
+  const toast = useToast();
+  const [tags, setTags] = useState((business.tags || []).join(', '));
+  const [on, setOn] = useState(business.follow_up_on || '');
+  const [note, setNote] = useState(business.follow_up_note || '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const save = async () => {
+    setBusy(true); setError('');
+    try { await adminApi(`/businesses/${businessId}/crm`, { method: 'PATCH', body: { tags: tags.split(',').map((t) => t.trim()).filter(Boolean), follow_up_on: on || null, follow_up_note: note } }); toast.success('Saved'); } catch (e) { setError(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <Card className="p-5">
+      <h2 className="font-semibold text-ink-900">Tags and follow-up</h2>
+      <Alert>{error}</Alert>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <Field id="c-tags" label="Tags" hint="Separate with commas, e.g. vip, renewal due"><Input id="c-tags" value={tags} onChange={(e) => setTags(e.target.value)} /></Field>
+        <Field id="c-on" label="Follow up on"><Input id="c-on" type="date" value={on} onChange={(e) => setOn(e.target.value)} /></Field>
+        <Field id="c-note" label="What to follow up"><Input id="c-note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="Call about renewal" /></Field>
+      </div>
+      <div className="mt-3"><Button onClick={save} disabled={busy}>Save</Button></div>
+    </Card>
+  );
+};
+
+/* This client's invoices and quotations from FlowXP, each opening the document. */
+const ClientDocuments = ({ businessId }) => {
+  const [rows, setRows] = useState(null);
+  useEffect(() => { adminApi(`/documents?business_id=${businessId}`).then(setRows).catch(() => setRows([])); }, [businessId]);
+  const rs = (p) => `₹${(Number(p || 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="font-semibold text-ink-900">Invoices and quotations</h2>
+        <Link to={`/superadmin/invoices?client=${businessId}`} className="text-sm font-semibold text-brand-600 hover:underline">New invoice</Link>
+      </div>
+      {rows && rows.length === 0 && <p className="mt-2 text-sm text-ink-500">Nothing issued to this client yet.</p>}
+      <ul className="mt-2 divide-y divide-line text-sm">
+        {(rows || []).map((d) => (
+          <li key={d.doc_id} className="flex items-center justify-between gap-3 py-2">
+            <Link to={`/superadmin/${d.kind === 'QUOTE' ? 'quotations' : 'invoices'}?open=${d.doc_id}`} className="font-medium text-brand-600 hover:underline">{d.doc_number}</Link>
+            <span className="text-ink-500">{rs(d.total_paise)}</span>
+            <Badge tone={d.status === 'PAID' || d.status === 'ACCEPTED' || d.status === 'CONVERTED' ? 'success' : d.status === 'CANCELLED' || d.status === 'DECLINED' ? 'danger' : 'neutral'}>{d.status[0] + d.status.slice(1).toLowerCase()}</Badge>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+};
+
 const PlanAndType = ({ business, businessId, onSaved }) => {
   const toast = useToast();
   const [plans, setPlans] = useState(null);
@@ -684,6 +787,9 @@ const AdminBusinessDetail = () => {
         </Card>
 
         <PlanAndType business={business} businessId={id} onSaved={load} />
+        <ClientNotes business={business} businessId={id} />
+        <WalletPanel businessId={id} />
+        <ClientDocuments businessId={id} />
         <FeatureOverrides businessId={id} />
         <PaymentLinks businessId={id} />
         <BusinessAddons businessId={id} businessType={business.business_type} />

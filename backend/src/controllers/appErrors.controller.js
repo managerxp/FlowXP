@@ -100,6 +100,7 @@ export const setReportStatus = async (req, res) => {
 export const summary = async (req, res) => {
   const r = (await pool.query(
     `SELECT (SELECT COUNT(*) FROM app_errors WHERE kind = 'REPORT' AND status = 'NEW')::int AS new_reports,
+            (SELECT COUNT(*) FROM support_tickets WHERE status = 'OPEN')::int AS open_tickets,
             (SELECT COUNT(*) FROM (SELECT (ARRAY_AGG(status ORDER BY created_at DESC))[1] AS st FROM app_errors WHERE kind = 'CRASH' GROUP BY message) g WHERE g.st = 'NEW')::int AS new_crashes`)).rows[0];
   res.json({ success: true, data: r });
 };

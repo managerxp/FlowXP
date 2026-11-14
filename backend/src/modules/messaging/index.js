@@ -16,12 +16,12 @@ import { deliver } from './provider.js';
 import { getPlatformSetting } from '../platformSettings.js';
 import { TEMPLATES, render } from './templates.js';
 
-export const DEFAULT_SETTINGS = { channel: 'OFF', bill_auto: true, reservation_updates: true, waitlist_updates: true, loyalty_nudge: true, job_updates: true, due_reminders: false };
-const BOOLEANS = ['bill_auto', 'reservation_updates', 'waitlist_updates', 'loyalty_nudge', 'job_updates', 'due_reminders'];
+export const DEFAULT_SETTINGS = { channel: 'OFF', bill_auto: true, reservation_updates: true, waitlist_updates: true, loyalty_nudge: true, loyalty_points: true, marketing: true, job_updates: true, due_reminders: false };
+const BOOLEANS = ['bill_auto', 'reservation_updates', 'waitlist_updates', 'loyalty_nudge', 'loyalty_points', 'marketing', 'job_updates', 'due_reminders'];
+import { FREE_KINDS, gate, chargeMessage } from './wallet.js';
 export const CAMPAIGN_LIMIT = 1000;
 export const TRIAL_MESSAGE_LIMIT = 5;   // WhatsApp messages a business on a free trial may send in all; the Super Admin's Settings, Messaging can change it
 // a sign-in code is never counted or held back: the person cannot get in without it
-const FREE_KINDS = ['GYM_OTP'];
 
 /** { used, limit } for a business on a free trial, or null for one that is not (no limit). */
 export const trialUsage = async (db, businessId) => {
@@ -67,9 +67,12 @@ export const send = async (db, { businessId, branchId = null, customerId = null,
   if (useChannel === 'WHATSAPP' && !FREE_KINDS.includes(kind)) {
     const trial = await trialUsage(db, businessId);
     if (trial && trial.used >= trial.limit) return { skipped: 'TRIAL_LIMIT' };
+    const w = await gate(db, businessId, kind);
+    if (w && w.balance < w.cost) return { skipped: 'NO_CREDIT' };
   }
 
   const message = render(kind, values);
+  if (message.promo && settings.marketing === false) return { skipped: 'MARKETING_OFF' };   // the owner switched offers and reminders off
   if (message.promo && customerId) {
     const c = (await db.query(`SELECT marketing_opt_out FROM customers WHERE customer_id = $1 AND business_id = $2`, [customerId, businessId])).rows[0];
     if (c?.marketing_opt_out) return { skipped: 'OPTED_OUT' };
@@ -92,10 +95,12 @@ const attempt = async (db, row, template) => {
   } catch (error) {
     outcome = { status: 'FAILED', providerId: null, error: String(error.message).slice(0, 300) };
   }
-  return (await db.query(
+  const saved = (await db.query(
     `UPDATE messages SET status = $1::varchar, provider_id = $2, error = $3, sent_at = CASE WHEN $1::varchar = 'SENT' THEN CURRENT_TIMESTAMP ELSE NULL END WHERE message_id = $4 RETURNING *`,
     [outcome.status, outcome.providerId, outcome.error, row.message_id]
   )).rows[0];
+  await chargeMessage(db, saved);
+  return saved;
 };
 
 /** Try a FAILED or SKIPPED message again (after fixing the provider setup or the number). */
@@ -303,7 +308,15 @@ export const afterBill = (businessId, invoiceId) => quiet('bill message', async 
   const customer = (await pool.query(`SELECT name, phone FROM customers WHERE customer_id = $1`, [inv.customer_id])).rows[0];
   if (!normalisePhone(customer?.phone)) return;
 
-  if (settings.bill_auto) await sendBill(pool, { businessId, invoiceId });
+  if (settings.bill_auto) {
+    await sendBill(pool, { businessId, invoiceId });
+    // points earned on this bill and the balance now (the ledger is the truth; the bill already counted them)
+    const pts = (await pool.query(
+      `SELECT i.points_earned AS earned, b.name AS business,
+              (SELECT COALESCE(SUM(points), 0)::int FROM points_ledger WHERE business_id = $2 AND customer_id = i.customer_id AND voided_at IS NULL) AS balance
+       FROM invoices i JOIN businesses b ON b.business_id = i.business_id WHERE i.invoice_id = $1`, [invoiceId, businessId])).rows[0];
+    if (pts?.earned > 0 && settings.loyalty_points) await send(pool, { businessId, customerId: inv.customer_id, phone: customer.phone, kind: 'LOYALTY_POINTS', values: { name: customer.name || 'there', business: pts.business, earned: pts.earned, balance: pts.balance } });
+  }
 
   if (settings.loyalty_nudge) await oneAtATime(inv.customer_id, async () => {
     const program = await getProgram(pool, businessId);

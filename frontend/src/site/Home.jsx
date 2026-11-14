@@ -359,11 +359,11 @@ const OUTLET_FACTS = [
 ];
 
 const FlowBookBand = () => (
-  <Section className="border-y border-line bg-surface" title="FlowBook: your books, written by your till."
-           lead="FlowBook is our accounting product, and you can try it free for 7 days. Every bill, return and payment you make in FlowXP becomes a proper ledger entry, so your profit and loss, balance sheet and GST registers are ready without typing anything twice.">
+  <Section className="border-y border-line bg-surface" title="FlowBook: your whole business in one place."
+           lead="FlowBook is our business management app, and you can try it free for 7 days. Every bill, return and payment you make in FlowXP reaches it by itself, so your customers, stock, money in and out, and GST are in one place without typing anything twice.">
     <CellGrid items={[
-      { title: 'Books without double entry', body: 'Sales, returns and payments from FlowXP post themselves, once.' },
-      { title: 'Statements you can trust', body: 'Trial balance, profit and loss and balance sheet that tie back to every bill.' },
+      { title: 'Everything in one place', body: 'Sales, returns and payments from FlowXP arrive by themselves, once.' },
+      { title: 'Reports you can trust', body: 'Profit and loss, who owes you and what your stock is worth, each tied back to the bill behind it.' },
       { title: 'Bank and GST ready', body: 'Import bank statements, match them to bills, and prepare GST returns for your accountant.' },
       { title: 'Easy for you, complete for your accountant', body: 'A simple view with help on every page and an assistant that explains your reports in plain words. Switch to the full view for everything else.' }
     ]} />

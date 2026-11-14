@@ -15,10 +15,38 @@ const TOGGLES = [
   ['bill_auto', 'Send the bill to customers with a mobile number', 'After every sale to a customer, with a link to view the bill.'],
   ['reservation_updates', 'Booking confirmations and cancellations', 'When a reservation with a mobile number is made or cancelled.'],
   ['waitlist_updates', 'Waitlist updates', 'When someone joins the waitlist and when their table is ready.'],
+  ['loyalty_points', 'Points earned message', 'After a sale that earns points: the points earned and the balance.'],
+  ['marketing', 'Offers and loyalty reminders', 'Switch off to send no marketing messages at all: no campaigns and no loyalty reminders. Marketing messages cost more credit.'],
   ['loyalty_nudge', 'Loyalty reminder', 'When a customer\'s next visit earns their free item (at most once a week).'],
   ['due_reminders', 'Remind customers who owe money', 'Once a week, to customers whose bill has been unpaid for 7 days or more. Uses the Remind message.'],
   ['job_updates', 'Workshop job card updates', 'Vehicle received, vehicle ready, and a reminder three days before the next service (auto parts shops).']
 ];
+
+const rupees = (paise) => `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const canSend = (balance, price) => (price > 0 ? Math.max(0, Math.floor(balance / price)).toLocaleString('en-IN') : '-');
+
+/* The WhatsApp credit: FlowXP loads it after the business pays; each message takes its price from it. */
+const WalletCard = ({ wallet }) => {
+  const { balance_paise: bal, prices_paise: price } = wallet;
+  return (
+    <Card className="p-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div><p className="text-xs text-ink-500">WhatsApp credit</p><p className="text-2xl font-semibold text-ink-900">{rupees(bal)}</p></div>
+        <p className="text-xs text-ink-500">To add credit (from ₹1,000), pay FlowXP and we will load it.</p>
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg bg-ink-50 p-3"><p className="text-lg font-semibold text-ink-900">{canSend(bal, price.UTILITY)}</p><p className="text-xs text-ink-500">bills, points and updates ({rupees(price.UTILITY)} each)</p></div>
+        <div className="rounded-lg bg-ink-50 p-3"><p className="text-lg font-semibold text-ink-900">{canSend(bal, price.MARKETING)}</p><p className="text-xs text-ink-500">offers and loyalty reminders ({rupees(price.MARKETING)} each)</p></div>
+      </div>
+      {bal < price.UTILITY * 20 && <p className="mt-3 text-sm text-amber-700" role="status">{bal < price.UTILITY ? 'Your credit has run out, so WhatsApp messages are not being sent.' : 'Your credit is running low.'}</p>}
+      {wallet.entries?.length > 0 && (
+        <details className="mt-3 text-sm"><summary className="cursor-pointer font-medium text-ink-700">Recent credit activity</summary>
+          <ul className="mt-2 space-y-1">{wallet.entries.slice(0, 10).map((e, i) => <li key={i} className="flex justify-between text-xs text-ink-600"><span>{new Date(e.created_at).toLocaleDateString('en-IN')} · {e.kind === 'MESSAGE' ? 'Message' : e.kind === 'TOPUP' ? 'Credit added' : 'Adjustment'}</span><span>{e.amount_paise > 0 ? '+' : ''}{rupees(e.amount_paise)}</span></li>)}</ul>
+        </details>
+      )}
+    </Card>
+  );
+};
 
 const Settings = () => {
   const toast = useToast();
@@ -26,7 +54,8 @@ const Settings = () => {
   const [data, setData] = useState(null);
   const [templates, setTemplates] = useState(null);
   const [error, setError] = useState('');
-  useEffect(() => { api('/messaging/settings').then(setData).catch((e) => setError(e.message)); }, []);
+  const [wallet, setWallet] = useState(null);
+  useEffect(() => { api('/messaging/settings').then(setData).catch((e) => setError(e.message)); api('/messaging/wallet').then(setWallet).catch(() => {}); }, []);
 
   const save = async (patch) => {
     setError('');
@@ -49,6 +78,7 @@ const Settings = () => {
           Free trial: <strong>{data.trial.used} of {data.trial.limit}</strong> WhatsApp messages used.{data.trial.used >= data.trial.limit ? ' Upgrade to keep sending.' : ''}
         </p>
       )}
+      {wallet?.required && <WalletCard wallet={wallet} />}
       <Card className="p-5">
         <Field id="ch" label="Send messages by" hint={provider.connected ? `Connected: ${humanize(provider.name)}` : undefined}>
           <Select id="ch" value={settings.channel} onChange={(e) => save({ channel: e.target.value })}>

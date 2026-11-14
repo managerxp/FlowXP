@@ -483,9 +483,11 @@ test('the reminder settings are checked, and only a manager can change them', { 
   const G = await makeGym(pool, 'cfg');
   const owner = G.tenantFor('OWNER');
   const list = ok(await G.call(api.automations, {}, owner));
-  assert.ok(list.find((a) => a.key === 'SUBSCRIBED').is_enabled, 'the subscription confirmation is on by default');
+  assert.equal(list.find((a) => a.key === 'SUBSCRIBED').is_enabled, false);
+  assert.ok(list.find((a) => a.key === 'PAYMENT_DUE').is_enabled, 'the payment reminder is on by default');
   assert.equal(list.find((a) => a.key === 'WELCOME').is_enabled, false);
-  assert.equal(list.find((a) => a.key === 'EXPIRY_REMINDER').is_enabled, false);
+  assert.ok(list.find((a) => a.key === 'EXPIRY_REMINDER').is_enabled, 'the expiry reminder is on by default, 3 days before');
+  assert.equal(list.find((a) => a.key === 'EXPIRY_REMINDER').config.days_before, 3);
   fails(await G.call(api.putAutomation, { params: { key: 'EXPIRY_REMINDER' }, body: { is_enabled: true, config: { days_before: 0 } } }, owner), 400);
   fails(await G.call(api.putAutomation, { params: { key: 'NOPE' }, body: {} }, owner), 404);
   const saved = ok(await G.call(api.putAutomation, { params: { key: 'EXPIRY_REMINDER' }, body: { is_enabled: true, config: { days_before: 10, hacked: 1 } } }, owner));
@@ -552,6 +554,7 @@ test('selling a membership tells the member the plan and the dates it starts and
   const G = await makeGym(pool, 'subscribed');
   await channelOn(G);
   const plan = await addPlan(pool, G, { price: 1000, tax: 18 });
+  await G.call(api.putAutomation, { params: { key: 'SUBSCRIBED' }, body: { is_enabled: true } }, G.tenantFor('OWNER'));
   const m = await reg(G, { name: 'Subscriber', phone: '9600004001' });
   const before = messagesTo('GYM_SUBSCRIBED').length;
   const s = await sell(G, m.member_id, plan);

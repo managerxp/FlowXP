@@ -7,6 +7,7 @@ import { t } from '../lib/i18n.ts';
 import { Card, Field, Input, Msg, Panel, SetupShell, useAct, useList } from '../lib/formKit.tsx';
 import { canJobCards, customerProblem, dueLine, emptyJob, jobSub, newJobBody, newJobProblem, promiseDays, suggestMakes, suggestModels, vehicleOf, type JobRow, type NewJobForm, type VehicleTree } from '../lib/jobCards.ts';
 import { garageTypes, isGarage, mergeNames, suggestNames, type MasterBrands, type MasterModels } from '../lib/garage.ts';
+import PlateScan from '../lib/PlateScan.tsx';
 import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, s } from '../lib/ui.tsx';
 
 type Cust = { customer_id: number; name: string; phone: string | null };
@@ -82,6 +83,7 @@ export default function JobCardsScreen() {
                 <Card>
                   <CustomerFind form={form} set={set} />
                   <Input label="Registration number" upper value={form.vehicle_reg} onChange={(v) => set({ vehicle_reg: v })} max={20} placeholder="KA01AB1234" />
+                  <PlateScan onPlate={(p) => set({ vehicle_reg: p })} />
                   <Field label="Vehicle"><Chips items={kinds} value={form.vehicle_type} onChange={(v) => set({ vehicle_type: v, make: '', model: '' })} /></Field>
                   <Input label="Company" hint="Pick from the list or type it. A new one is remembered." value={form.make} onChange={(v) => set({ make: v, model: '' })} max={60} placeholder="Hero, Honda, Maruti Suzuki" />
                   {(garage ? suggestNames(mergeNames(tree.filter((m) => m.vehicle_type === form.vehicle_type).map((m) => m.name), (masterBrands.data?.brands ?? []).map((b) => b.brand)), form.make, 10) : suggestMakes(tree, form.vehicle_type, form.make)).map((n) => <Line key={n} left={n} onPress={() => set({ make: n, model: '' })} />)}

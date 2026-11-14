@@ -23,6 +23,8 @@ const Settings = () => {
   const [templates, setTemplates] = useState<Template[] | null>(null);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [wallet, setWallet] = useState<{ required: boolean; balance_paise: number; prices_paise: { UTILITY: number; MARKETING: number } } | null>(null);
+  useEffect(() => { api.get<typeof wallet>('/messaging/wallet').then(setWallet).catch(() => {}); }, []);
   const load = useCallback(() => { api.get<SettingsData>('/messaging/settings').then((d) => { setData(d); setError(''); }).catch((e: Error) => setError(e.message)); }, []);
   useEffect(load, [load]);
   const save = async (patch: Partial<MessagingSettings>) => {
@@ -35,6 +37,15 @@ const Settings = () => {
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 32 }}>
       {!provider.connected ? <Soft>{t('No messaging service is connected on the server yet, so messages are only recorded as skipped. Ask whoever runs the server to set it up.')}</Soft> : <Soft>{t('Connected: {name}', { name: provider.name ?? '' })}</Soft>}
+      {wallet?.required ? (
+        <View style={{ gap: 4 }}>
+          <Text style={{ color: color.soft, fontSize: 13 }}>{t('WhatsApp credit')}</Text>
+          <Text style={{ color: color.ink, fontSize: 22, fontWeight: '700' }}>{`₹${(wallet.balance_paise / 100).toFixed(2)}`}</Text>
+          <Soft>{t('{n} bills, points and updates', { n: String(Math.floor(wallet.balance_paise / Math.max(1, wallet.prices_paise.UTILITY))) })}</Soft>
+          <Soft>{t('{n} offers and loyalty reminders', { n: String(Math.floor(wallet.balance_paise / Math.max(1, wallet.prices_paise.MARKETING))) })}</Soft>
+          <Soft>{t('To add credit (from ₹1,000), pay FlowXP and we will load it.')}</Soft>
+        </View>
+      ) : null}
       <View style={{ gap: 4 }}><Text style={{ color: color.soft, fontSize: 13 }}>{t('Send messages by')}</Text><Chips items={CHANNELS} value={settings.channel} onChange={(c: Channel) => { void save({ channel: c }); }} /></View>
       {TOGGLES.filter((x) => x.key !== 'job_updates' || me?.business_type === 'AUTO_PARTS' || me?.business_type === 'MECHANIC').map((x) => (
         <View key={x.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, opacity: off ? 0.5 : 1 }}>

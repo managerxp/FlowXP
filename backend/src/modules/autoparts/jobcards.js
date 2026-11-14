@@ -435,7 +435,7 @@ export const shareJob = async (db, tenant, id, event) => {
   } else if (kind === 'estimate') {
     if (!job.lines.length) throw new PartsError(400, 'Add the parts or labour first, so there is an estimate to send');
     const lines = job.lines.map((l) => `${l.description}${l.kind === 'PART' ? ` x${Number(l.quantity)}` : ''}: ${rupees(l.amount_paise)}`).join('; ');
-    text = `Hi ${name}, the estimate for your ${vehicle} at ${shop} (${job.job_no}): ${lines}. GST ${rupees(job.estimate.tax_paise)}. Total ${rupees(job.estimate.total_paise)}. Please reply to approve the work.`;
+    text = `Hi ${name}, the estimate for your ${vehicle} at ${shop} (${job.job_no}): ${lines}. GST ${rupees(job.estimate.tax_paise)}. Total ${rupees(job.estimate.total_paise)}. Please tell us at the workshop to start the work.`;
   } else if (kind === 'ready') {
     text = `Hi ${name}, your ${vehicle} is ready at ${shop} (${job.job_no}).${job.estimate.total_paise ? ` The bill will be about ${rupees(job.estimate.total_paise)}.` : ''} You can collect it now.`;
   } else {

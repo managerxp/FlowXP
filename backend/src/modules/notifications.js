@@ -22,6 +22,7 @@ export const CATEGORIES = {
   weekly:       { label: 'Weekly summary',     permission: 'reports',   push: false, description: 'How last week went, every Monday morning.' },
   unusual:      { label: 'Unusual numbers',    permission: 'reports',   push: true,  description: 'A sudden drop or spike in sales, margin, discounts or expenses, or items sold below cost.' },
   integrations: { label: 'Integrations',       permission: 'settings',  push: true,  description: 'A delivery platform order that could not be received.' },
+  credit:       { label: 'WhatsApp credit',    permission: 'settings',  push: true,  description: 'Your WhatsApp credit is running low or has run out.' },
   account:      { label: 'Account',            permission: 'settings',  push: false, description: 'Your trial and subscription.' },
   // what happens on the floor, minute to minute: phone only, never kept in the inbox
   orders:       { label: 'New orders',         permission: ['billing', 'kitchen'], push: true, description: 'A guest or a delivery app has sent an order that needs accepting or cooking.' },

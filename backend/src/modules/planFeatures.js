@@ -95,6 +95,24 @@ export const PLAN_FEATURES = [
 
 export const PLAN_FEATURE_KEYS = PLAN_FEATURES.map(([key]) => key);
 
+/* Which kind of business a feature belongs to, so the Super Admin can show a restaurant its restaurant tools and a salon its salon tools. */
+export const FEATURE_GROUPS = [
+  ['common', 'Every business'], ['food', 'Restaurants and cafés'], ['salon', 'Salon'], ['gym', 'Gym'], ['gaming', 'Gaming lounge'],
+  ['parts', 'Auto parts and garage'], ['clothing', 'Clothing'], ['wholesale', 'Wholesale and distribution'], ['flowbook', 'FlowBook']
+];
+const FOOD_TOOLS = ['reservations', 'integrations', 'qr_ordering', 'multi_brand', 'delivery_fleet', 'tables', 'kitchen'];
+export const featureGroup = (key) => {
+  if (FOOD_TOOLS.includes(key)) return 'food';
+  if (key.startsWith('salon_')) return 'salon';
+  if (key.startsWith('gym_')) return 'gym';
+  if (key.startsWith('gaming_')) return 'gaming';
+  if (key.startsWith('ap_')) return 'parts';
+  if (key.startsWith('cl_')) return 'clothing';
+  if (key.startsWith('flowbook')) return 'flowbook';
+  if (key.startsWith('wholesale_') && !['wholesale_orders', 'wholesale_fulfilment'].includes(key)) return 'wholesale';
+  return 'common';
+};
+
 /** True unless this plan explicitly switched the feature off. */
 export const hasPlanFeature = (tenant, feature) => tenant?.planFeatures?.[feature] !== false;
 

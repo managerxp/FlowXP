@@ -9,13 +9,15 @@ export const canMessaging = (role: string | undefined): boolean => role === 'OWN
 
 export type Channel = 'OFF' | 'WHATSAPP' | 'SMS';
 export const CHANNELS: { id: Channel; label: string }[] = [{ id: 'OFF', label: 'Off: send nothing' }, { id: 'WHATSAPP', label: 'WhatsApp' }, { id: 'SMS', label: 'SMS' }];
-export type ToggleKey = 'bill_auto' | 'reservation_updates' | 'waitlist_updates' | 'loyalty_nudge' | 'job_updates' | 'due_reminders';
+export type ToggleKey = 'bill_auto' | 'reservation_updates' | 'waitlist_updates' | 'loyalty_nudge' | 'loyalty_points' | 'marketing' | 'job_updates' | 'due_reminders';
 export type MessagingSettings = { channel: Channel } & Record<ToggleKey, boolean>;
 export type SettingsData = { settings: MessagingSettings; provider: { connected: boolean; name: string | null }; segments: Record<string, string> };
 export const TOGGLES: { key: ToggleKey; label: string; hint: string }[] = [
   { key: 'bill_auto', label: 'Send the bill to customers with a mobile number', hint: 'After every sale to a customer, with a link to view the bill.' },
   { key: 'reservation_updates', label: 'Booking confirmations and cancellations', hint: 'When a reservation with a mobile number is made or cancelled.' },
   { key: 'waitlist_updates', label: 'Waitlist updates', hint: 'When someone joins the waitlist and when their table is ready.' },
+  { key: 'loyalty_points', label: 'Points earned message', hint: 'After a sale that earns points: the points earned and the balance.' },
+  { key: 'marketing', label: 'Offers and loyalty reminders', hint: 'Switch off to send no marketing messages at all: no campaigns and no loyalty reminders. Marketing messages cost more credit.' },
   { key: 'loyalty_nudge', label: 'Loyalty reminder', hint: 'When a customer\'s next visit earns their free item (at most once a week).' },
   { key: 'due_reminders', label: 'Remind customers who owe money', hint: 'Once a week, to customers whose bill has been unpaid for 7 days or more. Uses the Remind message.' },
   { key: 'job_updates', label: 'Workshop job card updates', hint: 'Vehicle received, vehicle ready, and a reminder three days before the next service (auto parts shops).' }

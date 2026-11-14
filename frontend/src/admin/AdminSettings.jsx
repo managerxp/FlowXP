@@ -150,6 +150,18 @@ const MessagingSettings = () => {
         <Field id="msg-trial" label="WhatsApp messages in a free trial" hint="The most a business on a free trial can send in all (sign-in codes do not count). 0 stops them entirely.">
           <Input id="msg-trial" inputMode="numeric" value={form.trialMessageLimit ?? '5'} onChange={(e) => set('trialMessageLimit')(e.target.value)} placeholder="5" />
         </Field>
+        <Field id="msg-wallet" label="WhatsApp credit" hint="On: paying businesses spend from a wallet you load, and sending stops at zero. Trials are not charged. Leave Off until you are ready.">
+          <Select id="msg-wallet" value={form.walletRequired ?? 'off'} onChange={(e) => set('walletRequired')(e.target.value)}><option value="off">Off</option><option value="on">On</option></Select>
+        </Field>
+        <Field id="msg-rate-u" label="Price of a normal message (₹)" hint="Bills, points, updates, sign-in codes. Meta charges about ₹0.115; the rest is yours.">
+          <Input id="msg-rate-u" inputMode="decimal" value={form.rateUtility ?? '0.15'} onChange={(e) => set('rateUtility')(e.target.value)} placeholder="0.15" />
+        </Field>
+        <Field id="msg-rate-m" label="Price of a marketing message (₹)" hint="Offers and loyalty reminders. Meta charges about ₹0.86.">
+          <Input id="msg-rate-m" inputMode="decimal" value={form.rateMarketing ?? '0.9'} onChange={(e) => set('rateMarketing')(e.target.value)} placeholder="0.90" />
+        </Field>
+        <Field id="msg-low" label="Warn the owner when credit falls to (₹)" hint="They get a notification on the app (and email, if they asked for it) once when it reaches this, and again when it hits zero. 0 turns the warning off.">
+          <Input id="msg-low" inputMode="decimal" value={form.lowCreditAlert ?? '100'} onChange={(e) => set('lowCreditAlert')(e.target.value)} placeholder="100" />
+        </Field>
       </div>
 
       {provider === 'whatsapp_cloud' && (

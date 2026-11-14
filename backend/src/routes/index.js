@@ -76,6 +76,7 @@ import pharmacyRoutes from './pharmacy.routes.js';
 import retailRoutes from './retail.routes.js';
 import syncRoutes from './sync.routes.js';
 import * as appErrors from '../controllers/appErrors.controller.js';
+import * as supportTickets from '../controllers/support.controller.js';
 import '../modules/trialReminders.js';   // registers the trial-ending emails with the worker
 import '../modules/messaging/dueReminders.js';   // registers the weekly reminders for customers who owe money
 
@@ -110,11 +111,18 @@ const deletionLimiter = limiter(5, 60, 'Too many requests from here. Try again l
 /* The website chat calls the AI provider, which costs money per message: generous for a person, tight for a script. */
 const appErrorLimiter = limiter(30, 15, 'Too many reports from here.');
 const appReportLimiter = limiter(10, 15, 'You have sent a few reports already. Please wait a little before sending another.');
+const supportLimiter = limiter(10, 60, 'You have raised a few tickets already. Please wait a little, or add to one you have open.');
 const assistantLimiter = limiter(30, 15, 'Too many questions in a short time. Try again in a few minutes.');
 
 /* ── Public ─────────────────────────────────────────────────────────────── */
 
 router.post('/app-reports', requireAuth, appReportLimiter, appErrors.create);   // what a signed-in person types under "Report a problem"
+router.post('/support/tickets', requireAuth, withBusiness(), supportLimiter, supportTickets.create);   // the support center: raise a ticket, read answers, write back
+router.get('/support/tickets', requireAuth, withBusiness(), supportTickets.mine);
+router.get('/support/unread', requireAuth, withBusiness(), supportTickets.unreadMine);
+router.get('/support/tickets/:id', requireAuth, withBusiness(), supportTickets.getMine);
+router.post('/support/tickets/:id/reply', requireAuth, withBusiness(), supportLimiter, supportTickets.replyMine);
+router.post('/support/tickets/:id/close', requireAuth, withBusiness(), supportTickets.closeMine);
 router.post('/app-errors', appErrorLimiter, appErrors.report);   // the mobile app's crash reports (no sign-in: a crash can come first)
 router.post('/auth/signup', signupLimiter, emailLimiter, auth.signup);
 router.post('/auth/login', loginLimiter, auth.login);

@@ -14,12 +14,12 @@ import { addDays, bool, inTx, int, localParts, SQL_PHONE_KEY } from './common.js
 import { hasPlanFeature } from '../planFeatures.js';
 
 export const AUTOMATIONS = {
-  SUBSCRIBED: { label: 'Subscription confirmation', description: 'When a membership is sold or renewed, tell the member the plan and the dates it starts and ends.', default_on: true, config: {} },
+  SUBSCRIBED: { label: 'Subscription confirmation', description: 'When a membership is sold or renewed, tell the member the plan and the dates it starts and ends.', default_on: false, config: {} },
   WELCOME: { label: 'Welcome message', description: 'Greet a new member with their member number.', default_on: false, config: {} },
-  EXPIRY_REMINDER: { label: 'Membership ending soon', description: 'Remind a member before their membership ends, unless they have already renewed.', default_on: false, config: { days_before: 7 } },
+  EXPIRY_REMINDER: { label: 'Membership ending soon', description: 'Remind a member before their membership ends, unless they have already renewed.', default_on: true, config: { days_before: 3 } },
   MONTH_START: { label: 'Start-of-month reminder', description: 'On one day each month (the 1st by default), remind every member whose membership ends this month, with the renewal amount. Members who already renewed are left out.', default_on: false, config: { day: 1 } },
   EXPIRED_NOTICE: { label: 'Membership ended', description: 'Tell a member the day after their membership ended, if they have not renewed.', default_on: false, config: {} },
-  PAYMENT_DUE: { label: 'Payment reminder', description: 'Remind a member about a membership that is still not paid for.', default_on: false, config: { days_overdue: 2, repeat_days: 7 } },
+  PAYMENT_DUE: { label: 'Payment reminder', description: 'Remind a member about a membership that is still not paid for.', default_on: true, config: { days_overdue: 2, repeat_days: 7 } },
   INACTIVE: { label: 'We miss you', description: 'Nudge a member with a running membership who has not visited for a while. Sent only to members who agreed to offers.', default_on: false, config: { days: 21 } },
   BIRTHDAY_POINTS: { label: 'Birthday points', description: 'Give reward points on a member\'s birthday (set the amount under Rewards).', default_on: true, config: {}, internal: true }
 };

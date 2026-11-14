@@ -19,6 +19,12 @@ const EVERY_PLAN = [
   { title: 'Security', body: 'Two-step login, sign-in history and new-device alerts.' }
 ];
 
+const EXTRAS = [
+  { title: 'WhatsApp credit, pay per use', body: 'Load credit from ₹1,000. Bills, loyalty points and offers on WhatsApp are taken from it one message at a time. You see your balance and how many messages it covers, and can switch loyalty or offers off at any time.', big: true },
+  { title: 'Add-ons, one feature at a time', body: 'Need one tool from the next plan, say gym classes, staff payroll or advanced reports? Add just that, without changing plan.' },
+  { title: 'Your industry, step by step', body: 'Salons, gyms, gaming lounges, garages, wholesalers and shops each get the tools they use, with the deeper ones on Growth and Enterprise.' }
+];
+
 const Pricing = () => (
   <>
     <PageHero
@@ -29,6 +35,10 @@ const Pricing = () => (
 
     <Section>
       <Reveal><PricingTable /></Reveal>
+    </Section>
+
+    <Section title="Pay only for what you use.">
+      <CellGrid items={EXTRAS} />
     </Section>
 
     <Section className="border-y border-line bg-surface"  title="The basics are never an extra.">
