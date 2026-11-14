@@ -116,3 +116,41 @@ test('a document email carries the lines, the total and how to pay; client tags 
   assert.equal((await call({})).code, 400);
   assert.equal((await call({ follow_up_on: null })).body.data.follow_up_on, null, 'a date can be cleared');
 });
+
+test('an invoice goes straight to the client on WhatsApp, with the payment link', { skip }, async () => {
+  const d = await import('../src/controllers/adminDocuments.controller.js');
+  const { setProvider } = await import('../src/modules/messaging/provider.js');
+  const uid = (await pool.query(`SELECT user_id FROM users WHERE email = 'a@ad.test'`)).rows[0].user_id;
+  const call = async (fn, { body, params = {} } = {}) => { let out; const res = { status(c) { this.code = c; return this; }, json(b) { out = { code: this.code ?? 200, body: b }; return this; } }; await fn({ body, params, query: {}, auth: { userId: uid }, ip: '127.0.0.1', headers: {} }, res); return out; };
+  const inv = (await call(d.create, { body: { kind: 'INVOICE', client: { name: 'Wa Client', phone: '9876543210', state: 'Karnataka' }, items: [{ description: 'Setup', qty: 1, rate_rupees: 1000, gst_rate: 0 }] } })).body.data;
+  await pool.query(`UPDATE admin_documents SET payment_link_url = 'https://pay.test/abc' WHERE doc_id = $1`, [inv.doc_id]);
+  const sent = [];
+  setProvider(async (m) => { sent.push(m); return { status: 'SENT', providerId: 'w1' }; });
+  try {
+    assert.equal((await call(d.whatsappDocument, { params: { id: inv.doc_id }, body: {} })).code, 200);
+    assert.equal(sent[0].to, '9876543210');
+    assert.equal(sent[0].template.name, 'flowxp_document');
+    assert.match(sent[0].text, /https:\/\/pay\.test\/abc/);
+    assert.equal((await call(d.whatsappDocument, { params: { id: inv.doc_id }, body: { to: '123' } })).code, 400, 'a short number');
+  } finally { setProvider(null); }
+  assert.equal((await pool.query(`SELECT status FROM admin_documents WHERE doc_id = $1`, [inv.doc_id])).rows[0].status, 'SENT');
+});
+
+test('paying an invoice with a plan, in cash, switches the subscription on and sets the end date; a renewal adds on', { skip }, async () => {
+  const d = await import('../src/controllers/adminDocuments.controller.js');
+  const uid = (await pool.query(`SELECT user_id FROM users WHERE email = 'a@ad.test'`)).rows[0].user_id;
+  const biz = (await pool.query(`INSERT INTO businesses (name, owner_user_id, business_type, state) VALUES ('Plan Cafe',$1,'CAFE','Karnataka') RETURNING business_id`, [uid])).rows[0].business_id;
+  const plan = (await pool.query(`SELECT plan_code FROM plans ORDER BY sort_order LIMIT 1`)).rows[0].plan_code;
+  const call = async (fn, { body, params = {} } = {}) => { let out; const res = { status(c) { this.code = c; return this; }, json(b) { out = { code: this.code ?? 200, body: b }; return this; } }; await fn({ body, params, query: {}, auth: { userId: uid }, ip: '127.0.0.1', headers: {} }, res); return out; };
+  const mk = async (extra = {}) => (await call(d.create, { body: { kind: 'INVOICE', business_id: biz, plan_code: plan, plan_cycle: 'YEARLY', client: { name: 'Plan Cafe', state: 'Karnataka' }, items: [{ description: 'Plan', qty: 1, rate_rupees: 5000, gst_rate: 18 }], ...extra } })).body.data;
+  assert.equal((await call(d.create, { body: { kind: 'INVOICE', plan_code: plan, client: { name: 'x' }, items: [{ description: 'a', qty: 1, rate_rupees: 1, gst_rate: 0 }] } })).code, 400, 'a plan needs a client');
+  const a = await mk();
+  await call(d.setStatus, { params: { id: a.doc_id }, body: { status: 'PAID', method: 'CASH' } });
+  const days = async () => (await pool.query(`SELECT subscription_status, plan_code, billing_cycle, ROUND(EXTRACT(EPOCH FROM (next_billing_date - CURRENT_TIMESTAMP)) / 86400)::int AS d FROM businesses WHERE business_id = $1`, [biz])).rows[0];
+  let b = await days();
+  assert.equal(b.subscription_status, 'ACTIVE'); assert.equal(b.plan_code, plan); assert.equal(b.billing_cycle, 'YEARLY'); assert.equal(b.d, 365);
+  const r = await mk({ plan_cycle: 'MONTHLY' });
+  await call(d.setStatus, { params: { id: r.doc_id }, body: { status: 'PAID', method: 'UPI' } });
+  b = await days();
+  assert.equal(b.d, 395, 'a renewal adds to the time left');
+});

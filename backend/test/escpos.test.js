@@ -348,3 +348,11 @@ test('receipt extras: a line under the name, the phone, total quantity, amount i
   assert.ok(full.includes('Pure Veg since 1985') && !full.includes('Ph:') && !full.includes('Total Qty') && full.includes('Two Hundred Twenty Four Rupees Only') && full.includes('Terms: No returns on food.'));
   assert.ok(!textOf(receiptBytes({ ...base, settings: { show_terms: true } }, { cols: 48 })).includes('Terms:'));                        // switched on with nothing written: nothing printed
 });
+
+test('the time on a printed slip is the shop clock, not the server clock', async () => {
+  const { stamp } = await import('../src/modules/escpos.js');
+  // 00:30 UTC is 06:00 in India; a server on UTC used to print 12:30 am
+  assert.match(stamp('2026-11-14T00:30:00Z'), /14 Nov.*0?6:00/i);
+  assert.match(stamp('2026-11-14T00:30:00Z', 'UTC'), /0?12:30 am/i);
+  assert.equal(stamp(null), '');
+});

@@ -16,6 +16,8 @@ import { adjust } from '../modules/messaging/wallet.js';
 import { createPaymentLink as cashfreeCreateLink, CashfreeError } from '../modules/payments/cashfree.js';
 import config from '../config/env.js';
 import { deliverMail, mailConfigured } from '../modules/mailer.js';
+import { render } from '../modules/messaging/templates.js';
+import { deliver, channelsAvailable } from '../modules/messaging/provider.js';
 import { toRupees } from '../utils/money.js';
 
 export const DOC_LINK_PREFIX = 'flowxp-doc-';
@@ -37,6 +39,18 @@ export const markPaid = async (docId, { note = null, userId = null, method = nul
       await adjust(c, d.business_id, Number(d.credit_paise), { kind: 'TOPUP', note: `Invoice ${d.doc_number}`, by: userId });
       await c.query(`UPDATE admin_documents SET credit_loaded = TRUE WHERE doc_id = $1`, [docId]);
       d.credit_loaded = true;
+    }
+    if (d.plan_code && d.plan_cycle && d.business_id && !d.plan_applied) {
+      // from the end of the current paid period when it is still running (a renewal adds on), else from today
+      const days = d.plan_cycle === 'YEARLY' ? 365 : 30;
+      const ver = (await c.query(`SELECT plan_version_id FROM plan_versions WHERE plan_code = $1 AND effective_to IS NULL`, [d.plan_code])).rows[0];
+      await c.query(
+        `UPDATE businesses SET subscription_status = 'ACTIVE', billing_cycle = $2::varchar, plan_code = $3::varchar, plan_version_id = COALESCE($4, plan_version_id),
+                next_billing_date = (CASE WHEN subscription_status = 'ACTIVE' AND plan_code = $3::varchar AND next_billing_date > CURRENT_TIMESTAMP THEN next_billing_date ELSE CURRENT_TIMESTAMP END) + make_interval(days => $5::int),
+                updated_at = CURRENT_TIMESTAMP WHERE business_id = $1`,
+        [d.business_id, d.plan_cycle, d.plan_code, ver?.plan_version_id ?? null, days]);
+      await c.query(`UPDATE admin_documents SET plan_applied = TRUE WHERE doc_id = $1`, [docId]);
+      d.plan_applied = true;
     }
     await c.query('COMMIT');
     return d;
@@ -75,7 +89,11 @@ const build = async (body) => {
   const credit = Math.round(Number(body.credit_rupees || 0) * 100);
   if (!Number.isFinite(credit) || credit < 0 || credit > 10000000) throw new Error('WhatsApp credit must be between 0 and 1,00,000 rupees');
   if (credit > 0 && !(Number.isInteger(bid) && bid > 0)) throw new Error('Pick an existing client to load WhatsApp credit for');
-  return { credit, client, intra, lines, totals, issue: date(body.issue_date), due: date(body.due_date), notes: String(body.notes ?? '').trim().slice(0, 1000) || null, businessId: Number.isInteger(bid) && bid > 0 ? bid : null };
+  const planCode = String(body.plan_code || '').trim().toUpperCase() || null;
+  const planCycle = planCode ? (body.plan_cycle === 'YEARLY' ? 'YEARLY' : 'MONTHLY') : null;
+  if (planCode && !(Number.isInteger(bid) && bid > 0)) throw new Error('Pick an existing client to set a plan for');
+  if (planCode && !(await pool.query(`SELECT 1 FROM plans WHERE plan_code = $1`, [planCode])).rows.length) throw new Error('Unknown plan');
+  return { planCode, planCycle, credit, client, intra, lines, totals, issue: date(body.issue_date), due: date(body.due_date), notes: String(body.notes ?? '').trim().slice(0, 1000) || null, businessId: Number.isInteger(bid) && bid > 0 ? bid : null };
 };
 
 export const list = async (req, res) => {
@@ -102,9 +120,9 @@ export const create = async (req, res) => {
   const kind = req.body?.kind === 'QUOTE' ? 'QUOTE' : 'INVOICE';
   let b; try { b = await build(req.body || {}); } catch (e) { return bad(res, e.message); }
   const row = (await pool.query(
-    `INSERT INTO admin_documents (kind, doc_number, business_id, client, items, totals, intra_state, issue_date, due_date, notes, created_by, credit_paise)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,COALESCE($8::date, CURRENT_DATE),$9,$10,$11,$12) RETURNING *`,
-    [kind, await nextNumber(pool, kind), b.businessId, b.client, JSON.stringify(b.lines), b.totals, b.intra, b.issue, b.due, b.notes, req.auth.userId, kind === 'INVOICE' ? b.credit : 0])).rows[0];
+    `INSERT INTO admin_documents (kind, doc_number, business_id, client, items, totals, intra_state, issue_date, due_date, notes, created_by, credit_paise, plan_code, plan_cycle)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,COALESCE($8::date, CURRENT_DATE),$9,$10,$11,$12,$13,$14) RETURNING *`,
+    [kind, await nextNumber(pool, kind), b.businessId, b.client, JSON.stringify(b.lines), b.totals, b.intra, b.issue, b.due, b.notes, req.auth.userId, kind === 'INVOICE' ? b.credit : 0, kind === 'INVOICE' ? b.planCode : null, kind === 'INVOICE' ? b.planCycle : null])).rows[0];
   recordAudit(req, { business_id: b.businessId, action: `admin.${kind.toLowerCase()}_created`, resource_type: 'admin_document', resource_id: row.doc_id, metadata: { number: row.doc_number, total_paise: b.totals.total_paise } });
   res.status(201).json({ success: true, data: row });
 };
@@ -116,8 +134,8 @@ export const update = async (req, res) => {
   if (cur.status !== 'DRAFT') return bad(res, 'Only a draft can be changed. Cancel this one and make a new one.', 409);
   let b; try { b = await build(req.body || {}); } catch (e) { return bad(res, e.message); }
   const row = (await pool.query(
-    `UPDATE admin_documents SET business_id=$2, client=$3, items=$4, totals=$5, intra_state=$6, issue_date=COALESCE($7::date, issue_date), due_date=$8, notes=$9, credit_paise=CASE WHEN kind = 'INVOICE' THEN $10 ELSE 0 END, updated_at=CURRENT_TIMESTAMP WHERE doc_id=$1 RETURNING *`,
-    [id, b.businessId, b.client, JSON.stringify(b.lines), b.totals, b.intra, b.issue, b.due, b.notes, b.credit])).rows[0];
+    `UPDATE admin_documents SET business_id=$2, client=$3, items=$4, totals=$5, intra_state=$6, issue_date=COALESCE($7::date, issue_date), due_date=$8, notes=$9, credit_paise=CASE WHEN kind = 'INVOICE' THEN $10 ELSE 0 END, plan_code=CASE WHEN kind = 'INVOICE' THEN $11 END, plan_cycle=CASE WHEN kind = 'INVOICE' THEN $12 END, updated_at=CURRENT_TIMESTAMP WHERE doc_id=$1 RETURNING *`,
+    [id, b.businessId, b.client, JSON.stringify(b.lines), b.totals, b.intra, b.issue, b.due, b.notes, b.credit, b.planCode, b.planCycle])).rows[0];
   res.json({ success: true, data: row });
 };
 
@@ -180,6 +198,29 @@ export const emailDocument = async (req, res) => {
   await pool.query(`UPDATE admin_documents SET emailed_at = CURRENT_TIMESTAMP, emailed_to = $2, status = CASE WHEN status = 'DRAFT' THEN 'SENT' ELSE status END WHERE doc_id = $1`, [id, to]);
   recordAudit(req, { business_id: d.business_id, action: 'admin.document_emailed', resource_type: 'admin_document', resource_id: id, metadata: { number: d.doc_number } });
   res.json({ success: true, data: { emailed_to: to } });
+};
+
+/* POST /api/admin/documents/:id/whatsapp { to? }: send the document to the client's WhatsApp straight from FlowXP's own number (an approved template; the payment link goes in it when there is one) */
+export const whatsappDocument = async (req, res) => {
+  const id = Number(req.params.id);
+  const d = (await pool.query(`SELECT * FROM admin_documents WHERE doc_id = $1`, [id])).rows[0];
+  if (!d) return bad(res, 'Not found', 404);
+  if (['CANCELLED', 'DECLINED'].includes(d.status)) return bad(res, 'A cancelled document is not sent.', 409);
+  const to = String(req.body?.to || d.client?.phone || '').replace(/\D/g, '');
+  if (to.length < 10) return bad(res, "Add the client's WhatsApp number first.");
+  if (!(await channelsAvailable()).includes('WHATSAPP')) return bad(res, 'WhatsApp is not connected yet. Add it in Settings > Messaging.', 409);
+  const seller = await company();
+  const quote = d.kind === 'QUOTE';
+  const unpaid = !quote && ['DRAFT', 'SENT'].includes(d.status);
+  const next = unpaid ? (d.payment_link_url ? `Pay online: ${d.payment_link_url}` : seller.upi ? `Pay by UPI: ${seller.upi}` : 'Reply to this message and we will help you pay.') : quote ? 'Reply to this message to accept it.' : 'Thank you for your payment.';
+  const message = render('ADMIN_DOCUMENT', { name: d.client?.name || 'there', seller: seller.name || 'FlowXP', what: quote ? 'quotation' : 'invoice', number: d.doc_number, total: `Rs ${(Number(d.totals?.total_paise || 0) / 100).toFixed(2)}`, next });
+  try {
+    const r = await deliver({ channel: 'WHATSAPP', to, kind: 'ADMIN_DOCUMENT', text: message.text, template: message.template });
+    if (r.status !== 'SENT') return bad(res, r.note || 'WhatsApp did not send it.', 409);
+  } catch (error) { return bad(res, `WhatsApp did not send it: ${error.message}`, 502); }
+  await pool.query(`UPDATE admin_documents SET status = CASE WHEN status = 'DRAFT' THEN 'SENT' ELSE status END WHERE doc_id = $1`, [id]);
+  recordAudit(req, { business_id: d.business_id, action: 'admin.document_whatsapped', resource_type: 'admin_document', resource_id: id, metadata: { number: d.doc_number } });
+  res.json({ success: true, data: { sent_to: to } });
 };
 
 /* POST /api/admin/documents/:id/payment-link: a Cashfree link for the invoice's total; paying it marks the invoice paid (and loads any WhatsApp credit on it) */

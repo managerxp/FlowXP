@@ -58,6 +58,7 @@ router.put('/documents/:id', docs.update);
 router.post('/documents/:id/status', docs.setStatus);
 router.post('/documents/:id/convert', docs.convert);
 router.post('/documents/:id/email', docs.emailDocument);
+router.post('/documents/:id/whatsapp', docs.whatsappDocument);
 router.post('/documents/:id/payment-link', idempotent((req) => `admin:${req.auth.userId}`), docs.paymentLink);
 router.get('/company', docs.getCompany);
 router.put('/company', docs.saveCompany);

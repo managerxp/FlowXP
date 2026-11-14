@@ -95,7 +95,8 @@ class Job {
 export const drawerBytes = () => new Job(32).drawer().bytes();
 
 const money = (n) => Number(n).toFixed(2);
-const stamp = (iso) => (iso ? new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
+/* The time on a slip is the shop's own clock. The server runs on UTC, so without a zone every printed bill was 5 hours 30 minutes behind. */
+export const stamp = (iso, timeZone = 'Asia/Kolkata') => (iso ? new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone }) : '');
 
 /**
  * @param r { business, settings, invoice }  the same data the browser receipt shows (see invoices.get)
@@ -124,7 +125,7 @@ const oneReceipt = ({ business, settings = {}, invoice }, { cols = 48, drawer = 
   j.align('left').rule();
 
   j.pair(`Bill ${invoice.invoice_number}`, String(invoice.invoice_date ?? '').slice(0, 10));
-  j.pair(stamp(invoice.created_at), invoice.table_name ? `Table ${invoice.table_name}` : '');
+  j.pair(stamp(invoice.created_at, business.timezone || undefined), invoice.table_name ? `Table ${invoice.table_name}` : '');
   if (invoice.cashier) j.line(`Served by ${invoice.cashier}`);
   if (invoice.customer_name) j.wrap(`Guest: ${invoice.customer_name}`);
   if (invoice.status === 'CANCELLED') j.align('center').bold(true).line('*** CANCELLED ***').bold(false).align('left');
@@ -192,14 +193,14 @@ const oneReceipt = ({ business, settings = {}, invoice }, { cols = 48, drawer = 
 };
 
 /** One printable slip per kitchen station: [{ station, bytes }]. */
-export const kotSlips = (kot, { cols = 48, drawer = false } = {}) => {
+export const kotSlips = (kot, { cols = 48, drawer = false, tz } = {}) => {
   const where = kot.order_type === 'DINE_IN' ? (kot.table_name ? `TABLE ${kot.table_name}` : 'DINE-IN') : kot.platform ? `${kot.platform} DELIVERY` : kot.order_type;
   return kot.stations.map((slip) => {
     const j = new Job(cols);
     j.align('center').bold(true).big(true).half(() => j.wrap(kot.kot_number)).big(false).line(where);
     if (kot.cancelled) j.big(true).line('** CANCELLED **').big(false).bold(true).line('DO NOT MAKE').bold(false);
     else if (kot.priority === 'RUSH') j.big(true).line('** RUSH **').big(false);
-    j.bold(false).line(`${kot.order_number}${kot.outlet ? ` - ${kot.outlet}` : ''}`).line(stamp(kot.created_at)).align('left');
+    j.bold(false).line(`${kot.order_number}${kot.outlet ? ` - ${kot.outlet}` : ''}`).line(stamp(kot.created_at, tz || undefined)).align('left');
     j.bold(true).align('center').line(`[ ${slip.name} ]`).align('left').bold(false).rule();
     for (const i of slip.items) {
       j.bold(true).wrap(`${i.quantity} x ${i.description}`).bold(false);
@@ -237,7 +238,7 @@ export const prebillBytes = ({ business, settings = {}, order, gstOn = false }, 
   j.bold(true).line('BILL (NOT YET PAID)').bold(false).align('left').rule();
   const where = order.order_type === 'DINE_IN' ? (order.table_name ? `Table ${order.table_name}` : 'Dine-in') : order.order_type === 'DELIVERY' ? 'Delivery' : 'Takeaway';
   j.pair(`Order ${order.order_number}`, where);
-  j.line(stamp(order.created_at));
+  j.line(stamp(order.created_at, business.timezone || undefined));
   if (order.customer_name) j.wrap(`Guest: ${order.customer_name}`);
   j.rule().bold(true).table('Item', 'Qty', 'Rate', 'Amount').bold(false).rule();
   let subtotal = 0; let gst = 0; let qtyTotal = 0;

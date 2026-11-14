@@ -64,6 +64,16 @@ const Builder = ({ kind, doc, onDone, onCancel }) => {
   const [due, setDue] = useState(doc?.due_date ? String(doc.due_date).slice(0, 10) : '');
   const [notes, setNotes] = useState(doc?.notes || '');
   const [credit, setCredit] = useState(doc && Number(doc.credit_paise) ? String(Number(doc.credit_paise) / 100) : '');
+  const [plans, setPlans] = useState([]);
+  const [planCode, setPlanCode] = useState(doc?.plan_code || '');
+  const [planCycle, setPlanCycle] = useState(doc?.plan_cycle || 'YEARLY');
+  useEffect(() => { adminApi('/plans').then(setPlans).catch(() => {}); }, []);
+  /* Picking a plan fills the first line with its name and price (still editable), so nothing has to be typed. */
+  const choosePlan = (code, cycle) => {
+    setPlanCode(code); setPlanCycle(cycle);
+    const p = plans.find((x) => x.plan_code === code);
+    if (p && lines.length === 1 && (!lines[0].description || lines[0].auto)) setLines([{ ...lines[0], auto: true, description: `${p.name || p.plan_code} plan, ${cycle === 'YEARLY' ? '1 year' : '1 month'}`, qty: '1', rate_rupees: String(cycle === 'YEARLY' ? p.price_yearly : p.price_monthly) }]);
+  };
   const [seller, setSeller] = useState(null);
   const [find, setFind] = useState('');
   const [found, setFound] = useState([]);
@@ -78,7 +88,7 @@ const Builder = ({ kind, doc, onDone, onCancel }) => {
     return () => clearTimeout(t);
   }, [find]);
   const pick = async (b) => { setFind(''); setFound([]); try { const c = await adminApi(`/documents/client/${b.business_id}`); setBusinessId(c.business_id); setClient({ name: c.name, gstin: c.gstin, address: c.address, state: c.state, email: c.email, phone: c.phone }); } catch (e) { setError(e.message); } };
-  const setLine = (i, patch) => setLines(lines.map((l, j) => (j === i ? { ...l, ...patch } : l)));
+  const setLine = (i, patch) => setLines(lines.map((l, j) => (j === i ? { ...l, ...patch, ...('description' in patch ? { auto: false } : {}) } : l)));
   const intra = sameState(seller?.state, client.state);
   const p = useMemo(() => preview(lines, intra), [lines, intra]);
   const setC = (k) => (e) => setClient({ ...client, [k]: e.target.value });
@@ -86,7 +96,7 @@ const Builder = ({ kind, doc, onDone, onCancel }) => {
   const save = async () => {
     setError(''); setBusy(true);
     try {
-      const body = { kind, business_id: businessId, client, items: lines.map((l) => ({ ...l, qty: Number(l.qty), gst_rate: Number(l.gst_rate) })), due_date: due || null, notes, credit_rupees: kind === 'INVOICE' ? Number(credit || 0) : 0 };
+      const body = { kind, business_id: businessId, client, items: lines.map((l) => ({ ...l, qty: Number(l.qty), gst_rate: Number(l.gst_rate) })), due_date: due || null, notes, credit_rupees: kind === 'INVOICE' ? Number(credit || 0) : 0, plan_code: kind === 'INVOICE' && businessId ? planCode || null : null, plan_cycle: planCycle };
       const saved = await adminApi(doc ? `/documents/${doc.doc_id}` : '/documents', { method: doc ? 'PUT' : 'POST', body });
       toast.success(doc ? 'Saved' : `${saved.doc_number} created`); onDone(saved.doc_id);
     } catch (e) { setError(e.message); } finally { setBusy(false); }
@@ -141,6 +151,24 @@ const Builder = ({ kind, doc, onDone, onCancel }) => {
             {kind === 'INVOICE' && businessId && prices && Number(credit) > 0 && <p className="-mt-2 text-sm text-ink-600">That gives them about <b>{Math.floor(Number(credit) * 100 / Math.max(1, prices.UTILITY)).toLocaleString('en-IN')}</b> normal messages or <b>{Math.floor(Number(credit) * 100 / Math.max(1, prices.MARKETING)).toLocaleString('en-IN')}</b> marketing messages.</p>}
             </>
           )}
+          {kind === 'INVOICE' && businessId && (
+            <>
+              <Field id="d-plan" label="Subscription plan" hint="Paying this invoice, by any method, switches the plan on and sets the end date.">
+                <Select id="d-plan" value={planCode} onChange={(e) => choosePlan(e.target.value, planCycle)}>
+                  <option value="">No plan on this invoice</option>
+                  {plans.map((pl) => <option key={pl.plan_code} value={pl.plan_code}>{pl.name || pl.plan_code}</option>)}
+                </Select>
+              </Field>
+              {planCode && (
+                <Field id="d-cycle" label="For how long">
+                  <Select id="d-cycle" value={planCycle} onChange={(e) => choosePlan(planCode, e.target.value)}>
+                    <option value="MONTHLY">1 month (30 days)</option>
+                    <option value="YEARLY">1 year (365 days)</option>
+                  </Select>
+                </Field>
+              )}
+            </>
+          )}
           <Field id="d-notes" label="Note on the document"><Input id="d-notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} /></Field>
         </div>
       </Card>
@@ -156,6 +184,9 @@ const View = ({ id, onEdit, onOpen, onBack, onChanged }) => {
   const [d, setD] = useState(null);
   const [error, setError] = useState('');
   const [linkBusy, setLinkBusy] = useState(false);
+  const [payForm, setPayForm] = useState(null);
+  const [mailBusy, setMailBusy] = useState(false);
+  const [waBusy, setWaBusy] = useState(false);
   const load = () => adminApi(`/documents/${id}`).then(setD).catch((e) => setError(e.message));
   useEffect(() => { setD(null); load(); }, [id]);   // eslint-disable-line react-hooks/exhaustive-deps
   if (!d) return <ListState loading={!error} error={error} />;
@@ -164,20 +195,31 @@ const View = ({ id, onEdit, onOpen, onBack, onChanged }) => {
     setError('');
     try { await adminApi(`/documents/${id}/status`, { method: 'POST', body: { status } }); toast.success('Updated'); await load(); onChanged(); } catch (e) { setError(e.message); }
   };
-  const [payForm, setPayForm] = useState(null);
-  const [mailBusy, setMailBusy] = useState(false);
   const emailIt = async () => {
     setError(''); let to = d.client?.email;
     if (!to) { to = window.prompt('Email address to send it to'); if (!to) return; }
     setMailBusy(true);
     try { const r = await adminApi(`/documents/${id}/email`, { method: 'POST', body: { to } }); toast.success(`Sent to ${r.emailed_to}`); await load(); onChanged(); } catch (e) { setError(e.message); } finally { setMailBusy(false); }
   };
-  const whatsappIt = () => {
+  /* The manual way: opens WhatsApp with the message ready, for when FlowXP's own number is not connected. */
+  const whatsappManual = () => {
     const digits = String(d.client?.phone || '').replace(/\D/g, '');
     const to = digits.length === 10 ? `91${digits}` : digits;
     const lines = [`${quote ? 'Quotation' : 'Invoice'} ${d.doc_number} from ${s.name || 'FlowXP'}`, `Total ${rs(d.totals?.total_paise)}`, !quote && d.status !== 'PAID' && d.payment_link_url && `Pay online: ${d.payment_link_url}`, !quote && d.status !== 'PAID' && s.upi && `UPI: ${s.upi}`].filter(Boolean);
     window.open(`https://wa.me/${to}?text=${encodeURIComponent(lines.join('\n'))}`, '_blank', 'noopener');
     if (d.status === 'DRAFT') act('SENT');
+  };
+  /* Sent straight from FlowXP's WhatsApp number. An unpaid invoice gets its payment link made first, so the message carries it. */
+  const whatsappIt = async () => {
+    setError(''); setWaBusy(true);
+    try {
+      if (!quote && ['DRAFT', 'SENT'].includes(d.status) && !d.payment_link_url) { try { await adminApi(`/documents/${id}/payment-link`, { method: 'POST' }); } catch { /* no payment gateway yet: it goes without a link */ } }
+      const r = await adminApi(`/documents/${id}/whatsapp`, { method: 'POST', body: {} });
+      toast.success(`Sent on WhatsApp to ${r.sent_to}`); await load(); onChanged();
+    } catch (e) {
+      setError(e.message);
+      if (/not connected/i.test(e.message) && window.confirm('WhatsApp is not connected, so it cannot be sent from here. Open WhatsApp with the message ready instead?')) whatsappManual();
+    } finally { setWaBusy(false); }
   };
   const recordPayment = async (e) => {
     e.preventDefault(); setError('');
@@ -198,7 +240,7 @@ const View = ({ id, onEdit, onOpen, onBack, onChanged }) => {
         <span className="flex-1" />
         {d.status === 'DRAFT' && <Button variant="ghost" onClick={onEdit}>Edit</Button>}
         {!['CANCELLED', 'DECLINED'].includes(d.status) && <Button variant="ghost" onClick={emailIt} loading={mailBusy}>Email to client</Button>}
-        {!['CANCELLED', 'DECLINED'].includes(d.status) && <Button variant="ghost" onClick={whatsappIt}>WhatsApp</Button>}
+        {!['CANCELLED', 'DECLINED'].includes(d.status) && <Button variant="ghost" onClick={whatsappIt} loading={waBusy}>Send on WhatsApp</Button>}
         {d.status === 'DRAFT' && <Button variant="ghost" onClick={() => act('SENT')}>Mark as sent</Button>}
         {!quote && ['DRAFT', 'SENT'].includes(d.status) && <Button variant="ghost" onClick={makeLink} loading={linkBusy}>{d.payment_link_url ? 'Copy payment link' : 'Create payment link'}</Button>}
         {!quote && ['DRAFT', 'SENT'].includes(d.status) && <Button onClick={() => setPayForm({ method: 'UPI', date: new Date().toISOString().slice(0, 10), ref: '' })}>Record payment</Button>}
@@ -224,6 +266,7 @@ const View = ({ id, onEdit, onOpen, onBack, onChanged }) => {
         </form>
       )}
       {!quote && Number(d.credit_paise) > 0 && <p className="rounded-lg bg-brand-50 p-3 text-sm text-ink-700 print:hidden" role="status">{d.credit_loaded ? `${rs(d.credit_paise)} of WhatsApp credit was loaded into this client's wallet.` : `${rs(d.credit_paise)} of WhatsApp credit will be loaded into this client's wallet as soon as this invoice is paid.`}</p>}
+      {!quote && d.plan_code && <p className="rounded-lg bg-brand-50 p-3 text-sm text-ink-700 print:hidden" role="status">{d.plan_applied ? `The ${d.plan_code} plan (${d.plan_cycle === 'YEARLY' ? '1 year' : '1 month'}) was switched on for this client.` : `The ${d.plan_code} plan for ${d.plan_cycle === 'YEARLY' ? '1 year' : '1 month'} will switch on for this client as soon as this invoice is paid.`}</p>}
       {d.emailed_at && <p className="text-xs text-ink-500 print:hidden">Emailed to {d.emailed_to} on {day(d.emailed_at)}</p>}
       {d.payment_link_url && ['DRAFT', 'SENT'].includes(d.status) && <p className="break-all rounded-lg bg-surface p-3 text-xs text-ink-600 print:hidden">Payment link: {d.payment_link_url}</p>}
       <article className="mx-auto max-w-3xl rounded-xl border border-line bg-white p-8 text-sm text-ink-900 print:max-w-none print:rounded-none print:border-0 print:p-0">
@@ -283,7 +326,7 @@ const AdminDocuments = ({ kind }) => {
       </div>
       {!rows || !rows.length ? <ListState loading={!rows && !error} error={error} empty={rows && !rows.length ? `No ${word}s yet.` : undefined} /> : (
         <Table>
-          <Thead><tr><Th>Number</Th><Th>Client</Th><Th>Date</Th><Th className="text-right">Total</Th><Th>Status</Th></tr></Thead>
+          <Thead><Th>Number</Th><Th>Client</Th><Th>Date</Th><Th className="text-right">Total</Th><Th>Status</Th></Thead>
           <tbody>{rows.map((r) => (
             <Tr key={r.doc_id} onClick={() => setMode({ name: 'view', id: r.doc_id })} className="cursor-pointer">
               <Td>{r.doc_number}</Td><Td>{r.client_name}</Td><Td>{day(r.issue_date)}</Td><Td className="text-right">{rs(r.total_paise)}</Td><Td><Badge tone={TONE[r.status]}>{r.status[0] + r.status.slice(1).toLowerCase()}</Badge></Td>

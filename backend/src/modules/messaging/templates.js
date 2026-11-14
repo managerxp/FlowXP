@@ -283,6 +283,22 @@ Your vehicle is due for its next service.
 Call or visit *_${p.business}_* to book it. Thank you.`,
     text: (p) => `Hi ${p.name}, your ${p.vehicle} is due for its next service on ${p.date}. Call or visit ${p.business} to book it. Thank you.`
   },
+  /* FlowXP's own invoice or quotation to a client, sent from the Super Admin. `what` is "invoice" or "quotation"; `next` says how to pay (the payment link, or the UPI id). */
+  ADMIN_DOCUMENT: {
+    name: 'flowxp_document', promo: false,
+    vars: ['name', 'seller', 'what', 'number', 'total', 'next'],
+    body: (p) => `Hi ${p.name},
+
+Your ${p.what} from *_${p.seller}_* is ready.
+
+*Number:* ${p.number}
+*Amount:* ${p.total}
+
+${p.next}
+
+Thank you.`,
+    text: (p) => `Hi ${p.name}, your ${p.what} ${p.number} from ${p.seller} is ready. Amount: ${p.total}. ${p.next} Thank you.`
+  },
   GYM_INACTIVE: {
     name: 'flowxp_gym_inactive', promo: true,
     vars: ['name', 'business', 'days'],

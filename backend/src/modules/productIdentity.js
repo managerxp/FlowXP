@@ -119,6 +119,13 @@ export const addBarcode = async (db, { businessId, productId, barcode, userId = 
   return { status: movedFrom ? 'moved' : 'added', barcode: code, ...(movedFrom ? { moved_from: movedFrom } : {}) };
 };
 
+/** An in-store EAN-13 (the 2-prefix range is reserved for shop use): '2' + the product's id + the standard check digit. product_id is unique, so two products can never get the same one. */
+export const ownBarcode = (productId) => {
+  const body = `2${String(productId).padStart(11, '0')}`.slice(0, 12);
+  const sum = [...body].reduce((s, d, i) => s + Number(d) * (i % 2 ? 3 : 1), 0);
+  return body + ((10 - (sum % 10)) % 10);
+};
+
 /* ── aliases ──────────────────────────────────────────────────────────────── */
 
 export const aliasesOf = async (db, businessId, productId) =>

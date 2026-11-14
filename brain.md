@@ -1439,3 +1439,15 @@ Ponytail audit + security sweep. Done: backend `npm audit fix` (body-parser, mul
 - Loading credit now shows what it buys: in the client's WhatsApp credit panel (live preview of normal vs marketing messages for the amount typed, plus the combined total, and a toast after loading) and under the credit field of the invoice builder. Sign-in codes are free.
 - Support center (migration 0131: support_tickets, support_messages): clients raise tickets from the web app (/app/support, Help and support) and the phone (support.tsx, More tab); category, conversation, close; FlowXP admin answers in Super Admin > Support (badge for tickets waiting for us, search, close/reopen); the client gets an in-app notification + push on a reply; a new ticket emails the company email set in Invoices > company. A client reply reopens a closed ticket. Tickets are scoped to the signed-in user and business. Controller: controllers/support.controller.js, test/support.test.js.
 - Website FlowBook copy (2026-11-14): FlowBook is now presented as a business management app, not accounting (FlowBookPage, home band, seo title, llms.txt, sign-up type label in 7 languages). Still says FlowXP feeds it and 7-day trial. The FlowBook app's own screens still use ledger/books wording.
+- Printed bill time fix (2026-11-14): thermal slips (escpos.js stamp) formatted times on the server clock (UTC on the VPS), so a bill printed at 11:49 IST said 06:19 am. stamp() now takes the business timezone (default Asia/Kolkata): receipt and pre-bill use business.timezone, kitchen slips get tz from the controller. Browser prints use the device clock. Test in test/escpos.test.js.
+
+
+## Barcode labels for any product
+- Plan feature `barcode_labels`. `POST /products/barcodes/make {product_ids}` gives each product without a barcode an in-store EAN-13 (`ownBarcode` in modules/productIdentity.js: '2' + product id + check digit; goes through `addBarcode`, so uniqueness and audit hold).
+- Web `/app/products/labels` (app/ProductLabels.jsx, button on Products): tick products, copies, A4 sheet or 50x25 roll, Code 128 SVG, print. Scanning stock in already existed: Receive stock scans a barcode (or creates the product from an unknown one).
+
+
+## Invoices: send on WhatsApp, plan on an invoice
+- `POST /admin/documents/:id/whatsapp` sends the invoice or quotation from FlowXP's own WhatsApp number (template `flowxp_document`, kind ADMIN_DOCUMENT, 6 variables: create it in Meta); the UI makes the payment link first for an unpaid invoice; falls back to wa.me when WhatsApp is not connected.
+- Migration 0132: `admin_documents.plan_code/plan_cycle/plan_applied`. Paying the invoice by any method (cash too) in `markPaid` sets the business ACTIVE on that plan and `next_billing_date` (+30 or +365 days, added to the time left on a renewal). The client Dashboard already shows the end date.
+- Fixed: invoice view blank page (hooks after early return) and misaligned list header (Thead already renders the row).

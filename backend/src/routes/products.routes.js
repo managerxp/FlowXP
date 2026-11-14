@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth, withBusiness, requirePermission, requireAnyPermission, requireOutlet } from '../middleware/auth.js';
+import { requireAuth, withBusiness, requirePlanFeature, requirePermission, requireAnyPermission, requireOutlet } from '../middleware/auth.js';
 import { uploadProductImage } from '../middleware/upload.js';
 import { idempotent } from '../middleware/idempotency.js';
 import * as categories from '../controllers/categories.controller.js';
@@ -30,6 +30,7 @@ router.get('/products/availability', ...authed, read, products.availability);   
 router.patch('/products/:id/availability', ...floorSwitch, products.setAvailability);
 router.get('/products/:id', ...authed, read, products.get);
 router.get('/products/:id/identifiers', ...authed, read, identity.identifiers);
+router.post('/products/barcodes/make', ...write, requirePlanFeature('barcode_labels'), identity.makeBarcodes);
 router.post('/products/:id/barcodes', ...write, identity.addBarcodeTo);
 router.delete('/products/:id/barcodes/:barcode', ...write, identity.removeBarcodeFrom);
 router.post('/products/:id/aliases', ...write, identity.addAliasTo);

@@ -40,7 +40,7 @@ export const receipt = async (req, res) => {
   const got = await capture(invoices.get, req);
   if (got.status !== 200) return res.status(got.status).json(got.body);
   const business = (await pool.query(
-    `SELECT name, gstin, address, city, phone, gst_enabled, upi_vpa, receipt_settings FROM businesses WHERE business_id = $1`, [req.tenant.businessId])).rows[0];
+    `SELECT name, gstin, address, city, phone, gst_enabled, upi_vpa, receipt_settings, timezone FROM businesses WHERE business_id = $1`, [req.tenant.businessId])).rows[0];
   // a takeaway or delivery bill can go to its own printer
   const kind = (await pool.query(`SELECT o.order_type FROM invoices i LEFT JOIN orders o ON o.order_id = i.order_id WHERE i.invoice_id = $1 AND i.business_id = $2`, [req.params.id, req.tenant.businessId])).rows[0]?.order_type;
   const printer = await routeFor(req, ['TAKEAWAY', 'DELIVERY'].includes(kind) ? 'takeaway' : 'receipt');
@@ -58,7 +58,7 @@ export const prebill = async (req, res) => {
   const items = order.items.filter((i) => i.status !== 'CANCELLED' && !i.billed);
   if (!items.length) return res.status(400).json({ success: false, message: 'Add an item before printing the bill' });
   const business = (await pool.query(
-    `SELECT name, gstin, address, city, phone, gst_enabled, receipt_settings FROM businesses WHERE business_id = $1`, [req.tenant.businessId])).rows[0];
+    `SELECT name, gstin, address, city, phone, gst_enabled, receipt_settings, timezone FROM businesses WHERE business_id = $1`, [req.tenant.businessId])).rows[0];
   const printer = await routeFor(req, ['TAKEAWAY', 'DELIVERY'].includes(order.order_type) ? 'takeaway' : 'receipt');
   const bytes = prebillBytes({ business, settings: business.receipt_settings || {}, order: { ...order, items }, gstOn: Boolean(business.gst_enabled) }, { cols: await width(req, printer) });
   if (req.query.mark !== '0') await pool.query(`UPDATE orders SET bill_printed_at = CURRENT_TIMESTAMP WHERE order_id = $1 AND business_id = $2`, [order.order_id, req.tenant.businessId]);
@@ -70,11 +70,12 @@ export const kot = async (req, res) => {
   const got = await capture(kitchen.printableKot, req);
   if (got.status !== 200) return res.status(got.status).json(got.body);
   const { printers, routing } = await loadFor(pool, req.tenant.businessId, req.tenant.branchId);
+  const tz = (await pool.query(`SELECT timezone FROM businesses WHERE business_id = $1`, [req.tenant.businessId])).rows[0]?.timezone || undefined;
   // every station can have its own printer, each with its own paper width; slips for stations with none use the kitchen default
   const made = new Map();
-  const slipsFor = (printer) => { const cols = [32, 48].includes(Number(req.query.cols)) ? Number(req.query.cols) : COLS[printer?.paper_width]; const k = cols ?? 'default'; if (!made.has(k)) made.set(k, kotSlips(got.body.data, { cols: cols ?? undefined })); return made.get(k); };
+  const slipsFor = (printer) => { const cols = [32, 48].includes(Number(req.query.cols)) ? Number(req.query.cols) : COLS[printer?.paper_width]; const k = cols ?? 'default'; if (!made.has(k)) made.set(k, kotSlips(got.body.data, { cols: cols ?? undefined, tz })); return made.get(k); };
   const defaultCols = await width(req);
-  const slips = kotSlips(got.body.data, { cols: defaultCols }).map((s) => {
+  const slips = kotSlips(got.body.data, { cols: defaultCols, tz }).map((s) => {
     const printer = pickPrinter(routing, printers, 'kot', s.station_id);
     const own = printer && COLS[printer.paper_width] !== defaultCols ? slipsFor(printer).find((x) => x.station_id === s.station_id) : null;
     return { station: s.station, station_id: s.station_id, data: b64((own || s).bytes), target: targetOf(printer), printer: printer?.name ?? null };

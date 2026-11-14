@@ -8,7 +8,7 @@ import pool from '../config/database.js';
 import { hasPermission } from '../middleware/auth.js';
 import { recordAudit } from '../modules/events.js';
 import {
-  addAlias, addBarcode, addSupplierCode, cleanBarcode, IdentityError, identifiersOf, removeAlias, removeBarcode, removeSupplierCode
+  addAlias, addBarcode, addSupplierCode, cleanBarcode, IdentityError, identifiersOf, ownBarcode, removeAlias, removeBarcode, removeSupplierCode
 } from '../modules/productIdentity.js';
 import { autoSkuOn, getRetailSettings, isRetail, putRetailSettings } from '../modules/retailSettings.js';
 
@@ -64,6 +64,23 @@ export const addBarcodeTo = run(async (req, res) => {
     });
   }
   res.status(outcome.status === 'already_here' ? 200 : 201).json({ success: true, data: { ...outcome, identifiers: await identifiersOf(pool, req.tenant.businessId, id) } });
+});
+
+/* POST /products/barcodes/make { product_ids } — a barcode of the shop's own for each product that has none, so it can be printed and scanned. Products that already have one are left alone. */
+export const makeBarcodes = run(async (req, res) => {
+  const ids = [...new Set((req.body?.product_ids || []).map(Number).filter(Number.isInteger))].slice(0, 500);
+  const made = [];
+  for (const id of ids) {
+    const done = await inTransaction(async (client) => {
+      const p = (await client.query(`SELECT barcode FROM products WHERE business_id = $1 AND product_id = $2`, [req.tenant.businessId, id])).rows[0];
+      if (!p || p.barcode) return null;
+      const out = await addBarcode(client, { businessId: req.tenant.businessId, productId: id, barcode: ownBarcode(id), userId: req.auth.userId });
+      return out.barcode;
+    });
+    if (done) made.push({ product_id: id, barcode: done });
+  }
+  if (made.length) recordAudit(req, { action: 'product.barcodes_made', resource_type: 'product', metadata: { count: made.length } });
+  res.json({ success: true, data: { made } });
 });
 
 export const removeBarcodeFrom = run(async (req, res) => {

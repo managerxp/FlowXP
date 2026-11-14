@@ -493,3 +493,11 @@ test('stock given at the till is counted properly: an opening movement in the le
   assert.deepEqual(ledger, [{ transaction_type: 'OPENING', q: 12 }]);
   assert.equal((await call(A.MANAGER, 'POST', '/products/quick', { name: 'Bad Stock', selling_price: 20, opening_stock: -3 }, { 'idempotency-key': 'q-stock-2' })).status, 400);
 });
+
+import { ownBarcode } from '../src/modules/productIdentity.js';
+test('ownBarcode is a valid in-store EAN-13, different for every product', () => {
+  const a = ownBarcode(1); const b = ownBarcode(2);
+  assert.equal(a.length, 13); assert.ok(a.startsWith('2')); assert.notEqual(a, b);
+  const sum = [...a.slice(0, 12)].reduce((s, d, i) => s + Number(d) * (i % 2 ? 3 : 1), 0);
+  assert.equal(Number(a[12]), (10 - (sum % 10)) % 10);
+});

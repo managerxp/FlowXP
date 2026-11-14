@@ -18,6 +18,7 @@ export const PLAN_FEATURES = [
   ['reservations', 'Reservations & waitlist', 'Table bookings and the walk-in waitlist'],
   ['purchases', 'Purchasing & suppliers', 'Purchase orders, supplier price lists, debit notes'],
   ['expenses', 'Expenses', 'Recording and reporting business expenses'],
+  ['barcode_labels', 'Barcode labels', 'Print barcode price tags for any product and give products without a barcode one of your own'],
   ['other_income', 'Other income', 'Money received that is not a sale (interest, rent, commission), counted in profit and loss'],
   ['estimates', 'Estimates & quotations', 'Priced offers with a valid-until date that turn into an invoice in one tap'],
   ['ai', 'Flow AI', 'The AI manager chat, briefings and menu-photo import'],
