@@ -30,7 +30,8 @@ const app = express();
 /* Behind a load balancer (Render, Railway, nginx) every request arrives from
    the proxy. Without this, express-rate-limit sees one client address for the
    whole internet and locks everybody out together. */
-if (config.isProduction) app.set('trust proxy', 1);
+// A server not marked production (NODE_ENV unset) behind nginx hit the same error, so this is on unless TRUST_PROXY=0 says the API is exposed directly.
+if (config.isProduction || process.env.TRUST_PROXY !== '0') app.set('trust proxy', 1);
 
 // the API only ever answers with JSON or a file, never a page, so nothing it sends may be run or framed. (The web app's own CSP is set at the edge: deploy/nginx-security-headers.conf.)
 app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } } }));
