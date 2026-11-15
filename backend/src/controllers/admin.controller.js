@@ -253,7 +253,7 @@ export const listBusinesses = async (req, res) => {
     params.push(pageSize, (page - 1) * pageSize);
     const { rows } = await pool.query(
       `SELECT b.business_id, b.name, b.business_type, b.status, b.subscription_status,
-              b.plan_code, b.billing_cycle, b.trial_ends_at, b.next_billing_date,
+              b.plan_code, b.billing_cycle, b.trial_started_at, b.trial_ends_at, b.next_billing_date, b.subscription_started_at,
               b.currency, b.created_at, b.wallet_paise, b.admin_tags, b.follow_up_on::text AS follow_up_on, b.follow_up_note,
               u.user_id AS owner_user_id, u.name AS owner_name, u.email AS owner_email, COALESCE(b.phone, u.phone) AS contact_phone,
               (SELECT COUNT(*)::int FROM messages m WHERE m.business_id = b.business_id AND m.channel = 'WHATSAPP' AND m.status = 'SENT' AND m.created_at > CURRENT_TIMESTAMP - INTERVAL '30 days') AS wa_sent_30d,

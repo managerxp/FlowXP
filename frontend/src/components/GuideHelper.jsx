@@ -83,8 +83,8 @@ const GuideHelper = ({ items }) => {
     <>
       {!open && (
         <button type="button" onClick={() => setOpen(true)} aria-label={tr('Help me find a screen')}
-                className="fixed bottom-20 right-4 z-40 flex items-center gap-2 rounded-full bg-brand-500 px-4 py-3 text-small font-semibold text-white shadow-lg hover:bg-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 lg:bottom-6">
-          <LifeBuoy aria-hidden="true" className="h-4 w-4" /> {tr('Help me find')}
+                className="fixed bottom-[4.75rem] right-3 z-40 flex h-10 w-10 items-center justify-center gap-2 rounded-full bg-brand-500/90 text-small font-semibold text-white shadow-md hover:bg-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 sm:bottom-20 sm:right-4 sm:h-auto sm:w-auto sm:px-4 sm:py-3 lg:bottom-6">
+          <LifeBuoy aria-hidden="true" className="h-5 w-5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{tr('Help me find')}</span>
         </button>
       )}
       {open && (

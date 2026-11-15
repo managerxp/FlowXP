@@ -70,7 +70,7 @@ export const mailConfigured = async () => Boolean(await buildTransport());
 
 /* Throws on failure, so a queued job can retry. sendMail below swallows errors
    because the request that triggered it must not fail; a job has no such request. */
-export const deliverMail = async ({ to, subject, text, html, replyTo, bcc, fromName }) => {
+export const deliverMail = async ({ to, subject, text, html, replyTo, bcc, fromName, attachments }) => {
   const built = await buildTransport();
   if (!built) {
     console.log(`\n[mail:dev] to=${to}\n[mail:dev] subject=${subject}\n${text}\n`);
@@ -78,7 +78,7 @@ export const deliverMail = async ({ to, subject, text, html, replyTo, bcc, fromN
   }
   // fromName: show that name on FlowXP's own sending address (FlowBook sends "<business> via FlowBook")
   const from = fromName ? `"${String(fromName).replace(/["<>\r\n]/g, '')}" <${built.from.match(/<([^>]+)>/)?.[1] ?? built.from}>` : built.from;
-  await sendWithRetry(built.transport, { from, to, subject, text, html, replyTo, bcc, attachments: withLogo(html) });
+  await sendWithRetry(built.transport, { from, to, subject, text, html, replyTo, bcc, attachments: [...(withLogo(html) || []), ...(attachments || [])] });
 };
 
 export const sendMail = async ({ to, subject, text, html, replyTo, attachments }) => {

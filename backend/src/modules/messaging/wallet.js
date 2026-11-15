@@ -4,6 +4,7 @@
  * Nothing changes until the Super Admin switches "Wallet required" on. Trials keep their free message count, sign-in
  * codes are never charged, and a failed message costs nothing.
  */
+import pool from '../../config/database.js';
 import { getPlatformSetting } from '../platformSettings.js';
 import { TEMPLATES } from './templates.js';
 
@@ -21,12 +22,19 @@ export const categoryOf = (kind) => {
 
 const paise = (v, fallback) => { const n = Number(v); return Number.isFinite(n) && n >= 0 && n <= 1000 ? Math.round(n * 100) : Math.round(fallback * 100); };
 
-/** { required, prices: { UTILITY, AUTHENTICATION, MARKETING } in paise } from the Super Admin's settings. */
-export const walletSettings = async () => {
+/** { required, prices: { UTILITY, AUTHENTICATION, MARKETING } in paise } from the Super Admin's settings; given a business, its own prices (when the Super Admin set any) replace the platform ones. `custom` says which. */
+export const walletSettings = async (businessId = null, db = pool) => {
   const v = (await getPlatformSetting('messaging').catch(() => null))?.value || {};
   const utility = paise(v.rateUtility, DEFAULT_PRICES.UTILITY);
   const low = Number(v.lowCreditAlert);
-  return { required: v.walletRequired === 'on', lowAlert: Math.round((Number.isFinite(low) && low >= 0 ? low : DEFAULT_LOW_ALERT_RUPEES) * 100), prices: { UTILITY: utility, AUTHENTICATION: utility, MARKETING: paise(v.rateMarketing, DEFAULT_PRICES.MARKETING) } };
+  const prices = { UTILITY: utility, AUTHENTICATION: utility, MARKETING: paise(v.rateMarketing, DEFAULT_PRICES.MARKETING) };
+  const custom = { utility: null, marketing: null };
+  if (businessId) {
+    const own = (await db.query(`SELECT wa_rate_utility_paise, wa_rate_marketing_paise FROM businesses WHERE business_id = $1`, [businessId])).rows[0];
+    if (own?.wa_rate_utility_paise != null) { custom.utility = prices.UTILITY = prices.AUTHENTICATION = own.wa_rate_utility_paise; }
+    if (own?.wa_rate_marketing_paise != null) { custom.marketing = prices.MARKETING = own.wa_rate_marketing_paise; }
+  }
+  return { required: v.walletRequired === 'on', lowAlert: Math.round((Number.isFinite(low) && low >= 0 ? low : DEFAULT_LOW_ALERT_RUPEES) * 100), prices, custom };
 };
 
 export const balanceOf = async (db, businessId) => Number((await db.query(`SELECT wallet_paise FROM businesses WHERE business_id = $1`, [businessId])).rows[0]?.wallet_paise ?? 0);
@@ -34,7 +42,7 @@ export const balanceOf = async (db, businessId) => Number((await db.query(`SELEC
 /** { cost, balance } when this message is paid from the wallet, else null (switched off, a trial, or a free kind). */
 export const gate = async (db, businessId, kind) => {
   if (FREE_KINDS.includes(kind)) return null;
-  const s = await walletSettings();
+  const s = await walletSettings(businessId, db);
   if (!s.required) return null;
   const b = (await db.query(`SELECT subscription_status, wallet_paise FROM businesses WHERE business_id = $1`, [businessId])).rows[0];
   if (!b || b.subscription_status === 'TRIAL') return null;
@@ -71,6 +79,6 @@ export const chargeMessage = async (db, row) => {
   const g = await gate(db, row.business_id, row.kind);
   if (!g || g.cost <= 0) return;
   const after = await adjust(db, row.business_id, -g.cost, { kind: 'MESSAGE', messageId: row.message_id, note: row.kind });
-  if (after !== null) await alertIfLow(db, row.business_id, g.balance, after, await walletSettings());
+  if (after !== null) await alertIfLow(db, row.business_id, g.balance, after, await walletSettings(row.business_id, db));
   await db.query(`UPDATE messages SET charge_paise = $2 WHERE message_id = $1`, [row.message_id, g.cost]);
 };

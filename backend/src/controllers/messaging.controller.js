@@ -173,6 +173,6 @@ export const setOptOut = async (req, res) => {
 /* GET /api/messaging/wallet: the balance the owner can spend on WhatsApp, and the latest entries */
 export const wallet = async (req, res) => {
   const id = req.tenant.businessId;
-  const [s, bal, rows] = await Promise.all([walletSettings(), balanceOf(pool, id), pool.query(`SELECT amount_paise, kind, note, balance_after_paise, created_at FROM wallet_ledger WHERE business_id = $1 ORDER BY entry_id DESC LIMIT 30`, [id])]);
+  const [s, bal, rows] = await Promise.all([walletSettings(id), balanceOf(pool, id), pool.query(`SELECT amount_paise, kind, note, balance_after_paise, created_at FROM wallet_ledger WHERE business_id = $1 ORDER BY entry_id DESC LIMIT 30`, [id])]);
   res.json({ success: true, data: { required: (await gate(pool, id, 'BILL')) !== null, balance_paise: bal, prices_paise: s.prices, entries: rows.rows } });
 };

@@ -58,6 +58,7 @@ const activateSubscription = async (req, linkId) => {
 
   await pool.query(
     `UPDATE businesses SET
+       subscription_started_at = CASE WHEN subscription_status = 'ACTIVE' AND next_billing_date > CURRENT_TIMESTAMP AND subscription_started_at IS NOT NULL THEN subscription_started_at ELSE CURRENT_TIMESTAMP END,
        subscription_status = 'ACTIVE',
        billing_cycle = $2,
        plan_code = COALESCE($3, plan_code),

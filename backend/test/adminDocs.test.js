@@ -153,4 +153,12 @@ test('paying an invoice with a plan, in cash, switches the subscription on and s
   await call(d.setStatus, { params: { id: r.doc_id }, body: { status: 'PAID', method: 'UPI' } });
   b = await days();
   assert.equal(b.d, 395, 'a renewal adds to the time left');
+  assert.ok((await pool.query(`SELECT subscription_started_at FROM businesses WHERE business_id = $1`, [biz])).rows[0].subscription_started_at, 'the start date is kept');
+});
+
+test('the emailed copy of an invoice is a real PDF', { skip }, async () => {
+  const d = await import('../src/controllers/adminDocuments.controller.js');
+  const pdf = await d.documentPdf({ kind: 'INVOICE', doc_number: 'INV-1', status: 'SENT', issue_date: '2026-11-14', intra_state: false, client: { name: 'Sharma Auto' }, items: [{ description: 'Starter Plan', hsn: '6000', qty: 1, rate_paise: 508500, gst_rate: 18, taxable_paise: 508500 }], totals: { taxable_paise: 508500, igst_paise: 91530, round_off_paise: -30, total_paise: 600000 }, payment_link_url: 'https://pay.test/y' }, { name: 'FlowXP', gstin: '36AAUCM6372N1ZH' });
+  assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
+  assert.ok(pdf.length > 1500);
 });

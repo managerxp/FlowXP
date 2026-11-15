@@ -18,7 +18,7 @@ import LanguageSelect from '../i18n/LanguageSelect.jsx';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
   ArrowLeftRight, BadgePercent, Tag, Boxes, CalendarClock, CalendarDays, ChartColumn, ChartLine, ChefHat, ChevronDown, ClipboardList, FileText, Gift,
-  History, Landmark, LayoutDashboard, LayoutGrid, Lock, ToggleRight, LogOut, Menu, MessageSquare, Package, PanelLeftClose, PanelLeftOpen,
+  History, Landmark, LayoutDashboard, LayoutGrid, Lock, ToggleRight, LogOut, Barcode, Menu, MessageSquare, Package, PackagePlus, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
   Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X, Warehouse, PackageCheck, Undo2, HandCoins, ChartBar, ShoppingBag, Tags,
   Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass, BedDouble, Moon, DoorOpen, UsersRound, CalendarCheck, Dumbbell, Gamepad2, Timer, Trophy, Sun, Wrench, BookOpen, Shirt, LifeBuoy
@@ -188,7 +188,9 @@ const NAV_GROUPS = [
   {
     label: 'Stock',
     items: [
+      { to: '/app/add-items', label: 'Add items', icon: PackagePlus, anyPermission: ['products', 'inventory'], notTypes: [...WHOLESALE, ...PHARMACY, ...CLOTHING] },
       { to: '/app/products', label: 'Products', icon: Package, permission: 'products', notTypes: [...WHOLESALE, ...PHARMACY] },
+      { to: '/app/barcodes', label: 'Barcodes', icon: Barcode, permission: 'products', feature: 'barcode_labels' },
       { to: '/app/modifiers', label: 'Options & add-ons', icon: SlidersHorizontal, types: RESTAURANT_TYPES, permission: 'products', more: true },
       // a supermarket works from the Stock center (scan in, count, expiry, import); Inventory stays for single-item changes
       { to: '/app/stock', label: 'Stock center', icon: Warehouse, types: RETAIL, permission: 'inventory' },
@@ -533,6 +535,11 @@ const AppShell = () => {
     ...systemItems.map((i) => ({ ...i, label: trNav(i.label), group: trNav('System') }))
   ];
   const closeNav = () => setNavOpen(false);
+  /* Phone: the four screens used all day sit in a bar at the thumb, with Menu for the rest. Home, then billing, customers, products or stock. */
+  const tabPool = mainGroups.flatMap((g) => g.items).filter((i, k, all) => all.findIndex((x) => x.to === i.to) === k);
+  const tabs = [(i) => i.to === '/app', (i) => /billing|\/pos$|jobs/.test(i.to), (i) => /customers|clients/.test(i.to), (i) => /products|clothing|catalogue|inventory|services/.test(i.to)]
+    .map((test) => tabPool.find(test)).filter(Boolean).filter((i, k, all) => all.indexOf(i) === k);
+  const tabBar = tabs.length >= 2 && !/^\/app\/(billing|salon\/pos)/.test(location.pathname);
 
   return (
     <div className="flex min-h-full flex-col bg-page">
@@ -667,7 +674,7 @@ const AppShell = () => {
 
           {/* key remounts the boundary on navigation, so a crash on one screen
               does not follow you to the next. */}
-          <main className="flex-1 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 lg:p-8">
+          <main className={`flex-1 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 lg:p-8 ${tabBar ? 'pb-24 lg:pb-8' : ''}`}>
             {blocked ? (
               <EmptyState
                 icon={Lock}
@@ -691,6 +698,21 @@ const AppShell = () => {
         </div>
       </div>
 
+      {tabBar && (
+        <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm lg:hidden print:hidden">
+          {tabs.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => `flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium ${isActive ? 'text-brand-600' : 'text-ink-500'}`}>
+                <Icon aria-hidden="true" className="h-5 w-5" /><span className="max-w-full truncate">{trNav(item.label)}</span>
+              </NavLink>
+            );
+          })}
+          <button type="button" onClick={() => setNavOpen(true)} className="flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium text-ink-500">
+            <Menu aria-hidden="true" className="h-5 w-5" /><span>{trNav('More')}</span>
+          </button>
+        </nav>
+      )}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} items={paletteItems} />
       <GuideHelper items={paletteItems} />
     </div>

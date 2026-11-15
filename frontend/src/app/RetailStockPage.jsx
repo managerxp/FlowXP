@@ -281,7 +281,7 @@ const RetailStockPage = () => {
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
-  const [dialog, setDialog] = useState(null);
+  const [dialog, setDialog] = useState(params.get('import') ? 'import' : null);
   const canWrite = can('inventory');
   const refresh = () => setRefreshKey((k) => k + 1);
 

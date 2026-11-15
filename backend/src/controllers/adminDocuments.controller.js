@@ -15,6 +15,7 @@ import { cleanItems, compute, fyLabel, isIntraState } from '../modules/adminDocs
 import { adjust } from '../modules/messaging/wallet.js';
 import { createPaymentLink as cashfreeCreateLink, CashfreeError } from '../modules/payments/cashfree.js';
 import config from '../config/env.js';
+import PDFDocument from 'pdfkit';
 import { deliverMail, mailConfigured } from '../modules/mailer.js';
 import { render } from '../modules/messaging/templates.js';
 import { deliver, channelsAvailable } from '../modules/messaging/provider.js';
@@ -45,7 +46,8 @@ export const markPaid = async (docId, { note = null, userId = null, method = nul
       const days = d.plan_cycle === 'YEARLY' ? 365 : 30;
       const ver = (await c.query(`SELECT plan_version_id FROM plan_versions WHERE plan_code = $1 AND effective_to IS NULL`, [d.plan_code])).rows[0];
       await c.query(
-        `UPDATE businesses SET subscription_status = 'ACTIVE', billing_cycle = $2::varchar, plan_code = $3::varchar, plan_version_id = COALESCE($4, plan_version_id),
+        `UPDATE businesses SET subscription_started_at = CASE WHEN subscription_status = 'ACTIVE' AND plan_code = $3::varchar AND next_billing_date > CURRENT_TIMESTAMP AND subscription_started_at IS NOT NULL THEN subscription_started_at ELSE CURRENT_TIMESTAMP END,
+                subscription_status = 'ACTIVE', billing_cycle = $2::varchar, plan_code = $3::varchar, plan_version_id = COALESCE($4, plan_version_id),
                 next_billing_date = (CASE WHEN subscription_status = 'ACTIVE' AND plan_code = $3::varchar AND next_billing_date > CURRENT_TIMESTAMP THEN next_billing_date ELSE CURRENT_TIMESTAMP END) + make_interval(days => $5::int),
                 updated_at = CURRENT_TIMESTAMP WHERE business_id = $1`,
         [d.business_id, d.plan_cycle, d.plan_code, ver?.plan_version_id ?? null, days]);
@@ -182,6 +184,57 @@ export const documentEmail = (d, seller) => {
   return { subject: `${what} ${d.doc_number} from ${seller.name || 'FlowXP'}`, text, html };
 };
 
+/* The invoice or quotation as a real PDF (A4), attached to the email as the client's copy. The built-in PDF font has no rupee sign, so amounts read "Rs 5,085.00". */
+const pdfMoney = (p) => `Rs ${(Number(p || 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export const documentPdf = (d, seller) => new Promise((resolve, reject) => {
+  const quote = d.kind === 'QUOTE'; const t = d.totals || {}; const c = d.client || {};
+  const doc = new PDFDocument({ size: 'A4', margin: 40, info: { Title: `${d.doc_number}` } });
+  const chunks = [];
+  doc.on('data', (b) => chunks.push(b)); doc.on('end', () => resolve(Buffer.concat(chunks))); doc.on('error', reject);
+  const L = 40; const R = 555; const day = (v) => String(v).slice(0, 10);
+  const ink = '#22324d'; const soft = '#65758e';
+
+  doc.fillColor(ink).font('Helvetica-Bold').fontSize(15).text(seller.name || 'FlowXP', L, 40, { width: 300 });
+  doc.font('Helvetica').fontSize(9).fillColor(soft).text([seller.address, seller.gstin && `GSTIN: ${seller.gstin}`, [seller.phone, seller.email].filter(Boolean).join('  |  ')].filter(Boolean).join('\n'), L, doc.y + 2, { width: 300 });
+  const leftEnd = doc.y;
+  doc.fillColor(ink).font('Helvetica-Bold').fontSize(18).text((quote ? 'QUOTATION' : seller.gstin ? 'TAX INVOICE' : 'INVOICE'), 330, 40, { width: R - 330, align: 'right' });
+  doc.font('Helvetica').fontSize(10).fillColor(ink).text(d.doc_number, 330, doc.y + 2, { width: R - 330, align: 'right' });
+  doc.fillColor(soft).fontSize(9).text(`Date: ${day(d.issue_date)}${d.due_date ? `\n${quote ? 'Valid until' : 'Due'}: ${day(d.due_date)}` : ''}`, 330, doc.y + 2, { width: R - 330, align: 'right' });
+
+  doc.y = Math.max(leftEnd, doc.y) + 22;
+  doc.fillColor(soft).fontSize(8).text(quote ? 'PREPARED FOR' : 'BILLED TO', L, doc.y);
+  doc.fillColor(ink).font('Helvetica-Bold').fontSize(11).text(c.name || '', L, doc.y + 2);
+  doc.font('Helvetica').fontSize(9).fillColor(soft).text([c.address, [c.state, c.phone, c.email].filter(Boolean).join('  |  '), c.gstin && `GSTIN: ${c.gstin}`].filter(Boolean).join('\n'), L, doc.y + 2, { width: 340 });
+
+  // the table: description, HSN, qty, rate, GST, amount
+  const cols = [[L, 215, 'left', 'Description'], [255, 55, 'left', 'HSN'], [310, 40, 'right', 'Qty'], [350, 80, 'right', 'Rate'], [430, 40, 'right', 'GST'], [470, R - 470, 'right', 'Amount']];
+  const head = (y) => { doc.font('Helvetica-Bold').fontSize(8).fillColor(soft); cols.forEach(([x, w, a, h]) => doc.text(h.toUpperCase(), x, y, { width: w, align: a })); doc.moveTo(L, y + 13).lineTo(R, y + 13).strokeColor('#c5cedb').stroke(); return y + 19; };
+  let y = head(doc.y + 20);
+  for (const i of d.items || []) {
+    const h = doc.font('Helvetica').fontSize(9).heightOfString(String(i.description), { width: 210 });
+    if (y + h > 740) { doc.addPage(); y = head(40); }
+    doc.fillColor(ink).font('Helvetica').fontSize(9);
+    const cells = [String(i.description), String(i.hsn || ''), String(i.qty), pdfMoney(i.rate_paise), `${i.gst_rate}%`, pdfMoney(i.taxable_paise)];
+    cols.forEach(([x, w, a], k) => doc.text(cells[k], x, y, { width: k === 0 ? 210 : w, align: a }));
+    y += Math.max(h, 11) + 8;
+    doc.moveTo(L, y - 4).lineTo(R, y - 4).strokeColor('#e3e8ef').stroke();
+  }
+  if (y > 650) { doc.addPage(); y = 40; }
+  const tot = (label, value, bold = false) => { doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(bold ? 12 : 9).fillColor(ink).text(label, 340, y, { width: 100 }).text(value, 440, y, { width: R - 440, align: 'right' }); y += bold ? 20 : 15; };
+  y += 6;
+  tot('Taxable value', pdfMoney(t.taxable_paise));
+  if (d.intra_state) { tot('CGST', pdfMoney(t.cgst_paise)); tot('SGST', pdfMoney(t.sgst_paise)); } else tot('IGST', pdfMoney(t.igst_paise));
+  if (t.round_off_paise) tot('Round off', pdfMoney(t.round_off_paise));
+  doc.moveTo(340, y).lineTo(R, y).strokeColor(ink).stroke(); y += 6;
+  tot('Total', pdfMoney(t.total_paise), true);
+  if (!quote && d.status === 'PAID') tot('Status', 'PAID');
+
+  const pay = !quote && d.status !== 'PAID' ? [d.payment_link_url && `Pay online: ${d.payment_link_url}`, seller.upi && `UPI: ${seller.upi}`, seller.bank && `Bank: ${seller.bank}`].filter(Boolean) : [];
+  doc.x = L; doc.y = y + 14;
+  for (const line of [d.notes, ...pay, seller.terms]) if (line) doc.font('Helvetica').fontSize(9).fillColor(line === seller.terms ? soft : ink).text(line, L, doc.y + 4, { width: R - L });
+  doc.end();
+});
+
 /* POST /api/admin/documents/:id/email { to? }: send the document to the client's email (or the one typed) */
 export const emailDocument = async (req, res) => {
   const id = Number(req.params.id);
@@ -193,7 +246,8 @@ export const emailDocument = async (req, res) => {
   if (!(await mailConfigured())) return bad(res, 'No email account is set up yet. Add it in Settings > Email.', 409);
   const seller = await company();
   const msg = documentEmail(d, seller);
-  try { await deliverMail({ to, ...msg, replyTo: seller.email || undefined, fromName: seller.name || undefined }); }
+  const attachments = [{ filename: `${d.doc_number}.pdf`, content: await documentPdf(d, seller), contentType: 'application/pdf' }];
+  try { await deliverMail({ to, ...msg, attachments, replyTo: seller.email || undefined, fromName: seller.name || undefined }); }
   catch (error) { return bad(res, `The email did not go: ${error.message}`, 502); }
   await pool.query(`UPDATE admin_documents SET emailed_at = CURRENT_TIMESTAMP, emailed_to = $2, status = CASE WHEN status = 'DRAFT' THEN 'SENT' ELSE status END WHERE doc_id = $1`, [id, to]);
   recordAudit(req, { business_id: d.business_id, action: 'admin.document_emailed', resource_type: 'admin_document', resource_id: id, metadata: { number: d.doc_number } });

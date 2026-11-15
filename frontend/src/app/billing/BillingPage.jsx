@@ -116,21 +116,21 @@ const BillLine = ({ line, onChange, onRemove, selected = false, onSelect, offer 
   const label = line.name || 'custom item';
   return (
     <li className={`-mx-5 px-5 py-3 ${selected ? 'bg-brand-50/70 shadow-[inset_3px_0_0_var(--color-brand-500)]' : ''}`} onClick={onSelect}>
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
+      <div className="flex flex-wrap items-start gap-3">
+        <div className={`min-w-0 flex-1 ${line.custom ? 'basis-full sm:basis-0' : ''}`}>
           {line.custom ? (
             <div>
               <div className="flex gap-2">
-                <Input placeholder={tr('What is it?')} value={line.name} onChange={(e) => onChange({ name: e.target.value })} aria-label={tr('Custom item description')} className="!py-1.5" />
-                <div className="w-24 shrink-0">
-                  <Input type="number" min="0" step="0.01" placeholder={tr('₹ price')} value={line.unit_price || ''} aria-label={tr('Custom item price')}
-                         onChange={(e) => { const price = Number(e.target.value); onChange({ unit_price: price, ...(line.gst_auto ? { tax_rate: slabRate(line.gst_auto, price) } : {}) }); }} className="!py-1.5 text-right" />
+                <Input placeholder={tr('What is it?')} value={line.name} onChange={(e) => onChange({ name: e.target.value })} aria-label={tr('Custom item description')} className="!py-1.5 pointer-coarse:!min-h-11 pointer-coarse:!text-base" autoFocus={!line.name} />
+                <div className="w-28 shrink-0">
+                  <Input type="number" inputMode="decimal" min="0" step="0.01" placeholder={tr('₹ price')} value={line.unit_price || ''} aria-label={tr('Custom item price')}
+                         onChange={(e) => { const price = Number(e.target.value); onChange({ unit_price: price, ...(line.gst_auto ? { tax_rate: slabRate(line.gst_auto, price) } : {}) }); }} className="!py-1.5 text-right pointer-coarse:!min-h-11 pointer-coarse:!text-base" />
                 </div>
               </div>
               {!line.name && presets.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {presets.map(([name, gst]) => (
-                    <button key={name} type="button" onClick={() => onChange({ name: tr(name), gst_auto: typeof gst === 'string' ? gst : null, tax_rate: typeof gst === 'string' ? slabRate(gst, line.unit_price) : gst })}
+                  {presets.map(([name]) => (
+                    <button key={name} type="button" onClick={() => onChange({ name: tr(name) })}
                             className="rounded-full border border-line-strong px-2.5 py-1 text-caption font-medium text-ink-700 hover:bg-surface-2 pointer-coarse:min-h-11">{tr(name)}</button>
                   ))}
                 </div>
@@ -165,7 +165,7 @@ const BillLine = ({ line, onChange, onRemove, selected = false, onSelect, offer 
             </div>
           )}
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
+        <div className={`flex shrink-0 gap-2 ${line.custom ? 'w-full flex-row items-center justify-between sm:w-auto sm:flex-col sm:items-end' : 'flex-col items-end'}`}>
           <p className="tabular text-small font-semibold text-ink-900">{formatCurrency(lineTotal(line) - (offer?.discount || 0))}</p>
           <div className="flex items-center gap-1">
             <Stepper value={line.quantity} label={tr(label)} onChange={(q) => onChange({ quantity: q })} />

@@ -183,6 +183,7 @@ const GymRewards = lazy(() => import('./app/gym/GymRewards.jsx'));
 /* Clothing shops (business type CLOTHING): styles with size and colour variants. */
 const ClothingStyles = lazy(() => import('./app/clothing/ClothingStyles.jsx'));
 const ClothingInsights = lazy(() => import('./app/clothing/ClothingInsights.jsx'));
+const AddItemsPage = lazy(() => import('./app/AddItemsPage.jsx'));
 const ProductLabels = lazy(() => import('./app/ProductLabels.jsx'));
 const ClothingLabels = lazy(() => import('./app/clothing/ClothingLabels.jsx'));
 const PartsHome = lazy(() => import('./app/autoparts/PartsHome.jsx'));
@@ -323,7 +324,9 @@ const App = () => (
       <Route path="suppliers" element={<SuppliersPage />} />
       <Route path="inventory" element={<InventoryPage />} />
       <Route path="stock" element={<RetailStockPage />} />
+      <Route path="add-items" element={<AddItemsPage />} />
       <Route path="products/labels" element={<ProductLabels />} />
+      <Route path="barcodes" element={<ProductLabels />} />
       <Route path="stock/receive" element={<ReceiveStockPage />} />
       <Route path="returns" element={<ReturnsPage />} />
       <Route path="offers" element={<OffersPage />} />

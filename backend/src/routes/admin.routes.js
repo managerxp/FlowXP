@@ -64,6 +64,7 @@ router.get('/company', docs.getCompany);
 router.put('/company', docs.saveCompany);
 router.get('/businesses/:id/wallet', messaging.getWallet);
 router.post('/businesses/:id/wallet', messaging.topUpWallet);
+router.patch('/businesses/:id/wallet-prices', messaging.setWalletPrices);
 
 router.get('/me', admin.me);
 router.get('/stats', admin.getStats);

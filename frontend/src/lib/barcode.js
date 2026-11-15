@@ -3,7 +3,7 @@
  * ASCII text (SKUs, EAN digits as text). Scanners read Code 128 everywhere; an EAN-13 on the product itself is
  * printed as its digits in Code 128 too, which every scanner decodes to the same number.
  */
-const PATTERNS = [
+export const PATTERNS = [
   '212222', '222122', '222221', '121223', '121322', '131222', '122213', '122312', '132212', '221213', '221312', '231212', '112232', '122132', '122231', '113222', '123122', '123221', '223211', '221132',
   '221231', '213212', '223112', '312131', '311222', '321122', '321221', '312212', '322112', '322211', '212123', '212321', '232121', '111323', '131123', '131321', '112313', '132113', '132311', '211313',
   '231113', '231311', '112133', '112331', '132131', '113123', '113321', '133121', '313121', '211331', '231131', '213113', '213311', '213131', '311123', '311321', '331121', '312113', '312311', '332111',
@@ -16,15 +16,19 @@ const START_B = 104; const STOP = 106;
 /** The bar/space widths (in modules) for `text`, as a string of digits starting with a bar. */
 export const code128 = (text) => {
   const chars = [...String(text)].filter((c) => c.charCodeAt(0) >= 32 && c.charCodeAt(0) <= 126);
-  const codes = [START_B, ...chars.map((c) => c.charCodeAt(0) - 32)];
+  const digits = chars.length >= 4 && chars.every((c) => c >= '0' && c <= '9');
+  // all digits (every barcode FlowXP makes): subset C packs two digits into each symbol, so the barcode is about 40% narrower and scans on a small label; an odd last digit switches to subset B
+  const codes = digits
+    ? [105, ...Array.from({ length: chars.length >> 1 }, (_, i) => Number(chars[2 * i] + chars[2 * i + 1])), ...(chars.length % 2 ? [100, chars[chars.length - 1].charCodeAt(0) - 32] : [])]
+    : [START_B, ...chars.map((c) => c.charCodeAt(0) - 32)];
   const checksum = codes.reduce((s, c, i) => s + c * (i === 0 ? 1 : i), 0) % 103;
   return [...codes, checksum, STOP].map((c) => PATTERNS[c]).join('');
 };
 
 /** An <svg> string: `module` px per narrow bar, `height` px tall, with quiet zones. */
-export const barcodeSvg = (text, { module = 1.6, height = 44 } = {}) => {
+export const barcodeSvg = (text, { module = 1.6, height = 44, quiet: quietModules = 10 } = {}) => {
   const widths = code128(text).split('').map(Number);
-  const quiet = 10 * module;
+  const quiet = quietModules * module;
   let x = quiet; let bars = '';
   widths.forEach((w, i) => { if (i % 2 === 0) bars += `<rect x="${x}" y="0" width="${w * module}" height="${height}"/>`; x += w * module; });
   const total = x + quiet;

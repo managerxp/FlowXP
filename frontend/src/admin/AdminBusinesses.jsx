@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { adminApi } from '../lib/adminApi.js';
 import { BUSINESS_TYPE_LABEL } from './businessTypes.js';
+import { fmt, lifeOf } from './subscriptionLife.js';
 import {
   PageHeader, Input, Select, Table, Thead, Th, Td, Tr, ListState,
   SkeletonRows, StatusBadge, Badge, Button
@@ -87,7 +88,7 @@ const AdminBusinesses = () => {
 
   return (
     <div>
-      <PageHeader title="Clients" lead="Every FlowXP client in one place: who to follow up, who to bill, who is running low on WhatsApp credit." />
+      <PageHeader title="Businesses" lead="Every business on FlowXP in one place: who to follow up, who to bill, who is running low on WhatsApp credit." />
 
       <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Needs attention">
         {ATTENTION.map(([key, label]) => (
@@ -131,63 +132,46 @@ const AdminBusinesses = () => {
         error={error}
         empty={businesses?.length === 0}
         emptyLabel="No businesses match this filter."
-        skeleton={<SkeletonRows rows={6} columns={8} />}
+        skeleton={<SkeletonRows rows={6} columns={6} />}
       />
 
       {businesses?.length > 0 && (
         <Table>
           <Thead>
             <Th>Business</Th>
-            <Th>Owner</Th>
             <Th>Plan</Th>
-            <Th>Subscription</Th>
-            <Th>Trial ends</Th>
-            <Th className="text-right">WhatsApp credit</Th>
-            <Th>Last bill</Th>
-            <Th className="text-right">Unpaid</Th>
+            <Th>Started</Th>
+            <Th>Ends</Th>
             <Th>Status</Th>
             <Th className="text-right">Actions</Th>
           </Thead>
           <tbody>
-            {businesses.map((b) => (
-              <Tr key={b.business_id}>
-                <Td>
-                  <Link to={`/superadmin/businesses/${b.business_id}`} className="font-semibold text-brand-600 hover:underline">
-                    {b.name}
-                  </Link>
-                  <p className="text-xs text-ink-400">{BUSINESS_TYPE_LABEL[b.business_type] || b.business_type}</p>
-                  {(b.tags?.length > 0 || b.follow_up_on) && (
+            {businesses.map((b) => {
+              const s = b.subscription; const life = lifeOf(s);
+              return (
+                <Tr key={b.business_id}>
+                  <Td>
+                    <Link to={`/superadmin/businesses/${b.business_id}`} className="font-semibold text-brand-600 hover:underline">{b.name}</Link>
+                    <p className="text-xs text-ink-400">{[BUSINESS_TYPE_LABEL[b.business_type] || b.business_type, b.owner.name, b.phone].filter(Boolean).join(' · ')}</p>
                     <p className="mt-1 flex flex-wrap items-center gap-1">
-                      {b.tags.map((t) => <button key={t} type="button" onClick={() => setTag(t)} className="rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-700 hover:bg-brand-100">{t}</button>)}
+                      {b.status === 'SUSPENDED' && <Badge tone="danger">Suspended</Badge>}
+                      {s.status === 'ACTIVE' && b.wallet_paise < 2000 && <span className="rounded-full bg-danger/10 px-2 py-0.5 text-xs font-semibold text-danger">Low WhatsApp credit</span>}
+                      {b.unpaid_paise > 0 && <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning">Unpaid {rs(b.unpaid_paise)}</span>}
+                      {(b.tags || []).map((t) => <button key={t} type="button" onClick={() => setTag(t)} className="rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-700 hover:bg-brand-100">{t}</button>)}
                       {b.follow_up_on && <span className={`text-xs ${b.follow_up_on <= new Date().toLocaleDateString('en-CA') ? 'font-semibold text-danger' : 'text-ink-500'}`} title={b.follow_up_note || ''}>Follow up {new Date(b.follow_up_on).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>}
                     </p>
-                  )}
-                </Td>
-                <Td>
-                  <p>{b.owner.name}</p>
-                  <p className="text-xs text-ink-400">{b.owner.email}</p>
-                  {b.phone && <p className="text-xs text-ink-400">{b.phone}</p>}
-                </Td>
-                <Td>{b.subscription.plan_code}</Td>
-                <Td><StatusBadge status={b.subscription.status} /></Td>
-                <Td className="text-xs">{b.subscription.status === 'TRIAL' && b.subscription.trial_ends_at ? `${new Date(b.subscription.trial_ends_at).toLocaleDateString()} (${b.subscription.trial_days_remaining} d)` : '—'}</Td>
-                <Td className="text-right text-xs"><p className={b.wallet_paise < 2000 && b.subscription.status === 'ACTIVE' ? 'font-semibold text-danger' : ''}>{rs(b.wallet_paise)}</p><p className="text-ink-400">{b.wa_sent_30d} sent in 30 days</p></Td>
-                <Td className="text-xs">{ago(b.last_bill_at)}</Td>
-                <Td className="text-right text-xs">{b.unpaid_paise > 0 ? <span className="font-semibold text-danger">{rs(b.unpaid_paise)}</span> : '—'}</Td>
-                <Td><Badge tone={STATUS_TONE[b.status]}>{b.status}</Badge></Td>
-                <Td className="text-right whitespace-nowrap">
-                  <Link to={`/superadmin/invoices?client=${b.business_id}`} className="mr-2 text-xs font-semibold text-brand-600 hover:underline">Invoice</Link>
-                  <Button
-                    size="sm"
-                    variant={b.status === 'SUSPENDED' ? 'secondary' : 'ghost'}
-                    disabled={busyId === b.business_id || b.status === 'CLOSED'}
-                    onClick={() => toggleStatus(b)}
-                  >
-                    {b.status === 'SUSPENDED' ? 'Reactivate' : 'Suspend'}
-                  </Button>
-                </Td>
-              </Tr>
-            ))}
+                  </Td>
+                  <Td><p className="font-medium capitalize">{String(s.plan_code || '').toLowerCase()}</p><p className="text-xs text-ink-400">{life.length}</p></Td>
+                  <Td className="whitespace-nowrap text-sm">{fmt(s.started_at)}</Td>
+                  <Td className="whitespace-nowrap text-sm"><p>{fmt(s.ends_at)}</p><p className={`text-xs ${life.tone}`}>{life.left}</p></Td>
+                  <Td><Badge tone={life.badge}>{life.label}</Badge></Td>
+                  <Td className="text-right whitespace-nowrap">
+                    <Link to={`/superadmin/invoices?client=${b.business_id}`} className="mr-3 text-xs font-semibold text-brand-600 hover:underline">New invoice</Link>
+                    <Link to={`/superadmin/businesses/${b.business_id}`} className="text-xs font-semibold text-brand-600 hover:underline">Open</Link>
+                  </Td>
+                </Tr>
+              );
+            })}
           </tbody>
         </Table>
       )}

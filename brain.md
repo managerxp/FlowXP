@@ -1451,3 +1451,18 @@ Ponytail audit + security sweep. Done: backend `npm audit fix` (body-parser, mul
 - `POST /admin/documents/:id/whatsapp` sends the invoice or quotation from FlowXP's own WhatsApp number (template `flowxp_document`, kind ADMIN_DOCUMENT, 6 variables: create it in Meta); the UI makes the payment link first for an unpaid invoice; falls back to wa.me when WhatsApp is not connected.
 - Migration 0132: `admin_documents.plan_code/plan_cycle/plan_applied`. Paying the invoice by any method (cash too) in `markPaid` sets the business ACTIVE on that plan and `next_billing_date` (+30 or +365 days, added to the time left on a renewal). The client Dashboard already shows the end date.
 - Fixed: invoice view blank page (hooks after early return) and misaligned list header (Thead already renders the row).
+
+
+## Per-business WhatsApp prices, subscription dates, PDF invoice
+- Migration 0134: `businesses.wa_rate_utility_paise/wa_rate_marketing_paise`. `walletSettings(businessId)` returns the business's own prices when set (`custom` says which), else the platform ones; `gate`/`chargeMessage` use it. Admin: `PATCH /admin/businesses/:id/wallet-prices {utility, marketing}` in rupees (blank = platform price); UI on the business page, WhatsApp credit card.
+- Migration 0133 `subscription_started_at`; `subscriptionSummary` returns `started_at`/`ends_at`; Businesses list shows Plan, Started, Ends, days left; business page has a Subscription card. Side menu: Customers > Businesses.
+- Emailing an invoice attaches a real PDF (`documentPdf`, pdfkit; amounts print as Rs because the built-in font has no rupee sign).
+
+
+## Phone and add-items pass
+- AppShell: phone bottom tab bar (Home, Billing, Customers, Products + More), hidden on the till; Help button is a small round icon on phones; Add customer shows name and mobile first (GST, address, credit under 'More details'); custom bill line stacks full width with bigger inputs on phones.
+- `/app/add-items` (AddItemsPage): one front door with cards for add one item (`/app/products?add=1`), stock has arrived (`/app/stock/receive`), many at once (`/app/stock?import=1`, retail), print labels. Menu item 'Add items' under Stock for retail/general types (not wholesale, pharmacy, clothing).
+
+
+## Barcode labels page (own menu item 'Barcodes', /app/barcodes)
+- Label shows brand, item name, barcode, number, price; sized in mm so one label = one page (50x25, 40x30, 38x25, 30x20 pocket, 58 mm thermal 58x40 / 58x30, or A4 3 across). Number-only barcodes use Code 128 subset C (about 40% narrower; verified by a decoder test, backend/test/barcode128.test.js). 'Link a barcode to an item' section for goods that already carry a maker's barcode. Sell as an add-on: feature key `barcode_labels` (turn it off in Plans, then create an add-on with that key).

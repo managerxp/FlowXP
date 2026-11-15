@@ -12,8 +12,8 @@ import { Button, Logo, PageLoader } from '../components/ui.jsx';
 /* Grouped by the job they do, so the owner finds a page by what they are doing: looking after clients, billing them, or running the platform. */
 const GROUPS = [
   { title: null, items: [{ to: '/superadmin', label: 'Overview', end: true }] },
-  { title: 'Clients', items: [
-    { to: '/superadmin/businesses', label: 'Clients' },
+  { title: 'Customers', items: [
+    { to: '/superadmin/businesses', label: 'Businesses' },
     { to: '/superadmin/users', label: 'People' },
     { to: '/superadmin/support', label: 'Support', badge: 'tickets' },
     { to: '/superadmin/messages', label: 'WhatsApp usage' },
@@ -110,7 +110,7 @@ const AdminShell = () => {
         {menuOpen && <nav id="admin-menu" aria-label="Admin" className="border-b border-line bg-surface px-3 pb-4 pt-1 lg:hidden print:hidden">{menu}</nav>}
 
         {admin.totp_enabled === false && location.pathname !== '/superadmin/security' && (
-          <div role="alert" className="flex flex-wrap items-center justify-between gap-2 border-b border-warning/40 bg-warning/10 px-5 py-2 text-sm text-ink-900">
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-2 print:hidden border-b border-warning/40 bg-warning/10 px-5 py-2 text-sm text-ink-900">
             <span><strong className="font-semibold">Two-step verification is off.</strong> This console can change every business and plan: protect it with an authenticator app.</span>
             <Link to="/superadmin/security" className="font-semibold text-brand-600 hover:underline">Turn it on</Link>
           </div>

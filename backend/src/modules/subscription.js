@@ -52,6 +52,9 @@ export const subscriptionSummary = (business, now = new Date()) => {
     trial_ends_at: business.trial_ends_at || null,
     trial_days_remaining: status === 'TRIAL' ? trialDaysRemaining(business.trial_ends_at, now) : 0,
     next_billing_date: business.next_billing_date || null,
+    // start and end side by side, whichever kind of subscription it is: a trial's own dates, or the paid period
+    started_at: (status === 'TRIAL' ? business.trial_started_at : business.subscription_started_at) || null,
+    ends_at: (status === 'TRIAL' ? business.trial_ends_at : business.next_billing_date) || null,
     /* The single flag the frontend gates on. Read-only access after expiry is
        deliberate: the brief says never delete data, and an owner locked out of
        their own sales history will not come back to pay. */

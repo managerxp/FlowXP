@@ -101,6 +101,7 @@ const NAME_LANGS = [['hi', 'Hindi'], ['ml', 'Malayalam'], ['ta', 'Tamil'], ['bn'
 const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail, autoSku, onSaved, onClose, onCreateCategory, onCreateBrand }) => {
   const tr = useT();
   const { business: shop } = useAuth();
+  const gstOn = Boolean(shop?.gst_enabled);   // a shop not registered for GST sees no GST or HSN boxes, and its items carry none
   const cessOn = Boolean(shop?.gst_enabled && shop?.gst_options?.cess);   // Settings > GST options
   const [form, setForm] = useState(initial);
   const [busy, setBusy] = useState(false);
@@ -144,7 +145,7 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail
         ...(retail && isEdit ? {} : { barcode: form.barcode || null }),
         ...(retail ? { mrp: form.mrp === '' ? null : form.mrp, erp_code: form.erp_code || null } : {}),
         unit: form.unit, selling_price: sold ? form.selling_price : (form.selling_price || 0),
-        purchase_price: form.purchase_price || 0, tax_rate: form.tax_rate, ...(cessOn ? { cess_rate: Number(form.cess_rate) || 0 } : {}), hsn_sac: form.hsn_sac || null,
+        purchase_price: form.purchase_price || 0, ...(gstOn ? { tax_rate: form.tax_rate } : {}), ...(cessOn ? { cess_rate: Number(form.cess_rate) || 0 } : {}), ...(gstOn ? { hsn_sac: form.hsn_sac || null } : {}),
         description: form.description || null, food_type: sold ? (form.food_type || null) : null,
         track_inventory: form.track_inventory, min_stock: form.min_stock,
         ...(brands ? { brand_id: form.brand_id || null } : {}),
@@ -252,22 +253,22 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail
         </fieldset>
 
         <fieldset className="space-y-4">
-          <legend className={legend}>{tr('Price and GST')}</legend>
+          <legend className={legend}>{gstOn ? tr('Price and GST') : tr('Price')}</legend>
           <div className={`grid gap-4 ${retail ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
             {sold && <Field id="selling_price" label={tr('Selling price (₹)')} hint={tr('Before GST')}><Input id="selling_price" type="number" min="0" step="0.01" value={form.selling_price} onChange={set('selling_price')} required /></Field>}
             {retail && <Field id="mrp" label={tr('MRP (₹)')} hint={tr('Printed price, optional')}><Input id="mrp" type="number" min="0" step="0.01" value={form.mrp ?? ''} onChange={set('mrp')} /></Field>}
             <Field id="purchase_price" label={sold ? tr('Cost price (₹)') : tr('What you pay (₹)')} hint={sold && isRestaurant ? tr('For dishes with a recipe, the recipe sets the cost') : `Per ${form.unit}, used for stock value`}>
               <Input id="purchase_price" type="number" min="0" step="0.01" value={form.purchase_price} onChange={set('purchase_price')} />
             </Field>
-            <Field id="tax_rate" label={tr('GST')}>
+            {gstOn && <Field id="tax_rate" label={tr('GST')}>
               <Select id="tax_rate" value={form.tax_rate} onChange={set('tax_rate')}>{GST_RATES.map((r) => <option key={r} value={r}>{r}%</option>)}</Select>
-            </Field>
+            </Field>}
             {cessOn && <Field id="cess_rate" label={tr('Cess (%)')} hint={tr('Added on top of GST')}><Input id="cess_rate" type="number" min="0" max="100" step="0.01" value={form.cess_rate ?? ''} onChange={set('cess_rate')} /></Field>}
           </div>
-          {sold && Number(form.selling_price) > 0 && Number(form.tax_rate) > 0 && <p className="tabular -mt-2 text-caption text-ink-500">{formatCurrency(Number(form.selling_price))} + {form.tax_rate}% GST = {formatCurrency(withGst)} on the bill.</p>}
+          {gstOn && sold && Number(form.selling_price) > 0 && Number(form.tax_rate) > 0 && <p className="tabular -mt-2 text-caption text-ink-500">{formatCurrency(Number(form.selling_price))} + {form.tax_rate}% GST = {formatCurrency(withGst)} on the bill.</p>}
           <div className={`grid gap-4 ${retail ? 'sm:grid-cols-3' : 'sm:grid-cols-4'}`}>
             <Field id="unit" label={tr('Sold / counted in')}><Select id="unit" value={form.unit} onChange={set('unit')}>{[...new Set([...UNITS, form.unit])].map((u) => <option key={u} value={u}>{u}</option>)}</Select></Field>
-            <Field id="hsn_sac" label={tr('HSN / SAC')}><Input id="hsn_sac" value={form.hsn_sac || ''} onChange={set('hsn_sac')} /></Field>
+            {gstOn && <Field id="hsn_sac" label={tr('HSN / SAC')}><Input id="hsn_sac" value={form.hsn_sac || ''} onChange={set('hsn_sac')} /></Field>}
             {!retail && <Field id="sku" label={tr('SKU')}><Input id="sku" value={form.sku || ''} onChange={set('sku')} /></Field>}
             {(!retail || !isEdit) && <Field id="barcode" label={retail ? tr('Barcode (optional)') : tr('Barcode')} hint={retail ? tr('Scan or type it. Add more later.') : undefined}><Input id="barcode" value={form.barcode || ''} onChange={set('barcode')} /></Field>}
           </div>
@@ -765,6 +766,7 @@ const ProductsPage = () => {
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const selectedId = params.get('p') ? Number(params.get('p')) : null;
+  useEffect(() => { if (params.get('add')) { setEditing({}); setParams({}, { replace: true }); } }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   const { business, outlets, outletId, hasFeature, can } = useAuth();
   const isRestaurant = RESTAURANT_TYPES.includes(business?.business_type);
   const retail = RETAIL_TYPES.includes(business?.business_type);
@@ -867,7 +869,7 @@ const ProductsPage = () => {
           </div>
           <div className="flex flex-wrap gap-2">
             {isRestaurant && <Button variant="secondary" onClick={() => setAction('import')}><Sparkles aria-hidden="true" className="h-4 w-4" />{tr('Menu from a photo')}</Button>}
-            {hasFeature('barcode_labels') && can('products') && <Link to="/app/products/labels" className="inline-flex h-10 items-center rounded-lg border border-line-strong px-4 text-sm font-semibold text-ink-900 hover:bg-surface-muted">{tr('Print barcode labels')}</Link>}
+            {hasFeature('barcode_labels') && can('products') && <Link to="/app/barcodes" className="inline-flex h-10 items-center rounded-lg border border-line-strong px-4 text-sm font-semibold text-ink-900 hover:bg-surface-muted">{tr('Print barcode labels')}</Link>}
             {retail && can('settings') && <Button variant="secondary" onClick={() => setAction('settings')}>{tr('Product settings')}</Button>}
             <Button onClick={() => setEditing({})}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add product')}</Button>
           </div>

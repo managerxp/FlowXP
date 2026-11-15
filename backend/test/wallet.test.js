@@ -53,3 +53,22 @@ test('the owner is warned once when credit falls to the alert level, and again w
   await alertIfLow(pool, biz, 9985, 9970, s); assert.deepEqual(await titles(), ['credit_low'], 'already below: not told again');
   await alertIfLow(pool, biz, 10, 0, s); assert.deepEqual(await titles(), ['credit_low', 'credit_empty']);
 });
+
+test('a business can have its own message prices, and clearing them returns to the platform price', { skip }, async () => {
+  const { runMigrations } = await import('../src/config/migrate.js');
+  await runMigrations(pool);
+  const { walletSettings } = await import('../src/modules/messaging/wallet.js');
+  const { setWalletPrices } = await import('../src/controllers/adminMessaging.controller.js');
+  const uid = (await pool.query(`INSERT INTO users (name, email, password_hash) VALUES ('O','own@price.test','x') RETURNING user_id`)).rows[0].user_id;
+  const biz = (await pool.query(`INSERT INTO businesses (name, owner_user_id, business_type) VALUES ('Own Price',$1,'CAFE') RETURNING business_id`, [uid])).rows[0].business_id;
+  const call = async (body) => { let out; const res = { status(c) { this.code = c; return this; }, json(b) { out = { code: this.code ?? 200, body: b }; return this; } }; await setWalletPrices({ params: { id: biz }, body, auth: { userId: uid }, ip: '127.0.0.1', headers: {} }, res); return out; };
+  const platform = (await walletSettings(biz)).prices.UTILITY;
+  assert.equal((await call({ utility: '0.40', marketing: '' })).code, 200);
+  let s = await walletSettings(biz);
+  assert.equal(s.prices.UTILITY, 40); assert.equal(s.prices.MARKETING, (await walletSettings()).prices.MARKETING);
+  assert.equal((await walletSettings()).prices.UTILITY, platform, 'other businesses are unchanged');
+  assert.equal((await call({ utility: '-1' })).code, 400);
+  await call({ utility: '', marketing: '' });
+  s = await walletSettings(biz);
+  assert.equal(s.prices.UTILITY, platform); assert.equal(s.custom.utility, null);
+});

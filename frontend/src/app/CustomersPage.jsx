@@ -99,7 +99,9 @@ const CustomerForm = ({ initial, onSaved, onClose }) => {
             <Field id="c-email" label={tr('Email (optional)')}><Input id="c-email" type="email" value={form.email || ''} onChange={set('email')} /></Field>
           </div>
         </fieldset>
-        <fieldset className="space-y-4">
+        <details open={isEdit || Boolean(form.gstin || form.address || form.email || form.credit_limit)} className="group space-y-6">
+        <summary className="cursor-pointer text-small font-semibold text-brand-600">{tr('More details (GST, address, credit limit)')}</summary>
+        <fieldset className="mt-4 space-y-4">
           <legend className={legend}>{tr('For GST bills')} <span className="font-normal normal-case tracking-normal text-ink-400">{tr('· only for business customers')}</span></legend>
           <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
             <Field id="c-gstin" label={tr('GSTIN')}><Input id="c-gstin" value={form.gstin || ''} onChange={set('gstin')} maxLength={15} className="uppercase" /></Field>
@@ -118,6 +120,7 @@ const CustomerForm = ({ initial, onSaved, onClose }) => {
             </Field>
           </div>
         </fieldset>
+        </details>
         <div className="flex justify-end gap-2 border-t border-line pt-4">
           <Button type="button" variant="ghost" onClick={onClose}>{tr('Cancel')}</Button>
           <Button type="submit" disabled={busy}>{busy ? tr('Saving…') : isEdit ? tr('Save changes') : tr('Add customer')}</Button>

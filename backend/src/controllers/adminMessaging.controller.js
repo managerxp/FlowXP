@@ -87,8 +87,27 @@ export const businessUsage = async (req, res) => {
 export const getWallet = async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ success: false, message: 'Not a business number.' });
-  const [s, bal, rows] = await Promise.all([walletSettings(), balanceOf(pool, id), pool.query(`SELECT entry_id, amount_paise, kind, note, balance_after_paise, created_at FROM wallet_ledger WHERE business_id = $1 ORDER BY entry_id DESC LIMIT 50`, [id])]);
-  res.json({ success: true, data: { required: s.required, prices_paise: s.prices, balance_paise: bal, entries: rows.rows } });
+  const [s, bal, rows] = await Promise.all([walletSettings(id), balanceOf(pool, id), pool.query(`SELECT entry_id, amount_paise, kind, note, balance_after_paise, created_at FROM wallet_ledger WHERE business_id = $1 ORDER BY entry_id DESC LIMIT 50`, [id])]);
+  res.json({ success: true, data: { required: s.required, prices_paise: s.prices, custom_prices_paise: s.custom, balance_paise: bal, entries: rows.rows } });
+};
+
+/* PATCH /api/admin/businesses/:id/wallet-prices { utility, marketing }: this business's own price per message in rupees; blank or null goes back to the platform price */
+export const setWalletPrices = async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ success: false, message: 'Not a business number.' });
+  const one = (v) => {
+    if (v === '' || v == null) return null;
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 0 || n > 1000) throw new Error('A message price is between 0 and 1,000 rupees.');
+    return Math.round(n * 100);
+  };
+  let utility; let marketing;
+  try { utility = one(req.body?.utility); marketing = one(req.body?.marketing); } catch (e) { return res.status(400).json({ success: false, message: e.message }); }
+  const r = await pool.query(`UPDATE businesses SET wa_rate_utility_paise = $2, wa_rate_marketing_paise = $3 WHERE business_id = $1`, [id, utility, marketing]);
+  if (!r.rowCount) return res.status(404).json({ success: false, message: 'Business not found' });
+  recordAudit(req, { business_id: id, action: 'admin.message_prices_set', resource_type: 'business', resource_id: id, metadata: { utility_paise: utility, marketing_paise: marketing } });
+  const s = await walletSettings(id);
+  res.json({ success: true, data: { prices_paise: s.prices, custom_prices_paise: s.custom } });
 };
 
 /* POST /api/admin/businesses/:id/wallet { amount, note }: add credit in rupees; a negative amount takes some back (kept as an adjustment) */

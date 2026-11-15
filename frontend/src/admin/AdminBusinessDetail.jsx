@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { adminApi } from '../lib/adminApi.js';
+import { fmt, lifeOf } from './subscriptionLife.js';
 import { formatCurrency } from '../lib/api.js';
 import { Card, PageHeader, StatusBadge, Badge, Button, Alert, Field, Input, Select, Table, Thead, Th, Td, Tr, useToast, useDialog, PageLoader } from '../components/ui.jsx';
 
@@ -38,7 +39,9 @@ const WalletPanel = ({ businessId }) => {
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const load = () => adminApi(`/businesses/${businessId}/wallet`).then(setW).catch((e) => setError(e.message));
+  const [priceU, setPriceU] = useState('');
+  const [priceM, setPriceM] = useState('');
+  const load = () => adminApi(`/businesses/${businessId}/wallet`).then((r) => { setW(r); const c = r.custom_prices_paise || {}; setPriceU(c.utility == null ? '' : String(c.utility / 100)); setPriceM(c.marketing == null ? '' : String(c.marketing / 100)); }).catch((e) => setError(e.message));
   useEffect(() => { load(); }, [businessId]);   // eslint-disable-line react-hooks/exhaustive-deps
   const rs = (p) => `₹${(p / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const msgs = (paise) => w ? { normal: Math.floor(paise / Math.max(1, w.prices_paise.UTILITY)), marketing: Math.floor(paise / Math.max(1, w.prices_paise.MARKETING)) } : { normal: 0, marketing: 0 };
@@ -52,7 +55,13 @@ const WalletPanel = ({ businessId }) => {
     }
     catch (e) { setError(e.message); } finally { setBusy(false); }
   };
+  const savePrices = async () => {
+    setError(''); setBusy(true);
+    try { await adminApi(`/businesses/${businessId}/wallet-prices`, { method: 'PATCH', body: { utility: priceU, marketing: priceM } }); toast.success('Message prices saved'); await load(); }
+    catch (e) { setError(e.message); } finally { setBusy(false); }
+  };
   if (!w) return <Card className="p-5"><Alert>{error}</Alert></Card>;
+  const custom = w.custom_prices_paise || {};
   return (
     <Card className="p-5">
       <h2 className="font-semibold text-ink-900">WhatsApp credit</h2>
@@ -75,6 +84,15 @@ const WalletPanel = ({ businessId }) => {
           <p className="mt-1 text-xs text-ink-500">Together with the {rs(w.balance_paise)} already there: {n(msgs(w.balance_paise + Math.round(Number(amount) * 100)).normal)} normal or {n(msgs(w.balance_paise + Math.round(Number(amount) * 100)).marketing)} marketing. Sign-in codes are free.</p>
         </div>
       )}
+      <div className="mt-4 border-t border-line pt-3">
+        <p className="text-sm font-semibold text-ink-900">Price per message for this business{custom.utility != null || custom.marketing != null ? <span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">Own price</span> : <span className="ml-2 text-xs font-normal text-ink-500">Using the platform price</span>}</p>
+        <div className="mt-2 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+          <Field id="w-pu" label="Normal message (₹)" hint={custom.utility == null ? undefined : 'Clear the box to use the platform price'}><Input id="w-pu" inputMode="decimal" value={priceU} onChange={(e) => setPriceU(e.target.value)} placeholder={String(w.prices_paise.UTILITY / 100)} /></Field>
+          <Field id="w-pm" label="Marketing message (₹)"><Input id="w-pm" inputMode="decimal" value={priceM} onChange={(e) => setPriceM(e.target.value)} placeholder={String(w.prices_paise.MARKETING / 100)} /></Field>
+          <div className="self-end"><Button variant="secondary" onClick={savePrices} disabled={busy}>Save prices</Button></div>
+        </div>
+        <p className="mt-1 text-xs text-ink-500">Leave a box empty to charge the price set in Settings, Messaging. This only changes what this business pays from now on.</p>
+      </div>
       {w.entries.length > 0 && (
         <ul className="mt-3 space-y-1">{w.entries.slice(0, 15).map((e) => <li key={e.entry_id} className="flex justify-between text-xs text-ink-600"><span>{new Date(e.created_at).toLocaleString('en-IN')} · {e.kind === 'MESSAGE' ? e.note || 'Message' : e.note || (e.kind === 'TOPUP' ? 'Credit added' : 'Adjustment')}</span><span>{e.amount_paise > 0 ? '+' : ''}{rs(e.amount_paise)} → {rs(e.balance_after_paise)}</span></li>)}</ul>
       )}
@@ -747,6 +765,22 @@ const AdminBusinessDetail = () => {
         <Link to={`/superadmin/messages?business=${business.business_id}`} className="text-sm text-brand-600 hover:underline">WhatsApp messages and cost</Link>
       </div>
 
+      {(() => {
+        const sub = business.subscription; const life = lifeOf(sub);
+        return (
+          <Card className="mb-4">
+            <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-ink-400">Subscription</h2>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <DetailField label="Plan" value={`${String(sub.plan_code || '').charAt(0)}${String(sub.plan_code || '').slice(1).toLowerCase()}${life.length ? ` · ${life.length}` : ''}`} />
+              <DetailField label="Started" value={fmt(sub.started_at)} />
+              <DetailField label="Ends" value={fmt(sub.ends_at)} />
+              <div><p className="text-xs uppercase tracking-wide text-ink-400">Now</p><p className="mt-1"><Badge tone={life.badge}>{life.label}</Badge> <span className={`ml-1 text-sm ${life.tone}`}>{life.left}</span></p></div>
+            </div>
+            <p className="mt-3 text-xs text-ink-500">To start or renew a plan, make an invoice for it: when it is paid (online, UPI, bank or cash) the plan switches on and the end date is set.</p>
+          </Card>
+        );
+      })()}
+
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-ink-400">Business details</h2>
@@ -774,7 +808,7 @@ const AdminBusinessDetail = () => {
           <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-ink-400">Activity</h2>
           <DetailField label="Invoices issued" value={business.counts.invoices} />
           <div className="mt-3"><DetailField label="Revenue collected" value={formatCurrency(business.revenue_collected)} /></div>
-          <div className="mt-3"><DetailField label="Trial ends" value={business.subscription.trial_ends_at ? new Date(business.subscription.trial_ends_at).toLocaleString() : '—'} /></div>
+          
         </Card>
 
         <Card className="lg:col-span-2">

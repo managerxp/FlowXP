@@ -14,6 +14,7 @@ import { readTable } from '../../lib/spreadsheet.js';
 import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Th, Thead, Tr, useToast } from '../../components/ui.jsx';
 import { Chips, NumberField, Pager, Panel, Tabs, Toolbar, useAction } from '../salon/parts.jsx';
 import { formatCurrency } from '../../lib/api.js';
+import { slabRate, GST_RATES } from '../../lib/customItems.js';
 import { useT, T } from '../../i18n/useT.js';
 
 const GENDERS = [['MEN', T('Men')], ['WOMEN', T('Women')], ['BOYS', T('Boys')], ['GIRLS', T('Girls')], ['KIDS', T('Kids')], ['UNISEX', T('Unisex')]];
@@ -215,15 +216,15 @@ const StyleDetail = ({ id, onClose, onChanged }) => {
 };
 
 /* ── the wizard ─────────────────────────────────────────────────────────── */
-const STEPS = [T('Details'), T('Colours and sizes'), T('Prices and stock'), T('Check and save')];
-
 const NewStyle = ({ onClose, onSaved }) => {
   const tr = useT();
   const meta = useLoad('/clothing/meta');
-  const [step, setStep] = useState(0);
   const [f, setF] = useState({ name: '', category_id: '', brand: '', gender: 'MEN', season: '', fabric: '', fit: '', pattern: '', hsn_sac: '', tax_rate: '5', mrp: '', selling_price: '', purchase_price: '', reorder_level: '3', style_code: '' });
   const [sizes, setSizes] = useState([]); const [setName, setSetName] = useState('');
   const [colours, setColours] = useState([]);
+  const { business } = useAuth();
+  const gstOn = business?.gst_enabled !== false;   // a shop not registered for GST bills without it
+  const [gstManual, setGstManual] = useState(false);
   const [qty, setQty] = useState({});
   const [customSize, setCustomSize] = useState(''); const [customColour, setCustomColour] = useState('');
   const [error, setError] = useState(''); const [busy, run] = useAction();
@@ -243,13 +244,16 @@ const NewStyle = ({ onClose, onSaved }) => {
   const fillRow = (c, v) => setQty((x) => ({ ...x, ...Object.fromEntries(sizes.map((s) => [`${c}|${s}`, v])) }));
   const total = colours.reduce((a, c) => a + sizes.reduce((b, s) => b + (Number(cell(c.name, s)) || 0), 0), 0);
 
+  // the GST follows the selling price (clothing is taxed by the price of one piece) until a rate is chosen by hand
+  const gst = !gstOn ? 0 : gstManual ? Number(f.tax_rate) || 0 : slabRate('APPAREL', f.selling_price);
   const priceOk = !f.mrp || !f.selling_price || Number(f.selling_price) <= Number(f.mrp);
-  const can = [f.name.trim().length > 0, colours.length > 0 && sizes.length > 0, Number(f.selling_price) > 0 && priceOk, true][step];
+  const can = f.name.trim().length > 0 && colours.length > 0 && sizes.length > 0 && Number(f.selling_price) > 0 && priceOk;
 
   const save = () => run(async () => {
     setError('');
     const stock = colours.flatMap((c) => sizes.map((s) => ({ colour: c.name, size: s, qty: Number(cell(c.name, s)) || 0 }))).filter((r) => r.qty > 0);
-    const body = { ...f, colours, sizes, stock, size_set: setName || undefined };
+    const body = { ...f, tax_rate: gst, colours, sizes, stock, size_set: setName || undefined };
+    if (!gstOn) delete body.hsn_sac;
     for (const k of Object.keys(body)) if (body[k] === '') delete body[k];
     try { onSaved(await api('/clothing/styles', { method: 'POST', body })); } catch (e) { setError(e.message); }
   });
@@ -257,15 +261,13 @@ const NewStyle = ({ onClose, onSaved }) => {
   return (
     <Modal wide title={tr('New style')} onClose={onClose}
       footer={<>
-        <Button variant="secondary" onClick={step === 0 ? onClose : () => setStep(step - 1)}>{step === 0 ? tr('Cancel') : tr('Back')}</Button>
-        {step < 3 ? <Button onClick={() => setStep(step + 1)} disabled={!can}>{tr('Next')}</Button> : <Button onClick={save} loading={busy}>{tr('Save style')}</Button>}
+        <Button variant="secondary" onClick={onClose}>{tr('Cancel')}</Button>
+        <Button onClick={save} loading={busy} disabled={!can}>{tr('Save style')}</Button>
       </>}>
-      <ol className="mb-5 flex flex-wrap gap-2 text-caption" aria-label={tr('Steps')}>
-        {STEPS.map((s, i) => <li key={i} aria-current={i === step ? 'step' : undefined} className={`rounded-full px-3 py-1 font-medium ${i === step ? 'bg-brand-500 text-white' : i < step ? 'bg-brand-50 text-brand-700' : 'bg-surface-3 text-ink-500'}`}>{i + 1}. {tr(s)}</li>)}
-      </ol>
-      <div className="space-y-4">
+      <div className="space-y-8">
         <Alert>{error}</Alert>
-        {step === 0 && (
+        <section aria-labelledby="ns-h1">
+          <h3 id="ns-h1" className="mb-3 text-small font-semibold text-ink-900">1. {tr('The product')}</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2"><Field id="ns-name" label={tr('Product name')}><Input id="ns-name" value={f.name} onChange={set('name')} autoFocus placeholder={tr('Men\'s cotton T-shirt')} /></Field></div>
             <Field id="ns-cat" label={tr('Category')} hint={tr('Use Set up categories on the Styles page for the usual clothing ones.')}>
@@ -274,16 +276,30 @@ const NewStyle = ({ onClose, onSaved }) => {
               </Select>
             </Field>
             <Field id="ns-gender" label={tr('For')}><Select id="ns-gender" value={f.gender} onChange={set('gender')}>{GENDERS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
+          </div>
+          <details className="mt-3">
+            <summary className="cursor-pointer text-small font-semibold text-brand-600">{tr('More details (brand, season, fabric, fit, pattern)')}</summary>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
             <Field id="ns-brand" label={tr('Brand')}><Input id="ns-brand" value={f.brand} onChange={set('brand')} /></Field>
             <Field id="ns-season" label={tr('Season')}><Input id="ns-season" value={f.season} onChange={set('season')} placeholder={tr('Summer 2026')} /></Field>
             <Field id="ns-fabric" label={tr('Fabric')}><Input id="ns-fabric" value={f.fabric} onChange={set('fabric')} placeholder={tr('Cotton')} /></Field>
             <Field id="ns-fit" label={tr('Fit')}><Input id="ns-fit" value={f.fit} onChange={set('fit')} placeholder={tr('Regular, slim')} /></Field>
             <Field id="ns-pattern" label={tr('Pattern')}><Input id="ns-pattern" value={f.pattern} onChange={set('pattern')} placeholder={tr('Plain, striped')} /></Field>
-            <Field id="ns-hsn" label={tr('HSN code')}><Input id="ns-hsn" value={f.hsn_sac} onChange={set('hsn_sac')} placeholder="6109" /></Field>
-            <NumberField id="ns-gst" label="GST" suffix="%" value={f.tax_rate} onChange={(v) => setF((x) => ({ ...x, tax_rate: v }))} hint="Clothing is usually 5% up to ₹1,000 and 12% above, but check with your accountant" />
+            </div>
+          </details>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {gstOn ? (
+              <>
+                <Field id="ns-hsn" label={tr('HSN code')}><Input id="ns-hsn" value={f.hsn_sac} onChange={set('hsn_sac')} placeholder="6109" /></Field>
+                <Field id="ns-gst" label="GST" hint={gstManual ? tr('Chosen by you.') : tr('Worked out from the selling price: 5% up to ₹2,500 a piece, 18% above. Pick another rate to override.')}>
+                  <Select id="ns-gst" value={gst} onChange={(e) => { setGstManual(true); setF((x) => ({ ...x, tax_rate: e.target.value })); }}>{GST_RATES.map((r) => <option key={r} value={r}>{r}%</option>)}</Select>
+                </Field>
+              </>
+            ) : <p className="text-small text-ink-500 sm:col-span-2">{tr('Your shop is not registered for GST, so no GST is added to these items.')}</p>}
           </div>
-        )}
-        {step === 1 && (
+        </section>
+        <section aria-labelledby="ns-h2">
+          <h3 id="ns-h2" className="mb-3 text-small font-semibold text-ink-900">2. {tr('Sizes and colours')}</h3>
           <div className="space-y-6">
             <section aria-labelledby="ns-sizes">
               <h3 id="ns-sizes" className="mb-2 text-small font-semibold text-ink-900">{tr('Sizes')}</h3>
@@ -308,8 +324,9 @@ const NewStyle = ({ onClose, onSaved }) => {
             </section>
             <p className="text-small text-ink-500">{tr('{{n}} colours × {{m}} sizes = {{v}} variants, each with its own SKU and barcode.', { n: colours.length, m: sizes.length, v: colours.length * sizes.length })}</p>
           </div>
-        )}
-        {step === 2 && (
+        </section>
+        <section aria-labelledby="ns-h3">
+          <h3 id="ns-h3" className="mb-3 text-small font-semibold text-ink-900">3. {tr('Price and stock')}</h3>
           <div className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-4">
               <NumberField id="ns-mrp" label="MRP" prefix="₹" value={f.mrp} onChange={(v) => setF((x) => ({ ...x, mrp: v }))} />
@@ -318,6 +335,7 @@ const NewStyle = ({ onClose, onSaved }) => {
               <NumberField id="ns-re" label="Reorder when stock is" value={f.reorder_level} onChange={(v) => setF((x) => ({ ...x, reorder_level: v }))} />
             </div>
             {!priceOk && <Alert>{tr('The selling price cannot be above the MRP.')}</Alert>}
+            {colours.length === 0 || sizes.length === 0 ? <p className="rounded-lg bg-surface-2 p-3 text-small text-ink-500">{tr('Pick at least one size and one colour above, and the stock table appears here.')}</p> : (
             <div>
               <h3 className="mb-1 text-small font-semibold text-ink-900">{tr('Opening stock')}</h3>
               <p className="mb-2 text-caption text-ink-500">{tr('How many of each you have now. Leave blank for none. Counted into the outlet you are in.')}</p>
@@ -333,15 +351,11 @@ const NewStyle = ({ onClose, onSaved }) => {
                 </table>
               </div>
             </div>
+            )}
           </div>
-        )}
-        {step === 3 && (
-          <div className="space-y-3 text-small text-ink-700">
-            <p><span className="font-semibold text-ink-900">{f.name}</span> · {GENDER_LABEL[f.gender]}{f.brand ? ` · ${f.brand}` : ''}</p>
-            <p>{tr('{{v}} variants will be made: {{c}} colours × {{s}} sizes, with {{n}} pieces in stock to start.', { v: colours.length * sizes.length, c: colours.length, s: sizes.length, n: total })}</p>
-            <p>{tr('Selling {{p}}{{m}}, GST {{g}}%.', { p: rs(Math.round(Number(f.selling_price) * 100)), m: f.mrp ? ` (MRP ${rs(Math.round(Number(f.mrp) * 100))})` : '', g: f.tax_rate || 0 })}</p>
-            <p className="text-ink-500">{tr('Each variant gets a SKU like ST00012-BLA-M and a barcode you can print on a tag.')}</p>
-          </div>
+        </section>
+        {can && (
+          <p className="rounded-lg bg-brand-50 p-3 text-small text-ink-700">{tr('{{v}} variants will be made: {{c}} colours × {{s}} sizes, with {{n}} pieces in stock to start. Each gets its own SKU and a barcode you can print on a tag.', { v: colours.length * sizes.length, c: colours.length, s: sizes.length, n: total })}</p>
         )}
       </div>
     </Modal>
