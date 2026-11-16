@@ -92,7 +92,7 @@ const build = async (body) => {
   if (!Number.isFinite(credit) || credit < 0 || credit > 10000000) throw new Error('WhatsApp credit must be between 0 and 1,00,000 rupees');
   if (credit > 0 && !(Number.isInteger(bid) && bid > 0)) throw new Error('Pick an existing client to load WhatsApp credit for');
   const planCode = String(body.plan_code || '').trim().toUpperCase() || null;
-  const planCycle = planCode ? (body.plan_cycle === 'YEARLY' ? 'YEARLY' : 'MONTHLY') : null;
+  const planCycle = planCode ? (body.plan_cycle === 'MONTHLY' ? 'MONTHLY' : 'YEARLY') : null;
   if (planCode && !(Number.isInteger(bid) && bid > 0)) throw new Error('Pick an existing client to set a plan for');
   if (planCode && !(await pool.query(`SELECT 1 FROM plans WHERE plan_code = $1`, [planCode])).rows.length) throw new Error('Unknown plan');
   return { planCode, planCycle, credit, client, intra, lines, totals, issue: date(body.issue_date), due: date(body.due_date), notes: String(body.notes ?? '').trim().slice(0, 1000) || null, businessId: Number.isInteger(bid) && bid > 0 ? bid : null };
@@ -227,7 +227,12 @@ export const documentPdf = (d, seller) => new Promise((resolve, reject) => {
   if (t.round_off_paise) tot('Round off', pdfMoney(t.round_off_paise));
   doc.moveTo(340, y).lineTo(R, y).strokeColor(ink).stroke(); y += 6;
   tot('Total', pdfMoney(t.total_paise), true);
-  if (!quote && d.status === 'PAID') tot('Status', 'PAID');
+  if (!quote && d.status === 'PAID') {
+    tot('Status', 'PAID');
+    const how = d.paid_method === 'ONLINE' ? 'Payment link' : d.paid_method ? String(d.paid_method).replace('_', ' ').toLowerCase().replace(/^./, (c) => c.toUpperCase()) : '';
+    if (how) tot('Paid by', how);
+    if (d.paid_at) tot('Paid on', new Date(d.paid_at).toLocaleDateString('en-IN'));
+  }
 
   const pay = !quote && d.status !== 'PAID' ? [d.payment_link_url && `Pay online: ${d.payment_link_url}`, seller.upi && `UPI: ${seller.upi}`, seller.bank && `Bank: ${seller.bank}`].filter(Boolean) : [];
   doc.x = L; doc.y = y + 14;
@@ -289,7 +294,7 @@ export const paymentLink = async (req, res) => {
   const linkId = `${DOC_LINK_PREFIX}${id}-${Date.now().toString(36)}`;
   let link;
   try {
-    link = await cashfreeCreateLink({ linkId, amount: toRupees(total), purpose: `FlowXP invoice ${d.doc_number}`, customerName: d.client?.name, customerEmail: d.client?.email, customerPhone: d.client?.phone, returnUrl: config.appOrigin, notifyUrl: `${config.appOrigin}/api/webhooks/cashfree` });
+    link = await cashfreeCreateLink({ linkId, amount: toRupees(total), purpose: `FlowXP invoice ${d.doc_number}`, customerName: d.client?.name, customerEmail: d.client?.email, customerPhone: d.client?.phone, emailLink: req.body?.email_link === true, returnUrl: config.appOrigin, notifyUrl: `${config.appOrigin}/api/webhooks/cashfree` });
   } catch (error) { return bad(res, error instanceof CashfreeError ? error.message : 'Could not reach Cashfree', 502); }
   await pool.query(`UPDATE admin_documents SET link_id = $2, payment_link_url = $3, status = CASE WHEN status = 'DRAFT' THEN 'SENT' ELSE status END WHERE doc_id = $1`, [id, linkId, link.linkUrl]);
   recordAudit(req, { business_id: d.business_id, action: 'admin.invoice_link_created', resource_type: 'admin_document', resource_id: id, metadata: { number: d.doc_number } });

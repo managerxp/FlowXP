@@ -89,7 +89,7 @@ export const getMessagingSettings = async (req, res) => {
     success: true,
     data: setting?.value || {
       provider: 'log', whatsappToken: '', whatsappPhoneId: '', whatsappLanguage: 'en', whatsappVerifyToken: '', whatsappAppSecret: '',
-      twilioSid: '', twilioToken: '', twilioFrom: '', twilioWhatsappFrom: '', countryCode: '91', trialMessageLimit: '5', walletRequired: 'off', rateUtility: '0.15', rateMarketing: '0.9', lowCreditAlert: '100'
+      twilioSid: '', twilioToken: '', twilioFrom: '', twilioWhatsappFrom: '', countryCode: '91', trialMessageLimit: '5', walletRequired: 'off', rateUtility: '0.4', rateMarketing: '1.2', lowCreditAlert: '100'
     },
     availableProviders: MESSAGING_PROVIDERS
   });

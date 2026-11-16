@@ -23,14 +23,14 @@ test('credit is taken per message, stops at zero, and the marketing switch holds
   await pool.query(`INSERT INTO platform_settings (setting_key, value) VALUES ('messaging', '{"walletRequired":"on"}'::jsonb) ON CONFLICT (setting_key) DO UPDATE SET value = EXCLUDED.value`);
   assert.deepEqual(await one(), { skipped: 'NO_CREDIT' }, 'empty wallet');
   assert.equal(await adjust(pool, biz, 1000, { note: 'UPI' }), 1000);
-  // a sent message costs 15 paise; the log provider records SKIPPED, so mark the row sent and charge it the way a real send does
+  // a sent message costs 40 paise; the log provider records SKIPPED, so mark the row sent and charge it the way a real send does
   const { chargeMessage } = await import('../src/modules/messaging/wallet.js');
   const r = await one(); assert.ok(!r.skipped);
   await chargeMessage(pool, { ...r, status: 'SENT' });
-  assert.equal(await balanceOf(pool, biz), 985);
+  assert.equal(await balanceOf(pool, biz), 960);
   const m = await send(pool, { businessId: biz, phone: '9845011122', kind: 'LOYALTY_NEXT', values: { name: 'Asha', business: 'Cafe', reward: 'Coffee' } });
   await chargeMessage(pool, { ...m, status: 'SENT' });
-  assert.equal(await balanceOf(pool, biz), 895, 'marketing costs 90 paise');
+  assert.equal(await balanceOf(pool, biz), 840, 'marketing costs 120 paise');
 
   await pool.query(`UPDATE businesses SET messaging_settings = $2 WHERE business_id = $1`, [biz, JSON.stringify({ channel: 'WHATSAPP', marketing: false })]);
   assert.deepEqual(await send(pool, { businessId: biz, phone: '9845011122', kind: 'LOYALTY_NEXT', values: { name: 'Asha', business: 'Cafe', reward: 'Coffee' } }), { skipped: 'MARKETING_OFF' });

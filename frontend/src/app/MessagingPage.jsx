@@ -31,17 +31,17 @@ const WalletCard = ({ wallet }) => {
   return (
     <Card className="p-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div><p className="text-xs text-ink-500">WhatsApp credit</p><p className="text-2xl font-semibold text-ink-900">{rupees(bal)}</p></div>
-        <p className="text-xs text-ink-500">To add credit (from ₹1,000), pay FlowXP and we will load it.</p>
+        <div><p className="text-xs text-ink-500">WhatsApp credit</p><p className="text-2xl font-semibold text-ink-900">{canSend(bal, price.UTILITY)} credits</p></div>
+        <p className="max-w-xs text-xs text-ink-500">Packs: 1,000 credits for ₹400, 5,000 for ₹1,800, 10,000 for ₹3,400 (plus GST). Pay FlowXP and we load it.</p>
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg bg-ink-50 p-3"><p className="text-lg font-semibold text-ink-900">{canSend(bal, price.UTILITY)}</p><p className="text-xs text-ink-500">bills, points and updates ({rupees(price.UTILITY)} each)</p></div>
-        <div className="rounded-lg bg-ink-50 p-3"><p className="text-lg font-semibold text-ink-900">{canSend(bal, price.MARKETING)}</p><p className="text-xs text-ink-500">offers and loyalty reminders ({rupees(price.MARKETING)} each)</p></div>
+        <div className="rounded-lg bg-ink-50 p-3"><p className="text-lg font-semibold text-ink-900">{canSend(bal, price.UTILITY)}</p><p className="text-xs text-ink-500">bills, points and updates (1 credit each)</p></div>
+        <div className="rounded-lg bg-ink-50 p-3"><p className="text-lg font-semibold text-ink-900">{canSend(bal, price.MARKETING)}</p><p className="text-xs text-ink-500">offers and loyalty reminders ({price.UTILITY > 0 ? Math.round((price.MARKETING / price.UTILITY) * 10) / 10 : '-'} credits each)</p></div>
       </div>
       {bal < price.UTILITY * 20 && <p className="mt-3 text-sm text-amber-700" role="status">{bal < price.UTILITY ? 'Your credit has run out, so WhatsApp messages are not being sent.' : 'Your credit is running low.'}</p>}
       {wallet.entries?.length > 0 && (
         <details className="mt-3 text-sm"><summary className="cursor-pointer font-medium text-ink-700">Recent credit activity</summary>
-          <ul className="mt-2 space-y-1">{wallet.entries.slice(0, 10).map((e, i) => <li key={i} className="flex justify-between text-xs text-ink-600"><span>{new Date(e.created_at).toLocaleDateString('en-IN')} · {e.kind === 'MESSAGE' ? 'Message' : e.kind === 'TOPUP' ? 'Credit added' : 'Adjustment'}</span><span>{e.amount_paise > 0 ? '+' : ''}{rupees(e.amount_paise)}</span></li>)}</ul>
+          <ul className="mt-2 space-y-1">{wallet.entries.slice(0, 10).map((e, i) => <li key={i} className="flex justify-between text-xs text-ink-600"><span>{new Date(e.created_at).toLocaleDateString('en-IN')} · {e.kind === 'MESSAGE' ? 'Message' : e.kind === 'TOPUP' ? 'Credit added' : 'Adjustment'}</span><span>{e.amount_paise > 0 ? '+' : ''}{price.UTILITY > 0 ? Math.round(e.amount_paise / price.UTILITY).toLocaleString('en-IN') : '-'} credits</span></li>)}</ul>
         </details>
       )}
     </Card>

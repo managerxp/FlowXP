@@ -418,7 +418,7 @@ export const getSubscription = async (req, res) => {
 export const checkout = async (req, res) => {
   if (!hasPermission(req.tenant, 'settings')) return res.status(403).json({ success: false, message: 'Only the owner or a manager can change the plan' });
   const { plan_code: planCode, billing_cycle: cycle } = req.body || {};
-  if (!['MONTHLY', 'YEARLY'].includes(cycle)) return res.status(400).json({ success: false, message: 'Choose monthly or yearly' });
+  if (cycle !== 'YEARLY') return res.status(400).json({ success: false, message: 'Plans are sold yearly' });
   try {
     const plan = (await pool.query(`SELECT plan_code, name, price_monthly_paise, price_yearly_paise FROM plans WHERE plan_code = $1 AND is_active AND is_public`, [planCode])).rows[0];
     if (!plan) return res.status(404).json({ success: false, message: 'That plan is not available' });

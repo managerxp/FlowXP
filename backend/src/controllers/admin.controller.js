@@ -965,6 +965,7 @@ export const createPaymentLink = async (req, res) => {
         customerName: business.owner_name,
         customerEmail: business.owner_email,
         customerPhone: business.owner_phone,
+        emailLink: req.body?.email_link === true,
         returnUrl: `${config.appOrigin}/app/settings/subscription`,
         notifyUrl: `${config.appOrigin}/api/webhooks/cashfree`
       });
@@ -1172,6 +1173,7 @@ export const createAddonLink = async (req, res) => {
         customerName: business.owner_name,
         customerEmail: business.owner_email,
         customerPhone: business.owner_phone,
+        emailLink: req.body?.email_link === true,
         returnUrl: `${config.appOrigin}/app/settings/subscription`,
         notifyUrl: `${config.appOrigin}/api/webhooks/cashfree`
       });

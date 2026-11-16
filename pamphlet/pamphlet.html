@@ -1,0 +1,173 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>FlowXP pamphlet</title>
+<style>
+@font-face{font-family:PJS;src:url(../ad/assets/pjs.woff2);font-weight:200 800}
+:root{--blue:#0054fa;--navy:#0b1b3f;--ink:#16213e;--mute:#5b6786;--line:#dfe6f5;--tint:#eef3ff;--cyan:#12b5e5;--amber:#f5a524}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:PJS,system-ui,sans-serif;color:var(--ink);background:#888}
+.page{width:1240px;height:1754px;position:relative;overflow:hidden;background:#fff;margin:0 auto 20px;break-after:page}
+body:has(.page:target){background:#fff}body:has(.page:target) .page:not(:target){display:none}body:has(.page:target) .page{margin:0}
+.strip{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:26px}.strip div{height:250px;border-radius:20px;overflow:hidden;border:2px solid var(--line);box-shadow:0 12px 30px rgba(11,27,63,.12)}.strip.s3 div{height:165px}.strip.s4 div{height:340px}.strip img{width:100%;height:100%;object-fit:cover;object-position:top left;display:block}
+h1{font-size:70px;line-height:1.02;letter-spacing:-2.5px;font-weight:800}
+h2{font-size:54px;line-height:1.05;letter-spacing:-1.5px;font-weight:800}
+h3{font-size:27px;font-weight:700}
+.eyebrow{font-size:20px;letter-spacing:4px;text-transform:uppercase;font-weight:700;color:var(--blue)}
+.pad{padding:64px 76px}
+.foot{position:absolute;left:0;right:0;bottom:0;height:70px;background:var(--navy);color:#cfd8f3;display:flex;justify-content:space-between;align-items:center;padding:0 76px;font-size:20px}
+.foot b{color:#fff}
+.hero{background:linear-gradient(155deg,#0b1b3f 0%,#0a3bb5 55%,#0054fa 100%);color:#fff;height:900px;position:relative;padding:56px 76px}
+.hero:after{content:"";position:absolute;right:-180px;top:-160px;width:620px;height:620px;border-radius:50%;background:radial-gradient(circle,rgba(18,181,229,.45),transparent 65%)}
+.logoplate{display:inline-block;background:#fff;border-radius:18px;padding:14px 26px}
+.logoplate img{height:52px;display:block}
+.hero h1{margin-top:40px;max-width:900px;position:relative;z-index:1}
+.hero h1 span{color:#7fd9ff}
+.hero p.lead{font-size:26px;line-height:1.4;max-width:760px;margin-top:22px;color:#dbe6ff;position:relative;z-index:1}
+.badge{display:inline-flex;gap:14px;align-items:center;margin-top:26px;background:#fff;color:var(--navy);border-radius:100px;padding:12px 26px;font-size:22px;font-weight:700;position:relative;z-index:1}
+.badge i{background:var(--blue);color:#fff;border-radius:100px;padding:5px 16px;font-style:normal;font-size:20px}
+.shot{position:absolute;right:-60px;bottom:-110px;width:720px;border-radius:22px;box-shadow:0 40px 90px rgba(0,0,0,.45);border:6px solid rgba(255,255,255,.25);z-index:2}
+.built{padding:150px 76px 0}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.chip{border:2px solid var(--line);background:var(--tint);border-radius:100px;padding:9px 22px;font-size:22px;font-weight:600}
+.chip.f{background:var(--blue);color:#fff;border-color:var(--blue)}
+.grp{margin-top:16px}
+.grp small{font-size:19px;letter-spacing:3px;text-transform:uppercase;color:var(--mute);font-weight:700}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:26px}
+.trio div{background:var(--tint);border-radius:20px;padding:18px 20px}
+.trio b{font-size:24px;display:block;color:var(--blue)}
+.trio span{font-size:19px;color:var(--mute);line-height:1.35;display:block;margin-top:6px}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:36px}
+.card{border:2px solid var(--line);border-radius:26px;padding:26px 30px;background:#fff}
+.card h3{color:var(--blue);margin-bottom:10px;display:flex;gap:12px;align-items:center;font-size:25px}
+.card h3:before{content:"";flex:none;width:14px;height:14px;border-radius:4px;background:var(--cyan)}
+li{list-style:none;font-size:22px;line-height:1.36;padding-left:30px;position:relative;margin:5px 0;color:#2a3558}
+li:before{content:"";position:absolute;left:4px;top:10px;width:12px;height:7px;border-left:3px solid var(--blue);border-bottom:3px solid var(--blue);transform:rotate(-45deg)}
+.core{background:var(--navy);color:#fff;border-radius:28px;padding:30px 40px;margin-top:22px}
+.core h3{color:#7fd9ff;margin-bottom:12px}
+.core ul{display:grid;grid-template-columns:1fr 1fr;column-gap:30px}
+.core li{color:#e8eeff}.core li:before{border-color:#7fd9ff}
+.ai{margin-top:22px;border-radius:26px;background:linear-gradient(120deg,var(--tint),#fff);border:2px solid var(--line);padding:26px 34px;display:flex;gap:30px;align-items:center}
+.ai b{font-size:30px;color:var(--blue)}.ai p{font-size:22px;color:var(--mute);line-height:1.4;margin-top:6px}
+.ai .note{background:#fff;border-left:6px solid var(--amber);padding:14px 20px;border-radius:10px;font-size:21px;min-width:340px;color:var(--ink)}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:44px}
+.plan{border:2px solid var(--line);border-radius:28px;padding:30px 28px;position:relative;background:#fff}
+.plan.hot{background:var(--blue);color:#fff;border-color:var(--blue);transform:translateY(-14px);box-shadow:0 26px 60px rgba(0,84,250,.35)}
+.plan .tag{position:absolute;top:-16px;right:24px;background:var(--amber);color:#3a2600;border-radius:100px;padding:6px 18px;font-size:17px;font-weight:800;letter-spacing:1px}
+.plan h3{font-size:30px}
+.price{font-size:56px;font-weight:800;letter-spacing:-2px;margin-top:14px}
+.price small{font-size:21px;font-weight:600;letter-spacing:0;opacity:.75}
+.gst{font-size:19px;opacity:.75;margin-top:2px}
+.plan hr{border:0;border-top:2px solid var(--line);margin:18px 0}
+.plan.hot hr{border-color:rgba(255,255,255,.3)}
+.plan li{font-size:20px;color:inherit}.plan.hot li:before{border-color:#fff}
+.addons{margin-top:40px}
+.agrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 26px;margin-top:18px}
+.arow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-bottom:2px dashed var(--line);padding:13px 2px;font-size:22px}
+.arow b{color:var(--blue);white-space:nowrap}.arow span{color:var(--ink);font-weight:600}
+.small{font-size:19px;color:var(--mute);margin-top:16px;line-height:1.4}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:40px}
+.step{background:var(--tint);border-radius:24px;padding:26px 22px}
+.step em{font-style:normal;font-size:60px;font-weight:800;color:var(--blue);display:block;line-height:1}
+.step b{font-size:24px;display:block;margin-top:10px}.step span{font-size:20px;color:var(--mute);line-height:1.35;display:block;margin-top:6px}
+.rates{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:18px}
+.rate{border-radius:22px;padding:22px 24px;border:2px solid var(--line)}
+.rate.free{background:#e9fbf1;border-color:#9be3bd}
+.rate b{font-size:46px;letter-spacing:-1px;display:block;color:var(--blue)}.rate.free b{color:#0e8a50}
+.rate span{font-size:20px;color:var(--mute);line-height:1.35;display:block}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:30px}
+.box{border-radius:26px;padding:28px;background:var(--navy);color:#fff}
+.box h3{color:#7fd9ff;margin-bottom:10px}.box li{color:#e8eeff}.box li:before{border-color:#7fd9ff}
+.box.l{background:#fff;color:var(--ink);border:2px solid var(--line)}.box.l h3{color:var(--blue)}.box.l li{color:#2a3558}.box.l li:before{border-color:var(--blue)}
+.cta{margin-top:24px;border-radius:30px;background:linear-gradient(120deg,#0a3bb5,#0054fa);color:#fff;padding:34px 44px;display:flex;justify-content:space-between;align-items:center}
+.cta h2{font-size:44px}.cta p{font-size:24px;color:#dbe6ff;margin-top:10px}
+.cta .url{background:#fff;color:var(--blue);padding:18px 34px;border-radius:100px;font-size:32px;font-weight:800;white-space:nowrap}
+</style></head><body>
+
+<section class="page" id="p1">
+  <div class="hero">
+    <div class="logoplate"><img src="../ad/assets/logo.png" alt="FlowXP"></div>
+    <h1>Billing software that tells you <span>what to do next.</span></h1>
+    <p class="lead">Billing, stock, GST, WhatsApp bills and an AI assistant in one app, for your shop, café, salon or gym.</p>
+    <div class="badge"><i>FREE</i> 7-day trial · No card needed</div>
+    <img class="shot" src="../ad/assets/dashboard.png" alt="">
+  </div>
+  <div class="built">
+    <div class="eyebrow">Built for</div>
+    <div class="grp"><small>Food</small><div class="chips"><span class="chip f">Restaurant</span><span class="chip f">Café</span><span class="chip f">Cloud kitchen</span></div></div>
+    <div class="grp"><small>Shops</small><div class="chips"><span class="chip">Retail</span><span class="chip">Supermarket</span><span class="chip">Electronics</span><span class="chip">Clothing</span><span class="chip">Pharmacy</span></div></div>
+    <div class="grp"><small>Trade</small><div class="chips"><span class="chip">Wholesale</span><span class="chip">Distributor</span><span class="chip">Auto parts</span><span class="chip">Garage</span></div></div>
+    <div class="grp"><small>Services</small><div class="chips"><span class="chip">Salon</span><span class="chip">Gym</span><span class="chip">Gaming café</span><span class="chip">And more</span></div></div>
+    <div class="trio">
+      <div><b>Web + mobile</b><span>Laptop, phone or the Android and iOS app</span></div>
+      <div><b>7 languages</b><span>English, Hindi, Bengali, Kannada, Malayalam, Tamil, Telugu</span></div>
+      <div><b>Made for GST</b><span>GST invoices, or none if you are not registered</span></div>
+    </div>
+  </div>
+  <div class="foot"><b>FlowXP</b><span>by ManagerXP · flowxp.in</span></div>
+</section>
+
+<section class="page" id="p2"><div class="pad">
+  <div class="eyebrow">What you get</div>
+  <h2>One app. Your kind of business.</h2>
+  <div class="cards">
+    <div class="card"><h3>Restaurant · Café · Cloud kitchen</h3><ul><li>Tables, open orders, kitchen screen</li><li>Guests order by scanning a table QR</li><li>Reservations and walk-in waitlist</li><li>Delivery riders, multiple brands</li></ul></div>
+    <div class="card"><h3>Retail · Supermarket · Electronics</h3><ul><li>Scan or search, bill in seconds</li><li>Print barcode labels, or link the maker's</li><li>Suppliers, purchases, low-stock alerts</li><li>Loyalty points for regulars</li></ul></div>
+    <div class="card"><h3>Clothing</h3><ul><li>Style, size and colour on one page</li><li>GST worked out from the price</li><li>Barcode label for every size</li><li>Stock by size and colour</li></ul></div>
+    <div class="card"><h3>Pharmacy · Wholesale · Distributor</h3><ul><li>Batches and first-expiry-first-out</li><li>Price lists and quantity breaks</li><li>Pick, pack and challan</li><li>Customer credit and ledgers</li></ul></div>
+    <div class="card"><h3>Salon</h3><ul><li>Appointments and reminders</li><li>Memberships, packages, gift cards</li><li>Staff commission and payouts</li><li>Birthday and revisit messages</li></ul></div>
+    <div class="card"><h3>Gym · Gaming café</h3><ul><li>Members, passes and QR check-in</li><li>Classes, trainers, rewards</li><li>Station timers, wallet, hour packs</li><li>Bookings and tournaments</li></ul></div>
+    <div class="card"><h3>Auto parts · Garage</h3><ul><li>Racks, bins and transfers</li><li>Stock counts with approval</li><li>Trade pricing and credit limits</li><li>Fast, slow and dead stock</li></ul></div>
+    <div class="card"><h3>FlowBook</h3><ul><li>Invoices, quotes, customers, suppliers</li><li>Stock, payments, bank and reports</li><li>GST returns ready for your accountant</li><li>Connected to your FlowXP till</li></ul></div>
+  </div>
+  <div class="core"><h3>In every plan</h3><ul>
+    <li>Fast billing with GST, discounts, hold bill</li><li>Cash, UPI, card, bank, pay later, split</li>
+    <li>Stock that moves with every sale</li><li>Estimates and quotations</li>
+    <li>Barcode scan at the counter</li><li>Dashboard and basic reports</li></ul></div>
+  <div class="ai"><div><b>Flow AI</b><p>Ask in plain words and get answers from your own records. It also writes a daily note, such as "10 items are at their reorder point."</p></div><div class="note">Starter: 100 questions a month<br>Growth: 500 questions a month</div></div>
+</div><div class="foot"><b>FlowXP</b><span>flowxp.in</span></div></section>
+
+<section class="page" id="p3"><div class="pad">
+  <div class="eyebrow">Plans and pricing</div>
+  <h2>Simple yearly plans.</h2>
+  <div class="plans">
+    <div class="plan"><h3>Starter</h3><div class="price">₹9,999<small> / year</small></div><div class="gst">+ 18% GST</div><hr><ul><li>2 users, 1 outlet</li><li>Billing and GST invoices</li><li>Inventory and stock</li><li>Estimates and quotations</li><li>Basic reports</li><li>Your industry's core tools</li></ul></div>
+    <div class="plan hot"><span class="tag">MOST POPULAR</span><h3>Growth</h3><div class="price">₹16,999<small> / year</small></div><div class="gst">+ 18% GST</div><hr><ul><li>Everything in Starter</li><li>5 users, 1 outlet</li><li>Purchases and expenses</li><li>Flow AI, 500 questions a month</li><li>WhatsApp bills and loyalty</li><li>Reviews, reservations, QR ordering</li></ul></div>
+    <div class="plan"><h3>Enterprise</h3><div class="price">Custom</div><div class="gst">From ₹25,999 / year + GST</div><hr><ul><li>Everything in Growth</li><li>Unlimited users and outlets</li><li>Advanced reports</li><li>Delivery integrations</li><li>Multiple brands, riders</li><li>Barcode labels included</li><li>Priority support</li></ul></div>
+  </div>
+  <div class="addons"><h2 style="font-size:44px">Add only what you need.</h2>
+    <div class="agrid">
+      <div class="arow"><span>Flow AI</span><b>₹499 / yr</b></div><div class="arow"><span>Loyalty and rewards</span><b>₹999 / yr</b></div>
+      <div class="arow"><span>Advanced reports</span><b>₹999 / yr</b></div><div class="arow"><span>Barcode labels and linking</span><b>₹1,499 / yr</b></div>
+      <div class="arow"><span>Delivery riders</span><b>₹499 / yr</b></div><div class="arow"><span>Multiple brands</span><b>₹3,000 / yr</b></div>
+      <div class="arow"><span>Purchasing and suppliers</span><b>₹199 / yr</b></div><div class="arow"><span>Expenses</span><b>₹199 / yr</b></div>
+      <div class="arow"><span>Reviews and Google prompt</span><b>₹199 / yr</b></div><div class="arow"><span>Reservation link</span><b>₹199 / yr</b></div>
+      <div class="arow"><span>Table QR ordering (on Starter)</span><b>₹1,299 / yr</b></div><div class="arow"><span>QR ordering on Growth</span><b>Included</b></div>
+    </div>
+    <p class="small">Add-ons for salon, gym, gaming café, auto parts and wholesale are available too. All prices are per business per year and exclude 18% GST.</p>
+  </div>
+  <div class="core" style="margin-top:26px"><h3>Extra logins and outlets</h3><ul><li>Starter: 2 users. Growth: 5 users</li><li>Every person gets their own login and role</li><li>Need more users or outlets? Talk to us</li><li>Enterprise: unlimited users and outlets</li></ul></div>
+<div class="strip s3"><div><img src="../ad/assets/pos.png" alt=""></div><div><img src="../ad/assets/inventory.png" alt=""></div><div><img src="../ad/assets/payments.png" alt=""></div></div>
+</div><div class="foot"><b>FlowXP</b><span>Prices per business per year, excluding GST</span></div></section>
+
+<section class="page" id="p4"><div class="pad">
+  <div class="eyebrow">WhatsApp, pay as you go</div>
+  <h2>WhatsApp runs on credit.</h2>
+  <p style="font-size:24px;color:var(--mute);margin-top:14px;line-height:1.4;max-width:900px">WhatsApp is not a plan. You top up credit and each message is taken from it, so you only pay for what you send.</p>
+  <div class="steps">
+    <div class="step"><em>1</em><b>Try free</b><span>5 WhatsApp messages free in your 7-day trial</span></div>
+    <div class="step"><em>2</em><b>Buy a credit pack</b><span>We send an invoice and a payment link</span></div>
+    <div class="step"><em>3</em><b>Send</b><span>1 credit per bill or alert. An offer uses 3 credits</span></div>
+    <div class="step"><em>4</em><b>Stay ahead</b><span>A low-credit alert warns you before it runs out</span></div>
+  </div>
+  <div class="rates">
+    <div class="rate"><b>₹400</b><span><strong>1,000 credits</strong><br>₹0.40 a credit</span></div>
+    <div class="rate"><b>₹1,800</b><span><strong>5,000 credits</strong><br>₹0.36 a credit</span></div>
+    <div class="rate"><b>₹3,400</b><span><strong>10,000 credits</strong><br>₹0.34 a credit</span></div>
+  </div>
+  <p class="small">Prices exclude 18% GST. Login codes (OTP) and failed messages are always free. Bigger packs cost less per credit.</p>
+  <div class="two">
+    <div class="box"><h3>Start in 3 steps</h3><ul><li>Sign up and pick your business type. The app sets itself up.</li><li>Add items: scan, type or import, and print barcode labels.</li><li>Start billing. Share bills on WhatsApp and watch your dashboard.</li></ul></div>
+    <div class="box l"><h3>Help when you need it</h3><ul><li>Help button on every page</li><li>Help centre and support tickets</li><li>Easy on a phone, with a bottom tab bar and quick add customer</li><li>Pay by UPI, bank transfer, card, cash or cheque</li></ul></div>
+  </div>
+  <div class="strip s4"><div><img src="../ad/assets/kitchen.png" alt=""></div><div><img src="../ad/assets/tables.png" alt=""></div><div><img src="../ad/assets/dashboard.png" alt=""></div></div>
+  <div class="cta"><div><h2>Try FlowXP free for 7 days.</h2><p>No card needed. Your data stays yours.</p></div><div class="url">flowxp.in</div></div>
+</div><div class="foot"><b>FlowXP</b><span>by ManagerXP Private Limited</span></div></section>
+</body></html>

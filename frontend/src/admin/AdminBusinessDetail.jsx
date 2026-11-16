@@ -32,6 +32,7 @@ const SUBSCRIPTION_STATUSES = ['TRIAL', 'ACTIVE', 'EXPIRED', 'CANCELLED', 'SUSPE
  * plan_code field below, which is only ever a display label.
  */
 /* WhatsApp credit: the client pays FlowXP, the Super Admin loads it here; each message then takes its price from it. */
+const PACKS = [{ credits: 1000, paid: 400 }, { credits: 5000, paid: 1800 }, { credits: 10000, paid: 3400 }];   // a pack loads its credits at the normal-message price; the bigger ones are cheaper to the client
 const WalletPanel = ({ businessId }) => {
   const toast = useToast();
   const [w, setW] = useState(null);
@@ -66,9 +67,13 @@ const WalletPanel = ({ businessId }) => {
     <Card className="p-5">
       <h2 className="font-semibold text-ink-900">WhatsApp credit</h2>
       {!w.required && <p className="mt-1 text-xs text-ink-500">Credit is switched off in Settings, Messaging, so sending is not limited yet. You can still load credit in advance.</p>}
-      <p className="mt-2 text-2xl font-semibold text-ink-900">{rs(w.balance_paise)}</p>
-      <p className="text-xs text-ink-500">That is about {n(msgs(w.balance_paise).normal)} normal messages (bills, updates) or {n(msgs(w.balance_paise).marketing)} marketing messages (offers, loyalty reminders). Sign-in codes are free.</p>
+      <p className="mt-2 text-2xl font-semibold text-ink-900">{n(msgs(w.balance_paise).normal)} credits <span className="text-sm font-normal text-ink-500">({rs(w.balance_paise)})</span></p>
+      <p className="text-xs text-ink-500">1 credit is one normal message; an offer uses {Math.round((w.prices_paise.MARKETING / Math.max(1, w.prices_paise.UTILITY)) * 10) / 10}. That is about {n(msgs(w.balance_paise).normal)} normal messages (bills, updates) or {n(msgs(w.balance_paise).marketing)} marketing messages (offers, loyalty reminders). Sign-in codes are free.</p>
       <Alert>{error}</Alert>
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+        <span className="text-ink-500">Credit pack paid:</span>
+        {PACKS.map((p) => <Button key={p.credits} variant="secondary" onClick={() => { setAmount(String((p.credits * w.prices_paise.UTILITY) / 100)); setNote(`${n(p.credits)}-credit pack, paid ₹${n(p.paid)} + GST`); }}>{n(p.credits)} credits · ₹{n(p.paid)}</Button>)}
+      </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-[8rem_1fr_auto]">
         <Field id="w-amt" label="Amount paid (₹)" hint="Negative takes some back"><Input id="w-amt" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="500" /></Field>
         <Field id="w-note" label="Note"><Input id="w-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="UPI ref, invoice no." maxLength={200} /></Field>
@@ -234,7 +239,7 @@ const PlanAndType = ({ business, businessId, onSaved }) => {
  * does this look like on their subscription page"), not an enforced feature
  * gate; see modules/subscription.js.
  */
-const PaymentLinks = ({ businessId }) => {
+const PaymentLinks = ({ businessId, ownerEmail }) => {
   const toast = useToast();
   const [links, setLinks] = useState(null);
   const [amount, setAmount] = useState('');
@@ -247,12 +252,15 @@ const PaymentLinks = ({ businessId }) => {
   useEffect(() => { load(); }, [businessId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const generate = async () => {
+    const emailLink = Boolean(ownerEmail) && window.confirm(`Also email the payment link to ${ownerEmail}?
+
+OK sends the email. Cancel creates the link without emailing it.`);
     setError('');
     setBusy(true);
     try {
       const link = await adminApi(`/businesses/${businessId}/payment-link`, {
         method: 'POST',
-        body: { amount: Number(amount), billing_cycle: cycle, plan_code: planCode || undefined }
+        body: { amount: Number(amount), billing_cycle: cycle, plan_code: planCode || undefined, email_link: emailLink }
       });
       await navigator.clipboard?.writeText(link.payment_link_url).catch(() => {});
       toast.success('Link created and copied — send it to the owner');
@@ -337,7 +345,7 @@ const PaymentLinks = ({ businessId }) => {
  * Feature overrides panel below can set by hand; this is that override with
  * a receipt behind it. Catalog prices are set on the Add-ons page.
  */
-const BusinessAddons = ({ businessId, businessType }) => {
+const BusinessAddons = ({ businessId, businessType, ownerEmail }) => {
   const toast = useToast();
   const [catalog, setCatalog] = useState(null);
   const [links, setLinks] = useState(null);
@@ -365,12 +373,15 @@ const BusinessAddons = ({ businessId, businessType }) => {
   const catalogPrice = selected ? (cycle === 'YEARLY' ? selected.price_yearly : selected.price_monthly) : null;
 
   const generate = async () => {
+    const emailLink = Boolean(ownerEmail) && window.confirm(`Also email the payment link to ${ownerEmail}?
+
+OK sends the email. Cancel creates the link without emailing it.`);
     setError('');
     setBusy(true);
     try {
       const link = await adminApi(`/businesses/${businessId}/addon-link`, {
         method: 'POST',
-        body: { addon_key: addonKey, billing_cycle: cycle, amount: amount ? Number(amount) : undefined }
+        body: { addon_key: addonKey, billing_cycle: cycle, amount: amount ? Number(amount) : undefined, email_link: emailLink }
       });
       await navigator.clipboard?.writeText(link.payment_link_url).catch(() => {});
       toast.success('Link created and copied — send it to the owner');
@@ -825,8 +836,8 @@ const AdminBusinessDetail = () => {
         <WalletPanel businessId={id} />
         <ClientDocuments businessId={id} />
         <FeatureOverrides businessId={id} />
-        <PaymentLinks businessId={id} />
-        <BusinessAddons businessId={id} businessType={business.business_type} />
+        <PaymentLinks businessId={id} ownerEmail={business.owner.email} />
+        <BusinessAddons businessId={id} businessType={business.business_type} ownerEmail={business.owner.email} />
         <TrialAndNotes businessId={id} onChanged={load} />
         <History businessId={id} />
         <DeleteForever business={business} businessId={id} />

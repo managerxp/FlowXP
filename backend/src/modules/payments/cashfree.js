@@ -72,7 +72,7 @@ const request = async (path, body) => {
   }
 };
 
-const live = async ({ linkId, amount, purpose, customerName, customerEmail, customerPhone, returnUrl, notifyUrl }) => {
+const live = async ({ linkId, amount, purpose, customerName, customerEmail, customerPhone, returnUrl, notifyUrl, emailLink }) => {
   const data = await request('/links', {
     link_id: linkId,
     link_amount: amount,
@@ -84,7 +84,7 @@ const live = async ({ linkId, amount, purpose, customerName, customerEmail, cust
       // Cashfree requires a phone; a business without one on file cannot be billed until it adds one.
       customer_phone: customerPhone || '9999999999'
     },
-    link_notify: { send_sms: false, send_email: Boolean(customerEmail) },
+    link_notify: { send_sms: false, send_email: Boolean(emailLink && customerEmail) },   // Cashfree emails the client only when the caller says so
     link_notes: { link_id: linkId },
     link_meta: { return_url: returnUrl, notify_url: notifyUrl }
   });

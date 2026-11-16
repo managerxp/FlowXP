@@ -10,7 +10,7 @@ import { TEMPLATES } from './templates.js';
 
 export const FREE_KINDS = ['OTP'];
 export const DEFAULT_LOW_ALERT_RUPEES = 100;   // the owner is told when credit falls to this; Settings, Messaging can change it
-export const DEFAULT_PRICES = { UTILITY: 0.15, AUTHENTICATION: 0.15, MARKETING: 0.9 };   // rupees a message; Settings, Messaging can change them
+export const DEFAULT_PRICES = { UTILITY: 0.4, AUTHENTICATION: 0.4, MARKETING: 1.2 };   // rupees a message; Settings, Messaging can change them
 
 /** The category Meta bills a kind of message under. */
 export const categoryOf = (kind) => {

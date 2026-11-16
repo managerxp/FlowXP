@@ -29,7 +29,7 @@ const Price = ({ plan, cycle }) => {
 
 const PricingTable = () => {
   const [plans, setPlans] = useState([]);
-  const [cycle, setCycle] = useState('MONTHLY');
+  const [cycle, setCycle] = useState('YEARLY');
   const [state, setState] = useState('loading');
 
   useEffect(() => {
@@ -55,24 +55,6 @@ const PricingTable = () => {
 
   return (
     <>
-      <div className="mb-10 flex justify-center">
-        <div className="inline-flex rounded-lg border border-line bg-surface-2 p-1">
-          {['MONTHLY', 'YEARLY'].map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => setCycle(option)}
-              aria-pressed={cycle === option}
-              className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-                cycle === option ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500'
-              }`}
-            >
-              {option === 'MONTHLY' ? 'Monthly' : 'Yearly'}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
         {plans.map((plan, index) => {
           /* The second plan is the recommended one. Highlighted by position

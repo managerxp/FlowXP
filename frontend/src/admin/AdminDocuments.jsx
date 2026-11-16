@@ -227,7 +227,10 @@ const View = ({ id, onEdit, onOpen, onBack, onChanged }) => {
   };
   const makeLink = async () => {
     setError(''); setLinkBusy(true);
-    try { const r = await adminApi(`/documents/${id}/payment-link`, { method: 'POST' }); await load(); onChanged(); try { await navigator.clipboard.writeText(r.payment_link_url); toast.success('Payment link copied'); } catch { toast.success('Payment link ready'); } }
+    const emailLink = Boolean(d.client?.email) && !d.payment_link_url && window.confirm(`Also email the payment link to ${d.client.email}?
+
+OK sends the email. Cancel creates the link without emailing it.`);
+    try { const r = await adminApi(`/documents/${id}/payment-link`, { method: 'POST', body: { email_link: emailLink } }); await load(); onChanged(); try { await navigator.clipboard.writeText(r.payment_link_url); toast.success('Payment link copied'); } catch { toast.success('Payment link ready'); } }
     catch (e) { setError(e.message); } finally { setLinkBusy(false); }
   };
   const convert = async () => { setError(''); try { const inv = await adminApi(`/documents/${id}/convert`, { method: 'POST' }); toast.success(`${inv.doc_number} created`); onChanged(); onOpen(inv.doc_id, 'INVOICE'); } catch (e) { setError(e.message); } };
@@ -289,7 +292,7 @@ const View = ({ id, onEdit, onOpen, onBack, onChanged }) => {
         <footer className="mt-8 space-y-1 border-t border-line pt-3 text-xs text-ink-600">
           {!quote && (s.upi || s.bank) && <p>Pay by {[s.upi && `UPI ${s.upi}`, s.bank].filter(Boolean).join(' · ')}</p>}
           {!quote && d.payment_link_url && d.status !== 'PAID' && <p>Pay online: {d.payment_link_url}</p>}
-          {d.status === 'PAID' && <p className="font-semibold text-success">Paid on {day(d.paid_at)}{d.paid_method ? ` by ${d.paid_method.replace('_', ' ').toLowerCase()}` : ''}{d.paid_note ? ` (${d.paid_note})` : ''}</p>}
+          {d.status === 'PAID' && <p className="font-semibold text-success">Paid on {day(d.paid_at)}{d.paid_method ? ` by ${(d.paid_method === 'ONLINE' ? 'payment link' : d.paid_method.replace('_', ' ').toLowerCase())}` : ''}{d.paid_note ? ` (${d.paid_note})` : ''}</p>}
           {s.terms && <p>{s.terms}</p>}
         </footer>
       </article>

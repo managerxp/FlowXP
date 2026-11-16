@@ -99,7 +99,7 @@ export const cashfree = async (req, res) => {
     try {
       const id = Number(linkId.slice(DOC_LINK_PREFIX.length).split('-')[0]);
       if (linkStatus === 'PAID' && Number.isInteger(id)) {
-        const paid = await markPaid(id, { note: 'Cashfree' });
+        const paid = await markPaid(id, { note: 'Cashfree', method: 'ONLINE' });
         if (paid) recordAudit(req, { business_id: paid.business_id, action: 'admin.invoice_paid_online', resource_type: 'admin_document', resource_id: id, metadata: { number: paid.doc_number, credit_loaded: paid.credit_loaded } });
       } else if (linkStatus === 'EXPIRED') {
         await pool.query(`UPDATE admin_documents SET link_id = NULL, payment_link_url = NULL WHERE link_id = $1`, [linkId]);   // a new link can be made

@@ -34,7 +34,7 @@ const Subscription = () => {
   const [data, setData] = useState(null);
   const [plans, setPlans] = useState([]);
   const [error, setError] = useState('');
-  const [cycle, setCycle] = useState('MONTHLY');
+  const [cycle, setCycle] = useState('YEARLY');
   const [busy, setBusy] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -101,14 +101,6 @@ const Subscription = () => {
       <div>
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-ink-900">Plans</h2>
-          <div className="inline-flex rounded-lg border border-line p-0.5 text-xs">
-            {['MONTHLY', 'YEARLY'].map((c) => (
-              <button key={c} type="button" onClick={() => setCycle(c)}
-                className={`rounded-md px-3 py-1 font-medium ${cycle === c ? 'bg-brand-600 text-white' : 'text-ink-500'}`}>
-                {c === 'MONTHLY' ? 'Monthly' : 'Yearly'}
-              </button>
-            ))}
-          </div>
         </div>
         {notice && <p className="mb-3 text-sm text-danger">{notice}</p>}
         <div className="grid gap-4 sm:grid-cols-2">

@@ -18,7 +18,7 @@ test('each plan and industry gets its step of the ladder', { skip }, async () =>
   const { runMigrations } = await import('../src/config/migrate.js');
   await runMigrations(pool);
   const prices = (await pool.query(`SELECT plan_code, price_monthly_paise p, price_yearly_paise y FROM plans WHERE plan_code IN ('STARTER','GROWTH','ENTERPRISE') ORDER BY 1`)).rows;
-  assert.deepEqual(prices.map((r) => [r.plan_code, Number(r.p), Number(r.y)]), [['ENTERPRISE', 0, 0], ['GROWTH', 99900, 999900], ['STARTER', 49900, 499900]]);
+  assert.deepEqual(prices.map((r) => [r.plan_code, Number(r.p), Number(r.y)]), [['ENTERPRISE', 259900, 2599900], ['GROWTH', 169900, 1699900], ['STARTER', 99900, 999900]]);
 
   const rs = await flags('RESTAURANT', 'STARTER'); const rg = await flags('RESTAURANT', 'GROWTH'); const re = await flags('RESTAURANT', 'ENTERPRISE');
   assert.ok(!rs('messaging') && !rs('ai') && !rs('purchases') && rs('estimates') === false /* food has no estimates */);
