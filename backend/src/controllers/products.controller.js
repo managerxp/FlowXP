@@ -520,6 +520,9 @@ export const update = async (req, res) => {
     try { const picked = await pickRate(pool, req.tenant.businessId, body.tax_rate_id); body.tax_rate_id = picked?.id ?? null; if (picked) body.tax_rate = picked.rate; }
     catch (e) { return fail(res, e.status || 400, e.message); }
   } else if ('tax_rate' in body && Number(body.tax_rate) !== Number(before.tax_rate)) body.tax_rate_id = null;
+  // a cleared box arrives as '': a number becomes 0 and a link to another record becomes none, instead of failing in the database
+  for (const f of ['tax_rate', 'cess_rate', 'min_stock']) if (body[f] === '') body[f] = 0;
+  for (const f of ['category_id', 'supplier_id', 'brand_id']) if (body[f] === '') body[f] = null;
   for (const field of EDITABLE) {
     if (!(field in body)) continue;
     values.push(body[field]);
