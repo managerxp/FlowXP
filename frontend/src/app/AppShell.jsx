@@ -182,7 +182,7 @@ const NAV_GROUPS = [
     label: 'Restaurant',
     items: [
       { to: '/app/tables', label: 'Tables', icon: LayoutGrid, types: DINE_IN_TYPES, permission: 'billing', feature: 'tables' },
-      { to: '/app/menu-availability', label: 'Menu on / off', icon: ToggleRight, types: RESTAURANT_TYPES, anyPermission: ['billing', 'products'] },
+      { to: '/app/menu-availability', label: 'Menu on / off', icon: ToggleRight, types: RESTAURANT_TYPES, anyPermission: ['billing', 'products'], nested: true },
       { to: '/app/kitchen', label: 'Kitchen', icon: ChefHat, types: RESTAURANT_TYPES, anyPermission: ['billing', 'kitchen'], feature: 'kitchen' },
       { to: '/app/reservations', label: 'Reservations', icon: CalendarClock, types: DINE_IN_TYPES, permission: 'billing', feature: 'reservations', more: true }
     ]
@@ -192,8 +192,8 @@ const NAV_GROUPS = [
     items: [
       { to: '/app/add-items', label: 'Add items', icon: PackagePlus, anyPermission: ['products', 'inventory'], notTypes: [...WHOLESALE, ...PHARMACY, ...CLOTHING] },
       { to: '/app/products', label: 'Products', icon: Package, permission: 'products', notTypes: [...WHOLESALE, ...PHARMACY] },
-      { to: '/app/barcodes', label: 'Barcodes', icon: Barcode, permission: 'products', feature: 'barcode_labels' },
-      { to: '/app/modifiers', label: 'Options & add-ons', icon: SlidersHorizontal, types: RESTAURANT_TYPES, permission: 'products', more: true },
+      { to: '/app/barcodes', label: 'Barcodes', icon: Barcode, permission: 'products', feature: 'barcode_labels', nested: true },
+      { to: '/app/modifiers', label: 'Options & add-ons', icon: SlidersHorizontal, types: RESTAURANT_TYPES, permission: 'products', nested: true },
       // a supermarket works from the Stock center (scan in, count, expiry, import); Inventory stays for single-item changes
       { to: '/app/stock', label: 'Stock center', icon: Warehouse, types: RETAIL, permission: 'inventory' },
       { to: '/app/inventory', label: 'Inventory', icon: Boxes, permission: 'inventory', notTypes: [...WHOLESALE, ...PHARMACY, ...RETAIL] },
@@ -261,6 +261,7 @@ const NAV_GROUPS = [
     items: [
       { to: '/app/outlets', label: 'Outlets', icon: Store, roles: ['OWNER', 'ADMIN'], more: true },
       { to: '/app/staff', label: 'Staff', icon: Users, roles: ['OWNER', 'ADMIN'] },
+      { to: '/app/payroll', label: 'Payroll', icon: HandCoins, permission: 'payroll', feature: 'payroll' },
       { to: '/app/activity', label: 'Activity log', icon: History, roles: ['OWNER', 'ADMIN'], more: true }
     ]
   }
@@ -272,7 +273,7 @@ const SYSTEM_ITEMS = [
   { to: '/app/settlements', label: 'Settlements', icon: ArrowLeftRight, types: RESTAURANT_TYPES, permission: 'settings', feature: 'integrations', more: true },
   // personal account security (password, 2FA, sessions) — every role manages their own
   { to: '/app/support', label: 'Help and support', icon: LifeBuoy, more: true },
-  { to: '/app/security', label: 'Security', icon: Shield, more: true },
+  { to: '/app/security', label: 'Security', icon: Shield, nested: true },
   // the business's own identity/GSTIN/logo can only be SAVED by the owner (see business.routes.js),
   // so showing it to anyone else is a form they can look at but never use
   { to: '/app/wholesale/settings', label: 'Wholesale settings', icon: SlidersHorizontal, types: WHOLESALE, permission: 'settings' },
@@ -509,9 +510,9 @@ const AppShell = () => {
     : NAV_GROUPS.map(adapt).map((group) => ({ ...group, items: group.items.filter(allowed) })).filter((group) => group.items.length > 0);
   const systemItems = SYSTEM_ITEMS.filter(allowed);
   /* The sidebar shows the daily screens; the rest sit under "More" (still one click away, and always in Ctrl K). */
-  const mainGroups = groups.map((g) => ({ ...g, items: g.items.filter((i) => !i.more) })).filter((g) => g.items.length > 0);
+  const mainGroups = groups.map((g) => ({ ...g, items: g.items.filter((i) => !i.more && !i.nested) })).filter((g) => g.items.length > 0);
   // under "More" the items keep their sections (Stock, Customers, Business...) instead of one long list
-  const moreGroups = [...groups.map((g) => ({ label: g.label || 'Overview', items: g.items.filter((i) => i.more) })), { label: 'System', items: systemItems.filter((i) => i.more) }].filter((g) => g.items.length > 0);
+  const moreGroups = [...groups.map((g) => ({ label: g.label || 'Overview', items: g.items.filter((i) => i.more && !i.nested) })), { label: 'System', items: systemItems.filter((i) => i.more) }].filter((g) => g.items.length > 0);
   const moreItems = moreGroups.flatMap((g) => g.items);
   const pinnedItems = systemItems.filter((i) => !i.more);
   const onMorePage = moreItems.some((i) => location.pathname === i.to || location.pathname.startsWith(`${i.to}/`));

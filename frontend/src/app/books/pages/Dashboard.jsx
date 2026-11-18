@@ -6,12 +6,13 @@ import { financialYear, gstDueDates, showDate, today } from '../lib.js';
 import { useSession } from '../session.jsx';
 import { Badge, Btn, Card, Empty, Err, Money, Page, Table, useAction } from '../ui.jsx';
 
-/* One click for a new building-trade business: choose what you do, and the items you will need are listed and the view is set up. */
+/* One click for a new business: say what you do. A trade gets the materials it buys listed with their GST rates; any other business just starts. FlowBook suits any kind of business, these are only shortcuts. */
 const TRADES = [
-  ['Builder or contractor', null, 'builder'], ['Real estate developer', null, 'builder'],
-  ['Electrician', ['Electrical', 'Hardware and consumables', 'Labour and contractors'], 'builder'],
-  ['Plumber', ['Plumbing', 'Hardware and consumables', 'Labour and contractors'], 'builder'],
-  ['Interiors and finishing', ['Flooring, tiles and sanitary', 'Paint and finishing', 'Wood, doors and windows', 'Hardware and consumables', 'Labour and contractors'], 'builder']
+  ['Shop or trader', false], ['Service business', false], ['Restaurant or caterer', false], ['Clinic or salon', false],
+  ['Builder or contractor', null], ['Real estate developer', null],
+  ['Electrician', ['Electrical', 'Hardware and consumables', 'Labour and contractors']],
+  ['Plumber', ['Plumbing', 'Hardware and consumables', 'Labour and contractors']],
+  ['Interiors and finishing', ['Flooring, tiles and sanitary', 'Paint and finishing', 'Wood, doors and windows', 'Hardware and consumables', 'Labour and contractors']]
 ];
 const QuickSetup = ({ org }) => {
   const { o } = useSession();
@@ -21,16 +22,17 @@ const QuickSetup = ({ org }) => {
   const key = `fb_quick_${org.id}`;
   const [hidden, setHidden] = useState(() => { try { return localStorage.getItem(key) === '1'; } catch { return false; } });
   if (hidden || !items.data || items.data.length) return null;
-  const go = ([name, groups, mode]) => a.run(async () => {
+  const go = ([, groups]) => a.run(async () => {
+    if (groups === false) { hide(); return; }
     const list = await o('/catalogue');
     const skus = groups ? list.filter((g) => groups.includes(g.group)).flatMap((g) => g.items.map((i) => i.sku)) : 'all';
     await o('/catalogue/add', { method: 'POST', body: { skus } });
-    setMode(mode); nav('/projects');
+    setMode('simple'); nav('/projects');
   });
   const hide = () => { try { localStorage.setItem(key, '1'); } catch { /* hidden for this visit only */ } setHidden(true); };
   return (
     <Card title="Set up in one click" actions={<button className="linkish" onClick={hide}>Not now</button>}>
-      <p className="muted">What kind of work do you do? We will list the materials and labour you buy, with their GST rates, and switch on the builder screens. You can change anything later.</p>
+      <p className="muted">What kind of business do you run? Trades get the materials and labour they buy listed with their GST rates; any other business can start straight away. You can change anything later.</p>
       <Err>{a.error}</Err>
       <div className="actions">{TRADES.map((t) => <Btn key={t[0]} busy={a.busy} onClick={() => go(t)}>{t[0]}</Btn>)}</div>
     </Card>

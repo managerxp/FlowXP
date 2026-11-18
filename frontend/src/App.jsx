@@ -125,6 +125,7 @@ const KotPage = lazy(() => import('./app/PrintPages.jsx').then((m) => ({ default
 const RunningBillPage = lazy(() => import('./app/PrintPages.jsx').then((m) => ({ default: m.RunningBillPage })));
 const StaffPage = lazy(() => import('./app/StaffPage.jsx'));
 const WorkshopStaff = lazy(() => import('./app/hr/Staff.jsx'));
+const PayrollPage = lazy(() => import('./app/payroll/PayrollPage.jsx'));
 
 /* The wholesale module (WHOLESALE and DISTRIBUTOR). Its screens live in app/wholesale/ and load only for those businesses. */
 const WholesaleDashboard = lazy(() => import('./app/wholesale/WholesaleDashboard.jsx'));
@@ -406,6 +407,7 @@ const App = () => (
       <Route path="parts/jobs" element={<PartsJobCards />} />
       <Route path="money" element={<GarageMoney />} />
       <Route path="parts/staff" element={<WorkshopStaff />} />
+      <Route path="payroll" element={<PayrollPage />} />
       <Route path="parts/trade" element={<PartsTrade />} />
       <Route path="parts/reports" element={<PartsReports />} />
       <Route path="parts/labels" element={<LocationLabels />} />

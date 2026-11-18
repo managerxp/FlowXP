@@ -6,6 +6,7 @@ import type { Db } from './db.ts';
 import { ITC_BLOCKED, SUPPLY_TYPES, advancesAndRetention, ageing, exportAll, outstanding, allocatePayment, applyCreditNote, applyDebitNote, convertDocument, createOpeningBalance, createPayment, deleteDraft, getDocument, getPayment, issueDocument, listDocuments, listPayments, saveDraft, setOutcome, setRetention, voidDocument, voidPayment } from './documents.ts';
 import type { Alloc, DocIn, DocKind, SupplyType } from './documents.ts';
 import { listExpenses, recordExpense, voidExpense } from './expenses.ts';
+import { getRun, listEmployees, makeRun, payDues, payStaff, postRun, saveEmployee, voidRun } from './payroll.ts';
 import { ewayBill } from './eway.ts';
 import { buildEinvoice, cancelIrn, einvoiceBulk, einvoiceList, recordIrn } from './einvoice.ts';
 import { gstr1, gstr3b, lateCharges } from './gstr.ts';
@@ -508,6 +509,29 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   app.post(`${base}/expenses/:id/void`, { preHandler: scope('bill.void'), schema: { ...idParam, body: voidBody } }, async (req) => {
     const b = req.body as { date: string; reason: string };
     await run(req, (c, orgId) => voidExpense(c, orgId, BigInt((req.params as { id: string }).id), { date: b.date, reason: b.reason }, me(req)));
+    return { ok: true };
+  });
+
+  /* ---- payroll: people on a salary, the month's run, and paying it */
+  const MONTH = '^\d{4}-(0[1-9]|1[0-2])$';
+  const payBody = { type: 'object', required: ['date', 'paidWith'], additionalProperties: false, properties: { date: { type: 'string', pattern: DATE }, paidWith: { type: 'string', enum: ['CASH', 'BANK', 'UPI', 'CARD'] } } };
+  const monthParam = { params: { type: 'object', required: ['month'], properties: { month: { type: 'string', pattern: MONTH } } } };
+  app.get(`${base}/payroll/employees`, { preHandler: scope('bill.read') }, async (req) => run(req, (c) => listEmployees(c)));
+  const empBody = { type: 'object', required: ['name', 'monthlyPay'], additionalProperties: false, properties: { name: { type: 'string', minLength: 1, maxLength: 120 }, designation: { type: 'string', maxLength: 80 }, monthlyPay: { type: 'string', pattern: AMOUNT }, basic: { type: 'string', pattern: AMOUNT }, pf: { type: 'boolean' }, esi: { type: 'boolean' }, pt: { type: 'string', pattern: AMOUNT }, tds: { type: 'string', pattern: AMOUNT }, active: { type: 'boolean' } } };
+  app.post(`${base}/payroll/employees`, { preHandler: scope('bill.write'), schema: { body: empBody } }, async (req, reply) =>
+    reply.code(201).send(await run(req, (c, orgId) => saveEmployee(c, orgId, null, req.body as Parameters<typeof saveEmployee>[3]))));
+  app.put(`${base}/payroll/employees/:id`, { preHandler: scope('bill.write'), schema: { ...idParam, body: empBody } }, async (req) =>
+    run(req, (c, orgId) => saveEmployee(c, orgId, BigInt((req.params as { id: string }).id), req.body as Parameters<typeof saveEmployee>[3])));
+  app.get(`${base}/payroll/runs/:month`, { preHandler: scope('bill.read'), schema: monthParam }, async (req) => run(req, async (c) => (await getRun(c, (req.params as { month: string }).month)) ?? { lines: [], status: 'NONE' }));
+  app.post(`${base}/payroll/runs/:month`, { preHandler: scope('bill.write'), schema: { ...monthParam, body: { type: 'object', additionalProperties: false, properties: { lines: { type: 'array', maxItems: 2000, items: { type: 'object', required: ['employeeId'], additionalProperties: false, properties: { employeeId: { type: 'string', pattern: ID }, daysAway: { type: 'number', minimum: 0, maximum: 31 }, bonus: { type: 'string', pattern: AMOUNT } } } } } } } }, async (req) =>
+    run(req, (c, orgId) => makeRun(c, orgId, (req.params as { month: string }).month, (req.body as { lines?: Parameters<typeof makeRun>[3] } | undefined)?.lines)));
+  app.post(`${base}/payroll/runs/:month/post`, { preHandler: scope('bill.write'), schema: monthParam }, async (req) => run(req, (c, orgId) => postRun(c, orgId, (req.params as { month: string }).month, me(req))));
+  app.post(`${base}/payroll/runs/:month/pay`, { preHandler: scope('bill.write'), schema: { ...monthParam, body: payBody } }, async (req) =>
+    run(req, (c, orgId) => payStaff(c, orgId, (req.params as { month: string }).month, req.body as Parameters<typeof payStaff>[3], me(req))));
+  app.post(`${base}/payroll/runs/:month/dues`, { preHandler: scope('bill.write'), schema: { ...monthParam, body: payBody } }, async (req) =>
+    run(req, (c, orgId) => payDues(c, orgId, (req.params as { month: string }).month, req.body as Parameters<typeof payDues>[3], me(req))));
+  app.post(`${base}/payroll/runs/:month/void`, { preHandler: scope('bill.void'), schema: { ...monthParam, body: voidBody } }, async (req) => {
+    await run(req, (c, orgId) => voidRun(c, orgId, (req.params as { month: string }).month, req.body as { date: string; reason: string }, me(req)));
     return { ok: true };
   });
 

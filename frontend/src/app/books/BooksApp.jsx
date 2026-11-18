@@ -16,6 +16,7 @@ import Projects, { ProjectView } from './pages/Projects.jsx';
 import { Accounts, JournalForm, JournalView, Journals } from './pages/Books.jsx';
 import Bank from './pages/Bank.jsx';
 import Expenses from './pages/Expenses.jsx';
+import Payroll from './pages/Payroll.jsx';
 import Recurring from './pages/Recurring.jsx';
 import Reports from './pages/Reports.jsx';
 import Settings from './pages/Settings.jsx';
@@ -35,15 +36,14 @@ const DOCS = [
 const NAV = [
   { items: [['/', 'Home', 'home']] },
   { label: 'Sales', items: [['/quotes', 'Quotes', 'bill'], ['/sales-orders', 'Sales orders', 'list'], ['/sales', 'Invoices', 'invoice'], ['/credit-notes', 'Credit notes', 'credit'], ['/recurring', 'Recurring', 'repeat'], ['/projects', 'Projects', 'list'], ['/customers', 'Customers', 'people']] },
-  { label: 'Purchases', items: [['/purchase-orders', 'Purchase orders', 'list'], ['/purchases', 'Bills', 'bill'], ['/debit-notes', 'Debit notes', 'credit'], ['/expenses', 'Expenses', 'wallet'], ['/vendors', 'Vendors', 'people']] },
+  { label: 'Purchases', items: [['/purchase-orders', 'Purchase orders', 'list'], ['/purchases', 'Bills', 'bill'], ['/debit-notes', 'Debit notes', 'credit'], ['/expenses', 'Expenses', 'wallet'], ['/payroll', 'Payroll', 'people'], ['/vendors', 'Vendors', 'people']] },
   { label: 'Money', items: [['/payments', 'Payments', 'cash'], ['/bank', 'Bank', 'bank']] },
   { label: 'Books', items: [['/items', 'Items', 'box'], ['/stock', 'Stock', 'list'], ['/assets', 'Fixed assets', 'box'], ['/accounts', 'Accounts', 'list'], ['/journals', 'Journals', 'book'], ['/reports', 'Reports', 'chart']] },
   { label: 'Setup', items: [['/settings', 'Settings', 'gear']] }
 ];
 /* the advanced screens the FlowXP super admin can switch off (keys in api/src/features.ts) */
-const NEEDS = { '/quotes': 'flowbook_quotes_orders', '/sales-orders': 'flowbook_quotes_orders', '/purchase-orders': 'flowbook_quotes_orders', '/credit-notes': 'flowbook_notes', '/debit-notes': 'flowbook_notes', '/recurring': 'flowbook_recurring', '/projects': 'flowbook_projects', '/bank': 'flowbook_bank', '/stock': 'flowbook_stock', '/assets': 'flowbook_assets', '/journals': 'flowbook_journals' };
-const BUILDER = new Set(['/', '/projects', '/sales', '/customers', '/purchases', '/expenses', '/vendors', '/payments', '/items', '/stock', '/reports', '/settings']);
-const SIMPLE = new Set(['/', '/sales', '/customers', '/purchases', '/expenses', '/vendors', '/payments', '/items', '/stock', '/reports', '/settings']);
+const NEEDS = { '/quotes': 'flowbook_quotes_orders', '/sales-orders': 'flowbook_quotes_orders', '/purchase-orders': 'flowbook_quotes_orders', '/credit-notes': 'flowbook_notes', '/debit-notes': 'flowbook_notes', '/recurring': 'flowbook_recurring', '/projects': 'flowbook_projects', '/bank': 'flowbook_bank', '/stock': 'flowbook_stock', '/assets': 'flowbook_assets', '/journals': 'flowbook_journals', '/payroll': 'flowbook_payroll' };
+const SIMPLE = new Set(['/', '/projects', '/sales', '/customers', '/purchases', '/expenses', '/payroll', '/vendors', '/payments', '/items', '/stock', '/reports', '/settings']);
 
 /** A section's tab goes to its first visible screen; the screens of the open section are listed under the tabs. */
 /** Download what the page shows (every table on it) as a spreadsheet file. */
@@ -66,7 +66,7 @@ const Frame = () => {
   if (!org) return <div className="fb"><Card title="FlowBook"><Err>{error || 'Your books could not be opened.'}</Err></Card></div>;
   if (!on('flowbook_app')) return <div className="fb"><Card title="FlowBook is switched off"><p>FlowBook is not part of this business's plan right now. Contact FlowXP support or upgrade your plan to use it.</p></Card></div>;
 
-  const groups = NAV.map((g) => ({ ...g, items: g.items.filter(([to]) => (mode === 'full' || (mode === 'builder' ? BUILDER : SIMPLE).has(to)) && on(NEEDS[to] || 'flowbook_app')) })).filter((g) => g.items.length);
+  const groups = NAV.map((g) => ({ ...g, items: g.items.filter(([to]) => (mode === 'full' || SIMPLE.has(to)) && on(NEEDS[to] || 'flowbook_app')) })).filter((g) => g.items.length);
   const open = (to) => (to === '/' ? here === '/' : here === to || here.startsWith(`${to}/`));
   const current = groups.find((g) => g.items.some(([to]) => open(to)));
   return (
@@ -78,7 +78,6 @@ const Frame = () => {
         <div className="fb-tools">
           <div className="seg" role="group" aria-label="How much to show">
             <button className={simple ? 'on' : ''} aria-pressed={simple} onClick={() => setMode('simple')}>Simple</button>
-            <button className={mode === 'builder' ? 'on' : ''} aria-pressed={mode === 'builder'} onClick={() => setMode('builder')}>Builder</button>
             <button className={mode === 'full' ? 'on' : ''} aria-pressed={mode === 'full'} onClick={() => setMode('full')}>Full</button>
           </div>
           <ExportButton page={here} />
@@ -92,7 +91,7 @@ const Frame = () => {
       )}
       {here === '/' && (
         <p className="muted" style={{ margin: '.5rem 0 0', fontSize: '.85rem' }}>
-          {simple ? 'Simple view: everyday screens only. Choose Builder for projects, flats and retention, or Full for everything.' : mode === 'builder' ? 'Builder view: projects, flats and plots, bills, payments and stock. Choose Full to add the accountant’s screens.' : 'Full view: every screen, including the accountant’s. Choose Simple or Builder to hide the extras.'}
+          {simple ? 'Simple view: the everyday screens. Choose Full to add quotes, orders, journals and the other accountant’s screens.' : 'Full view: every screen, including the accountant’s. Choose Simple to hide the extras.'}
         </p>
       )}
       <Routes>
@@ -104,6 +103,7 @@ const Frame = () => {
           <Route key={`${d.path}-v`} path={`/${d.path}/:id`} element={<DocView kind={d} />} />
         ])}
         <Route path="/expenses" element={<Expenses />} />
+        <Route path="/payroll" element={<Payroll />} />
         <Route path="/bank" element={<Bank />} />
         <Route path="/recurring" element={<Recurring />} />
         <Route path="/payments" element={<Payments />} />

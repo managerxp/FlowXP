@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Pencil, Plus, Trash2, UserPlus } from 'lucide-react';
 import { formatCurrency } from '../../lib/api.js';
-import { staffApi as api, useStaffLoad as useLoad } from '../../lib/staffBase.js';
+import { setStaffBase, staffApi as api, useStaffLoad as useLoad } from '../../lib/staffBase.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ID_TYPES, longDate, qs, timeText, useDebounced } from '../../lib/hr.js';
 import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, StatCard, Table, Td, Textarea, Th, Thead, Tr, useDialog, useToast } from '../../components/ui.jsx';
@@ -222,12 +222,13 @@ const Setup = ({ canHr }) => {
   );
 };
 
-export default function Staff() {
+export default function Staff({ noPayTab = false }) {
+  setStaffBase(noPayTab ? '/payroll' : '/autoparts');   // the Payroll add-on shows the same people, roster, attendance and leave screens, on its own endpoints
   const tr = useT();
   const { can, business } = useAuth();
   const [params, setParams] = useSearchParams();
   const canHr = can('hr'); const canPay = can('payroll');
-  const tabs = [{ key: 'people', label: T('People') }, ...(canHr ? [{ key: 'roster', label: T('Roster') }, { key: 'attendance', label: T('Attendance') }] : []), { key: 'leave', label: T('Leave') }, ...(canPay ? [{ key: 'payroll', label: T('Payroll') }] : []), { key: 'setup', label: T('Departments and shifts') }];
+  const tabs = [{ key: 'people', label: T('People') }, ...(canHr ? [{ key: 'roster', label: T('Roster') }, { key: 'attendance', label: T('Attendance') }] : []), { key: 'leave', label: T('Leave') }, ...(canPay && !noPayTab ? [{ key: 'payroll', label: T('Payroll') }] : []), { key: 'setup', label: T('Departments and shifts') }];
   const tab = tabs.some((t) => t.key === params.get('tab')) ? params.get('tab') : 'people';
   const depts = useLoad('/staff/departments');
   const shifts = useLoad('/staff/shifts');

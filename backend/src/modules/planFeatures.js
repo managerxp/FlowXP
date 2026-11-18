@@ -68,6 +68,8 @@ export const PLAN_FEATURES = [
   ['ap_jobcards', 'Workshop job cards', 'Vehicles in for service: complaint, spare parts used and labour, status, and one bill when the job is done'],
   ['cl_catalog', 'Clothing catalogue', 'Styles with size and colour variants, a SKU and a barcode for every variant, and opening stock by size and colour'],
   ['ap_staff', 'Staff and payroll', 'Mechanics and counter staff: records, roster, attendance, leave and the monthly payroll sheet'],
+  // Payroll add-on (any business type): off unless the business bought it (an add-on grants it) or is on the Enterprise plan.
+  ['payroll', 'Payroll', 'Salary sheets with PF, ESI, professional tax and TDS, payslips, loans and advances, and the bank, PF and ESI files'],
   // Backup and restore (all business types). Missing key = on.
   ['backup_restore', 'Restore from a backup', 'Put the records of a downloaded backup back, adding only what is missing and never changing what is there'],
   // FlowBook link (all business types). Missing key = on.
@@ -90,6 +92,7 @@ export const PLAN_FEATURES = [
   ['flowbook_reports_more', 'FlowBook: balance sheet and statements', 'Balance sheet, trial balance and party statements'],
   ['flowbook_whatsapp', 'FlowBook: WhatsApp', 'Send invoices and payment reminders on WhatsApp'],
   ['flowbook_email', 'FlowBook: email', 'Send invoices by email'],
+  ['flowbook_payroll', 'FlowBook: payroll', 'Pay staff each month with PF, ESI, professional tax and TDS, posted to the books'],
   ['flowbook_import', 'FlowBook: import from CSV', 'Bring customers and items in from a spreadsheet'],
   ['flowbook_ai', 'FlowBook assistant', 'Ask questions about your books in plain words inside FlowBook; each question counts against the monthly AI questions of the plan'],
   // Supermarket / retail. Missing key = on.
@@ -182,11 +185,14 @@ export const industryDefaults = (businessType) => Object.fromEntries((INDUSTRY_O
  * `sources` is [plan flags, business-type flags for this plan]; `businessType` adds that industry's defaults, which
  * the business-type flags can turn back on with an explicit `true`.
  */
+/** Features nobody has until they buy the add-on (or the Enterprise plan turns them on for the business type): the add-on grants it as a per-business override. */
+export const ADDON_ONLY = ['payroll'];
 export const WORKSHOP_KEYS = ['ap_jobcards', 'ap_staff'];   // what "mechanic mode" switches on for a spare parts shop
-export const effectiveFeatureFlags = (sources, overrides, businessType, workshopMode) => {
+/* onTrial: add-on-only features (payroll) are on for every industry while the business is on its free trial; an admin's explicit off still wins. */
+export const effectiveFeatureFlags = (sources, overrides, businessType, workshopMode, onTrial = false) => {
   overrides ??= {};
   const typeFlags = sources?.[1] || {};
-  const off = new Set(Object.keys(industryDefaults(businessType)).filter((key) => typeFlags[key] !== true));
+  const off = new Set([...Object.keys(industryDefaults(businessType)), ...(onTrial ? [] : ADDON_ONLY)].filter((key) => typeFlags[key] !== true));
   // mechanic mode is the owner's own switch: off hides the workshop tools (an admin override that forces one on still wins). Unknown (not loaded) leaves them as they are.
   if (String(businessType).toUpperCase() === 'AUTO_PARTS' && workshopMode === false) WORKSHOP_KEYS.forEach((k) => off.add(k));
   const merged = {};

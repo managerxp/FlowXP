@@ -27,8 +27,8 @@ const { PLAN_FEATURE_KEYS, hasPlanFeature, industryDefaults } = await import('..
 // Every test business here is a RESTAURANT, which starts with the salon and wholesale features off (industry defaults);
 // these tests are about the PLAN's flags, so they look past that.
 const RESTAURANT_OFF = industryDefaults('RESTAURANT');
-const planOnly = (flags) => Object.fromEntries(Object.entries(flags).filter(([key]) => !(key in RESTAURANT_OFF)));
-const APPLIES = PLAN_FEATURE_KEYS.filter((key) => !(key in RESTAURANT_OFF));
+const planOnly = (flags) => Object.fromEntries(Object.entries(flags).filter(([key]) => !(key in RESTAURANT_OFF) && key !== 'payroll'));   // payroll is an add-on, off until bought
+const APPLIES = PLAN_FEATURE_KEYS.filter((key) => !(key in RESTAURANT_OFF) && key !== 'payroll');
 
 test.after(cleanup);
 

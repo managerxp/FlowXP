@@ -7,7 +7,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { effectiveFeatureFlags, industryDefaults, INDUSTRY_OFF, PLAN_FEATURE_KEYS } from '../src/modules/planFeatures.js';
 
-const flags = (type, { plan = {}, typeRow = {}, overrides = {} } = {}) => effectiveFeatureFlags([plan, typeRow], overrides, type);
+/* Payroll is an add-on, off for everyone until bought (tested in payroll.test.js), so it is left out of the industry defaults checked here */
+const flags = (type, { plan = {}, typeRow = {}, overrides = {} } = {}) => Object.fromEntries(Object.entries(effectiveFeatureFlags([plan, typeRow], overrides, type)).filter(([k]) => k !== 'payroll'));
 const on = (f, key) => f[key] !== false;
 
 test('every default names a real feature', () => {

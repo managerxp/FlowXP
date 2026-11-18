@@ -893,6 +893,8 @@ const ProductsPage = () => {
           </div>
           <div className="flex flex-wrap gap-2">
             {isRestaurant && <Button variant="secondary" onClick={() => setAction('import')}><Sparkles aria-hidden="true" className="h-4 w-4" />{tr('Menu from a photo')}</Button>}
+            {isRestaurant && <Link to="/app/menu-availability" className="inline-flex h-10 items-center rounded-lg border border-line-strong px-4 text-sm font-semibold text-ink-900 hover:bg-surface-muted">{tr('Menu on / off')}</Link>}
+            {isRestaurant && can('products') && <Link to="/app/modifiers" className="inline-flex h-10 items-center rounded-lg border border-line-strong px-4 text-sm font-semibold text-ink-900 hover:bg-surface-muted">{tr('Options & add-ons')}</Link>}
             {hasFeature('barcode_labels') && can('products') && <Link to="/app/barcodes" className="inline-flex h-10 items-center rounded-lg border border-line-strong px-4 text-sm font-semibold text-ink-900 hover:bg-surface-muted">{tr('Print barcode labels')}</Link>}
             {retail && can('settings') && <Button variant="secondary" onClick={() => setAction('settings')}>{tr('Product settings')}</Button>}
             <Button onClick={() => setEditing({})}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add product')}</Button>

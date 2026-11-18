@@ -380,7 +380,7 @@ export const withBusiness = (options = {}) => async (req, res, next) => {
     subscription: subscriptionSummary(membership),
     // whole-business feature gates — the plan AND the business type combined (either can turn
     // a feature off), checked by requirePlanFeature() below; separate from `permissions`, which is per-user
-    planFeatures: effectiveFeatureFlags([membership.feature_flags, membership.business_type_feature_flags], membership.feature_overrides, membership.business_type, membership.workshop_mode)
+    planFeatures: effectiveFeatureFlags([membership.feature_flags, membership.business_type_feature_flags], membership.feature_overrides, membership.business_type, membership.workshop_mode, effectiveStatus(membership) === 'TRIAL')
   };
 
   /*

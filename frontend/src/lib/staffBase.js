@@ -6,7 +6,10 @@ import { api } from './api.js';
 import { localISO } from './dates.js';
 import { useLoad } from './salon.js';
 
-const route = (path) => (path ? `/autoparts${path}` : path);
+/* The staff screens serve the spare parts module (/autoparts/staff) and the Payroll add-on for every other business (/payroll/staff): the page that shows them says which. */
+let base = '/autoparts';
+export const setStaffBase = (prefix) => { base = prefix; };
+const route = (path) => (path ? `${base}${path}` : path);
 
 export const staffApi = (path, options) => api(route(path), options);
 

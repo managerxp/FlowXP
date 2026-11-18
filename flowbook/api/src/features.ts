@@ -23,6 +23,7 @@ export const FEATURES: Feature[] = [
   { key: 'flowbook_reports_more', label: 'Balance sheet, trial balance and statements' },
   { key: 'flowbook_whatsapp', label: 'WhatsApp' },
   { key: 'flowbook_email', label: 'Email' },
+  { key: 'flowbook_payroll', label: 'Payroll' },
   { key: 'flowbook_import', label: 'Import from CSV' }
 ];
 const LABEL = new Map(FEATURES.map((f) => [f.key, f.label]));
@@ -32,7 +33,7 @@ const BY_SEGMENT: Record<string, string> = {
   quotes: 'flowbook_quotes_orders', 'sales-orders': 'flowbook_quotes_orders', 'purchase-orders': 'flowbook_quotes_orders',
   'credit-notes': 'flowbook_notes', 'debit-notes': 'flowbook_notes', recurring: 'flowbook_recurring', projects: 'flowbook_projects', time: 'flowbook_projects',
   bank: 'flowbook_bank', stock: 'flowbook_stock', warehouses: 'flowbook_stock', assets: 'flowbook_assets', gst: 'flowbook_gst', einvoice: 'flowbook_einvoice',
-  'exchange-rates': 'flowbook_currency', fx: 'flowbook_currency', journals: 'flowbook_journals', whatsapp: 'flowbook_whatsapp', email: 'flowbook_email', import: 'flowbook_import'
+  'exchange-rates': 'flowbook_currency', fx: 'flowbook_currency', journals: 'flowbook_journals', whatsapp: 'flowbook_whatsapp', email: 'flowbook_email', import: 'flowbook_import', payroll: 'flowbook_payroll'
 };
 
 /** Which advanced feature a route belongs to (null: an everyday one). `url` is the route pattern, e.g. /v1/orgs/:orgId/quotes/:id/issue. */

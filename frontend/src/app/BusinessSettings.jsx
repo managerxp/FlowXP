@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { Link } from 'react-router-dom';
 import { PageHeader, Card, Field, Input, Select, Textarea, Button, Alert, useToast, PageLoader } from '../components/ui.jsx';
 import { agentPrinters, agentStatus, getDevicePrefs, pairAgent, RAWBT_STORE, setDevicePref, testPrint } from '../lib/printing.js';
 import { COUNTRIES, regionsFor, stateFromGstin, subdivisionLabel } from '../lib/states.js';
@@ -432,6 +433,10 @@ const BusinessSettings = () => {
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader title={tr('Business details')} lead={tr('Your business\'s own identity, contact and payment info.')} />
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Link to="/app/security" className="inline-flex h-10 items-center rounded-lg border border-line-strong px-4 text-sm font-semibold text-ink-900 hover:bg-surface-muted">{tr('Security')}</Link>
+        <Link to="/app/settings/subscription" className="inline-flex h-10 items-center rounded-lg border border-line-strong px-4 text-sm font-semibold text-ink-900 hover:bg-surface-muted">{tr('Subscription')}</Link>
+      </div>
       <Card>
         <form onSubmit={save} className="space-y-4">
           <Alert>{error}</Alert>
