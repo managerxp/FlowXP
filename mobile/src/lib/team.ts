@@ -72,7 +72,6 @@ export const rolesFor = (businessType: string | undefined, isOwner: boolean, dis
 /** Owners and admins manage the team and the outlets (the server insists on the 'settings' permission and, for outlets, a group-level person). */
 export const canManageTeam = (role: string | undefined): boolean => role === 'OWNER' || role === 'ADMIN';
 /** The business types the website offers Outlets for. */
-export const OUTLET_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE', 'RACING', 'WHOLESALE', 'DISTRIBUTOR', 'PHARMACY'];
 
 /* ── people ──────────────────────────────────────────────────────────────── */
 export type Person = { user_id: number; name: string; email: string; phone?: string | null; role: string; status: string; branch_id: number | null; branch_name: string | null; is_you: boolean; custom_permissions: number };

@@ -74,6 +74,18 @@ export const printerLine = (p: SavedPrinter): string => [p.kind === 'bluetooth' 
 /** Bluetooth printers take small writes: the job is sent in pieces so a long receipt does not overflow the printer's buffer. */
 export const chunks = (bytes: Uint8Array, size = 512): Uint8Array[] => { const out: Uint8Array[] = []; for (let i = 0; i < bytes.length; i += size) out.push(bytes.subarray(i, i + size)); return out; };
 
+/** One thing at a time per lane: a job waits for the one before it in the same lane (a failed one does not block the next). A receipt and a kitchen ticket sent a moment apart
+ *  to two Bluetooth printers, or two tickets to the same printer, must not open their connections at once. Lanes are 'bluetooth' (all of them) and one per network address. */
+const lanes = new Map<string, Promise<unknown>>();
+export const inLane = <T>(lane: string, job: () => Promise<T>): Promise<T> => {
+  const run = (lanes.get(lane) ?? Promise.resolve()).then(job, job);
+  const tail = run.then(() => undefined, () => undefined);
+  lanes.set(lane, tail);
+  void tail.then(() => { if (lanes.get(lane) === tail) lanes.delete(lane); });
+  return run;
+};
+export const laneOf = (p: { kind: PrinterKind; address: string; port: number }): string => (p.kind === 'bluetooth' ? 'bluetooth' : `net:${p.address.toLowerCase()}:${p.port}`);
+
 /** The paper width the server's kitchen ticket is asked for. */
 export const colsFor = (paper: Paper): number => (paper === '80' ? 48 : 32);
 

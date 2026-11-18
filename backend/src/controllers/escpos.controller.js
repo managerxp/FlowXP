@@ -10,6 +10,7 @@ import * as invoices from './invoices.controller.js';
 import * as kitchen from './kitchen.controller.js';
 import { loadFor } from './printers.controller.js';
 import { pickPrinter, targetOf } from '../modules/printers.js';
+import { hasPlanFeature } from '../modules/planFeatures.js';
 
 /* Run an existing handler and keep what it answers, so a receipt is built from exactly the data the screen shows. */
 const capture = async (handler, req) => {
@@ -44,7 +45,8 @@ export const receipt = async (req, res) => {
   // a takeaway or delivery bill can go to its own printer
   const kind = (await pool.query(`SELECT o.order_type FROM invoices i LEFT JOIN orders o ON o.order_id = i.order_id WHERE i.invoice_id = $1 AND i.business_id = $2`, [req.params.id, req.tenant.businessId])).rows[0]?.order_type;
   const printer = await routeFor(req, ['TAKEAWAY', 'DELIVERY'].includes(kind) ? 'takeaway' : 'receipt');
-  const bytes = receiptBytes({ business, settings: business.receipt_settings || {}, invoice: got.body.data },
+  const settings = { ...(business.receipt_settings || {}), print_token: business.receipt_settings?.print_token === true && hasPlanFeature(req.tenant, 'counter_token') };   // the plan can take the token away
+  const bytes = receiptBytes({ business, settings, invoice: got.body.data },
     { cols: await width(req, printer), drawer: req.query.drawer === '1', upi: req.query.upi != null ? Number(req.query.upi) : null });
   res.json({ success: true, data: { data: b64(bytes), bytes: bytes.length, target: targetOf(printer), printer: printer?.name ?? null } });
 };

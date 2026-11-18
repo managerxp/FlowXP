@@ -57,7 +57,7 @@ export const orderSummary = (o: Order): Summary => {
 /* ── part payment and pay later ─────────────────────────────────────────── */
 
 /** How a bill is settled at the till: all of it now, some of it now (the rest is owed), or none of it now (the customer's credit). */
-export type PayHow = 'FULL' | 'PART' | 'LATER';
+export type PayHow = 'FULL' | 'PART' | 'SPLIT' | 'LATER';   // PART is no longer offered on a screen: a bill is paid in full, split between methods, or left unpaid
 export type PayPlan = { ok: boolean; /** null = the whole bill; 0 = nothing now; else paise taken now */ payNowPaise: number | null; balancePaise: number; problem: string };
 
 /**
@@ -65,7 +65,7 @@ export type PayPlan = { ok: boolean; /** null = the whole bill; 0 = nothing now;
  * `now` is what the cashier typed for "paying now".
  */
 export const payPlan = ({ how, totalPaise, now, hasCustomer }: { how: PayHow; totalPaise: number; now: string; hasCustomer: boolean }): PayPlan => {
-  if (how === 'FULL') return { ok: true, payNowPaise: null, balancePaise: 0, problem: '' };   // (a bill that comes to nothing, like a free service, is still just "paid in full")
+  if (how === 'FULL' || how === 'SPLIT') return { ok: true, payNowPaise: null, balancePaise: 0, problem: '' };   // (a bill that comes to nothing, like a free service, is still just "paid in full")
   if (totalPaise <= 0) return { ok: false, payNowPaise: null, balancePaise: 0, problem: '' };
   if (!hasCustomer) return { ok: false, payNowPaise: how === 'LATER' ? 0 : null, balancePaise: totalPaise, problem: 'Choose the customer first: the rest of the bill is owed by them.' };
   if (how === 'LATER') return { ok: true, payNowPaise: 0, balancePaise: totalPaise, problem: '' };
@@ -74,4 +74,20 @@ export const payPlan = ({ how, totalPaise, now, hasCustomer }: { how: PayHow; to
   if (!(paise > 0)) return { ok: false, payNowPaise: null, balancePaise: totalPaise, problem: text === '' ? '' : 'Enter how much is being paid now.' };
   if (paise >= totalPaise) return { ok: false, payNowPaise: null, balancePaise: 0, problem: 'That is the whole bill. Choose Pay in full.' };
   return { ok: true, payNowPaise: paise, balancePaise: totalPaise - paise, problem: '' };
+};
+
+/** What the cashier typed for a split: each part's method and amount (text). */
+export type SplitPart = { method: string; amount: string };
+export type SplitPlan = { ok: boolean; problem: string; parts: { method: string; amountPaise: number | null }[] };
+/**
+ * Paying one bill with several methods (some cash, some UPI). Every part but the last needs an amount; the last takes whatever is left, so the bill is always paid in full.
+ * The parts typed so far must not already cover the whole bill. Pure, so it is testable.
+ */
+export const splitPlan = (parts: SplitPart[], totalPaise: number): SplitPlan => {
+  const made = parts.map((p, i) => ({ method: p.method, amountPaise: i === parts.length - 1 ? null : toPaise(p.amount || '0') }));
+  if (parts.length < 2) return { ok: false, problem: 'Add at least two parts.', parts: made };
+  if (made.slice(0, -1).some((p) => !((p.amountPaise ?? 0) > 0))) return { ok: false, problem: 'Enter an amount for each part. The last one takes the rest.', parts: made };
+  const fixed = made.slice(0, -1).reduce((n, p) => n + (p.amountPaise ?? 0), 0);
+  if (fixed >= totalPaise) return { ok: false, problem: 'The parts already cover the whole bill. Make one of them smaller.', parts: made };
+  return { ok: true, problem: '', parts: made };
 };

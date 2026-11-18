@@ -19,7 +19,7 @@ const monthRange = (offset) => {
 };
 
 const OtherIncomePage = () => {
-  const { t: tr } = useT();
+  const tr = useT();
   const toast = useToast();
   const dialog = useDialog();
   const [offset, setOffset] = useState(0);

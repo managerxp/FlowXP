@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api.ts';
 import { api, currentBusiness, loadMe, useSession } from '../lib/session.ts';
@@ -7,8 +9,9 @@ import { goBack } from '../lib/nav.ts';
 import { hasFeature } from '../lib/access.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
+import { FadeIn } from '../lib/motion.tsx';
 import {
-  ACCENTS, COPY_LABELS, KITCHEN_TOGGLE, NUMBER_KINDS, TAX_INVOICE_TYPES, TERMS_TOGGLE, OPTION_ROWS, PROFILE_FIELDS, SHOW_OPTIONS, TOGGLES, gstOf, gstPatch, numberExample, numbersOf, numbersPatch, printOf, printPatch, profileOf, profilePatch, receiptOf, receiptPatch, stateSuggestions,
+  ACCENTS, COPY_LABELS, KITCHEN_TOGGLE, TOKEN_TOGGLE, NUMBER_KINDS, TAX_INVOICE_TYPES, TERMS_TOGGLE, OPTION_ROWS, PROFILE_FIELDS, SHOW_OPTIONS, TOGGLES, gstOf, gstPatch, numberExample, numbersOf, numbersPatch, printOf, printPatch, profileOf, profilePatch, receiptOf, receiptPatch, stateFromGstin, stateSuggestions,
   type BusinessRecord, type Gst, type Profile, type Receipt
 } from '../lib/bizSettings.ts';
 import type { GstOptions } from '../lib/gst.ts';
@@ -61,7 +64,7 @@ const patch = async (body: object) => { await api.call('/businesses/current', { 
 const Details = ({ rec, reload }: { rec: BusinessRecord; reload: () => Promise<void> }) => {
   const before = profileOf(rec);
   const [p, setP] = useState<Profile>(before);
-  const set = (k: keyof Profile) => (v: string) => setP((o) => ({ ...o, [k]: v }));
+  const set = (k: keyof Profile) => (v: string) => setP((o) => ({ ...o, [k]: v, ...(k === 'gstin' && stateFromGstin(v) ? { state: stateFromGstin(v) as string } : {}) }));   // a GSTIN fixes the state
   const hints = stateSuggestions(p.state);
   return (
     <Card title="Business details" save={async () => { const d = profilePatch(before, p); if (!d) return t('Nothing changed.'); await patch(d); await reload(); void loadMe(); return null; }}>
@@ -76,7 +79,15 @@ const Details = ({ rec, reload }: { rec: BusinessRecord; reload: () => Promise<v
   );
 };
 
-const ReceiptCard = ({ rec, reload, food }: { rec: BusinessRecord; reload: () => Promise<void>; food: boolean }) => {
+/** The receipt switches in groups, so the list reads by where a line prints. */
+const RECEIPT_SECTIONS: [string, string[]][] = [
+  ['Top of the bill', ['show_logo', 'show_phone', 'show_gstin']],
+  ['Items and totals', ['show_total_qty', 'show_tax_lines', 'show_amount_words']],
+  ['Payment and customer', ['show_upi_qr', 'show_loyalty']],
+  ['Bottom of the bill', ['show_terms', 'show_powered_by']],
+  ['Printer', ['auto_cut', 'print_token', 'kitchen_screen']]
+];
+const ReceiptCard = ({ rec, reload, food, tokenOk }: { rec: BusinessRecord; reload: () => Promise<void>; food: boolean; tokenOk: boolean }) => {
   const before = receiptOf(rec);
   const [r, setR] = useState<Receipt>(before);
   const set = <K extends keyof Receipt>(k: K, v: Receipt[K]) => setR((o) => ({ ...o, [k]: v }));
@@ -86,9 +97,12 @@ const ReceiptCard = ({ rec, reload, food }: { rec: BusinessRecord; reload: () =>
       <LogoSetting url={logoUrlOf(rec.receipt_settings)} onChange={() => { void reload(); }} />
       <Text style={{ color: color.soft, fontSize: 13 }}>{t('Paper width')}</Text>
       <Chips items={[{ id: '58', label: '58 mm' }, { id: '80', label: '80 mm' }]} value={String(r.paper_width)} onChange={(v) => set('paper_width', Number(v) as 58 | 80)} />
-      {text('footer', 'Footer message', { max: 200 })}
+      {text('footer', 'Footer message', { max: 200, big: true })}
       {text('header_text', 'Line under the business name', { max: 80 })}
-      {[...TOGGLES, ...(food ? [KITCHEN_TOGGLE] : [TERMS_TOGGLE])].map(([k, label]) => <Toggle key={k} label={label} value={Boolean(r[k])} onChange={(v) => set(k, v as never)} />)}
+      {RECEIPT_SECTIONS.map(([title, keys]) => {
+        const rows = [...TOGGLES, ...(food ? [KITCHEN_TOGGLE, ...(tokenOk ? [TOKEN_TOGGLE] : [])] : [TERMS_TOGGLE])].filter(([k]) => keys.includes(k));
+        return rows.length ? <View key={title} style={{ gap: 6 }}><Text style={{ color: color.soft, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' }}>{t(title)}</Text>{rows.map(([k, label]) => <Toggle key={k} label={label} value={Boolean(r[k])} onChange={(v) => set(k, v as never)} />)}</View> : null;
+      })}
       <Text style={{ color: color.soft, fontSize: 13 }}>{t('Copies of each receipt')}</Text>
       <Chips items={['1', '2', '3', '4', '5'].map((n) => ({ id: n, label: n }))} value={String(r.copies)} onChange={(v) => set('copies', Number(v))} />
       <Text style={{ color: color.soft, fontSize: 13 }}>{t('Blank lines after the receipt')}</Text>
@@ -173,9 +187,19 @@ export default function BusinessSettingsScreen() {
   const trade = TAX_INVOICE_TYPES.includes(currentBusiness(session)?.business_type ?? '');
   const [rec, setRec] = useState<BusinessRecord | null>(null);
   const [error, setError] = useState('');
+  const params = useLocalSearchParams<{ open?: string }>();
+  const [open, setOpen] = useState<string | null>(params.open ?? null);   // one section open at a time; ?open=gst opens GST straight away
   const [version, setVersion] = useState(0);   // a new copy from the server starts each card again, so it shows what was really saved
   const reload = async () => { const r = await api.get<BusinessRecord>('/businesses/current'); setRec(r); setVersion((v) => v + 1); };
   useEffect(() => { if (owner) reload().catch((e: Error) => setError(e.message)); }, [owner]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  const sections = rec ? [
+    { id: 'details', title: 'Business details', sub: 'Name, address, GSTIN, contact', icon: 'business-outline' as const, node: <Details key={`d${version}`} rec={rec} reload={reload} /> },
+    { id: 'receipt', title: 'Receipt', sub: 'What the till receipt says', icon: 'receipt-outline' as const, node: <ReceiptCard key={`r${version}`} rec={rec} reload={reload} food={food} tokenOk={hasFeature(currentBusiness(session), 'counter_token')} /> },
+    { id: 'gst', title: 'GST', sub: 'Charge GST and the options that go with it', icon: 'document-text-outline' as const, node: <GstCard key={`g${version}`} rec={rec} reload={reload} /> },
+    ...(food ? [] : [{ id: 'print', title: 'Invoice print', sub: 'How your A4 and A5 invoices look', icon: 'print-outline' as const, node: <PrintCard key={`p${version}`} rec={rec} reload={reload} trade={trade} /> }]),
+    { id: 'numbers', title: 'Document numbers', sub: 'The letters before each number', icon: 'list-outline' as const, node: <NumbersCard key={`n${version}`} rec={rec} reload={reload} /> }
+  ] : [];
 
   return (
     <SafeAreaView style={s.screen}>
@@ -186,11 +210,17 @@ export default function BusinessSettingsScreen() {
         {owner && !rec && !error ? <Loading /> : null}
         {owner && rec ? (
           <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled">
-            <Details key={`d${version}`} rec={rec} reload={reload} />
-            <ReceiptCard key={`r${version}`} rec={rec} reload={reload} food={food} />
-            <GstCard key={`g${version}`} rec={rec} reload={reload} />
-            {food ? null : <PrintCard key={`p${version}`} rec={rec} reload={reload} trade={trade} />}
-            <NumbersCard key={`n${version}`} rec={rec} reload={reload} />
+            {sections.map((sec, i) => (
+              <FadeIn key={sec.id} index={i}>
+                <Pressable accessibilityRole="button" accessibilityState={{ expanded: open === sec.id }} onPress={() => setOpen(open === sec.id ? null : sec.id)}
+                  style={({ pressed }) => [s.card, { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64 }, pressed && { backgroundColor: color.press }]}>
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: color.tint, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={sec.icon} size={20} color={color.brand} /></View>
+                  <View style={{ flex: 1 }}><Text style={{ fontSize: 16, fontWeight: '600', color: color.ink }}>{t(sec.title)}</Text><Text style={{ fontSize: 13, color: color.soft }}>{t(sec.sub)}</Text></View>
+                  <Ionicons name={open === sec.id ? 'chevron-up' : 'chevron-down'} size={20} color={color.soft} />
+                </Pressable>
+                {open === sec.id ? <View style={{ marginTop: 10 }}>{sec.node}</View> : null}
+              </FadeIn>
+            ))}
           </ScrollView>
         ) : null}
       </Page>

@@ -12,6 +12,8 @@ router.put('/gst/settings', ...write, gst.putSettings);
 router.get('/gst/filings', ...read, gst.filings);
 router.get('/gst/gstr1', ...read, gst.gstr1);
 router.get('/gst/gstr3b', ...read, gst.gstr3b);
+router.get('/gst/gstr9', ...read, gst.gstr9);
+router.get('/gst/form27eq', ...read, gst.form27eq);
 router.get('/gst/einvoice', ...read, gst.einvoiceList);
 router.get('/gst/invoices/:id/einvoice', ...read, gst.einvoiceOne);
 router.post('/gst/invoices/:id/irn', ...write, gst.recordIrn);

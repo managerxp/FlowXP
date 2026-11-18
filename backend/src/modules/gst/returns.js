@@ -22,7 +22,7 @@ export const loadDocs = async (db, { businessId, gstin, from, to }) => {
     `SELECT i.invoice_id, i.invoice_number, i.invoice_date::text AS date, i.total_paise, i.discount_paise, i.round_off_paise, (i.igst_paise > 0) AS inter, i.branch_id,
             cu.gstin AS buyer_gstin, cu.name AS buyer_name, cu.state AS buyer_state, cu.pincode AS buyer_pincode, cu.address AS buyer_address,
             COALESCE(br.gstin, b.gstin) AS seller_gstin, COALESCE(br.state, b.state) AS seller_state,
-            ii.item_id, ii.description, ii.quantity, ii.unit_price_paise, ii.discount_paise AS line_discount, ii.tax_rate, ii.tax_amount_paise, ii.line_total_paise,
+            ii.item_id, ii.description, ii.quantity, ii.unit_price_paise, ii.discount_paise AS line_discount, ii.tax_rate, ii.tax_amount_paise, ii.line_total_paise, ii.tax_kind,
             COALESCE(ii.hsn_sac, p.hsn_sac) AS hsn_sac, p.unit
      FROM invoices i JOIN invoice_items ii ON ii.invoice_id = i.invoice_id JOIN businesses b ON b.business_id = i.business_id
      LEFT JOIN branches br ON br.branch_id = i.branch_id LEFT JOIN customers cu ON cu.customer_id = i.customer_id LEFT JOIN products p ON p.product_id = ii.product_id
@@ -33,7 +33,8 @@ export const loadDocs = async (db, { businessId, gstin, from, to }) => {
     `SELECT c.cn_id, c.cn_number, c.cn_date::text AS date, c.total_paise, (c.igst_paise > 0) AS inter, i.invoice_number AS orig_number, i.invoice_date::text AS orig_date, i.total_paise AS orig_total,
             cu.gstin AS buyer_gstin, cu.name AS buyer_name, cu.state AS buyer_state,
             COALESCE(br.gstin, b.gstin) AS seller_gstin, COALESCE(br.state, b.state) AS seller_state,
-            ci.description, ci.quantity, ci.tax_rate, ci.tax_amount_paise, ci.line_total_paise, COALESCE(ci.hsn_sac, p.hsn_sac) AS hsn_sac, p.unit
+            ci.description, ci.quantity, ci.tax_rate, ci.tax_amount_paise, ci.line_total_paise, COALESCE(ci.hsn_sac, p.hsn_sac) AS hsn_sac, p.unit,
+            (SELECT x.tax_kind FROM invoice_items x WHERE x.item_id = ci.invoice_item_id) AS tax_kind
      FROM credit_notes c JOIN credit_note_items ci ON ci.cn_id = c.cn_id JOIN invoices i ON i.invoice_id = c.invoice_id JOIN businesses b ON b.business_id = c.business_id
      LEFT JOIN branches br ON br.branch_id = i.branch_id LEFT JOIN customers cu ON cu.customer_id = i.customer_id LEFT JOIN products p ON p.product_id = ci.product_id
      WHERE c.business_id = $1 AND c.cn_date BETWEEN $2 AND $3 AND COALESCE(br.gstin, b.gstin) = $4
@@ -64,7 +65,8 @@ const group = (rows, keyOf, headOf) => {
     const taxable = Number(r.line_total_paise) - Number(r.tax_amount_paise);
     const inter = docs.get(key).inter;
     docs.get(key).lines.push({
-      rate: Number(r.tax_rate), taxable, tax: Number(r.tax_amount_paise), ...split(Number(r.tax_amount_paise), inter),
+      // kind: what the named GST rate said (TAXABLE, NIL, EXEMPT, NON_GST); a line billed before named rates has none
+      rate: Number(r.tax_rate), kind: r.tax_kind || null, taxable, tax: Number(r.tax_amount_paise), ...split(Number(r.tax_amount_paise), inter),
       total: Number(r.line_total_paise), hsn: r.hsn_sac || null, unit: r.unit, qty: Number(r.quantity), description: r.description,
       unitPrice: r.unit_price_paise != null ? Number(r.unit_price_paise) : null, lineDiscount: r.line_discount != null ? Number(r.line_discount) : 0
     });
@@ -147,9 +149,22 @@ export const buildGstr1 = ({ data, shaped, gstin, fp, settings = {}, turnover = 
     }
   };
 
+  /* Table 8: nil rated, exempt and non-GST supplies go here, by supply type, and not into B2B / B2C (only lines billed under a named rate of that kind). */
+  const nilTable = new Map();
+  const addNil = (d, l, sign) => {
+    const ty = `${d.inter ? 'INTR' : 'INTRA'}${d.buyerGstin ? 'B2B' : 'B2C'}`;
+    const cur = nilTable.get(ty) || { sply_ty: ty, nil_amt: 0, expt_amt: 0, ngsup_amt: 0 };
+    cur[l.kind === 'NIL' ? 'nil_amt' : l.kind === 'EXEMPT' ? 'expt_amt' : 'ngsup_amt'] += sign * l.taxable;
+    nilTable.set(ty, cur);
+  };
+  const outsideTax = (l) => ['NIL', 'EXEMPT', 'NON_GST'].includes(l.kind);
+
   const b2clInvoices = new Set();
-  for (const d of shaped.invoices) {
-    for (const l of d.lines) addHsn(l, 1);
+  for (const doc of shaped.invoices) {
+    for (const l of doc.lines) addHsn(l, 1);
+    for (const l of doc.lines.filter(outsideTax)) addNil(doc, l, 1);
+    const d = { ...doc, lines: doc.lines.filter((l) => !outsideTax(l)) };
+    if (!d.lines.length) continue;
     if (d.billDiscount > 0) discounted += 1;
     if (d.rawGstin && !d.buyerGstin) badGstin.push(d.number);
     const taxableSum = d.lines.reduce((s, l) => s + l.taxable, 0);
@@ -172,8 +187,11 @@ export const buildGstr1 = ({ data, shaped, gstin, fp, settings = {}, turnover = 
     }
   }
 
-  for (const n of shaped.notes) {
-    for (const l of n.lines) addHsn(l, -1);
+  for (const note of shaped.notes) {
+    for (const l of note.lines) addHsn(l, -1);
+    for (const l of note.lines.filter(outsideTax)) addNil(note, l, -1);
+    const n = { ...note, lines: note.lines.filter((l) => !outsideTax(l)) };
+    if (!n.lines.length) continue;
     const taxableSum = n.lines.reduce((s, l) => s + l.taxable, 0);
     if (n.buyerGstin) {
       if (!cdnr.has(n.buyerGstin)) cdnr.set(n.buyerGstin, []);
@@ -204,9 +222,11 @@ export const buildGstr1 = ({ data, shaped, gstin, fp, settings = {}, turnover = 
     b2cs: [...b2cs.values()].filter((c) => c.taxable !== 0 || c.igst !== 0 || c.cgst !== 0).map((c) => ({ sply_ty: c.sply_ty, typ: 'OE', pos: c.pos, rt: c.rate, txval: rs(c.taxable), iamt: rs(c.igst), camt: rs(c.cgst), samt: rs(c.sgst), csamt: 0 })),
     cdnr: [...cdnr].map(([ctin, nt]) => ({ ctin, nt })),
     cdnur,
+    nil: { inv: [...nilTable.values()].filter((r) => r.nil_amt || r.expt_amt || r.ngsup_amt).map((r) => ({ sply_ty: r.sply_ty, nil_amt: rs(r.nil_amt), expt_amt: rs(r.expt_amt), ngsup_amt: rs(r.ngsup_amt) })) },
     hsn: { data: hsnData },
     doc_issue: { doc_det: docIssue(data.docNumbers, warnings) }
   };
+  if (!json.nil.inv.length) delete json.nil;
   for (const key of ['b2b', 'b2cl', 'b2cs', 'cdnr', 'cdnur']) if (!json[key].length) delete json[key];
   if (!hsnData.length) delete json.hsn;
   if (!json.doc_issue.doc_det.length) delete json.doc_issue;
@@ -237,11 +257,11 @@ export const buildGstr1 = ({ data, shaped, gstin, fp, settings = {}, turnover = 
 export const buildGstr3b = ({ shaped, purchases, debits, gstin, fp }) => {
   const z = () => ({ taxable: 0, igst: 0, cgst: 0, sgst: 0 });
   const add = (o, l, sign) => { o.taxable += sign * l.taxable; o.igst += sign * l.igst; o.cgst += sign * l.cgst; o.sgst += sign * l.sgst; };
-  const taxed = z(); const nil = z(); const inter = new Map();
+  const taxed = z(); const nil = z(); const nonGst = z(); const inter = new Map();
   for (const [docs, sign] of [[shaped.invoices, 1], [shaped.notes, -1]]) {
     for (const d of docs) {
       for (const l of d.lines) {
-        add(l.rate > 0 ? taxed : nil, l, sign);
+        add(l.kind === 'NON_GST' ? nonGst : l.rate > 0 ? taxed : nil, l, sign);   // 3.1(e) non-GST apart from 3.1(c) nil rated and exempt
         if (d.inter && !d.buyerGstin && l.rate > 0) {
           const pos = placeOfSupply(null, d.buyerState) ?? 'unknown';
           const cur = inter.get(pos) || { taxable: 0, igst: 0 };
@@ -266,7 +286,7 @@ export const buildGstr3b = ({ shaped, purchases, debits, gstin, fp }) => {
   const rcmTax = { taxable: rcm.taxable, igst: 0, cgst: rcmHalf, sgst: rcm.tax - rcmHalf };
   return {
     gstin, period: fp,
-    outward_taxable: fmt(taxed), outward_nil_or_exempt: fmt({ taxable: nil.taxable }),
+    outward_taxable: fmt(taxed), outward_nil_or_exempt: fmt({ taxable: nil.taxable }), outward_non_gst: fmt({ taxable: nonGst.taxable }),
     inter_state_to_unregistered: [...inter].map(([pos, v]) => ({ pos, ...fmt(v) })),
     itc: { eligible: rs(itc.eligible), ineligible: rs(itc.ineligible), cgst: rs(credit.cgst), sgst: rs(credit.sgst), igst: rs(credit.igst) },
     tax_payable_in_cash: fmt(payable),
@@ -277,3 +297,45 @@ export const buildGstr3b = ({ shaped, purchases, debits, gstin, fp }) => {
 };
 
 export { stateCode };
+
+/* ── GSTR-9 (annual) ────────────────────────────────────────────────────── */
+
+/**
+ * The annual return's figures for a financial year, from the same documents as GSTR-1 and GSTR-3B: outward supplies on which tax is payable
+ * (table 4: B2C, B2B, less credit notes), nil rated / exempt / non-GST supplies (table 5), input tax credit from purchases (table 6),
+ * tax payable (table 9) and the HSN summary (table 17). Amounts are rupees. What FlowXP cannot know (tax actually paid in cash or
+ * through credit, amendments made in the year's returns, late fees) is left to the accountant and listed in `notes`.
+ */
+export const buildGstr9 = ({ data, shaped, purchases, debits, gstin, fy }) => {
+  const z = () => ({ taxable: 0, igst: 0, cgst: 0, sgst: 0 });
+  const add = (o, l, sign = 1) => { o.taxable += sign * l.taxable; o.igst += sign * l.igst; o.cgst += sign * l.cgst; o.sgst += sign * l.sgst; };
+  const b2c = z(); const b2b = z(); const cn = z(); const nil = { nil: 0, exempt: 0, non_gst: 0 };
+  const outside = (l) => ['NIL', 'EXEMPT', 'NON_GST'].includes(l.kind);
+  const toNil = (l, sign) => { nil[l.kind === 'NIL' ? 'nil' : l.kind === 'EXEMPT' ? 'exempt' : 'non_gst'] += sign * l.taxable; };
+  for (const d of shaped.invoices) for (const l of d.lines) { if (outside(l)) toNil(l, 1); else add(d.buyerGstin ? b2b : b2c, l); }
+  for (const n of shaped.notes) for (const l of n.lines) { if (outside(l)) toNil(l, -1); else add(cn, l); }
+  const net = z(); add(net, b2c); add(net, b2b); add(net, cn, -1);
+  let itc = 0; let itcNoGstin = 0; const rcm = { taxable: 0, tax: 0 };
+  for (const p of purchases) {
+    if (p.reverse_charge) { rcm.taxable += Number(p.subtotal_paise); rcm.tax += Number(p.tax_paise); itc += Number(p.tax_paise); continue; }
+    if (isGstin(p.gstin)) itc += Number(p.tax_paise); else itcNoGstin += Number(p.tax_paise);
+  }
+  for (const d of debits) if (isGstin(d.gstin)) itc -= Number(d.tax_paise);
+  const half = Math.floor(itc / 2);
+  const hsn = buildGstr1({ data, shaped, gstin, fp: '' }).json.hsn?.data ?? [];
+  const f = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, rs(v)]));
+  return {
+    gstin, financial_year: fy,
+    table4: { b2c: f(b2c), b2b: f(b2b), credit_notes: f(cn), total: f(net) },
+    table5: { nil_rated: rs(nil.nil), exempted: rs(nil.exempt), non_gst: rs(nil.non_gst), total: rs(nil.nil + nil.exempt + nil.non_gst) },
+    turnover: rs(net.taxable + nil.nil + nil.exempt + nil.non_gst),
+    table6: { itc_total: rs(itc), cgst: rs(half), sgst: rs(itc - half), igst: 0, reverse_charge_inward: f({ taxable: rcm.taxable, tax: rcm.tax }), not_claimable_no_gstin: rs(itcNoGstin) },
+    table9: { tax_payable: f({ igst: net.igst, cgst: net.cgst + Math.floor(rcm.tax / 2), sgst: net.sgst + (rcm.tax - Math.floor(rcm.tax / 2)) }) },
+    table17_hsn: hsn,
+    notes: [
+      'Worked out from the bills, credit notes and purchases in FlowXP for the year. Check them against the GSTR-1 and GSTR-3B you filed: GSTR-9 is filed on the portal from those returns.',
+      'Tax actually paid (in cash or from credit), amendments, refunds, demands and late fees are not known to FlowXP; your accountant fills those tables.',
+      'Input credit assumes purchases were made inside your own state and counts only suppliers with a GSTIN, except purchases on reverse charge.'
+    ]
+  };
+};

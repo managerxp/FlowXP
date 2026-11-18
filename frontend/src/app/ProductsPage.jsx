@@ -13,7 +13,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Camera, ChefHat, Layers, Plus, Search, Sparkles, Package } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { RESTAURANT_TYPES, RETAIL_TYPES } from '../lib/business.js';
+import { MRP_TYPES, RESTAURANT_TYPES, RETAIL_TYPES } from '../lib/business.js';
 import ProductIdentifiers from '../components/ProductIdentifiers.jsx';
 import MenuImportModal from '../components/MenuImportModal.jsx';
 import FoodMark, { FOOD_TYPES } from '../components/FoodMark.jsx';
@@ -106,6 +106,11 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail
   const [form, setForm] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // the business's named GST rates (Settings > GST rates); a product made before them is matched to the GST rate with its number
+  const [taxRates, setTaxRates] = useState(null);
+  useEffect(() => { if (gstOn) api('/tax-rates').then(setTaxRates).catch(() => setTaxRates([])); }, [gstOn]);
+  const chosenRateId = form.tax_rate_id ?? taxRates?.find((r) => r.kind === 'TAXABLE' && r.rate === Number(form.tax_rate))?.tax_rate_id ?? '';
+  const pickTaxRate = (id) => { const r = taxRates.find((x) => String(x.tax_rate_id) === id); if (r) setForm((f) => ({ ...f, tax_rate_id: r.tax_rate_id, tax_rate: String(r.rate) })); };
   const [newCategory, setNewCategory] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
   const [newBrand, setNewBrand] = useState('');
@@ -145,7 +150,7 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail
         ...(retail && isEdit ? {} : { barcode: form.barcode || null }),
         ...(retail ? { mrp: form.mrp === '' ? null : form.mrp, erp_code: form.erp_code || null } : {}),
         unit: form.unit, selling_price: sold ? form.selling_price : (form.selling_price || 0),
-        purchase_price: form.purchase_price || 0, ...(gstOn ? { tax_rate: form.tax_rate } : {}), ...(cessOn ? { cess_rate: Number(form.cess_rate) || 0 } : {}), ...(gstOn ? { hsn_sac: form.hsn_sac || null } : {}),
+        purchase_price: form.purchase_price || 0, ...(gstOn ? { tax_rate: form.tax_rate, ...(chosenRateId !== '' ? { tax_rate_id: Number(chosenRateId) } : {}), price_includes_tax: form.price_includes_tax === true } : {}), ...(cessOn ? { cess_rate: Number(form.cess_rate) || 0 } : {}), ...(gstOn ? { hsn_sac: form.hsn_sac || null } : {}),
         description: form.description || null, food_type: sold ? (form.food_type || null) : null,
         track_inventory: form.track_inventory, min_stock: form.min_stock,
         ...(brands ? { brand_id: form.brand_id || null } : {}),
@@ -166,7 +171,9 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail
   };
 
   const legend = 'text-caption font-semibold uppercase tracking-[0.12em] text-ink-500';
+  const inclusive = form.price_includes_tax === true;
   const withGst = Number(form.selling_price || 0) * (1 + Number(form.tax_rate || 0) / 100);
+  const gstInside = Number(form.selling_price || 0) - Number(form.selling_price || 0) / (1 + Number(form.tax_rate || 0) / 100);
   return (
     <Modal title={isEdit ? `Edit ${initial.name}` : tr('Add a product')} onClose={onClose} wide>
       <form onSubmit={submit} className="space-y-6">
@@ -255,17 +262,34 @@ const ProductForm = ({ initial, categories, groups, brands, isRestaurant, retail
         <fieldset className="space-y-4">
           <legend className={legend}>{gstOn ? tr('Price and GST') : tr('Price')}</legend>
           <div className={`grid gap-4 ${retail ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
-            {sold && <Field id="selling_price" label={tr('Selling price (₹)')} hint={tr('Before GST')}><Input id="selling_price" type="number" min="0" step="0.01" value={form.selling_price} onChange={set('selling_price')} required /></Field>}
+            {sold && <Field id="selling_price" label={tr('Selling price (₹)')} hint={gstOn && inclusive ? tr('GST included') : tr('Before GST')}><Input id="selling_price" type="number" min="0" step="0.01" value={form.selling_price} onChange={set('selling_price')} required /></Field>}
             {retail && <Field id="mrp" label={tr('MRP (₹)')} hint={tr('Printed price, optional')}><Input id="mrp" type="number" min="0" step="0.01" value={form.mrp ?? ''} onChange={set('mrp')} /></Field>}
             <Field id="purchase_price" label={sold ? tr('Cost price (₹)') : tr('What you pay (₹)')} hint={sold && isRestaurant ? tr('For dishes with a recipe, the recipe sets the cost') : `Per ${form.unit}, used for stock value`}>
               <Input id="purchase_price" type="number" min="0" step="0.01" value={form.purchase_price} onChange={set('purchase_price')} />
             </Field>
             {gstOn && <Field id="tax_rate" label={tr('GST')}>
-              <Select id="tax_rate" value={form.tax_rate} onChange={set('tax_rate')}>{GST_RATES.map((r) => <option key={r} value={r}>{r}%</option>)}</Select>
+              {taxRates?.length
+                ? <Select id="tax_rate" value={chosenRateId} onChange={(e) => pickTaxRate(e.target.value)}>
+                    {chosenRateId === '' && <option value="">{form.tax_rate}%</option>}
+                    {taxRates.map((r) => <option key={r.tax_rate_id} value={r.tax_rate_id}>{r.name}</option>)}
+                  </Select>
+                : <Select id="tax_rate" value={form.tax_rate} onChange={set('tax_rate')}>{GST_RATES.map((r) => <option key={r} value={r}>{r}%</option>)}</Select>}
             </Field>}
             {cessOn && <Field id="cess_rate" label={tr('Cess (%)')} hint={tr('Added on top of GST')}><Input id="cess_rate" type="number" min="0" max="100" step="0.01" value={form.cess_rate ?? ''} onChange={set('cess_rate')} /></Field>}
           </div>
-          {gstOn && sold && Number(form.selling_price) > 0 && Number(form.tax_rate) > 0 && <p className="tabular -mt-2 text-caption text-ink-500">{formatCurrency(Number(form.selling_price))} + {form.tax_rate}% GST = {formatCurrency(withGst)} on the bill.</p>}
+          {gstOn && sold && (
+            <label className="-mt-1 flex items-start gap-2.5 text-sm text-ink-700">
+              <input type="checkbox" className="mt-0.5 size-4 accent-brand-600" checked={inclusive} onChange={(e) => setForm((f) => ({ ...f, price_includes_tax: e.target.checked }))} />
+              <span>{tr('Price includes GST')}<span className="block text-caption text-ink-500">{tr('For goods sold at the MRP on the pack: the customer pays exactly this price and the GST is taken out of it.')}</span></span>
+            </label>
+          )}
+          {gstOn && sold && Number(form.selling_price) > 0 && Number(form.tax_rate) > 0 && (
+            <p className="tabular -mt-2 text-caption text-ink-500">
+              {inclusive
+                ? tr('{{price}} on the bill, of which {{gst}} is {{rate}}% GST.', { price: formatCurrency(Number(form.selling_price)), gst: formatCurrency(gstInside), rate: form.tax_rate })
+                : `${formatCurrency(Number(form.selling_price))} + ${form.tax_rate}% GST = ${formatCurrency(withGst)} on the bill.`}
+            </p>
+          )}
           <div className={`grid gap-4 ${retail ? 'sm:grid-cols-3' : 'sm:grid-cols-4'}`}>
             <Field id="unit" label={tr('Sold / counted in')}><Select id="unit" value={form.unit} onChange={set('unit')}>{[...new Set([...UNITS, form.unit])].map((u) => <option key={u} value={u}>{u}</option>)}</Select></Field>
             {gstOn && <Field id="hsn_sac" label={tr('HSN / SAC')}><Input id="hsn_sac" value={form.hsn_sac || ''} onChange={set('hsn_sac')} /></Field>}
@@ -592,7 +616,7 @@ const ProductPanel = ({ product: p, refreshKey, groups, isRestaurant, retail, ca
     if (p.is_combo) api(`/products/${p.product_id}/combo`).then(setCombo).catch(() => setCombo(null));
   }, [p.product_id, p.is_combo, refreshKey, outletId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const withGst = p.selling_price * (1 + p.tax_rate / 100);
+  const withGst = p.price_includes_tax ? p.selling_price : p.selling_price * (1 + p.tax_rate / 100);
   const optionNames = groups.filter((g) => p.modifier_group_ids.includes(g.group_id)).map((g) => g.name);
   const archived = p.status !== 'ACTIVE';
   const lowMargin = p.margin_pct != null && p.margin_pct < LOW_MARGIN;
@@ -626,7 +650,7 @@ const ProductPanel = ({ product: p, refreshKey, groups, isRestaurant, retail, ca
             <div className="rounded-(--radius-card) border border-line bg-surface p-3.5">
               <p className="text-caption text-ink-500">Price{p.price_overridden ? tr('at this outlet') : ''}</p>
               <p className="tabular mt-1 text-title font-semibold text-ink-900">{formatCurrency(p.selling_price)}</p>
-              <p className="tabular mt-0.5 text-caption text-ink-500">{p.tax_rate > 0 ? `${formatCurrency(withGst)} with ${p.tax_rate}% GST` : tr('no GST')}{p.price_overridden && ` · shared ${formatCurrency(p.shared_price)}`}</p>
+              <p className="tabular mt-0.5 text-caption text-ink-500">{p.tax_rate > 0 ? (p.price_includes_tax ? tr('{{rate}}% GST included', { rate: p.tax_rate }) : `${formatCurrency(withGst)} with ${p.tax_rate}% GST`) : tr('no GST')}{p.price_overridden && ` · shared ${formatCurrency(p.shared_price)}`}</p>
             </div>
             <div className="rounded-(--radius-card) border border-line bg-surface p-3.5">
               <p className="text-caption text-ink-500">{tr('Costs you')}</p>
@@ -949,7 +973,7 @@ const ProductsPage = () => {
       </section>
 
       {editing && (
-        <ProductForm initial={editing.product_id ? formInitial(editing) : { ...emptyForm, brand_id: '', kind: isRestaurant && ['INGREDIENT', 'PACKAGING'].includes(tab) ? tab : 'DISH' }}
+        <ProductForm initial={editing.product_id ? formInitial(editing) : { ...emptyForm, brand_id: '', price_includes_tax: MRP_TYPES.includes(business?.business_type), kind: isRestaurant && ['INGREDIENT', 'PACKAGING'].includes(tab) ? tab : 'DISH' }}
                      categories={categories} groups={groups} brands={brands} isRestaurant={isRestaurant} retail={retail} autoSku={autoSku} onCreateCategory={createCategory} onCreateBrand={createBrand} onClose={() => setEditing(null)}
                      onSaved={(p, isNew) => { setEditing(null); toast.success(isNew ? `${p.name} added` : tr('Saved')); changed(); if (isNew) open(p.product_id); }} />
       )}

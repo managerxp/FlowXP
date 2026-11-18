@@ -41,7 +41,10 @@ class Job {
   big(on) { return this.raw(GS, 0x21, on ? 0x11 : 0x00); }
   text(s = '') { for (const b of Buffer.from(ascii(s), 'latin1')) this.out.push(b); return this; }
   line(s = '') { return this.text(s).raw(LF); }
-  wrap(s, indent = 0) { const pad = ' '.repeat(indent); for (const l of this.wrapLines(s, this.cols - indent)) this.line(pad + l); return this; }
+  /** Text with line breaks keeps them: each line is wrapped on its own, so a footer of three lines prints as three lines. */
+  wrap(s, indent = 0) { const pad = ' '.repeat(indent); for (const para of String(s ?? '').split(/\r?\n/)) { const rows = this.wrapLines(para, this.cols - indent); if (!rows.length) this.line(); for (const l of rows) this.line(pad + l); } return this; }
+  /** The FlowXP line at the end of a bill; the business can switch it off (Settings > Receipts, show_powered_by). */
+  powered() { return this.align('center').line('Powered by FlowXP').align('left'); }
   /** Break text into rows of at most `width` characters (long words are split). */
   wrapLines(s, width) {
     const rows = []; let row = '';
@@ -106,7 +109,18 @@ export const stamp = (iso, timeZone = 'Asia/Kolkata') => (iso ? new Date(iso).to
 export const receiptBytes = ({ business, settings = {}, invoice }, opts = {}) => {
   // the business's copies setting prints the whole receipt again; the drawer opens once
   const copies = Math.min(5, Math.max(1, Number(settings.copies) || 1));
-  return Buffer.concat(Array.from({ length: copies }, (_, i) => oneReceipt({ business, settings, invoice }, { ...opts, drawer: opts.drawer && i === 0 })));
+  const receipts = Array.from({ length: copies }, (_, i) => oneReceipt({ business, settings, invoice }, { ...opts, drawer: opts.drawer && i === 0 }));
+  // the daily token goes out right after the bill, cut apart from it, for orders with no table
+  if (settings.print_token === true && invoice.token) receipts.push(tokenSlip({ business, invoice }, opts));
+  return Buffer.concat(receipts);
+};
+
+/** The slip the guest keeps while the order is made: the day's token number, big. It starts again at 1 each morning. */
+export const tokenSlip = ({ business, invoice }, { cols = 48 } = {}) => {
+  const j = new Job(cols);
+  j.align('center').bold(true).line(business.name).bold(false).line('TOKEN').big(true).half(() => j.line(String(invoice.token))).big(false);
+  j.line(`Order ${invoice.order_number}`).line(stamp(invoice.created_at, business.timezone || undefined));
+  return j.feed(1).cut().bytes();
 };
 
 const oneReceipt = ({ business, settings = {}, invoice }, { cols = 48, drawer = false, cut = true, upi: upiAmount = null } = {}) => {
@@ -185,6 +199,7 @@ const oneReceipt = ({ business, settings = {}, invoice }, { cols = 48, drawer = 
   if (invoice.points_earned > 0) j.align('center').line(`Points earned: ${invoice.points_earned}`).align('left');
   if (settings.show_terms === true && settings.terms) j.rule().wrap(`Terms: ${settings.terms}`);
   if (settings.footer) j.rule().align('center').wrap(settings.footer).align('left');
+  if (settings.show_powered_by !== false) j.powered();
 
   if (drawer) j.drawer();
   const blank = Number.isInteger(settings.extra_lines) ? settings.extra_lines : 3;
@@ -254,6 +269,7 @@ export const prebillBytes = ({ business, settings = {}, order, gstOn = false }, 
   if (gstOn && gst > 0) { j.pair('Subtotal', money(subtotal)); j.pair('GST', money(gst)); }
   j.rule().bold(true).big(true).half(() => j.pair('TOTAL', money(Math.round(subtotal + gst)))).big(false).bold(false);
   j.align('center').feed(1).line('Pay at the counter. Thank you!').align('left');
+  if (settings.show_powered_by !== false) j.powered();
   const blank = Number.isInteger(settings.extra_lines) ? settings.extra_lines : 3;
   return (cut && settings.auto_cut !== false ? j.cut(blank) : j.feed(Math.max(blank, 2))).bytes();
 };

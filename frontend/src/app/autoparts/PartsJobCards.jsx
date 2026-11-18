@@ -10,6 +10,7 @@ import { Chips, NumberField, Panel, Tabs, useAction } from '../salon/parts.jsx';
 import { T, useT } from '../../i18n/useT.js';
 import { WorkshopToday } from './PartsHome.jsx';
 import Suggest from './Suggest.jsx';
+import { printJobCard } from './printJobCard.js';
 
 const STATUS = {
   OPEN: [T('Waiting'), 'neutral'], CHECKING: [T('Checking'), 'brand'], IN_PROGRESS: [T('Being worked on'), 'brand'], WAITING_PARTS: [T('Waiting for parts'), 'warning'], READY: [T('Ready'), 'success'], BILLED: [T('Billed'), 'neutral'], CANCELLED: [T('Cancelled'), 'danger']
@@ -142,6 +143,7 @@ const JobDetail = ({ id, onClose, onChanged }) => {
         <div className="flex flex-wrap items-center gap-2 text-small"><StatusBadge s={j.status} /><span className="font-medium">{j.customer_name}</span><span className="text-ink-500">{j.customer_phone}</span><span className="text-ink-700">{vehicleName(j) || tr('Vehicle not in the list')}{j.odometer_km != null ? ` · ${j.odometer_km} km` : ''}</span>{j.earlier_visits > 0 && <Badge tone="brand">{j.earlier_visits === 1 ? tr('{{n}} earlier visit', { n: 1 }) : tr('{{n}} earlier visits', { n: j.earlier_visits })}</Badge>}</div>
         {j.complaint && <p className="rounded-lg bg-surface-2 px-3 py-2 text-small text-ink-700">{j.complaint}</p>}
         <div className="flex flex-wrap items-center gap-2 text-small">
+          <Button size="sm" variant="secondary" onClick={() => printJobCard(j, business)}>{tr('Print job card (A4)')}</Button>
           <span className="text-ink-500">{tr('Tell the customer on WhatsApp:')}</span>
           {[['received', tr('We have your vehicle'), live], ['estimate', tr('Send the estimate'), live && j.lines.length > 0], ['ready', tr('It is ready'), live], ['bill', tr('Send the bill'), j.status === 'BILLED']].filter(([, , show]) => show).map(([ev, label]) => (
             <Button key={ev} size="sm" variant="secondary" disabled={busy || !j.customer_phone} onClick={() => run(async () => {

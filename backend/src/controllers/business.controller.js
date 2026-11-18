@@ -213,7 +213,7 @@ const EDITABLE = {
 };
 
 /* Receipt printing preferences: every key checked, unknown keys dropped. */
-export const RECEIPT_DEFAULTS = { paper_width: 80, footer: 'Thank you! Visit again.', show_gstin: true, show_upi_qr: true, show_loyalty: true, show_logo: true, show_tax_lines: true, logo_url: null, auto_cut: true, kitchen_screen: true, show_phone: true, show_total_qty: true, show_amount_words: false, show_terms: false, header_text: '', copies: 1, extra_lines: 3 };
+export const RECEIPT_DEFAULTS = { paper_width: 80, footer: 'Thank you! Visit again.', show_gstin: true, show_upi_qr: true, show_loyalty: true, show_logo: true, show_tax_lines: true, logo_url: null, auto_cut: true, kitchen_screen: true, show_phone: true, show_total_qty: true, show_amount_words: false, show_terms: false, show_powered_by: true, print_token: false, header_text: '', copies: 1, extra_lines: 3 };
 export const cleanReceiptSettings = (input) => {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: 'Receipt settings must be an object' };
   const out = {};
@@ -222,11 +222,14 @@ export const cleanReceiptSettings = (input) => {
     out.paper_width = Number(input.paper_width);
   }
   if ('footer' in input) {
-    const footer = String(input.footer ?? '').trim();
+    // up to four lines: each line is trimmed and empty ones are dropped, so what is saved is what prints
+    const lines = String(input.footer ?? '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const footer = lines.join('\n');
     if (footer.length > 200) return { error: 'The footer is too long (200 characters at most)' };
+    if (lines.length > 4) return { error: 'The footer can have 4 lines at most' };
     out.footer = footer;
   }
-  for (const key of ['show_gstin', 'show_upi_qr', 'show_loyalty', 'show_logo', 'show_tax_lines', 'auto_cut', 'kitchen_screen', 'show_phone', 'show_total_qty', 'show_amount_words', 'show_terms']) if (key in input) out[key] = input[key] === true;
+  for (const key of ['show_gstin', 'show_upi_qr', 'show_loyalty', 'show_logo', 'show_tax_lines', 'auto_cut', 'kitchen_screen', 'show_phone', 'show_total_qty', 'show_amount_words', 'show_terms', 'show_powered_by', 'print_token']) if (key in input) out[key] = input[key] === true;
   const whole = (key, lo, hi, what) => {
     if (!(key in input)) return null;
     const n = Number(input[key]);

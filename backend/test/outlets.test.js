@@ -460,6 +460,17 @@ test('outlets: create, edit, plan limit, and closing rules', { skip }, async () 
   assert.equal((await act(outlets.create, { name: 'Jayanagar' })).code, 201);
   const limit = await act(outlets.create, { name: 'One too many' });
   assert.equal(limit.code, 402); assert.equal(limit.body.code, 'OUTLET_LIMIT');
+  // a bought Extra outlet adds one on top; the Super Admin's own number replaces the plan's
+  const biz = G.biz;
+  await pool.query(`UPDATE businesses SET extra_outlets = 1 WHERE business_id = $1`, [biz]);
+  assert.deepEqual(await outlets.outletAllowance(biz), { plan: 5, override: null, extra: 1, limit: 6 });
+  const bought = await act(outlets.create, { name: 'Bought one' });
+  assert.equal(bought.code, 201);
+  await pool.query(`UPDATE businesses SET outlet_limit = 2 WHERE business_id = $1`, [biz]);
+  assert.equal((await outlets.outletAllowance(biz)).limit, 3);
+  assert.equal((await act(outlets.create, { name: 'Over the override' })).code, 402);
+  await pool.query(`UPDATE branches SET status = 'CLOSED' WHERE branch_id = $1`, [bought.body.data.branch_id]);
+  await pool.query(`UPDATE businesses SET outlet_limit = NULL, extra_outlets = 0 WHERE business_id = $1`, [biz]);
 
   // closing: not the main outlet, not with stock, not with open orders
   assert.equal((await act(outlets.update, { status: 'CLOSED' }, { id: G.A })).code, 400);

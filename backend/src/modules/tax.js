@@ -33,7 +33,7 @@ const roundPaise = (value) => Math.round(value);
  *                        customer pays instead of added on top, so the line total
  *                        is exactly price x quantity less the discount.
  */
-import { stateCode } from './gst/states.js';
+import { canonicalCode, stateCode } from './gst/states.js';
 
 export const computeLineTax = ({
   quantity, unitPricePaise, discountPaise = 0, taxRatePercent = 0, gstEnabled, interState, inclusive = false
@@ -90,6 +90,6 @@ export const isInterState = (businessState, customerState) => {
   if (!businessState || !customerState) return false;   // unknown = assume intra-state
   // "Andaman & Nicobar Islands" and "Andaman and Nicobar Islands" are one place: compare the GST state codes when both are recognised
   const a = stateCode(businessState); const b = stateCode(customerState);
-  if (a && b) return a !== b;
+  if (a && b) return canonicalCode(a) !== canonicalCode(b);
   return businessState.trim().toLowerCase() !== customerState.trim().toLowerCase();
 };

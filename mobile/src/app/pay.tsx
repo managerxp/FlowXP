@@ -12,7 +12,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { orderTotals, type Order } from '../lib/orders.ts';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
 import { hasFeature } from '../lib/access.ts';
-import { METHOD_ORDER, cartSummary, cashSuggestions, isMethod, orderSummary, payPlan, type PayHow } from '../lib/billing.ts';
+import { METHOD_ORDER, cartSummary, cashSuggestions, isMethod, orderSummary, payPlan, splitPlan, type PayHow, type SplitPart } from '../lib/billing.ts';
 import { refreshCounts, syncAll } from '../lib/sync.ts';
 import { takeSale } from '../lib/till.ts';
 import { clearSale, keyForSale, useSale } from '../lib/sale.ts';
@@ -58,18 +58,22 @@ export default function Pay() {
   const [given, setGiven] = useState('');
   const [how, setHow] = useState<PayHow>('FULL');
   const [nowText, setNowText] = useState('');
+  const [parts, setParts] = useState<SplitPart[]>([{ method: 'CASH', amount: '' }, { method: 'UPI', amount: '' }]);   // a split: each part's method and amount; the last takes the rest
+  const setPart = (i: number, patch: Partial<SplitPart>) => setParts((ps) => ps.map((p, j) => (j === i ? { ...p, ...patch } : p)));
   const [reference, setReference] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const hasCustomer = orderId ? Boolean(order.data?.customer_id) : Boolean(customer);
   const owes = (orderId ? order.data?.customer_name : customer?.name) || t('the customer');
   const plan = payPlan({ how, totalPaise: total, now: nowText, hasCustomer });
+  const split = how === 'SPLIT' ? splitPlan(parts, total) : null;
+  const splitFixed = parts.slice(0, -1).reduce((n, p) => n + toPaise(p.amount || '0'), 0);
   const change = method === 'CASH' && how === 'FULL' && given ? toPaise(given) - total : 0;
 
   const billOrder = async () => {
     setBusy(true); setError('');
     try {
-      const invoice = await api.post<{ invoice_id: number }>(`/orders/${orderId}/bill`, { ...(plan.payNowPaise === 0 ? {} : { payment: { method, amount: plan.payNowPaise ? plan.payNowPaise / 100 : 'FULL', ...(reference.trim() ? { reference_number: reference.trim() } : {}) } }), apply_promotions: true }, { idempotencyKey: orderKey.current });
+      const invoice = await api.post<{ invoice_id: number }>(`/orders/${orderId}/bill`, { ...(split ? { payments: split.parts.map((p) => ({ method: p.method, amount: p.amountPaise == null ? 'REST' : p.amountPaise / 100 })) } : plan.payNowPaise === 0 ? {} : { payment: { method, amount: plan.payNowPaise ? plan.payNowPaise / 100 : 'FULL', ...(reference.trim() ? { reference_number: reference.trim() } : {}) } }), apply_promotions: true }, { idempotencyKey: orderKey.current });
       router.replace({ pathname: '/receipt', params: { fresh: '1', id: String(invoice.invoice_id), change: change > 0 ? String(change) : '' } });
     } catch (e) {
       setError(e instanceof NetworkError ? 'No internet. The order is still open and nothing was billed. Tap again when the internet is back. It will not be billed twice.' : e instanceof ApiError ? e.message : 'Could not make the bill');
@@ -77,6 +81,7 @@ export default function Pay() {
   };
 
   const confirm = async () => {
+    if (split && !split.ok) { setError(t(split.problem)); return; }
     if (!plan.ok) { setError(plan.problem ? t(plan.problem) : t('Enter how much is being paid now.')); return; }
     if (orderId) return billOrder();
     if (!scope) return;
@@ -84,7 +89,7 @@ export default function Pay() {
     try {
       // the same key for every attempt at THIS sale: if the first one reached the server before the signal dropped, a retry returns that invoice.
       // With no signal the sale is kept on the phone and sent later, with that same key.
-      const taken = await takeSale({ api, outbox: scope.outbox, cart, method, reference: reference.trim() || undefined, key: keyForSale(), kitchen: toKitchen, customerId: customer?.id ?? null, payNowPaise: plan.payNowPaise, gst, levies, printDetails: taxDetails ? detailsBody(details) : null, sendWhatsapp: sendWa });
+      const taken = await takeSale({ api, outbox: scope.outbox, cart, method, reference: reference.trim() || undefined, key: keyForSale(), kitchen: toKitchen, customerId: customer?.id ?? null, payNowPaise: plan.payNowPaise, parts: split?.parts, gst, levies, printDetails: taxDetails ? detailsBody(details) : null, sendWhatsapp: sendWa });
       if (taken.kind === 'full') { setError('Too many bills are waiting on this phone. Connect to the internet so they can be sent, then make this bill again.'); return; }
       clearSale(); markDone('first_bill');
       if (taken.kind === 'queued') {
@@ -119,7 +124,7 @@ export default function Pay() {
     } catch (e) { setPrintProblem(e instanceof Error ? e.message : t('Could not print.')); } finally { setPrinting(false); }
   };
   const upiNow = plan.payNowPaise ?? total;
-  const upiPanel = method === 'UPI' && how !== 'LATER' ? (
+  const upiPanel = method === 'UPI' && how === 'FULL' ? (
     <View style={[s.card, { gap: 10 }]}>
       {hasPrinter ? (
         <Soft>{t('Take the UPI payment, then tap the button below. The bill prints by itself.')}</Soft>
@@ -134,9 +139,9 @@ export default function Pay() {
       <TextInput style={[s.input, { alignSelf: 'stretch' }]} value={reference} onChangeText={setReference} placeholder="UPI reference (optional)" accessibilityLabel="UPI reference" />
     </View>
   ) : null;
-  const HOWS: { id: PayHow; label: string }[] = [{ id: 'FULL', label: t('Pay in full') }, { id: 'PART', label: t('Part payment') }, { id: 'LATER', label: t('Pay later') }];
+  const HOWS: { id: PayHow; label: string }[] = [{ id: 'FULL', label: t('Pay in full') }, { id: 'SPLIT', label: t('Split') }, { id: 'LATER', label: t('Pay later') }];
   const confirmTitle = how === 'LATER' ? t('Save the bill, {amount} unpaid', { amount: rupees(total) })
-    : how === 'PART' ? (plan.ok ? t('Take {now} now, {rest} stays due', { now: rupees(plan.payNowPaise ?? 0), rest: rupees(plan.balancePaise) }) : t('Take part payment'))
+    : how === 'SPLIT' ? t('Payment received, make the bill')
     : method === 'CASH' ? 'Cash received, make the bill' : method === 'UPI' ? 'Money received, make the bill' : 'Card paid, make the bill';
   const levyOptions = !orderId ? ([
     gst.tcs ? ['tcs', t('Collect TCS ({rate}%)', { rate: gst.tcsRate })] : null,
@@ -170,17 +175,33 @@ export default function Pay() {
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {HOWS.map((h) => <Button key={h.id} title={h.label} selected={how === h.id} onPress={() => { setHow(h.id); setError(''); }} style={{ flex: 1 }} />)}
       </View>
-      {how === 'PART' ? (
-        <View style={{ gap: 8 }}>
-          <Soft>{t('How much is being paid now?')}</Soft>
-          <TextInput style={s.input} value={nowText} onChangeText={setNowText} keyboardType="decimal-pad" placeholder="0" accessibilityLabel={t('Paying now')} />
-          {plan.ok ? <Text accessibilityLiveRegion="polite" style={{ color: color.warn, fontWeight: '700' }}>{t('{amount} stays due on {name}.', { amount: rupees(plan.balancePaise), name: owes })}</Text> : null}
+      {how === 'SPLIT' ? (
+        <View style={{ gap: 10 }}>
+          <Soft>{t('Part of the bill in one way, the rest in another: for example some cash and some UPI. The last part takes whatever is left.')}</Soft>
+          {parts.map((p, i) => {
+            const last = i === parts.length - 1;
+            return (
+              <View key={i} style={[s.card, { gap: 8 }]}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {METHODS.map((m) => <Button key={m.id} title={m.label} selected={p.method === m.id} onPress={() => setPart(i, { method: m.id })} style={{ flex: 1 }} />)}
+                </View>
+                {last
+                  ? <Text style={{ fontSize: 16, fontWeight: '700', color: color.ink }}>{t('The rest')}: {rupees(Math.max(0, total - splitFixed))}</Text>
+                  : <TextInput style={s.input} value={p.amount} onChangeText={(v) => setPart(i, { amount: v })} keyboardType="decimal-pad" placeholder={t('Amount')} accessibilityLabel={t('Amount for part {n}', { n: i + 1 })} />}
+              </View>
+            );
+          })}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {parts.length < 4 ? <Button title="Add another part" kind="quiet" onPress={() => setParts((ps) => [...ps.slice(0, -1), { method: 'CARD', amount: '' }, ps[ps.length - 1]])} style={{ flex: 1 }} /> : null}
+            {parts.length > 2 ? <Button title="Remove a part" kind="quiet" onPress={() => setParts((ps) => [...ps.slice(0, -2), ps[ps.length - 1]])} style={{ flex: 1 }} /> : null}
+          </View>
+          {split && !split.ok && parts.some((p) => p.amount) ? <ErrorText>{t(split.problem)}</ErrorText> : null}
         </View>
       ) : null}
       {how === 'LATER' ? <Text style={{ color: color.warn, fontWeight: '700' }}>{t('The whole bill, {amount}, is left unpaid on {name}.', { amount: rupees(total), name: owes })}</Text> : null}
-      {how !== 'FULL' && plan.problem ? <ErrorText>{t(plan.problem)}</ErrorText> : null}
+      {how !== 'FULL' && how !== 'SPLIT' && plan.problem ? <ErrorText>{t(plan.problem)}</ErrorText> : null}
 
-      {how !== 'LATER' ? (
+      {how === 'FULL' ? (
         <>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {METHODS.map((m) => (

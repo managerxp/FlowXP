@@ -83,7 +83,7 @@ export default function JobCardsScreen() {
                 <Card>
                   <CustomerFind form={form} set={set} />
                   <Input label="Registration number" upper value={form.vehicle_reg} onChange={(v) => set({ vehicle_reg: v })} max={20} placeholder="KA01AB1234" />
-                  <PlateScan onPlate={(p) => set({ vehicle_reg: p })} />
+                  <PlateScan onPlate={(p, read) => set({ vehicle_reg: p, ...(read.make && !form.make ? { make: read.make } : {}) })} />
                   <Field label="Vehicle"><Chips items={kinds} value={form.vehicle_type} onChange={(v) => set({ vehicle_type: v, make: '', model: '' })} /></Field>
                   <Input label="Company" hint="Pick from the list or type it. A new one is remembered." value={form.make} onChange={(v) => set({ make: v, model: '' })} max={60} placeholder="Hero, Honda, Maruti Suzuki" />
                   {(garage ? suggestNames(mergeNames(tree.filter((m) => m.vehicle_type === form.vehicle_type).map((m) => m.name), (masterBrands.data?.brands ?? []).map((b) => b.brand)), form.make, 10) : suggestMakes(tree, form.vehicle_type, form.make)).map((n) => <Line key={n} left={n} onPress={() => set({ make: n, model: '' })} />)}

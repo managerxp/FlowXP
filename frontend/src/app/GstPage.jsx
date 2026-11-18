@@ -70,6 +70,7 @@ const Gstr3b = ({ period, gstin }) => {
         <tbody>
           <Row label={tr('3.1(a) Outward taxable supplies (net of credit notes)')} {...d.outward_taxable} />
           <Row label={tr('3.1(c) Nil-rated, exempt')} taxable={d.outward_nil_or_exempt.taxable} />
+          {d.outward_non_gst?.taxable > 0 && <Row label={tr('3.1(e) Non-GST outward supplies')} taxable={d.outward_non_gst.taxable} />}
           {d.reverse_charge_inward?.taxable > 0 && <Row label={tr('3.1(d) Inward supplies on reverse charge')} {...d.reverse_charge_inward} />}
           {d.inter_state_to_unregistered.map((x) => <Row key={x.pos} label={tr('3.2 Inter-state to unregistered, state {{pos}}', { pos: x.pos })} taxable={x.taxable} igst={x.igst} />)}
           <Row label={tr('4(A) Input tax credit you can claim')} igst={d.itc.igst} cgst={d.itc.cgst} sgst={d.itc.sgst} />
@@ -79,6 +80,79 @@ const Gstr3b = ({ period, gstin }) => {
       </Table>
       <p className="text-sm text-ink-700">{tr('Purchases from suppliers without a GSTIN carry {{formatCurrency}} of tax that is not claimable.', { formatCurrency: formatCurrency(d.itc.ineligible) })}</p>
       <ul className="list-disc space-y-1 pl-5 text-xs text-ink-500">{d.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
+    </div>
+  );
+};
+
+/* GSTR-9: the annual return's figures for the financial year the chosen month falls in */
+const Gstr9 = ({ period, gstin }) => {
+  const tr = useT();
+  const { business } = useAuth();
+  const [y, m] = period.split('-').map(Number);
+  const [fy, setFy] = useState(m >= 4 ? y : y - 1);
+  const [d, setD] = useState(null);
+  const [error, setError] = useState('');
+  useEffect(() => { setD(null); setError(''); api(`/gst/gstr9?fy=${fy}&gstin=${gstin}`).then(setD).catch((e) => setError(e.message)); }, [fy, gstin]);
+  const years = Array.from({ length: 5 }, (_, i) => (m >= 4 ? y : y - 1) - i);
+  return (
+    <div className="space-y-4">
+      <Field id="g9_fy" label={tr('Financial year')}>
+        <Select id="g9_fy" value={fy} onChange={(e) => setFy(Number(e.target.value))}>{years.map((v) => <option key={v} value={v}>{`${v}-${String(v + 1).slice(2)}`}</option>)}</Select>
+      </Field>
+      {!d ? <ListState loading={!error} error={error} /> : (
+        <>
+          <Table>
+            <Thead><Th></Th><Th className="text-right">{tr('Taxable value')}</Th><Th className="text-right">{tr('IGST')}</Th><Th className="text-right">{tr('CGST')}</Th><Th className="text-right">{stateTaxName(business?.state)}</Th></Thead>
+            <tbody>
+              <Row label={tr('4A Supplies to unregistered people (B2C)')} {...d.table4.b2c} />
+              <Row label={tr('4B Supplies to registered people (B2B)')} {...d.table4.b2b} />
+              <Row label={tr('4I Credit notes issued')} {...d.table4.credit_notes} />
+              <Row strong label={tr('4N Supplies on which tax is payable')} {...d.table4.total} />
+              <Row label={tr('5C Nil rated')} taxable={d.table5.nil_rated} />
+              <Row label={tr('5D Exempted')} taxable={d.table5.exempted} />
+              <Row label={tr('5F Non-GST supplies')} taxable={d.table5.non_gst} />
+              <Row strong label={tr('5N Total turnover')} taxable={d.turnover} />
+              <Row label={tr('6 Input tax credit')} igst={d.table6.igst} cgst={d.table6.cgst} sgst={d.table6.sgst} />
+              <Row strong label={tr('9 Tax payable')} {...d.table9.tax_payable} />
+            </tbody>
+          </Table>
+          <p className="text-sm text-ink-700">{tr('Table 17 (HSN summary) has {{n}} rows; it is the same HSN table as GSTR-1, for the whole year.', { n: d.table17_hsn.length })}</p>
+          <ul className="list-disc space-y-1 pl-5 text-xs text-ink-500">{d.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
+        </>
+      )}
+    </div>
+  );
+};
+
+/* Form 27EQ: TCS collected in a quarter, ready for the TCS return software */
+const Form27eq = ({ period }) => {
+  const tr = useT();
+  const [y, m] = period.split('-').map(Number);
+  const [fy, setFy] = useState(m >= 4 ? y : y - 1);
+  const [q, setQ] = useState(m >= 4 ? Math.ceil((m - 3) / 3) : 4);
+  const [d, setD] = useState(null);
+  const [error, setError] = useState('');
+  useEffect(() => { setD(null); setError(''); api(`/gst/form27eq?fy=${fy}&q=${q}`).then(setD).catch((e) => setError(e.message)); }, [fy, q]);
+  const years = Array.from({ length: 5 }, (_, i) => (m >= 4 ? y : y - 1) - i);
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <Field id="eq_fy" label={tr('Financial year')}><Select id="eq_fy" value={fy} onChange={(e) => setFy(Number(e.target.value))}>{years.map((v) => <option key={v} value={v}>{`${v}-${String(v + 1).slice(2)}`}</option>)}</Select></Field>
+        <Field id="eq_q" label={tr('Quarter')}><Select id="eq_q" value={q} onChange={(e) => setQ(Number(e.target.value))}>{[1, 2, 3, 4].map((n) => <option key={n} value={n}>{`Q${n}`}</option>)}</Select></Field>
+        <Button variant="secondary" onClick={() => downloadFile(`/gst/form27eq?fy=${fy}&q=${q}&download=1`, `Form27EQ_${fy}_Q${q}.csv`).catch((e) => setError(e.message))}>{tr('Download CSV')}</Button>
+      </div>
+      {!d ? <ListState loading={!error} error={error} /> : (
+        <>
+          <p className="text-sm text-ink-700">{tr('{{n}} bills with TCS, {{amount}} collected.', { n: d.lines.length, amount: formatCurrency(d.total_tcs) })}{d.missing_pan > 0 && <span className="ml-1 font-medium text-warning">{tr('{{n}} without a PAN.', { n: d.missing_pan })}</span>}</p>
+          {d.lines.length > 0 && (
+            <Table>
+              <Thead><Th>{tr('Date')}</Th><Th>{tr('Bill')}</Th><Th>{tr('Customer')}</Th><Th>PAN</Th><Th className="text-right">{tr('Amount')}</Th><Th className="text-right">TCS</Th></Thead>
+              <tbody>{d.lines.map((l) => <Tr key={l.invoice_number}><Td>{l.date}</Td><Td>{l.invoice_number}</Td><Td>{l.customer}</Td><Td>{l.pan || <span className="text-warning">{tr('Not available')}</span>}</Td><Td className="text-right">{formatCurrency(l.amount)}</Td><Td className="text-right">{formatCurrency(l.tcs)}</Td></Tr>)}</tbody>
+            </Table>
+          )}
+          <ul className="list-disc space-y-1 pl-5 text-xs text-ink-500">{d.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
+        </>
+      )}
     </div>
   );
 };
@@ -147,6 +221,7 @@ const Settings = () => {
 
 const GstPage = () => {
   const tr = useT();
+  const { business } = useAuth();
   const [period, setPeriod] = useState(monthNow());
   const [tab, setTab] = useState('gstr1');
   const [filings, setFilings] = useState(null);
@@ -179,12 +254,14 @@ const GstPage = () => {
       {usable && (
         <>
           <div className="mb-5 flex gap-2" role="tablist">
-            {[['gstr1', T('GSTR-1')], ['gstr3b', T('GSTR-3B')], ['einvoice', T('E-invoice')]].map(([id, label]) => (
+            {[['gstr1', T('GSTR-1')], ['gstr3b', T('GSTR-3B')], ['gstr9', T('GSTR-9')], ['einvoice', T('E-invoice')], ...(business?.gst_options?.tcs ? [['tcs', T('TCS (27EQ)')]] : [])].map(([id, label]) => (
               <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`rounded-lg px-3.5 py-1.5 text-sm font-medium ${tab === id ? 'bg-brand-50 text-brand-600' : 'text-ink-700 hover:bg-surface-2'}`}>{tr(label)}</button>
             ))}
           </div>
           {tab === 'gstr1' && <Gstr1 period={period} gstin={gstin} />}
           {tab === 'gstr3b' && <Gstr3b period={period} gstin={gstin} />}
+          {tab === 'gstr9' && <Gstr9 period={period} gstin={gstin} />}
+          {tab === 'tcs' && <Form27eq period={period} />}
           {tab === 'einvoice' && <EInvoice period={period} gstin={gstin} />}
           <Settings />
         </>

@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../../lib/api.ts';
 import { api, currentBusiness, useSession } from '../../lib/session.ts';
-import { KITCHEN_TYPES } from '../../lib/cart.ts';
+import { KITCHEN_TYPES, MRP_TYPES } from '../../lib/cart.ts';
 import { gstView } from '../../lib/gst.ts';
 import { t } from '../../lib/i18n.ts';
 import { syncAll } from '../../lib/sync.ts';
@@ -15,6 +15,7 @@ import { Button, Chips, ErrorText, Soft, Title, color, s } from '../../lib/ui.ts
 
 const GST = ['0', '5', '12', '18', '28'];
 type Category = { category_id: number; name: string };
+type TaxRate = { tax_rate_id: number; name: string; rate: number; kind: string };
 
 /* A new product: the few things a till needs. More (brand, recipe, photos) is on the FlowXP website. */
 export default function NewProduct() {
@@ -24,6 +25,8 @@ export default function NewProduct() {
   const [price, setPrice] = useState('');
   const [mrp, setMrp] = useState('');
   const [gst, setGst] = useState('5');
+  // goods with a printed MRP: the price already includes GST (on by default in shops, as on the website)
+  const [inclusive, setInclusive] = useState(MRP_TYPES.includes(currentBusiness(useSession())?.business_type ?? ''));
   const cessOn = gstView(currentBusiness(useSession())).cess;   // the owner switched cess on (website: GST options)
   const [cess, setCess] = useState('');
   const [unit, setUnit] = useState('pc');
@@ -36,7 +39,14 @@ export default function NewProduct() {
   const [error, setError] = useState('');
   const [key] = useState(newKey());   // one key for this form: saving twice (a double tap, a retry) makes one product
 
-  useEffect(() => { void api.get<Category[]>('/categories').then(setCategories).catch(() => {}); }, []);
+  // the business's named GST rates (website: Settings > GST rates); without them the plain slabs below
+  const [rates, setRates] = useState<TaxRate[]>([]);
+  const [rateId, setRateId] = useState('');
+  useEffect(() => {
+    void api.get<Category[]>('/categories').then(setCategories).catch(() => {});
+    void api.get<TaxRate[]>('/tax-rates').then((r) => { setRates(r); const five = r.find((x) => x.kind === 'TAXABLE' && x.rate === 5); if (five) setRateId(String(five.tax_rate_id)); }).catch(() => {});
+  }, []);
+  const pickRate = (id: string) => { setRateId(id); const r = rates.find((x) => String(x.tax_rate_id) === id); if (r) setGst(String(r.rate)); };
   useEffect(() => { if (captured) { setBarcode(captured); setCaptured(null); } }, [captured]);
 
   const save = async () => {
@@ -49,7 +59,7 @@ export default function NewProduct() {
       await api.call('/products', {
         method: 'POST', idempotencyKey: key,
         body: {
-          name: name.trim(), selling_price: Number(price), tax_rate: Number(gst), ...(cessOn && Number(cess) > 0 ? { cess_rate: Number(cess) } : {}), unit: unit.trim() || 'pc',
+          name: name.trim(), selling_price: Number(price), tax_rate: Number(gst), ...(rateId ? { tax_rate_id: Number(rateId) } : {}), price_includes_tax: inclusive, ...(cessOn && Number(cess) > 0 ? { cess_rate: Number(cess) } : {}), unit: unit.trim() || 'pc',
           ...(mrp.trim() ? { mrp: Number(mrp) } : {}), ...(barcode.trim() ? { barcode: barcode.trim() } : {}),
           ...(categoryId !== '0' ? { category_id: Number(categoryId) } : {}),
           track_inventory: count, ...(count && stock.trim() ? { opening_stock: Number(stock) } : {})
@@ -70,7 +80,15 @@ export default function NewProduct() {
           <TextInput style={s.input} value={price} onChangeText={setPrice} keyboardType="decimal-pad" placeholder="Selling price" accessibilityLabel="Selling price" />
           <TextInput style={s.input} value={mrp} onChangeText={setMrp} keyboardType="decimal-pad" placeholder="MRP (optional)" accessibilityLabel="MRP" />
           <Soft>GST rate</Soft>
-          <Chips items={GST.map((g) => ({ id: g, label: `${g}%` }))} value={gst} onChange={setGst} />
+          {rates.length
+            ? <Chips items={rates.map((r) => ({ id: String(r.tax_rate_id), label: r.name }))} value={rateId} onChange={pickRate} />
+            : <Chips items={GST.map((g) => ({ id: g, label: `${g}%` }))} value={gst} onChange={setGst} />}
+          {gst !== '0' ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48 }}>
+              <Text style={{ color: color.ink, flex: 1 }}>{t('Price includes GST')}</Text>
+              <Switch value={inclusive} onValueChange={setInclusive} accessibilityLabel={t('Price includes GST')} />
+            </View>
+          ) : null}
           {cessOn ? <TextInput style={s.input} value={cess} onChangeText={setCess} keyboardType="decimal-pad" placeholder={t('Cess % (optional)')} accessibilityLabel={t('Cess %')} /> : null}
           <TextInput style={s.input} value={unit} onChangeText={setUnit} placeholder="Unit (pc, kg, litre)" accessibilityLabel="Unit" autoCapitalize="none" />
           {food ? null : (

@@ -6,6 +6,7 @@ import { TEMPLATES, KINDS, metaBody, CLOSING } from '../src/modules/messaging/te
 const SAMPLE = {
   name: 'Asha', business: 'Red Oven Pizza House', number: 'INV-2026-00125', date: '22 Oct 2026', when: '22 Oct 2026, 3:45 pm', status: 'Paid in full', total: '₹460.00', due: '₹0', when: 'Sat 24 Oct, 6:30 pm', party: '4', minutes: '15',
   reward: 'free coffee', offer: '10% off this weekend', services: 'Haircut', plan: 'Monthly', amount: '₹1,500', code: 'GYM-0042', class: 'Morning yoga', points: '240', days: '21',
+  seller: 'FlowXP', what: 'invoice', next: 'Pay here: https://pay.example/abc',
   order: 'SO-0031', invoice: 'INV-0112', vehicle: 'KA01 AB 1234', status: 'out for delivery', reply: 'Thank you for your kind words.', link: 'https://flowxp.in/bill/abc123', token: 'abc123', review: 'CabcDEF123/review'
 };
 // the receipt's own samples (the same word means something else in a booking)
@@ -18,7 +19,8 @@ const GROUPS = [
   ['Salons', (k) => k.startsWith('SALON_')],
   ['Gyms', (k) => k.startsWith('GYM_')],
   ['Auto parts and garages', (k) => k.startsWith('JOB_') || k === 'SERVICE_DUE'],
-  ['Wholesale and distribution', (k) => k.startsWith('WS_')]
+  ['Wholesale and distribution', (k) => k.startsWith('WS_')],
+  ["FlowXP's own invoices and quotations (sent from the Super Admin)", (k) => k === 'ADMIN_DOCUMENT']
 ];
 const lines = [];
 lines.push('# WhatsApp templates FlowXP sends', '',
@@ -41,7 +43,7 @@ for (const [title, test] of GROUPS) {
       if (t.urlButtons.length > 1) lines.push('- `Rate Us`: `https://YOUR-DOMAIN/r/{{1}}`, sample `https://YOUR-DOMAIN/r/abc123` (the Google review page of the shop; the bill when the shop has no review link)');
       lines.push('');
     }
-    if (['JOB_RECEIVED', 'JOB_READY', 'SERVICE_DUE', 'LOYALTY_POINTS', 'LOYALTY_NEXT', 'REVIEW_REPLY', 'GYM_SUBSCRIBED', 'GYM_EXPIRY', 'GYM_MONTH_START', 'GYM_EXPIRED', 'GYM_PAYMENT_DUE'].includes(kind)) lines.push('**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.', '');
+    if (['JOB_RECEIVED', 'JOB_READY', 'SERVICE_DUE', 'LOYALTY_POINTS', 'LOYALTY_NEXT', 'REVIEW_REPLY', 'GYM_SUBSCRIBED', 'GYM_EXPIRY', 'GYM_MONTH_START', 'GYM_EXPIRED', 'GYM_PAYMENT_DUE'].includes(kind)) lines.push('**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The business name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Label:*`.', '');
     if (['BILL'].includes(kind)) lines.push('**Header:** none. **Footer:** `Billing powered by FlowXP`. Button texts are free: `View Bill` / `Rate Us` or `View Invoice` / `Rate Your Experience`.', '');
     if (kind === 'BILL') lines.push('One template for every shop. The Rate Us button opens the Google review page the shop saved (Settings, Business details, Google review link), or the bill when there is none.', '');
   }

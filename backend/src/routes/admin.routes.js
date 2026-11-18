@@ -16,6 +16,8 @@ import * as support from '../controllers/adminSupport.controller.js';
 import * as tickets from '../controllers/support.controller.js';
 import * as messaging from '../controllers/adminMessaging.controller.js';
 import * as docs from '../controllers/adminDocuments.controller.js';
+import * as testimonials from '../controllers/testimonials.controller.js';
+import { uploadProductImage } from '../middleware/upload.js';
 
 const router = Router();
 
@@ -76,6 +78,9 @@ router.patch('/businesses/:id/crm', admin.updateClientCrm);
 router.delete('/businesses/:id', admin.deleteBusiness);   // erases the business and its data for good; the exact name must be typed
 router.patch('/businesses/:id/plan', admin.updateBusinessPlan);
 router.get('/businesses/:id/history', admin.businessHistory);
+router.get('/businesses/:id/features', admin.businessFeatures);
+router.get('/businesses/:id/outlets', admin.businessOutlets);
+router.put('/businesses/:id/outlets', admin.setBusinessOutlets);
 router.get('/businesses/:id/overrides', admin.listBusinessOverrides);
 router.post('/businesses/:id/overrides', admin.setBusinessOverride);
 router.delete('/businesses/:id/overrides/:feature', admin.removeBusinessOverride);
@@ -91,6 +96,13 @@ router.post('/users/:id/verify-email', support.verifyUserEmail);
 router.post('/users/:id/reset-2fa', support.resetUserTwoFactor);
 router.get('/audit', support.auditLog);
 router.get('/launch-checks', support.launchChecks);
+
+router.get('/testimonials', testimonials.list);
+router.post('/testimonials', testimonials.create);
+router.patch('/testimonials/:id', testimonials.update);
+router.delete('/testimonials/:id', testimonials.remove);
+router.post('/testimonials/:id/image/:kind', uploadProductImage, testimonials.uploadImage);
+router.delete('/testimonials/:id/image/:kind', testimonials.removeImage);
 
 router.get('/plans', admin.listPlans);
 router.patch('/plans/:code', admin.updatePlan);

@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  FLOOR_ROLES, GROUP_ROLES, OUTLET_TYPES, ROLES, ROLE_HELP, TEAM_TEXTS, addPersonBody, canEditPerson, canManageTeam, choiceOf, editPersonBody, effective, emptyOutlet, needsOutlet, outletBody, outletForm, outletFor,
+  FLOOR_ROLES, GROUP_ROLES, ROLES, ROLE_HELP, TEAM_TEXTS, addPersonBody, canEditPerson, canManageTeam, choiceOf, editPersonBody, effective, emptyOutlet, needsOutlet, outletBody, outletForm, outletFor,
   permissionsBody, roleLabel, rolesFor, seriesText, statusLabel, topOutlet, type Outlet, type PermissionRow
 } from '../src/lib/team.ts';
 import { HI } from '../src/lib/i18n.ts';
@@ -34,9 +34,7 @@ test('who may manage the team, and who may be edited by whom', () => {
   assert.equal(canManageTeam('OWNER'), true); assert.equal(canManageTeam('ADMIN'), true); assert.equal(canManageTeam('MANAGER'), false); assert.equal(canManageTeam(undefined), false);
   assert.equal(canEditPerson({ role: 'OWNER' }, { is_you: true, role: 'OWNER' }), false, 'nobody edits themselves');
   assert.equal(canEditPerson({ role: 'OWNER' }, { is_you: false, role: 'ADMIN' }), true); assert.equal(canEditPerson({ role: 'ADMIN' }, { is_you: false, role: 'ADMIN' }), false);
-  assert.equal(canEditPerson({ role: 'ADMIN' }, { is_you: false, role: 'CASHIER' }), true);
-  assert.ok(OUTLET_TYPES.includes('RESTAURANT') && !OUTLET_TYPES.includes('SALON'));
-});
+  assert.equal(canEditPerson({ role: 'ADMIN' }, { is_you: false, role: 'CASHIER' }), true);});
 
 test('what is sent when adding or changing a person: owners and admins have no outlet, others get the one chosen', () => {
   assert.equal(outletFor('ADMIN', 5), undefined); assert.equal(outletFor('CASHIER', 5), 5); assert.equal(outletFor('MANAGER', ''), ''); assert.equal(outletFor('CASHIER', null), '');

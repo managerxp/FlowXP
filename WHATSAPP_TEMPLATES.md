@@ -59,7 +59,7 @@ Reply STOP to opt out.
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} reward = `free coffee`
 
-**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The business name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Label:*`.
 
 ### `flowxp_loyalty_points` (LOYALTY_POINTS)
 
@@ -80,7 +80,7 @@ Use them on your next visit.
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} earned = `Sample`, {{4}} balance = `Sample`
 
-**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The business name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Label:*`.
 
 ### `flowxp_offer` (OFFER)
 
@@ -124,7 +124,7 @@ Thank you for telling us what you think.
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} reply = `Thank you for your kind words.`
 
-**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The business name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Label:*`.
 
 ### `flow_otp` (OTP)
 
@@ -346,7 +346,7 @@ Thank you for joining us. See you at the gym.
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} plan = `Quarterly Plan`, {{4}} start = `01 Sep 2026`, {{5}} end = `30 Nov 2026`
 
-**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The business name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Label:*`.
 
 ### `flowxp_gym_expiry` (GYM_EXPIRY)
 
@@ -369,7 +369,7 @@ Thank you for training with us.
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} plan = `Quarterly Plan`, {{4}} date = `30 Nov 2026`
 
-**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The business name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Label:*`.
 
 ### `flowxp_gym_month_start` (GYM_MONTH_START)
 
@@ -393,7 +393,7 @@ Thank you for training with us.
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} plan = `Quarterly Plan`, {{4}} date = `30 Nov 2026`, {{5}} amount = `₹4,500`
 
-**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The business name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Label:*`.
 
 ### `flowxp_gym_expired` (GYM_EXPIRED)
 
@@ -416,7 +416,7 @@ We would be glad to see you again.
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} plan = `Quarterly Plan`, {{4}} date = `30 Nov 2026`
 
-**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The business name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Label:*`.
 
 ### `flowxp_gym_payment_due` (GYM_PAYMENT_DUE)
 
@@ -439,7 +439,7 @@ Thank you for your support.
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Iron House Fitness`, {{3}} plan = `Quarterly Plan`, {{4}} amount = `₹4,500`
 
-**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The business name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Label:*`.
 
 ### `flowxp_gym_class` (GYM_CLASS)
 
@@ -491,7 +491,7 @@ The final bill may change if more work is needed, and we will tell you first. Th
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} job_no = `Sample`, {{4}} vehicle = `KA01 AB 1234`, {{5}} reg = `Sample`, {{6}} odometer = `Sample`, {{7}} complaint = `Sample`, {{8}} total = `₹460.00`, {{9}} when = `Sat 24 Oct, 6:30 pm`
 
-**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The business name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Label:*`.
 
 ### `flowxp_job_ready` (JOB_READY)
 
@@ -514,7 +514,7 @@ You can collect it now. Please show this message or your job card. Thank you.
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} job_no = `Sample`, {{4}} vehicle = `KA01 AB 1234`, {{5}} reg = `Sample`, {{6}} total = `₹460.00`
 
-**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The business name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Label:*`.
 
 ### `flowxp_service_due` (SERVICE_DUE)
 
@@ -535,7 +535,7 @@ Call or visit *_{{2}}_* to book it. Thank you.
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} vehicle = `KA01 AB 1234`, {{4}} date = `22 Oct 2026`
 
-**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The gym name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Plan:*`.
+**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The business name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Label:*`.
 
 ## Wholesale and distribution
 
@@ -622,6 +622,29 @@ Hi {{1}}, update on your order {{3}} from {{2}}: {{4}}. Thank you.
 ```
 
 **Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} order = `SO-0031`, {{4}} status = `out for delivery`
+
+## FlowXP's own invoices and quotations (sent from the Super Admin)
+
+### `flowxp_document` (ADMIN_DOCUMENT)
+
+**Category:** Utility
+
+**Body:**
+
+```
+Hi {{1}},
+
+Your {{3}} from *_{{2}}_* is ready.
+
+*Number:* {{4}}
+*Amount:* {{5}}
+
+{{6}}
+
+Thank you.
+```
+
+**Samples:** {{1}} name = `Asha`, {{2}} seller = `FlowXP`, {{3}} what = `invoice`, {{4}} number = `INV-2026-00125`, {{5}} total = `₹460.00`, {{6}} next = `Pay here: https://pay.example/abc`
 
 ## The closing line of the bill (variable {{7}})
 

@@ -74,3 +74,13 @@ test('every text on the business settings screens is translated into all six lan
   }
   assert.deepEqual(missing, []);
 });
+
+test('a GSTIN fills in the state from its first two digits, and every state it gives is one the phone lists', async () => {
+  const { stateFromGstin } = await import('../src/lib/bizSettings.ts');
+  assert.equal(stateFromGstin('35AAAAA0000A1Z5'), 'Andaman and Nicobar Islands');
+  assert.equal(stateFromGstin('27'), 'Maharashtra');
+  assert.equal(stateFromGstin('28AAAAA0000A1Z5'), 'Andhra Pradesh');   // the old code
+  assert.equal(stateFromGstin('9'), null);
+  assert.equal(stateFromGstin('99'), null);
+  for (let c = 1; c <= 38; c++) assert.ok(INDIA_STATES.includes(stateFromGstin(String(c).padStart(2, '0')) as string), String(c));
+});

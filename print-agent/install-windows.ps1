@@ -38,11 +38,19 @@ foreach ($f in 'agent.js', 'winprint.ps1', 'comprint.ps1', 'package.json') { Cop
 if (-not $Origins) { $given = Join-Path $PSScriptRoot '.origins'; $Origins = if (Test-Path $given) { (Get-Content $given -Raw).Trim() } else { 'https://flowxp.in,https://www.flowxp.in' } }
 Set-Content -Path (Join-Path $dir '.origins') -Value $Origins -Encoding ASCII
 
-# A tiny launcher that starts the agent with no window and keeps what it prints in agent.log (wscript is the plain way to run something hidden)
+# A tiny launcher that waits (up to 30 s after sign-in) for the files to be there, shows no error box if they never are, and starts the agent with no window and keeps what it prints in agent.log (wscript is the plain way to run something hidden)
 $vbs = Join-Path $dir 'start-hidden.vbs'
 Set-Content -Path $vbs -Encoding ASCII -Value @"
+Set fso = CreateObject("Scripting.FileSystemObject")
+For i = 1 To 10
+  If fso.FileExists("$dir\agent.js") And fso.FileExists("$node") Then Exit For
+  WScript.Sleep 3000
+Next
+If Not (fso.FileExists("$dir\agent.js") And fso.FileExists("$node")) Then WScript.Quit
 Set sh = CreateObject("WScript.Shell")
+On Error Resume Next
 sh.CurrentDirectory = "$dir"
+On Error GoTo 0
 sh.Run "cmd /c """"$node"" ""$dir\agent.js"" > ""$dir\agent.log"" 2>&1""", 0, False
 "@
 Copy-Item $vbs $startup -Force            # Windows runs everything in this folder when the user signs in

@@ -29,7 +29,9 @@ const activateAddon = async (req, linkId) => {
   const order = rows[0];
 
   const addon = (await pool.query(`SELECT name FROM addons WHERE addon_key = $1`, [order.addon_key])).rows[0];
-  await pool.query(
+  // Extra outlet is counted, not switched: it raises how many outlets the business may run
+  if (order.addon_key === 'extra_outlet') await pool.query(`UPDATE businesses SET extra_outlets = extra_outlets + $2 WHERE business_id = $1`, [order.business_id, order.quantity || 1]);
+  else await pool.query(
     `INSERT INTO business_feature_overrides (business_id, feature_key, enabled, reason, created_by)
      VALUES ($1,$2,TRUE,$3,NULL)
      ON CONFLICT (business_id, feature_key) DO UPDATE SET enabled = TRUE, reason = $3, updated_at = CURRENT_TIMESTAMP`,

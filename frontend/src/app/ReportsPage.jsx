@@ -64,6 +64,32 @@ const CsvButton = ({ name, head, rows }) => {
 
 const Tile = ({ change, ...props }) => <StatCard {...props}>{change}</StatCard>;
 
+/* A report the server sends as { columns, rows, totals } (sale orders, purchase orders, batches): one table and a CSV of the same. */
+// eslint-disable-next-line no-unused-vars
+const TABLE_WORDS = [T('Order'), T('Customer'), T('Supplier'), T('Status'), T('Value'), T('Units ordered'), T('Units delivered'), T('Units still to deliver'), T('Paid'), T('Still to pay'),
+  T('Pay by'), T('Product'), T('Type'), T('Batch or serial'), T('Outlet'), T('Expiry'), T('Days left'), T('Quantity'), T('Value (cost)'), T('Expired'), T('Expiring soon'), T('Good'), T('Batch'), T('Serial')];
+const cellOf = (type, v) => (v == null || v === '' ? '' : type === 'money' ? formatCurrency(v) : type === 'date' ? formatDate(v) : type === 'number' ? Number(v).toLocaleString('en-IN', { maximumFractionDigits: 3 }) : v);
+const TableReport = ({ d, period }) => {
+  const tr = useT();
+  const right = (c) => (['money', 'number'].includes(c.type) ? 'text-right tabular' : '');
+  const shown = (c, v) => (c.type === 'text' && ['status', 'kind'].includes(c.key) ? tr(String(v)) : cellOf(c.type, v));
+  return (
+    <Section title={tr('{{n}} rows', { n: d.rows.length })} action={<CsvButton name={`report-${period?.from || ''}-to-${period?.to || ''}`} head={d.columns.map((c) => c.label)} rows={d.rows.map((r) => d.columns.map((c) => r[c.key] ?? ''))} />}>
+      {d.rows.length === 0 ? <p className="text-small text-ink-500">{tr('Nothing to show for this period.')}</p> : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-small">
+            <thead><tr className="border-b border-line text-left text-caption text-ink-500">{d.columns.map((c) => <th key={c.key} className={`py-2 pr-3 ${right(c)}`}>{tr(c.label)}</th>)}</tr></thead>
+            <tbody>
+              {d.rows.map((r, i) => <tr key={i} className="border-b border-line">{d.columns.map((c) => <td key={c.key} className={`py-2 pr-3 ${right(c)}`}>{shown(c, r[c.key])}</td>)}</tr>)}
+              {d.totals && <tr className="font-semibold">{d.columns.map((c) => <td key={c.key} className={`py-2 pr-3 ${right(c)}`}>{c.key === d.columns[0].key ? tr('Total') : cellOf(c.type, d.totals[c.key])}</td>)}</tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Section>
+  );
+};
+
 /* "12% up on the 7 days before": spending more is the thing to notice on costs, earning more on sales. */
 const Change = ({ now, before, vs, goodWhenUp = true }) => {
   const tr = useT();
@@ -1388,16 +1414,18 @@ const AccountantPack = ({ period }) => {
     try { await downloadFile(`/reports/accountant-pack?${range}`, `accountant-pack-${period.from}-to-${period.to}.zip`); }
     catch (caught) { setError(caught.message); } finally { setBusy(''); }
   };
-  // WhatsApp: the phone's share sheet attaches the ZIP; where the browser cannot, the ZIP downloads and WhatsApp opens on the accountant's number to attach it
+  // WhatsApp: the phone's share sheet attaches the ZIP; where the browser cannot (a computer), WhatsApp opens on the accountant's number
+  // with a download link that works for 7 days, so nothing has to be attached by hand
   const whatsapp = async () => {
     setBusy('whatsapp'); setError(''); setNote('');
     const name = `accountant-pack-${period.from}-to-${period.to}.zip`;
     const text = `${tr('Accounts')} ${period.from} – ${period.to}`;
     try {
-      if (!(await shareFile(`/reports/accountant-pack?${range}`, name, text))) {
-        const digits = phone.replace(/\D/g, '');
-        window.open(`https://wa.me/${digits.length === 10 ? `91${digits}` : digits}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
-        setNote(tr('The file is downloaded. Attach it in the WhatsApp chat that opened.'));
+      const touch = window.matchMedia?.('(pointer: coarse)').matches;
+      if (!touch || !(await shareFile(`/reports/accountant-pack?${range}`, name, text))) {
+        const r = await api('/reports/accountant-pack/whatsapp', { method: 'POST', body: { from: period.from, to: period.to, phone } });
+        window.open(r.wa_url, '_blank', 'noopener');
+        setNote(tr('WhatsApp opened with a download link for your accountant. The link works for 7 days.'));
       }
       if (phone) { try { localStorage.setItem('flowxp.ca.phone', phone); } catch { /* the number is just a convenience */ } }
     } catch (caught) { setError(caught.message); } finally { setBusy(''); }
@@ -1471,16 +1499,20 @@ const REPORTS = [
   { key: 'expense-items', label: T('Expense items'), text: T('What the money was spent on'), dated: true, own: true, Render: ExpenseItemsReport },
   { key: 'expense-list', label: T('Expense list'), text: T('Every expense, newest first'), dated: true, own: true, Render: ExpenseListReport },
   { key: 'all-parties', label: T('All parties'), text: T('Every customer or supplier, and what they owe'), dated: true, own: true, Render: AllPartiesReport },
-  { key: 'party-items', label: T('Party report by items'), text: T('What a party bought, or who bought an item'), dated: true, own: true, Render: PartyItemsReport }
+  { key: 'party-items', label: T('Party report by items'), text: T('What a party bought, or who bought an item'), dated: true, own: true, Render: PartyItemsReport },
+  { key: 'sale-orders', label: T('Sale orders'), text: T('What was ordered, delivered and is still to deliver'), dated: true, Render: TableReport },
+  { key: 'purchase-orders', label: T('Purchase orders'), text: T('What you ordered, paid and still owe'), dated: true, Render: TableReport },
+  { key: 'batches', label: T('Batches and serial numbers'), text: T('Stock by batch with expiry, and serial numbers in stock'), dated: false, Render: TableReport }
 ];
 
 const GROUPS = [
   [T('Sales and profit'), ['sales', 'waiters', 'profit-loss', 'profit-bills', 'profit-items', 'profit-parties', 'discounts']],
   [T('Transactions'), ['daybook', 'transactions']],
   [T('Parties'), ['customers', 'outstanding', 'all-parties', 'party-statement', 'party-items', 'sales-by-party', 'purchases-by-party']],
-  [T('Purchases and expenses'), ['purchases', 'expenses', 'expense-categories', 'expense-items', 'expense-list']],
+  [T('Purchases and expenses'), ['purchases', 'purchase-orders', 'expenses', 'expense-categories', 'expense-items', 'expense-list']],
   [T('GST'), ['gst', 'gst-hsn', 'gst-sac', 'gst-rates', 'gst-options', 'gstr2']],
-  [T('Stock'), ['inventory', 'stock-summary', 'stock-low', 'stock-items', 'stock-ledger', 'category-sales']]
+  [T('Stock'), ['inventory', 'stock-summary', 'stock-low', 'stock-items', 'stock-ledger', 'category-sales', 'batches']],
+  [T('Orders'), ['sale-orders']]
 ];
 
 const ReportsPage = () => {

@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Share, TextInput, View } from 'react-native';
+import { useScope } from '../lib/local.ts';
+import { pname, type Product } from '../lib/catalog.ts';
+import { SearchBox } from '../lib/SearchBox.tsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
@@ -8,7 +11,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { t } from '../lib/i18n.ts';
 import { Page, ColumnList } from '../lib/responsive.tsx';
-import { blankLine, draftTotalPaise, estimateBody, estimateProblem, estimateText, type DraftLine, type Estimate } from '../lib/estimates.ts';
+import { addProduct, blankLine, draftTotalPaise, estimateBody, estimateHtml, estimateProblem, estimateText, productLine, type DraftLine, type Estimate, type EstimateBusiness } from '../lib/estimates.ts';
 import { Button, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Title, s } from '../lib/ui.tsx';
 
 /* Estimates (quotations): a price sent before the sale. Share it, and when the customer agrees, turn it into an invoice in one tap. */
@@ -23,6 +26,31 @@ export default function Estimates() {
   const [problem, setProblem] = useState('');
   const [busy, setBusy] = useState(false);
   const [key, setKey] = useState(newKey());
+  const scope = useScope();
+  const [search, setSearch] = useState('');
+  const [found, setFound] = useState<Product[]>([]);
+
+  // the catalogue on the phone, searched as the name or barcode is typed (or scanned)
+  useEffect(() => {
+    let live = true;
+    if (!scope || !search.trim()) { setFound([]); return; }
+    void scope.catalog.search(search).then((r) => { if (live) setFound(r.slice(0, 8)); });
+    return () => { live = false; };
+  }, [scope, search]);
+  const pick = (p: Product) => { setSearch(''); setFound([]); setLines((ls) => addProduct(ls, productLine({ ...p, name: pname(p) }))); };
+
+  const print = async (e: Estimate, proforma: boolean) => {
+    try {
+      const biz = await api.get<EstimateBusiness>('/businesses/current');
+      const Print = await import('expo-print');
+      await Print.printAsync({ html: estimateHtml(e, biz, proforma) });
+    } catch (err) { setProblem(err instanceof Error ? err.message : t('Could not print')); }
+  };
+  const askPrint = (e: Estimate) => Alert.alert(t('Print'), e.estimate_number, [
+    { text: t('Estimate'), onPress: () => { void print(e, false); } },
+    { text: t('Proforma invoice'), onPress: () => { void print(e, true); } },
+    { text: t('Cancel'), style: 'cancel' }
+  ]);
 
   const setLine = (i: number, patch: Partial<DraftLine>) => setLines((ls) => ls.map((l, n) => (n === i ? { ...l, ...patch } : l)));
   const save = async () => {
@@ -57,9 +85,13 @@ export default function Estimates() {
           {!adding ? <Button title="New estimate" onPress={() => { setAdding(true); setProblem(''); }} /> : (
             <View style={{ gap: 10 }}>
               <TextInput style={s.input} value={name} onChangeText={setName} placeholder={t('Customer name (optional)')} accessibilityLabel={t('Customer name')} />
+              <SearchBox value={search} onChange={setSearch} placeholder={t('Search your items to add')} label={t('Search your items to add')} />
+              {found.map((p) => <Line key={p.product_id} left={pname(p)} right={rupees(toPaise(p.selling_price))} onPress={() => pick(p)} />)}
               {lines.map((l, i) => (
                 <View key={i} style={{ gap: 6 }}>
-                  <TextInput style={s.input} value={l.description} onChangeText={(v) => setLine(i, { description: v })} placeholder={t('Item or service')} accessibilityLabel={t('Item or service')} />
+                  {l.product_id
+                    ? <Line left={l.description} sub={t('From your items')} />
+                    : <TextInput style={s.input} value={l.description} onChangeText={(v) => setLine(i, { description: v })} placeholder={t('Or type an item or service')} accessibilityLabel={t('Item or service')} />}
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TextInput style={[s.input, { flex: 1 }]} value={l.quantity} onChangeText={(v) => setLine(i, { quantity: v.replace(/[^\d.]/g, '') })} keyboardType="decimal-pad" placeholder={t('Qty')} accessibilityLabel={t('Qty')} />
                     <TextInput style={[s.input, { flex: 1 }]} value={l.price} onChangeText={(v) => setLine(i, { price: v.replace(/[^\d.]/g, '') })} keyboardType="decimal-pad" placeholder={t('Price')} accessibilityLabel={t('Price')} />
@@ -68,7 +100,7 @@ export default function Estimates() {
               ))}
               <Button title="Add another item" kind="quiet" onPress={() => setLines((ls) => [...ls, blankLine()])} />
               <TextInput style={s.input} value={discount} onChangeText={(v) => setDiscount(v.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" placeholder={t('Discount (optional)')} accessibilityLabel={t('Discount')} />
-              <Soft>{`${t('Total')}: ${rupees(draftTotalPaise(lines, discount))}`}</Soft>
+              <Soft>{`${t('Total before GST')}: ${rupees(draftTotalPaise(lines, discount))}`}</Soft>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Button title="Save" onPress={() => { void save(); }} busy={busy} style={{ flex: 1 }} />
                 <Button title="Cancel" kind="quiet" onPress={() => { setAdding(false); setProblem(''); }} />
@@ -87,6 +119,7 @@ export default function Estimates() {
               {e.status === 'OPEN' ? (
                 <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16 }}>
                   <Button title="Share" kind="quiet" onPress={() => { void Share.share({ message: estimateText(e, shop) }); }} style={{ flex: 1 }} />
+                  <Button title="Print" kind="quiet" onPress={() => askPrint(e)} style={{ flex: 1 }} />
                   <Button title="Make invoice" onPress={() => makeInvoice(e)} style={{ flex: 1 }} />
                   <Button title="Cancel estimate" kind="quiet" onPress={() => cancel(e)} />
                 </View>

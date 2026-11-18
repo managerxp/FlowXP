@@ -10,6 +10,7 @@ import { Card, Field, Input, Msg, Panel, Row, SetupShell, confirm, useAct, useLi
 import {
   JOB_STATUS_LABEL, PAY_METHODS, billBody, billProblem, canBill, canJobCards, datesBody, datesProblem, estimateLines, promiseDays, isLive, labourBody, labourProblem, lineSub, lineText, misfits, quantityProblem, stepsFor, vehicleOf, type JobFull
 } from '../../lib/jobCards.ts';
+import { jobCardHtml } from '../../lib/jobCardPrint.ts';
 import { serviceLabourBody, shareFor, type Service } from '../../lib/workshopExtras.ts';
 import { FUEL_LEVELS, isGarage } from '../../lib/garage.ts';
 import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, s } from '../../lib/ui.tsx';
@@ -69,6 +70,7 @@ export default function JobCardScreen() {
         <Soft>{[j.customer_name, j.customer_phone].filter(Boolean).join(' · ')}</Soft>
         {j.complaint ? <Text style={{ color: color.ink }}>{j.complaint}</Text> : null}
         {bad.length ? <Text accessibilityRole="alert" style={{ color: color.danger, fontWeight: '600' }}>{`${t('Warning: this part is recorded as not fitting the vehicle')}: ${bad.join(', ')}`}</Text> : null}
+        <Button title={t('Print the job card (A4)')} kind="quiet" busy={a.busy} onPress={() => { void a.run('', async () => { const Print = await import('expo-print'); await Print.printAsync({ html: jobCardHtml(j, { name: me?.name ?? 'FlowXP' }) }); }, ''); }} />
         {shareFor(j).length ? (
           <>
             <SectionTitle>Tell the customer on WhatsApp</SectionTitle>

@@ -8,6 +8,7 @@ import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Badge, Button, Card, Field, Input, ListState, Table, Td, Th, Thead, Tr, useToast, useDialog } from '../components/ui.jsx';
 import { useT } from '../i18n/useT.js';
+import { PinLoginCard, TeamPinDevices } from './PinLogin.jsx';
 
 const when = (iso) => new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 const OUTCOME = { SUCCESS: ['Signed in', 'success'], BAD_PASSWORD: ['Wrong password', 'danger'], UNKNOWN_USER: ['Unknown address', 'danger'], LOCKED: ['Locked out', 'danger'], TWO_FACTOR_FAILED: ['Wrong code', 'danger'] };
@@ -308,6 +309,7 @@ const SecurityPage = () => {
       <div><h1 className="text-h3 font-semibold text-ink-900">{tr('Security')}</h1><p className="mt-1 text-sm text-ink-500">{tr('Keep your account and your business safe.')}</p></div>
       <TwoFactor />
       <Password />
+      <PinLoginCard />
       <ApprovalPin />
       {can?.('settings') && <ApprovalRules />}
       <Card className="p-5">
@@ -317,6 +319,7 @@ const SecurityPage = () => {
         {history ? <Events rows={history} /> : <ListState loading={!error} />}
       </Card>
       {canSeeTeam && <Team />}
+      {canSeeTeam && <TeamPinDevices />}
       <DeleteAccount />
     </div>
   );

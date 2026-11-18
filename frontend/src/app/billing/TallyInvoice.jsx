@@ -92,7 +92,8 @@ export default function TallyInvoice({ invoice, business, outlet, seller, onSave
   const x = invoice.print_extra || {};
   const d = invoice.print_details || {};
   const igst = invoice.igst > 0;
-  const lines = invoice.items.map((i) => ({ ...i, taxable: i.line_total - i.tax_amount - (i.cess || 0), gross: i.unit_price * (1 + i.tax_rate / 100), discPct: i.unit_price * i.quantity > 0 ? (i.discount / (i.unit_price * i.quantity)) * 100 : 0 }));
+  const lines = invoice.items.map((i) => ({ ...i, taxable: i.line_total - i.tax_amount - (i.cess || 0), // the rate with tax, from what the line came to: right for a price that already included GST (sold at MRP) as well as one that had GST added
+    gross: i.quantity ? (i.line_total - (i.cess || 0)) / i.quantity + (i.discount / i.quantity) * (1 + i.tax_rate / 100) : 0, discPct: i.unit_price * i.quantity > 0 ? (i.discount / (i.unit_price * i.quantity)) * 100 : 0 }));
   // tax summary: one row per HSN (and rate), the tax split into CGST + SGST or all IGST the way the bill itself was
   const groups = new Map();
   for (const l of lines) {
@@ -265,6 +266,7 @@ export default function TallyInvoice({ invoice, business, outlet, seller, onSave
           </div>
           {sh.received_by && <div className="grid grid-cols-2 border border-t-0 border-(color:--acc) pt-8"><p className="px-1.5 pb-1.5">Received by:</p><p className="px-1.5 pb-1.5">Delivered by:</p></div>}
           {cfg.footer_note && <p className="mt-1 text-center text-[10px]">{cfg.footer_note}</p>}
+          {business?.receipt_settings?.show_powered_by !== false && <p className="mt-1 text-center text-[10px]">Powered by FlowXP</p>}
         </article>
         ))}
       </div>

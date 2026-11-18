@@ -5,7 +5,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, NetworkError } from '../lib/api.ts';
 import { api } from '../lib/session.ts';
 import { Logo } from '../lib/Logo.tsx';
-import { LanguagePicker } from '../lib/lang.tsx';
 import { emailLooksRight, resetBody, resetProblem } from '../lib/account.ts';
 import { Button, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
 
@@ -64,7 +63,6 @@ export default function Forgot() {
               <Text style={{ color: color.soft, fontSize: 13 }}>Changing your password signs you out everywhere else.</Text>
             </>
           )}
-          <LanguagePicker compact />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

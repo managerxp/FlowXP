@@ -24,3 +24,17 @@ test('the extras are off or on as the owner chose; the defaults keep the bill as
 test('the settings list: terms only for non-food, the kitchen screen only for food', () => {
   assert.ok(TOGGLES.some(([k]) => k === 'show_phone') && !TOGGLES.some(([k]) => k === TERMS_TOGGLE[0] || k === KITCHEN_TOGGLE[0]));
 });
+
+test('footer lines stay separate and Powered by FlowXP follows the switch', async () => {
+  const { footerRows } = await import('../src/lib/receipt.ts');
+  assert.deepEqual(footerRows('A\nB', 20, false).map((l) => l.trim()), ['A', 'B']);
+  assert.deepEqual(footerRows('A\nB', 20).map((l) => l.trim()), ['A', 'B', 'Powered by FlowXP']);
+});
+
+test('the token slip only when switched on and the order has a token', async () => {
+  const { tokenText } = await import('../src/lib/receipt.ts');
+  const inv = (token: number | null, on: boolean) => ({ token, order_number: 'ORD-9', receipt: { print_token: on } }) as never;
+  assert.equal(tokenText(inv(17, false), 'Cafe'), null);
+  assert.equal(tokenText(inv(null, true), 'Cafe'), null);
+  assert.ok(tokenText(inv(17, true), 'Cafe')!.split('\n').includes('17'));
+});

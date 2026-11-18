@@ -289,7 +289,7 @@ test('the log is per business and can be filtered', { skip }, async () => {
   const failed = (await A.call(messaging.list, { query: { status: 'failed' } })).body.data;
   assert.ok(failed.every((m) => m.status === 'FAILED'));
   const templates = (await A.call(messaging.templates)).body.data;
-  assert.equal(templates.length, Object.keys(TEMPLATES).length);
+  assert.ok(templates.length > 0 && templates.length < Object.keys(TEMPLATES).length, 'a business is shown its own industry, not every template');
   assert.match(templates.find((t) => t.kind === 'BILL').body, /\{\{7\}\}/);
   assert.doesNotMatch(templates.find((t) => t.kind === 'BILL').body, /\{\{8\}\}/, 'the link is the button now, not a variable');
 });
@@ -307,4 +307,14 @@ test('a customer statement as a message: opening balance, the latest movements, 
   assert.match(statementText(many, 'S'), /8 earlier entries not listed/);
   const share = statementShare(data, 'Sri Stores', '9876543210');
   assert.ok(share.wa_url.startsWith('https://wa.me/91') && share.wa_url.includes(encodeURIComponent('Opening balance')) && share.closing === 1200);
+});
+
+test('each business type is shown the templates for its own industry only', async () => {
+  const { kindsForType, kindIndustry, KINDS } = await import('../src/modules/messaging/templates.js');
+  const has = (type, kind) => kindsForType(type).includes(kind);
+  assert.ok(has('RESTAURANT', 'BILL') && has('RESTAURANT', 'RESERVATION') && !has('RESTAURANT', 'SALON_APPT_BOOKED') && !has('RESTAURANT', 'GYM_WELCOME'));
+  assert.ok(has('SALON', 'SALON_APPT_BOOKED') && !has('SALON', 'RESERVATION'));
+  assert.ok(has('GYM', 'GYM_EXPIRY') && has('MECHANIC', 'JOB_READY') && has('DISTRIBUTOR', 'WS_INVOICE'));
+  assert.ok(has('PHARMACY', 'BILL') && !has('PHARMACY', 'RESERVATION'));   // a type with no industry set gets the common ones
+  assert.ok(KINDS.every((k) => kindIndustry(k)) && !kindsForType('RESTAURANT').includes('ADMIN_DOCUMENT'));   // FlowXP's own document template is never listed to a business
 });

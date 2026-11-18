@@ -9,7 +9,7 @@ import type { PayHow, PayPlan } from './billing.ts';
 export default function PayHowPicker({ how, onHow, nowText, onNow, plan, owes, totalPaise }: {
   how: PayHow; onHow: (h: PayHow) => void; nowText: string; onNow: (v: string) => void; plan: PayPlan; owes: string; totalPaise: number;
 }) {
-  const choices: { id: PayHow; label: string }[] = [{ id: 'FULL', label: t('Pay in full') }, { id: 'PART', label: t('Part payment') }, { id: 'LATER', label: t('Pay later') }];
+  const choices: { id: PayHow; label: string }[] = [{ id: 'FULL', label: t('Pay in full') }, { id: 'LATER', label: t('Pay later') }];
   return (
     <View style={{ gap: 8 }}>
       <View style={{ flexDirection: 'row', gap: 8 }}>

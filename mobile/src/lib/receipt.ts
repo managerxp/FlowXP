@@ -9,9 +9,9 @@ export const rupeesInWords = (amount: number): string => { const paise = Math.ro
 export type InvoiceLine = { description: string; quantity: number; unit_price: number; discount: number; tax_rate: number; line_total: number; tax_amount?: number; cess?: number; unit?: string | null; hsn?: string | null };
 export type Invoice = {
   invoice_id: number; invoice_number: string; invoice_date: string; customer_name?: string | null; customer_phone?: string | null; customer_gstin?: string | null; eway_bill_no?: string | null; cashier?: string | null;
-  /** the website's receipt: tax split by name (UTGST in a union territory) and the Show-the-tax-lines switch */ cgst?: number; sgst?: number; igst?: number; tax_name?: string; receipt?: { show_tax_lines?: boolean; show_hsn?: boolean; header_text?: string; show_phone?: boolean; show_total_qty?: boolean; show_amount_words?: boolean; show_terms?: boolean; terms?: string };
+  /** the website's receipt: tax split by name (UTGST in a union territory) and the Show-the-tax-lines switch */ cgst?: number; sgst?: number; igst?: number; tax_name?: string; receipt?: { print_token?: boolean; footer?: string; show_tax_lines?: boolean; show_hsn?: boolean; header_text?: string; show_phone?: boolean; show_total_qty?: boolean; show_amount_words?: boolean; show_powered_by?: boolean; show_terms?: boolean; terms?: string };
   subtotal: number; discount: number; tax: number; /** GST options (website: GST options): cess and TCS are inside the total, TDS is held back by the customer */ cess?: number; tcs?: number; tds?: number; reverse_charge?: boolean; bill_of_supply?: boolean; round_off: number; total: number; amount_paid: number; balance_due: number;
-  order_number?: string | null; table_name?: string | null;
+  order_number?: string | null; table_name?: string | null; /** today's counter token (an order with no table), when the business prints one */ token?: number | null;
   outlet?: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; city?: string | null } | null;
   seller?: { gstin?: string | null; address?: string | null; city?: string | null; phone?: string | null };
   items: InvoiceLine[]; payments: { method: string; amount: number }[];
@@ -27,6 +27,15 @@ const tableWidths = (width: number) => { const w = width >= 48 ? [7, 9, 10] : [7
 const plain = (r: number) => (Math.round(r * 100) / 100).toFixed(2);
 /** One row of the item table: name column, then Qty, Rate and Amount right-aligned. */
 const tableRow = (width: number) => { const { w, leftW } = tableWidths(width); return (left: string, q: string, rate: string, amount: string) => left.slice(0, leftW).padEnd(leftW) + q.slice(0, w[0]).padStart(w[0]) + rate.slice(0, w[1]).padStart(w[1]) + amount.slice(0, w[2]).padStart(w[2]); };
+/** The end of every bill: the shop's footer (its own lines kept, centred) and Powered by FlowXP unless the business switched it off. */
+export const footerRows = (footer: string | undefined, width: number, powered = true): string[] => {
+  const centre = (s: string) => ' '.repeat(Math.max(0, Math.floor((width - s.length) / 2))) + s;
+  const own = String(footer ?? '').split(/\r?\n/).flatMap((l) => (l.trim() ? wordWrap(l, width) : [])).map(centre);
+  return powered ? [...own, centre('Powered by FlowXP')] : own;
+};
+/** The day's token slip, printed on its own after the bill (double size): null when the business has it off or the order has no token. */
+export const tokenText = (inv: Invoice, businessName: string): string | null =>
+  inv.receipt?.print_token === true && inv.token ? `${businessName.slice(0, 16)}\nTOKEN\n${inv.token}\n${inv.order_number ? `Order ${inv.order_number}` : ''}` : null;
 /** Break text into rows of at most `width` characters; a longer word is split. */
 const wordWrap = (text: string, width: number): string[] => {
   const rows: string[] = []; let row = '';
@@ -98,7 +107,7 @@ export const receiptLines = (inv: Invoice, businessName: string, width = WIDTH):
   if (inv.balance_due > 0) out.push(row('Balance due', money(inv.balance_due)));
   out.push('-'.repeat(width));
   if (inv.receipt?.show_terms === true && inv.receipt.terms) { out.push(...wordWrap(`Terms: ${inv.receipt.terms}`, width)); out.push('-'.repeat(width)); }
-  out.push('Thank you');
+  out.push(...footerRows(inv.receipt?.footer ?? 'Thank you', width, inv.receipt?.show_powered_by !== false));
   return out;
 };
 
@@ -133,6 +142,7 @@ export const pendingReceiptLines = (e: { local_no: string; taken_at: number; pre
   if (paid > 0) out.push(row(e.preview.method, rupees(Math.min(paid, e.preview.totalPaise))));
   if (paid < e.preview.totalPaise) out.push(row('BALANCE DUE', rupees(e.preview.totalPaise - paid)));
   out.push('-'.repeat(width));
+  out.push(...footerRows('', width));
   return out;
 };
 export const pendingReceiptText = (e: { local_no: string; taken_at: number; preview: Preview }, businessName: string, width = WIDTH): string => pendingReceiptLines(e, businessName, width).join('\n');

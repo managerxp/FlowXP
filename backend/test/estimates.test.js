@@ -41,4 +41,20 @@ test('estimates: numbered, checked, converted to one invoice', { skip }, async (
   const other = rows.find((r) => r.estimate_id !== a.estimate_id);
   assert.equal((await call(est.cancel, tenant, user, { params: { id: String(other.estimate_id) } })).code, 200);
   assert.equal((await call(est.convert, tenant, user, { params: { id: String(other.estimate_id) } })).code, 409);
+
+  // with GST on, the estimate shows the tax, and its total is what the invoice comes to
+  await pool.query(`UPDATE businesses SET gst_enabled = TRUE WHERE business_id = $1`, [biz]);
+  const taxed = (await pool.query(`INSERT INTO products (business_id, name, selling_price_paise, tax_rate, track_inventory) VALUES ($1,'Bag',10000,18,FALSE) RETURNING product_id`, [biz])).rows[0].product_id;
+  const g = (await make({ items: [{ product_id: taxed, quantity: 2 }, { description: 'Fitting', quantity: 1, unit_price: 100, tax_rate: 5 }], discount: 6 })).body.data;
+  assert.deepEqual([g.subtotal, g.tax, g.total], [300, 41, 335]);   // 200 + 100, 36 + 5, 300 + 41 - 6
+  const inv = (await call(est.convert, tenant, user, { params: { id: String(g.estimate_id) } })).body.data;
+  assert.equal(Number(inv.total_paise ?? Math.round(inv.total * 100)), 33500);
+
+  // a price that includes GST (sold at MRP): the customer pays exactly the price, and the GST is taken out of it, on the estimate and the bill
+  const soap = (await pool.query(`INSERT INTO products (business_id, name, selling_price_paise, tax_rate, track_inventory, price_includes_tax) VALUES ($1,'Soap',11800,18,FALSE,TRUE) RETURNING product_id`, [biz])).rows[0].product_id;
+  const m = (await make({ items: [{ product_id: soap, quantity: 1 }] })).body.data;
+  assert.deepEqual([m.subtotal, m.tax, m.total], [100, 18, 118]);
+  const sold = (await call(est.convert, tenant, user, { params: { id: String(m.estimate_id) } })).body.data;
+  assert.equal(Number(sold.total_paise ?? Math.round(sold.total * 100)), 11800);
+  assert.equal(Number(sold.tax_paise ?? Math.round(sold.tax * 100)), 1800);
 });

@@ -73,6 +73,7 @@ export default function Customers() {
           <Button title="Add customer" kind="quiet" onPress={() => setAdding(true)} />
         </View>
         {!pick && !offline ? <Chips<Show> items={[{ id: 'all', label: 'Everyone' }, { id: 'owing', label: 'Customer dues' }, { id: 'best', label: 'Best customers' }]} value={show} onChange={setShow} /> : null}
+        {!pick && !offline ? <View style={{ paddingHorizontal: 16, paddingBottom: 6, flexDirection: 'row' }}><Button title="Import customers" kind="quiet" onPress={() => router.push('/customers-import')} /></View> : null}
         <SavedNote at={savedAt} />
         {offline && local.length === 0 ? <Failed message={error} onRetry={() => { void refresh(); }} /> : null}
         {offline && local.length > 0 ? <Text style={{ color: color.warn, paddingHorizontal: 16, paddingBottom: 6 }}>No internet. Showing the customers saved on this phone.</Text> : null}

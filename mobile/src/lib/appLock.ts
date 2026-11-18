@@ -9,7 +9,8 @@ import { createStore, useStore } from './store.ts';
 export const GRACE_MS = 30 * 1000;   // a quick switch to another app does not lock; half a minute away does
 export type SecretStore = { get: () => Promise<string | null>; set: (v: string) => Promise<void>; clear: () => Promise<void> };
 
-export const lockStore = createStore<{ pin: string | null; locked: boolean; loaded: boolean }>({ pin: null, locked: false, loaded: false });
+/** bio: the owner also allowed fingerprint / face to open the app (the PIN always works too). */
+export const lockStore = createStore<{ pin: string | null; locked: boolean; loaded: boolean; bio: boolean }>({ pin: null, locked: false, loaded: false, bio: false });
 export const useLock = () => useStore(lockStore);
 
 export const validPin = (p: string): boolean => /^\d{4}$/.test(p);
@@ -18,10 +19,25 @@ export const validPin = (p: string): boolean => /^\d{4}$/.test(p);
 export const shouldLock = (hasPin: boolean, leftAt: number | null, now: number): boolean => hasPin && leftAt != null && now - leftAt >= GRACE_MS;
 
 /** Read the saved PIN when the app opens; with one saved the app starts locked. */
-export const loadLock = async (store: SecretStore): Promise<void> => {
-  let pin: string | null = null;
+export const loadLock = async (store: SecretStore, bioStore?: SecretStore): Promise<void> => {
+  let pin: string | null = null; let bio = false;
   try { const v = await store.get(); pin = v && validPin(v) ? v : null; } catch { /* unreadable: no lock rather than a locked-out owner */ }
-  lockStore.set({ pin, locked: pin != null, loaded: true });
+  try { bio = pin != null && (await bioStore?.get()) === '1'; } catch { /* PIN only */ }
+  lockStore.set({ pin, locked: pin != null, loaded: true, bio });
+};
+
+/** Fingerprint / face on or off. Only with a PIN, so there is always a way in that does not need the sensor. */
+export const setBio = async (bioStore: SecretStore, on: boolean): Promise<void> => {
+  if (on && !lockStore.get().pin) return;
+  if (on) await bioStore.set('1'); else await bioStore.clear().catch(() => {});
+  lockStore.set({ bio: on });
+};
+
+/** The phone confirmed the owner's fingerprint or face. */
+export const unlockByBio = (): boolean => {
+  if (!lockStore.get().bio) return false;
+  lockStore.set({ locked: false });
+  return true;
 };
 
 export const setPin = async (store: SecretStore, pin: string): Promise<boolean> => {
@@ -31,7 +47,10 @@ export const setPin = async (store: SecretStore, pin: string): Promise<boolean> 
   return true;
 };
 
-export const clearPin = async (store: SecretStore): Promise<void> => { await store.clear().catch(() => {}); lockStore.set({ pin: null, locked: false }); };
+export const clearPin = async (store: SecretStore, bioStore?: SecretStore): Promise<void> => {
+  await store.clear().catch(() => {}); await bioStore?.clear().catch(() => {});
+  lockStore.set({ pin: null, locked: false, bio: false });
+};
 
 /** Try a PIN on the lock screen; true opens the app. */
 export const tryUnlock = (entered: string): boolean => {

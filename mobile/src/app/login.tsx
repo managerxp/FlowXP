@@ -6,7 +6,6 @@ import { ApiError, NetworkError } from '../lib/api.ts';
 import { api, signedIn } from '../lib/session.ts';
 import { kvGet, kvSet } from '../lib/local.ts';
 import { Button, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
-import { LanguagePicker } from '../lib/lang.tsx';
 import { EmailCode } from '../lib/EmailCode.tsx';
 import { Logo } from '../lib/Logo.tsx';
 import { PRIVACY_URL, TERMS_URL } from '../lib/account.ts';
@@ -82,7 +81,6 @@ export default function Login() {
             <Pressable accessibilityRole="link" onPress={() => { void Linking.openURL(PRIVACY_URL); }} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: color.soft, textDecorationLine: 'underline' }}>Privacy Policy</Text></Pressable>
             <Pressable accessibilityRole="link" onPress={() => { void Linking.openURL(TERMS_URL); }} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: color.soft, textDecorationLine: 'underline' }}>Terms</Text></Pressable>
           </View>
-          <LanguagePicker compact />
           </>}
         </ScrollView>
       </KeyboardAvoidingView>

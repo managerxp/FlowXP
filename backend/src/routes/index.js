@@ -22,7 +22,10 @@ import * as dashboard from '../controllers/dashboard.controller.js';
 import * as siteAssistant from '../controllers/siteAssistant.controller.js';
 import * as webhooks from '../controllers/webhooks.controller.js';
 import * as contact from '../controllers/contact.controller.js';
+import * as testimonials from '../controllers/testimonials.controller.js';
 import * as deletion from '../controllers/accountDeletion.controller.js';
+import * as accountantPack from '../controllers/accountantPack.controller.js';
+import * as pin from '../controllers/pinLogin.controller.js';
 import productsRoutes from './products.routes.js';
 import menuRoutes from './menu.routes.js';
 import brandsRoutes from './brands.routes.js';
@@ -41,6 +44,8 @@ import purchasesRoutes from './purchases.routes.js';
 import expensesRoutes from './expenses.routes.js';
 import otherIncomeRoutes from './otherIncome.routes.js';
 import estimatesRoutes from './estimates.routes.js';
+import taxRatesRoutes from './taxRates.routes.js';
+import moneyAccountsRoutes from './moneyAccounts.routes.js';
 import reportsRoutes from './reports.routes.js';
 import ordersRoutes from './orders.routes.js';
 import tablesRoutes from './tables.routes.js';
@@ -113,6 +118,7 @@ const appErrorLimiter = limiter(30, 15, 'Too many reports from here.');
 const appReportLimiter = limiter(10, 15, 'You have sent a few reports already. Please wait a little before sending another.');
 const supportLimiter = limiter(10, 60, 'You have raised a few tickets already. Please wait a little, or add to one you have open.');
 const assistantLimiter = limiter(30, 15, 'Too many questions in a short time. Try again in a few minutes.');
+const packLimiter = limiter(20, 60, 'Too many downloads from here. Try again later.');
 
 /* ── Public ─────────────────────────────────────────────────────────────── */
 
@@ -135,10 +141,12 @@ router.post('/auth/resend-email-otp', resendLimiter, auth.resendEmailOtp);   // 
 router.post('/auth/forgot-password', resetLimiter, emailLimiter, auth.forgotPassword);
 router.post('/auth/reset-password', resetLimiter, auth.resetPassword);
 router.post('/contact', contactLimiter, contact.send);
+router.get('/testimonials', testimonials.publicList);   // the published client reviews on the home page
 // deleting an account: yourself when signed in, or a request when you cannot sign in (nothing is deleted from the public one until support has checked who is asking)
 router.post('/auth/delete-account', requireAuth, loginLimiter, deletion.deleteMe);
 router.post('/public/account-deletion', deletionLimiter, deletion.publicRequest);
 router.post('/public/assistant', assistantLimiter, siteAssistant.ask);
+router.get('/public/accountant-pack/:token', packLimiter, accountantPack.publicDownload);   // a shared accountant pack (signed link, 7 days)
 
 /* The public pricing page reads this. Prices live in the database so they can
    change without a deploy — see the note in database.js. */
@@ -204,6 +212,19 @@ router.post('/auth/logout', (req, res) => {
   res.json({ success: true, message: 'Signed out' });
 });
 
+/* PIN sign-in on a known computer (controllers/pinLogin.controller.js). The sign-in and check share the login limiter; each PIN also has its own five tries. */
+router.get('/auth/pin/people', pin.people);
+router.post('/auth/pin/login', loginLimiter, pin.loginWithPin);
+router.get('/auth/pin', requireAuth, pin.myPinHere);
+router.post('/auth/pin', requireAuth, pin.setPin);
+router.delete('/auth/pin', requireAuth, pin.removePin);
+router.post('/auth/pin/check', requireAuth, loginLimiter, pin.checkPin);
+router.get('/auth/pin/devices', requireAuth, pin.myDevices);
+router.delete('/auth/pin/devices/:id', requireAuth, pin.removeMyDevice);
+const ownerOrAdmin = (req, res, next) => (['OWNER', 'ADMIN'].includes(req.tenant?.role) ? next() : res.status(403).json({ success: false, message: 'Only an owner or admin can do this' }));
+router.get('/business/pin-devices', requireAuth, withBusiness(), ownerOrAdmin, pin.businessDevices);
+router.delete('/business/pin-devices/:id', requireAuth, withBusiness({ requireActive: true }), ownerOrAdmin, pin.removeBusinessDevice);
+
 /* ── Signed in, scoped to one business ──────────────────────────────────── */
 
 router.get('/businesses/current', requireAuth, withBusiness(), business.getCurrent);
@@ -247,6 +268,8 @@ router.use('/purchases', purchasesRoutes);
 router.use('/expenses', expensesRoutes);
 router.use('/other-income', otherIncomeRoutes);
 router.use('/estimates', estimatesRoutes);
+router.use('/tax-rates', taxRatesRoutes);
+router.use('/money-accounts', moneyAccountsRoutes);
 router.use('/reports', reportsRoutes);
 router.use('/profitability', profitabilityRoutes);
 router.use('/leakage', leakageRoutes);

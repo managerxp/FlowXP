@@ -31,3 +31,11 @@ const SUBDIVISION_LABEL = {
   France: 'Region', Germany: 'State', Italy: 'Region', Spain: 'Province', China: 'Province', Netherlands: 'Province'
 };
 export const subdivisionLabel = (countryName) => SUBDIVISION_LABEL[countryName] || 'State';
+
+/* GSTIN → state: the first two digits of a GSTIN are the state's GST code (same table as backend/src/modules/gst/states.js; 28 and 25 are the old codes of Andhra Pradesh and Daman and Diu). */
+const GST_STATE = ['Jammu and Kashmir', 'Himachal Pradesh', 'Punjab', 'Chandigarh', 'Uttarakhand', 'Haryana', 'Delhi', 'Rajasthan', 'Uttar Pradesh', 'Bihar', 'Sikkim', 'Arunachal Pradesh', 'Nagaland', 'Manipur', 'Mizoram', 'Tripura', 'Meghalaya', 'Assam', 'West Bengal', 'Jharkhand', 'Odisha', 'Chhattisgarh', 'Madhya Pradesh', 'Gujarat', 'Dadra and Nagar Haveli and Daman and Diu', 'Dadra and Nagar Haveli and Daman and Diu', 'Maharashtra', 'Andhra Pradesh', 'Karnataka', 'Goa', 'Lakshadweep', 'Kerala', 'Tamil Nadu', 'Puducherry', 'Andaman and Nicobar Islands', 'Telangana', 'Andhra Pradesh', 'Ladakh'];
+/** The state a GSTIN being typed belongs to (from its first two digits), or null until those are a real state code. */
+export const stateFromGstin = (gstin) => {
+  const m = /^(\d{2})/.exec(String(gstin ?? '').trim());
+  return m ? GST_STATE[Number(m[1]) - 1] ?? null : null;
+};

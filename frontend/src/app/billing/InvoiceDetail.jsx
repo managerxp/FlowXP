@@ -329,7 +329,7 @@ const InvoiceDetail = () => {
                   </td>
                   <td className="tabular py-3 text-right text-ink-700">{qty(i.quantity)}</td>
                   <td className="tabular hidden py-3 text-right text-ink-700 sm:table-cell print:table-cell">{formatCurrency(i.unit_price)}</td>
-                  {invoice.tax > 0 && <td className="tabular hidden py-3 text-right text-ink-500 sm:table-cell print:table-cell">{i.tax_rate}%</td>}
+                  {invoice.tax > 0 && <td className="tabular hidden py-3 text-right text-ink-500 sm:table-cell print:table-cell">{i.tax_kind && i.tax_kind !== 'TAXABLE' ? i.tax_name : `${i.tax_rate}%`}</td>}
                   <td className="tabular py-3 text-right font-medium text-ink-900">{formatCurrency(i.line_total)}</td>
                 </tr>
               ))}
@@ -360,6 +360,7 @@ const InvoiceDetail = () => {
           <div className="mt-6 print:hidden"><OfflineNotice offline={invoice.offline} review={invoice.review} /></div>
           {(() => { const shown = invoice.offline ? String(invoice.notes || '').split(' | Taken offline')[0].replace(/^Taken offline.*$/, '') : invoice.notes; return shown ? <p className="border-t border-line pt-4 text-small text-ink-700">{shown}</p> : null; })()}
           <p className="mt-8 text-center text-caption text-ink-400">Thank you{business?.name ? ` for choosing ${business.name}` : ''}.</p>
+          {business?.receipt_settings?.show_powered_by !== false && <p className="mt-1 text-center text-[10px] text-ink-400">Powered by FlowXP</p>}
         </article>}
 
         {/* ── Beside it: money and what to do next (never printed) ── */}

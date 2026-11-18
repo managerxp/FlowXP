@@ -4,6 +4,7 @@ import { isOfflineMessage } from './net.ts';
 import { t, tx } from './i18n.ts';
 import type { ReactNode } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { SkeletonRows } from './motion.tsx';
 
 import { color } from './theme.ts';
 /** The app's colours (lib/theme.ts): one shared object that follows the theme chosen in Settings > Display. */
@@ -90,9 +91,9 @@ export const Empty = ({ children }: { children: ReactNode }) => <T2 style={{ col
 
 /** Something is loading: a spinner and, after a moment, what it is waiting for (never a blank screen). */
 export const Loading = ({ what = 'Loading' }: { what?: string }) => (
-  <V2 accessibilityLiveRegion="polite" style={{ padding: 32, alignItems: 'center', gap: 10 }}>
-    <ActivityIndicator accessibilityLabel={t(what)} />
-    <T2 style={{ color: color.soft }}>{t(what)}…</T2>
+  <V2 accessibilityLiveRegion="polite" accessibilityLabel={`${t(what)}…`} style={{ paddingVertical: 16, gap: 8 }}>
+    <SkeletonRows rows={3} />
+    <T2 style={{ color: color.soft, textAlign: 'center', fontSize: 13 }}>{t(what)}…</T2>
   </V2>
 );
 

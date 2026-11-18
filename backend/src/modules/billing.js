@@ -19,6 +19,7 @@ import { cessOn, levyOn, withGstDefaults } from './gstOptions.js';
 import { offlineInfo } from '../utils/offlineNote.js';
 import { recordAudit, recordEvent } from './events.js';
 import { computeLineTax, isInterState, sumLines } from './tax.js';
+import { placeOfSupply } from './gst/states.js';
 import { toPaise, toQuantity, toRupees } from '../utils/money.js';
 import { ModifierError, modifierLabel, outletSettingsFor, resolveModifiers } from './menu.js';
 import { moveStock, stockAt } from './stock.js';
@@ -198,7 +199,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   let customer = null;
   if (input.customerId) {
     const { rows } = await client.query(
-      `SELECT customer_id, name, state FROM customers WHERE customer_id = $1 AND business_id = $2`,
+      `SELECT customer_id, name, state, gstin FROM customers WHERE customer_id = $1 AND business_id = $2`,
       [input.customerId, tenant.businessId]
     );
     if (!rows.length) throw new BillingError(400, 'Customer not found');
@@ -221,13 +222,16 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
 
   // GST place of supply follows the outlet's state when it has one (outlets can be in different states).
   const outlet = (await client.query(`SELECT state FROM branches WHERE branch_id = $1 AND business_id = $2`, [tenant.branchId, tenant.businessId])).rows[0];
-  const interState = isInterState(outlet?.state || business.state, customer?.state);
+  // the buyer's GSTIN says where they are (its first two digits); only without one is the state they were saved with used
+  const interState = isInterState(outlet?.state || business.state, placeOfSupply(customer?.gstin, customer?.state));
 
   const productIds = [...new Set(items.filter((i) => i.product_id).map((i) => Number(i.product_id)))];
   const products = new Map();
   if (productIds.length) {
     const { rows } = await client.query(
-      `SELECT product_id, name, selling_price_paise, purchase_price_paise, tax_rate, cess_rate, track_inventory, current_stock, status, category_id
+      `SELECT product_id, name, selling_price_paise, purchase_price_paise, tax_rate, cess_rate, track_inventory, current_stock, status, category_id, price_includes_tax,
+              (SELECT tr.kind FROM tax_rates tr WHERE tr.tax_rate_id = products.tax_rate_id) AS tax_kind,
+              (SELECT tr.name FROM tax_rates tr WHERE tr.tax_rate_id = products.tax_rate_id) AS tax_name
        FROM products WHERE business_id = $1 AND product_id = ANY($2::int[]) ORDER BY product_id FOR UPDATE`,
       [tenant.businessId, productIds]
     );
@@ -340,14 +344,16 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       if (free > 0) { discountPaise += free; loyalty.applied = { amountPaise: free, item: product.name }; }
     }
     const cessRate = cessOpt && product ? Number(product.cess_rate) : 0;
+    // a product sold at its MRP has GST inside its price; otherwise the till decides (a salon or gym can price everything with tax in)
+    const inclusive = input.taxInclusive === true || product?.price_includes_tax === true;
     const tax = withCess(computeLineTax({
       quantity, unitPricePaise, discountPaise, taxRatePercent: taxRate,
-      gstEnabled: taxOn, interState, inclusive: input.taxInclusive === true
+      gstEnabled: taxOn, interState, inclusive
     }), cessRate);
 
     lines.push({
       product_id: product?.product_id || null, categoryId: product?.category_id ?? null, description, quantity, unitPricePaise,
-      discountPaise, taxRate, cessRate, trackInventory: Boolean(product?.track_inventory), modifiers, consumption,
+      discountPaise, taxRate, cessRate, inclusive, taxKind: product?.tax_kind ?? null, taxName: product?.tax_name ?? null, trackInventory: Boolean(product?.track_inventory), modifiers, consumption,
       unitName: raw.unit_name ? String(raw.unit_name).slice(0, 24) : null, stockFactor,
       fallbackCostPaise: product ? Math.round(Number(product.purchase_price_paise) * stockFactor) : 0, ...tax
     });
@@ -365,7 +371,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
         line.promo = { id: r.promo_id, discountPaise: r.discountPaise };
         Object.assign(line, withCess(computeLineTax({
           quantity: line.quantity, unitPricePaise: line.unitPricePaise, discountPaise: line.discountPaise, taxRatePercent: line.taxRate,
-          gstEnabled: taxOn, interState, inclusive: input.taxInclusive === true
+          gstEnabled: taxOn, interState, inclusive: line.inclusive
         }), line.cessRate));
       }
     }
@@ -502,11 +508,11 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   for (const line of lines) {
     await client.query(
       `INSERT INTO invoice_items
-         (invoice_id, product_id, description, quantity, unit_price_paise, discount_paise, tax_rate, tax_amount_paise, line_total_paise, modifiers, unit_cost_paise, unit_name, unit_factor, promo_id, promo_discount_paise, cess_paise)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+         (invoice_id, product_id, description, quantity, unit_price_paise, discount_paise, tax_rate, tax_amount_paise, line_total_paise, modifiers, unit_cost_paise, unit_name, unit_factor, promo_id, promo_discount_paise, cess_paise, tax_kind, tax_name)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
       [invoice.invoice_id, line.product_id, line.description, line.quantity, line.unitPricePaise,
        line.discountPaise, line.taxRate, line.tax_paise, line.line_total_paise, JSON.stringify(line.modifiers), line.unitCostPaise, line.unitName, line.stockFactor,
-       line.promo?.id ?? null, line.promo?.discountPaise ?? 0, line.cess_paise || 0]
+       line.promo?.id ?? null, line.promo?.discountPaise ?? 0, line.cess_paise || 0, line.taxKind ?? null, line.taxName ?? null]
     );
 
     // stockHandledElsewhere: the goods are not in this outlet's stock (a distributor's van holds them), so selling them here must not take them out of it

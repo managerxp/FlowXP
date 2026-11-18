@@ -14,21 +14,32 @@ import { useAuth } from '../context/AuthContext.jsx';
 const STATUS = { OPEN: T('Open'), CONVERTED: T('Invoiced'), CANCELLED: T('Cancelled') };
 const shareText = (r) => [`Estimate ${r.estimate_number}`, ...(r.customer_name ? [`For: ${r.customer_name}`] : []), '',
   ...r.items.map((i, n) => `${n + 1}. ${i.description}  ${i.quantity} x ${formatCurrency(i.unit_price)} = ${formatCurrency(i.quantity * i.unit_price)}`),
-  ...(r.discount > 0 ? ['', `Discount: ${formatCurrency(r.discount)}`] : []), '', `Total: ${formatCurrency(r.total)}`, ...(r.valid_until ? [`Valid until: ${r.valid_until}`] : [])].join('\n');
+  ...(r.tax > 0 ? ['', `GST: ${formatCurrency(r.tax)}`] : []), ...(r.discount > 0 ? ['', `Discount: ${formatCurrency(r.discount)}`] : []), '', `Total: ${formatCurrency(r.total)}`, ...(r.valid_until ? [`Valid until: ${r.valid_until}`] : [])].join('\n');
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-/* A clean one-page estimate in its own window, opened on the print dialog (Save as PDF works from there). */
-const printEstimate = (r, shop) => {
+/* A clean one-page estimate, or the same lines as a proforma invoice, in its own window on the print dialog (Save as PDF works from there).
+   Mirrors mobile/src/lib/estimates.ts estimateHtml. */
+const printEstimate = (r, biz, proforma = false) => {
   const w = window.open('', '_blank');
   if (!w) return;
-  const rows = r.items.map((i, n) => `<tr><td>${n + 1}</td><td>${esc(i.description)}</td><td class="r">${i.quantity}</td><td class="r">${formatCurrency(i.unit_price)}</td><td class="r">${formatCurrency(i.quantity * i.unit_price)}</td></tr>`).join('');
-  w.document.write(`<!doctype html><meta charset="utf-8"><title>${esc(r.estimate_number)}</title><style>body{font:14px system-ui,sans-serif;margin:32px;color:#111}h1{font-size:20px;margin:0}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border-bottom:1px solid #ccc;padding:6px 8px;text-align:left}.r{text-align:right}.t{font-weight:700}</style><h1>${esc(shop)}</h1><p>Estimate ${esc(r.estimate_number)}${r.customer_name ? ' &middot; ' + esc(r.customer_name) : ''}${r.valid_until ? ' &middot; valid until ' + esc(r.valid_until) : ''}</p><table><tr><th>#</th><th>Item</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Amount</th></tr>${rows}${r.discount > 0 ? `<tr><td colspan="4" class="r">Discount</td><td class="r">- ${formatCurrency(r.discount)}</td></tr>` : ''}<tr class="t"><td colspan="4" class="r">Total</td><td class="r">${formatCurrency(r.total)}</td></tr></table>${r.notes ? `<p>${esc(r.notes)}</p>` : ''}`);
+  const title = proforma ? 'Proforma invoice' : 'Estimate';
+  const gst = r.tax > 0;
+  const rows = r.items.map((i, n) => `<tr><td>${n + 1}</td><td>${esc(i.description)}</td><td class="r">${i.quantity}</td><td class="r">${formatCurrency(i.unit_price)}</td>${gst ? `<td class="r">${Number(i.tax_rate) || 0}%</td>` : ''}<td class="r">${formatCurrency(i.quantity * i.unit_price)}</td></tr>`).join('');
+  const span = gst ? 5 : 4;
+  const sum = (label, v) => `<tr><td colspan="${span}" class="r">${label}</td><td class="r">${v}</td></tr>`;
+  const from = [biz?.address, biz?.phone, biz?.gstin ? `GSTIN ${biz.gstin}` : ''].filter(Boolean).map(esc).join(' &middot; ');
+  w.document.write(`<!doctype html><meta charset="utf-8"><title>${esc(r.estimate_number)}</title><style>body{font:14px system-ui,sans-serif;margin:32px;color:#111}h1{font-size:20px;margin:0}h2{font-size:16px;margin:20px 0 4px}p{margin:4px 0}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border-bottom:1px solid #ccc;padding:6px 8px;text-align:left}.r{text-align:right}.t td{font-weight:700}.m{color:#555;font-size:12px}</style>
+<h1>${esc(biz?.name || '')}</h1>${from ? `<p class="m">${from}</p>` : ''}
+<h2>${title} ${esc(r.estimate_number)}</h2><p>${r.customer_name ? `For ${esc(r.customer_name)}` : ''}${r.valid_until ? `${r.customer_name ? ' &middot; ' : ''}Valid until ${esc(r.valid_until)}` : ''}</p>
+<table><tr><th>#</th><th>Item</th><th class="r">Qty</th><th class="r">Price</th>${gst ? '<th class="r">GST</th>' : ''}<th class="r">Amount</th></tr>${rows}
+${gst ? sum('Subtotal', formatCurrency(r.subtotal)) + sum('GST', formatCurrency(r.tax)) : ''}${r.discount > 0 ? sum('Discount', `- ${formatCurrency(r.discount)}`) : ''}<tr class="t"><td colspan="${span}" class="r">Total</td><td class="r">${formatCurrency(r.total)}</td></tr></table>
+${r.notes ? `<p>${esc(r.notes)}</p>` : ''}<p class="m">${proforma ? 'This is a proforma invoice, not a tax invoice. The tax invoice is issued on payment or delivery.' : 'This is an estimate, not a bill.'}</p>`);
   w.document.close(); w.focus(); w.print();
 };
 const blankLine = () => ({ product_id: '', description: '', quantity: '1', unit_price: '' });
 const blank = () => ({ customer_id: '', customer_name: '', valid_until: '', discount: '', notes: '', items: [blankLine()] });
 
 const EstimatesPage = () => {
-  const { t: tr } = useT();
+  const tr = useT();
   const toast = useToast();
   const { business } = useAuth();
   const dialog = useDialog();
@@ -38,12 +49,14 @@ const EstimatesPage = () => {
   const [error, setError] = useState('');
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [biz, setBiz] = useState(null);
 
   const load = useCallback(() => { api('/estimates').then(setRows).catch((e) => setError(e.message)); }, []);
   useEffect(() => {
     load();
     api('/products?kind=DISH').then((r) => setProducts(r?.rows || r || [])).catch(() => {});
     api('/customers').then((r) => setCustomers(r?.rows || r || [])).catch(() => {});
+    api('/businesses/current').then(setBiz).catch(() => {});
   }, [load]);
 
   const setItem = (i, patch) => setForm((f) => ({ ...f, items: f.items.map((it, n) => (n === i ? { ...it, ...patch } : it)) }));
@@ -97,7 +110,8 @@ const EstimatesPage = () => {
                 <span className="tabular text-small font-semibold text-ink-900">{formatCurrency(r.total)}</span>
                 {r.status === 'OPEN' && (
                   <>
-                    <Button size="sm" variant="secondary" onClick={() => printEstimate(r, business?.name || '')}>{tr('Print')}</Button>
+                    <Button size="sm" variant="secondary" onClick={() => printEstimate(r, biz || business)}>{tr('Print')}</Button>
+                    <Button size="sm" variant="secondary" onClick={() => printEstimate(r, biz || business, true)}>{tr('Proforma')}</Button>
                     <Button size="sm" variant="secondary" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(shareText(r))}`, '_blank', 'noopener')}>{tr('Share on WhatsApp')}</Button>
                     <Button size="sm" onClick={() => makeInvoice(r)}>{tr('Make invoice')}</Button>
                     <Button size="sm" variant="secondary" aria-label={tr('Cancel estimate')} onClick={() => cancel(r)}><Trash2 className="size-4" aria-hidden="true" /></Button>

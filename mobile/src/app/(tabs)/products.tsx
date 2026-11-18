@@ -61,6 +61,12 @@ export default function Products() {
           <TextInput style={s.input} value={text} onChangeText={setText} placeholder={pharmacy || food ? (food ? 'Search for an item' : 'Search by name or barcode') : 'Search by name or barcode'} autoCorrect={false} accessibilityLabel="Search products" />
         </View>
         <Hint id="products" />
+        {food || !pharmacy ? (
+          <View style={{ paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {food ? <Button title="Menu on / off" kind="quiet" onPress={() => router.push('/menu-availability')} /> : null}
+            {food ? <Button title="Options & add-ons" kind="quiet" onPress={() => router.push('/option-groups')} /> : <Button title="Print labels" kind="quiet" onPress={() => router.push('/labels')} />}
+          </View>
+        ) : null}
         {categories.length > 1 ? <Chips items={[{ id: '__all__', label: `All ${sync.products}` }, ...categories.map((c) => ({ id: c.name, label: `${c.name || 'Other'} ${c.count}` }))]} value={category} onChange={setCategory} /> : null}
         <ColumnList
           style={{ flex: 1, marginTop: 8 }} data={rows} keyExtractor={(p) => String(p.product_id)} onEndReached={loadMore} onEndReachedThreshold={0.5} keyboardShouldPersistTaps="handled"

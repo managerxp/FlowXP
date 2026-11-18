@@ -116,7 +116,8 @@ export const createPharmacySale = async (client, tenant, userId, input, { dryRun
       if (available < quantity - 1e-9 && offline) flags.push(`${product.name}: ${q3(quantity - Math.max(0, available))} more sold than the shelf held`);
     }
 
-    const tax = computeLineTax({ quantity, unitPricePaise, discountPaise, taxRatePercent: business.gst_enabled ? taxRate : 0, gstEnabled: business.gst_enabled, interState });
+    // medicines are sold at the MRP on the strip: with "price includes GST" the tax is taken out of it, not added
+    const tax = computeLineTax({ quantity, unitPricePaise, discountPaise, taxRatePercent: business.gst_enabled ? taxRate : 0, gstEnabled: business.gst_enabled, interState, inclusive: product.price_includes_tax === true });
     lines.push({ product, quantity, unitPricePaise, discountPaise, taxRate, tax, batches: pickedBatches });
   }
 

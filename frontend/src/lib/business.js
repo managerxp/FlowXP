@@ -24,6 +24,8 @@ export const isDistributor = (business) => isWholesale(business) && Boolean(busi
 
 /* Supermarkets and retail shops: the generic products/billing screens, with generated SKUs, any number of barcodes and an MRP. */
 export const RETAIL_TYPES = ['SUPERMARKET', 'RETAIL', 'AUTO_PARTS', 'MECHANIC', 'CLOTHING'];
+/* shops whose goods carry a printed MRP that includes GST: a new product starts with "Price includes GST" on (same list as the server's MRP_TYPES) */
+export const MRP_TYPES = ['RETAIL', 'SUPERMARKET', 'CLOTHING', 'PHARMACY', 'ELECTRONICS'];
 
 /* Automotive spare parts: the retail till and stock center, plus the parts catalogue, racks and bins, receiving and counts. */
 export const AUTO_PARTS_TYPES = ['AUTO_PARTS', 'MECHANIC'];

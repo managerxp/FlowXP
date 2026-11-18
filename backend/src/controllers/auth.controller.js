@@ -224,7 +224,7 @@ const sessionPayload = async (user) => {
 const LOCKED = (minutes) => `Too many failed attempts on this account. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}, or reset your password.`;
 
 /** A finished sign-in: remember it, warn about a new device, hand back the session. */
-const finishLogin = async (req, res, user, method) => {
+export const finishLogin = async (req, res, user, method) => {
   const { newDevice } = await recordLogin(pool, { userId: user.user_id, email: user.email, req, outcome: 'SUCCESS', method });
   if (newDevice) alertNewDevice(user, req);
   pool.query(`UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE user_id = $1`, [user.user_id]).catch(() => {});

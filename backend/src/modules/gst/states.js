@@ -8,7 +8,7 @@ export const STATE_CODES = {
   mizoram: '15', tripura: '16', meghalaya: '17', assam: '18', 'west bengal': '19', jharkhand: '20', odisha: '21', chhattisgarh: '22',
   'madhya pradesh': '23', gujarat: '24', 'dadra and nagar haveli and daman and diu': '26', maharashtra: '27', 'andhra pradesh': '37',
   karnataka: '29', goa: '30', lakshadweep: '31', kerala: '32', 'tamil nadu': '33', puducherry: '34', 'andaman and nicobar islands': '35',
-  telangana: '36', ladakh: '38'
+  telangana: '36', ladakh: '38', 'other territory': '97'
 };
 
 const ALIASES = {
@@ -22,6 +22,12 @@ const ALIASES = {
    in the same place as SGST and filed in the same column; only the name on the bill and the reports changes. */
 const UTGST_CODES = new Set(['04', '26', '31', '35', '38']);
 export const taxName = (state) => (UTGST_CODES.has(stateCode(state)) ? 'UTGST' : 'SGST');
+
+/* Codes that old GSTINs still carry but that now mean another code: Andhra Pradesh was 28 before Telangana split off (now 37), and Daman and Diu was 25 before it joined
+   Dadra and Nagar Haveli (now 26). Two parties on either code are in the same state, so the sale is not inter-state. 97 is "other territory". */
+const LEGACY = { '28': '37', '25': '26' };
+export const canonicalCode = (code) => (code == null ? null : LEGACY[code] ?? code);
+export const sameState = (a, b) => { const x = canonicalCode(stateCode(a)); const y = canonicalCode(stateCode(b)); return Boolean(x && y && x === y); };
 
 export const stateName = (code) => Object.entries(STATE_CODES).find(([, c]) => c === code)?.[0] ?? null;
 

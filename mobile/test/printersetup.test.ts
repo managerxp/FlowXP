@@ -1,7 +1,7 @@
 /* Printers on the phone: the saved list, which printer does which job, the address checks, the byte chunks, and the six-language coverage. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PRINTER_TEXTS, chunks, cleanPrinters, colsFor, hostProblem, isMac, linkProblem, portProblem, printerFor, printerLine, removePrinter, setJob, setPaper, upsertPrinter, type SavedPrinter } from '../src/lib/printerSetup.ts';
+import { PRINTER_TEXTS, inLane, laneOf, chunks, cleanPrinters, colsFor, hostProblem, isMac, linkProblem, portProblem, printerFor, printerLine, removePrinter, setJob, setPaper, upsertPrinter, type SavedPrinter } from '../src/lib/printerSetup.ts';
 import { HI } from '../src/lib/i18n.ts';
 import { BN, KN, ML, TA, TE } from '../src/lib/i18n.more.ts';
 
@@ -54,4 +54,16 @@ test('every text of the Printers screens is translated into all six languages', 
   const missing: string[] = [];
   for (const [name, dict] of Object.entries(dicts)) for (const k of new Set(PRINTER_TEXTS)) { if (!(k in dict)) missing.push(`${name}: ${k}`); else assert.equal(names(dict[k]), names(k), `${name}: ${k}`); }
   assert.deepEqual(missing, []);
+});
+
+test('printing jobs to one printer, or any Bluetooth printer, run one after another; different network printers run side by side', async () => {
+  const log: string[] = [];
+  const job = (name: string, ms: number, fail = false) => async () => { log.push(`start ${name}`); await new Promise((r) => setTimeout(r, ms)); log.push(`end ${name}`); if (fail) throw new Error(name); };
+  const a = inLane(laneOf(bt('1')), job('kot', 30, true));
+  const b = inLane(laneOf(bt('2', '00:11:22:33:44:66')), job('receipt', 5));
+  await assert.rejects(a, /kot/); await b;
+  assert.deepEqual(log, ['start kot', 'end kot', 'start receipt', 'end receipt'], 'the second waits for the first, and a failure does not block it');
+  log.length = 0;
+  await Promise.all([inLane(laneOf(net('1', '192.168.1.50')), job('x', 20)), inLane(laneOf(net('2', '192.168.1.51')), job('y', 5))]);
+  assert.deepEqual(log, ['start x', 'start y', 'end y', 'end x'], 'two Wi-Fi printers do not wait for each other');
 });

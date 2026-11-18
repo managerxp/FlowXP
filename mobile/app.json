@@ -39,6 +39,7 @@
       "expo-router",
       "expo-secure-store",
       "expo-sqlite",
+      ["expo-local-authentication", { "faceIDPermission": "FlowXP uses Face ID to open the app when App lock is on." }],
       [
         "expo-location",
         {

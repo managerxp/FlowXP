@@ -167,6 +167,7 @@ export const ReceiptPage = () => {
         {s.show_loyalty && invoice.loyalty_message && <><Rule /><p className="text-center">★ {invoice.loyalty_message}</p></>}
         {s.show_terms === true && s.terms && <><Rule /><p className="whitespace-pre-line">Terms: {s.terms}</p></>}
         {s.footer && <><Rule /><p className="whitespace-pre-line text-center">{s.footer}</p></>}
+        {s.show_powered_by !== false && <p className="mt-2 text-center text-[10px]">Powered by FlowXP</p>}
       </div>
     </div>
   );
@@ -297,6 +298,7 @@ export const RunningBillPage = () => {
         {gstOn && gst > 0 && (<><Row left="Subtotal" right={subtotal.toFixed(2)} /><Row left="GST" right={gst.toFixed(2)} /></>)}
         <Row left="TOTAL" right={formatCurrency(Math.round(subtotal + gst))} bold />
         <p className="mt-2 text-center text-[11px]">Pay at the counter. Thank you!</p>
+        {biz?.receipt_settings?.show_powered_by !== false && <p className="mt-1 text-center text-[10px]">Powered by FlowXP</p>}
       </div>
     </div>
   );

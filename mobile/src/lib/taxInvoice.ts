@@ -20,7 +20,7 @@ export type TaxInvoice = {
   print_extra?: Record<string, string>; print_details?: Record<string, string>; invoice_print?: Partial<PrintSettings>;
   items: TaxItem[]; payments: { method: string; amount?: number }[]; customer_balance?: number;
 };
-export type TaxBusiness = { name: string; email?: string | null; receipt_settings?: { logo_url?: string | null } | null };
+export type TaxBusiness = { name: string; email?: string | null; receipt_settings?: { logo_url?: string | null; show_powered_by?: boolean } | null };
 
 /** Business types whose bills default to the tax-invoice layout (the website's TALLY_TYPES); the owner can force either layout in invoice print settings. */
 export const TALLY_TYPES = ['WHOLESALE', 'DISTRIBUTOR', 'AUTO_PARTS', 'MECHANIC', 'ELECTRONICS'];
@@ -194,6 +194,7 @@ export const taxInvoiceHtml = (invoice: TaxInvoice, business: TaxBusiness): { ht
   </div>
   ${sh.received_by ? '<div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--acc);border-top:0;padding-top:32px"><p style="padding:0 5px 5px">Received by:</p><p style="padding:0 5px 5px">Delivered by:</p></div>' : ''}
   ${cfg.footer_note ? `<p style="text-align:center;font-size:10px;margin-top:4px">${esc(cfg.footer_note)}</p>` : ''}
+  ${business.receipt_settings?.show_powered_by === false ? '' : '<p style="text-align:center;font-size:10px;margin-top:2px">Powered by FlowXP</p>'}
 </article>`;
 
   const copies = cfg.copies.length ? COPY_LABELS.filter((c) => cfg.copies.includes(c)) : [null];

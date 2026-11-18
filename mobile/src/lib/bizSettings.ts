@@ -44,21 +44,22 @@ export const profilePatch = (before: Profile, after: Profile): Record<string, st
 
 /* ── receipt and tax-invoice details ─────────────────────────────────────── */
 export type Receipt = {
-  paper_width: 58 | 80; footer: string; show_logo: boolean; show_gstin: boolean; show_upi_qr: boolean; show_loyalty: boolean; show_tax_lines: boolean; auto_cut: boolean; show_phone: boolean; show_total_qty: boolean; show_amount_words: boolean; show_terms: boolean; kitchen_screen: boolean; header_text: string; copies: number; extra_lines: number;
+  paper_width: 58 | 80; footer: string; show_logo: boolean; show_gstin: boolean; show_upi_qr: boolean; show_loyalty: boolean; show_tax_lines: boolean; auto_cut: boolean; show_phone: boolean; show_total_qty: boolean; show_amount_words: boolean; show_powered_by: boolean; print_token: boolean; show_terms: boolean; kitchen_screen: boolean; header_text: string; copies: number; extra_lines: number;
   pan: string; bank_name: string; bank_account: string; bank_ifsc: string; bank_branch: string; accountant_email: string; terms: string;
 };
 export const RECEIPT_DEFAULTS: Receipt = {
-  paper_width: 80, footer: 'Thank you! Visit again.', show_logo: true, show_gstin: true, show_upi_qr: true, show_loyalty: true, show_tax_lines: true, auto_cut: true, show_phone: true, show_total_qty: true, show_amount_words: false, show_terms: false, kitchen_screen: true, header_text: '', copies: 1, extra_lines: 3,
+  paper_width: 80, footer: 'Thank you! Visit again.', show_logo: true, show_gstin: true, show_upi_qr: true, show_loyalty: true, show_tax_lines: true, auto_cut: true, show_phone: true, show_total_qty: true, show_amount_words: false, show_powered_by: true, print_token: false, show_terms: false, kitchen_screen: true, header_text: '', copies: 1, extra_lines: 3,
   pan: '', bank_name: '', bank_account: '', bank_ifsc: '', bank_branch: '', accountant_email: '', terms: ''
 };
 export const TOGGLES: [keyof Receipt, string][] = [
   ['show_logo', 'Print the logo at the top of receipts'], ['show_gstin', 'Show the GSTIN on receipts'], ['show_tax_lines', 'Show the tax lines (CGST and SGST, UTGST or IGST) on receipts'], ['show_upi_qr', 'Show a UPI QR for any unpaid balance'],
   ['show_loyalty', "Show the customer's loyalty card line"], ['auto_cut', 'Cut the paper after each receipt'],
-  ['show_phone', 'Show the phone number on receipts'], ['show_total_qty', 'Show the total quantity on receipts'], ['show_amount_words', 'Print the amount in words under the total']
+  ['show_phone', 'Show the phone number on receipts'], ['show_total_qty', 'Show the total quantity on receipts'], ['show_amount_words', 'Print the amount in words under the total'], ['show_powered_by', 'Print "Powered by FlowXP" at the bottom']
 ];
 /** Only for businesses that are not a restaurant, cafe or cloud kitchen: the terms printed on the receipt come from the tax-invoice details. */
 export const TERMS_TOGGLE: [keyof Receipt, string] = ['show_terms', 'Print the terms and conditions at the bottom'];
 /** Only for businesses with a kitchen. */
+export const TOKEN_TOGGLE: [keyof Receipt, string] = ['print_token', 'Print a daily token slip after the bill for orders without a table'];
 export const KITCHEN_TOGGLE: [keyof Receipt, string] = ['kitchen_screen', 'The kitchen uses the kitchen screen (switch off if it only uses printed tickets)'];
 /** The Tally-style tax invoice is for trade businesses; every other kind has the standard bill. */
 export const TAX_INVOICE_TYPES = ['WHOLESALE', 'DISTRIBUTOR', 'AUTO_PARTS', 'MECHANIC', 'ELECTRONICS'];
@@ -128,6 +129,12 @@ export const INDIA_STATES = [
   'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha',
   'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
 ];
+const GST_STATE = ['Jammu and Kashmir', 'Himachal Pradesh', 'Punjab', 'Chandigarh', 'Uttarakhand', 'Haryana', 'Delhi', 'Rajasthan', 'Uttar Pradesh', 'Bihar', 'Sikkim', 'Arunachal Pradesh', 'Nagaland', 'Manipur', 'Mizoram', 'Tripura', 'Meghalaya', 'Assam', 'West Bengal', 'Jharkhand', 'Odisha', 'Chhattisgarh', 'Madhya Pradesh', 'Gujarat', 'Dadra and Nagar Haveli and Daman and Diu', 'Dadra and Nagar Haveli and Daman and Diu', 'Maharashtra', 'Andhra Pradesh', 'Karnataka', 'Goa', 'Lakshadweep', 'Kerala', 'Tamil Nadu', 'Puducherry', 'Andaman and Nicobar Islands', 'Telangana', 'Andhra Pradesh', 'Ladakh'];
+/** The state a GSTIN belongs to, from its first two digits (28 and 25 are the old codes of Andhra Pradesh and Daman and Diu), or null until those are a real code. */
+export const stateFromGstin = (gstin: string): string | null => {
+  const m = /^(\d{2})/.exec(gstin.trim());
+  return m ? GST_STATE[Number(m[1]) - 1] ?? null : null;
+};
 /** Up to five states that start with (or contain) what was typed, none when it already is one of them. */
 export const stateSuggestions = (typed: string): string[] => {
   const q = typed.trim().toLowerCase();

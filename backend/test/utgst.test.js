@@ -22,3 +22,12 @@ test('a sale inside the Andaman and Nicobar Islands splits evenly into CGST and 
   const inter = computeLineTax({ quantity: 1, unitPricePaise: 300000, taxRatePercent: 5, gstEnabled: true, interState: isInterState('Andaman and Nicobar Islands', 'Tamil Nadu') });
   assert.deepEqual([inter.cgst_paise, inter.sgst_paise, inter.igst_paise], [0, 0, 15000]);
 });
+
+test('old GSTIN codes mean the same state as their successor, and a GSTIN fixes the buyer state', async () => {
+  const { placeOfSupply } = await import('../src/modules/gst/states.js');
+  assert.equal(isInterState('37', '28'), false);   // Andhra Pradesh, before and after the Telangana split
+  assert.equal(isInterState('26', '25'), false);   // Daman and Diu merged into Dadra and Nagar Haveli
+  assert.equal(isInterState('37', '36'), true);
+  assert.equal(isInterState('Karnataka', placeOfSupply('27AAAAA0000A1Z5', 'Karnataka')), true);   // the GSTIN says Maharashtra
+  assert.equal(isInterState('Karnataka', placeOfSupply(null, 'Karnataka')), false);
+});

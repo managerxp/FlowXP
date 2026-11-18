@@ -12,12 +12,30 @@ import { nextNumber } from './orders.controller.js';
 const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v)) && new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === String(v);
 const fail = (res, status, message) => res.status(status).json({ success: false, message });
 
-const asEstimate = (r) => {
+/* Does this business charge GST on its bills? (A composite dealer does not.) Same rule as the invoice engine. */
+const chargesGst = async (businessId) => {
+  const b = (await pool.query(`SELECT gst_enabled, gst_settings FROM businesses WHERE business_id = $1`, [businessId])).rows[0];
+  return Boolean(b?.gst_enabled) && !b?.gst_settings?.composite;
+};
+
+/* GST is worked out per line on its own amount and the discount comes off the total after tax, as the invoice engine does,
+   so the estimate's total is what the invoice will say (cess and the rupee round-off aside). */
+const asEstimate = (r, taxOn = false) => {
   const items = r.items || [];
-  const subtotal = items.reduce((s, i) => s + Math.round(Number(i.unit_price) * 100) * Number(i.quantity), 0);
+  const amount = (i) => Math.round(Math.round(Number(i.unit_price) * 100) * Number(i.quantity));
+  // [value before GST, GST]: a price that includes GST has the tax taken out of it, as the invoice engine does
+  const split = (i) => {
+    const a = amount(i), r = taxOn ? Number(i.tax_rate) || 0 : 0;
+    if (!r) return [a, 0];
+    if (i.inclusive) { const net = Math.round(a / (1 + r / 100)); return [net, a - net]; }
+    return [a, Math.round(a * r / 100)];
+  };
+  const parts = items.map(split);
+  const subtotal = parts.reduce((s, [n]) => s + n, 0);
+  const tax = parts.reduce((s, [, t]) => s + t, 0);
   return {
     estimate_id: r.estimate_id, estimate_number: r.estimate_number, customer_id: r.customer_id, customer_name: r.customer_name,
-    items, discount: toRupees(r.discount_paise), total: toRupees(Math.max(0, Math.round(subtotal) - Number(r.discount_paise))),
+    items, subtotal: toRupees(subtotal), tax: toRupees(tax), discount: toRupees(r.discount_paise), total: toRupees(Math.max(0, subtotal + tax - Number(r.discount_paise))),
     notes: r.notes, valid_until: r.valid_until ? String(r.valid_until).slice(0, 10) : null, status: r.status, invoice_id: r.invoice_id, created_at: r.created_at
   };
 };
@@ -26,7 +44,7 @@ const asEstimate = (r) => {
 const cleanItems = async (businessId, raw) => {
   if (!Array.isArray(raw) || !raw.length || raw.length > 100) throw new BillingError(400, 'Add at least one item');
   const ids = [...new Set(raw.filter((i) => i.product_id).map((i) => Number(i.product_id)))];
-  const found = ids.length ? (await pool.query(`SELECT product_id, name, selling_price_paise FROM products WHERE business_id = $1 AND product_id = ANY($2::int[])`, [businessId, ids])).rows : [];
+  const found = ids.length ? (await pool.query(`SELECT product_id, name, selling_price_paise, tax_rate, price_includes_tax FROM products WHERE business_id = $1 AND product_id = ANY($2::int[])`, [businessId, ids])).rows : [];
   const known = new Map(found.map((p) => [p.product_id, p]));
   return raw.map((i) => {
     const quantity = Number(i.quantity);
@@ -37,14 +55,18 @@ const cleanItems = async (businessId, raw) => {
     if (!description) throw new BillingError(400, 'Every line needs a name');
     const price = i.unit_price != null && i.unit_price !== '' ? toRupees(toPaise(i.unit_price)) : toRupees(p?.selling_price_paise ?? 0);
     if (price < 0) throw new BillingError(400, 'The price cannot be negative');
-    return { product_id: p ? p.product_id : null, description, quantity, unit_price: price };
+    // a product carries its own GST rate; a typed line may give one (0 when not)
+    const taxRate = p ? Number(p.tax_rate) || 0 : Number(i.tax_rate) || 0;
+    if (taxRate < 0 || taxRate > 100) throw new BillingError(400, 'The GST rate must be from 0 to 100');
+    return { product_id: p ? p.product_id : null, description, quantity, unit_price: price, tax_rate: taxRate, ...(p?.price_includes_tax ? { inclusive: true } : {}) };
   });
 };
 
 export const list = async (req, res) => {
   const values = [req.tenant.businessId];
   const { rows } = await pool.query(`SELECT * FROM estimates WHERE business_id = $1${branchFilter(req.tenant, 'branch_id', values)} ORDER BY estimate_id DESC LIMIT 200`, values);
-  res.json({ success: true, data: rows.map(asEstimate) });
+  const taxOn = await chargesGst(req.tenant.businessId);
+  res.json({ success: true, data: rows.map((r) => asEstimate(r, taxOn)) });
 };
 
 export const create = async (req, res) => {
@@ -69,7 +91,7 @@ export const create = async (req, res) => {
       [req.tenant.businessId, req.tenant.branchId, number, body.customer_id || null, customerName, JSON.stringify(items), discount, body.notes ? String(body.notes).slice(0, 500) : null, body.valid_until || null, req.auth.userId]);
     await client.query('COMMIT');
     recordAudit(req, { action: 'estimate.created', resource_type: 'estimate', resource_id: rows[0].estimate_id, metadata: { number } });
-    res.status(201).json({ success: true, data: asEstimate(rows[0]) });
+    res.status(201).json({ success: true, data: asEstimate(rows[0], await chargesGst(req.tenant.businessId)) });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     if (error instanceof BillingError) return fail(res, error.status, error.message);
@@ -96,7 +118,7 @@ export const convert = async (req, res) => {
     if (est.status !== 'OPEN') { await client.query('ROLLBACK'); return fail(res, 409, est.status === 'CONVERTED' ? 'This estimate is already an invoice' : 'This estimate was cancelled'); }
     const invoice = await createInvoiceInTransaction(client, req.tenant, req.auth.userId, {
       customerId: est.customer_id || undefined,
-      items: est.items.map((i) => ({ ...(i.product_id ? { product_id: i.product_id } : {}), description: i.description, quantity: i.quantity, unit_price: i.unit_price })),
+      items: est.items.map((i) => ({ ...(i.product_id ? { product_id: i.product_id } : {}), description: i.description, quantity: i.quantity, unit_price: i.unit_price, ...(i.product_id ? {} : { tax_rate: i.tax_rate || 0 }) })),
       discount: toRupees(est.discount_paise) || undefined,
       notes: `From estimate ${est.estimate_number}`,
       payment: req.body?.payment, payments: req.body?.payments

@@ -10,6 +10,7 @@ const { pool, skip, cleanup } = await setupTestDb();
 const { runMigrations } = await import('../src/config/migrate.js');
 const { createInvoiceInTransaction } = await import('../src/modules/billing.js');
 const business = await import('../src/controllers/business.controller.js');
+const gst = await import('../src/controllers/gst.controller.js');
 
 test.after(cleanup);
 
@@ -60,6 +61,12 @@ test('cess is added on the taxable value, TCS on top, TDS taken off what the cus
   assert.deepEqual(full.payments_taken.map((p) => [p.method, p.amount]), [['OTHER', 20], ['CASH', 1390]]);
   const asked = await bill({ input: { tcs: false } });
   assert.equal(asked.tcs, 0, 'the till did not ask for TCS on this bill');
+
+  // Form 27EQ: the bill with TCS is listed for its quarter, with the TCS and a flag for the missing PAN (walk-in customer)
+  const res = { body: null, status() { return this; }, json(b) { this.body = b; return this; }, set() { return this; }, send(b) { this.body = b; return this; } };
+  const d = new Date(); const fy = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1; const q = [4, 4, 4, 1, 1, 1, 2, 2, 2, 3, 3, 3][d.getMonth()];
+  await gst.form27eq({ tenant: { businessId: biz }, auth: { userId: owner }, query: { fy: String(fy), q: String(q) }, params: {}, headers: {}, ip: '127.0.0.1' }, res);
+  assert.equal(res.body.data.lines.length, 1); assert.equal(res.body.data.total_tcs, 10); assert.equal(res.body.data.missing_pan, 1);
 });
 
 test('a composite dealer charges no tax and issues a Bill of Supply', { skip }, async () => {

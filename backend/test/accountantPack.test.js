@@ -84,3 +84,12 @@ test('the pack carries the books for the period, and can be emailed to the accou
   assert.equal(sent.body.data.sent_to, 'ca@firm.test');
   assert.equal((await pool.query('SELECT receipt_settings FROM businesses WHERE business_id = $1', [biz])).rows[0].receipt_settings.accountant_email, 'ca@firm.test');
 });
+
+test('a shared WhatsApp link opens only its own business and period, and only until it expires', () => {
+  const t = accountant.packToken(7, { from: '2026-04-01', to: '2026-10-31' }, Date.now() + 60000);
+  assert.deepEqual(accountant.readPackToken(t), { businessId: 7, from: '2026-04-01', to: '2026-10-31' });
+  assert.equal(accountant.readPackToken(t, Date.now() + 120000), null, 'expired');
+  const otherBusiness = `${Buffer.from(`8.2026-04-01.2026-10-31.${Date.now() + 60000}`).toString('base64url')}.${t.split('.')[1]}`;
+  assert.equal(accountant.readPackToken(otherBusiness), null, 'the signature does not carry over to another business');
+  assert.equal(accountant.readPackToken('nonsense'), null);
+});

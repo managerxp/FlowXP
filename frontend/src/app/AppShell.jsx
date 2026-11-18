@@ -35,6 +35,8 @@ import IncomingDeliveryAlert from '../components/IncomingDeliveryAlert.jsx';
 import KitchenPrintWarning from '../components/KitchenPrintWarning.jsx';
 import { AUTO_PARTS_TYPES, CLOTHING_TYPES, GAMING_TYPES, GYM_TYPES, PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
 import { useMode } from './books/mode.js';
+import { ScreenLockGate } from './ScreenLock.jsx';
+import { PinOffer } from './PinLogin.jsx';
 
 /*
  * The sidebar, grouped by the job rather than listed alphabetically: that
@@ -200,7 +202,7 @@ const NAV_GROUPS = [
       // pharmacy.routes.js's header note: no PO route exists anywhere in that module, by design)
       { to: '/app/purchases', label: 'Purchases', icon: ShoppingCart, permission: 'purchases', feature: 'purchases', notTypes: [...WHOLESALE, ...PHARMACY], more: true },
       { to: '/app/suppliers', label: 'Suppliers', icon: Truck, permission: 'suppliers', feature: 'purchases', notTypes: WHOLESALE, more: true },
-      { to: '/app/stock-requests', label: 'Stock requests', icon: ArrowLeftRight, types: RESTAURANT_TYPES, multiOutlet: true, permission: 'inventory', more: true }
+      { to: '/app/stock-requests', label: 'Stock requests', icon: ArrowLeftRight, multiOutlet: true, permission: 'inventory', more: true }
     ]
   },
   {
@@ -228,6 +230,7 @@ const NAV_GROUPS = [
       { to: '/app/expenses', label: 'Expenses', icon: Receipt, permission: 'expenses', feature: 'expenses', more: true },
       { to: '/app/estimates', label: 'Estimates', icon: FileText, permission: 'billing', feature: 'estimates', more: true },
       { to: '/app/other-income', label: 'Other income', icon: HandCoins, permission: 'expenses', feature: 'other_income', more: true },
+      { to: '/app/cash-and-bank', label: 'Cash and bank', icon: Landmark, permission: 'reports', feature: 'money_accounts', more: true },
       { to: '/app/gst', label: 'GST filing', icon: Landmark, roles: ['OWNER', 'ADMIN'], more: true },
       { to: '/app/ai', label: 'Flow AI', icon: Sparkles, permission: 'ai', feature: 'ai' }
     ]
@@ -256,7 +259,7 @@ const NAV_GROUPS = [
   {
     label: 'Team',
     items: [
-      { to: '/app/outlets', label: 'Outlets', icon: Store, roles: ['OWNER', 'ADMIN'], types: [...RESTAURANT_TYPES, ...WHOLESALE, ...PHARMACY], more: true },
+      { to: '/app/outlets', label: 'Outlets', icon: Store, roles: ['OWNER', 'ADMIN'], more: true },
       { to: '/app/staff', label: 'Staff', icon: Users, roles: ['OWNER', 'ADMIN'] },
       { to: '/app/activity', label: 'Activity log', icon: History, roles: ['OWNER', 'ADMIN'], more: true }
     ]
@@ -675,6 +678,7 @@ const AppShell = () => {
           {/* key remounts the boundary on navigation, so a crash on one screen
               does not follow you to the next. */}
           <main className={`flex-1 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 lg:p-8 ${tabBar ? 'pb-24 lg:pb-8' : ''}`}>
+            <PinOffer />
             {blocked ? (
               <EmptyState
                 icon={Lock}
@@ -715,6 +719,7 @@ const AppShell = () => {
       )}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} items={paletteItems} />
       <GuideHelper items={paletteItems} />
+      <ScreenLockGate />
     </div>
   );
 };

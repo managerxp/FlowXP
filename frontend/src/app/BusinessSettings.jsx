@@ -16,7 +16,7 @@ import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { PageHeader, Card, Field, Input, Select, Textarea, Button, Alert, useToast, PageLoader } from '../components/ui.jsx';
 import { agentPrinters, agentStatus, getDevicePrefs, pairAgent, RAWBT_STORE, setDevicePref, testPrint } from '../lib/printing.js';
-import { COUNTRIES, regionsFor, subdivisionLabel } from '../lib/states.js';
+import { COUNTRIES, regionsFor, stateFromGstin, subdivisionLabel } from '../lib/states.js';
 import PincodeHint from '../components/PincodeHint.jsx';
 import InvoicePrintSettings from './InvoicePrintSettings.jsx';
 import DisplaySettings from './DisplaySettings.jsx';
@@ -25,6 +25,8 @@ import DocumentNumbersSettings from './DocumentNumbersSettings.jsx';
 import { useDirty, useUnsavedWarning } from '../lib/unsaved.js';
 import PrintersSettings from './PrintersSettings.jsx';
 import BackupSettings from './BackupSettings.jsx';
+import ScreenLockSettings from './ScreenLock.jsx';
+import TaxRatesSettings from './TaxRatesSettings.jsx';
 import StartFreshSettings from './StartFreshSettings.jsx';
 import MechanicModeSettings from './MechanicModeSettings.jsx';
 import { useTranslation } from 'react-i18next';
@@ -289,10 +291,18 @@ const ReceiptSettings = ({ initial }) => {
       <form onSubmit={save} className="mt-3 space-y-4">
         <Alert>{error}</Alert>
         <Field id="paper" label={tr('Paper width')}><Select id="paper" value={s.paper_width} onChange={(e) => setS((x) => ({ ...x, paper_width: Number(e.target.value) }))}><option value={80}>{tr('80 mm (standard)')}</option><option value={58}>{tr('58 mm (narrow)')}</option></Select></Field>
-        <Field id="footer" label={tr('Footer message')} hint={tr('Printed at the bottom of every receipt.')}><Input id="footer" value={s.footer} onChange={(e) => setS((x) => ({ ...x, footer: e.target.value }))} maxLength={200} /></Field>
+        <Field id="footer" label={tr('Footer message')} hint={tr('Printed at the bottom of every receipt.')}><Textarea id="footer" rows={3} value={s.footer} onChange={(e) => setS((x) => ({ ...x, footer: e.target.value }))} maxLength={200} /></Field>
         <Field id="header_text" label={tr('Line under the business name')} hint={tr('For example "Pure Veg" or a slogan. Leave empty for none.')}><Input id="header_text" value={s.header_text ?? ''} onChange={(e) => setS((x) => ({ ...x, header_text: e.target.value }))} maxLength={80} /></Field>
         <LogoSetting logoUrl={s.logo_url} onChange={(url) => setS((x) => ({ ...x, logo_url: url }))} />
-        <div className="space-y-2">{flag('show_logo', 'Print the logo at the top of receipts')}{flag('show_gstin', 'Show the GSTIN on receipts')}{flag('show_tax_lines', T('Show the tax lines (CGST and SGST, UTGST or IGST) on receipts'))}{flag('show_upi_qr', 'Show a UPI QR for any unpaid balance')}{flag('show_loyalty', 'Show the customer’s loyalty card line')}{flag('auto_cut', T('Cut the paper after each receipt'))}{flag('show_phone', T('Show the phone number on receipts'))}{flag('show_total_qty', T('Show the total quantity on receipts'))}{flag('show_amount_words', T('Print the amount in words under the total'))}{!kitchen && flag('show_terms', T('Print the terms and conditions at the bottom'))}{kitchen && flag('kitchen_screen', T('The kitchen uses the kitchen screen (switch off if it only uses printed tickets)'))}</div>
+        {[
+          [tr('Top of the bill'), [flag('show_logo', 'Print the logo at the top of receipts'), flag('show_phone', T('Show the phone number on receipts')), flag('show_gstin', 'Show the GSTIN on receipts')]],
+          [tr('Items and totals'), [flag('show_total_qty', T('Show the total quantity on receipts')), flag('show_tax_lines', T('Show the tax lines (CGST and SGST, UTGST or IGST) on receipts')), flag('show_amount_words', T('Print the amount in words under the total'))]],
+          [tr('Payment and customer'), [flag('show_upi_qr', 'Show a UPI QR for any unpaid balance'), flag('show_loyalty', 'Show the customer’s loyalty card line')]],
+          [tr('Bottom of the bill'), [!kitchen && flag('show_terms', T('Print the terms and conditions at the bottom')), flag('show_powered_by', 'Print “Powered by FlowXP” at the bottom')]],
+          [tr('Printer'), [flag('auto_cut', T('Cut the paper after each receipt')), kitchen && hasFeature('counter_token') && flag('print_token', 'Print a daily token slip after the bill for orders without a table'), kitchen && flag('kitchen_screen', T('The kitchen uses the kitchen screen (switch off if it only uses printed tickets)'))]]
+        ].map(([title, items]) => { const shown = items.filter(Boolean); return shown.length ? (
+          <div key={title} className="space-y-2 rounded-lg border border-line p-3"><p className="text-xs font-bold uppercase tracking-wide text-ink-400">{title}</p>{shown.map((el, i) => <div key={i}>{el}</div>)}</div>
+        ) : null; })}
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="copies" label={tr('Copies of each receipt')}><Select id="copies" value={s.copies ?? 1} onChange={(e) => setS((x) => ({ ...x, copies: Number(e.target.value) }))}>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</Select></Field>
           <Field id="extra_lines" label={tr('Blank lines after the receipt')}><Select id="extra_lines" value={s.extra_lines ?? 3} onChange={(e) => setS((x) => ({ ...x, extra_lines: Number(e.target.value) }))}>{[0, 1, 2, 3, 4, 5, 6, 8, 10].map((n) => <option key={n} value={n}>{n}</option>)}</Select></Field>
@@ -400,7 +410,7 @@ const BusinessSettings = () => {
 
   useEffect(() => { api('/businesses/current').then(setForm).catch((e) => setError(e.message)); }, []);
 
-  const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value, ...(field === 'gstin' && (f.country || 'India') === 'India' && stateFromGstin(e.target.value) ? { state: stateFromGstin(e.target.value) } : {}) }));   // a GSTIN fixes the state
 
   const save = async (e) => {
     e.preventDefault();
@@ -447,9 +457,11 @@ const BusinessSettings = () => {
       <PrintersSettings />
       <ReceiptSettings initial={form.receipt_settings} />
       <GstOptionsSettings />
+      <TaxRatesSettings />
       <DocumentNumbersSettings />
       <InvoiceSettingsUnlessFood initial={form.receipt_settings} />
       <DisplaySettings />
+      <ScreenLockSettings />
       <BackupSettings />
       <StartFreshSettings />
     </div>

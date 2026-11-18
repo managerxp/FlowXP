@@ -42,6 +42,7 @@ const AdminBusinessDetail = lazy(() => import('./admin/AdminBusinessDetail.jsx')
 const AdminPlans = lazy(() => import('./admin/AdminPlans.jsx'));
 const AdminFeatures = lazy(() => import('./admin/AdminFeatures.jsx'));
 const AdminAddons = lazy(() => import('./admin/AdminAddons.jsx'));
+const AdminTestimonials = lazy(() => import('./admin/AdminTestimonials.jsx'));
 const AdminDeletions = lazy(() => import('./admin/AdminDeletions.jsx'));
 const AdminSettings = lazy(() => import('./admin/AdminSettings.jsx'));
 const AdminSecurity = lazy(() => import('./admin/AdminSecurity.jsx'));
@@ -92,6 +93,7 @@ const OffersPage = lazy(() => import('./app/OffersPage.jsx'));
 const StockCountPage = lazy(() => import('./app/StockCountPage.jsx'));
 const ExpensesPage = lazy(() => import('./app/ExpensesPage.jsx'));
 const OtherIncomePage = lazy(() => import('./app/OtherIncomePage.jsx'));
+const MoneyAccountsPage = lazy(() => import('./app/MoneyAccountsPage.jsx'));
 const EstimatesPage = lazy(() => import('./app/EstimatesPage.jsx'));
 const PurchasesPage = lazy(() => import('./app/PurchasesPage.jsx'));
 const PaymentsPage = lazy(() => import('./app/PaymentsPage.jsx'));
@@ -334,6 +336,7 @@ const App = () => (
       <Route path="purchases" element={<PurchasesPage />} />
       <Route path="expenses" element={<ExpensesPage />} />
       <Route path="other-income" element={<OtherIncomePage />} />
+      <Route path="cash-and-bank" element={<MoneyAccountsPage />} />
       <Route path="estimates" element={<EstimatesPage />} />
       <Route path="payments" element={<PaymentsPage />} />
       <Route path="reports" element={<ReportsPage />} />
@@ -487,6 +490,7 @@ const App = () => (
         <Route path="plans" element={<AdminPlans />} />
         <Route path="features" element={<AdminFeatures />} />
         <Route path="addons" element={<AdminAddons />} />
+        <Route path="testimonials" element={<AdminTestimonials />} />
         <Route path="deletions" element={<AdminDeletions />} />
         <Route path="bugs" element={<AdminBugs />} />
         <Route path="support" element={<AdminSupport />} />

@@ -62,18 +62,24 @@ const checkSeries = async (businessId, prefix, asked, currentNext) => {
   return { next };
 };
 
-/* How many outlets the plan allows (NULL / missing = unlimited). */
-const outletLimit = async (businessId) => {
-  // The pinned plan version's limit, not the plan's current one — see migration 0038.
+/*
+ * How many outlets a business may run: the Super Admin's number for this business, else the plan's
+ * (the pinned plan version's, see migration 0038), plus outlets bought as the Extra outlet add-on.
+ * limit NULL = unlimited.
+ */
+export const outletAllowance = async (businessId) => {
   const { rows } = await pool.query(
-    `SELECT COALESCE(pv.limits, p.limits) AS limits FROM businesses b
-     JOIN plans p ON p.plan_code = b.plan_code
+    `SELECT COALESCE(pv.limits, p.limits)->'outlets' AS plan, b.outlet_limit AS override, b.extra_outlets AS extra FROM businesses b
+     LEFT JOIN plans p ON p.plan_code = b.plan_code
      LEFT JOIN plan_versions pv ON pv.plan_version_id = b.plan_version_id
      WHERE b.business_id = $1`, [businessId]
   );
-  const limit = rows[0]?.limits?.outlets;
-  return limit == null ? null : Number(limit);
+  const r = rows[0] || {};
+  const plan = r.plan == null ? null : Number(r.plan), override = r.override ?? null, extra = Number(r.extra || 0);
+  const base = override ?? plan;
+  return { plan, override, extra, limit: base == null ? null : base + extra };
 };
+const outletLimit = async (businessId) => (await outletAllowance(businessId)).limit;
 
 const activeCount = async (businessId) =>
   Number((await pool.query(`SELECT COUNT(*) AS n FROM branches WHERE business_id = $1 AND status = 'ACTIVE'`, [businessId])).rows[0].n);
@@ -86,7 +92,7 @@ export const create = async (req, res) => {
 
   const limit = await outletLimit(req.tenant.businessId);
   if (limit != null && (await activeCount(req.tenant.businessId)) >= limit) {
-    return res.status(402).json({ success: false, code: 'OUTLET_LIMIT', message: `Your plan includes ${limit} outlet${limit === 1 ? '' : 's'}. Upgrade to add more.` });
+    return res.status(402).json({ success: false, code: 'OUTLET_LIMIT', message: `You can have ${limit} outlet${limit === 1 ? '' : 's'}. Add an extra outlet or upgrade to add more.` });
   }
   let series = { next: 1 };
   if (c.invoice_prefix) {
@@ -127,7 +133,7 @@ export const update = async (req, res) => {
     } else {
       const limit = await outletLimit(req.tenant.businessId);
       if (limit != null && (await activeCount(req.tenant.businessId)) >= limit) {
-        return res.status(402).json({ success: false, code: 'OUTLET_LIMIT', message: `Your plan includes ${limit} outlet${limit === 1 ? '' : 's'}. Upgrade to reopen this one.` });
+        return res.status(402).json({ success: false, code: 'OUTLET_LIMIT', message: `You can have ${limit} outlet${limit === 1 ? '' : 's'}. Add an extra outlet or upgrade to reopen this one.` });
       }
     }
   }

@@ -28,6 +28,7 @@ const GROUPS = [
   ] },
   { title: 'Platform', items: [
     { to: '/superadmin/bugs', label: 'Bugs', badge: true },
+    { to: '/superadmin/testimonials', label: 'Client reviews' },
     { to: '/superadmin/activity', label: 'Activity' },
     { to: '/superadmin/settings', label: 'Settings' },
     { to: '/superadmin/security', label: 'Security' }

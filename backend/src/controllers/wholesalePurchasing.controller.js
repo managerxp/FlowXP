@@ -13,6 +13,7 @@ import pool from '../config/database.js';
 import { sendMail } from '../modules/mailer.js';
 import { toRupees } from '../utils/money.js';
 import { computeLineTax, isInterState, sumLines } from '../modules/tax.js';
+import { placeOfSupply } from '../modules/gst/states.js';
 import { purchaseReverseCharge, purchaseTotal } from '../modules/gstOptions.js';
 import { nextPoNumber, paymentStatus } from './purchases.controller.js';
 import { listPrices } from './supplierPrices.controller.js';
@@ -102,7 +103,7 @@ const prepare = async (client, req, { supplierId, items, branchId }) => {
   if (!Array.isArray(items) || !items.length) throw new WholesaleError(400, 'Add at least one product');
   if (items.length > 300) throw new WholesaleError(400, 'An order can have up to 300 lines');
   const biz = (await client.query(`SELECT gst_enabled, state FROM businesses WHERE business_id = $1`, [req.tenant.businessId])).rows[0];
-  const supplier = (await client.query(`SELECT s.supplier_id, s.name, w.state, w.payment_terms_days FROM suppliers s LEFT JOIN wholesale_supplier_profiles w ON w.supplier_id = s.supplier_id WHERE s.business_id = $1 AND s.supplier_id = $2`, [req.tenant.businessId, supplierId])).rows[0];
+  const supplier = (await client.query(`SELECT s.supplier_id, s.name, s.gstin, w.state, w.payment_terms_days FROM suppliers s LEFT JOIN wholesale_supplier_profiles w ON w.supplier_id = s.supplier_id WHERE s.business_id = $1 AND s.supplier_id = $2`, [req.tenant.businessId, supplierId])).rows[0];
   if (!supplier) throw new WholesaleError(400, 'Choose a supplier from your list');
   const ids = items.map((i) => int(i.product_id, 'Product', { min: 1, required: true }));
   const products = await lockProducts(client, req.tenant.businessId, ids);
@@ -121,7 +122,7 @@ const prepare = async (client, req, { supplierId, items, branchId }) => {
     const unitCost = raw.unit_cost != null && raw.unit_cost !== '' ? Math.round(Number(raw.unit_cost) * 100) : Math.round(perBase * u.factor);
     if (!Number.isFinite(unitCost) || unitCost < 0) throw new WholesaleError(400, `${p.name}: the cost is not valid`);
     const taxRate = raw.tax_rate != null && raw.tax_rate !== '' ? num(raw.tax_rate, 'GST rate', { min: 0, max: 100 }) : Number(p.tax_rate);
-    const tax = computeLineTax({ quantity, unitPricePaise: unitCost, taxRatePercent: taxRate, gstEnabled: biz.gst_enabled, interState: isInterState(biz.state, supplier.state) });
+    const tax = computeLineTax({ quantity, unitPricePaise: unitCost, taxRatePercent: taxRate, gstEnabled: biz.gst_enabled, interState: isInterState(biz.state, placeOfSupply(supplier.gstin, supplier.state)) });
     return { product: p, unit: u, quantity, unitCost, taxRate, tax };
   });
   return { lines, supplier, biz };
@@ -317,7 +318,7 @@ const createGRN = async (req, res) => {
     const supplierId = po ? po.supplier_id : int(b.supplier_id, 'Supplier', { min: 1, required: true });
     const branchId = po ? po.branch_id : await warehouseFor(req, b.branch_id);
     if (req.tenant.pinned && branchId !== req.tenant.branchId) throw new WholesaleError(403, 'Receive into your own warehouse');
-    const supplier = (await client.query(`SELECT s.supplier_id, s.name, w.state, w.payment_terms_days FROM suppliers s LEFT JOIN wholesale_supplier_profiles w ON w.supplier_id = s.supplier_id WHERE s.business_id = $1 AND s.supplier_id = $2`, [req.tenant.businessId, supplierId])).rows[0];
+    const supplier = (await client.query(`SELECT s.supplier_id, s.name, s.gstin, w.state, w.payment_terms_days FROM suppliers s LEFT JOIN wholesale_supplier_profiles w ON w.supplier_id = s.supplier_id WHERE s.business_id = $1 AND s.supplier_id = $2`, [req.tenant.businessId, supplierId])).rows[0];
     if (!supplier) throw new WholesaleError(400, 'Choose a supplier from your list');
     const invoiceNo = text(b.supplier_invoice_no, 'Supplier invoice number', { max: 40 });
     if (invoiceNo) {
@@ -382,7 +383,7 @@ const createGRN = async (req, res) => {
     if (!lineRows.length) throw new WholesaleError(400, 'Nothing was received');
     if (!lineRows.some((l) => l.accepted > 0 || l.damaged > 0)) throw new WholesaleError(400, 'Nothing was received');
 
-    const supplierState = supplier.state;
+    const supplierState = placeOfSupply(supplier.gstin, supplier.state);
     if (direct) {
       const rcm = await purchaseReverseCharge(client, req.tenant.businessId, b.reverse_charge);
       if (rcm.problem) throw new WholesaleError(400, rcm.problem);

@@ -21,6 +21,7 @@ import { loadRecipes, recipeCostPaise, recipeMargin } from '../modules/recipes.j
 import { generateSku } from '../modules/sku.js';
 import { addAlias, barcodeOwner, cleanBarcode, cleanCode, findByCode, IdentityError, searchClause } from '../modules/productIdentity.js';
 import { autoSkuOn, getRetailSettings, isRetail } from '../modules/retailSettings.js';
+import { pickRate } from '../modules/taxRates.js';
 
 const fail = (res, status, message, extra = {}) => res.status(status).json({ success: false, message, ...extra });
 
@@ -112,6 +113,8 @@ const asProduct = (row) => ({
   erp_code: row.erp_code || null,
   is_quick: Boolean(row.is_quick),
   track_expiry: Boolean(row.track_expiry),
+  price_includes_tax: Boolean(row.price_includes_tax),
+  tax_rate_id: row.tax_rate_id ?? null,
   mrp: row.mrp_paise == null ? null : toRupees(row.mrp_paise),
   unit: row.unit,
   description: row.description,
@@ -133,6 +136,8 @@ const asProduct = (row) => ({
   ...(row.cost_source !== undefined ? { cost_source: row.cost_source, unit_cost: row.cost_source ? toRupees(row.unit_cost_paise) : null, margin_pct: row.cost_source ? row.margin_pct : null } : {})
 });
 
+/* shops whose goods carry a printed MRP that already includes GST: a new product there starts with "Price includes GST" on */
+export const MRP_TYPES = ['RETAIL', 'SUPERMARKET', 'CLOTHING', 'PHARMACY', 'ELECTRONICS'];
 const KINDS = ['DISH', 'INGREDIENT', 'PACKAGING'];
 const FOOD_TYPES = ['VEG', 'NON_VEG', 'EGG'];
 /* '' or null clears the mark; anything else must be one of the three. Returns [value, error]. */
@@ -237,6 +242,10 @@ export const create = async (req, res) => {
   }
 
   const trackInventory = body.track_inventory !== false;
+  // a named GST rate chosen from the business's list sets the number with it
+  let namedRate = null;
+  try { namedRate = await pickRate(pool, req.tenant.businessId, body.tax_rate_id); } catch (e) { return fail(res, e.status || 400, e.message); }
+  if (namedRate) body.tax_rate = namedRate.rate;
 
   const refProblem = await ownsRefs(pool, req.tenant.businessId, body);
   if (refProblem) return fail(res, 400, refProblem);
@@ -279,8 +288,8 @@ export const create = async (req, res) => {
           `INSERT INTO products
              (business_id, category_id, supplier_id, name, sku, barcode, unit,
               selling_price_paise, purchase_price_paise, tax_rate, hsn_sac,
-              track_inventory, current_stock, min_stock, description, kind, food_type, brand_id, mrp_paise, erp_code, track_expiry)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+              track_inventory, current_stock, min_stock, description, kind, food_type, brand_id, mrp_paise, erp_code, track_expiry, price_includes_tax, tax_rate_id)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
            RETURNING product_id`,
           [
             req.tenant.businessId,
@@ -303,7 +312,10 @@ export const create = async (req, res) => {
             body.brand_id || null,
             mrpPaise,
             erpCode,
-            body.track_expiry === true
+            body.track_expiry === true,
+            // goods sold at the MRP on the pack: a shop's new product has GST inside its price unless the form says otherwise
+            typeof body.price_includes_tax === 'boolean' ? body.price_includes_tax : MRP_TYPES.includes(req.tenant.businessType),
+            namedRate?.id ?? null
           ]
         );
         productId = rows[0].product_id;
@@ -387,7 +399,7 @@ const posShape = async (rows, tenant) => {
     const p = asProduct(r);
     const d = details.get(r.product_id);
     return {
-      product_id: p.product_id, name: p.name, name_i18n: p.name_i18n, sku: p.sku, barcodes: barcodes.get(r.product_id), unit: p.unit, selling_price: p.selling_price, mrp: p.mrp, tax_rate: p.tax_rate, cess_rate: p.cess_rate,
+      product_id: p.product_id, name: p.name, name_i18n: p.name_i18n, sku: p.sku, barcodes: barcodes.get(r.product_id), unit: p.unit, selling_price: p.selling_price, mrp: p.mrp, tax_rate: p.tax_rate, cess_rate: p.cess_rate, price_includes_tax: p.price_includes_tax,
       track_inventory: p.track_inventory, current_stock: p.current_stock, category_name: p.category_name, is_quick: p.is_quick, is_available: p.is_available, modifier_group_ids: p.modifier_group_ids,
       ...(['WHOLESALE', 'DISTRIBUTOR'].includes(tenant.businessType) ? { wholesale: wholesale.get(r.product_id) ?? null } : {}),
       ...(tenant.businessType === 'PHARMACY' ? {
@@ -435,6 +447,7 @@ export const quickCreate = async (req, res) => {
   if (counted && !(Number(b.opening_stock) >= 0)) return fail(res, 400, 'Stock on hand must be zero or more');
   req.body = {
     name: b.name, category_id: b.category_id, selling_price: b.selling_price, mrp: b.mrp, tax_rate: b.tax_rate, unit: b.unit, barcode: b.barcode,
+    ...(typeof b.price_includes_tax === 'boolean' ? { price_includes_tax: b.price_includes_tax } : {}),
     track_inventory: counted, ...(counted ? { opening_stock: Number(b.opening_stock) } : {}), _via: 'till'
   };
   return create(req, res);
@@ -448,7 +461,7 @@ export const quickCreate = async (req, res) => {
    a purchase, or an explicit adjustment in inventory.controller.js), so this
    allowlist excludes it on purpose.
    ========================================================================== */
-const EDITABLE = ['name', 'category_id', 'supplier_id', 'brand_id', 'sku', 'barcode', 'erp_code', 'is_quick', 'track_expiry', 'unit',
+const EDITABLE = ['name', 'category_id', 'supplier_id', 'brand_id', 'sku', 'barcode', 'erp_code', 'is_quick', 'track_expiry', 'price_includes_tax', 'tax_rate_id', 'unit',
   'tax_rate', 'cess_rate', 'hsn_sac', 'min_stock', 'status', 'description', 'kind', 'lead_time_days', 'food_type'];
 /* What the audit log keeps a before and after for: the things that decide what a product is called and what it sells for. */
 const TRACKED = ['name', 'sku', 'barcode', 'erp_code', 'unit', 'tax_rate', 'category_id', 'status', 'selling_price_paise', 'purchase_price_paise', 'mrp_paise'];
@@ -462,6 +475,7 @@ export const update = async (req, res) => {
   if (!before) return fail(res, 404, 'Not found');
   if ('is_quick' in body && typeof body.is_quick !== 'boolean') return fail(res, 400, 'is_quick must be true or false');
   if ('track_expiry' in body && typeof body.track_expiry !== 'boolean') return fail(res, 400, 'track_expiry must be true or false');
+  if ('price_includes_tax' in body && typeof body.price_includes_tax !== 'boolean') return fail(res, 400, 'price_includes_tax must be true or false');
   const refProblem = await ownsRefs(pool, req.tenant.businessId, body);
   if (refProblem) return fail(res, 400, refProblem);
   try {
@@ -501,6 +515,11 @@ export const update = async (req, res) => {
   if (body.brand_id && !(await pool.query(`SELECT 1 FROM brands WHERE brand_id = $1 AND business_id = $2`, [body.brand_id, req.tenant.businessId])).rows.length) {
     return res.status(400).json({ success: false, message: 'Brand not found' });
   }
+  // a named GST rate sets the number with it; a bare number typed instead leaves the named rate behind
+  if ('tax_rate_id' in body) {
+    try { const picked = await pickRate(pool, req.tenant.businessId, body.tax_rate_id); body.tax_rate_id = picked?.id ?? null; if (picked) body.tax_rate = picked.rate; }
+    catch (e) { return fail(res, e.status || 400, e.message); }
+  } else if ('tax_rate' in body && Number(body.tax_rate) !== Number(before.tax_rate)) body.tax_rate_id = null;
   for (const field of EDITABLE) {
     if (!(field in body)) continue;
     values.push(body[field]);

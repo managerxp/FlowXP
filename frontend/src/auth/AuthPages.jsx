@@ -363,6 +363,45 @@ const GoogleLogo = () => (
   </svg>
 );
 
+/* Sign in with a PIN on a computer that already knows you: pick your name, type 4 digits. The server checks the PIN and this computer's key. */
+const PinSignIn = ({ people, onDone, onPassword, onGone }) => {
+  const { t } = useTranslation('auth');
+  const [who, setWho] = useState(() => (people.find((p) => p.last) || people[0]).user_id);
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const person = people.find((p) => p.user_id === who) || people[0];
+  const go = async (value) => {
+    setBusy(true); setError('');
+    try { onDone(await api('/auth/pin/login', { method: 'POST', body: { user_id: person.user_id, pin: value } })); }
+    catch (caught) {
+      setPin('');
+      if (caught.code === 'PIN_REVOKED' || /no longer set up/.test(caught.message)) { onGone(person.user_id); if (people.length <= 1) onPassword(); }
+      setError(caught.code === 'PIN_WRONG' ? t('pin.wrong', { count: caught.data?.tries_left ?? 0 }) : caught.code === 'PIN_REVOKED' ? t('pin.revoked') : caught.message);
+    } finally { setBusy(false); }
+  };
+  const type = (v) => { const d = v.replace(/\D/g, '').slice(0, 4); setPin(d); setError(''); if (d.length === 4) void go(d); };
+  return (
+    <AuthLayout title={t('pin.title')} lead={t('pin.lead')}
+      footer={<button type="button" className="font-medium text-brand-600 hover:text-brand-700" onClick={onPassword}>{t('pin.usePassword')}</button>}>
+      <div className="space-y-5">
+        {people.length > 1 && (
+          <div role="radiogroup" aria-label={t('pin.who')} className="flex flex-wrap gap-2">
+            {people.map((p) => (
+              <button key={p.user_id} type="button" role="radio" aria-checked={p.user_id === person.user_id} onClick={() => { setWho(p.user_id); setPin(''); setError(''); }}
+                      className={`min-h-11 rounded-full border px-4 text-sm font-medium ${p.user_id === person.user_id ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:bg-surface-2'}`}>{p.name}</button>
+            ))}
+          </div>
+        )}
+        <Field id="pin" label={t('pin.label', { name: person.name })}>
+          <Input id="pin" type="password" inputMode="numeric" autoComplete="off" autoFocus maxLength={4} value={pin} disabled={busy} onChange={(e) => type(e.target.value)} className="text-center text-2xl tracking-[0.6em]" />
+        </Field>
+        <Alert>{error}</Alert>
+      </div>
+    </AuthLayout>
+  );
+};
+
 export const Login = () => {
   const { t } = useTranslation('auth');
   const finish = useFinishAuth();
@@ -387,6 +426,11 @@ export const Login = () => {
     window.history.replaceState(null, '', window.location.pathname + window.location.search);
   }, []);
 
+  // the people who set a PIN on this computer: they pick their name and type it instead of the password
+  const [pinPeople, setPinPeople] = useState([]);
+  const [usePassword, setUsePassword] = useState(false);
+  useEffect(() => { api('/auth/pin/people').then((p) => setPinPeople(Array.isArray(p) ? p : [])).catch(() => {}); }, []);
+
   const set = (field) => (event) => setForm((f) => ({ ...f, [field]: event.target.value }));
 
   const onCode = (event) => submit(event, async () => {
@@ -403,6 +447,9 @@ export const Login = () => {
   });
 
   if (otpChallenge) return <EmailCodeStep challenge={otpChallenge} email={form.email.trim()} onBack={() => setOtpChallenge(null)} onDone={finish} />;
+  if (pinPeople.length && !usePassword && !second && !justReset) {
+    return <PinSignIn people={pinPeople} onDone={finish} onPassword={() => setUsePassword(true)} onGone={(id) => setPinPeople((p) => p.filter((x) => x.user_id !== id))} />;
+  }
 
   if (second) {
     return (

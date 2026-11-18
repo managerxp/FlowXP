@@ -352,8 +352,10 @@ const BusinessAddons = ({ businessId, businessType, ownerEmail }) => {
   const [addonKey, setAddonKey] = useState('');
   const [cycle, setCycle] = useState('MONTHLY');
   const [amount, setAmount] = useState('');
+  const [quantity, setQuantity] = useState('1');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const counted = addonKey === 'extra_outlet';
 
   // Only add-ons scoped to this business's own type (or scoped to none, i.e. every type) —
   // the same "Restaurant vs Salon" catalog split as the Add-ons page itself.
@@ -370,7 +372,7 @@ const BusinessAddons = ({ businessId, businessType, ownerEmail }) => {
   }, [businessId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selected = catalog?.find((a) => a.addon_key === addonKey);
-  const catalogPrice = selected ? (cycle === 'YEARLY' ? selected.price_yearly : selected.price_monthly) : null;
+  const catalogPrice = selected ? (cycle === 'YEARLY' ? selected.price_yearly : selected.price_monthly) * (counted ? Number(quantity || 1) : 1) : null;
 
   const generate = async () => {
     const emailLink = Boolean(ownerEmail) && window.confirm(`Also email the payment link to ${ownerEmail}?
@@ -381,7 +383,7 @@ OK sends the email. Cancel creates the link without emailing it.`);
     try {
       const link = await adminApi(`/businesses/${businessId}/addon-link`, {
         method: 'POST',
-        body: { addon_key: addonKey, billing_cycle: cycle, amount: amount ? Number(amount) : undefined, email_link: emailLink }
+        body: { addon_key: addonKey, billing_cycle: cycle, amount: amount ? Number(amount) : undefined, email_link: emailLink, ...(counted ? { quantity: Number(quantity || 1) } : {}) }
       });
       await navigator.clipboard?.writeText(link.payment_link_url).catch(() => {});
       toast.success('Link created and copied — send it to the owner');
@@ -401,12 +403,17 @@ OK sends the email. Cancel creates the link without emailing it.`);
       <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-ink-400">Add-ons</h2>
       {error && <Alert>{error}</Alert>}
 
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className={`grid gap-3 ${counted ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
         <Field id="ad-key" label="Add-on">
           <Select id="ad-key" value={addonKey} onChange={(e) => setAddonKey(e.target.value)} disabled={!catalog}>
             {relevant.map((a) => <option key={a.addon_key} value={a.addon_key}>{a.name}</option>)}
           </Select>
         </Field>
+        {counted && (
+          <Field id="ad-qty" label="How many outlets">
+            <Input id="ad-qty" type="number" min="1" max="50" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+          </Field>
+        )}
         <Field id="ad-cycle" label="Billing cycle">
           <Select id="ad-cycle" value={cycle} onChange={(e) => setCycle(e.target.value)}>
             <option value="MONTHLY">Monthly</option>
@@ -436,7 +443,7 @@ OK sends the email. Cancel creates the link without emailing it.`);
             <tbody>
               {links.map((l) => (
                 <Tr key={l.order_id}>
-                  <Td>{labelFor(l.addon_key)}</Td>
+                  <Td>{labelFor(l.addon_key)}{l.quantity > 1 ? ` × ${l.quantity}` : ''}</Td>
                   <Td>{new Date(l.created_at).toLocaleDateString()}</Td>
                   <Td>{formatCurrency(l.amount)}</Td>
                   <Td>{l.billing_cycle.toLowerCase()}</Td>
@@ -455,6 +462,112 @@ OK sends the email. Cancel creates the link without emailing it.`);
           </Table>
         </div>
       )}
+    </Card>
+  );
+};
+
+/*
+ * Outlets are a number, not a switch: the plan's number unless the Super Admin sets one for this business,
+ * plus outlets bought as the Extra outlet add-on.
+ */
+const OutletAllowance = ({ businessId }) => {
+  const toast = useToast();
+  const [o, setO] = useState(null);
+  const [limit, setLimit] = useState('');
+  const [extra, setExtra] = useState('');
+  const [busy, setBusy] = useState(false);
+  const show = (d) => { setO(d); setLimit(d.override ?? ''); setExtra(String(d.extra)); };
+  useEffect(() => { adminApi(`/businesses/${businessId}/outlets`).then(show).catch((err) => toast.error(err.message)); }, [businessId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const save = async () => {
+    setBusy(true);
+    try {
+      show(await adminApi(`/businesses/${businessId}/outlets`, { method: 'PUT', body: { outlet_limit: limit === '' ? null : Number(limit), extra_outlets: Number(extra || 0) } }));
+      toast.success('Outlets saved');
+    } catch (err) { toast.error(err.message); } finally { setBusy(false); }
+  };
+  if (!o) return null;
+  const planText = o.plan == null ? 'unlimited' : o.plan;
+  return (
+    <div className="mb-5 rounded-lg border border-line p-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-sm font-medium text-ink-800">Outlets</p>
+        <p className="text-sm text-ink-500">{o.used} open of {o.limit == null ? 'unlimited' : o.limit} allowed</p>
+      </div>
+      <div className="mt-2 grid gap-3 sm:grid-cols-3">
+        <Field id="ol-limit" label={`Outlets for this business (plan: ${planText})`}>
+          <Input id="ol-limit" type="number" min="1" step="1" value={limit} onChange={(e) => setLimit(e.target.value)} placeholder={`Plan: ${planText}`} />
+        </Field>
+        <Field id="ol-extra" label="Bought as add-on">
+          <Input id="ol-extra" type="number" min="0" step="1" value={extra} onChange={(e) => setExtra(e.target.value)} />
+        </Field>
+        <div className="flex items-end"><Button className="w-full" variant="secondary" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save outlets'}</Button></div>
+      </div>
+      <p className="mt-2 text-xs text-ink-400">Leave the first box blank to follow the plan. Bought outlets are added on top, and go up by themselves when an Extra outlet link is paid.</p>
+    </div>
+  );
+};
+
+/*
+ * Every feature this business could have, as switches. A feature the plan includes is on; one it does not include is off,
+ * with the add-on that sells it shown next to it. Switching one on or off here is a per-business override (the list below
+ * has the reason and expiry); switching it back to what the plan says removes the override.
+ */
+const FeatureList = ({ businessId }) => {
+  const toast = useToast();
+  const [rows, setRows] = useState(null);
+  const [error, setError] = useState('');
+  const [busyKey, setBusyKey] = useState('');
+  const load = () => adminApi(`/businesses/${businessId}/features`).then(setRows).catch((err) => setError(err.message));
+  useEffect(() => { load(); }, [businessId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const flip = async (f, want) => {
+    setBusyKey(f.key);
+    try {
+      if (want === f.included) {
+        if (f.override !== null) await adminApi(`/businesses/${businessId}/overrides/${f.key}`, { method: 'DELETE' });
+      } else {
+        await adminApi(`/businesses/${businessId}/overrides`, { method: 'POST', body: { feature_key: f.key, enabled: want, reason: want ? 'Switched on by the Super Admin' : 'Switched off by the Super Admin' } });
+      }
+      await load();
+    } catch (err) { toast.error(err.message); } finally { setBusyKey(''); }
+  };
+
+  const groups = [];
+  for (const f of rows || []) {
+    let g = groups.find((x) => x.label === f.group_label);
+    if (!g) { g = { label: f.group_label, items: [] }; groups.push(g); }
+    g.items.push(f);
+  }
+
+  return (
+    <Card className="lg:col-span-3">
+      <h2 className="mb-1 text-sm font-bold uppercase tracking-wide text-ink-400">Features</h2>
+      <p className="mb-4 text-sm text-ink-500">What this business has, as switches. A feature outside its plan can be sold as an add-on: the price is shown beside it, and the Add-ons box below makes the payment link.</p>
+      {error && <Alert>{error}</Alert>}
+      <OutletAllowance businessId={businessId} />
+      {!rows && !error && <p className="text-sm text-ink-400">Loading…</p>}
+      <div className="space-y-5">
+        {groups.map((g) => (
+          <div key={g.label}>
+            <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-500">{g.label}</h3>
+            <ul className="divide-y divide-line rounded-lg border border-line">
+              {g.items.map((f) => (
+                <li key={f.key} className="flex items-center gap-3 px-3 py-2">
+                  <input type="checkbox" role="switch" aria-label={f.label} className="h-4 w-4 accent-brand-600" checked={f.enabled} disabled={busyKey === f.key} onChange={(e) => flip(f, e.target.checked)} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-ink-800">{f.label}</p>
+                    <p className="truncate text-xs text-ink-400" title={f.description}>{f.description}</p>
+                  </div>
+                  {f.override === true && !f.included && <Badge tone="brand">Switched on by admin</Badge>}
+                  {f.override === false && f.included && <Badge tone="danger">Switched off by admin</Badge>}
+                  {f.override === null && f.included && <Badge tone="success">In plan</Badge>}
+                  {f.override === null && !f.included && (f.addon ? <Badge tone="warning">Add-on {formatCurrency(f.addon.price_yearly)} a year</Badge> : <Badge>Not in plan</Badge>)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
     </Card>
   );
 };
@@ -835,6 +948,7 @@ const AdminBusinessDetail = () => {
         <ClientNotes business={business} businessId={id} />
         <WalletPanel businessId={id} />
         <ClientDocuments businessId={id} />
+        <FeatureList businessId={id} />
         <FeatureOverrides businessId={id} />
         <PaymentLinks businessId={id} ownerEmail={business.owner.email} />
         <BusinessAddons businessId={id} businessType={business.business_type} ownerEmail={business.owner.email} />

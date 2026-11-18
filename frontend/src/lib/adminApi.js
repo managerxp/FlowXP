@@ -28,14 +28,15 @@ export class AdminApiError extends Error {
 
 /** `root` points a call at another part of the API the console also uses (the account's own /api/auth routes). */
 export const adminApi = async (path, { method = 'GET', body, root = '/api/admin' } = {}) => {
-  const headers = { 'Content-Type': 'application/json' };
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData;   // a file upload: the browser sets its own content type
+  const headers = isForm ? {} : { 'Content-Type': 'application/json' };
   const token = getAdminToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const response = await fetch(`${root}${path}`, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body)
+    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body)
   });
 
   const payload = await response.json().catch(() => ({}));

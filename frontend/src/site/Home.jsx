@@ -646,6 +646,36 @@ const PricingSection = () => (
   </Section>
 );
 
+/* ── Client reviews: written, photographed and published by the Super Admin (Client reviews) ───── */
+const initials = (name) => String(name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
+const Reviews = () => {
+  const [items, setItems] = useState([]);
+  useEffect(() => { fetch('/api/testimonials').then((r) => r.json()).then((j) => setItems(Array.isArray(j.data) ? j.data : [])).catch(() => {}); }, []);
+  if (!items.length) return null;   // nothing published yet: the section does not appear
+  return (
+    <Section className="border-t border-line bg-surface" title="Owners who run on FlowXP." lead="What they say after the first few months.">
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        {items.map((t, i) => (
+          <Reveal key={t.testimonial_id} index={i % 3} className="flex h-full flex-col rounded-(--radius-panel) border border-line bg-page p-6">
+            <div className="text-warning" aria-label={`${t.rating} out of 5 stars`}>{'★'.repeat(t.rating)}<span className="text-line-strong">{'★'.repeat(5 - t.rating)}</span></div>
+            <blockquote className="mt-4 flex-1 text-body text-ink-700">“{t.quote}”</blockquote>
+            <div className="mt-6 flex items-center gap-3 border-t border-line pt-4">
+              {t.photo_url
+                ? <img src={t.photo_url} alt="" loading="lazy" className="h-11 w-11 shrink-0 rounded-full object-cover" />
+                : <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-50 text-small font-semibold text-brand-700">{initials(t.name)}</span>}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-body font-semibold text-ink-900">{t.name}</p>
+                <p className="truncate text-small text-ink-500">{[t.role, t.company].filter(Boolean).join(', ')}</p>
+              </div>
+              {t.logo_url && <img src={t.logo_url} alt={t.company ? `${t.company} logo` : ''} loading="lazy" className="max-h-8 max-w-[5.5rem] shrink-0 object-contain" />}
+            </div>
+          </Reveal>
+        ))}
+      </div>
+    </Section>
+  );
+};
+
 const Faq = () => (
   <Section id="faq" className="border-t border-line">
     <div className="grid gap-10 lg:grid-cols-12">
@@ -685,6 +715,7 @@ const Home = () => (
     <WorksWith />
     <PhoneApp />
     <Trust />
+    <Reviews />
     <PricingSection />
     <Faq />
     <FinalCta title="Make your first bill on FlowXP today." lead="Add your products, print a test bill and see your first report. Seven days free, no card, no sales call." />

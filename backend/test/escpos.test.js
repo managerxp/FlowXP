@@ -356,3 +356,21 @@ test('the time on a printed slip is the shop clock, not the server clock', async
   assert.match(stamp('2026-11-14T00:30:00Z', 'UTC'), /0?12:30 am/i);
   assert.equal(stamp(null), '');
 });
+
+test('a footer keeps its lines and Powered by FlowXP can be switched off', async () => {
+  const base = { business: { ...business1, phone: '9876543210' }, invoice: invoice({ items: [{ description: 'Tea', quantity: 1, unit_price: 100, line_total: 100 }], total: 100 }) };
+  const on = textOf(receiptBytes({ ...base, settings: { footer: 'Line one\nLine two\nLine three' } }, { cols: 48 }));
+  const at = (t, s) => t.split('\n').findIndex((l) => l.includes(s));
+  assert.ok(at(on, 'Line one') >= 0 && at(on, 'Line two') === at(on, 'Line one') + 1 && at(on, 'Line three') === at(on, 'Line two') + 1 && on.includes('Powered by FlowXP'));
+  assert.ok(!textOf(receiptBytes({ ...base, settings: { footer: 'Bye', show_powered_by: false } }, { cols: 48 })).includes('Powered by'));
+});
+
+test('the daily token slip follows the bill as its own cut piece, only when switched on', async () => {
+  const base = { business: { ...business1, phone: '9876543210' }, invoice: { ...invoice({ items: [{ description: 'Tea', quantity: 1, unit_price: 100, line_total: 100 }], total: 100 }), token: 17 } };
+  const cuts = (b) => b.toString('latin1').split('\x1dVB').length - 1;
+  const off = receiptBytes({ ...base, settings: {} }, { cols: 48 });
+  const on = receiptBytes({ ...base, settings: { print_token: true } }, { cols: 48 });
+  assert.equal(cuts(on), cuts(off) + 1);
+  assert.ok(textOf(on).includes('TOKEN') && !textOf(off).includes('TOKEN'));
+  assert.equal(cuts(receiptBytes({ ...base, invoice: { ...base.invoice, token: null }, settings: { print_token: true } }, { cols: 48 })), cuts(off));   // a table order has no token
+});

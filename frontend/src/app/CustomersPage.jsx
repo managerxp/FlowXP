@@ -18,6 +18,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { CLOTHING_TYPES } from '../lib/business.js';
 import CustomerSizes from './clothing/CustomerSizes.jsx';
 import { formatDate } from '../lib/display.js';
+import { stateFromGstin } from '../lib/states.js';
 import { CsvImportModal } from './wholesale/parts.jsx';
 
 const IMPORT = {
@@ -70,7 +71,7 @@ const CustomerForm = ({ initial, onSaved, onClose }) => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const isEdit = Boolean(initial.customer_id);
-  const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value, ...(field === 'gstin' && stateFromGstin(e.target.value) ? { state: stateFromGstin(e.target.value) } : {}) }));   // a GSTIN fixes the state
 
   const submit = async (e) => {
     e.preventDefault();

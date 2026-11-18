@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
-import { Alert, Button, Field, Input, Section, Textarea } from '../components/ui.jsx';
+import { Alert, Button, Input, Section, Textarea } from '../components/ui.jsx';
 import Reveal from '../components/Reveal.jsx';
 import { FAQ } from './content.js';
 import { PageHero, TextLink } from './parts.jsx';
@@ -36,27 +36,47 @@ const EmailLink = () => {
 };
 
 const blank = { name: '', email: '', subject: '', message: '' };
+const TOPICS = ['Pricing and plans', 'A walkthrough for my team', 'Help with my account', 'Moving from my current software', 'Something else'];
+const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/* One question at a time, like talking to a person: name, email, what it is about, then the message. Each answer is
+   kept above the question so it can be tapped and changed; Enter moves on. Sends the same four fields as before. */
+const STEPS = [
+  { key: 'name', ask: 'First, what should we call you?', hint: 'Your name' },
+  { key: 'email', ask: 'Where can we reply?', hint: 'you@yourbusiness.com' },
+  { key: 'subject', ask: 'What is it about?' },
+  { key: 'message', ask: 'Tell us a little more.', hint: 'Your kind of business, how many outlets, what you want to know…' }
+];
 
 const ContactForm = () => {
   const [f, setF] = useState(blank);
+  const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
-  const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
+  const cur = STEPS[step];
+  const value = f[cur.key];
+  const valid = cur.key === 'email' ? EMAIL_OK.test(value.trim()) : value.trim().length > 0;
+  const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
 
-  const submit = async (e) => {
-    e.preventDefault();
+  const send = async () => {
     setBusy(true); setError('');
     try {
       await api('/contact', { method: 'POST', body: f });
-      setSent(true); setF(blank);
+      setSent(true); setF(blank); setStep(0);
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   };
+  const next = (e) => {
+    e?.preventDefault();
+    if (!valid || busy) return;
+    if (step < STEPS.length - 1) setStep(step + 1); else send();
+  };
+  const pickTopic = (t) => { set('subject', t); setStep(step + 1); };
 
   if (sent) {
     return (
-      <div className="rounded-(--radius-panel) border border-line bg-surface p-8 text-center">
-        <p className="text-title font-semibold text-ink-900">Message sent.</p>
+      <div className="rounded-(--radius-panel) border border-line bg-surface p-8 text-center motion-safe:animate-[fade-in_280ms_ease-out]">
+        <p className="text-title font-semibold text-ink-900">Thank you, we have it.</p>
         <p className="mt-2 text-body text-ink-500">Someone from the FlowXP team will reply to your email soon.</p>
         <button type="button" onClick={() => setSent(false)} className="mt-4 text-small font-medium text-brand-600 hover:text-brand-700">Send another message</button>
       </div>
@@ -64,16 +84,47 @@ const ContactForm = () => {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4 rounded-(--radius-panel) border border-line bg-surface p-6 sm:p-8">
-      <Alert>{error}</Alert>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field id="cf-name" label="Your name"><Input id="cf-name" value={f.name} onChange={set('name')} required autoComplete="name" maxLength={120} /></Field>
-        <Field id="cf-email" label="Your email"><Input id="cf-email" type="email" value={f.email} onChange={set('email')} required autoComplete="email" /></Field>
+    <div className="rounded-(--radius-panel) border border-line bg-surface p-6 sm:p-8">
+      <div className="flex items-center justify-between text-small text-ink-400">
+        <span>Question {step + 1} of {STEPS.length}</span>
+        {step > 0 && <button type="button" onClick={() => { setError(''); setStep(step - 1); }} className="font-medium text-brand-600 hover:text-brand-700">Back</button>}
       </div>
-      <Field id="cf-subject" label="Subject"><Input id="cf-subject" value={f.subject} onChange={set('subject')} required maxLength={150} /></Field>
-      <Field id="cf-message" label="Message"><Textarea id="cf-message" rows={5} value={f.message} onChange={set('message')} required maxLength={4000} /></Field>
-      <Button type="submit" size="lg" loading={busy} className="w-full sm:w-auto">Send message</Button>
-    </form>
+      <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-3" role="progressbar" aria-valuemin={1} aria-valuemax={STEPS.length} aria-valuenow={step + 1}>
+        <div className="h-full rounded-full bg-brand-600 transition-[width] duration-(--duration-normal)" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
+      </div>
+
+      {step > 0 && (
+        <div className="mt-5 flex flex-wrap gap-2">
+          {STEPS.slice(0, step).map((st, i) => (
+            <button key={st.key} type="button" onClick={() => { setError(''); setStep(i); }} className="max-w-full truncate rounded-full border border-line-strong px-3 py-1 text-small text-ink-700 hover:border-ink-400" title="Change this answer">{f[st.key]}</button>
+          ))}
+        </div>
+      )}
+
+      <form key={step} onSubmit={next} className="mt-6 motion-safe:animate-[fade-in_280ms_ease-out]">
+        <label htmlFor={`cf-${cur.key}`} className="block text-h3 font-semibold text-ink-900">{cur.ask}</label>
+        <Alert>{error}</Alert>
+        {cur.key === 'subject' ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {TOPICS.map((t) => (
+              <button key={t} type="button" onClick={() => pickTopic(t)} className={`rounded-full border px-4 py-2 text-body font-medium transition-colors duration-(--duration-fast) ${f.subject === t ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-line-strong text-ink-700 hover:border-ink-400'}`}>{t}</button>
+            ))}
+          </div>
+        ) : cur.key === 'message' ? (
+          <div className="mt-4">
+            <Textarea id="cf-message" autoFocus rows={5} placeholder={cur.hint} value={value} onChange={(e) => set('message', e.target.value)} maxLength={4000} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) next(e); }} />
+            <p className="mt-1 text-small text-ink-400">Ctrl + Enter sends it.</p>
+          </div>
+        ) : (
+          <div className="mt-4"><Input id={`cf-${cur.key}`} autoFocus type={cur.key === 'email' ? 'email' : 'text'} autoComplete={cur.key} placeholder={cur.hint} value={value} onChange={(e) => set(cur.key, e.target.value)} maxLength={cur.key === 'name' ? 120 : 200} /></div>
+        )}
+        {cur.key !== 'subject' && (
+          <div className="mt-5">
+            <Button type="submit" size="lg" loading={busy} disabled={!valid} className="w-full sm:w-auto">{step === STEPS.length - 1 ? 'Send message' : 'Next'}</Button>
+          </div>
+        )}
+      </form>
+    </div>
   );
 };
 

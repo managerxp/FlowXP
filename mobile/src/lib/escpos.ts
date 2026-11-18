@@ -71,16 +71,18 @@ const fromBase64 = (s: string): number[] => {
   }
   return out;
 };
-export type EscposOptions = { cut?: boolean; drawer?: boolean; qr?: string; extraLines?: number; copies?: number; logo?: LogoBits | null };
-export const escposBytes = (text: string, paper: Paper, { cut = true, drawer = false, qr, extraLines = 3, copies = 1, logo }: EscposOptions = {}): Uint8Array => {
+export type EscposOptions = { cut?: boolean; drawer?: boolean; qr?: string; extraLines?: number; copies?: number; logo?: LogoBits | null; /** double-size text, for a token slip */ big?: boolean };
+export const escposBytes = (text: string, paper: Paper, { cut = true, drawer = false, qr, extraLines = 3, copies = 1, logo, big = false }: EscposOptions = {}): Uint8Array => {
   const feed = Math.max(0, Math.min(10, Math.round(extraLines)));
   const one = (withDrawer: boolean): number[] => {
     const bytes: number[] = [ESC, 0x40];                 // initialise
     if (withDrawer) bytes.push(ESC, 0x70, 0x00, 0x19, 0xfa);   // pulse pin 2
     if (validLogo(logo)) { const wb = logo.w / 8; bytes.push(ESC, 0x61, 0x01, GS, 0x76, 0x30, 0x00, wb & 255, wb >> 8, logo.h & 255, logo.h >> 8, ...fromBase64(logo.data), LF, ESC, 0x61, 0x00); }   // the logo, centred, first
+    if (big) bytes.push(GS, 0x21, 0x11);                 // double width and height: a line then holds half the columns
     for (const raw of printable(text).split('\n')) {
-      for (const line of fitLine(raw, COLUMNS[paper])) { for (const ch of line) bytes.push(ch.charCodeAt(0)); bytes.push(LF); }
+      for (const line of fitLine(raw, big ? Math.floor(COLUMNS[paper] / 2) : COLUMNS[paper])) { for (const ch of line) bytes.push(ch.charCodeAt(0)); bytes.push(LF); }
     }
+    if (big) bytes.push(GS, 0x21, 0x00);
     if (qr) bytes.push(LF, ...qrBytes(qr, paper));
     for (let i = 0; i < feed; i++) bytes.push(LF);
     if (cut) bytes.push(GS, 0x56, 0x01);                 // partial cut (printers without a cutter ignore it)

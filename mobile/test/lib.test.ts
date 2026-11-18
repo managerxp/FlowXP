@@ -127,3 +127,13 @@ test('the phone receipt matches the website: Qty/Rate/Amount table, UTGST, savin
   const off = receiptText({ ...inv, receipt: { show_tax_lines: false } }, 'Shop', 48);
   assert.ok(!/Subtotal|CGST|UTGST|GST/.test(off.replace('Rs', '')) && /1510\.00/.test(off));
 });
+
+test('a price that includes GST: the customer pays the price, the GST is taken out of it, and it mixes with prices that add GST', () => {
+  const gst = { on: true, composite: false, cess: false, tcs: false, tds: false, tcsRate: 1, tdsRate: 1 } as never;
+  const mrp = P(1, 'Soap', 118, { tax_rate: 18, price_includes_tax: true });
+  const plain = P(2, 'Bag', 100, { tax_rate: 18 });
+  const one = totals(addProduct(emptyCart(), mrp), new Map(), gst);
+  assert.deepEqual([one.subtotalPaise, one.taxPaise, one.totalPaise], [10000, 1800, 11800]);
+  const both = totals(addProduct(addProduct(emptyCart(), mrp), plain), new Map(), gst);
+  assert.equal(both.totalPaise, 11800 + 11800);
+});

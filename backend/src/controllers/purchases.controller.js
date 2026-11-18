@@ -11,6 +11,7 @@ import { defaultBatchNo } from '../modules/retailStock.js';
 import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
 import { computeLineTax, isInterState, sumLines } from '../modules/tax.js';
+import { placeOfSupply } from '../modules/gst/states.js';
 import { toPaise, toRupees, toQuantity } from '../utils/money.js';
 import { moveStock } from '../modules/stock.js';
 import { branchFilter } from '../utils/scope.js';
@@ -74,16 +75,14 @@ export const create = async (req, res) => {
     let supplier = null;
     if (body.supplier_id) {
       const { rows } = await client.query(
-        `SELECT supplier_id, name FROM suppliers WHERE supplier_id = $1 AND business_id = $2`,
+        `SELECT supplier_id, name, gstin FROM suppliers WHERE supplier_id = $1 AND business_id = $2`,
         [body.supplier_id, req.tenant.businessId]
       );
       if (!rows.length) { await client.query('ROLLBACK'); return res.status(400).json({ success: false, message: 'Supplier not found' }); }
       supplier = rows[0];
     }
-    // ponytail: supplier.state is not tracked in V1's suppliers table, so a
-    // purchase is always treated as intra-state (CGST+SGST). Add a state
-    // column and pass it here if inter-state purchases need IGST split.
-    const interState = isInterState(business.state, null);
+    // the supplier's GSTIN says which state they are in: another state means IGST, the same state CGST + SGST. With no GSTIN on the supplier it stays intra-state.
+    const interState = isInterState(business.state, supplier ? placeOfSupply(supplier.gstin, null) : null);
 
     /* The supplier's own bill number, kept with the purchase. The same supplier's same bill number twice is almost always
        a bill entered twice (it doubles the stock and what is owed), so it is refused unless the person confirms. */

@@ -17,8 +17,9 @@ import { recordAudit } from '../modules/events.js';
 import { toRupees, toPaise } from '../utils/money.js';
 import { normaliseEmail, BUSINESS_TYPES } from '../utils/validate.js';
 import { createPaymentLink as cashfreeCreateLink, CashfreeError } from '../modules/payments/cashfree.js';
-import { industryDefaults, INDUSTRY_OFF, PLAN_FEATURES, PLAN_FEATURE_KEYS, FEATURE_GROUPS, featureGroup } from '../modules/planFeatures.js';
+import { effectiveFeatureFlags, industryDefaults, INDUSTRY_OFF, PLAN_FEATURES, PLAN_FEATURE_KEYS, FEATURE_GROUPS, featureGroup } from '../modules/planFeatures.js';
 import config from '../config/env.js';
+import { outletAllowance } from './outlets.controller.js';
 
 const BUSINESS_STATUSES = ['ACTIVE', 'SUSPENDED', 'CLOSED'];
 const SUBSCRIPTION_STATUSES = ['TRIAL', 'ACTIVE', 'EXPIRED', 'CANCELLED', 'SUSPENDED'];
@@ -595,6 +596,65 @@ export const listBusinessOverrides = async (req, res) => {
   }
 };
 
+/* Every feature this business could have, as one list for the Super Admin: what its plan and industry give it, what an override changed, and the add-on that sells it. */
+export const businessFeatures = async (req, res) => {
+  const businessId = Number(req.params.id);
+  try {
+    const b = (await pool.query(
+      `SELECT b.business_type, b.workshop_mode, COALESCE(pv.feature_flags, p.feature_flags, '{}'::jsonb) AS plan_flags, COALESCE(btf.feature_flags, '{}'::jsonb) AS type_flags
+       FROM businesses b LEFT JOIN plans p ON p.plan_code = b.plan_code LEFT JOIN plan_versions pv ON pv.plan_version_id = b.plan_version_id
+       LEFT JOIN business_type_features btf ON btf.business_type = b.business_type AND btf.plan_code = b.plan_code
+       WHERE b.business_id = $1`, [businessId])).rows[0];
+    if (!b) return res.status(404).json({ success: false, message: 'Not found' });
+    const overrides = Object.fromEntries((await pool.query(
+      `SELECT feature_key, enabled FROM business_feature_overrides WHERE business_id = $1 AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)`, [businessId])).rows.map((o) => [o.feature_key, o.enabled]));
+    const addons = Object.fromEntries((await pool.query(`SELECT addon_key, name, price_yearly_paise FROM addons WHERE is_active`)).rows.map((a) => [a.addon_key, a]));
+    const sources = [b.plan_flags, b.type_flags];
+    const inPlan = effectiveFeatureFlags(sources, {}, b.business_type, b.workshop_mode);
+    const now = effectiveFeatureFlags(sources, overrides, b.business_type, b.workshop_mode);
+    const offForIndustry = industryDefaults(b.business_type);
+    const groups = Object.fromEntries(FEATURE_GROUPS);
+    const data = PLAN_FEATURES
+      // an industry's own off-list (a salon has no kitchen display) stays hidden unless somebody switched it on for this business
+      .filter(([key]) => !(offForIndustry[key] === false && b.type_flags?.[key] !== true && overrides[key] !== true))
+      .map(([key, label, description]) => ({
+        key, label, description, group: featureGroup(key), group_label: groups[featureGroup(key)],
+        included: inPlan[key] !== false, enabled: now[key] !== false, override: key in overrides ? overrides[key] : null,
+        addon: addons[key] ? { addon_key: key, name: addons[key].name, price_yearly: toRupees(addons[key].price_yearly_paise) } : null
+      }));
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('[admin] business features failed:', error.message);
+    res.status(500).json({ success: false, message: 'Could not load the features' });
+  }
+};
+
+/* Outlets are counted, not switched: the plan's number, this business's own number (override), outlets bought, and how many are open. */
+const outletsView = async (businessId) => ({
+  ...(await outletAllowance(businessId)),
+  used: Number((await pool.query(`SELECT COUNT(*) AS n FROM branches WHERE business_id = $1 AND status = 'ACTIVE'`, [businessId])).rows[0].n)
+});
+
+export const businessOutlets = async (req, res) => {
+  const businessId = Number(req.params.id);
+  const exists = await pool.query(`SELECT 1 FROM businesses WHERE business_id = $1`, [businessId]);
+  if (!exists.rows.length) return res.status(404).json({ success: false, message: 'Not found' });
+  res.json({ success: true, data: await outletsView(businessId) });
+};
+
+/* PUT /businesses/:id/outlets { outlet_limit: number | null, extra_outlets?: number } — null puts it back on the plan's number */
+export const setBusinessOutlets = async (req, res) => {
+  const businessId = Number(req.params.id);
+  const { outlet_limit: limit, extra_outlets: extra } = req.body || {};
+  if (limit !== null && !(Number.isInteger(limit) && limit >= 1 && limit <= 1000)) return res.status(400).json({ success: false, message: 'Outlets must be a whole number from 1, or blank for the plan’s number' });
+  if (extra !== undefined && !(Number.isInteger(extra) && extra >= 0 && extra <= 1000)) return res.status(400).json({ success: false, message: 'Bought outlets must be a whole number, 0 or more' });
+  const { rowCount } = await pool.query(
+    `UPDATE businesses SET outlet_limit = $2, extra_outlets = COALESCE($3, extra_outlets) WHERE business_id = $1`, [businessId, limit, extra ?? null]);
+  if (!rowCount) return res.status(404).json({ success: false, message: 'Not found' });
+  recordAudit(req, { business_id: businessId, action: 'admin.outlet_limit_set', resource_type: 'business', resource_id: businessId, metadata: { outlet_limit: limit, extra_outlets: extra } });
+  res.json({ success: true, data: await outletsView(businessId) });
+};
+
 export const setBusinessOverride = async (req, res) => {
   const businessId = Number(req.params.id);
   const { feature_key: featureKey, enabled, reason, expires_at: expiresAt } = req.body || {};
@@ -1106,6 +1166,7 @@ export const deleteAddon = async (req, res) => {
 const asAddonOrder = (o) => ({
   order_id: o.order_id,
   addon_key: o.addon_key,
+  quantity: o.quantity ?? 1,
   amount: toRupees(o.amount_paise),
   billing_cycle: o.billing_cycle,
   payment_link_url: o.payment_link_url,
@@ -1130,10 +1191,13 @@ export const listAddonLinks = async (req, res) => {
 export const createAddonLink = async (req, res) => {
   const businessId = Number(req.params.id);
   const { addon_key: addonKey, billing_cycle: billingCycle, amount } = req.body || {};
+  // only Extra outlet is sold by the piece; every other add-on is one switch
+  const quantity = addonKey === 'extra_outlet' ? Number(req.body?.quantity ?? 1) : 1;
 
   if (!['MONTHLY', 'YEARLY'].includes(billingCycle)) {
     return res.status(400).json({ success: false, message: 'Billing cycle must be MONTHLY or YEARLY' });
   }
+  if (!(Number.isInteger(quantity) && quantity >= 1 && quantity <= 50)) return res.status(400).json({ success: false, message: 'Number of outlets must be from 1 to 50' });
 
   try {
     const { rows: addonRows } = await pool.query(`SELECT * FROM addons WHERE addon_key = $1 AND is_active = TRUE`, [addonKey]);
@@ -1142,7 +1206,7 @@ export const createAddonLink = async (req, res) => {
 
     // Defaults to the catalog price; an admin may still type a different one for a negotiated deal,
     // same "custom price, not a fixed self-serve one" reasoning as the main subscription link.
-    let amountPaise = billingCycle === 'YEARLY' ? addon.price_yearly_paise : addon.price_monthly_paise;
+    let amountPaise = (billingCycle === 'YEARLY' ? addon.price_yearly_paise : addon.price_monthly_paise) * quantity;
     if (amount != null) {
       try { amountPaise = toPaise(amount); } catch { return res.status(400).json({ success: false, message: 'Enter a valid price' }); }
     }
@@ -1157,9 +1221,9 @@ export const createAddonLink = async (req, res) => {
     if (!business) return res.status(404).json({ success: false, message: 'Not found' });
 
     const { rows: orderRows } = await pool.query(
-      `INSERT INTO addon_orders (business_id, addon_key, amount_paise, billing_cycle, created_by)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [businessId, addonKey, amountPaise, billingCycle, req.auth?.userId ?? null]
+      `INSERT INTO addon_orders (business_id, addon_key, amount_paise, billing_cycle, created_by, quantity)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [businessId, addonKey, amountPaise, billingCycle, req.auth?.userId ?? null, quantity]
     );
     const order = orderRows[0];
     const linkId = `flowxp-addon-${order.order_id}`;
@@ -1169,7 +1233,7 @@ export const createAddonLink = async (req, res) => {
       link = await cashfreeCreateLink({
         linkId,
         amount: toRupees(amountPaise),
-        purpose: `FlowXP add-on: ${addon.name} — ${business.name}`,
+        purpose: `FlowXP add-on: ${addon.name}${quantity > 1 ? ` x${quantity}` : ''} — ${business.name}`,
         customerName: business.owner_name,
         customerEmail: business.owner_email,
         customerPhone: business.owner_phone,
@@ -1192,7 +1256,7 @@ export const createAddonLink = async (req, res) => {
       action: 'admin.addon_link_created',
       resource_type: 'addon_order',
       resource_id: order.order_id,
-      metadata: { addon_key: addonKey, amount: toRupees(amountPaise), billing_cycle: billingCycle }
+      metadata: { addon_key: addonKey, quantity, amount: toRupees(amountPaise), billing_cycle: billingCycle }
     });
 
     res.json({ success: true, data: asAddonOrder(updated[0]) });

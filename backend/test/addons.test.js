@@ -221,3 +221,15 @@ test('a business only sees add-ons scoped to its own type (or scoped to none)', 
   const reservations = catalog.body.data.find((a) => a.addon_key === 'reservations');
   assert.deepEqual(reservations.business_types, ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE', 'RACING'], 'seeded scope from migration 0041');
 });
+
+test('the Super Admin feature list shows plan state, an override, and the add-on price', { skip }, async () => {
+  const before = (await call(admin.businessFeatures, biz)).body.data;
+  assert.ok(before.length > 10 && before.every((f) => typeof f.included === 'boolean' && typeof f.enabled === 'boolean'));
+  const f = before.find((x) => x.key === 'loyalty');
+  assert.ok(f, 'loyalty is listed');
+  await call(admin.setBusinessOverride, biz, { feature_key: 'loyalty', enabled: !f.enabled });
+  const after = (await call(admin.businessFeatures, biz)).body.data.find((x) => x.key === 'loyalty');
+  assert.equal(after.enabled, !f.enabled);
+  assert.equal(after.override, !f.enabled);
+  assert.equal(after.included, f.included);   // the plan's own answer does not move
+});

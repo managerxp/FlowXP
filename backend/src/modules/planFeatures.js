@@ -20,6 +20,7 @@ export const PLAN_FEATURES = [
   ['expenses', 'Expenses', 'Recording and reporting business expenses'],
   ['barcode_labels', 'Barcode labels', 'Print barcode price tags for any product and give products without a barcode one of your own'],
   ['other_income', 'Other income', 'Money received that is not a sale (interest, rent, commission), counted in profit and loss'],
+  ['money_accounts', 'Cash, bank and loan accounts', 'Where money sits: cash, bank accounts and loans, with bank and loan statements, a trial balance and a balance sheet'],
   ['estimates', 'Estimates & quotations', 'Priced offers with a valid-until date that turn into an invoice in one tap'],
   ['ai', 'Flow AI', 'The AI manager chat, briefings and menu-photo import'],
   ['advanced_reports', 'Advanced reports', 'Profitability, revenue leakage and demand forecast'],
@@ -30,6 +31,7 @@ export const PLAN_FEATURES = [
   ['delivery_fleet', 'Delivery riders', 'Assign your own delivery staff to orders and track pickup, out-for-delivery and delivered'],
   ['tables', 'Tables & floor', 'The floor plan, table status and dine-in orders by table'],
   ['kitchen', 'Kitchen display', 'The kitchen screen: tickets by station, timing and the order board'],
+  ['counter_token', 'Daily token slip', 'A numbered token slip printed after the bill for counter and takeaway orders, starting again at 1 each morning'],
   // Salon module. Each is its own switch so a plan (or a paid add-on) can include, say, appointments
   // without memberships. Missing key = on, like every feature above.
   ['salon_appointments', 'Appointments', 'Calendar, staff availability, walk-ins and double-booking protection'],
@@ -101,7 +103,7 @@ export const FEATURE_GROUPS = [
   ['common', 'Every business'], ['food', 'Restaurants and cafés'], ['salon', 'Salon'], ['gym', 'Gym'], ['gaming', 'Gaming lounge'],
   ['parts', 'Auto parts and garage'], ['clothing', 'Clothing'], ['wholesale', 'Wholesale and distribution'], ['flowbook', 'FlowBook']
 ];
-const FOOD_TOOLS = ['reservations', 'integrations', 'qr_ordering', 'multi_brand', 'delivery_fleet', 'tables', 'kitchen'];
+const FOOD_TOOLS = ['reservations', 'integrations', 'qr_ordering', 'multi_brand', 'delivery_fleet', 'tables', 'kitchen', 'counter_token'];
 export const featureGroup = (key) => {
   if (FOOD_TOOLS.includes(key)) return 'food';
   if (key.startsWith('salon_')) return 'salon';
@@ -156,7 +158,7 @@ const AP_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('ap_'));
 const CL_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('cl_'));
 // FlowBook is its own product: an industry business (restaurant, clothing, salon...) does not get it inside FlowXP. Only a FlowBook business has it; an admin can still switch it on for one business or one type.
 const FLOWBOOK_KEYS = PLAN_FEATURE_KEYS.filter((k) => k.startsWith('flowbook'));
-const NOT_FOOD = ['reservations', 'integrations', 'qr_ordering', 'multi_brand', 'delivery_fleet', 'tables', 'kitchen'];
+const NOT_FOOD = ['reservations', 'integrations', 'qr_ordering', 'multi_brand', 'delivery_fleet', 'tables', 'kitchen', 'counter_token'];
 const SHOP_OFF = [...NOT_FOOD, ...SALON_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, 'wholesale_pricing', ...FLOWBOOK_KEYS];
 const FOOD_OFF = ['estimates', ...SALON_KEYS, ...WHOLESALE_KEYS, ...GYM_KEYS, ...GAMING_KEYS, ...AP_KEYS, ...CL_KEYS, ...FLOWBOOK_KEYS];
 export const INDUSTRY_OFF = {

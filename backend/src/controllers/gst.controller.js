@@ -11,7 +11,7 @@ import { recordAudit } from '../modules/events.js';
 import { addDaysISO } from '../utils/dates.js';
 import { toRupees } from '../utils/money.js';
 import { gstinState } from '../modules/gst/states.js';
-import { DEFAULT_B2CL_LIMIT_RUPEES, buildGstr1, buildGstr3b, loadDocs, shape } from '../modules/gst/returns.js';
+import { DEFAULT_B2CL_LIMIT_RUPEES, buildGstr1, buildGstr3b, buildGstr9, loadDocs, shape } from '../modules/gst/returns.js';
 import { buildEInvoice, buildEWayBill, loadInvoices } from '../modules/gst/documents.js';
 
 const bad = (res, message, status = 400) => res.status(status).json({ success: false, message });
@@ -117,13 +117,31 @@ export const gstr3b = async (req, res) => {
   const ctx = await gstinFor(req, res);
   if (!ctx) return;
   const data = await loadDocs(pool, { businessId: req.tenant.businessId, gstin: ctx.gstin, ...range });
+  const { purchases, debits } = await inward(req.tenant.businessId, ctx.gstin, range);
+  res.json({ success: true, data: buildGstr3b({ shaped: shape(data), purchases, debits, gstin: ctx.gstin, fp: range.fp }) });
+};
+
+/* GET /api/gst/gstr9?fy=2025&gstin= — the annual return's figures for the financial year starting April 2025 */
+export const gstr9 = async (req, res) => {
+  const y = Number(req.query.fy);
+  if (!(Number.isInteger(y) && y >= 2017 && y <= 2100)) return bad(res, 'Choose a financial year');
+  const ctx = await gstinFor(req, res);
+  if (!ctx) return;
+  const range = { from: `${y}-04-01`, to: `${y + 1}-03-31` };
+  const data = await loadDocs(pool, { businessId: req.tenant.businessId, gstin: ctx.gstin, ...range });
+  const { purchases, debits } = await inward(req.tenant.businessId, ctx.gstin, range);
+  res.json({ success: true, data: buildGstr9({ data, shaped: shape(data), purchases, debits, gstin: ctx.gstin, fy: `${y}-${String(y + 1).slice(2)}` }) });
+};
+
+/* purchases received and debit notes under a GSTIN in a period: the input side of 3B and 9 */
+const inward = async (businessId, gstin, range) => {
   const purchases = (await pool.query(
     `SELECT po.tax_paise, po.subtotal_paise, po.reverse_charge, s.gstin FROM purchase_orders po JOIN businesses b ON b.business_id = po.business_id LEFT JOIN branches br ON br.branch_id = po.branch_id LEFT JOIN suppliers s ON s.supplier_id = po.supplier_id
-     WHERE po.business_id = $1 AND po.status IN ('RECEIVED','PARTIAL') AND po.po_date BETWEEN $2 AND $3 AND COALESCE(br.gstin, b.gstin) = $4`, [req.tenant.businessId, range.from, range.to, ctx.gstin])).rows;
+     WHERE po.business_id = $1 AND po.status IN ('RECEIVED','PARTIAL') AND po.po_date BETWEEN $2 AND $3 AND COALESCE(br.gstin, b.gstin) = $4`, [businessId, range.from, range.to, gstin])).rows;
   const debits = (await pool.query(
     `SELECT n.tax_paise, s.gstin FROM debit_notes n JOIN businesses b ON b.business_id = n.business_id LEFT JOIN branches br ON br.branch_id = n.branch_id LEFT JOIN suppliers s ON s.supplier_id = n.supplier_id
-     WHERE n.business_id = $1 AND n.dn_date BETWEEN $2 AND $3 AND COALESCE(br.gstin, b.gstin) = $4`, [req.tenant.businessId, range.from, range.to, ctx.gstin])).rows;
-  res.json({ success: true, data: buildGstr3b({ shaped: shape(data), purchases, debits, gstin: ctx.gstin, fp: range.fp }) });
+     WHERE n.business_id = $1 AND n.dn_date BETWEEN $2 AND $3 AND COALESCE(br.gstin, b.gstin) = $4`, [businessId, range.from, range.to, gstin])).rows;
+  return { purchases, debits };
 };
 
 const einvoiceView = (e) => ({ invoice_id: e.invoice_id, invoice_number: e.invoice_number, ready: e.errors.length === 0, errors: e.errors, warnings: e.warnings, irn: e.irn });
@@ -193,4 +211,34 @@ export const recordEwayBill = async (req, res) => {
   if (!rowCount) return bad(res, 'Not found', 404);
   recordAudit(req, { action: 'gst.eway_recorded', resource_type: 'invoice', resource_id: req.params.id });
   res.json({ success: true, data: { eway_bill_no: no } });
+};
+
+/*
+ * GET /api/gst/form27eq?fy=2025&q=1[&download=1] — TCS collected in a quarter, one row per bill, for the quarterly TCS return (Form 27EQ).
+ * The customer's PAN is read from their GSTIN (characters 3 to 12); a customer with no GSTIN is flagged, because 27EQ needs every collectee's PAN.
+ * FlowXP does not hold the business's TAN or the challan details; the return is prepared from this list in the TDS/TCS software (RPU).
+ */
+const QUARTERS = { 1: ['04-01', '06-30', 0], 2: ['07-01', '09-30', 0], 3: ['10-01', '12-31', 0], 4: ['01-01', '03-31', 1] };
+export const form27eq = async (req, res) => {
+  const y = Number(req.query.fy); const q = QUARTERS[Number(req.query.q)];
+  if (!(Number.isInteger(y) && y >= 2017 && y <= 2100) || !q) return bad(res, 'Choose a financial year and a quarter');
+  const from = `${y + q[2]}-${q[0]}`; const to = `${y + q[2]}-${q[1]}`;
+  const { rows } = await pool.query(
+    `SELECT i.invoice_number, i.invoice_date::text AS date, i.subtotal_paise, i.tcs_paise, c.name, c.gstin
+     FROM invoices i LEFT JOIN customers c ON c.customer_id = i.customer_id
+     WHERE i.business_id = $1 AND i.status = 'ISSUED' AND i.tcs_paise > 0 AND i.invoice_date BETWEEN $2 AND $3 ORDER BY i.invoice_date, i.invoice_id`,
+    [req.tenant.businessId, from, to]);
+  const panOf = (g) => (/^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z0-9]Z[A-Z0-9]$/.test(String(g || '').toUpperCase()) ? String(g).toUpperCase().slice(2, 12) : null);
+  const lines = rows.map((r) => ({ date: r.date, invoice_number: r.invoice_number, customer: r.name || 'Walk-in customer', pan: panOf(r.gstin), amount: toRupees(r.subtotal_paise), tcs: toRupees(r.tcs_paise), rate: Number(r.subtotal_paise) ? Math.round((Number(r.tcs_paise) / Number(r.subtotal_paise)) * 10000) / 100 : 0 }));
+  const missingPan = lines.filter((l) => !l.pan).length;
+  if (req.query.download === '1') {
+    const cell = (v) => (/[",\n]/.test(String(v ?? '')) ? `"${String(v).replace(/"/g, '""')}"` : String(v ?? ''));
+    const csv = [['Date of collection', 'Bill number', 'Collectee name', 'Collectee PAN', 'Amount received / debited', 'TCS rate %', 'TCS collected'], ...lines.map((l) => [l.date, l.invoice_number, l.customer, l.pan || 'PAN NOT AVAILABLE', l.amount, l.rate, l.tcs])].map((r) => r.map(cell).join(',')).join('\r\n');
+    res.set('Content-Type', 'text/csv; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="Form27EQ_${y}-${String(y + 1).slice(2)}_Q${req.query.q}.csv"`);
+    recordAudit(req, { action: 'gst.form27eq_exported', resource_type: 'form27eq', resource_id: `${y}:Q${req.query.q}` });
+    return res.send(`﻿${csv}\r\n`);
+  }
+  res.json({ success: true, data: { financial_year: `${y}-${String(y + 1).slice(2)}`, quarter: Number(req.query.q), from, to, lines, total_tcs: toRupees(rows.reduce((s, r) => s + Number(r.tcs_paise), 0)), missing_pan: missingPan,
+    notes: ['The customer\'s PAN is taken from their GSTIN. Add a GSTIN to customers flagged "PAN not available", or the return will charge a higher rate for them.', 'Your TAN, the challans you paid the TCS with, and the section codes are entered in the return software; FlowXP does not hold them.'] } });
 };

@@ -16,7 +16,7 @@ export const lockProducts = async (client, businessId, ids) => {
   const sorted = [...new Set(ids.map(Number))].sort((a, b) => a - b);
   if (!sorted.length) return new Map();
   const { rows } = await client.query(
-    `SELECT product_id, name, unit, track_inventory, status, tax_rate, hsn_sac, purchase_price_paise, selling_price_paise, category_id
+    `SELECT product_id, name, unit, track_inventory, status, tax_rate, hsn_sac, purchase_price_paise, selling_price_paise, category_id, price_includes_tax
      FROM products WHERE business_id = $1 AND product_id = ANY($2::int[]) ORDER BY product_id FOR UPDATE`, [businessId, sorted]);
   return new Map(rows.map((r) => [r.product_id, r]));
 };

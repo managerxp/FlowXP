@@ -35,6 +35,7 @@ export default function TabsLayout() {
   // a mechanic garage bills from its job cards and keeps its money on the bar: no counter till, no product list
   const mechanic = business?.business_type === 'MECHANIC';
   const hidden = [
+    ...(garage ? [] : ['jobs']),   // the side rail reads this list, not each tab's href: without it a café on a tablet saw Jobs
     ...(mechanic ? ['sell'] : []), ...(mechanic && allowed(business, 'payments', 'expenses') ? [] : ['money']),
     ...(food || garage ? ['products'] : []), ...(food ? [] : ['tables']), ...(noSell ? ['sell', 'tables', 'sales'] : []), ...(!allowed(business, 'products', 'inventory') ? ['products'] : []),
     ...(salon && allowed(business, 'appointments') ? [] : ['appointments']), ...(salon ? [] : ['salon-clients']),
@@ -45,6 +46,7 @@ export default function TabsLayout() {
       tabBar={wide ? (p) => <Rail {...(p as unknown as Omit<RailProps, 'hidden'>)} hidden={hidden} /> : undefined}
       screenOptions={{
         headerShown: false,
+        animation: 'fade',   // moving between the main places fades instead of cutting
         tabBarPosition: wide ? 'left' : 'bottom',
         tabBarActiveTintColor: color.brand,
         tabBarInactiveTintColor: color.soft,

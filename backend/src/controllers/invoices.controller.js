@@ -29,6 +29,7 @@ import { ApprovalError, discountPolicy, ensureApproved, needsApproval } from '..
 import { asInvoice, BillingError, createInvoiceInTransaction, paymentReference, paymentStatus, recordInvoiceCreated } from '../modules/billing.js';
 import { insertOrderItems, nextNumber, OrderItemsError, sendKotCore } from './orders.controller.js';
 import { isParts } from '../modules/mechanic/types.js';
+import { hasPlanFeature } from '../modules/planFeatures.js';
 
 /* ==========================================================================
    POST /api/invoices
@@ -242,7 +243,7 @@ export const get = async (req, res) => {
   const { rows } = await pool.query(
     `SELECT i.*, c.name AS customer_name, c.phone AS customer_phone, c.gstin AS customer_gstin, c.address AS customer_address, c.state AS customer_state, c.email AS customer_email, b.state AS business_state,
             br.name AS outlet_name, br.address AS outlet_address, br.phone AS outlet_phone, br.gstin AS outlet_gstin, br.city AS outlet_city,
-            u.name AS cashier_name, o.order_number, o.platform, o.external_order_number, t.name AS table_name,
+            u.name AS cashier_name, o.order_number, o.order_id AS ord_id, o.table_id AS ord_table, o.branch_id AS ord_branch, o.created_at AS ord_at, b.timezone AS biz_tz, o.platform, o.external_order_number, t.name AS table_name,
             b.receipt_settings AS business_receipt, b.gstin AS business_gstin, b.address AS business_address, b.city AS business_city, b.phone AS business_phone
      FROM invoices i JOIN businesses b ON b.business_id = i.business_id
      LEFT JOIN customers c ON c.customer_id = i.customer_id
@@ -253,9 +254,19 @@ export const get = async (req, res) => {
   );
   if (!rows.length) return res.status(404).json({ success: false, message: 'Not found' });
 
+  // the counter token: this order's place among today's orders with no table at this outlet (1, 2, 3 ...), starting again each morning in the shop's time zone
+  let token = null;
+  if (rows[0].ord_id && !rows[0].ord_table) {
+    const tz = rows[0].biz_tz || 'Asia/Kolkata';
+    token = Number((await pool.query(
+      `SELECT COUNT(*) AS n FROM orders o2 WHERE o2.business_id = $1 AND o2.branch_id IS NOT DISTINCT FROM $2::int AND o2.table_id IS NULL AND o2.order_id <= $3::int
+         AND (o2.created_at AT TIME ZONE $4)::date = ($5::timestamptz AT TIME ZONE $4)::date`,
+      [req.tenant.businessId, rows[0].ord_branch, rows[0].ord_id, tz, rows[0].ord_at])).rows[0].n);
+  }
+
   const items = (await pool.query(
     `SELECT ii.item_id, ii.product_id, ii.description, ii.quantity, ii.unit_price_paise, ii.discount_paise, ii.tax_rate, ii.tax_amount_paise, ii.line_total_paise, ii.cess_paise, ii.modifiers,
-            COALESCE(ii.hsn_sac, p.hsn_sac) AS hsn, ii.unit_name AS unit
+            COALESCE(ii.hsn_sac, p.hsn_sac) AS hsn, ii.unit_name AS unit, ii.tax_name, ii.tax_kind
      FROM invoice_items ii LEFT JOIN products p ON p.product_id = ii.product_id WHERE ii.invoice_id = $1 ORDER BY ii.item_id`,
     [req.params.id]
   )).rows;
@@ -293,7 +304,7 @@ export const get = async (req, res) => {
       credit_notes: creditNotes.map((c) => ({ cn_id: c.cn_id, cn_number: c.cn_number, date: c.cn_date, total: toRupees(c.total_paise), reason: c.reason })),
       created_at: rows[0].created_at,
       customer_balance: toRupees(customerBalance),
-      cashier: rows[0].cashier_name, order_number: rows[0].order_number, table_name: rows[0].table_name,
+      cashier: rows[0].cashier_name, order_number: rows[0].order_number, table_name: rows[0].table_name, token,
       // the delivery platform's own order id (e.g. Zomato's #6350), so a receipt can be matched back to their app
       platform: rows[0].platform, platform_order_number: rows[0].external_order_number,
       outlet: rows[0].outlet_name ? { name: rows[0].outlet_name, address: rows[0].outlet_address, phone: rows[0].outlet_phone, gstin: rows[0].outlet_gstin, city: rows[0].outlet_city } : null,
@@ -310,6 +321,9 @@ export const get = async (req, res) => {
         show_tax_lines: rows[0].business_receipt?.show_tax_lines !== false, show_hsn: rows[0].business_receipt?.show_hsn === true,
         // the extra receipt options (Business settings > Receipts), so the phone prints the same bill as the website and the thermal printer
         header_text: rows[0].business_receipt?.header_text || '', show_phone: rows[0].business_receipt?.show_phone !== false, show_total_qty: rows[0].business_receipt?.show_total_qty !== false,
+        footer: rows[0].business_receipt?.footer ?? 'Thank you! Visit again.',
+        show_powered_by: rows[0].business_receipt?.show_powered_by !== false,
+        print_token: rows[0].business_receipt?.print_token === true && hasPlanFeature(req.tenant, 'counter_token'),   // the owner's switch and the plan's feature, both
         show_amount_words: rows[0].business_receipt?.show_amount_words === true, show_terms: rows[0].business_receipt?.show_terms === true, terms: rows[0].business_receipt?.terms || ''
       },
       // what a tax invoice prints besides the bill: PAN, bank details, terms (Business settings > Receipts)
@@ -325,6 +339,8 @@ export const get = async (req, res) => {
         item_id: i.item_id, product_id: i.product_id, description: i.description,
         modifiers: i.modifiers || [], quantity: Number(i.quantity), unit_price: toRupees(i.unit_price_paise),
         discount: toRupees(i.discount_paise), tax_rate: Number(i.tax_rate),
+        // the named GST rate it was billed under ("Exempt", "GST 5%"), when it had one
+        tax_name: i.tax_name ?? null, tax_kind: i.tax_kind ?? null,
         tax_amount: toRupees(i.tax_amount_paise), cess: toRupees(i.cess_paise || 0), line_total: toRupees(i.line_total_paise), hsn: i.hsn || null, unit: i.unit || null
       })),
       payments: payments.map((p) => ({

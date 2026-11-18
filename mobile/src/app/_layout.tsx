@@ -52,11 +52,11 @@ export default function Layout() {
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
       <OfflineBar />
       {/* a new language re-draws every screen: the key makes the whole stack start again, so nothing keeps the old words */}
-      <Stack key={`${lang}-${theme}-${display.date}-${display.decimals}`} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bg } }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="scan" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="options" options={{ presentation: 'modal' }} />
+      <Stack key={`${lang}-${theme}-${display.date}-${display.decimals}`} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bg }, animation: 'slide_from_right', animationDuration: 240 }}>
+        <Stack.Screen name="index" options={{ animation: 'fade' }} />
+        <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+        <Stack.Screen name="scan" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="options" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       </Stack>
       <HelpButton />
       <AppLockGate />

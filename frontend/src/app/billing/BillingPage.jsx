@@ -543,7 +543,7 @@ const BillingPage = () => {
       return [...c, {
         key: keySeq++, sig, modifier_ids: modifierIds, product_id: product.product_id, name_i18n: selected.length ? undefined : product.name_i18n,
         name: selected.length ? `${product.name} (${selected.map((m) => m.name).join(', ')})` : product.name, unit: product.unit,
-        unit_price: product.selling_price + delta, quantity: 1, discount: 0, tax_rate: product.tax_rate,
+        unit_price: product.selling_price + delta, quantity: 1, discount: 0, tax_rate: product.tax_rate, inclusive: product.price_includes_tax === true,
         track_inventory: product.track_inventory, current_stock: product.current_stock
       }];
     });
@@ -580,8 +580,11 @@ const BillingPage = () => {
       const off = promo[l.key]?.discount || 0;
       offers += off;
       const gross = lineTotal(l) - off;
-      subtotal += gross;
-      tax += gstEnabled ? gross * (Number(l.tax_rate || 0) / 100) : 0;
+      const rate = gstEnabled ? Number(l.tax_rate || 0) / 100 : 0;
+      // a price that includes GST (goods sold at MRP) has the tax inside it: the line adds nothing on top
+      const lineTax = l.inclusive ? gross - gross / (1 + rate) : gross * rate;
+      subtotal += gross - (l.inclusive ? lineTax : 0);
+      tax += lineTax;
     }
     const discount = Number(invoiceDiscount || 0);
     const before = Math.max(0, subtotal + tax - discount);
@@ -589,7 +592,7 @@ const BillingPage = () => {
     const pointsOff = pointsInfo ? Math.min((Number(redeem) || 0) * pointsInfo.point_value, Math.max(0, before - coupon)) : 0;
     // the loyalty reward: billing makes up to reward_quantity of the reward item free (tax and all)
     const rewardLine = card?.reward_ready ? billLines.find((l) => l.product_id === card.reward_product_id) : null;
-    const rewardOff = rewardLine ? Math.min(Number(rewardLine.quantity), card.reward_quantity || 1) * rewardLine.unit_price * (1 + (gstEnabled ? Number(rewardLine.tax_rate || 0) / 100 : 0)) : 0;
+    const rewardOff = rewardLine ? Math.min(Number(rewardLine.quantity), card.reward_quantity || 1) * rewardLine.unit_price * (1 + (gstEnabled && !rewardLine.inclusive ? Number(rewardLine.tax_rate || 0) / 100 : 0)) : 0;
     // the credit from a return pays part of this bill; what is left is what the customer hands over
     const exchangeOff = exchange ? Math.min(exchange.available, Math.max(0, before - coupon - pointsOff - rewardOff)) : 0;
     return { subtotal, tax, discount, coupon, pointsOff, rewardOff, offers, exchangeOff, before, total: Math.max(0, before - coupon - pointsOff - rewardOff - exchangeOff), gstEnabled };
@@ -757,7 +760,7 @@ const BillingPage = () => {
 
   /* Put the bill on hold (kept on the server for this outlet) and clear the till. */
   const snapshot = () => ({
-    lines: cart.map((l) => ({ product_id: l.product_id, custom: Boolean(l.custom), name: l.name, unit: l.unit, unit_price: l.unit_price, quantity: l.quantity, discount: l.discount, tax_rate: l.tax_rate, modifier_ids: l.modifier_ids || [], sig: l.sig || '', track_inventory: l.track_inventory, current_stock: l.current_stock })),
+    lines: cart.map((l) => ({ product_id: l.product_id, custom: Boolean(l.custom), name: l.name, unit: l.unit, unit_price: l.unit_price, quantity: l.quantity, discount: l.discount, tax_rate: l.tax_rate, inclusive: Boolean(l.inclusive), modifier_ids: l.modifier_ids || [], sig: l.sig || '', track_inventory: l.track_inventory, current_stock: l.current_stock })),
     customer_id: customerId || null, customer_name: customerName || null, coupon_code: couponCode.trim() || null,
     discount: Number(invoiceDiscount) || 0, notes: notes || null, print_details: dispatch, levies
   });

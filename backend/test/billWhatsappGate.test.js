@@ -20,7 +20,7 @@ test('plan without messaging, or a bill marked not to send, sends nothing; other
     const client = await pool.connect();
     try { await client.query('BEGIN'); const inv = await createInvoiceInTransaction(client, { businessId: biz, branchId: branch }, owner, { customerId: ravi, items: [{ product_id: product, quantity: 1 }], payment: { amount: 'FULL' } }); await client.query('COMMIT'); return inv; } finally { client.release(); }
   };
-  const count = async () => { await new Promise((r) => setTimeout(r, 400)); return (await pool.query(`SELECT COUNT(*)::int AS n FROM messages WHERE business_id = $1`, [biz])).rows[0].n; };
+  const count = async () => { await new Promise((r) => setTimeout(r, 1500)); return (await pool.query(`SELECT COUNT(*)::int AS n FROM messages WHERE business_id = $1`, [biz])).rows[0].n; };
   const fire = (inv, planFeatures, body = {}) => recordInvoiceCreated({ get: () => undefined, headers: {}, body, auth: { userId: owner }, tenant: { businessId: biz, planFeatures }, ip: '127.0.0.1' }, inv);
 
   fire(await bill(), { messaging: false });

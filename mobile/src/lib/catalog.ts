@@ -19,6 +19,8 @@ import type { Group } from './options.ts';
 export type Product = {
   product_id: number; name: string; /** the name in the other app languages, when known */ name_i18n?: Record<string, string>; sku: string | null; barcodes: string[]; unit: string | null;
   selling_price: number; mrp: number | null; tax_rate: number; /** compensation cess %, when the business charges it */ cess_rate?: number; track_inventory: boolean; current_stock: number | null;
+  /** the price already includes GST (goods sold at the MRP on the pack): the bill takes the tax out of it instead of adding it */
+  price_includes_tax?: boolean;
   category_name: string | null; is_available: boolean; modifier_group_ids: number[];
   /** A one-off line typed at the till (not in the catalogue): its product_id is a negative number made on the phone, and it is sent to the server as a description and a price. */
   custom?: boolean;

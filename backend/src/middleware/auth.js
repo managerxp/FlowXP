@@ -140,7 +140,7 @@ export const readChallenge = (token, purpose = '2fa') => {
    place it is needed. The Authorization header still works too: the print agent, scripts and tests use it, and a
    browser signed in before the cookie existed is moved over on its next /auth/me. */
 export const SESSION_COOKIE = 'flowxp_session';
-const cookieOptions = () => ({ httpOnly: true, secure: config.isProduction, sameSite: 'lax', path: '/api' });
+export const cookieOptions = () => ({ httpOnly: true, secure: config.isProduction, sameSite: 'lax', path: '/api' });
 
 export const cookieValue = (req, name) => {
   const raw = req.headers.cookie;

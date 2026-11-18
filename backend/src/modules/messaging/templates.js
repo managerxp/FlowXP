@@ -308,6 +308,21 @@ Thank you.`,
 
 export const KINDS = Object.keys(TEMPLATES);
 
+/** Which kind of business a template belongs to: 'common' (every business), 'food', 'salon', 'gym', 'parts', 'wholesale', or 'platform' (FlowXP's own, never shown to a business). */
+export const kindIndustry = (kind) => {
+  if (kind === 'ADMIN_DOCUMENT') return 'platform';
+  if (kind.startsWith('RESERVATION') || kind.startsWith('WAITLIST')) return 'food';
+  if (kind.startsWith('SALON_')) return 'salon';
+  if (kind.startsWith('GYM_')) return 'gym';
+  if (kind.startsWith('JOB_') || kind === 'SERVICE_DUE') return 'parts';
+  if (kind.startsWith('WS_')) return 'wholesale';
+  return 'common';
+};
+/** The industry templates a business type uses besides the common ones. A type not listed uses only the common ones. */
+const TYPE_INDUSTRY = { RESTAURANT: 'food', CAFE: 'food', CLOUD_KITCHEN: 'food', RACING: 'food', GAMING_CAFE: 'food', SALON: 'salon', GYM: 'gym', AUTO_PARTS: 'parts', MECHANIC: 'parts', WHOLESALE: 'wholesale', DISTRIBUTOR: 'wholesale' };
+/** The templates to create in Meta for this kind of business: the common ones and its own industry's. */
+export const kindsForType = (businessType) => KINDS.filter((k) => ['common', TYPE_INDUSTRY[String(businessType || '').toUpperCase()]].includes(kindIndustry(k)));
+
 /** { text, template: { name, params } } for a message of `kind`; a missing variable is an error, not a blank in the customer's phone. */
 export const render = (kind, values) => {
   const t = TEMPLATES[kind];

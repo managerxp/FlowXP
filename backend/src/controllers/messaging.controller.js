@@ -8,7 +8,7 @@ import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
 import { branchFilter } from '../utils/scope.js';
 import { channelsAvailable, isConnected, providerName } from '../modules/messaging/provider.js';
-import { KINDS, TEMPLATES, metaBody } from '../modules/messaging/templates.js';
+import { kindIndustry, kindsForType, TEMPLATES, metaBody } from '../modules/messaging/templates.js';
 import * as ledgerReports from './ledgerReports.controller.js';
 import { addDaysISO, businessToday } from '../utils/dates.js';
 import { statementShare } from '../modules/messaging/index.js';
@@ -33,8 +33,9 @@ export const putSettings = async (req, res) => {
 };
 
 /* GET /api/messaging/templates — the WhatsApp templates to create once in Meta Business Manager */
-export const templates = (_req, res) => {
-  res.json({ success: true, data: KINDS.map((kind) => ({ kind, name: TEMPLATES[kind].name, promo: TEMPLATES[kind].promo, body: metaBody(kind) })) });
+export const templates = (req, res) => {
+  // a restaurant is not shown the salon's templates: only the common ones and its own industry's
+  res.json({ success: true, data: kindsForType(req.tenant.businessType).map((kind) => ({ kind, name: TEMPLATES[kind].name, promo: TEMPLATES[kind].promo, industry: kindIndustry(kind), body: metaBody(kind) })) });
 };
 
 /* GET /api/messaging/messages?status=&kind=&limit= */
