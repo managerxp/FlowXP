@@ -13,27 +13,32 @@ import { Button, Logo, PageLoader } from '../components/ui.jsx';
 const GROUPS = [
   { title: null, items: [{ to: '/superadmin', label: 'Overview', end: true }] },
   { title: 'Customers', items: [
-    { to: '/superadmin/businesses', label: 'Businesses' },
-    { to: '/superadmin/users', label: 'People' },
-    { to: '/superadmin/support', label: 'Support', badge: 'tickets' },
-    { to: '/superadmin/messages', label: 'WhatsApp usage' },
-    { to: '/superadmin/deletions', label: 'Deletions' }
+    { to: '/superadmin/businesses', label: 'Businesses', perm: 'customers' },
+    { to: '/superadmin/users', label: 'People', perm: 'people' },
+    { to: '/superadmin/support', label: 'Support', badge: 'tickets', perm: 'support' },
+    { to: '/superadmin/messages', label: 'WhatsApp usage', perm: 'messaging' },
+    { to: '/superadmin/deletions', label: 'Deletions', perm: 'owner' }
   ] },
   { title: 'Billing', items: [
-    { to: '/superadmin/invoices', label: 'Invoices' },
-    { to: '/superadmin/quotations', label: 'Quotations' },
-    { to: '/superadmin/plans', label: 'Plans' },
-    { to: '/superadmin/features', label: 'Features' },
-    { to: '/superadmin/addons', label: 'Add-ons' }
+    { to: '/superadmin/invoices', label: 'Invoices', perm: 'billing' },
+    { to: '/superadmin/quotations', label: 'Quotations', perm: 'billing' },
+    { to: '/superadmin/plans', label: 'Plans', perm: 'owner' },
+    { to: '/superadmin/features', label: 'Features', perm: 'owner' },
+    { to: '/superadmin/addons', label: 'Add-ons', perm: 'owner' }
   ] },
   { title: 'Platform', items: [
-    { to: '/superadmin/bugs', label: 'Bugs', badge: true },
-    { to: '/superadmin/testimonials', label: 'Client reviews' },
-    { to: '/superadmin/activity', label: 'Activity' },
-    { to: '/superadmin/settings', label: 'Settings' },
+    { to: '/superadmin/bugs', label: 'Bugs', badge: true, perm: 'bugs' },
+    { to: '/superadmin/testimonials', label: 'Client reviews', perm: 'owner' },
+    { to: '/superadmin/activity', label: 'Activity', perm: 'owner' },
+    { to: '/superadmin/settings', label: 'Settings', perm: 'owner' },
+    { to: '/superadmin/staff', label: 'Staff and roles', perm: 'owner' },
     { to: '/superadmin/security', label: 'Security' }
   ] }
 ];
+
+/* a screen the signed-in role cannot use is not listed, and typing its address goes back to the overview */
+const PERM_OF_PATH = Object.fromEntries(GROUPS.flatMap((g) => g.items).filter((i) => i.perm).map((i) => [i.to, i.perm]));
+const allowed = (admin, perm) => !perm || (admin.permissions || []).includes(perm);
 
 const AdminShell = () => {
   const { admin, loading, signOut } = useAdminAuth();
@@ -68,13 +73,16 @@ const AdminShell = () => {
     return <Navigate to="/superadmin/login" replace state={{ from: location.pathname }} />;
   }
 
+  const needed = Object.entries(PERM_OF_PATH).find(([path]) => location.pathname === path || location.pathname.startsWith(`${path}/`))?.[1];
+  if (!allowed(admin, needed)) return <Navigate to="/superadmin" replace />;
+
   const linkClass = ({ isActive }) =>
     `block rounded-lg px-3 py-2 text-sm transition-colors ${
       isActive ? 'bg-brand-50 font-semibold text-brand-600' : 'text-ink-700 hover:bg-surface-2'
     }`;
 
   const count = (item) => (item.badge === 'tickets' ? tickets : item.badge ? fresh : 0);
-  const menu = GROUPS.map((g) => (
+  const menu = GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => allowed(admin, i.perm)) })).filter((g) => g.items.length).map((g) => (
     <div key={g.title || 'top'} className={g.title ? 'mt-4' : ''}>
       {g.title && <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-400">{g.title}</p>}
       <div className="space-y-0.5">
@@ -103,7 +111,7 @@ const AdminShell = () => {
             {menuOpen ? 'Close' : 'Menu'}{!menuOpen && tickets + fresh > 0 ? <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-danger px-1.5 text-[11px] text-white">{tickets + fresh}</span> : null}
           </button>
           <div className="flex items-center gap-2 lg:ml-auto">
-            <span className="hidden text-sm text-ink-500 sm:inline">{admin.email}</span>
+            <span className="hidden text-sm text-ink-500 sm:inline">{admin.email}{admin.role && admin.role !== 'OWNER' ? ` · ${admin.role.toLowerCase()}` : ''}</span>
             <Button onClick={signOut} variant="ghost" size="sm">Sign out</Button>
           </div>
         </header>

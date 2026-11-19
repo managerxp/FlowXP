@@ -46,6 +46,7 @@ const AdminTestimonials = lazy(() => import('./admin/AdminTestimonials.jsx'));
 const AdminDeletions = lazy(() => import('./admin/AdminDeletions.jsx'));
 const AdminSettings = lazy(() => import('./admin/AdminSettings.jsx'));
 const AdminSecurity = lazy(() => import('./admin/AdminSecurity.jsx'));
+const AdminStaff = lazy(() => import('./admin/AdminStaff.jsx'));
 const AdminBugs = lazy(() => import('./admin/AdminBugs.jsx'));
 const AdminSupport = lazy(() => import('./admin/AdminSupport.jsx'));
 const SupportPage = lazy(() => import('./app/SupportPage.jsx'));
@@ -503,6 +504,7 @@ const App = () => (
         <Route path="quotations" element={<AdminQuotations />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="security" element={<AdminSecurity />} />
+        <Route path="staff" element={<AdminStaff />} />
       </Route>
     </Route>
 

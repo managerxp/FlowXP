@@ -7,9 +7,11 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import * as deletion from '../controllers/accountDeletion.controller.js';
-import { requireAuth, requireSuperAdmin, requireAdminTwoFactor } from '../middleware/auth.js';
+import { requireAuth, requireSuperAdmin, requireAdminTwoFactor, requireAdminPermission as need } from '../middleware/auth.js';
 import { idempotent } from '../middleware/idempotency.js';
 import * as admin from '../controllers/admin.controller.js';
+import * as staff from '../controllers/adminStaff.controller.js';
+import * as adminPayments from '../controllers/adminPayments.controller.js';
 import * as settings from '../controllers/settings.controller.js';
 import * as appErrors from '../controllers/appErrors.controller.js';
 import * as support from '../controllers/adminSupport.controller.js';
@@ -36,6 +38,23 @@ router.post('/login', adminLoginLimiter, admin.login);
 router.use(rateLimit({ windowMs: 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false, message: { success: false, message: 'Too many requests. Slow down for a minute.' } }));
 
 router.use(requireAuth, requireSuperAdmin, requireAdminTwoFactor);
+
+/* Who may do what: every group of routes below names the permission it needs (modules/adminRoles.js). The owner has them all; /me, /stats and /bug-summary are open to any staff sign-in. */
+router.use('/staff', need('owner'));
+router.use('/deletion-requests', need('owner'));
+router.use(['/app-errors', '/bug-reports'], need('bugs'));
+router.use('/support', need('support'));
+router.use('/messaging', need('messaging'));
+router.use(['/documents', '/company'], need('billing'));
+router.use('/users', need('people'));
+router.use(['/audit', '/launch-checks', '/testimonials', '/settings'], need('owner'));
+router.use(['/plans', '/plan-features', '/business-type-features', '/addons'], (req, res, next) => need(req.method === 'GET' ? 'customers' : 'owner')(req, res, next));
+router.get('/businesses', need('customers'));
+router.get('/businesses/:id', need('customers'));
+router.get(/^\/businesses\/[^/]+\/(history|features|outlets|overrides|notes|messaging)$/, need('customers'));
+router.get('/staff', staff.list);
+router.post('/staff', staff.create);
+router.patch('/staff/:id', staff.update);
 
 router.get('/deletion-requests', deletion.adminList);
 router.post('/deletion-requests/:id/complete', deletion.adminComplete);
@@ -64,31 +83,31 @@ router.post('/documents/:id/whatsapp', docs.whatsappDocument);
 router.post('/documents/:id/payment-link', idempotent((req) => `admin:${req.auth.userId}`), docs.paymentLink);
 router.get('/company', docs.getCompany);
 router.put('/company', docs.saveCompany);
-router.get('/businesses/:id/wallet', messaging.getWallet);
-router.post('/businesses/:id/wallet', messaging.topUpWallet);
-router.patch('/businesses/:id/wallet-prices', messaging.setWalletPrices);
+router.get('/businesses/:id/wallet', need('payments'), messaging.getWallet);
+router.post('/businesses/:id/wallet', need('payments'), messaging.topUpWallet);
+router.patch('/businesses/:id/wallet-prices', need('payments'), messaging.setWalletPrices);
 
 router.get('/me', admin.me);
 router.get('/stats', admin.getStats);
 
 router.get('/businesses', admin.listBusinesses);
 router.get('/businesses/:id', admin.getBusiness);
-router.patch('/businesses/:id/status', admin.updateBusinessStatus);
-router.patch('/businesses/:id/crm', admin.updateClientCrm);
-router.delete('/businesses/:id', admin.deleteBusiness);   // erases the business and its data for good; the exact name must be typed
-router.patch('/businesses/:id/plan', admin.updateBusinessPlan);
+router.patch('/businesses/:id/status', need('manage'), admin.updateBusinessStatus);
+router.patch('/businesses/:id/crm', need('customers'), admin.updateClientCrm);
+router.delete('/businesses/:id', need('owner'), admin.deleteBusiness);   // erases the business and its data for good; the exact name must be typed
+router.patch('/businesses/:id/plan', need('manage'), admin.updateBusinessPlan);
 router.get('/businesses/:id/history', admin.businessHistory);
 router.get('/businesses/:id/features', admin.businessFeatures);
 router.get('/businesses/:id/outlets', admin.businessOutlets);
-router.put('/businesses/:id/outlets', admin.setBusinessOutlets);
+router.put('/businesses/:id/outlets', need('manage'), admin.setBusinessOutlets);
 router.get('/businesses/:id/overrides', admin.listBusinessOverrides);
-router.post('/businesses/:id/overrides', admin.setBusinessOverride);
-router.delete('/businesses/:id/overrides/:feature', admin.removeBusinessOverride);
+router.post('/businesses/:id/overrides', need('manage'), admin.setBusinessOverride);
+router.delete('/businesses/:id/overrides/:feature', need('manage'), admin.removeBusinessOverride);
 
-router.post('/businesses/:id/extend-trial', support.extendTrial);
+router.post('/businesses/:id/extend-trial', need('customers'), support.extendTrial);
 router.get('/businesses/:id/notes', support.listNotes);
-router.post('/businesses/:id/notes', support.addNote);
-router.delete('/businesses/:id/notes/:noteId', support.deleteNote);
+router.post('/businesses/:id/notes', need('customers'), support.addNote);
+router.delete('/businesses/:id/notes/:noteId', need('customers'), support.deleteNote);
 router.get('/users', support.listUsers);
 router.get('/users/:id', support.getUser);
 router.post('/users/:id/sign-out', support.signOutUser);
@@ -111,15 +130,18 @@ router.get('/plan-features', admin.planFeatureCatalog);
 router.get('/business-type-features', admin.listBusinessTypeFeatures);
 router.patch('/business-type-features/:type/:plan', admin.updateBusinessTypeFeature);
 
-router.get('/businesses/:id/payment-links', admin.listPaymentLinks);
-router.post('/businesses/:id/payment-link', idempotent((req) => `admin:${req.auth.userId}`), admin.createPaymentLink);
+router.get('/businesses/:id/payment-links', need('payments'), admin.listPaymentLinks);
+router.post('/businesses/:id/payment-link', need('payments'), idempotent((req) => `admin:${req.auth.userId}`), admin.createPaymentLink);
+
+router.post('/businesses/:id/orders/:kind/:orderId/mark-paid', need('payments'), adminPayments.markPaid);   // a link settled in cash, UPI or bank: same activation as a paid link
+router.post('/businesses/:id/orders/:kind/:orderId/receipt', need('payments'), adminPayments.sendReceipt);
 
 router.get('/addons', admin.listAddons);
 router.post('/addons', admin.createAddon);
 router.patch('/addons/:key', admin.updateAddon);
 router.delete('/addons/:key', admin.deleteAddon);
-router.get('/businesses/:id/addon-links', admin.listAddonLinks);
-router.post('/businesses/:id/addon-link', idempotent((req) => `admin:${req.auth.userId}`), admin.createAddonLink);
+router.get('/businesses/:id/addon-links', need('payments'), admin.listAddonLinks);
+router.post('/businesses/:id/addon-link', need('payments'), idempotent((req) => `admin:${req.auth.userId}`), admin.createAddonLink);
 
 router.get('/settings/payment-gateway', settings.getPaymentGateway);
 router.put('/settings/payment-gateway', settings.updatePaymentGateway);

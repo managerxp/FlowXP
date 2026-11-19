@@ -9,6 +9,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import bcrypt from 'bcryptjs';
 import { setupTestDb } from './helpers/db.js';
+const OWNER_REQ = { auth: { user: { is_super_admin: true, admin_role: 'OWNER' } } };   // the console only reaches stats signed in; the owner sees the revenue
 
 const { pool, skip, cleanup } = await setupTestDb();
 const { runMigrations } = await import('../src/config/migrate.js');
@@ -217,7 +218,7 @@ test('an expired override is ignored, as if it never existed', { skip }, async (
    new MRR, pending-payments and trials-ending-soon numbers. */
 
 test('MRR sums only ACTIVE businesses, at their pinned plan-version price, yearly normalised to monthly', { skip }, async () => {
-  const before = (await (async () => { const r = fakeRes(); await admin.getStats({}, r); return r.body.data; })());
+  const before = (await (async () => { const r = fakeRes(); await admin.getStats(OWNER_REQ, r); return r.body.data; })());
 
   const monthly = await makeOwner('sa-mrr-monthly', 'GROWTH');
   await pool.query(`UPDATE businesses SET subscription_status = 'ACTIVE', billing_cycle = 'MONTHLY' WHERE business_id = $1`, [monthly.businessId]);
@@ -234,7 +235,7 @@ test('MRR sums only ACTIVE businesses, at their pinned plan-version price, yearl
   void stillTrial;
 
   const res = fakeRes();
-  await admin.getStats({}, res);
+  await admin.getStats(OWNER_REQ, res);
   const delta = res.body.data.mrr - before.mrr;
   assert.equal(Math.round(delta * 100) / 100, 600, '500 (monthly) + 1200/12=100 (yearly, normalised) = 600 more than before');
 });
@@ -244,7 +245,7 @@ test('revenue_collected reflects subscription_orders paid to FlowXP, not the ten
   // A customer paying THIS business's own bill — must NOT count as platform revenue.
   await pool.query(`INSERT INTO payments (business_id, amount_paise, method, direction) VALUES ($1, 500000, 'CASH', 'IN')`, [owner.businessId]).catch(() => {});
 
-  const before = (await (async () => { const r = fakeRes(); await admin.getStats({}, r); return r.body.data; })());
+  const before = (await (async () => { const r = fakeRes(); await admin.getStats(OWNER_REQ, r); return r.body.data; })());
 
   await pool.query(
     `INSERT INTO subscription_orders (business_id, amount_paise, billing_cycle, status, paid_at, link_id)
@@ -253,7 +254,7 @@ test('revenue_collected reflects subscription_orders paid to FlowXP, not the ten
   );
 
   const res = fakeRes();
-  await admin.getStats({}, res);
+  await admin.getStats(OWNER_REQ, res);
   assert.equal(Math.round((res.body.data.revenue_collected - before.revenue_collected) * 100) / 100, 1499);
 });
 
@@ -268,7 +269,7 @@ test('pending payment links are counted and listed, oldest first, with a true (u
   }
 
   const res = fakeRes();
-  await admin.getStats({}, res);
+  await admin.getStats(OWNER_REQ, res);
   assert.ok(res.body.data.pending_payments.count >= 3);
   assert.ok(res.body.data.pending_payments.list.some((p) => p.business_id === owner.businessId));
 });
@@ -282,7 +283,7 @@ test('trials ending within 2 days are listed by business name, soonest first', {
   await pool.query(`UPDATE businesses SET subscription_status = 'TRIAL', trial_ends_at = CURRENT_TIMESTAMP + INTERVAL '10 days' WHERE business_id = $1`, [later.businessId]); // must NOT appear
 
   const res = fakeRes();
-  await admin.getStats({}, res);
+  await admin.getStats(OWNER_REQ, res);
   assert.ok(res.body.data.trials_ending_soon_list.some((t) => t.business_id === soon.businessId));
   assert.ok(!res.body.data.trials_ending_soon_list.some((t) => t.business_id === later.businessId));
 });

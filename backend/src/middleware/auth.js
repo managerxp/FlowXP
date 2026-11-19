@@ -18,6 +18,7 @@ import pool from '../config/database.js';
 import config from '../config/env.js';
 import { effectiveStatus, persistExpiryIfNeeded, subscriptionSummary } from '../modules/subscription.js';
 import { hasPlanFeature, effectiveFeatureFlags } from '../modules/planFeatures.js';
+import { permissionsOf } from '../modules/adminRoles.js';
 
 /* ==========================================================================
    ROLES AND PERMISSIONS
@@ -215,7 +216,7 @@ export const requireAuth = async (req, res, next) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT u.user_id, u.name, u.email, u.phone, u.email_verified, u.is_super_admin, u.token_version, u.totp_enabled, u.language
+      `SELECT u.user_id, u.name, u.email, u.phone, u.email_verified, u.is_super_admin, u.admin_role, u.admin_disabled, u.token_version, u.totp_enabled, u.language
        FROM users u WHERE u.user_id = $1`,
       [payload.sub]
     );
@@ -495,8 +496,16 @@ export const requireAdminTwoFactor = (req, res, next) => {
 };
 
 export const requireSuperAdmin = (req, res, next) => {
-  if (!req.auth?.isSuperAdmin) {
+  if (!req.auth?.isSuperAdmin || req.auth.user?.admin_disabled) {
     return res.status(403).json({ success: false, message: 'Super admin access required' });
+  }
+  next();
+};
+
+/** Lets a super admin staff member in only when their role has the permission (see modules/adminRoles.js). Use after requireSuperAdmin. */
+export const requireAdminPermission = (permission) => (req, res, next) => {
+  if (!permissionsOf(req.auth?.user).includes(permission)) {
+    return res.status(403).json({ success: false, code: 'NOT_ALLOWED', message: 'Your role does not allow this. Ask the owner.' });
   }
   next();
 };

@@ -19,14 +19,22 @@ const ADDON_LINK_PREFIX = 'flowxp-addon-'; // see admin.controller.js's createAd
 /* A paid add-on sets the same business_feature_overrides row an admin can set by hand
    (migration 0039) — permanent until removed, since a Cashfree link is one-time, not a
    recurring subscription (the same manual-renewal model the main subscription already uses). */
-const activateAddon = async (req, linkId) => {
+/* `ref` is the gateway's link id, or { orderId } when staff mark the order paid by hand (cash, UPI, bank): `manual` then carries { method, note, paidOn, by }.
+   Either way it is the same activation, so a hand-marked order gives the business exactly what a paid link does, and counts in the revenue. */
+const markOrder = async (table, ref, manual) => {
+  const by = typeof ref === 'string' ? 'link_id = $1' : 'order_id = $1';
+  const from = manual ? `('PENDING','EXPIRED')` : `('PENDING')`;
   const { rows } = await pool.query(
-    `UPDATE addon_orders SET status = 'PAID', paid_at = CURRENT_TIMESTAMP
-     WHERE link_id = $1 AND status = 'PENDING' RETURNING *`,
-    [linkId]
+    `UPDATE ${table} SET status = 'PAID', paid_at = COALESCE($2::date::timestamptz, CURRENT_TIMESTAMP), paid_method = $3, paid_note = $4, paid_by = $5
+     WHERE ${by} AND status IN ${from} RETURNING *`,
+    [typeof ref === 'string' ? ref : ref.orderId, manual?.paidOn ?? null, manual?.method ?? null, manual?.note ?? null, manual?.by ?? null]
   );
-  if (!rows.length) return;
-  const order = rows[0];
+  return rows[0] || null;
+};
+
+export const activateAddon = async (req, ref, manual = null) => {
+  const order = await markOrder('addon_orders', ref, manual);
+  if (!order) return null;
 
   const addon = (await pool.query(`SELECT name FROM addons WHERE addon_key = $1`, [order.addon_key])).rows[0];
   // Extra outlet is counted, not switched: it raises how many outlets the business may run
@@ -43,20 +51,16 @@ const activateAddon = async (req, linkId) => {
     action: 'subscription.addon_activated',
     resource_type: 'addon_order',
     resource_id: order.order_id,
-    metadata: { addon_key: order.addon_key, amount_paise: order.amount_paise, billing_cycle: order.billing_cycle }
+    metadata: { addon_key: order.addon_key, amount_paise: order.amount_paise, billing_cycle: order.billing_cycle, ...(manual && { method: manual.method }) }
   });
+  return order;
 };
 
-const activateSubscription = async (req, linkId) => {
+export const activateSubscription = async (req, ref, manual = null) => {
   // Idempotent by construction: the UPDATE only fires from PENDING, so a duplicate delivery of the
   // same event (Cashfree retries on anything but a 2xx) finds zero rows the second time and does nothing further.
-  const { rows } = await pool.query(
-    `UPDATE subscription_orders SET status = 'PAID', paid_at = CURRENT_TIMESTAMP
-     WHERE link_id = $1 AND status = 'PENDING' RETURNING *`,
-    [linkId]
-  );
-  if (!rows.length) return;
-  const order = rows[0];
+  const order = await markOrder('subscription_orders', ref, manual);
+  if (!order) return null;
 
   await pool.query(
     `UPDATE businesses SET
@@ -75,8 +79,9 @@ const activateSubscription = async (req, linkId) => {
     action: 'subscription.payment_received',
     resource_type: 'subscription_order',
     resource_id: order.order_id,
-    metadata: { amount_paise: order.amount_paise, billing_cycle: order.billing_cycle }
+    metadata: { amount_paise: order.amount_paise, billing_cycle: order.billing_cycle, ...(manual && { method: manual.method }) }
   });
+  return order;
 };
 
 /* ==========================================================================

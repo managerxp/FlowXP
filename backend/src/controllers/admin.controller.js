@@ -20,6 +20,7 @@ import { createPaymentLink as cashfreeCreateLink, CashfreeError } from '../modul
 import { effectiveFeatureFlags, industryDefaults, INDUSTRY_OFF, PLAN_FEATURES, PLAN_FEATURE_KEYS, FEATURE_GROUPS, featureGroup } from '../modules/planFeatures.js';
 import config from '../config/env.js';
 import { outletAllowance } from './outlets.controller.js';
+import { permissionsOf, roleOf } from '../modules/adminRoles.js';
 
 const BUSINESS_STATUSES = ['ACTIVE', 'SUSPENDED', 'CLOSED'];
 const SUBSCRIPTION_STATUSES = ['TRIAL', 'ACTIVE', 'EXPIRED', 'CANCELLED', 'SUSPENDED'];
@@ -38,7 +39,7 @@ export const login = async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT user_id, name, email, password_hash, is_super_admin, token_version, totp_enabled, totp_secret_enc, totp_last_step
+      `SELECT user_id, name, email, password_hash, is_super_admin, admin_role, admin_disabled, token_version, totp_enabled, totp_secret_enc, totp_last_step
        FROM users WHERE email = $1`,
       [normaliseEmail(email)]
     );
@@ -53,7 +54,7 @@ export const login = async (req, res) => {
     // a non-admin account must not be distinguishable by response timing.
     const ok = await bcrypt.compare(String(password), user?.password_hash || ADMIN_DUMMY_HASH);
 
-    if (!user || !ok || !user.is_super_admin) {
+    if (!user || !ok || !user.is_super_admin || user.admin_disabled) {
       await recordLogin(pool, { userId: user?.user_id ?? null, email: normaliseEmail(email), req, outcome: user ? 'BAD_PASSWORD' : 'UNKNOWN_USER' });
       return res.status(401).json({ success: false, message: 'Email or password is incorrect' });
     }
@@ -86,7 +87,7 @@ export const login = async (req, res) => {
       data: {
         // the platform console is the most powerful sign-in there is: a working day, not a week
         token: signToken(user, { expiresIn: '8h' }),
-        admin: { user_id: user.user_id, name: user.name, email: user.email, totp_enabled: Boolean(user.totp_enabled), two_factor_required: config.adminRequire2fa }
+        admin: { user_id: user.user_id, name: user.name, email: user.email, role: roleOf(user), permissions: permissionsOf(user), totp_enabled: Boolean(user.totp_enabled), two_factor_required: config.adminRequire2fa }
       }
     });
   } catch (error) {
@@ -101,16 +102,25 @@ export const login = async (req, res) => {
 export const me = async (req, res) => {
   res.json({
     success: true,
-    data: { user_id: req.auth.userId, name: req.auth.user.name, email: req.auth.email, totp_enabled: Boolean(req.auth.user.totp_enabled), two_factor_required: config.adminRequire2fa }
+    data: { user_id: req.auth.userId, name: req.auth.user.name, email: req.auth.email, role: roleOf(req.auth.user), permissions: permissionsOf(req.auth.user), totp_enabled: Boolean(req.auth.user.totp_enabled), two_factor_required: config.adminRequire2fa }
   });
 };
 
 /* ==========================================================================
    GET /api/admin/stats — the dashboard overview
    ========================================================================== */
-export const getStats = async (_req, res) => {
+/* Everything FlowXP has been paid, whichever way it came: a subscription link, an add-on link (paid online or marked paid by hand) and an invoice from the Documents
+   screen marked paid. Each row is when it was paid and how much, so the totals, the month and the year all add up from the same list. */
+const RECEIPTS = `(
+  SELECT paid_at, amount_paise FROM subscription_orders WHERE status = 'PAID' AND paid_at IS NOT NULL
+  UNION ALL SELECT paid_at, amount_paise FROM addon_orders WHERE status = 'PAID' AND paid_at IS NOT NULL
+  UNION ALL SELECT paid_at, COALESCE((totals->>'total_paise')::bigint, 0) FROM admin_documents WHERE kind = 'INVOICE' AND status = 'PAID' AND paid_at IS NOT NULL
+) r`;
+
+export const getStats = async (req, res) => {
   try {
-    const [businesses, users, trialsSummary, trialsList, platformRevenue, revenueByMonth, pendingSummary, pendingList, invoices, mrr] = await Promise.all([
+    const seeRevenue = permissionsOf(req.auth?.user).includes('revenue');
+    const [businesses, users, trialsSummary, trialsList, platformRevenue, revenueByMonth, pendingSummary, pendingList, invoices, mrr, revenuePeriods] = await Promise.all([
       pool.query(`
         SELECT
           COUNT(*)::int AS total,
@@ -138,10 +148,10 @@ export const getStats = async (_req, res) => {
       // What FlowXP itself has actually been paid — subscription_orders (Cashfree), not the tenant
       // `payments` table (that's a restaurant's own customers paying the restaurant, a different thing
       // the old version of this query mistakenly summed instead).
-      pool.query(`SELECT COALESCE(SUM(amount_paise), 0) AS total_paise, COUNT(*)::int AS n FROM subscription_orders WHERE status = 'PAID'`),
+      pool.query(`SELECT COALESCE(SUM(amount_paise), 0) AS total_paise, COUNT(*)::int AS n FROM ${RECEIPTS}`),
       pool.query(`
         SELECT to_char(date_trunc('month', paid_at), 'YYYY-MM') AS month, COALESCE(SUM(amount_paise), 0) AS total_paise
-        FROM subscription_orders WHERE status = 'PAID' AND paid_at >= date_trunc('month', CURRENT_TIMESTAMP) - INTERVAL '11 months'
+        FROM ${RECEIPTS} WHERE paid_at >= date_trunc('month', CURRENT_TIMESTAMP) - INTERVAL '11 months'
         GROUP BY 1 ORDER BY 1
       `),
       // Payment links sent but not yet paid — true count/total, never capped by the list's LIMIT below.
@@ -164,6 +174,14 @@ export const getStats = async (_req, res) => {
         JOIN plans p ON p.plan_code = b.plan_code
         LEFT JOIN plan_versions pv ON pv.plan_version_id = b.plan_version_id
         WHERE b.subscription_status = 'ACTIVE'
+      `),
+      pool.query(`
+        SELECT
+          COALESCE(SUM(amount_paise) FILTER (WHERE paid_at >= date_trunc('month', CURRENT_TIMESTAMP)), 0) AS this_month,
+          COALESCE(SUM(amount_paise) FILTER (WHERE paid_at >= date_trunc('month', CURRENT_TIMESTAMP) - INTERVAL '1 month' AND paid_at < date_trunc('month', CURRENT_TIMESTAMP)), 0) AS last_month,
+          COALESCE(SUM(amount_paise) FILTER (WHERE paid_at >= date_trunc('year', CURRENT_TIMESTAMP)), 0) AS this_year,
+          COALESCE(SUM(amount_paise) FILTER (WHERE paid_at >= date_trunc('year', CURRENT_TIMESTAMP) - INTERVAL '1 year' AND paid_at < date_trunc('year', CURRENT_TIMESTAMP)), 0) AS last_year
+        FROM ${RECEIPTS}
       `)
     ]);
 
@@ -182,10 +200,16 @@ export const getStats = async (_req, res) => {
         },
         users_total: users.rows[0].total,
         invoices_total: invoices.rows[0].n,
-        revenue_collected: toRupees(platformRevenue.rows[0].total_paise),
-        payments_collected: platformRevenue.rows[0].n,
-        mrr: toRupees(mrr.rows[0].mrr_paise),
-        revenue_by_month: revenueByMonth.rows.map((r) => ({ month: r.month, amount: toRupees(r.total_paise) })),
+        ...(seeRevenue && {
+          revenue_collected: toRupees(platformRevenue.rows[0].total_paise),
+          payments_collected: platformRevenue.rows[0].n,
+          mrr: toRupees(mrr.rows[0].mrr_paise),
+          revenue_by_month: revenueByMonth.rows.map((r) => ({ month: r.month, amount: toRupees(r.total_paise) })),
+          revenue_periods: {
+            this_month: toRupees(revenuePeriods.rows[0].this_month), last_month: toRupees(revenuePeriods.rows[0].last_month),
+            this_year: toRupees(revenuePeriods.rows[0].this_year), last_year: toRupees(revenuePeriods.rows[0].last_year)
+          }
+        }),
         trials_ending_soon_list: trialsList.rows.map((t) => ({ business_id: t.business_id, name: t.name, trial_ends_at: t.trial_ends_at })),
         pending_payments: {
           count: pendingSummary.rows[0].n,
@@ -967,7 +991,9 @@ const asOrder = (o) => ({
   payment_link_url: o.payment_link_url,
   status: o.status,
   created_at: o.created_at,
-  paid_at: o.paid_at
+  paid_at: o.paid_at,
+  paid_method: o.paid_method ?? null,
+  receipt_sent_at: o.receipt_sent_at ?? null
 });
 
 export const listPaymentLinks = async (req, res) => {
@@ -1172,7 +1198,9 @@ const asAddonOrder = (o) => ({
   payment_link_url: o.payment_link_url,
   status: o.status,
   created_at: o.created_at,
-  paid_at: o.paid_at
+  paid_at: o.paid_at,
+  paid_method: o.paid_method ?? null,
+  receipt_sent_at: o.receipt_sent_at ?? null
 });
 
 export const listAddonLinks = async (req, res) => {

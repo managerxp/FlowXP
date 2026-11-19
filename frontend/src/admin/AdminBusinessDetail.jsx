@@ -9,6 +9,8 @@ import { adminApi } from '../lib/adminApi.js';
 import { fmt, lifeOf } from './subscriptionLife.js';
 import { formatCurrency } from '../lib/api.js';
 import { Card, PageHeader, StatusBadge, Badge, Button, Alert, Field, Input, Select, Table, Thead, Th, Td, Tr, useToast, useDialog, PageLoader } from '../components/ui.jsx';
+import OrderActions from './OrderActions.jsx';
+import { useAdminAuth } from './AdminAuthContext.jsx';
 
 const LINK_STATUS_TONE = { PENDING: 'neutral', PAID: 'success', EXPIRED: 'danger', CANCELLED: 'danger' };
 
@@ -312,6 +314,7 @@ OK sends the email. Cancel creates the link without emailing it.`);
               <Th>Cycle</Th>
               <Th>Status</Th>
               <Th>Link</Th>
+              <Th>Payment received</Th>
             </Thead>
             <tbody>
               {links.map((l) => (
@@ -328,6 +331,7 @@ OK sends the email. Cancel creates the link without emailing it.`);
                       </button>
                     ) : '—'}
                   </Td>
+                  <Td><OrderActions businessId={businessId} kind="plan" order={l} ownerEmail={ownerEmail} onDone={load} /></Td>
                 </Tr>
               ))}
             </tbody>
@@ -439,6 +443,7 @@ OK sends the email. Cancel creates the link without emailing it.`);
               <Th>Cycle</Th>
               <Th>Status</Th>
               <Th>Link</Th>
+              <Th>Payment received</Th>
             </Thead>
             <tbody>
               {links.map((l) => (
@@ -456,6 +461,7 @@ OK sends the email. Cancel creates the link without emailing it.`);
                       </button>
                     ) : '—'}
                   </Td>
+                  <Td><OrderActions businessId={businessId} kind="addon" order={l} ownerEmail={ownerEmail} onDone={load} /></Td>
                 </Tr>
               ))}
             </tbody>
@@ -834,6 +840,8 @@ const AdminBusinessDetail = () => {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const dialog = useDialog();
+  const { admin } = useAdminAuth();
+  const can = (p) => Boolean(admin?.permissions?.includes(p));
 
   const load = () => adminApi(`/businesses/${id}`).then(setBusiness).catch((err) => setError(err.message));
   useEffect(() => { load(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -866,7 +874,7 @@ const AdminBusinessDetail = () => {
       <PageHeader
         title={business.name}
         lead={business.business_type}
-        action={
+        action={can("manage") && (
           <div className="flex gap-2">
             {business.status !== 'SUSPENDED' ? (
               <Button variant="secondary" disabled={busy} onClick={() => setStatus('SUSPENDED')}>Suspend</Button>
@@ -877,7 +885,7 @@ const AdminBusinessDetail = () => {
               <Button variant="ghost" disabled={busy} onClick={() => setStatus('CLOSED')}>Close</Button>
             )}
           </div>
-        }
+        )}
       />
 
       <div className="mb-6 flex flex-wrap gap-2">
@@ -944,17 +952,17 @@ const AdminBusinessDetail = () => {
           </ul>
         </Card>
 
-        <PlanAndType business={business} businessId={id} onSaved={load} />
+        {can("manage") && <PlanAndType business={business} businessId={id} onSaved={load} />}
         <ClientNotes business={business} businessId={id} />
-        <WalletPanel businessId={id} />
-        <ClientDocuments businessId={id} />
+        {can("payments") && <WalletPanel businessId={id} />}
+        {can("billing") && <ClientDocuments businessId={id} />}
         <FeatureList businessId={id} />
-        <FeatureOverrides businessId={id} />
-        <PaymentLinks businessId={id} ownerEmail={business.owner.email} />
-        <BusinessAddons businessId={id} businessType={business.business_type} ownerEmail={business.owner.email} />
+        {can("manage") && <FeatureOverrides businessId={id} />}
+        {can("payments") && <PaymentLinks businessId={id} ownerEmail={business.owner.email} />}
+        {can("payments") && <BusinessAddons businessId={id} businessType={business.business_type} ownerEmail={business.owner.email} />}
         <TrialAndNotes businessId={id} onChanged={load} />
         <History businessId={id} />
-        <DeleteForever business={business} businessId={id} />
+        {can("owner") && <DeleteForever business={business} businessId={id} />}
       </div>
 
       <div className="mt-6">
