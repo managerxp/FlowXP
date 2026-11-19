@@ -8,7 +8,7 @@ import { t, fill } from '../lib/i18n.ts';
 import { Card, Input, Msg, Panel, SetupShell, useAct } from '../lib/formKit.tsx';
 import { rupees } from '../lib/money.ts';
 import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, color } from '../lib/ui.tsx';
-import { lookupQuery, needsAmount, newKey, paint, perBill, valueLine, type Found, type Member, type Programme, type Reward } from '../lib/memberDesk.ts';
+import { canUndo, lookupQuery, needsAmount, newKey, paint, perBill, valueLine, type Found, type Member, type Programme, type Reward } from '../lib/memberDesk.ts';
 
 /* The card as the customer sees it: its own colours, one circle per stamp (or the points). */
 const CardFace = ({ m }: { m: Member }) => {
@@ -35,6 +35,7 @@ const CardFace = ({ m }: { m: Member }) => {
 };
 
 const MemberPanel = ({ id }: { id: number }) => {
+  const me = currentBusiness(useSession());
   const [m, setM] = useState<Member | null>(null);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [loadError, setLoadError] = useState('');
@@ -96,7 +97,15 @@ const MemberPanel = ({ id }: { id: number }) => {
       </Card>
       <Card>
         <SectionTitle>Recent</SectionTitle>
-        {m.ledger.slice(0, 8).map((e) => <Line key={e.entry_id} left={e.note || e.kind} right={`${e.points > 0 ? '+' : ''}${e.points}`} sub={new Date(e.created_at).toLocaleDateString()} />)}
+        {m.ledger.slice(0, 8).map((e) => (
+          <View key={e.entry_id} style={{ gap: 4 }}>
+            <Line left={e.note || e.kind} right={`${e.points > 0 ? '+' : ''}${e.points}`} sub={new Date(e.created_at).toLocaleDateString()} />
+            {canUndo(e, me?.role) ? (
+              <Button title="Undo" kind="quiet" busy={a.busy}
+                onPress={() => (e.claim_id ? act(`undo${e.entry_id}`, `/loyalty/claims/${e.claim_id}/cancel`, {}, () => t('Reward taken back, points returned')) : act(`undo${e.entry_id}`, `/loyalty/ledger/${e.entry_id}/reverse`, { reason: 'Undone at the member desk' }, () => t('Undone')))} />
+            ) : null}
+          </View>
+        ))}
         {!m.ledger.length ? <Soft>{t('Nothing yet.')}</Soft> : null}
       </Card>
     </>

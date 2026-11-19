@@ -110,6 +110,7 @@ export const create = async (req, res) => {
       payments: body.payments,
       couponCode: body.coupon_code,
       redeemPoints: body.redeem_points,
+      rewardClaimId: body.reward_claim_id,   // a loyalty reward claimed at the Member desk
       applyPromotions: body.apply_promotions === true,
       exchangeCreditNoteId: body.exchange_credit_note_id ? Number(body.exchange_credit_note_id) : undefined,
       invoiceDate: isOffline(req) ? await offlineDate(req.tenant.businessId, saleDay(req)) : body.invoice_date,

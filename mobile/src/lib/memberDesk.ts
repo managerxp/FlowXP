@@ -5,7 +5,9 @@ import { rupees } from './money.ts';
 export type Card = { bg: string; fg: string; accent: string; icon?: string; title?: string; message?: string };
 export type Found = { membership_id: number; customer_name: string; programme_name: string; balance: number };
 export type Reward = { reward_id: number; name: string; points_cost: number; value_paise: string; affordable: boolean; points_short: number };
-export type Entry = { entry_id: number; kind: string; points: number; note: string | null; created_at: string };
+export type Entry = { entry_id: number; kind: string; points: number; note: string | null; created_at: string; invoice_id: number | null; undone: boolean; claim_id: number | null };
+/** A row the owner can take back: a credit or a redemption made at the desk, not on a bill, and not already undone. */
+export const canUndo = (e: Entry, role: string | undefined): boolean => (role === 'OWNER' || role === 'ADMIN') && (e.kind === 'EARN' || e.kind === 'REDEEM') && !e.undone && !e.invoice_id;
 export type Member = {
   membership_id: number; membership_no: string; customer_name: string; customer_phone: string | null; status: string; programme_name: string; kind: string;
   card: Card; redeem_points: number; min_redeem_points: number; min_txn_paise: string; balance: number; ledger: Entry[]
@@ -43,5 +45,5 @@ export const MEMBER_TEXTS = [
   'Added. Balance {b}', 'This bill is too small to earn anything', 'Rewards', 'Give', 'Use points', 'Recent', 'No rewards on this card yet.', '{n} more needed',
   '{name} given. Balance {b}', 'Take {value} off the bill. Balance {b}', 'Switched off', 'Not a member yet. Join them now', 'Customer name', 'Mobile number', 'Join',
   'They agreed to receive offers', 'No offers', 'There is no loyalty card yet. The owner can make one under Loyalty & coupons.', 'No membership found.', 'Nothing yet.',
-  'Bills made with the customer\'s mobile number add automatically. Use this for a bill made without it.', 'Stamps', 'Points'
+  'Bills made with the customer\'s mobile number add automatically. Use this for a bill made without it.', 'Stamps', 'Points', 'Undo', 'Reward taken back, points returned', 'Undone'
 ];

@@ -355,6 +355,8 @@ const BillingPage = () => {
   const [card, setCard] = useState(null);                // the chosen customer's visit card
   const [pointsInfo, setPointsInfo] = useState(null);    // the chosen customer's points
   const [redeem, setRedeem] = useState('');
+  const [claims, setClaims] = useState([]);       // rewards the chosen customer claimed at the Member desk and has not used yet
+  const [claimId, setClaimId] = useState('');
   const [extrasOpen, setExtrasOpen] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [couponInfo, setCouponInfo] = useState(null);   // { code, discount } once checked
@@ -493,7 +495,9 @@ const BillingPage = () => {
   }, [retail, scope]);
 
   useEffect(() => {
-    if (!customerId) { setCard(null); setPointsInfo(null); return; }
+    setClaimId('');
+    if (!customerId) { setCard(null); setPointsInfo(null); setClaims([]); return; }
+    api(`/loyalty/customers/${customerId}/claims`).then(setClaims).catch(() => setClaims([]));   // not in every plan: then there is simply nothing to list
     api(`/loyalty/customers/${customerId}`).then((d) => { setCard(d.loyalty); setPointsInfo(d.points); }).catch(() => { setCard(null); setPointsInfo(null); });
   }, [customerId]);
 
@@ -595,8 +599,10 @@ const BillingPage = () => {
     const rewardOff = rewardLine ? Math.min(Number(rewardLine.quantity), card.reward_quantity || 1) * rewardLine.unit_price * (1 + (gstEnabled && !rewardLine.inclusive ? Number(rewardLine.tax_rate || 0) / 100 : 0)) : 0;
     // the credit from a return pays part of this bill; what is left is what the customer hands over
     const exchangeOff = exchange ? Math.min(exchange.available, Math.max(0, before - coupon - pointsOff - rewardOff)) : 0;
-    return { subtotal, tax, discount, coupon, pointsOff, rewardOff, offers, exchangeOff, before, total: Math.max(0, before - coupon - pointsOff - rewardOff - exchangeOff), gstEnabled };
-  }, [billLines, invoiceDiscount, couponInfo, pointsInfo, redeem, business?.gst_enabled, card, promo, exchange]);
+    const claim = claims.find((c) => String(c.redemption_id) === String(claimId));
+    const claimOff = claim ? Math.min(Number(claim.value_paise) / 100, Math.max(0, before - coupon - pointsOff - rewardOff - exchangeOff)) : 0;
+    return { subtotal, tax, discount, coupon, pointsOff, rewardOff, claimOff, offers, exchangeOff, before, total: Math.max(0, before - coupon - pointsOff - rewardOff - exchangeOff - claimOff), gstEnabled };
+  }, [billLines, invoiceDiscount, couponInfo, pointsInfo, redeem, business?.gst_enabled, card, promo, exchange, claims, claimId]);
 
   /* The profit on this bill, for people who may see costs and chose to show it on this device: what the lines sell for (before tax, after
      offers and the bill discount) less what the items cost. Only counted when every line's cost is known; otherwise it says so. */
@@ -703,6 +709,7 @@ const BillingPage = () => {
         discount: Number(invoiceDiscount) || undefined,
         coupon_code: couponCode.trim() || undefined,
         redeem_points: Number(redeem) > 0 ? Number(redeem) : undefined,
+        reward_claim_id: claimId ? Number(claimId) : undefined,
         notes: notes || undefined,
         tcs: gstOpt.tcs && levies.tcs ? true : undefined, tds: gstOpt.tds && levies.tds ? true : undefined, reverse_charge: gstOpt.reverse_charge && levies.reverse_charge ? true : undefined,
         print_details: tallyBill && Object.values(dispatch).some((x) => x?.trim()) ? dispatch : undefined,
@@ -1075,6 +1082,14 @@ const BillingPage = () => {
               {card && <LoyaltyCard card={card} compact />}
               <RewardHint card={card} items={billLines} total={totals.total} onAdd={() => { const p = (products || []).find((x) => x.product_id === card.reward_product_id); if (p) addProduct(p); }} />
               {pointsInfo && <PointsPanel points={pointsInfo} total={Math.max(0, totals.before - totals.coupon)} value={redeem} onChange={setRedeem} />}
+              {claims.length > 0 && (
+                <label className="mt-2 block text-caption font-medium text-ink-700">{tr('Use a reward they claimed')}
+                  <Select value={claimId} onChange={(e) => setClaimId(e.target.value)} aria-label={tr('Use a reward they claimed')}>
+                    <option value="">{tr('Not now')}</option>
+                    {claims.map((c) => <option key={c.redemption_id} value={c.redemption_id}>{c.name} ({formatCurrency(Number(c.value_paise) / 100)})</option>)}
+                  </Select>
+                </label>
+              )}
             </div>
           ) : customerOpen ? (
             <div className="space-y-2">
@@ -1189,6 +1204,7 @@ const BillingPage = () => {
             {totals.discount > 0 && <div className="flex justify-between text-ink-500"><dt>{tr('Discount')}</dt><dd>−{formatCurrency(totals.discount)}</dd></div>}
             {totals.coupon > 0 && <div className="flex justify-between text-success"><dt>{tr('Coupon {{code}}', { code: couponInfo.code })}</dt><dd>−{formatCurrency(totals.coupon)}</dd></div>}
             {totals.pointsOff > 0 && <div className="flex justify-between text-success"><dt>{tr('Points ({{redeem}})', { redeem })}</dt><dd>−{formatCurrency(totals.pointsOff)}</dd></div>}
+            {totals.claimOff > 0 && <div className="flex justify-between text-success"><dt>{tr('Loyalty reward')}</dt><dd>−{formatCurrency(totals.claimOff)}</dd></div>}
             {totals.rewardOff > 0 && <div className="flex justify-between text-success"><dt>{tr('Free {{reward_item}} (loyalty)', { reward_item: card.reward_item })}</dt><dd>−{formatCurrency(totals.rewardOff)}</dd></div>}
             {totals.offers > 0 && <div className="flex justify-between text-success"><dt>{tr('Offers (already off the lines)')}</dt><dd>−{formatCurrency(totals.offers)}</dd></div>}
             {totals.exchangeOff > 0 && <div className="flex justify-between text-success"><dt>{tr('Exchange credit {{cn_number}}', { cn_number: exchange.cn_number })}</dt><dd>−{formatCurrency(totals.exchangeOff)}</dd></div>}

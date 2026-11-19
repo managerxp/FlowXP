@@ -3598,6 +3598,9 @@ export const HI: Record<string, string> = {
   'No membership found.': 'कोई मेंबरशिप नहीं मिली।',
   'Bills made with the customer\'s mobile number add automatically. Use this for a bill made without it.': 'ग्राहक के मोबाइल नंबर से बने बिल अपने आप जुड़ जाते हैं। बिना नंबर के बने बिल के लिए इसे इस्तेमाल करें।',
   'Stamps': 'स्टैम्प',
+  'Undo': 'पूर्ववत करें',
+  'Reward taken back, points returned': 'इनाम वापस लिया, पॉइंट लौटा दिए',
+  'Undone': 'पूर्ववत हो गया',
 };
 
 /** Languages that have a dictionary. */

@@ -60,6 +60,7 @@ const Member = ({ id }) => {
   const keys = useRef({});   // one key per kind of action, kept until it succeeds, so a retry is the same request
   const toast = useToast();
   const { business } = useAuth();
+  const owner = business?.role === 'OWNER' || business?.role === 'ADMIN';   // undoing is the owner's: the server refuses anyone else
   const load = async () => { const [a, r] = await Promise.all([api(`/loyalty/members/${id}`), api(`/loyalty/members/${id}/rewards`)]); setM(a); setRewards(r); };
   useEffect(() => { load().catch((e) => setErr(e.message)); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   const run = async (name, path, body, message) => {
@@ -111,7 +112,13 @@ const Member = ({ id }) => {
           <h3 className="text-small font-semibold text-ink-900">Recent</h3>
           <ul className="mt-1 divide-y divide-line">
             {m.ledger.slice(0, 8).map((e) => (
-              <li key={e.entry_id} className="flex justify-between gap-3 py-1.5 text-small"><span className="text-ink-700">{e.note || e.kind} · {new Date(e.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span><span className={`tabular font-medium ${e.points > 0 ? 'text-success' : 'text-ink-900'}`}>{e.points > 0 ? '+' : ''}{e.points}</span></li>))}
+              <li key={e.entry_id} className="flex items-center justify-between gap-3 py-1.5 text-small"><span className="text-ink-700">{e.note || e.kind} · {new Date(e.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                <span className="flex items-center gap-3"><span className={`tabular font-medium ${e.points > 0 ? 'text-success' : 'text-ink-900'}`}>{e.points > 0 ? '+' : ''}{e.points}</span>
+                  {owner && (e.kind === 'EARN' || e.kind === 'REDEEM') && !e.undone && !e.invoice_id && (
+                    <button type="button" disabled={busy} onClick={() => (e.claim_id
+                      ? run(`undo${e.entry_id}`, `/loyalty/claims/${e.claim_id}/cancel`, {}, () => 'Reward taken back, points returned')
+                      : run(`undo${e.entry_id}`, `/loyalty/ledger/${e.entry_id}/reverse`, { reason: 'Undone at the member desk' }, () => 'Undone'))} className="text-brand-700 hover:underline">Undo</button>)}
+                </span></li>))}
             {!m.ledger.length && <li className="py-1.5 text-small text-ink-500">Nothing yet.</li>}
           </ul>
         </Card>

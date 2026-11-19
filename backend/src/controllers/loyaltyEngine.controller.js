@@ -136,6 +136,11 @@ export const updateReward = wrap(async (req, res) => {
   ok(res, row);
 });
 
+/* The rewards a customer has claimed and not yet used on a bill: the till lists them to apply one. */
+export const customerClaims = wrap(async (req, res) => ok(res, (await pool.query(
+  `SELECT d.redemption_id, d.value_paise, d.created_at, r.name FROM loyalty_redemptions d JOIN loyalty_memberships m ON m.membership_id = d.membership_id JOIN loyalty_rewards r ON r.reward_id = d.reward_id
+   WHERE d.business_id = $1 AND m.customer_id = $2 AND d.status = 'REDEEMED' AND d.applied_invoice_id IS NULL AND d.value_paise > 0 ORDER BY d.redemption_id`, [bid(req), id(req)])).rows));
+
 export const memberRewards = wrap(async (req, res) => ok(res, await engine.rewardsFor(pool, bid(req), id(req))));
 
 export const claimReward = wrap(async (req, res) => {

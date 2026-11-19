@@ -3491,6 +3491,9 @@ export const ML: Record<string, string> = {
   'Stamps': 'സ്റ്റാമ്പുകൾ',
   'Join': 'ചേരുക',
   'Points': 'പോയിന്റ്',
+  'Undo': 'തിരുത്തുക',
+  'Reward taken back, points returned': 'സമ്മാനം തിരിച്ചെടുത്തു, പോയിന്റ് തിരികെ നൽകി',
+  'Undone': 'തിരുത്തി',
 };
 
 /** Tamil: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -6984,6 +6987,9 @@ export const TA: Record<string, string> = {
   'Stamps': 'முத்திரைகள்',
   'Join': 'சேருங்கள்',
   'Points': 'புள்ளிகள்',
+  'Undo': 'செயல்தவிர்',
+  'Reward taken back, points returned': 'பரிசு திரும்பப் பெறப்பட்டது, புள்ளிகள் திருப்பித் தரப்பட்டன',
+  'Undone': 'செயல்தவிர்க்கப்பட்டது',
 };
 
 /** Bengali: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -10477,6 +10483,9 @@ export const BN: Record<string, string> = {
   'Stamps': 'স্ট্যাম্পগুলি',
   'Join': 'যোগ দিন',
   'Points': 'পয়েন্ট',
+  'Undo': 'পূর্বাবস্থায় ফেরান',
+  'Reward taken back, points returned': 'পুরস্কার ফেরত নেওয়া হয়েছে, পয়েন্ট ফেরত দেওয়া হয়েছে',
+  'Undone': 'পূর্বাবস্থায় ফেরানো হয়েছে',
 };
 
 /** Telugu: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -13970,6 +13979,9 @@ export const TE: Record<string, string> = {
   'Stamps': 'స్టాంపులు',
   'Join': 'చేరండి',
   'Points': 'పాయింట్లు',
+  'Undo': 'రద్దు చేయండి',
+  'Reward taken back, points returned': 'బహుమతి వెనక్కి తీసుకున్నారు, పాయింట్లు తిరిగి ఇచ్చారు',
+  'Undone': 'రద్దు చేయబడింది',
 };
 
 /** Kannada: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -17463,4 +17475,7 @@ export const KN: Record<string, string> = {
   'Stamps': 'ಸ್ಟ್ಯಾಂಪ್‌ಗಳು',
   'Join': 'ಸೇರಿ',
   'Points': 'ಪಾಯಿಂಟ್‌ಗಳು',
+  'Undo': 'ರದ್ದುಮಾಡಿ',
+  'Reward taken back, points returned': 'ಬಹುಮಾನ ಹಿಂತೆಗೆದುಕೊಳ್ಳಲಾಗಿದೆ, ಪಾಯಿಂಟ್‌ಗಳನ್ನು ಮರಳಿಸಲಾಗಿದೆ',
+  'Undone': 'ರದ್ದುಮಾಡಲಾಗಿದೆ',
 };

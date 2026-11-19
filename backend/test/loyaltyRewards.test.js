@@ -118,3 +118,48 @@ test('a credit note takes back its share of the programme points; cancelling the
   assert.equal(cancelled.code, 200, JSON.stringify(cancelled.body));
   assert.equal(await balance(m.membership_id), 0);                        // a cancelled bill: what it earned is out of the balance
 });
+
+test('a claimed reward comes off a bill once, only for its own customer, and cancelling the bill frees it', { skip }, async () => {
+  const p = await programme(T);
+  const cust = await T.customer('Reward Rita', '9876500106'); const stranger = await T.customer('Other Oscar', '9876500107');
+  const m = (await withTransaction((c) => engine.enrol(c, { businessId: T.businessId, programmeId: p.programme_id, customerId: cust }))).membership;
+  await withTransaction((c) => engine.earn(c, { businessId: T.businessId, membershipId: m.membership_id, amountPaise: 100000, key: 'rita-seed' }));
+  const reward = (await T.call(ctl.createReward, { body: { programme_id: p.programme_id, name: 'Rs 120 off', points_cost: 50, value_paise: 12000 } })).body.data;
+  const claim = await withTransaction((c) => engine.redeemReward(c, { businessId: T.businessId, membershipId: m.membership_id, rewardId: reward.reward_id, key: 'rita-claim' }));
+  const id = claim.redemption.redemption_id;
+  const listed = await T.call(ctl.customerClaims, { params: { id: String(cust) } });
+  assert.deepEqual(listed.body.data.map((x) => x.name), ['Rs 120 off']);
+
+  const dish = (await pool.query(`SELECT product_id FROM products WHERE business_id = $1 AND name = 'Thali'`, [T.businessId])).rows[0].product_id;
+  const make = (extra, who = cust) => T.call(invoices.create, { body: { customer_id: who, items: [{ product_id: dish, quantity: 1 }], ...extra } });
+  assert.equal((await make({ reward_claim_id: id }, stranger)).code, 404);          // someone else's reward
+  const ok = await make({ reward_claim_id: id });
+  assert.equal(ok.code, 201, JSON.stringify(ok.body));
+  assert.equal(Number(ok.body.data.total), 130);                                     // Rs 250 less the Rs 120 reward
+  assert.equal((await make({ reward_claim_id: id })).code, 409);                     // already used
+  assert.equal((await T.call(ctl.customerClaims, { params: { id: String(cust) } })).body.data.length, 0);
+
+  const cancelled = await T.call(invoices.cancel, { params: { id: ok.body.data.invoice_id }, body: { reason: 'Wrong order' } });
+  assert.equal(cancelled.code, 200, JSON.stringify(cancelled.body));
+  assert.equal((await T.call(ctl.customerClaims, { params: { id: String(cust) } })).body.data.length, 1);   // free again
+});
+
+test('a reward claim is undone by cancelling the claim, not by reversing its points; a claim used on a bill cannot be cancelled; the ledger says which rows can be undone', { skip }, async () => {
+  const p = await programme(T);
+  const cust = await T.customer('Undo Uma', '9876500108');
+  const m = (await withTransaction((c) => engine.enrol(c, { businessId: T.businessId, programmeId: p.programme_id, customerId: cust }))).membership;
+  await withTransaction((c) => engine.earn(c, { businessId: T.businessId, membershipId: m.membership_id, amountPaise: 100000, key: 'uma-seed' }));
+  const r = (await T.call(ctl.createReward, { body: { programme_id: p.programme_id, name: 'Rs 50 off', points_cost: 30, value_paise: 5000 } })).body.data;
+  const claim = await withTransaction((c) => engine.redeemReward(c, { businessId: T.businessId, membershipId: m.membership_id, rewardId: r.reward_id, key: 'uma-claim' }));
+  const rows = await engine.ledgerFor(pool, T.businessId, m.membership_id);
+  const row = rows.find((x) => x.kind === 'REDEEM');
+  assert.equal(Number(row.claim_id), claim.redemption.redemption_id); assert.equal(row.undone, false);
+  await assert.rejects(withTransaction((c) => engine.reverse(c, { businessId: T.businessId, entryId: row.entry_id, key: 'uma-rev' })), /Cancel the claim instead/);
+  const dish = (await pool.query(`SELECT product_id FROM products WHERE business_id = $1 AND name = 'Thali'`, [T.businessId])).rows[0].product_id;
+  const bill = await T.call(invoices.create, { body: { customer_id: cust, reward_claim_id: claim.redemption.redemption_id, items: [{ product_id: dish, quantity: 1 }] } });
+  assert.equal(bill.code, 201, JSON.stringify(bill.body));
+  await assert.rejects(withTransaction((c) => engine.cancelRedemption(c, { businessId: T.businessId, redemptionId: claim.redemption.redemption_id, key: 'uma-cancel' })), /used on a bill/);
+  await T.call(invoices.cancel, { params: { id: bill.body.data.invoice_id }, body: { reason: 'x' } });
+  await withTransaction((c) => engine.cancelRedemption(c, { businessId: T.businessId, redemptionId: claim.redemption.redemption_id, key: 'uma-cancel2' }));
+  assert.equal((await engine.ledgerFor(pool, T.businessId, m.membership_id)).find((x) => x.entry_id === row.entry_id).undone, true);
+});

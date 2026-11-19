@@ -435,6 +435,20 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     }
     invoiceDiscountPaise += pointsDiscountPaise;
   }
+  // A loyalty reward the customer already claimed (Member desk): its value comes off this bill, never more than what is left, and the claim is held for this bill.
+  let rewardClaim = null; let rewardCutPaise = 0;
+  if (input.rewardClaimId) {
+    if (!customer) throw new BillingError(400, 'Choose the customer to use their reward');
+    rewardClaim = (await client.query(
+      `SELECT d.redemption_id, d.value_paise, d.status, d.applied_invoice_id, m.customer_id FROM loyalty_redemptions d JOIN loyalty_memberships m ON m.membership_id = d.membership_id
+       WHERE d.business_id = $1 AND d.redemption_id = $2 FOR UPDATE OF d`, [tenant.businessId, Number(input.rewardClaimId)])).rows[0];
+    if (!rewardClaim || rewardClaim.customer_id !== customer.customer_id) throw new BillingError(404, 'That reward was not found for this customer');
+    if (rewardClaim.status !== 'REDEEMED') throw new BillingError(409, 'That reward claim was cancelled');
+    if (rewardClaim.applied_invoice_id) throw new BillingError(409, 'That reward has already been used on a bill');
+    if (!(Number(rewardClaim.value_paise) > 0)) throw new BillingError(400, 'That reward has no money value. Give the item itself instead');
+    rewardCutPaise = Math.min(Number(rewardClaim.value_paise), Math.max(0, totals.total_paise - invoiceDiscountPaise));
+    invoiceDiscountPaise += rewardCutPaise;
+  }
   let finalTotalPaise = Math.max(0, totals.total_paise - invoiceDiscountPaise);
   /* TCS is added to the bill and TDS is held back by the customer: each is a share of the bill's taxable value (after the bill's own discount).
      Only when the owner switched the option on AND the till asks for it on this bill. */
@@ -566,6 +580,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     invoice.points_discount_paise = pointsDiscountPaise; invoice.points_earned = pointsEarned; invoice.points_redeemed = pointsRedeemed;
   }
 
+  if (rewardClaim) await client.query(`UPDATE loyalty_redemptions SET applied_invoice_id = $2, applied_paise = $3 WHERE redemption_id = $1`, [rewardClaim.redemption_id, invoice.invoice_id, rewardCutPaise]);
   // programme memberships (several programmes per business): credit them for this bill. A problem here is skipped, never a failed sale.
   if (customer) await creditBill(client, { businessId: tenant.businessId, customerId: customer.customer_id, invoiceId: invoice.invoice_id, amountPaise: finalTotalPaise, branchId: tenant.branchId, createdBy: userId });
 

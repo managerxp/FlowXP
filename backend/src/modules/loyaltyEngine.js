@@ -230,11 +230,12 @@ export const redeem = async (db, { businessId, membershipId, points, branchId = 
  * Undoes some or all of an entry with a reversal row. Earned points taken back never push the balance below zero (any shortfall is reported);
  * a redemption given back returns points. An entry can be reversed in parts, never beyond what is left of it.
  */
-export const reverse = async (db, { businessId, entryId, points = null, key, reason = null, createdBy = null }) => {
+export const reverse = async (db, { businessId, entryId, points = null, key, reason = null, createdBy = null, viaClaim = false }) => {
   if (!key) throw new LoyaltyError('A request key is needed so a retry cannot reverse twice');
   const orig = (await db.query(`SELECT * FROM points_ledger WHERE business_id = $1 AND entry_id = $2`, [businessId, entryId])).rows[0];
   if (!orig || !orig.membership_id) throw new LoyaltyError('That entry was not found', 404);
   if (!['EARN', 'REDEEM'].includes(orig.kind)) throw new LoyaltyError('Only a credit or a redemption can be reversed');
+  if (!viaClaim && (await db.query(`SELECT 1 FROM loyalty_redemptions WHERE ledger_entry_id = $1 AND status = 'REDEEMED'`, [entryId])).rows[0]) throw new LoyaltyError('That is a reward claim. Cancel the claim instead', 409);
   const m = await lock(db, businessId, orig.membership_id);
   const used = Number((await db.query(`SELECT COALESCE(SUM(points), 0) AS n FROM points_ledger WHERE reverses_entry_id = $1`, [entryId])).rows[0].n);
   const left = Math.abs(orig.points) + (orig.points > 0 ? used : -used);   // reversals of a credit are negative, of a redemption positive
@@ -273,7 +274,9 @@ export const reverseForRefund = async (db, { businessId, invoiceId, refundedPais
 
 export const ledgerFor = async (db, businessId, membershipId, limit = 50) =>
   (await db.query(
-    `SELECT entry_id, kind, points, amount_paise, invoice_id, reverses_entry_id, note, created_at FROM points_ledger
+    `SELECT entry_id, kind, points, amount_paise, invoice_id, reverses_entry_id, note, created_at,
+            EXISTS (SELECT 1 FROM points_ledger x WHERE x.reverses_entry_id = points_ledger.entry_id) AS undone,
+            (SELECT d.redemption_id FROM loyalty_redemptions d WHERE d.ledger_entry_id = points_ledger.entry_id AND d.status = 'REDEEMED') AS claim_id FROM points_ledger
      WHERE business_id = $1 AND membership_id = $2 ORDER BY entry_id DESC LIMIT $3`, [businessId, membershipId, Math.min(200, limit)])).rows;
 
 /* ── rewards ────────────────────────────────────────────────────────────── */
@@ -335,7 +338,8 @@ export const cancelRedemption = async (db, { businessId, redemptionId, key, crea
   const d = (await db.query(`SELECT * FROM loyalty_redemptions WHERE business_id = $1 AND redemption_id = $2 FOR UPDATE`, [businessId, redemptionId])).rows[0];
   if (!d) throw new LoyaltyError('That claim was not found', 404);
   if (d.status === 'CANCELLED') throw new LoyaltyError('That claim is already cancelled', 409);
-  const out = await reverse(db, { businessId, entryId: d.ledger_entry_id, key, reason: 'Reward claim cancelled', createdBy });
+  if (d.applied_invoice_id) throw new LoyaltyError('That reward was used on a bill. Cancel the bill first', 409);
+  const out = await reverse(db, { businessId, entryId: d.ledger_entry_id, key, reason: 'Reward claim cancelled', createdBy, viaClaim: true });
   await db.query(`UPDATE loyalty_redemptions SET status = 'CANCELLED' WHERE redemption_id = $1`, [redemptionId]);
   return out;
 };

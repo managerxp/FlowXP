@@ -108,5 +108,6 @@ export const recordEvent = async (client, { businessId, customerId, invoiceId, d
 export const voidForInvoice = async (client, businessId, invoiceId) => {
   await client.query(`UPDATE loyalty_events SET voided_at = CURRENT_TIMESTAMP WHERE business_id = $1 AND invoice_id = $2 AND voided_at IS NULL`, [businessId, invoiceId]);
   await client.query(`UPDATE points_ledger SET voided_at = CURRENT_TIMESTAMP WHERE business_id = $1 AND invoice_id = $2 AND voided_at IS NULL`, [businessId, invoiceId]);
+  await client.query(`UPDATE loyalty_redemptions SET applied_invoice_id = NULL, applied_paise = NULL WHERE business_id = $1 AND applied_invoice_id = $2`, [businessId, invoiceId]);   // a reward used on this bill is free to use again
   await client.query(`UPDATE coupon_redemptions SET voided_at = CURRENT_TIMESTAMP WHERE business_id = $1 AND invoice_id = $2 AND voided_at IS NULL`, [businessId, invoiceId]);
 };
