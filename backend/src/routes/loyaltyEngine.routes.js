@@ -20,6 +20,7 @@ router.post('/loyalty/members/:id/earn', ...till, l.earn);
 router.post('/loyalty/members/:id/redeem', ...till, l.redeem);
 router.post('/loyalty/ledger/:entryId/reverse', ...owner, l.reverse);
 
+router.get('/loyalty/analytics', ...owner, l.analytics);
 router.get('/loyalty/locations', ...till, l.listLocations);
 router.put('/loyalty/locations/:branchId', ...owner, l.setLocation);
 

@@ -7,6 +7,7 @@ import { withTransaction } from '../modules/wholesale/common.js';
 import { recordAudit } from '../modules/events.js';
 import * as engine from '../modules/loyaltyEngine.js';
 import { pushBalance } from '../modules/walletGoogle.js';
+import * as reports from '../modules/loyaltyReport.js';
 
 const wrap = (fn) => async (req, res) => {
   try { await fn(req, res); } catch (e) {
@@ -175,3 +176,5 @@ export const cancelClaim = wrap(async (req, res) => {
   pushBalance(out.entry ? [out.entry.membership_id] : []);
   ok(res, out);
 });
+
+export const analytics = wrap(async (req, res) => ok(res, { ...(await reports.report(pool, bid(req), { days: req.query.days, programmeId: Number(req.query.programme_id) || null })), problems: await reports.problems(pool, bid(req)) }));
