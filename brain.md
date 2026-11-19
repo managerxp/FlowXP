@@ -1554,3 +1554,7 @@ Ponytail audit + security sweep. Done: backend `npm audit fix` (body-parser, mul
 - `/app/member-desk` (app/MemberDesk.jsx; nav "Member desk" under Customers, permission billing, feature loyalty_programmes). Find by mobile / member number / pasted card link / scanner gun / camera QR (BarcodeDetector browsers only). One member: card, Stamp or Add points (bill amount asked only when needed), Give reward (claim), Use points, recent ledger. Not found: join them in place. Each action keeps one request key until it succeeds (retry never double counts).
 - GET /loyalty/members/:id now also returns card, redeem_points, min_redeem_points, min_txn_paise. Fixed LoyaltyProgrammes reward value (paise shown as rupees).
 - Not done: phone-app member desk, undo (owner reverse) button on the desk, reward applied straight onto the open bill.
+
+### Loyalty member desk (phone) — built, not yet run on a device
+- `mobile/src/app/member-desk.tsx` + `lib/memberDesk.ts`; More > Customers "Member desk" (billing permission + `loyalty_programmes` feature, not wholesale). Same flow as the web desk: find by mobile / member number / card link / camera QR (expo-camera, QR only), card drawn in its own colours, Stamp or Add points, Give reward, Use points, recent, join a new customer. One request key per action kept until success.
+- 35 new texts translated into all six languages (MEMBER_TEXTS); test mobile/test/memberdesk.test.ts. tsc clean, mobile suite 615/615. Not exercised on a real phone/emulator (camera scan untested).
