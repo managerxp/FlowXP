@@ -30,6 +30,7 @@ import { asInvoice, BillingError, createInvoiceInTransaction, paymentReference, 
 import { insertOrderItems, nextNumber, OrderItemsError, sendKotCore } from './orders.controller.js';
 import { isParts } from '../modules/mechanic/types.js';
 import { hasPlanFeature } from '../modules/planFeatures.js';
+import { pushForCustomer } from '../modules/walletGoogle.js';
 
 /* ==========================================================================
    POST /api/invoices
@@ -142,6 +143,7 @@ export const create = async (req, res) => {
 
 
     await client.query('COMMIT');
+    pushForCustomer(Number(body.customer_id) || null);   // a saved Google Wallet card shows the new balance (nothing happens unless it is set up)
     recordInvoiceCreated(req, invoice);
     if (counterOrder) recordAudit(req, { action: 'order.counter_sale', resource_type: 'order', resource_id: counterOrder.order_id, metadata: { invoice_id: invoice.invoice_id, kot_number: counterOrder.kot_number } });
     res.status(201).json({ success: true, data: counterOrder ? { ...invoice, order: counterOrder } : invoice });

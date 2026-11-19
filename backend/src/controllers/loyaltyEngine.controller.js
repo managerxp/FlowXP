@@ -6,6 +6,7 @@ import pool from '../config/database.js';
 import { withTransaction } from '../modules/wholesale/common.js';
 import { recordAudit } from '../modules/events.js';
 import * as engine from '../modules/loyaltyEngine.js';
+import { pushBalance } from '../modules/walletGoogle.js';
 
 const wrap = (fn) => async (req, res) => {
   try { await fn(req, res); } catch (e) {
@@ -94,18 +95,21 @@ const key = (req) => String(req.get('Idempotency-Key') || req.body?.key || '').s
 
 export const earn = wrap(async (req, res) => {
   const out = await withTransaction((c) => engine.earn(c, { businessId: bid(req), membershipId: id(req), amountPaise: req.body?.amount_paise, branchId: req.tenant.branchId, invoiceId: Number(req.body?.invoice_id) || null, key: key(req) || null, createdBy: req.auth.userId }));
+  pushBalance([id(req)]);
   ok(res, out);
 });
 
 export const redeem = wrap(async (req, res) => {
   const out = await withTransaction((c) => engine.redeem(c, { businessId: bid(req), membershipId: id(req), points: Number(req.body?.points), branchId: req.tenant.branchId, invoiceId: Number(req.body?.invoice_id) || null, key: key(req), createdBy: req.auth.userId }));
   if (!out.duplicate) recordAudit(req, { business_id: bid(req), action: 'loyalty.points_redeemed', resource_type: 'loyalty_membership', resource_id: id(req), metadata: { points: Number(req.body?.points) } });
+  pushBalance([id(req)]);
   ok(res, out);
 });
 
 export const reverse = wrap(async (req, res) => {
   const out = await withTransaction((c) => engine.reverse(c, { businessId: bid(req), entryId: id(req, 'entryId'), points: req.body?.points == null ? null : Number(req.body.points), key: key(req), reason: String(req.body?.reason || '').slice(0, 200) || null, createdBy: req.auth.userId }));
   if (!out.duplicate) recordAudit(req, { business_id: bid(req), action: 'loyalty.points_reversed', resource_type: 'points_ledger', resource_id: id(req, 'entryId'), metadata: { points: req.body?.points ?? 'all' } });
+  pushBalance(out.entry ? [out.entry.membership_id] : []);
   ok(res, out);
 });
 
@@ -146,11 +150,13 @@ export const memberRewards = wrap(async (req, res) => ok(res, await engine.rewar
 export const claimReward = wrap(async (req, res) => {
   const out = await withTransaction((c) => engine.redeemReward(c, { businessId: bid(req), membershipId: id(req), rewardId: Number(req.body?.reward_id), branchId: req.tenant.branchId, invoiceId: Number(req.body?.invoice_id) || null, key: key(req), createdBy: req.auth.userId }));
   if (!out.duplicate) recordAudit(req, { business_id: bid(req), action: 'loyalty.reward_claimed', resource_type: 'loyalty_redemption', resource_id: out.redemption.redemption_id, metadata: { reward_id: req.body?.reward_id } });
+  pushBalance([id(req)]);
   ok(res, out);
 });
 
 export const cancelClaim = wrap(async (req, res) => {
   const out = await withTransaction((c) => engine.cancelRedemption(c, { businessId: bid(req), redemptionId: id(req), key: key(req) || `cancel:${id(req)}`, createdBy: req.auth.userId }));
   recordAudit(req, { business_id: bid(req), action: 'loyalty.reward_claim_cancelled', resource_type: 'loyalty_redemption', resource_id: id(req), metadata: {} });
+  pushBalance(out.entry ? [out.entry.membership_id] : []);
   ok(res, out);
 });

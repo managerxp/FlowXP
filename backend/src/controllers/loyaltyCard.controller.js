@@ -9,6 +9,7 @@ import pool from '../config/database.js';
 import { withTransaction } from '../modules/wholesale/common.js';
 import { effectiveFeatureFlags, hasPlanFeature } from '../modules/planFeatures.js';
 import * as engine from '../modules/loyaltyEngine.js';
+import * as google from '../modules/walletGoogle.js';
 
 const ok = (res, data, status = 200) => res.status(status).json({ success: true, data });
 const gone = () => new engine.LoyaltyError('This card is not available right now', 404);
@@ -25,7 +26,7 @@ const FEATURE_SQL = `COALESCE(pl.feature_flags, '{}'::jsonb) AS plan_feature_fla
 const FEATURE_JOINS = `LEFT JOIN plans pl ON pl.plan_code = b.plan_code
   LEFT JOIN business_type_features btf ON btf.business_type = b.business_type AND btf.plan_code = b.plan_code
   LEFT JOIN LATERAL (SELECT jsonb_object_agg(feature_key, enabled) AS overrides FROM business_feature_overrides WHERE business_id = b.business_id AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)) bfo ON true`;
-const featureOn = (r) => b_ok(r) && hasPlanFeature({ planFeatures: effectiveFeatureFlags([r.plan_feature_flags, r.type_feature_flags], r.feature_overrides, r.business_type) }, 'loyalty_programmes');
+const featureOn = (r, key = 'loyalty_programmes') => b_ok(r) && hasPlanFeature({ planFeatures: effectiveFeatureFlags([r.plan_feature_flags, r.type_feature_flags], r.feature_overrides, r.business_type) }, key);
 const b_ok = (r) => r.business_status === 'ACTIVE' || r.business_status === 'TRIAL';
 
 const programmeByCode = async (code) => {
@@ -60,8 +61,8 @@ export const join = wrap(async (req, res) => {
   ok(res, { already: false, token: out.membership.token, membership_no: out.membership.membership_no }, 201);
 });
 
-export const card = wrap(async (req, res) => {
-  const token = String(req.params.token || '');
+const memberByToken = async (rawToken) => {
+  const token = String(rawToken || '');
   if (token.length < 20 || token.length > 100) throw gone();
   const m = (await pool.query(
     `SELECT m.membership_id, m.business_id, m.membership_no, m.status, m.expires_at, c.name AS customer_name, p.*, b.name AS business_name, b.business_type, b.status AS business_status,
@@ -69,9 +70,22 @@ export const card = wrap(async (req, res) => {
      FROM loyalty_memberships m JOIN loyalty_programmes p ON p.programme_id = m.programme_id JOIN customers c ON c.customer_id = m.customer_id
      JOIN businesses b ON b.business_id = m.business_id ${FEATURE_JOINS} WHERE m.token = $1`, [token])).rows[0];
   if (!m || !featureOn(m)) throw gone();
+  return m;
+};
+
+export const card = wrap(async (req, res) => {
+  const m = await memberByToken(req.params.token);
   const bal = await engine.balanceOf(pool, m.membership_id);
   const rewards = (await engine.rewardsFor(pool, m.business_id, m.membership_id)).map((x) => ({ reward_id: x.reward_id, name: x.name, description: x.description, points_cost: x.points_cost, affordable: x.affordable, points_short: x.points_short }));
   const ledger = (await engine.ledgerFor(pool, m.business_id, m.membership_id, 20)).map((e) => ({ kind: e.kind, points: e.points, note: e.note, at: e.created_at }));
   res.set('Cache-Control', 'no-store');
-  ok(res, { ...publicProgramme(m), customer: m.customer_name, membership_no: m.membership_no, status: m.status, expires_at: m.expires_at, ...bal, redeem_at: m.redeem_points, rewards, ledger });
+  ok(res, { ...publicProgramme(m), customer: m.customer_name, membership_no: m.membership_no, status: m.status, expires_at: m.expires_at, ...bal, redeem_at: m.redeem_points, rewards, ledger, wallet: { google: google.configured() && featureOn(m, 'loyalty_wallet') } });
+});
+
+/* "Add to Google Wallet": a signed link for this member's pass. Only when the server has Google Wallet set up and the plan includes it. */
+export const googleWallet = wrap(async (req, res) => {
+  const m = await memberByToken(req.params.token);
+  if (!google.configured() || !featureOn(m, 'loyalty_wallet')) throw gone();
+  const row = (await google.loadMembership(pool, 'm.membership_id = $1', [m.membership_id]))[0];
+  ok(res, { url: google.saveUrl(row) });
 });

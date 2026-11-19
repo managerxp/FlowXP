@@ -65,7 +65,8 @@ const Join = ({ code }) => {
 };
 
 const Card = ({ token }) => {
-  const [d, setD] = useState(null); const [gone, setGone] = useState(false);
+  const [d, setD] = useState(null); const [gone, setGone] = useState(false); const [walletErr, setWalletErr] = useState('');
+  const addToWallet = () => { setWalletErr(''); call(`/${token}/google-wallet`).then((r) => { window.location.href = r.url; }).catch((e) => setWalletErr(e.message)); };
   useEffect(() => { call(`/${token}`).then(setD).catch(() => setGone(true)); }, [token]);
   if (gone) return <Notice>This card link is not valid. Ask the staff for a new one.</Notice>;
   if (!d) return <Notice>Loading…</Notice>;
@@ -74,6 +75,7 @@ const Card = ({ token }) => {
     <Shell>
       <LoyaltyCardFace card={d.card} business={d.business} name={d.name} kind={d.kind} balance={d.balance} redeemAt={d.redeem_points} customer={d.customer} membershipNo={d.membership_no} />
       {d.status !== 'ACTIVE' && <p className="rounded-xl bg-warning/10 p-3 text-sm text-warning">This card is switched off. Please ask the staff.</p>}
+      {d.wallet?.google && <div><button type="button" onClick={addToWallet} className="min-h-12 w-full rounded-xl bg-ink-900 px-5 text-base font-semibold text-white">Add to Google Wallet</button>{walletErr && <p role="alert" className="mt-2 text-sm text-danger">{walletErr}</p>}</div>}
       <p className="rounded-xl border border-line bg-surface p-3 text-center text-sm text-ink-700">Show this card, or say your mobile number, at the counter.</p>
       {d.rewards.length > 0 && (
         <section className="rounded-xl border border-line bg-surface p-4"><h2 className="mb-2 font-semibold text-ink-900">Rewards</h2>

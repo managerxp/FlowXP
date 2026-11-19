@@ -13,5 +13,6 @@ router.use(requireAppHeader);
 router.get('/join/:code', read, c.joinInfo);
 router.post('/join/:code', joinLimit, c.join);
 router.get('/:token', guess, c.card);
+router.get('/:token/google-wallet', guess, c.googleWallet);
 
 export default router;
