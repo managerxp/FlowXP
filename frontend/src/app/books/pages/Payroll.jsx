@@ -7,7 +7,7 @@ import { Async, Badge, Btn, Card, Empty, Err, Field, Money, Note, Page, Table, u
 
 const MODES = { BANK: 'Bank', CASH: 'Cash', UPI: 'UPI', CARD: 'Card' };
 const blank = () => ({ id: '', name: '', designation: '', monthlyPay: '', basic: '', pf: false, esi: false, pt: '', tds: '' });
-const rupees = (minor) => (minor == null ? '' : String(Number(minor) / 100));
+const rupees = (v) => (v == null ? '' : String(Number(v)));   // the API sends amounts in rupees already
 const thisMonth = () => today().slice(0, 7);
 
 const People = ({ load, o, org }) => {

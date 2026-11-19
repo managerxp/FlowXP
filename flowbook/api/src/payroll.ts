@@ -57,7 +57,7 @@ export type EmployeeIn = { name: string; designation?: string; monthlyPay: strin
 const minor = (v: string | undefined): number => { const n = Math.round(Number(v ?? 0) * 100); if (!Number.isFinite(n) || n < 0) throw new LedgerError('bad_amount', 'amounts must be zero or more'); return n; };
 
 export const listEmployees = async (c: Db) => (await c.query(
-  `SELECT id::text, name, designation, monthly_pay_minor::text, basic_minor::text, pf, esi, pt_minor::text, tds_minor::text, active FROM payroll_employees ORDER BY active DESC, name`)).rows;
+  `SELECT id::text, name, designation, monthly_pay_minor, basic_minor, pf, esi, pt_minor, tds_minor, active FROM payroll_employees ORDER BY active DESC, name`)).rows;
 
 export const saveEmployee = async (c: Db, orgId: bigint, id: bigint | null, e: EmployeeIn) => {
   if (!e.name?.trim()) throw new LedgerError('name_required', 'give the person a name');
@@ -99,7 +99,7 @@ export const makeRun = async (c: Db, orgId: bigint, month: string, lines: RunLin
 export const getRun = async (c: Db, month: string) => {
   const run = (await c.query(`SELECT id::text, month, status, entry_id::text, paid_entry_id::text, dues_entry_id::text FROM payroll_runs WHERE month = $1`, [month])).rows[0];
   if (!run) return null;
-  const lines = (await c.query(`SELECT employee_id::text, name, days_in_month, days_away::float AS days_away, bonus_minor::text, gross_minor::text, pf_employee_minor::text, pf_employer_minor::text, pf_admin_minor::text, esi_employee_minor::text, esi_employer_minor::text, pt_minor::text, tds_minor::text, net_minor::text FROM payroll_run_lines WHERE run_id = $1 ORDER BY name`, [run.id])).rows;
+  const lines = (await c.query(`SELECT employee_id::text, name, days_in_month, days_away::float AS days_away, bonus_minor, gross_minor, pf_employee_minor, pf_employer_minor, pf_admin_minor, esi_employee_minor, esi_employer_minor, pt_minor, tds_minor, net_minor FROM payroll_run_lines WHERE run_id = $1 ORDER BY name`, [run.id])).rows;
   return { ...run, lines };
 };
 

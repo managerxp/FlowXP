@@ -14,7 +14,7 @@ import { Panel, Tabs, useAction } from '../salon/parts.jsx';
 import Staff from '../hr/Staff.jsx';
 import { payslipHtml } from './payslipHtml.js';
 
-const rs = (p) => formatCurrency(p);
+const rs = (p) => formatCurrency(Number(p || 0) / 100);   // every amount from the API is in paise
 const paiseToRupees = (p) => (p == null || p === '' ? '' : String(Number(p) / 100));
 const monthName = (m) => new Date(`${m}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 const thisMonth = () => new Date().toISOString().slice(0, 7);

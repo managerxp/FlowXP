@@ -513,7 +513,7 @@ export const registerBookRoutes = (app: FastifyInstance, { pool, scope, me }: De
   });
 
   /* ---- payroll: people on a salary, the month's run, and paying it */
-  const MONTH = '^\d{4}-(0[1-9]|1[0-2])$';
+  const MONTH = '^\\d{4}-(0[1-9]|1[0-2])$';
   const payBody = { type: 'object', required: ['date', 'paidWith'], additionalProperties: false, properties: { date: { type: 'string', pattern: DATE }, paidWith: { type: 'string', enum: ['CASH', 'BANK', 'UPI', 'CARD'] } } };
   const monthParam = { params: { type: 'object', required: ['month'], properties: { month: { type: 'string', pattern: MONTH } } } };
   app.get(`${base}/payroll/employees`, { preHandler: scope('bill.read') }, async (req) => run(req, (c) => listEmployees(c)));
