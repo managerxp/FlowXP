@@ -212,6 +212,7 @@ const NAV_GROUPS = [
       // to a page that would only say "no access". Editing needs 'customers' and is rejected there if not.
       { to: '/app/customers', label: 'Customers', icon: UserRound, anyPermission: ['customers', 'billing'], notTypes: NOT_SALON_OR_WHOLESALE },
       { to: '/app/offers', label: 'Offers', icon: Tag, types: [...RETAIL, ...RESTAURANT_TYPES], anyPermission: ['products', 'settings'], more: true },
+      { to: '/app/member-desk', label: 'Member desk', icon: Gift, anyPermission: ['billing'], feature: 'loyalty_programmes', more: true },
       { to: '/app/loyalty', label: 'Loyalty & coupons', icon: Gift, roles: ['OWNER', 'ADMIN'], feature: 'loyalty', more: true },
       { to: '/app/messaging', label: 'Messaging', icon: MessageSquare, roles: ['OWNER', 'ADMIN'], feature: 'messaging', more: true },
       { to: '/app/reviews', label: 'Reviews', icon: Star, roles: ['OWNER', 'ADMIN'], permission: 'settings', feature: 'reviews', more: true }

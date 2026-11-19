@@ -118,6 +118,7 @@ const DebitNotesPage = lazy(() => import('./app/DebitNotesPage.jsx'));
 const GstPage = lazy(() => import('./app/GstPage.jsx'));
 const SecurityPage = lazy(() => import('./app/SecurityPage.jsx'));
 const StockRequestsPage = lazy(() => import('./app/StockRequestsPage.jsx'));
+const MemberDesk = lazy(() => import('./app/MemberDesk.jsx'));
 const LoyaltyPage = lazy(() => import('./app/LoyaltyPage.jsx'));
 const AIManagerPage = lazy(() => import('./app/AIManagerPage.jsx'));
 const ActivityPage = lazy(() => import('./app/ActivityPage.jsx'));
@@ -359,6 +360,7 @@ const App = () => (
       <Route path="settlements" element={<SettlementsPage />} />
       <Route path="outlets" element={<OutletsPage />} />
       <Route path="loyalty" element={<LoyaltyPage />} />
+      <Route path="member-desk" element={<MemberDesk />} />
       <Route path="messaging" element={<MessagingPage />} />
       <Route path="reviews" element={<ReviewsPage />} />
       <Route path="ai" element={<AIManagerPage />} />

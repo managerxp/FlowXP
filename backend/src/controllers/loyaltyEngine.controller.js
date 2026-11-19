@@ -76,7 +76,7 @@ export const lookup = wrap(async (req, res) => {
 export const getMembership = wrap(async (req, res) => {
   const membershipId = id(req);
   const m = (await pool.query(
-    `SELECT m.*, c.name AS customer_name, c.phone AS customer_phone, p.name AS programme_name, p.kind FROM loyalty_memberships m
+    `SELECT m.*, c.name AS customer_name, c.phone AS customer_phone, p.name AS programme_name, p.kind, p.card, p.redeem_points, p.min_redeem_points, p.min_txn_paise FROM loyalty_memberships m
      JOIN customers c ON c.customer_id = m.customer_id JOIN loyalty_programmes p ON p.programme_id = m.programme_id WHERE m.business_id = $1 AND m.membership_id = $2`, [bid(req), membershipId])).rows[0];
   if (!m) throw new engine.LoyaltyError('That membership was not found', 404);
   ok(res, { ...m, ...(await engine.balanceOf(pool, membershipId)), ledger: await engine.ledgerFor(pool, bid(req), membershipId) });

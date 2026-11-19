@@ -58,7 +58,7 @@ const Rewards = ({ programme }) => {
       <ul className="mt-2 divide-y divide-line">
         {(list || []).map((r) => (
           <li key={r.reward_id} className="flex items-center justify-between gap-3 py-2 text-small">
-            <span className={r.is_active ? 'text-ink-900' : 'text-ink-400 line-through'}>{r.name} <span className="text-ink-500">· {r.points_cost} {unit}{Number(r.value_paise) ? ` · worth ${formatCurrency(Number(r.value_paise))}` : ''}</span></span>
+            <span className={r.is_active ? 'text-ink-900' : 'text-ink-400 line-through'}>{r.name} <span className="text-ink-500">· {r.points_cost} {unit}{Number(r.value_paise) ? ` · worth ${formatCurrency(Number(r.value_paise) / 100)}` : ''}</span></span>
             <button type="button" onClick={() => flip(r)} className="shrink-0 text-brand-700 hover:underline">{r.is_active ? 'Switch off' : 'Switch on'}</button>
           </li>))}
         {list && !list.length && <li className="py-2 text-small text-ink-500">No rewards yet. Add the first one below.</li>}

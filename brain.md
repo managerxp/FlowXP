@@ -1549,3 +1549,8 @@ Ponytail audit + security sweep. Done: backend `npm audit fix` (body-parser, mul
 - Web: `/card/join/:code` and `/card/:token` (public/LoyaltyCardPage.jsx), shared `components/LoyaltyCardFace.jsx` (stamps circles or points), owner tab "Loyalty cards" in LoyaltyPage (app/LoyaltyProgrammes.jsx): 3-step wizard with live preview, share dialog (link, QR, NFC note), rewards list/add. Browser-tested on the dev server (made card, joined from phone viewport, saw card).
 - NFC = the same URL written to a sticker; no wallet NFC tap-to-stamp promised. Tests: backend/test/loyaltyCard.test.js (4).
 - Not done: Google/Apple Wallet (phase 4), till screens (stamp/add points UI on web/phone), notifications/campaigns (5), analytics (6), phone-app screens for cards.
+
+### Loyalty till screen (web) — done
+- `/app/member-desk` (app/MemberDesk.jsx; nav "Member desk" under Customers, permission billing, feature loyalty_programmes). Find by mobile / member number / pasted card link / scanner gun / camera QR (BarcodeDetector browsers only). One member: card, Stamp or Add points (bill amount asked only when needed), Give reward (claim), Use points, recent ledger. Not found: join them in place. Each action keeps one request key until it succeeds (retry never double counts).
+- GET /loyalty/members/:id now also returns card, redeem_points, min_redeem_points, min_txn_paise. Fixed LoyaltyProgrammes reward value (paise shown as rupees).
+- Not done: phone-app member desk, undo (owner reverse) button on the desk, reward applied straight onto the open bill.
