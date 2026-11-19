@@ -167,21 +167,27 @@ const PlanAndType = ({ business, businessId, onSaved }) => {
   const [distributor, setDistributor] = useState(Boolean(business.distributor_enabled));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [months, setMonths] = useState('1');   // how long a started plan runs; 'custom' = pick the dates
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => { adminApi('/plans').then(setPlans).catch((err) => setError(err.message)); }, []);
 
   const isWholesale = ['WHOLESALE', 'DISTRIBUTOR'].includes(businessType);
   const dirty = planCode !== business.plan_code || businessType !== business.business_type
     || subscriptionStatus !== business.subscription_status_raw
+    || (subscriptionStatus === 'ACTIVE' && !business.subscription?.next_billing_date)
     || (isWholesale && distributor !== Boolean(business.distributor_enabled));
 
+  const starting = subscriptionStatus === 'ACTIVE' && (business.subscription_status_raw !== 'ACTIVE' || !business.subscription?.next_billing_date);
   const save = async () => {
     setSaving(true);
     setError('');
     try {
+      if (starting && months === 'custom' && !endDate) throw new Error('Choose the end date.');
       await adminApi(`/businesses/${businessId}/plan`, {
         method: 'PATCH',
-        body: { plan_code: planCode, subscription_status: subscriptionStatus, business_type: businessType, ...(isWholesale ? { distributor_enabled: distributor } : {}) }
+        body: { plan_code: planCode, subscription_status: subscriptionStatus, business_type: businessType, ...(starting ? (months === 'custom' ? { start_date: startDate || undefined, end_date: endDate } : { months: Number(months), start_date: startDate || undefined }) : {}), ...(isWholesale ? { distributor_enabled: distributor } : {}) }
       });
       toast.success('Saved');
       await onSaved();
@@ -218,6 +224,23 @@ const PlanAndType = ({ business, businessId, onSaved }) => {
           <Button className="w-full" disabled={!dirty || saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</Button>
         </div>
       </div>
+      {starting && (
+        <div className="mt-4 grid gap-3 rounded-lg border border-line p-3 sm:grid-cols-4">
+          <Field id="bt-months" label="How long">
+            <Select id="bt-months" value={months} onChange={(e) => setMonths(e.target.value)}>
+              <option value="1">1 month</option><option value="3">3 months</option><option value="6">6 months</option><option value="12">1 year</option><option value="24">2 years</option><option value="custom">Pick the dates</option>
+            </Select>
+          </Field>
+          <Field id="bt-start" label="Start date" hint="Empty = today">
+            <Input id="bt-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </Field>
+          {months === 'custom' && (
+            <Field id="bt-end" label="End date">
+              <Input id="bt-end" type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
+            </Field>
+          )}
+        </div>
+      )}
       {isWholesale && (
         <label htmlFor="bt-dist" className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-line p-3">
           <input id="bt-dist" type="checkbox" className="mt-1 h-4 w-4" checked={distributor} onChange={(e) => setDistributor(e.target.checked)} />

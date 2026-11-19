@@ -30,7 +30,7 @@ import { t } from '../../lib/i18n.ts';
 import { FadeIn } from '../../lib/motion.tsx';
 
 type Icon = React.ComponentProps<typeof Ionicons>['name'];
-type Item = { left: string; sub: string; icon: Icon; go: string; show?: boolean };
+type Item = { left: string; sub: string; icon: Icon; go: string; show?: boolean; main?: boolean };
 type Group = { title: string; icon: Icon; items: Item[] };
 
 /* Everything that is not on a tab, grouped by what the owner is trying to do: sell, look after stock, deal with customers, understand the business, set up. Only what this person may use is shown. */
@@ -65,33 +65,27 @@ export default function More() {
   const garageGroups: Group[] = [
     { title: 'Garage', icon: 'build-outline', items: [
       { left: 'Labour and services', sub: 'What you charge for work: oil change, alignment', icon: 'pricetag-outline', go: '/job-services', show: can('billing') },
-      { left: 'Customers', sub: 'Their vehicles, bills and what they still owe', icon: 'person-outline', go: '/customers', show: can('customers', 'billing') },
+      { left: 'Customers', sub: 'Their vehicles, bills and what they still owe', icon: 'person-outline', go: '/customers', main: true, show: can('customers', 'billing') },
       { left: 'Find a part', sub: 'By name, barcode or any part number: price, stock and shelf', icon: 'search-outline', go: '/parts', show: can('billing', 'parts_catalog', 'warehouse', 'inventory') },
       { left: 'Parts reports', sub: 'What to buy, what sells, stock age and value', icon: 'analytics-outline', go: '/parts-reports', show: parts && can('reports', 'inventory', 'purchases') },
       { left: 'Trade prices', sub: 'Price lists for garages and trade, and parts held for customers', icon: 'pricetags-outline', go: '/parts-trade', show: parts && can('billing', 'price_change', 'inventory') },
       { left: 'Receive parts', sub: 'A delivery: accepted, damaged and rejected counted apart', icon: 'download-outline', go: '/parts-receive', show: can('grn') },
-      { left: 'Staff', sub: 'People, attendance and payroll', icon: 'people-circle-outline', go: '/workshop-staff', show: can('hr', 'payroll') }
+      { left: 'Staff', sub: 'People, attendance and payroll', icon: 'people-circle-outline', go: '/workshop-staff', main: true, show: can('hr', 'payroll') }
     ] },
     { title: 'Your business', icon: 'stats-chart-outline', items: [
       { left: 'What we earned', sub: 'Labour and parts earned, by day and mechanic', icon: 'stats-chart-outline', go: '/job-earnings', show: can('billing') },
-      { left: 'Reports', sub: 'How much you earned, and download it', icon: 'stats-chart-outline', go: '/reports', show: can('reports') },
-      { left: 'Expenses', sub: 'Rent, salary, electricity: what you spent', icon: 'receipt-outline', go: '/expenses', show: can('expenses') },
+      { left: 'Reports', sub: 'How much you earned, and download it', icon: 'stats-chart-outline', go: '/reports', main: true, show: can('reports') },
+      { left: 'Expenses', sub: 'Rent, salary, electricity: what you spent', icon: 'receipt-outline', go: '/expenses', main: true, show: can('expenses') },
       { left: 'Estimates', sub: 'A price before the sale: share it, then make the invoice', icon: 'document-text-outline', go: '/estimates', show: can('billing') && hasFeature(business, 'estimates') },
       { left: 'Other income', sub: 'Interest, rent received, scrap: money in that is not from a bill', icon: 'cash-outline', go: '/other-income', show: can('expenses') && hasFeature(business, 'other_income') },
       { left: 'Messaging', sub: 'WhatsApp or SMS: vehicle ready, estimate, offers', icon: 'chatbubbles-outline', go: '/messaging', show: canMessaging(business?.role) },
-    ] },
-    { title: 'Settings and help', icon: 'settings-outline', items: [
-      { left: 'Settings', sub: 'Business and GST, printers and Bluetooth, language, alerts, security, backup, your plan', icon: 'settings-outline', go: '/settings' },
-      { left: 'Help and support', sub: 'Find things, how to do them, ask a question, report a problem', icon: 'help-buoy-outline', go: '/help-center' },
-      { left: 'Team logins', sub: 'Who can sign in, their role and outlet', icon: 'people-circle-outline', go: '/staff', show: canManageTeam(business?.role) },
-      { left: 'Switch outlet', sub: outlet?.name ?? '', icon: 'swap-vertical-outline', go: '/choose', show: several }
     ] }
   ];
 
   /* The same order as the laptop's sidebar: Sell, the kind of business you run, Stock, Customers, Business, Team, then Settings and help. */
   const groups: Group[] = [
     { title: 'Sell', icon: 'cart-outline', items: [
-      { left: 'Bills on hold', sub: 'Resume or discard', icon: 'pause-circle-outline', go: '/held' },
+      { left: 'Bills on hold', sub: 'Resume or discard', icon: 'pause-circle-outline', go: '/held', main: true },
       { left: 'Bills waiting to send', sub: 'Made without internet, and recent', icon: 'cloud-upload-outline', go: '/waiting' },
       { left: 'Estimates', sub: 'A price before the sale: share it, then make the invoice', icon: 'document-text-outline', go: '/estimates', show: can('billing') && hasFeature(business, 'estimates') },
       { left: 'Credit and debit notes', sub: 'Goods that came back, and goods sent back to suppliers', icon: 'receipt-outline', go: '/notes', show: !wholesale && (can('purchases') || can('refunds')) }
@@ -143,7 +137,7 @@ export default function More() {
       { left: 'Job cards', sub: 'Vehicles in for service: parts, labour and one bill', icon: 'build-outline', go: '/job-cards', show: parts && workshop && can('billing') },
       { left: 'Labour and services', sub: 'What you charge for work: oil change, alignment', icon: 'pricetag-outline', go: '/job-services', show: parts && workshop && can('billing') },
       { left: 'What we earned', sub: 'Labour and parts earned, by day and mechanic', icon: 'stats-chart-outline', go: '/job-earnings', show: parts && workshop && can('billing') },
-      { left: 'Staff', sub: 'People, attendance and payroll', icon: 'people-circle-outline', go: '/workshop-staff', show: parts && workshop && can('hr', 'payroll') },
+      { left: 'Staff', sub: 'People, attendance and payroll', icon: 'people-circle-outline', go: '/workshop-staff', main: true, show: parts && workshop && can('hr', 'payroll') },
       { left: 'Mechanic mode', sub: 'Show job cards, labour and staff, or hide them for a parts-only shop', icon: 'build-outline', go: '/mechanic-mode', show: parts && business?.role === 'OWNER' }
     ] },
     { title: 'Pharmacy', icon: 'medkit-outline', items: [
@@ -173,25 +167,26 @@ export default function More() {
       { left: 'Vans', sub: 'The register of vans, drivers and routes', icon: 'car-outline', go: '/dist-vans', show: distributor && can('vehicles') }
     ] },
     { title: 'Stock', icon: 'cube-outline', items: [
-      { left: 'Products', sub: 'The menu: prices, stock, add an item', icon: 'cube-outline', go: '/products', show: food || salon },
-      { left: 'Stock', sub: 'What is running low, and fix a count', icon: 'layers-outline', go: '/stock', show: can('inventory') },
+      { left: 'Products', sub: 'The menu: prices, stock, add an item', icon: 'cube-outline', go: '/products', main: true, show: food || salon },
+      { left: 'Stock', sub: 'What is running low, and fix a count', icon: 'layers-outline', go: '/stock', main: true, show: can('inventory') },
       { left: 'Stock counts', sub: 'Scan the shelf and see what differs', icon: 'clipboard-outline', go: '/stock-counts', show: retail && can('inventory') },
       { left: 'Use-by dates', sub: 'What is expiring, and what has expired', icon: 'time-outline', go: '/expiry', show: retail },
       { left: 'Suppliers and stock coming in', sub: 'Who you buy from, and receive a delivery', icon: 'people-outline', go: '/suppliers', show: can('suppliers', 'purchases', 'inventory') },
       { left: 'Stock requests', sub: 'Ask another outlet for stock, or send what it asked for', icon: 'git-pull-request-outline', go: '/stock-requests', show: several && can('inventory') }
     ] },
     { title: 'Customers', icon: 'people-outline', items: [
-      { left: 'Customers', sub: 'Their bills, and what they still owe', icon: 'person-outline', go: '/customers', show: can('customers', 'billing') },
+      { left: 'Customers', sub: 'Their bills, and what they still owe', icon: 'person-outline', go: '/customers', main: true, show: can('customers', 'billing') },
       { left: 'Offers', sub: 'Discounts the till applies by itself', icon: 'pricetag-outline', go: '/offers', show: (retail || food) && canOffers((p) => allowed(business, p)) },
       { left: 'Loyalty & coupons', sub: 'Visit card, points and tiers, offer codes', icon: 'gift-outline', go: '/loyalty', show: canLoyalty(business?.role) && !wholesale },
       { left: 'Messaging', sub: 'WhatsApp or SMS: bills, bookings, offers', icon: 'chatbubbles-outline', go: '/messaging', show: canMessaging(business?.role) },
       { left: 'Reviews', sub: 'What customers said after their bill', icon: 'star-outline', go: '/reviews', show: can('settings') && hasFeature(business, 'reviews') }
     ] },
     { title: 'Business', icon: 'stats-chart-outline', items: [
-      { left: 'Reports', sub: 'How much you sold, and what sells best', icon: 'stats-chart-outline', go: '/reports', show: can('reports') },
+      { left: 'Payroll', sub: 'Salary from attendance, PF, ESI and tax', icon: 'wallet-outline', go: '/payroll', show: can('payroll') && hasFeature(business, 'payroll'), main: true },
+      { left: 'Reports', sub: 'How much you sold, and what sells best', icon: 'stats-chart-outline', go: '/reports', main: true, show: can('reports') },
       { left: 'More reports', sub: 'Day Book, profit and loss, GST, stock, who owes you', icon: 'document-text-outline', go: '/biz-reports', show: can('reports', 'gst', 'inventory') },
       { left: 'Ask Flow AI', sub: 'Questions about your business, in plain words', icon: 'sparkles-outline', go: '/flow-ai', show: can('ai') },
-      { left: 'Expenses', sub: 'Rent, salary, electricity: what you spent', icon: 'receipt-outline', go: '/expenses', show: can('expenses') },
+      { left: 'Expenses', sub: 'Rent, salary, electricity: what you spent', icon: 'receipt-outline', go: '/expenses', main: true, show: can('expenses') },
       { left: 'Other income', sub: 'Interest, rent received, scrap: money in that is not from a bill', icon: 'cash-outline', go: '/other-income', show: can('expenses') && hasFeature(business, 'other_income') },
       { left: 'FlowBook', sub: 'Your accounts at a glance', icon: 'book-outline', go: '/flowbook', show: can('reports') && hasBooks(business) },
       { left: 'GST filing', sub: 'GSTR-1 file, GSTR-3B figures, e-invoice', icon: 'document-attach-outline', go: '/gst-filing', show: canManageTeam(business?.role) && can('gst') },
@@ -205,22 +200,29 @@ export default function More() {
       { left: 'Outlets', sub: 'Your places, and how they compare', icon: 'storefront-outline', go: '/outlets', show: canManageTeam(business?.role) },
       { left: 'Activity log', sub: 'Who did what, and when', icon: 'time-outline', go: '/activity', show: canManageTeam(business?.role) },
       { left: 'Switch outlet', sub: outlet?.name ?? '', icon: 'swap-vertical-outline', go: '/choose', show: several }
-    ] },
-    { title: 'Settings and help', icon: 'settings-outline', items: [
-      { left: 'Settings', sub: 'Business and GST, printers and Bluetooth, language, alerts, security, backup, your plan', icon: 'settings-outline', go: '/settings' },
-      { left: 'Help and support', sub: 'Find things, how to do them, ask a question, report a problem', icon: 'help-buoy-outline', go: '/help-center' },
     ] }
   ];
 
-  const shown = (business?.business_type === 'MECHANIC' ? garageGroups : groups)
+  /* Settings, help, team logins and switching outlet are always at the bottom, outside the grid. */
+  const foot = ([
+    { left: 'Settings', sub: 'Business and GST, printers and Bluetooth, language, alerts, security, backup, your plan', icon: 'settings-outline', go: '/settings' },
+    { left: 'Help and support', sub: 'Find things, how to do them, ask a question, report a problem', icon: 'help-buoy-outline', go: '/help-center' },
+    { left: 'Team logins', sub: 'Who can sign in, their role and outlet', icon: 'people-circle-outline', go: '/staff', show: business?.business_type === 'MECHANIC' && canManageTeam(business?.role) },
+    { left: 'Switch outlet', sub: outlet?.name ?? '', icon: 'swap-vertical-outline', go: '/choose', show: several }
+  ] as Item[]).filter((i) => i.show !== false);
+  const shown0 = (business?.business_type === 'MECHANIC' ? garageGroups : groups)
     .map((g) => ({ ...g, items: g.items.filter((i) => i.show !== false) }))
     .filter((g) => g.items.length);
+  /* The everyday options sit outside the grid as rows (once each); the groups keep the rest. */
+  const top = shown0.flatMap((g) => g.items.filter((i) => i.main)).filter((i, n, all) => all.findIndex((o) => o.go === i.go) === n);
+  const onTop = new Set(top.map((i) => i.go));
+  const shown = shown0.map((g) => ({ ...g, items: g.items.filter((i) => !onTop.has(i.go)) })).filter((g) => g.items.length);
   const [openTitle, setOpenTitle] = useState<string | null>(null);
   const [find, setFind] = useState('');
   const { width } = useWindowDimensions();
   const cols = width >= 900 ? 4 : width >= 560 ? 3 : 2;
   const words = find.trim().toLowerCase();
-  const matches = words ? shown.flatMap((g) => g.items.filter((i) => `${t(i.left)} ${i.left} ${t(i.sub)} ${g.title}`.toLowerCase().includes(words))) : [];
+  const matches = words ? [...top, ...shown.flatMap((g) => g.items.map((i) => ({ ...i, sub: i.sub, left: i.left, _g: g.title }))), ...foot].filter((i) => `${t(i.left)} ${i.left} ${t(i.sub)} ${(i as { _g?: string })._g ?? ''}`.toLowerCase().includes(words)) : [];
   const group = shown.find((g) => g.title === openTitle);
   const go = (i: Item) => (['/products', '/appointments', '/salon-clients'].includes(i.go) ? router.navigate(i.go as never) : router.push(i.go as never));
 
@@ -250,6 +252,8 @@ export default function More() {
               {words ? (
                 matches.length ? <Rows>{matches.map((i) => <Line key={i.left + i.go} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows> : <Empty>{t('Nothing matches. Try another word.')}</Empty>
               ) : (
+                <>
+                <Rows>{top.map((i) => <Line key={i.go} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10 }}>
                   {shown.map((g, gi) => (
                     <FadeIn key={g.title} index={gi} lift={8} style={{ width: `${100 / cols}%`, padding: 6 }}>
@@ -264,6 +268,8 @@ export default function More() {
                     </FadeIn>
                   ))}
                 </View>
+                <Rows>{foot.map((i) => <Line key={i.go} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows>
+                </>
               )}
               <SectionTitle>Account</SectionTitle>
               <Soft style={{ paddingHorizontal: 16, paddingBottom: 4 }}>{session.user?.email}</Soft>

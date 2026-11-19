@@ -115,3 +115,26 @@ test('a payment link settled in cash is marked paid: the plan switches on and ev
   assert.equal((await call(staff.update, { params: { id: ownerRow.user_id }, body: { disabled: true }, user: ownerRow })).status, 409, 'not yourself');
   assert.ok((await pool.query(`SELECT token_version FROM users WHERE user_id = $1`, [meena.user_id])).rows[0].token_version >= 2, 'their open sessions end');
 });
+
+test('starting a plan by hand sets its start and end date: months from today, or exact dates', { skip }, async () => {
+  const { runMigrations } = await import('../src/config/migrate.js');
+  await runMigrations(pool);
+  const admin = await import('../src/controllers/admin.controller.js');
+  const boss = (await pool.query(`INSERT INTO users (name, email, password_hash, is_super_admin, admin_role) VALUES ('Boss2','boss2@fx.test','x',TRUE,'OWNER') RETURNING *`)).rows[0];
+  const owner = (await pool.query(`INSERT INTO users (name, email, password_hash) VALUES ('Own2','own2@fx.test','x') RETURNING user_id`)).rows[0];
+  const biz = (await pool.query(`INSERT INTO businesses (name, owner_user_id, business_type, state, subscription_status) VALUES ('Trial shop',$1,'RETAIL','Karnataka','TRIAL') RETURNING business_id`, [owner.user_id])).rows[0];
+  const dates = async () => (await pool.query(`SELECT subscription_started_at::date::text AS s, next_billing_date::date::text AS e, subscription_status FROM businesses WHERE business_id = $1`, [biz.business_id])).rows[0];
+
+  const a = await call(admin.updateBusinessPlan, { params: { id: biz.business_id }, body: { subscription_status: 'ACTIVE', months: 6 }, user: boss });
+  assert.equal(a.success, true);
+  const d = await dates();
+  assert.equal(d.subscription_status, 'ACTIVE');
+  assert.ok(d.s && d.e && d.e > d.s);
+  assert.equal((await pool.query(`SELECT (next_billing_date::date - subscription_started_at::date) > 170 AS ok FROM businesses WHERE business_id = $1`, [biz.business_id])).rows[0].ok, true);
+
+  const b = await call(admin.updateBusinessPlan, { params: { id: biz.business_id }, body: { subscription_status: 'ACTIVE', start_date: '2026-01-10', end_date: '2026-03-05' }, user: boss });
+  assert.equal(b.success, true);
+  assert.deepEqual(await dates(), { s: '2026-01-10', e: '2026-03-05', subscription_status: 'ACTIVE' });
+
+  assert.equal((await call(admin.updateBusinessPlan, { params: { id: biz.business_id }, body: { subscription_status: 'ACTIVE', start_date: '2026-03-05', end_date: '2026-01-10' }, user: boss })).status, 400);
+});

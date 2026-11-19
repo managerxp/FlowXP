@@ -596,6 +596,22 @@ export const updateBusinessPlan = async (req, res) => {
     }
     set('subscription_status', String(subscriptionStatus).toUpperCase());
   }
+  // Starting a paid period by hand: how long it runs (months), or exact start and end dates. Without this the business shows no start and end date.
+  if (String(subscriptionStatus || '').toUpperCase() === 'ACTIVE') {
+    const { months, start_date: startDate, end_date: endDate } = req.body;
+    const day = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !Number.isNaN(Date.parse(v)) ? String(v) : null);
+    if ((startDate && !day(startDate)) || (endDate && !day(endDate))) return res.status(400).json({ success: false, message: 'Dates must look like 2026-01-31' });
+    const m = months == null ? null : Number(months);
+    if (m != null && (!Number.isInteger(m) || m < 1 || m > 60)) return res.status(400).json({ success: false, message: 'Choose 1 to 60 months' });
+    const start = day(startDate);
+    const end = day(endDate);
+    if (start && end && end <= start) return res.status(400).json({ success: false, message: 'The end date must be after the start date' });
+    if (m || end) {
+      params.push(start); fields.push(`subscription_started_at = COALESCE($${params.length}::date, CURRENT_TIMESTAMP)`);
+      if (end) { params.push(end); fields.push(`next_billing_date = $${params.length}::date`); }
+      else { params.push(start); params.push(m); fields.push(`next_billing_date = COALESCE($${params.length - 1}::date, CURRENT_TIMESTAMP) + ($${params.length} || ' months')::interval`); }
+    }
+  }
   if (businessType != null) {
     if (!BUSINESS_TYPES.includes(String(businessType).toUpperCase())) {
       return res.status(400).json({ success: false, message: 'Unknown business type' });

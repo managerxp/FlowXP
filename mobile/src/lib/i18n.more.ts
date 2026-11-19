@@ -3444,7 +3444,24 @@ export const ML: Record<string, string> = {
   'How can we help?': 'ഞങ്ങൾ എങ്ങനെ സഹായിക്കണം?',
   'Ask FlowXP a question and read the answer': 'FlowXP യോട് ചോദ്യം ചോദിച്ച് ഉത്തരം വായിക്കുക',
   'Help and support': 'സഹായവും പിന്തുണയും',
-  'Tell FlowXP something went wrong': 'എന്തോ കുഴപ്പം സംഭവിച്ചെന്ന് FlowXP യെ അറിയിക്കുക',};
+  'Tell FlowXP something went wrong': 'എന്തോ കുഴപ്പം സംഭവിച്ചെന്ന് FlowXP യെ അറിയിക്കുക',
+  'You do not have access to payroll.': 'പേറോളിലേക്ക് നിങ്ങൾക്ക് പ്രവേശനമില്ല.',
+  'Add your people, then set their pay.': 'നിങ്ങളുടെ ആളുകളെ ചേർക്കുക, എന്നിട്ട് അവരുടെ ശമ്പളം നിശ്ചയിക്കുക.',
+  'Net pay to staff': 'ജീവനക്കാർക്ക് നൽകേണ്ട ശമ്പളം',
+  'Cost to you': 'നിങ്ങളുടെ ചെലവ്',
+  'To deposit: PF, ESI and tax': 'അടയ്ക്കാനുള്ളത്: PF, ESI, നികുതി',
+  'Pay the staff': 'ജീവനക്കാർക്ക് പണം നൽകുക',
+  'Staff paid {date}': 'ജീവനക്കാർക്ക് {date}-ന് നൽകി',
+  'PF, ESI and tax deposited {date}': 'PF, ESI, നികുതി {date}-ന് അടച്ചു',
+  'Record PF, ESI and tax deposit': 'PF, ESI, നികുതി അടച്ചത് രേഖപ്പെടുത്തുക',
+  'This puts the PF (both shares), ESI, professional tax and TDS into your expenses as one entry, paid today. Do it once you have deposited them.': 'ഇത് PF (രണ്ട് വിഹിതവും), ESI, പ്രൊഫഷണൽ ടാക്സ്, TDS എന്നിവ ഒറ്റ എൻട്രിയായി ഇന്നത്തെ തീയതിയിൽ നിങ്ങളുടെ ചെലവുകളിൽ ചേർക്കും. ഇവ അടച്ചതിന് ശേഷം മാത്രം ചെയ്യുക.',
+  'Paid, and recorded in your expenses as Salaries': 'പണം നൽകി, ചെലവുകളിൽ ശമ്പളമായി രേഖപ്പെടുത്തി',
+  'Recorded in your expenses': 'ചെലവുകളിൽ രേഖപ്പെടുത്തി',
+  'Some days are not marked': 'ചില ദിവസങ്ങളിലെ ഹാജർ രേഖപ്പെടുത്തിയിട്ടില്ല',
+  '{n} days have no attendance marked. They are paid as present. Finalise anyway?': '{n} ദിവസത്തെ ഹാജർ രേഖപ്പെടുത്തിയിട്ടില്ല. അവർ ഹാജരായതായി കണക്കാക്കി ശമ്പളം നൽകും. എങ്കിലും അന്തിമമാക്കണോ?',
+  'Finalise anyway': 'എങ്കിലും അന്തിമമാക്കുക',
+  'Salary from attendance, PF, ESI and tax': 'ഹാജരിൽ നിന്നുള്ള ശമ്പളം, PF, ESI, നികുതി',
+};
 
 /** Tamil: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const TA: Record<string, string> = {
@@ -6890,7 +6907,24 @@ export const TA: Record<string, string> = {
   'How can we help?': 'நாங்கள் எப்படி உதவலாம்?',
   'Ask FlowXP a question and read the answer': 'FlowXP-இடம் கேள்வி கேட்டு பதிலைப் படிக்கவும்',
   'Help and support': 'உதவி மற்றும் ஆதரவு',
-  'Tell FlowXP something went wrong': 'ஏதோ தவறு நடந்தது என்று FlowXP-க்குச் சொல்லுங்கள்',};
+  'Tell FlowXP something went wrong': 'ஏதோ தவறு நடந்தது என்று FlowXP-க்குச் சொல்லுங்கள்',
+  'You do not have access to payroll.': 'பேரோலுக்கு உங்களுக்கு அணுகல் இல்லை.',
+  'Add your people, then set their pay.': 'உங்கள் ஆட்களைச் சேர்த்து, பிறகு அவர்களின் சம்பளத்தை அமைக்கவும்.',
+  'Net pay to staff': 'ஊழியர்களுக்கு செலுத்த வேண்டிய சம்பளம்',
+  'Cost to you': 'உங்களுக்கான செலவு',
+  'To deposit: PF, ESI and tax': 'செலுத்த வேண்டியது: PF, ESI, வரி',
+  'Pay the staff': 'ஊழியர்களுக்கு பணம் செலுத்துங்கள்',
+  'Staff paid {date}': 'ஊழியர்களுக்கு {date} அன்று செலுத்தப்பட்டது',
+  'PF, ESI and tax deposited {date}': 'PF, ESI, வரி {date} அன்று செலுத்தப்பட்டது',
+  'Record PF, ESI and tax deposit': 'PF, ESI, வரி செலுத்தியதைப் பதிவு செய்யுங்கள்',
+  'This puts the PF (both shares), ESI, professional tax and TDS into your expenses as one entry, paid today. Do it once you have deposited them.': 'இது PF (இரு பங்கும்), ESI, தொழில் வரி, TDS ஆகியவற்றை ஒரே பதிவாக இன்றைய தேதியில் உங்கள் செலவுகளில் சேர்க்கும். இவற்றைச் செலுத்திய பிறகு மட்டும் செய்யுங்கள்.',
+  'Paid, and recorded in your expenses as Salaries': 'செலுத்தப்பட்டது, செலவுகளில் சம்பளமாகப் பதிவானது',
+  'Recorded in your expenses': 'செலவுகளில் பதிவானது',
+  'Some days are not marked': 'சில நாட்களின் வருகை குறிக்கப்படவில்லை',
+  '{n} days have no attendance marked. They are paid as present. Finalise anyway?': '{n} நாட்களின் வருகை குறிக்கப்படவில்லை. அவர்கள் வந்ததாகக் கருதி சம்பளம் வழங்கப்படும். இருந்தாலும் இறுதி செய்யவா?',
+  'Finalise anyway': 'இருந்தாலும் இறுதி செய்',
+  'Salary from attendance, PF, ESI and tax': 'வருகையிலிருந்து சம்பளம், PF, ESI, வரி',
+};
 
 /** Bengali: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const BN: Record<string, string> = {
@@ -10336,7 +10370,24 @@ export const BN: Record<string, string> = {
   'How can we help?': 'আমরা কীভাবে সাহায্য করব?',
   'Ask FlowXP a question and read the answer': 'FlowXP-কে প্রশ্ন করুন এবং উত্তর পড়ুন',
   'Help and support': 'সাহায্য ও সহায়তা',
-  'Tell FlowXP something went wrong': 'কিছু ভুল হয়েছে FlowXP-কে জানান',};
+  'Tell FlowXP something went wrong': 'কিছু ভুল হয়েছে FlowXP-কে জানান',
+  'You do not have access to payroll.': 'পেরোলে আপনার অ্যাক্সেস নেই।',
+  'Add your people, then set their pay.': 'আপনার লোকজনকে যোগ করুন, তারপর তাদের বেতন ঠিক করুন।',
+  'Net pay to staff': 'কর্মীদের প্রদেয় বেতন',
+  'Cost to you': 'আপনার খরচ',
+  'To deposit: PF, ESI and tax': 'জমা দিতে হবে: PF, ESI ও কর',
+  'Pay the staff': 'কর্মীদের টাকা দিন',
+  'Staff paid {date}': 'কর্মীদের {date} তারিখে দেওয়া হয়েছে',
+  'PF, ESI and tax deposited {date}': 'PF, ESI ও কর {date} তারিখে জমা হয়েছে',
+  'Record PF, ESI and tax deposit': 'PF, ESI ও কর জমার হিসাব রাখুন',
+  'This puts the PF (both shares), ESI, professional tax and TDS into your expenses as one entry, paid today. Do it once you have deposited them.': 'এটি PF (উভয় অংশ), ESI, পেশা কর ও TDS একটি এন্ট্রিতে আজকের তারিখে আপনার খরচে যোগ করবে। এগুলো জমা দেওয়ার পরেই এটি করুন।',
+  'Paid, and recorded in your expenses as Salaries': 'টাকা দেওয়া হয়েছে, খরচে বেতন হিসেবে লেখা হয়েছে',
+  'Recorded in your expenses': 'খরচে লেখা হয়েছে',
+  'Some days are not marked': 'কিছু দিনের হাজিরা চিহ্নিত হয়নি',
+  '{n} days have no attendance marked. They are paid as present. Finalise anyway?': '{n} দিনের হাজিরা চিহ্নিত হয়নি। তাদের উপস্থিত ধরে বেতন দেওয়া হবে। তবুও চূড়ান্ত করবেন?',
+  'Finalise anyway': 'তবুও চূড়ান্ত করুন',
+  'Salary from attendance, PF, ESI and tax': 'হাজিরা থেকে বেতন, PF, ESI ও কর',
+};
 
 /** Telugu: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const TE: Record<string, string> = {
@@ -13782,7 +13833,24 @@ export const TE: Record<string, string> = {
   'How can we help?': 'మేము ఎలా సహాయం చేయాలి?',
   'Ask FlowXP a question and read the answer': 'FlowXP ను ప్రశ్న అడిగి సమాధానం చదవండి',
   'Help and support': 'సహాయం మరియు మద్దతు',
-  'Tell FlowXP something went wrong': 'ఏదో తప్పు జరిగిందని FlowXP కి చెప్పండి',};
+  'Tell FlowXP something went wrong': 'ఏదో తప్పు జరిగిందని FlowXP కి చెప్పండి',
+  'You do not have access to payroll.': 'పేరోల్‌కు మీకు ప్రవేశం లేదు.',
+  'Add your people, then set their pay.': 'మీ వ్యక్తులను చేర్చి, ఆపై వారి జీతం నిర్ణయించండి.',
+  'Net pay to staff': 'సిబ్బందికి చెల్లించాల్సిన జీతం',
+  'Cost to you': 'మీకు అయ్యే ఖర్చు',
+  'To deposit: PF, ESI and tax': 'జమ చేయాల్సింది: PF, ESI, పన్ను',
+  'Pay the staff': 'సిబ్బందికి చెల్లించండి',
+  'Staff paid {date}': 'సిబ్బందికి {date} న చెల్లించారు',
+  'PF, ESI and tax deposited {date}': 'PF, ESI, పన్ను {date} న జమ చేశారు',
+  'Record PF, ESI and tax deposit': 'PF, ESI, పన్ను జమను నమోదు చేయండి',
+  'This puts the PF (both shares), ESI, professional tax and TDS into your expenses as one entry, paid today. Do it once you have deposited them.': 'ఇది PF (రెండు వాటాలు), ESI, వృత్తి పన్ను, TDS లను ఒకే ఎంట్రీగా ఈ రోజు తేదీతో మీ ఖర్చులలో చేరుస్తుంది. వీటిని జమ చేసిన తర్వాతే చేయండి.',
+  'Paid, and recorded in your expenses as Salaries': 'చెల్లించారు, ఖర్చులలో జీతంగా నమోదైంది',
+  'Recorded in your expenses': 'ఖర్చులలో నమోదైంది',
+  'Some days are not marked': 'కొన్ని రోజుల హాజరు గుర్తించలేదు',
+  '{n} days have no attendance marked. They are paid as present. Finalise anyway?': '{n} రోజుల హాజరు గుర్తించలేదు. వారు హాజరైనట్లుగా భావించి జీతం ఇస్తారు. అయినా ఖరారు చేయాలా?',
+  'Finalise anyway': 'అయినా ఖరారు చేయండి',
+  'Salary from attendance, PF, ESI and tax': 'హాజరు నుండి జీతం, PF, ESI, పన్ను',
+};
 
 /** Kannada: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
 export const KN: Record<string, string> = {
@@ -17228,4 +17296,21 @@ export const KN: Record<string, string> = {
   'How can we help?': 'ನಾವು ಹೇಗೆ ಸಹಾಯ ಮಾಡಬೇಕು?',
   'Ask FlowXP a question and read the answer': 'FlowXP ಗೆ ಪ್ರಶ್ನೆ ಕೇಳಿ ಉತ್ತರ ಓದಿ',
   'Help and support': 'ಸಹಾಯ ಮತ್ತು ಬೆಂಬಲ',
-  'Tell FlowXP something went wrong': 'ಏನೋ ತಪ್ಪಾಯಿತು ಎಂದು FlowXP ಗೆ ತಿಳಿಸಿ',};
+  'Tell FlowXP something went wrong': 'ಏನೋ ತಪ್ಪಾಯಿತು ಎಂದು FlowXP ಗೆ ತಿಳಿಸಿ',
+  'You do not have access to payroll.': 'ಪೇರೋಲ್‌ಗೆ ನಿಮಗೆ ಪ್ರವೇಶವಿಲ್ಲ.',
+  'Add your people, then set their pay.': 'ನಿಮ್ಮ ಜನರನ್ನು ಸೇರಿಸಿ, ನಂತರ ಅವರ ಸಂಬಳ ನಿಗದಿಪಡಿಸಿ.',
+  'Net pay to staff': 'ಸಿಬ್ಬಂದಿಗೆ ಪಾವತಿಸಬೇಕಾದ ಸಂಬಳ',
+  'Cost to you': 'ನಿಮಗೆ ತಗಲುವ ವೆಚ್ಚ',
+  'To deposit: PF, ESI and tax': 'ಜಮೆ ಮಾಡಬೇಕಾದದ್ದು: PF, ESI, ತೆರಿಗೆ',
+  'Pay the staff': 'ಸಿಬ್ಬಂದಿಗೆ ಪಾವತಿಸಿ',
+  'Staff paid {date}': 'ಸಿಬ್ಬಂದಿಗೆ {date} ರಂದು ಪಾವತಿಸಲಾಗಿದೆ',
+  'PF, ESI and tax deposited {date}': 'PF, ESI, ತೆರಿಗೆ {date} ರಂದು ಜಮೆ ಮಾಡಲಾಗಿದೆ',
+  'Record PF, ESI and tax deposit': 'PF, ESI, ತೆರಿಗೆ ಜಮೆಯನ್ನು ದಾಖಲಿಸಿ',
+  'This puts the PF (both shares), ESI, professional tax and TDS into your expenses as one entry, paid today. Do it once you have deposited them.': 'ಇದು PF (ಎರಡೂ ಪಾಲು), ESI, ವೃತ್ತಿ ತೆರಿಗೆ ಮತ್ತು TDS ಅನ್ನು ಒಂದೇ ನಮೂದಾಗಿ ಇಂದಿನ ದಿನಾಂಕದಲ್ಲಿ ನಿಮ್ಮ ವೆಚ್ಚಗಳಿಗೆ ಸೇರಿಸುತ್ತದೆ. ಇವನ್ನು ಜಮೆ ಮಾಡಿದ ನಂತರ ಮಾತ್ರ ಮಾಡಿ.',
+  'Paid, and recorded in your expenses as Salaries': 'ಪಾವತಿಸಲಾಗಿದೆ, ವೆಚ್ಚಗಳಲ್ಲಿ ಸಂಬಳವಾಗಿ ದಾಖಲಾಗಿದೆ',
+  'Recorded in your expenses': 'ವೆಚ್ಚಗಳಲ್ಲಿ ದಾಖಲಾಗಿದೆ',
+  'Some days are not marked': 'ಕೆಲವು ದಿನಗಳ ಹಾಜರಾತಿ ಗುರುತಿಸಿಲ್ಲ',
+  '{n} days have no attendance marked. They are paid as present. Finalise anyway?': '{n} ದಿನಗಳ ಹಾಜರಾತಿ ಗುರುತಿಸಿಲ್ಲ. ಅವರು ಹಾಜರಿದ್ದಂತೆ ಪರಿಗಣಿಸಿ ಸಂಬಳ ನೀಡಲಾಗುತ್ತದೆ. ಆದರೂ ಅಂತಿಮಗೊಳಿಸಬೇಕೇ?',
+  'Finalise anyway': 'ಆದರೂ ಅಂತಿಮಗೊಳಿಸಿ',
+  'Salary from attendance, PF, ESI and tax': 'ಹಾಜರಾತಿಯಿಂದ ಸಂಬಳ, PF, ESI, ತೆರಿಗೆ',
+};

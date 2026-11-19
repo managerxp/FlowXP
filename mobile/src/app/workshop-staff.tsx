@@ -14,9 +14,10 @@ import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color } from 
 const today = (): string => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const tr = (items: { id: string; label: string }[]) => items.map((x) => ({ id: x.id, label: t(x.label) }));
 
-const PeopleTab = ({ edit, pay }: { edit: boolean; pay: boolean }) => {
-  const list = useList<Person[]>('/autoparts/staff/employees?status=ALL');
-  const depts = useList<{ dept_id: number; name: string }[]>('/autoparts/staff/departments');
+/* The people and the attendance are the same engine for a workshop (/autoparts/staff) and for the Payroll add-on (/payroll/staff), so the Payroll screen reuses them. */
+export const PeopleTab = ({ edit, pay, base = '/autoparts/staff', empty = 'Add your mechanics and counter staff.' }: { edit: boolean; pay: boolean; base?: string; empty?: string }) => {
+  const list = useList<Person[]>(`${base}/employees?status=ALL`);
+  const depts = useList<{ dept_id: number; name: string }[]>(`${base}/departments`);
   const [form, setForm] = useState<{ id?: number; f: PersonForm } | null>(null);
   const a = useAct();
   if (list.error && !list.data) return <Failed message={list.error} onRetry={list.reload} />;
@@ -25,7 +26,7 @@ const PeopleTab = ({ edit, pay }: { edit: boolean; pay: boolean }) => {
   return (
     <Panel>
       {edit ? <Button title="Add a person" onPress={() => { a.setError(''); setForm({ f: emptyPerson() }); }} /> : null}
-      {list.data.length === 0 ? <Soft>{t('Add your mechanics and counter staff.')}</Soft> : null}
+      {list.data.length === 0 ? <Soft>{t(empty)}</Soft> : null}
       {list.data.map((p) => <Line key={p.employee_id} left={`${p.name}${p.emp_code ? ` · ${p.emp_code}` : ''}`} sub={personSub(p)} onPress={() => { if (edit) { a.setError(''); setForm({ id: p.employee_id, f: personForm(p) }); } }} />)}
       {form ? (
         <Card>
@@ -43,7 +44,7 @@ const PeopleTab = ({ edit, pay }: { edit: boolean; pay: boolean }) => {
           <Field label="Weekly day off"><Chips items={tr(WEEKLY_OFF_CHOICES)} value={form.f.weekly_off} onChange={(v) => set({ weekly_off: v })} /></Field>
           {form.id ? <Field label="Active"><Chips items={[{ id: 'ACTIVE', label: t('Active') }, { id: 'INACTIVE', label: t('Inactive') }]} value={form.f.status} onChange={(v) => set({ status: v })} /></Field> : null}
           <Msg a={a} />
-          <Button title="Save" busy={a.busy} onPress={() => { void a.run(personProblem(form.f, pay), async () => { await api.call(form.id ? `/autoparts/staff/employees/${form.id}` : '/autoparts/staff/employees', { method: form.id ? 'PUT' : 'POST', body: personBody(form.f, pay, Boolean(form.id)) }); setForm(null); list.reload(); }); }} />
+          <Button title="Save" busy={a.busy} onPress={() => { void a.run(personProblem(form.f, pay), async () => { await api.call(form.id ? `${base}/employees/${form.id}` : `${base}/employees`, { method: form.id ? 'PUT' : 'POST', body: personBody(form.f, pay, Boolean(form.id)) }); setForm(null); list.reload(); }); }} />
           <Button title="Cancel" kind="quiet" onPress={() => setForm(null)} />
         </Card>
       ) : null}
@@ -51,9 +52,9 @@ const PeopleTab = ({ edit, pay }: { edit: boolean; pay: boolean }) => {
   );
 };
 
-const AttendanceTab = ({ edit }: { edit: boolean }) => {
+export const AttendanceTab = ({ edit, base = '/autoparts/staff' }: { edit: boolean; base?: string }) => {
   const [day] = useState(today());
-  const list = useList<{ date: string; rows: DayRow[] }>(`/autoparts/staff/attendance?date=${day}`);
+  const list = useList<{ date: string; rows: DayRow[] }>(`${base}/attendance?date=${day}`);
   const a = useAct();
   if (list.error && !list.data) return <Failed message={list.error} onRetry={list.reload} />;
   if (!list.data) return <Loading />;
@@ -68,7 +69,7 @@ const AttendanceTab = ({ edit }: { edit: boolean }) => {
         <Card key={r.employee_id}>
           <Text style={{ color: color.ink, fontWeight: '600' }}>{r.name}</Text>
           <Soft>{[r.designation || '', markLabel(r.status)].filter(Boolean).join(' · ')}</Soft>
-          {edit ? <Chips items={tr(MARKS)} value={r.status ?? ''} onChange={(v) => { void a.run('', async () => { await api.call('/autoparts/staff/attendance', { method: 'PUT', body: markBody(day, r.employee_id, v) }); list.reload(); }, 'Saved'); }} /> : null}
+          {edit ? <Chips items={tr(MARKS)} value={r.status ?? ''} onChange={(v) => { void a.run('', async () => { await api.call(`${base}/attendance`, { method: 'PUT', body: markBody(day, r.employee_id, v) }); list.reload(); }, 'Saved'); }} /> : null}
         </Card>
       ))}
       <Msg a={a} />

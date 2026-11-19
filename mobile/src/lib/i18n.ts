@@ -23,7 +23,8 @@ export const getLang = (): Lang => store.get().lang;
 export const setLangValue = (lang: Lang) => store.set({ lang });
 export const useLang = (): Lang => useStore(store).lang;
 
-export const fill = (text: string, vars?: Record<string, string | number>): string => (vars ? text.replace(/\{(\w+)\}/g, (_, k: string) => (k in vars ? String(vars[k]) : `{${k}}`)) : text);
+/* {name} or {{name}}: both spellings are in the texts, and the double one must not leave its outer braces behind ({{n}} things was showing as "{3} things") */
+export const fill = (text: string, vars?: Record<string, string | number>): string => (vars ? text.replace(/\{\{(\w+)\}\}|\{(\w+)\}/g, (all, a: string | undefined, b: string | undefined) => { const k = (a ?? b) as string; return k in vars ? String(vars[k]) : all; }) : text);
 
 export const t = (text: string, vars?: Record<string, string | number>): string => fill(DICTS[store.get().lang]?.[text] ?? text, vars);
 
@@ -3552,7 +3553,24 @@ export const HI: Record<string, string> = {
   'How can we help?': 'हम कैसे मदद करें?',
   'Ask FlowXP a question and read the answer': 'FlowXP से सवाल पूछें और जवाब पढ़ें',
   'Help and support': 'मदद और सहायता',
-  'Tell FlowXP something went wrong': 'FlowXP को बताएँ कि कुछ गड़बड़ हुई',};
+  'Tell FlowXP something went wrong': 'FlowXP को बताएँ कि कुछ गड़बड़ हुई',
+  'You do not have access to payroll.': 'आपके पास पेरोल का अधिकार नहीं है।',
+  'Add your people, then set their pay.': 'अपने लोगों को जोड़ें, फिर उनका वेतन तय करें।',
+  'Net pay to staff': 'स्टाफ़ को देय वेतन',
+  'Cost to you': 'आपकी लागत',
+  'To deposit: PF, ESI and tax': 'जमा करना है: PF, ESI और टैक्स',
+  'Pay the staff': 'स्टाफ़ को भुगतान करें',
+  'Staff paid {date}': 'स्टाफ़ को {date} को भुगतान हुआ',
+  'PF, ESI and tax deposited {date}': 'PF, ESI और टैक्स {date} को जमा हुआ',
+  'Record PF, ESI and tax deposit': 'PF, ESI और टैक्स जमा दर्ज करें',
+  'This puts the PF (both shares), ESI, professional tax and TDS into your expenses as one entry, paid today. Do it once you have deposited them.': 'यह PF (दोनों हिस्से), ESI, प्रोफ़ेशनल टैक्स और TDS को एक एंट्री में आपके खर्चों में डाल देगा, आज की तारीख़ में। इसे तब करें जब आप इन्हें जमा कर चुके हों।',
+  'Paid, and recorded in your expenses as Salaries': 'भुगतान हुआ, और खर्चों में वेतन के रूप में दर्ज हो गया',
+  'Recorded in your expenses': 'खर्चों में दर्ज हो गया',
+  'Some days are not marked': 'कुछ दिनों की हाज़िरी नहीं लगी',
+  '{n} days have no attendance marked. They are paid as present. Finalise anyway?': '{n} दिनों की हाज़िरी नहीं लगी है। उन्हें उपस्थित मानकर वेतन दिया जाएगा। फिर भी फ़ाइनल करें?',
+  'Finalise anyway': 'फिर भी फ़ाइनल करें',
+  'Salary from attendance, PF, ESI and tax': 'हाज़िरी से वेतन, PF, ESI और टैक्स',
+};
 
 /** Languages that have a dictionary. */
 export const DICTS: Partial<Record<Lang, Record<string, string>>> = { hi: HI, ml: ML, ta: TA, bn: BN, te: TE, kn: KN };
