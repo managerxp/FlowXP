@@ -60,7 +60,7 @@ test('a payment link settled in cash is marked paid: the plan switches on and ev
     await pool.query(`UPDATE users SET phone = '9876543210' WHERE user_id = $1`, [tenant]);
     const wa = await call(payments.sendReceipt, { params: { id: biz, kind: 'plan', orderId: link }, body: { channel: 'whatsapp' }, user: ownerRow });
     assert.equal(wa.data.sent_to, '9876543210');
-    assert.equal(sent[0].template.name, 'flowxp_receipt'); assert.match(sent[0].text, /Rs 1500\.00.*Cash/);
+    assert.equal(sent[0].template.name, 'flowxp_receipt'); assert.match(sent[0].text, /Rs 1500\.00.*Start date.*End date/); assert.equal(sent[0].document.buffer.subarray(0, 4).toString(), '%PDF');
   } finally { setProvider(null); }
 
   const after = await call(admin.getStats, { user: ownerRow });

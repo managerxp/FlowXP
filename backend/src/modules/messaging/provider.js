@@ -61,8 +61,28 @@ const post = async (url, { headers, body }) => {
   }
 };
 
-const whatsappCloud = async ({ channel, to, template }, cfg) => {
+/* A PDF for the template's document header: uploaded to WhatsApp first, then referenced by the id it returns. */
+const uploadDocument = async ({ buffer, filename }, cfg) => {
+  const form = new FormData();
+  form.append('messaging_product', 'whatsapp');
+  form.append('type', 'application/pdf');
+  form.append('file', new Blob([buffer], { type: 'application/pdf' }), filename);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const r = await fetch(`https://graph.facebook.com/${config.messaging.whatsappApiVersion}/${cfg.whatsappPhoneId}/media`, { method: 'POST', headers: { authorization: `Bearer ${cfg.whatsappToken}` }, body: form, signal: controller.signal });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.id) throw new MessageError(data?.error?.message || 'WhatsApp refused the PDF');
+    return data.id;
+  } catch (error) {
+    if (error instanceof MessageError) throw error;
+    throw new MessageError(error.name === 'AbortError' ? 'The messaging service took too long to answer' : 'Could not reach the messaging service');
+  } finally { clearTimeout(timer); }
+};
+
+const whatsappCloud = async ({ channel, to, template, document }, cfg) => {
   if (channel !== 'WHATSAPP') return { status: 'SKIPPED', note: 'SMS is not available with this provider' };
+  const mediaId = document ? await uploadDocument(document, cfg) : null;
   const { ok, data } = await post(`https://graph.facebook.com/${config.messaging.whatsappApiVersion}/${cfg.whatsappPhoneId}/messages`, {
     headers: { 'content-type': 'application/json', authorization: `Bearer ${cfg.whatsappToken}` },
     body: JSON.stringify({
@@ -71,6 +91,7 @@ const whatsappCloud = async ({ channel, to, template }, cfg) => {
         name: template.name, language: { code: template.lang || cfg.whatsappLanguage },
         components: [
           ...(template.header ? [{ type: 'header', parameters: [{ type: 'text', text: String(template.header) }] }] : []),
+          ...(mediaId ? [{ type: 'header', parameters: [{ type: 'document', document: { id: mediaId, filename: document.filename } }] }] : []),
           { type: 'body', parameters: template.params.map((text, i) => ({ type: 'text', ...(template.paramNames ? { parameter_name: template.paramNames[i] } : {}), text: String(text) })) },
           // a "View Bill" style button whose address ends in a variable: the value is what goes after the fixed part of the address
           ...(template.buttons || []).map((text, i) => ({ type: 'button', sub_type: 'url', index: String(i), parameters: [{ type: 'text', text: String(text) }] }))

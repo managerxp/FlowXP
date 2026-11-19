@@ -283,37 +283,21 @@ Your vehicle is due for its next service.
 Call or visit *_${p.business}_* to book it. Thank you.`,
     text: (p) => `Hi ${p.name}, your ${p.vehicle} is due for its next service on ${p.date}. Call or visit ${p.business} to book it. Thank you.`
   },
-  /* FlowXP's own invoice or quotation to a client, sent from the Super Admin. `what` is "invoice" or "quotation"; `next` says how to pay (the payment link, or the UPI id). */
-  ADMIN_DOCUMENT: {
-    name: 'flowxp_document', promo: false,
-    vars: ['name', 'seller', 'what', 'number', 'total', 'next'],
-    body: (p) => `Hi ${p.name},
-
-Your ${p.what} from *_${p.seller}_* is ready.
-
-*Number:* ${p.number}
-*Amount:* ${p.total}
-
-${p.next}
-
-Thank you.`,
-    text: (p) => `Hi ${p.name}, your ${p.what} ${p.number} from ${p.seller} is ready. Amount: ${p.total}. ${p.next} Thank you.`
-  },
-  /* FlowXP's own payment receipt to a client, sent from the Super Admin once a plan or add-on payment is received. */
+  /* FlowXP's own receipt (or invoice or quotation) to a client, sent from the Super Admin with the PDF attached as the header. The one platform template. */
   ADMIN_RECEIPT: {
     name: 'flowxp_receipt', promo: false,
-    vars: ['name', 'seller', 'number', 'what', 'total', 'how'],
+    vars: ['name', 'seller', 'what', 'package', 'amount', 'start', 'end'],
     body: (p) => `Hi ${p.name},
 
-We have received your payment. Thank you.
+Your ${p.what} from *_${p.seller}_* is attached.
 
-*Receipt:* ${p.number}
-*For:* ${p.what}
-*Amount:* ${p.total}
-*Paid by:* ${p.how}
+*Package:* ${p.package}
+*Amount:* ${p.amount}
+*Start date:* ${p.start}
+*End date:* ${p.end}
 
-*_${p.seller}_*`,
-    text: (p) => `Hi ${p.name}, we have received your payment of ${p.total} for ${p.what} (receipt ${p.number}, paid by ${p.how}). Thank you. ${p.seller}`
+Thank you.`,
+    text: (p) => `Hi ${p.name}, your ${p.what} from ${p.seller} is attached. Package: ${p.package}. Amount: ${p.amount}. Start date: ${p.start}. End date: ${p.end}. Thank you.`
   },
   GYM_INACTIVE: {
     name: 'flowxp_gym_inactive', promo: true,
@@ -326,7 +310,7 @@ export const KINDS = Object.keys(TEMPLATES);
 
 /** Which kind of business a template belongs to: 'common' (every business), 'food', 'salon', 'gym', 'parts', 'wholesale', or 'platform' (FlowXP's own, never shown to a business). */
 export const kindIndustry = (kind) => {
-  if (kind === 'ADMIN_DOCUMENT' || kind === 'ADMIN_RECEIPT') return 'platform';
+  if (kind === 'ADMIN_RECEIPT') return 'platform';
   if (kind.startsWith('RESERVATION') || kind.startsWith('WAITLIST')) return 'food';
   if (kind.startsWith('SALON_')) return 'salon';
   if (kind.startsWith('GYM_')) return 'gym';

@@ -259,7 +259,7 @@ export const emailDocument = async (req, res) => {
   res.json({ success: true, data: { emailed_to: to } });
 };
 
-/* POST /api/admin/documents/:id/whatsapp { to? }: send the document to the client's WhatsApp straight from FlowXP's own number (an approved template; the payment link goes in it when there is one) */
+/* POST /api/admin/documents/:id/whatsapp { to? }: send the document to the client's WhatsApp straight from FlowXP's own number: the one approved template, the PDF attached (the PDF carries the payment details) */
 export const whatsappDocument = async (req, res) => {
   const id = Number(req.params.id);
   const d = (await pool.query(`SELECT * FROM admin_documents WHERE doc_id = $1`, [id])).rows[0];
@@ -270,11 +270,10 @@ export const whatsappDocument = async (req, res) => {
   if (!(await channelsAvailable()).includes('WHATSAPP')) return bad(res, 'WhatsApp is not connected yet. Add it in Settings > Messaging.', 409);
   const seller = await company();
   const quote = d.kind === 'QUOTE';
-  const unpaid = !quote && ['DRAFT', 'SENT'].includes(d.status);
-  const next = unpaid ? (d.payment_link_url ? `Pay online: ${d.payment_link_url}` : seller.upi ? `Pay by UPI: ${seller.upi}` : 'Reply to this message and we will help you pay.') : quote ? 'Reply to this message to accept it.' : 'Thank you for your payment.';
-  const message = render('ADMIN_DOCUMENT', { name: d.client?.name || 'there', seller: seller.name || 'FlowXP', what: quote ? 'quotation' : 'invoice', number: d.doc_number, total: `Rs ${(Number(d.totals?.total_paise || 0) / 100).toFixed(2)}`, next });
+  const day = (v) => (v ? new Date(v).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+  const message = render('ADMIN_RECEIPT', { name: d.client?.name || 'there', seller: seller.name || 'FlowXP', what: `${quote ? 'quotation' : 'invoice'} ${d.doc_number}`, package: d.items?.[0]?.description || d.doc_number, amount: `Rs ${(Number(d.totals?.total_paise || 0) / 100).toFixed(2)}`, start: day(d.issue_date), end: day(d.due_date) || 'On receipt' });
   try {
-    const r = await deliver({ channel: 'WHATSAPP', to, kind: 'ADMIN_DOCUMENT', text: message.text, template: message.template });
+    const r = await deliver({ channel: 'WHATSAPP', to, kind: 'ADMIN_RECEIPT', text: message.text, template: message.template, document: { buffer: await documentPdf(d, seller), filename: `${d.doc_number}.pdf` } });
     if (r.status !== 'SENT') return bad(res, r.note || 'WhatsApp did not send it.', 409);
   } catch (error) { return bad(res, `WhatsApp did not send it: ${error.message}`, 502); }
   await pool.query(`UPDATE admin_documents SET status = CASE WHEN status = 'DRAFT' THEN 'SENT' ELSE status END WHERE doc_id = $1`, [id]);

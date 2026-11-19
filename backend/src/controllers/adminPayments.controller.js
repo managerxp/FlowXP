@@ -9,12 +9,13 @@ import { PAY_METHODS } from './adminDocuments.controller.js';
 import { deliverMail, mailConfigured } from '../modules/mailer.js';
 import { getPlatformSetting } from '../modules/platformSettings.js';
 import { toRupees } from '../utils/money.js';
+import PDFDocument from 'pdfkit';
 import { render } from '../modules/messaging/templates.js';
 import { deliver, channelsAvailable } from '../modules/messaging/provider.js';
 
 const bad = (res, message, code = 400) => res.status(code).json({ success: false, message });
 const KINDS = {
-  plan: { table: 'subscription_orders', resource: 'subscription_order', what: (o) => `FlowXP subscription (${String(o.billing_cycle).toLowerCase()})` },
+  plan: { table: 'subscription_orders', resource: 'subscription_order', what: (o) => `${o.plan_name || 'FlowXP'} subscription (${String(o.billing_cycle).toLowerCase()})` },
   addon: { table: 'addon_orders', resource: 'addon_order', what: (o) => `FlowXP add-on: ${o.addon_name || o.addon_key}` }
 };
 const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -23,8 +24,8 @@ const METHOD_LABEL = { UPI: 'UPI', BANK_TRANSFER: 'Bank transfer', CASH: 'Cash',
 const load = async (kind, businessId, orderId) => {
   const k = KINDS[kind];
   if (!k) return null;
-  const join = kind === 'addon' ? 'LEFT JOIN addons a ON a.addon_key = o.addon_key' : '';
-  const extra = kind === 'addon' ? ', a.name AS addon_name' : '';
+  const join = kind === 'addon' ? 'LEFT JOIN addons a ON a.addon_key = o.addon_key' : 'LEFT JOIN plans p ON p.plan_code = o.plan_code';
+  const extra = kind === 'addon' ? ', a.name AS addon_name' : ', p.name AS plan_name';
   return (await pool.query(
     `SELECT o.*${extra}, b.name AS business_name, u.name AS owner_name, u.email AS owner_email, COALESCE(b.phone, u.phone) AS owner_phone
        FROM ${k.table} o ${join} JOIN businesses b ON b.business_id = o.business_id JOIN users u ON u.user_id = b.owner_user_id
@@ -47,12 +48,39 @@ export const receiptEmail = (o, kind, seller) => {
   return { subject: `Payment receipt ${number} from ${from}`, text, html, number };
 };
 
+const DAYS = { MONTHLY: 30, YEARLY: 365 };   // the same length the payment switches the plan on for (webhooks.controller.js)
+const day = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+/* The period the payment covers: from the day it was received */
+export const receiptPeriod = (o) => {
+  const start = new Date(o.paid_at);
+  const end = new Date(start.getTime() + (DAYS[o.billing_cycle] || 30) * 86400000);
+  return { start: day(start), end: day(end) };
+};
+
+/* The receipt as a one-page PDF */
+export const receiptPdf = (o, kind, seller) => new Promise((resolve, reject) => {
+  const doc = new PDFDocument({ size: 'A4', margin: 50 });
+  const chunks = [];
+  doc.on('data', (b) => chunks.push(b)); doc.on('end', () => resolve(Buffer.concat(chunks))); doc.on('error', reject);
+  const { number } = receiptEmail(o, kind, seller);
+  const { start, end } = receiptPeriod(o);
+  const ink = '#0b1b33'; const soft = '#5b6b82';
+  doc.fillColor(ink).font('Helvetica-Bold').fontSize(16).text(seller.name || 'FlowXP');
+  doc.font('Helvetica').fontSize(9).fillColor(soft).text([seller.address, seller.gstin && `GSTIN: ${seller.gstin}`, [seller.phone, seller.email].filter(Boolean).join('  |  ')].filter(Boolean).join('\n'));
+  doc.moveDown(2).fillColor(ink).font('Helvetica-Bold').fontSize(20).text('PAYMENT RECEIPT');
+  doc.font('Helvetica').fontSize(10).fillColor(soft).text(number).moveDown();
+  const rows = [['Received from', o.business_name], ['Package', KINDS[kind].what(o)], ['Amount received', `Rs ${toRupees(o.amount_paise).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`], ['Paid by', METHOD_LABEL[o.paid_method || 'ONLINE'] || o.paid_method], ['Payment date', day(o.paid_at)], ['Start date', start], ['End date', end]];
+  for (const [k, v] of rows) { const y = doc.y; doc.fillColor(soft).fontSize(11).text(k, 50, y, { width: 160 }); doc.fillColor(ink).text(String(v), 220, y, { width: 320 }); doc.moveDown(0.6); }
+  doc.moveDown(2).fillColor(soft).fontSize(10).text(`Thank you. ${seller.name || 'FlowXP'}`);
+  doc.end();
+});
+
 const sendReceiptFor = async (o, kind) => {
   if (!o.owner_email) throw new Error('This business has no owner email.');
   if (!(await mailConfigured())) throw new Error('No email account is set up yet. Add it in Settings > Email.');
   const seller = (await getPlatformSetting('company'))?.value || {};
   const msg = receiptEmail(o, kind, seller);
-  await deliverMail({ to: o.owner_email, subject: msg.subject, text: msg.text, html: msg.html, replyTo: seller.email || undefined, fromName: seller.name || undefined });
+  await deliverMail({ to: o.owner_email, subject: msg.subject, text: msg.text, html: msg.html, attachments: [{ filename: `${msg.number}.pdf`, content: await receiptPdf(o, kind, seller), contentType: 'application/pdf' }], replyTo: seller.email || undefined, fromName: seller.name || undefined });
   await pool.query(`UPDATE ${KINDS[kind].table} SET receipt_sent_at = CURRENT_TIMESTAMP WHERE order_id = $1`, [o.order_id]);
   return o.owner_email;
 };
@@ -64,8 +92,9 @@ const whatsappReceiptFor = async (o, kind) => {
   if (!(await channelsAvailable()).includes('WHATSAPP')) throw new Error('WhatsApp is not connected yet. Add it in Settings > Messaging.');
   const seller = (await getPlatformSetting('company'))?.value || {};
   const { number } = receiptEmail(o, kind, seller);
-  const message = render('ADMIN_RECEIPT', { name: o.owner_name || 'there', seller: seller.name || 'FlowXP', number, what: KINDS[kind].what(o), total: `Rs ${toRupees(o.amount_paise).toFixed(2)}`, how: METHOD_LABEL[o.paid_method || 'ONLINE'] || o.paid_method });
-  const r = await deliver({ channel: 'WHATSAPP', to, kind: 'ADMIN_RECEIPT', text: message.text, template: message.template });
+  const { start, end } = receiptPeriod(o);
+  const message = render('ADMIN_RECEIPT', { name: o.owner_name || 'there', seller: seller.name || 'FlowXP', what: 'receipt', package: KINDS[kind].what(o), amount: `Rs ${toRupees(o.amount_paise).toFixed(2)}`, start, end });
+  const r = await deliver({ channel: 'WHATSAPP', to, kind: 'ADMIN_RECEIPT', text: message.text, template: message.template, document: { buffer: await receiptPdf(o, kind, seller), filename: `${number}.pdf` } });
   if (r.status !== 'SENT') throw new Error(r.note || 'WhatsApp did not send it.');
   await pool.query(`UPDATE ${KINDS[kind].table} SET receipt_sent_at = CURRENT_TIMESTAMP WHERE order_id = $1`, [o.order_id]);
   return to;

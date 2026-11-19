@@ -129,8 +129,9 @@ test('an invoice goes straight to the client on WhatsApp, with the payment link'
   try {
     assert.equal((await call(d.whatsappDocument, { params: { id: inv.doc_id }, body: {} })).code, 200);
     assert.equal(sent[0].to, '9876543210');
-    assert.equal(sent[0].template.name, 'flowxp_document');
-    assert.match(sent[0].text, /https:\/\/pay\.test\/abc/);
+    assert.equal(sent[0].template.name, 'flowxp_receipt');
+    assert.match(sent[0].text, /Rs 1000\.00/);
+    assert.equal(sent[0].document.buffer.subarray(0, 4).toString(), '%PDF', 'the PDF goes with it');
     assert.equal((await call(d.whatsappDocument, { params: { id: inv.doc_id }, body: { to: '123' } })).code, 400, 'a short number');
   } finally { setProvider(null); }
   assert.equal((await pool.query(`SELECT status FROM admin_documents WHERE doc_id = $1`, [inv.doc_id])).rows[0].status, 'SENT');
