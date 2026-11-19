@@ -11,6 +11,7 @@ import { Gift } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api, formatCurrency } from '../lib/api.js';
 import PointsTab from './PointsTab.jsx';
+import LoyaltyProgrammes from './LoyaltyProgrammes.jsx';
 import { Alert, Badge, Button, Card, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Th, Thead, Tr, useToast } from '../components/ui.jsx';
 
 const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] || 'th'}`;
@@ -325,17 +326,18 @@ const Coupons = () => {
 };
 
 const LoyaltyPage = () => {
-  const [tab, setTab] = useState('program');
+  const [tab, setTab] = useState('cards');
+  const { business } = useAuth();
   return (
     <div>
       <PageHeader title="Loyalty & coupons" lead="Bring customers back: a free item on every few visits, points, and offer codes." />
       <div className="mb-6 flex gap-1 border-b border-line" role="tablist">
-        {[['program', 'Visit card'], ['points', 'Points & tiers'], ['coupons', 'Coupons']].map(([id, label]) => (
+        {[['cards', 'Loyalty cards'], ['program', 'Visit card'], ['points', 'Points & tiers'], ['coupons', 'Coupons']].map(([id, label]) => (
           <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
                   className={`-mb-px border-b-2 px-3 py-2 text-small font-medium ${tab === id ? 'border-brand-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'}`}>{label}</button>
         ))}
       </div>
-      {tab === 'program' ? <Program /> : tab === 'points' ? <PointsTab /> : <Coupons />}
+      {tab === 'cards' ? <LoyaltyProgrammes business={business?.name} /> : tab === 'program' ? <Program /> : tab === 'points' ? <PointsTab /> : <Coupons />}
     </div>
   );
 };

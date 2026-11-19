@@ -1542,3 +1542,10 @@ Ponytail audit + security sweep. Done: backend `npm audit fix` (body-parser, mul
 - Start fresh now also clears `loyalty_redemptions` (it points at ledger rows).
 - Still phase 2 to do: till and owner screens (web + phone), redeeming a reward directly as a discount on the open bill (today a claim records the reward and spends the points; the cashier applies the value), customer search by QR on the phone, tiers on the new programmes.
 - Tests: `test/loyaltyRewards.test.js` (6).
+
+### Loyalty engine, phase 3 (card designer + web wallet) — done
+- Migration 0147: `loyalty_programmes.card` (JSONB: bg/fg/accent colours validated as #hex, icon from a fixed list, title, in-card message) and `join_code` (unguessable, unique; the programme's join link / QR / NFC tag).
+- Public, no login: `/api/public/card/join/:code` (GET info, POST join name+mobile) and `/api/public/card/:token` (member's card, secret token is the key). A mobile number alone never returns a card (existing member is told to ask staff). Gated by plan feature `loyalty_programmes` (plan + type + overrides). Rate limited; POST needs `X-Requested-With: FlowXP`.
+- Web: `/card/join/:code` and `/card/:token` (public/LoyaltyCardPage.jsx), shared `components/LoyaltyCardFace.jsx` (stamps circles or points), owner tab "Loyalty cards" in LoyaltyPage (app/LoyaltyProgrammes.jsx): 3-step wizard with live preview, share dialog (link, QR, NFC note), rewards list/add. Browser-tested on the dev server (made card, joined from phone viewport, saw card).
+- NFC = the same URL written to a sticker; no wallet NFC tap-to-stamp promised. Tests: backend/test/loyaltyCard.test.js (4).
+- Not done: Google/Apple Wallet (phase 4), till screens (stamp/add points UI on web/phone), notifications/campaigns (5), analytics (6), phone-app screens for cards.

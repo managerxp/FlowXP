@@ -27,6 +27,18 @@ const int = (v, name, { min = 0, max = 1e9, required = false } = {}) => {
 const day = (v, name) => { if (!v) return null; if (!/^\d{4}-\d{2}-\d{2}$/.test(String(v)) || Number.isNaN(Date.parse(v))) throw new LoyaltyError(`${name} must look like 2026-01-31`); return String(v); };
 
 /** Checks a programme as typed by the owner and returns the columns to store. */
+const HEX = /^#[0-9a-fA-F]{6}$/;
+export const CARD_ICONS = ['star', 'coffee', 'heart', 'gift', 'scissors', 'utensils', 'car', 'dumbbell'];
+/** How the card looks. Colours are checked so nothing but a colour can ever be stored (the customer's page paints them). */
+export const cardFields = (c = {}) => {
+  const hex = (v, d) => (HEX.test(String(v || '')) ? String(v).toLowerCase() : d);
+  return {
+    bg: hex(c.bg, '#0f766e'), fg: hex(c.fg, '#ffffff'), accent: hex(c.accent, '#fbbf24'),
+    icon: CARD_ICONS.includes(c.icon) ? c.icon : 'star',
+    title: String(c.title || '').trim().slice(0, 40), message: String(c.message || '').trim().slice(0, 140)
+  };
+};
+
 export const programmeFields = (b) => {
   const kind = String(b.kind || '').toUpperCase();
   if (!KINDS.includes(kind)) throw new LoyaltyError(`Choose a programme type: ${KINDS.join(', ')}`);
@@ -49,6 +61,7 @@ export const programmeFields = (b) => {
     expiry_days: int(b.expiry_days, 'Points expiry (days)', { min: 1, max: 3650 }),
     membership_days: int(b.membership_days, 'Membership length (days)', { min: 1, max: 3650 }),
     settings: { auto_enrol: b.auto_enrol !== undefined ? b.auto_enrol === true : b.settings?.auto_enrol === true },
+    card: cardFields(b.card),
     branch_ids: Array.isArray(b.branch_ids) && b.branch_ids.length ? b.branch_ids.map((x) => int(x, 'Outlet', { min: 1, required: true })) : null
   };
   if (f.starts_on && f.ends_on && f.ends_on < f.starts_on) throw new LoyaltyError('The end date must be after the start date');

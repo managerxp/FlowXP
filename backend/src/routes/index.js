@@ -76,6 +76,7 @@ import autopartsRoutes from './autoparts.routes.js';
 import payrollRoutes from './payroll.routes.js';
 import clothingRoutes from './clothing.routes.js';
 import gymPublicRoutes from './gymPublic.routes.js';
+import loyaltyCardRoutes from './loyaltyCard.routes.js';
 import gymDeviceRoutes from './gymDevice.routes.js';
 import wholesaleRoutes from './wholesale.routes.js';
 import distributorRoutes from './distributor.routes.js';
@@ -292,6 +293,7 @@ router.use('/wholesale', wholesaleRoutes);   // the wholesale / distribution mod
 router.use('/salon', salonRoutes);          // the salon module (salon businesses only)
 router.use('/device/v1', gymDeviceRoutes);   // gate and reader devices: signed requests, no staff session (see GYM_DEVICES.md)
 router.use('/public/gym', gymPublicRoutes);   // a gym's public page, its entrance QR page and the signed-in member's own endpoints
+router.use('/public/card', loyaltyCardRoutes);   // a loyalty programme's join page and a member's own card (secret link)
 router.use('/clothing', clothingRoutes);   // the clothing catalogue (CLOTHING businesses only): styles with size and colour variants
 router.use('/payroll', payrollRoutes);       // the Payroll add-on (any business with the payroll feature): PF, ESI, professional tax, TDS, loans, payslips and the bank, PF and ESI files
 router.use('/autoparts', autopartsRoutes);   // the automotive spare parts module (AUTO_PARTS businesses only): parts catalogue, fitment, racks and bins, receiving, counts

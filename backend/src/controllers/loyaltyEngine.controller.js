@@ -18,7 +18,7 @@ const ok = (res, data, status = 200) => res.status(status).json({ success: true,
 const bid = (req) => req.tenant.businessId;
 const id = (req, name = 'id') => { const n = Number(req.params[name]); if (!Number.isInteger(n) || n < 1) throw new engine.LoyaltyError('Not found', 404); return n; };
 
-const COLS = ['name', 'kind', 'description', 'logo_url', 'is_active', 'starts_on', 'ends_on', 'earn_points', 'per_amount_paise', 'min_txn_paise', 'redeem_points', 'redeem_value_paise', 'min_redeem_points', 'max_redeem_per_txn', 'reward_limit_per_member', 'expiry_days', 'membership_days', 'branch_ids', 'settings'];
+const COLS = ['name', 'kind', 'description', 'logo_url', 'is_active', 'starts_on', 'ends_on', 'earn_points', 'per_amount_paise', 'min_txn_paise', 'redeem_points', 'redeem_value_paise', 'min_redeem_points', 'max_redeem_per_txn', 'reward_limit_per_member', 'expiry_days', 'membership_days', 'branch_ids', 'settings', 'card'];
 
 export const kinds = wrap(async (_req, res) => ok(res, engine.KINDS));
 

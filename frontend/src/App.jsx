@@ -213,6 +213,7 @@ const GamingBookings = lazy(() => import('./app/gaming/GamingBookings.jsx'));
 const GamingTournaments = lazy(() => import('./app/gaming/GamingTournaments.jsx'));
 /* What a member opens on their own phone (the gym's page, and the page the entrance QR opens). No login, no app chrome. */
 const GymPortal = lazy(() => import('./public/GymPortal.jsx'));
+const LoyaltyCardPage = lazy(() => import('./public/LoyaltyCardPage.jsx'));   // a customer's loyalty card and the page that joins them
 
 
 /* The pharmacy module (business type PHARMACY). Its screens live in app/pharmacy/ and load only for a pharmacy. */
@@ -453,6 +454,8 @@ const App = () => (
         chrome at all. The first bare page in this app; see
         public/CustomerMenu.jsx. */}
     <Route path="book/:slug" element={<Suspense fallback={<PageLoader />}><SalonBooking /></Suspense>} />
+    <Route path="card/join/:code" element={<Suspense fallback={<PageLoader />}><LoyaltyCardPage /></Suspense>} />
+    <Route path="card/:token" element={<Suspense fallback={<PageLoader />}><LoyaltyCardPage /></Suspense>} />
     <Route path="gym/in/:token" element={<Suspense fallback={<PageLoader />}><GymPortal /></Suspense>} />
     <Route path="gym/:slug" element={<Suspense fallback={<PageLoader />}><GymPortal /></Suspense>} />
     <Route path="bill/:token" element={<Suspense fallback={<PageLoader />}><BillPage /></Suspense>} />
