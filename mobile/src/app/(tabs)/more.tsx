@@ -177,6 +177,7 @@ export default function More() {
     { title: 'Customers', icon: 'people-outline', items: [
       { left: 'Customers', sub: 'Their bills, and what they still owe', icon: 'person-outline', go: '/customers', main: true, show: can('customers', 'billing') },
       { left: 'Member desk', sub: 'Find a member, stamp their card, give a reward', icon: 'ribbon-outline', go: '/member-desk', main: true, show: can('billing') && hasFeature(business, 'loyalty_programmes') && !wholesale },
+      { left: 'Card results', sub: 'How your loyalty cards are doing', icon: 'stats-chart-outline', go: '/loyalty-results', show: canLoyalty(business?.role) && hasFeature(business, 'loyalty_programmes') && !wholesale },
       { left: 'Offers', sub: 'Discounts the till applies by itself', icon: 'pricetag-outline', go: '/offers', show: (retail || food) && canOffers((p) => allowed(business, p)) },
       { left: 'Loyalty & coupons', sub: 'Visit card, points and tiers, offer codes', icon: 'gift-outline', go: '/loyalty', show: canLoyalty(business?.role) && !wholesale },
       { left: 'Messaging', sub: 'WhatsApp or SMS: bills, bookings, offers', icon: 'chatbubbles-outline', go: '/messaging', show: canMessaging(business?.role) },
