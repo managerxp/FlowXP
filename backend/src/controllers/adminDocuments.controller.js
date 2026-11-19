@@ -271,7 +271,7 @@ export const whatsappDocument = async (req, res) => {
   const seller = await company();
   const quote = d.kind === 'QUOTE';
   const day = (v) => (v ? new Date(v).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
-  const message = render('ADMIN_RECEIPT', { name: d.client?.name || 'there', seller: seller.name || 'FlowXP', what: `${quote ? 'quotation' : 'invoice'} ${d.doc_number}`, package: d.items?.[0]?.description || d.doc_number, amount: `Rs ${(Number(d.totals?.total_paise || 0) / 100).toFixed(2)}`, start: day(d.issue_date), end: day(d.due_date) || 'On receipt' });
+  const message = render('ADMIN_RECEIPT', { name: d.client?.name || 'there', package: `${quote ? 'Quotation' : 'Invoice'} ${d.doc_number}${d.items?.[0]?.description ? `: ${d.items[0].description}` : ''}`, amount: `Rs ${(Number(d.totals?.total_paise || 0) / 100).toFixed(2)}`, start: day(d.issue_date), end: day(d.due_date) || 'On receipt' });
   try {
     const r = await deliver({ channel: 'WHATSAPP', to, kind: 'ADMIN_RECEIPT', text: message.text, template: message.template, document: { buffer: await documentPdf(d, seller), filename: `${d.doc_number}.pdf` } });
     if (r.status !== 'SENT') return bad(res, r.note || 'WhatsApp did not send it.', 409);

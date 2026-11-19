@@ -286,18 +286,18 @@ Call or visit *_${p.business}_* to book it. Thank you.`,
   /* FlowXP's own receipt (or invoice or quotation) to a client, sent from the Super Admin with the PDF attached as the header. The one platform template. */
   ADMIN_RECEIPT: {
     name: 'flowxp_receipt', promo: false,
-    vars: ['name', 'seller', 'what', 'package', 'amount', 'start', 'end'],
+    vars: ['name', 'package', 'amount', 'start', 'end'],
     body: (p) => `Hi ${p.name},
 
-Your ${p.what} from *_${p.seller}_* is attached.
+Thank you for choosing FlowXP. Your document is attached to this message, and the details are below.
 
 *Package:* ${p.package}
 *Amount:* ${p.amount}
 *Start date:* ${p.start}
 *End date:* ${p.end}
 
-Thank you.`,
-    text: (p) => `Hi ${p.name}, your ${p.what} from ${p.seller} is attached. Package: ${p.package}. Amount: ${p.amount}. Start date: ${p.start}. End date: ${p.end}. Thank you.`
+If you have any questions about it, just reply to this message and our team will be happy to help you.`,
+    text: (p) => `Hi ${p.name}, thank you for choosing FlowXP. Your document is attached. Package: ${p.package}. Amount: ${p.amount}. Start date: ${p.start}. End date: ${p.end}.`
   },
   GYM_INACTIVE: {
     name: 'flowxp_gym_inactive', promo: true,

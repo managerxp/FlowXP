@@ -93,7 +93,7 @@ const whatsappReceiptFor = async (o, kind) => {
   const seller = (await getPlatformSetting('company'))?.value || {};
   const { number } = receiptEmail(o, kind, seller);
   const { start, end } = receiptPeriod(o);
-  const message = render('ADMIN_RECEIPT', { name: o.owner_name || 'there', seller: seller.name || 'FlowXP', what: 'receipt', package: KINDS[kind].what(o), amount: `Rs ${toRupees(o.amount_paise).toFixed(2)}`, start, end });
+  const message = render('ADMIN_RECEIPT', { name: o.owner_name || 'there', package: `Receipt ${number}: ${KINDS[kind].what(o)}`, amount: `Rs ${toRupees(o.amount_paise).toFixed(2)}`, start, end });
   const r = await deliver({ channel: 'WHATSAPP', to, kind: 'ADMIN_RECEIPT', text: message.text, template: message.template, document: { buffer: await receiptPdf(o, kind, seller), filename: `${number}.pdf` } });
   if (r.status !== 'SENT') throw new Error(r.note || 'WhatsApp did not send it.');
   await pool.query(`UPDATE ${KINDS[kind].table} SET receipt_sent_at = CURRENT_TIMESTAMP WHERE order_id = $1`, [o.order_id]);
