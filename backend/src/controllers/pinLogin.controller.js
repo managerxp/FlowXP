@@ -33,7 +33,7 @@ const validPin = (p) => /^\d{4}$/.test(String(p ?? ''));
 /* a PIN that still opens: not revoked, used within PIN_DAYS, and set since the person last changed their password or signed out everywhere */
 const LIVE = `p.revoked_at IS NULL AND p.last_used_at > now() - interval '${PIN_DAYS} days' AND p.token_version = u.token_version`;
 
-const deviceHash = (req) => { const key = cookieValue(req, DEVICE_COOKIE); return key && /^[A-Za-z0-9_-]{40,}$/.test(key) ? hash(key) : null; };
+export const deviceHash = (req) => { const key = cookieValue(req, DEVICE_COOKIE); return key && /^[A-Za-z0-9_-]{40,}$/.test(key) ? hash(key) : null; };
 /** This computer's device key, made the first time a PIN is set on it. */
 const ensureDevice = (req, res) => {
   const existing = deviceHash(req);
@@ -82,7 +82,7 @@ export const people = async (req, res) => {
 };
 
 /* one try of a PIN on this computer: true, false, or null when there is no live PIN to try */
-const tryPin = async (req, device, userId, pin) => {
+export const tryPin = async (req, device, userId, pin) => {
   const row = (await pool.query(
     `SELECT p.pin_login_id, p.pin_hash, p.failed_attempts FROM pin_logins p JOIN users u ON u.user_id = p.user_id
      WHERE p.device_hash = $1 AND p.user_id = $2 AND ${LIVE}`, [device, userId])).rows[0];
@@ -95,7 +95,7 @@ const tryPin = async (req, device, userId, pin) => {
   await pool.query(`UPDATE pin_logins SET failed_attempts = $2::int, revoked_at = CASE WHEN $2::int >= $3::int THEN CURRENT_TIMESTAMP ELSE NULL END WHERE pin_login_id = $1`, [row.pin_login_id, tries, MAX_TRIES]);
   return MAX_TRIES - tries;   // tries left (0 = it is gone)
 };
-const wrong = (left) => (left > 0 ? `That PIN is not right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong PINs. Sign in with your password; you can set a new PIN after.');
+export const wrong = (left) => (left > 0 ? `That PIN is not right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong PINs. Sign in with your password; you can set a new PIN after.');
 
 export const loginWithPin = async (req, res) => {
   const device = deviceHash(req);

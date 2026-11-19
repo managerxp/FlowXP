@@ -18,6 +18,7 @@ import * as support from '../controllers/adminSupport.controller.js';
 import * as tickets from '../controllers/support.controller.js';
 import * as messaging from '../controllers/adminMessaging.controller.js';
 import * as docs from '../controllers/adminDocuments.controller.js';
+import * as pin from '../controllers/pinLogin.controller.js';
 import * as testimonials from '../controllers/testimonials.controller.js';
 import { uploadProductImage } from '../middleware/upload.js';
 
@@ -33,11 +34,18 @@ const adminLoginLimiter = rateLimit({
 });
 
 router.post('/login', adminLoginLimiter, admin.login);
+router.post('/login/code', adminLoginLimiter, admin.staffCode);   // staff: a code is emailed instead of a password
+router.post('/login/verify', adminLoginLimiter, admin.staffVerify);
+router.post('/login/pin', adminLoginLimiter, admin.staffPin);   // staff, on a computer that already has their PIN
 
 // a generous ceiling for everything else the console does: it is one person clicking, never a crowd
 router.use(rateLimit({ windowMs: 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false, message: { success: false, message: 'Too many requests. Slow down for a minute.' } }));
 
 router.use(requireAuth, requireSuperAdmin, requireAdminTwoFactor);
+
+// a signed-in staff member sets the PIN for this computer (the sign-in with it is /login/pin above)
+router.get('/pin', pin.myPinHere);
+router.post('/pin', pin.setPin);
 
 /* Who may do what: every group of routes below names the permission it needs (modules/adminRoles.js). The owner has them all; /me, /stats and /bug-summary are open to any staff sign-in. */
 router.use('/staff', need('owner'));

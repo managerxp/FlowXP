@@ -18,7 +18,7 @@ import pool from '../config/database.js';
 import config from '../config/env.js';
 import { effectiveStatus, persistExpiryIfNeeded, subscriptionSummary } from '../modules/subscription.js';
 import { hasPlanFeature, effectiveFeatureFlags } from '../modules/planFeatures.js';
-import { permissionsOf } from '../modules/adminRoles.js';
+import { isStaffUser, permissionsOf } from '../modules/adminRoles.js';
 
 /* ==========================================================================
    ROLES AND PERMISSIONS
@@ -489,7 +489,8 @@ export const requireOwner = (req, res, next) => {
  */
 /** In production the console needs two-step verification: an admin without it can only reach /me and the page that sets it up. */
 export const requireAdminTwoFactor = (req, res, next) => {
-  if (config.adminRequire2fa && !req.auth?.user?.totp_enabled && req.path !== '/me') {
+  // staff sign in with a code emailed each time (admin.controller.js staffCode), so the authenticator app is the owner's alone
+  if (config.adminRequire2fa && !req.auth?.user?.totp_enabled && !isStaffUser(req.auth?.user) && req.path !== '/me') {
     return res.status(403).json({ success: false, code: 'TWO_FACTOR_REQUIRED', message: 'Turn on two-step verification to use the admin console.' });
   }
   next();

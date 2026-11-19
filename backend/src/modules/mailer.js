@@ -164,7 +164,7 @@ export const sendEmailOtp = (to, name, code) => sendMail({
     '',
     `Your FlowXP verification code is: ${code}`,
     '',
-    'It expires in 10 minutes. Enter it on the sign-in screen to finish setting up your account.',
+    'It expires in 10 minutes. Enter it on the sign-in screen to finish signing in.',
     '',
     'If you did not try to sign in to FlowXP, you can ignore this email.',
     '',

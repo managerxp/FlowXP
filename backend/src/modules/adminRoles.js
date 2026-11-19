@@ -23,6 +23,8 @@ export const ROLES = {
   SUPPORT: { label: 'Support', about: 'Helps customers: tickets, sign-in problems, bug reports.', can: ['overview', 'customers', 'support', 'people', 'bugs'] }
 };
 
+/** A staff sign-in (Onboarding, Accounts, Support): no password, a code is emailed at each sign-in. The owner keeps a password and the authenticator app. */
+export const isStaffUser = (user) => Boolean(user?.is_super_admin && ROLES[user.admin_role] && user.admin_role !== 'OWNER');
 export const roleOf = (user) => (user?.is_super_admin && !user.admin_disabled ? (ROLES[user.admin_role] ? user.admin_role : 'OWNER') : null);
 export const permissionsOf = (user) => { const r = roleOf(user); return r ? ROLES[r].can : []; };
 export const can = (user, permission) => permissionsOf(user).includes(permission);

@@ -20,10 +20,10 @@ test('roles: the owner can do everything, onboarding staff cannot see revenue or
 const { pool, skip, cleanup } = await setupTestDb();
 test.after(cleanup);
 
-const call = async (fn, { params = {}, body = {}, user }) => {
+const call = async (fn, { params = {}, body = {}, user, headers = {} }) => {
   let status = 200; let payload;
   const res = { status(c) { status = c; return this; }, json(v) { payload = v; return this; } };
-  await fn({ params, body, auth: { userId: user.user_id, user, isSuperAdmin: true }, headers: {}, ip: '127.0.0.1', get: () => undefined }, res);
+  await fn({ params, body, auth: { userId: user.user_id, user, isSuperAdmin: true }, headers, ip: '127.0.0.1', get: () => undefined }, res);
   return { status, ...payload };
 };
 
@@ -71,7 +71,7 @@ test('a payment link settled in cash is marked paid: the plan switches on and ev
 
   // staff: an onboarding login is made, sees no revenue, and can be turned off
   const made = await call(staff.create, { body: { name: 'Meena', email: 'Meena@FX.test', role: 'ONBOARDING' }, user: ownerRow });
-  assert.equal(made.status, 201); assert.match(made.data.temporary_password, /^[A-Za-z0-9]{12}$/); assert.equal(made.data.role, 'ONBOARDING');
+  assert.equal(made.status, 201); assert.equal(made.data.temporary_password, undefined, 'staff have no password'); assert.equal(made.data.role, 'ONBOARDING');
   assert.equal((await call(staff.create, { body: { name: 'X', email: 'meena@fx.test', role: 'SUPPORT' }, user: ownerRow })).status, 409, 'one sign-in per email');
   assert.equal((await call(staff.create, { body: { name: 'X', email: 'x@fx.test', role: 'OWNER' }, user: ownerRow })).status, 400, 'a second owner is not made from here');
   const meena = (await pool.query(`SELECT * FROM users WHERE email = 'meena@fx.test'`)).rows[0];
@@ -79,6 +79,37 @@ test('a payment link settled in cash is marked paid: the plan switches on and ev
   assert.equal(view.data.revenue_collected, undefined);
   assert.equal(view.data.businesses.total, 1);
   assert.equal((await call(staff.update, { params: { id: meena.user_id }, body: { role: 'ACCOUNTS' }, user: ownerRow })).data.role, 'ACCOUNTS');
+  // staff sign in with an emailed code, once; a password does not work for them
+  const crypto = await import('node:crypto');
+  const sha = (c) => crypto.createHash('sha256').update(c).digest('hex');
+  const open = async (fn, body, headers = {}) => call(fn, { body, user: meena, headers });
+  assert.equal((await open(admin.staffCode, { identifier: 'meena@fx.test' })).success, true);
+  assert.ok((await pool.query(`SELECT email_otp_hash FROM users WHERE user_id = $1`, [meena.user_id])).rows[0].email_otp_hash, 'a code was made');
+  assert.equal((await open(admin.staffCode, { identifier: 'nobody@fx.test' })).success, true, 'the answer does not say who has a sign-in');
+  await pool.query(`UPDATE users SET email_otp_hash = $2, email_otp_expires_at = CURRENT_TIMESTAMP + interval '10 minutes' WHERE user_id = $1`, [meena.user_id, sha('123456')]);
+  assert.equal((await open(admin.staffVerify, { identifier: 'meena@fx.test', code: '000000' })).status, 401);
+  const inn = await open(admin.staffVerify, { identifier: 'meena@fx.test', code: '123 456' });
+  assert.equal(inn.success, true); assert.ok(inn.data.token); assert.equal(inn.data.admin.role, 'ACCOUNTS'); assert.equal(inn.data.admin.two_factor_required, false);
+  assert.equal((await open(admin.staffVerify, { identifier: 'meena@fx.test', code: '123456' })).status, 401, 'a code works once');
+  const ownerOnly = await open(admin.staffCode, { identifier: 'boss@fx.test' });
+  assert.equal(ownerOnly.success, true);
+  assert.equal((await pool.query(`SELECT email_otp_hash FROM users WHERE user_id = $1`, [ownerRow.user_id])).rows[0].email_otp_hash, null, 'the owner is not sent a code');
+
+
+  // after the first code, a PIN set on a computer signs them in there: by email or by phone, never anywhere else, and five wrong ones end it
+  const bcrypt = (await import('bcryptjs')).default;
+  const key = 'k'.repeat(43); const cookie = { cookie: `flowxp_device=${key}` };
+  await pool.query(`UPDATE users SET phone = '9123456789' WHERE user_id = $1`, [meena.user_id]);
+  const tv = (await pool.query(`SELECT token_version FROM users WHERE user_id = $1`, [meena.user_id])).rows[0].token_version;
+  await pool.query(`INSERT INTO pin_logins (device_hash, user_id, pin_hash, token_version, device_label) VALUES ($1, $2, $3, $4, 'test')`, [sha(key), meena.user_id, await bcrypt.hash('4821', 4), tv]);
+  assert.equal((await open(admin.staffPin, { identifier: 'meena@fx.test', pin: '1111' }, cookie)).status, 401, 'wrong PIN');
+  assert.equal((await open(admin.staffPin, { identifier: 'meena@fx.test', pin: '4821' }, {})).status, 401, 'no PIN on a computer that has not set one');
+  const byPhone = await open(admin.staffPin, { identifier: '+91 91234 56789', pin: '4821' }, cookie);
+  assert.equal(byPhone.success, true); assert.equal(byPhone.data.admin.role, 'ACCOUNTS');
+  assert.equal((await open(admin.staffPin, { identifier: 'meena@fx.test', pin: '4821' }, cookie)).success, true, 'and by email');
+  await call(staff.update, { params: { id: meena.user_id }, body: { sign_out: true }, user: ownerRow });
+  assert.equal((await open(admin.staffPin, { identifier: 'meena@fx.test', pin: '4821' }, cookie)).status, 401, 'signing them out ends the PIN: a code is needed again');
+
   const off = await call(staff.update, { params: { id: meena.user_id }, body: { disabled: true }, user: ownerRow });
   assert.equal(off.data.disabled, true);
   assert.equal((await call(staff.update, { params: { id: ownerRow.user_id }, body: { disabled: true }, user: ownerRow })).status, 409, 'not yourself');

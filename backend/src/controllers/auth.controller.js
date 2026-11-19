@@ -40,7 +40,7 @@ const OTP_TTL_MS = 10 * 60 * 1000;
  * lockout, keyed off login_events, covers brute-forcing it — no separate attempts counter needed).
  */
 const RESEND_GAP_MS = 30 * 1000;
-const issueEmailOtp = async (user) => {
+export const issueEmailOtp = async (user) => {
   const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
   const hash = crypto.createHash('sha256').update(code).digest('hex');
   await pool.query(

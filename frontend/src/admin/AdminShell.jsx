@@ -8,6 +8,7 @@ import { adminApi } from '../lib/adminApi.js';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAdminAuth } from './AdminAuthContext.jsx';
 import { Button, Logo, PageLoader } from '../components/ui.jsx';
+import AdminPinOffer from './AdminPinOffer.jsx';
 
 /* Grouped by the job they do, so the owner finds a page by what they are doing: looking after clients, billing them, or running the platform. */
 const GROUPS = [
@@ -126,6 +127,7 @@ const AdminShell = () => {
         )}
 
         <main className="flex-1 bg-surface-2 p-5 sm:p-8 print:bg-white print:p-0">
+          <AdminPinOffer />
           <Outlet />
         </main>
       </div>

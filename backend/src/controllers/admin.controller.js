@@ -20,7 +20,9 @@ import { createPaymentLink as cashfreeCreateLink, CashfreeError } from '../modul
 import { effectiveFeatureFlags, industryDefaults, INDUSTRY_OFF, PLAN_FEATURES, PLAN_FEATURE_KEYS, FEATURE_GROUPS, featureGroup } from '../modules/planFeatures.js';
 import config from '../config/env.js';
 import { outletAllowance } from './outlets.controller.js';
-import { permissionsOf, roleOf } from '../modules/adminRoles.js';
+import { isStaffUser, permissionsOf, roleOf } from '../modules/adminRoles.js';
+import { issueEmailOtp } from './auth.controller.js';
+import { deviceHash, tryPin, wrong as wrongPin } from './pinLogin.controller.js';
 
 const BUSINESS_STATUSES = ['ACTIVE', 'SUSPENDED', 'CLOSED'];
 const SUBSCRIPTION_STATUSES = ['TRIAL', 'ACTIVE', 'EXPIRED', 'CANCELLED', 'SUSPENDED'];
@@ -30,6 +32,91 @@ const SUBSCRIPTION_STATUSES = ['TRIAL', 'ACTIVE', 'EXPIRED', 'CANCELLED', 'SUSPE
    ========================================================================== */
 /* a real hash, so an unknown address takes as long as a wrong password (see auth.controller.js) */
 const ADMIN_DUMMY_HASH = bcrypt.hashSync(crypto.randomBytes(16).toString('hex'), 12);
+
+const CODE_GAP_MS = 30 * 1000;
+const CODE_TTL_MS = 10 * 60 * 1000;
+/* A staff member by the email or the phone number they type: the phone is matched on its last ten digits, so +91 and spaces do not matter */
+export const staffByIdentifier = async (identifier) => {
+  const text = String(identifier || '').trim();
+  const cols = 'user_id, name, email, is_super_admin, admin_role, admin_disabled, token_version, totp_enabled, email_otp_hash, email_otp_expires_at';
+  if (text.includes('@')) return (await pool.query(`SELECT ${cols} FROM users WHERE email = $1`, [normaliseEmail(text)])).rows[0];
+  const digits = text.replace(/\D/g, '').slice(-10);
+  if (digits.length < 10) return undefined;
+  return (await pool.query(`SELECT ${cols} FROM users WHERE is_super_admin AND admin_role IS NOT NULL AND admin_role <> 'OWNER' AND right(regexp_replace(COALESCE(phone, ''), '\\D', '', 'g'), 10) = $1 LIMIT 1`, [digits])).rows[0];
+};
+const adminPayload = (user) => ({
+  token: signToken(user, { expiresIn: '8h' }),
+  admin: { user_id: user.user_id, name: user.name, email: user.email, role: roleOf(user), permissions: permissionsOf(user), totp_enabled: Boolean(user.totp_enabled), two_factor_required: false }
+});
+
+/* POST /api/admin/login/code { identifier }: a staff member asks for a sign-in code (first time on a computer, or a forgotten PIN). It goes to their email. The answer is the same whoever asks, so it never says who has a sign-in. */
+export const staffCode = async (req, res) => {
+  const identifier = String(req.body?.identifier ?? req.body?.email ?? '').trim();
+  if (!identifier) return res.status(400).json({ success: false, message: 'Enter your email or phone number.' });
+  try {
+    const user = await staffByIdentifier(identifier);
+    const locked = user ? await lockedMinutes(pool, user.email) : 0;
+    const justSent = user?.email_otp_expires_at && Date.now() - (new Date(user.email_otp_expires_at).getTime() - CODE_TTL_MS) < CODE_GAP_MS;
+    if (user && isStaffUser(user) && !user.admin_disabled && !locked && !justSent) await issueEmailOtp(user);
+  } catch (error) { console.error('[admin] staff code failed:', error.message); }
+  res.json({ success: true, message: 'If that email has a staff sign-in, a code is on its way. It lasts 10 minutes.' });
+};
+
+/* POST /api/admin/login/verify { identifier, code }: the code that was emailed signs a staff member in, once */
+export const staffVerify = async (req, res) => {
+  const identifier = String(req.body?.identifier ?? req.body?.email ?? '').trim();
+  const given = String(req.body?.code ?? '').replace(/\s/g, '');
+  if (!identifier || !given) return res.status(400).json({ success: false, message: 'Enter your email or phone number, and the code.' });
+  try {
+    const user = await staffByIdentifier(identifier);
+    const email = user?.email || normaliseEmail(identifier);
+    const locked = await lockedMinutes(pool, email);
+    if (locked) {
+      await recordLogin(pool, { email, req, outcome: 'LOCKED' });
+      return res.status(429).json({ success: false, message: `Too many wrong codes. Try again in ${locked} minute${locked === 1 ? '' : 's'}.` });
+    }
+    const hash = crypto.createHash('sha256').update(given).digest('hex');
+    const valid = user && isStaffUser(user) && !user.admin_disabled && user.email_otp_hash === hash && user.email_otp_expires_at && new Date(user.email_otp_expires_at) > new Date();
+    if (!valid) {
+      await recordLogin(pool, { userId: user?.user_id ?? null, email, req, outcome: user ? 'EMAIL_OTP_FAILED' : 'UNKNOWN_USER' });
+      return res.status(401).json({ success: false, message: 'That code is not right, or it has expired. Ask for a new one.' });
+    }
+    await pool.query('UPDATE users SET email_otp_hash = NULL, email_otp_expires_at = NULL, email_verified = TRUE, last_login_at = CURRENT_TIMESTAMP WHERE user_id = $1', [user.user_id]);
+    await recordLogin(pool, { userId: user.user_id, email: user.email, req, outcome: 'SUCCESS', method: 'EMAIL_OTP' });
+    res.json({ success: true, data: adminPayload(user) });
+  } catch (error) {
+    console.error('[admin] staff verify failed:', error.message);
+    res.status(500).json({ success: false, message: 'Could not sign you in' });
+  }
+};
+
+/* POST /api/admin/login/pin { identifier, pin }: after the first code, a staff member signs in on that computer with a PIN. The PIN is kept for this browser only (pinLogin.controller.js:
+   a device cookie plus the PIN), five wrong ones end it and the emailed code is needed again, and any change to their access (role, off, signed out) ends it too. */
+export const staffPin = async (req, res) => {
+  const identifier = String(req.body?.identifier ?? '').trim();
+  const device = deviceHash(req);
+  const again = 'Use a code: choose "Email me a code".';
+  try {
+    const user = await staffByIdentifier(identifier);
+    const locked = user ? await lockedMinutes(pool, user.email) : 0;
+    if (locked) return res.status(429).json({ success: false, message: `Too many wrong tries. Try again in ${locked} minute${locked === 1 ? '' : 's'}.` });
+    const result = user && device && isStaffUser(user) && !user.admin_disabled ? await tryPin(req, device, user.user_id, req.body?.pin) : null;
+    if (result === null) {
+      await recordLogin(pool, { userId: user?.user_id ?? null, email: user?.email || normaliseEmail(identifier), req, outcome: user ? 'BAD_PIN' : 'UNKNOWN_USER' });
+      return res.status(401).json({ success: false, message: `There is no PIN for that on this computer. ${again}` });
+    }
+    if (result !== true) {
+      await recordLogin(pool, { userId: user.user_id, email: user.email, req, outcome: 'BAD_PIN' });
+      return res.status(401).json({ success: false, message: result > 0 ? wrongPin(result) : `Too many wrong PINs. ${again}`, data: { tries_left: result } });
+    }
+    await recordLogin(pool, { userId: user.user_id, email: user.email, req, outcome: 'SUCCESS', method: 'PIN' });
+    pool.query('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE user_id = $1', [user.user_id]).catch(() => {});
+    res.json({ success: true, data: adminPayload(user) });
+  } catch (error) {
+    console.error('[admin] staff pin failed:', error.message);
+    res.status(500).json({ success: false, message: 'Could not sign you in' });
+  }
+};
 
 export const login = async (req, res) => {
   const { email, password } = req.body || {};
@@ -54,7 +141,7 @@ export const login = async (req, res) => {
     // a non-admin account must not be distinguishable by response timing.
     const ok = await bcrypt.compare(String(password), user?.password_hash || ADMIN_DUMMY_HASH);
 
-    if (!user || !ok || !user.is_super_admin || user.admin_disabled) {
+    if (!user || !ok || !user.is_super_admin || user.admin_disabled || isStaffUser(user)) {
       await recordLogin(pool, { userId: user?.user_id ?? null, email: normaliseEmail(email), req, outcome: user ? 'BAD_PASSWORD' : 'UNKNOWN_USER' });
       return res.status(401).json({ success: false, message: 'Email or password is incorrect' });
     }
@@ -87,7 +174,7 @@ export const login = async (req, res) => {
       data: {
         // the platform console is the most powerful sign-in there is: a working day, not a week
         token: signToken(user, { expiresIn: '8h' }),
-        admin: { user_id: user.user_id, name: user.name, email: user.email, role: roleOf(user), permissions: permissionsOf(user), totp_enabled: Boolean(user.totp_enabled), two_factor_required: config.adminRequire2fa }
+        admin: { user_id: user.user_id, name: user.name, email: user.email, role: roleOf(user), permissions: permissionsOf(user), totp_enabled: Boolean(user.totp_enabled), two_factor_required: config.adminRequire2fa && !isStaffUser(user) }
       }
     });
   } catch (error) {
@@ -102,7 +189,7 @@ export const login = async (req, res) => {
 export const me = async (req, res) => {
   res.json({
     success: true,
-    data: { user_id: req.auth.userId, name: req.auth.user.name, email: req.auth.email, role: roleOf(req.auth.user), permissions: permissionsOf(req.auth.user), totp_enabled: Boolean(req.auth.user.totp_enabled), two_factor_required: config.adminRequire2fa }
+    data: { user_id: req.auth.userId, name: req.auth.user.name, email: req.auth.email, role: roleOf(req.auth.user), permissions: permissionsOf(req.auth.user), totp_enabled: Boolean(req.auth.user.totp_enabled), two_factor_required: config.adminRequire2fa && !isStaffUser(req.auth.user) }
   });
 };
 
