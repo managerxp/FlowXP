@@ -3494,6 +3494,12 @@ export const ML: Record<string, string> = {
   'Undo': 'തിരുത്തുക',
   'Reward taken back, points returned': 'സമ്മാനം തിരിച്ചെടുത്തു, പോയിന്റ് തിരികെ നൽകി',
   'Undone': 'തിരുത്തി',
+  'Members of a loyalty card': 'ലോയൽറ്റി കാർഡിലെ അംഗങ്ങൾ',
+  'Card members close to a reward': 'സമ്മാനത്തിന് അടുത്തെത്തിയ കാർഡ് അംഗങ്ങൾ',
+  'Card members with a reward ready to claim': 'സമ്മാനം വാങ്ങാൻ തയ്യാറായ കാർഡ് അംഗങ്ങൾ',
+  'Card members who have not been in for a while': 'കുറച്ചുകാലമായി വരാത്ത കാർഡ് അംഗങ്ങൾ',
+  'Which loyalty card': 'ഏത് ലോയൽറ്റി കാർഡ്',
+  'Only members who agreed to receive offers are included.': 'ഓഫറുകൾ ലഭിക്കാൻ സമ്മതിച്ച അംഗങ്ങളെ മാത്രമേ ഉൾപ്പെടുത്തൂ.',
 };
 
 /** Tamil: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -6990,6 +6996,12 @@ export const TA: Record<string, string> = {
   'Undo': 'செயல்தவிர்',
   'Reward taken back, points returned': 'பரிசு திரும்பப் பெறப்பட்டது, புள்ளிகள் திருப்பித் தரப்பட்டன',
   'Undone': 'செயல்தவிர்க்கப்பட்டது',
+  'Members of a loyalty card': 'விசுவாச அட்டை உறுப்பினர்கள்',
+  'Card members close to a reward': 'பரிசுக்கு அருகில் உள்ள அட்டை உறுப்பினர்கள்',
+  'Card members with a reward ready to claim': 'பரிசைப் பெறத் தயாரான அட்டை உறுப்பினர்கள்',
+  'Card members who have not been in for a while': 'சிறிது காலமாக வராத அட்டை உறுப்பினர்கள்',
+  'Which loyalty card': 'எந்த விசுவாச அட்டை',
+  'Only members who agreed to receive offers are included.': 'சலுகைகளைப் பெற சம்மதித்த உறுப்பினர்கள் மட்டுமே சேர்க்கப்படுவார்கள்.',
 };
 
 /** Bengali: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -10486,6 +10498,12 @@ export const BN: Record<string, string> = {
   'Undo': 'পূর্বাবস্থায় ফেরান',
   'Reward taken back, points returned': 'পুরস্কার ফেরত নেওয়া হয়েছে, পয়েন্ট ফেরত দেওয়া হয়েছে',
   'Undone': 'পূর্বাবস্থায় ফেরানো হয়েছে',
+  'Members of a loyalty card': 'লয়্যালটি কার্ডের সদস্য',
+  'Card members close to a reward': 'পুরস্কারের কাছাকাছি কার্ড সদস্য',
+  'Card members with a reward ready to claim': 'পুরস্কার নেওয়ার জন্য প্রস্তুত কার্ড সদস্য',
+  'Card members who have not been in for a while': 'অনেকদিন আসেননি এমন কার্ড সদস্য',
+  'Which loyalty card': 'কোন লয়্যালটি কার্ড',
+  'Only members who agreed to receive offers are included.': 'শুধু যাঁরা অফার পেতে রাজি হয়েছেন তাঁরাই অন্তর্ভুক্ত।',
 };
 
 /** Telugu: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -13982,6 +14000,12 @@ export const TE: Record<string, string> = {
   'Undo': 'రద్దు చేయండి',
   'Reward taken back, points returned': 'బహుమతి వెనక్కి తీసుకున్నారు, పాయింట్లు తిరిగి ఇచ్చారు',
   'Undone': 'రద్దు చేయబడింది',
+  'Members of a loyalty card': 'లాయల్టీ కార్డు సభ్యులు',
+  'Card members close to a reward': 'బహుమతికి దగ్గరగా ఉన్న కార్డు సభ్యులు',
+  'Card members with a reward ready to claim': 'బహుమతి తీసుకోవడానికి సిద్ధంగా ఉన్న కార్డు సభ్యులు',
+  'Card members who have not been in for a while': 'కొంతకాలంగా రాని కార్డు సభ్యులు',
+  'Which loyalty card': 'ఏ లాయల్టీ కార్డు',
+  'Only members who agreed to receive offers are included.': 'ఆఫర్లు పొందడానికి అంగీకరించిన సభ్యులు మాత్రమే చేర్చబడతారు.',
 };
 
 /** Kannada: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -17478,4 +17502,10 @@ export const KN: Record<string, string> = {
   'Undo': 'ರದ್ದುಮಾಡಿ',
   'Reward taken back, points returned': 'ಬಹುಮಾನ ಹಿಂತೆಗೆದುಕೊಳ್ಳಲಾಗಿದೆ, ಪಾಯಿಂಟ್‌ಗಳನ್ನು ಮರಳಿಸಲಾಗಿದೆ',
   'Undone': 'ರದ್ದುಮಾಡಲಾಗಿದೆ',
+  'Members of a loyalty card': 'ಲಾಯಲ್ಟಿ ಕಾರ್ಡ್ ಸದಸ್ಯರು',
+  'Card members close to a reward': 'ಬಹುಮಾನಕ್ಕೆ ಹತ್ತಿರವಿರುವ ಕಾರ್ಡ್ ಸದಸ್ಯರು',
+  'Card members with a reward ready to claim': 'ಬಹುಮಾನ ಪಡೆಯಲು ಸಿದ್ಧರಿರುವ ಕಾರ್ಡ್ ಸದಸ್ಯರು',
+  'Card members who have not been in for a while': 'ಸ್ವಲ್ಪ ಕಾಲದಿಂದ ಬಾರದ ಕಾರ್ಡ್ ಸದಸ್ಯರು',
+  'Which loyalty card': 'ಯಾವ ಲಾಯಲ್ಟಿ ಕಾರ್ಡ್',
+  'Only members who agreed to receive offers are included.': 'ಆಫರ್‌ಗಳನ್ನು ಪಡೆಯಲು ಒಪ್ಪಿದ ಸದಸ್ಯರನ್ನು ಮಾತ್ರ ಸೇರಿಸಲಾಗುತ್ತದೆ.',
 };

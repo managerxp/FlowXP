@@ -71,6 +71,7 @@ export const passFor = (m, a = account()) => {
     loyaltyPoints: { label: unit, balance: { int: Number(m.balance) || 0 } },
     barcode: { type: 'QR_CODE', value: `${origin}/card/${m.token}`, alternateText: m.membership_no },
     ...(card.message ? { textModulesData: [{ id: 'message', header: 'Message', body: String(card.message).slice(0, 140) }] } : {}),
+    ...(Array.isArray(m.locations) && m.locations.length ? { locations: m.locations.slice(0, 10) } : {}),   // Google shows the pass on the lock screen when the phone is near one of these (it decides when)
     linksModuleData: { uris: [{ id: 'card', description: 'Your card', uri: `${origin}/card/${m.token}` }] }
   };
   return { loyaltyClass, loyaltyObject };
@@ -88,6 +89,8 @@ export const saveUrl = (m) => {
 export const loadMembership = async (db, where, params) => (await db.query(
   `SELECT m.membership_id, m.programme_id, m.membership_no, m.token, c.name AS customer_name, p.name AS programme_name, p.kind, p.card, p.logo_url,
           b.name AS business_name, b.receipt_settings->>'logo_url' AS business_logo,
+          (SELECT COALESCE(jsonb_agg(jsonb_build_object('latitude', br.latitude::float8, 'longitude', br.longitude::float8) ORDER BY br.branch_id), '[]'::jsonb) FROM branches br
+            WHERE br.business_id = m.business_id AND br.status = 'ACTIVE' AND br.latitude IS NOT NULL AND br.longitude IS NOT NULL AND (p.branch_ids IS NULL OR br.branch_id = ANY(p.branch_ids))) AS locations,
           COALESCE((SELECT SUM(points) FROM points_ledger l WHERE l.membership_id = m.membership_id AND l.voided_at IS NULL), 0)::int AS balance
    FROM loyalty_memberships m JOIN customers c ON c.customer_id = m.customer_id JOIN loyalty_programmes p ON p.programme_id = m.programme_id JOIN businesses b ON b.business_id = m.business_id
    WHERE ${where}`, params)).rows;

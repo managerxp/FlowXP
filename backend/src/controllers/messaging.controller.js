@@ -12,14 +12,14 @@ import { kindIndustry, kindsForType, TEMPLATES, metaBody } from '../modules/mess
 import * as ledgerReports from './ledgerReports.controller.js';
 import { addDaysISO, businessToday } from '../utils/dates.js';
 import { statementShare } from '../modules/messaging/index.js';
-import { SEGMENTS, audience, balanceShare, billShare, cleanSettings, getSettings, resend, sendBalance, sendBill, startCampaign, trialUsage } from '../modules/messaging/index.js';
+import { segmentsFor, audience, balanceShare, billShare, cleanSettings, getSettings, resend, sendBalance, sendBill, startCampaign, trialUsage } from '../modules/messaging/index.js';
 
 const bad = (res, message, status = 400) => res.status(status).json({ success: false, message });
 const provider = async () => ({ name: await providerName(), connected: await isConnected(), channels: await channelsAvailable() });
 
 /* GET /api/messaging/settings */
 export const getSettingsHandler = async (req, res) => {
-  res.json({ success: true, data: { settings: await getSettings(pool, req.tenant.businessId), provider: await provider(), segments: SEGMENTS, trial: await trialUsage(pool, req.tenant.businessId) } });
+  res.json({ success: true, data: { settings: await getSettings(pool, req.tenant.businessId), provider: await provider(), segments: await segmentsFor(pool, req.tenant.businessId), trial: await trialUsage(pool, req.tenant.businessId) } });
 };
 
 /* PUT /api/messaging/settings */
@@ -29,7 +29,7 @@ export const putSettings = async (req, res) => {
   if (error) return bad(res, error);
   await pool.query(`UPDATE businesses SET messaging_settings = $1 WHERE business_id = $2`, [JSON.stringify(settings), req.tenant.businessId]);
   recordAudit(req, { action: 'messaging.settings_updated', resource_type: 'business', resource_id: req.tenant.businessId, metadata: req.body });
-  res.json({ success: true, data: { settings, provider: await provider(), segments: SEGMENTS, trial: await trialUsage(pool, req.tenant.businessId) } });
+  res.json({ success: true, data: { settings, provider: await provider(), segments: await segmentsFor(pool, req.tenant.businessId), trial: await trialUsage(pool, req.tenant.businessId) } });
 };
 
 /* GET /api/messaging/templates — the WhatsApp templates to create once in Meta Business Manager */

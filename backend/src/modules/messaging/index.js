@@ -242,12 +242,45 @@ export const sendBalance = async (db, { businessId, customerId, createdBy = null
 export const SEGMENTS = {
   ALL: 'Every customer with a mobile number',
   LAPSED: 'Customers who have not visited in a while',
-  NEAR_REWARD: 'Customers one visit from a free reward'
+  NEAR_REWARD: 'Customers one visit from a free reward',
+  // loyalty cards (a programme is chosen with programme_id): only members who agreed to offers, never a customer who opted out
+  CARD_ALL: 'Members of a loyalty card',
+  CARD_NEAR: 'Card members close to a reward',
+  CARD_READY: 'Card members with a reward ready to claim',
+  CARD_IDLE: 'Card members who have not been in for a while'
+};
+export const CARD_SEGMENTS = ['CARD_ALL', 'CARD_NEAR', 'CARD_READY', 'CARD_IDLE'];
+
+/** The segments this business can use: the loyalty card ones only once it has a card. */
+export const segmentsFor = async (db, businessId) => {
+  const has = (await db.query(`SELECT 1 FROM loyalty_programmes WHERE business_id = $1 LIMIT 1`, [businessId])).rows.length > 0;
+  return Object.fromEntries(Object.entries(SEGMENTS).filter(([k]) => has || !CARD_SEGMENTS.includes(k)));
+};
+
+const cardAudience = async (db, businessId, { segment, programme_id: programmeId, days = 30 }) => {
+  const programme = (await db.query(`SELECT programme_id FROM loyalty_programmes WHERE business_id = $1 AND programme_id = $2`, [businessId, Number(programmeId) || 0])).rows[0];
+  if (!programme) return { error: 'Choose which loyalty card' };
+  const balance = `(SELECT COALESCE(SUM(l.points), 0) FROM points_ledger l WHERE l.membership_id = m.membership_id AND l.voided_at IS NULL)`;
+  const cheapest = `(SELECT MIN(r.points_cost) FROM loyalty_rewards r WHERE r.programme_id = m.programme_id AND r.is_active)`;
+  const n = Math.max(7, Math.min(365, Number(days) || 30));
+  const where = {
+    CARD_ALL: 'TRUE',
+    CARD_READY: `${cheapest} IS NOT NULL AND ${balance} >= ${cheapest}`,
+    CARD_NEAR: `${cheapest} IS NOT NULL AND ${balance} < ${cheapest} AND ${balance} >= ${cheapest} - GREATEST(1, CEIL(${cheapest} * 0.2))`,   // within a fifth of the cost (at least one) and not there yet
+    CARD_IDLE: `COALESCE((SELECT MAX(l.created_at) FROM points_ledger l WHERE l.membership_id = m.membership_id), m.joined_at) < CURRENT_TIMESTAMP - INTERVAL '${n} days'`
+  }[segment];
+  const rows = (await db.query(
+    `SELECT c.customer_id, c.name, c.phone FROM loyalty_memberships m JOIN customers c ON c.customer_id = m.customer_id
+     WHERE m.business_id = $1 AND m.programme_id = $2 AND m.status = 'ACTIVE' AND m.consent_marketing AND c.status = 'ACTIVE' AND NOT c.marketing_opt_out
+       AND LENGTH(regexp_replace(COALESCE(c.phone, ''), '\\D', '', 'g')) >= 10 AND ${where}
+     ORDER BY c.customer_id LIMIT ${CAMPAIGN_LIMIT + 1}`, [businessId, programme.programme_id])).rows;
+  return { customers: rows };
 };
 
 /** Who a campaign would reach: active customers with a valid mobile who haven't opted out. */
-export const audience = async (db, businessId, { segment, days = 30 }) => {
+export const audience = async (db, businessId, { segment, days = 30, programme_id: programmeId }) => {
   if (!SEGMENTS[segment]) return { error: 'Choose who to send to' };
+  if (CARD_SEGMENTS.includes(segment)) return cardAudience(db, businessId, { segment, programme_id: programmeId, days });
   const base = `SELECT c.customer_id, c.name, c.phone FROM customers c
     WHERE c.business_id = $1 AND c.status = 'ACTIVE' AND NOT c.marketing_opt_out
       AND LENGTH(regexp_replace(COALESCE(c.phone, ''), '\\D', '', 'g')) >= 10`;

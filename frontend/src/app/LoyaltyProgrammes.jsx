@@ -161,6 +161,38 @@ const Wizard = ({ programme, business, onClose, onSaved }) => {
   );
 };
 
+/* Where each outlet is. A Google Wallet loyalty card can use it to show on the member's lock screen when they are nearby (Google decides when). Optional. */
+const Locations = () => {
+  const [rows, setRows] = useState(null); const [err, setErr] = useState(''); const [edit, setEdit] = useState({});
+  const toast = useToast();
+  const load = useCallback(() => api('/loyalty/locations').then(setRows).catch(() => setRows([])), []);
+  useEffect(() => { load(); }, [load]);
+  const save = async (b, lat, lng) => {
+    setErr('');
+    try { await api(`/loyalty/locations/${b.branch_id}`, { method: 'PUT', body: { latitude: lat, longitude: lng } }); toast.success('Location saved'); setEdit((e) => ({ ...e, [b.branch_id]: undefined })); load(); }
+    catch (e) { setErr(e.message); }
+  };
+  const here = (b) => navigator.geolocation?.getCurrentPosition((p) => save(b, Number(p.coords.latitude.toFixed(6)), Number(p.coords.longitude.toFixed(6))), () => setErr('Could not read the location of this device. Allow location access in the browser and try again.'), { enableHighAccuracy: true, timeout: 15000 });
+  if (!rows || !rows.length) return null;
+  return (
+    <Card className="p-4">
+      <h3 className="text-small font-semibold text-ink-900">Outlet locations</h3>
+      <p className="mt-1 text-small text-ink-500">Stand at the outlet and tap "Use this device's location". Members who saved the card in Google Wallet can then be reminded when they are nearby.</p>
+      <ul className="mt-2 divide-y divide-line">
+        {rows.map((b) => (
+          <li key={b.branch_id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-small">
+            <span className="text-ink-900">{b.name} <span className="text-ink-500">{b.latitude != null ? `· ${b.latitude}, ${b.longitude}` : '· not set'}</span></span>
+            <span className="flex gap-2">
+              <Button size="sm" variant="secondary" onClick={() => here(b)}>Use this device's location</Button>
+              {b.latitude != null && <Button size="sm" variant="secondary" onClick={() => save(b, null, null)}>Clear</Button>}
+            </span>
+          </li>))}
+      </ul>
+      {err && <p role="alert" className="mt-2 text-small text-danger">{err}</p>}
+    </Card>
+  );
+};
+
 const LoyaltyProgrammes = ({ business }) => {
   const [list, setList] = useState(null); const [error, setError] = useState('');
   const [wizard, setWizard] = useState(null); const [share, setShare] = useState(null);
@@ -191,6 +223,7 @@ const LoyaltyProgrammes = ({ business }) => {
               <Rewards programme={p} />
             </Card>))}
         </div>)}
+      <Locations />
       {wizard && <Wizard programme={wizard.programme_id ? wizard : null} business={business} onClose={() => setWizard(null)} onSaved={() => { setWizard(null); load(); }} />}
       {share && <Share programme={share} onClose={() => setShare(null)} />}
     </div>

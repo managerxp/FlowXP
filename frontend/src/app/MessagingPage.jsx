@@ -121,6 +121,8 @@ const Offers = () => {
   const [segments, setSegments] = useState({});
   const [segment, setSegment] = useState('ALL');
   const [days, setDays] = useState(30);
+  const [cards, setCards] = useState([]);   // the business's loyalty cards, for the "card members" audiences
+  const [programmeId, setProgrammeId] = useState('');
   const [text, setText] = useState('');
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState('');
@@ -128,11 +130,13 @@ const Offers = () => {
   const [batch, setBatch] = useState(null);
   const [progress, setProgress] = useState(null);
 
-  useEffect(() => { api('/messaging/settings').then((d) => setSegments(d.segments)).catch(() => {}); }, []);
+  const onCard = segment.startsWith('CARD_');
+  const audienceBody = { segment, days: Number(days), ...(onCard ? { programme_id: Number(programmeId) || undefined } : {}) };
+  useEffect(() => { api('/messaging/settings').then((d) => setSegments(d.segments)).catch(() => {}); api('/loyalty/programmes').then((r) => { setCards(r); if (r[0]) setProgrammeId(String(r[0].programme_id)); }).catch(() => {}); }, []);
   useEffect(() => {
     setPreview(null);
-    api('/messaging/campaigns/preview', { method: 'POST', body: { segment, days: Number(days) } }).then(setPreview).catch((e) => setPreview({ error: e.message }));
-  }, [segment, days]);
+    api('/messaging/campaigns/preview', { method: 'POST', body: audienceBody }).then(setPreview).catch((e) => setPreview({ error: e.message }));
+  }, [segment, days, programmeId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!batch) return undefined;
     const tick = () => api(`/messaging/campaigns/${batch}`).then(setProgress).catch(() => {});
@@ -143,7 +147,7 @@ const Offers = () => {
   const send = async () => {
     if (!(await dialog.confirm({ title: `Send to ${preview.count} customer${preview.count === 1 ? '' : 's'}?`, body: 'Messages go out straight away and cannot be recalled.', confirmLabel: 'Send offer' }))) return;
     setBusy(true); setError('');
-    try { const r = await api('/messaging/campaigns', { method: 'POST', body: { segment, days: Number(days), text } }); setBatch(r.batch); setText(''); toast.success(`Sending to ${r.recipients} customers`); }
+    try { const r = await api('/messaging/campaigns', { method: 'POST', body: { ...audienceBody, text } }); setBatch(r.batch); setText(''); toast.success(`Sending to ${r.recipients} customers`); }
     catch (caught) { setError(caught.message); }
     finally { setBusy(false); }
   };
@@ -156,7 +160,10 @@ const Offers = () => {
           {Object.entries(segments).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
         </Select>
       </Field>
-      {segment === 'LAPSED' && (
+      {onCard && (
+        <Field id="card" label="Which loyalty card" hint="Only members who agreed to receive offers are included."><Select id="card" value={programmeId} onChange={(e) => setProgrammeId(e.target.value)}>{cards.map((c) => <option key={c.programme_id} value={c.programme_id}>{c.name}</option>)}</Select></Field>
+      )}
+      {(segment === 'LAPSED' || segment === 'CARD_IDLE') && (
         <Field id="days" label="Not visited in the last (days)"><Select id="days" value={days} onChange={(e) => setDays(e.target.value)}>{[14, 30, 60, 90].map((d) => <option key={d} value={d}>{d}</option>)}</Select></Field>
       )}
       <p className="text-sm text-ink-700">{!preview ? 'Counting…' : preview.error ? preview.error : `${preview.count} customer${preview.count === 1 ? '' : 's'} will get it${preview.sample?.length ? ` (${preview.sample.join(', ')}${preview.count > preview.sample.length ? '…' : ''})` : ''}.`}</p>

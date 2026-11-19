@@ -3601,6 +3601,12 @@ export const HI: Record<string, string> = {
   'Undo': 'पूर्ववत करें',
   'Reward taken back, points returned': 'इनाम वापस लिया, पॉइंट लौटा दिए',
   'Undone': 'पूर्ववत हो गया',
+  'Members of a loyalty card': 'लॉयल्टी कार्ड के मेंबर',
+  'Card members close to a reward': 'इनाम के करीब कार्ड मेंबर',
+  'Card members with a reward ready to claim': 'जिनका इनाम लेने के लिए तैयार है',
+  'Card members who have not been in for a while': 'जो कार्ड मेंबर काफ़ी समय से नहीं आए',
+  'Which loyalty card': 'कौन सा लॉयल्टी कार्ड',
+  'Only members who agreed to receive offers are included.': 'सिर्फ़ वही मेंबर शामिल हैं जिन्होंने ऑफ़र पाने की सहमति दी है।',
 };
 
 /** Languages that have a dictionary. */

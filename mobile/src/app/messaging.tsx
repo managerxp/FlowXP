@@ -72,17 +72,19 @@ const SendOffer = () => {
   const [segments, setSegments] = useState<Record<string, string>>({});
   const [segment, setSegment] = useState('ALL');
   const [days, setDays] = useState('30');
+  const [cards, setCards] = useState<{ programme_id: number; name: string }[]>([]);   // the loyalty cards, for the card-member audiences
+  const [programmeId, setProgrammeId] = useState('');
   const [text, setText] = useState('');
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [batch, setBatch] = useState<string | null>(null);
   const [progress, setProgress] = useState<Progress | null>(null);
-  useEffect(() => { api.get<SettingsData>('/messaging/settings').then((d) => setSegments(d.segments)).catch(() => {}); }, []);
+  useEffect(() => { api.get<SettingsData>('/messaging/settings').then((d) => setSegments(d.segments)).catch(() => {}); api.get<{ programme_id: number; name: string }[]>('/loyalty/programmes').then((r) => { setCards(r); if (r[0]) setProgrammeId(String(r[0].programme_id)); }).catch(() => {}); }, []);
   useEffect(() => {
     setPreview(null);
-    api.post<Preview>('/messaging/campaigns/preview', { segment, days: Number(days) }).then(setPreview).catch((e: Error) => setPreview({ count: 0, error: e.message }));
-  }, [segment, days]);
+    api.post<Preview>('/messaging/campaigns/preview', campaignBody(segment, Number(days), '', Number(programmeId) || undefined)).then(setPreview).catch((e: Error) => setPreview({ count: 0, error: e.message }));
+  }, [segment, days, programmeId]);
   useEffect(() => {
     if (!batch) return undefined;
     const tick = () => { api.get<Progress>(`/messaging/campaigns/${batch}`).then(setProgress).catch(() => {}); };
@@ -92,7 +94,7 @@ const SendOffer = () => {
 
   const go = async () => {
     setBusy(true); setError('');
-    try { const r = await api.post<{ batch: string; recipients: number }>('/messaging/campaigns', campaignBody(segment, Number(days), text)); setBatch(r.batch); setText(''); }
+    try { const r = await api.post<{ batch: string; recipients: number }>('/messaging/campaigns', campaignBody(segment, Number(days), text, Number(programmeId) || undefined)); setBatch(r.batch); setText(''); }
     catch (e) { setError(why(e)); } finally { setBusy(false); }
   };
   const confirm = () => {
@@ -104,7 +106,8 @@ const SendOffer = () => {
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
       <View style={{ gap: 4 }}><Text style={{ color: color.soft, fontSize: 13 }}>{t('Send to')}</Text><Chips items={Object.entries(segments).map(([k, label]) => ({ id: k, label }))} value={segment} onChange={setSegment} /></View>
-      {segment === 'LAPSED' ? <View style={{ gap: 4 }}><Text style={{ color: color.soft, fontSize: 13 }}>{t('Not visited in the last (days)')}</Text><Chips items={LAPSED_DAYS.map((d) => ({ id: String(d), label: String(d) }))} value={days} onChange={setDays} /></View> : null}
+      {segment.startsWith('CARD_') ? <View style={{ gap: 4 }}><Text style={{ color: color.soft, fontSize: 13 }}>{t('Which loyalty card')}</Text><Chips items={cards.map((c) => ({ id: String(c.programme_id), label: c.name }))} value={programmeId} onChange={setProgrammeId} /><Soft>{t('Only members who agreed to receive offers are included.')}</Soft></View> : null}
+      {segment === 'LAPSED' || segment === 'CARD_IDLE' ? <View style={{ gap: 4 }}><Text style={{ color: color.soft, fontSize: 13 }}>{t('Not visited in the last (days)')}</Text><Chips items={LAPSED_DAYS.map((d) => ({ id: String(d), label: String(d) }))} value={days} onChange={setDays} /></View> : null}
       <Text style={{ color: color.ink }}>{previewText(preview)}</Text>
       <View style={{ gap: 4 }}>
         <Text style={{ color: color.soft, fontSize: 13 }}>{t('Your offer')}</Text>

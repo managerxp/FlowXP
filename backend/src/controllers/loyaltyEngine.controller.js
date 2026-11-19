@@ -113,6 +113,21 @@ export const reverse = wrap(async (req, res) => {
   ok(res, out);
 });
 
+/* ── outlet locations: where a wallet card should remind the member (optional) ── */
+export const listLocations = wrap(async (req, res) => ok(res, (await pool.query(
+  `SELECT branch_id, name, latitude::float8 AS latitude, longitude::float8 AS longitude FROM branches WHERE business_id = $1 AND status = 'ACTIVE' ORDER BY branch_id`, [bid(req)])).rows));
+
+export const setLocation = wrap(async (req, res) => {
+  const branchId = id(req, 'branchId');
+  const clear = req.body?.latitude === null && req.body?.longitude === null;
+  const lat = Number(req.body?.latitude); const lng = Number(req.body?.longitude);
+  if (!clear && !(Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180)) throw new engine.LoyaltyError('Enter a latitude between -90 and 90 and a longitude between -180 and 180');
+  const r = await pool.query(`UPDATE branches SET latitude = $3, longitude = $4 WHERE business_id = $1 AND branch_id = $2 RETURNING branch_id, name, latitude::float8 AS latitude, longitude::float8 AS longitude`, [bid(req), branchId, clear ? null : lat, clear ? null : lng]);
+  if (!r.rows[0]) throw new engine.LoyaltyError('That outlet was not found', 404);
+  recordAudit(req, { business_id: bid(req), action: 'loyalty.outlet_location', resource_type: 'branch', resource_id: branchId, metadata: { set: !clear } });
+  ok(res, r.rows[0]);
+});
+
 /* ── rewards ── */
 const RCOLS = ['programme_id', 'name', 'description', 'points_cost', 'value_paise', 'product_id', 'is_active', 'valid_from', 'valid_to', 'max_per_member'];
 

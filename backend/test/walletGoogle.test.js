@@ -60,6 +60,7 @@ test('with credentials the link is signed, carries this member\'s pass, and the 
   assert.equal(cls.hexBackgroundColor, '#112233'); assert.equal(cls.issuerName, 'Wallet Cafe'); assert.equal(cls.countryCode, 'IN');
   assert.match(cls.programLogo.sourceUri.uri, /^https?:\/\/.+icon-512\.png$/);
   assert.equal(obj.textModulesData[0].body, 'Thanks');
+  assert.equal(obj.locations, undefined);   // no outlet location set: no location nudge
   assert.equal((await pcall(pub.googleWallet, { params: { token: 'x'.repeat(40) } })).code, 404);
 });
 
@@ -72,4 +73,21 @@ test('the plan can switch the wallet off', { skip }, async () => {
 test('a balance push with no credentials does nothing and never throws', { skip }, async () => {
   delete process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_JSON; google.resetForTests();
   await google.pushBalance([membershipId]); google.pushForCustomer(1);
+});
+
+test('an outlet with a location puts it on the pass (up to the ten Google allows); one without adds nothing', { skip }, async () => {
+  process.env.GOOGLE_WALLET_ISSUER_ID = '3388000000000000001';
+  process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_JSON = JSON.stringify({ client_email: 'wallet@test.iam.gserviceaccount.com', private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }) });
+  google.resetForTests();
+  const tenant = { businessId: bizId };
+  const call = async (fn, extra) => { const res = fakeRes(); await fn({ tenant, auth: { userId: 1 }, params: {}, body: {}, query: {}, headers: {}, get: () => undefined, ip: '1', ...extra }, res); return res; };
+  const branch = (await pool.query(`SELECT branch_id FROM branches WHERE business_id = $1`, [bizId])).rows[0].branch_id;
+  assert.equal((await call(ctl.setLocation, { params: { branchId: String(branch) }, body: { latitude: 120, longitude: 77 } })).code, 400);
+  assert.equal((await call(ctl.setLocation, { params: { branchId: '999999' }, body: { latitude: 12.97, longitude: 77.59 } })).code, 404);
+  assert.equal((await call(ctl.setLocation, { params: { branchId: String(branch) }, body: { latitude: 12.9716, longitude: 77.5946 } })).code, 200);
+  const row = (await google.loadMembership(pool, 'm.membership_id = $1', [membershipId]))[0];
+  assert.deepEqual(google.passFor(row).loyaltyObject.locations, [{ latitude: 12.9716, longitude: 77.5946 }]);
+  assert.equal((await call(ctl.listLocations)).body.data[0].latitude, 12.9716);
+  await call(ctl.setLocation, { params: { branchId: String(branch) }, body: { latitude: null, longitude: null } });
+  assert.equal(google.passFor((await google.loadMembership(pool, 'm.membership_id = $1', [membershipId]))[0]).loyaltyObject.locations, undefined);
 });

@@ -37,7 +37,8 @@ export const previewText = (p: Preview | null): string => {
   return (p.count === 1 ? t('1 customer will get it{names}.', { names }) : t('{n} customers will get it{names}.', { n: p.count, names }));
 };
 export const canSend = (text: string, p: Preview | null, busy: boolean): boolean => !busy && text.trim().length >= MIN_OFFER && Boolean(p) && !p!.error && p!.count > 0;
-export const campaignBody = (segment: string, days: number, text: string): { segment: string; days: number; text: string } => ({ segment, days, text: text.trim() });
+export const campaignBody = (segment: string, days: number, text: string, programmeId?: number): { segment: string; days: number; text: string; programme_id?: number } =>
+  ({ segment, days, text: text.trim(), ...(segment.startsWith('CARD_') && programmeId ? { programme_id: programmeId } : {}) });
 export type Progress = { sent?: number; failed?: number; skipped?: number };
 export const progressText = (p: Progress): string => [t('Sent {n}', { n: p.sent || 0 }), p.failed ? t('failed {n}', { n: p.failed }) : '', p.skipped ? t('skipped {n}', { n: p.skipped }) : ''].filter(Boolean).join(' · ');
 
@@ -68,6 +69,7 @@ export const canSendBill = (customerPhone: string | null | undefined): boolean =
 
 /** Every fixed text on the Messaging screens, so the language tests can check each is translated. */
 export const MESSAGING_TEXTS: string[] = [
+  'Members of a loyalty card', 'Card members close to a reward', 'Card members with a reward ready to claim', 'Card members who have not been in for a while', 'Which loyalty card', 'Only members who agreed to receive offers are included.',
   'WhatsApp or SMS: bills, bookings, offers', 'Send the bill from FlowXP', 'Bill sent to the customer', 'Send a reminder from FlowXP', 'Remind on WhatsApp', 'Reminder sent to the customer', 'Reminder is on its way to the customer', 'Not sent: no messaging service is connected yet', 'Bill is on its way to the customer', 'Could not send: {error}', 'try again',
   'Messaging', 'Send bills, booking updates and offers to customers on WhatsApp or SMS.', 'Settings', 'Send an offer', 'Message log', 'Messaging is for owners and admins.', 'Could not load.', 'Could not save. Check the connection and try again.', 'Back', 'Saved',
   'Send messages by', 'Off: send nothing', 'WhatsApp', 'SMS', 'Connected: {name}', 'No messaging service is connected on the server yet, so messages are only recorded as skipped. Ask whoever runs the server to set it up.',
