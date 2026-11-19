@@ -289,15 +289,17 @@ Call or visit *_${p.business}_* to book it. Thank you.`,
     vars: ['name', 'package', 'amount', 'start', 'end'],
     body: (p) => `Hi ${p.name},
 
-Thank you for choosing FlowXP. Your document is attached to this message, and the details are below.
+Your invoice is attached to this message, and the details are below.
 
 *Package:* ${p.package}
 *Amount:* ${p.amount}
 *Start date:* ${p.start}
 *End date:* ${p.end}
 
-If you have any questions about it, just reply to this message and our team will be happy to help you.`,
-    text: (p) => `Hi ${p.name}, thank you for choosing FlowXP. Your document is attached. Package: ${p.package}. Amount: ${p.amount}. Start date: ${p.start}. End date: ${p.end}.`
+If you face any issue, contact us through the Support section in your FlowXP app.
+
+Thank you for your purchase, and thank you for trusting FlowXP.`,
+    text: (p) => `Hi ${p.name}, your invoice is attached. Package: ${p.package}. Amount: ${p.amount}. Start date: ${p.start}. End date: ${p.end}. If you face any issue, contact us through the Support section in your FlowXP app. Thank you for your purchase, and thank you for trusting FlowXP.`
   },
   GYM_INACTIVE: {
     name: 'flowxp_gym_inactive', promo: true,
