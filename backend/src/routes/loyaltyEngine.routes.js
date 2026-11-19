@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAuth, requireGroupUser, requirePermission, requirePlanFeature, withBusiness } from '../middleware/auth.js';
 import * as l from '../controllers/loyaltyEngine.controller.js';
+import '../modules/loyaltyExpiry.js';   // registers the points-expiry check with the background worker
 
 const router = Router();
 const feature = requirePlanFeature('loyalty_programmes');

@@ -279,6 +279,29 @@ export const ledgerFor = async (db, businessId, membershipId, limit = 50) =>
             (SELECT d.redemption_id FROM loyalty_redemptions d WHERE d.ledger_entry_id = points_ledger.entry_id AND d.status = 'REDEEMED') AS claim_id FROM points_ledger
      WHERE business_id = $1 AND membership_id = $2 ORDER BY entry_id DESC LIMIT $3`, [businessId, membershipId, Math.min(200, limit)])).rows;
 
+/* ── expiry ─────────────────────────────────────────────────────────────── */
+
+/**
+ * Expires what a member earned more than `expiry_days` ago and has not used. Oldest points are treated as used first (first in, first out), so a member who
+ * keeps redeeming never loses points they could have used: expiring = credits older than the cutoff, minus everything already taken off (redeemed, reversed, or
+ * expired before), never more than the balance. Written as one EXPIRE row (history is never edited). The key carries the cutoff day, so running it twice
+ * a day, or from two servers, writes it once. Returns { expired, balance } (expired 0 = nothing to do, no row written).
+ */
+export const expireMembership = async (db, { businessId, membershipId, on = new Date() }) => {
+  const m = await lock(db, businessId, membershipId);
+  const p = await getProgramme(db, businessId, m.programme_id);
+  if (!p?.expiry_days) return { expired: 0, balance: (await balanceOf(db, membershipId)).balance };
+  const cutoff = new Date(on.getTime() - p.expiry_days * 86400000);
+  const r = (await db.query(
+    `SELECT COALESCE(SUM(points) FILTER (WHERE points > 0 AND created_at < $2), 0)::int AS old_credit,
+            COALESCE(-SUM(points) FILTER (WHERE points < 0), 0)::int AS taken, COALESCE(SUM(points), 0)::int AS balance
+       FROM points_ledger WHERE membership_id = $1 AND voided_at IS NULL`, [membershipId, cutoff])).rows[0];
+  const expired = Math.min(r.balance, Math.max(0, r.old_credit - r.taken));
+  if (expired <= 0) return { expired: 0, balance: r.balance };
+  const { duplicate } = await post(db, { businessId, customerId: m.customer_id, kind: 'EXPIRE', points: -expired, amountPaise: 0, programmeId: p.programme_id, membershipId, key: `expire:${membershipId}:${cutoff.toISOString().slice(0, 10)}`, note: `Expired after ${p.expiry_days} days` });
+  return { expired: duplicate ? 0 : expired, balance: r.balance - (duplicate ? 0 : expired) };
+};
+
 /* ── rewards ────────────────────────────────────────────────────────────── */
 
 export const rewardFields = (b) => {

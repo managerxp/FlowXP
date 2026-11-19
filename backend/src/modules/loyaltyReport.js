@@ -16,7 +16,7 @@ export const report = async (db, businessId, { days: d, programmeId = null } = {
             (SELECT COUNT(*) FROM loyalty_memberships m WHERE m.programme_id = p.programme_id)::int AS members,
             (SELECT COUNT(*) FROM loyalty_memberships m WHERE m.programme_id = p.programme_id AND m.joined_at >= ${since})::int AS joined,
             (SELECT COUNT(*) FROM loyalty_memberships m WHERE m.programme_id = p.programme_id AND m.consent_marketing)::int AS consented,
-            COALESCE(l.earned, 0)::int AS earned, COALESCE(l.used, 0)::int AS used, COALESCE(l.undone, 0)::int AS undone, COALESCE(l.visits, 0)::int AS visits,
+            COALESCE(l.earned, 0)::int AS earned, COALESCE(l.used, 0)::int AS used, COALESCE(l.undone, 0)::int AS undone, COALESCE(l.expired, 0)::int AS expired, COALESCE(l.visits, 0)::int AS visits,
             COALESCE(l.spend, 0)::text AS spend_paise, COALESCE(l.active, 0)::int AS active, COALESCE(l.owed, 0)::int AS owed_points,
             COALESCE(rp.repeaters, 0)::int AS repeaters,
             COALESCE(rc.claims, 0)::int AS claims, COALESCE(rc.claim_paise, 0)::text AS claim_paise, COALESCE(rc.on_bill, 0)::int AS claims_on_bill
@@ -24,6 +24,7 @@ export const report = async (db, businessId, { days: d, programmeId = null } = {
        LEFT JOIN LATERAL (SELECT SUM(points) FILTER (WHERE kind = 'EARN' AND created_at >= ${since}) AS earned,
                                  -SUM(points) FILTER (WHERE kind = 'REDEEM' AND created_at >= ${since}) AS used,
                                  COUNT(*) FILTER (WHERE kind = 'REVERSAL' AND created_at >= ${since}) AS undone,
+                                 -SUM(points) FILTER (WHERE kind = 'EXPIRE' AND created_at >= ${since}) AS expired,
                                  COUNT(*) FILTER (WHERE kind = 'EARN' AND created_at >= ${since}) AS visits,
                                  SUM(amount_paise) FILTER (WHERE kind = 'EARN' AND created_at >= ${since}) AS spend,
                                  COUNT(DISTINCT membership_id) FILTER (WHERE kind IN ('EARN','REDEEM') AND created_at >= ${since}) AS active,

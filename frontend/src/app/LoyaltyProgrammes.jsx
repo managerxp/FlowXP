@@ -82,7 +82,7 @@ const Wizard = ({ programme, business, onClose, onSaved }) => {
     name: programme?.name || '', kind: programme?.kind || 'STAMPS',
     stamps: programme?.redeem_points || 5, minBill: rupees(programme?.min_txn_paise) || 0,
     earn: programme?.earn_points || 1, per: rupees(programme?.per_amount_paise) || 100, redeemPoints: programme?.redeem_points || 100, redeemValue: rupees(programme?.redeem_value_paise) || 50,
-    rewardName: '', rewardValue: '', autoEnrol: programme?.settings?.auto_enrol === true,
+    expiry: programme?.expiry_days || '', rewardName: '', rewardValue: '', autoEnrol: programme?.settings?.auto_enrol === true,
     card: { ...DEFAULT_CARD, ...(programme?.card || {}) }
   }));
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
@@ -90,7 +90,7 @@ const Wizard = ({ programme, business, onClose, onSaved }) => {
   const setCard = (k, v) => setF((x) => ({ ...x, card: { ...x.card, [k]: v } }));
   const perBill = f.kind !== 'POINTS';
   const body = () => ({
-    name: f.name, kind: f.kind, card: f.card, auto_enrol: f.autoEnrol, min_txn_paise: paise(f.minBill),
+    name: f.name, kind: f.kind, card: f.card, auto_enrol: f.autoEnrol, min_txn_paise: paise(f.minBill), expiry_days: Number(f.expiry) > 0 ? Number(f.expiry) : null,
     ...(perBill ? { earn_points: 1, redeem_points: Number(f.stamps), min_redeem_points: Number(f.stamps), redeem_value_paise: paise(f.rewardValue) }
       : { earn_points: Number(f.earn), per_amount_paise: paise(f.per), redeem_points: Number(f.redeemPoints), redeem_value_paise: paise(f.redeemValue), min_redeem_points: Number(f.redeemPoints) })
   });
@@ -105,6 +105,7 @@ const Wizard = ({ programme, business, onClose, onSaved }) => {
       onSaved();
     } catch (e) { setErr(e.message); setBusy(false); }
   };
+  const expiryField = <Field id="lp-exp" label="Points expire after (days)" hint="Leave empty to never expire. Points a customer earned and has not used for this long are taken off, oldest first."><Input id="lp-exp" type="number" min="1" max="3650" value={f.expiry} onChange={(e) => set('expiry', e.target.value)} /></Field>;
   const nextOk = step === 0 ? f.name.trim().length > 0 : step === 1 ? (perBill ? Number(f.stamps) >= 1 : Number(f.earn) >= 1 && Number(f.per) > 0 && Number(f.redeemPoints) >= 1) : true;
   return (
     <Modal title={editing ? `Edit ${programme.name}` : 'Make a card'} onClose={onClose} wide>
@@ -123,6 +124,7 @@ const Wizard = ({ programme, business, onClose, onSaved }) => {
           {step === 1 && (perBill ? (<>
             <Field id="lp-stamps" label={f.kind === 'VISITS' ? 'Visits for one reward' : 'Stamps for one reward'} hint="A customer collects this many, then claims the reward."><Input id="lp-stamps" type="number" min="1" max="12" value={f.stamps} onChange={(e) => set('stamps', e.target.value)} /></Field>
             <Field id="lp-min" label="Smallest bill that counts (₹)" hint="Leave 0 for every bill."><Input id="lp-min" type="number" min="0" value={f.minBill} onChange={(e) => set('minBill', e.target.value)} /></Field>
+            {expiryField}
             {!editing && <>
               <Field id="lp-rw" label="What is the reward?" hint="For example, a free coffee. You can add more later."><Input id="lp-rw" value={f.rewardName} onChange={(e) => set('rewardName', e.target.value)} placeholder="Free coffee" /></Field>
               <Field id="lp-rv" label="Worth (₹)"><Input id="lp-rv" type="number" min="0" value={f.rewardValue} onChange={(e) => set('rewardValue', e.target.value)} /></Field></>}
@@ -134,6 +136,7 @@ const Wizard = ({ programme, business, onClose, onSaved }) => {
               <Field id="lp-rvv" label="Worth (₹)"><Input id="lp-rvv" type="number" min="0" value={f.redeemValue} onChange={(e) => set('redeemValue', e.target.value)} /></Field>
             </div>
             <Field id="lp-min2" label="Smallest bill that counts (₹)"><Input id="lp-min2" type="number" min="0" value={f.minBill} onChange={(e) => set('minBill', e.target.value)} /></Field>
+            {expiryField}
           </>))}
           {step === 2 && (<>
             <div><p className="mb-1.5 text-sm font-medium text-ink-700">Colours</p>
