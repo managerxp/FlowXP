@@ -52,6 +52,17 @@ test('a payment link settled in cash is marked paid: the plan switches on and ev
   assert.equal((await pool.query(`SELECT subscription_status, billing_cycle FROM businesses WHERE business_id = $1`, [biz])).rows[0].subscription_status, 'ACTIVE');
   assert.equal((await call(payments.markPaid, { params: { id: biz, kind: 'plan', orderId: link }, body: { method: 'CASH' }, user: ownerRow })).status, 409, 'not twice');
 
+  // the receipt goes on WhatsApp from FlowXP's number, to the owner's phone, as the approved template
+  const { setProvider } = await import('../src/modules/messaging/provider.js');
+  const sent = []; setProvider(async (m) => { sent.push(m); return { status: 'SENT', providerId: 'w1' }; });
+  try {
+    assert.equal((await call(payments.sendReceipt, { params: { id: biz, kind: 'plan', orderId: link }, body: { channel: 'whatsapp' }, user: ownerRow })).status, 409, 'no phone yet');
+    await pool.query(`UPDATE users SET phone = '9876543210' WHERE user_id = $1`, [tenant]);
+    const wa = await call(payments.sendReceipt, { params: { id: biz, kind: 'plan', orderId: link }, body: { channel: 'whatsapp' }, user: ownerRow });
+    assert.equal(wa.data.sent_to, '9876543210');
+    assert.equal(sent[0].template.name, 'flowxp_receipt'); assert.match(sent[0].text, /Rs 1500\.00.*Cash/);
+  } finally { setProvider(null); }
+
   const after = await call(admin.getStats, { user: ownerRow });
   assert.equal(after.data.revenue_collected, 700 + 1500);
   assert.equal(after.data.revenue_periods.this_month, 2200);

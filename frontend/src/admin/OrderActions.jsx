@@ -10,10 +10,10 @@ import { Alert, Button, Field, Input, Modal, Select, useToast } from '../compone
 const HOW = [['CASH', 'Cash'], ['UPI', 'UPI'], ['BANK_TRANSFER', 'Bank transfer'], ['CHEQUE', 'Cheque'], ['CARD', 'Card'], ['OTHER', 'Other']];
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
-const OrderActions = ({ businessId, kind, order, ownerEmail, onDone }) => {
+const OrderActions = ({ businessId, kind, order, ownerEmail, ownerPhone, onDone }) => {
   const toast = useToast();
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ method: 'CASH', paid_on: todayIso(), note: '', send_receipt: Boolean(ownerEmail) });
+  const [f, setF] = useState({ method: 'CASH', paid_on: todayIso(), note: '', send_receipt: Boolean(ownerEmail), send_whatsapp: Boolean(ownerPhone) });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const base = `/businesses/${businessId}/orders/${kind}/${order.order_id}`;
@@ -23,15 +23,16 @@ const OrderActions = ({ businessId, kind, order, ownerEmail, onDone }) => {
     setBusy(true); setError('');
     try {
       const out = await adminApi(`${base}/mark-paid`, { method: 'POST', body: { ...f, note: f.note || undefined } });
-      toast.success(out.receipt_sent_to ? `Marked paid. Receipt sent to ${out.receipt_sent_to}` : 'Marked paid');
+      const to = [out.receipt_sent_to, out.whatsapp_sent_to && `WhatsApp ${out.whatsapp_sent_to}`].filter(Boolean).join(' and ');
+      toast.success(to ? `Marked paid. Receipt sent to ${to}` : 'Marked paid');
       if (out.receipt_error) toast.error(`Receipt not sent: ${out.receipt_error}`);
       setOpen(false);
       await onDone();
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   };
 
-  const receipt = async () => {
-    try { const out = await adminApi(`${base}/receipt`, { method: 'POST' }); toast.success(`Receipt sent to ${out.sent_to}`); await onDone(); }
+  const receipt = async (channel) => {
+    try { const out = await adminApi(`${base}/receipt`, { method: 'POST', body: { channel } }); toast.success(`Receipt sent to ${out.sent_to}`); await onDone(); }
     catch (e) { toast.error(e.message); }
   };
 
@@ -40,7 +41,8 @@ const OrderActions = ({ businessId, kind, order, ownerEmail, onDone }) => {
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="text-caption text-ink-500">{how}{order.paid_at ? `, ${new Date(order.paid_at).toLocaleDateString()}` : ''}</span>
-        <button type="button" className="text-small text-brand-600 hover:underline" onClick={receipt}>{order.receipt_sent_at ? 'Send receipt again' : 'Send receipt'}</button>
+        <button type="button" className="text-small text-brand-600 hover:underline" onClick={() => receipt('email')}>{order.receipt_sent_at ? 'Email receipt again' : 'Email receipt'}</button>
+        <button type="button" className="text-small text-brand-600 hover:underline" onClick={() => receipt('whatsapp')}>Send on WhatsApp</button>
       </div>
     );
   }
@@ -70,6 +72,10 @@ const OrderActions = ({ businessId, kind, order, ownerEmail, onDone }) => {
           <label className="mt-3 flex items-center gap-2 text-small text-ink-900">
             <input type="checkbox" checked={f.send_receipt} disabled={!ownerEmail} onChange={(e) => setF({ ...f, send_receipt: e.target.checked })} />
             {ownerEmail ? `Email a receipt to ${ownerEmail}` : 'No owner email to send a receipt to'}
+          </label>
+          <label className="mt-2 flex items-center gap-2 text-small text-ink-900">
+            <input type="checkbox" checked={f.send_whatsapp} disabled={!ownerPhone} onChange={(e) => setF({ ...f, send_whatsapp: e.target.checked })} />
+            {ownerPhone ? `Send the receipt on WhatsApp to ${ownerPhone}` : 'No owner phone number to send on WhatsApp'}
           </label>
           <p className="mt-3 text-caption text-ink-500">The payment link still works. Do not send it again.</p>
         </Modal>

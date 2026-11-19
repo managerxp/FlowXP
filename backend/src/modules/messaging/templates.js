@@ -299,6 +299,22 @@ ${p.next}
 Thank you.`,
     text: (p) => `Hi ${p.name}, your ${p.what} ${p.number} from ${p.seller} is ready. Amount: ${p.total}. ${p.next} Thank you.`
   },
+  /* FlowXP's own payment receipt to a client, sent from the Super Admin once a plan or add-on payment is received. */
+  ADMIN_RECEIPT: {
+    name: 'flowxp_receipt', promo: false,
+    vars: ['name', 'seller', 'number', 'what', 'total', 'how'],
+    body: (p) => `Hi ${p.name},
+
+We have received your payment. Thank you.
+
+*Receipt:* ${p.number}
+*For:* ${p.what}
+*Amount:* ${p.total}
+*Paid by:* ${p.how}
+
+*_${p.seller}_*`,
+    text: (p) => `Hi ${p.name}, we have received your payment of ${p.total} for ${p.what} (receipt ${p.number}, paid by ${p.how}). Thank you. ${p.seller}`
+  },
   GYM_INACTIVE: {
     name: 'flowxp_gym_inactive', promo: true,
     vars: ['name', 'business', 'days'],
@@ -310,7 +326,7 @@ export const KINDS = Object.keys(TEMPLATES);
 
 /** Which kind of business a template belongs to: 'common' (every business), 'food', 'salon', 'gym', 'parts', 'wholesale', or 'platform' (FlowXP's own, never shown to a business). */
 export const kindIndustry = (kind) => {
-  if (kind === 'ADMIN_DOCUMENT') return 'platform';
+  if (kind === 'ADMIN_DOCUMENT' || kind === 'ADMIN_RECEIPT') return 'platform';
   if (kind.startsWith('RESERVATION') || kind.startsWith('WAITLIST')) return 'food';
   if (kind.startsWith('SALON_')) return 'salon';
   if (kind.startsWith('GYM_')) return 'gym';

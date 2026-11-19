@@ -241,7 +241,7 @@ const PlanAndType = ({ business, businessId, onSaved }) => {
  * does this look like on their subscription page"), not an enforced feature
  * gate; see modules/subscription.js.
  */
-const PaymentLinks = ({ businessId, ownerEmail }) => {
+const PaymentLinks = ({ businessId, ownerEmail, ownerPhone }) => {
   const toast = useToast();
   const [links, setLinks] = useState(null);
   const [amount, setAmount] = useState('');
@@ -331,7 +331,7 @@ OK sends the email. Cancel creates the link without emailing it.`);
                       </button>
                     ) : '—'}
                   </Td>
-                  <Td><OrderActions businessId={businessId} kind="plan" order={l} ownerEmail={ownerEmail} onDone={load} /></Td>
+                  <Td><OrderActions businessId={businessId} kind="plan" order={l} ownerEmail={ownerEmail} ownerPhone={ownerPhone} onDone={load} /></Td>
                 </Tr>
               ))}
             </tbody>
@@ -349,7 +349,7 @@ OK sends the email. Cancel creates the link without emailing it.`);
  * Feature overrides panel below can set by hand; this is that override with
  * a receipt behind it. Catalog prices are set on the Add-ons page.
  */
-const BusinessAddons = ({ businessId, businessType, ownerEmail }) => {
+const BusinessAddons = ({ businessId, businessType, ownerEmail, ownerPhone }) => {
   const toast = useToast();
   const [catalog, setCatalog] = useState(null);
   const [links, setLinks] = useState(null);
@@ -461,7 +461,7 @@ OK sends the email. Cancel creates the link without emailing it.`);
                       </button>
                     ) : '—'}
                   </Td>
-                  <Td><OrderActions businessId={businessId} kind="addon" order={l} ownerEmail={ownerEmail} onDone={load} /></Td>
+                  <Td><OrderActions businessId={businessId} kind="addon" order={l} ownerEmail={ownerEmail} ownerPhone={ownerPhone} onDone={load} /></Td>
                 </Tr>
               ))}
             </tbody>
@@ -958,8 +958,8 @@ const AdminBusinessDetail = () => {
         {can("billing") && <ClientDocuments businessId={id} />}
         <FeatureList businessId={id} />
         {can("manage") && <FeatureOverrides businessId={id} />}
-        {can("payments") && <PaymentLinks businessId={id} ownerEmail={business.owner.email} />}
-        {can("payments") && <BusinessAddons businessId={id} businessType={business.business_type} ownerEmail={business.owner.email} />}
+        {can("payments") && <PaymentLinks businessId={id} ownerEmail={business.owner.email} ownerPhone={business.phone || business.owner.phone} />}
+        {can("payments") && <BusinessAddons businessId={id} businessType={business.business_type} ownerEmail={business.owner.email} ownerPhone={business.phone || business.owner.phone} />}
         <TrialAndNotes businessId={id} onChanged={load} />
         <History businessId={id} />
         {can("owner") && <DeleteForever business={business} businessId={id} />}

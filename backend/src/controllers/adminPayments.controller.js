@@ -9,6 +9,8 @@ import { PAY_METHODS } from './adminDocuments.controller.js';
 import { deliverMail, mailConfigured } from '../modules/mailer.js';
 import { getPlatformSetting } from '../modules/platformSettings.js';
 import { toRupees } from '../utils/money.js';
+import { render } from '../modules/messaging/templates.js';
+import { deliver, channelsAvailable } from '../modules/messaging/provider.js';
 
 const bad = (res, message, code = 400) => res.status(code).json({ success: false, message });
 const KINDS = {
@@ -24,7 +26,7 @@ const load = async (kind, businessId, orderId) => {
   const join = kind === 'addon' ? 'LEFT JOIN addons a ON a.addon_key = o.addon_key' : '';
   const extra = kind === 'addon' ? ', a.name AS addon_name' : '';
   return (await pool.query(
-    `SELECT o.*${extra}, b.name AS business_name, u.name AS owner_name, u.email AS owner_email
+    `SELECT o.*${extra}, b.name AS business_name, u.name AS owner_name, u.email AS owner_email, COALESCE(b.phone, u.phone) AS owner_phone
        FROM ${k.table} o ${join} JOIN businesses b ON b.business_id = o.business_id JOIN users u ON u.user_id = b.owner_user_id
       WHERE o.order_id = $1 AND o.business_id = $2`, [orderId, businessId])).rows[0] || null;
 };
@@ -55,7 +57,21 @@ const sendReceiptFor = async (o, kind) => {
   return o.owner_email;
 };
 
-/* POST /api/admin/businesses/:id/orders/:kind/:orderId/mark-paid { method, paid_on?, note?, send_receipt? } */
+/* The receipt as a WhatsApp message from FlowXP's own number (an approved template). Returns the number it went to. */
+const whatsappReceiptFor = async (o, kind) => {
+  const to = String(o.owner_phone || '').replace(/\D/g, '');
+  if (to.length < 10) throw new Error('This business has no WhatsApp number.');
+  if (!(await channelsAvailable()).includes('WHATSAPP')) throw new Error('WhatsApp is not connected yet. Add it in Settings > Messaging.');
+  const seller = (await getPlatformSetting('company'))?.value || {};
+  const { number } = receiptEmail(o, kind, seller);
+  const message = render('ADMIN_RECEIPT', { name: o.owner_name || 'there', seller: seller.name || 'FlowXP', number, what: KINDS[kind].what(o), total: `Rs ${toRupees(o.amount_paise).toFixed(2)}`, how: METHOD_LABEL[o.paid_method || 'ONLINE'] || o.paid_method });
+  const r = await deliver({ channel: 'WHATSAPP', to, kind: 'ADMIN_RECEIPT', text: message.text, template: message.template });
+  if (r.status !== 'SENT') throw new Error(r.note || 'WhatsApp did not send it.');
+  await pool.query(`UPDATE ${KINDS[kind].table} SET receipt_sent_at = CURRENT_TIMESTAMP WHERE order_id = $1`, [o.order_id]);
+  return to;
+};
+
+/* POST /api/admin/businesses/:id/orders/:kind/:orderId/mark-paid { method, paid_on?, note?, send_receipt?, send_whatsapp? } */
 export const markPaid = async (req, res) => {
   const businessId = Number(req.params.id);
   const orderId = Number(req.params.orderId);
@@ -78,7 +94,11 @@ export const markPaid = async (req, res) => {
   if (req.body?.send_receipt === true) {
     try { receiptTo = await sendReceiptFor({ ...o, ...done }, kind); } catch (e) { receiptError = e.message; }
   }
-  res.json({ success: true, data: { status: 'PAID', receipt_sent_to: receiptTo, receipt_error: receiptError } });
+  let whatsappTo = null;
+  if (req.body?.send_whatsapp === true) {
+    try { whatsappTo = await whatsappReceiptFor({ ...o, ...done }, kind); } catch (e) { receiptError = [receiptError, e.message].filter(Boolean).join(' '); }
+  }
+  res.json({ success: true, data: { status: 'PAID', receipt_sent_to: receiptTo, whatsapp_sent_to: whatsappTo, receipt_error: receiptError } });
 };
 
 /* POST /api/admin/businesses/:id/orders/:kind/:orderId/receipt: email the owner a receipt for a paid order */
@@ -86,9 +106,10 @@ export const sendReceipt = async (req, res) => {
   const o = await load(req.params.kind, Number(req.params.id), Number(req.params.orderId));
   if (!o) return bad(res, 'Payment not found', 404);
   if (o.status !== 'PAID') return bad(res, 'A receipt is only for a payment that was received.', 409);
+  const wa = req.body?.channel === 'whatsapp';
   try {
-    const to = await sendReceiptFor(o, req.params.kind);
-    recordAudit(req, { business_id: o.business_id, action: 'admin.receipt_sent', resource_type: KINDS[req.params.kind].resource, resource_id: o.order_id, metadata: { to } });
+    const to = await (wa ? whatsappReceiptFor : sendReceiptFor)(o, req.params.kind);
+    recordAudit(req, { business_id: o.business_id, action: wa ? 'admin.receipt_whatsapped' : 'admin.receipt_sent', resource_type: KINDS[req.params.kind].resource, resource_id: o.order_id, metadata: { to } });
     res.json({ success: true, data: { sent_to: to } });
   } catch (e) { bad(res, e.message, 409); }
 };

@@ -316,5 +316,5 @@ test('each business type is shown the templates for its own industry only', asyn
   assert.ok(has('SALON', 'SALON_APPT_BOOKED') && !has('SALON', 'RESERVATION'));
   assert.ok(has('GYM', 'GYM_EXPIRY') && has('MECHANIC', 'JOB_READY') && has('DISTRIBUTOR', 'WS_INVOICE'));
   assert.ok(has('PHARMACY', 'BILL') && !has('PHARMACY', 'RESERVATION'));   // a type with no industry set gets the common ones
-  assert.ok(KINDS.every((k) => kindIndustry(k)) && !kindsForType('RESTAURANT').includes('ADMIN_DOCUMENT'));   // FlowXP's own document template is never listed to a business
+  assert.ok(KINDS.every((k) => kindIndustry(k)) && !kindsForType('RESTAURANT').includes('ADMIN_DOCUMENT') && !kindsForType('RESTAURANT').includes('ADMIN_RECEIPT'));   // FlowXP's own document template is never listed to a business
 });
