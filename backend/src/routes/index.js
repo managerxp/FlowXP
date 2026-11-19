@@ -54,6 +54,7 @@ import flowbookRoutes from './flowbook.routes.js';
 import adminRoutes from './admin.routes.js';
 import outletsRoutes from './outlets.routes.js';
 import loyaltyRoutes from './loyalty.routes.js';
+import loyaltyEngineRoutes from './loyaltyEngine.routes.js';
 import aiRoutes from './ai.routes.js';
 import auditRoutes from './audit.routes.js';
 import menuImportRoutes from './menuImport.routes.js';
@@ -254,6 +255,7 @@ router.use('/', printRoutes);              // /invoices/:id/escpos, /kitchen/kot
 router.use('/', messagingRoutes);          // /messaging, /customers/:id/marketing
 router.use('/', reviewsRoutes);            // /reviews (post-bill feedback, AI reply drafts)
 router.use('/', reservationRoutes);        // /reservations, /waitlist
+router.use('/', loyaltyEngineRoutes);   // /loyalty/programmes, /loyalty/members
 router.use('/', loyaltyRoutes);            // /loyalty, /coupons
 router.use('/', outletsRoutes);            // /outlets, /staff
 router.use('/', menuRoutes);               // /modifier-groups, /products/:id/recipe

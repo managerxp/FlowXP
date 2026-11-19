@@ -33,6 +33,7 @@ import { consumptionPerUnit, loadRecipes } from './recipes.js';
 import { comboBlocker, comboConsumption, loadCombos } from './combos.js';
 import { afterBill } from './messaging/index.js';
 import { hasPlanFeature } from './planFeatures.js';
+import { creditBill } from './loyaltyEngine.js';
 import { PointsError, addEntry, earnFor, getPoints, redemption, standing, tierFor } from './points.js';
 import { spend as spendWallet } from './gaming/wallet.js';
 import { checkCredit as partsCredit, fulfilForSale, reservedMap, tradePrices } from './autoparts/sales.js';
@@ -564,6 +565,9 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       [invoice.invoice_id, pointsDiscountPaise, pointsEarned, pointsRedeemed]);
     invoice.points_discount_paise = pointsDiscountPaise; invoice.points_earned = pointsEarned; invoice.points_redeemed = pointsRedeemed;
   }
+
+  // programme memberships (several programmes per business): credit them for this bill. A problem here is skipped, never a failed sale.
+  if (customer) await creditBill(client, { businessId: tenant.businessId, customerId: customer.customer_id, invoiceId: invoice.invoice_id, amountPaise: finalTotalPaise, branchId: tenant.branchId, createdBy: userId });
 
   if (coupon) {
     await client.query(
