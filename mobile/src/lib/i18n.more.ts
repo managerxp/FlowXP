@@ -3555,6 +3555,8 @@ export const ML: Record<string, string> = {
   'Pizza': 'പിസ്സ',
   'Spanner': 'സ്പാനർ',
   'Customer: scan for your loyalty stamp': 'ഉപഭോക്താവ്: ലോയൽറ്റി സ്റ്റാമ്പിനായി സ്കാൻ ചെയ്യുക',
+  'Scanned the bill QR': 'ബിൽ QR സ്കാൻ ചെയ്തു',
+  'stamped or earned by scanning the bill': 'ബിൽ സ്കാൻ ചെയ്ത് സ്റ്റാമ്പ് അല്ലെങ്കിൽ പോയിന്റ് നേടി',
 };
 
 /** Tamil: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -7112,6 +7114,8 @@ export const TA: Record<string, string> = {
   'Pizza': 'பீட்சா',
   'Spanner': 'ஸ்பேனர்',
   'Customer: scan for your loyalty stamp': 'வாடிக்கையாளர்: லாயல்டி முத்திரைக்கு ஸ்கேன் செய்யுங்கள்',
+  'Scanned the bill QR': 'பில் QR ஸ்கேன் செய்தனர்',
+  'stamped or earned by scanning the bill': 'பில்லை ஸ்கேன் செய்து முத்திரை அல்லது புள்ளிகள் பெற்றனர்',
 };
 
 /** Bengali: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -10669,6 +10673,8 @@ export const BN: Record<string, string> = {
   'Pizza': 'পিৎজা',
   'Spanner': 'স্প্যানার',
   'Customer: scan for your loyalty stamp': 'গ্রাহক: লয়্যালটি স্ট্যাম্পের জন্য স্ক্যান করুন',
+  'Scanned the bill QR': 'বিলের QR স্ক্যান করেছেন',
+  'stamped or earned by scanning the bill': 'বিল স্ক্যান করে স্ট্যাম্প বা পয়েন্ট পেয়েছেন',
 };
 
 /** Telugu: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -14226,6 +14232,8 @@ export const TE: Record<string, string> = {
   'Pizza': 'పిజ్జా',
   'Spanner': 'స్పానర్',
   'Customer: scan for your loyalty stamp': 'కస్టమర్: లాయల్టీ స్టాంప్ కోసం స్కాన్ చేయండి',
+  'Scanned the bill QR': 'బిల్లు QR స్కాన్ చేశారు',
+  'stamped or earned by scanning the bill': 'బిల్లు స్కాన్ చేసి స్టాంప్ లేదా పాయింట్లు పొందారు',
 };
 
 /** Kannada: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -17783,4 +17791,6 @@ export const KN: Record<string, string> = {
   'Pizza': 'ಪಿಜ್ಜಾ',
   'Spanner': 'ಸ್ಪ್ಯಾನರ್',
   'Customer: scan for your loyalty stamp': 'ಗ್ರಾಹಕ: ಲಾಯಲ್ಟಿ ಸ್ಟ್ಯಾಂಪ್‌ಗಾಗಿ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ',
+  'Scanned the bill QR': 'ಬಿಲ್ QR ಸ್ಕ್ಯಾನ್ ಮಾಡಿದರು',
+  'stamped or earned by scanning the bill': 'ಬಿಲ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಸ್ಟ್ಯಾಂಪ್ ಅಥವಾ ಪಾಯಿಂಟ್ ಪಡೆದರು',
 };

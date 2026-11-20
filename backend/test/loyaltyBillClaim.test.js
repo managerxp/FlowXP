@@ -84,3 +84,10 @@ test('bad numbers and strangers: the page route checks the plan, the number, and
   assert.equal((await call(pub.billInfo)).code, 404);                              // the plan can switch it off
   assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM customers WHERE business_id = $1`, [other])).rows[0].n, 0);   // nothing leaked to the other business
 });
+
+test('Card results count the stamps given by scanning the bill', { skip }, async () => {
+  const { report } = await import('../src/modules/loyaltyReport.js');
+  const r = await report(pool, biz, { days: 30 });
+  const card = r.cards.find((c) => c.programme_id === prog);
+  assert.ok(card.bill_scans >= 3); assert.equal(r.totals.bill_scans >= card.bill_scans, true);
+});

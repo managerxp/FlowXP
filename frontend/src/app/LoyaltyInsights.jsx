@@ -40,6 +40,7 @@ const LoyaltyInsights = () => {
             <Tile label={tr('Spend on cards')} value={rupees(t.spend_paise)} hint={tr('{{visits}} visits', { visits: t.visits })} />
             <Tile label={tr('Rewards claimed')} value={t.claims} hint={tr('worth {{rupees}}', { rupees: rupees(t.claim_paise) })} />
             <Tile label={tr('Members are owed')} value={rupees(t.owed_paise)} hint={tr('value of balances not yet used')} />
+            <Tile label={tr('Scanned the bill QR')} value={t.bill_scans ?? 0} hint={tr('stamped or earned by scanning the bill')} />
             <Tile label={tr('Agreed to offers')} value={t.consented} hint={tr('can be sent offers')} />
           </div>
           {d.series.length > 0 && (

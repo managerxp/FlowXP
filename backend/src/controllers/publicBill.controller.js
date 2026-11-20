@@ -11,6 +11,7 @@
 import pool from '../config/database.js';
 import { toRupees } from '../utils/money.js';
 import { effectiveFeatureFlags } from '../modules/planFeatures.js';
+import * as billClaim from '../modules/loyaltyBillClaim.js';
 
 const findByToken = (token) => pool.query(
   `SELECT i.invoice_id, i.invoice_number, i.invoice_date, i.subtotal_paise, i.discount_paise, i.cgst_paise, i.sgst_paise, i.igst_paise,
@@ -35,6 +36,12 @@ const findByToken = (token) => pool.query(
    WHERE i.share_token = $1`, [String(token || '').slice(0, 40)]
 );
 
+/* the bill can also carry "collect your loyalty stamp" (see modules/loyaltyBillClaim.js): only when the plan has it and the bill can still be claimed */
+const stampOpen = async (inv, token) => {
+  const f = effectiveFeatureFlags([inv.plan_feature_flags, inv.type_feature_flags], inv.feature_overrides, inv.business_type);
+  if (f.loyalty_programmes === false || f.loyalty_bill_qr === false) return false;
+  return (await billClaim.info(pool, token).catch(() => null))?.state === 'OPEN';
+};
 const reviewsOn = (inv) => effectiveFeatureFlags([inv.plan_feature_flags, inv.type_feature_flags], inv.feature_overrides, inv.business_type).reviews !== false;
 
 /* GET /r/:token (nginx hands it to /api/public/review/:token): the "Rate Us" button of the WhatsApp bill. The shop's Google review page when it has saved
@@ -68,6 +75,7 @@ export const bill = async (req, res) => {
       // a pay-now link only while something is still owed
       upi_link: inv.upi_vpa && due > 0 && inv.status === 'ISSUED'
         ? `upi://pay?pa=${encodeURIComponent(inv.upi_vpa)}&pn=${encodeURIComponent(inv.business_name)}&am=${toRupees(due).toFixed(2)}&cu=INR&tn=${encodeURIComponent(inv.invoice_number)}` : null,
+      stamp_link: (await stampOpen(inv, req.params.token)) ? `/card/bill/${req.params.token}` : null,
       feedback_enabled: inv.status !== 'CANCELLED' && reviewsOn(inv),
       feedback: inv.feedback_rating != null ? { rating: inv.feedback_rating, comment: inv.feedback_comment } : null
     }

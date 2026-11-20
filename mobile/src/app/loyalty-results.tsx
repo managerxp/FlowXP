@@ -34,6 +34,7 @@ export default function LoyaltyResults() {
             <Tile label="Spend on cards" value={money(tt.spend_paise)} hint={fill(t('{n} visits'), { n: String(tt.visits) })} />
             <Tile label="Rewards claimed" value={String(tt.claims)} hint={fill(t('Worth {value}'), { value: money(tt.claim_paise) })} />
             <Tile label="Members are owed" value={money(tt.owed_paise)} hint={t('Value of balances not yet used')} />
+            <Tile label="Scanned the bill QR" value={String(tt.bill_scans ?? 0)} hint={t('stamped or earned by scanning the bill')} />
             <Tile label="Agreed to offers" value={String(tt.consented)} />
           </View>
           <Card>

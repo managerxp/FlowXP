@@ -122,6 +122,7 @@ const BillPage = () => {
 
         {bill.upi_link && <a href={bill.upi_link} className="mt-4 block rounded-full bg-brand-500 py-2.5 text-center text-sm font-semibold text-white">Pay {formatCurrency(bill.balance)} with UPI</a>}
       </div>
+      {bill.stamp_link && <a href={bill.stamp_link} className="mt-4 block rounded-full bg-brand-500 py-3 text-center text-sm font-semibold text-white">Collect your loyalty stamp</a>}
       {bill.feedback_enabled && <FeedbackBox token={token} initial={bill.feedback} />}
       <p className="mt-4 text-center text-xs text-ink-400">Thank you for visiting {bill.business}.</p>
     </main>

@@ -4,6 +4,7 @@
  * report():  per card, over the last N days: members, joined, active, points/stamps given and used, spend behind them, repeat members, rewards claimed and what they cost,
  *            plus what is still owed to members (the liability) and a day-by-day series. Money is raw paise (strings), like the rest of the loyalty endpoints.
  *            Figures are read straight from the ledger, never stored, so they cannot drift from it. A reversal is counted on its own line, not netted off earned/used.
+ *            A bill with no customer was credited by scanning its QR, which is what bill_scans counts.
  * problems(): things that should never be true if the engine did its job. Empty means healthy. Read-only: it reports, it never repairs.
  */
 const days = (v) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.min(365, Math.max(1, n)) : 30; };
@@ -16,7 +17,7 @@ export const report = async (db, businessId, { days: d, programmeId = null } = {
             (SELECT COUNT(*) FROM loyalty_memberships m WHERE m.programme_id = p.programme_id)::int AS members,
             (SELECT COUNT(*) FROM loyalty_memberships m WHERE m.programme_id = p.programme_id AND m.joined_at >= ${since})::int AS joined,
             (SELECT COUNT(*) FROM loyalty_memberships m WHERE m.programme_id = p.programme_id AND m.consent_marketing)::int AS consented,
-            COALESCE(l.earned, 0)::int AS earned, COALESCE(l.used, 0)::int AS used, COALESCE(l.undone, 0)::int AS undone, COALESCE(l.expired, 0)::int AS expired, COALESCE(l.visits, 0)::int AS visits,
+            COALESCE(l.earned, 0)::int AS earned, COALESCE(l.used, 0)::int AS used, COALESCE(l.undone, 0)::int AS undone, COALESCE(l.expired, 0)::int AS expired, COALESCE(l.visits, 0)::int AS visits, COALESCE(l.scanned, 0)::int AS bill_scans,
             COALESCE(l.spend, 0)::text AS spend_paise, COALESCE(l.active, 0)::int AS active, COALESCE(l.owed, 0)::int AS owed_points,
             COALESCE(rp.repeaters, 0)::int AS repeaters,
             COALESCE(rc.claims, 0)::int AS claims, COALESCE(rc.claim_paise, 0)::text AS claim_paise, COALESCE(rc.on_bill, 0)::int AS claims_on_bill
@@ -26,6 +27,7 @@ export const report = async (db, businessId, { days: d, programmeId = null } = {
                                  COUNT(*) FILTER (WHERE kind = 'REVERSAL' AND created_at >= ${since}) AS undone,
                                  -SUM(points) FILTER (WHERE kind = 'EXPIRE' AND created_at >= ${since}) AS expired,
                                  COUNT(*) FILTER (WHERE kind = 'EARN' AND created_at >= ${since}) AS visits,
+                                 COUNT(*) FILTER (WHERE kind = 'EARN' AND created_at >= ${since} AND invoice_id IN (SELECT invoice_id FROM invoices WHERE business_id = p.business_id AND customer_id IS NULL)) AS scanned,
                                  SUM(amount_paise) FILTER (WHERE kind = 'EARN' AND created_at >= ${since}) AS spend,
                                  COUNT(DISTINCT membership_id) FILTER (WHERE kind IN ('EARN','REDEEM') AND created_at >= ${since}) AS active,
                                  SUM(points) FILTER (WHERE voided_at IS NULL) AS owed
@@ -53,7 +55,7 @@ export const report = async (db, businessId, { days: d, programmeId = null } = {
   const members = sum('members'); const active = sum('active');
   return {
     days: n, cards, top_rewards: topRewards, series,
-    totals: { members, joined: sum('joined'), consented: sum('consented'), active, visits: sum('visits'), spend_paise: String(sum('spend_paise')), claims: sum('claims'), claim_paise: String(sum('claim_paise')), owed_paise: String(sum('owed_paise')), repeaters: sum('repeaters') },
+    totals: { members, joined: sum('joined'), consented: sum('consented'), active, visits: sum('visits'), bill_scans: sum('bill_scans'), spend_paise: String(sum('spend_paise')), claims: sum('claims'), claim_paise: String(sum('claim_paise')), owed_paise: String(sum('owed_paise')), repeaters: sum('repeaters') },
     // a plain share, or null when there is nothing to divide by (never a fake 0%)
     active_share: members ? Math.round((active / members) * 100) : null
   };
