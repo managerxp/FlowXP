@@ -3,7 +3,7 @@ import { ago } from './ranges.ts';
 import { isOfflineMessage } from './net.ts';
 import { t, tx } from './i18n.ts';
 import type { ReactNode } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from './icons.tsx';
 import { SkeletonRows } from './motion.tsx';
 
 import { color, display, radius, shadow } from './theme.ts';

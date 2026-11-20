@@ -1,7 +1,7 @@
 /* The glue between the learning logic (onboarding.ts) and the screens: one shared state, loaded from the phone, and the small components. */
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from './icons.tsx';
 import { router } from 'expo-router';
 import { createStore, useStore } from './store.ts';
 import { kvGet, kvSet } from './local.ts';

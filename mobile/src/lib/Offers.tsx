@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from './icons.tsx';
 import { api, useSession } from './session.ts';
 import { kvGet, kvSet } from './local.ts';
 import { dayOf } from './till.ts';

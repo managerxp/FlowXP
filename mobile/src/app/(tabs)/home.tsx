@@ -1,5 +1,5 @@
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../lib/icons.tsx';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from '../../lib/session.ts';

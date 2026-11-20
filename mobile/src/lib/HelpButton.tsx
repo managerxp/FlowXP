@@ -2,7 +2,7 @@
    where a person is busy or where it would get in the way (sign in, the till, paying, the receipt, scanning, and the help screen itself). */
 import { Pressable, Text } from 'react-native';
 import { router, usePathname } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from './icons.tsx';
 import { useSession } from './session.ts';
 import { t } from './i18n.ts';
 import { color } from './ui.tsx';

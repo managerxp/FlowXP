@@ -3,7 +3,7 @@ import { display } from '../lib/theme.ts';
 import { qrSvg } from '../lib/qr.ts';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, Share, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../lib/icons.tsx';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from '../lib/session.ts';

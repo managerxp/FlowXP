@@ -2,7 +2,7 @@ import { canManageTeam } from '../../lib/team.ts';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../lib/icons.tsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { currentBusiness, signOut, useSession } from '../../lib/session.ts';
 import { KITCHEN_TYPES } from '../../lib/cart.ts';

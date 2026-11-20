@@ -1,7 +1,7 @@
 import { formatDate } from '../lib/display.ts';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../lib/icons.tsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, useSession } from '../lib/session.ts';
 import { goBack } from '../lib/nav.ts';

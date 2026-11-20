@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../lib/icons.tsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api.ts';
 import { api, currentBusiness, loadMe, useSession } from '../lib/session.ts';

@@ -28,6 +28,7 @@
     "expo-sqlite": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "expo-updates": "~57.0.27",
+    "lucide-react-native": "^1.77.0",
     "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-native": "0.86.3",

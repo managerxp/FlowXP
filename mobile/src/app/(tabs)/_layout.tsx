@@ -1,6 +1,6 @@
 import type { ColorValue } from 'react-native';
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../lib/icons.tsx';
 import { useWide } from '../../lib/responsive.tsx';
 import { useSyncState } from '../../lib/sync.ts';
 import { currentBusiness, useSession } from '../../lib/session.ts';

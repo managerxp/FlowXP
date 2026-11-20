@@ -1,5 +1,5 @@
 /* Settings is a short list of areas, each opening on its own page, instead of one long scroll of everything. Pure data and rules, so the grouping can be tested. */
-import type { Ionicons } from '@expo/vector-icons';
+import type { Ionicons } from './icons.tsx';
 
 export type AreaId = 'printing' | 'payments' | 'alerts' | 'display' | 'lock' | 'data' | 'phone' | 'account';
 type Icon = React.ComponentProps<typeof Ionicons>['name'];
