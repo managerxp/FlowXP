@@ -346,11 +346,17 @@ const LoyaltyPage = () => {
   const tr = useT();
   const [tab, setTab] = useState('cards');
   const { business } = useAuth();
+  // The two older set-ups (Visit card, Points & tiers) are only shown to a shop that still has one switched on; Loyalty cards does everything for everyone else.
+  const [older, setOlder] = useState({ program: false, points: false });
+  useEffect(() => {
+    Promise.all([api('/loyalty/program').catch(() => null), api('/loyalty/points-program').catch(() => null)])
+      .then(([p, q]) => setOlder({ program: p?.is_enabled === true, points: q?.is_enabled === true }));
+  }, []);
   return (
     <div>
       <PageHeader title={tr('Loyalty & coupons')} lead={tr('Bring customers back: a free item on every few visits, points, and offer codes.')} />
       <div className="mb-6 flex gap-1 border-b border-line" role="tablist">
-        {[['cards', T('Loyalty cards')], ['results', T('Card results')], ['program', T('Visit card')], ['points', T('Points & tiers')], ['coupons', T('Coupons')]].map(([id, label]) => (
+        {[['cards', T('Loyalty cards')], ['results', T('Card results')], older.program && ['program', T('Visit card')], older.points && ['points', T('Points & tiers')], ['coupons', T('Coupons')]].filter(Boolean).map(([id, label]) => (
           <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
                   className={`-mb-px border-b-2 px-3 py-2 text-small font-medium ${tab === id ? 'border-brand-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'}`}>{tr(label)}</button>
         ))}
