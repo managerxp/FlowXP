@@ -82,7 +82,7 @@ const Card = ({ token }) => {
   const tr = useT();
   const { i18n } = useTranslation();
   const [d, setD] = useState(null); const [gone, setGone] = useState(false); const [walletErr, setWalletErr] = useState('');
-  const addToWallet = () => { setWalletErr(''); call(`/${token}/google-wallet`).then((r) => { window.location.href = r.url; }).catch((e) => setWalletErr(tr(e.message))); };
+  const addToWallet = () => { setWalletErr(''); call(`/${token}/google-wallet?lang=${i18n.language}`).then((r) => { window.location.href = r.url; }).catch((e) => setWalletErr(tr(e.message))); };
   useEffect(() => { call(`/${token}`).then(setD).catch(() => setGone(true)); }, [token]);
   if (gone) return <Notice>{tr('This card link is not valid. Ask the staff for a new one.')}</Notice>;
   if (!d) return <Notice>{tr('Loading…')}</Notice>;

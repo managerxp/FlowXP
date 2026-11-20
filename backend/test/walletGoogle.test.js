@@ -61,6 +61,11 @@ test('with credentials the link is signed, carries this member\'s pass, and the 
   assert.match(cls.programLogo.sourceUri.uri, /^https?:\/\/.+icon-512\.png$/);
   assert.equal(obj.textModulesData[0].body, 'Thanks');
   assert.equal(obj.locations, undefined);   // no outlet location set: no location nudge
+  const hi = await pcall(pub.googleWallet, { params: { token }, query: { lang: 'hi' } });   // the pass's own words follow the customer's language; an unknown one stays English
+  const hiObj = JSON.parse(Buffer.from(hi.body.data.url.split('/').pop().split('.')[1], 'base64url').toString()).payload.loyaltyObjects[0];
+  assert.equal(hiObj.loyaltyPoints.label, 'स्टैम्प'); assert.equal(hiObj.textModulesData[0].header, 'संदेश'); assert.equal(hiObj.linksModuleData.uris[0].description, 'आपका कार्ड');
+  const xx = await pcall(pub.googleWallet, { params: { token }, query: { lang: 'zz' } });
+  assert.equal(JSON.parse(Buffer.from(xx.body.data.url.split('/').pop().split('.')[1], 'base64url').toString()).payload.loyaltyObjects[0].loyaltyPoints.label, 'Stamps');
   assert.equal((await pcall(pub.googleWallet, { params: { token: 'x'.repeat(40) } })).code, 404);
 });
 

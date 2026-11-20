@@ -87,5 +87,5 @@ export const googleWallet = wrap(async (req, res) => {
   const m = await memberByToken(req.params.token);
   if (!google.configured() || !featureOn(m, 'loyalty_wallet')) throw gone();
   const row = (await google.loadMembership(pool, 'm.membership_id = $1', [m.membership_id]))[0];
-  ok(res, { url: google.saveUrl(row) });
+  ok(res, { url: google.saveUrl({ ...row, lang: req.query?.lang }) });
 });

@@ -48,11 +48,24 @@ const stampLike = (kind) => kind === 'STAMPS' || kind === 'VISITS';
 /** Google needs a public https address for the logo. The business's own logo when it has one, else FlowXP's. */
 const logoUri = (logo) => (/^https:\/\//i.test(String(logo || '')) ? logo : `${config.appOrigin.replace(/\/$/, '')}/icon-512.png`);
 
+/** The few words FlowXP itself puts on a pass, by language (a business's own card title and message stay as they wrote them). English when the language is unknown. */
+const WORDS = {
+  en: { Stamps: 'Stamps', Points: 'Points', Message: 'Message', Card: 'Your card' },
+  hi: { Stamps: 'स्टैम्प', Points: 'पॉइंट', Message: 'संदेश', Card: 'आपका कार्ड' },
+  ml: { Stamps: 'സ്റ്റാമ്പുകൾ', Points: 'പോയിന്റുകൾ', Message: 'സന്ദേശം', Card: 'നിങ്ങളുടെ കാർഡ്' },
+  ta: { Stamps: 'முத்திரைகள்', Points: 'புள்ளிகள்', Message: 'செய்தி', Card: 'உங்கள் அட்டை' },
+  bn: { Stamps: 'স্ট্যাম্প', Points: 'পয়েন্ট', Message: 'বার্তা', Card: 'আপনার কার্ড' },
+  te: { Stamps: 'స్టాంపులు', Points: 'పాయింట్లు', Message: 'సందేశం', Card: 'మీ కార్డు' },
+  kn: { Stamps: 'ಸ್ಟ್ಯಾಂಪ್‌ಗಳು', Points: 'ಪಾಯಿಂಟ್‌ಗಳು', Message: 'ಸಂದೇಶ', Card: 'ನಿಮ್ಮ ಕಾರ್ಡ್' }
+};
+export const walletLang = (v) => (Object.hasOwn(WORDS, v) ? v : 'en');
+
 /** The pass for one membership, as Google's loyaltyClass and loyaltyObject. `m` carries the membership, programme, customer and business fields (see loadMembership). */
 export const passFor = (m, a = account()) => {
   const card = m.card || {};
   const origin = config.appOrigin.replace(/\/$/, '');
-  const unit = stampLike(m.kind) ? 'Stamps' : 'Points';
+  const w = WORDS[walletLang(m.lang)];
+  const unit = stampLike(m.kind) ? w.Stamps : w.Points;
   const loyaltyClass = {
     id: `${a.issuerId}.${classSuffix(m.programme_id)}`,
     issuerName: String(m.business_name).slice(0, 40),
@@ -70,9 +83,9 @@ export const passFor = (m, a = account()) => {
     accountName: m.customer_name,
     loyaltyPoints: { label: unit, balance: { int: Number(m.balance) || 0 } },
     barcode: { type: 'QR_CODE', value: `${origin}/card/${m.token}`, alternateText: m.membership_no },
-    ...(card.message ? { textModulesData: [{ id: 'message', header: 'Message', body: String(card.message).slice(0, 140) }] } : {}),
+    ...(card.message ? { textModulesData: [{ id: 'message', header: w.Message, body: String(card.message).slice(0, 140) }] } : {}),
     ...(Array.isArray(m.locations) && m.locations.length ? { locations: m.locations.slice(0, 10) } : {}),   // Google shows the pass on the lock screen when the phone is near one of these (it decides when)
-    linksModuleData: { uris: [{ id: 'card', description: 'Your card', uri: `${origin}/card/${m.token}` }] }
+    linksModuleData: { uris: [{ id: 'card', description: w.Card, uri: `${origin}/card/${m.token}` }] }
   };
   return { loyaltyClass, loyaltyObject };
 };
@@ -123,7 +136,7 @@ export const pushBalance = async (membershipIds) => {
     for (const m of await loadMembership(pool, 'm.membership_id = ANY($1::int[])', [membershipIds])) {
       const { loyaltyObject } = passFor(m, a);
       const res = await fetch(`https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject/${encodeURIComponent(loyaltyObject.id)}`, {
-        method: 'PATCH', headers: { Authorization: `Bearer ${bearer}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ loyaltyPoints: loyaltyObject.loyaltyPoints })
+        method: 'PATCH', headers: { Authorization: `Bearer ${bearer}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ loyaltyPoints: { balance: loyaltyObject.loyaltyPoints.balance } })
       });
       if (!res.ok && res.status !== 404) console.error('[wallet] Google balance update refused:', res.status);
     }
