@@ -15,6 +15,7 @@ export type Invoice = {
   outlet?: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; city?: string | null } | null;
   seller?: { gstin?: string | null; address?: string | null; city?: string | null; phone?: string | null };
   items: InvoiceLine[]; payments: { method: string; amount: number }[];
+  /** the bill's own QR for "scan the bill, get your loyalty stamp" (only when a card has it on and no customer is on the bill yet) */ loyalty_claim_url?: string | null;
 };
 
 /** Characters per line of a 58 mm receipt; an 80 mm one is 48 (COLUMNS in escpos.ts). Every layout function takes the width so the text fills the paper it is printed on. */
@@ -106,6 +107,7 @@ export const receiptLines = (inv: Invoice, businessName: string, width = WIDTH):
   for (const p of inv.payments) out.push(row(p.method, money(p.amount)));
   if (inv.balance_due > 0) out.push(row('Balance due', money(inv.balance_due)));
   out.push('-'.repeat(width));
+  if (inv.loyalty_claim_url && !(inv.balance_due > 0)) { out.push(...wordWrap('Scan the code at the end for your loyalty stamp', width)); out.push('-'.repeat(width)); }
   if (inv.receipt?.show_terms === true && inv.receipt.terms) { out.push(...wordWrap(`Terms: ${inv.receipt.terms}`, width)); out.push('-'.repeat(width)); }
   out.push(...footerRows(inv.receipt?.footer ?? 'Thank you', width, inv.receipt?.show_powered_by !== false));
   return out;

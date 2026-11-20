@@ -52,6 +52,8 @@ export default function Receipt() {
   const name = business?.name || 'FlowXP';
   // a bill with money still owed carries a UPI QR code for exactly that amount, so the customer can settle it by scanning the paper
   const owed = invoice && invoice.balance_due > 0 ? toPaise(invoice.balance_due) : 0;
+  // a bill with nothing owed carries the loyalty QR instead (scan it for the stamp), when the card has that switched on
+  const qrLink = owed && business?.upi_vpa ? upiPayLink(business.upi_vpa, business.name, owed) : invoice && !owed && invoice.loyalty_claim_url ? invoice.loyalty_claim_url : undefined;
   const token = invoice ? tokenText(invoice, name) : null;   // the daily token slip, printed after the bill
   const text = invoice ? receiptText(invoice, name, COLUMNS[paper]) : pending ? pendingReceiptText(pending, name, COLUMNS[paper]) : '';
   const waiting = !invoice && pending && pending.state !== 'sent';
@@ -64,7 +66,7 @@ export default function Receipt() {
     void (async () => {
       const mode = await (await import('../lib/thermal.ts')).readMode();
       if (mode === 'system') return;   // no thermal printer set up: the Print button is still there
-      try { await printReceipt(text, paper, { noDialog: true, ...(owed && business?.upi_vpa ? { qr: upiPayLink(business.upi_vpa, business.name, owed) } : {}) }); if (token) await printReceipt(token, paper, { noDialog: true, big: true }); setPrintedNote(true); }
+      try { await printReceipt(text, paper, { noDialog: true, ...(qrLink ? { qr: qrLink } : {}) }); if (token) await printReceipt(token, paper, { noDialog: true, big: true }); setPrintedNote(true); }
       catch { setPrintError(t('Could not reach the printer. Tap Print the bill to try again.')); }
     })();
   }, [fresh, paperReady, text, invoice, pending]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -92,7 +94,7 @@ export default function Receipt() {
         {text ? <View style={[s.card]}><Text selectable style={{ fontFamily: 'monospace', fontSize: 13, color: color.ink }}>{text}</Text></View> : null}
         {printedNote ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok, fontWeight: '700', textAlign: 'center' }}>{t('Receipt printed')}</Text> : null}
         <Button title={printedNote ? t('OK') : invoice?.table_name ? 'Back to the tables' : 'Next customer: new bill'} onPress={() => router.replace(invoice?.table_name ? '/tables' : '/sell')} />
-        {text ? <Button title="Print the bill" kind="quiet" onPress={() => { setPrintError(''); void kvGet('paper').then((p) => printReceipt(text, p === '80' ? '80' : '58', owed && business?.upi_vpa ? { qr: upiPayLink(business.upi_vpa, business.name, owed) } : {})).then((how) => { if (how === 'fallback') setPrintError(t("Could not reach the printer, so the bill went to the phone's print screen instead.")); else if (token) return printReceipt(token, paper, { noDialog: true, big: true }).then(() => undefined); }).catch((e: Error) => setPrintError(e.message)); }} /> : null}
+        {text ? <Button title="Print the bill" kind="quiet" onPress={() => { setPrintError(''); void kvGet('paper').then((p) => printReceipt(text, p === '80' ? '80' : '58', qrLink ? { qr: qrLink } : {})).then((how) => { if (how === 'fallback') setPrintError(t("Could not reach the printer, so the bill went to the phone's print screen instead.")); else if (token) return printReceipt(token, paper, { noDialog: true, big: true }).then(() => undefined); }).catch((e: Error) => setPrintError(e.message)); }} /> : null}
         <ErrorText>{printError}</ErrorText>
         {text ? <Button title="Send the bill" kind="quiet" onPress={() => { void Share.share({ message: text }); }} /> : null}
         {invoice && canSendBill(invoice.customer_phone) ? <Button title="Send the bill from FlowXP" onPress={() => { setShareError(''); setSentNote(''); setSending(true); api.post<BillSent>('/messaging/send-bill', { invoice_id: invoice.invoice_id }).then((m) => setSentNote(billSentText(m))).catch((e: Error) => setShareError(e.message)).finally(() => setSending(false)); }} busy={sending} /> : null}

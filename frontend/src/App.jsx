@@ -457,6 +457,7 @@ const App = () => (
         public/CustomerMenu.jsx. */}
     <Route path="book/:slug" element={<Suspense fallback={<PageLoader />}><SalonBooking /></Suspense>} />
     <Route path="card/join/:code" element={<Suspense fallback={<PageLoader />}><LoyaltyCardPage /></Suspense>} />
+    <Route path="card/bill/:token" element={<Suspense fallback={<PageLoader />}><LoyaltyCardPage /></Suspense>} />
     <Route path="card/:token" element={<Suspense fallback={<PageLoader />}><LoyaltyCardPage /></Suspense>} />
     <Route path="gym/in/:token" element={<Suspense fallback={<PageLoader />}><GymPortal /></Suspense>} />
     <Route path="gym/:slug" element={<Suspense fallback={<PageLoader />}><GymPortal /></Suspense>} />

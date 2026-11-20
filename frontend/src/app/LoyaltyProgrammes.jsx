@@ -89,7 +89,7 @@ const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
     name: programme?.name || '', kind: programme?.kind || 'STAMPS',
     stamps: programme?.redeem_points || 5, minBill: rupees(programme?.min_txn_paise) || 0,
     earn: programme?.earn_points || 1, per: rupees(programme?.per_amount_paise) || 100, redeemPoints: programme?.redeem_points || 100, redeemValue: rupees(programme?.redeem_value_paise) || 50,
-    expiry: programme?.expiry_days || '', rewardName: '', rewardValue: '', autoEnrol: programme?.settings?.auto_enrol === true,
+    expiry: programme?.expiry_days || '', rewardName: '', rewardValue: '', autoEnrol: programme?.settings?.auto_enrol === true, billQr: programme ? programme.settings?.bill_qr === true : true,
     card: { ...DEFAULT_CARD, ...(programme?.card || {}) }
   }));
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
@@ -98,7 +98,7 @@ const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
   const setCard = (k, v) => setF((x) => ({ ...x, card: { ...x.card, [k]: v } }));
   const perBill = f.kind !== 'POINTS';
   const body = () => ({
-    name: f.name, kind: f.kind, card: f.card, auto_enrol: f.autoEnrol, min_txn_paise: paise(f.minBill), expiry_days: Number(f.expiry) > 0 ? Number(f.expiry) : null,
+    name: f.name, kind: f.kind, card: f.card, auto_enrol: f.autoEnrol, bill_qr: f.billQr, min_txn_paise: paise(f.minBill), expiry_days: Number(f.expiry) > 0 ? Number(f.expiry) : null,
     ...(perBill ? { earn_points: 1, redeem_points: Number(f.stamps), min_redeem_points: Number(f.stamps), redeem_value_paise: paise(f.rewardValue) }
       : { earn_points: Number(f.earn), per_amount_paise: paise(f.per), redeem_points: Number(f.redeemPoints), redeem_value_paise: paise(f.redeemValue), min_redeem_points: Number(f.redeemPoints) })
   });
@@ -160,6 +160,7 @@ const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
             <Field id="lp-title" label={tr('Heading on the card')} hint={tr('Leave empty to use the card\'s name.')}><Input id="lp-title" maxLength={40} value={f.card.title} onChange={(e) => setCard('title', e.target.value)} placeholder={tr('Buy 5, get 1 free')} /></Field>
             <Field id="lp-msg" label={tr('A message inside the card')} hint={tr('Customers see it every time they open the card.')}><Input id="lp-msg" maxLength={140} value={f.card.message} onChange={(e) => setCard('message', e.target.value)} placeholder={tr('Thank you for coming back!')} /></Field>
             <label className="flex items-start gap-2 text-small text-ink-700"><input type="checkbox" checked={f.autoEnrol} onChange={(e) => set('autoEnrol', e.target.checked)} className="mt-0.5 h-4 w-4" />{tr('Join every customer billed with a mobile number automatically')}</label>
+            <label className="flex items-start gap-2 text-small text-ink-700"><input type="checkbox" checked={f.billQr} onChange={(e) => set('billQr', e.target.checked)} className="mt-0.5 h-4 w-4" /><span>{tr('Print a QR on the bill so customers scan it for their stamp')}<span className="block text-ink-500">{tr('Customers scan it after paying, type their mobile number once, and join and get the stamp. It works for 24 hours, once per bill.')}</span></span></label>
           </>)}
           {err && <Alert>{err}</Alert>}
           <div className="flex justify-between gap-2 pt-2">

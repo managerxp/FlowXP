@@ -93,7 +93,11 @@ export const ReceiptPage = () => {
   const upi = biz?.upi_vpa && unpaid && (upiAmount || s?.show_upi_qr)
     ? `upi://pay?pa=${encodeURIComponent(biz.upi_vpa)}&pn=${encodeURIComponent(biz.name)}&am=${(upiAmount ?? invoice.balance_due).toFixed(2)}&cu=INR&tn=${encodeURIComponent(invoice.invoice_number)}` : null;
   useEffect(() => { if (upi) QRCode.toDataURL(upi, { width: 160, margin: 1 }).then(setQr); else setQr(''); }, [upi]);
-  usePrintOnLoad(Boolean(invoice && biz && (!upi || qr)));
+  // "scan the bill, get your stamp": the bill's own QR, on a bill with nothing owed (the server only sends it when a card has it on)
+  const claimUrl = invoice && !unpaid ? invoice.loyalty_claim_url : null;
+  const [claimQr, setClaimQr] = useState('');
+  useEffect(() => { if (claimUrl) QRCode.toDataURL(claimUrl, { width: 160, margin: 1 }).then(setClaimQr); else setClaimQr(''); }, [claimUrl]);
+  usePrintOnLoad(Boolean(invoice && biz && (!upi || qr) && (!claimUrl || claimQr)));
 
   if (error) return <Alert>{error}</Alert>;
   if (!invoice || !biz) return <p className="text-sm text-ink-400">Preparing the receipt…</p>;
@@ -163,6 +167,9 @@ export const ReceiptPage = () => {
         {unpaid && <Row left="BALANCE DUE" right={invoice.balance_due.toFixed(2)} bold />}
         {qr && (
           <div className="mt-2 text-center"><img src={qr} alt="UPI payment QR" className="mx-auto h-28 w-28" /><p>{upiAmount ? `Scan to pay ₹${upiAmount.toFixed(2)} by UPI` : 'Scan to pay the balance'}</p></div>
+        )}
+        {claimQr && (
+          <div className="mt-2 text-center"><img src={claimQr} alt="Loyalty stamp QR" className="mx-auto h-28 w-28" /><p>Scan for your loyalty stamp</p></div>
         )}
         {s.show_loyalty && invoice.loyalty_message && <><Rule /><p className="text-center">★ {invoice.loyalty_message}</p></>}
         {s.show_terms === true && s.terms && <><Rule /><p className="whitespace-pre-line">Terms: {s.terms}</p></>}

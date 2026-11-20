@@ -374,3 +374,11 @@ test('the daily token slip follows the bill as its own cut piece, only when swit
   assert.ok(textOf(on).includes('TOKEN') && !textOf(off).includes('TOKEN'));
   assert.equal(cuts(receiptBytes({ ...base, invoice: { ...base.invoice, token: null }, settings: { print_token: true } }, { cols: 48 })), cuts(off));   // a table order has no token
 });
+
+test('a bill with a loyalty claim link prints its QR and the line under it; one without prints neither', () => {
+  const paid = { ...invoice(), status: 'ISSUED', balance_due: 0, payments: [{ method: 'CASH', amount: 100 }] };
+  const withLink = receiptBytes({ business: business1, settings: {}, invoice: { ...paid, loyalty_claim_url: 'https://flowxp.test/card/bill/abcdef0123456789' } });
+  assert.ok(withLink.includes(Buffer.from('https://flowxp.test/card/bill/abcdef0123456789'))); assert.ok(textOf(withLink).includes('Scan for your loyalty stamp'));
+  const without = receiptBytes({ business: business1, settings: {}, invoice: paid });
+  assert.ok(!textOf(without).includes('Scan for your loyalty stamp'));
+});

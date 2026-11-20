@@ -195,6 +195,8 @@ const oneReceipt = ({ business, settings = {}, invoice }, { cols = 48, drawer = 
     // centred, a blank line either side of the QR, and the centring is sent again before the caption (some printers drop it after printing a QR)
     j.align('center').feed(1).qr(upi, 6).feed(1).align('center').line(collecting != null ? `Scan to pay Rs.${money(amount)} by UPI` : 'Scan to pay the balance').feed(1).align('left');
   }
+  // "scan the bill, get your stamp": the bill's own QR (only present when a card has it on and the bill has no customer yet)
+  if (invoice.loyalty_claim_url) j.align('center').feed(1).qr(invoice.loyalty_claim_url, 6).feed(1).align('center').line('Scan for your loyalty stamp').feed(1).align('left');
   if (settings.show_loyalty !== false && invoice.loyalty_message) j.rule().align('center').wrap(`* ${invoice.loyalty_message}`).align('left');
   if (invoice.points_earned > 0) j.align('center').line(`Points earned: ${invoice.points_earned}`).align('left');
   if (settings.show_terms === true && settings.terms) j.rule().wrap(`Terms: ${settings.terms}`);

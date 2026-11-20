@@ -1,10 +1,11 @@
 /*
  * What a customer opens on their own phone, no app and no login:
  *   /card/join/:code   the page the programme's QR / NFC tag / link opens: name and mobile number, then the card.
+ *   /card/bill/:token  the QR on a paid bill: name and mobile number once, and the stamp or points for that bill (joins a new customer).
  *   /card/:token       their own card: balance or stamps, what they can claim, recent activity. The long link is the key, so it is kept on this phone.
  */
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { APP_HEADER } from '../lib/api.js';
 import { intlTag } from '../i18n/config.js';
@@ -24,7 +25,9 @@ const call = async (path, { method = 'GET', body } = {}) => {
 const SERVER_TEXTS = [
   T('Enter your name and 10 digit mobile number'), T('This card is not available right now'), T('This programme is switched off'), T('This programme has not started yet'), T('This programme has ended'),
   T('Too many sign-ups from here. Try again later.'), T('Too many requests from here.'), T('Too many attempts from here. Try again in a few minutes.'), T('Not allowed'),
-  T('Could not make a membership number, try again')
+  T('Could not make a membership number, try again'),
+  T('This bill link is not valid'), T('This bill was cancelled'), T('This bill is not paid yet'), T('This bill is already on a loyalty card'), T('This bill is too old to add a stamp'),
+  T('This bill has already been added to a card'), T('This bill does not earn anything')
 ];
 const KEY = (code) => `flowxp_card_${code}`;
 const day = (iso, lang) => new Date(iso).toLocaleDateString(intlTag(lang || 'en'), { day: 'numeric', month: 'short' });
@@ -108,5 +111,53 @@ const Card = ({ token }) => {
   );
 };
 
-const LoyaltyCardPage = () => { const { code, token } = useParams(); return code ? <Join code={code} /> : <Card token={token} />; };
+/** The QR on a paid bill. What the customer sees: the card, what this bill gives, and one form. A saved name and number on this phone fill it in next time. */
+const PERSON = 'flowxp_card_person';
+const BillClaim = ({ token }) => {
+  const tr = useT();
+  const navigate = useNavigate();
+  const [d, setD] = useState(null); const [gone, setGone] = useState(false); const [err, setErr] = useState('');
+  const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [consent, setConsent] = useState(false);
+  const [busy, setBusy] = useState(false); const [done, setDone] = useState(null);
+  useEffect(() => {
+    try { const p = JSON.parse(localStorage.getItem(PERSON) || 'null'); if (p) { setName(p.name || ''); setPhone(p.phone || ''); } } catch { /* private window */ }
+    call(`/bill/${token}`).then(setD).catch(() => setGone(true));
+  }, [token]);
+  if (gone) return <Notice>{tr('This bill link is not valid')}</Notice>;
+  if (!d) return <Notice>{tr('Loading…')}</Notice>;
+  const why = { CANCELLED: T('This bill was cancelled'), UNPAID: T('This bill is not paid yet'), AT_TILL: T('This bill is already on a loyalty card'), TOO_OLD: T('This bill is too old to add a stamp'), CLAIMED: T('This bill has already been added to a card'), OFF: T('This bill does not earn anything') }[d.state];
+  const submit = async (e) => {
+    e.preventDefault(); setBusy(true); setErr('');
+    try {
+      const r = await call(`/bill/${token}`, { method: 'POST', body: { name, phone, consent_marketing: consent } });
+      try { localStorage.setItem(PERSON, JSON.stringify({ name, phone })); } catch { /* fine */ }
+      if (r.token) navigate(`/card/${r.token}`, { replace: true }); else setDone(r);
+    } catch (x) { setErr(tr(x.message)); } finally { setBusy(false); }
+  };
+  const first = d.cards[0];
+  return (
+    <Shell>
+      {first && <LoyaltyCardFace card={first.card} business={d.business} name={first.name} kind={first.kind} balance={done ? first.gives : 0} redeemAt={5} />}
+      {done ? (
+        <div className="space-y-2 rounded-xl border border-line bg-surface p-4 text-ink-700"><h1 className="text-lg font-semibold text-ink-900">{tr('Added to your card')}</h1>
+          <p>{tr('Show your card, or say your mobile number, at the counter to see your progress.')}</p></div>
+      ) : why ? <Notice>{tr(why)}</Notice> : (
+        <form onSubmit={submit} className="space-y-3 rounded-xl border border-line bg-surface p-4">
+          <h1 className="text-lg font-semibold text-ink-900">{tr('Collect your stamp')}</h1>
+          <p className="text-sm text-ink-700">{tr('{{business}}, bill {{bill}}', { business: d.business, bill: d.bill })}</p>
+          {d.cards.map((c) => <p key={c.name} className="text-sm font-medium text-ink-900">{c.name}: {c.kind === 'POINTS' || c.kind === 'SPEND' ? (c.gives === 1 ? tr('You get 1 point for this bill') : tr('You get {{n}} points for this bill', { n: c.gives })) : c.gives === 1 ? tr('You get 1 stamp for this bill') : tr('You get {{n}} stamps for this bill', { n: c.gives })}</p>)}
+          <label className="block text-sm font-medium text-ink-700">{tr('Your name')}
+            <input required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" className="mt-1 min-h-12 w-full rounded-xl border border-line-strong px-3 text-base" /></label>
+          <label className="block text-sm font-medium text-ink-700">{tr('Mobile number')}
+            <input required inputMode="numeric" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" placeholder={tr('10 digits')} className="mt-1 min-h-12 w-full rounded-xl border border-line-strong px-3 text-base" /></label>
+          <label className="flex items-start gap-2 text-sm text-ink-700"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 h-4 w-4" />{tr('It is fine to send me offers from {{business}} (optional).', { business: d.business })}</label>
+          {err && <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{err}</p>}
+          <button disabled={busy} className="min-h-12 w-full rounded-xl bg-brand-500 px-5 text-base font-semibold text-white disabled:opacity-60">{busy ? tr('Please wait…') : tr('Add to my card')}</button>
+        </form>
+      )}
+    </Shell>
+  );
+};
+
+const LoyaltyCardPage = () => { const { code, token } = useParams(); const bill = useLocation().pathname.startsWith('/card/bill/'); return code ? <Join code={code} /> : bill ? <BillClaim token={token} /> : <Card token={token} />; };
 export default LoyaltyCardPage;
