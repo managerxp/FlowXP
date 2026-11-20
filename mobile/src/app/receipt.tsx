@@ -77,9 +77,9 @@ export default function Receipt() {
       <Page max={560}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
         <View accessibilityLiveRegion="polite" style={{ alignItems: 'center', gap: 4, paddingVertical: 8 }}>
-          <Ionicons name={waiting ? 'cloud-offline-outline' : 'checkmark-circle'} size={56} color={waiting ? color.warn : color.ok} />
+          <View style={{ width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: waiting ? color.warnBg : color.okBg, marginBottom: 6 }}><Ionicons name={waiting ? 'cloud-offline-outline' : 'checkmark'} size={44} color={waiting ? color.warn : color.ok} /></View>
           <Title>{waiting ? 'Bill saved on this phone' : 'Payment received'}</Title>
-          {invoice ? <Text style={{ fontSize: 32, fontWeight: '800', color: color.ink }}>{rupees(Math.round(invoice.total * 100))}</Text> : null}
+          {invoice ? <Text selectable style={{ fontSize: 38, fontWeight: '700', letterSpacing: -1, color: color.ink, fontVariant: ['tabular-nums'] }}>{rupees(Math.round(invoice.total * 100))}</Text> : null}
         </View>
         {invoice?.order_number ? (
           <View style={[s.card, { alignItems: 'center' }]}>

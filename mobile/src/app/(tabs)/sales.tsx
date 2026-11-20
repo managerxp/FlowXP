@@ -11,20 +11,23 @@ import { useSyncState } from '../../lib/sync.ts';
 import { WaitingList } from '../../lib/WaitingList.tsx';
 import { Page, ColumnList } from '../../lib/responsive.tsx';
 import { markDone } from '../../lib/learn.tsx';
-import { Chips, Empty, Failed, Line, Loading, SavedNote, Stat, Title, color, s } from '../../lib/ui.tsx';
+import { Chips, Empty, Failed, ListRow, Loading, SavedNote, Stat, Title, color, s } from '../../lib/ui.tsx';
 
 const money = (r: number) => rupees(toPaise(r));
 type Tab = 'bills' | 'phone';
 const STATUS: Record<string, { label: string; tone: string }> = { PAID: { label: 'Paid', get tone() { return color.ok; } }, PARTIAL: { label: 'Part paid', get tone() { return color.warn; } }, UNPAID: { label: 'Unpaid', get tone() { return color.danger; } } };
 
 const BillRow = memo(({ i }: { i: InvoiceRow }) => {
+  const cancelled = i.status === 'CANCELLED';
   const st = STATUS[i.payment_status] ?? { label: i.payment_status, tone: color.soft };
+  const bg = st.label === 'Paid' ? color.okBg : st.label === 'Unpaid' ? color.dangerBg : st.label === 'Part paid' ? color.warnBg : color.wash;
   return (
-    <Line
-    left={i.invoice_number} right={money(i.total)}
-    sub={`${i.status === 'CANCELLED' ? 'Cancelled · ' : st.label !== 'Paid' ? `${st.label} · ` : ''}${i.customer_name ?? i.table_name ?? 'Walk-in'} · ${new Date(i.created_at).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
-    onPress={() => router.push({ pathname: '/receipt', params: { id: String(i.invoice_id) } })}
-  />
+    <ListRow
+      title={i.invoice_number} right={money(i.total)} dim={cancelled}
+      sub={`${i.customer_name ?? i.table_name ?? 'Walk-in'} · ${new Date(i.created_at).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+      pill={cancelled ? 'Cancelled' : st.label} pillTone={cancelled ? color.soft : st.tone} pillBg={cancelled ? color.wash : bg}
+      onPress={() => router.push({ pathname: '/receipt', params: { id: String(i.invoice_id) } })}
+    />
   );
 });
 const renderBill = ({ item }: { item: InvoiceRow }) => <BillRow i={item} />;

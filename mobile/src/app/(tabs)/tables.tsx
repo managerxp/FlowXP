@@ -15,13 +15,14 @@ import { readFailed } from '../../lib/printerLink.ts';
 import { t as tr } from '../../lib/i18n.ts';
 import { Button, Empty, ErrorText, Failed, Loading, SavedNote, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
 
+/* getters, so the colours follow the theme when it is switched */
 const TONE: Record<TableState, { bg: string; border: string; ink: string }> = {
-  free: { bg: color.card, border: color.line, ink: color.ink },
-  reserved: { bg: color.warnBg, border: color.warnLine, ink: color.warn },
-  new: { bg: color.tint, border: color.brand, ink: color.brand },
-  cooking: { bg: color.tint, border: color.brand, ink: color.brand },
-  ready: { bg: color.okBg, border: '#34d399', ink: color.ok },
-  served: { bg: color.wash, border: color.soft, ink: color.soft }
+  free: { get bg() { return color.card; }, get border() { return color.line; }, get ink() { return color.ink; } },
+  reserved: { get bg() { return color.warnBg; }, get border() { return color.warnLine; }, get ink() { return color.warn; } },
+  new: { get bg() { return color.tint; }, get border() { return color.brand; }, get ink() { return color.brand; } },
+  cooking: { get bg() { return color.tint; }, get border() { return color.brand; }, get ink() { return color.brand; } },
+  ready: { get bg() { return color.okBg; }, get border() { return color.ok; }, get ink() { return color.ok; } },
+  served: { get bg() { return color.wash; }, get border() { return color.soft; }, get ink() { return color.soft; } }
 };
 
 /* The floor: every table, free or busy, and what the kitchen has done for each. Tap a free table to open an order, a busy one to carry on. */
@@ -118,7 +119,7 @@ export default function Tables() {
                     <Pressable
                       key={t.table_id} accessibilityRole="button" accessibilityLabel={`${t.name}, ${STATE_LABEL[st]}${o ? `, ${o.items} items, ${rupees(toPaise(o.estimate))}` : ''}`}
                       onPress={() => { void tap(t); }} disabled={busy !== null}
-                      style={({ pressed }) => ({ width: `${100 / cols - 2}%`, flexGrow: 1, minWidth: 140, minHeight: 100, padding: 12, borderRadius: 14, borderWidth: st === 'free' ? 1 : 2, borderColor: tone.border, backgroundColor: pressed ? color.tint : tone.bg, justifyContent: 'space-between', opacity: busy !== null && busy !== t.table_id ? 0.6 : 1 })}
+                      style={({ pressed }) => ({ width: `${100 / cols - 2}%`, flexGrow: 1, minWidth: 140, minHeight: 104, padding: 14, borderRadius: 18, borderCurve: 'continuous', borderWidth: st === 'free' ? 1 : 2, borderColor: tone.border, backgroundColor: pressed ? color.tint : tone.bg, justifyContent: 'space-between', opacity: busy !== null && busy !== t.table_id ? 0.6 : 1 })}
                     >
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         <Text style={{ fontSize: 18, fontWeight: '700', color: color.ink }}>{t.name}</Text>
