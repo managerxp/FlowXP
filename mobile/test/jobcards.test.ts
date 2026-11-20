@@ -26,7 +26,7 @@ test('lines, warnings and the estimate', () => {
   assert.equal(lineSub(part), 'AP-5 · Held for this customer · Does not fit'); assert.equal(lineSub({ ...part, held: false, fitment: 'NO_VEHICLE' }), 'AP-5 · Not held'); assert.equal(lineSub(labour), 'Labour');
   assert.deepEqual(misfits([part, labour]), ['Brake pad set']);
   assert.deepEqual(estimateLines({ parts_paise: 200000, labour_paise: 50000, tax_paise: 45000, total_paise: 295000 }), [['Parts', '₹2,000.00'], ['Labour', '₹500.00'], ['GST', '₹450.00'], ['Estimate', '₹2,950.00']]);
-  assert.equal(labourProblem(' ', '500'), 'Say what was done'); assert.equal(labourProblem('Fit', ''), 'Enter the labour charge'); assert.equal(labourProblem('Fit', '500'), ''); assert.deepEqual(labourBody(' Fit ', '500'), { kind: 'LABOUR', description: 'Fit', unit_price: 500 });
+  assert.equal(labourProblem(' ', '500'), ''); assert.equal(labourProblem('Fit', ''), 'Enter the labour charge'); assert.equal(labourProblem('Fit', '500'), ''); assert.deepEqual(labourBody(' Fit ', '500'), { kind: 'LABOUR', description: 'Fit', unit_price: 500 });
   assert.equal(quantityProblem('0'), 'Quantity is a number above zero'); assert.equal(quantityProblem('2.5'), '');
 });
 

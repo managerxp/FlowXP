@@ -128,10 +128,10 @@ export default function JobCardScreen() {
             <AddPart jobId={String(id)} done={job.reload} />
             <SectionTitle>Add labour</SectionTitle>
             {services.data?.length ? <Field label="Tap a service to add it"><Chips items={services.data.map((x) => ({ id: String(x.service_id), label: `${x.name} · ${rupees(x.price_paise)}` }))} value="" onChange={(v) => { const x = services.data?.find((y) => String(y.service_id) === v); if (x) void a.run('', async () => { await api.post(`/autoparts/jobcards/${id}/lines`, serviceLabourBody(x)); job.reload(); }); }} /></Field> : null}
-            <Input label="Or type a charge" value={labour.description} onChange={(v) => setLabour({ ...labour, description: v })} max={200} />
             <Input label="Charge" numeric value={labour.price} onChange={(v) => setLabour({ ...labour, price: v })} max={9} />
-            <Row label="Remember this as a service, so next time it is one tap" value={remember} onChange={setRemember} />
-            <Button title="Add" kind="quiet" busy={a.busy} onPress={() => { void a.run(labourProblem(labour.description, labour.price), async () => { await api.post(`/autoparts/jobcards/${id}/lines`, labourBody(labour.description, labour.price)); if (remember) { await api.post('/autoparts/jobcards/services', { name: labour.description.trim(), price: Number(labour.price) }); services.reload(); } setLabour({ description: '', price: '' }); setRemember(false); job.reload(); }); }} />
+            <Input label="What for? (optional)" value={labour.description} onChange={(v) => setLabour({ ...labour, description: v })} max={200} />
+            {labour.description.trim() ? <Row label="Remember this as a service, so next time it is one tap" value={remember} onChange={setRemember} /> : null}
+            <Button title="Add" kind="quiet" busy={a.busy} onPress={() => { void a.run(labourProblem(labour.description, labour.price), async () => { await api.post(`/autoparts/jobcards/${id}/lines`, labourBody(labour.description, labour.price)); if (remember && labour.description.trim()) { await api.post('/autoparts/jobcards/services', { name: labour.description.trim(), price: Number(labour.price) }); services.reload(); } setLabour({ description: '', price: '' }); setRemember(false); job.reload(); }); }} />
           </>
         ) : null}
         <Card>{estimateLines(j.estimate).map(([k, v]) => <Text key={k} style={{ color: color.ink, fontWeight: k === t('Estimate') ? '700' : '400' }}>{`${k}: ${v}`}</Text>)}</Card>

@@ -4461,7 +4461,6 @@
   "Nothing on the card yet.": "அட்டையில் இன்னும் எதுவும் இல்லை.",
   "Labour": "உழைப்பு",
   "Add labour": "உழைப்பைச் சேர்க்கவும்",
-  "Or type a charge": "அல்லது கட்டணத்தை தட்டச்சு செய்யுங்கள்",
   "Remember this as a service, so next time it is one tap": "இதை சேவையாக நினைவில் வையுங்கள், அடுத்த முறை ஒரு தட்டல் போதும்",
   "Estimate": "மதிப்பீடு",
   "Customer pays": "வாடிக்கையாளர் செலுத்துவது",
@@ -5344,5 +5343,7 @@
   "Messages are not taken from this credit right now (free trial or credit not switched on yet).": "இப்போது செய்திகளுக்கான கட்டணம் இந்த கிரெடிட்டிலிருந்து எடுக்கப்படுவதில்லை (இலவச சோதனை அல்லது கிரெடிட் இன்னும் இயக்கப்படவில்லை).",
   "Messages go out from FlowXP’s own WhatsApp number. There is nothing to set up: switch it on and keep some credit.": "செய்திகள் FlowXP-இன் சொந்த WhatsApp எண்ணிலிருந்து செல்கின்றன. எதையும் அமைக்கத் தேவையில்லை: இயக்கி கொஞ்சம் கிரெடிட் வைத்திருங்கள்.",
   "Set on map": "வரைபடத்தில் அமைக்கவும்",
-  "Save location": "இடத்தைச் சேமிக்கவும்"
+  "Save location": "இடத்தைச் சேமிக்கவும்",
+  "Charge for {{name}}": "{{name}} கட்டணம்",
+  "What for? (optional)": "எதற்கு? (விருப்பம்)"
 }

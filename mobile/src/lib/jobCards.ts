@@ -75,8 +75,8 @@ export const suggestModels = (tree: VehicleTree, type: string, make: string, typ
 export const customerProblem = (name: string, phone: string): string => (name.trim().length < 2 ? 'Give the customer a name' : phone.trim() && !/^[\d +-]{7,15}$/.test(phone.trim()) ? 'That phone number does not look right' : '');
 
 /* ── the lines ───────────────────────────────────────────────────────────── */
-export const labourProblem = (description: string, price: string): string => (!description.trim() ? 'Say what was done' : !(price.trim() !== '' && Number.isFinite(Number(price)) && Number(price) >= 0) ? 'Enter the labour charge' : '');
-export const labourBody = (description: string, price: string) => ({ kind: 'LABOUR', description: description.trim(), unit_price: Number(price) });
+export const labourProblem = (description: string, price: string): string => (!(price.trim() !== '' && Number.isFinite(Number(price)) && Number(price) >= 0) ? 'Enter the labour charge' : '');
+export const labourBody = (description: string, price: string) => ({ kind: 'LABOUR', description: description.trim() || 'Labour', unit_price: Number(price) });
 export const quantityProblem = (q: string): string => (Number.isFinite(Number(q)) && Number(q) > 0 ? '' : 'Quantity is a number above zero');
 export const lineText = (l: JobLine): string => (l.quantity === 1 ? `${l.description} · ${rupees(l.amount_paise)}` : `${l.description} · ${l.quantity} × ${rupees(l.unit_price_paise)} = ${rupees(l.amount_paise)}`);
 export const lineSub = (l: JobLine): string => (l.kind === 'LABOUR' ? t('Labour') : [l.sku || '', l.held ? t('Held for this customer') : t('Not held'), l.fitment && l.fitment !== 'NO_VEHICLE' ? t(FIT_LABEL[l.fitment] ?? l.fitment) : ''].filter(Boolean).join(' · '));

@@ -2817,6 +2817,7 @@ export const HI: Record<string, string> = {
   'Give the customer a name': 'ग्राहक को नाम दें',
   'That phone number does not look right': 'यह फ़ोन नंबर सही नहीं लगता',
   'Say what was done': 'बताएँ क्या किया गया',
+  'What for? (optional)': 'किसलिए? (वैकल्पिक)',
   'Enter the labour charge': 'मज़दूरी का शुल्क लिखें',
   'Quantity is a number above zero': 'मात्रा शून्य से ज़्यादा की संख्या है',
   'Labour': 'मज़दूरी',

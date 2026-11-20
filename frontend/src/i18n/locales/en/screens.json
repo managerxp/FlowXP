@@ -3142,7 +3142,6 @@
   "or another team member": "or another team member",
   "Or just a name": "Or just a name",
   "Or search by name": "Or search by name",
-  "Or type a charge": "Or type a charge",
   "or type a name / scan": "or type a name / scan",
   "Orange": "Orange",
   "Order": "Order",
@@ -5344,5 +5343,7 @@
   "Messages are not taken from this credit right now (free trial or credit not switched on yet).": "Messages are not taken from this credit right now (free trial or credit not switched on yet).",
   "Messages go out from FlowXP’s own WhatsApp number. There is nothing to set up: switch it on and keep some credit.": "Messages go out from FlowXP’s own WhatsApp number. There is nothing to set up: switch it on and keep some credit.",
   "Set on map": "Set on map",
-  "Save location": "Save location"
+  "Save location": "Save location",
+  "Charge for {{name}}": "Charge for {{name}}",
+  "What for? (optional)": "What for? (optional)"
 }
