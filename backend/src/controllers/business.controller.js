@@ -122,7 +122,7 @@ export const getCurrent = async (req, res) => {
 
     const b = rows[0];
     const branches = (await pool.query(
-      `SELECT branch_id, name, address, phone, is_primary
+      `SELECT branch_id, name, address, phone, is_primary, latitude::float8 AS latitude, longitude::float8 AS longitude
        FROM branches WHERE business_id = $1 AND status = 'ACTIVE' ORDER BY branch_id`,
       [b.business_id]
     )).rows;
@@ -136,6 +136,8 @@ export const getCurrent = async (req, res) => {
         email: b.email,
         phone: b.phone,
         address: b.address,
+        latitude: branches.find((x) => x.is_primary)?.latitude ?? null,
+        longitude: branches.find((x) => x.is_primary)?.longitude ?? null,
         city: b.city,
         state: b.state,
         country: b.country,
@@ -306,6 +308,18 @@ export const updateCurrent = async (req, res) => {
     updates.push(`onboarding_step = GREATEST(onboarding_step, $${values.length})`);
   }
 
+  // where the main outlet is (the pin on the map): both numbers, or both null to clear it
+  let location = null;
+  if ('latitude' in body || 'longitude' in body) {
+    const clear = body.latitude === null && body.longitude === null;
+    const lat = Number(body.latitude); const lng = Number(body.longitude);
+    if (!clear && !(Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180)) {
+      return res.status(400).json({ success: false, message: 'Enter a latitude between -90 and 90 and a longitude between -180 and 180' });
+    }
+    location = clear ? [null, null] : [lat, lng];
+  }
+  if (!updates.length && location) updates.push('name = name');
+
   if (!updates.length) {
     return res.status(400).json({ success: false, message: 'Nothing to update' });
   }
@@ -319,6 +333,7 @@ export const updateCurrent = async (req, res) => {
       values
     );
 
+    if (location) await pool.query(`UPDATE branches SET latitude = $2, longitude = $3 WHERE business_id = $1 AND is_primary`, [req.tenant.businessId, ...location]);
     const b = rows[0];
     recordAudit(req, {
       action: 'business.updated',

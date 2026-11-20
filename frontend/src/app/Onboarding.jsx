@@ -23,6 +23,7 @@ import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { COUNTRIES, regionsFor, subdivisionLabel } from '../lib/states.js';
 import PincodeHint from '../components/PincodeHint.jsx';
+import MapPicker from '../components/MapPicker.jsx';
 import { Alert, Button, Card, Field, Input, Select, useToast, PageLoader } from '../components/ui.jsx';
 
 const MONTHS = [
@@ -293,6 +294,7 @@ const Onboarding = () => {
           financial_year_start_month: data.financial_year_start_month ?? 4,
           invoice_prefix: data.invoice_prefix ?? 'INV'
         });
+        if (data.latitude != null && data.longitude != null) setCoords({ lat: Number(data.latitude), lon: Number(data.longitude) });
         // Resume where they stopped rather than restarting from screen one.
         const resumeAt = STEPS.findIndex((s) => s.step > (data.onboarding_step ?? 0));
         setIndex(resumeAt === -1 ? STEPS.length - 1 : resumeAt);
@@ -348,6 +350,7 @@ const Onboarding = () => {
          time would let a later screen's blank overwrite an earlier answer. */
       const body = { onboarding_step: current.step };
       for (const field of current.fields) body[field] = form[field];
+      if (current.fields.includes('address') && coords) { body.latitude = coords.lat; body.longitude = coords.lon; }   // the pin on the map, saved on the main outlet
       await api('/businesses/current', { method: 'PATCH', body });
 
       if (advance && !isLast) {
@@ -445,7 +448,7 @@ const Onboarding = () => {
                   }))}
                 />
               </div>
-              <MapPreview address={form.address} city={form.city} state={form.state} country={form.country} coords={coords} />
+              <MapPicker value={coords} onChange={setCoords} fallback={<MapPreview address={form.address} city={form.city} state={form.state} country={form.country} coords={coords} />} />
             </div>
           </>
         )}
