@@ -132,6 +132,8 @@ export const config = {
       redirectUri: process.env.GOOGLE_REDIRECT_URI || ''
     }
   },
+  /* Google Places (New) key for the shop-name search in onboarding: a SERVER key, never given to the browser. Blank = the search is simply hidden. */
+  googlePlacesKey: process.env.GOOGLE_PLACES_API_KEY || '',
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
   /* Cashfree Payment Links — custom-priced subscription payments (no keys = the
      admin gets a clear "not set up yet" error instead of a broken call). */

@@ -22,6 +22,7 @@ import { recordAudit, recordEvent } from '../modules/events.js';
 import { toRupees } from '../utils/money.js';
 import { hasPermission } from '../middleware/auth.js';
 import config from '../config/env.js';
+import { placesConfigured, searchPlaces } from '../modules/places.js';
 import { createPaymentLink, CashfreeError } from '../modules/payments/cashfree.js';
 import { cleanLocale } from '../utils/locales.js';
 import { canStartFresh, startFresh } from '../modules/startFresh.js';
@@ -113,6 +114,19 @@ export const createBusiness = async (req, res) => {
 /* ==========================================================================
    GET /api/businesses/current
    ========================================================================== */
+/* GET /businesses/places?q=  Shop-name search. `available` lets the screen hide the box when no key is set. */
+export const searchPlacesHandler = async (req, res) => {
+  if (!placesConfigured()) return res.json({ success: true, available: false, places: [] });
+  const q = String(req.query.q || '').trim().slice(0, 120);
+  if (q.length < 3) return res.json({ success: true, available: true, places: [] });
+  try {
+    res.json({ success: true, available: true, places: await searchPlaces(q, { lat: Number(req.query.lat), lon: Number(req.query.lon) }) });
+  } catch (err) {
+    console.error('places search failed:', err.message);
+    res.status(502).json({ success: false, message: 'Shop search is not available right now. Type the address instead.' });
+  }
+};
+
 export const getCurrent = async (req, res) => {
   try {
     const { rows } = await pool.query(

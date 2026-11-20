@@ -114,6 +114,7 @@ const loginLimiter = limiter(20, 15, 'Too many attempts. Try again in a few minu
 const signupLimiter = limiter(5, 60, 'Too many accounts created from here. Try again later.');
 const resetLimiter = limiter(5, 60, 'Too many reset requests. Try again later.');
 const resendLimiter = limiter(10, 60, 'Too many new codes were asked for from here. Try again later.');
+const placesLimiter = limiter(30, 10, 'Too many searches. Try again in a few minutes.');
 const contactLimiter = limiter(5, 60, 'Too many messages sent. Try again later.');
 const deletionLimiter = limiter(5, 60, 'Too many requests from here. Try again later.');
 /* The website chat calls the AI provider, which costs money per message: generous for a person, tight for a script. */
@@ -230,6 +231,7 @@ router.delete('/business/pin-devices/:id', requireAuth, withBusiness({ requireAc
 
 /* ── Signed in, scoped to one business ──────────────────────────────────── */
 
+router.get('/businesses/places', requireAuth, withBusiness(), requireOwner, placesLimiter, business.searchPlacesHandler);
 router.get('/businesses/current', requireAuth, withBusiness(), business.getCurrent);
 router.patch('/businesses/current', requireAuth, withBusiness({ requireActive: true }), requireOwner, business.updateCurrent);
 router.get('/businesses/current/start-fresh', requireAuth, withBusiness(), requireOwner, business.startFreshStatus);

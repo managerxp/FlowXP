@@ -23,6 +23,7 @@ import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { COUNTRIES, regionsFor, subdivisionLabel } from '../lib/states.js';
 import PincodeHint from '../components/PincodeHint.jsx';
+import PlaceSearch from '../components/PlaceSearch.jsx';
 import MapPicker from '../components/MapPicker.jsx';
 import { Alert, Button, Card, Field, Input, Select, useToast, PageLoader } from '../components/ui.jsx';
 
@@ -399,6 +400,13 @@ const Onboarding = () => {
 
         {index === 0 && (
           <>
+            <PlaceSearch near={coords} onPick={(p) => {
+              setCoords({ lat: Number(p.lat.toFixed(6)), lon: Number(p.lon.toFixed(6)) });
+              setForm((f) => {
+                const region = regionsFor(p.country || f.country).find((r) => r.name.toLowerCase() === p.state.toLowerCase());
+                return { ...f, address: p.formatted || f.address, city: p.city || f.city, state: region?.name || p.state || f.state, postal_code: p.postal_code || f.postal_code };
+              });
+            }} />
             <Field id="address" label="Address">
               <Input id="address" value={form.address} onChange={set('address')} />
             </Field>
