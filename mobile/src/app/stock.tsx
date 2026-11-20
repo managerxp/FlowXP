@@ -16,8 +16,11 @@ import { qty } from '../lib/money.ts';
 import { Page, ColumnList } from '../lib/responsive.tsx';
 import { Button, Chips, Empty, ErrorText, Failed, Loading, SavedNote, Soft, Title, color, s } from '../lib/ui.tsx';
 
-const LOOK: Record<Status, { icon: React.ComponentProps<typeof Ionicons>['name']; tone: string }> = {
-  out: { icon: 'close-circle', tone: color.danger }, low: { icon: 'warning', tone: color.warn }, in: { icon: 'checkmark-circle', tone: color.ok }
+/* getters, so the colours follow the theme when it is switched */
+const LOOK: Record<Status, { icon: React.ComponentProps<typeof Ionicons>['name']; tone: string; bg: string }> = {
+  out: { icon: 'close-circle', get tone() { return color.danger; }, get bg() { return color.dangerBg; } },
+  low: { icon: 'warning', get tone() { return color.warn; }, get bg() { return color.warnBg; } },
+  in: { icon: 'checkmark-circle', get tone() { return color.ok; }, get bg() { return color.okBg; } }
 };
 
 const StockRowView = memo(({ r, onOpen }: { r: StockRow; onOpen: (r: StockRow) => void }) => {
@@ -25,12 +28,12 @@ const StockRowView = memo(({ r, onOpen }: { r: StockRow; onOpen: (r: StockRow) =
   return (
               <Pressable accessibilityRole="button" accessibilityLabel={`${r.name}, ${STATUS_LABEL[st]}, ${qty(r.current_stock)} ${r.unit ?? ''}`} onPress={() => onOpen(r)} android_ripple={{ color: '#0b57ff22' }}
                 style={({ pressed }) => ({ minHeight: 64, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: pressed ? color.tint : color.card, flexDirection: 'row', alignItems: 'center', gap: 12 })}>
-                <Ionicons name={look.icon} size={26} color={look.tone} />
+                <View style={{ width: 44, height: 44, borderRadius: 14, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', backgroundColor: look.bg }}><Ionicons name={look.icon} size={24} color={look.tone} /></View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, color: color.ink }}>{r.name}</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: color.ink }}>{r.name}</Text>
                   <Text style={{ fontSize: 13, color: look.tone, fontWeight: '600' }}>{STATUS_LABEL[st]}{st !== 'in' && r.min_stock > 0 ? ` · reorder at ${qty(r.min_stock)}` : ''}</Text>
                 </View>
-                <Text style={{ fontSize: 17, fontWeight: '700', color: color.ink }}>{qty(r.current_stock)} {r.unit ?? ''}</Text>
+                <Text style={{ fontSize: 17, fontWeight: '700', color: color.ink, fontVariant: ['tabular-nums'] }}>{qty(r.current_stock)} {r.unit ?? ''}</Text>
               </Pressable>
   );
 });
@@ -111,11 +114,12 @@ export default function Stock() {
       </Page>
 
       <Modal visible={item != null} transparent animationType="slide" onRequestClose={close}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: '#0f172a88' }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: '#11172f88' }}>
           <Pressable accessibilityRole="button" accessibilityLabel="Close" style={{ flex: 1 }} onPress={close} />
-          <SafeAreaView edges={['bottom']} style={{ backgroundColor: color.card, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
+          <SafeAreaView edges={['bottom']} style={{ backgroundColor: color.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, borderCurve: 'continuous' }}>
             {item ? (
-              <View style={{ padding: 16, gap: 10 }}>
+              <View style={{ padding: 20, gap: 12 }}>
+                <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: color.lineStrong }} />
                 <Text accessibilityRole="header" style={{ fontSize: 18, fontWeight: '700', color: color.ink }}>{item.name}</Text>
                 <Soft>{`Now ${qty(item.current_stock + (local[item.product_id] ?? 0))} ${item.unit ?? ''}`}</Soft>
                 <Chips<Mode> items={[{ id: 'add', label: 'Add stock' }, { id: 'adjust', label: 'Adjust stock' }]} value={mode} onChange={(m) => { setMode(m); setProblem(''); }} />

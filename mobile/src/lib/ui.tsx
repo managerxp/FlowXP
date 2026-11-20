@@ -75,10 +75,10 @@ export const Line = ({ left, right, sub, onPress, icon, selected }: { left: stri
     style={({ pressed }) => ({ minHeight: 56, paddingLeft: 11, paddingRight: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: pressed || selected ? color.press : color.card, borderLeftWidth: 5, borderLeftColor: selected ? color.brand : 'transparent', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 })}>
     {icon ? <V2 style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: color.wash, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={icon} size={20} color={color.ink} /></V2> : null}
     <V2 style={{ flex: 1 }}>
-      <T2 style={{ fontSize: 16, color: color.ink }}>{t(left)}</T2>
+      <T2 style={{ fontSize: 16, fontWeight: '500', color: color.ink }}>{t(left)}</T2>
       {sub ? <T2 style={{ color: color.soft, fontSize: 13 }}>{t(sub)}</T2> : null}
     </V2>
-    {right ? <T2 style={{ fontSize: 16, fontWeight: '600', color: color.ink }}>{t(right)}</T2> : null}
+    {right ? <T2 style={{ fontSize: 16, fontWeight: '600', color: color.ink, fontVariant: ['tabular-nums'] }}>{t(right)}</T2> : null}
   </P2>
 );
 
