@@ -28,7 +28,7 @@ const day = (v, name) => { if (!v) return null; if (!/^\d{4}-\d{2}-\d{2}$/.test(
 
 /** Checks a programme as typed by the owner and returns the columns to store. */
 const HEX = /^#[0-9a-fA-F]{6}$/;
-export const CARD_ICONS = ['star', 'coffee', 'heart', 'gift', 'scissors', 'utensils', 'car', 'dumbbell'];
+export const CARD_ICONS = ['star', 'coffee', 'heart', 'gift', 'scissors', 'utensils', 'car', 'dumbbell', 'crown', 'sparkles', 'smile', 'cake', 'pizza', 'shirt', 'wrench', 'bike'];
 /** How the card looks. Colours are checked so nothing but a colour can ever be stored (the customer's page paints them). */
 export const cardFields = (c = {}) => {
   const hex = (v, d) => (HEX.test(String(v || '')) ? String(v).toLowerCase() : d);

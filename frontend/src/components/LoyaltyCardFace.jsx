@@ -2,10 +2,20 @@
  * The loyalty card as a customer sees it. Used by the owner's designer (live preview) and the customer's own page, so what the owner designs is exactly what is shown.
  * A stamp card shows one circle per stamp; every other kind shows the points.
  */
-import { Coffee, Dumbbell, Car, Gift, Heart, Scissors, Star, Utensils } from 'lucide-react';
+import { Bike, Cake, Coffee, Crown, Dumbbell, Car, Gift, Heart, Pizza, Scissors, Shirt, Smile, Sparkles, Star, Utensils, Wrench } from 'lucide-react';
 import { useT } from '../i18n/useT.js';
 
-export const ICONS = { star: Star, coffee: Coffee, heart: Heart, gift: Gift, scissors: Scissors, utensils: Utensils, car: Car, dumbbell: Dumbbell };
+export const ICONS = { star: Star, coffee: Coffee, heart: Heart, gift: Gift, scissors: Scissors, utensils: Utensils, car: Car, dumbbell: Dumbbell, crown: Crown, sparkles: Sparkles, smile: Smile, cake: Cake, pizza: Pizza, shirt: Shirt, wrench: Wrench, bike: Bike };
+
+/** The few icons that suit a kind of business, so the owner picks from 5 instead of searching a long list (the rest stay behind "More icons"). Barber and salon: scissors, a Caesar crown, a coffee mug. */
+const SUGGESTED = {
+  SALON: ['scissors', 'crown', 'coffee', 'sparkles', 'smile'],
+  RESTAURANT: ['utensils', 'coffee', 'pizza', 'cake', 'star'], CAFE: ['coffee', 'cake', 'utensils', 'heart', 'star'], CLOUD_KITCHEN: ['utensils', 'pizza', 'cake', 'star', 'gift'],
+  GYM: ['dumbbell', 'heart', 'star', 'smile', 'gift'],
+  AUTO_PARTS: ['wrench', 'car', 'bike', 'star', 'gift'], MECHANIC: ['wrench', 'car', 'bike', 'star', 'gift'],
+  CLOTHING: ['shirt', 'sparkles', 'gift', 'heart', 'star']
+};
+export const suggestedIcons = (type) => SUGGESTED[type] || ['star', 'heart', 'gift', 'coffee', 'sparkles'];
 export const DEFAULT_CARD = { bg: '#0f766e', fg: '#ffffff', accent: '#fbbf24', icon: 'star', title: '', message: '' };
 
 const LoyaltyCardFace = ({ card = DEFAULT_CARD, business, name, kind, balance = 0, redeemAt = 5, customer, membershipNo }) => {

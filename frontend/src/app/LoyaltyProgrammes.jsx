@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { Copy, Download, Plus, QrCode } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
-import LoyaltyCardFace, { DEFAULT_CARD, ICONS } from '../components/LoyaltyCardFace.jsx';
+import LoyaltyCardFace, { DEFAULT_CARD, ICONS, suggestedIcons } from '../components/LoyaltyCardFace.jsx';
 import { Alert, Badge, Button, Card, Field, Input, ListState, Modal, Select, useToast } from '../components/ui.jsx';
 import { useT, T } from '../i18n/useT.js';
 
@@ -16,6 +16,9 @@ const KINDS = [
   ['VISITS', T('Visits'), 'Counts visits. Every Nth visit earns a reward.']
 ];
 const THEMES = [['#0f766e', '#ffffff', '#fbbf24'], ['#1e3a8a', '#ffffff', '#fbbf24'], ['#7c2d12', '#ffffff', '#fdba74'], ['#831843', '#ffffff', '#f9a8d4'], ['#111827', '#ffffff', '#34d399'], ['#fef3c7', '#78350f', '#b45309']];
+const ICON_NAMES = { star: T('Star'), coffee: T('Coffee mug'), heart: T('Heart'), gift: T('Gift'), scissors: T('Scissors'), utensils: T('Food'), car: T('Car'), dumbbell: T('Dumbbell'), crown: T('Caesar crown'), sparkles: T('Sparkles'), smile: T('Smile'), cake: T('Cake'), pizza: T('Pizza'), shirt: T('Shirt'), wrench: T('Spanner'), bike: T('Bike') };
+/** Text colour that stays readable on a colour the owner picked: dark on light, white on dark. */
+const readableOn = (hex) => { const n = parseInt(hex.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 160 ? '#111827' : '#ffffff'; };
 const rupees = (paise) => (Number(paise) / 100) || '';
 const paise = (r) => Math.round(Number(r || 0) * 100);
 const joinUrl = (code) => `${window.location.origin}/card/join/${code}`;
@@ -78,7 +81,7 @@ const Rewards = ({ programme }) => {
 };
 
 /* The three steps: what it is, the rule, how it looks. Anything unusual is left to the defaults. */
-const Wizard = ({ programme, business, onClose, onSaved }) => {
+const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
   const tr = useT();
   const editing = Boolean(programme);
   const [step, setStep] = useState(editing ? 2 : 0);
@@ -91,6 +94,7 @@ const Wizard = ({ programme, business, onClose, onSaved }) => {
   }));
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
+  const [moreIcons, setMoreIcons] = useState(false);
   const setCard = (k, v) => setF((x) => ({ ...x, card: { ...x.card, [k]: v } }));
   const perBill = f.kind !== 'POINTS';
   const body = () => ({
@@ -147,10 +151,12 @@ const Wizard = ({ programme, business, onClose, onSaved }) => {
               <div className="flex flex-wrap gap-2">{THEMES.map(([bg, fg, accent]) => (
                 <button key={bg} type="button" aria-label={tr('Colour {{bg}}', { bg })} onClick={() => setF((x) => ({ ...x, card: { ...x.card, bg, fg, accent } }))}
                         className={`h-9 w-9 rounded-full border-2 ${f.card.bg === bg ? 'border-ink-900' : 'border-transparent'}`} style={{ background: bg }} />))}
-                <label className="flex items-center gap-1.5 text-small text-ink-500">{tr('own')} <input type="color" value={f.card.bg} onChange={(e) => setCard('bg', e.target.value)} aria-label={tr('Pick your own colour')} className="h-9 w-9 rounded border border-line" /></label></div></div>
+                <label className="flex items-center gap-1.5 text-small text-ink-500">{tr('own')} <input type="color" value={f.card.bg} onChange={(e) => setF((x) => ({ ...x, card: { ...x.card, bg: e.target.value, fg: readableOn(e.target.value) } }))} aria-label={tr('Pick your own colour')} className="h-9 w-9 rounded border border-line" /></label>
+                <label className="flex items-center gap-1.5 text-small text-ink-500">{tr('Stamp colour')} <input type="color" value={f.card.accent || '#fbbf24'} onChange={(e) => setCard('accent', e.target.value)} aria-label={tr('Pick the stamp colour')} className="h-9 w-9 rounded border border-line" /></label></div></div>
             <div><p className="mb-1.5 text-sm font-medium text-ink-700">{tr('Icon')}</p>
-              <div className="flex flex-wrap gap-2">{Object.entries(ICONS).map(([k, I]) => (
-                <button key={k} type="button" aria-label={k} aria-pressed={f.card.icon === k} onClick={() => setCard('icon', k)} className={`flex h-10 w-10 items-center justify-center rounded-lg border ${f.card.icon === k ? 'border-brand-500 bg-brand-50' : 'border-line'}`}><I className="h-5 w-5" /></button>))}</div></div>
+              <div className="flex flex-wrap items-center gap-2">{(moreIcons ? Object.keys(ICONS) : [...new Set([...suggestedIcons(businessType), f.card.icon])]).map((k) => { const I = ICONS[k] || ICONS.star; return (
+                <button key={k} type="button" aria-label={tr(ICON_NAMES[k] || 'Star')} title={tr(ICON_NAMES[k] || 'Star')} aria-pressed={f.card.icon === k} onClick={() => setCard('icon', k)} className={`flex h-10 w-10 items-center justify-center rounded-lg border ${f.card.icon === k ? 'border-brand-500 bg-brand-50' : 'border-line'}`}><I className="h-5 w-5" /></button>); })}
+                <button type="button" onClick={() => setMoreIcons((v) => !v)} className="text-small text-brand-600 underline">{moreIcons ? tr('Fewer icons') : tr('More icons')}</button></div></div>
             <Field id="lp-title" label={tr('Heading on the card')} hint={tr('Leave empty to use the card\'s name.')}><Input id="lp-title" maxLength={40} value={f.card.title} onChange={(e) => setCard('title', e.target.value)} placeholder={tr('Buy 5, get 1 free')} /></Field>
             <Field id="lp-msg" label={tr('A message inside the card')} hint={tr('Customers see it every time they open the card.')}><Input id="lp-msg" maxLength={140} value={f.card.message} onChange={(e) => setCard('message', e.target.value)} placeholder={tr('Thank you for coming back!')} /></Field>
             <label className="flex items-start gap-2 text-small text-ink-700"><input type="checkbox" checked={f.autoEnrol} onChange={(e) => set('autoEnrol', e.target.checked)} className="mt-0.5 h-4 w-4" />{tr('Join every customer billed with a mobile number automatically')}</label>
@@ -201,7 +207,7 @@ const Locations = () => {
   );
 };
 
-const LoyaltyProgrammes = ({ business }) => {
+const LoyaltyProgrammes = ({ business, businessType }) => {
   const tr = useT();
   const [list, setList] = useState(null); const [error, setError] = useState('');
   const [wizard, setWizard] = useState(null); const [share, setShare] = useState(null);
@@ -233,7 +239,7 @@ const LoyaltyProgrammes = ({ business }) => {
             </Card>))}
         </div>)}
       <Locations />
-      {wizard && <Wizard programme={wizard.programme_id ? wizard : null} business={business} onClose={() => setWizard(null)} onSaved={() => { setWizard(null); load(); }} />}
+      {wizard && <Wizard programme={wizard.programme_id ? wizard : null} business={business} businessType={businessType} onClose={() => setWizard(null)} onSaved={() => { setWizard(null); load(); }} />}
       {share && <Share programme={share} onClose={() => setShare(null)} />}
     </div>
   );

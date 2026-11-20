@@ -355,7 +355,7 @@ const LoyaltyPage = () => {
                   className={`-mb-px border-b-2 px-3 py-2 text-small font-medium ${tab === id ? 'border-brand-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'}`}>{tr(label)}</button>
         ))}
       </div>
-      {tab === 'cards' ? <LoyaltyProgrammes business={business?.name} /> : tab === 'results' ? <LoyaltyInsights /> : tab === 'program' ? <Program /> : tab === 'points' ? <PointsTab /> : <Coupons />}
+      {tab === 'cards' ? <LoyaltyProgrammes business={business?.name} businessType={business?.business_type} /> : tab === 'results' ? <LoyaltyInsights /> : tab === 'program' ? <Program /> : tab === 'points' ? <PointsTab /> : <Coupons />}
     </div>
   );
 };
