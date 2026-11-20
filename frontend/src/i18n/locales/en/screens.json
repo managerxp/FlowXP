@@ -5387,5 +5387,15 @@
   "Loyalty stamp QR": "Loyalty stamp QR",
   "Customer: scan for your loyalty stamp": "Customer: scan for your loyalty stamp",
   "Scanned the bill QR": "Scanned the bill QR",
-  "stamped or earned by scanning the bill": "stamped or earned by scanning the bill"
+  "stamped or earned by scanning the bill": "stamped or earned by scanning the bill",
+  "Tiers (optional)": "Tiers (optional)",
+  "Members move up as they earn more, and a higher tier earns points faster. Spending points never moves anyone down.": "Members move up as they earn more, and a higher tier earns points faster. Spending points never moves anyone down.",
+  "Tier name": "Tier name",
+  "From points": "From points",
+  "Earns": "Earns",
+  "Remove tier": "Remove tier",
+  "Use Silver, Gold and Platinum": "Use Silver, Gold and Platinum",
+  "Add a tier": "Add a tier",
+  "{{tier}} member, earns {{x}}x points": "{{tier}} member, earns {{x}}x points",
+  "{{n}} more points to reach {{tier}}": "{{n}} more points to reach {{tier}}"
 }

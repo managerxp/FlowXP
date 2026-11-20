@@ -65,6 +65,7 @@ const MemberPanel = ({ id }: { id: number }) => {
   return (
     <>
       <CardFace m={m} />
+      {m.standing?.tier ? <Soft>{fill(t('{tier} member, earns {x}x points'), { tier: m.standing.tier.name, x: String(m.standing.tier.multiplier) }) + (m.standing.next ? ` · ${fill(t('{n} more points to reach {tier}'), { n: String(m.standing.next.points_to_go), tier: m.standing.next.name })}` : '')}</Soft> : null}
       <Soft>{`${m.customer_phone ?? ''}${off ? ` · ${t('Switched off')}` : ''}`}</Soft>
       <Msg a={a} />
       <Card>

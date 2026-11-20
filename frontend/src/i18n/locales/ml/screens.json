@@ -5387,5 +5387,15 @@
   "Loyalty stamp QR": "ലോയൽറ്റി സ്റ്റാമ്പ് QR",
   "Customer: scan for your loyalty stamp": "ഉപഭോക്താവ്: ലോയൽറ്റി സ്റ്റാമ്പിനായി സ്കാൻ ചെയ്യുക",
   "Scanned the bill QR": "ബിൽ QR സ്കാൻ ചെയ്തു",
-  "stamped or earned by scanning the bill": "ബിൽ സ്കാൻ ചെയ്ത് സ്റ്റാമ്പ് അല്ലെങ്കിൽ പോയിന്റ് നേടി"
+  "stamped or earned by scanning the bill": "ബിൽ സ്കാൻ ചെയ്ത് സ്റ്റാമ്പ് അല്ലെങ്കിൽ പോയിന്റ് നേടി",
+  "Tiers (optional)": "ടിയറുകൾ (ഓപ്ഷണൽ)",
+  "Members move up as they earn more, and a higher tier earns points faster. Spending points never moves anyone down.": "കൂടുതൽ നേടുമ്പോൾ അംഗങ്ങൾ മുകളിലേക്ക് കയറുന്നു, ഉയർന്ന ടിയറിൽ പോയിന്റുകൾ വേഗത്തിൽ ലഭിക്കും. പോയിന്റ് ചെലവഴിച്ചാൽ ആരും താഴേക്ക് പോകില്ല.",
+  "Tier name": "ടിയറിന്റെ പേര്",
+  "From points": "എത്ര പോയിന്റ് മുതൽ",
+  "Earns": "നേട്ടം",
+  "Remove tier": "ടിയർ നീക്കുക",
+  "Use Silver, Gold and Platinum": "സിൽവർ, ഗോൾഡ്, പ്ലാറ്റിനം ഉപയോഗിക്കുക",
+  "Add a tier": "ടിയർ ചേർക്കുക",
+  "{{tier}} member, earns {{x}}x points": "{{tier}} അംഗം, {{x}}x പോയിന്റ് നേടുന്നു",
+  "{{n}} more points to reach {{tier}}": "{{tier}} എത്താൻ {{n}} പോയിന്റ് കൂടി"
 }

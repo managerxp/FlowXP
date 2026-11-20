@@ -3663,6 +3663,8 @@ export const HI: Record<string, string> = {
   'Customer: scan for your loyalty stamp': 'ग्राहक: अपने लॉयल्टी स्टैम्प के लिए स्कैन करें',
   'Scanned the bill QR': 'बिल का QR स्कैन किया',
   'stamped or earned by scanning the bill': 'बिल स्कैन करके स्टैम्प या पॉइंट मिले',
+  '{tier} member, earns {x}x points': '{tier} सदस्य, {x}x पॉइंट कमाता है',
+  '{n} more points to reach {tier}': '{tier} तक पहुँचने के लिए {n} पॉइंट और',
 };
 
 /** Languages that have a dictionary. */

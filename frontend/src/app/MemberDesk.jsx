@@ -80,6 +80,7 @@ const Member = ({ id }) => {
     <div className="grid gap-5 lg:grid-cols-[22rem_1fr]">
       <div className="space-y-3">
         <LoyaltyCardFace card={m.card} business={business?.name} name={m.programme_name} kind={m.kind} balance={m.balance} redeemAt={redeemAt} customer={m.customer_name} membershipNo={m.membership_no} />
+      {m.standing?.tier && <p className="rounded-xl border border-line bg-surface p-3 text-center text-sm text-ink-700"><span className="font-semibold text-ink-900">{tr('{{tier}} member, earns {{x}}x points', { tier: m.standing.tier.name, x: m.standing.tier.multiplier })}</span>{m.standing.next && <span className="block text-ink-500">{tr('{{n}} more points to reach {{tier}}', { n: m.standing.next.points_to_go, tier: m.standing.next.name })}</span>}</p>}
         <p className="text-small text-ink-500">{m.customer_phone} · {m.status === 'ACTIVE' ? tr('Active') : tr('Switched off')}</p>
       </div>
       <div className="space-y-4">

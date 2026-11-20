@@ -93,6 +93,7 @@ const Card = ({ token }) => {
   return (
     <Shell>
       <LoyaltyCardFace card={d.card} business={d.business} name={d.name} kind={d.kind} balance={d.balance} redeemAt={d.redeem_points} customer={d.customer} membershipNo={d.membership_no} />
+      {d.standing?.tier && <p className="rounded-xl border border-line bg-surface p-3 text-center text-sm text-ink-700"><span className="font-semibold text-ink-900">{tr('{{tier}} member, earns {{x}}x points', { tier: d.standing.tier.name, x: d.standing.tier.multiplier })}</span>{d.standing.next && <span className="block text-ink-500">{tr('{{n}} more points to reach {{tier}}', { n: d.standing.next.points_to_go, tier: d.standing.next.name })}</span>}</p>}
       {d.status !== 'ACTIVE' && <p className="rounded-xl bg-warning/10 p-3 text-sm text-warning">{tr('This card is switched off. Please ask the staff.')}</p>}
       {d.wallet?.google && <div><button type="button" onClick={addToWallet} className="min-h-12 w-full rounded-xl bg-ink-900 px-5 text-base font-semibold text-white">{tr('Add to Google Wallet')}</button>{walletErr && <p role="alert" className="mt-2 text-sm text-danger">{walletErr}</p>}</div>}
       <p className="rounded-xl border border-line bg-surface p-3 text-center text-sm text-ink-700">{tr('Show this card, or say your mobile number, at the counter.')}</p>

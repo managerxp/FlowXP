@@ -80,6 +80,31 @@ const Rewards = ({ programme }) => {
   );
 };
 
+/** Silver / Gold style tiers for a points card: pick a starter set or type your own. A higher tier earns faster. */
+const SPEEDS = [1, 1.25, 1.5, 2, 3];
+const STARTER = [{ name: 'Silver', min_points: 0, multiplier: 1 }, { name: 'Gold', min_points: 500, multiplier: 1.5 }, { name: 'Platinum', min_points: 2000, multiplier: 2 }];
+const TiersEditor = ({ value, onChange }) => {
+  const tr = useT();
+  const row = (i, patch) => onChange(value.map((t, j) => (j === i ? { ...t, ...patch } : t)));
+  return (
+    <div className="space-y-2 rounded-xl border border-line p-3">
+      <p className="text-sm font-medium text-ink-700">{tr('Tiers (optional)')}</p>
+      <p className="text-small text-ink-500">{tr('Members move up as they earn more, and a higher tier earns points faster. Spending points never moves anyone down.')}</p>
+      {value.map((t, i) => (
+        <div key={i} className="flex flex-wrap items-end gap-2">
+          <div className="min-w-36 flex-1"><Field id={`tier-n${i}`} label={i === 0 ? tr('Tier name') : ''}><Input id={`tier-n${i}`} maxLength={30} value={t.name} onChange={(e) => row(i, { name: e.target.value })} /></Field></div>
+          <div className="w-28"><Field id={`tier-p${i}`} label={i === 0 ? tr('From points') : ''}><Input id={`tier-p${i}`} type="number" min="0" disabled={i === 0} value={t.min_points} onChange={(e) => row(i, { min_points: e.target.value })} /></Field></div>
+          <div className="w-24"><Field id={`tier-m${i}`} label={i === 0 ? tr('Earns') : ''}><Select id={`tier-m${i}`} value={t.multiplier} onChange={(e) => row(i, { multiplier: Number(e.target.value) })}>{SPEEDS.map((x) => <option key={x} value={x}>{x}x</option>)}</Select></Field></div>
+          <Button variant="secondary" size="sm" aria-label={tr('Remove tier')} onClick={() => onChange(value.filter((_, j) => j !== i))}>×</Button>
+        </div>))}
+      <div className="flex flex-wrap gap-2">
+        {value.length === 0 && <Button variant="secondary" size="sm" onClick={() => onChange(STARTER)}>{tr('Use Silver, Gold and Platinum')}</Button>}
+        {value.length < 6 && <Button variant="secondary" size="sm" onClick={() => onChange([...value, { name: '', min_points: value.length ? Number(value[value.length - 1].min_points || 0) + 500 : 0, multiplier: 1 }])}>{tr('Add a tier')}</Button>}
+      </div>
+    </div>
+  );
+};
+
 /* The three steps: what it is, the rule, how it looks. Anything unusual is left to the defaults. */
 const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
   const tr = useT();
@@ -93,6 +118,8 @@ const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
     card: { ...DEFAULT_CARD, ...(programme?.card || {}) }
   }));
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const [tiers, setTiers] = useState([]); const [tiersTouched, setTiersTouched] = useState(false);
+  useEffect(() => { if (programme?.programme_id && programme.kind === 'POINTS') api(`/loyalty/programmes/${programme.programme_id}/tiers`).then(setTiers).catch(() => {}); }, [programme]);
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
   const [moreIcons, setMoreIcons] = useState(false);
   const setCard = (k, v) => setF((x) => ({ ...x, card: { ...x.card, [k]: v } }));
@@ -105,11 +132,14 @@ const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
   const save = async () => {
     setBusy(true); setErr('');
     try {
+      let programmeId = programme?.programme_id;
       if (editing) await api(`/loyalty/programmes/${programme.programme_id}`, { method: 'PUT', body: body() });
       else {
         const made = await api('/loyalty/programmes', { method: 'POST', body: body() });
+        programmeId = made.programme_id;
         if (perBill && f.rewardName.trim()) await api('/loyalty/rewards', { method: 'POST', body: { programme_id: made.programme_id, name: f.rewardName, points_cost: Number(f.stamps), value_paise: paise(f.rewardValue) } });
       }
+      if (tiersTouched && f.kind === 'POINTS') await api(`/loyalty/programmes/${programmeId}/tiers`, { method: 'PUT', body: { tiers: tiers.map((t) => ({ ...t, min_points: Number(t.min_points) })) } });
       onSaved();
     } catch (e) { setErr(e.message); setBusy(false); }
   };
@@ -161,6 +191,7 @@ const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
             <Field id="lp-msg" label={tr('A message inside the card')} hint={tr('Customers see it every time they open the card.')}><Input id="lp-msg" maxLength={140} value={f.card.message} onChange={(e) => setCard('message', e.target.value)} placeholder={tr('Thank you for coming back!')} /></Field>
             <label className="flex items-start gap-2 text-small text-ink-700"><input type="checkbox" checked={f.autoEnrol} onChange={(e) => set('autoEnrol', e.target.checked)} className="mt-0.5 h-4 w-4" />{tr('Join every customer billed with a mobile number automatically')}</label>
             <label className="flex items-start gap-2 text-small text-ink-700"><input type="checkbox" checked={f.billQr} onChange={(e) => set('billQr', e.target.checked)} className="mt-0.5 h-4 w-4" /><span>{tr('Print a QR on the bill so customers scan it for their stamp')}<span className="block text-ink-500">{tr('Customers scan it after paying, type their mobile number once, and join and get the stamp. It works for 24 hours, once per bill.')}</span></span></label>
+            {f.kind === 'POINTS' && <TiersEditor value={tiers} onChange={(v) => { setTiers(v); setTiersTouched(true); }} />}
           </>)}
           {err && <Alert>{err}</Alert>}
           <div className="flex justify-between gap-2 pt-2">

@@ -5387,5 +5387,15 @@
   "Loyalty stamp QR": "లాయల్టీ స్టాంప్ QR",
   "Customer: scan for your loyalty stamp": "కస్టమర్: లాయల్టీ స్టాంప్ కోసం స్కాన్ చేయండి",
   "Scanned the bill QR": "బిల్లు QR స్కాన్ చేశారు",
-  "stamped or earned by scanning the bill": "బిల్లు స్కాన్ చేసి స్టాంప్ లేదా పాయింట్లు పొందారు"
+  "stamped or earned by scanning the bill": "బిల్లు స్కాన్ చేసి స్టాంప్ లేదా పాయింట్లు పొందారు",
+  "Tiers (optional)": "టియర్లు (ఐచ్ఛికం)",
+  "Members move up as they earn more, and a higher tier earns points faster. Spending points never moves anyone down.": "ఎక్కువ సంపాదించేకొద్దీ సభ్యులు పైకి వెళ్తారు, ఎత్తైన టియర్‌లో పాయింట్లు వేగంగా వస్తాయి. పాయింట్లు ఖర్చు చేస్తే ఎవరూ కిందికి వెళ్లరు.",
+  "Tier name": "టియర్ పేరు",
+  "From points": "ఎన్ని పాయింట్ల నుండి",
+  "Earns": "సంపాదన",
+  "Remove tier": "టియర్ తొలగించండి",
+  "Use Silver, Gold and Platinum": "సిల్వర్, గోల్డ్, ప్లాటినం వాడండి",
+  "Add a tier": "టియర్ జోడించండి",
+  "{{tier}} member, earns {{x}}x points": "{{tier}} సభ్యుడు, {{x}}x పాయింట్లు సంపాదిస్తారు",
+  "{{n}} more points to reach {{tier}}": "{{tier}} చేరడానికి ఇంకా {{n}} పాయింట్లు"
 }

@@ -1598,3 +1598,9 @@ Flow: the receipt carries the bill's own QR (`/card/bill/<share_token>`). After 
 - NOT done: OTP check of the mobile number (anyone holding the receipt can claim for any number, which only ever credits that number), per-card window setting.
 - Till-screen QR (2026-11-20): for shops that do not print, the same QR is shown for the customer on the web sale-done card (`BillingPage.jsx` `Done`, fetches `/invoices/:id`, only when paid and the server sends `loyalty_claim_url`) and on the phone receipt screen (`receipt.tsx`, SvgXml via `lib/qr.ts`, only when nothing is owed). Typecheck/builds/tests pass; not looked at on screen or a device.
 - Bill QR follow-ups (2026-11-20): the customer's bill page (`/bill/:token`, `publicBill.controller.js` `stamp_link`) shows a "Collect your loyalty stamp" button while the bill is still claimable (English only, like that page). Card results count `bill_scans` (EARN rows on bills with no customer = credited by scanning) per card and in totals, tile "Scanned the bill QR" on web and phone. Tests: loyaltyBillClaim (7) + loyaltyReport pass.
+
+## Loyalty tiers (2026-11-20, migration 0150, plan feature `loyalty_tiers`)
+- Table `loyalty_tiers` (name, min_points, multiplier), one set per POINTS/SPEND programme, first tier at 0, max 6. Tier = lifetime earned (EARN + reversals of EARN); spending never demotes. Multiplier applied inside `engine.earn` (`loyaltyTiers.js` `multiplierFor`), so till, bill QR and every path earn faster.
+- API: `GET/PUT /loyalty/programmes/:id/tiers`; `standing` ({tier,next,lifetime}) returned by member lookup, getMembership and the public card.
+- Web: TiersEditor in the card wizard (POINTS only; starter Silver/Gold/Platinum), standing line on MemberDesk and the customer card. Phone: standing line on Member desk (`member-desk.tsx`), 6 languages. Tests `loyaltyTiers.test.js`.
+- NOT done: tier editing on phone, tier-change message, members-per-tier in Card results, SPEND in the wizard.

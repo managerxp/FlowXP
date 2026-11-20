@@ -5387,5 +5387,15 @@
   "Loyalty stamp QR": "লয়্যালটি স্ট্যাম্প QR",
   "Customer: scan for your loyalty stamp": "গ্রাহক: লয়্যালটি স্ট্যাম্পের জন্য স্ক্যান করুন",
   "Scanned the bill QR": "বিলের QR স্ক্যান করেছেন",
-  "stamped or earned by scanning the bill": "বিল স্ক্যান করে স্ট্যাম্প বা পয়েন্ট পেয়েছেন"
+  "stamped or earned by scanning the bill": "বিল স্ক্যান করে স্ট্যাম্প বা পয়েন্ট পেয়েছেন",
+  "Tiers (optional)": "টিয়ার (ঐচ্ছিক)",
+  "Members move up as they earn more, and a higher tier earns points faster. Spending points never moves anyone down.": "বেশি আয় করলে সদস্যরা ওপরে ওঠেন, আর উঁচু টিয়ারে পয়েন্ট দ্রুত পাওয়া যায়। পয়েন্ট খরচ করলে কেউ নিচে নামে না।",
+  "Tier name": "টিয়ারের নাম",
+  "From points": "কত পয়েন্ট থেকে",
+  "Earns": "আয়",
+  "Remove tier": "টিয়ার সরান",
+  "Use Silver, Gold and Platinum": "সিলভার, গোল্ড ও প্ল্যাটিনাম ব্যবহার করুন",
+  "Add a tier": "টিয়ার যোগ করুন",
+  "{{tier}} member, earns {{x}}x points": "{{tier}} সদস্য, {{x}}x পয়েন্ট আয় করেন",
+  "{{n}} more points to reach {{tier}}": "{{tier}} পেতে আরও {{n}} পয়েন্ট"
 }

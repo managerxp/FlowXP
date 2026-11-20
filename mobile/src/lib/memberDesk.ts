@@ -10,7 +10,8 @@ export type Entry = { entry_id: number; kind: string; points: number; note: stri
 export const canUndo = (e: Entry, role: string | undefined): boolean => (role === 'OWNER' || role === 'ADMIN') && (e.kind === 'EARN' || e.kind === 'REDEEM') && !e.undone && !e.invoice_id;
 export type Member = {
   membership_id: number; membership_no: string; customer_name: string; customer_phone: string | null; status: string; programme_name: string; kind: string;
-  card: Card; redeem_points: number; min_redeem_points: number; min_txn_paise: string; balance: number; ledger: Entry[]
+  card: Card; redeem_points: number; min_redeem_points: number; min_txn_paise: string; balance: number; ledger: Entry[];
+  /** the tier and what is next, when the card has tiers */ standing?: { tier: { name: string; multiplier: number } | null; next: { name: string; points_to_go: number } | null } | null;
 };
 export type Programme = { programme_id: number; name: string; is_active: boolean };
 
@@ -45,5 +46,6 @@ export const MEMBER_TEXTS = [
   'Added. Balance {b}', 'This bill is too small to earn anything', 'Rewards', 'Give', 'Use points', 'Recent', 'No rewards on this card yet.', '{n} more needed',
   '{name} given. Balance {b}', 'Take {value} off the bill. Balance {b}', 'Switched off', 'Not a member yet. Join them now', 'Customer name', 'Mobile number', 'Join',
   'They agreed to receive offers', 'No offers', 'There is no loyalty card yet. The owner can make one under Loyalty & coupons.', 'No membership found.', 'Nothing yet.',
-  'Bills made with the customer\'s mobile number add automatically. Use this for a bill made without it.', 'Stamps', 'Points', 'Undo', 'Reward taken back, points returned', 'Undone'
+  'Bills made with the customer\'s mobile number add automatically. Use this for a bill made without it.', 'Stamps', 'Points', 'Undo', 'Reward taken back, points returned', 'Undone',
+  '{tier} member, earns {x}x points', '{n} more points to reach {tier}'
 ];
