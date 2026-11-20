@@ -23,7 +23,6 @@ import { moveStock } from '../modules/stock.js';
 import { restoreBatches } from '../modules/retailStock.js';
 import { isRetail } from '../modules/retailSettings.js';
 import { linkFor as claimLink } from '../modules/loyaltyBillClaim.js';
-import { describe as describeCard, getProgram, isLive, progressFor, voidForInvoice } from '../modules/loyalty.js';
 import { businessToday } from '../utils/dates.js';
 import { branchFilter } from '../utils/scope.js';
 import { ApprovalError, discountPolicy, ensureApproved, needsApproval } from '../modules/approvals.js';
@@ -287,15 +286,7 @@ export const get = async (req, res) => {
     [req.params.id]
   )).rows;
 
-  // The customer's visit card as it stands, for the receipt (only when the program is live).
-  let loyaltyCard = null;
-  if (rows[0].customer_id) {
-    const program = await getProgram(pool, req.tenant.businessId);
-    if (isLive(program)) {
-      const progress = await progressFor(pool, req.tenant.businessId, rows[0].customer_id, program, await businessToday(req.tenant.businessId));
-      loyaltyCard = describeCard(program, progress).message;
-    }
-  }
+  const loyaltyCard = null;   // the older visit card is gone; Loyalty cards show on the customer's own page
 
   const customerBalance = rows[0].customer_id
     ? Number((await pool.query(`SELECT COALESCE(SUM(balance_due_paise), 0) AS due FROM invoices WHERE business_id = $1 AND customer_id = $2 AND status = 'ISSUED'`, [req.tenant.businessId, rows[0].customer_id])).rows[0].due)
@@ -489,7 +480,10 @@ export const cancel = async (req, res) => {
     }
 
     if (isRetail(req.tenant)) await restoreBatches(client, { businessId: req.tenant.businessId, invoiceId: Number(req.params.id) });   // expiry batches get their stock back too
-    await voidForInvoice(client, req.tenant.businessId, req.params.id);   // the loyalty stamp and coupon use come back
+    // what the bill did to loyalty and coupons comes back: card points on it, a claimed reward, the coupon use
+    await client.query(`UPDATE points_ledger SET voided_at = CURRENT_TIMESTAMP WHERE business_id = $1 AND invoice_id = $2 AND voided_at IS NULL`, [req.tenant.businessId, req.params.id]);
+    await client.query(`UPDATE loyalty_redemptions SET applied_invoice_id = NULL, applied_paise = NULL WHERE business_id = $1 AND applied_invoice_id = $2`, [req.tenant.businessId, req.params.id]);
+    await client.query(`UPDATE coupon_redemptions SET voided_at = CURRENT_TIMESTAMP WHERE business_id = $1 AND invoice_id = $2 AND voided_at IS NULL`, [req.tenant.businessId, req.params.id]);
     // a salon bill also hands back package visits and gift card money, and withdraws what it sold (or refuses if that was used)
     if (req.tenant.businessType === 'GYM') await onGymInvoiceCancelled(client, { businessId: req.tenant.businessId, invoiceId: Number(req.params.id), userId: req.auth.userId });
     if (req.tenant.businessType === 'GAMING_CAFE') await returnWalletForCancelled(client, { businessId: req.tenant.businessId, invoiceId: Number(req.params.id), userId: req.auth.userId });   // what the wallet paid goes back to it

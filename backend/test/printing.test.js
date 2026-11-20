@@ -105,10 +105,9 @@ test('a KOT can only be printed by the outlet and business it belongs to', { ski
   void cancelledKot;
 });
 
-test('the invoice carries what a receipt prints: outlet, cashier, table, tax and the loyalty line', { skip }, async () => {
+test('the invoice carries what a receipt prints: outlet, cashier, table and tax', { skip }, async () => {
   // a visit card so the receipt can say where the customer stands
   const product = (await pool.query(`INSERT INTO products (business_id, name, kind, selling_price_paise, tax_rate, track_inventory) VALUES ($1,'Jamun','DISH',8000,5,FALSE) RETURNING product_id`, [biz])).rows[0].product_id;
-  await pool.query(`INSERT INTO loyalty_programs (business_id, is_enabled, visits_required, reward_product_id) VALUES ($1,TRUE,7,$2)`, [biz, product]);
   const customer = (await pool.query(`INSERT INTO customers (business_id, name, phone) VALUES ($1,'Asha','9000011111') RETURNING customer_id`, [biz])).rows[0].customer_id;
   const client = await pool.connect();
   let inv;
@@ -125,7 +124,6 @@ test('the invoice carries what a receipt prints: outlet, cashier, table, tax and
   assert.equal(d.cashier, 'Priya');
   assert.ok(d.created_at);
   assert.equal(d.cgst + d.sgst, 8, '5% on ₹160, split between CGST and SGST');
-  assert.match(d.loyalty_message, /5 more visits/, 'one stamp so far, six needed');
   assert.equal(d.items[0].description, 'Jamun');
   // an outlet's user can't fetch another outlet's receipt
   assert.equal((await call(invoices.get, { branch: B, params: { id: inv.invoice_id }, t: { scopeBranchId: B, pinned: true } })).code, 404);

@@ -15,7 +15,6 @@
 import { onCreditNote } from '../modules/salon/hooks.js';
 import { onCreditNote as onGymCreditNote } from '../modules/gym/memberships.js';
 import pool from '../config/database.js';
-import { reverseForCredit } from '../modules/points.js';
 import { refundBill } from '../modules/loyaltyEngine.js';
 import { recordAudit } from '../modules/events.js';
 import { moveStock } from '../modules/stock.js';
@@ -174,8 +173,7 @@ export const issueCreditNote = async (client, req) => {
     [invoice.invoice_id, total, newBalance, refund, fromBalance]
   );
 
-  // the customer gives back a share of the points that bill earned
-  await reverseForCredit(client, { businessId: req.tenant.businessId, invoiceId: invoice.invoice_id, creditedTotalPaise: Number(invoice.credited_paise) + total, createdBy: req.auth.userId });
+  // the customer gives back a share of the Loyalty card points that bill earned
   await refundBill(client, { businessId: req.tenant.businessId, invoiceId: invoice.invoice_id, refundedPaise: Number(invoice.credited_paise) + total, totalPaise: Number(invoice.total_paise), key: `cn:${note.cn_id}`, createdBy: req.auth.userId });
   // a salon bill: commission shrinks with the credited share; a package / membership / gift card credited in full is withdrawn
   if (req.tenant.businessType === 'GYM') await onGymCreditNote(client, { businessId: req.tenant.businessId, invoiceId: invoice.invoice_id, userId: req.auth.userId });

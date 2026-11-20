@@ -43,7 +43,6 @@ const loyaltyLimiter = rateLimit({
 });
 
 router.get('/menu/:token', publicOrdering.getMenu);
-router.post('/menu/:token/loyalty', loyaltyLimiter, publicOrdering.loyaltyCard);
 router.post('/menu/:token/order', placeOrderLimiter, idempotent((req) => `t:${req.params.token}`), publicOrdering.placeOrder);
 
 /* Online booking for a salon, found by the address its owner chose. Reading is generous; booking is tight, since each

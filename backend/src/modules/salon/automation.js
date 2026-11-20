@@ -21,7 +21,6 @@ import { toRupees } from '../../utils/money.js';
 import { SalonError, bool, int, text } from './common.js';
 import { getSettings } from './settings.js';
 import { alertCounts } from './alerts.js';
-import { expirePoints, expiringSoonAll } from './loyalty.js';
 import { expireMemberships, expirePackages } from './entitlements.js';
 import { localParts, toClock } from './schedule.js';
 import { segmentCondition, parseSegment } from './segments.js';
@@ -32,7 +31,6 @@ export const AUTOMATIONS = {
   BIRTHDAY: { label: 'Birthday message', description: 'Wish a client on their birthday.', default_on: false, config: { offer_text: 'Enjoy a special treat on us this month.' } },
   ANNIVERSARY: { label: 'Anniversary message', description: 'Wish a client on their anniversary.', default_on: false, config: { offer_text: 'Celebrate with a little something from us.' } },
   MEMBERSHIP_EXPIRY: { label: 'Membership expiry reminder', description: 'Remind a member before their membership ends.', default_on: false, config: { days_before: 7 } },
-  POINTS_EXPIRY: { label: 'Loyalty points expiry', description: 'Warn a client before their points expire.', default_on: false, config: { days_before: 14 } },
   REVISIT: { label: 'Revisit reminder', description: 'Invite a client back some days after their last visit.', default_on: false, config: { days_after: 30 } },
   INACTIVE: { label: 'Inactive customer reminder', description: 'Win back a client who has not visited for a long time.', default_on: false, config: { days: 60, offer_text: 'Come back and see what is new.' } },
   PAYMENT_REMINDER: { label: 'Payment reminder', description: 'Remind a client about a bill that is still unpaid.', default_on: false, config: { days_overdue: 3, repeat_days: 7 } },
@@ -155,21 +153,6 @@ const runners = {
     return n;
   },
 
-  async POINTS_EXPIRY(db, job, config) {
-    const days = (await db.query(`SELECT expiry_days FROM points_programs WHERE business_id = $1 AND is_enabled`, [job.businessId])).rows[0]?.expiry_days;
-    if (!days) return 0;
-    let n = 0;
-    for (const p of (await expiringSoonAll(db, job.businessId, days, config.days_before)).slice(0, 200)) {
-      // at most one warning a month per client
-      const recent = (await db.query(`SELECT 1 FROM salon_automation_log WHERE business_id = $1 AND automation_key = 'POINTS_EXPIRY' AND related_id = $2 AND run_on > $3::date - 30 LIMIT 1`, [job.businessId, p.customer_id, job.today])).rows.length;
-      if (recent) continue;
-      const c = (await db.query(`SELECT customer_id, name, phone FROM customers WHERE customer_id = $1 AND status = 'ACTIVE'`, [p.customer_id])).rows[0];
-      if (!c || !(await claim(db, job.businessId, 'POINTS_EXPIRY', 'customer', c.customer_id, job.today))) continue;
-      if (await reach(db, job, c, 'SALON_POINTS_EXPIRY', { name: c.name, points: p.points, days: config.days_before })) n++;
-    }
-    return n;
-  },
-
   async REVISIT(db, job, config) {
     const rows = (await db.query(
       `SELECT c.customer_id, c.name, c.phone, st.last_visit FROM salon_customer_stats st JOIN customers c ON c.customer_id = st.customer_id
@@ -242,12 +225,10 @@ export const runForBusiness = async (db, businessId) => {
   const job = { businessId, business: b.name, tz: b.tz, today };
   const out = {};
 
-  // housekeeping that is not optional: entitlements lapse on their date, points lapse when the owner said they do
+  // housekeeping that is not optional: entitlements lapse on their date (a card's points lapse on the card's own schedule, loyaltyExpiry.js)
   try {
     await expireMemberships(db, businessId, today);
     await expirePackages(db, businessId, today);
-    const days = (await db.query(`SELECT expiry_days FROM points_programs WHERE business_id = $1 AND is_enabled`, [businessId])).rows[0]?.expiry_days;
-    if (days && (await claim(db, businessId, 'POINTS_LAPSE', 'business', businessId, today))) out.POINTS_LAPSE = (await expirePoints(db, businessId, days)).points;
   } catch (error) { console.error(`[salon] housekeeping failed for ${businessId}:`, error.message); }
 
   for (const a of await getAutomations(db, businessId)) {

@@ -1,7 +1,6 @@
 /*
- * Loyalty program settings and results, the customer card lookups a till uses,
- * and coupons. The rules themselves live in modules/loyalty.js and
- * modules/coupons.js; this file validates input, scopes to the business and
+ * The customer card lookups a till uses, and coupons. Loyalty cards live in
+ * modules/loyaltyEngine.js, coupons in modules/coupons.js; this file validates input, scopes to the business and
  * turns paise into rupees at the edge.
  *
  * Loyalty and coupons are business-wide (a visit at any outlet counts), so the
@@ -10,132 +9,25 @@
 import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
 import { CouponError, validateCoupon } from '../modules/coupons.js';
-import { describe, findCustomerByPhone, getProgram, isLive, normalisePhone, progressFor } from '../modules/loyalty.js';
-import { businessToday } from '../utils/dates.js';
-import { pointsCard } from './points.controller.js';
+import { findCustomerByPhone, normalisePhone } from '../modules/phone.js';
 import { spendCard } from '../modules/loyaltyEngine.js';
+import { businessToday } from '../utils/dates.js';
 import { toPaise, toRupees } from '../utils/money.js';
 
 const bad = (res, message, status = 400) => res.status(status).json({ success: false, message });
-
-const asProgram = (row) => row ? ({
-  is_enabled: row.is_enabled, visits_required: row.visits_required, reward_product_id: row.reward_product_id,
-  reward_name: row.reward_name ?? null, reward_price: row.reward_price_paise != null ? toRupees(row.reward_price_paise) : null,
-  reward_quantity: row.reward_quantity, min_bill: toRupees(row.min_bill_paise)
-}) : { is_enabled: false, visits_required: 7, reward_product_id: null, reward_name: null, reward_price: null, reward_quantity: 1, min_bill: 0 };
-
-/* GET /api/loyalty/program */
-export const getProgramSettings = async (req, res) => {
-  res.json({ success: true, data: asProgram(await getProgram(pool, req.tenant.businessId)) });
-};
-
-/* PUT /api/loyalty/program */
-export const putProgram = async (req, res) => {
-  const body = req.body || {};
-  const enabled = body.is_enabled === true;
-  const visits = Number(body.visits_required);
-  const quantity = Number(body.reward_quantity ?? 1);
-  if (!Number.isInteger(visits) || visits < 2 || visits > 50) return bad(res, 'Visits needed must be a whole number from 2 to 50');
-  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) return bad(res, 'Free quantity must be from 1 to 10');
-  let minBill = 0;
-  try { minBill = body.min_bill ? toPaise(body.min_bill) : 0; } catch { return bad(res, 'Minimum bill must be a number'); }
-  if (minBill < 0) return bad(res, 'Minimum bill cannot be negative');
-
-  const productId = body.reward_product_id ? Number(body.reward_product_id) : null;
-  if (productId) {
-    const ok = await pool.query(`SELECT 1 FROM products WHERE product_id = $1 AND business_id = $2 AND status = 'ACTIVE' AND kind = 'DISH'`, [productId, req.tenant.businessId]);
-    if (!ok.rows.length) return bad(res, 'Choose one of your menu items as the reward');
-  }
-  if (enabled && !productId) return bad(res, 'Choose the free item before switching the program on');
-
-  await pool.query(
-    `INSERT INTO loyalty_programs (business_id, is_enabled, visits_required, reward_product_id, reward_quantity, min_bill_paise, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,CURRENT_TIMESTAMP)
-     ON CONFLICT (business_id) DO UPDATE SET is_enabled = EXCLUDED.is_enabled, visits_required = EXCLUDED.visits_required,
-       reward_product_id = EXCLUDED.reward_product_id, reward_quantity = EXCLUDED.reward_quantity, min_bill_paise = EXCLUDED.min_bill_paise, updated_at = CURRENT_TIMESTAMP`,
-    [req.tenant.businessId, enabled, visits, productId, quantity, minBill]
-  );
-  recordAudit(req, { action: 'loyalty.program_updated', resource_type: 'loyalty_program', resource_id: req.tenant.businessId, metadata: { enabled, visits, reward_product_id: productId, quantity } });
-  res.json({ success: true, data: asProgram(await getProgram(pool, req.tenant.businessId)) });
-};
-
-/* The card for one customer, or null when the program is off. */
-const cardFor = async (businessId, customerId) => {
-  const program = await getProgram(pool, businessId);
-  if (!isLive(program)) return null;
-  const progress = await progressFor(pool, businessId, customerId, program, await businessToday(businessId));
-  return { ...describe(program, progress), visits: progress.visits, rewards_redeemed: progress.rewards_redeemed, last_visit: progress.last_visit };
-};
 
 /* GET /api/loyalty/lookup?phone= — the till types a mobile number and sees who it is and where their card stands */
 export const lookup = async (req, res) => {
   if (!normalisePhone(req.query.phone)) return bad(res, 'Enter a 10-digit mobile number');
   const customer = await findCustomerByPhone(pool, req.tenant.businessId, req.query.phone);
-  res.json({ success: true, data: { customer, loyalty: customer ? await cardFor(req.tenant.businessId, customer.customer_id) : null, points: customer ? (await pointsCard(pool, req.tenant.businessId, customer.customer_id)) ?? (await spendCard(pool, req.tenant.businessId, customer.customer_id)) : null } });
+  res.json({ success: true, data: { customer, points: customer ? await spendCard(pool, req.tenant.businessId, customer.customer_id) : null } });
 };
 
 /* GET /api/loyalty/customers/:id */
 export const customerCard = async (req, res) => {
   const own = await pool.query(`SELECT 1 FROM customers WHERE customer_id = $1 AND business_id = $2`, [req.params.id, req.tenant.businessId]);
   if (!own.rows.length) return bad(res, 'Not found', 404);
-  res.json({ success: true, data: { loyalty: await cardFor(req.tenant.businessId, Number(req.params.id)), points: (await pointsCard(pool, req.tenant.businessId, Number(req.params.id))) ?? (await spendCard(pool, req.tenant.businessId, Number(req.params.id))) } });
-};
-
-/* GET /api/loyalty/summary — how the program is doing */
-export const summary = async (req, res) => {
-  const id = req.tenant.businessId;
-  const program = await getProgram(pool, id);
-  const [members, redeemed, stamps30, coupon30, top] = await Promise.all([
-    pool.query(`SELECT COUNT(DISTINCT customer_id)::int AS n FROM loyalty_events WHERE business_id = $1 AND voided_at IS NULL`, [id]),
-    pool.query(`SELECT COUNT(*)::int AS n, COALESCE(SUM(amount_paise),0) AS value_paise,
-                       COUNT(*) FILTER (WHERE created_at > now() - interval '30 days')::int AS n30
-                FROM loyalty_events WHERE business_id = $1 AND kind = 'REDEEM' AND voided_at IS NULL`, [id]),
-    pool.query(`SELECT COUNT(*)::int AS n FROM loyalty_events WHERE business_id = $1 AND kind = 'VISIT' AND voided_at IS NULL AND created_at > now() - interval '30 days'`, [id]),
-    pool.query(`SELECT COALESCE(SUM(amount_paise),0) AS paise, COUNT(*)::int AS n FROM coupon_redemptions WHERE business_id = $1 AND voided_at IS NULL AND created_at > now() - interval '30 days'`, [id]),
-    pool.query(`SELECT c.customer_id, c.name, c.phone, COUNT(*)::int AS visits FROM loyalty_events e JOIN customers c ON c.customer_id = e.customer_id
-                WHERE e.business_id = $1 AND e.voided_at IS NULL GROUP BY c.customer_id, c.name, c.phone ORDER BY visits DESC, c.name LIMIT 10`, [id])
-  ]);
-  const today = await businessToday(id);
-  const regulars = [];
-  for (const r of top.rows) {
-    const progress = isLive(program) ? await progressFor(pool, id, r.customer_id, program, today) : null;
-    regulars.push({ ...r, stamps: progress?.stamps ?? null, reward_ready: progress?.reward_ready ?? false });
-  }
-
-  /* Every member once: how often they come, when they last did, and where their card stands
-     (stamps since their last free item; a card with visits_required - 1 stamps has the reward due). */
-  const members_ = (await pool.query(
-    `WITH ev AS (SELECT customer_id, kind, visit_date FROM loyalty_events WHERE business_id = $1 AND voided_at IS NULL),
-          redeemed AS (SELECT customer_id, MAX(visit_date) AS d FROM ev WHERE kind = 'REDEEM' GROUP BY customer_id)
-     SELECT e.customer_id, c.name, c.phone,
-            COUNT(*) FILTER (WHERE e.kind = 'VISIT')::int AS visits,
-            (MIN(e.visit_date))::text AS first_visit, (MAX(e.visit_date))::text AS last_visit,
-            COUNT(*) FILTER (WHERE e.kind = 'VISIT' AND (r.d IS NULL OR e.visit_date > r.d))::int AS stamps
-     FROM ev e JOIN customers c ON c.customer_id = e.customer_id LEFT JOIN redeemed r ON r.customer_id = e.customer_id
-     GROUP BY e.customer_id, c.name, c.phone`, [id])).rows;
-  const need = program ? program.visits_required - 1 : null;
-  const daysAgo = (d) => Math.round((new Date(`${today}T00:00:00Z`) - new Date(`${d}T00:00:00Z`)) / 86400000);
-  const brief = (m) => ({ customer_id: m.customer_id, name: m.name, phone: m.phone, visits: m.visits, stamps: m.stamps, last_visit: m.last_visit });
-  const byVisits = [['Once', (v) => v === 1], ['2–3 times', (v) => v >= 2 && v <= 3], ['4–6 times', (v) => v >= 4 && v <= 6], ['7 or more', (v) => v >= 7]]
-    .map(([label, test]) => ({ label, count: members_.filter((m) => test(m.visits)).length }));
-  const due = need ? members_.filter((m) => m.stamps >= need) : [];
-  const oneAway = need ? members_.filter((m) => m.stamps === need - 1) : [];
-  res.json({
-    success: true,
-    data: {
-      members: members.rows[0].n,
-      rewards_redeemed: redeemed.rows[0].n, rewards_redeemed_30d: redeemed.rows[0].n30, rewards_value: toRupees(redeemed.rows[0].value_paise),
-      visits_30d: stamps30.rows[0].n,
-      coupon_uses_30d: coupon30.rows[0].n, coupon_discount_30d: toRupees(coupon30.rows[0].paise),
-      regulars,
-      new_30d: members_.filter((m) => daysAgo(m.first_visit) <= 30).length,
-      active_30d: members_.filter((m) => daysAgo(m.last_visit) <= 30).length,
-      lapsed_60d: members_.filter((m) => daysAgo(m.last_visit) > 60).length,
-      by_visits: byVisits,
-      reward_due: { count: due.length, members: due.sort((a, b) => b.visits - a.visits).slice(0, 20).map(brief) },
-      one_visit_away: { count: oneAway.length, members: oneAway.sort((a, b) => b.visits - a.visits).slice(0, 20).map(brief) }
-    }
-  });
+  res.json({ success: true, data: { points: await spendCard(pool, req.tenant.businessId, Number(req.params.id)) } });
 };
 
 /* ── coupons ─────────────────────────────────────────────────────────────── */
@@ -149,7 +41,7 @@ const asCoupon = (r) => ({
   used: Number(r.used ?? 0), discount_given: toRupees(r.discount_paise ?? 0)
 });
 
-/* GET /api/coupons */
+
 export const listCoupons = async (req, res) => {
   const { rows } = await pool.query(
     `SELECT c.*, COUNT(r.redemption_id) FILTER (WHERE r.voided_at IS NULL) AS used,

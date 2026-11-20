@@ -8,7 +8,7 @@
  */
 import pool from '../config/database.js';
 import { recordAudit } from '../modules/events.js';
-import { findCustomerByPhone, normalisePhone } from '../modules/loyalty.js';
+import { findCustomerByPhone, normalisePhone } from '../modules/phone.js';
 import { businessToday } from '../utils/dates.js';
 import { afterReservation, afterWaitlist } from '../modules/messaging/index.js';
 import { branchFilter } from '../utils/scope.js';

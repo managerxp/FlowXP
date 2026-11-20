@@ -445,7 +445,7 @@ export const shareJob = async (db, tenant, id, event) => {
     if (b.problem) throw new PartsError(b.code || 400, b.problem);
     text = `Hi ${name}, your ${vehicle} is done at ${shop}. ${b.text.replace(/^Hi [^,]*, /, '')}`;
   }
-  const { normalisePhone } = await import('../loyalty.js');
+  const { normalisePhone } = await import('../phone.js');
   const { default: config } = await import('../../config/env.js');
   const digits = normalisePhone(job.customer_phone);
   if (!digits) throw new PartsError(400, 'This customer has no mobile number');

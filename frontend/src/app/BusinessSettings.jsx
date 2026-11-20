@@ -25,6 +25,7 @@ import GstOptionsSettings from './GstOptionsSettings.jsx';
 import DocumentNumbersSettings from './DocumentNumbersSettings.jsx';
 import { useDirty, useUnsavedWarning } from '../lib/unsaved.js';
 import PrintersSettings from './PrintersSettings.jsx';
+import ReceiptPreview from './ReceiptPreview.jsx';
 import BackupSettings from './BackupSettings.jsx';
 import ScreenLockSettings from './ScreenLock.jsx';
 import TaxRatesSettings from './TaxRatesSettings.jsx';
@@ -259,7 +260,7 @@ const SilentPrinting = () => {
 const InvoiceSettingsUnlessFood = ({ initial }) => { const { hasFeature } = useAuth(); return hasFeature('kitchen') ? null : <InvoicePrintSettings initial={initial} />; };
 
 /* What every receipt and kitchen slip looks like (business-wide), and what THIS device does automatically. */
-const ReceiptSettings = ({ initial }) => {
+const ReceiptSettings = ({ initial, biz }) => {
   const tr = useT();
   const toast = useToast();
   const { hasFeature } = useAuth();
@@ -289,7 +290,8 @@ const ReceiptSettings = ({ initial }) => {
       <p className="mt-1 text-sm text-ink-500">{tr('Prints from the browser to any printer, including 58 mm and 80 mm receipt printers. Pick the printer in the print dialog.')}</p>
       <SilentPrinting />
       <p className="mt-6 text-sm font-semibold text-ink-900">{tr('What prints on the bill')}</p>
-      <form onSubmit={save} className="mt-3 space-y-4">
+      <div className="mt-3 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <form onSubmit={save} className="space-y-4">
         <Alert>{error}</Alert>
         <Field id="paper" label={tr('Paper width')}><Select id="paper" value={s.paper_width} onChange={(e) => setS((x) => ({ ...x, paper_width: Number(e.target.value) }))}><option value={80}>{tr('80 mm (standard)')}</option><option value={58}>{tr('58 mm (narrow)')}</option></Select></Field>
         <Field id="footer" label={tr('Footer message')} hint={tr('Printed at the bottom of every receipt.')}><Textarea id="footer" rows={3} value={s.footer} onChange={(e) => setS((x) => ({ ...x, footer: e.target.value }))} maxLength={200} /></Field>
@@ -298,7 +300,7 @@ const ReceiptSettings = ({ initial }) => {
         {[
           [tr('Top of the bill'), [flag('show_logo', 'Print the logo at the top of receipts'), flag('show_phone', T('Show the phone number on receipts')), flag('show_gstin', 'Show the GSTIN on receipts')]],
           [tr('Items and totals'), [flag('show_total_qty', T('Show the total quantity on receipts')), flag('show_tax_lines', T('Show the tax lines (CGST and SGST, UTGST or IGST) on receipts')), flag('show_amount_words', T('Print the amount in words under the total'))]],
-          [tr('Payment and customer'), [flag('show_upi_qr', 'Show a UPI QR for any unpaid balance'), flag('show_loyalty', 'Show the customer’s loyalty card line')]],
+          [tr('Payment and customer'), [flag('show_upi_qr', 'Show a UPI QR for any unpaid balance')]],
           [tr('Bottom of the bill'), [!kitchen && flag('show_terms', T('Print the terms and conditions at the bottom')), flag('show_powered_by', 'Print “Powered by FlowXP” at the bottom')]],
           [tr('Printer'), [flag('auto_cut', T('Cut the paper after each receipt')), kitchen && hasFeature('counter_token') && flag('print_token', 'Print a daily token slip after the bill for orders without a table'), kitchen && flag('kitchen_screen', T('The kitchen uses the kitchen screen (switch off if it only uses printed tickets)'))]]
         ].map(([title, items]) => { const shown = items.filter(Boolean); return shown.length ? (
@@ -323,6 +325,8 @@ const ReceiptSettings = ({ initial }) => {
         </details>}
         <Button type="submit" disabled={busy}>{busy ? tr('Saving…') : tr('Save receipt settings')}</Button>
       </form>
+      <aside className="lg:sticky lg:top-4 lg:self-start"><ReceiptPreview s={s} biz={biz} /></aside>
+      </div>
       <div className="mt-6 border-t border-line pt-4">
         <p className="text-sm font-semibold text-ink-900">{tr('This device')}</p>
         <p className="mb-2 text-xs text-ink-500">{kitchen ? tr('Remembered in this browser only, so the counter and the kitchen can behave differently.') : tr('Remembered in this browser only.')}</p>
@@ -460,7 +464,7 @@ const BusinessSettings = () => {
       <RoundOffSetting initial={form.round_off_enabled} />
       <LanguageSetting businessDefault={form.default_language} />
       <PrintersSettings />
-      <ReceiptSettings initial={form.receipt_settings} />
+      <ReceiptSettings initial={form.receipt_settings} biz={form} />
       <GstOptionsSettings />
       <TaxRatesSettings />
       <DocumentNumbersSettings />

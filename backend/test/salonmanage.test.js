@@ -413,7 +413,7 @@ test('automations are listed with defaults, changed with validation, and audited
   const list = await S.call(automation.list);
   assert.equal(list.code, 200);
   const keys = list.body.data.automations.map((a) => a.key);
-  for (const k of ['APPOINTMENT_REMINDER', 'BIRTHDAY', 'MEMBERSHIP_EXPIRY', 'POINTS_EXPIRY', 'REVISIT', 'INACTIVE', 'PAYMENT_REMINDER', 'LOW_STOCK']) assert.ok(keys.includes(k), k);
+  for (const k of ['APPOINTMENT_REMINDER', 'BIRTHDAY', 'MEMBERSHIP_EXPIRY', 'REVISIT', 'INACTIVE', 'PAYMENT_REMINDER', 'LOW_STOCK']) assert.ok(keys.includes(k), k);
   const on = await S.call(automation.update, { params: { key: 'appointment_reminder' }, body: { is_enabled: true, config: { hours_before: 3 } } });
   assert.equal(on.code, 200, JSON.stringify(on.body));
   assert.equal(on.body.data.config.hours_before, 3);

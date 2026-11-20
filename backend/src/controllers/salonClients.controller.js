@@ -11,15 +11,14 @@
 import pool from '../config/database.js';
 import { hasPermission } from '../middleware/auth.js';
 import { businessToday } from '../utils/dates.js';
-import { getPoints, standing } from '../modules/points.js';
-import { normalisePhone } from '../modules/loyalty.js';
+import { spendCard } from '../modules/loyaltyEngine.js';
+import { normalisePhone } from '../modules/phone.js';
 import { toRupees } from '../utils/money.js';
 import { checkEmail } from '../utils/validate.js';
 import {
   SalonError, audit, isoDate, int, like, ok, oneOf, page, paging, phone, text, wrapAll
 } from '../modules/salon/common.js';
 import { getSettings } from '../modules/salon/settings.js';
-import { expiringPoints } from '../modules/salon/loyalty.js';
 import { SEGMENTS, labelsFor, parseSegment, segmentCondition } from '../modules/salon/segments.js';
 
 const showMoney = (tenant) => tenant.role !== 'STYLIST' && (hasPermission(tenant, 'billing') || hasPermission(tenant, 'customers') || hasPermission(tenant, 'reports'));
@@ -148,20 +147,8 @@ const view = async (req, id) => {
     `SELECT card_id, code, balance_paise, initial_paise, expires_on, status FROM salon_gift_cards WHERE customer_id = $1 AND business_id = $2 ORDER BY card_id DESC LIMIT 10`, [r.customer_id, req.tenant.businessId])).rows
     .map((g) => ({ card_id: g.card_id, code: g.code, balance: toRupees(g.balance_paise), initial: toRupees(g.initial_paise), expires_on: g.expires_on, status: g.status })) : [];
 
-  let loyalty = null;
-  const cfg = await getPoints(pool, req.tenant.businessId);
-  if (cfg) {
-    const st = await standing(pool, req.tenant.businessId, r.customer_id, cfg);
-    const agg = (await pool.query(
-      `SELECT COALESCE(SUM(points) FILTER (WHERE kind = 'EARN'), 0)::int AS earned, COALESCE(-SUM(points) FILTER (WHERE kind = 'REDEEM'), 0)::int AS redeemed,
-              COALESCE(-SUM(points) FILTER (WHERE kind = 'EXPIRE'), 0)::int AS expired
-       FROM points_ledger WHERE business_id = $1 AND customer_id = $2 AND voided_at IS NULL`, [req.tenant.businessId, r.customer_id])).rows[0];
-    let expiring = 0;
-    if (cfg.program.expiry_days) {
-      expiring = await expiringPoints(pool, req.tenant.businessId, r.customer_id, cfg.program.expiry_days, 30);
-    }
-    loyalty = { available: st.balance, lifetime: st.lifetime, redeemed: agg.redeemed, expired: agg.expired, expiring_soon: expiring, tier: st.tier?.name ?? null, next_tier: st.next_tier };
-  }
+  const card = await spendCard(pool, req.tenant.businessId, r.customer_id);
+  const loyalty = card ? { available: card.balance, lifetime: card.lifetime, redeemed: 0, expired: 0, expiring_soon: 0, tier: card.tier?.name ?? null, next_tier: card.next_tier } : null;
 
   return {
     ...base, address: r.address, state: r.state, gstin: r.gstin, created_at: r.created_at, preferences: r.preferences, home_branch_id: r.home_branch_id,

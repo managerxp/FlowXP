@@ -9,7 +9,7 @@
 import crypto from 'node:crypto';
 import pool from '../../config/database.js';
 import config from '../../config/env.js';
-import { describe, getProgram, isLive, normalisePhone, progressFor } from '../loyalty.js';
+import { normalisePhone } from '../phone.js';
 import { businessToday } from '../../utils/dates.js';
 import { toRupees } from '../../utils/money.js';
 import { deliver } from './provider.js';
@@ -305,11 +305,7 @@ export const audience = async (db, businessId, { segment, days = 30, programme_i
            AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.customer_id = c.customer_id AND i.status = 'ISSUED' AND i.invoice_date > ($2::date - $3::int))`;
     params = [businessId, today, n];
   } else {
-    const program = await getProgram(db, businessId);
-    if (!isLive(program)) return { error: 'Switch the loyalty program on first' };
-    sql = `${base} AND (SELECT COUNT(*) FROM loyalty_events e WHERE e.customer_id = c.customer_id AND e.kind = 'VISIT' AND e.voided_at IS NULL
-                          AND e.event_id > COALESCE((SELECT MAX(r.event_id) FROM loyalty_events r WHERE r.customer_id = c.customer_id AND r.kind = 'REDEEM' AND r.voided_at IS NULL), 0)) >= $2`;
-    params = [businessId, program.visits_required - 2];
+    return { error: 'Visit cards are now Loyalty cards: choose a card audience instead' };
   }
   return { customers: (await db.query(`${sql} ORDER BY c.customer_id LIMIT ${CAMPAIGN_LIMIT + 1}`, params)).rows };
 };
@@ -363,17 +359,6 @@ export const afterBill = (businessId, invoiceId) => quiet('bill message', async 
     if (pts?.earned > 0 && settings.loyalty_points) await send(pool, { businessId, customerId: inv.customer_id, phone: customer.phone, kind: 'LOYALTY_POINTS', values: { name: customer.name || 'there', business: pts.business, earned: pts.earned, balance: pts.balance } });
   }
 
-  if (settings.loyalty_nudge) await oneAtATime(inv.customer_id, async () => {
-    const program = await getProgram(pool, businessId);
-    if (!isLive(program)) return;
-    const progress = await progressFor(pool, businessId, inv.customer_id, program, inv.d);
-    const card = describe(program, progress);
-    if (card.visits_to_go !== 0 || progress.reward_ready || progress.day_event === 'REDEEM') return;
-    const recent = (await pool.query(`SELECT 1 FROM messages WHERE customer_id = $1 AND kind = 'LOYALTY_NEXT' AND created_at > CURRENT_TIMESTAMP - INTERVAL '7 days' LIMIT 1`, [inv.customer_id])).rows.length;
-    if (recent) return;
-    const business = (await pool.query(`SELECT name FROM businesses WHERE business_id = $1`, [businessId])).rows[0];
-    await send(pool, { businessId, customerId: inv.customer_id, phone: customer.phone, kind: 'LOYALTY_NEXT', values: { name: customer.name || 'there', business: business.name, reward: card.reward_item } });
-  });
 });
 
 const guestContext = async (businessId, branchId) => {

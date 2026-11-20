@@ -16,8 +16,7 @@ import { notify } from '../modules/notifications.js';
 import { toRupees } from '../utils/money.js';
 import { recordAudit, recordEvent } from '../modules/events.js';
 import { loadProductGroups, outletSettingsFor } from '../modules/menu.js';
-import { describe, findCustomerByPhone, getProgram, isLive, normalisePhone, progressFor } from '../modules/loyalty.js';
-import { businessToday } from '../utils/dates.js';
+import { findCustomerByPhone, normalisePhone } from '../modules/phone.js';
 import { OrderItemsError, getOrCreateOpenOrderForTable, insertOrderItems, sendKotCore } from './orders.controller.js';
 import { effectiveFeatureFlags, hasPlanFeature } from '../modules/planFeatures.js';
 
@@ -104,11 +103,7 @@ export const getMenu = async (req, res) => {
       });
     }
 
-    const program = await getProgram(pool, table.business_id);
-    const loyalty = isLive(program) ? {
-      visits_required: program.visits_required, reward_item: `${program.reward_quantity > 1 ? `${program.reward_quantity} × ` : ''}${program.reward_name}`,
-      min_bill: toRupees(program.min_bill_paise), reward_image_url: null
-    } : null;
+    const loyalty = null;   // the visit card is gone; a customer's Loyalty card is on their own page
 
     res.json({
       success: true,
@@ -129,35 +124,6 @@ export const getMenu = async (req, res) => {
   } catch (error) {
     console.error('[public-ordering] getMenu failed:', error.message);
     res.status(500).json({ success: false, message: 'Could not load the menu' });
-  }
-};
-
-/* ==========================================================================
-   POST /api/public/menu/:token/loyalty { phone }
-
-   A customer types their mobile number to see their visit card. Nothing is
-   created and no name is returned: it says how many visits the number has,
-   and nothing else about the person.
-   ========================================================================== */
-export const loyaltyCard = async (req, res) => {
-  try {
-    const table = await resolveTable(pool, req.params.token);
-    if (unavailable(table)) {
-      return res.status(404).json({ success: false, message: 'This ordering link is not available right now' });
-    }
-    if (!normalisePhone(req.body?.phone)) return res.status(400).json({ success: false, message: 'Enter a 10-digit mobile number' });
-    const program = await getProgram(pool, table.business_id);
-    if (!isLive(program)) return res.status(404).json({ success: false, message: 'There is no loyalty card here yet' });
-
-    const customer = await findCustomerByPhone(pool, table.business_id, req.body.phone);
-    const progress = customer
-      ? await progressFor(pool, table.business_id, customer.customer_id, program, await businessToday(table.business_id))
-      : { stamps: 0, visits: 0, rewards_redeemed: 0, last_visit: null, day_event: null, reward_ready: false };
-    const card = describe(program, progress);
-    res.json({ success: true, data: { ...card, member: Boolean(customer), visits: progress.visits } });
-  } catch (error) {
-    console.error('[public-ordering] loyalty failed:', error.message);
-    res.status(500).json({ success: false, message: 'Could not look that up' });
   }
 };
 

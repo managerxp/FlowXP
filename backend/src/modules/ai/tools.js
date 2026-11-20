@@ -207,23 +207,22 @@ export const TOOLS = [
   },
   {
     name: 'loyalty_and_coupons', label: 'Loyalty & coupons', permission: 'settings', groupOnly: true,
-    description: 'How the visit-card loyalty program and coupons are doing over the last 30 days: members, visits, rewards given, and each coupon\'s uses and discount. Counts only; no customer details.',
+    description: 'How the Loyalty cards and coupons are doing over the last 30 days: members, points earned and spent, rewards given, and each coupon\'s uses and discount. Counts only; no customer details.',
     input_schema: schema({}),
     run: async (tenant) => {
       const id = tenant.businessId;
-      const [program, members, visits, rewards, coupons] = await Promise.all([
-        pool.query(`SELECT lp.is_enabled, lp.visits_required, p.name AS reward FROM loyalty_programs lp LEFT JOIN products p ON p.product_id = lp.reward_product_id WHERE lp.business_id = $1`, [id]),
-        pool.query(`SELECT COUNT(DISTINCT customer_id)::int AS n FROM loyalty_events WHERE business_id = $1 AND voided_at IS NULL`, [id]),
-        pool.query(`SELECT COUNT(*)::int AS n FROM loyalty_events WHERE business_id = $1 AND kind = 'VISIT' AND voided_at IS NULL AND created_at > now() - interval '30 days'`, [id]),
-        pool.query(`SELECT COUNT(*)::int AS n, COALESCE(SUM(amount_paise),0) AS value FROM loyalty_events WHERE business_id = $1 AND kind = 'REDEEM' AND voided_at IS NULL AND created_at > now() - interval '30 days'`, [id]),
+      const [cards, members, points, rewards, coupons] = await Promise.all([
+        pool.query(`SELECT name, kind, is_active FROM loyalty_programmes WHERE business_id = $1 ORDER BY programme_id LIMIT 20`, [id]),
+        pool.query(`SELECT COUNT(DISTINCT customer_id)::int AS n FROM loyalty_memberships WHERE business_id = $1 AND status = 'ACTIVE'`, [id]),
+        pool.query(`SELECT COALESCE(SUM(points) FILTER (WHERE kind = 'EARN'), 0)::int AS earned, COALESCE(-SUM(points) FILTER (WHERE kind = 'REDEEM'), 0)::int AS spent FROM points_ledger WHERE business_id = $1 AND voided_at IS NULL AND created_at > now() - interval '30 days'`, [id]),
+        pool.query(`SELECT COUNT(*)::int AS n, COALESCE(SUM(value_paise),0) AS value FROM loyalty_redemptions WHERE business_id = $1 AND status = 'REDEEMED' AND created_at > now() - interval '30 days'`, [id]),
         pool.query(`SELECT c.code, c.is_active, COUNT(r.redemption_id) FILTER (WHERE r.voided_at IS NULL AND r.created_at > now() - interval '30 days')::int AS uses,
                            COALESCE(SUM(r.amount_paise) FILTER (WHERE r.voided_at IS NULL AND r.created_at > now() - interval '30 days'), 0) AS given
                     FROM coupons c LEFT JOIN coupon_redemptions r ON r.coupon_id = c.coupon_id WHERE c.business_id = $1 GROUP BY c.coupon_id ORDER BY 3 DESC LIMIT 10`, [id])
       ]);
-      const p = program.rows[0];
       return {
-        loyalty: p ? { enabled: p.is_enabled, free_on_visit_number: p.visits_required, reward_item: p.reward } : { enabled: false },
-        members: members.rows[0].n, visits_30_days: visits.rows[0].n, rewards_given_30_days: rewards.rows[0].n, rewards_value_30_days: rupees(rewards.rows[0].value),
+        cards: cards.rows.map((c) => ({ name: c.name, type: c.kind, active: c.is_active })),
+        members: members.rows[0].n, points_earned_30_days: points.rows[0].earned, points_spent_30_days: points.rows[0].spent, rewards_given_30_days: rewards.rows[0].n, rewards_value_30_days: rupees(rewards.rows[0].value),
         coupons: coupons.rows.map((c) => ({ code: c.code, active: c.is_active, uses_30_days: c.uses, discount_given_30_days: rupees(c.given) }))
       };
     }

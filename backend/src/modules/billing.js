@@ -27,14 +27,12 @@ import { takeBatchesForSale } from './retailStock.js';
 import { isRetail } from './retailSettings.js';
 import { activePromotions, priceLines } from './promotions.js';
 import { businessNow } from '../utils/dates.js';
-import { getProgram, isLive, progressFor, recordEvent as recordLoyalty } from './loyalty.js';
 import { CouponError, validateCoupon } from './coupons.js';
 import { consumptionPerUnit, loadRecipes } from './recipes.js';
 import { comboBlocker, comboConsumption, loadCombos } from './combos.js';
 import { afterBill } from './messaging/index.js';
 import { hasPlanFeature } from './planFeatures.js';
 import { creditBill, redeem as spendCardPoints, spendQuote, LoyaltyError } from './loyaltyEngine.js';
-import { PointsError, addEntry, earnFor, getPoints, redemption, standing, tierFor } from './points.js';
 import { spend as spendWallet } from './gaming/wallet.js';
 import { checkCredit as partsCredit, fulfilForSale, reservedMap, tradePrices } from './autoparts/sales.js';
 import { isParts } from './mechanic/types.js';
@@ -210,17 +208,6 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   const today = input.invoiceDate ? String(input.invoiceDate).slice(0, 10)
     : (await client.query(`SELECT ((CURRENT_TIMESTAMP AT TIME ZONE $1)::date)::text AS d`, [business.timezone || 'Asia/Kolkata'])).rows[0].d;
 
-  /* Loyalty: a known customer on a live program. Locking the customer serialises two tills billing
-     the same person at once, so a reward can't be given twice. */
-  const program = customer ? await getProgram(client, tenant.businessId) : null;
-  const pts = customer ? await getPoints(client, tenant.businessId) : null;
-  if (customer && (isLive(program) || pts)) await client.query(`SELECT 1 FROM customers WHERE customer_id = $1 FOR UPDATE`, [customer.customer_id]);
-  const pointsState = pts ? await standing(client, tenant.businessId, customer.customer_id, pts) : null;
-  let loyalty = null;
-  if (customer && isLive(program)) {
-    loyalty = { program, progress: await progressFor(client, tenant.businessId, customer.customer_id, program, today), applied: null };
-  }
-
   // GST place of supply follows the outlet's state when it has one (outlets can be in different states).
   const outlet = (await client.query(`SELECT state FROM branches WHERE branch_id = $1 AND business_id = $2`, [tenant.branchId, tenant.businessId])).rows[0];
   // the buyer's GSTIN says where they are (its first two digits); only without one is the state they were saved with used
@@ -337,13 +324,6 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     // a discount comes off the line: never below nothing (it would raise the price) and never more than the line is worth (it would record a discount that was never given)
     if (discountPaise < 0) throw new BillingError(400, 'A discount cannot be negative');
     if (discountPaise > Math.round(quantity * unitPricePaise)) throw new BillingError(400, 'The discount cannot be more than the price of the item');
-    // The reward item is free (up to the reward quantity) on the visit that earns it — once per bill.
-    if (loyalty?.progress.reward_ready && !loyalty.applied && product && product.product_id === program.reward_product_id) {
-      const freeQty = Math.min(quantity, program.reward_quantity);
-      const gross = Math.round(quantity * unitPricePaise);
-      const free = Math.min(Math.round(freeQty * unitPricePaise), Math.max(0, gross - discountPaise));
-      if (free > 0) { discountPaise += free; loyalty.applied = { amountPaise: free, item: product.name }; }
-    }
     const cessRate = cessOpt && product ? Number(product.cess_rate) : 0;
     // a product sold at its MRP has GST inside its price; otherwise the till decides (a salon or gym can price everything with tax in)
     const inclusive = input.taxInclusive === true || product?.price_includes_tax === true;
@@ -437,16 +417,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     pointsRedeemed = spend.points; pointsDiscountPaise = spend.value_paise;
     invoiceDiscountPaise += pointsDiscountPaise;
   } else if (input.redeemPoints) {
-    if (!customer) throw new BillingError(400, 'Choose a customer to use their points');
-    if (!pts) throw new BillingError(400, 'Loyalty points are not switched on');
-    try {
-      pointsRedeemed = Number(input.redeemPoints);
-      pointsDiscountPaise = redemption(pts, pointsState, pointsRedeemed, Math.max(0, totals.total_paise - invoiceDiscountPaise));
-    } catch (error) {
-      if (error instanceof PointsError) throw new BillingError(error.status, error.message);
-      throw error;
-    }
-    invoiceDiscountPaise += pointsDiscountPaise;
+    throw new BillingError(400, 'Choose which Loyalty card to spend points from');
   }
   // A loyalty reward the customer already claimed (Member desk): its value comes off this bill, never more than what is left, and the claim is held for this bill.
   let rewardClaim = null; let rewardCutPaise = 0;
@@ -476,12 +447,6 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     roundOffPaise = Math.round(finalTotalPaise / 100) * 100 - finalTotalPaise;
     finalTotalPaise += roundOffPaise;
   }
-
-  /* A caller with its own earning rules (the salon: a different rate for services, products, packages) supplies them;
-     everyone else earns the program's single rate on the bill. */
-  const pointsEarned = pts
-    ? (typeof input.earnPoints === 'function' ? Math.max(0, Math.floor(input.earnPoints({ lines, finalTotalPaise, state: pointsState, cfg: pts }))) : earnFor(pts, pointsState, finalTotalPaise))
-    : 0;
 
   /* An exchange: the credit from a return (a credit note) is spent on this bill as a payment, never as a discount, because the
      return already took that revenue off the old sale. What the credit does not cover is paid the usual way. */
@@ -523,7 +488,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       totals.subtotal_paise, invoiceDiscountPaise, totals.cgst_paise, totals.sgst_paise, totals.igst_paise, totals.tax_paise, finalTotalPaise,
       paidPaise, Math.max(0, balancePaise), paymentStatus(finalTotalPaise, paidPaise), input.notes || null, userId,
       business.timezone || 'Asia/Kolkata', input.orderId || null,
-      coupon ? coupon.coupon.code : null, coupon ? coupon.discountPaise : 0, loyalty?.applied ? loyalty.applied.amountPaise : 0, roundOffPaise, input.clientKey || null
+      coupon ? coupon.coupon.code : null, coupon ? coupon.discountPaise : 0, 0, roundOffPaise, input.clientKey || null
     ]
   )).rows[0];
 
@@ -581,18 +546,6 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     );
   }
 
-  if (pts) {
-    if (pointsRedeemed > 0) {
-      await addEntry(client, { businessId: tenant.businessId, customerId: customer.customer_id, invoiceId: invoice.invoice_id, kind: 'REDEEM', points: -pointsRedeemed, amountPaise: pointsDiscountPaise, createdBy: userId });
-    }
-    if (pointsEarned > 0) {
-      await addEntry(client, { businessId: tenant.businessId, customerId: customer.customer_id, invoiceId: invoice.invoice_id, kind: 'EARN', points: pointsEarned, amountPaise: finalTotalPaise, createdBy: userId });
-    }
-    await client.query('UPDATE invoices SET points_discount_paise = $2, points_earned = $3, points_redeemed = $4 WHERE invoice_id = $1',
-      [invoice.invoice_id, pointsDiscountPaise, pointsEarned, pointsRedeemed]);
-    invoice.points_discount_paise = pointsDiscountPaise; invoice.points_earned = pointsEarned; invoice.points_redeemed = pointsRedeemed;
-  }
-
   if (spend) {
     const out = await spendCardPoints(client, { businessId: tenant.businessId, membershipId: spend.membershipId, points: spend.points, branchId: tenant.branchId, invoiceId: invoice.invoice_id, key: `spend:inv:${invoice.invoice_id}`, createdBy: userId });
     await client.query('UPDATE invoices SET points_discount_paise = $2, points_redeemed = $3 WHERE invoice_id = $1', [invoice.invoice_id, pointsDiscountPaise, pointsRedeemed]);
@@ -607,22 +560,15 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     const sum = lines.reduce((s, l) => s + l.line_total_paise, 0);
     earnLines = lines.map((l, i) => ({ type: input.earnKinds[i]?.type, paise: input.earnKinds[i]?.earnable === false || input.earnKinds[i]?.type === 'GIFT_CARD' || sum <= 0 ? 0 : (l.line_total_paise * finalTotalPaise) / sum }));
   }
-  if (customer) await creditBill(client, { businessId: tenant.businessId, customerId: customer.customer_id, invoiceId: invoice.invoice_id, amountPaise: finalTotalPaise, branchId: tenant.branchId, createdBy: userId, lines: earnLines, multiplier: Number(input.earnMultiplier) > 0 ? Number(input.earnMultiplier) : 1 });
+  const credited = customer ? await creditBill(client, { businessId: tenant.businessId, customerId: customer.customer_id, invoiceId: invoice.invoice_id, amountPaise: finalTotalPaise, branchId: tenant.branchId, createdBy: userId, lines: earnLines, multiplier: Number(input.earnMultiplier) > 0 ? Number(input.earnMultiplier) : 1 }) : [];
+  const cardEarned = (credited || []).reduce((n, c) => n + (c.points || 0), 0);
+  if (cardEarned > 0) { await client.query('UPDATE invoices SET points_earned = $2 WHERE invoice_id = $1', [invoice.invoice_id, cardEarned]); invoice.points_earned = cardEarned; }
 
   if (coupon) {
     await client.query(
       `INSERT INTO coupon_redemptions (coupon_id, business_id, invoice_id, customer_id, amount_paise) VALUES ($1,$2,$3,$4,$5)`,
       [coupon.coupon.coupon_id, tenant.businessId, invoice.invoice_id, customer?.customer_id ?? null, coupon.discountPaise]
     );
-  }
-
-  /* The visit card: a reward visit redeems; any other bill at or above the minimum earns a stamp. */
-  if (loyalty) {
-    if (loyalty.applied) {
-      await recordLoyalty(client, { businessId: tenant.businessId, customerId: customer.customer_id, invoiceId: invoice.invoice_id, date: today, redeemed: true, amountPaise: loyalty.applied.amountPaise });
-    } else if (finalTotalPaise >= Number(program.min_bill_paise)) {
-      await recordLoyalty(client, { businessId: tenant.businessId, customerId: customer.customer_id, invoiceId: invoice.invoice_id, date: today, redeemed: false });
-    }
   }
 
   if (creditTaken && creditTaken.amountPaise > 0) {
@@ -648,12 +594,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
 
   return {
     ...asInvoice({ ...invoice, customer_name: customer?.name || null }), currency: business.currency,
-    loyalty_points: pts ? {
-      earned: pointsEarned, redeemed: pointsRedeemed, balance: pointsState.balance - pointsRedeemed + pointsEarned,
-      tier: (tierFor(pts.tiers, pointsState.lifetime + pointsEarned).current || {}).name ?? null
-    } : null,
     loyalty_spend: spend ? { card: spend.programme.name, points: spend.points, amount: toRupees(pointsDiscountPaise), balance: spend.balance } : null,
-    loyalty_reward: loyalty?.applied ? { item: loyalty.applied.item, amount: toRupees(loyalty.applied.amountPaise) } : null,
     payments_taken: takenPayments.map((p) => ({ method: p.method, amount: toRupees(p.amountPaise) }))
   };
 };

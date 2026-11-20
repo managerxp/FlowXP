@@ -83,7 +83,6 @@ test('every salon route is behind a permission, and none is reachable by a role 
     ['GET', '/reports/:name', { OWNER: 200, MANAGER: 200, ACCOUNTANT: 200, RECEPTIONIST: 403, STYLIST: 403, INVENTORY_MANAGER: 403 }],
     ['GET', '/clients', { OWNER: 200, RECEPTIONIST: 200, STYLIST: 200, ACCOUNTANT: 200, INVENTORY_MANAGER: 403 }],
     ['POST', '/clients', { OWNER: 200, RECEPTIONIST: 200, MANAGER: 200, STYLIST: 403, ACCOUNTANT: 403 }],
-    ['PUT', '/loyalty', { OWNER: 200, ADMIN: 200, MANAGER: 403, RECEPTIONIST: 403 }],
     ['POST', '/gift-cards', { OWNER: 200, MANAGER: 200, RECEPTIONIST: 403, STYLIST: 403 }],
     ['POST', '/memberships/:id/cancel', { OWNER: 200, MANAGER: 200, RECEPTIONIST: 403, STYLIST: 403 }],
     ['POST', '/campaigns', { OWNER: 200, ADMIN: 200, MANAGER: 403, RECEPTIONIST: 403 }],
@@ -106,7 +105,7 @@ test('a per-person override can widen or narrow a role, and the owner cannot be 
 
 test('plans gate the separately-priced features, for everyone including the owner', { skip }, async () => {
   const cases = [['GET', '/appointments', 'salon_appointments'], ['GET', '/memberships', 'salon_memberships'], ['POST', '/packages', 'salon_packages'],
-    ['GET', '/gift-cards', 'salon_gift_cards'], ['GET', '/commissions', 'salon_commission'], ['POST', '/campaigns', 'salon_automation'], ['GET', '/loyalty', 'loyalty']];
+    ['GET', '/gift-cards', 'salon_gift_cards'], ['GET', '/commissions', 'salon_commission'], ['POST', '/campaigns', 'salon_automation']];
   for (const [method, path, feature] of cases) {
     const route = find(method, path);
     assert.equal(await gate(route, A.tenantFor('OWNER', { planFeatures: { [feature]: false } }), { method }), 402, `${feature} off → ${method} ${path}`);

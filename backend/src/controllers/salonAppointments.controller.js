@@ -12,7 +12,7 @@
 import pool from '../config/database.js';
 import { businessToday } from '../utils/dates.js';
 import { branchFilter } from '../utils/scope.js';
-import { findCustomerByPhone } from '../modules/loyalty.js';
+import { findCustomerByPhone } from '../modules/phone.js';
 import { ownStaffId } from '../modules/salon/access.js';
 import {
   SalonError, audit, int, isoDate, ok, oneOf, phone, text, timestamp, wrapAll

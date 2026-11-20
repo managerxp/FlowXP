@@ -459,12 +459,12 @@ const REPORTS = {
                 COALESCE(-SUM(points) FILTER (WHERE kind = 'REVERSAL'), 0) AS reversed
          FROM points_ledger WHERE business_id = $1 AND voided_at IS NULL AND created_at >= $2::date AND created_at < $3::date + 1`, v)).rows[0];
       const owed = (await pool.query(`SELECT COALESCE(SUM(bal) FILTER (WHERE bal > 0), 0) AS points, COUNT(*) FILTER (WHERE bal > 0) AS holders FROM (SELECT SUM(points) AS bal FROM points_ledger WHERE business_id = $1 AND voided_at IS NULL GROUP BY customer_id) t`, [c.businessId])).rows[0];
-      const value = Number((await pool.query(`SELECT point_value_paise FROM points_programs WHERE business_id = $1`, [c.businessId])).rows[0]?.point_value_paise ?? 100);
+      const liability = Number((await pool.query(`SELECT COALESCE(SUM(FLOOR(b.bal * p.redeem_value_paise::numeric / p.redeem_points)), 0) AS paise FROM (SELECT membership_id, SUM(points) AS bal FROM points_ledger WHERE business_id = $1 AND voided_at IS NULL AND membership_id IS NOT NULL GROUP BY membership_id HAVING SUM(points) > 0) b JOIN loyalty_memberships m ON m.membership_id = b.membership_id JOIN loyalty_programmes p ON p.programme_id = m.programme_id`, [c.businessId])).rows[0].paise);
       const rows = [
         { measure: 'Points issued', value: Number(p.issued) }, { measure: 'Points redeemed', value: Number(p.redeemed) }, { measure: 'Points expired', value: Number(p.expired) },
         { measure: 'Points taken back (cancelled or credited bills)', value: Number(p.reversed) }, { measure: 'Manual adjustments (net)', value: Number(p.adjusted) },
         { measure: 'Customers holding points', value: Number(owed.holders) }, { measure: 'Points outstanding', value: Number(owed.points) },
-        { measure: 'Outstanding liability (₹)', value: money(Number(owed.points) * value) }
+        { measure: 'Outstanding liability (₹)', value: money(liability) }
       ];
       return { columns: [col('measure', 'Measure'), col('value', 'Value', 'number')], rows, totals: null, note: 'Issued, redeemed, expired and adjusted cover the chosen dates; outstanding is as of now.' };
     }

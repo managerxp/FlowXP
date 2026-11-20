@@ -34,7 +34,6 @@ import {
   activeMembership, freeServiceBalance, issueGiftCard, lockUsableCard, redeemGiftCard, sellMembership, sellPackage, usePackage
 } from './entitlements.js';
 import { clientContext, computeOffer, whyNot } from './offers.js';
-import { earnedPoints, loadRules } from './loyalty.js';
 import { spendQuote, LoyaltyError } from '../loyaltyEngine.js';
 
 const MAX_LINES = 60;
@@ -260,7 +259,8 @@ export const createSalonInvoice = async (client, tenant, userId, input, { dryRun
   if (input.redeem_points) {
     const eligible = cart.filter((c) => c.redeemable && !c.free).reduce((s, c) => s + Math.max(0, grossOf(c) - c.discountPaise), 0);
     if (eligible <= 0) throw new SalonError(400, 'Points cannot be used on the items in this bill');
-    if (input.spend_membership_id) {
+    if (!input.spend_membership_id) throw new SalonError(400, 'Choose which Loyalty card to spend points from');
+    {
       // a Loyalty card: the card's own limit (percent of the bill) is applied to the services and products only
       if (!customerId) throw new SalonError(400, 'Choose a client to use their points');
       try {
@@ -270,13 +270,8 @@ export const createSalonInvoice = async (client, tenant, userId, input, { dryRun
         throw error;
       }
     }
-    const program = input.spend_membership_id ? null : (await client.query(`SELECT point_value_paise, max_redeem_pct FROM points_programs WHERE business_id = $1 AND is_enabled`, [tenant.businessId])).rows[0];
-    if (program && Number(input.redeem_points) * Number(program.point_value_paise) > Math.floor((eligible * program.max_redeem_pct) / 100)) {
-      throw new SalonError(400, `Points can pay for at most ${program.max_redeem_pct}% of the services and products on this bill (₹${toRupees(Math.floor((eligible * program.max_redeem_pct) / 100))})`);
-    }
   }
 
-  const rules = await loadRules(client, tenant.businessId);
   const memberMultiplier = Number(membership?.benefits?.points_multiplier || 1);
   const coreItems = cart.map((c) => {
     const base = { quantity: c.quantity, discount: c.discountPaise / 100 };
@@ -288,11 +283,7 @@ export const createSalonInvoice = async (client, tenant, userId, input, { dryRun
     customerId, items: coreItems, discount: input.discount, discountPolicy: input.discountPolicy, notes: input.notes || null, couponCode: input.coupon_code || null,
     redeemPoints: input.redeem_points || null, spendMembershipId: input.spend_membership_id || null, payments: enginePayments(input, giftCards, settings),
     earnKinds: cart.map((c) => ({ type: POINTS_TYPE[c.type], earnable: c.earnable })), earnMultiplier: memberMultiplier,
-    taxInclusive: settings.tax_inclusive,
-    earnPoints: ({ lines, finalTotalPaise, state, cfg }) => earnedPoints({
-      lines: lines.map((l, i) => ({ line_total_paise: l.line_total_paise, type: POINTS_TYPE[cart[i].type], earnable: cart[i].earnable })),
-      finalTotalPaise, state, cfg, rules, memberMultiplier
-    })
+    taxInclusive: settings.tax_inclusive
   });
 
   const rows = (await client.query(

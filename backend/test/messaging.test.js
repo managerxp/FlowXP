@@ -217,37 +217,20 @@ test('a campaign reaches only eligible customers, once an hour, and is tracked',
   assert.equal(again.code, 429);
 });
 
-test('audience segments: lapsed customers and those one visit from a reward', { skip }, async () => {
+test('audience segments: lapsed customers; the old visit-card segment points to cards', { skip }, async () => {
   const old = await A.customer('Lapsed Lata', '9876500010');
   await pool.query(`INSERT INTO invoices (business_id, branch_id, customer_id, invoice_number, invoice_date, total_paise) VALUES ($1,$2,$3,'OLD-1', CURRENT_DATE - 90, 1000)`, [A.biz, A.branchId, old]);
   const lapsed = await mod.audience(pool, A.biz, { segment: 'LAPSED', days: 30 });
   assert.deepEqual(lapsed.customers.map((c) => c.name), ['Lapsed Lata']);   // Asha has a recent bill
 
-  assert.equal((await mod.audience(pool, A.biz, { segment: 'NEAR_REWARD' })).error, 'Switch the loyalty program on first');
-  await pool.query(`INSERT INTO loyalty_programs (business_id, is_enabled, visits_required, reward_product_id, reward_quantity, min_bill_paise) VALUES ($1,TRUE,4,$2,1,0)`, [A.biz, A.dish]);
-  // 4 visits needed = 3 stamps then the reward; two stamps means one to go
-  for (const [customer, days] of [[A.asha, 3], [A.asha, 2]]) {
-    await pool.query(`INSERT INTO loyalty_events (business_id, customer_id, kind, visit_date) VALUES ($1,$2,'VISIT', CURRENT_DATE - $3::int)`, [A.biz, customer, days]);
-  }
-  const near = await mod.audience(pool, A.biz, { segment: 'NEAR_REWARD' });
-  assert.ok(near.customers.some((c) => c.name === 'Asha'));
-  assert.ok(!near.customers.some((c) => c.name === 'Ravi'));
+  assert.match((await mod.audience(pool, A.biz, { segment: 'NEAR_REWARD' })).error, /Loyalty cards/);   // the visit card is gone; card audiences replace it
 });
 
-test('billing a known customer sends their bill, and a nudge when the next visit is free', { skip }, async () => {
+test('billing a known customer sends their bill, once', { skip }, async () => {
   const meera = await A.customer('Meera', '9876500020');
   const inv = await A.bill(meera, '2026-01-10');
   await until(async () => (await pool.query(`SELECT 1 FROM messages WHERE business_id = $1 AND customer_id = $2 AND kind = 'BILL'`, [A.biz, meera])).rows.length);
-  assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM messages WHERE customer_id = $1 AND kind = 'BILL'`, [meera])).rows[0].n, 1);   // this customer's own bill message, once (the business-wide count moves when an earlier test's send lands late)
-  assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM messages WHERE customer_id = $1 AND kind = 'LOYALTY_NEXT'`, [meera])).rows[0].n, 0);   // 1 stamp of 3: not yet
-
-  await A.bill(meera, '2026-01-11');
-  await A.bill(meera, '2026-01-12');                       // third stamp: the next visit is free
-  const nudge = await until(async () => (await pool.query(`SELECT body FROM messages WHERE customer_id = $1 AND kind = 'LOYALTY_NEXT'`, [meera])).rows[0]);
-  assert.ok(nudge, 'a loyalty nudge was sent');
-  assert.match(nudge.body, /free Thali/);
-  await new Promise((r) => setTimeout(r, 100));
-  assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM messages WHERE customer_id = $1 AND kind = 'LOYALTY_NEXT'`, [meera])).rows[0].n, 1);   // not repeated
+  assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM messages WHERE customer_id = $1 AND kind = 'BILL'`, [meera])).rows[0].n, 1);
   assert.ok(inv.invoice_id);
 });
 

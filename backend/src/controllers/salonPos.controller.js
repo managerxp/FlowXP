@@ -10,8 +10,6 @@ import pool from '../config/database.js';
 import { recordInvoiceCreated } from '../modules/billing.js';
 import { businessToday } from '../utils/dates.js';
 import { toRupees } from '../utils/money.js';
-import { getPoints } from '../modules/points.js';
-import { pointsCard } from './points.controller.js';
 import { spendCard } from '../modules/loyaltyEngine.js';
 import { createSalonInvoice } from '../modules/salon/pos.js';
 import { discountPolicy } from '../modules/approvals.js';
@@ -53,7 +51,6 @@ const catalog = async (req, res) => {
      FROM salon_packages p WHERE p.business_id = $1 AND p.is_active ORDER BY p.name`, [businessId])).rows;
   const plans = (await pool.query(`SELECT plan_id, name, description, price_paise, duration_days, tax_rate, benefits FROM salon_membership_plans WHERE business_id = $1 AND is_active ORDER BY sort_order, price_paise`, [businessId])).rows;
   const business = (await pool.query(`SELECT gst_enabled, round_off_enabled FROM businesses WHERE business_id = $1`, [businessId])).rows[0];
-  const cfg = await getPoints(pool, businessId);
 
   ok(res, {
     categories,
@@ -63,7 +60,7 @@ const catalog = async (req, res) => {
     membership_plans: plans.map((p) => ({ plan_id: p.plan_id, name: p.name, description: p.description, price: toRupees(p.price_paise), duration_days: p.duration_days, tax_rate: Number(p.tax_rate), benefits: p.benefits })),
     payment_methods: [...settings.payment_methods, 'GIFT_CARD'],
     tax: { inclusive: settings.tax_inclusive, gst_enabled: business.gst_enabled, round_off: business.round_off_enabled },
-    loyalty: cfg ? { enabled: true, point_value: toRupees(cfg.program.point_value_paise), min_redeem_points: cfg.program.min_redeem_points, max_redeem_pct: cfg.program.max_redeem_pct } : { enabled: false }
+    loyalty: { enabled: true }
   });
 };
 
@@ -117,7 +114,7 @@ const entitlements = async (req, res) => {
     .filter((p) => p.items?.length);
   const cards = (await pool.query(
     `SELECT card_id, code, balance_paise, expires_on FROM salon_gift_cards WHERE business_id = $1 AND customer_id = $2 AND status = 'ACTIVE' AND balance_paise > 0 AND (expires_on IS NULL OR expires_on >= $3::date)`, [businessId, customerId, today])).rows;
-  const points = (await pointsCard(pool, businessId, customerId)) ?? (await spendCard(pool, businessId, customerId));
+  const points = await spendCard(pool, businessId, customerId);
 
   // offers the client could use today, with the reason for any they cannot (the server re-checks at billing)
   const ctx = { ...(await clientContext(pool, businessId, customerId, today)), today };
