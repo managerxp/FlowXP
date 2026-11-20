@@ -5404,5 +5404,9 @@
   "We could not send the code. Try again in a moment.": "We could not send the code. Try again in a moment.",
   "Code from WhatsApp": "Code from WhatsApp",
   "Check the mobile number with a WhatsApp code": "Check the mobile number with a WhatsApp code",
-  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it."
+  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.",
+  "Want offers from {{business}}? We will check your mobile number once with a WhatsApp code.": "Want offers from {{business}}? We will check your mobile number once with a WhatsApp code.",
+  "Send me offers": "Send me offers",
+  "You will get offers from {{business}}.": "You will get offers from {{business}}.",
+  "This card has no mobile number to check": "This card has no mobile number to check"
 }

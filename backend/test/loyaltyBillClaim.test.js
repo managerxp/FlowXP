@@ -129,3 +129,20 @@ test('with the number check on: a code is sent first, the right code proves it o
     assert.equal(other.code, 428);                                                    // the proof is for that number only
   } finally { setProvider(null); }
 });
+
+test('"Send me offers" on the card: needs the WhatsApp code, then switches offers on for that person', { skip }, async () => {
+  const { setProvider } = await import('../src/modules/messaging/provider.js');
+  const sent = []; setProvider((m) => { sent.push(m); return { status: 'SENT', providerId: 'x' }; });
+  try {
+    await pool.query(`INSERT INTO business_feature_overrides (business_id, feature_key, enabled) VALUES ($1,'loyalty_phone_check',TRUE) ON CONFLICT (business_id, feature_key) DO UPDATE SET enabled = TRUE`, [biz]);
+    const m = (await pool.query(`SELECT m.token FROM loyalty_memberships m JOIN customers c ON c.customer_id = m.customer_id WHERE right(c.phone,10) = '9000012345' AND m.business_id = $1 LIMIT 1`, [biz])).rows[0];   // joined by a scan, not opted in
+    const view = async () => { const r = fakeRes(); await pub.card({ params: { token: m.token }, query: {} }, r); return r.body.data.offers; };
+    assert.deepEqual(await view(), { on: false, can_ask: true });
+    const post = async (body) => { const r = fakeRes(); await pub.offersOn({ params: { token: m.token }, body, query: {} }, r); return r; };
+    assert.equal((await post({})).code, 428); assert.equal(sent.length, 1);
+    assert.equal((await post({ code: '123456' })).code, sent[0].text.includes('123456') ? 200 : 400);
+    const code = /Code: (\d{6})/.exec(sent[0].text)[1];
+    const done = await post({ code }); assert.equal(done.code, 200); assert.equal(done.body.data.on, true);
+    assert.deepEqual(await view(), { on: true, can_ask: false });
+  } finally { setProvider(null); }
+});

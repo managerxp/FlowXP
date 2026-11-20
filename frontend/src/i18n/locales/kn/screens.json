@@ -5404,5 +5404,9 @@
   "We could not send the code. Try again in a moment.": "ಕೋಡ್ ಕಳುಹಿಸಲು ಆಗಲಿಲ್ಲ. ಸ್ವಲ್ಪ ಹೊತ್ತಿನ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
   "Code from WhatsApp": "WhatsApp ನಲ್ಲಿ ಬಂದ ಕೋಡ್",
   "Check the mobile number with a WhatsApp code": "WhatsApp ಕೋಡ್‌ನಿಂದ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ಪರಿಶೀಲಿಸಿ",
-  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "ಗ್ರಾಹಕರು ಮೊದಲ ಬಾರಿ ಮಾತ್ರ ತಮ್ಮ WhatsApp ಗೆ ಬಂದ ಕೋಡ್ ನಮೂದಿಸುತ್ತಾರೆ. ಸಂಖ್ಯೆ ಅವರದೇ ಎಂದು ಇದು ಸಾಬೀತುಪಡಿಸುತ್ತದೆ, ಆದ್ದರಿಂದ ಆಫರ್‌ಗಳನ್ನು ಕಳುಹಿಸಬಹುದು."
+  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "ಗ್ರಾಹಕರು ಮೊದಲ ಬಾರಿ ಮಾತ್ರ ತಮ್ಮ WhatsApp ಗೆ ಬಂದ ಕೋಡ್ ನಮೂದಿಸುತ್ತಾರೆ. ಸಂಖ್ಯೆ ಅವರದೇ ಎಂದು ಇದು ಸಾಬೀತುಪಡಿಸುತ್ತದೆ, ಆದ್ದರಿಂದ ಆಫರ್‌ಗಳನ್ನು ಕಳುಹಿಸಬಹುದು.",
+  "Want offers from {{business}}? We will check your mobile number once with a WhatsApp code.": "{{business}} ಆಫರ್‌ಗಳು ಬೇಕೇ? ಒಮ್ಮೆ WhatsApp ಕೋಡ್‌ನಿಂದ ನಿಮ್ಮ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ಪರಿಶೀಲಿಸುತ್ತೇವೆ.",
+  "Send me offers": "ನನಗೆ ಆಫರ್‌ಗಳನ್ನು ಕಳುಹಿಸಿ",
+  "You will get offers from {{business}}.": "ನಿಮಗೆ {{business}} ಆಫರ್‌ಗಳು ಸಿಗುತ್ತವೆ.",
+  "This card has no mobile number to check": "ಈ ಕಾರ್ಡ್‌ನಲ್ಲಿ ಪರಿಶೀಲಿಸಲು ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಇಲ್ಲ"
 }

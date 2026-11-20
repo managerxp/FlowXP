@@ -5404,5 +5404,9 @@
   "We could not send the code. Try again in a moment.": "আমরা কোড পাঠাতে পারিনি। একটু পরে আবার চেষ্টা করুন।",
   "Code from WhatsApp": "WhatsApp-এ পাওয়া কোড",
   "Check the mobile number with a WhatsApp code": "WhatsApp কোড দিয়ে মোবাইল নম্বর যাচাই করুন",
-  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "গ্রাহক শুধু প্রথমবার তাঁর WhatsApp-এ আসা কোড লেখেন। এতে প্রমাণ হয় নম্বরটি তাঁরই, তাই অফার পাঠানো যায়।"
+  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "গ্রাহক শুধু প্রথমবার তাঁর WhatsApp-এ আসা কোড লেখেন। এতে প্রমাণ হয় নম্বরটি তাঁরই, তাই অফার পাঠানো যায়।",
+  "Want offers from {{business}}? We will check your mobile number once with a WhatsApp code.": "{{business}}-এর অফার চান? আমরা একবার WhatsApp কোড দিয়ে আপনার মোবাইল নম্বর যাচাই করব।",
+  "Send me offers": "আমাকে অফার পাঠান",
+  "You will get offers from {{business}}.": "আপনি {{business}}-এর অফার পাবেন।",
+  "This card has no mobile number to check": "এই কার্ডে যাচাই করার মতো মোবাইল নম্বর নেই"
 }

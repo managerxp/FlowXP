@@ -5404,5 +5404,9 @@
   "We could not send the code. Try again in a moment.": "குறியீட்டை அனுப்ப முடியவில்லை. சிறிது நேரத்தில் மீண்டும் முயற்சிக்கவும்.",
   "Code from WhatsApp": "WhatsApp-இல் வந்த குறியீடு",
   "Check the mobile number with a WhatsApp code": "WhatsApp குறியீட்டால் மொபைல் எண்ணைச் சரிபார்க்கவும்",
-  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "வாடிக்கையாளர் முதல் முறை மட்டும் தங்கள் WhatsApp-க்கு வந்த குறியீட்டை உள்ளிடுவார். எண் அவருடையதுதான் என இது உறுதிசெய்கிறது, அதனால் சலுகைகளை அனுப்பலாம்."
+  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "வாடிக்கையாளர் முதல் முறை மட்டும் தங்கள் WhatsApp-க்கு வந்த குறியீட்டை உள்ளிடுவார். எண் அவருடையதுதான் என இது உறுதிசெய்கிறது, அதனால் சலுகைகளை அனுப்பலாம்.",
+  "Want offers from {{business}}? We will check your mobile number once with a WhatsApp code.": "{{business}} சலுகைகள் வேண்டுமா? ஒரு முறை WhatsApp குறியீட்டால் உங்கள் மொபைல் எண்ணைச் சரிபார்ப்போம்.",
+  "Send me offers": "எனக்குச் சலுகைகளை அனுப்புங்கள்",
+  "You will get offers from {{business}}.": "உங்களுக்கு {{business}} சலுகைகள் கிடைக்கும்.",
+  "This card has no mobile number to check": "இந்த அட்டையில் சரிபார்க்க மொபைல் எண் இல்லை"
 }

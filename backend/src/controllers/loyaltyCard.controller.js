@@ -68,7 +68,7 @@ const memberByToken = async (rawToken) => {
   const token = String(rawToken || '');
   if (token.length < 20 || token.length > 100) throw gone();
   const m = (await pool.query(
-    `SELECT m.membership_id, m.business_id, m.membership_no, m.status, m.expires_at, c.name AS customer_name, p.*, b.name AS business_name, b.business_type, b.status AS business_status,
+    `SELECT m.membership_id, m.business_id, m.customer_id, m.membership_no, m.status, m.expires_at, m.consent_marketing, c.name AS customer_name, c.phone AS customer_phone, p.*, b.name AS business_name, b.business_type, b.status AS business_status,
             b.receipt_settings->>'logo_url' AS business_logo, ${FEATURE_SQL}
      FROM loyalty_memberships m JOIN loyalty_programmes p ON p.programme_id = m.programme_id JOIN customers c ON c.customer_id = m.customer_id
      JOIN businesses b ON b.business_id = m.business_id ${FEATURE_JOINS} WHERE m.token = $1`, [token])).rows[0];
@@ -82,7 +82,19 @@ export const card = wrap(async (req, res) => {
   const rewards = (await engine.rewardsFor(pool, m.business_id, m.membership_id)).map((x) => ({ reward_id: x.reward_id, name: x.name, description: x.description, points_cost: x.points_cost, affordable: x.affordable, points_short: x.points_short }));
   const ledger = (await engine.ledgerFor(pool, m.business_id, m.membership_id, 20)).map((e) => ({ kind: e.kind, points: e.points, note: e.note, at: e.created_at }));
   res.set('Cache-Control', 'no-store');
-  ok(res, { ...publicProgramme(m), standing: await tiers.standing(pool, m.programme_id, m.membership_id), customer: m.customer_name, membership_no: m.membership_no, status: m.status, expires_at: m.expires_at, ...bal, redeem_at: m.redeem_points, rewards, ledger, wallet: { google: google.configured() && featureOn(m, 'loyalty_wallet') } });
+  ok(res, { ...publicProgramme(m), standing: await tiers.standing(pool, m.programme_id, m.membership_id), customer: m.customer_name, membership_no: m.membership_no, status: m.status, expires_at: m.expires_at, ...bal, redeem_at: m.redeem_points, rewards, ledger, wallet: { google: google.configured() && featureOn(m, 'loyalty_wallet') }, offers: { on: m.consent_marketing === true, can_ask: m.consent_marketing !== true && featureOn(m, 'loyalty_phone_check') && Boolean(await phoneProof.channel()) } });
+});
+
+/* "Send me offers": switches marketing on for this person at this business, but only after the mobile number is proved with the WhatsApp code (a card link alone is not proof: a stranger could have typed the number). */
+export const offersOn = wrap(async (req, res) => {
+  const m = await memberByToken(req.params.token);
+  if (m.consent_marketing === true) return ok(res, { on: true, proof: null });
+  if (!featureOn(m, 'loyalty_phone_check') || !(await phoneProof.channel())) throw gone();
+  const phone = String(m.customer_phone || '').replace(/\D/g, '').slice(-10);
+  if (phone.length !== 10) throw new engine.LoyaltyError('This card has no mobile number to check', 409);
+  const { proof } = await phoneProof.prove(pool, { phone, business: m.business_name, code: req.body?.code, proof: req.body?.proof });
+  await pool.query(`UPDATE loyalty_memberships SET consent_marketing = TRUE, consent_at = CURRENT_TIMESTAMP WHERE business_id = $1 AND customer_id = $2 AND NOT consent_marketing`, [m.business_id, m.customer_id]);
+  ok(res, { on: true, proof });
 });
 
 /* "Add to Google Wallet": a signed link for this member's pass. Only when the server has Google Wallet set up and the plan includes it. */

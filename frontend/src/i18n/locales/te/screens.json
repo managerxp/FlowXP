@@ -5404,5 +5404,9 @@
   "We could not send the code. Try again in a moment.": "మేము కోడ్ పంపలేకపోయాము. కాసేపటి తర్వాత మళ్లీ ప్రయత్నించండి.",
   "Code from WhatsApp": "WhatsApp లో వచ్చిన కోడ్",
   "Check the mobile number with a WhatsApp code": "WhatsApp కోడ్‌తో మొబైల్ నంబర్‌ను ధృవీకరించండి",
-  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "కస్టమర్ మొదటిసారి మాత్రమే తమ WhatsApp కి వచ్చిన కోడ్ నమోదు చేస్తారు. నంబర్ వారిదే అని ఇది రుజువు చేస్తుంది, కాబట్టి ఆఫర్లు పంపవచ్చు."
+  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "కస్టమర్ మొదటిసారి మాత్రమే తమ WhatsApp కి వచ్చిన కోడ్ నమోదు చేస్తారు. నంబర్ వారిదే అని ఇది రుజువు చేస్తుంది, కాబట్టి ఆఫర్లు పంపవచ్చు.",
+  "Want offers from {{business}}? We will check your mobile number once with a WhatsApp code.": "{{business}} ఆఫర్లు కావాలా? మేము ఒకసారి WhatsApp కోడ్‌తో మీ మొబైల్ నంబర్‌ను ధృవీకరిస్తాము.",
+  "Send me offers": "నాకు ఆఫర్లు పంపండి",
+  "You will get offers from {{business}}.": "మీకు {{business}} ఆఫర్లు వస్తాయి.",
+  "This card has no mobile number to check": "ఈ కార్డ్‌లో తనిఖీ చేయడానికి మొబైల్ నంబర్ లేదు"
 }

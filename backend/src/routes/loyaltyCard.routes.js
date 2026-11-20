@@ -16,5 +16,6 @@ router.get('/bill/:token', read, c.billInfo);
 router.post('/bill/:token', joinLimit, c.billClaimIt);
 router.get('/:token', guess, c.card);
 router.get('/:token/google-wallet', guess, c.googleWallet);
+router.post('/:token/offers', joinLimit, c.offersOn);
 
 export default router;

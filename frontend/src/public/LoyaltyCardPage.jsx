@@ -27,7 +27,7 @@ const SERVER_TEXTS = [
   T('Too many sign-ups from here. Try again later.'), T('Too many requests from here.'), T('Too many attempts from here. Try again in a few minutes.'), T('Not allowed'),
   T('Could not make a membership number, try again'),
   T('This bill link is not valid'), T('This bill was cancelled'), T('This bill is not paid yet'), T('This bill is already on a loyalty card'), T('This bill is too old to add a stamp'),
-  T('This bill has already been added to a card'), T('This bill does not earn anything'), T('We sent a code to your WhatsApp. Enter it to add your stamp.'), T('That code is not right or has expired. Ask for a new one'), T('We could not send the code. Try again in a moment.'), T('This number has added the most bills it can today. Try again tomorrow.')
+  T('This bill has already been added to a card'), T('This bill does not earn anything'), T('We sent a code to your WhatsApp. Enter it to add your stamp.'), T('That code is not right or has expired. Ask for a new one'), T('We could not send the code. Try again in a moment.'), T('This card has no mobile number to check'), T('This number has added the most bills it can today. Try again tomorrow.')
 ];
 const KEY = (code) => `flowxp_card_${code}`;
 const day = (iso, lang) => new Date(iso).toLocaleDateString(intlTag(lang || 'en'), { day: 'numeric', month: 'short' });
@@ -81,6 +81,29 @@ const Join = ({ code }) => {
   );
 };
 
+/* "Send me offers": proves the number with the WhatsApp code (asked once per phone), then switches offers on for this person. */
+const OffersOptIn = ({ token, business, onDone }) => {
+  const tr = useT();
+  const [code, setCode] = useState(''); const [asked, setAsked] = useState(false); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
+  const go = async (e) => {
+    e.preventDefault(); setBusy(true); setErr('');
+    try {
+      let proof = ''; try { proof = JSON.parse(localStorage.getItem(PROOF) || 'null')?.proof || ''; } catch { /* private window */ }
+      const r = await call(`/${token}/offers`, { method: 'POST', body: { code: code.trim(), proof } });
+      try { if (r.proof) { const p = JSON.parse(localStorage.getItem(PROOF) || 'null'); localStorage.setItem(PROOF, JSON.stringify({ phone: p?.phone || '', proof: r.proof })); } } catch { /* fine */ }
+      onDone();
+    } catch (x) { if (x.status === 428) setAsked(true); setErr(tr(x.message)); } finally { setBusy(false); }
+  };
+  return (
+    <form onSubmit={go} className="space-y-2 rounded-xl border border-line bg-surface p-4">
+      <p className="text-sm text-ink-700">{tr('Want offers from {{business}}? We will check your mobile number once with a WhatsApp code.', { business })}</p>
+      {asked && <label className="block text-sm font-medium text-ink-700">{tr('Code from WhatsApp')}<input required inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" className="mt-1 min-h-12 w-full rounded-xl border border-line-strong px-3 text-base tracking-widest" /></label>}
+      {err && <p role="alert" className="text-sm text-ink-700">{err}</p>}
+      <button disabled={busy} className="min-h-12 w-full rounded-xl bg-brand-500 px-5 text-base font-semibold text-white disabled:opacity-60">{busy ? tr('Please wait…') : asked ? tr('Confirm') : tr('Send me offers')}</button>
+    </form>
+  );
+};
+
 const Card = ({ token }) => {
   const tr = useT();
   const { i18n } = useTranslation();
@@ -97,6 +120,8 @@ const Card = ({ token }) => {
       {d.status !== 'ACTIVE' && <p className="rounded-xl bg-warning/10 p-3 text-sm text-warning">{tr('This card is switched off. Please ask the staff.')}</p>}
       {d.wallet?.google && <div><button type="button" onClick={addToWallet} className="min-h-12 w-full rounded-xl bg-ink-900 px-5 text-base font-semibold text-white">{tr('Add to Google Wallet')}</button>{walletErr && <p role="alert" className="mt-2 text-sm text-danger">{walletErr}</p>}</div>}
       <p className="rounded-xl border border-line bg-surface p-3 text-center text-sm text-ink-700">{tr('Show this card, or say your mobile number, at the counter.')}</p>
+      {d.offers?.can_ask && <OffersOptIn token={token} business={d.business} onDone={() => setD({ ...d, offers: { on: true, can_ask: false } })} />}
+      {d.offers?.on && <p className="rounded-xl border border-line bg-surface p-3 text-center text-sm text-ink-700">{tr('You will get offers from {{business}}.', { business: d.business })}</p>}
       {d.rewards.length > 0 && (
         <section className="rounded-xl border border-line bg-surface p-4"><h2 className="mb-2 font-semibold text-ink-900">{tr('Rewards')}</h2>
           <ul className="divide-y divide-line">{d.rewards.map((r) => (

@@ -5404,5 +5404,9 @@
   "We could not send the code. Try again in a moment.": "കോഡ് അയയ്ക്കാൻ കഴിഞ്ഞില്ല. അല്പസമയത്തിനു ശേഷം വീണ്ടും ശ്രമിക്കുക.",
   "Code from WhatsApp": "WhatsApp-ൽ ലഭിച്ച കോഡ്",
   "Check the mobile number with a WhatsApp code": "WhatsApp കോഡ് ഉപയോഗിച്ച് മൊബൈൽ നമ്പർ പരിശോധിക്കുക",
-  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "ഉപഭോക്താവ് ആദ്യ തവണ മാത്രം WhatsApp-ൽ ലഭിച്ച കോഡ് നൽകണം. നമ്പർ അവരുടേതാണെന്ന് ഇത് തെളിയിക്കുന്നു, അതിനാൽ ഓഫറുകൾ അയയ്ക്കാം."
+  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "ഉപഭോക്താവ് ആദ്യ തവണ മാത്രം WhatsApp-ൽ ലഭിച്ച കോഡ് നൽകണം. നമ്പർ അവരുടേതാണെന്ന് ഇത് തെളിയിക്കുന്നു, അതിനാൽ ഓഫറുകൾ അയയ്ക്കാം.",
+  "Want offers from {{business}}? We will check your mobile number once with a WhatsApp code.": "{{business}}-ന്റെ ഓഫറുകൾ വേണോ? ഒരു തവണ WhatsApp കോഡ് ഉപയോഗിച്ച് നിങ്ങളുടെ മൊബൈൽ നമ്പർ പരിശോധിക്കും.",
+  "Send me offers": "എനിക്ക് ഓഫറുകൾ അയയ്ക്കൂ",
+  "You will get offers from {{business}}.": "നിങ്ങൾക്ക് {{business}}-ന്റെ ഓഫറുകൾ ലഭിക്കും.",
+  "This card has no mobile number to check": "ഈ കാർഡിൽ പരിശോധിക്കാൻ മൊബൈൽ നമ്പർ ഇല്ല"
 }
