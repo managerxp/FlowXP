@@ -50,8 +50,8 @@ export default function TabsLayout() {
         tabBarPosition: wide ? 'left' : 'bottom',
         tabBarActiveTintColor: color.brand,
         tabBarInactiveTintColor: color.soft,
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
-        tabBarStyle: { backgroundColor: color.card, borderColor: color.line }
+        tabBarLabelStyle: { fontSize: 11.5, fontWeight: '600' },
+        tabBarStyle: { backgroundColor: color.card, borderTopWidth: 1, borderColor: color.line, boxShadow: '0 -4px 20px rgba(17, 23, 47, 0.05)' }
       }}
     >
       <Tabs.Screen name="home" options={tab('Home', 'home-outline', 'home')} />

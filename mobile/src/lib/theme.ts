@@ -8,18 +8,26 @@ export type Palette = {
   brand: string; ink: string; soft: string; line: string; lineStrong: string; bg: string; card: string; danger: string; ok: string; warn: string;
   /** a pale blue wash behind a quiet button, its border, and the pressed row */ tint: string; tintLine: string; press: string;
   /** a grey wash behind a chip or disabled area */ wash: string;
+  /** the dark main button (light in the dark theme) and its label, and the deep navy of the summary card and its two text colours */ action: string; onAction: string; navy: string; onNavy: string; onNavySoft: string;
   /** soft backgrounds for a problem, a warning and good news, and the border of a problem / a warning */ dangerBg: string; warnBg: string; okBg: string; dangerLine: string; warnLine: string;
 };
 
 export const LIGHT: Palette = {
-  brand: '#0b57ff', ink: '#0f172a', soft: '#475569', line: '#e2e8f0', lineStrong: '#cbd5e1', bg: '#f8fafc', card: '#ffffff', danger: '#b91c1c', ok: '#047857', warn: '#92400e',
-  tint: '#eaf1ff', tintLine: '#b9ceff', press: '#dbe7ff', wash: '#f1f5f9', dangerBg: '#fef2f2', warnBg: '#fffbeb', okBg: '#ecfdf5', dangerLine: '#fecaca', warnLine: '#fde68a'
+  brand: '#356ae6', ink: '#182033', soft: '#6b7385', line: '#e6e9ee', lineStrong: '#cdd3dc', bg: '#f8f9f7', card: '#ffffff', danger: '#b4443c', ok: '#2f7d5b', warn: '#9a5b13',
+  tint: '#eef3fe', tintLine: '#c9d8fa', press: '#e8eefc', wash: '#f2f4f6', dangerBg: '#fbf0ef', warnBg: '#fdf5e7', okBg: '#ebf5ef', dangerLine: '#f0cdca', warnLine: '#f2ddb0',
+  action: '#171b24', onAction: '#ffffff', navy: '#11172f', onNavy: '#ffffff', onNavySoft: '#aab6d3'
 };
 
 export const DARK: Palette = {
-  brand: '#4f8bff', ink: '#e6edf7', soft: '#a3b3c9', line: '#26344a', lineStrong: '#34466a', bg: '#0b1220', card: '#111c2e', danger: '#ff8a80', ok: '#3ddc97', warn: '#f5b26a',
-  tint: '#16264a', tintLine: '#2b4a8f', press: '#1b2f5c', wash: '#16213a', dangerBg: '#3a1b1f', warnBg: '#3a2a14', okBg: '#10321f', dangerLine: '#6b2a2f', warnLine: '#6b4a1c'
+  brand: '#6c93f0', ink: '#e9edf5', soft: '#a0a9bc', line: '#252d45', lineStrong: '#34405f', bg: '#0c1020', card: '#141a2e', danger: '#f09a93', ok: '#6fcb9f', warn: '#e8b36b',
+  tint: '#1a2547', tintLine: '#2f4688', press: '#202d57', wash: '#1a2138', dangerBg: '#35191c', warnBg: '#33260f', okBg: '#12301f', dangerLine: '#6b2a2f', warnLine: '#6b4a1c',
+  action: '#e9edf5', onAction: '#11172f', navy: '#1b2547', onNavy: '#ffffff', onNavySoft: '#aab6d3'
 };
+
+/** Shapes shared by every screen: corner radii (cards 20, controls 14, chips and pills fully round), the soft card shadow, and the 8-point spacing steps. */
+export const radius = { card: 20, control: 14, pill: 999 } as const;
+export const shadow = { card: '0 1px 2px rgba(17, 23, 47, 0.04), 0 6px 20px rgba(17, 23, 47, 0.05)' } as const;
+export const space = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 } as const;
 
 export type ThemeName = 'light' | 'dark';
 

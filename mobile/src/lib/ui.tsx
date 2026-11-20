@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SkeletonRows } from './motion.tsx';
 
-import { color } from './theme.ts';
+import { color, radius, shadow } from './theme.ts';
 /** The app's colours (lib/theme.ts): one shared object that follows the theme chosen in Settings > Display. */
 export { color };
 
@@ -18,7 +18,7 @@ export const Button = ({ title, onPress, kind: asked = 'primary', busy = false, 
       accessibilityRole="button" accessibilityState={{ disabled: busy || disabled, busy, ...(selected === undefined ? {} : { selected }) }} onPress={onPress} disabled={busy || disabled} android_ripple={{ color: '#ffffff33' }}
       style={({ pressed }) => [s.button, kind === 'primary' && s.primary, kind === 'quiet' && s.quiet, kind === 'danger' && s.dangerBtn, (disabled || busy) && { opacity: 0.5 }, pressed && { transform: [{ scale: 0.98 }] }, style]}
     >
-      {busy ? <ActivityIndicator color={kind === 'primary' ? '#fff' : color.brand} /> : <Text style={[s.buttonText, kind !== 'primary' && { color: kind === 'danger' ? color.danger : color.brand }]}>{selected ? '✓ ' : ''}{t(title)}</Text>}
+      {busy ? <ActivityIndicator color={kind === 'primary' ? color.onAction : color.ink} /> : <Text style={[s.buttonText, kind !== 'primary' && { color: kind === 'danger' ? color.danger : color.ink }]}>{selected ? '✓ ' : ''}{t(title)}</Text>}
     </Pressable>
   );
 };
@@ -30,16 +30,16 @@ export const ErrorText = ({ children }: { children: ReactNode }) => (children ? 
 
 const makeStyles = () => StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
-  title: { fontSize: 24, fontWeight: '700', color: color.ink },
+  title: { fontSize: 26, fontWeight: '700', color: color.ink, letterSpacing: -0.4 },
   soft: { color: color.soft, fontSize: 14 },
   error: { color: color.danger, fontSize: 14, marginVertical: 6 },
-  button: { minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
-  primary: { backgroundColor: color.brand },
-  quiet: { backgroundColor: color.tint, borderWidth: 1, borderColor: color.tintLine },
+  button: { minHeight: 52, borderRadius: radius.control, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  primary: { backgroundColor: color.action },
+  quiet: { backgroundColor: color.card, borderWidth: 1, borderColor: color.lineStrong },
   dangerBtn: { backgroundColor: color.dangerBg },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  input: { minHeight: 48, borderWidth: 1, borderColor: color.line, borderRadius: 12, paddingHorizontal: 14, fontSize: 16, backgroundColor: color.card, color: color.ink },
-  card: { backgroundColor: color.card, borderRadius: 14, borderWidth: 1, borderColor: color.line, padding: 14 }
+  buttonText: { color: color.onAction, fontSize: 16, fontWeight: '600', letterSpacing: 0.1 },
+  input: { minHeight: 52, borderWidth: 1, borderColor: color.lineStrong, borderRadius: radius.control, borderCurve: 'continuous', paddingHorizontal: 14, fontSize: 16, backgroundColor: color.card, color: color.ink },
+  card: { backgroundColor: color.card, borderRadius: radius.card, borderCurve: 'continuous', borderWidth: 1, borderColor: color.line, padding: 16, boxShadow: shadow.card }
 });
 
 export const s = makeStyles();
@@ -53,8 +53,8 @@ export const Chips = <T extends string>({ items, value, onChange }: { items: { i
   <S2 horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 4 }} style={{ flexGrow: 0 }}>
     {items.map((i) => (
       <P2 key={i.id} accessibilityRole="button" accessibilityState={{ selected: value === i.id }} onPress={() => onChange(i.id)}
-        style={{ minHeight: 48, paddingHorizontal: 16, justifyContent: 'center', borderRadius: 22, backgroundColor: value === i.id ? color.brand : color.card, borderWidth: 1, borderColor: value === i.id ? color.brand : color.line }}>
-        <T2 style={{ color: value === i.id ? '#fff' : color.ink, fontWeight: '600' }}>{t(i.label)}</T2>
+        style={{ minHeight: 48, paddingHorizontal: 16, justifyContent: 'center', borderRadius: radius.pill, backgroundColor: value === i.id ? color.action : color.card, borderWidth: 1, borderColor: value === i.id ? color.action : color.lineStrong }}>
+        <T2 style={{ color: value === i.id ? color.onAction : color.ink, fontWeight: '600' }}>{t(i.label)}</T2>
       </P2>
     ))}
   </S2>
@@ -64,7 +64,7 @@ export const Chips = <T extends string>({ items, value, onChange }: { items: { i
 export const Stat = ({ label, value, note, tone }: { label: string; value: string; note?: string; tone?: string }) => (
   <V2 style={[s.card, { flex: 1, minWidth: 140, gap: 2 }]}>
     <T2 style={{ color: color.soft, fontSize: 13 }}>{t(label)}</T2>
-    <T2 style={{ color: tone ?? color.ink, fontSize: 22, fontWeight: '700' }}>{value}</T2>
+    <T2 style={{ color: tone ?? color.ink, fontSize: 24, fontWeight: '700', letterSpacing: -0.4, fontVariant: ['tabular-nums'] }}>{value}</T2>
     {note ? <T2 style={{ color: color.soft, fontSize: 12 }}>{t(note)}</T2> : null}
   </V2>
 );
@@ -73,7 +73,7 @@ export const Stat = ({ label, value, note, tone }: { label: string; value: strin
 export const Line = ({ left, right, sub, onPress, icon, selected }: { left: string; right?: string; sub?: string; onPress?: () => void; icon?: React.ComponentProps<typeof Ionicons>['name']; selected?: boolean }) => (
   <P2 disabled={!onPress} onPress={onPress} accessibilityRole={onPress ? 'button' : undefined} accessibilityState={selected === undefined ? undefined : { selected }} android_ripple={onPress ? { color: '#0b57ff22' } : undefined}
     style={({ pressed }) => ({ minHeight: 56, paddingLeft: 11, paddingRight: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: pressed || selected ? color.press : color.card, borderLeftWidth: 5, borderLeftColor: selected ? color.brand : 'transparent', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 })}>
-    {icon ? <V2 style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: color.tint, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={icon} size={20} color={color.brand} /></V2> : null}
+    {icon ? <V2 style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: color.wash, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={icon} size={20} color={color.ink} /></V2> : null}
     <V2 style={{ flex: 1 }}>
       <T2 style={{ fontSize: 16, color: color.ink }}>{t(left)}</T2>
       {sub ? <T2 style={{ color: color.soft, fontSize: 13 }}>{t(sub)}</T2> : null}
@@ -82,7 +82,7 @@ export const Line = ({ left, right, sub, onPress, icon, selected }: { left: stri
   </P2>
 );
 
-export const SectionTitle = ({ children }: { children: ReactNode }) => <T2 style={{ fontSize: 15, fontWeight: '700', color: color.ink, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 6 }}>{tx(children)}</T2>;
+export const SectionTitle = ({ children }: { children: ReactNode }) => <T2 style={{ fontSize: 17, fontWeight: '700', letterSpacing: -0.2, color: color.ink, paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8 }}>{tx(children)}</T2>;
 
 /** Shown above a page that is displaying what was saved last time because there is no signal. */
 export const SavedNote = ({ at }: { at: number | null }) => (at ? <T2 accessibilityLiveRegion="polite" style={{ color: color.warn, paddingHorizontal: 16, paddingVertical: 6, fontSize: 13 }}>{t('No internet. Showing what was saved {when}.', { when: ago(at) })}</T2> : null);
