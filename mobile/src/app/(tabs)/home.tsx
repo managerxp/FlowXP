@@ -17,7 +17,7 @@ import { allowed } from '../../lib/access.ts';
 import GarageHome from '../../lib/GarageHome.tsx';
 import { useEffect } from 'react';
 import { Empty, Failed, Loading, SavedNote, SectionTitle, Soft, color, s } from '../../lib/ui.tsx';
-import { radius, shadow } from '../../lib/theme.ts';
+import { display, radius, shadow } from '../../lib/theme.ts';
 
 const hour = () => { const h = new Date().getHours(); return t(h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'); };
 const money = (rupeesValue: number) => rupees(toPaise(rupeesValue));
@@ -54,7 +54,7 @@ const Hero = ({ sales, change, bills, yesterday, go }: { sales: number; change: 
         </View>
       )}
     </View>
-    <Text selectable adjustsFontSizeToFit numberOfLines={1} style={{ color: color.onNavy, fontSize: 40, fontWeight: '700', letterSpacing: -1, fontVariant: ['tabular-nums'] }}>{money(sales)}</Text>
+    <Text selectable adjustsFontSizeToFit numberOfLines={1} style={{ color: color.onNavy, fontSize: 40, fontFamily: display.bold, letterSpacing: -1, fontVariant: ['tabular-nums'] }}>{money(sales)}</Text>
     <View style={{ flexDirection: 'row', gap: 12, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#ffffff22' }}>
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ color: color.onNavySoft, fontSize: 12 }}>{t('Bills today')}</Text>
@@ -86,7 +86,7 @@ const Tile = ({ label, value, note, tone, icon, go }: { label: string; value: st
       <Text style={{ color: color.soft, fontSize: 13, fontWeight: '500' }}>{t(label)}</Text>
       <Ionicons name={icon} size={18} color={tone ?? color.soft} />
     </View>
-    <Text style={{ color: tone ?? color.ink, fontSize: 24, fontWeight: '700', letterSpacing: -0.4, fontVariant: ['tabular-nums'] }}>{value}</Text>
+    <Text style={{ color: tone ?? color.ink, fontSize: 24, fontFamily: display.bold, letterSpacing: -0.4, fontVariant: ['tabular-nums'] }}>{value}</Text>
     {note ? <Text style={{ color: color.soft, fontSize: 12 }}>{t(note)}</Text> : null}
   </Pressable>
 );
@@ -168,7 +168,7 @@ function ShopHome() {
             <Avatar text={initials(business?.name)} dark />
             <View style={{ flex: 1, gap: 1 }}>
               <Text numberOfLines={1} style={{ color: color.soft, fontSize: 13 }}>{hour()}, {session.user?.name?.split(' ')[0]}</Text>
-              <Text accessibilityRole="header" numberOfLines={1} style={{ color: color.ink, fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }}>{business?.name}</Text>
+              <Text accessibilityRole="header" numberOfLines={1} style={{ color: color.ink, fontSize: 20, fontFamily: display.bold, letterSpacing: -0.3 }}>{business?.name}</Text>
               {several ? (
                 <Pressable accessibilityRole="button" accessibilityLabel={`${t('Switch outlet')}: ${outlet?.name}`} onPress={() => router.push('/choose')} style={{ minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start' }}>
                   <Text style={{ color: color.brand, fontSize: 13, fontWeight: '600' }}>{outlet?.name}</Text><Ionicons name="chevron-down" size={15} color={color.brand} />

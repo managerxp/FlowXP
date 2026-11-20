@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Text, View, useColorScheme } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
 import { restoreSession, useSession } from '../lib/session.ts';
 import { OfflineBar } from '../lib/OfflineBar.tsx';
 import { HelpButton } from '../lib/HelpButton.tsx';
@@ -43,10 +44,17 @@ export default function Layout() {
   const theme = resolveTheme(display.theme, useColorScheme());
   const applied = useRef('');
   if (applied.current !== theme) { applyPalette(theme); rebuildStyles(); applied.current = theme; }
+  // Satoshi for headings and figures (see theme.ts). Its files are tiny; if they ever fail to load the app carries on with the phone's own font.
+  const [fontsReady, fontError] = useFonts({
+    'Satoshi-Regular': require('../../assets/fonts/Satoshi-Regular.otf'),
+    'Satoshi-Medium': require('../../assets/fonts/Satoshi-Medium.otf'),
+    'Satoshi-Bold': require('../../assets/fonts/Satoshi-Bold.otf')
+  });
   const { ready, token } = useSession();
   // once someone is signed in: keep this phone on the list for alerts, or ask once
   useEffect(() => { if (ready && token) { void syncAlerts(); void flushBugReports(); } }, [ready, token]);
   useEffect(() => { installCrashReporting(); installLocation(); installAlerts(); void loadLanguage(); void loadDisplay({ get: kvGet, set: kvSet }); void restoreSession(); }, []);
+  if (!fontsReady && !fontError) return null;
   return (
     <>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />

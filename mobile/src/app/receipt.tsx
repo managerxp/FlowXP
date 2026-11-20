@@ -1,4 +1,5 @@
 import { SvgXml } from 'react-native-svg';
+import { display } from '../lib/theme.ts';
 import { qrSvg } from '../lib/qr.ts';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, Share, Text, View } from 'react-native';
@@ -79,7 +80,7 @@ export default function Receipt() {
         <View accessibilityLiveRegion="polite" style={{ alignItems: 'center', gap: 4, paddingVertical: 8 }}>
           <View style={{ width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: waiting ? color.warnBg : color.okBg, marginBottom: 6 }}><Ionicons name={waiting ? 'cloud-offline-outline' : 'checkmark'} size={44} color={waiting ? color.warn : color.ok} /></View>
           <Title>{waiting ? 'Bill saved on this phone' : 'Payment received'}</Title>
-          {invoice ? <Text selectable style={{ fontSize: 38, fontWeight: '700', letterSpacing: -1, color: color.ink, fontVariant: ['tabular-nums'] }}>{rupees(Math.round(invoice.total * 100))}</Text> : null}
+          {invoice ? <Text selectable style={{ fontSize: 38, fontFamily: display.bold, letterSpacing: -1, color: color.ink, fontVariant: ['tabular-nums'] }}>{rupees(Math.round(invoice.total * 100))}</Text> : null}
         </View>
         {invoice?.order_number ? (
           <View style={[s.card, { alignItems: 'center' }]}>

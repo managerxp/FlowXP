@@ -24,7 +24,7 @@ import { gstView, type Levies } from '../lib/gst.ts';
 import { DETAIL_FIELDS, detailsBody } from '../lib/taxInvoice.ts';
 import { Page, useWide } from '../lib/responsive.tsx';
 import { Button, ErrorText, Loading, Soft, color, s } from '../lib/ui.tsx';
-import { radius } from '../lib/theme.ts';
+import { display, radius } from '../lib/theme.ts';
 
 type Method = 'CASH' | 'UPI' | 'CARD';
 const LABEL: Record<Method, string> = { CASH: 'Cash', UPI: 'UPI', CARD: 'Card' };
@@ -273,7 +273,7 @@ export default function Pay() {
             <ScrollView style={{ flex: 3 }} contentContainerStyle={{ padding: 20, gap: 14 }} keyboardShouldPersistTaps="handled">
         <View style={{ padding: 20, gap: 6, borderRadius: radius.card + 4, borderCurve: 'continuous', backgroundColor: color.navy }}>
           <Text style={{ color: color.onNavySoft, fontSize: 14, fontWeight: '500' }}>{t('Total')}</Text>
-          <Text selectable accessibilityRole="header" adjustsFontSizeToFit numberOfLines={1} style={{ color: color.onNavy, fontSize: 40, fontWeight: '700', letterSpacing: -1, fontVariant: ['tabular-nums'] }}>{rupees(total)}</Text>
+          <Text selectable accessibilityRole="header" adjustsFontSizeToFit numberOfLines={1} style={{ color: color.onNavy, fontSize: 40, fontFamily: display.bold, letterSpacing: -1, fontVariant: ['tabular-nums'] }}>{rupees(total)}</Text>
         </View>
         <Soft>About, with GST. {lineCount} lines{orderId && order.data ? ` · ${order.data.table_name ?? order.data.order_type} ${order.data.order_number}` : ''}. The final bill comes from FlowXP.</Soft>
         {controls}
@@ -291,7 +291,7 @@ export default function Pay() {
       <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled">
         <View style={{ padding: 20, gap: 6, borderRadius: radius.card + 4, borderCurve: 'continuous', backgroundColor: color.navy }}>
           <Text style={{ color: color.onNavySoft, fontSize: 14, fontWeight: '500' }}>{t('Total')}</Text>
-          <Text selectable accessibilityRole="header" adjustsFontSizeToFit numberOfLines={1} style={{ color: color.onNavy, fontSize: 40, fontWeight: '700', letterSpacing: -1, fontVariant: ['tabular-nums'] }}>{rupees(total)}</Text>
+          <Text selectable accessibilityRole="header" adjustsFontSizeToFit numberOfLines={1} style={{ color: color.onNavy, fontSize: 40, fontFamily: display.bold, letterSpacing: -1, fontVariant: ['tabular-nums'] }}>{rupees(total)}</Text>
         </View>
         <Soft>About, with GST. {lineCount} lines{orderId && order.data ? ` · ${order.data.table_name ?? order.data.order_type} ${order.data.order_number}` : ''}. The final bill comes from FlowXP.</Soft>
         {controls}

@@ -19,7 +19,7 @@ import { ApiError, newKey } from '../../lib/api.ts';
 import { estimateOf, holdBill, toSnapshot, type HeldRow } from '../../lib/held.ts';
 import { useWide } from '../../lib/responsive.tsx';
 import { Button, Chips, ErrorText, Soft, Title, color, s } from '../../lib/ui.tsx';
-import { radius, shadow } from '../../lib/theme.ts';
+import { display, radius, shadow } from '../../lib/theme.ts';
 import CustomItem from '../../lib/CustomItem.tsx';
 import { WholesaleHome } from '../../lib/WholesaleHome.tsx';
 import { SalonTill } from '../../lib/SalonTill.tsx';
@@ -261,7 +261,7 @@ export default function Sell() {
     <View style={{ padding: 16, gap: 10, backgroundColor: color.card, borderTopWidth: 1, borderColor: color.line, borderTopLeftRadius: radius.card, borderTopRightRadius: radius.card, borderCurve: 'continuous', boxShadow: '0 -6px 24px rgba(17, 23, 47, 0.06)' }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
         <Soft>{t(sum.itemCount === 1 ? '{n} item · GST {gst}' : '{n} items · GST {gst}', { n: qty(sum.itemCount), gst: rupees(sum.taxPaise) })}</Soft>
-        <Text accessibilityLabel={`About ${rupees(sum.totalPaise)}`} style={{ fontSize: 28, fontWeight: '700', letterSpacing: -0.6, color: color.ink, fontVariant: ['tabular-nums'] }}>≈ {rupees(sum.totalPaise)}</Text>
+        <Text accessibilityLabel={`About ${rupees(sum.totalPaise)}`} style={{ fontSize: 28, fontFamily: display.bold, letterSpacing: -0.6, color: color.ink, fontVariant: ['tabular-nums'] }}>≈ {rupees(sum.totalPaise)}</Text>
       </View>
       {offers.savingPaise > 0 ? <Text style={{ color: color.ok, fontWeight: '600' }}>{t('Offer')}: −{rupees(offers.savingPaise)} · {offers.names.join(', ')}</Text> : null}
       {kitchenShop ? (

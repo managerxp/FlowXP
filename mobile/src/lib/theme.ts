@@ -35,3 +35,6 @@ export type ThemeName = 'light' | 'dark';
 export const color: Palette = { ...LIGHT };
 
 export const applyPalette = (name: ThemeName): void => { Object.assign(color, name === 'dark' ? DARK : LIGHT); };
+
+/** Satoshi (assets/fonts, loaded in app/_layout.tsx) for headings and the figures that matter. One family per weight, so never add fontWeight beside it. Body text keeps the phone's own font, which also covers Hindi and the other Indian scripts that Satoshi does not have. */
+export const display = { regular: 'Satoshi-Regular', medium: 'Satoshi-Medium', bold: 'Satoshi-Bold' } as const;

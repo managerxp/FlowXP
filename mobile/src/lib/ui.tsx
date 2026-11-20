@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SkeletonRows } from './motion.tsx';
 
-import { color, radius, shadow } from './theme.ts';
+import { color, display, radius, shadow } from './theme.ts';
 /** The app's colours (lib/theme.ts): one shared object that follows the theme chosen in Settings > Display. */
 export { color };
 
@@ -30,7 +30,7 @@ export const ErrorText = ({ children }: { children: ReactNode }) => (children ? 
 
 const makeStyles = () => StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
-  title: { fontSize: 26, fontWeight: '700', color: color.ink, letterSpacing: -0.4 },
+  title: { fontSize: 26, fontFamily: display.bold, color: color.ink, letterSpacing: -0.4 },
   soft: { color: color.soft, fontSize: 14 },
   error: { color: color.danger, fontSize: 14, marginVertical: 6 },
   button: { minHeight: 52, borderRadius: radius.control, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
@@ -64,7 +64,7 @@ export const Chips = <T extends string>({ items, value, onChange }: { items: { i
 export const Stat = ({ label, value, note, tone }: { label: string; value: string; note?: string; tone?: string }) => (
   <V2 style={[s.card, { flex: 1, minWidth: 140, gap: 2 }]}>
     <T2 style={{ color: color.soft, fontSize: 13 }}>{t(label)}</T2>
-    <T2 style={{ color: tone ?? color.ink, fontSize: 24, fontWeight: '700', letterSpacing: -0.4, fontVariant: ['tabular-nums'] }}>{value}</T2>
+    <T2 style={{ color: tone ?? color.ink, fontSize: 24, fontFamily: display.bold, letterSpacing: -0.4, fontVariant: ['tabular-nums'] }}>{value}</T2>
     {note ? <T2 style={{ color: color.soft, fontSize: 12 }}>{t(note)}</T2> : null}
   </V2>
 );
@@ -85,6 +85,23 @@ export const Line = ({ left, right, sub, onPress, icon, selected }: { left: stri
 /** A small rounded label for a state (Paid, Unpaid, Cancelled). Always words, never colour alone. */
 export const Pill = ({ label, tone, bg }: { label: string; tone: string; bg?: string }) => (
   <V2 style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: bg ?? color.wash }}><T2 style={{ color: tone, fontSize: 12, fontWeight: '600' }}>{t(label)}</T2></V2>
+);
+
+/** Rows kept together in one rounded card, with hairlines between them. Put `Line` or `ListRow` rows inside. */
+export const Group = ({ children }: { children: ReactNode }) => (
+  <V2 style={{ marginHorizontal: 16, borderRadius: radius.card, borderCurve: 'continuous', borderWidth: 1, borderColor: color.line, backgroundColor: color.card, overflow: 'hidden', boxShadow: shadow.card }}>
+    <V2 style={{ marginTop: -1 }}>{children}</V2>
+  </V2>
+);
+
+/** The days of a period as bars: the tallest is the best day and the last one is the accent colour. `money` formats the spoken label. */
+export const TrendBars = ({ days, money, heights }: { days: { date: string; total: number }[]; money: (n: number) => string; heights: number[] }) => (
+  <V2 style={[s.card, { marginHorizontal: 16, gap: 10 }]}>
+    <V2 style={{ flexDirection: 'row', alignItems: 'flex-end', height: 120, gap: 4 }}>
+      {days.map((d, i) => <V2 key={d.date} accessibilityLabel={`${d.date}: ${money(d.total)}`} style={{ flex: 1, height: `${Math.max(heights[i] * 100, 3)}%`, backgroundColor: i === days.length - 1 ? color.brand : color.tintLine, borderRadius: 6, borderCurve: 'continuous' }} />)}
+    </V2>
+    <V2 style={{ flexDirection: 'row', justifyContent: 'space-between' }}><T2 style={{ color: color.soft, fontSize: 13 }}>{days[0]?.date.slice(5)}</T2><T2 style={{ color: color.soft, fontSize: 13 }}>{days[days.length - 1]?.date.slice(5)}</T2></V2>
+  </V2>
 );
 
 /** A round avatar made of initials (a customer, a person). */
@@ -110,7 +127,7 @@ export const ListRow = ({ title, sub, right, rightTone, pill, pillTone, pillBg, 
   </P2>
 );
 
-export const SectionTitle = ({ children }: { children: ReactNode }) => <T2 style={{ fontSize: 17, fontWeight: '700', letterSpacing: -0.2, color: color.ink, paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8 }}>{tx(children)}</T2>;
+export const SectionTitle = ({ children }: { children: ReactNode }) => <T2 style={{ fontSize: 17, fontFamily: display.bold, letterSpacing: -0.2, color: color.ink, paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8 }}>{tx(children)}</T2>;
 
 /** Shown above a page that is displaying what was saved last time because there is no signal. */
 export const SavedNote = ({ at }: { at: number | null }) => (at ? <T2 accessibilityLiveRegion="polite" style={{ color: color.warn, paddingHorizontal: 16, paddingVertical: 6, fontSize: 13 }}>{t('No internet. Showing what was saved {when}.', { when: ago(at) })}</T2> : null);

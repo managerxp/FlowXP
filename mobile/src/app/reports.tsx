@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { display } from '../lib/theme.ts';
 import { router } from 'expo-router';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, useSession } from '../lib/session.ts';
 import { goBack } from '../lib/nav.ts';
+import { t } from '../lib/i18n.ts';
 import { useLoad } from '../lib/useLoad.ts';
 import { ranges } from '../lib/ranges.ts';
 import type { SalesReport } from '../lib/types.ts';
@@ -11,7 +13,8 @@ import { qty, rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
 import { averageBill, insights, profitNote, type Profit } from '../lib/reportsView.ts';
 import AskReports from '../lib/AskReports.tsx';
-import { Button, Chips, Empty, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, Failed, Group, Line, Loading, SavedNote, SectionTitle, Soft, Title, TrendBars, color, s } from '../lib/ui.tsx';
+import { barHeights } from '../lib/ranges.ts';
 
 const money = (r: number) => rupees(toPaise(r));
 const CHANNEL: Record<string, string> = { COUNTER: 'Counter', DINE_IN: 'Dine in', TAKEAWAY: 'Takeaway', DELIVERY: 'Delivery' };
@@ -43,14 +46,19 @@ export default function Reports() {
         {r ? (
           <ScrollView refreshControl={<RefreshControl refreshing={busy} onRefresh={() => { void refresh(); }} />} contentContainerStyle={{ paddingBottom: 32 }}>
             <AskReports />
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 16 }}>
-              <Stat label={rangeId === 'today' ? "Today's sales" : 'Sales'} value={money(r.total_sales)} />
-              <Stat label="Bills" value={String(r.invoice_count)} />
-              <Stat label="Average bill" value={money(averageBill(r))} />
-              {profit.data ? <Stat label="Estimated profit" value={money(profit.data.totals.estimated_net)} tone={profit.data.totals.estimated_net < 0 ? color.danger : undefined} /> : null}
+            <View style={{ margin: 16, padding: 20, gap: 16, borderRadius: 24, borderCurve: 'continuous', backgroundColor: color.navy }}>
+              <Text style={{ color: color.onNavySoft, fontSize: 14, fontWeight: '500' }}>{t(rangeId === 'today' ? "Today's sales" : 'Sales')}</Text>
+              <Text selectable adjustsFontSizeToFit numberOfLines={1} style={{ color: color.onNavy, fontSize: 38, fontFamily: display.bold, letterSpacing: -1, fontVariant: ['tabular-nums'] }}>{money(r.total_sales)}</Text>
+              <View style={{ flexDirection: 'row', gap: 12, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#ffffff22' }}>
+                {[[t('Bills'), String(r.invoice_count), undefined], [t('Average bill'), money(averageBill(r)), undefined], ...(profit.data ? [[t('Estimated profit'), money(profit.data.totals.estimated_net), profit.data.totals.estimated_net < 0 ? '#ffb4ad' : undefined]] : [])].map(([label, value, tone]) => (
+                  <View key={label} style={{ flex: 1, gap: 2 }}>
+                    <Text style={{ color: color.onNavySoft, fontSize: 12 }}>{label}</Text>
+                    <Text adjustsFontSizeToFit numberOfLines={1} style={{ color: tone ?? color.onNavy, fontSize: 18, fontWeight: '600', fontVariant: ['tabular-nums'] }}>{value}</Text>
+                  </View>))}
+              </View>
             </View>
             {profit.data ? <Soft style={{ paddingHorizontal: 16 }}>{profitNote(profit.data.totals)}</Soft> : null}
-            {r.outstanding > 0 ? <Line left="Still owed to you" right={money(r.outstanding)} icon="wallet-outline" /> : null}
+            {r.outstanding > 0 ? <View style={{ marginTop: 12 }}><Group><Line left="Still owed to you" right={money(r.outstanding)} icon="wallet-outline" /></Group></View> : null}
             {insights(r, money).length ? (
               <View style={[s.card, { marginHorizontal: 16, marginTop: 12, gap: 6 }]}>
                 <Text accessibilityRole="header" style={{ fontWeight: '700', color: color.ink }}>What happened</Text>
@@ -59,20 +67,22 @@ export default function Reports() {
             ) : r.invoice_count === 0 ? <Empty>No sales in this period yet. Make a bill and it shows up here.</Empty> : null}
 
             <SectionTitle>Best sellers</SectionTitle>
-            {r.top_products.length ? r.top_products.slice(0, 5).map((p) => <Line key={p.product_id} left={p.name} right={money(p.revenue)} sub={`${qty(p.quantity)} sold`} />) : <Empty>No sales in this period.</Empty>}
+            {r.top_products.length ? <Group>{r.top_products.slice(0, 5).map((p) => <Line key={p.product_id} left={p.name} right={money(p.revenue)} sub={`${qty(p.quantity)} sold`} />)}</Group> : <Empty>No sales in this period.</Empty>}
 
             <View style={{ padding: 16, gap: 8 }}><Button title={detail ? 'Hide detailed reports' : 'View detailed reports'} kind="quiet" onPress={() => setDetail((v) => !v)} /><Button title="Ask Flow AI about this" kind="quiet" onPress={() => router.push('/flow-ai')} /></View>
             {detail ? <>
-            {best ? <Line left="Best day" right={money(best.total)} sub={`${best.date} · ${best.invoice_count} bills`} /> : null}
-            {busiest ? <Line left="Busiest hour" right={money(busiest.total)} sub={`${hourLabel(busiest.hour)} · ${busiest.invoice_count} bills`} /> : null}
+            {best || busiest ? <Group>
+              {best ? <Line left="Best day" right={money(best.total)} sub={`${best.date} · ${best.invoice_count} bills`} /> : null}
+              {busiest ? <Line left="Busiest hour" right={money(busiest.total)} sub={`${hourLabel(busiest.hour)} · ${busiest.invoice_count} bills`} /> : null}
+            </Group> : null}
 
             <SectionTitle>How it was paid</SectionTitle>
-            {r.by_payment_method.length ? r.by_payment_method.map((m) => <Line key={m.method} left={m.method} right={money(m.amount)} sub={r.total_sales > 0 ? `${Math.round((m.amount / r.total_sales) * 100)}% of sales` : undefined} />) : <Empty>No payments in this period.</Empty>}
+            {r.by_payment_method.length ? <Group>{r.by_payment_method.map((m) => <Line key={m.method} left={m.method} right={money(m.amount)} sub={r.total_sales > 0 ? `${Math.round((m.amount / r.total_sales) * 100)}% of sales` : undefined} />)}</Group> : <Empty>No payments in this period.</Empty>}
 
             {r.by_channel.length > 1 ? (
               <>
                 <SectionTitle>Where the sales came from</SectionTitle>
-                {r.by_channel.map((c) => <Line key={`${c.channel}${c.platform}`} left={c.platform ?? CHANNEL[c.channel] ?? c.channel} right={money(c.total)} sub={`${c.invoice_count} bills`} />)}
+                <Group>{r.by_channel.map((c) => <Line key={`${c.channel}${c.platform}`} left={c.platform ?? CHANNEL[c.channel] ?? c.channel} right={money(c.total)} sub={`${c.invoice_count} bills`} />)}</Group>
               </>
             ) : null}
 
@@ -80,12 +90,13 @@ export default function Reports() {
             {r.by_category.length > 1 ? (
               <>
                 <SectionTitle>By category</SectionTitle>
-                {r.by_category.map((c) => <Line key={c.category} left={c.category || 'Other'} right={money(c.revenue)} sub={`${qty(c.quantity)} sold`} />)}
+                <Group>{r.by_category.map((c) => <Line key={c.category} left={c.category || 'Other'} right={money(c.revenue)} sub={`${qty(c.quantity)} sold`} />)}</Group>
               </>
             ) : null}
 
             <SectionTitle>Day by day</SectionTitle>
-            {[...r.by_day].reverse().map((d) => <Line key={d.date} left={d.date} right={money(d.total)} sub={`${d.invoice_count} bills`} />)}
+            {r.by_day.length > 1 ? <TrendBars days={r.by_day} money={money} heights={barHeights(r.by_day.map((d) => d.total))} /> : null}
+            <View style={{ height: 12 }} /><Group>{[...r.by_day].reverse().map((d) => <Line key={d.date} left={d.date} right={money(d.total)} sub={`${d.invoice_count} bills`} />)}</Group>
             </> : null}
           </ScrollView>
         ) : null}
