@@ -104,5 +104,5 @@ export const billClaimIt = wrap(async (req, res) => {
   const phone = String(req.body?.phone || '').replace(/\D/g, '').slice(-10);
   if (!name || phone.length !== 10) throw new engine.LoyaltyError('Enter your name and 10 digit mobile number');
   await billFeature(req.params.token);
-  ok(res, await withTransaction((c) => billClaim.claim(c, req.params.token, { name, phone, consent: req.body?.consent_marketing === true })), 201);
+  ok(res, await withTransaction((c) => billClaim.claim(c, req.params.token, { name, phone })), 201);
 });

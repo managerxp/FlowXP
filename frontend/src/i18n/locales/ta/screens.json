@@ -5397,5 +5397,6 @@
   "Use Silver, Gold and Platinum": "சில்வர், கோல்டு, பிளாட்டினம் பயன்படுத்துங்கள்",
   "Add a tier": "நிலையைச் சேர்",
   "{{tier}} member, earns {{x}}x points": "{{tier}} உறுப்பினர், {{x}}x புள்ளிகள் ஈட்டுகிறார்",
-  "{{n}} more points to reach {{tier}}": "{{tier}} அடைய இன்னும் {{n}} புள்ளிகள்"
+  "{{n}} more points to reach {{tier}}": "{{tier}} அடைய இன்னும் {{n}} புள்ளிகள்",
+  "This number has added the most bills it can today. Try again tomorrow.": "இந்த எண்ணில் இன்று சேர்க்கக்கூடிய பில்கள் சேர்க்கப்பட்டுவிட்டன. நாளை மீண்டும் முயற்சிக்கவும்."
 }

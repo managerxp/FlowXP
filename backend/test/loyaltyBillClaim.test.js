@@ -91,3 +91,14 @@ test('Card results count the stamps given by scanning the bill', { skip }, async
   const card = r.cards.find((c) => c.programme_id === prog);
   assert.ok(card.bill_scans >= 3); assert.equal(r.totals.bill_scans >= card.bill_scans, true);
 });
+
+test('one number can claim only a few scanned bills a day, and a scan never records marketing consent', { skip }, async () => {
+  await pool.query(`UPDATE business_feature_overrides SET enabled = TRUE WHERE business_id = $1 AND feature_key = 'loyalty_bill_qr'`, [biz]);
+  const phone = '9000077777';
+  for (let k = 0; k < claim.DAILY_LIMIT; k++) await go(await tokenOf(await bill(biz)), { phone });
+  await assert.rejects(go(await tokenOf(await bill(biz)), { phone }), /most bills it can today/);
+  const m = (await pool.query(`SELECT bool_or(m.consent_marketing) AS c FROM loyalty_memberships m JOIN customers c ON c.customer_id = m.customer_id WHERE right(c.phone,10) = $1`, [phone])).rows[0];
+  assert.equal(m.c, false);
+  await go(await tokenOf(await bill(biz)), { phone: '9000066666', consent: true });   // a ticked box is ignored
+  assert.equal((await pool.query(`SELECT bool_or(m.consent_marketing) AS c FROM loyalty_memberships m JOIN customers c ON c.customer_id = m.customer_id WHERE right(c.phone,10) = '9000066666'`)).rows[0].c, false);
+});

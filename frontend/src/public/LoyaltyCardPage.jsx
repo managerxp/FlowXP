@@ -27,7 +27,7 @@ const SERVER_TEXTS = [
   T('Too many sign-ups from here. Try again later.'), T('Too many requests from here.'), T('Too many attempts from here. Try again in a few minutes.'), T('Not allowed'),
   T('Could not make a membership number, try again'),
   T('This bill link is not valid'), T('This bill was cancelled'), T('This bill is not paid yet'), T('This bill is already on a loyalty card'), T('This bill is too old to add a stamp'),
-  T('This bill has already been added to a card'), T('This bill does not earn anything')
+  T('This bill has already been added to a card'), T('This bill does not earn anything'), T('This number has added the most bills it can today. Try again tomorrow.')
 ];
 const KEY = (code) => `flowxp_card_${code}`;
 const day = (iso, lang) => new Date(iso).toLocaleDateString(intlTag(lang || 'en'), { day: 'numeric', month: 'short' });
@@ -118,7 +118,7 @@ const BillClaim = ({ token }) => {
   const tr = useT();
   const navigate = useNavigate();
   const [d, setD] = useState(null); const [gone, setGone] = useState(false); const [err, setErr] = useState('');
-  const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [consent, setConsent] = useState(false);
+  const [name, setName] = useState(''); const [phone, setPhone] = useState('');
   const [busy, setBusy] = useState(false); const [done, setDone] = useState(null);
   useEffect(() => {
     try { const p = JSON.parse(localStorage.getItem(PERSON) || 'null'); if (p) { setName(p.name || ''); setPhone(p.phone || ''); } } catch { /* private window */ }
@@ -130,7 +130,7 @@ const BillClaim = ({ token }) => {
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr('');
     try {
-      const r = await call(`/bill/${token}`, { method: 'POST', body: { name, phone, consent_marketing: consent } });
+      const r = await call(`/bill/${token}`, { method: 'POST', body: { name, phone } });
       try { localStorage.setItem(PERSON, JSON.stringify({ name, phone })); } catch { /* fine */ }
       if (r.token) navigate(`/card/${r.token}`, { replace: true }); else setDone(r);
     } catch (x) { setErr(tr(x.message)); } finally { setBusy(false); }
@@ -151,7 +151,6 @@ const BillClaim = ({ token }) => {
             <input required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" className="mt-1 min-h-12 w-full rounded-xl border border-line-strong px-3 text-base" /></label>
           <label className="block text-sm font-medium text-ink-700">{tr('Mobile number')}
             <input required inputMode="numeric" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" placeholder={tr('10 digits')} className="mt-1 min-h-12 w-full rounded-xl border border-line-strong px-3 text-base" /></label>
-          <label className="flex items-start gap-2 text-sm text-ink-700"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 h-4 w-4" />{tr('It is fine to send me offers from {{business}} (optional).', { business: d.business })}</label>
           {err && <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{err}</p>}
           <button disabled={busy} className="min-h-12 w-full rounded-xl bg-brand-500 px-5 text-base font-semibold text-white disabled:opacity-60">{busy ? tr('Please wait…') : tr('Add to my card')}</button>
         </form>

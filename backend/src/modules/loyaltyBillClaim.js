@@ -11,6 +11,7 @@ import config from '../config/env.js';
 import * as engine from './loyaltyEngine.js';
 
 export const WINDOW_HOURS = 24;
+export const DAILY_LIMIT = 5;   // bills one mobile number may claim by scanning in a day: stops farming stamps from a pile of receipts
 const BILL = `i.invoice_id, i.business_id, i.branch_id, i.customer_id, i.invoice_number, i.status, i.total_paise, i.balance_due_paise, i.created_at, i.share_token`;
 const programmesOf = async (db, businessId) => (await db.query(`SELECT * FROM loyalty_programmes WHERE business_id = $1 AND is_active AND settings->>'bill_qr' = 'true' ORDER BY programme_id`, [businessId])).rows;
 
@@ -65,17 +66,21 @@ export const info = async (db, token) => {
 const WHY = { CANCELLED: 'This bill was cancelled', UNPAID: 'This bill is not paid yet', AT_TILL: 'This bill is already on a loyalty card', TOO_OLD: 'This bill is too old to add a stamp', CLAIMED: 'This bill has already been added to a card' };
 
 /** Credits the bill to the customer with this mobile number (new customers and new members are made). Runs inside the caller's transaction. */
-export const claim = async (db, token, { name, phone, consent = false }) => {
+export const claim = async (db, token, { name, phone }) => {
   const inv = await byToken(db, token, { lock: true });   // the bill row is locked: two scans at once credit once
   const why = await reason(db, inv);
   if (why) throw new engine.LoyaltyError(WHY[why], 409);
   const list = await offers(db, inv);
   if (!list.length) throw new engine.LoyaltyError('This bill does not earn anything', 409);
   const found = (await db.query(`SELECT customer_id FROM customers WHERE business_id = $1 AND right(regexp_replace(COALESCE(phone, ''), '\\D', '', 'g'), 10) = $2 ORDER BY customer_id LIMIT 1`, [inv.business_id, phone])).rows[0];
+  if (found) {
+    const n = (await db.query(`SELECT COUNT(DISTINCT l.invoice_id)::int AS n FROM points_ledger l JOIN invoices i ON i.invoice_id = l.invoice_id WHERE l.customer_id = $1 AND l.kind = 'EARN' AND i.customer_id IS NULL AND l.created_at > now() - interval '24 hours'`, [found.customer_id])).rows[0].n;
+    if (n >= DAILY_LIMIT) throw new engine.LoyaltyError('This number has added the most bills it can today. Try again tomorrow.', 429);
+  }
   const customerId = found ? found.customer_id : (await db.query(`INSERT INTO customers (business_id, name, phone) VALUES ($1,$2,$3) RETURNING customer_id`, [inv.business_id, name, phone])).rows[0].customer_id;
   const added = []; let cardToken = null; let number = null;
   for (const { programme: p } of list) {
-    const { membership: m, created } = await engine.enrol(db, { businessId: inv.business_id, programmeId: p.programme_id, customerId, consentMarketing: consent });
+    const { membership: m, created } = await engine.enrol(db, { businessId: inv.business_id, programmeId: p.programme_id, customerId });   // no marketing consent from here: nobody has proved this number is theirs
     const r = await engine.earn(db, { businessId: inv.business_id, membershipId: m.membership_id, amountPaise: inv.total_paise, branchId: inv.branch_id, invoiceId: inv.invoice_id });
     added.push({ name: p.name, kind: p.kind, gives: r.points, new_member: created });
     if (created && !cardToken) { cardToken = m.token; number = m.membership_no; }   // the card link goes only to a member made just now; an existing member already has theirs, and a number alone never reveals a card

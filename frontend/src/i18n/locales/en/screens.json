@@ -5397,5 +5397,6 @@
   "Use Silver, Gold and Platinum": "Use Silver, Gold and Platinum",
   "Add a tier": "Add a tier",
   "{{tier}} member, earns {{x}}x points": "{{tier}} member, earns {{x}}x points",
-  "{{n}} more points to reach {{tier}}": "{{n}} more points to reach {{tier}}"
+  "{{n}} more points to reach {{tier}}": "{{n}} more points to reach {{tier}}",
+  "This number has added the most bills it can today. Try again tomorrow.": "This number has added the most bills it can today. Try again tomorrow."
 }

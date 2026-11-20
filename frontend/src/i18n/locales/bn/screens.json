@@ -5397,5 +5397,6 @@
   "Use Silver, Gold and Platinum": "সিলভার, গোল্ড ও প্ল্যাটিনাম ব্যবহার করুন",
   "Add a tier": "টিয়ার যোগ করুন",
   "{{tier}} member, earns {{x}}x points": "{{tier}} সদস্য, {{x}}x পয়েন্ট আয় করেন",
-  "{{n}} more points to reach {{tier}}": "{{tier}} পেতে আরও {{n}} পয়েন্ট"
+  "{{n}} more points to reach {{tier}}": "{{tier}} পেতে আরও {{n}} পয়েন্ট",
+  "This number has added the most bills it can today. Try again tomorrow.": "এই নম্বরে আজ যতগুলো বিল যোগ করা যায় তা হয়ে গেছে। কাল আবার চেষ্টা করুন।"
 }
