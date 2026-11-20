@@ -5414,5 +5414,8 @@
   "One difference: customers claim the free item from their card or at Member desk, and the till applies it. A card stamps every qualifying bill, not once a day.": "ಒಂದು ವ್ಯತ್ಯಾಸ: ಗ್ರಾಹಕರು ಉಚಿತ ಐಟಂ ಅನ್ನು ತಮ್ಮ ಕಾರ್ಡ್‌ನಿಂದ ಅಥವಾ ಮೆಂಬರ್ ಡೆಸ್ಕ್‌ನಲ್ಲಿ ಕ್ಲೈಮ್ ಮಾಡುತ್ತಾರೆ, ಕೌಂಟರ್ ಅದನ್ನು ಬಿಲ್‌ಗೆ ಅನ್ವಯಿಸುತ್ತದೆ. ಕಾರ್ಡ್ ಅರ್ಹ ಪ್ರತಿ ಬಿಲ್‌ಗೂ ಸ್ಟ್ಯಾಂಪ್ ನೀಡುತ್ತದೆ, ದಿನಕ್ಕೊಮ್ಮೆ ಅಲ್ಲ.",
   "Move it": "ಸರಿಸಿ",
   "Yes, move it now": "ಹೌದು, ಈಗಲೇ ಸರಿಸಿ",
-  "Moved. Your Visit card is now on Loyalty cards.": "ಸರಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ವಿಸಿಟ್ ಕಾರ್ಡ್ ಈಗ ಲಾಯಲ್ಟಿ ಕಾರ್ಡ್‌ಗಳಲ್ಲಿದೆ."
+  "Moved. Your Visit card is now on Loyalty cards.": "ಸರಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ವಿಸಿಟ್ ಕಾರ್ಡ್ ಈಗ ಲಾಯಲ್ಟಿ ಕಾರ್ಡ್‌ಗಳಲ್ಲಿದೆ.",
+  "Most of a bill points can pay for (%)": "ಬಿಲ್‌ನ ಗರಿಷ್ಠ ಎಷ್ಟು ಶೇಕಡಾವನ್ನು ಪಾಯಿಂಟ್‌ಗಳಿಂದ ಪಾವತಿಸಬಹುದು (%)",
+  "Leave empty for no limit.": "ಮಿತಿ ಬೇಡವಾದರೆ ಖಾಲಿ ಬಿಡಿ.",
+  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}} ನಿಂದ {{points}} ಪಾಯಿಂಟ್‌ಗಳನ್ನು ಬಳಸಲಾಗಿದೆ ({{amount}} ರಿಯಾಯಿತಿ). ಬ್ಯಾಲೆನ್ಸ್ {{balance}}."
 }

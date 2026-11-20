@@ -229,6 +229,7 @@ const Done = ({ confirmation, change, printed, onNew, onView }) => {
                 <p className="tabular">{confirmation.payments_taken.map((p) => `${humanize(p.method)} ${formatCurrency(p.amount)}`).join(' + ')}</p>
               )}
               {confirmation.loyalty_reward && <p className="font-medium text-success">{tr('Loyalty reward: {{item}} free ({{formatCurrency}} off)', { item: confirmation.loyalty_reward.item, formatCurrency: formatCurrency(confirmation.loyalty_reward.amount) })}</p>}
+              {confirmation.loyalty_spend && <p>{tr('Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.', { points: confirmation.loyalty_spend.points, card: confirmation.loyalty_spend.card, amount: formatCurrency(confirmation.loyalty_spend.amount), balance: confirmation.loyalty_spend.balance })}</p>}
               {confirmation.loyalty_points && <p>{confirmation.loyalty_points.redeemed > 0 && `${confirmation.loyalty_points.redeemed} points used (${formatCurrency(confirmation.points_discount)} off). `}Earned {confirmation.loyalty_points.earned} points · balance {confirmation.loyalty_points.balance}{confirmation.loyalty_points.tier ? ` · ${confirmation.loyalty_points.tier}` : ''}</p>}
               {confirmation.coupon_code && <p>{tr('Coupon {{coupon_code}}: {{formatCurrency}} off', { coupon_code: confirmation.coupon_code, formatCurrency: formatCurrency(confirmation.coupon_discount) })}</p>}
             </>
@@ -719,6 +720,7 @@ const BillingPage = () => {
         discount: Number(invoiceDiscount) || undefined,
         coupon_code: couponCode.trim() || undefined,
         redeem_points: Number(redeem) > 0 ? Number(redeem) : undefined,
+        spend_membership_id: Number(redeem) > 0 && pointsInfo?.membership_id ? pointsInfo.membership_id : undefined,   // the points are on a Loyalty card
         reward_claim_id: claimId ? Number(claimId) : undefined,
         notes: notes || undefined,
         tcs: gstOpt.tcs && levies.tcs ? true : undefined, tds: gstOpt.tds && levies.tds ? true : undefined, reverse_charge: gstOpt.reverse_charge && levies.reverse_charge ? true : undefined,

@@ -5414,5 +5414,8 @@
   "One difference: customers claim the free item from their card or at Member desk, and the till applies it. A card stamps every qualifying bill, not once a day.": "ഒരു വ്യത്യാസം: ഉപഭോക്താക്കൾ സൗജന്യ ഇനം അവരുടെ കാർഡിൽ നിന്നോ മെമ്പർ ഡെസ്കിലോ ക്ലെയിം ചെയ്യും, കൗണ്ടർ അത് ബില്ലിൽ ചേർക്കും. കാർഡ് യോഗ്യമായ ഓരോ ബില്ലിനും സ്റ്റാമ്പ് നൽകും, ദിവസത്തിൽ ഒരിക്കലല്ല.",
   "Move it": "മാറ്റുക",
   "Yes, move it now": "അതെ, ഇപ്പോൾ മാറ്റുക",
-  "Moved. Your Visit card is now on Loyalty cards.": "മാറ്റി. നിങ്ങളുടെ വിസിറ്റ് കാർഡ് ഇപ്പോൾ ലോയൽറ്റി കാർഡുകളിലാണ്."
+  "Moved. Your Visit card is now on Loyalty cards.": "മാറ്റി. നിങ്ങളുടെ വിസിറ്റ് കാർഡ് ഇപ്പോൾ ലോയൽറ്റി കാർഡുകളിലാണ്.",
+  "Most of a bill points can pay for (%)": "ബില്ലിന്റെ എത്ര ശതമാനം വരെ പോയിന്റ് കൊണ്ട് അടയ്ക്കാം (%)",
+  "Leave empty for no limit.": "പരിധി വേണ്ടെങ്കിൽ ഒഴിച്ചിടുക.",
+  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}}-ൽ നിന്ന് {{points}} പോയിന്റ് ഉപയോഗിച്ചു ({{amount}} കിഴിവ്). ബാലൻസ് {{balance}}."
 }

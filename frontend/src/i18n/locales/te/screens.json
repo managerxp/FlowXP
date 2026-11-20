@@ -5414,5 +5414,8 @@
   "One difference: customers claim the free item from their card or at Member desk, and the till applies it. A card stamps every qualifying bill, not once a day.": "ఒక తేడా: కస్టమర్లు ఉచిత ఐటమ్‌ను తమ కార్డ్ నుండి లేదా మెంబర్ డెస్క్‌లో క్లెయిమ్ చేస్తారు, కౌంటర్ దాన్ని బిల్లుకు వర్తింపజేస్తుంది. కార్డ్ అర్హత ఉన్న ప్రతి బిల్లుకు స్టాంప్ ఇస్తుంది, రోజుకు ఒకసారి కాదు.",
   "Move it": "తరలించు",
   "Yes, move it now": "అవును, ఇప్పుడే తరలించు",
-  "Moved. Your Visit card is now on Loyalty cards.": "తరలించబడింది. మీ విజిట్ కార్డ్ ఇప్పుడు లాయల్టీ కార్డ్‌లలో ఉంది."
+  "Moved. Your Visit card is now on Loyalty cards.": "తరలించబడింది. మీ విజిట్ కార్డ్ ఇప్పుడు లాయల్టీ కార్డ్‌లలో ఉంది.",
+  "Most of a bill points can pay for (%)": "బిల్లులో గరిష్టంగా ఎంత శాతం పాయింట్లతో చెల్లించవచ్చు (%)",
+  "Leave empty for no limit.": "పరిమితి వద్దనుకుంటే ఖాళీగా వదిలేయండి.",
+  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}} నుండి {{points}} పాయింట్లు వాడారు ({{amount}} తగ్గింపు). బ్యాలెన్స్ {{balance}}."
 }

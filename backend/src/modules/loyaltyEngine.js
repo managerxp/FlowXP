@@ -9,7 +9,7 @@
  * Money is integer paise, points are whole numbers. Callers pass a client inside a transaction (withTransaction).
  */
 import crypto from 'node:crypto';
-import { multiplierFor as tierMultiplier } from './loyaltyTiers.js';
+import { multiplierFor as tierMultiplier, standing as tierStanding } from './loyaltyTiers.js';
 
 export class LoyaltyError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -61,7 +61,7 @@ export const programmeFields = (b) => {
     reward_limit_per_member: int(b.reward_limit_per_member, 'Reward limit per member', { min: 1, max: 1e6 }),
     expiry_days: int(b.expiry_days, 'Points expiry (days)', { min: 1, max: 3650 }),
     membership_days: int(b.membership_days, 'Membership length (days)', { min: 1, max: 3650 }),
-    settings: { auto_enrol: b.auto_enrol !== undefined ? b.auto_enrol === true : b.settings?.auto_enrol === true, bill_qr: b.bill_qr !== undefined ? b.bill_qr === true : b.settings?.bill_qr === true, verify_phone: b.verify_phone !== undefined ? b.verify_phone === true : b.settings?.verify_phone === true },
+    settings: { auto_enrol: b.auto_enrol !== undefined ? b.auto_enrol === true : b.settings?.auto_enrol === true, bill_qr: b.bill_qr !== undefined ? b.bill_qr === true : b.settings?.bill_qr === true, verify_phone: b.verify_phone !== undefined ? b.verify_phone === true : b.settings?.verify_phone === true, max_redeem_pct: int(b.max_redeem_pct !== undefined ? b.max_redeem_pct : b.settings?.max_redeem_pct, 'Most of a bill points can pay for (%)', { min: 1, max: 100 }) },
     card: cardFields(b.card),
     branch_ids: Array.isArray(b.branch_ids) && b.branch_ids.length ? b.branch_ids.map((x) => int(x, 'Outlet', { min: 1, required: true })) : null
   };
@@ -225,6 +225,54 @@ export const redeem = async (db, { businessId, membershipId, points, branchId = 
   } else value = redemptionValue(p, balance, Number(points));
   const { entry, duplicate } = await post(db, { businessId, customerId: m.customer_id, invoiceId, kind: 'REDEEM', points: -Number(points), amountPaise: value, programmeId: p.programme_id, membershipId, branchId, key, createdBy, note: reward ? `Reward: ${reward.name}` : 'Redeemed' });
   return { entry, duplicate, value_paise: value, balance: (await balanceOf(db, membershipId)).balance };
+};
+
+/* ── spending points at the till ─────────────────────────────────────────── */
+
+/**
+ * The customer's spendable points card, shaped like the older points card (balance, point_value in rupees, min_redeem_points, max_redeem_pct, tier...)
+ * so the till screen works the same for both. `membership_id` says which card the points come from. Null when there is none to spend.
+ */
+export const spendCard = async (db, businessId, customerId) => {
+  const rows = (await db.query(
+    `SELECT m.membership_id, m.expires_at, p.* FROM loyalty_memberships m JOIN loyalty_programmes p ON p.programme_id = m.programme_id
+     WHERE m.business_id = $1 AND m.customer_id = $2 AND m.status = 'ACTIVE' AND p.is_active AND p.kind IN ('POINTS','SPEND') AND p.redeem_value_paise > 0`, [businessId, customerId])).rows;
+  let best = null;
+  for (const r of rows) {
+    try { programmeOpen(r); } catch { continue; }
+    if (r.expires_at && new Date(r.expires_at) < new Date()) continue;
+    const { balance } = await balanceOf(db, r.membership_id);
+    if (!best || balance > best.balance) best = { r, balance };
+  }
+  if (!best) return null;
+  const { r: p, balance } = best;
+  const perPoint = Number(p.redeem_value_paise) / p.redeem_points;   // paise one point is worth
+  const st = await tierStanding(db, p.programme_id, p.membership_id);
+  return {
+    membership_id: p.membership_id, card_name: p.name, balance, balance_value: Math.floor(balance * perPoint) / 100, lifetime: st?.lifetime ?? 0,
+    tier: st?.tier ?? null, next_tier: st?.next ? { name: st.next.name, points_needed: st.next.points_to_go } : null,
+    earn_per_100: p.per_amount_paise > 0 ? ((p.earn_points * 10000) / Number(p.per_amount_paise)) * (st?.tier?.multiplier ?? 1) : 0,
+    point_value: perPoint / 100, min_redeem_points: p.min_redeem_points, max_redeem_pct: p.settings?.max_redeem_pct ?? 100
+  };
+};
+
+/**
+ * Checks that `points` of this customer's card can pay part of a bill with `payablePaise` still to pay, and returns the discount.
+ * Locks the membership (the caller is inside the bill's transaction), so a second till cannot spend the same points. Nothing is written here.
+ */
+export const spendQuote = async (db, { businessId, customerId, membershipId, points, payablePaise, branchId = null }) => {
+  const m = await lock(db, businessId, membershipId);
+  if (m.customer_id !== customerId) throw new LoyaltyError('That card is not this customer\'s', 404);
+  usable(m);
+  const p = await getProgramme(db, businessId, m.programme_id);
+  programmeOpen(p, { branchId });
+  if (!['POINTS', 'SPEND'].includes(p.kind) || !(Number(p.redeem_value_paise) > 0)) throw new LoyaltyError('Points cannot be spent on this card');
+  const { balance } = await balanceOf(db, membershipId);
+  const value = redemptionValue(p, balance, Number(points));
+  const pct = p.settings?.max_redeem_pct;
+  if (pct && value > Math.floor((Number(payablePaise) * pct) / 100)) throw new LoyaltyError(`At most ${pct}% of this bill can be paid with points`);
+  if (value > Number(payablePaise)) throw new LoyaltyError('Those points are worth more than what is left to pay');
+  return { value_paise: value, programme: p, balance };
 };
 
 /**

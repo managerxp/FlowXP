@@ -5414,5 +5414,8 @@
   "One difference: customers claim the free item from their card or at Member desk, and the till applies it. A card stamps every qualifying bill, not once a day.": "One difference: customers claim the free item from their card or at Member desk, and the till applies it. A card stamps every qualifying bill, not once a day.",
   "Move it": "Move it",
   "Yes, move it now": "Yes, move it now",
-  "Moved. Your Visit card is now on Loyalty cards.": "Moved. Your Visit card is now on Loyalty cards."
+  "Moved. Your Visit card is now on Loyalty cards.": "Moved. Your Visit card is now on Loyalty cards.",
+  "Most of a bill points can pay for (%)": "Most of a bill points can pay for (%)",
+  "Leave empty for no limit.": "Leave empty for no limit.",
+  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}."
 }

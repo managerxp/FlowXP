@@ -33,7 +33,7 @@ import { consumptionPerUnit, loadRecipes } from './recipes.js';
 import { comboBlocker, comboConsumption, loadCombos } from './combos.js';
 import { afterBill } from './messaging/index.js';
 import { hasPlanFeature } from './planFeatures.js';
-import { creditBill } from './loyaltyEngine.js';
+import { creditBill, redeem as spendCardPoints, spendQuote, LoyaltyError } from './loyaltyEngine.js';
 import { PointsError, addEntry, earnFor, getPoints, redemption, standing, tierFor } from './points.js';
 import { spend as spendWallet } from './gaming/wallet.js';
 import { checkCredit as partsCredit, fulfilForSale, reservedMap, tradePrices } from './autoparts/sales.js';
@@ -423,7 +423,20 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     invoiceDiscountPaise += coupon.discountPaise;
   }
   let pointsDiscountPaise = 0; let pointsRedeemed = 0;
-  if (input.redeemPoints) {
+  // Points from a Loyalty card (the till sends the card's membership with the points): the same discount line as the older points, spent from the card's own ledger.
+  let spend = null;
+  if (input.redeemPoints && input.spendMembershipId) {
+    if (!customer) throw new BillingError(400, 'Choose a customer to use their points');
+    try {
+      const points = Number(input.redeemPoints);
+      spend = { membershipId: Number(input.spendMembershipId), points, ...(await spendQuote(client, { businessId: tenant.businessId, customerId: customer.customer_id, membershipId: Number(input.spendMembershipId), points, payablePaise: Math.max(0, totals.total_paise - invoiceDiscountPaise), branchId: tenant.branchId })) };
+    } catch (error) {
+      if (error instanceof LoyaltyError) throw new BillingError(error.status, error.message);
+      throw error;
+    }
+    pointsRedeemed = spend.points; pointsDiscountPaise = spend.value_paise;
+    invoiceDiscountPaise += pointsDiscountPaise;
+  } else if (input.redeemPoints) {
     if (!customer) throw new BillingError(400, 'Choose a customer to use their points');
     if (!pts) throw new BillingError(400, 'Loyalty points are not switched on');
     try {
@@ -580,6 +593,12 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     invoice.points_discount_paise = pointsDiscountPaise; invoice.points_earned = pointsEarned; invoice.points_redeemed = pointsRedeemed;
   }
 
+  if (spend) {
+    const out = await spendCardPoints(client, { businessId: tenant.businessId, membershipId: spend.membershipId, points: spend.points, branchId: tenant.branchId, invoiceId: invoice.invoice_id, key: `spend:inv:${invoice.invoice_id}`, createdBy: userId });
+    await client.query('UPDATE invoices SET points_discount_paise = $2, points_redeemed = $3 WHERE invoice_id = $1', [invoice.invoice_id, pointsDiscountPaise, pointsRedeemed]);
+    invoice.points_discount_paise = pointsDiscountPaise; invoice.points_redeemed = pointsRedeemed;
+    spend.balance = out.balance;
+  }
   if (rewardClaim) await client.query(`UPDATE loyalty_redemptions SET applied_invoice_id = $2, applied_paise = $3 WHERE redemption_id = $1`, [rewardClaim.redemption_id, invoice.invoice_id, rewardCutPaise]);
   // programme memberships (several programmes per business): credit them for this bill. A problem here is skipped, never a failed sale.
   if (customer) await creditBill(client, { businessId: tenant.businessId, customerId: customer.customer_id, invoiceId: invoice.invoice_id, amountPaise: finalTotalPaise, branchId: tenant.branchId, createdBy: userId });
@@ -627,6 +646,7 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
       earned: pointsEarned, redeemed: pointsRedeemed, balance: pointsState.balance - pointsRedeemed + pointsEarned,
       tier: (tierFor(pts.tiers, pointsState.lifetime + pointsEarned).current || {}).name ?? null
     } : null,
+    loyalty_spend: spend ? { card: spend.programme.name, points: spend.points, amount: toRupees(pointsDiscountPaise), balance: spend.balance } : null,
     loyalty_reward: loyalty?.applied ? { item: loyalty.applied.item, amount: toRupees(loyalty.applied.amountPaise) } : null,
     payments_taken: takenPayments.map((p) => ({ method: p.method, amount: toRupees(p.amountPaise) }))
   };

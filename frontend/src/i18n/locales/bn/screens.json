@@ -5414,5 +5414,8 @@
   "One difference: customers claim the free item from their card or at Member desk, and the till applies it. A card stamps every qualifying bill, not once a day.": "একটি পার্থক্য: গ্রাহক বিনামূল্যের আইটেম নিজের কার্ড বা মেম্বার ডেস্ক থেকে দাবি করবেন, আর কাউন্টার সেটি বিলে বসাবে। কার্ড প্রতিটি যোগ্য বিলে স্ট্যাম্প দেয়, দিনে একবার নয়।",
   "Move it": "সরান",
   "Yes, move it now": "হ্যাঁ, এখনই সরান",
-  "Moved. Your Visit card is now on Loyalty cards.": "সরানো হয়েছে। আপনার ভিজিট কার্ড এখন লয়্যালটি কার্ডে আছে।"
+  "Moved. Your Visit card is now on Loyalty cards.": "সরানো হয়েছে। আপনার ভিজিট কার্ড এখন লয়্যালটি কার্ডে আছে।",
+  "Most of a bill points can pay for (%)": "বিলের সর্বোচ্চ কত শতাংশ পয়েন্ট দিয়ে দেওয়া যাবে (%)",
+  "Leave empty for no limit.": "সীমা না চাইলে ফাঁকা রাখুন।",
+  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}} থেকে {{points}} পয়েন্ট ব্যবহার হয়েছে ({{amount}} ছাড়)। ব্যালেন্স {{balance}}।"
 }

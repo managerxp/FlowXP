@@ -114,7 +114,7 @@ const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
     name: programme?.name || '', kind: programme?.kind || 'STAMPS',
     stamps: programme?.redeem_points || 5, minBill: rupees(programme?.min_txn_paise) || 0,
     earn: programme?.earn_points || 1, per: rupees(programme?.per_amount_paise) || 100, redeemPoints: programme?.redeem_points || 100, redeemValue: rupees(programme?.redeem_value_paise) || 50,
-    expiry: programme?.expiry_days || '', rewardName: '', rewardValue: '', autoEnrol: programme ? programme.settings?.auto_enrol === true : true, billQr: programme ? programme.settings?.bill_qr === true : true, verifyPhone: programme?.settings?.verify_phone === true,
+    expiry: programme?.expiry_days || '', rewardName: '', rewardValue: '', autoEnrol: programme ? programme.settings?.auto_enrol === true : true, billQr: programme ? programme.settings?.bill_qr === true : true, verifyPhone: programme?.settings?.verify_phone === true, maxPct: programme ? (programme.settings?.max_redeem_pct ?? '') : 50,
     card: { ...DEFAULT_CARD, ...(programme?.card || {}) }
   }));
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
@@ -127,7 +127,7 @@ const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
   const body = () => ({
     name: f.name, kind: f.kind, card: f.card, auto_enrol: f.autoEnrol, bill_qr: f.billQr, verify_phone: f.billQr && f.verifyPhone, min_txn_paise: paise(f.minBill), expiry_days: Number(f.expiry) > 0 ? Number(f.expiry) : null,
     ...(perBill ? { earn_points: 1, redeem_points: Number(f.stamps), min_redeem_points: Number(f.stamps), redeem_value_paise: paise(f.rewardValue) }
-      : { earn_points: Number(f.earn), per_amount_paise: paise(f.per), redeem_points: Number(f.redeemPoints), redeem_value_paise: paise(f.redeemValue), min_redeem_points: Number(f.redeemPoints) })
+      : { earn_points: Number(f.earn), per_amount_paise: paise(f.per), redeem_points: Number(f.redeemPoints), redeem_value_paise: paise(f.redeemValue), min_redeem_points: Number(f.redeemPoints), max_redeem_pct: Number(f.maxPct) > 0 ? Number(f.maxPct) : null })
   });
   const save = async () => {
     setBusy(true); setErr('');
@@ -173,6 +173,7 @@ const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
               <Field id="lp-rp" label={tr('Points to redeem')}><Input id="lp-rp" type="number" min="1" value={f.redeemPoints} onChange={(e) => set('redeemPoints', e.target.value)} /></Field>
               <Field id="lp-rvv" label={tr('Worth (₹)')}><Input id="lp-rvv" type="number" min="0" value={f.redeemValue} onChange={(e) => set('redeemValue', e.target.value)} /></Field>
             </div>
+            <Field id="lp-pct" label={tr('Most of a bill points can pay for (%)')} hint={tr('Leave empty for no limit.')}><Input id="lp-pct" type="number" min="1" max="100" value={f.maxPct} onChange={(e) => set('maxPct', e.target.value)} /></Field>
             <Field id="lp-min2" label={tr('Smallest bill that counts (₹)')}><Input id="lp-min2" type="number" min="0" value={f.minBill} onChange={(e) => set('minBill', e.target.value)} /></Field>
             {expiryField}
           </>))}

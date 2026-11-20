@@ -5414,5 +5414,8 @@
   "One difference: customers claim the free item from their card or at Member desk, and the till applies it. A card stamps every qualifying bill, not once a day.": "ஒரு வேறுபாடு: வாடிக்கையாளர்கள் இலவசப் பொருளை தங்கள் அட்டையிலிருந்து அல்லது உறுப்பினர் மேசையில் கோருவார்கள், கவுண்டர் அதை பில்லில் சேர்க்கும். அட்டை தகுதியான ஒவ்வொரு பில்லுக்கும் ஸ்டாம்ப் தரும், நாளுக்கு ஒருமுறை அல்ல.",
   "Move it": "மாற்று",
   "Yes, move it now": "ஆம், இப்போதே மாற்று",
-  "Moved. Your Visit card is now on Loyalty cards.": "மாற்றப்பட்டது. உங்கள் விசிட் அட்டை இப்போது லாயல்டி அட்டைகளில் உள்ளது."
+  "Moved. Your Visit card is now on Loyalty cards.": "மாற்றப்பட்டது. உங்கள் விசிட் அட்டை இப்போது லாயல்டி அட்டைகளில் உள்ளது.",
+  "Most of a bill points can pay for (%)": "பில்லின் எத்தனை சதவீதம் வரை புள்ளிகளால் செலுத்தலாம் (%)",
+  "Leave empty for no limit.": "வரம்பு வேண்டாம் என்றால் காலியாக விடவும்.",
+  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}} அட்டையிலிருந்து {{points}} புள்ளிகள் பயன்படுத்தப்பட்டன ({{amount}} தள்ளுபடி). இருப்பு {{balance}}."
 }
