@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Alert, Badge, Button, Card, Field, ListState, PageHeader, Select, Table, Td, Textarea, Th, Thead, Tr, useToast, humanize, useDialog } from '../components/ui.jsx';
+import { Alert, Badge, Button, Card, Field, ListState, PageHeader, Select, Table, Td, Textarea, Th, Thead, Tr, useToast, useDialog } from '../components/ui.jsx';
 import { useT, T } from '../i18n/useT.js';
 
 const TONE = { SENT: 'success', FAILED: 'danger', SKIPPED: 'warning', QUEUED: 'neutral' };
@@ -43,7 +43,8 @@ const WalletCard = ({ wallet }) => {
         <div className="rounded-lg bg-ink-50 p-3"><p className="text-lg font-semibold text-ink-900">{canSend(bal, price.UTILITY)}</p><p className="text-xs text-ink-500">{tr('bills, points and updates (1 credit each)')}</p></div>
         <div className="rounded-lg bg-ink-50 p-3"><p className="text-lg font-semibold text-ink-900">{canSend(bal, price.MARKETING)}</p><p className="text-xs text-ink-500">{tr('offers and loyalty reminders ({{n}} credits each)', { n: price.UTILITY > 0 ? Math.round((price.MARKETING / price.UTILITY) * 10) / 10 : '-' })}</p></div>
       </div>
-      {bal < price.UTILITY * 20 && <p className="mt-3 text-sm text-amber-700" role="status">{bal < price.UTILITY ? tr('Your credit has run out, so WhatsApp messages are not being sent.') : tr('Your credit is running low.')}</p>}
+      {!wallet.required && <p className="mt-3 text-xs text-ink-500">{tr('Messages are not taken from this credit right now (free trial or credit not switched on yet).')}</p>}
+      {wallet.required && bal < price.UTILITY * 20 && <p className="mt-3 text-sm text-amber-700" role="status">{bal < price.UTILITY ? tr('Your credit has run out, so WhatsApp messages are not being sent.') : tr('Your credit is running low.')}</p>}
       {wallet.entries?.length > 0 && (
         <details className="mt-3 text-sm"><summary className="cursor-pointer font-medium text-ink-700">{tr('Recent credit activity')}</summary>
           <ul className="mt-2 space-y-1">{wallet.entries.slice(0, 10).map((e, i) => <li key={i} className="flex justify-between text-xs text-ink-600"><span>{new Date(e.created_at).toLocaleDateString('en-IN')} · {e.kind === 'MESSAGE' ? tr('Message') : e.kind === 'TOPUP' ? tr('Credit added') : tr('Adjustment')}</span><span>{e.amount_paise > 0 ? '+' : ''}{price.UTILITY > 0 ? Math.round(e.amount_paise / price.UTILITY).toLocaleString('en-IN') : '-'} credits</span></li>)}</ul>
@@ -58,7 +59,6 @@ const Settings = () => {
   const toast = useToast();
   const { business } = useAuth();
   const [data, setData] = useState(null);
-  const [templates, setTemplates] = useState(null);
   const [error, setError] = useState('');
   const [wallet, setWallet] = useState(null);
   useEffect(() => { api('/messaging/settings').then(setData).catch((e) => setError(e.message)); api('/messaging/wallet').then(setWallet).catch(() => {}); }, []);
@@ -76,7 +76,7 @@ const Settings = () => {
       <Alert>{error}</Alert>
       {!provider.connected && (
         <p className="rounded-lg bg-amber-500/10 p-3 text-sm text-ink-700">
-          {tr('No messaging service is connected on the server yet, so messages are only recorded as skipped. Ask whoever runs the server to set it up (see DEPLOY.md: WhatsApp Cloud API or Twilio).')}
+          {tr('WhatsApp is not connected on FlowXP’s side yet, so messages are only recorded as skipped for now.')}
         </p>
       )}
       {data.trial && (
@@ -84,9 +84,9 @@ const Settings = () => {
           {tr('Free trial: {{used}} of {{limit}} WhatsApp messages used.', { used: data.trial.used, limit: data.trial.limit })}{data.trial.used >= data.trial.limit ? tr('Upgrade to keep sending.') : ''}
         </p>
       )}
-      {wallet?.required && <WalletCard wallet={wallet} />}
+      {wallet && <WalletCard wallet={wallet} />}
       <Card className="p-5">
-        <Field id="ch" label={tr('Send messages by')} hint={provider.connected ? tr('Connected: {{name}}', { name: humanize(provider.name) }) : undefined}>
+        <Field id="ch" label={tr('Send messages by')} hint={tr('Messages go out from FlowXP’s own WhatsApp number. There is nothing to set up: switch it on and keep some credit.')}>
           <Select id="ch" value={settings.channel} onChange={(e) => save({ channel: e.target.value })}>
             <option value="OFF">{tr('Off: send nothing')}</option>
             <option value="WHATSAPP">{tr('WhatsApp')}</option>
@@ -103,20 +103,6 @@ const Settings = () => {
         </div>
       </Card>
       <p className="text-xs text-ink-500">{tr('Offers and reminders only go to customers who have not opted out. Bills and booking messages are service messages and are sent regardless.')}</p>
-
-      <div>
-        <button className="text-sm font-semibold text-brand-600" onClick={() => (templates ? setTemplates(null) : api('/messaging/templates').then(setTemplates).catch((e) => setError(e.message)))}>
-          {templates ? tr('Hide the WhatsApp templates to create in Meta') : tr('Show the WhatsApp templates to create in Meta')}
-        </button>
-        {templates && (
-          <div className="mt-3 space-y-2">
-            <p className="text-xs text-ink-500">{tr('WhatsApp only lets a business start a chat with pre-approved templates. Create each one once in Meta Business Manager (category: Utility for bills and bookings, Marketing for offers), using exactly this name and text.')}</p>
-            {templates.map((t) => (
-              <Card key={t.kind} className="p-3 text-sm"><p className="font-mono text-xs text-brand-600">{t.name} {t.promo && <Badge tone="warning">{tr('Marketing')}</Badge>}</p><p className="mt-1 text-ink-700">{t.body}</p></Card>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 };

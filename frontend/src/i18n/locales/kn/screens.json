@@ -5177,7 +5177,6 @@
   "Loyalty & coupons": "ಲಾಯಲ್ಟಿ & ಕೂಪನ್‌ಗಳು",
   "Loyalty cards": "ಲಾಯಲ್ಟಿ ಕಾರ್ಡ್‌ಗಳು",
   "Loyalty reminder": "ಲಾಯಲ್ಟಿ ರಿಮೈಂಡರ್",
-  "Marketing": "ಮಾರ್ಕೆಟಿಂಗ್",
   "Message log": "ಸಂದೇಶ ಲಾಗ್",
   "Messages go out straight away and cannot be recalled.": "ಸಂದೇಶಗಳು ತಕ್ಷಣ ಹೋಗುತ್ತವೆ, ಹಿಂಪಡೆಯಲಾಗದು.",
   "Minimum bill (₹)": "ಕನಿಷ್ಠ ಬಿಲ್ (₹)",
@@ -5215,7 +5214,6 @@
   "What the customer says or types.": "ಗ್ರಾಹಕರು ಹೇಳುವ ಅಥವಾ ಟೈಪ್ ಮಾಡುವುದು.",
   "WhatsApp credit": "WhatsApp ಕ್ರೆಡಿಟ್",
   "WhatsApp messages come with an extra plan.": "WhatsApp ಸಂದೇಶಗಳು ಹೆಚ್ಚುವರಿ ಪ್ಲಾನ್‌ನೊಂದಿಗೆ ಬರುತ್ತವೆ.",
-  "WhatsApp only lets a business start a chat with pre-approved templates. Create each one once in Meta Business Manager (category: Utility for bills and bookings, Marketing for offers), using exactly this name and text.": "ಮೊದಲೇ ಅನುಮೋದಿತ ಟೆಂಪ್ಲೇಟ್‌ಗಳಿಂದ ಮಾತ್ರ WhatsApp ವ್ಯವಹಾರಕ್ಕೆ ಚಾಟ್ ಆರಂಭಿಸಲು ಬಿಡುತ್ತದೆ. ಪ್ರತಿಯೊಂದನ್ನು Meta Business Manager ನಲ್ಲಿ ಒಮ್ಮೆ ರಚಿಸಿ (ಬಿಲ್ ಮತ್ತು ಬುಕಿಂಗ್‌ಗೆ ವರ್ಗ: Utility, ಆಫರ್‌ಗಳಿಗೆ Marketing), ನಿಖರವಾಗಿ ಈ ಹೆಸರು ಮತ್ತು ಪಠ್ಯದೊಂದಿಗೆ.",
   "Which loyalty card": "ಯಾವ ಲಾಯಲ್ಟಿ ಕಾರ್ಡ್",
   "With it, your customers get a message by themselves when their vehicle is received, when the estimate is ready, when it is ready to collect, and before the next service is due. You can also send an offer to all your customers, or only to those who have not visited for a while.": "ಇದರೊಂದಿಗೆ, ಗ್ರಾಹಕರ ವಾಹನ ಸ್ವೀಕರಿಸಿದಾಗ, ಅಂದಾಜು ಸಿದ್ಧವಾದಾಗ, ತೆಗೆದುಕೊಳ್ಳಲು ಸಿದ್ಧವಾದಾಗ, ಮತ್ತು ಮುಂದಿನ ಸರ್ವೀಸ್ ಮೊದಲು ಅವರಿಗೆ ತಾನಾಗಿ ಸಂದೇಶ ಸಿಗುತ್ತದೆ. ಎಲ್ಲಾ ಗ್ರಾಹಕರಿಗೆ, ಅಥವಾ ಸ್ವಲ್ಪ ಕಾಲದಿಂದ ಬಾರದವರಿಗೆ ಮಾತ್ರ ಆಫರ್ ಕಳುಹಿಸಬಹುದು.",
   "Workshop job card updates": "ವರ್ಕ್‌ಶಾಪ್ ಜಾಬ್ ಕಾರ್ಡ್ ಅಪ್‌ಡೇಟ್‌ಗಳು",
@@ -5232,11 +5230,7 @@
   "Vehicle received, vehicle ready, and a reminder three days before the next service (auto parts shops).": "ವಾಹನ ಸ್ವೀಕರಿಸಲಾಗಿದೆ, ವಾಹನ ಸಿದ್ಧ, ಮತ್ತು ಮುಂದಿನ ಸರ್ವೀಸ್‌ಗೆ ಮೂರು ದಿನ ಮೊದಲು ರಿಮೈಂಡರ್ (ಆಟೋ ಪಾರ್ಟ್ಸ್ ಅಂಗಡಿಗಳು).",
   "offers and loyalty reminders ({{n}} credits each)": "ಆಫರ್ ಮತ್ತು ಲಾಯಲ್ಟಿ ರಿಮೈಂಡರ್‌ಗಳು (ಒಂದಕ್ಕೆ {{n}} ಕ್ರೆಡಿಟ್)",
   "Free trial: {{used}} of {{limit}} WhatsApp messages used.": "ಉಚಿತ ಟ್ರಯಲ್: {{limit}} ರಲ್ಲಿ {{used}} WhatsApp ಸಂದೇಶಗಳು ಬಳಕೆಯಾಗಿವೆ.",
-  "Connected: {{name}}": "ಸಂಪರ್ಕಗೊಂಡಿದೆ: {{name}}",
-  "Hide the WhatsApp templates to create in Meta": "Meta ನಲ್ಲಿ ರಚಿಸಬೇಕಾದ WhatsApp ಟೆಂಪ್ಲೇಟ್‌ಗಳನ್ನು ಮರೆಮಾಡಿ",
-  "Show the WhatsApp templates to create in Meta": "Meta ನಲ್ಲಿ ರಚಿಸಬೇಕಾದ WhatsApp ಟೆಂಪ್ಲೇಟ್‌ಗಳನ್ನು ತೋರಿಸಿ",
   "{{n}}/300. Sent as: \"Hi <name>, <your business>: <your text> Reply STOP to opt out.\"": "{{n}}/300. ಹೀಗೆ ಕಳುಹಿಸಲಾಗುತ್ತದೆ: \"Hi <name>, <your business>: <your text> Reply STOP to opt out.\"",
-  "No messaging service is connected on the server yet, so messages are only recorded as skipped. Ask whoever runs the server to set it up (see DEPLOY.md: WhatsApp Cloud API or Twilio).": "ಸರ್ವರ್‌ನಲ್ಲಿ ಇನ್ನೂ ಮೆಸೇಜಿಂಗ್ ಸೇವೆ ಸಂಪರ್ಕಗೊಂಡಿಲ್ಲ, ಆದ್ದರಿಂದ ಸಂದೇಶಗಳು \"ಬಿಟ್ಟಿದೆ\" ಎಂದು ಮಾತ್ರ ದಾಖಲಾಗುತ್ತವೆ. ಸರ್ವರ್ ನಡೆಸುವವರಿಗೆ ಇದನ್ನು ಸೆಟ್ ಮಾಡಲು ಹೇಳಿ (DEPLOY.md ನೋಡಿ: WhatsApp Cloud API ಅಥವಾ Twilio).",
   "{{filled}} of {{total}} stamps": "{{total}} ರಲ್ಲಿ {{filled}} ಸ್ಟ್ಯಾಂಪ್‌ಗಳು",
   "10 digits": "10 ಅಂಕೆಗಳು",
   "Add to Google Wallet": "Google Wallet ಗೆ ಸೇರಿಸಿ",
@@ -5345,5 +5339,8 @@
   "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}} ನಿಂದ {{points}} ಪಾಯಿಂಟ್‌ಗಳನ್ನು ಬಳಸಲಾಗಿದೆ ({{amount}} ರಿಯಾಯಿತಿ). ಬ್ಯಾಲೆನ್ಸ್ {{balance}}.",
   "Bring customers back: stamp and points cards, and offer codes.": "ಗ್ರಾಹಕರನ್ನು ಮರಳಿ ಕರೆತನ್ನಿ: ಸ್ಟ್ಯಾಂಪ್, ಪಾಯಿಂಟ್ ಕಾರ್ಡ್‌ಗಳು ಮತ್ತು ಆಫರ್ ಕೋಡ್‌ಗಳು.",
   "Earning on each kind of sale (% of the rate above)": "ಪ್ರತಿ ಬಗೆಯ ಮಾರಾಟದ ಮೇಲಿನ ಗಳಿಕೆ (ಮೇಲಿನ ದರದ %)",
-  "100 earns the normal rate, 0 earns nothing. Gift cards never earn.": "100 ಎಂದರೆ ಸಾಮಾನ್ಯ ದರ, 0 ಎಂದರೆ ಏನೂ ಇಲ್ಲ. ಗಿಫ್ಟ್ ಕಾರ್ಡ್‌ಗಳಿಗೆ ಪಾಯಿಂಟ್ ಸಿಗುವುದಿಲ್ಲ."
+  "100 earns the normal rate, 0 earns nothing. Gift cards never earn.": "100 ಎಂದರೆ ಸಾಮಾನ್ಯ ದರ, 0 ಎಂದರೆ ಏನೂ ಇಲ್ಲ. ಗಿಫ್ಟ್ ಕಾರ್ಡ್‌ಗಳಿಗೆ ಪಾಯಿಂಟ್ ಸಿಗುವುದಿಲ್ಲ.",
+  "WhatsApp is not connected on FlowXP’s side yet, so messages are only recorded as skipped for now.": "FlowXP ಕಡೆಯಲ್ಲಿ WhatsApp ಇನ್ನೂ ಸಂಪರ್ಕವಾಗಿಲ್ಲ, ಆದ್ದರಿಂದ ಸದ್ಯ ಸಂದೇಶಗಳು \"ಬಿಟ್ಟುಬಿಡಲಾಗಿದೆ\" ಎಂದು ಮಾತ್ರ ದಾಖಲಾಗುತ್ತವೆ.",
+  "Messages are not taken from this credit right now (free trial or credit not switched on yet).": "ಸದ್ಯ ಸಂದೇಶಗಳಿಗೆ ಈ ಕ್ರೆಡಿಟ್‌ನಿಂದ ಹಣ ಕಡಿತವಾಗುತ್ತಿಲ್ಲ (ಉಚಿತ ಪ್ರಯೋಗ ಅಥವಾ ಕ್ರೆಡಿಟ್ ಇನ್ನೂ ಆನ್ ಆಗಿಲ್ಲ).",
+  "Messages go out from FlowXP’s own WhatsApp number. There is nothing to set up: switch it on and keep some credit.": "ಸಂದೇಶಗಳು FlowXP ಯ ಸ್ವಂತ WhatsApp ಸಂಖ್ಯೆಯಿಂದ ಹೋಗುತ್ತವೆ. ಏನನ್ನೂ ಸೆಟ್ ಮಾಡುವ ಅಗತ್ಯವಿಲ್ಲ: ಆನ್ ಮಾಡಿ ಸ್ವಲ್ಪ ಕ್ರೆಡಿಟ್ ಇಟ್ಟುಕೊಳ್ಳಿ."
 }

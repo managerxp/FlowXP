@@ -5177,7 +5177,6 @@
   "Loyalty & coupons": "లాయల్టీ & కూపన్లు",
   "Loyalty cards": "లాయల్టీ కార్డులు",
   "Loyalty reminder": "లాయల్టీ రిమైండర్",
-  "Marketing": "మార్కెటింగ్",
   "Message log": "సందేశాల లాగ్",
   "Messages go out straight away and cannot be recalled.": "సందేశాలు వెంటనే వెళ్తాయి, వెనక్కి తీసుకోలేరు.",
   "Minimum bill (₹)": "కనీస బిల్లు (₹)",
@@ -5215,7 +5214,6 @@
   "What the customer says or types.": "కస్టమర్ చెప్పేది లేదా టైప్ చేసేది.",
   "WhatsApp credit": "WhatsApp క్రెడిట్",
   "WhatsApp messages come with an extra plan.": "WhatsApp సందేశాలు అదనపు ప్లాన్‌తో వస్తాయి.",
-  "WhatsApp only lets a business start a chat with pre-approved templates. Create each one once in Meta Business Manager (category: Utility for bills and bookings, Marketing for offers), using exactly this name and text.": "ముందే ఆమోదించిన టెంప్లేట్‌లతో మాత్రమే WhatsApp వ్యాపారాన్ని చాట్ ప్రారంభించనిస్తుంది. ప్రతిదాన్ని Meta Business Managerలో ఒకసారి తయారు చేయండి (బిల్లులు మరియు బుకింగ్‌లకు వర్గం: Utility, ఆఫర్లకు Marketing), సరిగ్గా ఈ పేరు మరియు టెక్స్ట్‌తో.",
   "Which loyalty card": "ఏ లాయల్టీ కార్డు",
   "With it, your customers get a message by themselves when their vehicle is received, when the estimate is ready, when it is ready to collect, and before the next service is due. You can also send an offer to all your customers, or only to those who have not visited for a while.": "దీనితో, కస్టమర్ల వాహనం స్వీకరించినప్పుడు, అంచనా సిద్ధమైనప్పుడు, తీసుకెళ్లడానికి సిద్ధమైనప్పుడు, మరియు తదుపరి సర్వీస్ ముందు వారికి ఆటోమేటిక్‌గా సందేశం వస్తుంది. మీరు అందరు కస్టమర్లకు, లేదా కొంతకాలంగా రాని వారికి మాత్రమే ఆఫర్ పంపవచ్చు.",
   "Workshop job card updates": "వర్క్‌షాప్ జాబ్ కార్డ్ అప్‌డేట్‌లు",
@@ -5232,11 +5230,7 @@
   "Vehicle received, vehicle ready, and a reminder three days before the next service (auto parts shops).": "వాహనం స్వీకరించబడింది, వాహనం సిద్ధం, తదుపరి సర్వీస్‌కు మూడు రోజుల ముందు రిమైండర్ (ఆటో పార్ట్స్ షాపులు).",
   "offers and loyalty reminders ({{n}} credits each)": "ఆఫర్లు మరియు లాయల్టీ రిమైండర్లు (ఒక్కోదానికి {{n}} క్రెడిట్లు)",
   "Free trial: {{used}} of {{limit}} WhatsApp messages used.": "ఉచిత ట్రయల్: {{limit}} లో {{used}} WhatsApp సందేశాలు వాడబడ్డాయి.",
-  "Connected: {{name}}": "కనెక్ట్ అయింది: {{name}}",
-  "Hide the WhatsApp templates to create in Meta": "Metaలో తయారు చేయాల్సిన WhatsApp టెంప్లేట్‌లను దాచండి",
-  "Show the WhatsApp templates to create in Meta": "Metaలో తయారు చేయాల్సిన WhatsApp టెంప్లేట్‌లను చూపండి",
   "{{n}}/300. Sent as: \"Hi <name>, <your business>: <your text> Reply STOP to opt out.\"": "{{n}}/300. ఇలా వెళ్తుంది: \"Hi <name>, <your business>: <your text> Reply STOP to opt out.\"",
-  "No messaging service is connected on the server yet, so messages are only recorded as skipped. Ask whoever runs the server to set it up (see DEPLOY.md: WhatsApp Cloud API or Twilio).": "సర్వర్‌లో ఇంకా మెసేజింగ్ సేవ కనెక్ట్ కాలేదు, కాబట్టి సందేశాలు \"వదిలివేయబడింది\" అని మాత్రమే నమోదవుతాయి. సర్వర్ నడిపేవారిని దీన్ని సెటప్ చేయమని అడగండి (DEPLOY.md చూడండి: WhatsApp Cloud API లేదా Twilio).",
   "{{filled}} of {{total}} stamps": "{{total}} లో {{filled}} స్టాంప్‌లు",
   "10 digits": "10 అంకెలు",
   "Add to Google Wallet": "Google Walletలో జోడించండి",
@@ -5345,5 +5339,8 @@
   "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}} నుండి {{points}} పాయింట్లు వాడారు ({{amount}} తగ్గింపు). బ్యాలెన్స్ {{balance}}.",
   "Bring customers back: stamp and points cards, and offer codes.": "కస్టమర్లను తిరిగి రప్పించండి: స్టాంప్, పాయింట్ కార్డ్‌లు మరియు ఆఫర్ కోడ్‌లు.",
   "Earning on each kind of sale (% of the rate above)": "ప్రతి రకమైన అమ్మకంపై సంపాదన (పై రేటులో %)",
-  "100 earns the normal rate, 0 earns nothing. Gift cards never earn.": "100 అంటే సాధారణ రేటు, 0 అంటే ఏమీ లేదు. గిఫ్ట్ కార్డ్‌లపై పాయింట్లు రావు."
+  "100 earns the normal rate, 0 earns nothing. Gift cards never earn.": "100 అంటే సాధారణ రేటు, 0 అంటే ఏమీ లేదు. గిఫ్ట్ కార్డ్‌లపై పాయింట్లు రావు.",
+  "WhatsApp is not connected on FlowXP’s side yet, so messages are only recorded as skipped for now.": "FlowXP వైపు WhatsApp ఇంకా కనెక్ట్ కాలేదు, కాబట్టి ప్రస్తుతం సందేశాలు \"వదిలివేయబడ్డాయి\" అని మాత్రమే నమోదవుతాయి.",
+  "Messages are not taken from this credit right now (free trial or credit not switched on yet).": "ప్రస్తుతం సందేశాలకు ఈ క్రెడిట్ నుండి డబ్బు తీసుకోవడం లేదు (ఉచిత ట్రయల్ లేదా క్రెడిట్ ఇంకా ఆన్ కాలేదు).",
+  "Messages go out from FlowXP’s own WhatsApp number. There is nothing to set up: switch it on and keep some credit.": "సందేశాలు FlowXP యొక్క సొంత WhatsApp నంబర్ నుండి వెళ్తాయి. ఏమీ సెట్ చేయాల్సిన పనిలేదు: ఆన్ చేసి కొంత క్రెడిట్ ఉంచండి."
 }

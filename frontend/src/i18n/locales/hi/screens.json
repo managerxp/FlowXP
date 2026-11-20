@@ -5177,7 +5177,6 @@
   "Loyalty & coupons": "लॉयल्टी और कूपन",
   "Loyalty cards": "लॉयल्टी कार्ड",
   "Loyalty reminder": "लॉयल्टी रिमाइंडर",
-  "Marketing": "मार्केटिंग",
   "Message log": "संदेशों का लॉग",
   "Messages go out straight away and cannot be recalled.": "संदेश तुरंत चले जाते हैं और वापस नहीं लिए जा सकते।",
   "Minimum bill (₹)": "न्यूनतम बिल (₹)",
@@ -5215,7 +5214,6 @@
   "What the customer says or types.": "ग्राहक जो बोलता या टाइप करता है।",
   "WhatsApp credit": "WhatsApp क्रेडिट",
   "WhatsApp messages come with an extra plan.": "WhatsApp संदेश एक अतिरिक्त प्लान के साथ आते हैं।",
-  "WhatsApp only lets a business start a chat with pre-approved templates. Create each one once in Meta Business Manager (category: Utility for bills and bookings, Marketing for offers), using exactly this name and text.": "WhatsApp केवल पहले से मंज़ूर टेम्पलेट से ही व्यवसाय को चैट शुरू करने देता है। हर एक को Meta Business Manager में एक बार बनाएँ (बिल और बुकिंग के लिए श्रेणी: Utility, ऑफ़र के लिए Marketing), ठीक यही नाम और टेक्स्ट इस्तेमाल करते हुए।",
   "Which loyalty card": "कौन सा लॉयल्टी कार्ड",
   "With it, your customers get a message by themselves when their vehicle is received, when the estimate is ready, when it is ready to collect, and before the next service is due. You can also send an offer to all your customers, or only to those who have not visited for a while.": "इसके साथ, ग्राहकों को अपने आप संदेश मिलता है जब उनका वाहन लिया जाता है, एस्टिमेट तैयार होता है, वाहन लेने के लिए तैयार होता है, और अगली सर्विस से पहले। आप सभी ग्राहकों को, या सिर्फ़ उन्हें जो काफ़ी समय से नहीं आए, ऑफ़र भी भेज सकते हैं।",
   "Workshop job card updates": "वर्कशॉप जॉब कार्ड अपडेट",
@@ -5232,11 +5230,7 @@
   "Vehicle received, vehicle ready, and a reminder three days before the next service (auto parts shops).": "वाहन मिला, वाहन तैयार, और अगली सर्विस से तीन दिन पहले रिमाइंडर (ऑटो पार्ट्स दुकानें)।",
   "offers and loyalty reminders ({{n}} credits each)": "ऑफ़र और लॉयल्टी रिमाइंडर (हर एक के {{n}} क्रेडिट)",
   "Free trial: {{used}} of {{limit}} WhatsApp messages used.": "फ्री ट्रायल: {{limit}} में से {{used}} WhatsApp संदेश इस्तेमाल हुए।",
-  "Connected: {{name}}": "जुड़ा हुआ: {{name}}",
-  "Hide the WhatsApp templates to create in Meta": "Meta में बनाने के WhatsApp टेम्पलेट छिपाएँ",
-  "Show the WhatsApp templates to create in Meta": "Meta में बनाने के WhatsApp टेम्पलेट दिखाएँ",
   "{{n}}/300. Sent as: \"Hi <name>, <your business>: <your text> Reply STOP to opt out.\"": "{{n}}/300। इस तरह जाएगा: \"Hi <name>, <your business>: <your text> Reply STOP to opt out.\"",
-  "No messaging service is connected on the server yet, so messages are only recorded as skipped. Ask whoever runs the server to set it up (see DEPLOY.md: WhatsApp Cloud API or Twilio).": "सर्वर पर अभी कोई मैसेजिंग सेवा जुड़ी नहीं है, इसलिए संदेश सिर्फ़ \"छोड़ा गया\" के रूप में दर्ज होते हैं। सर्वर चलाने वाले से इसे सेट करने को कहें (DEPLOY.md देखें: WhatsApp Cloud API या Twilio)।",
   "{{filled}} of {{total}} stamps": "{{total}} में से {{filled}} स्टैम्प",
   "10 digits": "10 अंक",
   "Add to Google Wallet": "Google Wallet में जोड़ें",
@@ -5345,5 +5339,8 @@
   "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}} से {{points}} पॉइंट इस्तेमाल हुए ({{amount}} की छूट)। बैलेंस {{balance}}।",
   "Bring customers back: stamp and points cards, and offer codes.": "ग्राहकों को वापस बुलाएँ: स्टैम्प और पॉइंट कार्ड, और ऑफ़र कोड।",
   "Earning on each kind of sale (% of the rate above)": "हर तरह की बिक्री पर कमाई (ऊपर की दर का %)",
-  "100 earns the normal rate, 0 earns nothing. Gift cards never earn.": "100 पर सामान्य दर मिलती है, 0 पर कुछ नहीं। गिफ्ट कार्ड पर कभी पॉइंट नहीं मिलते।"
+  "100 earns the normal rate, 0 earns nothing. Gift cards never earn.": "100 पर सामान्य दर मिलती है, 0 पर कुछ नहीं। गिफ्ट कार्ड पर कभी पॉइंट नहीं मिलते।",
+  "WhatsApp is not connected on FlowXP’s side yet, so messages are only recorded as skipped for now.": "FlowXP की ओर से WhatsApp अभी जुड़ा नहीं है, इसलिए अभी संदेश केवल \"छोड़े गए\" के रूप में दर्ज होते हैं।",
+  "Messages are not taken from this credit right now (free trial or credit not switched on yet).": "अभी संदेशों के पैसे इस क्रेडिट से नहीं कटते (मुफ़्त ट्रायल है या क्रेडिट अभी चालू नहीं हुआ है)।",
+  "Messages go out from FlowXP’s own WhatsApp number. There is nothing to set up: switch it on and keep some credit.": "संदेश FlowXP के अपने WhatsApp नंबर से जाते हैं। कुछ सेट करने की ज़रूरत नहीं: इसे चालू करें और कुछ क्रेडिट रखें।"
 }

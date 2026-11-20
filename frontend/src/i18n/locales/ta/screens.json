@@ -5177,7 +5177,6 @@
   "Loyalty & coupons": "லாயல்டி & கூப்பன்கள்",
   "Loyalty cards": "லாயல்டி அட்டைகள்",
   "Loyalty reminder": "லாயல்டி நினைவூட்டல்",
-  "Marketing": "சந்தைப்படுத்தல்",
   "Message log": "செய்திப் பதிவு",
   "Messages go out straight away and cannot be recalled.": "செய்திகள் உடனே அனுப்பப்படும், திரும்பப் பெற முடியாது.",
   "Minimum bill (₹)": "குறைந்தபட்ச பில் (₹)",
@@ -5215,7 +5214,6 @@
   "What the customer says or types.": "வாடிக்கையாளர் சொல்வது அல்லது தட்டச்சு செய்வது.",
   "WhatsApp credit": "WhatsApp கிரெடிட்",
   "WhatsApp messages come with an extra plan.": "WhatsApp செய்திகள் ஒரு கூடுதல் திட்டத்துடன் வரும்.",
-  "WhatsApp only lets a business start a chat with pre-approved templates. Create each one once in Meta Business Manager (category: Utility for bills and bookings, Marketing for offers), using exactly this name and text.": "முன்பே அங்கீகரிக்கப்பட்ட டெம்ப்ளேட்களுடன் மட்டுமே WhatsApp ஒரு வணிகத்தை அரட்டையைத் தொடங்க அனுமதிக்கும். ஒவ்வொன்றையும் Meta Business Manager இல் ஒரு முறை உருவாக்குங்கள் (பில்கள் மற்றும் முன்பதிவுகளுக்கு வகை: Utility, சலுகைகளுக்கு Marketing), சரியாக இந்தப் பெயர் மற்றும் உரையுடன்.",
   "Which loyalty card": "எந்த லாயல்டி அட்டை",
   "With it, your customers get a message by themselves when their vehicle is received, when the estimate is ready, when it is ready to collect, and before the next service is due. You can also send an offer to all your customers, or only to those who have not visited for a while.": "இதன் மூலம், வாகனம் பெறப்படும்போதும், மதிப்பீடு தயாரானதும், எடுத்துச் செல்லத் தயாரானதும், அடுத்த சர்வீசுக்கு முன்பும் வாடிக்கையாளர்களுக்கு தானாக செய்தி கிடைக்கும். அனைத்து வாடிக்கையாளர்களுக்கும், அல்லது சிறிது காலமாக வராதவர்களுக்கு மட்டும் சலுகையை அனுப்பலாம்.",
   "Workshop job card updates": "பணிமனை வேலை அட்டை புதுப்பிப்புகள்",
@@ -5232,11 +5230,7 @@
   "Vehicle received, vehicle ready, and a reminder three days before the next service (auto parts shops).": "வாகனம் பெறப்பட்டது, வாகனம் தயார், அடுத்த சர்வீசுக்கு மூன்று நாட்கள் முன் நினைவூட்டல் (ஆட்டோ பாகங்கள் கடைகள்).",
   "offers and loyalty reminders ({{n}} credits each)": "சலுகைகள் மற்றும் லாயல்டி நினைவூட்டல்கள் (ஒவ்வொன்றுக்கும் {{n}} கிரெடிட்)",
   "Free trial: {{used}} of {{limit}} WhatsApp messages used.": "இலவச சோதனை: {{limit}} இல் {{used}} WhatsApp செய்திகள் பயன்படுத்தப்பட்டன.",
-  "Connected: {{name}}": "இணைக்கப்பட்டது: {{name}}",
-  "Hide the WhatsApp templates to create in Meta": "Meta இல் உருவாக்க வேண்டிய WhatsApp டெம்ப்ளேட்களை மறை",
-  "Show the WhatsApp templates to create in Meta": "Meta இல் உருவாக்க வேண்டிய WhatsApp டெம்ப்ளேட்களைக் காட்டு",
   "{{n}}/300. Sent as: \"Hi <name>, <your business>: <your text> Reply STOP to opt out.\"": "{{n}}/300. இப்படி அனுப்பப்படும்: \"Hi <name>, <your business>: <your text> Reply STOP to opt out.\"",
-  "No messaging service is connected on the server yet, so messages are only recorded as skipped. Ask whoever runs the server to set it up (see DEPLOY.md: WhatsApp Cloud API or Twilio).": "சர்வரில் இன்னும் செய்தி சேவை இணைக்கப்படவில்லை, அதனால் செய்திகள் \"தவிர்க்கப்பட்டது\" என்று மட்டும் பதிவாகும். சர்வரை நடத்துபவரிடம் இதை அமைக்கச் சொல்லுங்கள் (DEPLOY.md பார்க்க: WhatsApp Cloud API அல்லது Twilio).",
   "{{filled}} of {{total}} stamps": "{{total}} இல் {{filled}} ஸ்டாம்புகள்",
   "10 digits": "10 இலக்கங்கள்",
   "Add to Google Wallet": "Google Wallet இல் சேர்",
@@ -5345,5 +5339,8 @@
   "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}} அட்டையிலிருந்து {{points}} புள்ளிகள் பயன்படுத்தப்பட்டன ({{amount}} தள்ளுபடி). இருப்பு {{balance}}.",
   "Bring customers back: stamp and points cards, and offer codes.": "வாடிக்கையாளர்களை மீண்டும் அழையுங்கள்: ஸ்டாம்ப், புள்ளி அட்டைகள் மற்றும் சலுகைக் குறியீடுகள்.",
   "Earning on each kind of sale (% of the rate above)": "ஒவ்வொரு வகை விற்பனையிலும் ஈட்டுதல் (மேலுள்ள விகிதத்தின் %)",
-  "100 earns the normal rate, 0 earns nothing. Gift cards never earn.": "100 என்றால் வழக்கமான விகிதம், 0 என்றால் எதுவும் இல்லை. கிஃப்ட் கார்டுகளுக்கு புள்ளிகள் கிடைக்காது."
+  "100 earns the normal rate, 0 earns nothing. Gift cards never earn.": "100 என்றால் வழக்கமான விகிதம், 0 என்றால் எதுவும் இல்லை. கிஃப்ட் கார்டுகளுக்கு புள்ளிகள் கிடைக்காது.",
+  "WhatsApp is not connected on FlowXP’s side yet, so messages are only recorded as skipped for now.": "FlowXP பக்கத்தில் WhatsApp இன்னும் இணைக்கப்படவில்லை, அதனால் இப்போது செய்திகள் \"தவிர்க்கப்பட்டது\" என்று மட்டுமே பதிவாகும்.",
+  "Messages are not taken from this credit right now (free trial or credit not switched on yet).": "இப்போது செய்திகளுக்கான கட்டணம் இந்த கிரெடிட்டிலிருந்து எடுக்கப்படுவதில்லை (இலவச சோதனை அல்லது கிரெடிட் இன்னும் இயக்கப்படவில்லை).",
+  "Messages go out from FlowXP’s own WhatsApp number. There is nothing to set up: switch it on and keep some credit.": "செய்திகள் FlowXP-இன் சொந்த WhatsApp எண்ணிலிருந்து செல்கின்றன. எதையும் அமைக்கத் தேவையில்லை: இயக்கி கொஞ்சம் கிரெடிட் வைத்திருங்கள்."
 }

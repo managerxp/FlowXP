@@ -5177,7 +5177,6 @@
   "Loyalty & coupons": "ലോയൽറ്റി & കൂപ്പണുകൾ",
   "Loyalty cards": "ലോയൽറ്റി കാർഡുകൾ",
   "Loyalty reminder": "ലോയൽറ്റി ഓർമ്മപ്പെടുത്തൽ",
-  "Marketing": "മാർക്കറ്റിംഗ്",
   "Message log": "സന്ദേശ ലോഗ്",
   "Messages go out straight away and cannot be recalled.": "സന്ദേശങ്ങൾ ഉടനടി പോകും, തിരിച്ചെടുക്കാൻ കഴിയില്ല.",
   "Minimum bill (₹)": "കുറഞ്ഞ ബിൽ (₹)",
@@ -5215,7 +5214,6 @@
   "What the customer says or types.": "ഉപഭോക്താവ് പറയുന്നതോ ടൈപ്പ് ചെയ്യുന്നതോ.",
   "WhatsApp credit": "WhatsApp ക്രെഡിറ്റ്",
   "WhatsApp messages come with an extra plan.": "WhatsApp സന്ദേശങ്ങൾ ഒരു അധിക പ്ലാനോടൊപ്പം വരുന്നു.",
-  "WhatsApp only lets a business start a chat with pre-approved templates. Create each one once in Meta Business Manager (category: Utility for bills and bookings, Marketing for offers), using exactly this name and text.": "മുൻകൂർ അംഗീകരിച്ച ടെംപ്ലേറ്റുകൾ ഉപയോഗിച്ച് മാത്രമേ WhatsApp ഒരു ബിസിനസിനെ ചാറ്റ് തുടങ്ങാൻ അനുവദിക്കൂ. ഓരോന്നും Meta Business Manager-ൽ ഒരിക്കൽ ഉണ്ടാക്കുക (ബില്ലുകൾക്കും ബുക്കിംഗുകൾക്കും വിഭാഗം: Utility, ഓഫറുകൾക്ക് Marketing), കൃത്യമായി ഈ പേരും ടെക്സ്റ്റും ഉപയോഗിച്ച്.",
   "Which loyalty card": "ഏത് ലോയൽറ്റി കാർഡ്",
   "With it, your customers get a message by themselves when their vehicle is received, when the estimate is ready, when it is ready to collect, and before the next service is due. You can also send an offer to all your customers, or only to those who have not visited for a while.": "ഇതോടെ, ഉപഭോക്താക്കളുടെ വാഹനം സ്വീകരിക്കുമ്പോഴും, എസ്റ്റിമേറ്റ് തയ്യാറാകുമ്പോഴും, വാഹനം എടുക്കാൻ തയ്യാറാകുമ്പോഴും, അടുത്ത സർവീസിന് മുമ്പും അവർക്ക് സ്വയം സന്ദേശം ലഭിക്കും. എല്ലാ ഉപഭോക്താക്കൾക്കും, അല്ലെങ്കിൽ കുറച്ചുകാലമായി വരാത്തവർക്ക് മാത്രവും ഓഫർ അയയ്ക്കാം.",
   "Workshop job card updates": "വർക്ക്‌ഷോപ്പ് ജോബ് കാർഡ് അപ്‌ഡേറ്റുകൾ",
@@ -5232,11 +5230,7 @@
   "Vehicle received, vehicle ready, and a reminder three days before the next service (auto parts shops).": "വാഹനം സ്വീകരിച്ചു, വാഹനം തയ്യാർ, അടുത്ത സർവീസിന് മൂന്ന് ദിവസം മുമ്പ് ഓർമ്മപ്പെടുത്തൽ (ഓട്ടോ പാർട്സ് കടകൾ).",
   "offers and loyalty reminders ({{n}} credits each)": "ഓഫറുകളും ലോയൽറ്റി ഓർമ്മപ്പെടുത്തലുകളും (ഓരോന്നിനും {{n}} ക്രെഡിറ്റ്)",
   "Free trial: {{used}} of {{limit}} WhatsApp messages used.": "സൗജന്യ ട്രയൽ: {{limit}} ൽ {{used}} WhatsApp സന്ദേശങ്ങൾ ഉപയോഗിച്ചു.",
-  "Connected: {{name}}": "ബന്ധിപ്പിച്ചത്: {{name}}",
-  "Hide the WhatsApp templates to create in Meta": "Meta-യിൽ ഉണ്ടാക്കേണ്ട WhatsApp ടെംപ്ലേറ്റുകൾ മറയ്ക്കുക",
-  "Show the WhatsApp templates to create in Meta": "Meta-യിൽ ഉണ്ടാക്കേണ്ട WhatsApp ടെംപ്ലേറ്റുകൾ കാണിക്കുക",
   "{{n}}/300. Sent as: \"Hi <name>, <your business>: <your text> Reply STOP to opt out.\"": "{{n}}/300. ഇങ്ങനെ അയയ്ക്കും: \"Hi <name>, <your business>: <your text> Reply STOP to opt out.\"",
-  "No messaging service is connected on the server yet, so messages are only recorded as skipped. Ask whoever runs the server to set it up (see DEPLOY.md: WhatsApp Cloud API or Twilio).": "സെർവറിൽ ഇതുവരെ മെസേജിംഗ് സേവനം ബന്ധിപ്പിച്ചിട്ടില്ല, അതിനാൽ സന്ദേശങ്ങൾ \"ഒഴിവാക്കി\" എന്ന് മാത്രം രേഖപ്പെടുത്തും. സെർവർ നടത്തുന്നവരോട് ഇത് സജ്ജമാക്കാൻ പറയുക (DEPLOY.md കാണുക: WhatsApp Cloud API അല്ലെങ്കിൽ Twilio).",
   "{{filled}} of {{total}} stamps": "{{total}} ൽ {{filled}} സ്റ്റാമ്പുകൾ",
   "10 digits": "10 അക്കങ്ങൾ",
   "Add to Google Wallet": "Google Wallet-ൽ ചേർക്കുക",
@@ -5345,5 +5339,8 @@
   "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}}-ൽ നിന്ന് {{points}} പോയിന്റ് ഉപയോഗിച്ചു ({{amount}} കിഴിവ്). ബാലൻസ് {{balance}}.",
   "Bring customers back: stamp and points cards, and offer codes.": "ഉപഭോക്താക്കളെ തിരികെ കൊണ്ടുവരൂ: സ്റ്റാമ്പ്, പോയിന്റ് കാർഡുകളും ഓഫർ കോഡുകളും.",
   "Earning on each kind of sale (% of the rate above)": "ഓരോ തരം വിൽപ്പനയിലെയും നേട്ടം (മുകളിലെ നിരക്കിന്റെ %)",
-  "100 earns the normal rate, 0 earns nothing. Gift cards never earn.": "100 എന്നാൽ സാധാരണ നിരക്ക്, 0 എന്നാൽ ഒന്നുമില്ല. ഗിഫ്റ്റ് കാർഡുകൾക്ക് ഒരിക്കലും പോയിന്റ് കിട്ടില്ല."
+  "100 earns the normal rate, 0 earns nothing. Gift cards never earn.": "100 എന്നാൽ സാധാരണ നിരക്ക്, 0 എന്നാൽ ഒന്നുമില്ല. ഗിഫ്റ്റ് കാർഡുകൾക്ക് ഒരിക്കലും പോയിന്റ് കിട്ടില്ല.",
+  "WhatsApp is not connected on FlowXP’s side yet, so messages are only recorded as skipped for now.": "FlowXP-യുടെ ഭാഗത്ത് WhatsApp ഇതുവരെ ബന്ധിപ്പിച്ചിട്ടില്ല, അതിനാൽ ഇപ്പോൾ സന്ദേശങ്ങൾ \"ഒഴിവാക്കി\" എന്നു മാത്രം രേഖപ്പെടുത്തും.",
+  "Messages are not taken from this credit right now (free trial or credit not switched on yet).": "ഇപ്പോൾ സന്ദേശങ്ങൾക്ക് ഈ ക്രെഡിറ്റിൽ നിന്ന് തുക ഈടാക്കുന്നില്ല (സൗജന്യ ട്രയൽ അല്ലെങ്കിൽ ക്രെഡിറ്റ് ഇതുവരെ ഓണാക്കിയിട്ടില്ല).",
+  "Messages go out from FlowXP’s own WhatsApp number. There is nothing to set up: switch it on and keep some credit.": "സന്ദേശങ്ങൾ FlowXP-യുടെ സ്വന്തം WhatsApp നമ്പറിൽ നിന്നാണ് പോകുന്നത്. ഒന്നും സെറ്റ് ചെയ്യേണ്ട: ഓണാക്കി കുറച്ച് ക്രെഡിറ്റ് സൂക്ഷിക്കുക."
 }
