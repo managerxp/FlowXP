@@ -5398,5 +5398,11 @@
   "Add a tier": "Add a tier",
   "{{tier}} member, earns {{x}}x points": "{{tier}} member, earns {{x}}x points",
   "{{n}} more points to reach {{tier}}": "{{n}} more points to reach {{tier}}",
-  "This number has added the most bills it can today. Try again tomorrow.": "This number has added the most bills it can today. Try again tomorrow."
+  "This number has added the most bills it can today. Try again tomorrow.": "This number has added the most bills it can today. Try again tomorrow.",
+  "We sent a code to your WhatsApp. Enter it to add your stamp.": "We sent a code to your WhatsApp. Enter it to add your stamp.",
+  "That code is not right or has expired. Ask for a new one": "That code is not right or has expired. Ask for a new one",
+  "We could not send the code. Try again in a moment.": "We could not send the code. Try again in a moment.",
+  "Code from WhatsApp": "Code from WhatsApp",
+  "Check the mobile number with a WhatsApp code": "Check the mobile number with a WhatsApp code",
+  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it."
 }

@@ -5398,5 +5398,11 @@
   "Add a tier": "ಹಂತ ಸೇರಿಸಿ",
   "{{tier}} member, earns {{x}}x points": "{{tier}} ಸದಸ್ಯ, {{x}}x ಪಾಯಿಂಟ್ ಗಳಿಸುತ್ತಾರೆ",
   "{{n}} more points to reach {{tier}}": "{{tier}} ತಲುಪಲು ಇನ್ನೂ {{n}} ಪಾಯಿಂಟ್",
-  "This number has added the most bills it can today. Try again tomorrow.": "ಈ ಸಂಖ್ಯೆಯಿಂದ ಇಂದು ಸೇರಿಸಬಹುದಾದ ಬಿಲ್‌ಗಳನ್ನು ಸೇರಿಸಲಾಗಿದೆ. ನಾಳೆ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
+  "This number has added the most bills it can today. Try again tomorrow.": "ಈ ಸಂಖ್ಯೆಯಿಂದ ಇಂದು ಸೇರಿಸಬಹುದಾದ ಬಿಲ್‌ಗಳನ್ನು ಸೇರಿಸಲಾಗಿದೆ. ನಾಳೆ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+  "We sent a code to your WhatsApp. Enter it to add your stamp.": "ನಿಮ್ಮ WhatsApp ಗೆ ಒಂದು ಕೋಡ್ ಕಳುಹಿಸಿದ್ದೇವೆ. ಸ್ಟ್ಯಾಂಪ್ ಸೇರಿಸಲು ಅದನ್ನು ನಮೂದಿಸಿ.",
+  "That code is not right or has expired. Ask for a new one": "ಆ ಕೋಡ್ ಸರಿಯಿಲ್ಲ ಅಥವಾ ಅವಧಿ ಮುಗಿದಿದೆ. ಹೊಸ ಕೋಡ್ ಕೇಳಿ",
+  "We could not send the code. Try again in a moment.": "ಕೋಡ್ ಕಳುಹಿಸಲು ಆಗಲಿಲ್ಲ. ಸ್ವಲ್ಪ ಹೊತ್ತಿನ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+  "Code from WhatsApp": "WhatsApp ನಲ್ಲಿ ಬಂದ ಕೋಡ್",
+  "Check the mobile number with a WhatsApp code": "WhatsApp ಕೋಡ್‌ನಿಂದ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ಪರಿಶೀಲಿಸಿ",
+  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "ಗ್ರಾಹಕರು ಮೊದಲ ಬಾರಿ ಮಾತ್ರ ತಮ್ಮ WhatsApp ಗೆ ಬಂದ ಕೋಡ್ ನಮೂದಿಸುತ್ತಾರೆ. ಸಂಖ್ಯೆ ಅವರದೇ ಎಂದು ಇದು ಸಾಬೀತುಪಡಿಸುತ್ತದೆ, ಆದ್ದರಿಂದ ಆಫರ್‌ಗಳನ್ನು ಕಳುಹಿಸಬಹುದು."
 }

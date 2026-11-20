@@ -5398,5 +5398,11 @@
   "Add a tier": "টিয়ার যোগ করুন",
   "{{tier}} member, earns {{x}}x points": "{{tier}} সদস্য, {{x}}x পয়েন্ট আয় করেন",
   "{{n}} more points to reach {{tier}}": "{{tier}} পেতে আরও {{n}} পয়েন্ট",
-  "This number has added the most bills it can today. Try again tomorrow.": "এই নম্বরে আজ যতগুলো বিল যোগ করা যায় তা হয়ে গেছে। কাল আবার চেষ্টা করুন।"
+  "This number has added the most bills it can today. Try again tomorrow.": "এই নম্বরে আজ যতগুলো বিল যোগ করা যায় তা হয়ে গেছে। কাল আবার চেষ্টা করুন।",
+  "We sent a code to your WhatsApp. Enter it to add your stamp.": "আমরা আপনার WhatsApp-এ একটি কোড পাঠিয়েছি। স্ট্যাম্প যোগ করতে সেটি লিখুন।",
+  "That code is not right or has expired. Ask for a new one": "কোডটি ঠিক নয় বা মেয়াদ শেষ হয়ে গেছে। নতুন কোড চেয়ে নিন",
+  "We could not send the code. Try again in a moment.": "আমরা কোড পাঠাতে পারিনি। একটু পরে আবার চেষ্টা করুন।",
+  "Code from WhatsApp": "WhatsApp-এ পাওয়া কোড",
+  "Check the mobile number with a WhatsApp code": "WhatsApp কোড দিয়ে মোবাইল নম্বর যাচাই করুন",
+  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "গ্রাহক শুধু প্রথমবার তাঁর WhatsApp-এ আসা কোড লেখেন। এতে প্রমাণ হয় নম্বরটি তাঁরই, তাই অফার পাঠানো যায়।"
 }

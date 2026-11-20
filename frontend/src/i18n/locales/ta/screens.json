@@ -5398,5 +5398,11 @@
   "Add a tier": "நிலையைச் சேர்",
   "{{tier}} member, earns {{x}}x points": "{{tier}} உறுப்பினர், {{x}}x புள்ளிகள் ஈட்டுகிறார்",
   "{{n}} more points to reach {{tier}}": "{{tier}} அடைய இன்னும் {{n}} புள்ளிகள்",
-  "This number has added the most bills it can today. Try again tomorrow.": "இந்த எண்ணில் இன்று சேர்க்கக்கூடிய பில்கள் சேர்க்கப்பட்டுவிட்டன. நாளை மீண்டும் முயற்சிக்கவும்."
+  "This number has added the most bills it can today. Try again tomorrow.": "இந்த எண்ணில் இன்று சேர்க்கக்கூடிய பில்கள் சேர்க்கப்பட்டுவிட்டன. நாளை மீண்டும் முயற்சிக்கவும்.",
+  "We sent a code to your WhatsApp. Enter it to add your stamp.": "உங்கள் WhatsApp-க்கு ஒரு குறியீட்டை அனுப்பியுள்ளோம். உங்கள் ஸ்டாம்பைச் சேர்க்க அதை உள்ளிடவும்.",
+  "That code is not right or has expired. Ask for a new one": "அந்தக் குறியீடு சரியில்லை அல்லது காலாவதியாகிவிட்டது. புதிய குறியீட்டைக் கேளுங்கள்",
+  "We could not send the code. Try again in a moment.": "குறியீட்டை அனுப்ப முடியவில்லை. சிறிது நேரத்தில் மீண்டும் முயற்சிக்கவும்.",
+  "Code from WhatsApp": "WhatsApp-இல் வந்த குறியீடு",
+  "Check the mobile number with a WhatsApp code": "WhatsApp குறியீட்டால் மொபைல் எண்ணைச் சரிபார்க்கவும்",
+  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "வாடிக்கையாளர் முதல் முறை மட்டும் தங்கள் WhatsApp-க்கு வந்த குறியீட்டை உள்ளிடுவார். எண் அவருடையதுதான் என இது உறுதிசெய்கிறது, அதனால் சலுகைகளை அனுப்பலாம்."
 }

@@ -61,7 +61,7 @@ export const programmeFields = (b) => {
     reward_limit_per_member: int(b.reward_limit_per_member, 'Reward limit per member', { min: 1, max: 1e6 }),
     expiry_days: int(b.expiry_days, 'Points expiry (days)', { min: 1, max: 3650 }),
     membership_days: int(b.membership_days, 'Membership length (days)', { min: 1, max: 3650 }),
-    settings: { auto_enrol: b.auto_enrol !== undefined ? b.auto_enrol === true : b.settings?.auto_enrol === true, bill_qr: b.bill_qr !== undefined ? b.bill_qr === true : b.settings?.bill_qr === true },
+    settings: { auto_enrol: b.auto_enrol !== undefined ? b.auto_enrol === true : b.settings?.auto_enrol === true, bill_qr: b.bill_qr !== undefined ? b.bill_qr === true : b.settings?.bill_qr === true, verify_phone: b.verify_phone !== undefined ? b.verify_phone === true : b.settings?.verify_phone === true },
     card: cardFields(b.card),
     branch_ids: Array.isArray(b.branch_ids) && b.branch_ids.length ? b.branch_ids.map((x) => int(x, 'Outlet', { min: 1, required: true })) : null
   };

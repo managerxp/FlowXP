@@ -59,6 +59,7 @@ export const info = async (db, token) => {
   const list = why ? [] : await offers(db, inv);
   return {
     state: why || (list.length ? 'OPEN' : 'OFF'), business: inv.business_name, bill: inv.invoice_number,
+    check: list.some(({ programme: p }) => p.settings?.verify_phone === true),   // the controller turns this on only when the plan has it and a provider can send the code
     cards: list.map(({ programme: p, gives }) => ({ name: p.name, kind: p.kind, gives, card: engine.cardFields(p.card) }))
   };
 };
@@ -66,7 +67,7 @@ export const info = async (db, token) => {
 const WHY = { CANCELLED: 'This bill was cancelled', UNPAID: 'This bill is not paid yet', AT_TILL: 'This bill is already on a loyalty card', TOO_OLD: 'This bill is too old to add a stamp', CLAIMED: 'This bill has already been added to a card' };
 
 /** Credits the bill to the customer with this mobile number (new customers and new members are made). Runs inside the caller's transaction. */
-export const claim = async (db, token, { name, phone }) => {
+export const claim = async (db, token, { name, phone, consent = false }) => {
   const inv = await byToken(db, token, { lock: true });   // the bill row is locked: two scans at once credit once
   const why = await reason(db, inv);
   if (why) throw new engine.LoyaltyError(WHY[why], 409);
@@ -80,7 +81,7 @@ export const claim = async (db, token, { name, phone }) => {
   const customerId = found ? found.customer_id : (await db.query(`INSERT INTO customers (business_id, name, phone) VALUES ($1,$2,$3) RETURNING customer_id`, [inv.business_id, name, phone])).rows[0].customer_id;
   const added = []; let cardToken = null; let number = null;
   for (const { programme: p } of list) {
-    const { membership: m, created } = await engine.enrol(db, { businessId: inv.business_id, programmeId: p.programme_id, customerId });   // no marketing consent from here: nobody has proved this number is theirs
+    const { membership: m, created } = await engine.enrol(db, { businessId: inv.business_id, programmeId: p.programme_id, customerId, consentMarketing: consent });   // the caller passes consent only when the number was proved
     const r = await engine.earn(db, { businessId: inv.business_id, membershipId: m.membership_id, amountPaise: inv.total_paise, branchId: inv.branch_id, invoiceId: inv.invoice_id });
     added.push({ name: p.name, kind: p.kind, gives: r.points, new_member: created });
     if (created && !cardToken) { cardToken = m.token; number = m.membership_no; }   // the card link goes only to a member made just now; an existing member already has theirs, and a number alone never reveals a card

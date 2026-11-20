@@ -5398,5 +5398,11 @@
   "Add a tier": "ടിയർ ചേർക്കുക",
   "{{tier}} member, earns {{x}}x points": "{{tier}} അംഗം, {{x}}x പോയിന്റ് നേടുന്നു",
   "{{n}} more points to reach {{tier}}": "{{tier}} എത്താൻ {{n}} പോയിന്റ് കൂടി",
-  "This number has added the most bills it can today. Try again tomorrow.": "ഈ നമ്പറിൽ ഇന്ന് ചേർക്കാവുന്ന ബില്ലുകൾ ചേർത്തുകഴിഞ്ഞു. നാളെ വീണ്ടും ശ്രമിക്കുക."
+  "This number has added the most bills it can today. Try again tomorrow.": "ഈ നമ്പറിൽ ഇന്ന് ചേർക്കാവുന്ന ബില്ലുകൾ ചേർത്തുകഴിഞ്ഞു. നാളെ വീണ്ടും ശ്രമിക്കുക.",
+  "We sent a code to your WhatsApp. Enter it to add your stamp.": "നിങ്ങളുടെ WhatsApp-ലേക്ക് ഒരു കോഡ് അയച്ചിട്ടുണ്ട്. സ്റ്റാമ്പ് ചേർക്കാൻ അത് നൽകുക.",
+  "That code is not right or has expired. Ask for a new one": "ഈ കോഡ് ശരിയല്ല അല്ലെങ്കിൽ കാലഹരണപ്പെട്ടു. പുതിയ കോഡ് ആവശ്യപ്പെടുക",
+  "We could not send the code. Try again in a moment.": "കോഡ് അയയ്ക്കാൻ കഴിഞ്ഞില്ല. അല്പസമയത്തിനു ശേഷം വീണ്ടും ശ്രമിക്കുക.",
+  "Code from WhatsApp": "WhatsApp-ൽ ലഭിച്ച കോഡ്",
+  "Check the mobile number with a WhatsApp code": "WhatsApp കോഡ് ഉപയോഗിച്ച് മൊബൈൽ നമ്പർ പരിശോധിക്കുക",
+  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "ഉപഭോക്താവ് ആദ്യ തവണ മാത്രം WhatsApp-ൽ ലഭിച്ച കോഡ് നൽകണം. നമ്പർ അവരുടേതാണെന്ന് ഇത് തെളിയിക്കുന്നു, അതിനാൽ ഓഫറുകൾ അയയ്ക്കാം."
 }

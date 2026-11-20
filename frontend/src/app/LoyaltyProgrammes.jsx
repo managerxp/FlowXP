@@ -114,7 +114,7 @@ const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
     name: programme?.name || '', kind: programme?.kind || 'STAMPS',
     stamps: programme?.redeem_points || 5, minBill: rupees(programme?.min_txn_paise) || 0,
     earn: programme?.earn_points || 1, per: rupees(programme?.per_amount_paise) || 100, redeemPoints: programme?.redeem_points || 100, redeemValue: rupees(programme?.redeem_value_paise) || 50,
-    expiry: programme?.expiry_days || '', rewardName: '', rewardValue: '', autoEnrol: programme?.settings?.auto_enrol === true, billQr: programme ? programme.settings?.bill_qr === true : true,
+    expiry: programme?.expiry_days || '', rewardName: '', rewardValue: '', autoEnrol: programme?.settings?.auto_enrol === true, billQr: programme ? programme.settings?.bill_qr === true : true, verifyPhone: programme?.settings?.verify_phone === true,
     card: { ...DEFAULT_CARD, ...(programme?.card || {}) }
   }));
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
@@ -125,7 +125,7 @@ const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
   const setCard = (k, v) => setF((x) => ({ ...x, card: { ...x.card, [k]: v } }));
   const perBill = f.kind !== 'POINTS';
   const body = () => ({
-    name: f.name, kind: f.kind, card: f.card, auto_enrol: f.autoEnrol, bill_qr: f.billQr, min_txn_paise: paise(f.minBill), expiry_days: Number(f.expiry) > 0 ? Number(f.expiry) : null,
+    name: f.name, kind: f.kind, card: f.card, auto_enrol: f.autoEnrol, bill_qr: f.billQr, verify_phone: f.billQr && f.verifyPhone, min_txn_paise: paise(f.minBill), expiry_days: Number(f.expiry) > 0 ? Number(f.expiry) : null,
     ...(perBill ? { earn_points: 1, redeem_points: Number(f.stamps), min_redeem_points: Number(f.stamps), redeem_value_paise: paise(f.rewardValue) }
       : { earn_points: Number(f.earn), per_amount_paise: paise(f.per), redeem_points: Number(f.redeemPoints), redeem_value_paise: paise(f.redeemValue), min_redeem_points: Number(f.redeemPoints) })
   });
@@ -191,6 +191,7 @@ const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
             <Field id="lp-msg" label={tr('A message inside the card')} hint={tr('Customers see it every time they open the card.')}><Input id="lp-msg" maxLength={140} value={f.card.message} onChange={(e) => setCard('message', e.target.value)} placeholder={tr('Thank you for coming back!')} /></Field>
             <label className="flex items-start gap-2 text-small text-ink-700"><input type="checkbox" checked={f.autoEnrol} onChange={(e) => set('autoEnrol', e.target.checked)} className="mt-0.5 h-4 w-4" />{tr('Join every customer billed with a mobile number automatically')}</label>
             <label className="flex items-start gap-2 text-small text-ink-700"><input type="checkbox" checked={f.billQr} onChange={(e) => set('billQr', e.target.checked)} className="mt-0.5 h-4 w-4" /><span>{tr('Print a QR on the bill so customers scan it for their stamp')}<span className="block text-ink-500">{tr('Customers scan it after paying, type their mobile number once, and join and get the stamp. It works for 24 hours, once per bill.')}</span></span></label>
+            {f.billQr && <label className="flex items-start gap-2 text-small text-ink-700"><input type="checkbox" checked={f.verifyPhone} onChange={(e) => set('verifyPhone', e.target.checked)} className="mt-0.5 h-4 w-4" /><span>{tr('Check the mobile number with a WhatsApp code')}<span className="block text-ink-500">{tr('A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.')}</span></span></label>}
             {f.kind === 'POINTS' && <TiersEditor value={tiers} onChange={(v) => { setTiers(v); setTiersTouched(true); }} />}
           </>)}
           {err && <Alert>{err}</Alert>}

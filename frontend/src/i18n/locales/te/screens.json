@@ -5398,5 +5398,11 @@
   "Add a tier": "టియర్ జోడించండి",
   "{{tier}} member, earns {{x}}x points": "{{tier}} సభ్యుడు, {{x}}x పాయింట్లు సంపాదిస్తారు",
   "{{n}} more points to reach {{tier}}": "{{tier}} చేరడానికి ఇంకా {{n}} పాయింట్లు",
-  "This number has added the most bills it can today. Try again tomorrow.": "ఈ నంబర్‌తో ఈ రోజు చేర్చగల బిల్లులు చేర్చబడ్డాయి. రేపు మళ్లీ ప్రయత్నించండి."
+  "This number has added the most bills it can today. Try again tomorrow.": "ఈ నంబర్‌తో ఈ రోజు చేర్చగల బిల్లులు చేర్చబడ్డాయి. రేపు మళ్లీ ప్రయత్నించండి.",
+  "We sent a code to your WhatsApp. Enter it to add your stamp.": "మేము మీ WhatsApp కి ఒక కోడ్ పంపాము. మీ స్టాంప్ జోడించడానికి దాన్ని నమోదు చేయండి.",
+  "That code is not right or has expired. Ask for a new one": "ఆ కోడ్ సరైనది కాదు లేదా గడువు ముగిసింది. కొత్త కోడ్ అడగండి",
+  "We could not send the code. Try again in a moment.": "మేము కోడ్ పంపలేకపోయాము. కాసేపటి తర్వాత మళ్లీ ప్రయత్నించండి.",
+  "Code from WhatsApp": "WhatsApp లో వచ్చిన కోడ్",
+  "Check the mobile number with a WhatsApp code": "WhatsApp కోడ్‌తో మొబైల్ నంబర్‌ను ధృవీకరించండి",
+  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "కస్టమర్ మొదటిసారి మాత్రమే తమ WhatsApp కి వచ్చిన కోడ్ నమోదు చేస్తారు. నంబర్ వారిదే అని ఇది రుజువు చేస్తుంది, కాబట్టి ఆఫర్లు పంపవచ్చు."
 }

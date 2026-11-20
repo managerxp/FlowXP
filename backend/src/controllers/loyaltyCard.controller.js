@@ -10,6 +10,7 @@ import { withTransaction } from '../modules/wholesale/common.js';
 import { effectiveFeatureFlags, hasPlanFeature } from '../modules/planFeatures.js';
 import * as engine from '../modules/loyaltyEngine.js';
 import * as google from '../modules/walletGoogle.js';
+import * as phoneProof from '../modules/loyaltyPhoneCheck.js';
 import * as billClaim from '../modules/loyaltyBillClaim.js';
 import * as tiers from '../modules/loyaltyTiers.js';
 
@@ -94,15 +95,24 @@ export const googleWallet = wrap(async (req, res) => {
 
 /* The receipt's QR: GET shows what this bill can earn (or why not), POST credits it to a mobile number. See modules/loyaltyBillClaim.js. */
 /* the business's plan must include loyalty and the bill QR, same as for staff */
-const billFeature = async (token) => {
+const billFeature = async (token) => {   // returns whether the phone check is on for this business
   const r = (await pool.query(`SELECT b.status AS business_status, b.business_type, ${FEATURE_SQL} FROM invoices i JOIN businesses b ON b.business_id = i.business_id ${FEATURE_JOINS} WHERE i.share_token = $1`, [String(token || '').slice(0, 40)])).rows[0];
   if (!r || !featureOn(r) || !featureOn(r, 'loyalty_bill_qr')) throw new engine.LoyaltyError('This bill link is not valid', 404);
+  return featureOn(r, 'loyalty_phone_check');
 };
-export const billInfo = wrap(async (req, res) => { await billFeature(req.params.token); res.set('Cache-Control', 'no-store'); ok(res, await billClaim.info(pool, req.params.token)); });
+export const billInfo = wrap(async (req, res) => {
+  const phoneCheck = await billFeature(req.params.token); res.set('Cache-Control', 'no-store');
+  const info = await billClaim.info(pool, req.params.token);
+  ok(res, { ...info, check: info.check && phoneCheck && Boolean(await phoneProof.channel()) });
+});
 export const billClaimIt = wrap(async (req, res) => {
   const name = String(req.body?.name || '').trim().slice(0, 80);
   const phone = String(req.body?.phone || '').replace(/\D/g, '').slice(-10);
   if (!name || phone.length !== 10) throw new engine.LoyaltyError('Enter your name and 10 digit mobile number');
-  await billFeature(req.params.token);
-  ok(res, await withTransaction((c) => billClaim.claim(c, req.params.token, { name, phone })), 201);
+  const phoneCheck = await billFeature(req.params.token);
+  const info = await billClaim.info(pool, req.params.token);
+  let proof = null;
+  if (info.state === 'OPEN' && info.check && phoneCheck && await phoneProof.channel()) proof = (await phoneProof.prove(pool, { phone, business: info.business, code: req.body?.code, proof: req.body?.proof })).proof;
+  const out = await withTransaction((c) => billClaim.claim(c, req.params.token, { name, phone, consent: proof !== null && req.body?.consent_marketing === true }));
+  ok(res, { ...out, proof }, 201);
 });

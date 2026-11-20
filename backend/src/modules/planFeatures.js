@@ -15,6 +15,7 @@
 export const PLAN_FEATURES = [
   ['loyalty', 'Loyalty & rewards', 'Visit card, points and tiers, coupons'],
   ['loyalty_wallet', 'Add loyalty cards to Google Wallet', 'Customers can save their loyalty card in Google Wallet from the card page (when the server has Google Wallet set up)'],
+  ['loyalty_phone_check', 'Check the mobile number', 'A one-time WhatsApp code that proves a customer owns the mobile number when they scan a bill; asked once per phone'],
   ['loyalty_bill_qr', 'Scan the bill for a loyalty stamp', 'A QR on the receipt that customers scan after paying to get their stamp or points, and to join, with no staff step'],
   ['loyalty_tiers', 'Loyalty tiers', 'Silver, Gold and similar tiers on a points or spend card: a higher tier earns faster'],
   ['loyalty_programmes', 'Loyalty programmes and memberships', 'Several loyalty programmes (points, visits, stamps), each member with a membership number and card, redeemed and reversed at the till'],

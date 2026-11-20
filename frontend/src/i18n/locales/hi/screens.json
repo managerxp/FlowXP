@@ -5398,5 +5398,11 @@
   "Add a tier": "टियर जोड़ें",
   "{{tier}} member, earns {{x}}x points": "{{tier}} सदस्य, {{x}}x पॉइंट कमाता है",
   "{{n}} more points to reach {{tier}}": "{{tier}} तक पहुँचने के लिए {{n}} पॉइंट और",
-  "This number has added the most bills it can today. Try again tomorrow.": "इस नंबर से आज के लिए जितने बिल जोड़े जा सकते थे, जोड़े जा चुके हैं। कल फिर कोशिश करें।"
+  "This number has added the most bills it can today. Try again tomorrow.": "इस नंबर से आज के लिए जितने बिल जोड़े जा सकते थे, जोड़े जा चुके हैं। कल फिर कोशिश करें।",
+  "We sent a code to your WhatsApp. Enter it to add your stamp.": "हमने आपके WhatsApp पर एक कोड भेजा है। अपना स्टैम्प जोड़ने के लिए उसे डालें।",
+  "That code is not right or has expired. Ask for a new one": "यह कोड सही नहीं है या समाप्त हो गया है। नया कोड मँगवाएँ",
+  "We could not send the code. Try again in a moment.": "हम कोड नहीं भेज सके। थोड़ी देर में फिर कोशिश करें।",
+  "Code from WhatsApp": "WhatsApp से मिला कोड",
+  "Check the mobile number with a WhatsApp code": "WhatsApp कोड से मोबाइल नंबर जाँचें",
+  "A customer types a code sent to their WhatsApp the first time only. It proves the number is theirs, so offers can be sent to it.": "ग्राहक सिर्फ़ पहली बार अपने WhatsApp पर आया कोड डालता है। इससे साबित होता है कि नंबर उसी का है, इसलिए उस पर ऑफ़र भेजे जा सकते हैं।"
 }

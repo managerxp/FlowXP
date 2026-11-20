@@ -99,6 +99,33 @@ test('one number can claim only a few scanned bills a day, and a scan never reco
   await assert.rejects(go(await tokenOf(await bill(biz)), { phone }), /most bills it can today/);
   const m = (await pool.query(`SELECT bool_or(m.consent_marketing) AS c FROM loyalty_memberships m JOIN customers c ON c.customer_id = m.customer_id WHERE right(c.phone,10) = $1`, [phone])).rows[0];
   assert.equal(m.c, false);
-  await go(await tokenOf(await bill(biz)), { phone: '9000066666', consent: true });   // a ticked box is ignored
+  const res = fakeRes(); await pub.billClaimIt({ params: { token: await tokenOf(await bill(biz)) }, body: { name: 'Z', phone: '9000066666', consent_marketing: true }, query: {} }, res);   // the check is off, so a ticked box is ignored
+  assert.equal(res.code, 201);
   assert.equal((await pool.query(`SELECT bool_or(m.consent_marketing) AS c FROM loyalty_memberships m JOIN customers c ON c.customer_id = m.customer_id WHERE right(c.phone,10) = '9000066666'`)).rows[0].c, false);
+});
+
+test('with the number check on: a code is sent first, the right code proves it once, and the phone then skips the code', { skip }, async () => {
+  const { setProvider } = await import('../src/modules/messaging/provider.js');
+  const sent = []; setProvider((m) => { sent.push(m); return { status: 'SENT', providerId: 'x' }; });
+  try {
+    await pool.query(`INSERT INTO business_feature_overrides (business_id, feature_key, enabled) VALUES ($1,'loyalty_phone_check',TRUE) ON CONFLICT (business_id, feature_key) DO UPDATE SET enabled = TRUE`, [biz]);
+    await pool.query(`UPDATE loyalty_programmes SET settings = settings || '{"verify_phone": true}'::jsonb WHERE business_id = $1 AND programme_id = $2`, [biz, prog]);
+    const token = await tokenOf(await bill(biz));
+    const post = async (body) => { const res = fakeRes(); await pub.billClaimIt({ params: { token }, body: { name: 'Meera', phone: '9000088888', ...body }, query: {} }, res); return res; };
+    const info = fakeRes(); await pub.billInfo({ params: { token }, query: {} }, info); assert.equal(info.body.data.check, true);
+    assert.equal((await post({})).code, 428);                                         // first scan: a code goes out, nothing is credited
+    assert.equal(sent.length, 1); assert.equal(await balance('9000088888', prog), 0);
+    const code = /Code: (\d{6})/.exec(sent[0].text)[1];
+    assert.equal((await post({ code: code === '000000' ? '111111' : '000000' })).code, 400);   // a wrong code
+    const ok1 = await post({ code, consent_marketing: true });
+    assert.equal(ok1.code, 201); assert.ok(ok1.body.data.proof.length > 20);
+    assert.equal(await balance('9000088888', prog), 1);
+    assert.equal((await pool.query(`SELECT bool_or(m.consent_marketing) AS c FROM loyalty_memberships m JOIN customers c ON c.customer_id = m.customer_id WHERE right(c.phone,10) = '9000088888'`)).rows[0].c, true);   // proved, so the tick counts
+    await assert.rejects(post({ code }).then((r) => { if (r.code >= 400) throw new Error('refused'); }), /refused/);   // the code is single use
+    const next = await tokenOf(await bill(biz));
+    const again = fakeRes(); await pub.billClaimIt({ params: { token: next }, body: { name: 'Meera', phone: '9000088888', proof: ok1.body.data.proof }, query: {} }, again);
+    assert.equal(again.code, 201); assert.equal(sent.length, 1);                      // same phone: no new code
+    const other = fakeRes(); await pub.billClaimIt({ params: { token: await tokenOf(await bill(biz)) }, body: { name: 'X', phone: '9000099998', proof: ok1.body.data.proof }, query: {} }, other);
+    assert.equal(other.code, 428);                                                    // the proof is for that number only
+  } finally { setProvider(null); }
 });
