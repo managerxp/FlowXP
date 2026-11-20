@@ -93,3 +93,30 @@ test('points: a salon keeps its own points, and a shop with points off has nothi
   await assert.rejects(withTransaction((c) => mv.runPoints(c, { businessId: sb })), /Salons keep/);
   assert.equal((await mv.previewPoints(pool, biz)).state, 'NONE');   // the visit-card shop above has no points programme
 });
+
+/* ── the deploy-time move for every shop ─────────────────────────────────────────────────────────────────────────── */
+test('migration 0152 moves every non-salon shop with an older programme, skips salons, and leaves a shop it cannot move clean', { skip }, async () => {
+  const { up } = await import('../migrations/0152_move_older_loyalty.js');
+  const shop = async (name, type, { visit = false, points = false, tiers = 0 } = {}) => {
+    const u = (await pool.query(`INSERT INTO users (name, email, password_hash) VALUES ($1,$2,'x') RETURNING user_id`, [name, `${name}@x.test`])).rows[0];
+    const b = (await pool.query(`INSERT INTO businesses (name, owner_user_id, business_type, plan_code) VALUES ($1,$2,$3,(SELECT plan_code FROM plans ORDER BY sort_order LIMIT 1)) RETURNING business_id`, [name, u.user_id, type])).rows[0].business_id;
+    if (points) await pool.query(`INSERT INTO points_programs (business_id, is_enabled) VALUES ($1,TRUE)`, [b]);
+    for (let i = 0; i < tiers; i++) await pool.query(`INSERT INTO points_tiers (business_id, name, min_points, multiplier) VALUES ($1,$2,$3,1)`, [b, `T${i}`, i * 100]);
+    if (visit) {
+      const prod = (await pool.query(`INSERT INTO products (business_id, name, selling_price_paise) VALUES ($1,'Tea',1000) RETURNING product_id`, [b])).rows[0].product_id;
+      await pool.query(`INSERT INTO loyalty_programs (business_id, is_enabled, visits_required, reward_product_id) VALUES ($1,TRUE,5,$2)`, [b, prod]);
+    }
+    return b;
+  };
+  const cafe = await shop('all1', 'CAFE', { visit: true, points: true });
+  const salon = await shop('all2', 'SALON', { points: true });
+  const heavy = await shop('all3', 'CAFE', { points: true, tiers: 7 });   // 7 tiers do not fit a card (6)
+  const c = await pool.connect();
+  try { await c.query('BEGIN'); await up(c); await c.query('COMMIT'); } finally { c.release(); }
+  const on = async (b, table) => (await pool.query(`SELECT is_enabled FROM ${table} WHERE business_id = $1`, [b])).rows[0]?.is_enabled;
+  assert.equal(await on(cafe, 'loyalty_programs'), false); assert.equal(await on(cafe, 'points_programs'), false);
+  assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM loyalty_programmes WHERE business_id = $1`, [cafe])).rows[0].n, 2);   // a stamps card and a points card
+  assert.equal(await on(salon, 'points_programs'), true);                                                                            // salons untouched
+  assert.equal(await on(heavy, 'points_programs'), true);                                                                            // not movable: stays as it was
+  assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM loyalty_programmes WHERE business_id = $1`, [heavy])).rows[0].n, 0);   // and nothing half-made
+});
