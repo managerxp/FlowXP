@@ -12,6 +12,8 @@ router.get('/loyalty/programme-kinds', ...till, l.kinds);
 router.get('/loyalty/programmes', ...till, l.listProgrammes);
 router.post('/loyalty/programmes', ...owner, l.createProgramme);
 router.put('/loyalty/programmes/:id', ...owner, l.updateProgramme);
+router.get('/loyalty/programmes/:id/tiers', ...till, l.listTiers);
+router.put('/loyalty/programmes/:id/tiers', ...owner, requirePlanFeature('loyalty_tiers'), l.saveTiers);
 
 router.get('/loyalty/members/lookup', ...till, l.lookup);
 router.post('/loyalty/members', ...till, l.enrol);

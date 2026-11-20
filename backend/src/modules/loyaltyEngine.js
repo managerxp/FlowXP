@@ -9,6 +9,7 @@
  * Money is integer paise, points are whole numbers. Callers pass a client inside a transaction (withTransaction).
  */
 import crypto from 'node:crypto';
+import { multiplierFor as tierMultiplier } from './loyaltyTiers.js';
 
 export class LoyaltyError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -193,7 +194,7 @@ export const earn = async (db, { businessId, membershipId, amountPaise, branchId
   programmeOpen(p, { branchId });
   const idem = key || (invoiceId ? `earn:${m.programme_id}:inv:${invoiceId}` : null);
   if (!idem) throw new LoyaltyError('A request key or an invoice is needed so the same bill cannot earn twice');
-  const points = pointsFor(p, amountPaise, multiplier);
+  const points = pointsFor(p, amountPaise, multiplier * await tierMultiplier(db, p, membershipId));   // a higher tier earns faster (1 when the card has no tiers)
   if (points <= 0) return { points: 0, duplicate: false, entry: null, balance: (await balanceOf(db, membershipId)).balance };
   const { entry, duplicate } = await post(db, { businessId, customerId: m.customer_id, invoiceId, kind: 'EARN', points, amountPaise, programmeId: p.programme_id, membershipId, branchId, key: idem, createdBy, note: 'Earned on a bill' });
   return { points: entry.points, duplicate, entry, balance: (await balanceOf(db, membershipId)).balance };

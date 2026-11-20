@@ -6,6 +6,7 @@ import pool from '../config/database.js';
 import { withTransaction } from '../modules/wholesale/common.js';
 import { recordAudit } from '../modules/events.js';
 import * as engine from '../modules/loyaltyEngine.js';
+import * as tiers from '../modules/loyaltyTiers.js';
 import { pushBalance } from '../modules/walletGoogle.js';
 import * as reports from '../modules/loyaltyReport.js';
 
@@ -72,7 +73,7 @@ export const enrol = wrap(async (req, res) => {
 /* Search: by mobile number, membership number, or a scanned card's token. */
 export const lookup = wrap(async (req, res) => {
   const rows = await engine.findMembership(pool, bid(req), { token: req.query.token, membershipNo: req.query.no, phone: req.query.phone, programmeId: req.query.programme_id });
-  ok(res, await Promise.all(rows.map(async (m) => ({ ...m, token: undefined, ...(await engine.balanceOf(pool, m.membership_id)) }))));
+  ok(res, await Promise.all(rows.map(async (m) => ({ ...m, token: undefined, ...(await engine.balanceOf(pool, m.membership_id)), standing: await tiers.standing(pool, m.programme_id, m.membership_id) }))));
 });
 
 export const getMembership = wrap(async (req, res) => {
@@ -81,7 +82,7 @@ export const getMembership = wrap(async (req, res) => {
     `SELECT m.*, c.name AS customer_name, c.phone AS customer_phone, p.name AS programme_name, p.kind, p.card, p.redeem_points, p.min_redeem_points, p.min_txn_paise FROM loyalty_memberships m
      JOIN customers c ON c.customer_id = m.customer_id JOIN loyalty_programmes p ON p.programme_id = m.programme_id WHERE m.business_id = $1 AND m.membership_id = $2`, [bid(req), membershipId])).rows[0];
   if (!m) throw new engine.LoyaltyError('That membership was not found', 404);
-  ok(res, { ...m, ...(await engine.balanceOf(pool, membershipId)), ledger: await engine.ledgerFor(pool, bid(req), membershipId) });
+  ok(res, { ...m, ...(await engine.balanceOf(pool, membershipId)), standing: await tiers.standing(pool, m.programme_id, membershipId), ledger: await engine.ledgerFor(pool, bid(req), membershipId) });
 });
 
 export const setMembershipStatus = wrap(async (req, res) => {
@@ -178,3 +179,11 @@ export const cancelClaim = wrap(async (req, res) => {
 });
 
 export const analytics = wrap(async (req, res) => ok(res, { ...(await reports.report(pool, bid(req), { days: req.query.days, programmeId: Number(req.query.programme_id) || null })), problems: await reports.problems(pool, bid(req)) }));
+
+/* A programme's tiers: anyone at the till may read them, the owner replaces the set. */
+export const listTiers = wrap(async (req, res) => ok(res, await tiers.tiersOf(pool, id(req))));
+export const saveTiers = wrap(async (req, res) => {
+  const out = await withTransaction((c) => tiers.saveTiers(c, bid(req), id(req), req.body?.tiers));
+  recordAudit(req, { business_id: bid(req), action: 'loyalty.tiers_changed', resource_type: 'loyalty_programme', resource_id: id(req), metadata: { tiers: out.length } });
+  ok(res, out);
+});

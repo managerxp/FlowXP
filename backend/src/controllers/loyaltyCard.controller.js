@@ -11,6 +11,7 @@ import { effectiveFeatureFlags, hasPlanFeature } from '../modules/planFeatures.j
 import * as engine from '../modules/loyaltyEngine.js';
 import * as google from '../modules/walletGoogle.js';
 import * as billClaim from '../modules/loyaltyBillClaim.js';
+import * as tiers from '../modules/loyaltyTiers.js';
 
 const ok = (res, data, status = 200) => res.status(status).json({ success: true, data });
 const gone = () => new engine.LoyaltyError('This card is not available right now', 404);
@@ -80,7 +81,7 @@ export const card = wrap(async (req, res) => {
   const rewards = (await engine.rewardsFor(pool, m.business_id, m.membership_id)).map((x) => ({ reward_id: x.reward_id, name: x.name, description: x.description, points_cost: x.points_cost, affordable: x.affordable, points_short: x.points_short }));
   const ledger = (await engine.ledgerFor(pool, m.business_id, m.membership_id, 20)).map((e) => ({ kind: e.kind, points: e.points, note: e.note, at: e.created_at }));
   res.set('Cache-Control', 'no-store');
-  ok(res, { ...publicProgramme(m), customer: m.customer_name, membership_no: m.membership_no, status: m.status, expires_at: m.expires_at, ...bal, redeem_at: m.redeem_points, rewards, ledger, wallet: { google: google.configured() && featureOn(m, 'loyalty_wallet') } });
+  ok(res, { ...publicProgramme(m), standing: await tiers.standing(pool, m.programme_id, m.membership_id), customer: m.customer_name, membership_no: m.membership_no, status: m.status, expires_at: m.expires_at, ...bal, redeem_at: m.redeem_points, rewards, ledger, wallet: { google: google.configured() && featureOn(m, 'loyalty_wallet') } });
 });
 
 /* "Add to Google Wallet": a signed link for this member's pass. Only when the server has Google Wallet set up and the plan includes it. */
