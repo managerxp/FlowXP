@@ -26,7 +26,7 @@ import { appVersion } from '../../lib/crash.ts';
 import { SyncBadge } from '../../lib/SyncBadge.tsx';
 import { Page, Rows } from '../../lib/responsive.tsx';
 import { Empty, Group as Card, Initials, Line, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
-import { radius, shadow } from '../../lib/theme.ts';
+import { display, radius, shadow } from '../../lib/theme.ts';
 import { t } from '../../lib/i18n.ts';
 import { FadeIn } from '../../lib/motion.tsx';
 
@@ -221,6 +221,8 @@ export default function More() {
   const top = shown0.flatMap((g) => g.items.filter((i) => i.main)).filter((i, n, all) => all.findIndex((o) => o.go === i.go) === n);
   const onTop = new Set(top.map((i) => i.go));
   const shown = shown0.map((g) => ({ ...g, items: g.items.filter((i) => !onTop.has(i.go)) })).filter((g) => g.items.length);
+  const TRADE = ['Restaurant', 'Salon', 'Clothing', 'Gym', 'Gaming', 'Spare parts', 'Pharmacy', 'Wholesale', 'Distributor'];
+  shown.sort((a, b) => Number(TRADE.includes(b.title)) - Number(TRADE.includes(a.title)));   // stable: the owner's own trade first, the rest keep the laptop sidebar order
   const [openTitle, setOpenTitle] = useState<string | null>(null);
   const [find, setFind] = useState('');
   const { width } = useWindowDimensions();
@@ -246,7 +248,7 @@ export default function More() {
                 <Text style={{ color: color.brand, fontSize: 16, fontWeight: '600' }}>{t('All menus')}</Text>
               </Pressable>
               <SectionTitle>{group.title}</SectionTitle>
-              <Rows>{group.items.map((i) => <Line key={i.left} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows>
+              <Card><Rows>{group.items.map((i) => <Line key={i.left} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows></Card>
             </>
           ) : (
             <>
@@ -254,10 +256,12 @@ export default function More() {
                 <TextInput value={find} onChangeText={setFind} placeholder={t('Find a menu: bills, stock, staff…')} placeholderTextColor={color.soft} autoCapitalize="none" autoCorrect={false} returnKeyType="search" accessibilityLabel={t('Find a menu')} style={{ minHeight: 48, borderWidth: 1, borderColor: color.line, borderRadius: 12, paddingHorizontal: 14, fontSize: 16, color: color.ink, backgroundColor: color.card }} />
               </View>
               {words ? (
-                matches.length ? <Rows>{matches.map((i) => <Line key={i.left + i.go} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows> : <Empty>{t('Nothing matches. Try another word.')}</Empty>
+                matches.length ? <Card><Rows>{matches.map((i) => <Line key={i.left + i.go} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows></Card> : <Empty>{t('Nothing matches. Try another word.')}</Empty>
               ) : (
                 <>
+                {top.length ? <SectionTitle>Quick access</SectionTitle> : null}
                 <Card><Rows>{top.map((i) => <Line key={i.go} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows></Card>
+                <SectionTitle>All features</SectionTitle>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10 }}>
                   {shown.map((g, gi) => (
                     <FadeIn key={g.title} index={gi} lift={8} style={{ width: `${100 / cols}%`, padding: 6 }}>
@@ -265,14 +269,14 @@ export default function More() {
                         style={{ minHeight: 104, borderRadius: radius.card, borderCurve: 'continuous', borderWidth: 1, borderColor: color.line, backgroundColor: color.card, padding: 14, gap: 10, justifyContent: 'space-between', boxShadow: shadow.card }}>
                         <View style={{ width: 44, height: 44, borderRadius: 14, borderCurve: 'continuous', backgroundColor: color.wash, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={g.icon} size={22} color={color.ink} /></View>
                         <View>
-                          <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: '700', color: color.ink }}>{t(g.title)}</Text>
+                          <Text numberOfLines={1} style={{ fontSize: 15, fontFamily: display.bold, color: color.ink }}>{t(g.title)}</Text>
                           <Text style={{ fontSize: 12, color: color.soft }}>{g.items.length === 1 ? t('1 thing') : t('{{n}} things', { n: g.items.length })}</Text>
                         </View>
                       </Pressable>
                     </FadeIn>
                   ))}
                 </View>
-                <View style={{ height: 8 }} /><Card><Rows>{foot.map((i) => <Line key={i.go} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows></Card>
+                <SectionTitle>Settings and help</SectionTitle><Card><Rows>{foot.map((i) => <Line key={i.go} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows></Card>
                 </>
               )}
               <SectionTitle>Account</SectionTitle>

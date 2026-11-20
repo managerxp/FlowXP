@@ -3483,6 +3483,8 @@ export const HI: Record<string, string> = {
   'Open with fingerprint or face': 'फ़िंगरप्रिंट या चेहरे से खोलें',
   'Price includes GST': 'दाम में GST शामिल है',
   'All menus': 'सभी मेनू',
+  'Quick access': 'त्वरित पहुँच',
+  'All features': 'सभी सुविधाएँ',
   'Find a menu: bills, stock, staff…': 'मेनू खोजें: बिल, स्टॉक, स्टाफ…',
   'Find a menu': 'मेनू खोजें',
   'Nothing matches. Try another word.': 'कुछ नहीं मिला। दूसरा शब्द आज़माएँ।',
