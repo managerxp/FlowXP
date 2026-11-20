@@ -247,9 +247,10 @@ export const SEGMENTS = {
   CARD_ALL: 'Members of a loyalty card',
   CARD_NEAR: 'Card members close to a reward',
   CARD_READY: 'Card members with a reward ready to claim',
-  CARD_IDLE: 'Card members who have not been in for a while'
+  CARD_IDLE: 'Card members who have not been in for a while',
+  CARD_EXPIRING: 'Card members whose points are about to expire'
 };
-export const CARD_SEGMENTS = ['CARD_ALL', 'CARD_NEAR', 'CARD_READY', 'CARD_IDLE'];
+export const CARD_SEGMENTS = ['CARD_ALL', 'CARD_NEAR', 'CARD_READY', 'CARD_IDLE', 'CARD_EXPIRING'];
 
 /** The segments this business can use: the loyalty card ones only once it has a card. */
 export const segmentsFor = async (db, businessId) => {
@@ -263,10 +264,16 @@ const cardAudience = async (db, businessId, { segment, programme_id: programmeId
   const balance = `(SELECT COALESCE(SUM(l.points), 0) FROM points_ledger l WHERE l.membership_id = m.membership_id AND l.voided_at IS NULL)`;
   const cheapest = `(SELECT MIN(r.points_cost) FROM loyalty_rewards r WHERE r.programme_id = m.programme_id AND r.is_active)`;
   const n = Math.max(7, Math.min(365, Number(days) || 30));
+  // Points that will be written off within `soon` days (same rule as engine.expireMembership, looked at that far ahead): credit older than the card's limit by then, minus all taken off, capped at the balance
+  const soon = Math.max(1, Math.min(60, Math.floor(Number(days)) || 7));
+  const ahead = `(SELECT p.expiry_days FROM loyalty_programmes p WHERE p.programme_id = m.programme_id)`;
+  const oldCredit = `(SELECT COALESCE(SUM(l.points) FILTER (WHERE l.points > 0 AND l.created_at < CURRENT_TIMESTAMP + INTERVAL '${soon} days' - ${ahead} * INTERVAL '1 day'), 0) FROM points_ledger l WHERE l.membership_id = m.membership_id AND l.voided_at IS NULL)`;
+  const taken = `(SELECT COALESCE(-SUM(l.points) FILTER (WHERE l.points < 0), 0) FROM points_ledger l WHERE l.membership_id = m.membership_id AND l.voided_at IS NULL)`;
   const where = {
     CARD_ALL: 'TRUE',
     CARD_READY: `${cheapest} IS NOT NULL AND ${balance} >= ${cheapest}`,
     CARD_NEAR: `${cheapest} IS NOT NULL AND ${balance} < ${cheapest} AND ${balance} >= ${cheapest} - GREATEST(1, CEIL(${cheapest} * 0.2))`,   // within a fifth of the cost (at least one) and not there yet
+    CARD_EXPIRING: `${ahead} IS NOT NULL AND LEAST(${balance}, ${oldCredit} - ${taken}) > 0`,
     CARD_IDLE: `COALESCE((SELECT MAX(l.created_at) FROM points_ledger l WHERE l.membership_id = m.membership_id), m.joined_at) < CURRENT_TIMESTAMP - INTERVAL '${n} days'`
   }[segment];
   const rows = (await db.query(
@@ -288,6 +295,11 @@ export const audience = async (db, businessId, { segment, days = 30, programme_i
   if (segment === 'ALL') sql = base;
   else if (segment === 'LAPSED') {
     const n = Math.max(7, Math.min(365, Number(days) || 30));
+  // Points that will be written off within `soon` days (same rule as engine.expireMembership, looked at that far ahead): credit older than the card's limit by then, minus all taken off, capped at the balance
+  const soon = Math.max(1, Math.min(60, Math.floor(Number(days)) || 7));
+  const ahead = `(SELECT p.expiry_days FROM loyalty_programmes p WHERE p.programme_id = m.programme_id)`;
+  const oldCredit = `(SELECT COALESCE(SUM(l.points) FILTER (WHERE l.points > 0 AND l.created_at < CURRENT_TIMESTAMP + INTERVAL '${soon} days' - ${ahead} * INTERVAL '1 day'), 0) FROM points_ledger l WHERE l.membership_id = m.membership_id AND l.voided_at IS NULL)`;
+  const taken = `(SELECT COALESCE(-SUM(l.points) FILTER (WHERE l.points < 0), 0) FROM points_ledger l WHERE l.membership_id = m.membership_id AND l.voided_at IS NULL)`;
     const today = await businessToday(businessId, db);
     sql = `${base} AND EXISTS (SELECT 1 FROM invoices i WHERE i.customer_id = c.customer_id AND i.status = 'ISSUED')
            AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.customer_id = c.customer_id AND i.status = 'ISSUED' AND i.invoice_date > ($2::date - $3::int))`;

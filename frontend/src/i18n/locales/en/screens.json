@@ -5337,5 +5337,15 @@
   "Too many attempts from here. Try again in a few minutes.": "Too many attempts from here. Try again in a few minutes.",
   "Could not make a membership number, try again": "Could not make a membership number, try again",
   "You are offline, or FlowXP cannot be reached. Try again in a moment.": "You are offline, or FlowXP cannot be reached. Try again in a moment.",
-  "Something went wrong": "Something went wrong"
+  "Something went wrong": "Something went wrong",
+  "Every customer with a mobile number": "Every customer with a mobile number",
+  "Customers who have not visited in a while": "Customers who have not visited in a while",
+  "Customers one visit from a free reward": "Customers one visit from a free reward",
+  "Members of a loyalty card": "Members of a loyalty card",
+  "Card members close to a reward": "Card members close to a reward",
+  "Card members with a reward ready to claim": "Card members with a reward ready to claim",
+  "Card members who have not been in for a while": "Card members who have not been in for a while",
+  "Card members whose points are about to expire": "Card members whose points are about to expire",
+  "Points that expire within (days)": "Points that expire within (days)",
+  "Only cards with a points expiry set are counted.": "Only cards with a points expiry set are counted."
 }

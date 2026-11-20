@@ -5337,5 +5337,15 @@
   "Too many attempts from here. Try again in a few minutes.": "ఇక్కడి నుండి చాలా ఎక్కువ ప్రయత్నాలు. కొన్ని నిమిషాల తర్వాత మళ్ళీ ప్రయత్నించండి.",
   "Could not make a membership number, try again": "సభ్యత్వ నంబర్ తయారు చేయలేకపోయాం, మళ్ళీ ప్రయత్నించండి",
   "You are offline, or FlowXP cannot be reached. Try again in a moment.": "మీరు ఆఫ్‌లైన్‌లో ఉన్నారు, లేదా FlowXPని చేరుకోలేకపోతున్నాం. కొద్దిసేపట్లో మళ్ళీ ప్రయత్నించండి.",
-  "Something went wrong": "ఏదో తప్పు జరిగింది"
+  "Something went wrong": "ఏదో తప్పు జరిగింది",
+  "Every customer with a mobile number": "మొబైల్ నంబర్ ఉన్న ప్రతి కస్టమర్",
+  "Customers who have not visited in a while": "కొంతకాలంగా రాని కస్టమర్లు",
+  "Customers one visit from a free reward": "ఉచిత బహుమతికి ఒక సందర్శన దూరంలో ఉన్న కస్టమర్లు",
+  "Members of a loyalty card": "లాయల్టీ కార్డు సభ్యులు",
+  "Card members close to a reward": "బహుమతికి దగ్గరగా ఉన్న కార్డు సభ్యులు",
+  "Card members with a reward ready to claim": "బహుమతి తీసుకోవడానికి సిద్ధంగా ఉన్న కార్డు సభ్యులు",
+  "Card members who have not been in for a while": "కొంతకాలంగా రాని కార్డు సభ్యులు",
+  "Card members whose points are about to expire": "పాయింట్లు త్వరలో ముగిసే కార్డు సభ్యులు",
+  "Points that expire within (days)": "ఎన్ని రోజుల్లో పాయింట్లు ముగుస్తాయి (రోజులు)",
+  "Only cards with a points expiry set are counted.": "పాయింట్ల గడువు పెట్టిన కార్డులు మాత్రమే లెక్కిస్తారు."
 }

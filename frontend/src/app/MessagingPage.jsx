@@ -12,6 +12,9 @@ import { useT, T } from '../i18n/useT.js';
 const TONE = { SENT: 'success', FAILED: 'danger', SKIPPED: 'warning', QUEUED: 'neutral' };
 const when = (iso) => new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
+/* What the server calls each audience, marked so the labels read in the owner's language (shown through tr(label)). */
+// eslint-disable-next-line no-unused-vars
+const SEGMENT_TEXTS = [T('Every customer with a mobile number'), T('Customers who have not visited in a while'), T('Customers one visit from a free reward'), T('Members of a loyalty card'), T('Card members close to a reward'), T('Card members with a reward ready to claim'), T('Card members who have not been in for a while'), T('Card members whose points are about to expire')];
 const TOGGLES = [
   ['bill_auto', T('Send the bill to customers with a mobile number'), T('After every sale to a customer, with a link to view the bill.')],
   ['reservation_updates', T('Booking confirmations and cancellations'), T('When a reservation with a mobile number is made or cancelled.')],
@@ -169,6 +172,9 @@ const Offers = () => {
       )}
       {(segment === 'LAPSED' || segment === 'CARD_IDLE') && (
         <Field id="days" label={tr('Not visited in the last (days)')}><Select id="days" value={days} onChange={(e) => setDays(e.target.value)}>{[14, 30, 60, 90].map((d) => <option key={d} value={d}>{d}</option>)}</Select></Field>
+      )}
+      {segment === 'CARD_EXPIRING' && (
+        <Field id="soon" label={tr('Points that expire within (days)')} hint={tr('Only cards with a points expiry set are counted.')}><Select id="soon" value={Math.min(60, Number(days))} onChange={(e) => setDays(e.target.value)}>{[3, 7, 14, 30, 60].map((d) => <option key={d} value={d}>{d}</option>)}</Select></Field>
       )}
       <p className="text-sm text-ink-700">{!preview ? tr('Counting…') : preview.error ? preview.error : `${preview.count} customer${preview.count === 1 ? '' : 's'} will get it${preview.sample?.length ? ` (${preview.sample.join(', ')}${preview.count > preview.sample.length ? '…' : ''})` : ''}.`}</p>
       <Field id="offer" label={tr('Your offer')} hint={tr('{{n}}/300. Sent as: "Hi <name>, <your business>: <your text> Reply STOP to opt out."', { n: text.length })}>

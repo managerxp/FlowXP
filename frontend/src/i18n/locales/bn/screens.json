@@ -5337,5 +5337,15 @@
   "Too many attempts from here. Try again in a few minutes.": "এখান থেকে অনেক বেশি চেষ্টা হয়েছে। কয়েক মিনিট পরে আবার চেষ্টা করুন।",
   "Could not make a membership number, try again": "সদস্য নম্বর বানানো গেল না, আবার চেষ্টা করুন",
   "You are offline, or FlowXP cannot be reached. Try again in a moment.": "আপনি অফলাইনে আছেন, অথবা FlowXP-তে পৌঁছানো যাচ্ছে না। একটু পরে আবার চেষ্টা করুন।",
-  "Something went wrong": "কিছু একটা ভুল হয়েছে"
+  "Something went wrong": "কিছু একটা ভুল হয়েছে",
+  "Every customer with a mobile number": "মোবাইল নম্বর আছে এমন সব গ্রাহক",
+  "Customers who have not visited in a while": "কিছুদিন ধরে আসেননি এমন গ্রাহক",
+  "Customers one visit from a free reward": "বিনামূল্যে পুরস্কারের এক ভিজিট দূরে থাকা গ্রাহক",
+  "Members of a loyalty card": "লয়্যালটি কার্ডের সদস্য",
+  "Card members close to a reward": "পুরস্কারের কাছাকাছি থাকা কার্ড সদস্য",
+  "Card members with a reward ready to claim": "পুরস্কার নেওয়ার জন্য তৈরি কার্ড সদস্য",
+  "Card members who have not been in for a while": "কিছুদিন ধরে আসেননি এমন কার্ড সদস্য",
+  "Card members whose points are about to expire": "পয়েন্ট শিগগির মেয়াদ শেষ হবে এমন কার্ড সদস্য",
+  "Points that expire within (days)": "কত দিনের মধ্যে পয়েন্ট মেয়াদ শেষ হবে (দিন)",
+  "Only cards with a points expiry set are counted.": "শুধু পয়েন্টের মেয়াদ ঠিক করা কার্ডই গোনা হয়।"
 }

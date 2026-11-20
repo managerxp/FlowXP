@@ -65,3 +65,18 @@ test('the card segments are offered only to a business that has a card', { skip 
   const none = await mkBiz('c');
   assert.ok(!('CARD_ALL' in await segmentsFor(pool, none))); assert.ok('ALL' in await segmentsFor(pool, none));
 });
+
+test('points expiring soon: only members whose points will be written off within the window, on a card that expires points', { skip }, async () => {
+  const mk = async (b, expiry) => (await pool.query(`INSERT INTO loyalty_programmes (business_id, name, kind, earn_points, per_amount_paise, redeem_points, redeem_value_paise, min_redeem_points, expiry_days) VALUES ($1,'Stamps','STAMPS',1,0,5,0,5,$2) RETURNING programme_id`, [b, expiry])).rows[0].programme_id;
+  const exp = await mk(biz, 30); const plain = await mk(biz, null);
+  await member(biz, exp, 'ExpSoon', '9000000011', { points: 4, daysAgo: 25 });      // 25 days old on a 30 day card: gone in 5 days
+  await member(biz, exp, 'ExpFresh', '9000000012', { points: 4 });                  // just earned: nowhere near
+  await member(biz, exp, 'ExpNothing', '9000000013', { points: 0, daysAgo: 25 });   // old but no points left
+  await member(biz, exp, 'ExpNoConsent', '9000000014', { consent: false, points: 4, daysAgo: 25 });
+  await member(biz, plain, 'PlainOld', '9000000015', { points: 4, daysAgo: 400 });  // a card without an expiry never expires
+  const who = async (p, days) => ((await audience(pool, biz, { segment: 'CARD_EXPIRING', programme_id: p, days })).customers || []).map((c) => c.name);
+  assert.deepEqual(await who(exp, 7), ['ExpSoon']);
+  assert.deepEqual(await who(exp, 3), []);                 // 5 days away is outside a 3 day window
+  assert.deepEqual(await who(plain, 7), []);
+  assert.ok('CARD_EXPIRING' in await segmentsFor(pool, biz));
+});

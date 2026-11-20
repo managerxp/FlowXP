@@ -5337,5 +5337,15 @@
   "Too many attempts from here. Try again in a few minutes.": "ഇവിടെ നിന്ന് വളരെയധികം ശ്രമങ്ങൾ. ഏതാനും മിനിറ്റിന് ശേഷം വീണ്ടും ശ്രമിക്കുക.",
   "Could not make a membership number, try again": "അംഗത്വ നമ്പർ ഉണ്ടാക്കാനായില്ല, വീണ്ടും ശ്രമിക്കുക",
   "You are offline, or FlowXP cannot be reached. Try again in a moment.": "നിങ്ങൾ ഓഫ്‌ലൈനാണ്, അല്ലെങ്കിൽ FlowXP-ൽ എത്താനാകുന്നില്ല. അൽപ്പം കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കുക.",
-  "Something went wrong": "എന്തോ കുഴപ്പം സംഭവിച്ചു"
+  "Something went wrong": "എന്തോ കുഴപ്പം സംഭവിച്ചു",
+  "Every customer with a mobile number": "മൊബൈൽ നമ്പർ ഉള്ള എല്ലാ ഉപഭോക്താക്കളും",
+  "Customers who have not visited in a while": "കുറച്ചുകാലമായി വരാത്ത ഉപഭോക്താക്കൾ",
+  "Customers one visit from a free reward": "സൗജന്യ സമ്മാനത്തിന് ഒരു സന്ദർശനം മാത്രം ബാക്കിയുള്ളവർ",
+  "Members of a loyalty card": "ലോയൽറ്റി കാർഡിലെ അംഗങ്ങൾ",
+  "Card members close to a reward": "സമ്മാനത്തിന് അടുത്തുള്ള കാർഡ് അംഗങ്ങൾ",
+  "Card members with a reward ready to claim": "സമ്മാനം എടുക്കാൻ തയ്യാറായ കാർഡ് അംഗങ്ങൾ",
+  "Card members who have not been in for a while": "കുറച്ചുകാലമായി വരാത്ത കാർഡ് അംഗങ്ങൾ",
+  "Card members whose points are about to expire": "പോയിന്റുകൾ ഉടൻ കാലഹരണപ്പെടുന്ന കാർഡ് അംഗങ്ങൾ",
+  "Points that expire within (days)": "എത്ര ദിവസത്തിനുള്ളിൽ പോയിന്റുകൾ കാലഹരണപ്പെടും (ദിവസം)",
+  "Only cards with a points expiry set are counted.": "പോയിന്റ് കാലാവധി നിശ്ചയിച്ച കാർഡുകൾ മാത്രമേ കണക്കാക്കൂ."
 }

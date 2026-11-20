@@ -5337,5 +5337,15 @@
   "Too many attempts from here. Try again in a few minutes.": "ಇಲ್ಲಿಂದ ತುಂಬಾ ಪ್ರಯತ್ನಗಳಾಗಿವೆ. ಕೆಲವು ನಿಮಿಷಗಳ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
   "Could not make a membership number, try again": "ಸದಸ್ಯತ್ವ ಸಂಖ್ಯೆ ರಚಿಸಲಾಗಲಿಲ್ಲ, ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ",
   "You are offline, or FlowXP cannot be reached. Try again in a moment.": "ನೀವು ಆಫ್‌ಲೈನ್‌ನಲ್ಲಿದ್ದೀರಿ, ಅಥವಾ FlowXP ತಲುಪಲಾಗುತ್ತಿಲ್ಲ. ಸ್ವಲ್ಪ ಹೊತ್ತಿನಲ್ಲಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
-  "Something went wrong": "ಏನೋ ತಪ್ಪಾಗಿದೆ"
+  "Something went wrong": "ಏನೋ ತಪ್ಪಾಗಿದೆ",
+  "Every customer with a mobile number": "ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಇರುವ ಎಲ್ಲಾ ಗ್ರಾಹಕರು",
+  "Customers who have not visited in a while": "ಸ್ವಲ್ಪ ಕಾಲದಿಂದ ಬಾರದ ಗ್ರಾಹಕರು",
+  "Customers one visit from a free reward": "ಉಚಿತ ಬಹುಮಾನಕ್ಕೆ ಒಂದು ಭೇಟಿ ದೂರದಲ್ಲಿರುವ ಗ್ರಾಹಕರು",
+  "Members of a loyalty card": "ಲಾಯಲ್ಟಿ ಕಾರ್ಡ್ ಸದಸ್ಯರು",
+  "Card members close to a reward": "ಬಹುಮಾನಕ್ಕೆ ಹತ್ತಿರವಿರುವ ಕಾರ್ಡ್ ಸದಸ್ಯರು",
+  "Card members with a reward ready to claim": "ಬಹುಮಾನ ಪಡೆಯಲು ಸಿದ್ಧರಿರುವ ಕಾರ್ಡ್ ಸದಸ್ಯರು",
+  "Card members who have not been in for a while": "ಸ್ವಲ್ಪ ಕಾಲದಿಂದ ಬಾರದ ಕಾರ್ಡ್ ಸದಸ್ಯರು",
+  "Card members whose points are about to expire": "ಪಾಯಿಂಟ್‌ಗಳು ಶೀಘ್ರದಲ್ಲಿ ಮುಗಿಯುವ ಕಾರ್ಡ್ ಸದಸ್ಯರು",
+  "Points that expire within (days)": "ಎಷ್ಟು ದಿನಗಳಲ್ಲಿ ಪಾಯಿಂಟ್‌ಗಳು ಮುಗಿಯುತ್ತವೆ (ದಿನಗಳು)",
+  "Only cards with a points expiry set are counted.": "ಪಾಯಿಂಟ್ ಅವಧಿ ನಿಗದಿಯಾಗಿರುವ ಕಾರ್ಡ್‌ಗಳನ್ನು ಮಾತ್ರ ಎಣಿಸಲಾಗುತ್ತದೆ."
 }
