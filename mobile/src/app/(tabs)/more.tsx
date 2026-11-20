@@ -25,7 +25,8 @@ import { useSyncState } from '../../lib/sync.ts';
 import { appVersion } from '../../lib/crash.ts';
 import { SyncBadge } from '../../lib/SyncBadge.tsx';
 import { Page, Rows } from '../../lib/responsive.tsx';
-import { Empty, Line, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Empty, Group as Card, Initials, Line, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { radius, shadow } from '../../lib/theme.ts';
 import { t } from '../../lib/i18n.ts';
 import { FadeIn } from '../../lib/motion.tsx';
 
@@ -256,13 +257,13 @@ export default function More() {
                 matches.length ? <Rows>{matches.map((i) => <Line key={i.left + i.go} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows> : <Empty>{t('Nothing matches. Try another word.')}</Empty>
               ) : (
                 <>
-                <Rows>{top.map((i) => <Line key={i.go} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows>
+                <Card><Rows>{top.map((i) => <Line key={i.go} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows></Card>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10 }}>
                   {shown.map((g, gi) => (
                     <FadeIn key={g.title} index={gi} lift={8} style={{ width: `${100 / cols}%`, padding: 6 }}>
                       <Pressable accessibilityRole="button" accessibilityLabel={`${t(g.title)}, ${g.items.length}`} onPress={() => setOpenTitle(g.title)} android_ripple={{ color: '#0b57ff22' }}
-                        style={{ minHeight: 96, borderRadius: 14, borderWidth: 1, borderColor: color.line, backgroundColor: color.card, padding: 12, gap: 8, justifyContent: 'space-between' }}>
-                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: color.press, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={g.icon} size={22} color={color.brand} /></View>
+                        style={{ minHeight: 104, borderRadius: radius.card, borderCurve: 'continuous', borderWidth: 1, borderColor: color.line, backgroundColor: color.card, padding: 14, gap: 10, justifyContent: 'space-between', boxShadow: shadow.card }}>
+                        <View style={{ width: 44, height: 44, borderRadius: 14, borderCurve: 'continuous', backgroundColor: color.wash, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={g.icon} size={22} color={color.ink} /></View>
                         <View>
                           <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: '700', color: color.ink }}>{t(g.title)}</Text>
                           <Text style={{ fontSize: 12, color: color.soft }}>{g.items.length === 1 ? t('1 thing') : t('{{n}} things', { n: g.items.length })}</Text>
@@ -271,12 +272,18 @@ export default function More() {
                     </FadeIn>
                   ))}
                 </View>
-                <Rows>{foot.map((i) => <Line key={i.go} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows>
+                <View style={{ height: 8 }} /><Card><Rows>{foot.map((i) => <Line key={i.go} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows></Card>
                 </>
               )}
               <SectionTitle>Account</SectionTitle>
-              <Soft style={{ paddingHorizontal: 16, paddingBottom: 4 }}>{session.user?.email}</Soft>
-              <Rows><Line icon="log-out-outline" left="Sign out" onPress={leave} /></Rows>
+              <View style={[s.card, { marginHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }]}>
+                <Initials name={session.user?.name ?? session.user?.email} size={48} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  {session.user?.name ? <Text numberOfLines={1} style={{ color: color.ink, fontSize: 16, fontWeight: '700' }}>{session.user.name}</Text> : null}
+                  <Soft>{session.user?.email}</Soft>
+                </View>
+              </View>
+              <Card><Rows><Line icon="log-out-outline" left="Sign out" onPress={leave} /></Rows></Card>
             </>
           )}
           <Soft style={{ textAlign: 'center', padding: 16 }}>FlowXP {appVersion()}</Soft>
