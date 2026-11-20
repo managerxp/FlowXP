@@ -5417,5 +5417,8 @@
   "Moved. Your Visit card is now on Loyalty cards.": "മാറ്റി. നിങ്ങളുടെ വിസിറ്റ് കാർഡ് ഇപ്പോൾ ലോയൽറ്റി കാർഡുകളിലാണ്.",
   "Most of a bill points can pay for (%)": "ബില്ലിന്റെ എത്ര ശതമാനം വരെ പോയിന്റ് കൊണ്ട് അടയ്ക്കാം (%)",
   "Leave empty for no limit.": "പരിധി വേണ്ടെങ്കിൽ ഒഴിച്ചിടുക.",
-  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}}-ൽ നിന്ന് {{points}} പോയിന്റ് ഉപയോഗിച്ചു ({{amount}} കിഴിവ്). ബാലൻസ് {{balance}}."
+  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}}-ൽ നിന്ന് {{points}} പോയിന്റ് ഉപയോഗിച്ചു ({{amount}} കിഴിവ്). ബാലൻസ് {{balance}}.",
+  "Loyalty cards is the one place for all loyalty now. Moving this keeps {{customers}} customers' {{points}} points and their tiers, makes a points card with the same earning and spending rules, and switches this older programme off.": "ഇനി എല്ലാ ലോയൽറ്റിയും ഒരിടത്ത്, ലോയൽറ്റി കാർഡുകളിൽ. മാറ്റിയാൽ {{customers}} ഉപഭോക്താക്കളുടെ {{points}} പോയിന്റുകളും അവരുടെ ടിയറുകളും നിലനിൽക്കും, നേടാനും ചെലവഴിക്കാനും ഒരേ നിയമങ്ങളുള്ള പോയിന്റ് കാർഡ് ഉണ്ടാകും, ഈ പഴയ പ്രോഗ്രാം ഓഫ് ആകും.",
+  "Points are spent at the till the same way as before, and the limit on a bill carries over.": "പോയിന്റുകൾ കൗണ്ടറിൽ മുമ്പത്തെപ്പോലെ തന്നെ ചെലവഴിക്കാം, ഒരു ബില്ലിലെ പരിധിയും അതേപടി തുടരും.",
+  "Moved. Your points are now on Loyalty cards.": "മാറ്റി. നിങ്ങളുടെ പോയിന്റുകൾ ഇപ്പോൾ ലോയൽറ്റി കാർഡുകളിലാണ്."
 }

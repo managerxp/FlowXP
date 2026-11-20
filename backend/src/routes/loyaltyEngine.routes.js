@@ -11,6 +11,8 @@ const owner = [requireAuth, withBusiness({ requireActive: true }), feature, requ
 router.get('/loyalty/programme-kinds', ...till, l.kinds);
 router.get('/loyalty/move-visit-card', ...owner, l.migratePreview);
 router.post('/loyalty/move-visit-card', ...owner, l.migrateRun);
+router.get('/loyalty/move-points', ...owner, l.migratePointsPreview);
+router.post('/loyalty/move-points', ...owner, l.migratePointsRun);
 router.get('/loyalty/programmes', ...till, l.listProgrammes);
 router.post('/loyalty/programmes', ...owner, l.createProgramme);
 router.put('/loyalty/programmes/:id', ...owner, l.updateProgramme);

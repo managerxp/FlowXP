@@ -5417,5 +5417,8 @@
   "Moved. Your Visit card is now on Loyalty cards.": "తరలించబడింది. మీ విజిట్ కార్డ్ ఇప్పుడు లాయల్టీ కార్డ్‌లలో ఉంది.",
   "Most of a bill points can pay for (%)": "బిల్లులో గరిష్టంగా ఎంత శాతం పాయింట్లతో చెల్లించవచ్చు (%)",
   "Leave empty for no limit.": "పరిమితి వద్దనుకుంటే ఖాళీగా వదిలేయండి.",
-  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}} నుండి {{points}} పాయింట్లు వాడారు ({{amount}} తగ్గింపు). బ్యాలెన్స్ {{balance}}."
+  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}} నుండి {{points}} పాయింట్లు వాడారు ({{amount}} తగ్గింపు). బ్యాలెన్స్ {{balance}}.",
+  "Loyalty cards is the one place for all loyalty now. Moving this keeps {{customers}} customers' {{points}} points and their tiers, makes a points card with the same earning and spending rules, and switches this older programme off.": "ఇకపై అన్ని లాయల్టీ ఒకే చోట, లాయల్టీ కార్డ్‌లలో. తరలిస్తే {{customers}} కస్టమర్ల {{points}} పాయింట్లు, వారి టియర్లు అలాగే ఉంటాయి, సంపాదన మరియు ఖర్చు నియమాలు అవే ఉండే పాయింట్ కార్డ్ తయారవుతుంది, ఈ పాత ప్రోగ్రామ్ ఆఫ్ అవుతుంది.",
+  "Points are spent at the till the same way as before, and the limit on a bill carries over.": "పాయింట్లు కౌంటర్‌లో ఇంతకు ముందులాగే ఖర్చవుతాయి, ఒక బిల్లుపై పరిమితి కూడా అలాగే ఉంటుంది.",
+  "Moved. Your points are now on Loyalty cards.": "తరలించబడింది. మీ పాయింట్లు ఇప్పుడు లాయల్టీ కార్డ్‌లలో ఉన్నాయి."
 }

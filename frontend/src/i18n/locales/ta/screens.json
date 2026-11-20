@@ -5417,5 +5417,8 @@
   "Moved. Your Visit card is now on Loyalty cards.": "மாற்றப்பட்டது. உங்கள் விசிட் அட்டை இப்போது லாயல்டி அட்டைகளில் உள்ளது.",
   "Most of a bill points can pay for (%)": "பில்லின் எத்தனை சதவீதம் வரை புள்ளிகளால் செலுத்தலாம் (%)",
   "Leave empty for no limit.": "வரம்பு வேண்டாம் என்றால் காலியாக விடவும்.",
-  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}} அட்டையிலிருந்து {{points}} புள்ளிகள் பயன்படுத்தப்பட்டன ({{amount}} தள்ளுபடி). இருப்பு {{balance}}."
+  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}} அட்டையிலிருந்து {{points}} புள்ளிகள் பயன்படுத்தப்பட்டன ({{amount}} தள்ளுபடி). இருப்பு {{balance}}.",
+  "Loyalty cards is the one place for all loyalty now. Moving this keeps {{customers}} customers' {{points}} points and their tiers, makes a points card with the same earning and spending rules, and switches this older programme off.": "இனி எல்லா லாயல்டியும் ஒரே இடத்தில், லாயல்டி அட்டைகளில். மாற்றினால் {{customers}} வாடிக்கையாளர்களின் {{points}} புள்ளிகளும் அவர்களின் அடுக்குகளும் அப்படியே இருக்கும், ஈட்டவும் செலவிடவும் அதே விதிகளுடன் ஒரு புள்ளி அட்டை உருவாகும், இந்தப் பழைய திட்டம் நிறுத்தப்படும்.",
+  "Points are spent at the till the same way as before, and the limit on a bill carries over.": "புள்ளிகள் கவுண்டரில் முன்பு போலவே செலவிடப்படும், ஒரு பில்லுக்கான வரம்பும் தொடரும்.",
+  "Moved. Your points are now on Loyalty cards.": "மாற்றப்பட்டது. உங்கள் புள்ளிகள் இப்போது லாயல்டி அட்டைகளில் உள்ளன."
 }

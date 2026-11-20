@@ -5417,5 +5417,8 @@
   "Moved. Your Visit card is now on Loyalty cards.": "Moved. Your Visit card is now on Loyalty cards.",
   "Most of a bill points can pay for (%)": "Most of a bill points can pay for (%)",
   "Leave empty for no limit.": "Leave empty for no limit.",
-  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}."
+  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.",
+  "Loyalty cards is the one place for all loyalty now. Moving this keeps {{customers}} customers' {{points}} points and their tiers, makes a points card with the same earning and spending rules, and switches this older programme off.": "Loyalty cards is the one place for all loyalty now. Moving this keeps {{customers}} customers' {{points}} points and their tiers, makes a points card with the same earning and spending rules, and switches this older programme off.",
+  "Points are spent at the till the same way as before, and the limit on a bill carries over.": "Points are spent at the till the same way as before, and the limit on a bill carries over.",
+  "Moved. Your points are now on Loyalty cards.": "Moved. Your points are now on Loyalty cards."
 }

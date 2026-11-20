@@ -5417,5 +5417,8 @@
   "Moved. Your Visit card is now on Loyalty cards.": "ಸರಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ವಿಸಿಟ್ ಕಾರ್ಡ್ ಈಗ ಲಾಯಲ್ಟಿ ಕಾರ್ಡ್‌ಗಳಲ್ಲಿದೆ.",
   "Most of a bill points can pay for (%)": "ಬಿಲ್‌ನ ಗರಿಷ್ಠ ಎಷ್ಟು ಶೇಕಡಾವನ್ನು ಪಾಯಿಂಟ್‌ಗಳಿಂದ ಪಾವತಿಸಬಹುದು (%)",
   "Leave empty for no limit.": "ಮಿತಿ ಬೇಡವಾದರೆ ಖಾಲಿ ಬಿಡಿ.",
-  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}} ನಿಂದ {{points}} ಪಾಯಿಂಟ್‌ಗಳನ್ನು ಬಳಸಲಾಗಿದೆ ({{amount}} ರಿಯಾಯಿತಿ). ಬ್ಯಾಲೆನ್ಸ್ {{balance}}."
+  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}} ನಿಂದ {{points}} ಪಾಯಿಂಟ್‌ಗಳನ್ನು ಬಳಸಲಾಗಿದೆ ({{amount}} ರಿಯಾಯಿತಿ). ಬ್ಯಾಲೆನ್ಸ್ {{balance}}.",
+  "Loyalty cards is the one place for all loyalty now. Moving this keeps {{customers}} customers' {{points}} points and their tiers, makes a points card with the same earning and spending rules, and switches this older programme off.": "ಇನ್ನು ಎಲ್ಲಾ ಲಾಯಲ್ಟಿ ಒಂದೇ ಕಡೆ, ಲಾಯಲ್ಟಿ ಕಾರ್ಡ್‌ಗಳಲ್ಲಿ. ಸರಿಸಿದರೆ {{customers}} ಗ್ರಾಹಕರ {{points}} ಪಾಯಿಂಟ್‌ಗಳು ಮತ್ತು ಅವರ ಟೈರ್‌ಗಳು ಉಳಿಯುತ್ತವೆ, ಗಳಿಕೆ ಮತ್ತು ಖರ್ಚಿನ ಅದೇ ನಿಯಮಗಳ ಪಾಯಿಂಟ್ ಕಾರ್ಡ್ ಆಗುತ್ತದೆ, ಈ ಹಳೆಯ ಕಾರ್ಯಕ್ರಮ ಆಫ್ ಆಗುತ್ತದೆ.",
+  "Points are spent at the till the same way as before, and the limit on a bill carries over.": "ಪಾಯಿಂಟ್‌ಗಳನ್ನು ಕೌಂಟರ್‌ನಲ್ಲಿ ಮೊದಲಿನಂತೆಯೇ ಖರ್ಚು ಮಾಡಬಹುದು, ಒಂದು ಬಿಲ್‌ನ ಮಿತಿಯೂ ಅದೇ ಉಳಿಯುತ್ತದೆ.",
+  "Moved. Your points are now on Loyalty cards.": "ಸರಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ಪಾಯಿಂಟ್‌ಗಳು ಈಗ ಲಾಯಲ್ಟಿ ಕಾರ್ಡ್‌ಗಳಲ್ಲಿವೆ."
 }

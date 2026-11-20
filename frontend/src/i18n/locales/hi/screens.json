@@ -5417,5 +5417,8 @@
   "Moved. Your Visit card is now on Loyalty cards.": "हो गया। आपका विज़िट कार्ड अब लॉयल्टी कार्ड में है।",
   "Most of a bill points can pay for (%)": "बिल का ज़्यादा से ज़्यादा कितने % हिस्सा पॉइंट से चुकाया जा सकता है",
   "Leave empty for no limit.": "सीमा न चाहिए तो खाली छोड़ें।",
-  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}} से {{points}} पॉइंट इस्तेमाल हुए ({{amount}} की छूट)। बैलेंस {{balance}}।"
+  "Used {{points}} points from {{card}} ({{amount}} off). Balance {{balance}}.": "{{card}} से {{points}} पॉइंट इस्तेमाल हुए ({{amount}} की छूट)। बैलेंस {{balance}}।",
+  "Loyalty cards is the one place for all loyalty now. Moving this keeps {{customers}} customers' {{points}} points and their tiers, makes a points card with the same earning and spending rules, and switches this older programme off.": "अब सारी लॉयल्टी एक ही जगह, लॉयल्टी कार्ड में है। इसे ले जाने पर {{customers}} ग्राहकों के {{points}} पॉइंट और उनके टियर बने रहेंगे, कमाने और खर्च करने के वही नियम वाला पॉइंट कार्ड बनेगा, और यह पुराना प्रोग्राम बंद हो जाएगा।",
+  "Points are spent at the till the same way as before, and the limit on a bill carries over.": "पॉइंट काउंटर पर पहले की तरह ही खर्च होते हैं, और एक बिल पर सीमा भी वही रहती है।",
+  "Moved. Your points are now on Loyalty cards.": "हो गया। आपके पॉइंट अब लॉयल्टी कार्ड में हैं।"
 }

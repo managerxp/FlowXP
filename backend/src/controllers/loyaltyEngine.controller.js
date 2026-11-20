@@ -196,3 +196,11 @@ export const migrateRun = wrap(async (req, res) => {
   recordAudit(req, { business_id: bid(req), action: 'loyalty.visit_card_moved', resource_type: 'loyalty_programme', resource_id: out.programme_id, metadata: out });
   ok(res, out, 201);
 });
+
+/* Moving the older Points & tiers onto Loyalty cards: GET says what would happen, POST does it (once). */
+export const migratePointsPreview = wrap(async (req, res) => ok(res, await migrate.previewPoints(pool, bid(req))));
+export const migratePointsRun = wrap(async (req, res) => {
+  const out = await withTransaction((c) => migrate.runPoints(c, { businessId: bid(req), createdBy: req.auth.userId }));
+  recordAudit(req, { business_id: bid(req), action: 'loyalty.points_moved', resource_type: 'loyalty_programme', resource_id: out.programme_id, metadata: out });
+  ok(res, out, 201);
+});
