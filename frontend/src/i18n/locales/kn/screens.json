@@ -5342,5 +5342,7 @@
   "100 earns the normal rate, 0 earns nothing. Gift cards never earn.": "100 ಎಂದರೆ ಸಾಮಾನ್ಯ ದರ, 0 ಎಂದರೆ ಏನೂ ಇಲ್ಲ. ಗಿಫ್ಟ್ ಕಾರ್ಡ್‌ಗಳಿಗೆ ಪಾಯಿಂಟ್ ಸಿಗುವುದಿಲ್ಲ.",
   "WhatsApp is not connected on FlowXP’s side yet, so messages are only recorded as skipped for now.": "FlowXP ಕಡೆಯಲ್ಲಿ WhatsApp ಇನ್ನೂ ಸಂಪರ್ಕವಾಗಿಲ್ಲ, ಆದ್ದರಿಂದ ಸದ್ಯ ಸಂದೇಶಗಳು \"ಬಿಟ್ಟುಬಿಡಲಾಗಿದೆ\" ಎಂದು ಮಾತ್ರ ದಾಖಲಾಗುತ್ತವೆ.",
   "Messages are not taken from this credit right now (free trial or credit not switched on yet).": "ಸದ್ಯ ಸಂದೇಶಗಳಿಗೆ ಈ ಕ್ರೆಡಿಟ್‌ನಿಂದ ಹಣ ಕಡಿತವಾಗುತ್ತಿಲ್ಲ (ಉಚಿತ ಪ್ರಯೋಗ ಅಥವಾ ಕ್ರೆಡಿಟ್ ಇನ್ನೂ ಆನ್ ಆಗಿಲ್ಲ).",
-  "Messages go out from FlowXP’s own WhatsApp number. There is nothing to set up: switch it on and keep some credit.": "ಸಂದೇಶಗಳು FlowXP ಯ ಸ್ವಂತ WhatsApp ಸಂಖ್ಯೆಯಿಂದ ಹೋಗುತ್ತವೆ. ಏನನ್ನೂ ಸೆಟ್ ಮಾಡುವ ಅಗತ್ಯವಿಲ್ಲ: ಆನ್ ಮಾಡಿ ಸ್ವಲ್ಪ ಕ್ರೆಡಿಟ್ ಇಟ್ಟುಕೊಳ್ಳಿ."
+  "Messages go out from FlowXP’s own WhatsApp number. There is nothing to set up: switch it on and keep some credit.": "ಸಂದೇಶಗಳು FlowXP ಯ ಸ್ವಂತ WhatsApp ಸಂಖ್ಯೆಯಿಂದ ಹೋಗುತ್ತವೆ. ಏನನ್ನೂ ಸೆಟ್ ಮಾಡುವ ಅಗತ್ಯವಿಲ್ಲ: ಆನ್ ಮಾಡಿ ಸ್ವಲ್ಪ ಕ್ರೆಡಿಟ್ ಇಟ್ಟುಕೊಳ್ಳಿ.",
+  "Set on map": "ನಕ್ಷೆಯಲ್ಲಿ ಹೊಂದಿಸಿ",
+  "Save location": "ಸ್ಥಳವನ್ನು ಉಳಿಸಿ"
 }

@@ -5342,5 +5342,7 @@
   "100 earns the normal rate, 0 earns nothing. Gift cards never earn.": "100 মানে স্বাভাবিক হার, 0 মানে কিছুই নয়। গিফট কার্ডে কখনও পয়েন্ট মেলে না।",
   "WhatsApp is not connected on FlowXP’s side yet, so messages are only recorded as skipped for now.": "FlowXP-এর দিকে WhatsApp এখনও যুক্ত হয়নি, তাই এখন মেসেজ শুধু \"বাদ দেওয়া\" হিসেবে নথিভুক্ত হয়।",
   "Messages are not taken from this credit right now (free trial or credit not switched on yet).": "এখন মেসেজের জন্য এই ক্রেডিট থেকে টাকা কাটা হচ্ছে না (বিনামূল্যে ট্রায়াল বা ক্রেডিট এখনও চালু হয়নি)।",
-  "Messages go out from FlowXP’s own WhatsApp number. There is nothing to set up: switch it on and keep some credit.": "মেসেজ FlowXP-এর নিজস্ব WhatsApp নম্বর থেকে যায়। কিছু সেট করতে হবে না: চালু করুন এবং কিছু ক্রেডিট রাখুন।"
+  "Messages go out from FlowXP’s own WhatsApp number. There is nothing to set up: switch it on and keep some credit.": "মেসেজ FlowXP-এর নিজস্ব WhatsApp নম্বর থেকে যায়। কিছু সেট করতে হবে না: চালু করুন এবং কিছু ক্রেডিট রাখুন।",
+  "Set on map": "ম্যাপে সেট করুন",
+  "Save location": "লোকেশন সেভ করুন"
 }

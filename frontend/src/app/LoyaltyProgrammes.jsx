@@ -7,6 +7,8 @@ import QRCode from 'qrcode';
 import { Copy, Download, Plus, QrCode } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import LoyaltyCardFace, { DEFAULT_CARD, ICONS, suggestedIcons } from '../components/LoyaltyCardFace.jsx';
+import MapPicker from '../components/MapPicker.jsx';
+import PlaceSearch from '../components/PlaceSearch.jsx';
 import { Alert, Badge, Button, Card, Field, Input, ListState, Modal, Select, useToast } from '../components/ui.jsx';
 import { useT, T } from '../i18n/useT.js';
 
@@ -236,12 +238,21 @@ const Locations = () => {
       <p className="mt-1 text-small text-ink-500">{tr('Stand at the outlet and tap "Use this device\'s location". Members who saved the card in Google Wallet can then be reminded when they are nearby.')}</p>
       <ul className="mt-2 divide-y divide-line">
         {rows.map((b) => (
-          <li key={b.branch_id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-small">
-            <span className="text-ink-900">{b.name} <span className="text-ink-500">{b.latitude != null ? `· ${b.latitude}, ${b.longitude}` : tr('· not set')}</span></span>
-            <span className="flex gap-2">
-              <Button size="sm" variant="secondary" onClick={() => here(b)}>{tr('Use this device\'s location')}</Button>
-              {b.latitude != null && <Button size="sm" variant="secondary" onClick={() => save(b, null, null)}>{tr('Clear')}</Button>}
-            </span>
+          <li key={b.branch_id} className="py-2 text-small">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-ink-900">{b.name} <span className="text-ink-500">{b.latitude != null ? `· ${b.latitude}, ${b.longitude}` : tr('· not set')}</span></span>
+              <span className="flex gap-2">
+                <Button size="sm" variant="secondary" onClick={() => setEdit((e) => ({ ...e, [b.branch_id]: e[b.branch_id] ? undefined : { lat: b.latitude != null ? Number(b.latitude) : null, lon: b.longitude != null ? Number(b.longitude) : null } }))}>{tr('Set on map')}</Button>
+                <Button size="sm" variant="secondary" onClick={() => here(b)}>{tr('Use this device\'s location')}</Button>
+                {b.latitude != null && <Button size="sm" variant="secondary" onClick={() => save(b, null, null)}>{tr('Clear')}</Button>}
+              </span>
+            </div>
+            {edit[b.branch_id] && (
+              <div className="mt-3 space-y-3">
+                <PlaceSearch near={edit[b.branch_id].lat != null ? edit[b.branch_id] : null} onPick={(pl) => setEdit((e) => ({ ...e, [b.branch_id]: { lat: Number(pl.lat.toFixed(6)), lon: Number(pl.lon.toFixed(6)) } }))} />
+                <MapPicker value={edit[b.branch_id].lat != null ? edit[b.branch_id] : null} onChange={(c) => setEdit((e) => ({ ...e, [b.branch_id]: c }))} />
+                <Button size="sm" disabled={edit[b.branch_id].lat == null} onClick={() => save(b, edit[b.branch_id].lat, edit[b.branch_id].lon)}>{tr('Save location')}</Button>
+              </div>)}
           </li>))}
       </ul>
       {err && <p role="alert" className="mt-2 text-small text-danger">{err}</p>}
