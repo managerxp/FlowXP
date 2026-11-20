@@ -12,12 +12,13 @@ import { api, currentBusiness, useSession } from './session.ts';
 import { t } from './i18n.ts';
 import { SyncBadge } from './SyncBadge.tsx';
 import { Button, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from './ui.tsx';
+import { display } from './theme.ts';
 
 const Tile = ({ label, value, note, tone, go }: { label: string; value: string; note?: string; tone?: string; go?: () => void }) => (
   <Pressable accessibilityRole={go ? 'button' : 'text'} accessibilityLabel={`${t(label)}: ${value}${note ? `, ${note}` : ''}`} onPress={go} disabled={!go}
     style={({ pressed }) => [s.card, { width: '48.5%', minHeight: 84, padding: 12, justifyContent: 'center', gap: 2 }, pressed && { backgroundColor: color.tint }]}>
     <Text style={{ color: color.soft, fontSize: 13 }}>{t(label)}</Text>
-    <Text style={{ color: tone ?? color.ink, fontSize: 22, fontWeight: '700' }}>{value}</Text>
+    <Text style={{ color: tone ?? color.ink, fontSize: 24, fontFamily: display.bold, letterSpacing: -0.4, fontVariant: ['tabular-nums'] }}>{value}</Text>
     {note ? <Text style={{ color: color.soft, fontSize: 12 }}>{note}</Text> : null}
   </Pressable>
 );

@@ -25,18 +25,18 @@ export function Rail({ state, descriptors, navigation, hidden }: RailProps) {
     const on = state.index === i;
     return (
       <Pressable key={r.key} accessibilityRole="tab" accessibilityLabel={o.title} accessibilityState={{ selected: on }} onPress={() => navigation.navigate(r.name)}
-        android_ripple={{ color: '#0b57ff22', borderless: true }} style={{ alignItems: 'center', gap: slim ? 1 : 4, paddingVertical: slim ? 2 : 6, minHeight: slim ? 52 : 64, width: slim ? 72 : 88 }}>
-        <View style={{ width: slim ? 48 : 56, height: slim ? 28 : 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? color.press : 'transparent' }}>
+        android_ripple={{ color: color.press, borderless: true }} style={{ alignItems: 'center', gap: slim ? 1 : 4, paddingVertical: slim ? 2 : 6, minHeight: slim ? 52 : 64, width: slim ? 72 : 88 }}>
+        <View style={{ width: slim ? 48 : 56, height: slim ? 28 : 32, borderRadius: 16, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', backgroundColor: on ? color.press : 'transparent' }}>
           {o.tabBarIcon?.({ focused: on, color: on ? color.brand : color.soft, size: slim ? 22 : 24 })}
           {o.tabBarBadge ? <View style={{ position: 'absolute', top: -2, right: 6, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: color.danger, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{o.tabBarBadge}</Text></View> : null}
         </View>
-        <Text numberOfLines={1} style={{ fontSize: slim ? 11 : 12, fontWeight: on ? '700' : '600', color: on ? color.ink : color.soft }}>{o.title}</Text>
+        <Text numberOfLines={1} style={{ fontSize: slim ? 11 : 12, fontWeight: on ? '700' : '600', color: on ? color.brand : color.soft }}>{o.title}</Text>
       </Pressable>
     );
   };
 
   return (
-    <SafeAreaView edges={['top', 'bottom', 'left']} style={{ width: slim ? 76 : 96, height: '100%', alignSelf: 'stretch', backgroundColor: color.card, borderRightWidth: 1, borderColor: color.line }}>
+    <SafeAreaView edges={['top', 'bottom', 'left']} style={{ width: slim ? 76 : 96, height: '100%', alignSelf: 'stretch', backgroundColor: color.card, borderRightWidth: 1, borderColor: color.line, boxShadow: '4px 0 20px rgba(17, 23, 47, 0.05)' }}>
       <ScrollView contentContainerStyle={{ alignItems: 'center', paddingTop: slim ? 4 : 12, gap: slim ? 2 : 8 }} showsVerticalScrollIndicator={false} style={{ flex: 1, flexGrow: 1 }}>{main.map(item)}</ScrollView>
       {more ? <View style={{ alignItems: 'center', paddingVertical: 8, borderTopWidth: 1, borderColor: color.line }}>{item(more)}</View> : null}
     </SafeAreaView>
