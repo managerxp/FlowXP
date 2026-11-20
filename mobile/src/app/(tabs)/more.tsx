@@ -180,7 +180,7 @@ export default function More() {
       { left: 'Card results', sub: 'How your loyalty cards are doing', icon: 'stats-chart-outline', go: '/loyalty-results', show: canLoyalty(business?.role) && hasFeature(business, 'loyalty_programmes') && !wholesale },
       { left: 'Design loyalty cards', sub: 'Change how your cards look', icon: 'color-palette-outline', go: '/loyalty-cards', show: canLoyalty(business?.role) && hasFeature(business, 'loyalty_programmes') && !wholesale },
       { left: 'Offers', sub: 'Discounts the till applies by itself', icon: 'pricetag-outline', go: '/offers', show: (retail || food) && canOffers((p) => allowed(business, p)) },
-      { left: 'Loyalty & coupons', sub: 'Visit card, points and tiers, offer codes', icon: 'gift-outline', go: '/loyalty', show: canLoyalty(business?.role) && !wholesale },
+      { left: 'Loyalty & coupons', sub: 'Coupons', icon: 'gift-outline', go: '/loyalty', show: canLoyalty(business?.role) && !wholesale },
       { left: 'Messaging', sub: 'WhatsApp or SMS: bills, bookings, offers', icon: 'chatbubbles-outline', go: '/messaging', show: canMessaging(business?.role) },
       { left: 'Reviews', sub: 'What customers said after their bill', icon: 'star-outline', go: '/reviews', show: can('settings') && hasFeature(business, 'reviews') }
     ] },

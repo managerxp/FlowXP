@@ -7,9 +7,9 @@ import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import {
-  CONFIG_LABEL, KIND_LABEL, METHOD_LABEL, SEGMENT_CHOICES, WEEKDAYS, audienceText, automationBody, automationDirty, automationProblem, bookingLink, campaignProblem, canSalonSetup, cleanSlug, hoursBody, hoursForm, hoursProblem, loyaltyBody, loyaltyForm, loyaltyProblem, onlineBody, onlineForm, onlineProblem,
-  outletLine, outletOffBody, outletOnBody, ownHours, profileBody, profileForm, profileProblem, programText, segmentBody, segmentForm, segmentProblem, summaryNote, taxBody, taxForm, taxProblem, toggleDay, toggleMethod,
-  type Automation, type Automations, type HoursForm, type LoyaltyData, type LoyaltyForm, type LoyaltySummary, type OnlineForm, type ProfileForm, type SalonBranch, type SegmentForm, type SettingsData, type TaxForm
+  CONFIG_LABEL, KIND_LABEL, METHOD_LABEL, SEGMENT_CHOICES, WEEKDAYS, audienceText, automationBody, automationDirty, automationProblem, bookingLink, campaignProblem, canSalonSetup, cleanSlug, hoursBody, hoursForm, hoursProblem, onlineBody, onlineForm, onlineProblem,
+  outletLine, outletOffBody, outletOnBody, ownHours, profileBody, profileForm, profileProblem, segmentBody, segmentForm, segmentProblem, taxBody, taxForm, taxProblem, toggleDay, toggleMethod,
+  type Automation, type Automations, type HoursForm, type OnlineForm, type ProfileForm, type SalonBranch, type SegmentForm, type SettingsData, type TaxForm
 } from '../lib/salonSetup.ts';
 import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
 
@@ -180,60 +180,6 @@ const Tax = ({ d, reload }: { d: SettingsData; reload: () => void }) => {
   );
 };
 
-/* ── loyalty ─────────────────────────────────────────────────────────────── */
-const Loyalty = () => {
-  const [data, setData] = useState<LoyaltyData | null>(null);
-  const [sum, setSum] = useState<LoyaltySummary | null>(null);
-  const [f, setF] = useState<LoyaltyForm | null>(null);
-  const [error, setError] = useState('');
-  const sv = useSave();
-  const load = useCallback(() => {
-    api.get<LoyaltyData>('/salon/loyalty').then((d) => { setData(d); setF(loyaltyForm(d)); setError(''); }).catch((e: Error) => setError(e.message || t('Could not load.')));
-    api.get<LoyaltySummary>('/salon/loyalty/summary?days=30').then(setSum).catch(() => {});
-  }, []);
-  useEffect(load, [load]);
-  if (error && !data) return <Failed message={error} onRetry={load} />;
-  if (!data || !f) return <Loading />;
-  const setRule = (k: string, patch: Partial<LoyaltyForm['rules'][string]>) => setF((x) => (x ? { ...x, rules: { ...x.rules, [k]: { ...x.rules[k], ...patch } } } : x));
-  const expireNow = () => Alert.alert(t('Expire old points now?'), t('Points older than the expiry period are taken off clients’ balances. Running it twice changes nothing more.'), [
-    { text: t('Cancel'), style: 'cancel' },
-    { text: t('Expire points'), style: 'destructive', onPress: () => { void api.post<{ points?: number; expired?: number }>('/salon/loyalty/expire', {}).then((r) => { sv.setNote(t('{n} points expired', { n: r.points ?? r.expired ?? 0 })); load(); }).catch((e) => sv.setError(why(e))); } }
-  ]);
-  return (
-    <Panel>
-      <SectionTitle>The programme</SectionTitle>
-      <Soft>{t('Points per ₹100, what a point is worth, and the most a bill can be paid with points.')}</Soft>
-      <Text style={{ color: color.ink }}>{programText(data)}</Text>
-      <Button title="Loyalty & coupons" kind="quiet" onPress={() => router.push('/loyalty')} />
-      <Soft>{t('Set the programme and tiers on the Loyalty screen.')}</Soft>
-      <SectionTitle>Earning rates by kind of sale</SectionTitle>
-      <Soft>{t('Leave the rate empty to use the programme’s rate. Turn a kind off and it earns nothing. Gift cards never earn.')}</Soft>
-      {Object.keys(f.rules).filter((k) => k !== 'GIFT_CARD').map((k) => (
-        <View key={k} style={[s.card, { gap: 6 }]}>
-          <Text style={{ fontWeight: '700', color: color.ink }}>{t(KIND_LABEL[k] ?? k)}</Text>
-          <Input label="Points per ₹100" numeric value={f.rules[k].earn_per_100} onChange={(v) => setRule(k, { earn_per_100: v })} max={6} />
-          <Row label="Earns points" value={f.rules[k].is_enabled} onChange={(v) => setRule(k, { is_enabled: v })} />
-        </View>
-      ))}
-      <SectionTitle>Expiry</SectionTitle>
-      <Soft>{t('How long points last. Empty means they never expire.')}</Soft>
-      <Input label="Points expire after (days)" numeric value={f.expiry_days} onChange={(v) => setF((x) => (x ? { ...x, expiry_days: v } : x))} max={5} />
-      {data.expiry_days ? <Button title="Expire old points now" kind="quiet" onPress={expireNow} /> : null}
-      <Soft>{t('Points expire on their own once a day. Clients are warned first if the Loyalty points expiry message is on under Messages.')}</Soft>
-      <Saved note={sv.note} error={sv.error} />
-      <Button title="Save loyalty rules" onPress={() => { void sv.run(loyaltyProblem(f), async () => { await api.call('/salon/loyalty', { method: 'PUT', body: loyaltyBody(f) }); load(); }, 'Loyalty rules saved'); }} busy={sv.busy} />
-      {sum ? (
-        <>
-          <SectionTitle>Last 30 days</SectionTitle>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            <Stat label="Issued" value={String(sum.issued)} /><Stat label="Used" value={String(sum.redeemed)} /><Stat label="Expired" value={String(sum.expired)} /><Stat label="Owed to clients" value={String(sum.outstanding_points)} note={summaryNote(sum)} />
-          </View>
-        </>
-      ) : null}
-    </Panel>
-  );
-};
-
 /* ── clients and stock ───────────────────────────────────────────────────── */
 const Segments = ({ d, reload }: { d: SettingsData; reload: () => void }) => {
   const [f, setF] = useState<SegmentForm>(segmentForm(d.settings));
@@ -326,7 +272,7 @@ export default function SalonSettingsScreen() {
   const ok = canSalonSetup(me?.role);
   const [d, setD] = useState<SettingsData | null>(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState<'profile' | 'hours' | 'tax' | 'loyalty' | 'clients' | 'messages'>('profile');
+  const [tab, setTab] = useState<'profile' | 'hours' | 'tax' | 'clients' | 'messages'>('profile');
   const load = useCallback(() => { api.get<SettingsData>('/salon/settings').then((x) => { setD(x); setError(''); }).catch((e: Error) => setError(e.message || t('Could not load.'))); }, []);
   useEffect(() => { if (ok) load(); }, [load, ok]);
   return (
@@ -335,8 +281,8 @@ export default function SalonSettingsScreen() {
         <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><View style={{ flex: 1 }}><Title>Salon settings</Title><Soft>How your salon works. Every rule here is yours to change.</Soft></View><Button title="Back" kind="quiet" onPress={() => goBack()} /></View>
         {!ok ? <Empty>Only owners and admins can change salon settings.</Empty> : error && !d ? <Failed message={error} onRetry={load} /> : !d ? <Loading /> : (
           <>
-            <Chips items={[{ id: 'profile', label: 'Profile' }, { id: 'hours', label: 'Hours & booking' }, { id: 'tax', label: 'Tax & payments' }, { id: 'loyalty', label: 'Loyalty' }, { id: 'clients', label: 'Clients & stock' }, { id: 'messages', label: 'Messages' }]} value={tab} onChange={setTab} />
-            {tab === 'profile' ? <Profile key="p" d={d} reload={load} /> : tab === 'hours' ? <Hours key="h" d={d} reload={load} /> : tab === 'tax' ? <Tax key="t" d={d} reload={load} /> : tab === 'loyalty' ? <Loyalty /> : tab === 'clients' ? <Segments key="c" d={d} reload={load} /> : <Messages />}
+            <Chips items={[{ id: 'profile', label: 'Profile' }, { id: 'hours', label: 'Hours & booking' }, { id: 'tax', label: 'Tax & payments' }, { id: 'clients', label: 'Clients & stock' }, { id: 'messages', label: 'Messages' }]} value={tab} onChange={setTab} />
+            {tab === 'profile' ? <Profile key="p" d={d} reload={load} /> : tab === 'hours' ? <Hours key="h" d={d} reload={load} /> : tab === 'tax' ? <Tax key="t" d={d} reload={load} /> : tab === 'clients' ? <Segments key="c" d={d} reload={load} /> : <Messages />}
           </>
         )}
       </Page>

@@ -1,37 +1,11 @@
-/* Loyalty on the phone: the visit card, points and tiers, coupons, and the six-language coverage. */
+/* Loyalty on the phone: coupons, and the six-language coverage. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LOYALTY_TEXTS, adjustBody, adjustProblem, canLoyalty, couponBody, couponForm, couponLine, couponProblem, couponState, daysAgoText, emptyCoupon, exampleEarn, newTier, percentOf, pointsBody, pointsForm, pointsProblem, programBody, programForm, programProblem, type Coupon, type PointsProgram } from '../src/lib/loyalty.ts';
+import { LOYALTY_TEXTS, canLoyalty, couponBody, couponForm, couponLine, couponProblem, couponState, emptyCoupon, type Coupon } from '../src/lib/loyalty.ts';
 import { HI } from '../src/lib/i18n.ts';
 import { BN, KN, ML, TA, TE } from '../src/lib/i18n.more.ts';
 
 test('only owners and admins reach loyalty', () => { assert.equal(canLoyalty('OWNER'), true); assert.equal(canLoyalty('ADMIN'), true); assert.equal(canLoyalty('CASHIER'), false); assert.equal(canLoyalty(undefined), false); });
-
-test('the visit card form round-trips and is checked like the server', () => {
-  const f = programForm({ is_enabled: true, visits_required: 7, reward_product_id: 12, reward_name: 'Tea', reward_price: 20, reward_quantity: 2, min_bill: 150 });
-  assert.deepEqual(f, { is_enabled: true, visits_required: '7', reward_product_id: '12', reward_quantity: '2', min_bill: '150' });
-  assert.deepEqual(programBody(f), { is_enabled: true, visits_required: 7, reward_product_id: 12, reward_quantity: 2, min_bill: 150 });
-  assert.equal(programProblem(f), ''); assert.notEqual(programProblem({ ...f, visits_required: '1' }), ''); assert.notEqual(programProblem({ ...f, visits_required: '51' }), '');
-  assert.match(programProblem({ ...f, reward_product_id: '' }), /free item/); assert.equal(programProblem({ ...f, reward_product_id: '', is_enabled: false }), '');
-  assert.equal(programBody({ ...f, min_bill: '' }).min_bill, 0); assert.equal(programForm({ is_enabled: false, visits_required: 7, reward_product_id: null, reward_name: null, reward_price: null, reward_quantity: 1, min_bill: 0 }).min_bill, '');
-});
-
-test('days since a visit, and a share of members', () => {
-  const now = new Date(2026, 9, 15, 15, 0);
-  assert.equal(daysAgoText('2026-10-15', now), 'today'); assert.equal(daysAgoText('2026-10-14', now), 'yesterday'); assert.equal(daysAgoText('2026-10-05', now), '10 days ago'); assert.equal(daysAgoText(null, now), '');
-  assert.equal(percentOf(1, 3), 33); assert.equal(percentOf(5, 0), 0);
-});
-
-test('points: the form, the body, the tier rules and the earning example', () => {
-  const p: PointsProgram = { is_enabled: true, earn_per_100: 5, point_value: 1, min_redeem_points: 50, max_redeem_pct: 50, tiers: [{ name: 'Silver', min_points: 0, multiplier: 1 }, { name: 'Gold', min_points: 500, multiplier: 1.5 }] };
-  const f = pointsForm(p);
-  assert.deepEqual(pointsBody(f).tiers, [{ name: 'Silver', min_points: 0, multiplier: 1 }, { name: 'Gold', min_points: 500, multiplier: 1.5 }]); assert.equal(pointsProblem(f), '');
-  assert.notEqual(pointsProblem({ ...f, earn_per_100: '0' }), ''); assert.notEqual(pointsProblem({ ...f, point_value: '1001' }), ''); assert.notEqual(pointsProblem({ ...f, max_redeem_pct: '101' }), ''); assert.notEqual(pointsProblem({ ...f, min_redeem_points: '0' }), '');
-  assert.match(pointsProblem({ ...f, tiers: [{ name: 'Gold', min_points: '500', multiplier: '1' }] }), /first tier/); assert.match(pointsProblem({ ...f, tiers: [f.tiers[0], { ...f.tiers[0], name: 'Dup' }] }), /same number/);
-  assert.notEqual(pointsProblem({ ...f, tiers: [{ name: '', min_points: '0', multiplier: '1' }] }), ''); assert.notEqual(pointsProblem({ ...f, tiers: [{ name: 'A', min_points: '0', multiplier: '11' }] }), '');
-  assert.equal(pointsProblem({ ...f, tiers: [] }), ''); assert.equal(newTier({ ...f, tiers: [] }).min_points, '0'); assert.equal(newTier(f).min_points, ''); assert.equal(exampleEarn('5'), 25); assert.equal(exampleEarn('2.5'), 12);
-  assert.equal(adjustProblem('50', 'Birthday'), ''); assert.equal(adjustProblem('-20', 'Mistake'), ''); assert.notEqual(adjustProblem('0', 'x'), ''); assert.notEqual(adjustProblem('1.5', 'x'), ''); assert.notEqual(adjustProblem('10', ' '), ''); assert.deepEqual(adjustBody('-20', ' Mistake '), { points: -20, note: 'Mistake' });
-});
 
 const coupon: Coupon = { coupon_id: 1, code: 'WELCOME10', description: 'First visit', kind: 'PERCENT', value: 10, min_bill: 200, max_discount: 50, valid_from: '2026-10-01', valid_to: '2026-10-31', max_uses: 100, max_uses_per_customer: 1, is_active: true, used: 3, discount_given: 120 };
 

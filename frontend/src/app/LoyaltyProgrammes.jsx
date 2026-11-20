@@ -105,6 +105,9 @@ const TiersEditor = ({ value, onChange }) => {
   );
 };
 
+const SALE_KINDS = [['SERVICE', 'Services'], ['PRODUCT', 'Products'], ['PACKAGE', 'Packages'], ['MEMBERSHIP', 'Memberships']];
+const KIND_DEFAULT = { SERVICE: 100, PRODUCT: 100, PACKAGE: 100, MEMBERSHIP: 100 };
+
 /* The three steps: what it is, the rule, how it looks. Anything unusual is left to the defaults. */
 const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
   const tr = useT();
@@ -114,7 +117,7 @@ const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
     name: programme?.name || '', kind: programme?.kind || 'STAMPS',
     stamps: programme?.redeem_points || 5, minBill: rupees(programme?.min_txn_paise) || 0,
     earn: programme?.earn_points || 1, per: rupees(programme?.per_amount_paise) || 100, redeemPoints: programme?.redeem_points || 100, redeemValue: rupees(programme?.redeem_value_paise) || 50,
-    expiry: programme?.expiry_days || '', rewardName: '', rewardValue: '', autoEnrol: programme ? programme.settings?.auto_enrol === true : true, billQr: programme ? programme.settings?.bill_qr === true : true, verifyPhone: programme?.settings?.verify_phone === true, maxPct: programme ? (programme.settings?.max_redeem_pct ?? '') : 50,
+    expiry: programme?.expiry_days || '', rewardName: '', rewardValue: '', autoEnrol: programme ? programme.settings?.auto_enrol === true : true, billQr: programme ? programme.settings?.bill_qr === true : true, verifyPhone: programme?.settings?.verify_phone === true, maxPct: programme ? (programme.settings?.max_redeem_pct ?? '') : 50, kinds: { ...KIND_DEFAULT, ...(programme?.settings?.earn_by_kind || {}) },
     card: { ...DEFAULT_CARD, ...(programme?.card || {}) }
   }));
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
@@ -124,10 +127,11 @@ const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
   const [moreIcons, setMoreIcons] = useState(false);
   const setCard = (k, v) => setF((x) => ({ ...x, card: { ...x.card, [k]: v } }));
   const perBill = f.kind !== 'POINTS';
+  const salon = businessType === 'SALON';
   const body = () => ({
     name: f.name, kind: f.kind, card: f.card, auto_enrol: f.autoEnrol, bill_qr: f.billQr, verify_phone: f.billQr && f.verifyPhone, min_txn_paise: paise(f.minBill), expiry_days: Number(f.expiry) > 0 ? Number(f.expiry) : null,
     ...(perBill ? { earn_points: 1, redeem_points: Number(f.stamps), min_redeem_points: Number(f.stamps), redeem_value_paise: paise(f.rewardValue) }
-      : { earn_points: Number(f.earn), per_amount_paise: paise(f.per), redeem_points: Number(f.redeemPoints), redeem_value_paise: paise(f.redeemValue), min_redeem_points: Number(f.redeemPoints), max_redeem_pct: Number(f.maxPct) > 0 ? Number(f.maxPct) : null })
+      : { earn_points: Number(f.earn), per_amount_paise: paise(f.per), redeem_points: Number(f.redeemPoints), redeem_value_paise: paise(f.redeemValue), min_redeem_points: Number(f.redeemPoints), max_redeem_pct: Number(f.maxPct) > 0 ? Number(f.maxPct) : null, ...(salon ? { earn_by_kind: Object.fromEntries(SALE_KINDS.map(([k]) => [k, Number(f.kinds[k])])) } : {}) })
   });
   const save = async () => {
     setBusy(true); setErr('');
@@ -174,6 +178,10 @@ const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
               <Field id="lp-rvv" label={tr('Worth (₹)')}><Input id="lp-rvv" type="number" min="0" value={f.redeemValue} onChange={(e) => set('redeemValue', e.target.value)} /></Field>
             </div>
             <Field id="lp-pct" label={tr('Most of a bill points can pay for (%)')} hint={tr('Leave empty for no limit.')}><Input id="lp-pct" type="number" min="1" max="100" value={f.maxPct} onChange={(e) => set('maxPct', e.target.value)} /></Field>
+            {salon && <div><p className="mb-1.5 text-sm font-medium text-ink-700">{tr('Earning on each kind of sale (% of the rate above)')}</p>
+              <div className="grid grid-cols-2 gap-3">{SALE_KINDS.map(([k, label]) => (
+                <Field key={k} id={`lp-k-${k}`} label={tr(label)}><Input id={`lp-k-${k}`} type="number" min="0" max="1000" value={f.kinds[k]} onChange={(e) => setF((x) => ({ ...x, kinds: { ...x.kinds, [k]: e.target.value } }))} /></Field>))}</div>
+              <p className="mt-1 text-small text-ink-500">{tr('100 earns the normal rate, 0 earns nothing. Gift cards never earn.')}</p></div>}
             <Field id="lp-min2" label={tr('Smallest bill that counts (₹)')}><Input id="lp-min2" type="number" min="0" value={f.minBill} onChange={(e) => set('minBill', e.target.value)} /></Field>
             {expiryField}
           </>))}

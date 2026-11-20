@@ -601,7 +601,13 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
   }
   if (rewardClaim) await client.query(`UPDATE loyalty_redemptions SET applied_invoice_id = $2, applied_paise = $3 WHERE redemption_id = $1`, [rewardClaim.redemption_id, invoice.invoice_id, rewardCutPaise]);
   // programme memberships (several programmes per business): credit them for this bill. A problem here is skipped, never a failed sale.
-  if (customer) await creditBill(client, { businessId: tenant.businessId, customerId: customer.customer_id, invoiceId: invoice.invoice_id, amountPaise: finalTotalPaise, branchId: tenant.branchId, createdBy: userId });
+  // A salon sends the kind of each line (input.earnKinds, same order as the items) so cards can earn per kind; what each line paid after the bill's discounts is its share of the total.
+  let earnLines = null;
+  if (Array.isArray(input.earnKinds)) {
+    const sum = lines.reduce((s, l) => s + l.line_total_paise, 0);
+    earnLines = lines.map((l, i) => ({ type: input.earnKinds[i]?.type, paise: input.earnKinds[i]?.earnable === false || input.earnKinds[i]?.type === 'GIFT_CARD' || sum <= 0 ? 0 : (l.line_total_paise * finalTotalPaise) / sum }));
+  }
+  if (customer) await creditBill(client, { businessId: tenant.businessId, customerId: customer.customer_id, invoiceId: invoice.invoice_id, amountPaise: finalTotalPaise, branchId: tenant.branchId, createdBy: userId, lines: earnLines, multiplier: Number(input.earnMultiplier) > 0 ? Number(input.earnMultiplier) : 1 });
 
   if (coupon) {
     await client.query(

@@ -27,6 +27,14 @@ const int = (v, name, { min = 0, max = 1e9, required = false } = {}) => {
 };
 const day = (v, name) => { if (!v) return null; if (!/^\d{4}-\d{2}-\d{2}$/.test(String(v)) || Number.isNaN(Date.parse(v))) throw new LoyaltyError(`${name} must look like 2026-01-31`); return String(v); };
 
+/* Earning by kind of sale (a salon: services, products, packages, memberships): each is a percent of the card's normal rate, 100 = normal, 0 = never earns. */
+export const SALE_KINDS = ['SERVICE', 'PRODUCT', 'PACKAGE', 'MEMBERSHIP'];
+const earnByKind = (v) => {
+  const out = {};
+  if (v && typeof v === 'object') for (const k of SALE_KINDS) { const n = int(v[k], `Earning on ${k.toLowerCase()}s (%)`, { min: 0, max: 1000 }); if (n !== null) out[k] = n; }
+  return Object.keys(out).length ? out : null;
+};
+
 /** Checks a programme as typed by the owner and returns the columns to store. */
 const HEX = /^#[0-9a-fA-F]{6}$/;
 export const CARD_ICONS = ['star', 'coffee', 'heart', 'gift', 'scissors', 'utensils', 'car', 'dumbbell', 'crown', 'sparkles', 'smile', 'cake', 'pizza', 'shirt', 'wrench', 'bike'];
@@ -61,7 +69,7 @@ export const programmeFields = (b) => {
     reward_limit_per_member: int(b.reward_limit_per_member, 'Reward limit per member', { min: 1, max: 1e6 }),
     expiry_days: int(b.expiry_days, 'Points expiry (days)', { min: 1, max: 3650 }),
     membership_days: int(b.membership_days, 'Membership length (days)', { min: 1, max: 3650 }),
-    settings: { auto_enrol: b.auto_enrol !== undefined ? b.auto_enrol === true : b.settings?.auto_enrol === true, bill_qr: b.bill_qr !== undefined ? b.bill_qr === true : b.settings?.bill_qr === true, verify_phone: b.verify_phone !== undefined ? b.verify_phone === true : b.settings?.verify_phone === true, max_redeem_pct: int(b.max_redeem_pct !== undefined ? b.max_redeem_pct : b.settings?.max_redeem_pct, 'Most of a bill points can pay for (%)', { min: 1, max: 100 }) },
+    settings: { auto_enrol: b.auto_enrol !== undefined ? b.auto_enrol === true : b.settings?.auto_enrol === true, bill_qr: b.bill_qr !== undefined ? b.bill_qr === true : b.settings?.bill_qr === true, verify_phone: b.verify_phone !== undefined ? b.verify_phone === true : b.settings?.verify_phone === true, max_redeem_pct: int(b.max_redeem_pct !== undefined ? b.max_redeem_pct : b.settings?.max_redeem_pct, 'Most of a bill points can pay for (%)', { min: 1, max: 100 }), earn_by_kind: earnByKind(b.earn_by_kind !== undefined ? b.earn_by_kind : b.settings?.earn_by_kind) },
     card: cardFields(b.card),
     branch_ids: Array.isArray(b.branch_ids) && b.branch_ids.length ? b.branch_ids.map((x) => int(x, 'Outlet', { min: 1, required: true })) : null
   };
@@ -429,7 +437,7 @@ const safely = async (db, name, fn) => {
 };
 
 /** After a bill is saved: joins the customer to any open programme that enrols automatically, then credits every programme they are in. Never throws. */
-export const creditBill = async (db, { businessId, customerId, invoiceId, amountPaise, branchId = null, createdBy = null }) => {
+export const creditBill = async (db, { businessId, customerId, invoiceId, amountPaise, branchId = null, createdBy = null, lines = null, multiplier = 1 }) => {
   if (!customerId || !(Number(amountPaise) >= 0)) return [];
   const programmes = (await db.query(`SELECT * FROM loyalty_programmes WHERE business_id = $1 AND is_active`, [businessId])).rows;
   const out = [];
@@ -439,7 +447,9 @@ export const creditBill = async (db, { businessId, customerId, invoiceId, amount
       let m = (await db.query(`SELECT * FROM loyalty_memberships WHERE programme_id = $1 AND customer_id = $2`, [p.programme_id, customerId])).rows[0];
       if (!m && p.settings?.auto_enrol) m = (await enrol(db, { businessId, programmeId: p.programme_id, customerId, createdBy })).membership;
       if (!m) return null;
-      return earn(db, { businessId, membershipId: m.membership_id, amountPaise, branchId, invoiceId, createdBy });
+      // `lines` ({type, paise}, paid share of each earning line) lets a salon earn at a different rate per kind of sale; per-bill cards ignore it
+      const amount = lines && !PER_BILL.has(p.kind) ? Math.round(lines.reduce((s, l) => s + (l.paise * (p.settings?.earn_by_kind?.[l.type] ?? 100)) / 100, 0)) : amountPaise;
+      return earn(db, { businessId, membershipId: m.membership_id, amountPaise: amount, branchId, invoiceId, createdBy, multiplier });
     });
     if (result) out.push({ programme_id: p.programme_id, ...result });
   }

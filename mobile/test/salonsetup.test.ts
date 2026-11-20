@@ -2,8 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  SALON_SETUP_TEXTS, audienceText, automationBody, automationDirty, automationProblem, bookingLink, campaignProblem, canSalonSetup, cleanSlug, hoursBody, hoursForm, hoursProblem, inactiveDays, loyaltyBody, loyaltyForm, loyaltyProblem, onlineBody, onlineForm, onlineProblem, outletOffBody, outletOnBody, ownHours,
-  profileBody, profileForm, profileProblem, programText, segmentBody, segmentForm, segmentProblem, summaryNote, taxBody, taxForm, taxProblem, toggleDay, toggleMethod, type Automation, type SalonBranch, type SalonSettings
+  SALON_SETUP_TEXTS, audienceText, automationBody, automationDirty, automationProblem, bookingLink, campaignProblem, canSalonSetup, cleanSlug, hoursBody, hoursForm, hoursProblem, inactiveDays, onlineBody, onlineForm, onlineProblem, outletOffBody, outletOnBody, ownHours,
+  profileBody, profileForm, profileProblem, segmentBody, segmentForm, segmentProblem, taxBody, taxForm, taxProblem, toggleDay, toggleMethod, type Automation, type SalonBranch, type SalonSettings
 } from '../src/lib/salonSetup.ts';
 import { HI } from '../src/lib/i18n.ts';
 import { BN, KN, ML, TA, TE } from '../src/lib/i18n.more.ts';
@@ -46,14 +46,6 @@ test('tax and payments: rates, at least one method, SAC blank is null', () => {
   const f = taxForm(c);
   assert.equal(taxProblem(f), ''); assert.deepEqual(taxBody({ ...f, default_service_sac: ' ' }).default_service_sac, null); assert.equal(taxBody(f).default_service_tax_rate, 18);
   assert.notEqual(taxProblem({ ...f, payment_methods: [] }), ''); assert.notEqual(taxProblem({ ...f, default_product_tax_rate: '101' }), ''); assert.deepEqual(toggleMethod(['CASH'], 'UPI'), ['CASH', 'UPI']); assert.deepEqual(toggleMethod(['CASH', 'UPI'], 'CASH'), ['UPI']);
-});
-
-test('loyalty: rates by kind, expiry of 30 days or more, and the wording', () => {
-  const d = { enabled: true, program: { earn_per_100: 5, point_value: 1, min_redeem_points: 50, max_redeem_pct: 50 }, expiry_days: null, rules: { SERVICE: { earn_per_100: null, is_enabled: true }, PRODUCT: { earn_per_100: 2, is_enabled: false } } };
-  const f = loyaltyForm(d); assert.equal(f.rules.PRODUCT.earn_per_100, '2'); assert.equal(loyaltyProblem(f), '');
-  assert.deepEqual(loyaltyBody({ ...f, expiry_days: '365' }), { expiry_days: 365, rules: { SERVICE: { earn_per_100: null, is_enabled: true }, PRODUCT: { earn_per_100: 2, is_enabled: false } } }); assert.equal(loyaltyBody(f).expiry_days, null);
-  assert.notEqual(loyaltyProblem({ ...f, expiry_days: '10' }), ''); assert.notEqual(loyaltyProblem({ ...f, rules: { SERVICE: { earn_per_100: 'x', is_enabled: true } } }), '');
-  assert.equal(programText(d), 'Loyalty is on: 5 points per ₹100, each worth ₹1; at least 50 points to use, up to 50% of a bill.'); assert.equal(programText({ ...d, enabled: false }), 'Loyalty points are off.'); assert.equal(summaryNote({ days: 30, issued: 0, redeemed: 0, expired: 0, holders: 3, outstanding_points: 100, liability: 1234.5 }), '3 people · worth ₹1,235');
 });
 
 test('client segments and stock alerts: numbers, one to three inactive-day limits, unusual use at 1.2 or more', () => {

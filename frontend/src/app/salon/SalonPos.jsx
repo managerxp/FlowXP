@@ -455,9 +455,10 @@ const SalonPos = () => {
     offer_ids: offerIds.length ? offerIds : undefined,
     skip_auto_offers: skipAuto || undefined,
     redeem_points: usePoints ? Math.floor(num(usePoints)) : undefined,
+    spend_membership_id: usePoints ? (ent.data?.points?.membership_id || undefined) : undefined,
     notes: notes.trim() || undefined,
     appointment_id: appointment || undefined
-  }), [client, cart, invDiscount, offerCode, offerIds, skipAuto, usePoints, notes, appointment]);
+  }), [client, cart, invDiscount, offerCode, offerIds, skipAuto, usePoints, notes, appointment, ent.data]);
 
   const signature = JSON.stringify(buildBody());
   const debounced = useDebounced(signature, 350);

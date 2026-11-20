@@ -6,7 +6,6 @@
  *   Profile         PAN, registration, franchise / owned outlets
  *   Hours & booking opening days and hours (and per outlet), slot length, notice, buffer, cancellation policy
  *   Tax & payments  GST inclusive or on top, default rates, which payment methods the till offers, commission base
- *   Loyalty         points expiry and the earning rate for each kind of sale (the programme itself is under Loyalty)
  *   Clients & stock what "VIP" or "inactive" mean for this salon, and when stock alerts fire
  *   Messages        reminders and greetings that go out by themselves, and one-off campaigns
  */
@@ -255,72 +254,6 @@ const TaxPayments = ({ s }) => {
   );
 };
 
-/* ── loyalty ──────────────────────────────────────────────────────────────── */
-
-const KIND_LABEL = { SERVICE: 'Services', PRODUCT: 'Retail products', PACKAGE: 'Packages', MEMBERSHIP: 'Memberships', GIFT_CARD: 'Gift cards' };
-
-const Loyalty = () => {
-  const tr = useT();
-  const dialog = useDialog();
-  const toast = useToast();
-  const { data, error, loading, reload } = useLoad('/salon/loyalty');
-  const summary = useLoad(data?.enabled !== undefined ? '/salon/loyalty/summary?days=30' : null);
-  const [form, setForm] = useState(null);
-  const [busy, run] = useAction();
-  useEffect(() => { if (data && !form) setForm({ expiry_days: data.expiry_days ?? '', rules: Object.fromEntries(Object.entries(data.rules).map(([k, v]) => [k, { earn_per_100: v.earn_per_100 ?? '', is_enabled: v.is_enabled !== false }])) }); }, [data, form]);
-  if (loading && !data) return <ListState loading />;
-  if (error) return <Alert>{error}</Alert>;
-  if (!form) return null;
-  const setRule = (k, patch) => setForm((f) => ({ ...f, rules: { ...f.rules, [k]: { ...f.rules[k], ...patch } } }));
-  const submit = async (e) => {
-    e.preventDefault();
-    const out = await run(() => api('/salon/loyalty', { method: 'PUT', body: { expiry_days: form.expiry_days === '' ? null : Number(form.expiry_days), rules: Object.fromEntries(Object.entries(form.rules).map(([k, r]) => [k, { earn_per_100: r.earn_per_100 === '' ? null : Number(r.earn_per_100), is_enabled: r.is_enabled }])) } }), 'Loyalty rules saved');
-    if (out) reload();
-  };
-  const expireNow = async () => {
-    if (!(await dialog.confirm({ title: tr('Expire old points now?'), body: tr('Points older than the expiry period are taken off clients’ balances. Running it twice changes nothing more.'), confirmLabel: tr('Expire points') }))) return;
-    try { const r = await api('/salon/loyalty/expire', { method: 'POST' }); toast.success(`${r.points ?? r.expired ?? 0} points expired`); reload(); summary.reload(); } catch (e) { toast.error(e.message); }
-  };
-  const p = data.program;
-  const s = summary.data;
-  return (
-    <div className="space-y-6">
-      <Panel title={tr('The programme')} lead={tr('Points per ₹100, what a point is worth, and the most a bill can be paid with points.')}>
-        {data.enabled && p ? <p className="text-small text-ink-700">Loyalty is <Badge tone="success">{tr('on')}</Badge> — {p.earn_per_100} points per ₹100, each worth ₹{p.point_value}; at least {p.min_redeem_points} points to use, up to {p.max_redeem_pct}% of a bill.</p> : <p className="text-small text-ink-700">Loyalty points are <Badge>{tr('off')}</Badge>.</p>}
-        <Button to="/app/loyalty" variant="secondary" size="sm" className="mt-3">{data.enabled ? tr('Change the programme and tiers') : tr('Switch loyalty on')}</Button>
-      </Panel>
-      <form onSubmit={submit} className="space-y-6">
-        <Panel title={tr('Earning rates by kind of sale')} lead={tr('Leave the rate empty to use the programme’s rate. Turn a kind off and it earns nothing. Gift cards never earn.')}>
-          <ul className="divide-y divide-line">
-            {Object.keys(form.rules).filter((k) => k !== 'GIFT_CARD').map((k) => (
-              <li key={k} className="flex flex-wrap items-center gap-4 py-3">
-                <span className="min-w-32 flex-1 text-small font-medium text-ink-900">{KIND_LABEL[k] || k}</span>
-                <div className="w-40"><NumberField id={`lr-${k}`} label={tr('Points per ₹100')} value={form.rules[k].earn_per_100} onChange={(v) => setRule(k, { earn_per_100: v })} disabled={!form.rules[k].is_enabled} /></div>
-                <div className="pt-6"><Toggle id={`le-${k}`} checked={form.rules[k].is_enabled} onChange={(v) => setRule(k, { is_enabled: v })} label={tr('Earns points')} /></div>
-              </li>
-            ))}
-          </ul>
-        </Panel>
-        <Panel title={tr('Expiry')} lead={tr('How long points last. Empty means they never expire.')}>
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="w-56"><NumberField id="lx-days" label={tr('Points expire after')} suffix="days" min={30} step={1} value={form.expiry_days} onChange={(v) => setForm((f) => ({ ...f, expiry_days: v }))} /></div>
-            {data.expiry_days && <Button type="button" variant="secondary" onClick={expireNow}>{tr('Expire old points now')}</Button>}
-          </div>
-          <p className="mt-2 text-caption text-ink-500">{tr('Points expire on their own once a day. Clients are warned first if the Loyalty points expiry message is on under Messages.')}</p>
-        </Panel>
-        <SaveBar busy={busy} />
-      </form>
-      {s && (
-        <Panel title={tr('Last 30 days')}>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatCard label={tr('Issued')} value={s.issued} /><StatCard label={tr('Used')} value={s.redeemed} /><StatCard label={tr('Expired')} value={s.expired} /><StatCard label={tr('Owed to clients')} value={`${s.outstanding_points}`} note={`${s.holders} people · worth ₹${Math.round(s.liability).toLocaleString('en-IN')}`} />
-          </div>
-        </Panel>
-      )}
-    </div>
-  );
-};
-
 /* ── clients & stock ──────────────────────────────────────────────────────── */
 
 const Segments = ({ s }) => {
@@ -441,7 +374,7 @@ const Messages = () => {
 
 const TABS = [
   { key: 'profile', label: T('Profile') }, { key: 'hours', label: T('Hours & booking') }, { key: 'tax', label: T('Tax & payments') },
-  { key: 'loyalty', label: T('Loyalty') }, { key: 'clients', label: T('Clients & stock') }, { key: 'messages', label: T('Messages') }
+  { key: 'clients', label: T('Clients & stock') }, { key: 'messages', label: T('Messages') }
 ];
 
 const SalonSettings = () => {
@@ -449,12 +382,11 @@ const SalonSettings = () => {
   const { hasFeature } = useAuth();
   const s = useSettings();
   const [tab, setTab] = useState('profile');
-  const tabs = TABS.filter((t) => t.key !== 'loyalty' || hasFeature('loyalty'));
   return (
     <div>
       <PageHeader title={tr('Salon settings')} lead={tr('How your salon works. Every rule here is yours to change.')} />
-      <Tabs value={tab} onChange={setTab} tabs={tabs} />
-      {tab === 'loyalty' ? <Loyalty /> : tab === 'messages' ? <Messages /> : (
+      <Tabs value={tab} onChange={setTab} tabs={TABS} />
+      {tab === 'messages' ? <Messages /> : (
         <>
           <ListState loading={s.loading && !s.data} error={s.error} />
           {s.data && tab === 'profile' && <Profile s={s} />}

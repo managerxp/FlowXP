@@ -83,23 +83,6 @@ export const taxProblem = (f: TaxForm): string => {
 export const taxBody = (f: TaxForm): Record<string, unknown> => ({ ...f, default_service_tax_rate: Number(f.default_service_tax_rate), default_product_tax_rate: Number(f.default_product_tax_rate), default_service_sac: f.default_service_sac.trim() || null });
 export const toggleMethod = (list: string[], m: string): string[] => (list.includes(m) ? list.filter((x) => x !== m) : [...list, m]);
 
-/* ── loyalty ─────────────────────────────────────────────────────────────── */
-export type LoyaltyData = { enabled: boolean; program: { earn_per_100: number; point_value: number; min_redeem_points: number; max_redeem_pct: number } | null; expiry_days: number | null; rules: Record<string, { earn_per_100: number | null; is_enabled: boolean }> };
-export type LoyaltySummary = { days: number; issued: number; redeemed: number; expired: number; holders: number; outstanding_points: number; liability: number };
-export type LoyaltyForm = { expiry_days: string; rules: Record<string, { earn_per_100: string; is_enabled: boolean }> };
-export const loyaltyForm = (d: LoyaltyData): LoyaltyForm => ({ expiry_days: d.expiry_days == null ? '' : String(d.expiry_days), rules: Object.fromEntries(Object.entries(d.rules).map(([k, v]) => [k, { earn_per_100: v.earn_per_100 == null ? '' : String(v.earn_per_100), is_enabled: v.is_enabled !== false }])) });
-export const loyaltyProblem = (f: LoyaltyForm): string => {
-  if (f.expiry_days.trim() !== '' && (!whole(f.expiry_days) || Number(f.expiry_days) < 30)) return 'Points last at least 30 days, or leave empty so they never expire';
-  for (const r of Object.values(f.rules)) if (r.earn_per_100.trim() !== '' && (!num(r.earn_per_100) || Number(r.earn_per_100) < 0)) return 'Points per ₹100 is a number';
-  return '';
-};
-export const loyaltyBody = (f: LoyaltyForm): Record<string, unknown> => ({
-  expiry_days: f.expiry_days.trim() === '' ? null : Number(f.expiry_days),
-  rules: Object.fromEntries(Object.entries(f.rules).map(([k, r]) => [k, { earn_per_100: r.earn_per_100.trim() === '' ? null : Number(r.earn_per_100), is_enabled: r.is_enabled }]))
-});
-export const programText = (d: LoyaltyData): string => (d.enabled && d.program ? t('Loyalty is on: {earn} points per ₹100, each worth ₹{value}; at least {min} points to use, up to {max}% of a bill.', { earn: d.program.earn_per_100, value: d.program.point_value, min: d.program.min_redeem_points, max: d.program.max_redeem_pct }) : t('Loyalty points are off.'));
-export const summaryNote = (s: LoyaltySummary): string => t('{n} people · worth ₹{value}', { n: s.holders, value: Math.round(s.liability).toLocaleString('en-IN') });
-
 /* ── clients and stock ───────────────────────────────────────────────────── */
 export type SegmentForm = { new_days: string; vip_spend: string; vip_visits: string; high_spender: string; frequent_visits_90d: string; inactive_days: string; expiry_alert_days: string; consumption_alert_factor: string };
 export const segmentForm = (c: SalonSettings): SegmentForm => { const r = c.segment_rules; return { new_days: String(r.new_days), vip_spend: String(r.vip_spend), vip_visits: String(r.vip_visits), high_spender: String(r.high_spender), frequent_visits_90d: String(r.frequent_visits_90d), inactive_days: r.inactive_days.join(', '), expiry_alert_days: String(c.expiry_alert_days), consumption_alert_factor: String(c.consumption_alert_factor) }; };

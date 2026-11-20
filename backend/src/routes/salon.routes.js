@@ -17,7 +17,6 @@ import appointments from '../controllers/salonAppointments.controller.js';
 import clients from '../controllers/salonClients.controller.js';
 import pos from '../controllers/salonPos.controller.js';
 import plans from '../controllers/salonPlans.controller.js';
-import loyalty from '../controllers/salonLoyalty.controller.js';
 import commission from '../controllers/salonCommission.controller.js';
 import inventory from '../controllers/salonInventory.controller.js';
 import reports from '../controllers/salonReports.controller.js';
@@ -120,12 +119,6 @@ router.post('/gift-cards/:id/cancel', ...write, can('refunds'), feature('salon_g
 router.get('/offers', ...read, any('products', 'billing'), plans.listOffers);
 router.post('/offers', ...write, can('products'), plans.createOffer);
 router.put('/offers/:id', ...write, can('products'), plans.updateOffer);
-
-/* ── loyalty ──────────────────────────────────────────────────────────────── */
-router.get('/loyalty', ...read, any('settings', 'billing'), feature('loyalty'), loyalty.get);
-router.put('/loyalty', ...write, can('settings'), feature('loyalty'), loyalty.put);
-router.get('/loyalty/summary', ...read, can('reports'), feature('loyalty'), loyalty.summary);
-router.post('/loyalty/expire', ...write, can('settings'), feature('loyalty'), loyalty.expireNow);
 
 /* ── commission ───────────────────────────────────────────────────────────── */
 const comm = [can('staff_commission'), feature('salon_commission')];

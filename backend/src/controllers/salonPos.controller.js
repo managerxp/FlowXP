@@ -12,6 +12,7 @@ import { businessToday } from '../utils/dates.js';
 import { toRupees } from '../utils/money.js';
 import { getPoints } from '../modules/points.js';
 import { pointsCard } from './points.controller.js';
+import { spendCard } from '../modules/loyaltyEngine.js';
 import { createSalonInvoice } from '../modules/salon/pos.js';
 import { discountPolicy } from '../modules/approvals.js';
 import { activeMembership, freeServiceBalance } from '../modules/salon/entitlements.js';
@@ -116,7 +117,7 @@ const entitlements = async (req, res) => {
     .filter((p) => p.items?.length);
   const cards = (await pool.query(
     `SELECT card_id, code, balance_paise, expires_on FROM salon_gift_cards WHERE business_id = $1 AND customer_id = $2 AND status = 'ACTIVE' AND balance_paise > 0 AND (expires_on IS NULL OR expires_on >= $3::date)`, [businessId, customerId, today])).rows;
-  const points = await pointsCard(pool, businessId, customerId);
+  const points = (await pointsCard(pool, businessId, customerId)) ?? (await spendCard(pool, businessId, customerId));
 
   // offers the client could use today, with the reason for any they cannot (the server re-checks at billing)
   const ctx = { ...(await clientContext(pool, businessId, customerId, today)), today };
