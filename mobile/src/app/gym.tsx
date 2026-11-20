@@ -10,7 +10,8 @@ import { setCaptured, useCaptured } from '../lib/capture.ts';
 import { SearchBox } from '../lib/SearchBox.tsx';
 import { STATE_LABEL, addRecent, deniedTotal, manualBody, memberSub, membersPath, needsConfirm, reasonOf, recentOf, scanBody, type AccessResult, type GymDash, type Member, type Recent } from '../lib/gym.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Empty, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
+import { Button, Empty, Failed, Group, Line, Loading, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
+import { display } from '../lib/theme.ts';
 
 const TONE = { get ok() { return color.ok; }, get warn() { return color.warn; }, get bad() { return color.danger; }, get soft() { return color.soft; } };
 
@@ -84,8 +85,8 @@ export default function Gym() {
           {busy ? <Loading what="Checking" /> : null}
           {problem ? <Text accessibilityRole="alert" style={{ color: color.danger, padding: 16, fontWeight: '600' }}>{problem}</Text> : null}
           {r && info ? (
-            <View accessibilityLiveRegion="polite" style={[s.card, { margin: 16, gap: 4, borderWidth: 2, borderColor: TONE[info.tone] }]}>
-              <Text style={{ fontSize: 22, fontWeight: '700', color: TONE[info.tone] }}>{r.decision === 'APPROVED' ? (r.action === 'OUT' ? 'Checked out' : info.title) : info.title}</Text>
+            <View accessibilityLiveRegion="polite" style={[s.card, { margin: 16, gap: 6, padding: 18, borderWidth: 2, borderColor: TONE[info.tone], borderRadius: 24, borderCurve: 'continuous' }]}>
+              <Text style={{ fontSize: 28, fontFamily: display.bold, letterSpacing: -0.4, color: TONE[info.tone] }}>{r.decision === 'APPROVED' ? (r.action === 'OUT' ? 'Checked out' : info.title) : info.title}</Text>
               {r.member ? <Text style={{ fontSize: 18, color: color.ink, fontWeight: '600' }}>{r.member.name}<Text style={{ color: color.soft, fontWeight: '400' }}>{`  ${r.member.member_code}`}</Text></Text> : null}
               {r.membership ? <Soft>{`${r.membership.plan_name} · ${r.membership.days_left >= 0 ? `${r.membership.days_left} day${r.membership.days_left === 1 ? '' : 's'} left` : 'ended'}`}</Soft> : null}
               {r.in_grace ? <Text style={{ color: color.warn, fontWeight: '600' }}>The membership has run out but is inside its grace days.</Text> : null}
@@ -100,12 +101,12 @@ export default function Gym() {
           {found.busy && !found.data ? <Loading /> : null}
           {found.error && !found.data ? <Failed message={found.error} onRetry={() => { void found.refresh(); }} /> : null}
           {found.data && found.data.length === 0 ? <Empty>No member matches that.</Empty> : null}
-          {(found.data ?? []).map((m) => <Line key={m.member_id} left={m.name} sub={memberSub(m)} right={STATE_LABEL[m.state] ?? m.state} onPress={() => letIn(m)} />)}
+          {found.data?.length ? <Group>{found.data.map((m) => <Line key={m.member_id} left={m.name} sub={memberSub(m)} right={STATE_LABEL[m.state] ?? m.state} onPress={() => letIn(m)} />)}</Group> : null}
 
           {recent.length ? (
             <>
               <SectionTitle>Just now</SectionTitle>
-              {recent.map((x, i) => <Line key={`${x.at}${i}`} left={x.who} right={x.what} />)}
+              <Group>{recent.map((x, i) => <Line key={`${x.at}${i}`} left={x.who} right={x.what} />)}</Group>
             </>
           ) : null}
         </ScrollView>

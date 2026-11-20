@@ -15,6 +15,7 @@ import { Page } from './responsive.tsx';
 import PayHowPicker from './PayHowPicker.tsx';
 import { t } from './i18n.ts';
 import { payPlan, type PayHow } from './billing.ts';
+import { display } from './theme.ts';
 import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from './ui.tsx';
 
 type Quote = { subtotal: number; discount: number; tax: number; round_off: number; total: number; offers: { name: string }[]; membership_discount_pct: number };
@@ -213,7 +214,7 @@ export function SalonTill() {
                 <>
                   <Soft>{`Items ${rupees(toPaise(quote.subtotal))}${quote.discount > 0 ? ` · discount ${rupees(toPaise(quote.discount))}` : ''} · GST ${rupees(toPaise(quote.tax))}`}</Soft>
                   {quote.offers.length ? <Soft>{`Offers applied: ${quote.offers.map((o) => o.name).join(', ')}`}</Soft> : null}
-                  <Text accessibilityLiveRegion="polite" style={{ fontSize: 28, fontWeight: '800', color: color.ink }}>{rupees(toPaise(quote.total))}</Text>
+                  <Text accessibilityLiveRegion="polite" style={{ fontSize: 28, fontFamily: display.bold, letterSpacing: -0.4, fontVariant: ['tabular-nums'], color: color.ink }}>{rupees(toPaise(quote.total))}</Text>
                 </>
               ) : <Soft>{quoteError || bad || `About ${rupees(roughPaise(lines))}. Working out the exact total…`}</Soft>}
               {!lines.some((l) => l.type === 'GIFT_CARD') ? (
