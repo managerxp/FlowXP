@@ -110,7 +110,7 @@ export const loadMembership = async (db, where, params) => (await db.query(
 
 /* ── keeping a saved pass current ─────────────────────────────────────── */
 let token = null;
-const accessToken = async (a) => {
+export const accessToken = async (a) => {
   if (token && token.until > Date.now() + 60000) return token.value;
   const now = Math.floor(Date.now() / 1000);
   const assertion = sign({ iss: a.email, scope: 'https://www.googleapis.com/auth/wallet_object.issuer', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 }, a.privateKey);
