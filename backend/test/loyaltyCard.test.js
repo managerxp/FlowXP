@@ -70,3 +70,13 @@ test('a switched-off programme cannot be joined', { skip }, async () => {
   const r = await pcall(pub.join, { params: { code: prog.join_code }, body: { name: 'Late', phone: '9000000001' } });
   assert.equal(r.code, 400);
 });
+
+test('a number saved with a country code and spaces is recognised: joining makes a card for that customer, not a second customer', { skip }, async () => {
+  await pool.query(`UPDATE loyalty_programmes SET is_active = TRUE WHERE programme_id = $1`, [prog.programme_id]);   // the test above switched it off
+  const c = (await pool.query(`INSERT INTO customers (business_id, name, phone) VALUES ($1,'Old customer','+91 91234-56789') RETURNING customer_id`, [T.businessId])).rows[0].customer_id;
+  const joined = await pcall(pub.join, { params: { code: prog.join_code }, body: { name: 'Typed again', phone: '9123456789' } });
+  assert.equal(joined.code, 201, JSON.stringify(joined.body));
+  const rows = (await pool.query(`SELECT customer_id FROM customers WHERE business_id = $1 AND right(regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g'), 10) = '9123456789'`, [T.businessId])).rows;
+  assert.deepEqual(rows.map((r) => r.customer_id), [c]);
+  assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM loyalty_memberships WHERE customer_id = $1`, [c])).rows[0].n, 1);
+});

@@ -5326,5 +5326,16 @@
   "{{n}} more stamps": "আরও {{n}}টি স্ট্যাম্প",
   "{{n}} more points": "আরও {{n}} পয়েন্ট",
   "Reward: {{name}}": "পুরস্কার: {{name}}",
-  "Points expired": "পয়েন্টের মেয়াদ শেষ"
+  "Points expired": "পয়েন্টের মেয়াদ শেষ",
+  "Enter your name and 10 digit mobile number": "আপনার নাম ও ১০ সংখ্যার মোবাইল নম্বর দিন",
+  "This card is not available right now": "এই কার্ড এখন পাওয়া যাচ্ছে না",
+  "This programme is switched off": "এই প্রোগ্রাম বন্ধ আছে",
+  "This programme has not started yet": "এই প্রোগ্রাম এখনও শুরু হয়নি",
+  "This programme has ended": "এই প্রোগ্রাম শেষ হয়ে গেছে",
+  "Too many sign-ups from here. Try again later.": "এখান থেকে অনেক বেশি সাইন-আপ হয়েছে। পরে আবার চেষ্টা করুন।",
+  "Too many requests from here.": "এখান থেকে অনেক বেশি অনুরোধ হয়েছে।",
+  "Too many attempts from here. Try again in a few minutes.": "এখান থেকে অনেক বেশি চেষ্টা হয়েছে। কয়েক মিনিট পরে আবার চেষ্টা করুন।",
+  "Could not make a membership number, try again": "সদস্য নম্বর বানানো গেল না, আবার চেষ্টা করুন",
+  "You are offline, or FlowXP cannot be reached. Try again in a moment.": "আপনি অফলাইনে আছেন, অথবা FlowXP-তে পৌঁছানো যাচ্ছে না। একটু পরে আবার চেষ্টা করুন।",
+  "Something went wrong": "কিছু একটা ভুল হয়েছে"
 }

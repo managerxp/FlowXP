@@ -10,16 +10,22 @@ import { APP_HEADER } from '../lib/api.js';
 import { intlTag } from '../i18n/config.js';
 import LanguageSelect from '../i18n/LanguageSelect.jsx';
 import LoyaltyCardFace from '../components/LoyaltyCardFace.jsx';
-import { useT } from '../i18n/useT.js';
+import { T, useT } from '../i18n/useT.js';
 
 const call = async (path, { method = 'GET', body } = {}) => {
   let res;
   try { res = await fetch(`/api/public/card${path}`, { method, headers: { ...APP_HEADER, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined }); }
-  catch { throw new Error("You're offline, or FlowXP can't be reached. Try again in a moment."); }
+  catch { throw new Error(T('You are offline, or FlowXP cannot be reached. Try again in a moment.')); }
   const payload = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(payload.message || 'Something went wrong'), { status: res.status });
+  if (!res.ok) throw Object.assign(new Error(payload.message || T('Something went wrong')), { status: res.status });
   return payload.data;
 };
+/* What the server can say to a customer, in English. The page shows it through tr(), so each reads in the customer's language (an unknown message just stays as it is). */
+const SERVER_TEXTS = [
+  T('Enter your name and 10 digit mobile number'), T('This card is not available right now'), T('This programme is switched off'), T('This programme has not started yet'), T('This programme has ended'),
+  T('Too many sign-ups from here. Try again later.'), T('Too many requests from here.'), T('Too many attempts from here. Try again in a few minutes.'), T('Not allowed'),
+  T('Could not make a membership number, try again')
+];
 const KEY = (code) => `flowxp_card_${code}`;
 const day = (iso, lang) => new Date(iso).toLocaleDateString(intlTag(lang || 'en'), { day: 'numeric', month: 'short' });
 
@@ -49,7 +55,7 @@ const Join = ({ code }) => {
       if (r.already) { setAlready(true); return; }
       try { localStorage.setItem(KEY(code), r.token); } catch { /* the link still works */ }
       navigate(`/card/${r.token}`, { replace: true });
-    } catch (x) { setErr(x.message); } finally { setBusy(false); }
+    } catch (x) { setErr(tr(x.message)); } finally { setBusy(false); }
   };
   return (
     <Shell>
@@ -76,7 +82,7 @@ const Card = ({ token }) => {
   const tr = useT();
   const { i18n } = useTranslation();
   const [d, setD] = useState(null); const [gone, setGone] = useState(false); const [walletErr, setWalletErr] = useState('');
-  const addToWallet = () => { setWalletErr(''); call(`/${token}/google-wallet`).then((r) => { window.location.href = r.url; }).catch((e) => setWalletErr(e.message)); };
+  const addToWallet = () => { setWalletErr(''); call(`/${token}/google-wallet`).then((r) => { window.location.href = r.url; }).catch((e) => setWalletErr(tr(e.message))); };
   useEffect(() => { call(`/${token}`).then(setD).catch(() => setGone(true)); }, [token]);
   if (gone) return <Notice>{tr('This card link is not valid. Ask the staff for a new one.')}</Notice>;
   if (!d) return <Notice>{tr('Loading…')}</Notice>;

@@ -5326,5 +5326,16 @@
   "{{n}} more stamps": "ఇంకా {{n}} స్టాంప్‌లు",
   "{{n}} more points": "ఇంకా {{n}} పాయింట్లు",
   "Reward: {{name}}": "బహుమతి: {{name}}",
-  "Points expired": "పాయింట్ల గడువు ముగిసింది"
+  "Points expired": "పాయింట్ల గడువు ముగిసింది",
+  "Enter your name and 10 digit mobile number": "మీ పేరు మరియు 10 అంకెల మొబైల్ నంబర్ నమోదు చేయండి",
+  "This card is not available right now": "ఈ కార్డు ప్రస్తుతం అందుబాటులో లేదు",
+  "This programme is switched off": "ఈ ప్రోగ్రామ్ ఆఫ్‌లో ఉంది",
+  "This programme has not started yet": "ఈ ప్రోగ్రామ్ ఇంకా ప్రారంభం కాలేదు",
+  "This programme has ended": "ఈ ప్రోగ్రామ్ ముగిసింది",
+  "Too many sign-ups from here. Try again later.": "ఇక్కడి నుండి చాలా ఎక్కువ సైన్-అప్‌లు. తర్వాత మళ్ళీ ప్రయత్నించండి.",
+  "Too many requests from here.": "ఇక్కడి నుండి చాలా ఎక్కువ అభ్యర్థనలు.",
+  "Too many attempts from here. Try again in a few minutes.": "ఇక్కడి నుండి చాలా ఎక్కువ ప్రయత్నాలు. కొన్ని నిమిషాల తర్వాత మళ్ళీ ప్రయత్నించండి.",
+  "Could not make a membership number, try again": "సభ్యత్వ నంబర్ తయారు చేయలేకపోయాం, మళ్ళీ ప్రయత్నించండి",
+  "You are offline, or FlowXP cannot be reached. Try again in a moment.": "మీరు ఆఫ్‌లైన్‌లో ఉన్నారు, లేదా FlowXPని చేరుకోలేకపోతున్నాం. కొద్దిసేపట్లో మళ్ళీ ప్రయత్నించండి.",
+  "Something went wrong": "ఏదో తప్పు జరిగింది"
 }

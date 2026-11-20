@@ -5326,5 +5326,16 @@
   "{{n}} more stamps": "{{n}} സ്റ്റാമ്പുകൾ കൂടി",
   "{{n}} more points": "{{n}} പോയിന്റ് കൂടി",
   "Reward: {{name}}": "സമ്മാനം: {{name}}",
-  "Points expired": "പോയിന്റ് കാലഹരണപ്പെട്ടു"
+  "Points expired": "പോയിന്റ് കാലഹരണപ്പെട്ടു",
+  "Enter your name and 10 digit mobile number": "നിങ്ങളുടെ പേരും 10 അക്ക മൊബൈൽ നമ്പറും നൽകുക",
+  "This card is not available right now": "ഈ കാർഡ് ഇപ്പോൾ ലഭ്യമല്ല",
+  "This programme is switched off": "ഈ പ്രോഗ്രാം ഓഫ് ചെയ്തിരിക്കുന്നു",
+  "This programme has not started yet": "ഈ പ്രോഗ്രാം ഇതുവരെ തുടങ്ങിയിട്ടില്ല",
+  "This programme has ended": "ഈ പ്രോഗ്രാം അവസാനിച്ചു",
+  "Too many sign-ups from here. Try again later.": "ഇവിടെ നിന്ന് വളരെയധികം സൈൻ-അപ്പുകൾ. പിന്നീട് വീണ്ടും ശ്രമിക്കുക.",
+  "Too many requests from here.": "ഇവിടെ നിന്ന് വളരെയധികം അഭ്യർത്ഥനകൾ.",
+  "Too many attempts from here. Try again in a few minutes.": "ഇവിടെ നിന്ന് വളരെയധികം ശ്രമങ്ങൾ. ഏതാനും മിനിറ്റിന് ശേഷം വീണ്ടും ശ്രമിക്കുക.",
+  "Could not make a membership number, try again": "അംഗത്വ നമ്പർ ഉണ്ടാക്കാനായില്ല, വീണ്ടും ശ്രമിക്കുക",
+  "You are offline, or FlowXP cannot be reached. Try again in a moment.": "നിങ്ങൾ ഓഫ്‌ലൈനാണ്, അല്ലെങ്കിൽ FlowXP-ൽ എത്താനാകുന്നില്ല. അൽപ്പം കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കുക.",
+  "Something went wrong": "എന്തോ കുഴപ്പം സംഭവിച്ചു"
 }

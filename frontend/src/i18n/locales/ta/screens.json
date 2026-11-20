@@ -5326,5 +5326,16 @@
   "{{n}} more stamps": "{{n}} ஸ்டாம்புகள் மேலும்",
   "{{n}} more points": "{{n}} புள்ளிகள் மேலும்",
   "Reward: {{name}}": "பரிசு: {{name}}",
-  "Points expired": "புள்ளிகள் காலாவதியாயின"
+  "Points expired": "புள்ளிகள் காலாவதியாயின",
+  "Enter your name and 10 digit mobile number": "உங்கள் பெயரையும் 10 இலக்க மொபைல் எண்ணையும் உள்ளிடுங்கள்",
+  "This card is not available right now": "இந்த அட்டை இப்போது கிடைக்கவில்லை",
+  "This programme is switched off": "இந்தத் திட்டம் அணைக்கப்பட்டுள்ளது",
+  "This programme has not started yet": "இந்தத் திட்டம் இன்னும் தொடங்கவில்லை",
+  "This programme has ended": "இந்தத் திட்டம் முடிந்துவிட்டது",
+  "Too many sign-ups from here. Try again later.": "இங்கிருந்து அதிகமான பதிவுகள். பிறகு மீண்டும் முயலுங்கள்.",
+  "Too many requests from here.": "இங்கிருந்து அதிகமான கோரிக்கைகள்.",
+  "Too many attempts from here. Try again in a few minutes.": "இங்கிருந்து அதிகமான முயற்சிகள். சில நிமிடங்களுக்குப் பிறகு மீண்டும் முயலுங்கள்.",
+  "Could not make a membership number, try again": "உறுப்பினர் எண்ணை உருவாக்க முடியவில்லை, மீண்டும் முயலுங்கள்",
+  "You are offline, or FlowXP cannot be reached. Try again in a moment.": "நீங்கள் ஆஃப்லைனில் உள்ளீர்கள், அல்லது FlowXP ஐ அடைய முடியவில்லை. சிறிது நேரத்தில் மீண்டும் முயலுங்கள்.",
+  "Something went wrong": "ஏதோ தவறு நடந்துவிட்டது"
 }

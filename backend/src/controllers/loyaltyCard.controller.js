@@ -53,7 +53,7 @@ export const join = wrap(async (req, res) => {
   const phone = String(req.body?.phone || '').replace(/\D/g, '').slice(-10);
   if (!name || phone.length !== 10) throw new engine.LoyaltyError('Enter your name and 10 digit mobile number');
   const out = await withTransaction(async (c) => {
-    const found = (await c.query(`SELECT customer_id FROM customers WHERE business_id = $1 AND right(regexp_replace(COALESCE(phone, ''), '\D', '', 'g'), 10) = $2 ORDER BY customer_id LIMIT 1`, [r.business_id, phone])).rows[0];
+    const found = (await c.query(`SELECT customer_id FROM customers WHERE business_id = $1 AND right(regexp_replace(COALESCE(phone, ''), '\\D', '', 'g'), 10) = $2 ORDER BY customer_id LIMIT 1`, [r.business_id, phone])).rows[0];
     const customerId = found ? found.customer_id : (await c.query(`INSERT INTO customers (business_id, name, phone) VALUES ($1,$2,$3) RETURNING customer_id`, [r.business_id, name, phone])).rows[0].customer_id;
     return engine.enrol(c, { businessId: r.business_id, programmeId: r.programme_id, customerId, consentMarketing: req.body?.consent_marketing === true });
   });

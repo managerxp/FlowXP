@@ -5326,5 +5326,16 @@
   "{{n}} more stamps": "{{n}} और स्टैम्प",
   "{{n}} more points": "{{n}} और पॉइंट",
   "Reward: {{name}}": "इनाम: {{name}}",
-  "Points expired": "पॉइंट की अवधि खत्म"
+  "Points expired": "पॉइंट की अवधि खत्म",
+  "Enter your name and 10 digit mobile number": "अपना नाम और 10 अंकों का मोबाइल नंबर डालें",
+  "This card is not available right now": "यह कार्ड अभी उपलब्ध नहीं है",
+  "This programme is switched off": "यह प्रोग्राम बंद है",
+  "This programme has not started yet": "यह प्रोग्राम अभी शुरू नहीं हुआ है",
+  "This programme has ended": "यह प्रोग्राम खत्म हो चुका है",
+  "Too many sign-ups from here. Try again later.": "यहाँ से बहुत ज़्यादा साइन-अप हुए हैं। बाद में फिर कोशिश करें।",
+  "Too many requests from here.": "यहाँ से बहुत ज़्यादा अनुरोध हुए हैं।",
+  "Too many attempts from here. Try again in a few minutes.": "यहाँ से बहुत ज़्यादा कोशिशें हुई हैं। कुछ मिनट बाद फिर कोशिश करें।",
+  "Could not make a membership number, try again": "सदस्यता नंबर नहीं बन सका, फिर कोशिश करें",
+  "You are offline, or FlowXP cannot be reached. Try again in a moment.": "आप ऑफ़लाइन हैं, या FlowXP तक पहुँचा नहीं जा सका। थोड़ी देर में फिर कोशिश करें।",
+  "Something went wrong": "कुछ गलत हो गया"
 }

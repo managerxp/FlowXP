@@ -5326,5 +5326,16 @@
   "{{n}} more stamps": "{{n}} more stamps",
   "{{n}} more points": "{{n}} more points",
   "Reward: {{name}}": "Reward: {{name}}",
-  "Points expired": "Points expired"
+  "Points expired": "Points expired",
+  "Enter your name and 10 digit mobile number": "Enter your name and 10 digit mobile number",
+  "This card is not available right now": "This card is not available right now",
+  "This programme is switched off": "This programme is switched off",
+  "This programme has not started yet": "This programme has not started yet",
+  "This programme has ended": "This programme has ended",
+  "Too many sign-ups from here. Try again later.": "Too many sign-ups from here. Try again later.",
+  "Too many requests from here.": "Too many requests from here.",
+  "Too many attempts from here. Try again in a few minutes.": "Too many attempts from here. Try again in a few minutes.",
+  "Could not make a membership number, try again": "Could not make a membership number, try again",
+  "You are offline, or FlowXP cannot be reached. Try again in a moment.": "You are offline, or FlowXP cannot be reached. Try again in a moment.",
+  "Something went wrong": "Something went wrong"
 }
