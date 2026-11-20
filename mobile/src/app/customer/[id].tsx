@@ -15,7 +15,7 @@ import { rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
 import { canRemind, reminderSentText, type BillSent } from '../../lib/messaging.ts';
 import { remindOnWhatsApp, sendStatementOnWhatsApp } from '../../lib/share.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, SavedNote, SectionTitle, Soft, Stat, Title, color, s } from '../../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Initials, Line, SavedNote, SectionTitle, Soft, Stat, Title, color, s } from '../../lib/ui.tsx';
 
 const money = (r: number) => rupees(toPaise(r));
 type Bill = { invoice_id: number; invoice_number: string; invoice_date: string; total: number; balance_due: number; payment_status: string; status: string };
@@ -59,6 +59,7 @@ export default function CustomerDetail() {
       <Page>
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
           <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+            {c ? <Initials name={c.name} size={56} /> : null}
             <View style={{ flex: 1 }}><Title>{c?.name ?? 'Customer'}</Title>{c?.phone ? <Soft>{c.phone}</Soft> : null}</View>
             <Button title="Back" kind="quiet" onPress={() => goBack()} />
           </View>
@@ -92,7 +93,7 @@ export default function CustomerDetail() {
           {done ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok, fontWeight: '600', paddingHorizontal: 16, paddingBottom: 6 }}>{done}</Text> : null}
           {owing.map((b) => <Line key={`due-${b.invoice_id}`} icon="cash-outline" left={b.invoice_number} sub={`${formatDate(b.invoice_date)} · of ${money(b.total)}`} right={`${money(b.balance_due)} due`} onPress={() => start(b)} />)}
           {paying ? (
-            <View style={{ padding: 16, gap: 10, backgroundColor: color.tint }}>
+            <View style={[s.card, { marginHorizontal: 16, marginTop: 8, gap: 10, backgroundColor: color.tint, borderColor: color.tintLine }]}>
               <Text style={{ fontSize: 16, fontWeight: '700', color: color.ink }}>{`Payment for ${paying.invoice_number}`}</Text>
               <TextInput style={s.input} value={amount} onChangeText={(v) => { setAmount(v); setProblem(''); }} keyboardType="decimal-pad" accessibilityLabel="Amount paid" placeholder="How much did they pay?" />
               <Chips<PayMethod> items={METHOD_ORDER.map((m) => ({ id: m, label: m === 'UPI' ? 'UPI' : m === 'CASH' ? 'Cash' : 'Card' }))} value={method} onChange={setMethod} />

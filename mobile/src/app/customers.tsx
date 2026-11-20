@@ -12,10 +12,10 @@ import type { Customer } from '../lib/types.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page, ColumnList } from '../lib/responsive.tsx';
 import { arrange, headline, sub, totalDuePaise, owes, type Show } from '../lib/customers.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, ListRow, Loading, SavedNote, Soft, Title, color, s } from '../lib/ui.tsx';
 
 const CustomerRow = memo(({ c, offline, onChoose }: { c: Customer; offline: boolean; onChoose: (c: Customer) => void }) => (
-  <Line left={c.name} right={headline(c, (n) => rupees(toPaise(n)))?.text} sub={offline ? c.phone ?? undefined : sub(c)} icon={owes(c) ? 'alert-circle-outline' : 'person-outline'} onPress={() => onChoose(c)} />
+  <ListRow avatar={c.name} title={c.name} right={headline(c, (n) => rupees(toPaise(n)))?.text} rightTone={owes(c) ? color.warn : undefined} sub={offline ? c.phone ?? undefined : sub(c)} onPress={() => onChoose(c)} />
 ));
 
 /* Customers. Opened from More it is the list; opened from the bill (pick) a tap puts that customer on the bill and closes. */

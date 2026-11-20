@@ -87,16 +87,24 @@ export const Pill = ({ label, tone, bg }: { label: string; tone: string; bg?: st
   <V2 style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: bg ?? color.wash }}><T2 style={{ color: tone, fontSize: 12, fontWeight: '600' }}>{t(label)}</T2></V2>
 );
 
+/** A round avatar made of initials (a customer, a person). */
+export const Initials = ({ name, size = 44 }: { name?: string | null; size?: number }) => (
+  <V2 style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: color.wash }}>
+    <T2 style={{ color: color.ink, fontWeight: '700', fontSize: size * 0.36 }}>{(name ?? '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('') || '?'}</T2>
+  </V2>
+);
+
 /** A row in a list of records (a bill, an order): title and detail on the left, the amount and a state pill on the right. */
-export const ListRow = ({ title, sub, right, pill, pillTone, pillBg, onPress, dim }: { title: string; sub?: string; right?: string; pill?: string; pillTone?: string; pillBg?: string; onPress?: () => void; dim?: boolean }) => (
+export const ListRow = ({ title, sub, right, rightTone, pill, pillTone, pillBg, onPress, dim, avatar }: { title: string; sub?: string; right?: string; rightTone?: string; pill?: string; pillTone?: string; pillBg?: string; onPress?: () => void; dim?: boolean; avatar?: string }) => (
   <P2 disabled={!onPress} onPress={onPress} accessibilityRole={onPress ? 'button' : undefined} android_ripple={onPress ? { color: color.press } : undefined}
     style={({ pressed }) => ({ minHeight: 64, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderColor: color.line, backgroundColor: pressed ? color.wash : color.card, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: dim ? 0.6 : 1 })}>
+    {avatar ? <Initials name={avatar} /> : null}
     <V2 style={{ flex: 1, gap: 2 }}>
       <T2 numberOfLines={1} style={{ fontSize: 16, fontWeight: '600', color: color.ink }}>{title}</T2>
       {sub ? <T2 numberOfLines={1} style={{ fontSize: 13, color: color.soft }}>{sub}</T2> : null}
     </V2>
     <V2 style={{ alignItems: 'flex-end', gap: 4 }}>
-      {right ? <T2 style={{ fontSize: 16, fontWeight: '700', color: color.ink, fontVariant: ['tabular-nums'] }}>{right}</T2> : null}
+      {right ? <T2 style={{ fontSize: 16, fontWeight: '700', color: rightTone ?? color.ink, fontVariant: ['tabular-nums'] }}>{right}</T2> : null}
       {pill ? <Pill label={pill} tone={pillTone ?? color.soft} bg={pillBg} /> : null}
     </V2>
   </P2>
