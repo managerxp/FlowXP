@@ -13,6 +13,7 @@ import { ApiError } from '../lib/api.ts';
 import { useWide } from '../lib/responsive.tsx';
 import { Button, Chips, ErrorText, Failed, Loading, SavedNote, Soft, Title, color, s } from '../lib/ui.tsx';
 import { Hint, markDone } from '../lib/learn.tsx';
+import { display } from '../lib/theme.ts';
 import { router } from 'expo-router';
 
 const POLL_MS = 8000;
@@ -124,7 +125,7 @@ export default function Kitchen() {
       <View accessibilityLabel={`${title}, ${notice ? 'do not make' : making ? tone.label : c}`} style={{ borderRadius: 12, borderWidth: rushed ? 3 : 1, borderColor: rushed || worst === 'late' ? color.danger : color.line, backgroundColor: color.card, overflow: 'hidden', marginBottom: 8 }}>
         <View style={{ paddingHorizontal: 10, paddingVertical: 7, backgroundColor: rushed ? color.dangerBg : making ? tone.head : c === 'ready' ? color.okBg : color.wash, gap: 2 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontSize: 17 * z, fontWeight: '800', color: color.ink, flexShrink: 1 }}>{title}</Text>
+            <Text style={{ fontSize: 17 * z, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink, flexShrink: 1 }}>{title}</Text>
             {rushed ? <Text style={{ backgroundColor: color.danger, color: '#fff', fontWeight: '800', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>RUSH</Text> : null}
           </View>
           <Text style={{ color: color.soft }}>{t.table_name ? `${t.order_number} · ` : ''}{clock(t.sent_at)}{t.brand_name ? ` · ${t.brand_name}` : ''}{t.kot_number ? ` · ${t.kot_number}` : ''}</Text>
@@ -193,7 +194,7 @@ export default function Kitchen() {
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 12, paddingVertical: 8 }} style={{ flexGrow: 0 }} accessibilityLabel="Cook now">
       {rows.map((r) => (
         <View key={r.key} style={[s.card, { minWidth: 150, padding: 10, borderColor: r.late ? color.danger : color.line }]}>
-          <Text style={{ fontSize: 26, fontWeight: '800', color: r.late ? color.danger : color.ink }}>{r.qty}×</Text>
+          <Text style={{ fontSize: 26, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: r.late ? color.danger : color.ink }}>{r.qty}×</Text>
           <Text numberOfLines={2} style={{ fontWeight: '600', color: color.ink }}>{r.name}</Text>
           <Text numberOfLines={1} style={{ color: color.soft, fontSize: 13 }}>{r.extra ? `${r.extra} · ` : ''}{r.tickets} {r.tickets === 1 ? 'ticket' : 'tickets'}{r.late ? ` · ${r.late} late` : ''}</Text>
         </View>
@@ -214,10 +215,10 @@ export default function Kitchen() {
         </View>
         {flash ? <Text accessibilityLiveRegion="assertive" style={{ backgroundColor: color.brand, color: '#fff', fontWeight: '800', fontSize: 18, textAlign: 'center', padding: 10, borderRadius: 10 }}>{flash}</Text> : null}
         {!big ? <View style={{ flexDirection: 'row', gap: 8 }}>
-          <View style={[s.card, { flex: 1, padding: 10 }]}><Soft>To make</Soft><Text style={{ fontSize: 24, fontWeight: '800', color: color.ink }}>{stats.tickets}</Text><Soft>{stats.dishes ? `${stats.dishes} dishes` : 'All clear'}</Soft></View>
-          <View style={[s.card, { flex: 1, padding: 10 }]}><Soft>Late</Soft><Text style={{ fontSize: 24, fontWeight: '800', color: stats.lateTickets ? color.danger : color.ok }}>{stats.lateTickets}</Text><Soft>{stats.lateTickets ? 'past time' : 'Nothing late'}</Soft></View>
-          <View style={[s.card, { flex: 1, padding: 10 }]}><Soft>Oldest</Soft><Text style={{ fontSize: 24, fontWeight: '800', color: color.ink }}>{stats.tickets ? span(stats.oldest) : '–'}</Text><Soft>since sent</Soft></View>
-          <View style={[s.card, { flex: 1, padding: 10 }]}><Soft>Ready</Soft><Text style={{ fontSize: 24, fontWeight: '800', color: stats.longestWait >= 5 ? color.warn : color.ink }}>{stats.readyTickets}</Text><Soft>{stats.readyTickets ? `longest ${span(stats.longestWait)}` : 'none waiting'}</Soft></View>
+          <View style={[s.card, { flex: 1, padding: 10 }]}><Soft>To make</Soft><Text style={{ fontSize: 24, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{stats.tickets}</Text><Soft>{stats.dishes ? `${stats.dishes} dishes` : 'All clear'}</Soft></View>
+          <View style={[s.card, { flex: 1, padding: 10 }]}><Soft>Late</Soft><Text style={{ fontSize: 24, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: stats.lateTickets ? color.danger : color.ok }}>{stats.lateTickets}</Text><Soft>{stats.lateTickets ? 'past time' : 'Nothing late'}</Soft></View>
+          <View style={[s.card, { flex: 1, padding: 10 }]}><Soft>Oldest</Soft><Text style={{ fontSize: 24, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{stats.tickets ? span(stats.oldest) : '–'}</Text><Soft>since sent</Soft></View>
+          <View style={[s.card, { flex: 1, padding: 10 }]}><Soft>Ready</Soft><Text style={{ fontSize: 24, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: stats.longestWait >= 5 ? color.warn : color.ink }}>{stats.readyTickets}</Text><Soft>{stats.readyTickets ? `longest ${span(stats.longestWait)}` : 'none waiting'}</Soft></View>
         </View> : null}
         {stations.length > 1 ? <Chips items={stations} value={station} onChange={setStation} /> : null}
         {!wide ? <Chips<Column> items={COLUMNS.filter((x) => x.id !== 'served' || showServed).map((x) => ({ id: x.id, label: `${x.label} ${counts[x.id]}` }))} value={col} onChange={setCol} /> : null}
