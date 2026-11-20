@@ -23,7 +23,8 @@ import { t } from '../lib/i18n.ts';
 import { gstView, type Levies } from '../lib/gst.ts';
 import { DETAIL_FIELDS, detailsBody } from '../lib/taxInvoice.ts';
 import { Page, useWide } from '../lib/responsive.tsx';
-import { Button, ErrorText, Loading, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, ErrorText, Loading, Soft, color, s } from '../lib/ui.tsx';
+import { radius } from '../lib/theme.ts';
 
 type Method = 'CASH' | 'UPI' | 'CARD';
 const LABEL: Record<Method, string> = { CASH: 'Cash', UPI: 'UPI', CARD: 'Card' };
@@ -270,7 +271,10 @@ export default function Pay() {
           <View style={{ flex: 1, flexDirection: 'row' }}>
             <ScrollView style={{ flex: 2, borderRightWidth: 1, borderColor: color.line, backgroundColor: color.card }} contentContainerStyle={{ padding: 20, gap: 8 }}>{Summary}</ScrollView>
             <ScrollView style={{ flex: 3 }} contentContainerStyle={{ padding: 20, gap: 14 }} keyboardShouldPersistTaps="handled">
-        <Title>{rupees(total)}</Title>
+        <View style={{ padding: 20, gap: 6, borderRadius: radius.card + 4, borderCurve: 'continuous', backgroundColor: color.navy }}>
+          <Text style={{ color: color.onNavySoft, fontSize: 14, fontWeight: '500' }}>{t('Total')}</Text>
+          <Text selectable accessibilityRole="header" adjustsFontSizeToFit numberOfLines={1} style={{ color: color.onNavy, fontSize: 40, fontWeight: '700', letterSpacing: -1, fontVariant: ['tabular-nums'] }}>{rupees(total)}</Text>
+        </View>
         <Soft>About, with GST. {lineCount} lines{orderId && order.data ? ` · ${order.data.table_name ?? order.data.order_type} ${order.data.order_number}` : ''}. The final bill comes from FlowXP.</Soft>
         {controls}
         <Button title="Back to the bill" kind="quiet" onPress={() => goBack()} disabled={busy} />
@@ -285,7 +289,10 @@ export default function Pay() {
     <SafeAreaView style={s.screen}>
       <Page max={560}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled">
-        <Title>{rupees(total)}</Title>
+        <View style={{ padding: 20, gap: 6, borderRadius: radius.card + 4, borderCurve: 'continuous', backgroundColor: color.navy }}>
+          <Text style={{ color: color.onNavySoft, fontSize: 14, fontWeight: '500' }}>{t('Total')}</Text>
+          <Text selectable accessibilityRole="header" adjustsFontSizeToFit numberOfLines={1} style={{ color: color.onNavy, fontSize: 40, fontWeight: '700', letterSpacing: -1, fontVariant: ['tabular-nums'] }}>{rupees(total)}</Text>
+        </View>
         <Soft>About, with GST. {lineCount} lines{orderId && order.data ? ` · ${order.data.table_name ?? order.data.order_type} ${order.data.order_number}` : ''}. The final bill comes from FlowXP.</Soft>
         {controls}
         <Button title="Back to the bill" kind="quiet" onPress={() => goBack()} disabled={busy} />

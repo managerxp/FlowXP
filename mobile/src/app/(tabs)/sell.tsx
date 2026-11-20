@@ -19,6 +19,7 @@ import { ApiError, newKey } from '../../lib/api.ts';
 import { estimateOf, holdBill, toSnapshot, type HeldRow } from '../../lib/held.ts';
 import { useWide } from '../../lib/responsive.tsx';
 import { Button, Chips, ErrorText, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { radius, shadow } from '../../lib/theme.ts';
 import CustomItem from '../../lib/CustomItem.tsx';
 import { WholesaleHome } from '../../lib/WholesaleHome.tsx';
 import { SalonTill } from '../../lib/SalonTill.tsx';
@@ -31,11 +32,11 @@ import type { StyleRow } from '../../lib/clothing.ts';
 const MenuTile = memo(({ item, n, cols, onPick }: { item: Product; n: number; cols: number; onPick: (p: Product) => void }) => (
   <Pressable
     accessibilityRole="button" accessibilityLabel={`${item.name}, ${rupees(toPaise(item.selling_price))}${n ? `, ${qty(n)} on the bill` : ''}`} onPress={() => onPick(item)}
-    style={({ pressed }) => [{ flex: 1 / cols, minHeight: 84, padding: 10, borderRadius: 12, borderWidth: n ? 2 : 1, borderColor: n ? color.brand : color.line, backgroundColor: n ? color.tint : item.is_available ? color.card : color.wash, justifyContent: 'space-between' }, pressed && { backgroundColor: color.press }]}
+    style={({ pressed }) => [{ flex: 1 / cols, minHeight: 96, padding: 14, borderRadius: radius.card - 2, borderCurve: 'continuous', boxShadow: n ? undefined : shadow.card, borderWidth: n ? 2 : 1, borderColor: n ? color.brand : color.line, backgroundColor: n ? color.tint : item.is_available ? color.card : color.wash, justifyContent: 'space-between' }, pressed && { backgroundColor: color.press }]}
   >
-    {n ? <View style={{ position: 'absolute', top: 6, right: 6, minWidth: 26, height: 26, borderRadius: 13, paddingHorizontal: 6, backgroundColor: color.brand, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>{qty(n)}</Text></View> : null}
+    {n ? <View style={{ position: 'absolute', top: 6, right: 6, minWidth: 26, height: 26, borderRadius: 13, paddingHorizontal: 6, backgroundColor: color.action, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: color.onAction, fontWeight: '800', fontSize: 13 }}>{qty(n)}</Text></View> : null}
     <Text numberOfLines={2} style={{ fontSize: 15, fontWeight: '600', color: item.is_available ? color.ink : color.soft, paddingRight: n ? 28 : 0 }}>{pname(item)}</Text>
-    <Text style={{ color: color.soft }}>{item.is_available ? rupees(toPaise(item.selling_price)) : 'Not available'}{item.modifier_group_ids.length ? ' · options' : ''}</Text>
+    <Text style={{ color: item.is_available ? color.ink : color.soft, fontWeight: '600', fontVariant: ['tabular-nums'] }}>{item.is_available ? rupees(toPaise(item.selling_price)) : 'Not available'}{item.modifier_group_ids.length ? ' · options' : ''}</Text>
   </Pressable>
 ));
 
@@ -155,10 +156,10 @@ export default function Sell() {
   };
 
   const Header = (
-    <View style={{ padding: 12, gap: 6 }}>
+    <View style={{ padding: 16, gap: 10 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <View style={{ flex: 1 }}>
-          <Text numberOfLines={1} style={{ fontWeight: '700', fontSize: 17, color: color.ink }}>{outlet?.name}</Text>
+          <Text numberOfLines={1} style={{ fontWeight: '700', fontSize: 20, letterSpacing: -0.3, color: color.ink }}>{outlet?.name}</Text>
         </View>
         <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/customers', params: { pick: '1' } })}
           style={{ minHeight: 48, paddingHorizontal: 12, justifyContent: 'center', borderRadius: 22, backgroundColor: customer ? color.tint : color.card, borderWidth: 1, borderColor: color.line }}>
@@ -233,7 +234,7 @@ export default function Sell() {
             <Text style={{ fontSize: 16, color: color.ink, fontWeight: l.key === flash ? '700' : '400' }}>{lineName(l)}</Text>
             <Soft>{rupees(linePricePaise(l))} each</Soft>
           </View>
-          <Text style={{ minWidth: 64, textAlign: 'right', fontSize: 15, fontWeight: '600', color: color.ink }}>{rupees(Math.round(linePricePaise(l) * l.quantity))}</Text>
+          <Text style={{ minWidth: 64, textAlign: 'right', fontSize: 15, fontWeight: '600', color: color.ink, fontVariant: ['tabular-nums'] }}>{rupees(Math.round(linePricePaise(l) * l.quantity))}</Text>
           <Pressable accessibilityRole="button" accessibilityLabel={`One less ${l.product.name}`} onPress={() => setQty(l.key, l.quantity - 1)} style={stepper}><Text style={stepText}>−</Text></Pressable>
           <Text style={{ minWidth: 28, textAlign: 'center', fontSize: 16, fontWeight: '600' }}>{qty(l.quantity)}</Text>
           <Pressable accessibilityRole="button" accessibilityLabel={`One more ${l.product.name}`} onPress={() => setQty(l.key, l.quantity + 1)} style={stepper}><Text style={stepText}>+</Text></Pressable>
@@ -257,10 +258,10 @@ export default function Sell() {
   ) : null;
 
   const Footer = (
-    <View style={{ padding: 12, gap: 8, backgroundColor: color.card, borderTopWidth: 1, borderColor: color.line }}>
+    <View style={{ padding: 16, gap: 10, backgroundColor: color.card, borderTopWidth: 1, borderColor: color.line, borderTopLeftRadius: radius.card, borderTopRightRadius: radius.card, borderCurve: 'continuous', boxShadow: '0 -6px 24px rgba(17, 23, 47, 0.06)' }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
         <Soft>{t(sum.itemCount === 1 ? '{n} item · GST {gst}' : '{n} items · GST {gst}', { n: qty(sum.itemCount), gst: rupees(sum.taxPaise) })}</Soft>
-        <Text accessibilityLabel={`About ${rupees(sum.totalPaise)}`} style={{ fontSize: 20, fontWeight: '700', color: color.ink }}>≈ {rupees(sum.totalPaise)}</Text>
+        <Text accessibilityLabel={`About ${rupees(sum.totalPaise)}`} style={{ fontSize: 28, fontWeight: '700', letterSpacing: -0.6, color: color.ink, fontVariant: ['tabular-nums'] }}>≈ {rupees(sum.totalPaise)}</Text>
       </View>
       {offers.savingPaise > 0 ? <Text style={{ color: color.ok, fontWeight: '600' }}>{t('Offer')}: −{rupees(offers.savingPaise)} · {offers.names.join(', ')}</Text> : null}
       {kitchenShop ? (
@@ -272,7 +273,7 @@ export default function Sell() {
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <Button title="Hold bill" kind="quiet" onPress={() => setHolding(true)} disabled={!cart.lines.length} />
         <Button title="Clear bill" kind="quiet" onPress={() => { if (cart.lines.length > 2) Alert.alert(t('Clear this bill?'), t('All {n} items will be removed.', { n: cart.lines.length }), [{ text: t('Keep the bill'), style: 'cancel' }, { text: t('Clear bill'), style: 'destructive', onPress: clearSale }]); else clearSale(); }} disabled={!cart.lines.length && !customer} />
-        <Button title={cart.lines.length ? `${t('Take payment')} · ${rupees(sum.totalPaise)}` : 'Take payment'} onPress={() => router.push('/pay')} disabled={!cart.lines.length} style={{ flex: 1 }} />
+        <Button title={cart.lines.length ? `${t('Take payment')} · ${rupees(sum.totalPaise)}` : 'Take payment'} onPress={() => router.push('/pay')} disabled={!cart.lines.length} style={{ flex: 1, minHeight: 56 }} />
       </View>
       {customer ? <Pressable accessibilityRole="button" onPress={() => setCustomer(null)} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: color.soft, textAlign: 'center' }}>{t('Customer: {name}. Tap to remove.', { name: customer.name })}</Text></Pressable> : null}
     </View>
@@ -282,7 +283,7 @@ export default function Sell() {
     <>
     <CustomItem open={otherOpen} businessType={business?.business_type ?? ''} gstOn={business?.gst_enabled === true} onAdd={(name, paise, quantity, rate) => { addCustomItem(name, paise, quantity, rate); setView('bill'); }} onClose={() => setOtherOpen(false)} />
     <Modal visible={holding} transparent animationType="fade" onRequestClose={() => setHolding(false)}>
-      <View style={{ flex: 1, backgroundColor: '#0f172a99', justifyContent: 'center', padding: 24 }}>
+      <View style={{ flex: 1, backgroundColor: '#11172f99', justifyContent: 'center', padding: 24 }}>
         <View style={[s.card, { gap: 12, padding: 18 }]}>
           <Text accessibilityRole="header" style={{ fontSize: 18, fontWeight: '700', color: color.ink }}>{t('Hold this bill')}</Text>
           <Soft>Give it a name to find it later, like a person or a table.</Soft>
@@ -337,5 +338,5 @@ export default function Sell() {
   );
 }
 
-const stepper = { width: 48, height: 48, borderRadius: 24, get backgroundColor() { return color.tint; }, alignItems: 'center' as const, justifyContent: 'center' as const };
-const stepText = { fontSize: 22, get color() { return color.brand; }, fontWeight: '600' as const };
+const stepper = { width: 48, height: 48, borderRadius: 24, get backgroundColor() { return color.wash; }, alignItems: 'center' as const, justifyContent: 'center' as const };
+const stepText = { fontSize: 22, get color() { return color.ink; }, fontWeight: '600' as const };
