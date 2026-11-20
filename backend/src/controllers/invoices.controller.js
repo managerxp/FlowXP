@@ -22,6 +22,7 @@ import { toPaise, toRupees } from '../utils/money.js';
 import { moveStock } from '../modules/stock.js';
 import { restoreBatches } from '../modules/retailStock.js';
 import { isRetail } from '../modules/retailSettings.js';
+import { linkFor as claimLink } from '../modules/loyaltyBillClaim.js';
 import { describe as describeCard, getProgram, isLive, progressFor, voidForInvoice } from '../modules/loyalty.js';
 import { businessToday } from '../utils/dates.js';
 import { branchFilter } from '../utils/scope.js';
@@ -318,6 +319,8 @@ export const get = async (req, res) => {
       customer_state_code: placeOfSupply(rows[0].customer_gstin, rows[0].print_extra?.buyer_state ?? rows[0].customer_state),
       consignee_state_code: placeOfSupply(null, rows[0].print_extra?.consignee_state),
       loyalty_message: loyaltyCard,
+      // the QR for "scan the bill, get your stamp" (only when a card has it on, the plan includes it, and this bill has no customer yet)
+      loyalty_claim_url: hasPlanFeature(req.tenant, 'loyalty_programmes') && hasPlanFeature(req.tenant, 'loyalty_bill_qr') ? await claimLink(pool, rows[0].invoice_id, req.tenant.businessId).catch(() => null) : null,
       // how the receipt names the state tax (UTGST in a union territory) and whether it lists the tax lines, so the phone prints the same bill as the website
       tax_name: taxName(rows[0].business_state),
       receipt: {

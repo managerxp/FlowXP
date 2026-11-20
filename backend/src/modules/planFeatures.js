@@ -15,6 +15,7 @@
 export const PLAN_FEATURES = [
   ['loyalty', 'Loyalty & rewards', 'Visit card, points and tiers, coupons'],
   ['loyalty_wallet', 'Add loyalty cards to Google Wallet', 'Customers can save their loyalty card in Google Wallet from the card page (when the server has Google Wallet set up)'],
+  ['loyalty_bill_qr', 'Scan the bill for a loyalty stamp', 'A QR on the receipt that customers scan after paying to get their stamp or points, and to join, with no staff step'],
   ['loyalty_programmes', 'Loyalty programmes and memberships', 'Several loyalty programmes (points, visits, stamps), each member with a membership number and card, redeemed and reversed at the till'],
   ['messaging', 'Messaging', 'WhatsApp/SMS bills, booking confirmations, offers'],
   ['reservations', 'Reservations & waitlist', 'Table bookings and the walk-in waitlist'],

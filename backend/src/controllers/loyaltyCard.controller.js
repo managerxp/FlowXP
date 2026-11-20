@@ -10,6 +10,7 @@ import { withTransaction } from '../modules/wholesale/common.js';
 import { effectiveFeatureFlags, hasPlanFeature } from '../modules/planFeatures.js';
 import * as engine from '../modules/loyaltyEngine.js';
 import * as google from '../modules/walletGoogle.js';
+import * as billClaim from '../modules/loyaltyBillClaim.js';
 
 const ok = (res, data, status = 200) => res.status(status).json({ success: true, data });
 const gone = () => new engine.LoyaltyError('This card is not available right now', 404);
@@ -88,4 +89,19 @@ export const googleWallet = wrap(async (req, res) => {
   if (!google.configured() || !featureOn(m, 'loyalty_wallet')) throw gone();
   const row = (await google.loadMembership(pool, 'm.membership_id = $1', [m.membership_id]))[0];
   ok(res, { url: google.saveUrl({ ...row, lang: req.query?.lang }) });
+});
+
+/* The receipt's QR: GET shows what this bill can earn (or why not), POST credits it to a mobile number. See modules/loyaltyBillClaim.js. */
+/* the business's plan must include loyalty and the bill QR, same as for staff */
+const billFeature = async (token) => {
+  const r = (await pool.query(`SELECT b.status AS business_status, b.business_type, ${FEATURE_SQL} FROM invoices i JOIN businesses b ON b.business_id = i.business_id ${FEATURE_JOINS} WHERE i.share_token = $1`, [String(token || '').slice(0, 40)])).rows[0];
+  if (!r || !featureOn(r) || !featureOn(r, 'loyalty_bill_qr')) throw new engine.LoyaltyError('This bill link is not valid', 404);
+};
+export const billInfo = wrap(async (req, res) => { await billFeature(req.params.token); res.set('Cache-Control', 'no-store'); ok(res, await billClaim.info(pool, req.params.token)); });
+export const billClaimIt = wrap(async (req, res) => {
+  const name = String(req.body?.name || '').trim().slice(0, 80);
+  const phone = String(req.body?.phone || '').replace(/\D/g, '').slice(-10);
+  if (!name || phone.length !== 10) throw new engine.LoyaltyError('Enter your name and 10 digit mobile number');
+  await billFeature(req.params.token);
+  ok(res, await withTransaction((c) => billClaim.claim(c, req.params.token, { name, phone, consent: req.body?.consent_marketing === true })), 201);
 });

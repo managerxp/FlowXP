@@ -12,6 +12,8 @@ const guess = limiter(60, 15, 'Too many attempts from here. Try again in a few m
 router.use(requireAppHeader);
 router.get('/join/:code', read, c.joinInfo);
 router.post('/join/:code', joinLimit, c.join);
+router.get('/bill/:token', read, c.billInfo);
+router.post('/bill/:token', joinLimit, c.billClaimIt);
 router.get('/:token', guess, c.card);
 router.get('/:token/google-wallet', guess, c.googleWallet);
 
