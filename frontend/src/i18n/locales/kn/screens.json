@@ -5408,5 +5408,11 @@
   "Want offers from {{business}}? We will check your mobile number once with a WhatsApp code.": "{{business}} ಆಫರ್‌ಗಳು ಬೇಕೇ? ಒಮ್ಮೆ WhatsApp ಕೋಡ್‌ನಿಂದ ನಿಮ್ಮ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ಪರಿಶೀಲಿಸುತ್ತೇವೆ.",
   "Send me offers": "ನನಗೆ ಆಫರ್‌ಗಳನ್ನು ಕಳುಹಿಸಿ",
   "You will get offers from {{business}}.": "ನಿಮಗೆ {{business}} ಆಫರ್‌ಗಳು ಸಿಗುತ್ತವೆ.",
-  "This card has no mobile number to check": "ಈ ಕಾರ್ಡ್‌ನಲ್ಲಿ ಪರಿಶೀಲಿಸಲು ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಇಲ್ಲ"
+  "This card has no mobile number to check": "ಈ ಕಾರ್ಡ್‌ನಲ್ಲಿ ಪರಿಶೀಲಿಸಲು ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಇಲ್ಲ",
+  "Move this to Loyalty cards": "ಇದನ್ನು ಲಾಯಲ್ಟಿ ಕಾರ್ಡ್‌ಗಳಿಗೆ ಸರಿಸಿ",
+  "Loyalty cards is the one place for all loyalty now. Moving this keeps {{customers}} customers' {{stamps}} stamps, makes the free {{item}} a reward on a new card, and switches this older card off.": "ಇನ್ನು ಎಲ್ಲಾ ಲಾಯಲ್ಟಿ ಒಂದೇ ಕಡೆ, ಲಾಯಲ್ಟಿ ಕಾರ್ಡ್‌ಗಳಲ್ಲಿ. ಸರಿಸಿದರೆ {{customers}} ಗ್ರಾಹಕರ {{stamps}} ಸ್ಟ್ಯಾಂಪ್‌ಗಳು ಉಳಿಯುತ್ತವೆ, ಉಚಿತ {{item}} ಹೊಸ ಕಾರ್ಡ್‌ನಲ್ಲಿ ಬಹುಮಾನವಾಗುತ್ತದೆ, ಈ ಹಳೆಯ ಕಾರ್ಡ್ ಆಫ್ ಆಗುತ್ತದೆ.",
+  "One difference: customers claim the free item from their card or at Member desk, and the till applies it. A card stamps every qualifying bill, not once a day.": "ಒಂದು ವ್ಯತ್ಯಾಸ: ಗ್ರಾಹಕರು ಉಚಿತ ಐಟಂ ಅನ್ನು ತಮ್ಮ ಕಾರ್ಡ್‌ನಿಂದ ಅಥವಾ ಮೆಂಬರ್ ಡೆಸ್ಕ್‌ನಲ್ಲಿ ಕ್ಲೈಮ್ ಮಾಡುತ್ತಾರೆ, ಕೌಂಟರ್ ಅದನ್ನು ಬಿಲ್‌ಗೆ ಅನ್ವಯಿಸುತ್ತದೆ. ಕಾರ್ಡ್ ಅರ್ಹ ಪ್ರತಿ ಬಿಲ್‌ಗೂ ಸ್ಟ್ಯಾಂಪ್ ನೀಡುತ್ತದೆ, ದಿನಕ್ಕೊಮ್ಮೆ ಅಲ್ಲ.",
+  "Move it": "ಸರಿಸಿ",
+  "Yes, move it now": "ಹೌದು, ಈಗಲೇ ಸರಿಸಿ",
+  "Moved. Your Visit card is now on Loyalty cards.": "ಸರಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ವಿಸಿಟ್ ಕಾರ್ಡ್ ಈಗ ಲಾಯಲ್ಟಿ ಕಾರ್ಡ್‌ಗಳಲ್ಲಿದೆ."
 }

@@ -5408,5 +5408,11 @@
   "Want offers from {{business}}? We will check your mobile number once with a WhatsApp code.": "{{business}}-এর অফার চান? আমরা একবার WhatsApp কোড দিয়ে আপনার মোবাইল নম্বর যাচাই করব।",
   "Send me offers": "আমাকে অফার পাঠান",
   "You will get offers from {{business}}.": "আপনি {{business}}-এর অফার পাবেন।",
-  "This card has no mobile number to check": "এই কার্ডে যাচাই করার মতো মোবাইল নম্বর নেই"
+  "This card has no mobile number to check": "এই কার্ডে যাচাই করার মতো মোবাইল নম্বর নেই",
+  "Move this to Loyalty cards": "এটি লয়্যালটি কার্ডে সরান",
+  "Loyalty cards is the one place for all loyalty now. Moving this keeps {{customers}} customers' {{stamps}} stamps, makes the free {{item}} a reward on a new card, and switches this older card off.": "এখন সব লয়্যালটি এক জায়গায়, লয়্যালটি কার্ডে। সরালে {{customers}} জন গ্রাহকের {{stamps}}টি স্ট্যাম্প থাকবে, বিনামূল্যের {{item}} নতুন কার্ডে পুরস্কার হবে, আর এই পুরনো কার্ড বন্ধ হবে।",
+  "One difference: customers claim the free item from their card or at Member desk, and the till applies it. A card stamps every qualifying bill, not once a day.": "একটি পার্থক্য: গ্রাহক বিনামূল্যের আইটেম নিজের কার্ড বা মেম্বার ডেস্ক থেকে দাবি করবেন, আর কাউন্টার সেটি বিলে বসাবে। কার্ড প্রতিটি যোগ্য বিলে স্ট্যাম্প দেয়, দিনে একবার নয়।",
+  "Move it": "সরান",
+  "Yes, move it now": "হ্যাঁ, এখনই সরান",
+  "Moved. Your Visit card is now on Loyalty cards.": "সরানো হয়েছে। আপনার ভিজিট কার্ড এখন লয়্যালটি কার্ডে আছে।"
 }

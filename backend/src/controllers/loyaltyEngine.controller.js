@@ -6,6 +6,7 @@ import pool from '../config/database.js';
 import { withTransaction } from '../modules/wholesale/common.js';
 import { recordAudit } from '../modules/events.js';
 import * as engine from '../modules/loyaltyEngine.js';
+import * as migrate from '../modules/loyaltyMigrate.js';
 import * as tiers from '../modules/loyaltyTiers.js';
 import { pushBalance } from '../modules/walletGoogle.js';
 import * as reports from '../modules/loyaltyReport.js';
@@ -186,4 +187,12 @@ export const saveTiers = wrap(async (req, res) => {
   const out = await withTransaction((c) => tiers.saveTiers(c, bid(req), id(req), req.body?.tiers));
   recordAudit(req, { business_id: bid(req), action: 'loyalty.tiers_changed', resource_type: 'loyalty_programme', resource_id: id(req), metadata: { tiers: out.length } });
   ok(res, out);
+});
+
+/* Moving the older Visit card onto Loyalty cards: GET says what would happen, POST does it (once). */
+export const migratePreview = wrap(async (req, res) => ok(res, await migrate.preview(pool, bid(req))));
+export const migrateRun = wrap(async (req, res) => {
+  const out = await withTransaction((c) => migrate.run(c, { businessId: bid(req), createdBy: req.auth.userId }));
+  recordAudit(req, { business_id: bid(req), action: 'loyalty.visit_card_moved', resource_type: 'loyalty_programme', resource_id: out.programme_id, metadata: out });
+  ok(res, out, 201);
 });

@@ -9,6 +9,8 @@ const till = [requireAuth, withBusiness({ requireActive: true }), feature, requi
 const owner = [requireAuth, withBusiness({ requireActive: true }), feature, requirePermission('settings'), requireGroupUser];   // making and changing programmes, switching a member off, reversing
 
 router.get('/loyalty/programme-kinds', ...till, l.kinds);
+router.get('/loyalty/move-visit-card', ...owner, l.migratePreview);
+router.post('/loyalty/move-visit-card', ...owner, l.migrateRun);
 router.get('/loyalty/programmes', ...till, l.listProgrammes);
 router.post('/loyalty/programmes', ...owner, l.createProgramme);
 router.put('/loyalty/programmes/:id', ...owner, l.updateProgramme);

@@ -80,7 +80,32 @@ const People = ({ title, note, list, count, empty, tone = 'text-ink-900' }) => {
 );
 };
 
-const Program = () => {
+/* Offers to move the older Visit card onto Loyalty cards (one system for everything). Shows only while there is something to move. */
+const MoveBanner = ({ onMoved }) => {
+  const tr = useT();
+  const toast = useToast();
+  const [info, setInfo] = useState(null); const [sure, setSure] = useState(false); const [busy, setBusy] = useState(false);
+  useEffect(() => { api('/loyalty/move-visit-card').then(setInfo).catch(() => setInfo(null)); }, []);
+  if (info?.state !== 'READY') return null;
+  const move = async () => {
+    setBusy(true);
+    try { await api('/loyalty/move-visit-card', { method: 'POST' }); toast.success(tr('Moved. Your Visit card is now on Loyalty cards.')); onMoved(); }
+    catch (caught) { toast.error(caught.message); setBusy(false); }
+  };
+  return (
+    <div className="mb-6 rounded-(--radius-card) border border-brand-500 bg-brand-50 p-4 text-small text-ink-900">
+      <h2 className="font-semibold">{tr('Move this to Loyalty cards')}</h2>
+      <p className="mt-1 text-ink-700">{tr('Loyalty cards is the one place for all loyalty now. Moving this keeps {{customers}} customers\' {{stamps}} stamps, makes the free {{item}} a reward on a new card, and switches this older card off.', { customers: info.customers, stamps: info.stamps, item: info.reward })}</p>
+      <p className="mt-1 text-ink-700">{tr('One difference: customers claim the free item from their card or at Member desk, and the till applies it. A card stamps every qualifying bill, not once a day.')}</p>
+      <div className="mt-3 flex gap-2">
+        {sure ? <Button onClick={move} disabled={busy}>{tr('Yes, move it now')}</Button> : <Button onClick={() => setSure(true)}>{tr('Move it')}</Button>}
+        {sure && !busy && <Button variant="ghost" onClick={() => setSure(false)}>{tr('Cancel')}</Button>}
+      </div>
+    </div>
+  );
+};
+
+const Program = ({ onMoved }) => {
   const tr = useT();
   const toast = useToast();
   const { business } = useAuth();
@@ -135,6 +160,7 @@ const Program = () => {
 
   return (
     <div className="space-y-6">
+      <MoveBanner onMoved={onMoved} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="space-y-4">
           <CardPreview business={business?.name} n={n} reward={reward?.name} qty={qty} on={form.is_enabled} minBill={Number(form.min_bill) || 0} />
@@ -361,7 +387,7 @@ const LoyaltyPage = () => {
                   className={`-mb-px border-b-2 px-3 py-2 text-small font-medium ${tab === id ? 'border-brand-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'}`}>{tr(label)}</button>
         ))}
       </div>
-      {tab === 'cards' ? <LoyaltyProgrammes business={business?.name} businessType={business?.business_type} /> : tab === 'results' ? <LoyaltyInsights /> : tab === 'program' ? <Program /> : tab === 'points' ? <PointsTab /> : <Coupons />}
+      {tab === 'cards' ? <LoyaltyProgrammes business={business?.name} businessType={business?.business_type} /> : tab === 'results' ? <LoyaltyInsights /> : tab === 'program' ? <Program onMoved={() => { setOlder((o) => ({ ...o, program: false })); setTab('cards'); }} /> : tab === 'points' ? <PointsTab /> : <Coupons />}
     </div>
   );
 };
