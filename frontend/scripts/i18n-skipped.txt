@@ -1,15 +1,1 @@
-src/app/LoyaltyPage.jsx:30  text with a conditional or element value: visit card
-src/app/LoyaltyPage.jsx:64  text with a conditional or element value: visit
-src/app/LoyaltyPage.jsx:152  text with a conditional or element value: Worth
-src/app/LoyaltyPage.jsx:167  text mixed with values or inline elements: Customers get
-src/app/LoyaltyPage.jsx:167  text mixed with values or inline elements: free on their
-src/app/LoyaltyPage.jsx:167  text mixed with values or inline elements: , then the card starts again.
-src/app/MessagingPage.jsx:39  text with a conditional or element value: offers and loyalty reminders (
-src/app/MessagingPage.jsx:44  text with a conditional or element value: credits
-src/app/MessagingPage.jsx:72  text mixed with values or inline elements: No messaging service is connected on the server yet, so mess
-src/app/MessagingPage.jsx:73  text mixed with values or inline elements: . Ask whoever runs the server to set it up (see DEPLOY.md: W
-src/app/MessagingPage.jsx:77  text mixed with values or inline elements: Free trial:
-src/app/MessagingPage.jsx:78  text mixed with values or inline elements: WhatsApp messages used.
-src/app/MessagingPage.jsx:102  text with a conditional or element value: the WhatsApp templates to create in Meta
-src/app/MessagingPage.jsx:170  hint= template with values
-src/app/MessagingPage.jsx:174  text with a conditional or element value: Sent
+
