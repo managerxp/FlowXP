@@ -305,7 +305,7 @@ const main = async () => {
 
   // Loyalty: the seventh visit earns a free Gulab Jamun (customers are identified by mobile number); two offer codes.
   const jamun = dishes.find((d) => d.name === 'Gulab Jamun');
-  await pool.query(`INSERT INTO loyalty_programs (business_id, is_enabled, visits_required, reward_product_id, reward_quantity, min_bill_paise) VALUES ($1,TRUE,7,$2,1,15000)`, [businessId, jamun.id]);
+  await pool.query(`INSERT INTO loyalty_programmes (business_id, name, kind, earn_points, per_amount_paise, redeem_points, redeem_value_paise, min_txn_paise, settings) VALUES ($1,'Visit card','STAMPS',1,0,7,(SELECT selling_price_paise FROM products WHERE product_id = $2),15000,'{"auto_enrol":true,"bill_qr":true}')`, [businessId, jamun.id]);
   await pool.query(
     `INSERT INTO coupons (business_id, code, description, kind, value, min_bill_paise, max_discount_paise, max_uses_per_customer) VALUES ($1,'WELCOME10','First visit: 10% off','PERCENT',10,20000,10000,1)`, [businessId]);
   await pool.query(`INSERT INTO coupons (business_id, code, description, kind, value, min_bill_paise) VALUES ($1,'FLAT50','₹50 off bills over ₹400','FLAT',5000,40000)`, [businessId]);

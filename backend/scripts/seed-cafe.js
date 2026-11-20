@@ -161,7 +161,7 @@ const main = async () => {
 
   // the visit card: every 7th visit a free filter coffee; and two offers
   const filter = dishes.find((d) => d.name === 'Filter Coffee');
-  await pool.query(`INSERT INTO loyalty_programs (business_id, is_enabled, visits_required, reward_product_id, reward_quantity, min_bill_paise) VALUES ($1,TRUE,7,$2,1,10000)`, [businessId, filter.id]);
+  await pool.query(`INSERT INTO loyalty_programmes (business_id, name, kind, earn_points, per_amount_paise, redeem_points, redeem_value_paise, min_txn_paise, settings) VALUES ($1,'Visit card','STAMPS',1,0,7,(SELECT selling_price_paise FROM products WHERE product_id = $2),10000,'{"auto_enrol":true,"bill_qr":true}')`, [businessId, filter.id]);
   await pool.query(`INSERT INTO promotions (business_id, name, kind, category_id, percent, days_of_week, start_time, end_time, created_by) VALUES ($1,'Weekday happy hour: 20% off cold drinks','PERCENT_OFF',$2,20,ARRAY[1,2,3,4,5]::smallint[],'15:00','18:00',$3)`, [businessId, categoryIds['Cold Drinks'], staff.owner.userId]);
   const bakes = dishes.filter((d) => d.category === 'Bakes' && d.name !== 'Cheesecake Slice');
   const mix = (await pool.query(`INSERT INTO promotions (business_id, name, kind, bundle_qty, bundle_price_paise, created_by) VALUES ($1,'Any 2 bakes for ₹180','MIX_BUNDLE',2,$2,$3) RETURNING promo_id`, [businessId, rupees(180), staff.owner.userId])).rows[0].promo_id;
