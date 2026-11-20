@@ -5383,5 +5383,7 @@
   "You get {{n}} stamps for this bill": "এই বিলে আপনি {{n}}টি স্ট্যাম্প পাবেন",
   "Add to my card": "আমার কার্ডে যোগ করুন",
   "You get 1 stamp for this bill": "এই বিলে আপনি ১টি স্ট্যাম্প পাবেন",
-  "You get 1 point for this bill": "এই বিলে আপনি ১ পয়েন্ট পাবেন"
+  "You get 1 point for this bill": "এই বিলে আপনি ১ পয়েন্ট পাবেন",
+  "Loyalty stamp QR": "লয়্যালটি স্ট্যাম্প QR",
+  "Customer: scan for your loyalty stamp": "গ্রাহক: লয়্যালটি স্ট্যাম্পের জন্য স্ক্যান করুন"
 }

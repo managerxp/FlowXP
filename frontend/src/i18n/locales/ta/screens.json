@@ -5383,5 +5383,7 @@
   "You get {{n}} stamps for this bill": "இந்த பில்லுக்கு உங்களுக்கு {{n}} முத்திரை கிடைக்கும்",
   "Add to my card": "என் அட்டையில் சேர்க்கவும்",
   "You get 1 stamp for this bill": "இந்த பில்லுக்கு உங்களுக்கு 1 முத்திரை கிடைக்கும்",
-  "You get 1 point for this bill": "இந்த பில்லுக்கு உங்களுக்கு 1 புள்ளி கிடைக்கும்"
+  "You get 1 point for this bill": "இந்த பில்லுக்கு உங்களுக்கு 1 புள்ளி கிடைக்கும்",
+  "Loyalty stamp QR": "லாயல்டி முத்திரை QR",
+  "Customer: scan for your loyalty stamp": "வாடிக்கையாளர்: லாயல்டி முத்திரைக்கு ஸ்கேன் செய்யுங்கள்"
 }

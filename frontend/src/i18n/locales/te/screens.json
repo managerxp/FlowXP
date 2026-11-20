@@ -5383,5 +5383,7 @@
   "You get {{n}} stamps for this bill": "ఈ బిల్లుకు మీకు {{n}} స్టాంపులు వస్తాయి",
   "Add to my card": "నా కార్డులో చేర్చండి",
   "You get 1 stamp for this bill": "ఈ బిల్లుకు మీకు 1 స్టాంప్ వస్తుంది",
-  "You get 1 point for this bill": "ఈ బిల్లుకు మీకు 1 పాయింట్ వస్తుంది"
+  "You get 1 point for this bill": "ఈ బిల్లుకు మీకు 1 పాయింట్ వస్తుంది",
+  "Loyalty stamp QR": "లాయల్టీ స్టాంప్ QR",
+  "Customer: scan for your loyalty stamp": "కస్టమర్: లాయల్టీ స్టాంప్ కోసం స్కాన్ చేయండి"
 }

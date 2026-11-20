@@ -3554,6 +3554,7 @@ export const ML: Record<string, string> = {
   'Cake': 'കേക്ക്',
   'Pizza': 'പിസ്സ',
   'Spanner': 'സ്പാനർ',
+  'Customer: scan for your loyalty stamp': 'ഉപഭോക്താവ്: ലോയൽറ്റി സ്റ്റാമ്പിനായി സ്കാൻ ചെയ്യുക',
 };
 
 /** Tamil: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -7110,6 +7111,7 @@ export const TA: Record<string, string> = {
   'Cake': 'கேக்',
   'Pizza': 'பீட்சா',
   'Spanner': 'ஸ்பேனர்',
+  'Customer: scan for your loyalty stamp': 'வாடிக்கையாளர்: லாயல்டி முத்திரைக்கு ஸ்கேன் செய்யுங்கள்',
 };
 
 /** Bengali: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -10666,6 +10668,7 @@ export const BN: Record<string, string> = {
   'Cake': 'কেক',
   'Pizza': 'পিৎজা',
   'Spanner': 'স্প্যানার',
+  'Customer: scan for your loyalty stamp': 'গ্রাহক: লয়্যালটি স্ট্যাম্পের জন্য স্ক্যান করুন',
 };
 
 /** Telugu: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -14222,6 +14225,7 @@ export const TE: Record<string, string> = {
   'Cake': 'కేక్',
   'Pizza': 'పిజ్జా',
   'Spanner': 'స్పానర్',
+  'Customer: scan for your loyalty stamp': 'కస్టమర్: లాయల్టీ స్టాంప్ కోసం స్కాన్ చేయండి',
 };
 
 /** Kannada: machine-translated core screens (tabs, signing in, billing buttons, offline and error screens). Not yet checked by a native speaker. Anything missing shows in English. */
@@ -17778,4 +17782,5 @@ export const KN: Record<string, string> = {
   'Cake': 'ಕೇಕ್',
   'Pizza': 'ಪಿಜ್ಜಾ',
   'Spanner': 'ಸ್ಪ್ಯಾನರ್',
+  'Customer: scan for your loyalty stamp': 'ಗ್ರಾಹಕ: ಲಾಯಲ್ಟಿ ಸ್ಟ್ಯಾಂಪ್‌ಗಾಗಿ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ',
 };

@@ -3660,6 +3660,7 @@ export const HI: Record<string, string> = {
   'Cake': 'केक',
   'Pizza': 'पिज़्ज़ा',
   'Spanner': 'पाना',
+  'Customer: scan for your loyalty stamp': 'ग्राहक: अपने लॉयल्टी स्टैम्प के लिए स्कैन करें',
 };
 
 /** Languages that have a dictionary. */

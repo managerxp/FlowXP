@@ -5383,5 +5383,7 @@
   "You get {{n}} stamps for this bill": "You get {{n}} stamps for this bill",
   "Add to my card": "Add to my card",
   "You get 1 stamp for this bill": "You get 1 stamp for this bill",
-  "You get 1 point for this bill": "You get 1 point for this bill"
+  "You get 1 point for this bill": "You get 1 point for this bill",
+  "Loyalty stamp QR": "Loyalty stamp QR",
+  "Customer: scan for your loyalty stamp": "Customer: scan for your loyalty stamp"
 }

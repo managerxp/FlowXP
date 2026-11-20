@@ -1,3 +1,5 @@
+import { SvgXml } from 'react-native-svg';
+import { qrSvg } from '../lib/qr.ts';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, Share, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -91,6 +93,12 @@ export default function Receipt() {
         {!invoice && !pending && !error ? <ActivityIndicator /> : null}
         <ErrorText>{error}</ErrorText>
         {error ? <Button title="Try again" kind="quiet" onPress={load} /> : null}
+        {invoice && !owed && invoice.loyalty_claim_url ? (
+          <View style={[s.card, { alignItems: 'center', gap: 6 }]}>
+            <SvgXml xml={qrSvg(invoice.loyalty_claim_url, 180)} width={180} height={180} />
+            <Text style={{ color: color.ink, fontWeight: '600', textAlign: 'center' }}>{t('Customer: scan for your loyalty stamp')}</Text>
+          </View>
+        ) : null}
         {text ? <View style={[s.card]}><Text selectable style={{ fontFamily: 'monospace', fontSize: 13, color: color.ink }}>{text}</Text></View> : null}
         {printedNote ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok, fontWeight: '700', textAlign: 'center' }}>{t('Receipt printed')}</Text> : null}
         <Button title={printedNote ? t('OK') : invoice?.table_name ? 'Back to the tables' : 'Next customer: new bill'} onPress={() => router.replace(invoice?.table_name ? '/tables' : '/sell')} />

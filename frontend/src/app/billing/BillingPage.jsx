@@ -24,6 +24,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChefHat, CheckCircle2, ClipboardList, CloudOff, Keyboard, Minus, PackagePlus, Pause, Plus, Printer, ScanLine, Search, Split, Trash2, UserRound, X } from 'lucide-react';
+import QRCode from 'qrcode';
 import { api, formatCurrency, NetworkError } from '../../lib/api.js';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
 import { withApproval } from '../../lib/approval.js';
@@ -184,6 +185,14 @@ const Done = ({ confirmation, change, printed, onNew, onView }) => {
   const newRef = useRef(null);
   useEffect(() => { newRef.current?.focus(); }, []);
   const offline = confirmation.offline;
+  // "scan the bill, get your stamp" for a shop that does not print: the same QR the receipt carries, shown here for the customer (the server sends the link only when a card has it on and nobody is on the bill yet)
+  const [claimQr, setClaimQr] = useState('');
+  useEffect(() => {
+    if (offline || !confirmation.invoice_id || confirmation.payment_status !== 'PAID') return;
+    let live = true;
+    api(`/invoices/${confirmation.invoice_id}`).then((inv) => (inv.loyalty_claim_url ? QRCode.toDataURL(inv.loyalty_claim_url, { width: 176, margin: 1 }) : '')).then((u) => { if (live) setClaimQr(u); }).catch(() => {});
+    return () => { live = false; };
+  }, [offline, confirmation.invoice_id, confirmation.payment_status]);
   return (
     <div className="mx-auto max-w-md pt-6">
       <div className="rise rounded-(--radius-panel) border border-line bg-surface p-8 text-center shadow-md">
@@ -224,6 +233,7 @@ const Done = ({ confirmation, change, printed, onNew, onView }) => {
               {confirmation.coupon_code && <p>{tr('Coupon {{coupon_code}}: {{formatCurrency}} off', { coupon_code: confirmation.coupon_code, formatCurrency: formatCurrency(confirmation.coupon_discount) })}</p>}
             </>
           )}
+          {claimQr && <div className="mt-4 text-center"><img src={claimQr} alt={tr('Loyalty stamp QR')} className="mx-auto h-36 w-36" /><p className="mt-1 text-small font-medium text-ink-700">{tr('Customer: scan for your loyalty stamp')}</p></div>}
         </div>
 
         <div className="mt-7 grid gap-2">
