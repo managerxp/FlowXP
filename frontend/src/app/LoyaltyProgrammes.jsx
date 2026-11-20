@@ -114,7 +114,7 @@ const Wizard = ({ programme, business, businessType, onClose, onSaved }) => {
     name: programme?.name || '', kind: programme?.kind || 'STAMPS',
     stamps: programme?.redeem_points || 5, minBill: rupees(programme?.min_txn_paise) || 0,
     earn: programme?.earn_points || 1, per: rupees(programme?.per_amount_paise) || 100, redeemPoints: programme?.redeem_points || 100, redeemValue: rupees(programme?.redeem_value_paise) || 50,
-    expiry: programme?.expiry_days || '', rewardName: '', rewardValue: '', autoEnrol: programme?.settings?.auto_enrol === true, billQr: programme ? programme.settings?.bill_qr === true : true, verifyPhone: programme?.settings?.verify_phone === true,
+    expiry: programme?.expiry_days || '', rewardName: '', rewardValue: '', autoEnrol: programme ? programme.settings?.auto_enrol === true : true, billQr: programme ? programme.settings?.bill_qr === true : true, verifyPhone: programme?.settings?.verify_phone === true,
     card: { ...DEFAULT_CARD, ...(programme?.card || {}) }
   }));
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
