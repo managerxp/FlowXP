@@ -72,13 +72,11 @@ export default function Reports() {
             {r.top_products.length ? <Group>{r.top_products.slice(0, 5).map((p) => <Line key={p.product_id} left={p.name} right={money(p.revenue)} sub={`${qty(p.quantity)} sold`} />)}</Group> : <Empty>No sales in this period.</Empty>}
 
             <View style={{ padding: 16, gap: 8 }}><Button title={detail ? 'Hide detailed reports' : 'View detailed reports'} kind="quiet" onPress={() => setDetail((v) => !v)} /></View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: 16 }}>
-              {[...(allowed(business, 'expenses') ? [['Expenses', '/expenses']] : []), ['More reports', '/biz-reports'], ['Ask Flow AI about this', '/flow-ai']].map(([label, go]) => (
-                <Pressable key={go} accessibilityRole="button" onPress={() => router.push(go as never)} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 }}>
-                  <Text style={{ color: color.brand, fontWeight: '600' }}>{t(label)}</Text>
-                </Pressable>
-              ))}
-            </View>
+            <Group>
+              {allowed(business, 'expenses') ? <Line icon="receipt-outline" left="Expenses" sub="Rent, salary, electricity: what you spent" onPress={() => router.push('/expenses')} /> : null}
+              <Line icon="document-text-outline" left="More reports" onPress={() => router.push('/biz-reports')} />
+              <Line icon="sparkles-outline" left="Ask Flow AI about this" onPress={() => router.push('/flow-ai')} />
+            </Group>
             {detail ? <>
             {best || busiest ? <Group>
               {best ? <Line left="Best day" right={money(best.total)} sub={`${best.date} · ${best.invoice_count} bills`} /> : null}
