@@ -1,5 +1,5 @@
 import { memo, useEffect, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useScope } from '../../lib/local.ts';
@@ -10,9 +10,18 @@ import { pname, type Product } from '../../lib/catalog.ts';
 import { qty, rupees, toPaise } from '../../lib/money.ts';
 import { Page, ColumnList } from '../../lib/responsive.tsx';
 import { Hint } from '../../lib/learn.tsx';
+import { SearchBox } from '../../lib/SearchBox.tsx';
+import { t } from '../../lib/i18n.ts';
 import { Button, Chips, Empty, Line, Title, s, color } from '../../lib/ui.tsx';
 
 const PAGE = 60;
+
+/* The rarely-used tools sit under the list as quiet links, so the top stays for searching and adding. */
+const ToolLink = ({ label, go }: { label: string; go: string }) => (
+  <Pressable accessibilityRole="button" onPress={() => router.push(go as never)} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 }}>
+    <Text style={{ color: color.brand, fontWeight: '600' }}>{t(label)}</Text>
+  </Pressable>
+);
 
 const ProductRow = memo(({ p }: { p: Product }) => (
   <Line
@@ -58,21 +67,20 @@ export default function Products() {
           <Button title={pharmacy ? 'Add medicine' : 'Add product'} onPress={() => router.push(pharmacy ? '/medicine/new' : '/product/new')} />
         </View>
         <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-          <TextInput style={s.input} value={text} onChangeText={setText} placeholder={pharmacy || food ? (food ? 'Search for an item' : 'Search by name or barcode') : 'Search by name or barcode'} autoCorrect={false} accessibilityLabel="Search products" />
+          <SearchBox value={text} onChange={setText} placeholder={food ? 'Search for an item' : 'Search by name or barcode'} label="Search products" />
         </View>
         <Hint id="products" />
-        {food || !pharmacy ? (
-          <View style={{ paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {food ? <Button title="Menu on / off" kind="quiet" onPress={() => router.push('/menu-availability')} /> : null}
-            {food ? <Button title="Options & add-ons" kind="quiet" onPress={() => router.push('/option-groups')} /> : <Button title="Print labels" kind="quiet" onPress={() => router.push('/labels')} />}
-          </View>
-        ) : null}
         {categories.length > 1 ? <Chips items={[{ id: '__all__', label: `All ${sync.products}` }, ...categories.map((c) => ({ id: c.name, label: `${c.name || 'Other'} ${c.count}` }))]} value={category} onChange={setCategory} /> : null}
         <ColumnList
           style={{ flex: 1, marginTop: 8 }} data={rows} keyExtractor={(p) => String(p.product_id)} onEndReached={loadMore} onEndReachedThreshold={0.5} keyboardShouldPersistTaps="handled"
           ListEmptyComponent={<Empty>{sync.products === 0 ? 'No products on this phone yet. Open Sell while you have internet and they download by themselves.' : 'No product matches.'}</Empty>}
           renderItem={renderProduct}
         />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 4, paddingHorizontal: 16 }}>
+          {food ? <ToolLink label="Menu on / off" go="/menu-availability" /> : null}
+          {food ? <ToolLink label="Options & add-ons" go="/option-groups" /> : null}
+          {!food && !pharmacy ? <ToolLink label="Print labels" go="/labels" /> : null}
+        </View>
         <Text style={{ textAlign: 'center', color: color.soft, fontSize: 12, padding: 6 }}>{sync.products} products on this phone</Text>
       </Page>
     </SafeAreaView>
