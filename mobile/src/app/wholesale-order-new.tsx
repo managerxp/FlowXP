@@ -72,7 +72,7 @@ export default function NewWholesaleOrder() {
         </View>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
           <View style={{ paddingHorizontal: 16 }}>
-            <Button title={customer ? 'Change customer' : 'Choose customer'} kind="quiet" onPress={() => router.push({ pathname: '/customers', params: { pick: '1' } })} />
+            <Button title={customer ? 'Change customer' : 'Choose customer'} kind={customer ? 'quiet' : 'primary'} onPress={() => router.push({ pathname: '/customers', params: { pick: '1' } })} />
           </View>
           <View style={{ padding: 16 }}>
             <SearchBox value={text} onChange={setText} placeholder="Search a product by name, code or barcode" label="Search a product" />

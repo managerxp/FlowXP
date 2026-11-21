@@ -76,7 +76,7 @@ export default function Collect() {
         ) : (
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
             <View style={{ paddingHorizontal: 16, gap: 8 }}>
-              <Button title={customer ? 'Change customer' : 'Choose customer'} kind="quiet" onPress={() => router.push({ pathname: '/customers', params: { pick: '1' } })} />
+              <Button title={customer ? 'Change customer' : 'Choose customer'} kind={customer ? 'quiet' : 'primary'} onPress={() => router.push({ pathname: '/customers', params: { pick: '1' } })} />
             </View>
             {customer && open.data ? <Soft style={{ padding: 16 }}>{owed > 0 ? `Owes ${money(owed)} on ${invoices.length} bill${invoices.length === 1 ? '' : 's'}.${open.data.advance > 0 ? ` Already paid ${money(open.data.advance)} in advance.` : ''}` : 'Nothing is owed right now. A payment will be kept as their advance.'}</Soft> : null}
             <View style={{ paddingHorizontal: 16, gap: 10 }}>

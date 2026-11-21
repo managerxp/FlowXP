@@ -128,7 +128,7 @@ export function PharmacyTill() {
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
           {offline ? <Text accessibilityLiveRegion="polite" style={{ color: color.warn, fontWeight: '600', paddingHorizontal: 16, paddingBottom: 8 }}>No internet. Using the medicines saved on this phone. The bill is kept here and sent by itself, and FlowXP picks the batch when it arrives.</Text> : null}
           <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16 }}>
-            <Button title={customer ? 'Change customer' : 'Choose customer'} kind="quiet" onPress={() => router.push({ pathname: '/customers', params: { pick: '1' } })} style={{ flex: 1 }} />
+            <Button title={customer ? 'Change customer' : 'Choose customer'} kind={customer ? 'quiet' : 'primary'} onPress={() => router.push({ pathname: '/customers', params: { pick: '1' } })} style={{ flex: 1 }} />
             {customer ? <Button title="No customer" kind="quiet" onPress={() => { setCustomer(null); changed(); }} /> : null}
           </View>
           <View style={{ padding: 16, flexDirection: 'row', gap: 8, alignItems: 'center' }}>

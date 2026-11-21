@@ -47,7 +47,7 @@ export default function GarageHome() {
           <View style={{ gap: 8, paddingHorizontal: 16, paddingTop: 12 }}>
             {can('billing') ? <Button title="New job card" onPress={() => router.push({ pathname: '/job-cards', params: { new: '1' } })} style={{ minHeight: 60 }} /> : null}
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              {can('customers', 'billing') ? <Button title="Add customer" kind="quiet" onPress={() => router.push('/customers')} style={{ flex: 1 }} /> : null}
+              {can('customers', 'billing') ? <Button title="Add customer" onPress={() => router.push('/customers')} style={{ flex: 1 }} /> : null}
               {can('grn', 'purchases') ? <Button title="Buy spare parts" kind="quiet" onPress={() => router.push('/parts-receive')} style={{ flex: 1 }} /> : null}
             </View>
             {can('payments', 'expenses') ? (
