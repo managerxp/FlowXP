@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { SearchBox } from '../lib/SearchBox.tsx';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
@@ -12,6 +13,7 @@ import type { Customer } from '../lib/types.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page, ColumnList } from '../lib/responsive.tsx';
 import { arrange, headline, sub, totalDuePaise, owes, type Show } from '../lib/customers.ts';
+import { t } from '../lib/i18n.ts';
 import { Button, Chips, Empty, ErrorText, Failed, ListRow, Loading, SavedNote, Soft, Title, color, s } from '../lib/ui.tsx';
 
 const CustomerRow = memo(({ c, offline, onChoose }: { c: Customer; offline: boolean; onChoose: (c: Customer) => void }) => (
@@ -69,11 +71,10 @@ export default function Customers() {
             <View style={{ flex: 1 }}><Title>{pick ? 'Choose a customer' : 'Customers'}</Title>{!pick && dueCount > 0 ? <Soft>{`${rupees(totalDuePaise(rows))} due from ${dueCount} customer${dueCount === 1 ? '' : 's'}`}</Soft> : null}</View>
             <Button title="Back" kind="quiet" onPress={() => goBack()} />
           </View>
-          <TextInput style={s.input} value={text} onChangeText={setText} placeholder="Search by name or phone" autoCorrect={false} accessibilityLabel="Search customers" />
-          <Button title="Add customer" kind="quiet" onPress={() => setAdding(true)} />
+          <SearchBox value={text} onChange={setText} placeholder="Search by name or phone" label="Search customers" />
+          <Button title="Add customer" onPress={() => setAdding(true)} />
         </View>
         {!pick && !offline ? <Chips<Show> items={[{ id: 'all', label: 'Everyone' }, { id: 'owing', label: 'Customer dues' }, { id: 'best', label: 'Best customers' }]} value={show} onChange={setShow} /> : null}
-        {!pick && !offline ? <View style={{ paddingHorizontal: 16, paddingBottom: 6, flexDirection: 'row' }}><Button title="Import customers" kind="quiet" onPress={() => router.push('/customers-import')} /></View> : null}
         <SavedNote at={savedAt} />
         {offline && local.length === 0 ? <Failed message={error} onRetry={() => { void refresh(); }} /> : null}
         {offline && local.length > 0 ? <Text style={{ color: color.warn, paddingHorizontal: 16, paddingBottom: 6 }}>No internet. Showing the customers saved on this phone.</Text> : null}
@@ -83,6 +84,11 @@ export default function Customers() {
           ListEmptyComponent={busy ? <Loading what="Loading customers" /> : <Empty>{search ? 'No customer matches.' : show === 'owing' ? 'Nobody owes you anything.' : show === 'best' ? 'No purchases yet.' : 'No customers yet. Add a customer to keep their bills and what they owe.'}</Empty>}
           renderItem={renderRow}
         />
+        {!pick && !offline ? (
+          <Pressable accessibilityRole="button" onPress={() => router.push('/customers-import')} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: color.brand, fontWeight: '600' }}>{t('Import customers')}</Text>
+          </Pressable>
+        ) : null}
       </Page>
     </SafeAreaView>
   );
