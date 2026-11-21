@@ -6,7 +6,7 @@ import { t } from '../lib/i18n.ts';
 import { rupees } from '../lib/money.ts';
 import { Card, Field, Input, Msg, Panel, SetupShell, useAct, useList } from '../lib/formKit.tsx';
 import { IN_KINDS, MONEY_METHODS, OUT_KINDS, PERIODS, emptyMoney, entryAmount, entrySub, moneyProblem, moneyRequest, rangeFor, type MoneyBook, type MoneyEntry, type MoneyForm } from '../lib/garage.ts';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, Stat, color, s, Group } from '../lib/ui.tsx';
 
 type Cust = { customer_id: number; name: string; phone: string | null };
 
@@ -49,10 +49,10 @@ export default function MoneyScreen() {
   return (
     <SetupShell title="Money In and Out" sub="Every rupee that came in and went out." ok={ok} denied="You do not have access to this.">
       <Panel>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+        {form ? null : <View style={{ flexDirection: 'row', gap: 8 }}>
           <Button title="Money In" onPress={() => { a.setError(''); setForm({ dir: 'in', f: emptyMoney('in') }); }} style={{ flex: 1, minHeight: 56 }} />
           <Button title="Money Out" kind="quiet" onPress={() => { a.setError(''); setForm({ dir: 'out', f: emptyMoney('out') }); }} style={{ flex: 1, minHeight: 56 }} />
-        </View>
+        </View>}
         {form ? (
           <Card>
             <SectionTitle>{form.dir === 'in' ? 'What came in?' : 'What went out?'}</SectionTitle>
@@ -68,15 +68,19 @@ export default function MoneyScreen() {
             <Button title="Cancel" kind="quiet" onPress={() => setForm(null)} />
           </Card>
         ) : null}
+        {form ? null : <>
         <Chips items={PERIODS.map((p) => ({ id: p.id, label: t(p.label) }))} value={period} onChange={setPeriod} />
         {book.error && !d ? <Failed message={book.error} onRetry={book.reload} /> : !d ? <Loading /> : (
           <>
-            <Text style={{ color: d.net_paise >= 0 ? color.ok : color.warn, fontWeight: '700' }}>{`${t('Left over')}: ${rupees(d.net_paise)}`}</Text>
-            <Soft>{`${t('Cash left over')}: ${rupees(d.cash_net_paise)}`}</Soft>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Stat label="Left over" value={rupees(d.net_paise)} tone={d.net_paise >= 0 ? color.ok : color.warn} />
+              <Stat label="Cash left over" value={rupees(d.cash_net_paise)} />
+            </View>
             <Entries title="Money In" total={d.in.total_paise} rows={d.in.entries} tone="in" />
             <Entries title="Money Out" total={d.out.total_paise} rows={d.out.entries} tone="out" />
           </>
         )}
+        </>}
       </Panel>
     </SetupShell>
   );
