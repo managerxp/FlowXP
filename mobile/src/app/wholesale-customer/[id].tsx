@@ -12,7 +12,7 @@ import { useLoad } from '../../lib/useLoad.ts';
 import { creditText, ledgerText, type LedgerLine, type OpenInvoice, type WCustomer, type WOrder } from '../../lib/wholesale.ts';
 import { rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s } from '../../lib/ui.tsx';
+import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s, Group } from '../../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 
@@ -71,14 +71,14 @@ export default function WholesaleCustomer() {
 
             <SectionTitle>Bills not yet paid</SectionTitle>
             {open.data && open.data.invoices.length === 0 ? <Soft style={{ padding: 16 }}>Nothing is owed.</Soft> : null}
-            {(open.data?.invoices ?? []).map((i) => <Line key={i.invoice_id} left={i.invoice_number} sub={`${formatDate(i.invoice_date)} · due ${formatDate(i.due_date)}${i.days_overdue > 0 ? ` · ${i.days_overdue} days late` : ''}`} right={money(i.balance)} />)}
+            <Group>{(open.data?.invoices ?? []).map((i) => <Line key={i.invoice_id} left={i.invoice_number} sub={`${formatDate(i.invoice_date)} · due ${formatDate(i.due_date)}${i.days_overdue > 0 ? ` · ${i.days_overdue} days late` : ''}`} right={money(i.balance)} />)}</Group>
 
             <SectionTitle>Latest orders</SectionTitle>
             {orders.data && orders.data.length === 0 ? <Soft style={{ padding: 16 }}>No orders yet.</Soft> : null}
-            {(orders.data ?? []).map((o) => <Line key={o.order_id} left={o.order_number} sub={`${formatDate(o.order_date)} · ${o.status.toLowerCase().replace(/_/g, ' ')}`} right={money(o.total)} onPress={() => router.push({ pathname: '/wholesale-order/[id]', params: { id: String(o.order_id) } })} />)}
+            <Group>{(orders.data ?? []).map((o) => <Line key={o.order_id} left={o.order_number} sub={`${formatDate(o.order_date)} · ${o.status.toLowerCase().replace(/_/g, ' ')}`} right={money(o.total)} onPress={() => router.push({ pathname: '/wholesale-order/[id]', params: { id: String(o.order_id) } })} />)}</Group>
 
             <SectionTitle>Account statement</SectionTitle>
-            {(ledger.data?.lines ?? []).slice(-12).reverse().map((l, i) => <Line key={i} left={ledgerText(l)} sub={formatDate(l.date)} right={l.debit > 0 ? `+${money(l.debit)}` : `−${money(l.credit)}`} />)}
+            <Group>{(ledger.data?.lines ?? []).slice(-12).reverse().map((l, i) => <Line key={i} left={ledgerText(l)} sub={formatDate(l.date)} right={l.debit > 0 ? `+${money(l.debit)}` : `−${money(l.credit)}`} />)}</Group>
           </ScrollView>
         ) : null}
       </Page>

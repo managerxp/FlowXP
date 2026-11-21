@@ -10,7 +10,8 @@ import { useLoad } from '../../lib/useLoad.ts';
 import { STATUS_LABEL, creditText, orderActions, type WOrder } from '../../lib/wholesale.ts';
 import { qty, rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Button, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../../lib/ui.tsx';
+import { display } from '../../lib/theme.ts';
 
 const money = (n: number) => rupees(toPaise(n));
 
@@ -51,7 +52,7 @@ export default function WholesaleOrder() {
           <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
             <View style={{ paddingHorizontal: 16, gap: 4 }}>
               <Text style={{ fontSize: 18, fontWeight: '700', color: o.status === 'CANCELLED' || o.status === 'REJECTED' ? color.danger : color.ink }}>{STATUS_LABEL[o.status]}</Text>
-              <Text style={{ fontSize: 28, fontWeight: '800', color: color.ink }}>{money(o.total)}</Text>
+              <Text style={{ fontSize: 28, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{money(o.total)}</Text>
               <Soft>{`Items ${money(o.subtotal)} · GST ${money(o.tax)}`}</Soft>
               {o.customer_po ? <Soft>{`Their PO: ${o.customer_po}`}</Soft> : null}
               {o.expected_delivery ? <Soft>{`Wanted by ${formatDate(o.expected_delivery)}`}</Soft> : null}
@@ -69,7 +70,7 @@ export default function WholesaleOrder() {
             ))}
 
             {(o.shipments ?? []).length ? <SectionTitle>Sent out</SectionTitle> : null}
-            {(o.shipments ?? []).map((d, k) => <Line key={k} left={d.challan_number ?? 'Delivery'} sub={`${d.status.toLowerCase().replace(/_/g, ' ')}${d.invoice_number ? ` · bill ${d.invoice_number}` : ''}`} right={d.total_paise != null ? rupees(Number(d.total_paise)) : undefined} />)}
+            <Group>{(o.shipments ?? []).map((d, k) => <Line key={k} left={d.challan_number ?? 'Delivery'} sub={`${d.status.toLowerCase().replace(/_/g, ' ')}${d.invoice_number ? ` · bill ${d.invoice_number}` : ''}`} right={d.total_paise != null ? rupees(Number(d.total_paise)) : undefined} />)}</Group>
 
             <View style={{ padding: 16, gap: 8 }}>
               <ErrorText>{problem}</ErrorText>

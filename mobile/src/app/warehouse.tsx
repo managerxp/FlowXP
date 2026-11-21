@@ -10,7 +10,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { DELIVERY_LABEL, PICK_LABEL, boardLines, type Board, type Delivery, type PickList, type ToPick } from '../lib/warehouse.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Stat, Title, color, s, Group } from '../lib/ui.tsx';
 
 type Tab = 'orders' | 'lists' | 'road';
 const money = (n: number) => rupees(toPaise(n));
@@ -59,21 +59,21 @@ export default function Warehouse() {
             <>
               <SavedNote at={orders.savedAt} />
               {orders.data && orders.data.length === 0 ? <Empty>No confirmed order is waiting to be picked.</Empty> : null}
-              {(orders.data ?? []).map((o) => <Line key={o.order_id} left={`${o.order_number} · ${o.customer}`} sub={`${formatDate(o.order_date)}${o.lines ? ` · ${o.lines} products` : ''} · tap to start a pick list`} right={busy === o.order_id ? '…' : money(o.total)} onPress={busy ? undefined : () => { void startList(o); }} />)}
+              <Group>{(orders.data ?? []).map((o) => <Line key={o.order_id} left={`${o.order_number} · ${o.customer}`} sub={`${formatDate(o.order_date)}${o.lines ? ` · ${o.lines} products` : ''} · tap to start a pick list`} right={busy === o.order_id ? '…' : money(o.total)} onPress={busy ? undefined : () => { void startList(o); }} />)}</Group>
             </>
           ) : null}
           {tab === 'lists' ? (
             <>
               <SavedNote at={lists.savedAt} />
               {lists.data && lists.data.length === 0 ? <Empty>No pick lists in hand. Start one from an order under To pick.</Empty> : null}
-              {(lists.data ?? []).map((l) => <Line key={l.pick_id} left={`${l.pick_number} · ${l.customer}`} sub={`${l.order_number} · ${PICK_LABEL[l.status]}${l.items ? ` · ${l.items} products` : ''}${l.picker_name ? ` · ${l.picker_name}` : ''}`} onPress={() => router.push({ pathname: '/warehouse-pick/[id]', params: { id: String(l.pick_id) } })} />)}
+              <Group>{(lists.data ?? []).map((l) => <Line key={l.pick_id} left={`${l.pick_number} · ${l.customer}`} sub={`${l.order_number} · ${PICK_LABEL[l.status]}${l.items ? ` · ${l.items} products` : ''}${l.picker_name ? ` · ${l.picker_name}` : ''}`} onPress={() => router.push({ pathname: '/warehouse-pick/[id]', params: { id: String(l.pick_id) } })} />)}</Group>
             </>
           ) : null}
           {tab === 'road' ? (
             <>
               <SavedNote at={road.savedAt} />
               {road.data && road.data.length === 0 ? <Empty>Nothing is on the road.</Empty> : null}
-              {(road.data ?? []).map((d) => <Line key={d.delivery_id} left={`${d.challan_number} · ${d.customer}`} sub={`${DELIVERY_LABEL[d.status]}${d.vehicle_no ? ` · ${d.vehicle_no}` : ''}${d.driver_name ? ` · ${d.driver_name}` : ''}`} right={d.invoice_total != null ? money(d.invoice_total) : undefined} onPress={() => router.push({ pathname: '/warehouse-delivery/[id]', params: { id: String(d.delivery_id) } })} />)}
+              <Group>{(road.data ?? []).map((d) => <Line key={d.delivery_id} left={`${d.challan_number} · ${d.customer}`} sub={`${DELIVERY_LABEL[d.status]}${d.vehicle_no ? ` · ${d.vehicle_no}` : ''}${d.driver_name ? ` · ${d.driver_name}` : ''}`} right={d.invoice_total != null ? money(d.invoice_total) : undefined} onPress={() => router.push({ pathname: '/warehouse-delivery/[id]', params: { id: String(d.delivery_id) } })} />)}</Group>
             </>
           ) : null}
         </ScrollView>

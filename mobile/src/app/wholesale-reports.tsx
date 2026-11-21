@@ -7,7 +7,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { cell, groupReports, periodFor, reportPath, type ReportDef, type ReportOut } from '../lib/shopExtras.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Chips, Empty, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 type Period = 'today' | 'month' | 'last30';
 
@@ -37,7 +37,7 @@ export default function WholesaleReports() {
               {groupReports(cat.data ?? []).map((g) => (
                 <View key={g.name}>
                   <SectionTitle>{g.name}</SectionTitle>
-                  {g.items.map((d) => <Line key={d.key} left={d.label} sub={d.description} onPress={() => setDef(d)} />)}
+                  <Group>{g.items.map((d) => <Line key={d.key} left={d.label} sub={d.description} onPress={() => setDef(d)} />)}</Group>
                 </View>
               ))}
             </>

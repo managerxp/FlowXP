@@ -14,7 +14,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { METHOD_LABEL, collectBody, collectProblem, needsReference, spread, type Method, type OpenInvoice } from '../lib/wholesale.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 const METHODS = (Object.keys(METHOD_LABEL) as Method[]).map((m) => ({ id: m, label: METHOD_LABEL[m] }));
@@ -105,7 +105,7 @@ export default function Collect() {
             {plan.length > 0 ? (
               <>
                 <SectionTitle>This will settle</SectionTitle>
-                {plan.map((p) => <Line key={p.invoice.invoice_id} left={p.invoice.invoice_number} sub={`${money(p.invoice.balance)} owed`} right={money(p.pay)} />)}
+                <Group>{plan.map((p) => <Line key={p.invoice.invoice_id} left={p.invoice.invoice_number} sub={`${money(p.invoice.balance)} owed`} right={money(p.pay)} />)}</Group>
                 {(plan.advance ?? 0) > 0 ? <Soft style={{ padding: 16 }}>{`${money(plan.advance ?? 0)} more is kept as their advance for later bills.`}</Soft> : null}
               </>
             ) : null}

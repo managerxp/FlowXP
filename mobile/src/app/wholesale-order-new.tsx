@@ -11,6 +11,7 @@ import { qty, rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
 import { SearchBox } from '../lib/SearchBox.tsx';
 import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { display } from '../lib/theme.ts';
 
 const money = (n: number) => rupees(toPaise(n));
 
@@ -110,7 +111,7 @@ export default function NewWholesaleOrder() {
               {preview.schemes.length ? <Soft>{`Offers applied: ${preview.schemes.map((x) => x.scheme).join(', ')}`}</Soft> : null}
               {(preview.scheme_hints ?? []).map((h) => <Soft key={h}>{h}</Soft>)}
               <Soft>{`Items ${money(preview.subtotal)} · GST ${money(preview.tax)}`}</Soft>
-              <Text accessibilityLiveRegion="polite" style={{ fontSize: 28, fontWeight: '800', color: color.ink }}>{money(preview.total)}</Text>
+              <Text accessibilityLiveRegion="polite" style={{ fontSize: 28, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{money(preview.total)}</Text>
               {credit && credit.text ? <Text style={{ color: credit.tone === 'bad' ? color.danger : credit.tone === 'warn' ? color.warn : color.soft, fontWeight: '600' }}>{credit.text}</Text> : null}
               {preview.credit.limit > 0 ? <Soft>{`Owes ${money(preview.credit.outstanding)} of a ${money(preview.credit.limit)} limit`}</Soft> : null}
               {preview.approval_needed ? <Soft>This order needs a manager's approval.</Soft> : null}

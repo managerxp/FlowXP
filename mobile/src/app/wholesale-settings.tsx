@@ -6,7 +6,7 @@ import { Card, Field, Input, Msg, Panel, Row, SetupShell, useAct, useList } from
 import {
   CREDIT_CHOICES, NOTIFY, STACKING_CHOICES, canWholesaleSettings, emptySp, spBody, spForm, spProblem, spSub, wbody, wform, wproblem, type Salesperson, type SpForm, type WForm, type WSettings
 } from '../lib/wholesaleSettings.ts';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, Group } from '../lib/ui.tsx';
 
 const tr = (items: { id: string; label: string }[]) => items.map((x) => ({ id: x.id, label: t(x.label) }));
 
@@ -70,7 +70,7 @@ const PeopleTab = ({ edit }: { edit: boolean }) => {
       <Chips items={[{ id: 'ACTIVE', label: 'Active' }, { id: 'INACTIVE', label: 'Inactive' }]} value={status} onChange={setStatus} />
       {edit ? <Button title="Add a salesperson" onPress={() => { a.setError(''); setForm({ f: emptySp() }); }} /> : null}
       {list.data.length === 0 ? <Soft>{t('Add the people who sell for you to assign customers and track commission.')}</Soft> : null}
-      {list.data.map((p) => <Line key={p.salesperson_id} left={p.name} sub={spSub(p)} onPress={() => { if (edit) { a.setError(''); setForm({ id: p.salesperson_id, f: spForm(p) }); } }} />)}
+      <Group>{list.data.map((p) => <Line key={p.salesperson_id} left={p.name} sub={spSub(p)} onPress={() => { if (edit) { a.setError(''); setForm({ id: p.salesperson_id, f: spForm(p) }); } }} />)}</Group>
       {form ? (
         <Card>
           <Input label="Name" value={form.f.name} onChange={(v) => set({ name: v })} max={120} />

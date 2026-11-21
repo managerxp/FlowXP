@@ -7,7 +7,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { inr, windowFor, type Takings } from '../lib/gamingDesk.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s, Group } from '../lib/ui.tsx';
 
 type Row = { name?: string; station_name?: string; game_name?: string; total?: number; sessions?: number };
 
@@ -46,7 +46,7 @@ export default function GamingReports() {
             </>
           ) : null}
           {(st.data ?? []).length ? <SectionTitle>By station</SectionTitle> : null}
-          {(st.data ?? []).map((r, i) => <Line key={i} left={r.name ?? r.station_name ?? ''} sub={r.sessions != null ? t('{n} sessions', { n: r.sessions }) : undefined} right={inr(r.total ?? 0)} />)}
+          <Group>{(st.data ?? []).map((r, i) => <Line key={i} left={r.name ?? r.station_name ?? ''} sub={r.sessions != null ? t('{n} sessions', { n: r.sessions }) : undefined} right={inr(r.total ?? 0)} />)}</Group>
         </ScrollView>
       </Page>
     </SafeAreaView>

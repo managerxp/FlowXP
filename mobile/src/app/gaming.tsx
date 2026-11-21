@@ -11,6 +11,7 @@ import { rupees, toPaise } from '../lib/money.ts';
 import { ALARMS, KIND_LABEL, STATE_LABEL, clock, countBy, duration, liveCharge, liveElapsed, liveRemaining, offersFor, startBody, startProblem, stations, stopBody, stopProblem, timeWarning, type Board, type Bundle, type How, type Station } from '../lib/gaming.ts';
 import { Page } from '../lib/responsive.tsx';
 import { Button, Chips, ErrorText, Failed, Loading, SavedNote, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
+import { display } from '../lib/theme.ts';
 
 const EDGE: Record<string, string> = { get RUNNING() { return color.brand; }, get PAUSED() { return color.warn; }, get TO_BILL() { return color.danger; }, get RESERVED() { return color.warn; }, get OUT_OF_SERVICE() { return color.line; }, get AVAILABLE() { return color.line; } };
 const timeText = (iso: string) => new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
@@ -95,9 +96,9 @@ export default function Gaming() {
         {live && x ? (
           <>
             {remaining != null ? (
-              <Text style={{ fontSize: 34, fontWeight: '700', color: warn === 'over' ? color.danger : color.ink }} accessibilityLabel={warn === 'over' ? 'Over time' : 'Time left'}>{clock(remaining)}</Text>
+              <Text style={{ fontSize: 34, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: warn === 'over' ? color.danger : color.ink }} accessibilityLabel={warn === 'over' ? 'Over time' : 'Time left'}>{clock(remaining)}</Text>
             ) : (
-              <Text style={{ fontSize: 34, fontWeight: '700', color: color.ink }} accessibilityLabel="Time played">{clock(liveElapsed(x, since))}</Text>
+              <Text style={{ fontSize: 34, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }} accessibilityLabel="Time played">{clock(liveElapsed(x, since))}</Text>
             )}
             <Soft>{remaining != null ? `${warn === 'over' ? 'over the booked time' : 'left'} · played ${duration(liveElapsed(x, since))}` : `played${x.status === 'PAUSED' ? ' (paused)' : ''}`}</Soft>
             <Text style={{ color: color.ink }}>{x.bills_time ? `${x.players} player${x.players === 1 ? '' : 's'} · ${rupees(toPaise(x.hour_rate ?? 0))}/hr · ` : ''}<Text style={{ fontWeight: '700' }}>{rupees(toPaise(liveCharge(x, since)))}</Text> so far</Text>
@@ -115,7 +116,7 @@ export default function Gaming() {
         {st.state === 'TO_BILL' && x ? (
           <>
             <Soft>{`Played ${duration(x.elapsed_seconds)}${x.ended_at ? `, stopped ${timeText(x.ended_at)}` : ''}`}</Soft>
-            <Text style={{ fontSize: 26, fontWeight: '700', color: color.ink }}>{rupees((st.tab?.total_paise ?? 0) / 100)}</Text>
+            <Text style={{ fontSize: 26, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{rupees((st.tab?.total_paise ?? 0) / 100)}</Text>
             <Soft>{`to collect, with GST${food ? ` · includes ${rupees(food.fnb_paise / 100)} food and drink` : ''}`}</Soft>
           </>
         ) : null}
