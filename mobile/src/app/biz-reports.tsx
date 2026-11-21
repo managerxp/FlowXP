@@ -7,7 +7,7 @@ import { goBack } from '../lib/nav.ts';
 import { listFor } from '../lib/bizReports.ts';
 import { Page } from '../lib/responsive.tsx';
 import AskReports from '../lib/AskReports.tsx';
-import { Button, Empty, Line, SectionTitle, Title, s } from '../lib/ui.tsx';
+import { Button, Empty, Line, SectionTitle, Title, s, Group } from '../lib/ui.tsx';
 
 /* Every business report the phone can show, in groups: Day Book, Profit & Loss, GST, stock, parties. The figures are the website's. */
 export default function BizReports() {
@@ -27,7 +27,7 @@ export default function BizReports() {
           {groups.map((g) => (
             <View key={g.group}>
               <SectionTitle>{g.group}</SectionTitle>
-              {g.defs.map((d) => <Line key={d.id} left={d.title} sub={d.text} onPress={() => router.push({ pathname: '/biz-report', params: { id: d.id } })} />)}
+              <Group>{g.defs.map((d) => <Line key={d.id} left={d.title} sub={d.text} onPress={() => router.push({ pathname: '/biz-report', params: { id: d.id } })} />)}</Group>
             </View>
           ))}
         </ScrollView>

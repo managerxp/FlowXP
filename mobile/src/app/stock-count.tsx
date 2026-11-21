@@ -17,7 +17,7 @@ import {
   type CountDetail, type CountEntry, type CountedBack, type CountItem, type QuickForm
 } from '../lib/stockCount.ts';
 import { syncAll } from '../lib/sync.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Screen, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Screen, Soft, Stat, Title, color, s, Group } from '../lib/ui.tsx';
 
 /* One stock count: scan or search to count, correct a number by typing it, see the differences, then apply or cancel. */
 export default function StockCount() {
@@ -163,7 +163,7 @@ export default function StockCount() {
               <View style={{ paddingHorizontal: 16, gap: 8 }}>
                 <Button title="Scan items" onPress={() => { setNote(''); setScanning(true); }} />
                 <TextInput style={s.input} value={query} onChangeText={setQuery} placeholder={t('Search a product to count it (+1)')} autoCorrect={false} accessibilityLabel={t('Search a product to count it (+1)')} />
-                {found.map((p) => <Line key={p.product_id} left={pname(p)} sub={[p.sku, p.barcodes?.[0]].filter(Boolean).join(' · ')} onPress={() => { void countOne(p); }} />)}
+                <Group>{found.map((p) => <Line key={p.product_id} left={pname(p)} sub={[p.sku, p.barcodes?.[0]].filter(Boolean).join(' · ')} onPress={() => { void countOne(p); }} />)}</Group>
               </View>
             ) : null}
             {note ? <Soft style={{ padding: 16 }}>{note}</Soft> : null}

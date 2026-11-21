@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Button, ErrorText, Soft, color, s } from './ui.tsx';
+import { display } from './theme.ts';
 import { customPresets, GST_RATES, presetRate, type Preset } from './customItems.ts';
 import { toPaise } from './money.ts';
 import { t } from './i18n.ts';
@@ -45,7 +46,7 @@ export default function CustomItem({ open, businessType, gstOn, onAdd, onClose }
             <Text style={{ fontWeight: '700', color: color.ink }}>{t('How many')}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <Pressable accessibilityRole="button" accessibilityLabel={t('One less')} onPress={() => setQty((q) => Math.max(1, q - 1))} style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: color.tint, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 26, color: color.brand }}>−</Text></Pressable>
-              <Text style={{ fontSize: 22, fontWeight: '800', minWidth: 32, textAlign: 'center', color: color.ink }}>{qty}</Text>
+              <Text style={{ fontSize: 22, fontFamily: display.bold, fontVariant: ['tabular-nums'], minWidth: 32, textAlign: 'center', color: color.ink }}>{qty}</Text>
               <Pressable accessibilityRole="button" accessibilityLabel={t('One more')} onPress={() => setQty((q) => q + 1)} style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: color.tint, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 26, color: color.brand }}>+</Text></Pressable>
             </View>
           </View>

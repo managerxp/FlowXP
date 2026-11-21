@@ -7,7 +7,7 @@ import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import { blankOption, emptyGroup, groupBody, groupForm, groupProblem, previewRule, ruleOf, type Group, type GroupForm, type Ingredient, type OptionForm } from '../lib/menuOptions.ts';
-import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, Title, color, s, Group as UiGroup } from '../lib/ui.tsx';
 
 /* A new option group, or one changed: its name, how customers choose, and its options (price change, and an ingredient an option uses up). */
 export default function OptionGroupEdit() {
@@ -84,7 +84,7 @@ export default function OptionGroupEdit() {
                       <View>
                         <TextInput style={s.input} value={filter} onChangeText={setFilter} placeholder={t('Search ingredients')} accessibilityLabel={t('Uses ingredient')} />
                         <Line left={t('Nothing extra')} onPress={() => { setOption(i, { ingredient_product_id: '', ingredient_qty: '' }); setPicking(null); }} />
-                        {shown.map((p) => <Line key={p.product_id} left={p.name} right={p.unit ?? ''} onPress={() => { setOption(i, { ingredient_product_id: String(p.product_id) }); setPicking(null); }} />)}
+                        <UiGroup>{shown.map((p) => <Line key={p.product_id} left={p.name} right={p.unit ?? ''} onPress={() => { setOption(i, { ingredient_product_id: String(p.product_id) }); setPicking(null); }} />)}</UiGroup>
                       </View>
                     ) : null}
                     <Button title="Remove" kind="danger" onPress={() => setForm((f) => ({ ...f, options: f.options.filter((_, j) => j !== i) }))} />

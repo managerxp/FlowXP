@@ -5,7 +5,7 @@ import { currentBusiness, useSession } from '../lib/session.ts';
 import { t } from '../lib/i18n.ts';
 import { Panel, SetupShell } from '../lib/formKit.tsx';
 import { findTasks, workshopOn } from '../lib/workshopExtras.ts';
-import { Line, Soft, s } from '../lib/ui.tsx';
+import { Line, Soft, s, Group } from '../lib/ui.tsx';
 
 /* "Help me find": say what you want to do in your own words and tap the screen that does it. Only what this person can open is listed. */
 export default function HelpFindScreen() {
@@ -16,7 +16,7 @@ export default function HelpFindScreen() {
     <SetupShell title="Help me find" sub="What do you want to do?" ok denied="">
       <Panel>
         <TextInput style={s.input} value={q} onChangeText={setQ} placeholder={t('For example: add racks, job card, import')} autoCapitalize="none" autoCorrect={false} accessibilityLabel={t('What do you want to do?')} />
-        {rows.map((x) => <Line key={x.text} left={t(x.text)} onPress={() => router.push(x.go as never)} />)}
+        <Group>{rows.map((x) => <Line key={x.text} left={t(x.text)} onPress={() => router.push(x.go as never)} />)}</Group>
         {q.trim() && rows.length === 0 ? <Soft>{t('No screen found for that. Try another word.')}</Soft> : null}
       </Panel>
     </SetupShell>

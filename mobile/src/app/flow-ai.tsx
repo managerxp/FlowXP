@@ -10,7 +10,7 @@ import { askProblem, friendlyError, questionsFor, unavailable, type AiChat, type
 import { Page } from '../lib/responsive.tsx';
 import AiAnswer from '../lib/AiAnswer.tsx';
 import { useLocalSearchParams } from 'expo-router';
-import { Button, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 /* Ask about the business in plain words. The server works the answer out from the business's own records and only from what this person may already see. It needs the internet. */
 export default function FlowAi() {
@@ -74,7 +74,7 @@ export default function FlowAi() {
             <SectionTitle>Earlier chats</SectionTitle>
             {past.busy && !past.data ? <Loading /> : null}
             {past.data && past.data.length === 0 ? <Soft style={{ padding: 16 }}>Nothing here yet. Ask your first question.</Soft> : null}
-            {(past.data ?? []).map((c) => <Line key={c.conversation_id} icon="chatbubble-outline" left={c.title || 'Chat'} sub={formatDate(c.updated_at)} onPress={() => { void openOld(c.conversation_id); }} />)}
+            <Group>{(past.data ?? []).map((c) => <Line key={c.conversation_id} icon="chatbubble-outline" left={c.title || 'Chat'} sub={formatDate(c.updated_at)} onPress={() => { void openOld(c.conversation_id); }} />)}</Group>
           </ScrollView>
         ) : st ? (
           <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

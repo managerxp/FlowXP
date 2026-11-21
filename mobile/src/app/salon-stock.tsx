@@ -10,7 +10,7 @@ import { pname, type Product } from '../lib/catalog.ts';
 import { ALERT_GROUPS, addStockBody, addStockProblem, alertTotal, expiryText, type SalonAlerts, type SalonBatch } from '../lib/shopExtras.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 /* Salon stock: what needs attention, which batches are on the shelf and when they expire, and adding stock with a batch and expiry date. */
 export default function SalonStock() {
@@ -65,7 +65,7 @@ export default function SalonStock() {
               {a ? ALERT_GROUPS.filter((g) => a[g.key].length).map((g) => (
                 <View key={g.key}>
                   <SectionTitle>{`${t(g.title)} (${a[g.key].length})`}</SectionTitle>
-                  {a[g.key].map((x, i) => <Line key={`${x.product_id}-${i}`} left={x.name} sub={x.batch_no ? `${t('Batch')} ${x.batch_no}` : undefined} right={x.expiry_date ? t(expiryText(x.days_to_expiry)) : `${x.stock ?? 0}${x.unit ? ` ${x.unit}` : ''}`} />)}
+                  <Group>{a[g.key].map((x, i) => <Line key={`${x.product_id}-${i}`} left={x.name} sub={x.batch_no ? `${t('Batch')} ${x.batch_no}` : undefined} right={x.expiry_date ? t(expiryText(x.days_to_expiry)) : `${x.stock ?? 0}${x.unit ? ` ${x.unit}` : ''}`} />)}</Group>
                 </View>
               )) : null}
             </>
@@ -75,7 +75,7 @@ export default function SalonStock() {
               {batches.busy && !batches.data ? <Loading /> : null}
               {batches.error && !batches.data ? <Failed message={batches.error} onRetry={() => { void batches.refresh(); }} /> : null}
               {batches.data && batches.data.length === 0 ? <Empty>No batches yet. Add stock with an expiry date to see it here.</Empty> : null}
-              {(batches.data ?? []).map((b) => <Line key={b.batch_id} left={b.product} sub={[b.batch_no ? `${t('Batch')} ${b.batch_no}` : '', b.expiry_date ? t(expiryText(b.days_to_expiry)) : ''].filter(Boolean).join(' · ')} right={`${b.remaining}${b.unit ? ` ${b.unit}` : ''}`} />)}
+              <Group>{(batches.data ?? []).map((b) => <Line key={b.batch_id} left={b.product} sub={[b.batch_no ? `${t('Batch')} ${b.batch_no}` : '', b.expiry_date ? t(expiryText(b.days_to_expiry)) : ''].filter(Boolean).join(' · ')} right={`${b.remaining}${b.unit ? ` ${b.unit}` : ''}`} />)}</Group>
             </>
           ) : null}
           {tab === 'add' ? (
@@ -84,7 +84,7 @@ export default function SalonStock() {
               {item ? <Line left={pname(item)} right={t('Change')} onPress={() => setItem(null)} /> : (
                 <>
                   <TextInput style={s.input} value={text} onChangeText={setText} placeholder={t('Search for an item')} accessibilityLabel={t('Search for an item')} autoCorrect={false} />
-                  {found.map((p) => <Line key={p.product_id} left={pname(p)} onPress={() => { setItem(p); setText(''); }} />)}
+                  <Group>{found.map((p) => <Line key={p.product_id} left={pname(p)} onPress={() => { setItem(p); setText(''); }} />)}</Group>
                 </>
               )}
               {field('How many came in', qty, (v) => setQty(v.replace(/[^\d.]/g, '')), { numeric: true })}

@@ -11,7 +11,7 @@ import { useLoad } from '../../lib/useLoad.ts';
 import { timelineText, type ClientDetail, type TimelineRow } from '../../lib/salon.ts';
 import { rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Button, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../../lib/ui.tsx';
 
 /* One client: what they have (membership, packages, gift cards, points), a note for the team, and everything that has happened, newest first. */
 export default function SalonClient() {
@@ -56,9 +56,9 @@ export default function SalonClient() {
             {c.labels.length ? <Soft style={{ paddingHorizontal: 16, paddingTop: 4 }}>{c.labels.join(' · ')}</Soft> : null}
 
             {c.memberships.some((m) => m.active) || c.packages.some((p) => p.active) || c.gift_cards.length || c.loyalty ? <SectionTitle>What they have</SectionTitle> : null}
-            {c.memberships.filter((m) => m.active).map((m) => <Line key={m.membership_id} left={m.plan_name} sub={`Member until ${formatDate(m.expiry_date)}`} />)}
-            {c.packages.filter((p) => p.active).map((p) => <Line key={p.cp_id} left={p.name} sub={`${(p.items ?? []).map((i) => `${i.remaining} of ${i.total} ${i.name}`).join(', ')} · until ${formatDate(p.expiry_date)}`} />)}
-            {c.gift_cards.filter((g) => g.status === 'ACTIVE' && g.balance > 0).map((g) => <Line key={g.code} left={`Gift card ${g.code}`} sub={g.expires_on ? `Until ${formatDate(g.expires_on)}` : 'No expiry'} right={rupees(toPaise(g.balance))} />)}
+            <Group>{c.memberships.filter((m) => m.active).map((m) => <Line key={m.membership_id} left={m.plan_name} sub={`Member until ${formatDate(m.expiry_date)}`} />)}</Group>
+            <Group>{c.packages.filter((p) => p.active).map((p) => <Line key={p.cp_id} left={p.name} sub={`${(p.items ?? []).map((i) => `${i.remaining} of ${i.total} ${i.name}`).join(', ')} · until ${formatDate(p.expiry_date)}`} />)}</Group>
+            <Group>{c.gift_cards.filter((g) => g.status === 'ACTIVE' && g.balance > 0).map((g) => <Line key={g.code} left={`Gift card ${g.code}`} sub={g.expires_on ? `Until ${formatDate(g.expires_on)}` : 'No expiry'} right={rupees(toPaise(g.balance))} />)}</Group>
             {c.loyalty ? <Line left="Points" sub={`${c.loyalty.tier ? `${c.loyalty.tier} · ` : ''}${c.loyalty.expiring_soon ? `${c.loyalty.expiring_soon} expire soon` : 'Spend them at the till'}`} right={String(c.loyalty.available)} /> : null}
 
             <SectionTitle>Notes</SectionTitle>
@@ -67,10 +67,10 @@ export default function SalonClient() {
               <ErrorText>{problem}</ErrorText>
               <Button title="Save note" kind="quiet" onPress={() => { void addNote(); }} busy={busy} disabled={!note.trim()} />
             </View>
-            {c.notes.map((n) => <Line key={n.note_id} left={n.body} sub={`${n.author ?? 'Team'} · ${formatDate(n.created_at)}`} />)}
+            <Group>{c.notes.map((n) => <Line key={n.note_id} left={n.body} sub={`${n.author ?? 'Team'} · ${formatDate(n.created_at)}`} />)}</Group>
 
             <SectionTitle>History</SectionTitle>
-            {(timeline.data ?? []).map((r, i) => <Line key={`${r.type}${i}`} left={timelineText(r)} sub={formatDate(r.at)} right={r.amount != null && r.type !== 'points' ? rupees(toPaise(r.amount)) : undefined} />)}
+            <Group>{(timeline.data ?? []).map((r, i) => <Line key={`${r.type}${i}`} left={timelineText(r)} sub={formatDate(r.at)} right={r.amount != null && r.type !== 'points' ? rupees(toPaise(r.amount)) : undefined} />)}</Group>
             {timeline.data && timeline.data.length === 0 ? <Soft style={{ padding: 16 }}>Nothing yet.</Soft> : null}
           </ScrollView>
         ) : null}

@@ -6,7 +6,7 @@ import { t } from '../lib/i18n.ts';
 import { rupees } from '../lib/money.ts';
 import { Card, Field, Input, Msg, Panel, SetupShell, useAct, useList } from '../lib/formKit.tsx';
 import { IN_KINDS, MONEY_METHODS, OUT_KINDS, PERIODS, emptyMoney, entryAmount, entrySub, moneyProblem, moneyRequest, rangeFor, type MoneyBook, type MoneyEntry, type MoneyForm } from '../lib/garage.ts';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, s, Group } from '../lib/ui.tsx';
 
 type Cust = { customer_id: number; name: string; phone: string | null };
 
@@ -23,7 +23,7 @@ const CustomerPick = ({ form, set }: { form: MoneyForm; set: (patch: Partial<Mon
   return (
     <>
       <Field label="Customer"><TextInput style={s.input} value={text} onChangeText={setText} placeholder={t('Customer name or phone')} autoCapitalize="none" autoCorrect={false} accessibilityLabel={t('Customer name or phone')} /></Field>
-      {rows.map((c) => <Line key={c.customer_id} left={c.name} sub={c.phone ?? ''} onPress={() => set({ customer_id: c.customer_id, customer_name: c.name })} />)}
+      <Group>{rows.map((c) => <Line key={c.customer_id} left={c.name} sub={c.phone ?? ''} onPress={() => set({ customer_id: c.customer_id, customer_name: c.name })} />)}</Group>
     </>
   );
 };
@@ -31,7 +31,7 @@ const CustomerPick = ({ form, set }: { form: MoneyForm; set: (patch: Partial<Mon
 const Entries = ({ title, total, rows, tone }: { title: string; total: number; rows: MoneyEntry[]; tone: string }) => (
   <>
     <SectionTitle>{`${t(title)}: ${rupees(total)}`}</SectionTitle>
-    {rows.length === 0 ? <Soft style={{ paddingHorizontal: 16 }}>{t('Nothing yet.')}</Soft> : rows.map((e) => <Line key={`${e.kind}${e.ref_id}`} left={e.who} sub={entrySub(e)} right={entryAmount(e)} icon={tone === 'in' ? 'arrow-down-outline' : 'arrow-up-outline'} />)}
+    <Group>{rows.length === 0 ? <Soft style={{ paddingHorizontal: 16 }}>{t('Nothing yet.')}</Soft> : rows.map((e) => <Line key={`${e.kind}${e.ref_id}`} left={e.who} sub={entrySub(e)} right={entryAmount(e)} icon={tone === 'in' ? 'arrow-down-outline' : 'arrow-up-outline'} />)}</Group>
   </>
 );
 

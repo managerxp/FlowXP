@@ -11,7 +11,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { DISPOSITION_LABEL, REASONS, REASON_LABEL, REFUNDS, creditEstimatePaise, editS, salesReturnBody, salesReturnProblem, sentence, startLines, withReason, type Disposition, type InvoiceRow, type Reason, type Returnable, type SLine } from '../lib/returns.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 const DISPOSITIONS: Disposition[] = ['RESTOCK', 'DAMAGED', 'EXPIRED', 'NONE'];
@@ -65,7 +65,7 @@ export default function ReturnSale() {
             {bills.error && !bills.data ? <Failed message={bills.error} onRetry={() => { void bills.refresh(); }} /> : null}
             {bills.busy && !bills.data ? <Loading /> : null}
             {bills.data && bills.data.length === 0 ? <Empty>This shop has no bills yet.</Empty> : null}
-            {(bills.data ?? []).filter((b) => b.status !== 'CANCELLED').map((b) => <Line key={b.invoice_id} left={b.invoice_number} sub={`${formatDate(b.invoice_date)}${b.balance_due > 0 ? ` · ${money(b.balance_due)} still owed` : ' · paid'}`} right={money(b.total)} onPress={() => setInvoiceId(b.invoice_id)} />)}
+            <Group>{(bills.data ?? []).filter((b) => b.status !== 'CANCELLED').map((b) => <Line key={b.invoice_id} left={b.invoice_number} sub={`${formatDate(b.invoice_date)}${b.balance_due > 0 ? ` · ${money(b.balance_due)} still owed` : ' · paid'}`} right={money(b.total)} onPress={() => setInvoiceId(b.invoice_id)} />)}</Group>
           </ScrollView>
         ) : (
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>

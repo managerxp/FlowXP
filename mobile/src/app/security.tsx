@@ -11,7 +11,7 @@ import {
   OUTCOME, canSeeTeamSecurity, capProblem, changePasswordBody, cleanCode, codesLow, deviceName, disableBody, enableBody, looksLikeCode, passwordProblem, pinProblem, recoveryText, roleText, whenText,
   type ApprovalRules, type LoginEvent, type TeamSecurity, type TwoFactorSetup, type TwoFactorStatus
 } from '../lib/security.ts';
-import { Button, ErrorText, Failed, Line, Loading, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, ErrorText, Failed, Line, Loading, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 const failText = (e: unknown) => (e instanceof ApiError ? e.message : t('Could not save. Check the connection and try again.'));
 
@@ -183,7 +183,7 @@ const ApprovalRulesCard = () => {
         <Switch value={d.cancel_needs_approval} onValueChange={(v) => { void save({ cancel_needs_approval: v }); }} accessibilityLabel={t("Cancelling a bill needs a manager's PIN")} />
       </View>
       <Text style={{ fontWeight: '700', color: color.ink }}>{t('Who can approve')}</Text>
-      {d.approvers?.length ? d.approvers.map((m) => <Line key={m.user_id} left={m.name} sub={roleText(m.role)} right={m.has_pin ? t('Set') : t('Not set')} />) : <Soft>{t('Nobody yet.')}</Soft>}
+      <Group>{d.approvers?.length ? d.approvers.map((m) => <Line key={m.user_id} left={m.name} sub={roleText(m.role)} right={m.has_pin ? t('Set') : t('Not set')} />) : <Soft>{t('Nobody yet.')}</Soft>}</Group>
       <ErrorText>{error}</ErrorText>
       {done ? <Text style={{ color: color.ok }}>{done}</Text> : null}
     </Card>
@@ -208,7 +208,7 @@ const Team = ({ owner }: { owner: boolean }) => {
           <Switch value={d.require_2fa_admins} onValueChange={(v) => { void toggle(v); }} accessibilityLabel={t('Require two-step verification for owners and admins')} />
         </View>
       ) : null}
-      {d.members.map((m) => <Line key={m.user_id} left={m.name} sub={`${roleText(m.role)} · ${m.email}`} right={t(m.two_factor ? 'On' : 'Off')} />)}
+      <Group>{d.members.map((m) => <Line key={m.user_id} left={m.name} sub={`${roleText(m.role)} · ${m.email}`} right={t(m.two_factor ? 'On' : 'Off')} />)}</Group>
       <Text style={{ fontWeight: '700', color: color.ink }}>{t('Recent activity')}</Text>
       {d.events.length ? <Events rows={d.events.slice(0, 30)} showWho /> : <Soft>{t('Nothing yet.')}</Soft>}
       <ErrorText>{error}</ErrorText>

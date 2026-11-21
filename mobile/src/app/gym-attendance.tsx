@@ -7,7 +7,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { rowsOf, timeOf, todayISO, type DayVisit } from '../lib/gymMembers.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Empty, Failed, Line, Loading, SectionTitle, Soft, Title, s } from '../lib/ui.tsx';
+import { Button, Empty, Failed, Line, Loading, SectionTitle, Soft, Title, s, Group } from '../lib/ui.tsx';
 
 /* Who came today: still inside first, then those who have left. */
 export default function GymAttendance() {
@@ -29,8 +29,8 @@ export default function GymAttendance() {
           {v.busy && !v.data ? <Loading /> : null}
           {v.error && !v.data ? <Failed message={v.error} onRetry={() => { void v.refresh(); }} /> : null}
           {v.data && v.data.length === 0 ? <Empty>Nobody has come yet today.</Empty> : null}
-          {inside.length ? <><SectionTitle>In the gym now</SectionTitle>{inside.map((x) => <Line key={x.attendance_id} left={x.member_name} sub={x.member_code} right={t('in {time}', { time: timeOf(x.check_in_at) })} onPress={() => open(x)} />)}</> : null}
-          {gone.length ? <><SectionTitle>Already left</SectionTitle>{gone.map((x) => <Line key={x.attendance_id} left={x.member_name} sub={x.member_code} right={`${timeOf(x.check_in_at)} – ${timeOf(x.check_out_at as string)}`} onPress={() => open(x)} />)}</> : null}
+          <Group>{inside.length ? <><SectionTitle>In the gym now</SectionTitle>{inside.map((x) => <Line key={x.attendance_id} left={x.member_name} sub={x.member_code} right={t('in {time}', { time: timeOf(x.check_in_at) })} onPress={() => open(x)} />)}</> : null}</Group>
+          <Group>{gone.length ? <><SectionTitle>Already left</SectionTitle>{gone.map((x) => <Line key={x.attendance_id} left={x.member_name} sub={x.member_code} right={`${timeOf(x.check_in_at)} – ${timeOf(x.check_out_at as string)}`} onPress={() => open(x)} />)}</> : null}</Group>
         </ScrollView>
       </Page>
     </SafeAreaView>

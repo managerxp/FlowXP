@@ -12,7 +12,7 @@ import {
   STOCK_STATUS, accuracyText, canInsights, dayLine, draftNote, emptyEvent, eventBody, eventLine, eventProblem, hourLabel, rangeText, shortDate, stockSub,
   type EventForm, type Forecast, type StockForecast
 } from '../lib/insights.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s, Group } from '../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 
@@ -46,7 +46,7 @@ const Demand = () => {
       <Soft style={{ padding: 16 }}>{`${t('Prediction')}: ${accuracyText(data.accuracy)}`}</Soft>
       {data.daily.every((d) => d.insufficient_data) ? <Soft style={{ padding: 16 }}>{t('Forecasting needs at least three weeks of history for the same weekday. You have {n} trading days so far. Check back as history builds.', { n: data.history_days })}</Soft> : (
         <>
-          {data.daily.map((d) => <Line key={d.date} left={`${d.weekday.slice(0, 3)} ${shortDate(d.date)}`} right={d.orders ? String(Math.round(d.orders.predicted)) : ''} sub={dayLine(d)} selected={d.date === data.focus.date} onPress={() => { setFocus(d.date); load(d.date); }} />)}
+          <Group>{data.daily.map((d) => <Line key={d.date} left={`${d.weekday.slice(0, 3)} ${shortDate(d.date)}`} right={d.orders ? String(Math.round(d.orders.predicted)) : ''} sub={dayLine(d)} selected={d.date === data.focus.date} onPress={() => { setFocus(d.date); load(d.date); }} />)}</Group>
           <SectionTitle>{`${focusDay?.weekday ?? ''} ${shortDate(data.focus.date)} · ${t('hour by hour')}`}</SectionTitle>
           {data.focus.hourly.length === 0 ? <Soft style={{ paddingHorizontal: 16 }}>{t('No hourly pattern yet.')}</Soft> : (
             <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 130, gap: 4, paddingHorizontal: 16 }} accessibilityLabel={t('hour by hour')}>
@@ -60,14 +60,14 @@ const Demand = () => {
             </View>
           )}
           <SectionTitle>{`${t('Expected portions')} · ${shortDate(data.focus.date)}`}</SectionTitle>
-          {data.focus.items.length === 0 ? <Soft style={{ paddingHorizontal: 16 }}>{t('No item history yet.')}</Soft> : data.focus.items.slice(0, 40).map((i) => <Line key={i.product_id} left={i.name} right={String(Math.round(i.portions.predicted))} sub={`${i.category ?? ''}${i.category ? ' · ' : ''}${rangeText(i.portions)} ${t('portions')} · ${t(i.confidence)}`} />)}
+          <Group>{data.focus.items.length === 0 ? <Soft style={{ paddingHorizontal: 16 }}>{t('No item history yet.')}</Soft> : data.focus.items.slice(0, 40).map((i) => <Line key={i.product_id} left={i.name} right={String(Math.round(i.portions.predicted))} sub={`${i.category ?? ''}${i.category ? ' · ' : ''}${rangeText(i.portions)} ${t('portions')} · ${t(i.confidence)}`} />)}</Group>
           <SectionTitle>By category</SectionTitle>
-          {data.focus.categories.map((c) => <Line key={c.category} left={c.category} right={String(Math.round(c.portions.predicted))} sub={rangeText(c.portions)} />)}
+          <Group>{data.focus.categories.map((c) => <Line key={c.category} left={c.category} right={String(Math.round(c.portions.predicted))} sub={rangeText(c.portions)} />)}</Group>
         </>
       )}
       <SectionTitle>Things you know that history does not</SectionTitle>
       <Soft style={{ paddingHorizontal: 16 }}>{t("A festival, a match night, a promotion, a planned closure. Tell FlowXP and it adjusts that day's forecast.")}</Soft>
-      {data.upcoming_events.map((e) => <Line key={e.event_id} left={eventLine(e)} right={t('Remove')} onPress={() => { void remove(e.event_id); }} />)}
+      <Group>{data.upcoming_events.map((e) => <Line key={e.event_id} left={eventLine(e)} right={t('Remove')} onPress={() => { void remove(e.event_id); }} />)}</Group>
       <View style={{ padding: 16, gap: 8 }}>
         <TextInput style={s.input} value={form.date} onChangeText={(v) => setForm((f) => ({ ...f, date: v }))} placeholder="2026-10-31" maxLength={10} accessibilityLabel={t('Date')} />
         <TextInput style={s.input} value={form.label} onChangeText={(v) => setForm((f) => ({ ...f, label: v }))} placeholder={t('e.g. Diwali weekend')} maxLength={60} accessibilityLabel={t('What is happening')} />
@@ -110,9 +110,9 @@ const StockPart = () => {
         </View>
       ) : null}
       <ErrorText>{error}</ErrorText>
-      {data.by_supplier.map((g) => <Line key={g.supplier_id ?? 'none'} left={g.supplier_name} right={money(g.total)} sub={g.items.map((i) => `${i.name} ${i.quantity} ${i.unit}`).join(' · ')} />)}
+      <Group>{data.by_supplier.map((g) => <Line key={g.supplier_id ?? 'none'} left={g.supplier_name} right={money(g.total)} sub={g.items.map((i) => `${i.name} ${i.quantity} ${i.unit}`).join(' · ')} />)}</Group>
       <SectionTitle>Every tracked item</SectionTitle>
-      {data.items.length === 0 ? <Empty>Not enough usage history yet: forecasts start once an item has a week of use.</Empty> : data.items.slice(0, 60).map((i) => <Line key={i.product_id} left={i.name} right={t(STOCK_STATUS[i.status])} sub={stockSub(i)} />)}
+      <Group>{data.items.length === 0 ? <Empty>Not enough usage history yet: forecasts start once an item has a week of use.</Empty> : data.items.slice(0, 60).map((i) => <Line key={i.product_id} left={i.name} right={t(STOCK_STATUS[i.status])} sub={stockSub(i)} />)}</Group>
       <Soft style={{ padding: 16 }}>{`${t('How this is made')}: ${data.method}`}</Soft>
     </ScrollView>
   );

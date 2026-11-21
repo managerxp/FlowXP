@@ -12,7 +12,7 @@ import {
 } from '../lib/salonPlans.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 type Row = { service_id: number; qty: string };
@@ -31,7 +31,7 @@ const ServicesEditor = ({ rows, services, onChange, label }: { rows: Row[]; serv
         </View>
       ))}
       <TextInput style={s.input} value={q} onChangeText={setQ} placeholder={label} accessibilityLabel={label} autoCorrect={false} />
-      {found.map((x) => <Line key={x.service_id} left={x.name} right={money(x.price)} onPress={() => { onChange([...rows, { service_id: x.service_id, qty: '1' }]); setQ(''); }} />)}
+      <Group>{found.map((x) => <Line key={x.service_id} left={x.name} right={money(x.price)} onPress={() => { onChange([...rows, { service_id: x.service_id, qty: '1' }]); setQ(''); }} />)}</Group>
     </View>
   );
 };

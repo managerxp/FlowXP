@@ -7,7 +7,7 @@ import { pname, type Product } from '../lib/catalog.ts';
 import { clampCopies, codeOf, labelsHtml, totalLabels, type LabelLine, type LabelSize } from '../lib/labels.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Chips, ErrorText, Line, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 /* Print labels: search a product, say how many labels, print them (or save as a PDF to share). The barcode is the product's own, or its SKU. */
 export default function Labels() {
@@ -61,7 +61,7 @@ export default function Labels() {
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
           <View style={{ paddingHorizontal: 16, gap: 8 }}>
             <TextInput style={s.input} value={text} onChangeText={setText} placeholder="Search for an item" accessibilityLabel="Search for an item" autoCorrect={false} />
-            {found.map((p) => <Line key={p.product_id} left={pname(p)} sub={codeOf(p) || t('No barcode or item code yet')} onPress={() => add(p)} />)}
+            <Group>{found.map((p) => <Line key={p.product_id} left={pname(p)} sub={codeOf(p) || t('No barcode or item code yet')} onPress={() => add(p)} />)}</Group>
           </View>
           {lines.map((l) => (
             <View key={l.product.product_id} style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: color.card }}>

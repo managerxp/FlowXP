@@ -5,7 +5,7 @@ import { currentBusiness, useSession, api } from '../lib/session.ts';
 import { t } from '../lib/i18n.ts';
 import { Card, Msg, Panel, SetupShell, confirm, useAct } from '../lib/formKit.tsx';
 import { canApply, canRestore, headline, pickProblem, problemLines, shownTables, sourceLine, tableLine, type RestoreReport } from '../lib/restore.ts';
-import { Button, Line, SectionTitle, Soft, color } from '../lib/ui.tsx';
+import { Button, Line, SectionTitle, Soft, color, Group } from '../lib/ui.tsx';
 
 /* Restore from a backup: pick the ZIP, check what would be added, then restore what is missing. It only ever adds. */
 export default function RestoreBackupScreen() {
@@ -43,7 +43,7 @@ export default function RestoreBackupScreen() {
             {sourceLine(report) ? <Soft>{sourceLine(report)}</Soft> : null}
             <SectionTitle>{headline(report)}</SectionTitle>
             {!report.applied ? <Soft>{t('This is only a check. Nothing has been changed yet.')}</Soft> : null}
-            {shownTables(report).map((x) => <Line key={x.file} left={x.label} sub={tableLine(x, report.applied)} />)}
+            <Group>{shownTables(report).map((x) => <Line key={x.file} left={x.label} sub={tableLine(x, report.applied)} />)}</Group>
             {problemLines(report).slice(0, 8).map((p, i) => <Text key={i} style={{ color: color.warn }}>{p}</Text>)}
             {report.applied ? <Soft>{t('Restored bills do not change the shelf. If goods were lost, count your stock.')}</Soft> : null}
             {canApply(report) ? <Button title="Restore what is missing" busy={a.busy} onPress={() => confirm(t('Make the restore?'), t('The records that are missing are added. Nothing else changes.'), 'Restore what is missing', () => { void a.run('', () => send(true), 'Restored'); })} /> : null}

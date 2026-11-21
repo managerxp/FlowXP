@@ -14,7 +14,7 @@ import { gstView } from '../lib/gst.ts';
 import { currentBusiness, useSession } from '../lib/session.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 /* A delivery arrives: pick what came and how many, with what each cost. Stock goes up, and what you owe the supplier is recorded. */
 export default function Receive() {
@@ -76,7 +76,7 @@ export default function Receive() {
               <TextInput style={s.input} value={billNo} onChangeText={setBillNo} placeholder="Supplier's bill number (optional)" accessibilityLabel="Supplier bill number" />
               <TextInput style={s.input} value={text} onChangeText={setText} placeholder="Search an item to add" accessibilityLabel="Search an item" autoCorrect={false} />
             </View>
-            {found.map((p) => <Line key={p.product_id} left={pname(p)} sub="Tap to add" onPress={() => add(p)} />)}
+            <Group>{found.map((p) => <Line key={p.product_id} left={pname(p)} sub="Tap to add" onPress={() => add(p)} />)}</Group>
             {lines.length === 0 ? <Empty>Search an item above and tap it to add it to this delivery.</Empty> : null}
             {lines.map((l) => (
               <View key={l.product_id} style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: color.card }}>

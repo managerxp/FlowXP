@@ -8,7 +8,7 @@ import { Card, Field, Input, Msg, Panel, SetupShell, useAct, useList } from '../
 import { canJobCards, customerProblem, dueLine, emptyJob, jobSub, newJobBody, newJobProblem, promiseDays, suggestMakes, suggestModels, vehicleOf, type JobRow, type NewJobForm, type VehicleTree } from '../lib/jobCards.ts';
 import { garageTypes, isGarage, mergeNames, suggestNames, type MasterBrands, type MasterModels } from '../lib/garage.ts';
 import PlateScan from '../lib/PlateScan.tsx';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, s } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, s, Group } from '../lib/ui.tsx';
 
 type Cust = { customer_id: number; name: string; phone: string | null };
 const TYPES = [{ id: 'CAR', label: 'Car' }, { id: 'BIKE', label: 'Bike' }, { id: 'SCOOTER', label: 'Scooter' }, { id: 'TRUCK', label: 'Truck' }, { id: 'BUS', label: 'Bus' }, { id: 'COMMERCIAL', label: 'Commercial' }, { id: 'OTHER', label: 'Other' }];
@@ -28,7 +28,7 @@ const CustomerFind = ({ form, set }: { form: NewJobForm; set: (patch: Partial<Ne
   return (
     <>
       <Field label="Customer"><TextInput style={s.input} value={text} onChangeText={setText} placeholder={t('Customer name or phone')} autoCapitalize="none" autoCorrect={false} accessibilityLabel={t('Customer name or phone')} /></Field>
-      {rows.map((c) => <Line key={c.customer_id} left={c.name} sub={c.phone ?? ''} onPress={() => set({ customer_id: c.customer_id, customer_name: c.name })} />)}
+      <Group>{rows.map((c) => <Line key={c.customer_id} left={c.name} sub={c.phone ?? ''} onPress={() => set({ customer_id: c.customer_id, customer_name: c.name })} />)}</Group>
       {adding ? (
         <Card>
           <Input label="Name" value={name} onChange={setName} max={120} />
@@ -78,7 +78,7 @@ export default function JobCardsScreen() {
             <Panel>
               <Button title="New job card" onPress={() => { a.setError(''); setForm({ ...emptyJob(), vehicle_type: kinds[0].id }); }} />
               {list.data.length === 0 ? <><Soft>{t('No job cards here.')}</Soft><Soft>{t('Open a card when a vehicle comes in.')}</Soft></> : null}
-              {list.data.map((j) => <Line key={j.job_id} left={`${j.job_no} · ${vehicleOf(j)}`} sub={jobSub(j)} onPress={() => router.push({ pathname: '/job-card/[id]', params: { id: String(j.job_id) } })} />)}
+              <Group>{list.data.map((j) => <Line key={j.job_id} left={`${j.job_no} · ${vehicleOf(j)}`} sub={jobSub(j)} onPress={() => router.push({ pathname: '/job-card/[id]', params: { id: String(j.job_id) } })} />)}</Group>
               {form ? (
                 <Card>
                   <CustomerFind form={form} set={set} />
@@ -86,9 +86,9 @@ export default function JobCardsScreen() {
                   <PlateScan onPlate={(p, read) => set({ vehicle_reg: p, ...(read.make && !form.make ? { make: read.make } : {}) })} />
                   <Field label="Vehicle"><Chips items={kinds} value={form.vehicle_type} onChange={(v) => set({ vehicle_type: v, make: '', model: '' })} /></Field>
                   <Input label="Company" hint="Pick from the list or type it. A new one is remembered." value={form.make} onChange={(v) => set({ make: v, model: '' })} max={60} placeholder="Hero, Honda, Maruti Suzuki" />
-                  {(garage ? suggestNames(mergeNames(tree.filter((m) => m.vehicle_type === form.vehicle_type).map((m) => m.name), (masterBrands.data?.brands ?? []).map((b) => b.brand)), form.make, 10) : suggestMakes(tree, form.vehicle_type, form.make)).map((n) => <Line key={n} left={n} onPress={() => set({ make: n, model: '' })} />)}
+                  <Group>{(garage ? suggestNames(mergeNames(tree.filter((m) => m.vehicle_type === form.vehicle_type).map((m) => m.name), (masterBrands.data?.brands ?? []).map((b) => b.brand)), form.make, 10) : suggestMakes(tree, form.vehicle_type, form.make)).map((n) => <Line key={n} left={n} onPress={() => set({ make: n, model: '' })} />)}</Group>
                   <Input label="Model" value={form.model} onChange={(v) => set({ model: v })} max={80} placeholder="Splendor Plus, Swift" />
-                  {(garage ? suggestNames(mergeNames(suggestModels(tree, form.vehicle_type, form.make, '', 500), (masterModels.data?.models ?? []).map((m) => m.model)), form.model, 10) : suggestModels(tree, form.vehicle_type, form.make, form.model)).map((n) => <Line key={n} left={n} onPress={() => set({ model: n })} />)}
+                  <Group>{(garage ? suggestNames(mergeNames(suggestModels(tree, form.vehicle_type, form.make, '', 500), (masterModels.data?.models ?? []).map((m) => m.model)), form.model, 10) : suggestModels(tree, form.vehicle_type, form.make, form.model)).map((n) => <Line key={n} left={n} onPress={() => set({ model: n })} />)}</Group>
                   <Input label="Model number or variant (optional)" value={form.variant} onChange={(v) => set({ variant: v })} max={60} placeholder="VXI, 110cc, Disc" />
                   <Input label="Year (optional)" numeric value={form.vehicle_year} onChange={(v) => set({ vehicle_year: v })} max={4} />
                   <Input label="Odometer (km)" numeric value={form.odometer_km} onChange={(v) => set({ odometer_km: v })} max={7} />
@@ -110,7 +110,7 @@ export default function JobCardsScreen() {
             <SectionTitle>Services due</SectionTitle>
             <Soft>{t('Vehicles whose last job said when the next service is due. Call them.')}</Soft>
             {due.data.length === 0 ? <Soft>{t('No service is due in the next 30 days.')}</Soft> : null}
-            {due.data.map((d) => <Line key={d.job_id} left={d.vehicle_reg} sub={dueLine(d)} />)}
+            <Group>{due.data.map((d) => <Line key={d.job_id} left={d.vehicle_reg} sub={dueLine(d)} />)}</Group>
           </Panel>
         )
       )}

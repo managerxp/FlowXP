@@ -9,6 +9,7 @@ import { t } from '../lib/i18n.ts';
 import type { Analytics } from '../lib/clothing.ts';
 import { Page } from '../lib/responsive.tsx';
 import { Button, Chips, Failed, Loading, SavedNote, Soft, Title, color, s } from '../lib/ui.tsx';
+import { display } from '../lib/theme.ts';
 
 /* What sells and what sits, from the shop's own bills and stock: the same figures as Clothing insights on the website. */
 const Bar = ({ label, hex, pieces, share, note }: { label: string; hex?: string | null; pieces: number; share: number; note?: string }) => (
@@ -31,7 +32,7 @@ const Card = ({ title, children }: { title: string; children: React.ReactNode })
 );
 const Stat = ({ label, value, note }: { label: string; value: string; note?: string }) => (
   <View style={{ flexBasis: '47%', flexGrow: 1, backgroundColor: color.card, borderWidth: 1, borderColor: color.line, borderRadius: 12, padding: 12 }}>
-    <Soft>{label}</Soft><Text style={{ fontSize: 20, fontWeight: '700', color: color.ink }}>{value}</Text>{note ? <Soft>{note}</Soft> : null}
+    <Soft>{label}</Soft><Text style={{ fontSize: 20, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{value}</Text>{note ? <Soft>{note}</Soft> : null}
   </View>
 );
 

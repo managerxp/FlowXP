@@ -13,7 +13,7 @@ import {
 import { jobCardHtml } from '../../lib/jobCardPrint.ts';
 import { serviceLabourBody, shareFor, type Service } from '../../lib/workshopExtras.ts';
 import { FUEL_LEVELS, isGarage } from '../../lib/garage.ts';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, s } from '../../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, s, Group } from '../../lib/ui.tsx';
 
 type Found = { product_id: number; name: string; sku: string | null; selling_price_paise: number; stock?: number };
 
@@ -38,7 +38,7 @@ const AddPart = ({ jobId, done }: { jobId: string; done: () => void }) => {
   return (
     <>
       <Field label="Add a part"><TextInput style={s.input} value={text} onChangeText={setText} placeholder={t('Add a part: name, code or part number')} autoCapitalize="none" autoCorrect={false} accessibilityLabel={t('Add a part')} /></Field>
-      {rows.map((p) => <Line key={p.product_id} left={p.name} sub={[p.sku || '', rupees(p.selling_price_paise), p.stock != null ? t('{n} in stock', { n: p.stock }) : ''].filter(Boolean).join(' · ')} onPress={() => { void add(p); }} />)}
+      <Group>{rows.map((p) => <Line key={p.product_id} left={p.name} sub={[p.sku || '', rupees(p.selling_price_paise), p.stock != null ? t('{n} in stock', { n: p.stock }) : ''].filter(Boolean).join(' · ')} onPress={() => { void add(p); }} />)}</Group>
       <Msg a={a} />
     </>
   );

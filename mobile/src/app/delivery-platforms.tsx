@@ -11,7 +11,7 @@ import {
   COLUMNS, PLATFORMS, PLATFORM_LABEL, STATEMENT_EXAMPLE, STATUS_LABEL, canDelivery, connectBody, disconnectBody, lineSub, missingText, parseRows, statementProblem, summaryText, syncedText, testOrderText,
   type Integration, type Missing, type Settlements
 } from '../lib/platforms.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 const why = (e: unknown) => (e instanceof Error ? e.message : t('Could not save. Check the connection and try again.'));
@@ -100,14 +100,14 @@ const Reconcile = () => {
       {!missing ? null : missing.orders.length === 0 ? <Soft style={{ padding: 16 }}>{t('Nothing unpaid, as far as an imported statement can tell.')}</Soft> : (
         <>
           <Text style={{ color: color.danger, fontWeight: '700', paddingHorizontal: 16, paddingTop: 8 }}>{missingText(missing)}</Text>
-          {missing.orders.map((o) => <Line key={o.order_id} left={o.order_number} sub={o.external_order_number || o.external_order_id} right={money(o.total)} />)}
+          <Group>{missing.orders.map((o) => <Line key={o.order_id} left={o.order_number} sub={o.external_order_number || o.external_order_id} right={money(o.total)} />)}</Group>
         </>
       )}
       <SectionTitle>Imported lines</SectionTitle>
       {!data ? <Loading /> : data.lines.length === 0 ? <Empty>Nothing imported for this platform yet.</Empty> : (
         <>
           <Soft style={{ paddingHorizontal: 16, paddingBottom: 8 }}>{summaryText(data.summary)}</Soft>
-          {data.lines.map((l) => <Line key={l.line_id} left={l.order_number || l.external_order_id} right={t(STATUS_LABEL[l.status])} sub={lineSub(l)} />)}
+          <Group>{data.lines.map((l) => <Line key={l.line_id} left={l.order_number || l.external_order_id} right={t(STATUS_LABEL[l.status])} sub={lineSub(l)} />)}</Group>
         </>
       )}
     </ScrollView>

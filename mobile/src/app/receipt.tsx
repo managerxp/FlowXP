@@ -85,7 +85,7 @@ export default function Receipt() {
         {invoice?.order_number ? (
           <View style={[s.card, { alignItems: 'center' }]}>
             <Soft>Token to call out</Soft>
-            <Text accessibilityRole="header" style={{ fontSize: 40, fontWeight: '800', color: color.ink }}>{invoice.order_number}</Text>
+            <Text accessibilityRole="header" style={{ fontSize: 40, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{invoice.order_number}</Text>
           </View>
         ) : null}
         {invoice ? <Soft style={{ textAlign: 'center' }}>{`Bill ${invoice.invoice_number}`}</Soft> : null}

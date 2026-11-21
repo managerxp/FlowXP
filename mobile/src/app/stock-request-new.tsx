@@ -10,7 +10,7 @@ import { pname, type Product } from '../lib/catalog.ts';
 import { addAsk, askBody, askProblem, dropAsk, setAskQty, type AskLine } from '../lib/stockRequests.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Chips, ErrorText, Line, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 /* Ask another outlet for stock: choose the outlet, pick the items, type how much of each. */
 export default function StockRequestNew() {
@@ -56,7 +56,7 @@ export default function StockRequestNew() {
           <SectionTitle>{t('What do you need?')}</SectionTitle>
           <View style={{ paddingHorizontal: 16, gap: 8 }}>
             <TextInput style={s.input} value={text} onChangeText={setText} placeholder="Search for an item" accessibilityLabel="Search for an item" autoCorrect={false} />
-            {found.map((p) => <Line key={p.product_id} left={pname(p)} sub={p.unit ?? undefined} onPress={() => { edit(addAsk(lines, { product_id: p.product_id, name: pname(p), unit: p.unit })); setText(''); setFound([]); }} />)}
+            <Group>{found.map((p) => <Line key={p.product_id} left={pname(p)} sub={p.unit ?? undefined} onPress={() => { edit(addAsk(lines, { product_id: p.product_id, name: pname(p), unit: p.unit })); setText(''); setFound([]); }} />)}</Group>
           </View>
           {lines.map((l) => (
             <View key={l.product_id} style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: color.card }}>

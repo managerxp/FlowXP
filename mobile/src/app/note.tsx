@@ -8,7 +8,7 @@ import { t } from '../lib/i18n.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
 import { day, debitEffect, debitKind, itemLine, type CreditNote, type DebitNote } from '../lib/notes.ts';
-import { Button, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 
@@ -35,7 +35,7 @@ export default function Note() {
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
           {note.reason ? <View style={[s.card, { marginHorizontal: 16 }]}><Text style={{ color: color.ink }}>{note.reason}</Text></View> : null}
           <SectionTitle>Items</SectionTitle>
-          {items.map((i, k) => <Line key={k} left={i.description} sub={itemLine(i)} right={money(i.total)} />)}
+          <Group>{items.map((i, k) => <Line key={k} left={i.description} sub={itemLine(i)} right={money(i.total)} />)}</Group>
           <View style={{ padding: 16, gap: 4, alignItems: 'flex-end' }}>
             <Soft>{`${t('Subtotal')} ${money(note.subtotal)} · ${t('Tax')} ${money(note.tax)}`}</Soft>
             <Text style={{ fontSize: 18, fontWeight: '800', color: color.ink }}>{`${t('Total')} ${money(note.total)}`}</Text>

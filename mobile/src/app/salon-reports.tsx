@@ -8,7 +8,7 @@ import { ranges } from '../lib/ranges.ts';
 import { cellText, rowLines, type ReportResult, type SalonDash } from '../lib/salon.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Stat, Title, color, s, Group } from '../lib/ui.tsx';
 
 const money = (n: number | null) => (n == null ? '-' : rupees(toPaise(n)));
 
@@ -63,7 +63,7 @@ export default function SalonReports() {
             {Object.entries(catalog.data ?? {}).map(([group, list]) => (
               <View key={group}>
                 <SectionTitle>{group}</SectionTitle>
-                {list.map((r) => <Line key={r.key} left={r.title} onPress={() => setReport({ key: r.key, title: r.title })} />)}
+                <Group>{list.map((r) => <Line key={r.key} left={r.title} onPress={() => setReport({ key: r.key, title: r.title })} />)}</Group>
               </View>
             ))}
           </ScrollView>

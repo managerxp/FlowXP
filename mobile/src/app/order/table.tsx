@@ -10,7 +10,7 @@ import { itemName, liveItems, orderTotals, type Order, type TableRow } from '../
 import { freeTables, otherOrders, splitBody, type Waiter } from '../../lib/floor.ts';
 import { qty, rupees } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Line, Loading, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../../lib/ui.tsx';
 
 type Mode = 'move' | 'merge' | 'split' | 'waiter';
 
@@ -98,8 +98,8 @@ export default function TableTools() {
                 {picked.length ? (
                   <>
                     <SectionTitle>Move the {picked.reduce((a, i) => a + chosen[i.order_item_id], 0)} chosen to</SectionTitle>
-                    {free.map((t) => <Line key={`t${t.table_id}`} left={t.name} sub="Free table" right={busy === `st${t.table_id}` ? '…' : 'Move here'} onPress={busy ? undefined : () => { void split({ table_id: t.table_id }, `st${t.table_id}`); }} />)}
-                    {others.map((x) => <Line key={`o${x.order_id}`} left={x.table_name ?? x.order_number} sub="Add to their order" right={busy === `so${x.order_id}` ? '…' : 'Move here'} onPress={busy ? undefined : () => { void split({ to_order_id: x.order_id }, `so${x.order_id}`); }} />)}
+                    <Group>{free.map((t) => <Line key={`t${t.table_id}`} left={t.name} sub="Free table" right={busy === `st${t.table_id}` ? '…' : 'Move here'} onPress={busy ? undefined : () => { void split({ table_id: t.table_id }, `st${t.table_id}`); }} />)}</Group>
+                    <Group>{others.map((x) => <Line key={`o${x.order_id}`} left={x.table_name ?? x.order_number} sub="Add to their order" right={busy === `so${x.order_id}` ? '…' : 'Move here'} onPress={busy ? undefined : () => { void split({ to_order_id: x.order_id }, `so${x.order_id}`); }} />)}</Group>
                     {free.length + others.length === 0 ? <Empty>No other table to move them to.</Empty> : null}
                   </>
                 ) : null}
@@ -111,7 +111,7 @@ export default function TableTools() {
               <>
                 <SectionTitle>Who looks after this table</SectionTitle>
                 {waiters.data && waiters.data.length === 0 ? <Empty>No waiters are set up for this outlet. Add them on the FlowXP website under Team.</Empty> : null}
-                {(waiters.data ?? []).map((w) => <Line key={w.user_id} left={w.name} sub={w.role === 'WAITER' ? 'Waiter' : w.role.toLowerCase()} right={busy === `w${w.user_id}` ? '…' : 'Assign'} onPress={busy ? undefined : () => { void handOver(w.user_id); }} />)}
+                <Group>{(waiters.data ?? []).map((w) => <Line key={w.user_id} left={w.name} sub={w.role === 'WAITER' ? 'Waiter' : w.role.toLowerCase()} right={busy === `w${w.user_id}` ? '…' : 'Assign'} onPress={busy ? undefined : () => { void handOver(w.user_id); }} />)}</Group>
                 {waiters.data?.length ? <Line left="No one" sub="Take the waiter off this table" onPress={busy ? undefined : () => { void handOver(null); }} /> : null}
               </>
             ) : null}

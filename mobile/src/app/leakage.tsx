@@ -9,7 +9,8 @@ import { t } from '../lib/i18n.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
 import { LEAK_CATEGORY, LEAK_RANGES, SEVERITY, canInsights, evidenceCell, findingCounts, rangeQuery, reviewBody, reviewedText, showValue, type Finding, type Leakage } from '../lib/insights.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { display } from '../lib/theme.ts';
 
 const money = (n: number) => rupees(toPaise(n));
 
@@ -79,10 +80,10 @@ export default function LeakageScreen() {
               <>
                 <View style={{ padding: 16, gap: 4 }}>
                   <Soft>{t('Potential leakage detected')}</Soft>
-                  <Text style={{ fontSize: 30, fontWeight: '800', color: color.ink }}>{money(data.summary.potential)}</Text>
+                  <Text style={{ fontSize: 30, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{money(data.summary.potential)}</Text>
                   <Soft>{findingCounts(data)}</Soft>
                 </View>
-                {data.summary.by_category.map((c) => <Line key={c.category} left={t(LEAK_CATEGORY[c.category] ?? c.category)} right={money(c.potential)} />)}
+                <Group>{data.summary.by_category.map((c) => <Line key={c.category} left={t(LEAK_CATEGORY[c.category] ?? c.category)} right={money(c.potential)} />)}</Group>
                 <Soft style={{ padding: 16 }}>{data.note}</Soft>
                 <ErrorText>{problem}</ErrorText>
                 {open.length === 0 ? <Empty>{t('Nothing unusual found in the last {n} days. FlowXP compares against your own normal, so this improves as your history grows.', { n: data.period.days })}</Empty> : null}

@@ -10,7 +10,7 @@ import {
   profileBody, profileForm, profileProblem, sortPlaces, type NewPart, type PartFull, type Place, type PlaceForm, type ProfileForm, type VMake
 } from '../lib/partsAdmin.ts';
 import { type PartRow } from '../lib/parts.ts';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, s } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, s, Group } from '../lib/ui.tsx';
 
 const tr = (items: { id: string; label: string }[]) => items.map((x) => ({ id: x.id, label: t(x.label) }));
 
@@ -50,7 +50,7 @@ const PartCard = ({ id, edit, onClose, onChanged }: { id: number; edit: boolean;
       <SectionTitle>Part numbers</SectionTitle>
       <Soft>{t('Every number this part is known by. Typing any of them, with or without dashes, finds the part.')}</Soft>
       {p.numbers.length === 0 ? <Soft>{t('No part numbers yet.')}</Soft> : null}
-      {p.numbers.map((n) => <Line key={n.pn_id} left={numberLine(n)} onPress={() => { if (edit) confirm(t('Remove {name}?', { name: n.number }), '', 'Remove', () => { void a.run('', async () => { await api.call(`/autoparts/parts/${p.product_id}/numbers/${n.pn_id}`, { method: 'DELETE', body: {} }); reload(); }, 'Removed'); }); }} />)}
+      <Group>{p.numbers.map((n) => <Line key={n.pn_id} left={numberLine(n)} onPress={() => { if (edit) confirm(t('Remove {name}?', { name: n.number }), '', 'Remove', () => { void a.run('', async () => { await api.call(`/autoparts/parts/${p.product_id}/numbers/${n.pn_id}`, { method: 'DELETE', body: {} }); reload(); }, 'Removed'); }); }} />)}</Group>
       {edit ? (
         <>
           <Input label="Add a number" value={num} onChange={setNum} max={64} />
@@ -102,7 +102,7 @@ const PartsTab = ({ edit }: { edit: boolean }) => {
       {list.error && !list.data ? <Failed message={list.error} onRetry={list.reload} /> : !list.data ? <Loading /> : (
         <Panel>
           {edit ? <Button title="Add a part" onPress={() => { a.setError(''); setOpen(null); setForm(emptyPart()); }} /> : null}
-          {list.data.map((p) => <Line key={p.product_id} left={p.name} sub={partLine({ ...p, selling_price_paise: p.selling_price_paise })} onPress={() => { setForm(null); setOpen(p.product_id); }} />)}
+          <Group>{list.data.map((p) => <Line key={p.product_id} left={p.name} sub={partLine({ ...p, selling_price_paise: p.selling_price_paise })} onPress={() => { setForm(null); setOpen(p.product_id); }} />)}</Group>
           {open ? <PartCard key={open} id={open} edit={edit} onClose={() => setOpen(null)} onChanged={list.reload} /> : null}
           {form ? (
             <Card>
@@ -173,7 +173,7 @@ const VehiclesTab = ({ edit }: { edit: boolean }) => {
         <Card key={m.make_id}>
           <SectionTitle>{m.name}</SectionTitle>
           <Soft>{makeLine(m)}</Soft>
-          {m.models.map((x) => <Line key={x.model_id} left={x.name} sub={modelLine(x)} />)}
+          <Group>{m.models.map((x) => <Line key={x.model_id} left={x.name} sub={modelLine(x)} />)}</Group>
         </Card>
       ))}
     </Panel>

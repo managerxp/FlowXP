@@ -7,7 +7,7 @@ import { Card, Panel, SetupShell, useList } from '../lib/formKit.tsx';
 import { canJobCards } from '../lib/jobCards.ts';
 import { dayLine, earningStats, mechanicLine, monthStart, workshopOn, type Earnings } from '../lib/workshopExtras.ts';
 import { rupees } from '../lib/money.ts';
-import { Chips, Failed, Line, Loading, SectionTitle, Soft, color } from '../lib/ui.tsx';
+import { Chips, Failed, Line, Loading, SectionTitle, Soft, color, Group } from '../lib/ui.tsx';
 
 const localDay = (d = new Date()): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -24,9 +24,9 @@ export default function JobEarningsScreen() {
       <Chips items={[{ id: 'today', label: t('Today') }, { id: 'month', label: t('This month') }]} value={span} onChange={setSpan} />
       <Card>{earningStats(d).map(([k, v]) => <Text key={k} style={{ color: color.ink }}>{`${k}: ${v}`}</Text>)}</Card>
       {d.days.length === 0 ? <Soft>{t('No job card was billed in these dates.')}</Soft> : <SectionTitle>Day by day</SectionTitle>}
-      {d.days.map((x) => <Line key={x.day} left={x.day} right={rupees(x.total_paise)} sub={dayLine(x)} />)}
+      <Group>{d.days.map((x) => <Line key={x.day} left={x.day} right={rupees(x.total_paise)} sub={dayLine(x)} />)}</Group>
       {d.mechanics.length ? <SectionTitle>By mechanic</SectionTitle> : null}
-      {d.mechanics.map((m) => <Line key={m.name} left={m.name === 'Not assigned' ? t('Not assigned') : m.name} sub={mechanicLine(m)} />)}
+      <Group>{d.mechanics.map((m) => <Line key={m.name} left={m.name === 'Not assigned' ? t('Not assigned') : m.name} sub={mechanicLine(m)} />)}</Group>
     </Panel>
   );
   return (

@@ -10,7 +10,8 @@ import { useLoad } from '../../lib/useLoad.ts';
 import { PO_LABEL, payBody, payProblem, poActions, type PO, type PayMethod } from '../../lib/purchasing.ts';
 import { qty, rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../../lib/ui.tsx';
+import { display } from '../../lib/theme.ts';
 
 const money = (n: number) => rupees(toPaise(n));
 const METHODS: { id: PayMethod; label: string }[] = [{ id: 'CASH', label: 'Cash' }, { id: 'UPI', label: 'UPI' }, { id: 'BANK_TRANSFER', label: 'Bank' }, { id: 'CHEQUE', label: 'Cheque' }];
@@ -65,7 +66,7 @@ export default function PurchaseOrderScreen() {
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
             <View style={{ paddingHorizontal: 16, gap: 4 }}>
               <Text style={{ fontSize: 18, fontWeight: '700', color: p.status === 'CANCELLED' ? color.danger : color.ink }}>{PO_LABEL[p.status]}</Text>
-              <Text style={{ fontSize: 28, fontWeight: '800', color: color.ink }}>{money(p.total)}</Text>
+              <Text style={{ fontSize: 28, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{money(p.total)}</Text>
               <Soft>{`Items ${money(p.subtotal)} · GST ${money(p.tax)}${p.paid > 0 ? ` · paid ${money(p.paid)}` : ''}`}</Soft>
               {p.balance > 0 && ['PARTIAL', 'RECEIVED'].includes(p.status) ? <Text style={{ color: color.warn, fontWeight: '700' }}>{`You owe ${money(p.balance)}${p.due_date ? `, due ${formatDate(p.due_date)}` : ''}`}</Text> : null}
               {p.expected_date ? <Soft>{`Expected ${formatDate(p.expected_date)}`}</Soft> : null}
@@ -79,9 +80,9 @@ export default function PurchaseOrderScreen() {
             ))}
 
             {(p.grns ?? []).length ? <SectionTitle>Goods received</SectionTitle> : null}
-            {(p.grns ?? []).map((g) => <Line key={g.grn_id} left={g.grn_number} sub={`${formatDate(g.grn_date)}${g.supplier_invoice_no ? ` · bill ${g.supplier_invoice_no}` : ''}`} right={money(g.total_cost)} />)}
+            <Group>{(p.grns ?? []).map((g) => <Line key={g.grn_id} left={g.grn_number} sub={`${formatDate(g.grn_date)}${g.supplier_invoice_no ? ` · bill ${g.supplier_invoice_no}` : ''}`} right={money(g.total_cost)} />)}</Group>
             {(p.payments ?? []).length ? <SectionTitle>Paid</SectionTitle> : null}
-            {(p.payments ?? []).map((x) => <Line key={x.payment_id} left={`${x.method.replace('_', ' ').toLowerCase()}${x.reference ? ` · ${x.reference}` : ''}`} sub={formatDate(x.date)} right={money(x.amount)} />)}
+            <Group>{(p.payments ?? []).map((x) => <Line key={x.payment_id} left={`${x.method.replace('_', ' ').toLowerCase()}${x.reference ? ` · ${x.reference}` : ''}`} sub={formatDate(x.date)} right={money(x.amount)} />)}</Group>
 
             <View style={{ padding: 16, gap: 8 }}>
               <ErrorText>{problem}</ErrorText>

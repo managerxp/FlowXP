@@ -14,7 +14,7 @@ import { checkPrinter, dropFailed, printBillDirect, printKitchenDirect, printRec
 import {
   DEFAULT_PORT, JOBS, MAX_PRINTERS, hostProblem, nameOf, newId, portProblem, printerLine, removePrinter, setJob, setPaper, upsertPrinter, type SavedPrinter
 } from '../lib/printerSetup.ts';
-import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 const testText = (p: SavedPrinter) => { const w = COLUMNS[p.paper]; return ['FlowXP', p.name, 'Test receipt', '-'.repeat(w), '1234567890'.repeat(5).slice(0, w), 'Total'.padEnd(w - 7) + 'Rs.1.00', '-'.repeat(w), 'If this lines up, the printer is set.'].join('\n'); };
 
@@ -140,7 +140,7 @@ export default function Printers() {
               <View style={{ flex: 1 }}><Button title={looking ? 'Looking…' : 'Look for printers nearby'} kind="quiet" onPress={() => { void look(); }} busy={looking} /></View>
             </View>
             {paired && paired.length === 0 ? <Soft>{t("No Bluetooth printers found. Switch the printer on and pair it in the phone's Bluetooth settings.")}</Soft> : null}
-            {paired?.map((d) => <Line key={d.address} left={d.name} sub={d.address} icon="bluetooth-outline" onPress={() => add({ name: nameOf(d.name, d.address), kind: 'bluetooth', address: d.address, port: DEFAULT_PORT })} />)}
+            <Group>{paired?.map((d) => <Line key={d.address} left={d.name} sub={d.address} icon="bluetooth-outline" onPress={() => add({ name: nameOf(d.name, d.address), kind: 'bluetooth', address: d.address, port: DEFAULT_PORT })} />)}</Group>
 
             {more ? (
               <>

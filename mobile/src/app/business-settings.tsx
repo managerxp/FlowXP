@@ -16,7 +16,7 @@ import {
 } from '../lib/bizSettings.ts';
 import type { GstOptions } from '../lib/gst.ts';
 import type { PrintSettings } from '../lib/taxInvoice.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 import LogoSetting from '../lib/LogoSetting.tsx';
 import { logoUrlOf } from '../lib/logo.ts';
 
@@ -71,7 +71,7 @@ const Details = ({ rec, reload }: { rec: BusinessRecord; reload: () => Promise<v
       {PROFILE_FIELDS.map((k) => (
         <View key={k} style={{ gap: 4 }}>
           <TextField label={LABEL[k]} value={p[k]} onChange={set(k)} big={k === 'address'} caps={k === 'gstin'} keyboard={k === 'phone' ? 'phone-pad' : k === 'email' ? 'email-address' : k === 'postal_code' ? 'numeric' : 'default'} max={k === 'gstin' ? 15 : undefined} />
-          {k === 'state' ? hints.map((h) => <Line key={h} left={h} onPress={() => set('state')(h)} />) : null}
+          <Group>{k === 'state' ? hints.map((h) => <Line key={h} left={h} onPress={() => set('state')(h)} />) : null}</Group>
           {k === 'gstin' ? <Soft>{t('Optional. Only needed if you charge GST.')}</Soft> : null}
         </View>
       ))}

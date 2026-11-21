@@ -11,7 +11,7 @@ import type { PO } from '../lib/purchasing.ts';
 import { REASONS, REASON_LABEL, editP, purchaseReturnBody, purchaseReturnProblem, sentence, startPurchaseLines, type PRLine, type Reason } from '../lib/returns.ts';
 import { qty, rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 
@@ -58,7 +58,7 @@ export default function ReturnPurchase() {
             {orders.error && !orders.data ? <Failed message={orders.error} onRetry={() => { void orders.refresh(); }} /> : null}
             {orders.busy && !orders.data ? <Loading /> : null}
             {orders.data && orders.data.length === 0 ? <Empty>No order has had goods delivered yet.</Empty> : null}
-            {(orders.data ?? []).map((o) => <Line key={o.po_id} left={`${o.po_number} · ${o.supplier}`} sub={`${formatDate(o.po_date)}${o.balance > 0 ? ` · you owe ${money(o.balance)}` : ''}`} right={money(o.total)} onPress={() => setPoId(o.po_id)} />)}
+            <Group>{(orders.data ?? []).map((o) => <Line key={o.po_id} left={`${o.po_number} · ${o.supplier}`} sub={`${formatDate(o.po_date)}${o.balance > 0 ? ` · you owe ${money(o.balance)}` : ''}`} right={money(o.total)} onPress={() => setPoId(o.po_id)} />)}</Group>
           </ScrollView>
         ) : (
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>

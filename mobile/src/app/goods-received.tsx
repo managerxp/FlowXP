@@ -10,7 +10,7 @@ import { acceptedOf, directLine, editR, grnBody, grnProblem, linesFromPO, rLineP
 import { qty } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
 import { SearchBox } from '../lib/SearchBox.tsx';
-import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const METHODS: { id: PayMethod; label: string }[] = [{ id: 'CASH', label: 'Cash' }, { id: 'UPI', label: 'UPI' }, { id: 'BANK_TRANSFER', label: 'Bank' }];
@@ -79,7 +79,7 @@ export default function GoodsReceived() {
                 <SectionTitle>From</SectionTitle>
                 <Chips items={(suppliers.data ?? []).map((x) => ({ id: String(x.supplier_id), label: x.name }))} value={supplier} onChange={setSupplier} />
                 <View style={{ padding: 16 }}><SearchBox value={text} onChange={setText} placeholder="Search a product to add" label="Search a product" /></View>
-                {found.map((p) => <Line key={p.product_id} left={p.name} sub="Tap to add" onPress={() => { setLines((l) => [...l, directLine(p, null)]); setText(''); setFound([]); }} />)}
+                <Group>{found.map((p) => <Line key={p.product_id} left={p.name} sub="Tap to add" onPress={() => { setLines((l) => [...l, directLine(p, null)]); setText(''); setFound([]); }} />)}</Group>
               </>
             ) : null}
             {lines.length === 0 ? <Empty>{poId ? (order.data ? 'Everything on this order has already arrived.' : 'Loading the order…') : 'Search a product above and tap it to add it.'}</Empty> : null}

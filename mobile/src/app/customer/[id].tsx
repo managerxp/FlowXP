@@ -15,7 +15,7 @@ import { rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
 import { canRemind, reminderSentText, type BillSent } from '../../lib/messaging.ts';
 import { remindOnWhatsApp, sendStatementOnWhatsApp } from '../../lib/share.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Initials, Line, SavedNote, SectionTitle, Soft, Stat, Title, color, s } from '../../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Initials, Line, SavedNote, SectionTitle, Soft, Stat, Title, color, s, Group } from '../../lib/ui.tsx';
 
 const money = (r: number) => rupees(toPaise(r));
 type Bill = { invoice_id: number; invoice_number: string; invoice_date: string; total: number; balance_due: number; payment_status: string; status: string };
@@ -91,7 +91,7 @@ export default function CustomerDetail() {
           ) : null}
           {owing.length > 0 || done ? <SectionTitle>Customer dues</SectionTitle> : null}
           {done ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok, fontWeight: '600', paddingHorizontal: 16, paddingBottom: 6 }}>{done}</Text> : null}
-          {owing.map((b) => <Line key={`due-${b.invoice_id}`} icon="cash-outline" left={b.invoice_number} sub={`${formatDate(b.invoice_date)} · of ${money(b.total)}`} right={`${money(b.balance_due)} due`} onPress={() => start(b)} />)}
+          <Group>{owing.map((b) => <Line key={`due-${b.invoice_id}`} icon="cash-outline" left={b.invoice_number} sub={`${formatDate(b.invoice_date)} · of ${money(b.total)}`} right={`${money(b.balance_due)} due`} onPress={() => start(b)} />)}</Group>
           {paying ? (
             <View style={[s.card, { marginHorizontal: 16, marginTop: 8, gap: 10, backgroundColor: color.tint, borderColor: color.tintLine }]}>
               <Text style={{ fontSize: 16, fontWeight: '700', color: color.ink }}>{`Payment for ${paying.invoice_number}`}</Text>

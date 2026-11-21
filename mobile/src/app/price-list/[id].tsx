@@ -10,7 +10,7 @@ import type { WProduct } from '../../lib/wholesale.ts';
 import { KIND_LABEL, listSummary, ruleBody, ruleProblem, ruleText, type PriceList, type PriceRule, type RuleDraft } from '../../lib/pricing.ts';
 import { rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 
@@ -106,7 +106,7 @@ export default function PriceListScreen() {
             ) : (
               <View style={{ paddingHorizontal: 16, gap: 8 }}>
                 <TextInput style={s.input} value={text} onChangeText={setText} placeholder="Search for an item" accessibilityLabel="Search for an item" autoCorrect={false} />
-                {found.map((p) => <Line key={p.product_id} left={p.name} sub={`Shelf wholesale price ${money(p.wholesale_price)}`} onPress={() => pick(p)} />)}
+                <Group>{found.map((p) => <Line key={p.product_id} left={p.name} sub={`Shelf wholesale price ${money(p.wholesale_price)}`} onPress={() => pick(p)} />)}</Group>
                 <ErrorText>{problem}</ErrorText>
               </View>
             )}
@@ -114,7 +114,7 @@ export default function PriceListScreen() {
             <SectionTitle>Prices on this list</SectionTitle>
             {rules.busy && !rules.data ? <Loading /> : null}
             {rules.data && rules.data.length === 0 ? <Soft style={{ padding: 16 }}>No price yet. Customers on this list pay the normal price.</Soft> : null}
-            {(rules.data ?? []).map((r) => <Line key={r.item_id} left={r.product ?? `Everything in ${r.category}`} sub={ruleText(r, money)} right="Remove" onPress={() => remove(r)} />)}
+            <Group>{(rules.data ?? []).map((r) => <Line key={r.item_id} left={r.product ?? `Everything in ${r.category}`} sub={ruleText(r, money)} right="Remove" onPress={() => remove(r)} />)}</Group>
           </ScrollView>
         ) : null}
       </Page>

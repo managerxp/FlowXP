@@ -8,7 +8,8 @@ import { useLoad } from '../lib/useLoad.ts';
 import { MOVER_TEXT, rs, type AgeBucket, type Mover, type Reorder, type Valuation } from '../lib/shopExtras.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Chips, Empty, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { display } from '../lib/theme.ts';
 
 type Tab = 'buy' | 'movers' | 'age' | 'value';
 
@@ -37,21 +38,21 @@ export default function PartsReports() {
               {buy.error && !buy.data ? <Failed message={buy.error} onRetry={() => { void buy.refresh(); }} /> : null}
               {buy.data && buy.data.parts.length === 0 ? <Empty>Nothing needs buying right now.</Empty> : null}
               {buy.data?.parts.length ? <Soft style={{ padding: 16 }}>A suggestion, not an order. Nothing is bought until you make a purchase order.</Soft> : null}
-              {(buy.data?.parts ?? []).map((p) => <Line key={p.product_id} left={p.name} sub={`${p.supplier ?? t('No supplier')} · ${t('have')} ${p.on_hand}${p.on_order ? ` · ${t('on order')} ${p.on_order}` : ''}`} right={`${t('Buy')} ${p.suggested_qty}`} onPress={() => open(p.product_id)} />)}
+              <Group>{(buy.data?.parts ?? []).map((p) => <Line key={p.product_id} left={p.name} sub={`${p.supplier ?? t('No supplier')} · ${t('have')} ${p.on_hand}${p.on_order ? ` · ${t('on order')} ${p.on_order}` : ''}`} right={`${t('Buy')} ${p.suggested_qty}`} onPress={() => open(p.product_id)} />)}</Group>
             </>
           ) : null}
           {tab === 'movers' ? (
             <>
               {movers.busy && !movers.data ? <Loading /> : null}
               {movers.error && !movers.data ? <Failed message={movers.error} onRetry={() => { void movers.refresh(); }} /> : null}
-              {(movers.data?.parts ?? []).map((p) => <Line key={p.product_id} left={p.name} sub={`${t(MOVER_TEXT[p.class] ?? p.class)} · ${t('sold in 30 days')} ${p.sold_30} · ${t('have')} ${p.on_hand}`} right={rs(p.stock_cost_paise)} onPress={() => open(p.product_id)} />)}
+              <Group>{(movers.data?.parts ?? []).map((p) => <Line key={p.product_id} left={p.name} sub={`${t(MOVER_TEXT[p.class] ?? p.class)} · ${t('sold in 30 days')} ${p.sold_30} · ${t('have')} ${p.on_hand}`} right={rs(p.stock_cost_paise)} onPress={() => open(p.product_id)} />)}</Group>
             </>
           ) : null}
           {tab === 'age' ? (
             <>
               {age.busy && !age.data ? <Loading /> : null}
               {age.error && !age.data ? <Failed message={age.error} onRetry={() => { void age.refresh(); }} /> : null}
-              {(age.data?.buckets ?? []).map((b) => <Line key={b.label} left={t('{label} days', { label: b.label })} sub={t('{a} parts · {b} units', { a: b.parts, b: b.units })} right={rs(b.cost_paise)} />)}
+              <Group>{(age.data?.buckets ?? []).map((b) => <Line key={b.label} left={t('{label} days', { label: b.label })} sub={t('{a} parts · {b} units', { a: b.parts, b: b.units })} right={rs(b.cost_paise)} />)}</Group>
               {age.data ? <Soft style={{ padding: 16 }}>How long the stock has been on the shelf, valued at what you paid.</Soft> : null}
             </>
           ) : null}
@@ -62,11 +63,11 @@ export default function PartsReports() {
               {val.data ? (
                 <>
                   <View style={[s.card, { margin: 16, gap: 4 }]}>
-                    <Text style={{ color: color.soft }}>{t('At what you paid')}</Text><Text style={{ fontSize: 22, fontWeight: '700', color: color.ink }}>{rs(val.data.total_cost_paise)}</Text>
+                    <Text style={{ color: color.soft }}>{t('At what you paid')}</Text><Text style={{ fontSize: 22, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{rs(val.data.total_cost_paise)}</Text>
                     <Text style={{ color: color.soft }}>{t('At selling price')}</Text><Text style={{ fontSize: 18, fontWeight: '600', color: color.ink }}>{rs(val.data.total_sell_paise)}</Text>
                   </View>
                   <SectionTitle>By category</SectionTitle>
-                  {val.data.categories.map((c) => <Line key={c.category} left={c.category} sub={t('{a} parts · {b} units', { a: c.parts, b: c.units })} right={rs(c.cost_paise)} />)}
+                  <Group>{val.data.categories.map((c) => <Line key={c.category} left={c.category} sub={t('{a} parts · {b} units', { a: c.parts, b: c.units })} right={rs(c.cost_paise)} />)}</Group>
                 </>
               ) : null}
             </>

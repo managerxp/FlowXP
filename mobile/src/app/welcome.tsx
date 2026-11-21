@@ -9,6 +9,7 @@ import { markDone } from '../lib/learn.tsx';
 import { tour } from '../lib/onboarding.ts';
 import { Page } from '../lib/responsive.tsx';
 import { Button, color, s } from '../lib/ui.tsx';
+import { display } from '../lib/theme.ts';
 import { t } from '../lib/i18n.ts';
 
 /* A one-minute tour, three screens, shown once and always skippable. It ends at a real action (make a bill), not at a "finish" button.
@@ -36,7 +37,7 @@ export default function Welcome() {
           <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: color.tint, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name={slide.icon as never} size={48} color={color.brand} />
           </View>
-          <Text accessibilityRole="header" style={{ fontSize: 26, fontWeight: '800', color: color.ink, textAlign: 'center' }}>{t(slide.title)}</Text>
+          <Text accessibilityRole="header" style={{ fontSize: 26, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink, textAlign: 'center' }}>{t(slide.title)}</Text>
           <View style={{ gap: 8 }}>
             {slide.lines.map((l, i) => <Text key={l} style={{ fontSize: 18, color: color.ink, textAlign: 'center', lineHeight: 26 }}>{at === 0 ? `${i + 1}. ${t(l)}` : t(l)}</Text>)}
           </View>

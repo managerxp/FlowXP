@@ -11,7 +11,7 @@ import { SearchBox } from '../lib/SearchBox.tsx';
 import { STATE_LABEL, memberSub, type Member } from '../lib/gym.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Empty, Failed, Line, Loading, Soft, Title, s } from '../lib/ui.tsx';
+import { Button, Empty, Failed, Line, Loading, Soft, Title, s, Group } from '../lib/ui.tsx';
 
 /* The gym's members: search by name, phone or member number, open one, or add a new member. With nothing typed it shows the latest members. */
 export default function GymMembers() {
@@ -38,7 +38,7 @@ export default function GymMembers() {
           {list.busy && !list.data ? <Loading /> : null}
           {list.error && !list.data ? <Failed message={list.error} onRetry={() => { void list.refresh(); }} /> : null}
           {list.data && list.data.length === 0 ? <Empty>{q ? t('No member matches that.') : t('No members yet. Add the first one above.')}</Empty> : null}
-          {(list.data ?? []).map((m) => <Line key={m.member_id} left={m.name} sub={memberSub(m)} right={STATE_LABEL[m.state] ?? m.state} onPress={() => router.push({ pathname: '/gym-member/[id]', params: { id: String(m.member_id) } })} />)}
+          <Group>{(list.data ?? []).map((m) => <Line key={m.member_id} left={m.name} sub={memberSub(m)} right={STATE_LABEL[m.state] ?? m.state} onPress={() => router.push({ pathname: '/gym-member/[id]', params: { id: String(m.member_id) } })} />)}</Group>
         </ScrollView>
       </Page>
     </SafeAreaView>

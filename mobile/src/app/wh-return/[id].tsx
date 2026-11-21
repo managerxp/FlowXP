@@ -8,7 +8,7 @@ import { useLoad } from '../../lib/useLoad.ts';
 import { DISPOSITION_LABEL, REASON_LABEL, type ReturnDetail } from '../../lib/returns.ts';
 import { qty, rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Button, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../../lib/ui.tsx';
 
 /* One return: what came back (or went back), why, the credit or debit note it made, and where each item went. */
 export default function ReturnDetailScreen() {
@@ -32,7 +32,7 @@ export default function ReturnDetailScreen() {
               {x.kind === 'SALE' ? <Soft>{`Bill ${x.invoice_number ?? ''} · credit note ${x.cn_number ?? ''}${x.cn_total != null ? ` · ${rupees(toPaise(x.cn_total))}` : ''}`}</Soft> : <Soft>{`Order ${x.po_number ?? ''} · debit note ${x.dn_number ?? ''}${x.dn_total != null ? ` · ${rupees(toPaise(x.dn_total))}` : ''}`}</Soft>}
             </View>
             <SectionTitle>Items</SectionTitle>
-            {x.items.map((i, k) => <Line key={k} left={i.product} sub={`${x.kind === 'SALE' ? DISPOSITION_LABEL[i.disposition] : 'Sent back'}${i.batch_no ? ` · batch ${i.batch_no}` : ''}`} right={`${qty(i.quantity)} ${i.unit_name ?? ''}`} />)}
+            <Group>{x.items.map((i, k) => <Line key={k} left={i.product} sub={`${x.kind === 'SALE' ? DISPOSITION_LABEL[i.disposition] : 'Sent back'}${i.batch_no ? ` · batch ${i.batch_no}` : ''}`} right={`${qty(i.quantity)} ${i.unit_name ?? ''}`} />)}</Group>
           </ScrollView>
         ) : null}
       </Page>

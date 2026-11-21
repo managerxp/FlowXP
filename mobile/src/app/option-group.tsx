@@ -8,7 +8,7 @@ import { t } from '../lib/i18n.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
 import { activeOptions, chosenText, dishesByCategory, ingredientLine, priceText, productsBody, ruleOf, toggleBody, toggleIds, type Dish, type Group, type Ingredient } from '../lib/menuOptions.ts';
-import { Button, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group as UiGroup } from '../lib/ui.tsx';
 
 /* One option group: its rule, options and the dishes that offer it. Edit it, turn it off, or choose its dishes. */
 export default function OptionGroup() {
@@ -62,7 +62,7 @@ export default function OptionGroup() {
               return (
                 <View key={category || 'none'}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 8 }}><SectionTitle>{category || t('No category')}</SectionTitle><Button title={all ? 'None' : 'All'} kind="quiet" onPress={() => setChosen(toggleIds(chosen, ids, !all))} /></View>
-                  {list.map((d) => <Line key={d.product_id} left={d.name} right={rupees(toPaise(d.selling_price))} selected={chosen.has(d.product_id)} onPress={() => setChosen(toggleIds(chosen, [d.product_id], !chosen.has(d.product_id)))} />)}
+                  <UiGroup>{list.map((d) => <Line key={d.product_id} left={d.name} right={rupees(toPaise(d.selling_price))} selected={chosen.has(d.product_id)} onPress={() => setChosen(toggleIds(chosen, [d.product_id], !chosen.has(d.product_id)))} />)}</UiGroup>
                 </View>
               );
             })}
@@ -90,7 +90,7 @@ export default function OptionGroup() {
             <ErrorText>{error}</ErrorText>
           </View>
           <SectionTitle>{`${t('Options')} · ${options.length}`}</SectionTitle>
-          {options.map((m) => <Line key={m.modifier_id ?? m.name} left={m.name} right={priceText(m.price_delta)} sub={ingredientLine(m, ingredients)} />)}
+          <UiGroup>{options.map((m) => <Line key={m.modifier_id ?? m.name} left={m.name} right={priceText(m.price_delta)} sub={ingredientLine(m, ingredients)} />)}</UiGroup>
           <SectionTitle>{`${t('Offered on')} · ${group.products.length}`}</SectionTitle>
           {group.products.length === 0 ? <Soft style={{ paddingHorizontal: 16 }}>{t('Not on any dish yet, so no one is asked.')}</Soft> : <Text style={{ color: color.ink, paddingHorizontal: 16, lineHeight: 22 }}>{group.products.map((p) => p.name).join(', ')}</Text>}
         </ScrollView>

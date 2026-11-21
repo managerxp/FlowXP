@@ -8,7 +8,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import type { TableRow } from '../lib/orders.ts';
 import { RESERVATION_LABEL, clock, clockToday, freeTables, guestProblem, inMinutes, type Reservation, type WaitEntry } from '../lib/floor.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 type Tab = 'book' | 'wait';
 
@@ -115,7 +115,7 @@ export default function Reservations() {
                 </View>
               ))}
               {past.length ? <SectionTitle>Done today</SectionTitle> : null}
-              {past.map((r) => <Line key={r.reservation_id} left={`${clock(r.reserved_at)} · ${r.guest_name}`} sub={`${r.party_size} · ${RESERVATION_LABEL[r.status]}`} />)}
+              <Group>{past.map((r) => <Line key={r.reservation_id} left={`${clock(r.reserved_at)} · ${r.guest_name}`} sub={`${r.party_size} · ${RESERVATION_LABEL[r.status]}`} />)}</Group>
             </>
           ) : (
             <>

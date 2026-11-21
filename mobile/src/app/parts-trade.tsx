@@ -7,7 +7,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { priceListBody, priceListProblem, type PriceList, type Reservation } from '../lib/shopExtras.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Soft, Title, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Soft, Title, s, Group } from '../lib/ui.tsx';
 
 /* Trade prices and held parts: a price list gives a group of customers a discount on everything; a hold keeps parts back for a customer until they are sold or released. */
 export default function PartsTrade() {
@@ -57,7 +57,7 @@ export default function PartsTrade() {
               {lists.busy && !lists.data ? <Loading /> : null}
               {lists.error && !lists.data ? <Failed message={lists.error} onRetry={() => { void lists.refresh(); }} /> : null}
               {lists.data && lists.data.length === 0 ? <Empty>No price lists yet.</Empty> : null}
-              {(lists.data ?? []).map((l) => <Line key={l.price_list_id} left={l.name} sub={t('{a} customers · {b} special prices', { a: l.customers, b: l.items })} right={`${l.discount_pct}% ${t('off')}`} />)}
+              <Group>{(lists.data ?? []).map((l) => <Line key={l.price_list_id} left={l.name} sub={t('{a} customers · {b} special prices', { a: l.customers, b: l.items })} right={`${l.discount_pct}% ${t('off')}`} />)}</Group>
               {lists.data?.length ? <Soft style={{ padding: 16 }}>Set a customer's price list, and special prices for single parts, on the website.</Soft> : null}
             </>
           ) : (
@@ -65,7 +65,7 @@ export default function PartsTrade() {
               {holds.busy && !holds.data ? <Loading /> : null}
               {holds.error && !holds.data ? <Failed message={holds.error} onRetry={() => { void holds.refresh(); }} /> : null}
               {holds.data && holds.data.length === 0 ? <Empty>Nothing is being held.</Empty> : null}
-              {(holds.data ?? []).map((r) => <Line key={r.reservation_id} left={r.part} sub={r.customer ?? undefined} right={`${r.open_qty}`} onPress={() => release(r)} />)}
+              <Group>{(holds.data ?? []).map((r) => <Line key={r.reservation_id} left={r.part} sub={r.customer ?? undefined} right={`${r.open_qty}`} onPress={() => release(r)} />)}</Group>
               {holds.data?.length ? <Soft style={{ padding: 16 }}>Tap a hold to release it.</Soft> : null}
             </>
           )}

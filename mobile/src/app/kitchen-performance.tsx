@@ -8,7 +8,7 @@ import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import { KITCHEN_RANGES, canInsights, dishLine, hourLabel, minText, rangeQuery, slowerDishes, slowerText, stationLine, type Kitchen } from '../lib/insights.ts';
-import { Button, Chips, Empty, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s, Group } from '../lib/ui.tsx';
 
 /* Kitchen performance: how long dishes take from being sent to the kitchen until it marks them ready, compared with the period just before. */
 export default function KitchenPerformance() {
@@ -48,7 +48,7 @@ export default function KitchenPerformance() {
                   </>
                 ) : null}
                 <SectionTitle>By station</SectionTitle>
-                {data.stations.map((st) => <Line key={st.name} left={st.name} right={minText(st.avg_minutes)} sub={stationLine(st)} />)}
+                <Group>{data.stations.map((st) => <Line key={st.name} left={st.name} right={minText(st.avg_minutes)} sub={stationLine(st)} />)}</Group>
                 <SectionTitle>Average time by hour sent</SectionTitle>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 130, gap: 4, paddingHorizontal: 16 }}>
                   {data.hours.map((h) => (
@@ -62,7 +62,7 @@ export default function KitchenPerformance() {
                 <Soft style={{ padding: 16 }}>{t('Busy hours usually run slower; a big gap here is a staffing question.')}</Soft>
                 <SectionTitle>By dish</SectionTitle>
                 <Soft style={{ paddingHorizontal: 16 }}>{t('Dishes with at least 3 finished items.')}</Soft>
-                {data.items.map((i) => <Line key={i.name} left={i.name} right={minText(i.avg_minutes)} sub={dishLine(i)} />)}
+                <Group>{data.items.map((i) => <Line key={i.name} left={i.name} right={minText(i.avg_minutes)} sub={dishLine(i)} />)}</Group>
               </>
             )}
           </ScrollView>

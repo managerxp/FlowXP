@@ -7,7 +7,8 @@ import { useLoad } from '../../lib/useLoad.ts';
 import { rupees } from '../../lib/money.ts';
 import { CLASS_LABEL, FIT_LABEL, partSub, pickOrder, stockText, vehicleText, yearsText, type PartDetail, type PartLocations } from '../../lib/parts.ts';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Button, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../../lib/ui.tsx';
+import { display } from '../../lib/theme.ts';
 
 const TONE = { get VERIFIED() { return color.ok; }, get UNVERIFIED() { return color.warn; }, get NOT_FIT() { return color.danger; }, get UNKNOWN() { return color.soft; } } as Record<string, string>;
 
@@ -32,7 +33,7 @@ export default function PartPage() {
           {p ? (
             <>
               <View style={{ paddingHorizontal: 16, gap: 2 }}>
-                <Text style={{ fontSize: 24, fontWeight: '700', color: color.ink }}>{rupees(p.selling_price_paise)}</Text>
+                <Text style={{ fontSize: 24, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{rupees(p.selling_price_paise)}</Text>
                 <Soft>{`${p.mrp_paise ? `MRP ${rupees(p.mrp_paise)} · ` : ''}${p.classification ? CLASS_LABEL[p.classification] ?? p.classification : 'No part details yet'}`}</Soft>
                 <Text style={{ color: (p.stock ?? 0) > 0 ? color.ok : color.danger, fontWeight: '700' }}>{stockText(p.stock)}</Text>
               </View>
@@ -41,7 +42,7 @@ export default function PartPage() {
               {where.error && !w ? <Failed message={where.error} onRetry={() => { void where.refresh(); }} /> : null}
               {w ? (
                 <>
-                  {pickOrder(w.bins).map((b) => <Line key={b.location_id} left={`${b.code}${b.is_primary ? '  (pick bin)' : ''}`} sub={b.reserved_qty ? `${b.reserved_qty} held for customers` : undefined} right={`${b.qty}`} />)}
+                  <Group>{pickOrder(w.bins).map((b) => <Line key={b.location_id} left={`${b.code}${b.is_primary ? '  (pick bin)' : ''}`} sub={b.reserved_qty ? `${b.reserved_qty} held for customers` : undefined} right={`${b.qty}`} />)}</Group>
                   {w.bins.length === 0 ? <Soft>{'  Not on any shelf yet.'}</Soft> : null}
                   {w.unassigned > 0 ? (
                     <View style={{ padding: 16, gap: 8 }}>
@@ -56,12 +57,12 @@ export default function PartPage() {
               {p.branches.length > 1 ? (
                 <>
                   <SectionTitle>At each outlet</SectionTitle>
-                  {p.branches.map((b) => <Line key={b.branch_id} left={b.name} sub={b.reserved ? `${b.reserved} held` : undefined} right={`${b.available} free`} />)}
+                  <Group>{p.branches.map((b) => <Line key={b.branch_id} left={b.name} sub={b.reserved ? `${b.reserved} held` : undefined} right={`${b.available} free`} />)}</Group>
                 </>
               ) : null}
 
               <SectionTitle>Part numbers</SectionTitle>
-              {p.numbers.length === 0 ? <Soft>{'  None recorded.'}</Soft> : p.numbers.map((n) => <Line key={n.pn_id} left={n.number} right={n.kind.toLowerCase()} />)}
+              <Group>{p.numbers.length === 0 ? <Soft>{'  None recorded.'}</Soft> : p.numbers.map((n) => <Line key={n.pn_id} left={n.number} right={n.kind.toLowerCase()} />)}</Group>
               {p.barcodes.length ? <Soft>{`  Barcode: ${p.barcodes.join(', ')}`}</Soft> : null}
 
               <SectionTitle>Fits these vehicles</SectionTitle>

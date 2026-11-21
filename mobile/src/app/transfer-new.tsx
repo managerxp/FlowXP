@@ -9,7 +9,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import type { WProduct } from '../lib/wholesale.ts';
 import { addTLine, dropTLine, setTQty, setTUnit, transferBody, transferProblem, type TLine, type Transfer, type Warehouse } from '../lib/transfers.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 /* Move goods from one warehouse to another. Choose where they leave from and go to, add the items and how many. It can be sent straight away, or kept until the van is ready. */
 export default function TransferNew() {
@@ -63,7 +63,7 @@ export default function TransferNew() {
           <SectionTitle>What is going</SectionTitle>
           <View style={{ paddingHorizontal: 16, gap: 8 }}>
             <TextInput style={s.input} value={text} onChangeText={setText} placeholder="Search for an item" accessibilityLabel="Search for an item" autoCorrect={false} />
-            {found.map((p) => <Line key={p.product_id} left={p.name} sub={p.on_hand != null ? `${p.on_hand} in stock here` : undefined} onPress={() => { edit(addTLine(lines, p)); setText(''); setFound([]); }} />)}
+            <Group>{found.map((p) => <Line key={p.product_id} left={p.name} sub={p.on_hand != null ? `${p.on_hand} in stock here` : undefined} onPress={() => { edit(addTLine(lines, p)); setText(''); setFound([]); }} />)}</Group>
           </View>
           {lines.map((l) => {
             const units = [l.product.unit ?? 'piece', ...(l.product.units ?? []).map((u) => u.unit_name)].filter((u, i, a) => a.indexOf(u) === i);

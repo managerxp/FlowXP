@@ -12,7 +12,7 @@ import { rupees, toPaise } from '../lib/money.ts';
 import { t } from '../lib/i18n.ts';
 import { Page, ColumnList } from '../lib/responsive.tsx';
 import { addProduct, blankLine, draftTotalPaise, estimateBody, estimateHtml, estimateProblem, estimateText, productLine, type DraftLine, type Estimate, type EstimateBusiness } from '../lib/estimates.ts';
-import { Button, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Title, s } from '../lib/ui.tsx';
+import { Button, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Title, s, Group } from '../lib/ui.tsx';
 
 /* Estimates (quotations): a price sent before the sale. Share it, and when the customer agrees, turn it into an invoice in one tap. */
 export default function Estimates() {
@@ -86,7 +86,7 @@ export default function Estimates() {
             <View style={{ gap: 10 }}>
               <TextInput style={s.input} value={name} onChangeText={setName} placeholder={t('Customer name (optional)')} accessibilityLabel={t('Customer name')} />
               <SearchBox value={search} onChange={setSearch} placeholder={t('Search your items to add')} label={t('Search your items to add')} />
-              {found.map((p) => <Line key={p.product_id} left={pname(p)} right={rupees(toPaise(p.selling_price))} onPress={() => pick(p)} />)}
+              <Group>{found.map((p) => <Line key={p.product_id} left={pname(p)} right={rupees(toPaise(p.selling_price))} onPress={() => pick(p)} />)}</Group>
               {lines.map((l, i) => (
                 <View key={i} style={{ gap: 6 }}>
                   {l.product_id

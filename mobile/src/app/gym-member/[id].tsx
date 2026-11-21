@@ -11,7 +11,7 @@ import type { Plan } from '../../lib/gymSetup.ts';
 import { METHODS, STATE_TEXT, currentMembership, freezeBody, freezeProblem, renewable, rowsOf, sellBody, sellProblem, timeOf, todayISO, type MemberFull, type Pay } from '../../lib/gymMembers.ts';
 import { Page } from '../../lib/responsive.tsx';
 import { t } from '../../lib/i18n.ts';
-import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../../lib/ui.tsx';
 
 const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 const left = (c: { state: string; days_left: number | null }) => (c.state !== 'ACTIVE' || c.days_left == null ? '' : ` · ${c.days_left <= 0 ? t('Ends today') : t(c.days_left === 1 ? '1 day left' : '{n} days left', { n: c.days_left })}`);
@@ -96,7 +96,7 @@ export default function GymMember() {
                 <View style={{ paddingHorizontal: 16, gap: 8 }}>
                   <SectionTitle>Choose a plan</SectionTitle>
                   {plans.busy && !plans.data ? <Loading /> : null}
-                  {(plans.data ?? []).map((p) => <Line key={p.plan_id} left={p.name} sub={`${inr(Number(p.price))} · ${p.duration_days} days`} selected={p.plan_id === planId} onPress={() => setPlanId(p.plan_id)} />)}
+                  <Group>{(plans.data ?? []).map((p) => <Line key={p.plan_id} left={p.name} sub={`${inr(Number(p.price))} · ${p.duration_days} days`} selected={p.plan_id === planId} onPress={() => setPlanId(p.plan_id)} />)}</Group>
                   {plan ? (
                     <>
                       <SectionTitle>How was it paid?</SectionTitle>
@@ -124,7 +124,7 @@ export default function GymMember() {
 
               <SectionTitle>Visits</SectionTitle>
               <Soft style={{ paddingHorizontal: 16 }}>{t('{a} in the last 30 days · {b} in all', { a: d.stats.visits_30d, b: d.stats.visits })}</Soft>
-              {d.recent_visits.length === 0 ? <Soft style={{ padding: 16 }}>No visits yet.</Soft> : d.recent_visits.slice(0, 8).map((v) => <Line key={v.attendance_id} left={day(v.check_in_at)} right={timeOf(v.check_in_at)} />)}
+              <Group>{d.recent_visits.length === 0 ? <Soft style={{ padding: 16 }}>No visits yet.</Soft> : d.recent_visits.slice(0, 8).map((v) => <Line key={v.attendance_id} left={day(v.check_in_at)} right={timeOf(v.check_in_at)} />)}</Group>
             </>
           ) : null}
         </ScrollView>

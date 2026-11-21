@@ -19,6 +19,7 @@ import PayHowPicker from './PayHowPicker.tsx';
 import { t } from './i18n.ts';
 import { payPlan, type PayHow } from './billing.ts';
 import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s } from './ui.tsx';
+import { display } from './theme.ts';
 
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const METHODS = [{ id: 'CASH', label: 'Cash' }, { id: 'UPI', label: 'UPI' }, { id: 'CARD', label: 'Card' }];
@@ -191,12 +192,12 @@ export function PharmacyTill() {
               {quote ? (
                 <>
                   <Soft>{`Items ${rupees(toPaise(quote.invoice.subtotal))}${quote.invoice.discount > 0 ? ` · discount ${rupees(toPaise(quote.invoice.discount))}` : ''} · GST ${rupees(toPaise(quote.invoice.tax))}`}</Soft>
-                  <Text accessibilityLiveRegion="polite" style={{ fontSize: 28, fontWeight: '800', color: color.ink }}>{rupees(toPaise(quote.invoice.total))}</Text>
+                  <Text accessibilityLiveRegion="polite" style={{ fontSize: 28, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{rupees(toPaise(quote.invoice.total))}</Text>
                 </>
               ) : offline ? (
                 <>
                   <Soft>{`About: items ${rupees(estimate(lines).subtotalPaise)} · GST ${rupees(estimate(lines).taxPaise)}. FlowXP works out the exact bill when it is sent.`}</Soft>
-                  <Text style={{ fontSize: 28, fontWeight: '800', color: color.ink }}>{`about ${rupees(estimate(lines).totalPaise)}`}</Text>
+                  <Text style={{ fontSize: 28, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{`about ${rupees(estimate(lines).totalPaise)}`}</Text>
                 </>
               ) : <Soft>{quoteError || `About ${rupees(roughPaise(lines))}. Working out the exact total…`}</Soft>}
               <PayHowPicker how={how} onHow={(h) => { setHow(h); setProblem(''); }} nowText={nowText} onNow={setNowText} plan={plan} owes={customer?.name || t('the customer')} totalPaise={billPaise} />

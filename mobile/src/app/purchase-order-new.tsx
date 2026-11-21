@@ -13,7 +13,7 @@ import { currentBusiness, useSession } from '../lib/session.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import { SearchBox } from '../lib/SearchBox.tsx';
-import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 
@@ -66,7 +66,7 @@ export default function NewPurchaseOrder() {
           <View style={{ padding: 16 }}>
             <SearchBox value={text} onChange={setText} placeholder="Search a product to order" label="Search a product" />
           </View>
-          {found.map((p) => <Line key={p.product_id} left={p.name} sub={`Last price ${money(p.purchase_price)}${(p.units ?? []).length ? ` · ${p.units!.map((u) => `${u.unit_name} (${u.factor})`).join(', ')}` : ''}`} onPress={() => { edit(addBLine(lines, p)); setText(''); setFound([]); }} />)}
+          <Group>{found.map((p) => <Line key={p.product_id} left={p.name} sub={`Last price ${money(p.purchase_price)}${(p.units ?? []).length ? ` · ${p.units!.map((u) => `${u.unit_name} (${u.factor})`).join(', ')}` : ''}`} onPress={() => { edit(addBLine(lines, p)); setText(''); setFound([]); }} />)}</Group>
 
           <SectionTitle>This order</SectionTitle>
           {lines.length === 0 ? <Empty>Search a product above and tap it to add it.</Empty> : null}

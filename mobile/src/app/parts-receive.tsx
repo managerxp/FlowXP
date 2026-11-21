@@ -9,7 +9,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { SearchBox } from '../lib/SearchBox.tsx';
 import { acceptedOf, addRecvLine, lookupPath, partSub, recvBody, recvProblem, recvSummary, storingBins, type PartRow, type RecvLine, type StorePlace } from '../lib/parts.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 type Supplier = { supplier_id: number; name: string };
 
@@ -62,7 +62,7 @@ export default function PartsReceive() {
             <TextInput style={s.input} value={invoice} onChangeText={setInvoice} placeholder="Supplier invoice number (the same one cannot be booked twice)" accessibilityLabel="Supplier invoice number" />
             <SearchBox value={text} onChange={setText} placeholder="Add a part: scan, or type a name or number" label="Add a part" />
           </View>
-          {(found.data ?? []).map((p) => <Line key={p.product_id} left={p.name} sub={partSub(p)} right="Add" onPress={() => { setLines((ls) => addRecvLine(ls, p)); setText(''); setDone(''); }} />)}
+          <Group>{(found.data ?? []).map((p) => <Line key={p.product_id} left={p.name} sub={partSub(p)} right="Add" onPress={() => { setLines((ls) => addRecvLine(ls, p)); setText(''); setDone(''); }} />)}</Group>
 
           {lines.map((l, i) => (
             <View key={l.product_id} style={[s.card, { margin: 16, marginBottom: 0, gap: 8 }]}>
