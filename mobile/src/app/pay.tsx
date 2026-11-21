@@ -22,6 +22,8 @@ import { qty, rupees, toPaise } from '../lib/money.ts';
 import { t } from '../lib/i18n.ts';
 import { gstView, type Levies } from '../lib/gst.ts';
 import { DETAIL_FIELDS, detailsBody } from '../lib/taxInvoice.ts';
+import { PointsBox } from '../lib/PointsBox.tsx';
+import { pointsOffPaise, type Points } from '../lib/points.ts';
 import { Page, useWide } from '../lib/responsive.tsx';
 import { Button, ErrorText, Loading, Soft, color, s } from '../lib/ui.tsx';
 import { display, radius } from '../lib/theme.ts';
@@ -50,7 +52,14 @@ export default function Pay() {
   const orderKey = useRef(newKey());   // one key for billing this order: a retry after a dropped signal returns the same invoice
   const ot = order.data ? orderTotals(order.data) : null;
   // what the customer pays now: a table's order is priced by the server; at the till the bill less any TDS the customer holds back (the server records that as paid)
-  const total = orderId ? (ot?.totalPaise ?? 0) : sum.totalPaise - sum.tdsPaise;
+  const baseTotal = orderId ? (ot?.totalPaise ?? 0) : sum.totalPaise - sum.tdsPaise;
+  // the customer's loyalty points: shown once a customer is on the bill, and what they use comes off the amount
+  const customerId = orderId ? (order.data?.customer_id ?? null) : (customer?.id ?? null);
+  const [redeem, setRedeem] = useState('');
+  const pointsInfo = useLoad<Points | null>(`points:${session.businessId}:${customerId}`, () => api.get<{ points: Points | null }>(`/loyalty/customers/${customerId}`).then((d) => d.points), Boolean(customerId) && hasFeature(business, 'loyalty'));
+  const pointsOff = pointsOffPaise(pointsInfo.data, Number(redeem) || 0, baseTotal);
+  const total = baseTotal - pointsOff;
+  const redeemBody = pointsOff > 0 ? { points: Number(redeem), membershipId: pointsInfo.data?.membership_id ?? null } : null;
   const lineCount = orderId ? (ot?.lines ?? 0) : cart.lines.length;
   const toKitchen = kitchen && KITCHEN_TYPES.includes(business?.business_type ?? '');
   const [method, setMethod] = useState<Method>('CASH');
@@ -74,7 +83,7 @@ export default function Pay() {
   const billOrder = async () => {
     setBusy(true); setError('');
     try {
-      const invoice = await api.post<{ invoice_id: number }>(`/orders/${orderId}/bill`, { ...(split ? { payments: split.parts.map((p) => ({ method: p.method, amount: p.amountPaise == null ? 'REST' : p.amountPaise / 100 })) } : plan.payNowPaise === 0 ? {} : { payment: { method, amount: plan.payNowPaise ? plan.payNowPaise / 100 : 'FULL', ...(reference.trim() ? { reference_number: reference.trim() } : {}) } }), apply_promotions: true }, { idempotencyKey: orderKey.current });
+      const invoice = await api.post<{ invoice_id: number }>(`/orders/${orderId}/bill`, { ...(redeemBody ? { redeem_points: redeemBody.points, ...(redeemBody.membershipId ? { spend_membership_id: redeemBody.membershipId } : {}) } : {}), ...(split ? { payments: split.parts.map((p) => ({ method: p.method, amount: p.amountPaise == null ? 'REST' : p.amountPaise / 100 })) } : plan.payNowPaise === 0 ? {} : { payment: { method, amount: plan.payNowPaise ? plan.payNowPaise / 100 : 'FULL', ...(reference.trim() ? { reference_number: reference.trim() } : {}) } }), apply_promotions: true }, { idempotencyKey: orderKey.current });
       router.replace({ pathname: '/receipt', params: { fresh: '1', id: String(invoice.invoice_id), change: change > 0 ? String(change) : '' } });
     } catch (e) {
       setError(e instanceof NetworkError ? 'No internet. The order is still open and nothing was billed. Tap again when the internet is back. It will not be billed twice.' : e instanceof ApiError ? e.message : 'Could not make the bill');
@@ -90,7 +99,7 @@ export default function Pay() {
     try {
       // the same key for every attempt at THIS sale: if the first one reached the server before the signal dropped, a retry returns that invoice.
       // With no signal the sale is kept on the phone and sent later, with that same key.
-      const taken = await takeSale({ api, outbox: scope.outbox, cart, method, reference: reference.trim() || undefined, key: keyForSale(), kitchen: toKitchen, customerId: customer?.id ?? null, payNowPaise: plan.payNowPaise, parts: split?.parts, gst, levies, printDetails: taxDetails ? detailsBody(details) : null, sendWhatsapp: sendWa });
+      const taken = await takeSale({ api, outbox: scope.outbox, cart, method, reference: reference.trim() || undefined, key: keyForSale(), kitchen: toKitchen, customerId: customer?.id ?? null, payNowPaise: plan.payNowPaise, parts: split?.parts, gst, levies, printDetails: taxDetails ? detailsBody(details) : null, sendWhatsapp: sendWa, redeem: redeemBody });
       if (taken.kind === 'full') { setError('Too many bills are waiting on this phone. Connect to the internet so they can be sent, then make this bill again.'); return; }
       clearSale(); markDone('first_bill');
       if (taken.kind === 'queued') {
@@ -172,6 +181,7 @@ export default function Pay() {
           {levyOptions.map(([k, label]) => <Button key={k} title={label} kind="quiet" selected={Boolean(levies[k])} onPress={() => setLevies((o) => ({ ...o, [k]: !o[k] }))} />)}
         </View>
       ) : null}
+      {pointsInfo.data ? <PointsBox points={pointsInfo.data} totalPaise={baseTotal} value={redeem} onChange={setRedeem} /> : null}
       {hasFeature(business, 'messaging') && hasCustomer ? <Button title={t('Send the bill on WhatsApp')} kind="quiet" selected={sendWa} onPress={() => setSendWa(!sendWa)} disabled={busy} /> : null}
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {HOWS.map((h) => <Button key={h.id} title={h.label} selected={how === h.id} onPress={() => { setHow(h.id); setError(''); }} style={{ flex: 1 }} />)}
@@ -255,11 +265,12 @@ export default function Pay() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Soft>Items</Soft><Soft>{rupees(summary.subtotalPaise)}</Soft></View>
         {summary.offersPaise > 0 ? <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ color: color.ok, fontWeight: '600' }}>{t('Offer')}{offers.names.length && !orderId ? `: ${offers.names.join(', ')}` : ''}</Text><Text style={{ color: color.ok, fontWeight: '600' }}>−{rupees(summary.offersPaise)}</Text></View> : null}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Soft>GST</Soft><Soft>{rupees(summary.taxPaise)}</Soft></View>
+        {pointsOff > 0 ? <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ color: color.ok, fontWeight: '600' }}>{t('Points used')}</Text><Text style={{ color: color.ok, fontWeight: '600' }}>−{rupees(pointsOff)}</Text></View> : null}
         {summary.cessPaise ? <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Soft>{t('Cess')}</Soft><Soft>{rupees(summary.cessPaise)}</Soft></View> : null}
         {summary.tcsPaise ? <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Soft>TCS</Soft><Soft>{rupees(summary.tcsPaise)}</Soft></View> : null}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 6 }}><Text style={{ fontSize: 18, fontWeight: '700', color: color.ink }}>{t('Total')}</Text><Text style={{ fontSize: 18, fontWeight: '700', color: color.ink }}>≈ {rupees(summary.totalPaise)}</Text></View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 6 }}><Text style={{ fontSize: 18, fontWeight: '700', color: color.ink }}>{t('Total')}</Text><Text style={{ fontSize: 18, fontWeight: '700', color: color.ink }}>≈ {rupees(summary.totalPaise - pointsOff)}</Text></View>
         {summary.tdsPaise ? <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Soft>{t('TDS held back by the customer')}</Soft><Soft>−{rupees(summary.tdsPaise)}</Soft></View> : null}
-        {summary.tdsPaise ? <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ fontWeight: '700', color: color.ink }}>{t('Customer pays')}</Text><Text style={{ fontWeight: '700', color: color.ink }}>≈ {rupees(summary.totalPaise - summary.tdsPaise)}</Text></View> : null}
+        {summary.tdsPaise ? <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ fontWeight: '700', color: color.ink }}>{t('Customer pays')}</Text><Text style={{ fontWeight: '700', color: color.ink }}>≈ {rupees(summary.totalPaise - summary.tdsPaise - pointsOff)}</Text></View> : null}
       </View>
     </View>
   ) : <Loading what="Loading the bill" />;

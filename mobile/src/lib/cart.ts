@@ -68,7 +68,7 @@ export const totals = (cart: Cart, offers: Map<string, number> = new Map(), gst?
 
 /** What POST /invoices takes: ids, quantities and chosen option ids only. The server prices every line itself. */
 /** `payNowPaise`: undefined = the whole bill; 0 = nothing now (the bill is left unpaid, the customer's credit); else what is taken now and the rest is owed. */
-export const saleBody = (cart: Cart, payment: { method: string; reference?: string; payNowPaise?: number | null; /** several methods on one bill: the last part (amountPaise null) takes the rest */ parts?: { method: string; amountPaise: number | null }[] }, { kitchen = false, customerId, levies, gst, printDetails, sendWhatsapp = true }: { kitchen?: boolean; customerId?: number | null; /** false = this bill is not sent to the customer on WhatsApp (plans with messaging) */ sendWhatsapp?: boolean; levies?: Levies; gst?: GstView; /** consignee / dispatch details for the GST tax invoice (hardware shops); see lib/taxInvoice.ts */ printDetails?: Record<string, string> | null } = {}) => ({
+export const saleBody = (cart: Cart, payment: { method: string; reference?: string; payNowPaise?: number | null; /** several methods on one bill: the last part (amountPaise null) takes the rest */ parts?: { method: string; amountPaise: number | null }[] }, { kitchen = false, customerId, levies, gst, printDetails, sendWhatsapp = true, redeem = null }: { /** loyalty points spent on this bill */ redeem?: { points: number; membershipId?: number | null } | null; kitchen?: boolean; customerId?: number | null; /** false = this bill is not sent to the customer on WhatsApp (plans with messaging) */ sendWhatsapp?: boolean; levies?: Levies; gst?: GstView; /** consignee / dispatch details for the GST tax invoice (hardware shops); see lib/taxInvoice.ts */ printDetails?: Record<string, string> | null } = {}) => ({
   items: cart.lines.map((l) => (l.product.custom
     ? { description: l.product.name, quantity: l.quantity, unit_price: l.product.selling_price, tax_rate: l.product.tax_rate }
     : { product_id: l.product.product_id, quantity: l.quantity, ...(l.modifierIds.length ? { modifier_ids: l.modifierIds } : {}) })),
@@ -78,6 +78,7 @@ export const saleBody = (cart: Cart, payment: { method: string; reference?: stri
   ...(customerId ? { customer_id: customerId } : {}),
   ...(kitchen ? { send_to_kitchen: true } : {}),
   ...(sendWhatsapp ? {} : { send_whatsapp: false }),
+  ...(redeem && redeem.points > 0 ? { redeem_points: redeem.points, ...(redeem.membershipId ? { spend_membership_id: redeem.membershipId } : {}) } : {}),
   ...leviesBody(levies, gst),   // TCS, TDS, reverse charge: only the ticks that count
   ...(printDetails ? { print_details: printDetails } : {})
 });
