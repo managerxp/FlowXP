@@ -91,6 +91,14 @@ export default function Tables() {
           </View>
           <SavedNote at={floor.savedAt} />
           {diningRoom ? <Hint id="tables" /> : null}
+          {diningRoom ? (
+            <Pressable accessibilityRole="button" onPress={() => router.push('/reservations')}
+              style={{ marginHorizontal: 16, marginBottom: 8, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderRadius: 12, borderCurve: 'continuous', backgroundColor: color.card, borderWidth: 1, borderColor: color.line }}>
+              <Ionicons name="calendar-outline" size={20} color={color.brand} />
+              <Text style={{ flex: 1, color: color.brand, fontWeight: '600' }}>{tr('Bookings')}</Text>
+              <Ionicons name="chevron-forward" size={18} color={color.soft} />
+            </Pressable>
+          ) : null}
           {floor.error && !floor.data ? <Failed message={floor.error} onRetry={() => { void floor.refresh(); }} /> : null}
           <View style={{ paddingHorizontal: 16 }}><ErrorText>{problem}</ErrorText>{note ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok, fontWeight: '600' }}>{note}</Text> : null}</View>
           {floor.busy && !floor.data ? <Loading what="Loading the floor" /> : null}
@@ -170,11 +178,6 @@ export default function Tables() {
                 </Pressable>
               ))}</Group>
             </>
-          ) : null}
-          {diningRoom ? (
-            <Pressable accessibilityRole="button" onPress={() => router.push('/reservations')} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
-              <Text style={{ color: color.brand, fontWeight: '600' }}>{tr('Bookings')}</Text>
-            </Pressable>
           ) : null}
         </ScrollView>
       </Page>
