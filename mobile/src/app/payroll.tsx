@@ -8,7 +8,7 @@ import { Msg, Panel, SetupShell, confirm, useAct, useList } from '../lib/formKit
 import { rupees } from '../lib/money.ts';
 import { monthOf, shiftMonth } from '../lib/workshopStaff.ts';
 import { PAID_VIA, duesOf, madePayRun, slipLine, today, type PayRun } from '../lib/payroll.ts';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, Group } from '../lib/ui.tsx';
 import { AttendanceTab, PeopleTab } from './workshop-staff.tsx';
 
 const BASE = '/payroll/staff';
@@ -50,7 +50,7 @@ const MonthTab = () => {
           <SectionTitle>{`${t('Net pay to staff')}: ${rupees(Number(r.totals.net_pay_paise))}`}</SectionTitle>
           <Soft>{`${t('Cost to you')}: ${rupees(Number(r.totals.employer_cost_paise))} · ${t('To deposit: PF, ESI and tax')}: ${rupees(duesOf(r.totals))}`}</Soft>
           {r.unmarked_days > 0 ? <Text accessibilityRole="alert" style={{ color: color.warn }}>{fill(t('{n} days not marked'), { n: r.unmarked_days })}</Text> : null}
-          {r.slips.map((s) => <Line key={s.payslip_id} left={s.name} right={rupees(Number(s.net_pay_paise))} sub={slipLine(s)} />)}
+          <Group>{r.slips.map((s) => <Line key={s.payslip_id} left={s.name} right={rupees(Number(s.net_pay_paise))} sub={slipLine(s)} />)}</Group>
           <Msg a={a} />
           {r.status === 'DRAFT' ? (
             <>

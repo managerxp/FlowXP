@@ -8,7 +8,7 @@ import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import { GROUP_ROLES, ROLES, ROLE_HELP, addPersonBody, canEditPerson, editPersonBody, needsOutlet, rolesFor, type Person } from '../lib/team.ts';
-import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 /* Add a person (they get an e-mail to set their own password), or change a person's role, outlet and access. */
 export default function StaffPerson() {
@@ -68,14 +68,14 @@ export default function StaffPerson() {
               ) : <Soft>{person.email}</Soft>}
 
               <SectionTitle>Role</SectionTitle>
-              {roles.map((r) => <Line key={r} left={ROLES[r]} sub={ROLE_HELP[r]} selected={form.role === r} onPress={() => setForm((o) => ({ ...o, role: r, branch_id: GROUP_ROLES.includes(r) ? '' : o.branch_id }))} />)}
+              <Group>{roles.map((r) => <Line key={r} left={ROLES[r]} sub={ROLE_HELP[r]} selected={form.role === r} onPress={() => setForm((o) => ({ ...o, role: r, branch_id: GROUP_ROLES.includes(r) ? '' : o.branch_id }))} />)}</Group>
 
               {group ? <Soft>{t('{role}s can see every outlet.', { role: ROLES[form.role] })}</Soft> : outlets.length > 1 ? (
                 <>
                   <SectionTitle>Outlet</SectionTitle>
                   <Soft style={{ paddingHorizontal: 16 }}>{needsOutlet(form.role) ? t('They can only see and work in this outlet.') : t('Leave on "Every outlet" for a group-level manager.')}</Soft>
                   {!needsOutlet(form.role) ? <Line left={t('Every outlet')} selected={form.branch_id === ''} onPress={() => setForm((o) => ({ ...o, branch_id: '' }))} /> : null}
-                  {outlets.map((o) => <Line key={o.branch_id} left={o.name} selected={form.branch_id === o.branch_id} onPress={() => setForm((x) => ({ ...x, branch_id: o.branch_id }))} />)}
+                  <Group>{outlets.map((o) => <Line key={o.branch_id} left={o.name} selected={form.branch_id === o.branch_id} onPress={() => setForm((x) => ({ ...x, branch_id: o.branch_id }))} />)}</Group>
                 </>
               ) : null}
 

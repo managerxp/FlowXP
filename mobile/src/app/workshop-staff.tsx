@@ -9,7 +9,7 @@ import {
   type DayRow, type Person, type PersonForm, type Run, type Slip
 } from '../lib/workshopStaff.ts';
 import { rupees } from '../lib/money.ts';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, Group } from '../lib/ui.tsx';
 
 const today = (): string => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const tr = (items: { id: string; label: string }[]) => items.map((x) => ({ id: x.id, label: t(x.label) }));
@@ -27,7 +27,7 @@ export const PeopleTab = ({ edit, pay, base = '/autoparts/staff', empty = 'Add y
     <Panel>
       {edit ? <Button title="Add a person" onPress={() => { a.setError(''); setForm({ f: emptyPerson() }); }} /> : null}
       {list.data.length === 0 ? <Soft>{t(empty)}</Soft> : null}
-      {list.data.map((p) => <Line key={p.employee_id} left={`${p.name}${p.emp_code ? ` · ${p.emp_code}` : ''}`} sub={personSub(p)} onPress={() => { if (edit) { a.setError(''); setForm({ id: p.employee_id, f: personForm(p) }); } }} />)}
+      <Group>{list.data.map((p) => <Line key={p.employee_id} left={`${p.name}${p.emp_code ? ` · ${p.emp_code}` : ''}`} sub={personSub(p)} onPress={() => { if (edit) { a.setError(''); setForm({ id: p.employee_id, f: personForm(p) }); } }} />)}</Group>
       {form ? (
         <Card>
           <Input label="Name" value={form.f.name} onChange={(v) => set({ name: v })} max={120} />
@@ -98,7 +98,7 @@ const PayrollTab = () => {
         <>
           <SectionTitle>{runLine(r)}</SectionTitle>
           {unmarkedWarning(r) ? <Text accessibilityRole="alert" style={{ color: color.warn }}>{unmarkedWarning(r)}</Text> : null}
-          {r.slips.map((s) => <Line key={s.payslip_id} left={s.name} right={rupees(s.net_pay_paise)} sub={slipSub(s)} onPress={() => { if (r.status === 'DRAFT') { a.setError(''); setOpen({ slip: s, f: slipForm(s) }); } }} />)}
+          <Group>{r.slips.map((s) => <Line key={s.payslip_id} left={s.name} right={rupees(s.net_pay_paise)} sub={slipSub(s)} onPress={() => { if (r.status === 'DRAFT') { a.setError(''); setOpen({ slip: s, f: slipForm(s) }); } }} />)}</Group>
           {open ? (
             <Card>
               <Text style={{ color: color.ink, fontWeight: '600' }}>{open.slip.name}</Text>
