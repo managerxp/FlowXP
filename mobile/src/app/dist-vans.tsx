@@ -4,7 +4,7 @@ import { allowed } from '../lib/access.ts';
 import { t } from '../lib/i18n.ts';
 import { Card, Field, Input, Msg, Panel, Row, SetupShell, useAct, useList } from '../lib/formKit.tsx';
 import { emptyVehicle, vehicleBody, vehicleForm, vehicleProblem, vehicleSub, type Vehicle, type VehicleForm } from '../lib/distributorSetup.ts';
-import { Button, Chips, Failed, Line, Loading, Soft } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, Soft, Group } from '../lib/ui.tsx';
 
 type House = { branch_id: number; name: string };
 
@@ -28,7 +28,7 @@ export default function VansScreen() {
         <Panel>
           {edit ? <Button title="Add a van" onPress={() => { a.setError(''); setForm({ f: emptyVehicle(houses.data?.[0]?.branch_id) }); }} /> : null}
           {list.data.length === 0 ? <Soft>{t('Add the vans that carry stock to your shops.')}</Soft> : null}
-          {list.data.map((v) => <Line key={v.vehicle_id} left={v.vehicle_no} sub={vehicleSub(v)} onPress={() => { if (edit) { a.setError(''); setForm({ id: v.vehicle_id, f: vehicleForm(v) }); } }} />)}
+          <Group>{list.data.map((v) => <Line key={v.vehicle_id} left={v.vehicle_no} sub={vehicleSub(v)} onPress={() => { if (edit) { a.setError(''); setForm({ id: v.vehicle_id, f: vehicleForm(v) }); } }} />)}</Group>
           {form ? (
             <Card>
               <Input label="Vehicle number" value={form.f.vehicle_no} onChange={(v) => set({ vehicle_no: v })} max={20} upper placeholder="TS09UB1234" />

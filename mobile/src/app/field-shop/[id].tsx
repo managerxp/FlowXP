@@ -13,7 +13,7 @@ import { useLoad } from '../../lib/useLoad.ts';
 import { NO_SALE_OUTCOMES, OUTCOME_LABEL, ensureVisit, type FieldShop, type Outcome } from '../../lib/field.ts';
 import { rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, Chips, ErrorText, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Stat, Title, color, s } from '../../lib/ui.tsx';
+import { Button, Chips, ErrorText, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Stat, Title, color, s, Group } from '../../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 
@@ -78,15 +78,15 @@ export default function FieldShopScreen() {
 
             <SectionTitle>Bills not yet paid</SectionTitle>
             {x.open_invoices.length === 0 ? <Soft style={{ padding: 16 }}>Nothing is owed.</Soft> : null}
-            {x.open_invoices.map((i) => <Line key={i.invoice_id} left={i.invoice_number} sub={`${formatDate(i.invoice_date)}${i.due_date ? ` · due ${formatDate(i.due_date)}` : ''}${i.overdue ? ' · late' : ''}`} right={money(i.balance)} />)}
+            <Group>{x.open_invoices.map((i) => <Line key={i.invoice_id} left={i.invoice_number} sub={`${formatDate(i.invoice_date)}${i.due_date ? ` · due ${formatDate(i.due_date)}` : ''}${i.overdue ? ' · late' : ''}`} right={money(i.balance)} />)}</Group>
 
             <SectionTitle>Last orders</SectionTitle>
             {x.orders.length === 0 ? <Soft style={{ padding: 16 }}>No orders yet.</Soft> : null}
-            {x.orders.map((o) => <Line key={o.order_id} left={o.order_number} sub={`${formatDate(o.order_date)} · ${o.status.toLowerCase().replace(/_/g, ' ')}`} right={money(o.total)} />)}
+            <Group>{x.orders.map((o) => <Line key={o.order_id} left={o.order_number} sub={`${formatDate(o.order_date)} · ${o.status.toLowerCase().replace(/_/g, ' ')}`} right={money(o.total)} />)}</Group>
 
             <SectionTitle>Last visits</SectionTitle>
             {x.visits.length === 0 ? <Soft style={{ padding: 16 }}>No visits yet.</Soft> : null}
-            {x.visits.map((v) => <Line key={v.visit_id} left={`${formatDate(v.visit_date)} · ${OUTCOME_LABEL[v.outcome]}`} sub={[v.notes, v.order_value > 0 ? `order ${money(v.order_value)}` : null, v.collection > 0 ? `collected ${money(v.collection)}` : null].filter(Boolean).join(' · ') || undefined} />)}
+            <Group>{x.visits.map((v) => <Line key={v.visit_id} left={`${formatDate(v.visit_date)} · ${OUTCOME_LABEL[v.outcome]}`} sub={[v.notes, v.order_value > 0 ? `order ${money(v.order_value)}` : null, v.collection > 0 ? `collected ${money(v.collection)}` : null].filter(Boolean).join(' · ') || undefined} />)}</Group>
           </ScrollView>
         ) : null}
       </Page>

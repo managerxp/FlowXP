@@ -14,7 +14,7 @@ import { applyOrder, dueText, followUps, move, orderKey, parseOrder, planDays, s
 import { keepForRoute } from '../lib/schemeHints.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Stat, Title, color, s, Group } from '../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 const store = { get: kvGet, set: kvSet };
@@ -133,7 +133,7 @@ export default function Field() {
             <View>
               <SectionTitle>Follow up</SectionTitle>
               <Soft style={{ paddingHorizontal: 16, paddingBottom: 4 }}>Shops you said you would visit again, not on this day's beat.</Soft>
-              {followed.map((f) => <Line key={f.customer_id} icon="time-outline" left={f.customer} sub={`${OUTCOME_LABEL[f.outcome]} on ${f.visit_date} · ${dueText(f.next_visit_date as string, date)}`} onPress={() => openShop(f.customer_id)} />)}
+              <Group>{followed.map((f) => <Line key={f.customer_id} icon="time-outline" left={f.customer} sub={`${OUTCOME_LABEL[f.outcome]} on ${f.visit_date} · ${dueText(f.next_visit_date as string, date)}`} onPress={() => openShop(f.customer_id)} />)}</Group>
             </View>
           ) : null}
         </ScrollView>

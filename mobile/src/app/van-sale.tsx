@@ -18,6 +18,7 @@ import { qty, rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
 import { SearchBox } from '../lib/SearchBox.tsx';
 import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { display } from '../lib/theme.ts';
 
 const money = (n: number) => rupees(toPaise(n));
 const METHODS = [{ id: 'CASH', label: 'Cash' }, { id: 'UPI', label: 'UPI' }, { id: 'CARD', label: 'Card' }];
@@ -142,7 +143,7 @@ export default function VanSale() {
             {lines.length ? (
               <View style={{ padding: 16, gap: 8 }}>
                 {preview ? <Soft>{`Items ${money(preview.subtotal)} · GST ${money(preview.tax)}`}</Soft> : <Soft>{`About: items ${money(est.subtotalPaise / 100)} · GST ${money(est.taxPaise / 100)}. FlowXP works out the exact bill, with this shop's price list and offers, when it is sent.`}</Soft>}
-                <Text accessibilityLiveRegion="polite" style={{ fontSize: 28, fontWeight: '800', color: color.ink }}>{`${preview ? '' : 'about '}${money(total)}`}</Text>
+                <Text accessibilityLiveRegion="polite" style={{ fontSize: 28, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{`${preview ? '' : 'about '}${money(total)}`}</Text>
                 {credit && credit.text ? <Text style={{ color: credit.tone === 'bad' ? color.danger : credit.tone === 'warn' ? color.warn : color.soft, fontWeight: '600' }}>{credit.text}</Text> : null}
                 <Soft>How is it paid?</Soft>
                 <Chips<PayMode> items={(Object.keys(PAY_LABEL) as PayMode[]).map((m) => ({ id: m, label: PAY_LABEL[m] }))} value={mode} onChange={setMode} />

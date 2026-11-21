@@ -17,6 +17,7 @@ import { Page } from '../lib/responsive.tsx';
 import { SearchBox } from '../lib/SearchBox.tsx';
 import { Offers } from '../lib/Offers.tsx';
 import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { display } from '../lib/theme.ts';
 
 const money = (n: number) => rupees(toPaise(n));
 
@@ -132,14 +133,14 @@ export default function FieldOrder() {
                 {preview ? (
                   <>
                     <Soft>{`Items ${money(preview.subtotal)} · GST ${money(preview.tax)}`}</Soft>
-                    <Text accessibilityLiveRegion="polite" style={{ fontSize: 28, fontWeight: '800', color: color.ink }}>{money(preview.total)}</Text>
+                    <Text accessibilityLiveRegion="polite" style={{ fontSize: 28, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{money(preview.total)}</Text>
                     {credit && credit.text ? <Text style={{ color: credit.tone === 'bad' ? color.danger : credit.tone === 'warn' ? color.warn : color.soft, fontWeight: '600' }}>{credit.text}</Text> : null}
                     {short.length ? <Text style={{ color: color.warn }}>{`${short.length} product${short.length === 1 ? ' is' : 's are'} short of stock.`}</Text> : null}
                   </>
                 ) : (
                   <>
                     <Soft>{`About: items ${money(est.subtotalPaise / 100)} · GST ${money(est.taxPaise / 100)}. FlowXP works out the exact price, with this shop's price list and offers, when it is sent.`}</Soft>
-                    <Text style={{ fontSize: 28, fontWeight: '800', color: color.ink }}>{`about ${money(est.totalPaise / 100)}`}</Text>
+                    <Text style={{ fontSize: 28, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{`about ${money(est.totalPaise / 100)}`}</Text>
                   </>
                 )}
                 <TextInput style={s.input} value={po} onChangeText={setPo} placeholder="Shop's PO number (optional)" accessibilityLabel="Shop PO number" />

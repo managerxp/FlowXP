@@ -6,7 +6,7 @@ import { t } from '../lib/i18n.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Card, Field, Input, Msg, Panel, SetupShell, useAct, useList } from '../lib/formKit.tsx';
 import { brandProblem, emptyPrincipal, principalBody, principalForm, principalProblem, principalSub, type Principal, type PrincipalForm } from '../lib/distributorSetup.ts';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, Group } from '../lib/ui.tsx';
 
 type Detail = Principal & { brands: { brand_id: number; name: string; products: number }[]; account: { outstanding: number } | null };
 
@@ -30,7 +30,7 @@ export default function PrincipalsScreen() {
         <Panel>
           {edit ? <Button title="Add a principal" onPress={() => { a.setError(''); setOpen(null); setForm({ f: emptyPrincipal() }); }} /> : null}
           {list.data.length === 0 ? <Soft>{t('Add the manufacturers or brands you distribute.')}</Soft> : null}
-          {list.data.map((p) => <Line key={p.principal_id} left={p.name} sub={principalSub(p)} onPress={() => { setForm(null); void show(p.principal_id); }} />)}
+          <Group>{list.data.map((p) => <Line key={p.principal_id} left={p.name} sub={principalSub(p)} onPress={() => { setForm(null); void show(p.principal_id); }} />)}</Group>
           {open ? (
             <Card>
               <SectionTitle>{open.name}</SectionTitle>

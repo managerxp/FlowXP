@@ -7,7 +7,7 @@ import { Card, Field, Input, Msg, Panel, Row, SetupShell, confirm, useAct, useLi
 import {
   CHILD_LEVEL, LEVEL_LABEL, WEEKDAY_CHOICES, beatBody, beatForm, beatProblem, beatSub, emptyBeat, flattenTerritories, placeBody, placePath, placeProblem, placeSub, type Beat, type BeatForm, type Territory
 } from '../lib/distributorSetup.ts';
-import { Button, Chips, Failed, Line, Loading, Soft } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, Soft, Group } from '../lib/ui.tsx';
 
 type Rep = { salesperson_id: number; name: string };
 
@@ -69,7 +69,7 @@ const BeatsTab = ({ edit }: { edit: boolean }) => {
       <Chips items={[{ id: 'all', label: 'Every day' }, ...WEEKDAY_CHOICES.filter((d) => d.id !== '')]} value={day} onChange={setDay} />
       {edit ? <Button title="New beat" onPress={() => { a.setError(''); setForm({ f: emptyBeat() }); }} /> : null}
       {list.data.length === 0 ? <Soft>{t('No beats yet.')}</Soft> : null}
-      {list.data.map((b) => <Line key={b.beat_id} left={b.name} sub={beatSub(b)} onPress={() => { if (edit) { a.setError(''); setForm({ id: b.beat_id, f: beatForm(b) }); } }} />)}
+      <Group>{list.data.map((b) => <Line key={b.beat_id} left={b.name} sub={beatSub(b)} onPress={() => { if (edit) { a.setError(''); setForm({ id: b.beat_id, f: beatForm(b) }); } }} />)}</Group>
       {form ? (
         <Card>
           <Input label="Beat name" value={form.f.name} onChange={(v) => set({ name: v })} max={120} placeholder="Monday, Ameerpet" />

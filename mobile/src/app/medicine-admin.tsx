@@ -4,7 +4,7 @@ import { allowed } from '../lib/access.ts';
 import { t } from '../lib/i18n.ts';
 import { Card, Field, Input, Msg, Panel, Row, SetupShell, useAct, useList } from '../lib/formKit.tsx';
 import { TYPE_CHOICES, canMedicineAdmin, categoryProblem, emptyItem, itemBody, itemForm, itemProblem, itemSub, withExpiry, type Item, type ItemForm } from '../lib/medicineAdmin.ts';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, s } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, s, Group } from '../lib/ui.tsx';
 import { TextInput } from 'react-native';
 
 
@@ -35,7 +35,7 @@ export default function MedicineAdminScreen() {
         <Panel>
           <Button title="Add an item" onPress={() => { a.setError(''); setForm({ f: emptyItem() }); }} />
           {rows.length === 0 ? <Soft>{q ? t('Nothing matches that search.') : t('Add what you stock and sell.')}</Soft> : null}
-          {rows.map((p) => <Line key={p.product_id} left={p.name} sub={itemSub(p)} onPress={() => { a.setError(''); setForm({ id: p.product_id, f: itemForm(p) }); }} />)}
+          <Group>{rows.map((p) => <Line key={p.product_id} left={p.name} sub={itemSub(p)} onPress={() => { a.setError(''); setForm({ id: p.product_id, f: itemForm(p) }); }} />)}</Group>
           {form ? (
             <Card>
               <SectionTitle>Basics</SectionTitle>

@@ -7,7 +7,7 @@ import {
   BASIS_CHOICES, PERIOD_CHOICES, ROLE_CHOICES, RULE_SCOPE_CHOICES, TARGET_SCOPE_CHOICES, emptyMember, emptyRule, emptyTarget, memberBody, memberForm, memberProblem, memberSub, ruleBody, ruleForm, ruleProblem, ruleSub, targetBody, targetProblem, targetSub,
   type Member, type MemberForm, type Rule, type RuleForm, type Target, type TargetForm
 } from '../lib/distributorSales.ts';
-import { Button, Chips, Failed, Line, Loading, Soft } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, Soft, Group } from '../lib/ui.tsx';
 
 type Choice = { id: string; label: string };
 const today = (): string => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -37,7 +37,7 @@ const TeamTab = ({ edit }: { edit: boolean }) => {
       <Chips items={[{ id: 'ACTIVE', label: 'Active' }, { id: 'INACTIVE', label: 'Inactive' }]} value={status} onChange={setStatus} />
       {edit ? <Button title="Add a person" onPress={() => { a.setError(''); setForm({ f: emptyMember() }); }} /> : null}
       {list.data.length === 0 ? <Soft>{t('Add your salespeople, field reps and collection executives.')}</Soft> : null}
-      {list.data.map((m) => <Line key={m.salesperson_id} left={m.name} sub={memberSub(m)} onPress={() => { if (edit) { a.setError(''); setForm({ id: m.salesperson_id, f: memberForm(m) }); } }} />)}
+      <Group>{list.data.map((m) => <Line key={m.salesperson_id} left={m.name} sub={memberSub(m)} onPress={() => { if (edit) { a.setError(''); setForm({ id: m.salesperson_id, f: memberForm(m) }); } }} />)}</Group>
       {form ? (
         <Card>
           <Input label="Name" value={form.f.name} onChange={(v) => set({ name: v })} max={120} />
@@ -75,7 +75,7 @@ const TargetsTab = ({ edit }: { edit: boolean }) => {
       <Soft>{t('Targets running today. Setting one again for the same period changes it; it never adds a second.')}</Soft>
       {edit ? <Button title="Set a target" onPress={() => { a.setError(''); setOpen(null); setForm(emptyTarget(on)); }} /> : null}
       {list.data.length === 0 ? <Soft>{t('Set a monthly target for each salesperson, territory or brand to track how far they are.')}</Soft> : null}
-      {list.data.map((x) => <Line key={x.target_id} left={x.scope_name} sub={targetSub(x)} onPress={() => { setForm(null); a.setError(''); a.setNote(''); setOpen(x); }} />)}
+      <Group>{list.data.map((x) => <Line key={x.target_id} left={x.scope_name} sub={targetSub(x)} onPress={() => { setForm(null); a.setError(''); a.setNote(''); setOpen(x); }} />)}</Group>
       {open ? (
         <Card>
           <Soft>{`${open.scope_name} · ${targetSub(open)}`}</Soft>
@@ -116,7 +116,7 @@ const CommissionTab = ({ edit }: { edit: boolean }) => {
       <Soft>{t('Each sold line earns under the most specific rule that fits. Without rules each person earns their own default percentage.')}</Soft>
       {edit ? <Button title="New rule" onPress={() => { a.setError(''); setForm({ f: emptyRule() }); }} /> : null}
       {list.data.length === 0 ? <Soft>{t('No rules yet.')}</Soft> : null}
-      {list.data.map((r) => <Line key={r.rule_id} left={r.name} sub={ruleSub(r)} onPress={() => { if (edit) { a.setError(''); setForm({ id: r.rule_id, f: ruleForm(r) }); } }} />)}
+      <Group>{list.data.map((r) => <Line key={r.rule_id} left={r.name} sub={ruleSub(r)} onPress={() => { if (edit) { a.setError(''); setForm({ id: r.rule_id, f: ruleForm(r) }); } }} />)}</Group>
       {form ? (
         <Card>
           <Input label="Name" value={form.f.name} onChange={(v) => set({ name: v })} max={100} placeholder="2% on everything" />

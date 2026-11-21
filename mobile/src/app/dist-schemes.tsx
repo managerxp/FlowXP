@@ -7,7 +7,7 @@ import { Card, Field, Input, Msg, Multi, Panel, Row, SetupShell, confirm, useAct
 import {
   CUSTOMER_TYPE_CHOICES, SCHEME_KIND_LABEL, SCOPE_LABEL, announceText, emptyScheme, schemeBody, schemeForm, schemeProblem, schemeSub, type SchemeForm, type SchemeFull, type SchemeRow
 } from '../lib/distributorSales.ts';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, s, Group } from '../lib/ui.tsx';
 
 type Found = { product_id: number; name: string };
 
@@ -54,7 +54,7 @@ export default function SchemesScreen() {
         <Panel>
           {edit ? <Button title="New scheme" onPress={() => { a.setError(''); setOpen(null); setForm({ f: emptyScheme() }); }} /> : null}
           {list.data.length === 0 ? <Soft>{t('Make an offer: buy 10 cartons, get 1 free; 5% off 100 units; ₹2,000 off an order above ₹50,000.')}</Soft> : null}
-          {list.data.map((x) => <Line key={x.scheme_id} left={x.name} sub={`${t(x.description)} · ${schemeSub(x)}`} onPress={() => { setForm(null); a.setError(''); a.setNote(''); setOpen(x); }} />)}
+          <Group>{list.data.map((x) => <Line key={x.scheme_id} left={x.name} sub={`${t(x.description)} · ${schemeSub(x)}`} onPress={() => { setForm(null); a.setError(''); a.setNote(''); setOpen(x); }} />)}</Group>
           {open ? (
             <Card>
               <SectionTitle>{open.name}</SectionTitle>

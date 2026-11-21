@@ -8,7 +8,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { grnBody, grnLineProblem, grnProblem, newGrnLine, type GrnLine, type Medicine } from '../lib/pharmacy.ts';
 import type { Supplier } from '../lib/buying.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
@@ -70,7 +70,7 @@ export default function PharmacyReceive() {
               <TextInput style={s.input} value={invoiceNo} onChangeText={setInvoiceNo} placeholder="Supplier's invoice number (optional)" accessibilityLabel="Supplier invoice number" />
               <TextInput style={s.input} value={text} onChangeText={setText} placeholder="Search a medicine to add" accessibilityLabel="Search a medicine" autoCorrect={false} />
             </View>
-            {found.map((m) => <Line key={m.product_id} left={`${m.name}${m.strength ? ` ${m.strength}` : ''}`} sub="Tap to add" onPress={() => add(m)} />)}
+            <Group>{found.map((m) => <Line key={m.product_id} left={`${m.name}${m.strength ? ` ${m.strength}` : ''}`} sub="Tap to add" onPress={() => add(m)} />)}</Group>
             {lines.length === 0 ? <Empty>Search a medicine above and tap it to add it to this delivery.</Empty> : null}
             {lines.map((l) => {
               const id = l.product.product_id;
