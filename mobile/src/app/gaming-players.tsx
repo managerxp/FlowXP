@@ -62,7 +62,7 @@ export default function GamingPlayers() {
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
           <View style={{ paddingHorizontal: 16, gap: 8 }}>
             <SearchBox value={text} onChange={setText} placeholder="Name, phone or gamer tag" label="Find a player" />
-            <Button title="Add a new player" kind="quiet" onPress={() => { setOpen(open === 'new' ? null : 'new'); setError(''); }} selected={open === 'new'} />
+            <Button title="Add a new player" onPress={() => { setOpen(open === 'new' ? null : 'new'); setError(''); }} selected={open === 'new'} />
           </View>
           {open === 'new' ? (
             <View style={{ padding: 16, gap: 10 }}>

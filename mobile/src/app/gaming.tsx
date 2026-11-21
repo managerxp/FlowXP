@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '../lib/icons.tsx';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
@@ -10,7 +11,8 @@ import { useLoad } from '../lib/useLoad.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { ALARMS, KIND_LABEL, STATE_LABEL, clock, countBy, duration, liveCharge, liveElapsed, liveRemaining, offersFor, startBody, startProblem, stations, stopBody, stopProblem, timeWarning, type Board, type Bundle, type How, type Station } from '../lib/gaming.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, ErrorText, Failed, Loading, SavedNote, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
+import { t } from '../lib/i18n.ts';
+import { Button, Chips, ErrorText, Failed, Loading, Pill, SavedNote, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
 import { display } from '../lib/theme.ts';
 
 const EDGE: Record<string, string> = { get RUNNING() { return color.brand; }, get PAUSED() { return color.warn; }, get TO_BILL() { return color.danger; }, get RESERVED() { return color.warn; }, get OUT_OF_SERVICE() { return color.line; }, get AVAILABLE() { return color.line; } };
@@ -90,7 +92,7 @@ export default function Gaming() {
       <View key={st.station_id} accessibilityLabel={`${st.name}, ${STATE_LABEL[st.state]}`} style={[s.card, { marginHorizontal: 16, marginBottom: 10, gap: 6, borderWidth: 2, borderColor: warn === 'over' ? color.danger : warn === 'soon' ? color.warn : EDGE[st.state] }]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
           <View style={{ flex: 1 }}><Text style={{ fontSize: 18, fontWeight: '700', color: color.ink }}>{st.name}</Text><Soft>{st.label || KIND_LABEL[st.kind] || st.kind}</Soft></View>
-          <Text style={{ fontWeight: '700', color: warn === 'over' ? color.danger : warn === 'soon' ? color.warn : st.state === 'AVAILABLE' ? color.ok : color.ink }}>{warn === 'over' ? 'Time up' : warn === 'soon' ? 'Ending soon' : STATE_LABEL[st.state]}</Text>
+          <View style={{ alignSelf: 'flex-start' }}><Pill label={warn === 'over' ? 'Time up' : warn === 'soon' ? 'Ending soon' : STATE_LABEL[st.state]} tone={warn === 'over' ? color.danger : warn === 'soon' ? color.warn : st.state === 'AVAILABLE' ? color.ok : color.ink} bg={warn === 'over' ? color.dangerBg : warn === 'soon' ? color.warnBg : st.state === 'AVAILABLE' ? color.okBg : color.wash} /></View>
         </View>
 
         {live && x ? (
@@ -170,6 +172,15 @@ export default function Gaming() {
         <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <View style={{ flex: 1 }}><Title>Lounge board</Title><Soft>Every station and its timer</Soft></View>
           <Button title="Back" kind="quiet" onPress={() => goBack()} />
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingBottom: 8 }}>
+          {([['Bookings', '/gaming-bookings', 'calendar-number-outline'], ['Players', '/gaming-players', 'person-add-outline'], ['Tournaments', '/gaming-tournaments', 'trophy-outline']] as const).map(([label, go, icon]) => (
+            <Pressable key={go} accessibilityRole="button" onPress={() => router.push(go)}
+              style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 22, backgroundColor: color.card, borderWidth: 1, borderColor: color.line }}>
+              <Ionicons name={icon} size={18} color={color.brand} />
+              <Text style={{ color: color.brand, fontWeight: '600' }}>{t(label)}</Text>
+            </Pressable>
+          ))}
         </View>
         <SavedNote at={board.savedAt} />
         <View style={{ paddingHorizontal: 16 }}><ErrorText>{problem}</ErrorText></View>
