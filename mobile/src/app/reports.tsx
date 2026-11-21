@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { display } from '../lib/theme.ts';
 import { router } from 'expo-router';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { api, useSession } from '../lib/session.ts';
+import { api, currentBusiness, useSession } from '../lib/session.ts';
+import { allowed } from '../lib/access.ts';
 import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { useLoad } from '../lib/useLoad.ts';
@@ -22,6 +23,7 @@ const CHANNEL: Record<string, string> = { COUNTER: 'Counter', DINE_IN: 'Dine in'
 /* Sales for a period: the figures, how it was paid, the busy hours, what sold, which days were best. */
 export default function Reports() {
   const session = useSession();
+  const business = currentBusiness(session);
   const [rangeId, setRangeId] = useState('today');
   const range = ranges().find((r) => r.id === rangeId)!;
   const { data: r, savedAt, error, busy, refresh } = useLoad<SalesReport>(`report:${session.businessId}:${session.branchId}:${range.from}:${range.to}`, () => api.get<SalesReport>(`/reports/sales?from=${range.from}&to=${range.to}`));
@@ -69,7 +71,14 @@ export default function Reports() {
             <SectionTitle>Best sellers</SectionTitle>
             {r.top_products.length ? <Group>{r.top_products.slice(0, 5).map((p) => <Line key={p.product_id} left={p.name} right={money(p.revenue)} sub={`${qty(p.quantity)} sold`} />)}</Group> : <Empty>No sales in this period.</Empty>}
 
-            <View style={{ padding: 16, gap: 8 }}><Button title={detail ? 'Hide detailed reports' : 'View detailed reports'} kind="quiet" onPress={() => setDetail((v) => !v)} /><Button title="Ask Flow AI about this" kind="quiet" onPress={() => router.push('/flow-ai')} /></View>
+            <View style={{ padding: 16, gap: 8 }}><Button title={detail ? 'Hide detailed reports' : 'View detailed reports'} kind="quiet" onPress={() => setDetail((v) => !v)} /></View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: 16 }}>
+              {[...(allowed(business, 'expenses') ? [['Expenses', '/expenses']] : []), ['More reports', '/biz-reports'], ['Ask Flow AI about this', '/flow-ai']].map(([label, go]) => (
+                <Pressable key={go} accessibilityRole="button" onPress={() => router.push(go as never)} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 }}>
+                  <Text style={{ color: color.brand, fontWeight: '600' }}>{t(label)}</Text>
+                </Pressable>
+              ))}
+            </View>
             {detail ? <>
             {best || busiest ? <Group>
               {best ? <Line left="Best day" right={money(best.total)} sub={`${best.date} · ${best.invoice_count} bills`} /> : null}
