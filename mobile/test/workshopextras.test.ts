@@ -61,8 +61,8 @@ test('help me find: only what this person can open, best match first', () => {
 });
 
 test('the floating help button stays off sign in, the till, paying, the receipt and the help screen', () => {
-  for (const p of ['/', '/login', '/signup', '/sell', '/pay', '/receipt', '/receipt/', '/scan', '/help-find', '/more']) assert.equal(showHelpButton(p), false, p);
-  for (const p of ['/home', '/job-cards', '/job-card/5', '/parts-manage', '/customers']) assert.equal(showHelpButton(p), true, p);
+  for (const p of ['/', '/login', '/signup', '/sell', '/pay', '/receipt', '/receipt/', '/scan', '/help-find', '/home', '/more']) assert.equal(showHelpButton(p), false, p);
+  for (const p of ['/job-cards', '/job-card/5', '/parts-manage', '/customers']) assert.equal(showHelpButton(p), true, p);
 });
 
 test('every text of the workshop extras is translated into all six languages', () => {

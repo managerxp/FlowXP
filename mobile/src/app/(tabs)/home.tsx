@@ -149,9 +149,6 @@ function ShopHome() {
     ...(canBill ? [{ icon: 'receipt-outline' as IconName, label: 'Bills', go: () => router.navigate('/sales') }] : []),
     ...(food && canBill ? [{ icon: 'grid-outline' as IconName, label: business?.business_type === 'CLOUD_KITCHEN' ? 'Take an order' : 'Open a table', go: () => router.navigate('/tables') }] : []),
     ...(food && allowed(business, 'billing', 'kitchen') ? [{ icon: 'restaurant-outline' as IconName, label: 'Kitchen screen', go: () => router.push('/kitchen') }] : []),
-    ...(allowed(business, 'products') ? [{ icon: 'cube-outline' as IconName, label: pharmacy ? 'Add medicine' : 'Add product', go: () => router.push(pharmacy ? '/medicine/new' : '/product/new') }] : []),
-    ...(allowed(business, 'expenses') ? [{ icon: 'wallet-outline' as IconName, label: 'Add expense', go: () => router.push('/expenses') }] : []),
-    ...(allowed(business, 'inventory', 'purchases') ? [{ icon: 'download-outline' as IconName, label: 'Receive stock', go: () => router.push('/suppliers') }] : []),
     ...(allowed(business, 'customers', 'billing') ? [{ icon: 'people-outline' as IconName, label: 'Customers', go: () => router.push('/customers') }] : []),
     ...(allowed(business, 'reports') ? [{ icon: 'stats-chart-outline' as IconName, label: 'Reports', go: () => router.push('/reports') }] : [])
   ];
