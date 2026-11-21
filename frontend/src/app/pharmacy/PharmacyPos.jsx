@@ -13,6 +13,7 @@ import { PAYMENT_METHODS, money, useDebounced } from '../../lib/pharmacy.js';
 import { Alert, Button, PageHeader, Select, useToast, useDialog } from '../../components/ui.jsx';
 import { BatchSelect, CustomerPicker, NumberField, ProductPicker } from './parts.jsx';
 import { useT } from '../../i18n/useT.js';
+import { PointsPanel } from '../../components/LoyaltyCard.jsx';
 
 let seq = 0;
 const num = (v) => (v === '' || v == null ? 0 : Number(v));
@@ -52,6 +53,8 @@ const PharmacyPos = () => {
   const [customer, setCustomer] = useState(null);
   const [invDiscount, setInvDiscount] = useState('');
   const [notes, setNotes] = useState('');
+  const [pointsInfo, setPointsInfo] = useState(null);   // the customer's loyalty points, once a customer is on the bill
+  const [redeem, setRedeem] = useState('');
   const [rows, setRows] = useState([{ method: 'CASH', amount: '' }]);
   const [payLater, setPayLater] = useState(false);
   const [quote, setQuote] = useState(null);
@@ -74,8 +77,17 @@ const PharmacyPos = () => {
     customerId: customer?.customer_id ?? undefined,
     items: cart.filter((l) => num(l.quantity) > 0).map((l) => ({ product_id: l.product_id, quantity: num(l.quantity), batch_id: l.batch_id || undefined, discount: l.discount ? num(l.discount) : undefined })),
     discount: invDiscount ? num(invDiscount) : undefined,
-    notes: notes.trim() || undefined
-  }), [customer, cart, invDiscount, notes]);
+    notes: notes.trim() || undefined,
+    ...(Number(redeem) > 0 && pointsInfo?.membership_id ? { redeemPoints: Number(redeem), spendMembershipId: pointsInfo.membership_id } : {})
+  }), [customer, cart, invDiscount, notes, redeem, pointsInfo]);
+
+  useEffect(() => {
+    setRedeem('');
+    if (!customer?.customer_id) { setPointsInfo(null); return undefined; }
+    let live = true;
+    api(`/loyalty/customers/${customer.customer_id}`).then((d) => { if (live) setPointsInfo(d.points || null); }).catch(() => { if (live) setPointsInfo(null); });   // not in every plan: then there is simply no points box
+    return () => { live = false; };
+  }, [customer?.customer_id]);
 
   const signature = JSON.stringify(buildBody());
   const debounced = useDebounced(signature, 350);
@@ -96,7 +108,7 @@ const PharmacyPos = () => {
   const lineOf = (productId) => quote?.lines?.find((x) => x.product_id === productId);
 
   const reset = () => {
-    setCart([]); setCustomer(null); setInvDiscount(''); setNotes(''); setRows([{ method: 'CASH', amount: '' }]); setPayLater(false); setQuote(null); setQuoteError(''); setDone(null);
+    setCart([]); setCustomer(null); setPointsInfo(null); setRedeem(''); setInvDiscount(''); setNotes(''); setRows([{ method: 'CASH', amount: '' }]); setPayLater(false); setQuote(null); setQuoteError(''); setDone(null);
     setTimeout(() => searchRef.current?.focus(), 50);
   };
 
@@ -145,10 +157,12 @@ const PharmacyPos = () => {
         </div>
         <div className="space-y-4 rounded-(--radius-card) border border-line bg-surface p-4">
           <CustomerPicker value={customer} onChange={setCustomer} />
+          {pointsInfo && <PointsPanel points={pointsInfo} total={(quote?.invoice ? Number(quote.invoice.total) + Number(quote.invoice.points_discount || 0) : total)} value={redeem} onChange={setRedeem} />}
           <Alert>{quoteError}</Alert>
           <div className="space-y-1.5 border-t border-line pt-3 text-small">
             <div className="flex justify-between text-ink-500"><span>{tr('Subtotal')}</span><span className="tabular">{money(quote?.invoice?.subtotal)}</span></div>
             {num(quote?.invoice?.discount) > 0 && <div className="flex justify-between text-ink-500"><span>{tr('Discount')}</span><span className="tabular">−{money(quote.invoice.discount)}</span></div>}
+            {num(quote?.invoice?.points_discount) > 0 && <div className="flex justify-between text-success"><span>{tr('Points used')}</span><span className="tabular">−{money(quote.invoice.points_discount)}</span></div>}
             <div className="flex justify-between text-ink-500"><span>{tr('GST')}</span><span className="tabular">{money(quote?.invoice?.tax)}</span></div>
             <div className="flex justify-between text-title font-semibold text-ink-900"><span>{tr('Total')}</span><span className="tabular">{fresh ? money(total) : quoting ? '…' : money(total)}</span></div>
           </div>

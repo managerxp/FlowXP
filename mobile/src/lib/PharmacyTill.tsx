@@ -21,6 +21,8 @@ import { payPlan, type PayHow } from './billing.ts';
 import { SearchBox } from './SearchBox.tsx';
 import { Button, Chips, Empty, ErrorText, Group, Line, SectionTitle, Soft, Title, color, s } from './ui.tsx';
 import { display } from './theme.ts';
+import { PointsBox } from './PointsBox.tsx';
+import { pointsOffPaise, type Points } from './points.ts';
 
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const METHODS = [{ id: 'CASH', label: 'Cash' }, { id: 'UPI', label: 'UPI' }, { id: 'CARD', label: 'Card' }];
@@ -45,9 +47,20 @@ export function PharmacyTill() {
   const [how, setHow] = useState<PayHow>('FULL');
   const [nowText, setNowText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pointsInfo, setPointsInfo] = useState<Points | null>(null);   // the customer's loyalty points, once a customer is on the bill
+  const [redeem, setRedeem] = useState('');
   const [problem, setProblem] = useState('');
   const key = useRef(newKey());   // one key for this bill: a retry after a dropped signal returns the same invoice, never a second one
   const changed = () => { key.current = newKey(); setQuote(null); setProblem(''); };
+
+  useEffect(() => {
+    setRedeem(''); setPointsInfo(null);
+    if (!customer?.id) return undefined;
+    let live = true;
+    void api.get<{ points: Points | null }>(`/loyalty/customers/${customer.id}`, { timeoutMs: 6000 }).then((d) => { if (live) setPointsInfo(d.points); }).catch(() => undefined);   // not in every plan, or no signal: then there is simply no points box
+    return () => { live = false; };
+  }, [customer?.id]);
+  const redeemBody = pointsInfo?.membership_id && pointsOffPaise(pointsInfo, Number(redeem) || 0, 1e12) > 0 ? { points: Number(redeem), membershipId: pointsInfo.membership_id } : null;
 
   useEffect(() => { if (captured) { setText(captured); setCaptured(null); } }, [captured]);
 
@@ -76,12 +89,12 @@ export function PharmacyTill() {
     if (!notBlocked) { setQuote(null); setQuoteError(''); return; }
     let live = true;
     const t = setTimeout(() => {
-      void api.post<PharmacyQuote>('/pharmacy/pos/quote', quoteBody(lines, customer?.id ?? null), { timeoutMs: 6000 })
+      void api.post<PharmacyQuote>('/pharmacy/pos/quote', quoteBody(lines, customer?.id ?? null, redeemBody), { timeoutMs: 6000 })
         .then((q) => { if (live) { setQuote(q); setQuoteError(''); setOffline(false); } })
         .catch((e: Error) => { if (live) { setQuote(null); if (unreachable(e)) { setOffline(true); setQuoteError(''); } else setQuoteError(e.message); } });
     }, 300);
     return () => { live = false; clearTimeout(t); };
-  }, [lines, customer?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [lines, customer?.id, redeem, pointsInfo]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const edit = (next: PLine[]) => { setLines(next); changed(); };
   const add = (m: Medicine) => { edit(addMedicine(lines, m)); setText(''); setFound([]); };
@@ -98,7 +111,7 @@ export function PharmacyTill() {
     setBusy(true); setProblem('');
     // the same body for the first try and every retry (the server's duplicate guard compares them), with the total the customer was shown
     const shown = quote ? quote.invoice.total : estimate(lines).totalPaise / 100;
-    const body = saleBody(lines, customer?.id ?? null, method, reference, rxNote(lines, doctor, patient), { rxChecked, expectedTotal: shown, payNowPaise: plan.payNowPaise });
+    const body = saleBody(lines, customer?.id ?? null, method, reference, rxNote(lines, doctor, patient), { rxChecked, expectedTotal: shown, payNowPaise: plan.payNowPaise, redeem: redeemBody });
     const finish = () => { clearSale(); setLines([]); setRxChecked(false); setDoctor(''); setPatient(''); setHow('FULL'); setNowText(''); key.current = newKey(); };
     try {
       const out = await api.post<PharmacyQuote>('/pharmacy/pos/invoices', body, { idempotencyKey: key.current, timeoutMs: 8000 });
@@ -131,6 +144,7 @@ export function PharmacyTill() {
             <Button title={customer ? 'Change customer' : 'Choose customer'} kind={customer ? 'quiet' : 'primary'} onPress={() => router.push({ pathname: '/customers', params: { pick: '1' } })} style={{ flex: 1 }} />
             {customer ? <Button title="No customer" kind="quiet" onPress={() => { setCustomer(null); changed(); }} /> : null}
           </View>
+          {pointsInfo ? <View style={{ paddingHorizontal: 16, paddingTop: 8 }}><PointsBox points={pointsInfo} totalPaise={quote ? toPaise(quote.invoice.total) + toPaise(quote.invoice.points_discount ?? 0) : estimate(lines).totalPaise} value={redeem} onChange={(v) => { setRedeem(v); changed(); }} /></View> : null}
           <View style={{ padding: 16, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
             <View style={{ flex: 1 }}><SearchBox value={text} onChange={setText} placeholder="Medicine name, salt or barcode" label="Search medicines" /></View>
             <Button title="Scan" kind="quiet" onPress={() => router.push({ pathname: '/scan', params: { capture: '1' } })} />

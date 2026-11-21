@@ -10,7 +10,7 @@ export type Medicine = {
 export type Batch = { batch_id: number; product_id: number; product: string; unit: string | null; batch_no: string; mfg_date: string | null; expiry_date: string | null; qty_on_hand: number; cost: number; status: 'ACTIVE' | 'QUARANTINED' | 'RECALLED' | 'BLOCKED'; branch: string };
 export type PLine = { key: string; product: Medicine; quantity: number; batch: Batch | null };
 export type PharmacyQuote = {
-  invoice: { subtotal: number; discount: number; tax: number; total: number; invoice_id?: number };
+  invoice: { subtotal: number; discount: number; tax: number; total: number; invoice_id?: number; points_discount?: number };
   lines: { product_id: number; name: string; quantity: number; unit_price: number; line_total: number; batches: { batch_id: number; qty: number }[] }[];
 };
 
@@ -36,12 +36,13 @@ export const roughPaise = (lines: PLine[]): number => lines.reduce((a, l) => a +
 export const itemsBody = (lines: PLine[]) => lines.map((l) => ({ product_id: l.product.product_id, quantity: l.quantity, ...(l.batch ? { batch_id: l.batch.batch_id } : {}) }));
 
 /** The server reads the client as customerId (camel case) on the pharmacy till. */
-export const quoteBody = (lines: PLine[], customerId: number | null) => ({ items: itemsBody(lines), ...(customerId ? { customerId } : {}) });
+/** `redeem`: loyalty points spent on this bill, from the customer's card. */
+export const quoteBody = (lines: PLine[], customerId: number | null, redeem: { points: number; membershipId: number } | null = null) => ({ items: itemsBody(lines), ...(customerId ? { customerId } : {}), ...(redeem && redeem.points > 0 ? { redeemPoints: redeem.points, spendMembershipId: redeem.membershipId } : {}) });
 
 /** The sale. A prescription medicine on it is sent with the fact that the prescription was checked (the server refuses it otherwise); a sale made with
     no connection also says what total the customer was shown, so the server can flag a price that changed since the phone last synced. */
-export const saleBody = (lines: PLine[], customerId: number | null, method: string, reference: string, notes: string, extra: { rxChecked?: boolean; expectedTotal?: number; payNowPaise?: number | null } = {}) => ({
-  ...quoteBody(lines, customerId),
+export const saleBody = (lines: PLine[], customerId: number | null, method: string, reference: string, notes: string, extra: { rxChecked?: boolean; expectedTotal?: number; payNowPaise?: number | null; redeem?: { points: number; membershipId: number } | null } = {}) => ({
+  ...quoteBody(lines, customerId, extra.redeem),
   // payNowPaise: none = the whole bill; 0 = nothing now (left unpaid, the customer's credit); else that much now and the rest is owed
   payments: extra.payNowPaise === 0 ? [] : [{ method, amount: extra.payNowPaise ? extra.payNowPaise / 100 : 'FULL', ...(reference.trim() ? { reference_number: reference.trim() } : {}) }],
   ...(notes.trim() ? { notes: notes.trim() } : {}),

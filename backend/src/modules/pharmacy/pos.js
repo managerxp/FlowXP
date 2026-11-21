@@ -21,6 +21,7 @@
 import { computeLineTax, isInterState, sumLines } from '../tax.js';
 import { toPaise, toQuantity, toRupees } from '../../utils/money.js';
 import { nextInvoiceNumber, paymentStatus, plannedPayments } from '../billing.js';
+import { redeem as spendCardPoints, spendQuote, LoyaltyError } from '../loyaltyEngine.js';
 import { PharmacyError, getSettings, today } from './common.js';
 import { allocateBatches, assertSellable, batchTracked, consumeBatches, lockProducts, q3, stockOut } from './stock.js';
 
@@ -129,6 +130,22 @@ export const createPharmacySale = async (client, tenant, userId, input, { dryRun
   totals.discount_paise = lines.reduce((s, l) => s + l.discountPaise, 0) + invoiceDiscountPaise;
   totals.total_paise = Math.max(0, totals.total_paise - invoiceDiscountPaise);
 
+  // Loyalty points spent on this bill (the customer's card; the same rules and ledger as every other till): they come off like a discount.
+  let spend = null;
+  if (input.redeemPoints) {
+    if (!customer) throw new PharmacyError(400, 'Choose a customer to use their points');
+    if (!input.spendMembershipId) throw new PharmacyError(400, 'Choose which Loyalty card to spend points from');
+    try {
+      const points = Number(input.redeemPoints); const membershipId = Number(input.spendMembershipId);
+      spend = { membershipId, points, ...(await spendQuote(client, { businessId: tenant.businessId, customerId: customer.customer_id, membershipId, points, payablePaise: totals.total_paise, branchId: tenant.branchId })) };
+    } catch (error) {
+      if (error instanceof LoyaltyError) throw new PharmacyError(error.status, error.message);
+      throw error;
+    }
+    totals.discount_paise += spend.value_paise;
+    totals.total_paise = Math.max(0, totals.total_paise - spend.value_paise);
+  }
+
   // the phone showed the customer a total; if the server's price (changed since the phone last synced) comes to something else, say so for review
   if (offline && input.expected_total != null && Math.abs(toPaise(input.expected_total) - totals.total_paise) > 100) {
     flags.push(`the phone showed ₹${input.expected_total}, the server priced it at ₹${toRupees(totals.total_paise)}`);
@@ -143,7 +160,7 @@ export const createPharmacySale = async (client, tenant, userId, input, { dryRun
       invoice: {
         subtotal: toRupees(totals.subtotal_paise), discount: toRupees(totals.discount_paise), tax: toRupees(totals.tax_paise),
         cgst: toRupees(totals.cgst_paise), sgst: toRupees(totals.sgst_paise), igst: toRupees(totals.igst_paise),
-        total: toRupees(totals.total_paise), amount_paid: toRupees(paidPaise), balance_due: toRupees(Math.max(0, totals.total_paise - paidPaise))
+        total: toRupees(totals.total_paise), amount_paid: toRupees(paidPaise), balance_due: toRupees(Math.max(0, totals.total_paise - paidPaise)), points_discount: spend ? toRupees(spend.value_paise) : 0
       },
       lines: lines.map((l) => ({
         product_id: l.product.product_id, name: l.product.name, quantity: l.quantity, unit_price: toRupees(l.unitPricePaise),
@@ -169,6 +186,10 @@ export const createPharmacySale = async (client, tenant, userId, input, { dryRun
       if (l.batches.length) await consumeBatches(client, { businessId: tenant.businessId, allocations: l.batches, refType: 'invoice', refId: invoice.invoice_id });
     }
   }
+  if (spend) {
+    spend.balance = (await spendCardPoints(client, { businessId: tenant.businessId, membershipId: spend.membershipId, points: spend.points, branchId: tenant.branchId, invoiceId: invoice.invoice_id, key: `spend:inv:${invoice.invoice_id}`, createdBy: userId })).balance;
+    await client.query('UPDATE invoices SET points_discount_paise = $2, points_redeemed = $3 WHERE invoice_id = $1', [invoice.invoice_id, spend.value_paise, spend.points]);
+  }
   for (const p of plan) {
     await client.query(`INSERT INTO payments (business_id, branch_id, invoice_id, customer_id, payment_method, amount_paise, reference_number, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
       [tenant.businessId, tenant.branchId, invoice.invoice_id, customer?.customer_id ?? null, p.method, p.amountPaise, p.reference, userId]);
@@ -179,7 +200,8 @@ export const createPharmacySale = async (client, tenant, userId, input, { dryRun
       subtotal: toRupees(totals.subtotal_paise), discount: toRupees(totals.discount_paise), tax: toRupees(totals.tax_paise),
       cgst: toRupees(totals.cgst_paise), sgst: toRupees(totals.sgst_paise), igst: toRupees(totals.igst_paise),
       total: toRupees(totals.total_paise), amount_paid: toRupees(paidPaise), balance_due: toRupees(Math.max(0, totals.total_paise - paidPaise)),
-      payment_status: invoice.payment_status
+      payment_status: invoice.payment_status,
+      ...(spend ? { points_discount: toRupees(spend.value_paise), loyalty_spend: { card: spend.programme.name, points: spend.points, balance: spend.balance } } : {})
     },
     review: flags,
     lines: lines.map((l) => ({
