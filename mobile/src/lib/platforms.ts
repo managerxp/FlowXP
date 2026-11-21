@@ -55,3 +55,6 @@ export const DELIVERY_TEXTS: string[] = [
   'Order ID', 'Date (YYYY-MM-DD)', 'Gross amount', 'Commission', 'Payment charges', 'Delivery charges', 'Tax', 'Other deductions', 'Net settled',
   'Delivery platforms and settlements', 'Connect Zomato, Swiggy and others, and check what they paid'
 ];
+
+/** Zomato / Swiggy integration is not offered yet: while this is false the phone hides new online orders and delivery platforms and settlements. Set it to true to bring them back. */
+export const PLATFORMS_ON = false;

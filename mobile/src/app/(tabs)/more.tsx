@@ -11,7 +11,7 @@ import { canOffers } from '../../lib/offerList.ts';
 import { canLoyalty } from '../../lib/loyalty.ts';
 import { canMessaging } from '../../lib/messaging.ts';
 import { canOptions } from '../../lib/menuOptions.ts';
-import { canDelivery } from '../../lib/platforms.ts';
+import { PLATFORMS_ON, canDelivery } from '../../lib/platforms.ts';
 import { canGymSetup } from '../../lib/gymSetup.ts';
 import { canSalonSetup } from '../../lib/salonSetup.ts';
 import { canGamingSetup } from '../../lib/gamingSetup.ts';
@@ -93,12 +93,12 @@ export default function More() {
       { left: 'Credit and debit notes', sub: 'Goods that came back, and goods sent back to suppliers', icon: 'receipt-outline', go: '/notes', show: !wholesale && (can('purchases') || can('refunds')) }
     ] },
     { title: 'Restaurant', icon: 'restaurant-outline', items: [
-      { left: 'New online orders', sub: 'Zomato, Swiggy, QR and website orders waiting to be accepted', icon: 'notifications-outline', go: '/incoming', show: food && can('billing', 'kitchen') },
+      { left: 'New online orders', sub: 'Zomato, Swiggy, QR and website orders waiting to be accepted', icon: 'notifications-outline', go: '/incoming', show: PLATFORMS_ON && food && can('billing', 'kitchen') },
       { left: 'Deliveries', sub: 'Open deliveries, their riders and where each has got to', icon: 'bicycle-outline', go: '/deliveries', show: food && can('billing', 'kitchen') },
       { left: 'Kitchen screen', sub: 'What to make, what is ready to serve', icon: 'restaurant-outline', go: '/kitchen', show: food },
       { left: 'Bookings and waiting', sub: 'Tables booked, guests waiting for one', icon: 'calendar-outline', go: '/reservations', show: food },
       { left: 'Kitchen performance', sub: 'How long dishes take', icon: 'timer-outline', go: '/kitchen-performance', show: food && can('reports') },
-      { left: 'Delivery platforms and settlements', sub: 'Connect Zomato, Swiggy and others, and check what they paid', icon: 'bicycle-outline', go: '/delivery-platforms', show: food && canDelivery((p) => allowed(business, p)) }
+      { left: 'Delivery platforms and settlements', sub: 'Connect Zomato, Swiggy and others, and check what they paid', icon: 'bicycle-outline', go: '/delivery-platforms', show: PLATFORMS_ON && food && canDelivery((p) => allowed(business, p)) }
     ] },
     { title: 'Salon', icon: 'cut-outline', items: [
       { left: 'Appointments', sub: 'Who is booked, who has arrived', icon: 'calendar-outline', go: '/appointments', show: salon },

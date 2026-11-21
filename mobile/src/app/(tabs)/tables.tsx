@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import { PLATFORMS_ON } from '../../lib/platforms.ts';
 import { Ionicons } from '../../lib/icons.tsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../../lib/api.ts';
@@ -155,7 +156,7 @@ export default function Tables() {
             </Pressable>
           ) : null}
 
-          {waiting.data && waiting.data.length > 0 ? (
+          {PLATFORMS_ON && waiting.data && waiting.data.length > 0 ? (
             <Pressable accessibilityRole="button" accessibilityLabel={`${waiting.data.length} new online orders waiting`} onPress={() => router.push('/incoming')} style={{ margin: 16, minHeight: 56, borderRadius: 12, backgroundColor: color.danger, paddingHorizontal: 16, justifyContent: 'center' }}>
               <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>{waiting.data.length === 1 ? '1 new online order is waiting' : `${waiting.data.length} new online orders are waiting`}</Text>
               <Text style={{ color: '#fff' }}>Tap to accept or turn down</Text>
