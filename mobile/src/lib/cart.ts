@@ -87,6 +87,6 @@ export const upiLink = (vpa: string, name: string, totalPaise: number, note: str
   `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(name)}&am=${(totalPaise / 100).toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
 
 /** The shops that make food to order: their counter sale can go to the kitchen (or barista) screen and comes back with a token. */
-export const KITCHEN_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE'];
+export const KITCHEN_TYPES = ['RESTAURANT', 'CAFE', 'CLOUD_KITCHEN', 'GAMING_CAFE', 'RACING'];
 /** shops whose goods carry a printed MRP that includes GST: a new product starts with "Price includes GST" on (same list as the server's) */
 export const MRP_TYPES = ['RETAIL', 'SUPERMARKET', 'CLOTHING', 'PHARMACY', 'ELECTRONICS'];

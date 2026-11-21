@@ -1667,3 +1667,4 @@ Flow: the receipt carries the bill's own QR (`/card/bill/<share_token>`). After 
 - Gym screens (2026-11-21): on a member's page Check in is the first, strong button (Renew membership turns quiet while a membership is active, strong when there is none); the classes list sits in a rounded card. Front desk, members, plans and attendance already had search box, strong Add buttons and card lists.
 - Gaming screens (2026-11-21): the lounge board has a wrapping row of buttons to Bookings, Players and Tournaments under the title (no trip through More); each station shows its state as a coloured Pill; Add a new player is a strong button. Bookings, tournaments and reports already had strong action buttons and card lists.
 - Phone app: wholesale orders and customers use the shared search box (same look as the other lists).
+- Phone app: Racing businesses now get the restaurant-style till, kitchen and menu, as on the web.
