@@ -71,12 +71,12 @@ export default function More() {
       { left: 'Parts reports', sub: 'What to buy, what sells, stock age and value', icon: 'analytics-outline', go: '/parts-reports', show: parts && can('reports', 'inventory', 'purchases') },
       { left: 'Trade prices', sub: 'Price lists for garages and trade, and parts held for customers', icon: 'pricetags-outline', go: '/parts-trade', show: parts && can('billing', 'price_change', 'inventory') },
       { left: 'Receive parts', sub: 'A delivery: accepted, damaged and rejected counted apart', icon: 'download-outline', go: '/parts-receive', show: can('grn') },
-      { left: 'Staff', sub: 'People, attendance and payroll', icon: 'people-circle-outline', go: '/workshop-staff', main: true, show: can('hr', 'payroll') }
+      { left: 'Staff', sub: 'People, attendance and payroll', icon: 'people-circle-outline', go: '/workshop-staff', show: can('hr', 'payroll') }
     ] },
     { title: 'Your business', icon: 'stats-chart-outline', items: [
       { left: 'What we earned', sub: 'Labour and parts earned, by day and mechanic', icon: 'stats-chart-outline', go: '/job-earnings', show: can('billing') },
       { left: 'Reports', sub: 'How much you earned, and download it', icon: 'stats-chart-outline', go: '/reports', main: true, show: can('reports') },
-      { left: 'Expenses', sub: 'Rent, salary, electricity: what you spent', icon: 'receipt-outline', go: '/expenses', main: true, show: can('expenses') },
+      { left: 'Expenses', sub: 'Rent, salary, electricity: what you spent', icon: 'receipt-outline', go: '/expenses', show: can('expenses') },
       { left: 'Estimates', sub: 'A price before the sale: share it, then make the invoice', icon: 'document-text-outline', go: '/estimates', show: can('billing') && hasFeature(business, 'estimates') },
       { left: 'Other income', sub: 'Interest, rent received, scrap: money in that is not from a bill', icon: 'cash-outline', go: '/other-income', show: can('expenses') && hasFeature(business, 'other_income') },
       { left: 'Messaging', sub: 'WhatsApp or SMS: vehicle ready, estimate, offers', icon: 'chatbubbles-outline', go: '/messaging', show: canMessaging(business?.role) },
@@ -138,7 +138,7 @@ export default function More() {
       { left: 'Job cards', sub: 'Vehicles in for service: parts, labour and one bill', icon: 'build-outline', go: '/job-cards', show: parts && workshop && can('billing') },
       { left: 'Labour and services', sub: 'What you charge for work: oil change, alignment', icon: 'pricetag-outline', go: '/job-services', show: parts && workshop && can('billing') },
       { left: 'What we earned', sub: 'Labour and parts earned, by day and mechanic', icon: 'stats-chart-outline', go: '/job-earnings', show: parts && workshop && can('billing') },
-      { left: 'Staff', sub: 'People, attendance and payroll', icon: 'people-circle-outline', go: '/workshop-staff', main: true, show: parts && workshop && can('hr', 'payroll') },
+      { left: 'Staff', sub: 'People, attendance and payroll', icon: 'people-circle-outline', go: '/workshop-staff', show: parts && workshop && can('hr', 'payroll') },
       { left: 'Mechanic mode', sub: 'Show job cards, labour and staff, or hide them for a parts-only shop', icon: 'build-outline', go: '/mechanic-mode', show: parts && business?.role === 'OWNER' }
     ] },
     { title: 'Pharmacy', icon: 'medkit-outline', items: [
@@ -177,7 +177,7 @@ export default function More() {
     ] },
     { title: 'Customers', icon: 'people-outline', items: [
       { left: 'Customers', sub: 'Their bills, and what they still owe', icon: 'person-outline', go: '/customers', main: true, show: can('customers', 'billing') },
-      { left: 'Member desk', sub: 'Find a member, stamp their card, give a reward', icon: 'ribbon-outline', go: '/member-desk', main: true, show: can('billing') && hasFeature(business, 'loyalty_programmes') && !wholesale },
+      { left: 'Member desk', sub: 'Find a member, stamp their card, give a reward', icon: 'ribbon-outline', go: '/member-desk', show: can('billing') && hasFeature(business, 'loyalty_programmes') && !wholesale },
       { left: 'Card results', sub: 'How your loyalty cards are doing', icon: 'stats-chart-outline', go: '/loyalty-results', show: canLoyalty(business?.role) && hasFeature(business, 'loyalty_programmes') && !wholesale },
       { left: 'Design loyalty cards', sub: 'Change how your cards look', icon: 'color-palette-outline', go: '/loyalty-cards', show: canLoyalty(business?.role) && hasFeature(business, 'loyalty_programmes') && !wholesale },
       { left: 'Offers', sub: 'Discounts the till applies by itself', icon: 'pricetag-outline', go: '/offers', show: (retail || food) && canOffers((p) => allowed(business, p)) },
@@ -186,11 +186,11 @@ export default function More() {
       { left: 'Reviews', sub: 'What customers said after their bill', icon: 'star-outline', go: '/reviews', show: can('settings') && hasFeature(business, 'reviews') }
     ] },
     { title: 'Business', icon: 'stats-chart-outline', items: [
-      { left: 'Payroll', sub: 'Salary from attendance, PF, ESI and tax', icon: 'wallet-outline', go: '/payroll', show: can('payroll') && hasFeature(business, 'payroll'), main: true },
+      { left: 'Payroll', sub: 'Salary from attendance, PF, ESI and tax', icon: 'wallet-outline', go: '/payroll', show: can('payroll') && hasFeature(business, 'payroll') },
       { left: 'Reports', sub: 'How much you sold, and what sells best', icon: 'stats-chart-outline', go: '/reports', main: true, show: can('reports') },
       { left: 'More reports', sub: 'Day Book, profit and loss, GST, stock, who owes you', icon: 'document-text-outline', go: '/biz-reports', show: can('reports', 'gst', 'inventory') },
       { left: 'Ask Flow AI', sub: 'Questions about your business, in plain words', icon: 'sparkles-outline', go: '/flow-ai', show: can('ai') },
-      { left: 'Expenses', sub: 'Rent, salary, electricity: what you spent', icon: 'receipt-outline', go: '/expenses', main: true, show: can('expenses') },
+      { left: 'Expenses', sub: 'Rent, salary, electricity: what you spent', icon: 'receipt-outline', go: '/expenses', show: can('expenses') },
       { left: 'Other income', sub: 'Interest, rent received, scrap: money in that is not from a bill', icon: 'cash-outline', go: '/other-income', show: can('expenses') && hasFeature(business, 'other_income') },
       { left: 'FlowBook', sub: 'Your accounts at a glance', icon: 'book-outline', go: '/flowbook', show: can('reports') && hasBooks(business) },
       { left: 'GST filing', sub: 'GSTR-1 file, GSTR-3B figures, e-invoice', icon: 'document-attach-outline', go: '/gst-filing', show: canManageTeam(business?.role) && can('gst') },

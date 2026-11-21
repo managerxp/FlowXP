@@ -15,7 +15,7 @@ export const HelpButton = () => {
   return (
     <Pressable onPress={() => router.push('/help-find')} accessibilityRole="button" accessibilityLabel={t('Help me find')}
       style={{ position: 'absolute', right: 16, bottom: 92, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, borderRadius: 24, backgroundColor: color.brand, elevation: 6, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }}>
-      <Ionicons name="help-buoy-outline" size={20} color="#fff" />
+      <Ionicons name="help-buoy-outline" size={20} color={color.onAction} />
       <Text style={{ color: color.onAction, fontWeight: '700' }}>{t('Help me find')}</Text>
     </Pressable>
   );

@@ -115,8 +115,8 @@ export const findTasks = (query: string, ctx: { parts: boolean; workshop: boolea
     .filter(([hit]) => hit > 0).sort((a, b) => b[0] - a[0]).slice(0, limit).map(([, x]) => x);
 };
 
-/** The floating help button shows everywhere except where a person is busy: sign in and sign up, the till, paying, the receipt, scanning and the help screen itself. */
-const NO_HELP = ['/', '/index', '/login', '/signup', '/welcome', '/sell', '/pay', '/receipt', '/scan', '/options', '/help-find', '/forgot-password', '/delete-account'];
+/** The floating help button shows everywhere except where a person is busy: sign in and sign up, More (it has its own search), the till, paying, the receipt, scanning and the help screen itself. */
+const NO_HELP = ['/', '/index', '/login', '/signup', '/welcome', '/sell', '/pay', '/receipt', '/scan', '/options', '/help-find', '/more', '/forgot-password', '/delete-account'];
 export const showHelpButton = (path: string): boolean => !NO_HELP.includes(path.replace(/\/+$/, '') || '/') && !path.startsWith('/receipt');
 
 /** Every text the screens above show, so each one is looked up in the six languages. */
