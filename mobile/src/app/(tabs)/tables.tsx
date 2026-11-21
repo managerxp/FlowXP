@@ -13,7 +13,7 @@ import { Hint, markDone } from '../../lib/learn.tsx';
 import { printRunningBill } from '../../lib/printBill.ts';
 import { readFailed } from '../../lib/printerLink.ts';
 import { t as tr } from '../../lib/i18n.ts';
-import { Button, Empty, ErrorText, Failed, Loading, SavedNote, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Button, Empty, ErrorText, Failed, Group, Loading, SavedNote, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
 
 /* getters, so the colours follow the theme when it is switched */
 const TONE: Record<TableState, { bg: string; border: string; ink: string }> = {
@@ -87,8 +87,7 @@ export default function Tables() {
         <ScrollView refreshControl={<RefreshControl refreshing={floor.busy} onRefresh={() => { void floor.refresh(); void open.refresh(); }} />} contentContainerStyle={{ paddingBottom: 24 }}>
           <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
             <View style={{ flex: 1 }}><Title>{diningRoom ? 'Tables' : 'Orders'}</Title><Soft>Updates by itself</Soft></View>
-            {diningRoom ? <Button title="Bookings" kind="quiet" onPress={() => router.push('/reservations')} /> : null}
-            <Button title="Takeaway order" kind="quiet" onPress={() => { void takeaway(); }} busy={busy === 'new'} />
+            <Button title="Takeaway order" onPress={() => { void takeaway(); }} busy={busy === 'new'} />
           </View>
           <SavedNote at={floor.savedAt} />
           {diningRoom ? <Hint id="tables" /> : null}
@@ -101,7 +100,7 @@ export default function Tables() {
               {[{ id: null as string | null, label: 'All' }, ...groups.map((g) => ({ id: g.zone as string | null, label: g.zone || 'Main' }))].map((z) => (
                 <Pressable key={String(z.id)} accessibilityRole="button" accessibilityState={{ selected: zone === z.id }} onPress={() => setZone(z.id)}
                   style={{ minHeight: 48, paddingHorizontal: 16, justifyContent: 'center', borderRadius: 22, borderWidth: 1, borderColor: zone === z.id ? color.brand : color.line, backgroundColor: zone === z.id ? color.brand : color.card }}>
-                  <Text style={{ fontWeight: '600', color: zone === z.id ? '#fff' : color.ink }}>{z.label}</Text>
+                  <Text style={{ fontWeight: '600', color: zone === z.id ? color.onAction : color.ink }}>{z.label}</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -157,7 +156,7 @@ export default function Tables() {
           {away.length ? (
             <>
               <SectionTitle>Takeaway and delivery, open now</SectionTitle>
-              {away.map((o) => (
+              <Group>{away.map((o) => (
                 <Pressable key={o.order_id} accessibilityRole="button" onPress={() => go(o.order_id)} style={({ pressed }) => ({ minHeight: 56, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: pressed ? color.tint : color.card, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' })}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 16, color: color.ink }}>{o.order_number} · {o.order_type === 'DELIVERY' ? 'Delivery' : 'Takeaway'}</Text>
@@ -169,8 +168,13 @@ export default function Tables() {
                     <Pressable accessibilityRole="button" accessibilityLabel={tr('Print the bill')} onPress={() => { void printBill(o.order_id); }} style={{ minHeight: 40, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: color.line, justifyContent: 'center' }}><Text style={{ fontWeight: '600', color: color.brand }}>{printing === o.order_id ? '…' : tr('Print the bill')}</Text></Pressable>
                   </View>
                 </Pressable>
-              ))}
+              ))}</Group>
             </>
+          ) : null}
+          {diningRoom ? (
+            <Pressable accessibilityRole="button" onPress={() => router.push('/reservations')} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
+              <Text style={{ color: color.brand, fontWeight: '600' }}>{tr('Bookings')}</Text>
+            </Pressable>
           ) : null}
         </ScrollView>
       </Page>
