@@ -126,7 +126,7 @@ export default function Kitchen() {
         <View style={{ paddingHorizontal: 10, paddingVertical: 7, backgroundColor: rushed ? color.dangerBg : making ? tone.head : c === 'ready' ? color.okBg : color.wash, gap: 2 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
             <Text style={{ fontSize: 17 * z, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink, flexShrink: 1 }}>{title}</Text>
-            {rushed ? <Text style={{ backgroundColor: color.danger, color: '#fff', fontWeight: '800', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>RUSH</Text> : null}
+            {rushed ? <Text style={{ backgroundColor: color.danger, color: color.onAction, fontWeight: '800', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>RUSH</Text> : null}
           </View>
           <Text style={{ color: color.soft }}>{t.table_name ? `${t.order_number} · ` : ''}{clock(t.sent_at)}{t.brand_name ? ` · ${t.brand_name}` : ''}{t.kot_number ? ` · ${t.kot_number}` : ''}</Text>
           {making ? <Text style={{ color: tone.text, fontWeight: '700' }}>{tone.label} · waiting {span(minutesSince(t.sent_at, now))}</Text> : null}
@@ -213,7 +213,7 @@ export default function Kitchen() {
           <Button title={alertOn ? 'Buzz on' : 'Buzz off'} kind="quiet" onPress={toggleAlert} />
           {kitchenOnly ? <Button title="Sign out" kind="quiet" onPress={() => { void signOut().then(() => router.replace('/login')); }} /> : <Button title="Back" kind="quiet" onPress={() => goBack()} />}
         </View>
-        {flash ? <Text accessibilityLiveRegion="assertive" style={{ backgroundColor: color.brand, color: '#fff', fontWeight: '800', fontSize: 18, textAlign: 'center', padding: 10, borderRadius: 10 }}>{flash}</Text> : null}
+        {flash ? <Text accessibilityLiveRegion="assertive" style={{ backgroundColor: color.brand, color: color.onAction, fontWeight: '800', fontSize: 18, textAlign: 'center', padding: 10, borderRadius: 10 }}>{flash}</Text> : null}
         {!big ? <View style={{ flexDirection: 'row', gap: 8 }}>
           <View style={[s.card, { flex: 1, padding: 10 }]}><Soft>To make</Soft><Text style={{ fontSize: 24, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: color.ink }}>{stats.tickets}</Text><Soft>{stats.dishes ? `${stats.dishes} dishes` : 'All clear'}</Soft></View>
           <View style={[s.card, { flex: 1, padding: 10 }]}><Soft>Late</Soft><Text style={{ fontSize: 24, fontFamily: display.bold, fontVariant: ['tabular-nums'], color: stats.lateTickets ? color.danger : color.ok }}>{stats.lateTickets}</Text><Soft>{stats.lateTickets ? 'past time' : 'Nothing late'}</Soft></View>

@@ -85,7 +85,7 @@ export default function AddToOrder() {
         accessibilityRole="button" accessibilityLabel={`${item.name}, ${rupees(toPaise(item.selling_price))}${n ? `, ${n} added` : ''}`} onPress={() => pick(item)}
         style={({ pressed }) => [{ flex: 1 / cols, minHeight: 84, padding: 10, borderRadius: 12, borderWidth: n ? 2 : 1, borderColor: n ? color.brand : color.line, backgroundColor: n ? color.tint : item.is_available ? color.card : color.wash, justifyContent: 'space-between' }, pressed && { backgroundColor: color.press }]}
       >
-        {n ? <View style={{ position: 'absolute', top: 6, right: 6, minWidth: 26, height: 26, borderRadius: 13, paddingHorizontal: 6, backgroundColor: color.brand, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>{n}</Text></View> : null}
+        {n ? <View style={{ position: 'absolute', top: 6, right: 6, minWidth: 26, height: 26, borderRadius: 13, paddingHorizontal: 6, backgroundColor: color.brand, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: color.onAction, fontWeight: '800', fontSize: 13 }}>{n}</Text></View> : null}
         <Text numberOfLines={2} style={{ fontSize: 15, fontWeight: '600', color: item.is_available ? color.ink : color.soft, paddingRight: n ? 28 : 0 }}>{pname(item)}</Text>
         <Text style={{ color: color.soft }}>{item.is_available ? rupees(toPaise(item.selling_price)) : 'Not available'}{item.modifier_group_ids.length ? ' · options' : ''}</Text>
       </Pressable>

@@ -24,7 +24,7 @@ const Tile = ({ style, n, cols, onOpen }: { style: StyleRow; n: number; cols: nu
     accessibilityRole="button" accessibilityLabel={`${style.name}, ${style.stock > 0 ? `${style.stock} in stock` : 'sold out'}${n ? `, ${n} on the bill` : ''}`} disabled={style.stock <= 0} onPress={() => onOpen(style)}
     style={({ pressed }) => [{ flex: 1 / cols, minHeight: 88, padding: 10, borderRadius: 12, borderWidth: n ? 2 : 1, borderColor: n ? color.brand : color.line, backgroundColor: n ? color.tint : color.card, opacity: style.stock <= 0 ? 0.5 : 1, justifyContent: 'space-between' }, pressed && { backgroundColor: color.press }]}
   >
-    {n ? <View style={{ position: 'absolute', top: 6, right: 6, minWidth: 24, height: 24, borderRadius: 12, paddingHorizontal: 6, backgroundColor: color.brand, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>{n}</Text></View> : null}
+    {n ? <View style={{ position: 'absolute', top: 6, right: 6, minWidth: 24, height: 24, borderRadius: 12, paddingHorizontal: 6, backgroundColor: color.brand, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: color.onAction, fontWeight: '700', fontSize: 13 }}>{n}</Text></View> : null}
     <Text numberOfLines={2} style={{ fontSize: 15, fontWeight: '600', color: color.ink, paddingRight: n ? 26 : 0 }}>{style.name}</Text>
     <View>
       <Text style={{ color: color.ink, fontWeight: '600' }}>{priceText(style.price_from_paise, style.price_to_paise, rupees)}</Text>
@@ -85,7 +85,7 @@ export const StyleGrid = ({ styleId, inBill, onAdd }: { styleId: number; inBill?
                   style={({ pressed }) => [{ width: 52, height: 48, marginHorizontal: 2, borderRadius: 10, borderWidth: have ? 2 : 1, borderColor: have ? color.brand : color.line, backgroundColor: have ? color.tint : color.card, alignItems: 'center', justifyContent: 'center', opacity: out ? 0.4 : 1 }, pressed && { backgroundColor: color.press }]}
                 >
                   <Text style={{ fontWeight: '700', color: tone }}>{onAdd ? left : cell.stock}</Text>
-                  {have > 0 ? <View style={{ position: 'absolute', top: -6, right: -6, minWidth: 20, height: 20, borderRadius: 10, backgroundColor: color.brand, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{have}</Text></View> : null}
+                  {have > 0 ? <View style={{ position: 'absolute', top: -6, right: -6, minWidth: 20, height: 20, borderRadius: 10, backgroundColor: color.brand, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: color.onAction, fontSize: 11, fontWeight: '700' }}>{have}</Text></View> : null}
                 </Pressable>
               );
             })}

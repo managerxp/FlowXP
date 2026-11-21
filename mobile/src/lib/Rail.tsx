@@ -28,7 +28,7 @@ export function Rail({ state, descriptors, navigation, hidden }: RailProps) {
         android_ripple={{ color: color.press, borderless: true }} style={{ alignItems: 'center', gap: slim ? 1 : 4, paddingVertical: slim ? 2 : 6, minHeight: slim ? 52 : 64, width: slim ? 72 : 88 }}>
         <View style={{ width: slim ? 48 : 56, height: slim ? 28 : 32, borderRadius: 16, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', backgroundColor: on ? color.press : 'transparent' }}>
           {o.tabBarIcon?.({ focused: on, color: on ? color.brand : color.soft, size: slim ? 22 : 24 })}
-          {o.tabBarBadge ? <View style={{ position: 'absolute', top: -2, right: 6, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: color.danger, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{o.tabBarBadge}</Text></View> : null}
+          {o.tabBarBadge ? <View style={{ position: 'absolute', top: -2, right: 6, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: color.danger, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: color.onAction, fontSize: 11, fontWeight: '700' }}>{o.tabBarBadge}</Text></View> : null}
         </View>
         <Text numberOfLines={1} style={{ fontSize: slim ? 11 : 12, fontWeight: on ? '700' : '600', color: on ? color.brand : color.soft }}>{o.title}</Text>
       </Pressable>
