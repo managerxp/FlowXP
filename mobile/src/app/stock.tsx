@@ -99,7 +99,15 @@ export default function Stock() {
           <View style={{ flex: 1 }}><Title>Stock</Title><Soft>{n.out || n.low ? `${n.out ? `${n.out} out of stock` : ''}${n.out && n.low ? ', ' : ''}${n.low ? `${n.low} running low` : ''}` : 'Everything is in stock'}</Soft></View>
           <Button title="Back" kind="quiet" onPress={() => goBack()} />
         </View>
-        {n.out || n.low ? <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}><Button title="Order more" onPress={buy} /></View> : null}
+        <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+          {n.out || n.low ? <Button title="Order more" onPress={buy} /> : (
+            <Pressable accessibilityRole="button" onPress={buy} style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderRadius: 12, borderCurve: 'continuous', backgroundColor: color.card, borderWidth: 1, borderColor: color.line }}>
+              <Ionicons name="download-outline" size={20} color={color.brand} />
+              <Text style={{ flex: 1, color: color.brand, fontWeight: '600' }}>{t('Order more')}</Text>
+              <Ionicons name="chevron-forward" size={18} color={color.soft} />
+            </Pressable>
+          )}
+        </View>
         <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
           <SearchBox value={text} onChange={setText} placeholder="Search for an item" label="Search stock" />
         </View>
@@ -113,11 +121,6 @@ export default function Stock() {
           ListEmptyComponent={data ? <Empty>{filter === 'all' && !text ? 'No stock is being counted yet. Turn on "Count the stock" for an item to see it here.' : 'Nothing here.'}</Empty> : null}
           renderItem={renderRow}
         />
-        {!(n.out || n.low) ? (
-          <Pressable accessibilityRole="button" onPress={buy} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: color.brand, fontWeight: '600' }}>{t('Order more')}</Text>
-          </Pressable>
-        ) : null}
       </Page>
 
       <Modal visible={item != null} transparent animationType="slide" onRequestClose={close}>
