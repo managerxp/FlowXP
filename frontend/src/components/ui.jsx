@@ -174,7 +174,7 @@ export const StatCard = ({
   const body = (
     <>
       <span className="block text-caption font-medium text-ink-500">{label}</span>
-      <span className={`tabular block ${STAT_VALUE[size] || STAT_VALUE.md} ${toneClass}`}>{value}</span>
+      <span className={`font-display tabular block ${STAT_VALUE[size] || STAT_VALUE.md} ${toneClass}`}>{value}</span>
       {children}
       {(note ?? sub) != null && (note ?? sub) !== '' && (
         <span className={`block ${size === 'lg' ? 'mt-2' : 'mt-1'} text-caption text-ink-500`}>{note ?? sub}</span>
@@ -703,7 +703,7 @@ export const DashboardHeader = ({ title, lead, action }) => (
 export const PageHeader = ({ title, lead, action }) => (
   <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
     <div className="min-w-0">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{title}</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-900">{title}</h1>
       {lead && <p className="mt-1 max-w-2xl text-sm text-ink-500">{lead}</p>}
     </div>
     {action && <div className="flex flex-wrap items-center gap-2">{action}</div>}

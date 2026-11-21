@@ -69,7 +69,7 @@ export const Panel = ({ title, lead, action, children, className = '' }) => {
     {(title || action) && (
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3.5">
         <div className="min-w-0">
-          <h2 className="text-body font-semibold text-ink-900">{tr(title)}</h2>
+          <h2 className="font-display text-body font-semibold text-ink-900">{tr(title)}</h2>
           {lead && <p className="text-caption text-ink-500">{lead}</p>}
         </div>
         {action}
