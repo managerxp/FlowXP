@@ -71,6 +71,7 @@ export default function More() {
       { left: 'Parts reports', sub: 'What to buy, what sells, stock age and value', icon: 'analytics-outline', go: '/parts-reports', show: parts && can('reports', 'inventory', 'purchases') },
       { left: 'Trade prices', sub: 'Price lists for garages and trade, and parts held for customers', icon: 'pricetags-outline', go: '/parts-trade', show: parts && can('billing', 'price_change', 'inventory') },
       { left: 'Receive parts', sub: 'A delivery: accepted, damaged and rejected counted apart', icon: 'download-outline', go: '/parts-receive', show: can('grn') },
+      { left: 'Suppliers and stock coming in', sub: 'Who you buy from, and receive a delivery', icon: 'people-outline', go: '/suppliers', show: can('suppliers', 'purchases', 'inventory') },
       { left: 'Staff', sub: 'People, attendance and payroll', icon: 'people-circle-outline', go: '/workshop-staff', show: can('hr', 'payroll') }
     ] },
     { title: 'Your business', icon: 'stats-chart-outline', items: [
