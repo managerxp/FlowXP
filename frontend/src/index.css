@@ -93,6 +93,7 @@
 
   /* Elevation. Borders do most of the work; shadows are for things that
      float (menus, dialogs, the product screenshots). */
+  --shadow-card: 0 1px 2px rgb(17 23 47 / 0.04), 0 6px 20px rgb(17 23 47 / 0.05);   /* the phone app's soft card shadow */
   --shadow-sm: 0 1px 2px rgb(17 24 39 / 0.05);
   --shadow-md: 0 8px 24px -12px rgb(17 24 39 / 0.18);
   --shadow-lg: 0 24px 48px -24px rgb(17 24 39 / 0.28);
@@ -137,6 +138,7 @@ body {
     --color-surface-3: #1e2b49;
     --color-line: #263554;
     --color-line-strong: #364a74;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.25), 0 6px 20px rgb(0 0 0 / 0.2);
     --color-ink-900: #e9eefb;
     --color-ink-700: #c5cfe6;
     --color-ink-500: #96a6c6;
@@ -337,4 +339,10 @@ main:has(> .final-cta:last-child) + .site-footer { padding-top: 6rem; }
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Every white card inside the signed-in app (the shared Card/StatCard/Panel and the many screens that write the same classes by hand) gets the phone's soft shadow.
+   Looks only: no size or position changes. In the base layer so a screen's own shadow class still wins. */
+@layer base {
+  main [class*="rounded-(--radius-card)"][class*="bg-surface"]:not([class*="bg-surface-"]) { box-shadow: var(--shadow-card); }
 }
