@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '../../lib/icons.tsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useScope } from '../../lib/local.ts';
 import { currentBusiness, useSession } from '../../lib/session.ts';
@@ -16,9 +17,11 @@ import { Button, Chips, Empty, Line, Title, s, color } from '../../lib/ui.tsx';
 
 const PAGE = 60;
 
-/* The rarely-used tools sit under the list as quiet links, so the top stays for searching and adding. */
-const ToolLink = ({ label, go }: { label: string; go: string }) => (
-  <Pressable accessibilityRole="button" onPress={() => router.push(go as never)} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 }}>
+/* The extra tools sit under the search as small buttons that wrap on a narrow screen. */
+const ToolLink = ({ label, go, icon }: { label: string; go: string; icon: React.ComponentProps<typeof Ionicons>['name'] }) => (
+  <Pressable accessibilityRole="button" onPress={() => router.push(go as never)}
+    style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 22, backgroundColor: color.card, borderWidth: 1, borderColor: color.line }}>
+    <Ionicons name={icon} size={18} color={color.brand} />
     <Text style={{ color: color.brand, fontWeight: '600' }}>{t(label)}</Text>
   </Pressable>
 );
@@ -70,17 +73,19 @@ export default function Products() {
           <SearchBox value={text} onChange={setText} placeholder={food ? 'Search for an item' : 'Search by name or barcode'} label="Search products" />
         </View>
         <Hint id="products" />
+        {food || !pharmacy ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingBottom: 8 }}>
+            {food ? <ToolLink label="Menu on / off" go="/menu-availability" icon="restaurant-outline" /> : null}
+            {food ? <ToolLink label="Options & add-ons" go="/option-groups" icon="options-outline" /> : null}
+            {!food && !pharmacy ? <ToolLink label="Print labels" go="/labels" icon="print-outline" /> : null}
+          </View>
+        ) : null}
         {categories.length > 1 ? <Chips items={[{ id: '__all__', label: `All ${sync.products}` }, ...categories.map((c) => ({ id: c.name, label: `${c.name || 'Other'} ${c.count}` }))]} value={category} onChange={setCategory} /> : null}
         <ColumnList
           style={{ flex: 1, marginTop: 8 }} data={rows} keyExtractor={(p) => String(p.product_id)} onEndReached={loadMore} onEndReachedThreshold={0.5} keyboardShouldPersistTaps="handled"
           ListEmptyComponent={<Empty>{sync.products === 0 ? 'No products on this phone yet. Open Sell while you have internet and they download by themselves.' : 'No product matches.'}</Empty>}
           renderItem={renderProduct}
         />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 4, paddingHorizontal: 16 }}>
-          {food ? <ToolLink label="Menu on / off" go="/menu-availability" /> : null}
-          {food ? <ToolLink label="Options & add-ons" go="/option-groups" /> : null}
-          {!food && !pharmacy ? <ToolLink label="Print labels" go="/labels" /> : null}
-        </View>
         <Text style={{ textAlign: 'center', color: color.soft, fontSize: 12, padding: 6 }}>{sync.products} products on this phone</Text>
       </Page>
     </SafeAreaView>
