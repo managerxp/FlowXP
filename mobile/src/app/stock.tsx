@@ -13,7 +13,9 @@ import type { StockRow } from '../lib/types.ts';
 import { REASONS, STATUS_LABEL, adjustBody, adjustProblem, afterText, counts, statusOf, urgent, visible, type Filter, type Mode, type Status } from '../lib/inventory.ts';
 import { WHOLESALE_TYPES } from '../lib/retail.ts';
 import { qty } from '../lib/money.ts';
+import { t } from '../lib/i18n.ts';
 import { Page, ColumnList } from '../lib/responsive.tsx';
+import { SearchBox } from '../lib/SearchBox.tsx';
 import { Button, Chips, Empty, ErrorText, Failed, Loading, SavedNote, Soft, Title, color, s } from '../lib/ui.tsx';
 
 /* getters, so the colours follow the theme when it is switched */
@@ -95,11 +97,11 @@ export default function Stock() {
       <Page grid>
         <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <View style={{ flex: 1 }}><Title>Stock</Title><Soft>{n.out || n.low ? `${n.out ? `${n.out} out of stock` : ''}${n.out && n.low ? ', ' : ''}${n.low ? `${n.low} running low` : ''}` : 'Everything is in stock'}</Soft></View>
-          <Button title="Order more" kind="quiet" onPress={buy} />
           <Button title="Back" kind="quiet" onPress={() => goBack()} />
         </View>
+        {n.out || n.low ? <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}><Button title="Order more" onPress={buy} /></View> : null}
         <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-          <TextInput style={s.input} value={text} onChangeText={setText} placeholder="Search for an item" accessibilityLabel="Search stock" autoCorrect={false} />
+          <SearchBox value={text} onChange={setText} placeholder="Search for an item" label="Search stock" />
         </View>
         <Chips<Filter> items={[{ id: 'all', label: `All ${n.all}` }, { id: 'out', label: `Out ${n.out}` }, { id: 'low', label: `Low ${n.low}` }, { id: 'in', label: `In stock ${n.in}` }]} value={filter} onChange={setFilter} />
         <SavedNote at={savedAt} />
@@ -111,6 +113,11 @@ export default function Stock() {
           ListEmptyComponent={data ? <Empty>{filter === 'all' && !text ? 'No stock is being counted yet. Turn on "Count the stock" for an item to see it here.' : 'Nothing here.'}</Empty> : null}
           renderItem={renderRow}
         />
+        {!(n.out || n.low) ? (
+          <Pressable accessibilityRole="button" onPress={buy} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: color.brand, fontWeight: '600' }}>{t('Order more')}</Text>
+          </Pressable>
+        ) : null}
       </Page>
 
       <Modal visible={item != null} transparent animationType="slide" onRequestClose={close}>
