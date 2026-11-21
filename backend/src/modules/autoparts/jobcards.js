@@ -344,7 +344,7 @@ export const billJob = async (client, tenant, userId, id, b = {}) => {
     : { description: l.description, quantity: Number(l.quantity), unit_price: Number(l.unit_price_paise) / 100, tax_rate: Number(l.tax_rate) }));
   const vehicle = [job.vehicle_reg, [job.make, job.model].filter(Boolean).join(' '), job.odometer_km != null ? `${job.odometer_km} km` : ''].filter(Boolean).join(' · ');
   const invoice = await createInvoiceInTransaction(client, tenant, userId, {
-    customerId: job.customer_id, items, discount: b.discount, payment: b.payment, payments: b.payments, notes: `Job card ${job.job_no} · ${vehicle}`, clientKey: b.clientKey
+    customerId: job.customer_id, items, discount: b.discount, payment: b.payment, payments: b.payments, redeemPoints: b.redeem_points, spendMembershipId: b.spend_membership_id, notes: `Job card ${job.job_no} · ${vehicle}`, clientKey: b.clientKey
   });
   // labour is a service: its lines carry the SAC for maintenance and repair of motor vehicles, so the tax invoice and the GST return show a code for it (parts keep their own HSN)
   await client.query(`UPDATE invoice_items SET hsn_sac = $2 WHERE invoice_id = $1 AND product_id IS NULL AND hsn_sac IS NULL`, [invoice.invoice_id, LABOUR_SAC]);

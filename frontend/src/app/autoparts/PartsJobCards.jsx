@@ -8,6 +8,7 @@ import { FIT, VEHICLE_TYPES, n3, qs, rsPaise, useDebounced, useLoad } from '../.
 import { Alert, Badge, Button, Field, Input, ListState, Modal, PageHeader, Select, Table, Td, Th, Thead, Tr, useDialog } from '../../components/ui.jsx';
 import { Chips, NumberField, Panel, Tabs, useAction } from '../salon/parts.jsx';
 import { T, useT } from '../../i18n/useT.js';
+import { PointsPanel } from '../../components/LoyaltyCard.jsx';
 import { WorkshopToday } from './PartsHome.jsx';
 import Suggest from './Suggest.jsx';
 import { printJobCard } from './printJobCard.js';
@@ -119,6 +120,16 @@ const JobDetail = ({ id, onClose, onChanged }) => {
   const [labour, setLabour] = useState({ description: '', price: '', save: false });
   const services = useLoad('/autoparts/jobcards/services');
   const [pay, setPay] = useState({ method: 'CASH', amount: '' });
+  const [pointsInfo, setPointsInfo] = useState(null);   // the customer's loyalty points
+  const [redeem, setRedeem] = useState('');
+  const jobCustomer = job.data?.customer_id;
+  useEffect(() => {
+    setRedeem(''); setPointsInfo(null);
+    if (!jobCustomer) return undefined;
+    let live = true;
+    api(`/loyalty/customers/${jobCustomer}`).then((d) => { if (live) setPointsInfo(d.points || null); }).catch(() => {});   // not in every plan: then there is simply no points box
+    return () => { live = false; };
+  }, [jobCustomer]);
   const [error, setError] = useState(''); const [busy, run] = useAction();
   const j = job.data;
   if (!j) return <Modal wide title={tr('Job card')} onClose={onClose}><ListState loading={job.loading} error={job.error} /></Modal>;
@@ -131,7 +142,7 @@ const JobDetail = ({ id, onClose, onChanged }) => {
     setError('');
     const amount = pay.amount === '' ? 'FULL' : Number(pay.amount);
     try {
-      const out = await api(`/autoparts/jobcards/${id}/bill`, { method: 'POST', body: { payment: pay.method === 'CREDIT' ? undefined : { amount, method: pay.method } } });
+      const out = await api(`/autoparts/jobcards/${id}/bill`, { method: 'POST', body: { payment: pay.method === 'CREDIT' ? undefined : { amount, method: pay.method }, ...(Number(redeem) > 0 && pointsInfo?.membership_id ? { redeem_points: Number(redeem), spend_membership_id: pointsInfo.membership_id } : {}) } });
       onChanged(); navigate(`/app/billing/invoices/${out.invoice.invoice_id}`);
     } catch (e) { setError(e.message); }
   }, null);
@@ -235,6 +246,7 @@ const JobDetail = ({ id, onClose, onChanged }) => {
           </dl>
         </Panel>
 
+        {live && can('billing') && j.lines.length > 0 && pointsInfo && <div className="border-t border-line pt-4"><PointsPanel points={pointsInfo} total={(est?.total_paise || 0) / 100} value={redeem} onChange={setRedeem} /></div>}
         {live && can('billing') && j.lines.length > 0 && (
           <div className="flex flex-wrap items-end gap-3 border-t border-line pt-4">
             <Field id="jd-method" label={tr('Customer pays')}><Select id="jd-method" value={pay.method} onChange={(e) => setPay((x) => ({ ...x, method: e.target.value }))}>{METHODS.map(([v, l]) => <option key={v} value={v}>{tr(l)}</option>)}</Select></Field>
