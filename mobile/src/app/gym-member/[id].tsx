@@ -86,10 +86,10 @@ export default function GymMember() {
               </View>
 
               <View style={{ padding: 16, gap: 8 }}>
-                <Button title={ren ? 'Renew membership' : 'Sell a membership'} onPress={() => { setPanel(panel === 'sell' ? '' : 'sell'); setError(''); }} selected={panel === 'sell'} />
+                <Button title="Check in" onPress={checkIn} disabled={busy} />
+                <Button title={ren ? 'Renew membership' : 'Sell a membership'} kind={ren ? 'quiet' : 'primary'} onPress={() => { setPanel(panel === 'sell' ? '' : 'sell'); setError(''); }} selected={panel === 'sell'} />
                 {cur && cur.state !== 'FROZEN' && cur.freeze_allowed ? <Button title="Freeze membership" kind="quiet" onPress={() => { setPanel(panel === 'freeze' ? '' : 'freeze'); setError(''); }} selected={panel === 'freeze'} /> : null}
                 {cur?.state === 'FROZEN' ? <Button title="End the freeze" kind="quiet" onPress={unfreeze} busy={busy} /> : null}
-                <Button title="Check in" kind="quiet" onPress={checkIn} disabled={busy} />
               </View>
 
               {panel === 'sell' ? (

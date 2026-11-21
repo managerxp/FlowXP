@@ -8,7 +8,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { BOOKING_TEXT, rowsOf, timeOf, todayISO, type Booking, type ClassSession } from '../lib/gymMembers.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Empty, ErrorText, Failed, Line, Loading, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Empty, ErrorText, Failed, Line, Loading, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 
 /* Today's classes: who is booked, and mark each person as came or did not come. */
 export default function GymClasses() {
@@ -38,7 +38,7 @@ export default function GymClasses() {
           {list.busy && !list.data ? <Loading /> : null}
           {list.error && !list.data ? <Failed message={list.error} onRetry={() => { void list.refresh(); }} /> : null}
           {list.data && list.data.length === 0 ? <Empty>No classes today.</Empty> : null}
-          {(list.data ?? []).map((c) => (
+          <Group>{(list.data ?? []).map((c) => (
             <View key={c.session_id}>
               <Line left={c.class_name} sub={[`${timeOf(c.starts_at)} – ${timeOf(c.ends_at)}`, c.trainer_name, c.room].filter(Boolean).join(' · ')} right={`${c.booked}/${c.capacity}`} selected={open === c.session_id} onPress={() => { setOpen(open === c.session_id ? null : c.session_id); setError(''); }} />
               {open === c.session_id ? (
@@ -60,7 +60,7 @@ export default function GymClasses() {
                 </View>
               ) : null}
             </View>
-          ))}
+          ))}</Group>
         </ScrollView>
       </Page>
     </SafeAreaView>
