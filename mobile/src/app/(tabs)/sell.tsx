@@ -18,6 +18,7 @@ import { t } from '../../lib/i18n.ts';
 import { ApiError, newKey } from '../../lib/api.ts';
 import { estimateOf, holdBill, toSnapshot, type HeldRow } from '../../lib/held.ts';
 import { useWide } from '../../lib/responsive.tsx';
+import { Ionicons } from '../../lib/icons.tsx';
 import { Button, Chips, ErrorText, Soft, Title, color, s } from '../../lib/ui.tsx';
 import { display, radius, shadow } from '../../lib/theme.ts';
 import CustomItem from '../../lib/CustomItem.tsx';
@@ -170,7 +171,7 @@ export default function Sell() {
       <Hint id="sell" />
       {sync.stopped === 'offline' || sync.pending > 0 ? <Hint id="offline" /> : null}
       {heldCount > 0 ? (
-        <Pressable accessibilityRole="button" onPress={() => router.push('/held')} style={{ minHeight: 48, justifyContent: 'center' }}>
+        <Pressable accessibilityRole="button" onPress={() => router.push('/held')} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 12, borderCurve: 'continuous', backgroundColor: color.tint }}>
           <Text style={{ color: color.brand, fontWeight: '600' }}>{heldCount} bill{heldCount === 1 ? '' : 's'} on hold. Tap to resume.</Text>
         </Pressable>
       ) : null}
@@ -178,7 +179,10 @@ export default function Sell() {
         <TextInput style={[s.input, { flex: 1 }]} value={text} onChangeText={setText} onSubmitEditing={submit} placeholder={kitchenShop ? 'Search for an item' : 'Search or scan a barcode'} returnKeyType="search" autoCorrect={false} accessibilityLabel="Search products" />
         {kitchenShop ? null : <Button title="Scan" kind="quiet" onPress={() => router.push('/scan')} />}
       </View>
-      <Button title={t('+ Add another item')} kind="quiet" onPress={() => setOtherOpen(true)} />
+      <Pressable accessibilityRole="button" accessibilityLabel={t('+ Add another item')} onPress={() => setOtherOpen(true)} style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
+        <Ionicons name="add" size={20} color={color.brand} />
+        <Text style={{ color: color.brand, fontWeight: '600' }}>{t('+ Add another item').replace(/^\+\s*/, '')}</Text>
+      </Pressable>
       {empty && sync.busy ? <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><ActivityIndicator /><Soft>Getting the products… {sync.progress}</Soft></View> : null}
       {empty && !sync.busy ? <Soft>No products on this phone yet. Connect once so they can be downloaded.</Soft> : null}
       {empty && !sync.busy ? <Button title="Download now" kind="quiet" onPress={() => { void syncAll(); }} /> : null}
