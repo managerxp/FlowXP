@@ -1669,3 +1669,4 @@ Flow: the receipt carries the bill's own QR (`/card/bill/<share_token>`). After 
 - Phone app: wholesale orders and customers use the shared search box (same look as the other lists).
 - Phone app: Racing businesses now get the restaurant-style till, kitchen and menu, as on the web.
 - Phone app: loyalty points on the Pay screen (till and table orders, every industry with the loyalty feature): once a customer is on the bill their points balance shows, with 'Points to use' and 'Use max' (balance, minimum and share-of-bill limit as on the web); the points come off the amount and go to the server as redeem_points (+ spend_membership_id). Labels not yet translated.
+- Phone app: the loyalty points labels on the Pay screen are translated (hi, ml, ta, bn, te, kn).
