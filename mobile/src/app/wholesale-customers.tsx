@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
+import { SearchBox } from '../lib/SearchBox.tsx';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, useSession } from '../lib/session.ts';
@@ -32,7 +33,7 @@ export default function WholesaleCustomers() {
           <Button title="Back" kind="quiet" onPress={() => goBack()} />
         </View>
         <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-          <TextInput style={s.input} value={text} onChangeText={setText} placeholder="Search by name, phone or GST number" autoCorrect={false} accessibilityLabel="Search customers" />
+          <SearchBox value={text} onChange={setText} placeholder="Search by name, phone or GST number" label="Search customers" />
         </View>
         <Chips<Show> items={[{ id: 'all', label: 'Everyone' }, { id: 'owing', label: 'Owe money' }, { id: 'overdue', label: 'Overdue' }]} value={show} onChange={setShow} />
         <SavedNote at={list.savedAt} />

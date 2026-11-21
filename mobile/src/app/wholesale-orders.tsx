@@ -1,6 +1,7 @@
 import { formatDate } from '../lib/display.ts';
 import { useEffect, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
+import { SearchBox } from '../lib/SearchBox.tsx';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, useSession } from '../lib/session.ts';
@@ -34,7 +35,7 @@ export default function WholesaleOrders() {
           <Button title="Back" kind="quiet" onPress={() => goBack()} />
         </View>
         <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-          <TextInput style={s.input} value={text} onChangeText={setText} placeholder="Order number, customer or their PO" autoCorrect={false} accessibilityLabel="Search orders" />
+          <SearchBox value={text} onChange={setText} placeholder="Order number, customer or their PO" label="Search orders" />
         </View>
         <Chips<Show> items={[{ id: 'open', label: 'Open' }, { id: 'waiting', label: 'Waiting for approval' }, { id: 'done', label: 'Finished' }]} value={show} onChange={setShow} />
         <SavedNote at={list.savedAt} />
