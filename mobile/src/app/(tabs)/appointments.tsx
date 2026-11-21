@@ -9,7 +9,8 @@ import { APPOINTMENT_LABEL, NEXT, canBill, canCancel, canNoShow, type Appointmen
 import { clock } from '../../lib/floor.ts';
 import { rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Failed, Loading, SavedNote, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Loading, SavedNote, Soft, Title, color, s, Pill } from '../../lib/ui.tsx';
+import { radius, shadow } from '../../lib/theme.ts';
 
 type Day = 'today' | 'tomorrow';
 const dayText = (d: Day) => { const x = new Date(); if (d === 'tomorrow') x.setDate(x.getDate() + 1); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
@@ -49,9 +50,9 @@ export default function Appointments() {
           {rows.map((a) => {
             const next = NEXT[a.status];
             return (
-              <View key={a.appointment_id} style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: color.card }}>
+              <View key={a.appointment_id} style={{ marginHorizontal: 16, marginBottom: 10, padding: 16, gap: 8, borderRadius: radius.card, borderCurve: 'continuous', borderWidth: 1, borderColor: color.line, backgroundColor: color.card, boxShadow: shadow.card }}>
                 <Text style={{ fontSize: 16, fontWeight: '600', color: color.ink }}>{clock(a.start_at)} · {a.customer_name ?? 'Walk-in'}</Text>
-                <Text style={{ color: TONE[a.status], fontWeight: '600' }}>{APPOINTMENT_LABEL[a.status]}</Text>
+                <View style={{ flexDirection: 'row' }}><Pill label={APPOINTMENT_LABEL[a.status]} tone={TONE[a.status]} /></View>
                 <Soft>{a.services.map((x) => `${x.name} (${x.staff_name})`).join(', ')} · {rupees(toPaise(a.total))}</Soft>
                 {a.notes ? <Soft>{a.notes}</Soft> : null}
                 <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>

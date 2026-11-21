@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
+import { SearchBox } from '../../lib/SearchBox.tsx';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, useSession } from '../../lib/session.ts';
@@ -28,7 +29,7 @@ export default function SalonClients() {
           <Button title="Add" onPress={() => router.push('/customers')} />
         </View>
         <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-          <TextInput style={s.input} value={text} onChangeText={setText} placeholder="Search by name or phone" autoCorrect={false} accessibilityLabel="Search clients" />
+          <SearchBox value={text} onChange={setText} placeholder="Search by name or phone" label="Search clients" />
         </View>
         {segs.data && segs.data.segments.length ? <Chips items={[{ id: '', label: 'Everyone' }, ...segs.data.segments.map((x) => ({ id: x.key, label: `${x.label} (${x.count})` }))]} value={segment} onChange={setSegment} /> : null}
         <SavedNote at={list.savedAt} />
