@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { TextInput } from 'react-native';
+import { TextInput, View } from 'react-native';
+import { SearchBox } from '../lib/SearchBox.tsx';
 import { router, useLocalSearchParams } from 'expo-router';
 import { currentBusiness, useSession, api } from '../lib/session.ts';
 import { allowed } from '../lib/access.ts';
@@ -69,16 +70,18 @@ export default function JobCardsScreen() {
   const tree = makes.data ?? [];
   return (
     <SetupShell title="Job cards" sub="Vehicles in for service: the parts fitted, the labour and one bill" ok={ok} denied="You do not have access to job cards.">
-      <Chips items={[{ id: 'jobs', label: 'Job cards' }, { id: 'due', label: 'Services due' }]} value={tab} onChange={setTab} />
+      {form ? null : <Chips items={[{ id: 'jobs', label: 'Job cards' }, { id: 'due', label: 'Services due' }]} value={tab} onChange={setTab} />}
       {tab === 'jobs' ? (
         <>
-          <TextInput style={[s.input, { marginHorizontal: 16 }]} value={text} onChangeText={setText} placeholder={t('Job number, registration or customer')} autoCapitalize="none" autoCorrect={false} accessibilityLabel={t('Job number, registration or customer')} />
-          <Chips items={[{ id: 'LIVE', label: 'In the workshop' }, { id: 'READY', label: 'Ready' }, { id: 'BILLED', label: 'Billed' }, { id: 'ALL', label: 'All' }]} value={show} onChange={setShow} />
+          {form ? null : <>
+            <View style={{ paddingHorizontal: 16, paddingBottom: 4 }}><SearchBox value={text} onChange={setText} placeholder="Job number, registration or customer" label="Job number, registration or customer" /></View>
+            <Chips items={[{ id: 'LIVE', label: 'In the workshop' }, { id: 'READY', label: 'Ready' }, { id: 'BILLED', label: 'Billed' }, { id: 'ALL', label: 'All' }]} value={show} onChange={setShow} />
+          </>}
           {list.error && !list.data ? <Failed message={list.error} onRetry={list.reload} /> : !list.data ? <Loading /> : (
             <Panel>
-              <Button title="New job card" onPress={() => { a.setError(''); setForm({ ...emptyJob(), vehicle_type: kinds[0].id }); }} />
-              {list.data.length === 0 ? <><Soft>{t('No job cards here.')}</Soft><Soft>{t('Open a card when a vehicle comes in.')}</Soft></> : null}
-              <Group>{list.data.map((j) => <Line key={j.job_id} left={`${j.job_no} · ${vehicleOf(j)}`} sub={jobSub(j)} onPress={() => router.push({ pathname: '/job-card/[id]', params: { id: String(j.job_id) } })} />)}</Group>
+              {form ? null : <Button title="New job card" onPress={() => { a.setError(''); setForm({ ...emptyJob(), vehicle_type: kinds[0].id }); }} />}
+              {!form && list.data.length === 0 ? <><Soft>{t('No job cards here.')}</Soft><Soft>{t('Open a card when a vehicle comes in.')}</Soft></> : null}
+              {form ? null : <Group>{list.data.map((j) => <Line key={j.job_id} left={`${j.job_no} · ${vehicleOf(j)}`} sub={jobSub(j)} onPress={() => router.push({ pathname: '/job-card/[id]', params: { id: String(j.job_id) } })} />)}</Group>}
               {form ? (
                 <Card>
                   <CustomerFind form={form} set={set} />
