@@ -1,5 +1,6 @@
 import { memo, useEffect, useState } from 'react';
-import { RefreshControl, Text, TextInput, View } from 'react-native';
+import { RefreshControl, Text, View } from 'react-native';
+import { SearchBox } from '../../lib/SearchBox.tsx';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, useSession } from '../../lib/session.ts';
@@ -54,13 +55,14 @@ export default function Sales() {
     <SafeAreaView style={s.screen} edges={['top']}>
       <Page grid>
         <View style={{ padding: 16, paddingBottom: 8 }}><Title>Bills</Title></View>
-        <Chips<Tab> items={[{ id: 'bills', label: 'All bills' }, { id: 'phone', label: `Waiting to send${sync.pending + sync.failed ? ` (${sync.pending + sync.failed})` : ''}` }]} value={tab} onChange={setTab} />
+        {tab === 'phone' || sync.pending + sync.failed > 0 ? (   // the 'waiting to send' tab only shows while something is waiting; More > Bills waiting to send always reaches it
+          <Chips<Tab> items={[{ id: 'bills', label: 'All bills' }, { id: 'phone', label: `Waiting to send${sync.pending + sync.failed ? ` (${sync.pending + sync.failed})` : ''}` }]} value={tab} onChange={setTab} />
+        ) : null}
         {tab === 'phone' ? <WaitingList /> : (
           <>
-            <View style={{ height: 8 }} />
             <Chips items={ranges().map((r) => ({ id: r.id, label: r.label }))} value={rangeId as never} onChange={(id) => setRangeId(id)} />
-            <View style={{ padding: 16, paddingBottom: 8 }}>
-              <TextInput style={s.input} value={text} onChangeText={setText} placeholder="Bill number, customer or phone" autoCorrect={false} accessibilityLabel="Search bills" />
+            <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+              <SearchBox value={text} onChange={setText} placeholder="Bill number, customer or phone" label="Search bills" />
             </View>
             <SavedNote at={bills.savedAt} />
             {sm ? (
