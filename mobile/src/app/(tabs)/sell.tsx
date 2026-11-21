@@ -158,10 +158,18 @@ export default function Sell() {
 
   const Header = (
     <View style={{ padding: 16, gap: 10 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <View style={{ flex: 1 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <View style={{ flex: 1, minWidth: 120 }}>
           <Text numberOfLines={1} style={{ fontWeight: '700', fontSize: 20, letterSpacing: -0.3, color: color.ink }}>{outlet?.name}</Text>
         </View>
+        <Pressable accessibilityRole="button" accessibilityLabel={heldCount > 0 ? `${t('Bills on hold')}: ${heldCount}` : t('Bills on hold')} onPress={() => router.push('/held')}
+          style={{ minHeight: 48, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 24, backgroundColor: heldCount > 0 ? color.tint : color.card, borderWidth: 1, borderColor: heldCount > 0 ? color.tintLine : color.line }}>
+          <Ionicons name="pause-circle-outline" size={20} color={color.brand} />
+          <Text style={{ color: color.brand, fontWeight: '700' }}>{t('Hold')}</Text>
+          <View style={{ minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: heldCount > 0 ? color.brand : color.wash }}>
+            <Text style={{ color: heldCount > 0 ? color.onAction : color.soft, fontSize: 12, fontWeight: '700', fontVariant: ['tabular-nums'] }}>{heldCount}</Text>
+          </View>
+        </Pressable>
         <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/customers', params: { pick: '1' } })}
           style={{ minHeight: 48, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 24, backgroundColor: customer ? color.tint : color.action, borderWidth: 1, borderColor: customer ? color.tintLine : color.action }}>
           <Ionicons name={customer ? 'person-outline' : 'person-add-outline'} size={18} color={customer ? color.brand : color.onAction} />
@@ -171,13 +179,6 @@ export default function Sell() {
       <SyncBadge />
       <Hint id="sell" />
       {sync.stopped === 'offline' || sync.pending > 0 ? <Hint id="offline" /> : null}
-      <Pressable accessibilityRole="button" accessibilityLabel={heldCount > 0 ? `${t('Bills on hold')}: ${heldCount}` : t('Bills on hold')} onPress={() => router.push('/held')}
-        style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderRadius: 12, borderCurve: 'continuous', backgroundColor: heldCount > 0 ? color.tint : color.card, borderWidth: 1, borderColor: heldCount > 0 ? color.tintLine : color.line }}>
-        <Ionicons name="pause-circle-outline" size={20} color={color.brand} />
-        <Text style={{ flex: 1, color: color.brand, fontWeight: '600' }}>{t('Bills on hold')}</Text>
-        {heldCount > 0 ? <Text style={{ color: color.brand, fontWeight: '700', fontVariant: ['tabular-nums'] }}>{heldCount}</Text> : null}
-        <Ionicons name="chevron-forward" size={18} color={color.soft} />
-      </Pressable>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <TextInput style={[s.input, { flex: 1 }]} value={text} onChangeText={setText} onSubmitEditing={submit} placeholder={kitchenShop ? 'Search for an item' : 'Search or scan a barcode'} returnKeyType="search" autoCorrect={false} accessibilityLabel="Search products" />
         {kitchenShop ? null : <Button title="Scan" kind="quiet" onPress={() => router.push('/scan')} />}

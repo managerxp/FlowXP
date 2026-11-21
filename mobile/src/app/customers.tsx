@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SearchBox } from '../lib/SearchBox.tsx';
+import { Ionicons } from '../lib/icons.tsx';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
@@ -73,6 +74,14 @@ export default function Customers() {
           </View>
           <SearchBox value={text} onChange={setText} placeholder="Search by name or phone" label="Search customers" />
           <Button title="Add customer" onPress={() => setAdding(true)} />
+          {!pick && !offline ? (
+            <Pressable accessibilityRole="button" onPress={() => router.push('/customers-import')}
+              style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderRadius: 12, borderCurve: 'continuous', backgroundColor: color.card, borderWidth: 1, borderColor: color.line }}>
+              <Ionicons name="download-outline" size={20} color={color.brand} />
+              <Text style={{ flex: 1, color: color.brand, fontWeight: '600' }}>{t('Import customers')}</Text>
+              <Ionicons name="chevron-forward" size={18} color={color.soft} />
+            </Pressable>
+          ) : null}
         </View>
         {!pick && !offline ? <Chips<Show> items={[{ id: 'all', label: 'Everyone' }, { id: 'owing', label: 'Customer dues' }, { id: 'best', label: 'Best customers' }]} value={show} onChange={setShow} /> : null}
         <SavedNote at={savedAt} />
@@ -84,11 +93,6 @@ export default function Customers() {
           ListEmptyComponent={busy ? <Loading what="Loading customers" /> : <Empty>{search ? 'No customer matches.' : show === 'owing' ? 'Nobody owes you anything.' : show === 'best' ? 'No purchases yet.' : 'No customers yet. Add a customer to keep their bills and what they owe.'}</Empty>}
           renderItem={renderRow}
         />
-        {!pick && !offline ? (
-          <Pressable accessibilityRole="button" onPress={() => router.push('/customers-import')} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: color.brand, fontWeight: '600' }}>{t('Import customers')}</Text>
-          </Pressable>
-        ) : null}
       </Page>
     </SafeAreaView>
   );
