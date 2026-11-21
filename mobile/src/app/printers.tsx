@@ -140,7 +140,7 @@ export default function Printers() {
               <View style={{ flex: 1 }}><Button title={looking ? 'Looking…' : 'Look for printers nearby'} kind="quiet" onPress={() => { void look(); }} busy={looking} /></View>
             </View>
             {paired && paired.length === 0 ? <Soft>{t("No Bluetooth printers found. Switch the printer on and pair it in the phone's Bluetooth settings.")}</Soft> : null}
-            <Group>{paired?.map((d) => <Line key={d.address} left={d.name} sub={d.address} icon="bluetooth-outline" onPress={() => add({ name: nameOf(d.name, d.address), kind: 'bluetooth', address: d.address, port: DEFAULT_PORT })} />)}</Group>
+            <Group flush>{paired?.map((d) => <Line key={d.address} left={d.name} sub={d.address} icon="bluetooth-outline" onPress={() => add({ name: nameOf(d.name, d.address), kind: 'bluetooth', address: d.address, port: DEFAULT_PORT })} />)}</Group>
 
             {more ? (
               <>

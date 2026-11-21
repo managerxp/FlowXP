@@ -74,7 +74,7 @@ const StationsTab = () => {
     <Panel>
       <SectionTitle>Zones</SectionTitle>
       <Soft>{t('The groups on the board: Console lounge, Private rooms, Pool and snooker')}</Soft>
-      <Group>{zones.map((z) => <Line key={z.zone_id} left={z.name} sub={t('{n} stations', { n: z.stations })} onPress={() => { a.setError(''); setZedit({ id: z.zone_id, name: z.name }); }} />)}</Group>
+      <Group flush>{zones.map((z) => <Line key={z.zone_id} left={z.name} sub={t('{n} stations', { n: z.stations })} onPress={() => { a.setError(''); setZedit({ id: z.zone_id, name: z.name }); }} />)}</Group>
       {zedit ? (
         <Card>
           <Input label="Zone name" value={zedit.name} onChange={(v) => setZedit({ ...zedit, name: v })} max={40} />
@@ -91,7 +91,7 @@ const StationsTab = () => {
       <Soft>{t('Each one has its own table, so food and drink for it sit on the same bill as its time')}</Soft>
       <Button title="Add a station" onPress={() => { a.setError(''); setSf({ f: emptyStation(zones[0]?.zone_id) }); }} />
       {st.data.length === 0 ? <Soft>{t('Add your first PS5, room or table.')}</Soft> : null}
-      <Group>{st.data.map((x) => <View key={x.station_id} style={{ opacity: x.status === 'OUT_OF_SERVICE' ? 0.6 : 1 }}><Line left={x.status === 'OUT_OF_SERVICE' ? `${x.name} · ${t('Out of service')}` : x.name} sub={stationSub(x)} onPress={() => { a.setError(''); setSf({ id: x.station_id, f: stationForm(x) }); setFault(x.status === 'OUT_OF_SERVICE' ? { id: x.station_id, note: x.status_note ?? '' } : null); }} /></View>)}</Group>
+      <Group flush>{st.data.map((x) => <View key={x.station_id} style={{ opacity: x.status === 'OUT_OF_SERVICE' ? 0.6 : 1 }}><Line left={x.status === 'OUT_OF_SERVICE' ? `${x.name} · ${t('Out of service')}` : x.name} sub={stationSub(x)} onPress={() => { a.setError(''); setSf({ id: x.station_id, f: stationForm(x) }); setFault(x.status === 'OUT_OF_SERVICE' ? { id: x.station_id, note: x.status_note ?? '' } : null); }} /></View>)}</Group>
       {sf ? (
         <Card>
           <Input label="Name" hint="What the staff call it: PS5-1, Room A, Pool 2" value={sf.f.name} onChange={(v) => setSf({ ...sf, f: { ...sf.f, name: v } })} max={40} />
@@ -133,7 +133,7 @@ const RatesTab = () => {
       <Soft>{t('What time costs. A station with no rate cannot start a session.')}</Soft>
       <Button title="New rate" onPress={() => { a.setError(''); setRf({ f: emptyRate() }); }} />
       {rates.data.length === 0 ? <Soft>{t('Add one for your consoles, for example 1 player ₹100 an hour, 2 players ₹150.')}</Soft> : null}
-      <Group>{rates.data.map((r) => <Line key={r.rate_id} left={`${r.name} · ${scopeName(r, zn.data as Zone[], st.data as GStation[])}`} sub={rateSummary(r)} onPress={() => { a.setError(''); setRf({ id: r.rate_id, f: rateForm(r) }); }} />)}</Group>
+      <Group flush>{rates.data.map((r) => <Line key={r.rate_id} left={`${r.name} · ${scopeName(r, zn.data as Zone[], st.data as GStation[])}`} sub={rateSummary(r)} onPress={() => { a.setError(''); setRf({ id: r.rate_id, f: rateForm(r) }); }} />)}</Group>
       {rf ? (
         <Card>
           {rf.id ? <Soft>{t('Sessions already running keep the rate they started with. A change applies to the next session.')}</Soft> : null}
@@ -201,7 +201,7 @@ const OffersBlock = ({ pack }: { pack: boolean }) => {
       <Soft>{pack ? t('Prepaid hours sold to a player and played from the board: 10 hours for ₹800') : t('Fixed time at a set price, started from the board: 3 hours for ₹250')}</Soft>
       <Button title={pack ? 'New pack' : 'New offer'} onPress={() => { a.setError(''); setOf({ f: emptyOffer(pack) }); }} />
       {list.data.length === 0 ? <Soft>{pack ? t('Packs are optional.') : t('Offers are optional. Without one, every session is paid by the time used.')}</Soft> : null}
-      <Group>{list.data.map((o) => <Line key={o.bundle_id} left={o.name} sub={offerSub(o, pack)} onPress={() => { a.setError(''); setOf({ id: o.bundle_id, f: offerForm(o) }); }} />)}</Group>
+      <Group flush>{list.data.map((o) => <Line key={o.bundle_id} left={o.name} sub={offerSub(o, pack)} onPress={() => { a.setError(''); setOf({ id: o.bundle_id, f: offerForm(o) }); }} />)}</Group>
       {of ? (
         <Card>
           <Input label="Name" value={of.f.name} onChange={(v) => set({ name: v })} max={80} placeholder="3 hours, Weekend special" />
@@ -235,7 +235,7 @@ const GamesTab = () => {
       <Msg a={a} />
       <Button title="Add" busy={a.busy} onPress={() => { void a.run(name.trim() ? '' : 'Give the game a name', async () => { await api.post('/gaming/games', { name: name.trim() }); setName(''); g.reload(); }, 'Added'); }} />
       {g.data.length === 0 ? <Soft>{t('No games yet')}</Soft> : null}
-      <Group>{g.data.map((x) => <Line key={x.game_id} left={x.name} onPress={() => confirm(t('Remove {name}?', { name: x.name }), '', 'Remove', () => { void a.run('', async () => { await api.call(`/gaming/games/${x.game_id}`, { method: 'DELETE', body: {} }); g.reload(); }, 'Removed'); })} />)}</Group>
+      <Group flush>{g.data.map((x) => <Line key={x.game_id} left={x.name} onPress={() => confirm(t('Remove {name}?', { name: x.name }), '', 'Remove', () => { void a.run('', async () => { await api.call(`/gaming/games/${x.game_id}`, { method: 'DELETE', body: {} }); g.reload(); }, 'Removed'); })} />)}</Group>
     </Panel>
   );
 };

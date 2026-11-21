@@ -100,14 +100,14 @@ const Reconcile = () => {
       {!missing ? null : missing.orders.length === 0 ? <Soft style={{ padding: 16 }}>{t('Nothing unpaid, as far as an imported statement can tell.')}</Soft> : (
         <>
           <Text style={{ color: color.danger, fontWeight: '700', paddingHorizontal: 16, paddingTop: 8 }}>{missingText(missing)}</Text>
-          <Group>{missing.orders.map((o) => <Line key={o.order_id} left={o.order_number} sub={o.external_order_number || o.external_order_id} right={money(o.total)} />)}</Group>
+          <Group flush>{missing.orders.map((o) => <Line key={o.order_id} left={o.order_number} sub={o.external_order_number || o.external_order_id} right={money(o.total)} />)}</Group>
         </>
       )}
       <SectionTitle>Imported lines</SectionTitle>
       {!data ? <Loading /> : data.lines.length === 0 ? <Empty>Nothing imported for this platform yet.</Empty> : (
         <>
           <Soft style={{ paddingHorizontal: 16, paddingBottom: 8 }}>{summaryText(data.summary)}</Soft>
-          <Group>{data.lines.map((l) => <Line key={l.line_id} left={l.order_number || l.external_order_id} right={t(STATUS_LABEL[l.status])} sub={lineSub(l)} />)}</Group>
+          <Group flush>{data.lines.map((l) => <Line key={l.line_id} left={l.order_number || l.external_order_id} right={t(STATUS_LABEL[l.status])} sub={lineSub(l)} />)}</Group>
         </>
       )}
     </ScrollView>

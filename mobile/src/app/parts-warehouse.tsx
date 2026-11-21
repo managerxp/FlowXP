@@ -155,14 +155,14 @@ function Move({ bins, first }: { bins: StorePlace[]; first: number }) {
       {!part ? (
         <>
           <TextInput style={s.input} value={term} onChangeText={setTerm} placeholder="The part: name, code or part number" accessibilityLabel="Part" />
-          <Group>{(found.data ?? []).map((p) => <Line key={p.product_id} left={p.name} sub={partSub(p)} right={stockText(p.stock)} onPress={() => setPart({ product_id: p.product_id, name: p.name })} />)}</Group>
+          <Group flush>{(found.data ?? []).map((p) => <Line key={p.product_id} left={p.name} sub={partSub(p)} right={stockText(p.stock)} onPress={() => setPart({ product_id: p.product_id, name: p.name })} />)}</Group>
         </>
       ) : (
         <>
           <Text style={{ fontSize: 18, fontWeight: '700', color: color.ink }}>{part.name}</Text>
           {where.data && where.data.bins.length === 0 ? <Empty>This part is not on any shelf.</Empty> : null}
           <Soft>Move from</Soft>
-          <Group>{pickOrder(where.data?.bins ?? []).map((b) => <Line key={b.location_id} left={b.code} sub={b.reserved_qty ? `${b.reserved_qty} held` : undefined} right={`${b.available} free`} selected={from === b.location_id} onPress={() => setFrom(b.location_id)} />)}</Group>
+          <Group flush>{pickOrder(where.data?.bins ?? []).map((b) => <Line key={b.location_id} left={b.code} sub={b.reserved_qty ? `${b.reserved_qty} held` : undefined} right={`${b.available} free`} selected={from === b.location_id} onPress={() => setFrom(b.location_id)} />)}</Group>
           <Soft>Move to</Soft>
           <TextInput style={s.input} value={toText} onChangeText={(t) => { setToText(t); setTo(binByCode(bins, t)); }} autoCapitalize="characters" placeholder="Bin code" accessibilityLabel="Bin to move to" />
           <Button title="Scan the bin label" kind="quiet" onPress={scan} />

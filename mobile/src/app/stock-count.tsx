@@ -163,7 +163,7 @@ export default function StockCount() {
               <View style={{ paddingHorizontal: 16, gap: 8 }}>
                 <Button title="Scan items" onPress={() => { setNote(''); setScanning(true); }} />
                 <TextInput style={s.input} value={query} onChangeText={setQuery} placeholder={t('Search a product to count it (+1)')} autoCorrect={false} accessibilityLabel={t('Search a product to count it (+1)')} />
-                <Group>{found.map((p) => <Line key={p.product_id} left={pname(p)} sub={[p.sku, p.barcodes?.[0]].filter(Boolean).join(' · ')} onPress={() => { void countOne(p); }} />)}</Group>
+                <Group flush>{found.map((p) => <Line key={p.product_id} left={pname(p)} sub={[p.sku, p.barcodes?.[0]].filter(Boolean).join(' · ')} onPress={() => { void countOne(p); }} />)}</Group>
               </View>
             ) : null}
             {note ? <Soft style={{ padding: 16 }}>{note}</Soft> : null}

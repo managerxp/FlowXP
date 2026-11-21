@@ -85,14 +85,14 @@ export default function Profitability() {
                   <Stat label="Estimated net" value={money(tt.estimated_net)} note={`${t('after expenses')} · ${deltaText(c.estimated_net_pct)}`} tone={tone(c.estimated_net_pct)} />
                 </View>
                 <SectionTitle>Where each rupee of revenue goes</SectionTitle>
-                <Group>{PARTS.map((p) => <Line key={p.key} left={p.label} right={money(tt[p.key])} sub={`${share(tt[p.key], tt.net_revenue)}% ${t('of revenue')}`} />)}</Group>
+                <Group flush>{PARTS.map((p) => <Line key={p.key} left={p.label} right={money(tt[p.key])} sub={`${share(tt[p.key], tt.net_revenue)}% ${t('of revenue')}`} />)}</Group>
                 <Line left="Operating expenses" right={money(data.period_costs.expenses_total)} sub={expensesSub(data.period_costs)} />
                 <Line left="Wastage" right={money(data.period_costs.wastage)} sub={t('valued at current cost')} />
                 <SectionTitle>By channel</SectionTitle>
-                <Group>{data.channels.length === 0 ? <Empty>No sales in this period.</Empty> : data.channels.map((ch) => <Line key={ch.channel} left={t(CHANNEL_LABEL[ch.channel] ?? ch.channel)} right={money(ch.net_revenue)} sub={channelSub(ch)} />)}</Group>
+                <Group flush>{data.channels.length === 0 ? <Empty>No sales in this period.</Empty> : data.channels.map((ch) => <Line key={ch.channel} left={t(CHANNEL_LABEL[ch.channel] ?? ch.channel)} right={money(ch.net_revenue)} sub={channelSub(ch)} />)}</Group>
                 <SectionTitle>By menu item</SectionTitle>
                 <Chips items={ITEM_SORTS.map((o) => ({ id: o.id, label: o.label }))} value={sort} onChange={setSort} />
-                <Group>{data.items.length === 0 ? <Empty>No items sold in this period.</Empty> : sortItems(data.items, sort).slice(0, 40).map((i) => <Line key={i.product_id} left={i.name} right={money(i.contribution)} sub={itemSub(i)} />)}</Group>
+                <Group flush>{data.items.length === 0 ? <Empty>No items sold in this period.</Empty> : sortItems(data.items, sort).slice(0, 40).map((i) => <Line key={i.product_id} left={i.name} right={money(i.contribution)} sub={itemSub(i)} />)}</Group>
                 <Soft style={{ padding: 16 }}>{t('Net revenue is what was billed before tax, minus discounts and refunds. Cancelled invoices are left out. Food cost is the ingredient cost recorded on each bill when it was made. Fees, commission and packaging use your assumptions: unset means zero. Contribution is what each sale leaves toward rent, salaries and other fixed costs.')}</Soft>
               </>
             )}

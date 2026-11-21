@@ -6,7 +6,7 @@ import { api } from './session.ts';
 import { goBack } from './nav.ts';
 import { t } from './i18n.ts';
 import { Page } from './responsive.tsx';
-import { Button, Empty, ErrorText, Soft, Title, color, s } from './ui.tsx';
+import { Button, Empty, ErrorText, InsetContext, Soft, Title, color, s } from './ui.tsx';
 
 const why = (e: unknown) => (e instanceof Error ? e.message : t('Could not save. Check the connection and try again.'));
 
@@ -30,8 +30,8 @@ export const Multi = ({ items, values, onToggle }: { items: { id: string; label:
     })}
   </View>
 );
-export const Panel = ({ children }: { children: React.ReactNode }) => <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">{children}</ScrollView>;
-export const Card = ({ children }: { children: React.ReactNode }) => <View style={[s.card, { gap: 10 }]}>{children}</View>;
+export const Panel = ({ children }: { children: React.ReactNode }) => <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }} keyboardShouldPersistTaps="handled"><InsetContext.Provider value>{children}</InsetContext.Provider></ScrollView>;
+export const Card = ({ children }: { children: React.ReactNode }) => <View style={[s.card, { gap: 10 }]}><InsetContext.Provider value>{children}</InsetContext.Provider></View>;
 
 /** Load one list from the server and keep it fresh. */
 export function useList<T>(path: string | null) {

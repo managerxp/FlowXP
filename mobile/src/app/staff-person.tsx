@@ -68,14 +68,14 @@ export default function StaffPerson() {
               ) : <Soft>{person.email}</Soft>}
 
               <SectionTitle>Role</SectionTitle>
-              <Group>{roles.map((r) => <Line key={r} left={ROLES[r]} sub={ROLE_HELP[r]} selected={form.role === r} onPress={() => setForm((o) => ({ ...o, role: r, branch_id: GROUP_ROLES.includes(r) ? '' : o.branch_id }))} />)}</Group>
+              <Group flush>{roles.map((r) => <Line key={r} left={ROLES[r]} sub={ROLE_HELP[r]} selected={form.role === r} onPress={() => setForm((o) => ({ ...o, role: r, branch_id: GROUP_ROLES.includes(r) ? '' : o.branch_id }))} />)}</Group>
 
               {group ? <Soft>{t('{role}s can see every outlet.', { role: ROLES[form.role] })}</Soft> : outlets.length > 1 ? (
                 <>
                   <SectionTitle>Outlet</SectionTitle>
                   <Soft style={{ paddingHorizontal: 16 }}>{needsOutlet(form.role) ? t('They can only see and work in this outlet.') : t('Leave on "Every outlet" for a group-level manager.')}</Soft>
                   {!needsOutlet(form.role) ? <Line left={t('Every outlet')} selected={form.branch_id === ''} onPress={() => setForm((o) => ({ ...o, branch_id: '' }))} /> : null}
-                  <Group>{outlets.map((o) => <Line key={o.branch_id} left={o.name} selected={form.branch_id === o.branch_id} onPress={() => setForm((x) => ({ ...x, branch_id: o.branch_id }))} />)}</Group>
+                  <Group flush>{outlets.map((o) => <Line key={o.branch_id} left={o.name} selected={form.branch_id === o.branch_id} onPress={() => setForm((x) => ({ ...x, branch_id: o.branch_id }))} />)}</Group>
                 </>
               ) : null}
 

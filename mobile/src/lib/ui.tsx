@@ -2,7 +2,7 @@ import { ActivityIndicator, Pressable, Pressable as P2, ScrollView as S2, StyleS
 import { ago } from './ranges.ts';
 import { isOfflineMessage } from './net.ts';
 import { t, tx } from './i18n.ts';
-import type { ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 import { Ionicons } from './icons.tsx';
 import { SkeletonRows } from './motion.tsx';
 
@@ -50,7 +50,7 @@ export const rebuildStyles = () => { Object.assign(s, makeStyles()); };
 
 /** A row of filter chips (a date range, a category). The chosen one is filled. */
 export const Chips = <T extends string>({ items, value, onChange }: { items: { id: T; label: string }[]; value: T; onChange: (id: T) => void }) => (
-  <S2 horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 4 }} style={{ flexGrow: 0 }}>
+  <S2 horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 4 }} style={{ flexGrow: 0, flexShrink: 0 }}>   {/* a ScrollView shrinks by default, which cut the chips off at the bottom when the screen was full */}
     {items.map((i) => (
       <P2 key={i.id} accessibilityRole="button" accessibilityState={{ selected: value === i.id }} onPress={() => onChange(i.id)}
         style={{ minHeight: 48, paddingHorizontal: 16, justifyContent: 'center', borderRadius: radius.pill, backgroundColor: value === i.id ? color.action : color.card, borderWidth: 1, borderColor: value === i.id ? color.action : color.lineStrong }}>
@@ -88,11 +88,16 @@ export const Pill = ({ label, tone, bg }: { label: string; tone: string; bg?: st
 );
 
 /** Rows kept together in one rounded card, with hairlines between them. Put `Line` or `ListRow` rows inside. */
-export const Group = ({ children }: { children: ReactNode }) => (
-  <V2 style={{ marginHorizontal: 16, borderRadius: radius.card, borderCurve: 'continuous', borderWidth: 1, borderColor: color.line, backgroundColor: color.card, overflow: 'hidden', boxShadow: shadow.card }}>
+/** True inside a padded panel or card (formKit), where a Group must not add its own side margin on top. */
+export const InsetContext = createContext(false);
+export const Group = ({ children, flush = false }: { children: ReactNode; flush?: boolean }) => {
+  const inset = useContext(InsetContext);
+  return (
+  <V2 style={{ marginHorizontal: flush || inset ? 0 : 16, borderRadius: radius.card, borderCurve: 'continuous', borderWidth: 1, borderColor: color.line, backgroundColor: color.card, overflow: 'hidden', boxShadow: shadow.card }}>
     <V2 style={{ marginTop: -1 }}>{children}</V2>
   </V2>
 );
+};
 
 /** The days of a period as bars: the tallest is the best day and the last one is the accent colour. `money` formats the spoken label. */
 export const TrendBars = ({ days, money, heights }: { days: { date: string; total: number }[]; money: (n: number) => string; heights: number[] }) => (

@@ -61,7 +61,7 @@ const Settings = () => {
       {templates ? (
         <>
           <Soft>{t('WhatsApp only lets a business start a chat with pre-approved templates. Create each one once in Meta Business Manager (category: Utility for bills and bookings, Marketing for offers), using exactly this name and text.')}</Soft>
-          <Group>{templates.map((x) => <Line key={x.kind} left={x.name} right={x.promo ? t('Marketing') : ''} sub={x.body} />)}</Group>
+          <Group flush>{templates.map((x) => <Line key={x.kind} left={x.name} right={x.promo ? t('Marketing') : ''} sub={x.body} />)}</Group>
         </>
       ) : null}
     </ScrollView>

@@ -49,7 +49,7 @@ export default function GamingBookingNew() {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Title>New booking</Title><Button title="Cancel" kind="quiet" onPress={() => goBack()} /></View>
           <SectionTitle>Station</SectionTitle>
           {stations.busy && !stations.data ? <Loading /> : null}
-          <Group>{list.map((x) => <Line key={x.station_id} left={x.name} sub={t('Up to {n} players', { n: x.max_players })} selected={x.station_id === stationId} onPress={() => setStationId(x.station_id)} />)}</Group>
+          <Group flush>{list.map((x) => <Line key={x.station_id} left={x.name} sub={t('Up to {n} players', { n: x.max_players })} selected={x.station_id === stationId} onPress={() => setStationId(x.station_id)} />)}</Group>
           <SectionTitle>Day and start time</SectionTitle>
           <Chips items={[{ id: '0', label: 'Today' }, { id: '1', label: 'Tomorrow' }, { id: '2', label: 'Day after' }]} value={dayOff} onChange={(v) => { setDayOff(v); setStartsAt(''); }} />
           {slots.length === 0 ? <Soft>No start times left today. Choose another day.</Soft> : <Chips items={slots} value={startsAt} onChange={setStartsAt} />}
