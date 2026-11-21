@@ -55,9 +55,7 @@ export default function Sales() {
     <SafeAreaView style={s.screen} edges={['top']}>
       <Page grid>
         <View style={{ padding: 16, paddingBottom: 8 }}><Title>Bills</Title></View>
-        {tab === 'phone' || sync.pending + sync.failed > 0 ? (   // the 'waiting to send' tab only shows while something is waiting; More > Bills waiting to send always reaches it
-          <Chips<Tab> items={[{ id: 'bills', label: 'All bills' }, { id: 'phone', label: `Waiting to send${sync.pending + sync.failed ? ` (${sync.pending + sync.failed})` : ''}` }]} value={tab} onChange={setTab} />
-        ) : null}
+        <Chips<Tab> items={[{ id: 'bills', label: 'All bills' }, { id: 'phone', label: `Waiting to send${sync.pending + sync.failed ? ` (${sync.pending + sync.failed})` : ''}` }]} value={tab} onChange={setTab} />
         {tab === 'phone' ? <WaitingList /> : (
           <>
             <Chips items={ranges().map((r) => ({ id: r.id, label: r.label }))} value={rangeId as never} onChange={(id) => setRangeId(id)} />
