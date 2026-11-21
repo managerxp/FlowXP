@@ -11,7 +11,8 @@ import {
   CHANNELS, LAPSED_DAYS, MAX_OFFER, STATUS_FILTERS, TOGGLES, campaignBody, canMessaging, canRetry, canSend, messageSub, messageTitle, messagesPath, previewText, progressText, resendText, statusLabel,
   type Channel, type Message, type MessagingSettings, type Preview, type Progress, type SettingsData, type Template
 } from '../lib/messaging.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { display } from '../lib/theme.ts';
 
 const why = (e: unknown) => (e instanceof Error ? e.message : t('Could not save. Check the connection and try again.'));
 const when = (iso: string) => new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -40,7 +41,7 @@ const Settings = () => {
       {wallet?.required ? (
         <View style={{ gap: 4 }}>
           <Text style={{ color: color.soft, fontSize: 13 }}>{t('WhatsApp credit')}</Text>
-          <Text style={{ color: color.ink, fontSize: 22, fontWeight: '700' }}>{`₹${(wallet.balance_paise / 100).toFixed(2)}`}</Text>
+          <Text style={{ color: color.ink, fontSize: 22, fontFamily: display.bold, fontVariant: ['tabular-nums'] }}>{`₹${(wallet.balance_paise / 100).toFixed(2)}`}</Text>
           <Soft>{t('{n} bills, points and updates', { n: String(Math.floor(wallet.balance_paise / Math.max(1, wallet.prices_paise.UTILITY))) })}</Soft>
           <Soft>{t('{n} offers and loyalty reminders', { n: String(Math.floor(wallet.balance_paise / Math.max(1, wallet.prices_paise.MARKETING))) })}</Soft>
           <Soft>{t('To add credit (from ₹1,000), pay FlowXP and we will load it.')}</Soft>
@@ -60,7 +61,7 @@ const Settings = () => {
       {templates ? (
         <>
           <Soft>{t('WhatsApp only lets a business start a chat with pre-approved templates. Create each one once in Meta Business Manager (category: Utility for bills and bookings, Marketing for offers), using exactly this name and text.')}</Soft>
-          {templates.map((x) => <Line key={x.kind} left={x.name} right={x.promo ? t('Marketing') : ''} sub={x.body} />)}
+          <Group>{templates.map((x) => <Line key={x.kind} left={x.name} right={x.promo ? t('Marketing') : ''} sub={x.body} />)}</Group>
         </>
       ) : null}
     </ScrollView>

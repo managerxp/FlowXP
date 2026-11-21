@@ -4,13 +4,14 @@ import { currentBusiness, useSession } from '../lib/session.ts';
 import { hasFeature } from '../lib/access.ts';
 import { t, fill } from '../lib/i18n.ts';
 import { Card, Panel, SetupShell, useList } from '../lib/formKit.tsx';
-import { Chips, Empty, Failed, Line, Loading, SectionTitle, Soft, color } from '../lib/ui.tsx';
+import { Chips, Empty, Failed, Line, Loading, SectionTitle, Soft, color, Group } from '../lib/ui.tsx';
+import { display } from '../lib/theme.ts';
 import { PERIODS, canSeeResults, money, problemCount, resultsPath, share, type Results } from '../lib/loyaltyResults.ts';
 
 const Tile = ({ label, value, hint }: { label: string; value: string; hint?: string }) => (
   <View style={{ flexBasis: '47%', flexGrow: 1, borderWidth: 1, borderColor: color.line, borderRadius: 12, padding: 12, backgroundColor: color.card }}>
     <Text style={{ color: color.soft, fontSize: 13 }}>{t(label)}</Text>
-    <Text style={{ color: color.ink, fontSize: 22, fontWeight: '700' }}>{value}</Text>
+    <Text style={{ color: color.ink, fontSize: 22, fontFamily: display.bold, fontVariant: ['tabular-nums'] }}>{value}</Text>
     {hint ? <Text style={{ color: color.soft, fontSize: 12 }}>{hint}</Text> : null}
   </View>
 );
@@ -39,12 +40,12 @@ export default function LoyaltyResults() {
           </View>
           <Card>
             <SectionTitle>By card</SectionTitle>
-            {data.cards.map((c) => <Line key={c.programme_id} left={c.name} right={money(c.owed_paise)} sub={fill(t('Given {given}, used {used}, claimed {n}'), { given: String(c.earned), used: String(c.used), n: String(c.claims) })} />)}
+            <Group>{data.cards.map((c) => <Line key={c.programme_id} left={c.name} right={money(c.owed_paise)} sub={fill(t('Given {given}, used {used}, claimed {n}'), { given: String(c.earned), used: String(c.used), n: String(c.claims) })} />)}</Group>
           </Card>
           {data.top_rewards.length ? (
             <Card>
               <SectionTitle>Most claimed rewards</SectionTitle>
-              {data.top_rewards.map((r) => <Line key={r.reward_id} left={r.name} right={String(r.claims)} />)}
+              <Group>{data.top_rewards.map((r) => <Line key={r.reward_id} left={r.name} right={String(r.claims)} />)}</Group>
             </Card>
           ) : null}
         </Panel>

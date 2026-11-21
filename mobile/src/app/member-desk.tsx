@@ -7,7 +7,8 @@ import { allowed, hasFeature } from '../lib/access.ts';
 import { t, fill } from '../lib/i18n.ts';
 import { Card, Input, Msg, Panel, SetupShell, useAct } from '../lib/formKit.tsx';
 import { rupees } from '../lib/money.ts';
-import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, color } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, color, Group } from '../lib/ui.tsx';
+import { display } from '../lib/theme.ts';
 import { canUndo, lookupQuery, needsAmount, newKey, paint, perBill, valueLine, type Found, type Member, type Programme, type Reward } from '../lib/memberDesk.ts';
 
 /* The card as the customer sees it: its own colours, one circle per stamp (or the points). */
@@ -27,7 +28,7 @@ const CardFace = ({ m }: { m: Member }) => {
             </View>
           ))}
         </View>
-      ) : <Text style={{ color: c.fg, fontSize: 36, fontWeight: '700' }}>{m.balance}<Text style={{ fontSize: 14 }}>{` ${t('Points')}`}</Text></Text>}
+      ) : <Text style={{ color: c.fg, fontSize: 36, fontFamily: display.bold, fontVariant: ['tabular-nums'] }}>{m.balance}<Text style={{ fontSize: 14 }}>{` ${t('Points')}`}</Text></Text>}
       {c.message ? <Text style={{ color: c.fg, opacity: 0.9 }}>{c.message}</Text> : null}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ color: c.fg, opacity: 0.8, fontSize: 12 }}>{m.customer_name}</Text><Text style={{ color: c.fg, opacity: 0.8, fontSize: 12 }}>{m.membership_no}</Text></View>
     </View>
@@ -174,7 +175,7 @@ export default function MemberDesk() {
           )
         ) : <Button title="Scan a card" kind="quiet" onPress={() => { scanned.current = false; setScan(true); }} />}
         <ErrorText>{error}</ErrorText>
-        {found && found.length > 1 && picked === null ? found.map((r) => <Line key={r.membership_id} left={r.customer_name} right={String(r.balance)} sub={r.programme_name} onPress={() => setPicked(r.membership_id)} />) : null}
+        <Group>{found && found.length > 1 && picked === null ? found.map((r) => <Line key={r.membership_id} left={r.customer_name} right={String(r.balance)} sub={r.programme_name} onPress={() => setPicked(r.membership_id)} />) : null}</Group>
         {picked !== null ? <MemberPanel key={picked} id={picked} /> : null}
         {none ? (
           <>
