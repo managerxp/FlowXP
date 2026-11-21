@@ -1,6 +1,7 @@
 import { FlatList, Platform, useWindowDimensions, View, type FlatListProps } from 'react-native';
 import { Children, type ReactNode } from 'react';
 import { GRID, WIDE, columnsFor, isSideways, isWide, pageMax } from './layout.ts';
+import { color, radius, shadow } from './theme.ts';
 
 export { GRID, WIDE };
 
@@ -22,7 +23,9 @@ export const Page = ({ children, max = 760, grid = false }: { children: ReactNod
 /** A FlatList that shows its rows in two columns on a wide screen and one on a phone. Everything else is a FlatList's. */
 export function ColumnList<T>({ renderItem, ...rest }: FlatListProps<T>) {
   const cols = useColumns();
-  return <FlatList initialNumToRender={14} maxToRenderPerBatch={10} windowSize={7} removeClippedSubviews={Platform.OS === 'android'} {...rest} key={cols} numColumns={cols} renderItem={cols === 1 ? renderItem : (info) => <View style={{ flex: 1 / cols }}>{renderItem?.(info)}</View>} />;
+  // on a phone the rows sit together in one rounded card, like Group; an empty list stays a plain message, and a caller's own contentContainerStyle wins
+  const card = cols === 1 && (rest.data?.length ?? 0) > 0 ? { marginHorizontal: 16, marginBottom: 16, borderRadius: radius.card, borderCurve: 'continuous' as const, borderWidth: 1, borderColor: color.line, backgroundColor: color.card, overflow: 'hidden' as const, boxShadow: shadow.card } : null;
+  return <FlatList initialNumToRender={14} maxToRenderPerBatch={10} windowSize={7} removeClippedSubviews={Platform.OS === 'android'} contentContainerStyle={card} {...rest} key={cols} numColumns={cols} renderItem={cols === 1 ? renderItem : (info) => <View style={{ flex: 1 / cols }}>{renderItem?.(info)}</View>} />;
 }
 
 /** A list of rows: one column on a phone, two on a tablet so a long menu does not become a long scroll. */
