@@ -19,7 +19,7 @@ export default function Settings() {
       <Page max={900}>
         <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
           <View style={{ padding: 16, paddingBottom: 0, gap: 12 }}>
-            <Title>Settings</Title>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Title>Settings</Title><Button title="Back" kind="quiet" onPress={() => goBack()} /></View>
             <View style={[s.card, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
               <Initials name={business?.name} size={52} />
               <View style={{ flex: 1, gap: 2 }}>
@@ -34,7 +34,6 @@ export default function Settings() {
               <Group><Rows>{g.items.map((i) => <FadeIn key={i.go} index={n++}><Line icon={i.icon} left={i.left} sub={i.sub} onPress={() => router.push(i.go as never)} /></FadeIn>)}</Rows></Group>
             </View>
           ))}
-          <View style={{ padding: 16 }}><Button title="Back" kind="quiet" onPress={() => goBack()} /></View>
         </ScrollView>
       </Page>
     </SafeAreaView>
