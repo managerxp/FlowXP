@@ -18,7 +18,8 @@ import { Page } from './responsive.tsx';
 import PayHowPicker from './PayHowPicker.tsx';
 import { t } from './i18n.ts';
 import { payPlan, type PayHow } from './billing.ts';
-import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s } from './ui.tsx';
+import { SearchBox } from './SearchBox.tsx';
+import { Button, Chips, Empty, ErrorText, Group, Line, SectionTitle, Soft, Title, color, s } from './ui.tsx';
 import { display } from './theme.ts';
 
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -123,7 +124,6 @@ export function PharmacyTill() {
       <Page>
         <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <View style={{ flex: 1 }}><Title>New bill</Title><Soft>{customer ? `${customer.name}${customer.phone ? ` · ${customer.phone}` : ''}` : 'No customer chosen'}</Soft></View>
-          <Button title="Scan" kind="quiet" onPress={() => router.push({ pathname: '/scan', params: { capture: '1' } })} />
         </View>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
           {offline ? <Text accessibilityLiveRegion="polite" style={{ color: color.warn, fontWeight: '600', paddingHorizontal: 16, paddingBottom: 8 }}>No internet. Using the medicines saved on this phone. The bill is kept here and sent by itself, and FlowXP picks the batch when it arrives.</Text> : null}
@@ -131,19 +131,20 @@ export function PharmacyTill() {
             <Button title={customer ? 'Change customer' : 'Choose customer'} kind="quiet" onPress={() => router.push({ pathname: '/customers', params: { pick: '1' } })} style={{ flex: 1 }} />
             {customer ? <Button title="No customer" kind="quiet" onPress={() => { setCustomer(null); changed(); }} /> : null}
           </View>
-          <View style={{ padding: 16 }}>
-            <TextInput style={s.input} value={text} onChangeText={setText} placeholder="Medicine name, salt or barcode" accessibilityLabel="Search medicines" autoCorrect={false} />
+          <View style={{ padding: 16, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <View style={{ flex: 1 }}><SearchBox value={text} onChange={setText} placeholder="Medicine name, salt or barcode" label="Search medicines" /></View>
+            <Button title="Scan" kind="quiet" onPress={() => router.push({ pathname: '/scan', params: { capture: '1' } })} />
           </View>
-          {found.map((m) => (
+          {found.length ? <Group>{found.map((m) => (
             <Line key={m.product_id} left={`${m.name}${m.strength ? ` ${m.strength}` : ''}`}
               sub={`${[m.dosage_form, m.manufacturer].filter(Boolean).join(' · ')}${m.prescription_required ? ' · Prescription' : ''} · ${m.available != null ? `${qty(m.available)} in stock` : 'In stock'}`}
               right={rupees(toPaise(m.selling_price))} onPress={() => add(m)} />
-          ))}
+          ))}</Group> : null}
           {text.trim().length >= 2 && found.length === 0 ? <Empty>No medicine matches.</Empty> : null}
 
           <SectionTitle>This bill</SectionTitle>
           {lines.length === 0 ? <Empty>Search a medicine above, or tap Scan, and tap it to add it.</Empty> : null}
-          {lines.map((l) => {
+          {lines.length ? <Group>{lines.map((l) => {
             const short = shortBy(l);
             return (
               <View key={l.key} style={{ padding: 16, gap: 6, borderTopWidth: 1, borderColor: color.line, backgroundColor: color.card }}>
@@ -173,7 +174,7 @@ export function PharmacyTill() {
                 ) : null}
               </View>
             );
-          })}
+          })}</Group> : null}
 
           {rx.length ? (
             <View style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: color.warnBg }}>
