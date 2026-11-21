@@ -922,10 +922,10 @@ const ProductsPage = () => {
         </div>
         {cats.length > 1 && (
           <div role="group" aria-label={tr('Category')} className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
-            <button type="button" onClick={() => setCategory(null)} aria-pressed={!category} className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium ${!category ? 'border-ink-900 bg-ink-900 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>{tr('All')} <span className={`tabular ml-1 ${!category ? 'text-white/70' : 'text-ink-400'}`}>{inTab.length}</span></button>
+            <button type="button" onClick={() => setCategory(null)} aria-pressed={!category} className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium ${!category ? 'border-brand-500 bg-brand-500 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>{tr('All')} <span className={`tabular ml-1 ${!category ? 'text-white/70' : 'text-ink-400'}`}>{inTab.length}</span></button>
             {cats.map(([name, n]) => (
               <button key={name} type="button" onClick={() => setCategory(category === name ? null : name)} aria-pressed={category === name}
-                      className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium ${category === name ? 'border-ink-900 bg-ink-900 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
+                      className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium ${category === name ? 'border-brand-500 bg-brand-500 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
                 {name} <span className={`tabular ml-1 ${category === name ? 'text-white/70' : 'text-ink-400'}`}>{n}</span>
               </button>
             ))}

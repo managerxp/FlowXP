@@ -47,7 +47,7 @@ const MenuAvailability = () => {
     return [...map.entries()];
   }, [shown]);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  const chip = (active) => `min-h-11 rounded-lg border px-3.5 text-small font-medium transition-colors duration-(--duration-fast) ${active ? 'border-ink-900 bg-ink-900 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`;
+  const chip = (active) => `min-h-11 rounded-lg border px-3.5 text-small font-medium transition-colors duration-(--duration-fast) ${active ? 'border-brand-500 bg-brand-500 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`;
 
   return (
     <div className="mx-auto max-w-3xl">

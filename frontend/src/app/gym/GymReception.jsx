@@ -57,7 +57,7 @@ const CameraPanel = ({ onCode, onClose }) => {
   };
 
   return (
-    <div className="overflow-hidden rounded-(--radius-card) border border-line bg-ink-900">
+    <div className="overflow-hidden rounded-(--radius-card) border border-line bg-brand-500">
       {problem ? (
         <div className="flex flex-col items-center gap-3 px-6 py-10 text-center text-white">
           <CameraOff aria-hidden="true" className="h-10 w-10 text-white/70" />

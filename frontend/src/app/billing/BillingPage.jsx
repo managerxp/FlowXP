@@ -979,7 +979,7 @@ const BillingPage = () => {
           <div role="group" aria-label={tr('Categories')} className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
             {['', ...categories].map((c) => (
               <button key={c || 'all'} type="button" onClick={() => setCategory(c)} aria-pressed={category === c}
-                      className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium transition-colors duration-(--duration-fast) pointer-coarse:min-h-11 pointer-coarse:px-4 ${category === c ? 'border-ink-900 bg-ink-900 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
+                      className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium transition-colors duration-(--duration-fast) pointer-coarse:min-h-11 pointer-coarse:px-4 ${category === c ? 'border-brand-500 bg-brand-500 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
                 {c || 'All'}
               </button>
             ))}
@@ -1044,7 +1044,7 @@ const BillingPage = () => {
                 <button key={s.key} type="button" aria-pressed={s.active} onClick={s.onClick}
                         className={`flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 text-caption font-semibold transition-colors duration-(--duration-fast) pointer-coarse:min-h-11 ${s.active ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-900'}`}>
                   {tr(s.label)}
-                  {s.count > 0 && <span className="tabular rounded-full bg-ink-900 px-1.5 text-[11px] font-semibold text-white">{s.count}</span>}
+                  {s.count > 0 && <span className="tabular rounded-full bg-brand-500 px-1.5 text-[11px] font-semibold text-white">{s.count}</span>}
                 </button>
               ))}
             </div>

@@ -97,7 +97,7 @@ const MenuImportModal = ({ onClose, onDone }) => {
                 {files.map((f, i) => (
                   <div key={f.url} className="relative">
                     <img src={f.url} alt={`Menu page ${i + 1}`} className="h-28 w-24 rounded-lg border border-line object-cover" />
-                    <button type="button" onClick={() => removeFile(i)} aria-label={`Remove page ${i + 1}`} className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-ink-900 text-white hover:bg-danger"><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
+                    <button type="button" onClick={() => removeFile(i)} aria-label={`Remove page ${i + 1}`} className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white hover:bg-danger"><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
                   </div>
                 ))}
               </div>

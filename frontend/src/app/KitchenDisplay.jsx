@@ -86,7 +86,7 @@ const Ticket = ({ ticket, tab, now, stationName, dimmed, focusKey, onAdvance, on
           <div className="min-w-0">
             <p className="truncate text-body font-bold leading-tight tracking-tight text-ink-900">{title}</p>
             <p className="mt-0.5 flex flex-wrap items-center gap-1 text-caption text-ink-500">
-              <span className={`rounded px-1 font-semibold ${away ? 'bg-ink-900 text-white' : 'bg-surface-3 text-ink-700'}`}>{kind}</span>
+              <span className={`rounded px-1 font-semibold ${away ? 'bg-brand-500 text-white' : 'bg-surface-3 text-ink-700'}`}>{kind}</span>
               {ticket.brand_name && <span className="rounded bg-brand-50 px-1 font-semibold text-brand-700">{ticket.brand_name}</span>}
               {rush && <span className="inline-flex items-center gap-1 rounded bg-danger px-1 font-semibold text-white"><Flame aria-hidden="true" className="h-3 w-3" />Rush</span>}
               <span className="tabular">{ticket.table_name ? `${ticket.order_number} · ` : ''}{clock(ticket.sent_at)}{servedAt ? ` · ${away ? 'Handed over' : 'Served'} ${clock(servedAt)}` : ''}</span>
@@ -128,7 +128,7 @@ const Ticket = ({ ticket, tab, now, stationName, dimmed, focusKey, onAdvance, on
                 {tab.key !== 'making' && !item.cancelled && <span aria-hidden="true" className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-success/10 text-success"><Check className="h-3.5 w-3.5" /></span>}
                 <span className="min-w-0 flex-1">
                   <span className={`flex flex-wrap items-baseline gap-x-1.5 text-small leading-snug ${item.cancelled ? 'text-danger line-through' : 'text-ink-900'}`}>
-                    <span className="flex items-baseline gap-1.5"><span className="tabular inline-block min-w-[1.5rem] rounded bg-ink-900 px-1 text-center text-caption font-bold leading-5 text-white">{item.quantity}</span>
+                    <span className="flex items-baseline gap-1.5"><span className="tabular inline-block min-w-[1.5rem] rounded bg-brand-500 px-1 text-center text-caption font-bold leading-5 text-white">{item.quantity}</span>
                     <span className="font-medium">{item.description}</span></span>
                     {item.modifiers?.length > 0 && <span className="text-caption font-semibold text-brand-700">{item.modifiers.map((m) => m.name).join(' · ')}</span>}
                   </span>

@@ -104,7 +104,7 @@ const PermissionsModal = ({ person, onClose, onSaved }) => {
               <div className="flex overflow-hidden rounded-lg border border-line-strong text-xs font-semibold" role="group" aria-label={tr(p.label)}>
                 {[['default', `Role default (${p.role_default ? 'can' : 'can’t'})`], ['allow', T('Allow')], ['deny', T('Deny')]].map(([value, label]) => (
                   <button key={value} type="button" aria-pressed={choice[p.key] === value} onClick={() => setChoice((c) => ({ ...c, [p.key]: value }))}
-                          className={`px-2.5 py-1.5 ${choice[p.key] === value ? (value === 'deny' ? 'bg-danger text-white' : value === 'allow' ? 'bg-success text-white' : 'bg-ink-900 text-white') : 'bg-surface text-ink-700 hover:bg-surface-2'}`}>{tr(label)}</button>
+                          className={`px-2.5 py-1.5 ${choice[p.key] === value ? (value === 'deny' ? 'bg-danger text-white' : value === 'allow' ? 'bg-success text-white' : 'bg-brand-500 text-white') : 'bg-surface text-ink-700 hover:bg-surface-2'}`}>{tr(label)}</button>
                 ))}
               </div>
             </div>

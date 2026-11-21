@@ -109,7 +109,7 @@ const LoyaltyCardPanel = ({ token, loyalty, phone, setPhone, card, setCard, rewa
           <div className="flex gap-2">
             <input inputMode="tel" autoComplete="tel" placeholder="Your mobile number" value={phone} onChange={(e) => { setPhone(e.target.value); setCard(null); }} aria-label="Your mobile number"
                    className="min-w-0 flex-1 rounded-lg border-0 bg-white px-3.5 py-2.5 text-small text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-white/60" />
-            <button type="button" onClick={look} disabled={busy || phone.replace(/\D/g, '').length < 10} className="rounded-lg bg-ink-900 px-4 text-small font-semibold text-white disabled:opacity-50">{busy ? '…' : 'Check'}</button>
+            <button type="button" onClick={look} disabled={busy || phone.replace(/\D/g, '').length < 10} className="rounded-lg bg-brand-500 px-4 text-small font-semibold text-white disabled:opacity-50">{busy ? '…' : 'Check'}</button>
           </div>
           {error && <p className="mt-2 text-caption text-white" role="alert">{error}</p>}
         </div>
@@ -289,7 +289,7 @@ const CustomerMenu = () => {
           <div role="group" aria-label="Show" className="mt-2.5 flex gap-2">
             {[['ALL', 'All'], ['VEG', 'Veg'], ['NON_VEG', 'Non-veg'], ...(hasEgg ? [['EGG', 'Egg']] : [])].map(([value, label]) => {
               const on = food === value;
-              const tone = value === 'VEG' ? 'border-success bg-success/10 text-success' : value === 'NON_VEG' ? 'border-danger bg-danger/10 text-danger' : value === 'EGG' ? 'border-warning bg-warning/10 text-warning' : 'border-ink-900 bg-ink-900 text-white';
+              const tone = value === 'VEG' ? 'border-success bg-success/10 text-success' : value === 'NON_VEG' ? 'border-danger bg-danger/10 text-danger' : value === 'EGG' ? 'border-warning bg-warning/10 text-warning' : 'border-brand-500 bg-brand-500 text-white';
               return (
                 <button key={value} type="button" onClick={() => setFood(value)} aria-pressed={on}
                         className={`flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-small font-medium transition-colors ${on ? tone : 'border-line-strong bg-surface text-ink-700'}`}>

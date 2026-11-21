@@ -125,7 +125,7 @@ const SupplierBillImport = ({ suppliers, categories, search, onClose, onUse }) =
                       {f.pdf
                         ? <div className="flex h-28 w-24 flex-col items-center justify-center gap-1 rounded-lg border border-line bg-surface-2 text-caption text-ink-500"><FileText aria-hidden="true" className="h-7 w-7" />PDF</div>
                         : <img src={f.url} alt={`Bill page ${i + 1}`} className="h-28 w-24 rounded-lg border border-line object-cover" />}
-                      <button type="button" onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))} aria-label={`Remove page ${i + 1}`} className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-ink-900 text-white hover:bg-danger"><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
+                      <button type="button" onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))} aria-label={`Remove page ${i + 1}`} className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white hover:bg-danger"><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
                     </div>
                   ))}
                 </div>

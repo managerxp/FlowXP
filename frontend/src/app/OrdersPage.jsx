@@ -166,7 +166,7 @@ const SplitModal = ({ order, onDone, onClose }) => {
         <div role="radiogroup" className="inline-flex rounded-lg border border-line p-1">
           {[['bill', T('Bill separately')], ...(isDineIn ? [['move', T('Move to another table')]] : [])].map(([key, label]) => (
             <button key={key} type="button" role="radio" aria-checked={mode === key} onClick={() => setMode(key)}
-                    className={`rounded-md px-3 py-1.5 text-small font-medium ${mode === key ? 'bg-ink-900 text-white' : 'text-ink-700 hover:bg-surface-2'}`}>{tr(label)}</button>
+                    className={`rounded-md px-3 py-1.5 text-small font-medium ${mode === key ? 'bg-brand-500 text-white' : 'text-ink-700 hover:bg-surface-2'}`}>{tr(label)}</button>
           ))}
         </div>
         <p className="text-small text-ink-500">
@@ -339,7 +339,7 @@ const MenuPicker = ({ products, counts, onAdd, onClose, title }) => {
         <div role="group" aria-label={tr('Category')} className="flex gap-1.5 overflow-x-auto pb-1">
           {[['all', 'All', available.length], ...categories.map(([k, n]) => [k, k, n])].map(([k, label, n]) => (
             <button key={k} type="button" onClick={() => setCategory(k)} aria-pressed={category === k}
-                    className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium ${category === k ? 'border-ink-900 bg-ink-900 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
+                    className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium ${category === k ? 'border-brand-500 bg-brand-500 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
               {tr(label)} <span className={`tabular ml-0.5 ${category === k ? 'text-white/70' : 'text-ink-400'}`}>{n}</span>
             </button>
           ))}
@@ -608,7 +608,7 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
       <div className="border-b border-line px-5 py-3">
         <div className="flex items-start gap-3">
           <button type="button" onClick={onBack} aria-label={tr('Back to orders')} className="-ml-1 mt-0.5 rounded-lg p-1 text-ink-500 hover:bg-surface-2 lg:hidden"><ArrowLeft className="h-5 w-5" /></button>
-          <span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${isDineIn ? 'bg-brand-50 text-brand-600' : 'bg-ink-900 text-white'}`}><Icon aria-hidden="true" className="h-5 w-5" /></span>
+          <span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${isDineIn ? 'bg-brand-50 text-brand-600' : 'bg-brand-500 text-white'}`}><Icon aria-hidden="true" className="h-5 w-5" /></span>
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-[20px] font-bold leading-tight text-ink-900">{titleOf(order)}</h2>
             <p className="flex flex-wrap items-center gap-x-1.5 text-caption text-ink-500">
@@ -830,7 +830,7 @@ const OrderCard = ({ order, active, onOpen, onPrinted }) => {
     <button type="button" onClick={onOpen} aria-current={active ? 'true' : undefined} className="flex w-full flex-col gap-2 p-3 pt-3.5 text-left">
       <span aria-hidden="true" className={`absolute inset-x-0 top-0 h-1 ${stripe}`} />
       <span className="flex items-start gap-2.5">
-        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${order.order_type === 'DINE_IN' ? 'bg-brand-50 text-brand-600' : 'bg-ink-900 text-white'}`}><Icon aria-hidden="true" className="h-4 w-4" /></span>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${order.order_type === 'DINE_IN' ? 'bg-brand-50 text-brand-600' : 'bg-brand-500 text-white'}`}><Icon aria-hidden="true" className="h-4 w-4" /></span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-small font-bold text-ink-900">{tr(title)}</span>
           <span className="block truncate text-caption text-ink-500">{sub || TYPE_LABEL[order.order_type]}</span>
@@ -922,7 +922,7 @@ const OrdersPage = () => {
           <div role="group" aria-label={tr('Order type')} className="flex gap-1.5 overflow-x-auto">
             {FILTERS.map(([key, label]) => (
               <button key={key} type="button" onClick={() => setFilter(key)} aria-pressed={filter === key}
-                      className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium ${filter === key ? 'border-ink-900 bg-ink-900 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
+                      className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium ${filter === key ? 'border-brand-500 bg-brand-500 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
                 {tr(label)} <span className={`tabular ml-1 ${filter === key ? 'text-white/70' : 'text-ink-400'}`}>{counts[key] || 0}</span>
               </button>
             ))}

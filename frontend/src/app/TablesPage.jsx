@@ -367,7 +367,7 @@ const TablesPage = () => {
           <div role="group" aria-label="Show" className="flex flex-wrap gap-1.5">
             {FILTERS.filter((f) => f.key === 'all' || f.key === filter || count[f.key] > 0).map((f) => (
               <button key={f.key} type="button" aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}
-                      className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-small font-medium transition-colors duration-(--duration-fast) ${filter === f.key ? 'border-ink-900 bg-ink-900 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-small font-medium transition-colors duration-(--duration-fast) ${filter === f.key ? 'border-brand-500 bg-brand-500 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
                 {f.dot && <span aria-hidden="true" className={`h-2 w-2 rounded-full ${f.dot}`} />}
                 {f.label}
                 <span className={`tabular text-caption ${filter === f.key ? 'text-white/70' : 'text-ink-400'}`}>{count[f.key]}</span>

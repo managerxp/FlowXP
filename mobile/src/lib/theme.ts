@@ -13,15 +13,15 @@ export type Palette = {
 };
 
 export const LIGHT: Palette = {
-  brand: '#0054fa', ink: '#182033', soft: '#6b7385', line: '#e6e9ee', lineStrong: '#cdd3dc', bg: '#f8f9f7', card: '#ffffff', danger: '#b4443c', ok: '#2f7d5b', warn: '#9a5b13',
+  brand: '#0054fa', ink: '#0f2557', soft: '#6b7385', line: '#e6e9ee', lineStrong: '#cdd3dc', bg: '#f8f9f7', card: '#ffffff', danger: '#b4443c', ok: '#2f7d5b', warn: '#9a5b13',
   tint: '#eef3fe', tintLine: '#c9d8fa', press: '#e8eefc', wash: '#f2f4f6', dangerBg: '#fbf0ef', warnBg: '#fdf5e7', okBg: '#ebf5ef', dangerLine: '#f0cdca', warnLine: '#f2ddb0',
   action: '#0054fa', onAction: '#ffffff', navy: '#00369f', onNavy: '#ffffff', onNavySoft: '#b4c9fe'
 };
 
 export const DARK: Palette = {
-  brand: '#6c93f0', ink: '#e9edf5', soft: '#a0a9bc', line: '#252d45', lineStrong: '#34405f', bg: '#0c1020', card: '#141a2e', danger: '#f09a93', ok: '#6fcb9f', warn: '#e8b36b',
-  tint: '#1a2547', tintLine: '#2f4688', press: '#202d57', wash: '#1a2138', dangerBg: '#35191c', warnBg: '#33260f', okBg: '#12301f', dangerLine: '#6b2a2f', warnLine: '#6b4a1c',
-  action: '#6c93f0', onAction: '#0b1020', navy: '#16307f', onNavy: '#ffffff', onNavySoft: '#aab6d3'
+  brand: '#6c93f0', ink: '#e9edf5', soft: '#a0a9bc', line: '#1f3770', lineStrong: '#2d4a8f', bg: '#0a1736', card: '#112452', danger: '#f09a93', ok: '#6fcb9f', warn: '#e8b36b',
+  tint: '#173170', tintLine: '#2f4688', press: '#1d3a82', wash: '#16306a', dangerBg: '#35191c', warnBg: '#33260f', okBg: '#12301f', dangerLine: '#6b2a2f', warnLine: '#6b4a1c',
+  action: '#6c93f0', onAction: '#0a1736', navy: '#16307f', onNavy: '#ffffff', onNavySoft: '#aab6d3'
 };
 
 /** Shapes shared by every screen: corner radii (cards 20, controls 14, chips and pills fully round), the soft card shadow, and the 8-point spacing steps. */

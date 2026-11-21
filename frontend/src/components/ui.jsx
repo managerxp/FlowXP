@@ -46,7 +46,7 @@ const VARIANTS = {
   danger:
     'bg-danger text-white hover:bg-danger/90 active:bg-danger shadow-sm',
   dark:
-    'bg-ink-900 text-white hover:bg-ink-700'
+    'bg-brand-500 text-white hover:bg-brand-600'
 };
 
 const SIZES = {

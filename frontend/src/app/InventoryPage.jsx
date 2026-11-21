@@ -585,7 +585,7 @@ const InventoryPage = () => {
           <div role="group" aria-label={tr('Type')} className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
             {[['all', T('All types')], ...kinds.map((k) => [k, KINDS[k] || k])].map(([k, label]) => (
               <button key={k} type="button" onClick={() => setKind(k)} aria-pressed={kind === k}
-                      className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium ${kind === k ? 'border-ink-900 bg-ink-900 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
+                      className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium ${kind === k ? 'border-brand-500 bg-brand-500 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
                 {tr(label)} <span className={`tabular ml-1 ${kind === k ? 'text-white/70' : 'text-ink-400'}`}>{k === 'all' ? all.length : all.filter((i) => i.kind === k).length}</span>
               </button>
             ))}

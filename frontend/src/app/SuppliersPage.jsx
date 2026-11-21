@@ -370,7 +370,7 @@ const SuppliersPage = () => {
         <div role="group" aria-label="Show" className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
           {FILTERS.map(([key, label]) => (
             <button key={key} type="button" onClick={() => setFilter(key)} aria-pressed={filter === key}
-                    className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium ${filter === key ? 'border-ink-900 bg-ink-900 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
+                    className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium ${filter === key ? 'border-brand-500 bg-brand-500 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
               {label} <span className={`tabular ml-1 ${filter === key ? 'text-white/70' : 'text-ink-400'}`}>{counts[key] ?? 0}</span>
             </button>
           ))}
