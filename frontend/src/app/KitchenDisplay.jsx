@@ -416,7 +416,7 @@ const KitchenDisplay = () => {
     <div className={full ? 'fixed inset-0 z-[60] overflow-y-auto bg-page p-4 sm:p-6' : ''}>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-h3 font-semibold text-ink-900">Kitchen</h1>
+          <h1 className="font-display text-h3 font-semibold text-ink-900">Kitchen</h1>
           <p className="text-small text-ink-500">Tap a dish when it is ready, or the whole ticket at once. Oldest first; rush on top.</p>
         </div>
         <div className="flex flex-wrap gap-2">

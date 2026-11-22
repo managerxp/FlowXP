@@ -99,7 +99,7 @@ const OrderReadyBoard = () => {
     <div className={full ? 'fixed inset-0 z-[60] flex flex-col overflow-hidden bg-page p-4 sm:p-6' : 'flex min-h-[calc(100vh-7rem)] flex-col'}>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-h3 font-semibold text-ink-900">Order board</h1>
+          <h1 className="font-display text-h3 font-semibold text-ink-900">Order board</h1>
           <p className="text-small text-ink-500">For a screen near pickup. Customers watch their order number move across; it updates itself.</p>
         </div>
         <div className="flex flex-wrap gap-2">

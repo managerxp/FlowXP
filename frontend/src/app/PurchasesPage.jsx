@@ -431,7 +431,7 @@ const PurchasesPage = () => {
       <section aria-label={tr('Purchase list')} className={`min-w-0 p-4 sm:p-6 lg:p-8 xl:block xl:overflow-y-auto ${selectedId ? 'hidden' : 'block'}`}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-h3 font-semibold text-ink-900">{tr('Purchases')}</h1>
+            <h1 className="font-display text-h3 font-semibold text-ink-900">{tr('Purchases')}</h1>
             <p className="tabular mt-1 text-small text-ink-500">
               {openRows ? <>
                 {openRows.length} order{openRows.length === 1 ? '' : 's'} to receive

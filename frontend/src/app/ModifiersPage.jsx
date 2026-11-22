@@ -333,7 +333,7 @@ const ModifiersPage = () => {
       <section aria-label="Option groups" className={`min-w-0 p-4 sm:p-6 lg:p-8 xl:block xl:overflow-y-auto ${selectedId ? 'hidden' : 'block'}`}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-h3 font-semibold text-ink-900">Options & add-ons</h1>
+            <h1 className="font-display text-h3 font-semibold text-ink-900">Options & add-ons</h1>
             <p className="tabular mt-1 text-small text-ink-500">
               {groups ? <>Sizes, levels and add-ons customers choose on a dish · {active.length} in use{unused > 0 && <> · <span className="font-medium text-warning">{unused} not on any dish</span></>}</> : 'Sizes, levels and add-ons customers choose on a dish.'}
             </p>

@@ -1549,7 +1549,7 @@ const ReportsPage = () => {
     <div className="mx-auto max-w-7xl">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-        <h1 className="text-h3 font-semibold text-ink-900">{tr('Reports')}</h1>
+        <h1 className="font-display text-h3 font-semibold text-ink-900">{tr('Reports')}</h1>
         <p className="mt-1 text-small text-ink-500">{activeOutlet && outletId !== 'all' ? `For ${activeOutlet.name}.` : outletId === 'all' ? tr('For every outlet together.') : tr('How the business is doing.')} For margins and what is left after costs, see <Link to="/app/profitability" className="font-medium text-brand-700">{tr('Profitability')}</Link>.</p>
         </div>
         <AccountantPack period={period} />

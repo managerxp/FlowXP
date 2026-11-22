@@ -52,7 +52,7 @@ const MenuAvailability = () => {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-4">
-        <h1 className="text-h3 font-semibold text-ink-900">{tr('Menu on / off')}</h1>
+        <h1 className="font-display text-h3 font-semibold text-ink-900">{tr('Menu on / off')}</h1>
         <p className="mt-1 text-small text-ink-500">{tr('Switch a dish off when it runs out. It stops being sold at this outlet until you switch it back on.')}</p>
       </div>
 

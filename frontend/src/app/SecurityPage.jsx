@@ -306,7 +306,7 @@ const SecurityPage = () => {
   const canSeeTeam = ['OWNER', 'ADMIN'].includes(business?.role);
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div><h1 className="text-h3 font-semibold text-ink-900">{tr('Security')}</h1><p className="mt-1 text-sm text-ink-500">{tr('Keep your account and your business safe.')}</p></div>
+      <div><h1 className="font-display text-h3 font-semibold text-ink-900">{tr('Security')}</h1><p className="mt-1 text-sm text-ink-500">{tr('Keep your account and your business safe.')}</p></div>
       <TwoFactor />
       <Password />
       <PinLoginCard />

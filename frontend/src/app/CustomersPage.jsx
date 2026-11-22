@@ -332,7 +332,7 @@ const CustomersPage = () => {
       <section aria-label={tr('Customer list')} className={`min-w-0 flex-col p-4 sm:p-6 lg:p-8 xl:flex xl:overflow-hidden ${selectedId ? 'hidden' : 'flex'}`}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-h3 font-semibold text-ink-900">{tr('Customers')}</h1>
+            <h1 className="font-display text-h3 font-semibold text-ink-900">{tr('Customers')}</h1>
             <p className="tabular mt-1 text-small text-ink-500">
               {customers ? <>{customers.length} customer{customers.length === 1 ? '' : 's'}{owed > 0 && <> · <span className="font-medium text-warning">{tr('{{formatCurrency}} owed by {{owes}}', { formatCurrency: formatCurrency(owed), owes: counts.owes })}</span></>}</> : tr('Who buys from you, and what they owe.')}
             </p>

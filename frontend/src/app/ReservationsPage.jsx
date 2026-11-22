@@ -437,7 +437,7 @@ const ReservationsPage = () => {
     <div className="mx-auto max-w-7xl">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-h3 font-semibold text-ink-900">Reservations</h1>
+          <h1 className="font-display text-h3 font-semibold text-ink-900">Reservations</h1>
           <p className="tabular mt-1 text-small text-ink-500">
             {rows ? <>
               <span className="font-medium text-ink-900">{booked.length} to arrive</span> · {booked.reduce((n, r) => n + r.party_size, 0)} guests

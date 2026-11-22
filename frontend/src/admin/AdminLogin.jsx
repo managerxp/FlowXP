@@ -143,7 +143,7 @@ const AdminLogin = () => {
       </p>
 
       <div className="border border-line bg-surface w-full max-w-sm rounded-(--radius-card) p-7 sm:p-8">
-        <h1 className="text-h3 font-semibold text-ink-900">{owner ? 'Owner sign in' : 'Super admin sign in'}</h1>
+        <h1 className="font-display text-h3 font-semibold text-ink-900">{owner ? 'Owner sign in' : 'Super admin sign in'}</h1>
         <p className="mt-2 text-sm text-ink-500">Manage every FlowXP tenant from here.</p>
         {owner ? <OwnerSignIn onDone={done} onStaff={() => setOwner(false)} /> : <StaffSignIn onDone={done} onOwner={() => setOwner(true)} />}
       </div>

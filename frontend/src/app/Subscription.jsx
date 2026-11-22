@@ -57,7 +57,7 @@ const Subscription = () => {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <h1 className="text-h3 font-semibold text-ink-900">Subscription</h1>
+      <h1 className="font-display text-h3 font-semibold text-ink-900">Subscription</h1>
 
       <Card>
         <dl className="divide-y divide-line">

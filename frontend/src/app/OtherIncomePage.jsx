@@ -54,7 +54,7 @@ const OtherIncomePage = () => {
     <div className="mx-auto max-w-3xl space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-h3 font-semibold text-ink-900">{tr('Other income')}</h1>
+          <h1 className="font-display text-h3 font-semibold text-ink-900">{tr('Other income')}</h1>
           <p className="text-small text-ink-500">{tr('Money received that is not a sale. It is added in Profit & Loss.')}</p>
         </div>
         <Button onClick={() => setAdding(true)}><Plus className="size-4" aria-hidden="true" /> {tr('Add income')}</Button>

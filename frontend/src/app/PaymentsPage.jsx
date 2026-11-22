@@ -158,7 +158,7 @@ const PaymentsPage = () => {
     <div className="mx-auto max-w-6xl">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-h3 font-semibold text-ink-900">{tr('Payments')}</h1>
+          <h1 className="font-display text-h3 font-semibold text-ink-900">{tr('Payments')}</h1>
           <p className="mt-1 text-small text-ink-500">{tr('Every rupee taken from customers and paid to suppliers.')}</p>
         </div>
         <Button variant="secondary" onClick={() => setAdding(true)} disabled={allView} title={allView ? tr('Pick an outlet at the top to record a payment at it') : undefined}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Payment with no bill')}</Button>

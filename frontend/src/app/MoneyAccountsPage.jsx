@@ -53,7 +53,7 @@ export default function MoneyAccountsPage() {
     <div className="mx-auto max-w-4xl space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-h3 font-semibold text-ink-900">{tr('Cash and bank')}</h1>
+          <h1 className="font-display text-h3 font-semibold text-ink-900">{tr('Cash and bank')}</h1>
           <p className="text-small text-ink-500">{tr('Where your money is. Payments, expenses and refunds land in the account set for their method; money you move by hand is added here.')}</p>
         </div>
         {tab === 'accounts' && can('payments') && <Button onClick={() => setMoving(true)}>{tr('Record money moved')}</Button>}

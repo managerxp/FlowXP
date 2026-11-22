@@ -204,7 +204,7 @@ const ExpensesPage = () => {
     <div className="mx-auto max-w-6xl">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-h3 font-semibold text-ink-900">{tr('Expenses')}</h1>
+          <h1 className="font-display text-h3 font-semibold text-ink-900">{tr('Expenses')}</h1>
           <p className="mt-1 text-small text-ink-500">Rent, salaries, bills: what the business spends outside of stock{activeOutlet && !allView ? ` at ${activeOutlet.name}` : allView ? tr(', across every outlet') : ''}.</p>
         </div>
         <Button onClick={() => setEditing({})} disabled={allView} title={allView ? tr('Pick an outlet at the top to add an expense to it') : undefined}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Add expense')}</Button>

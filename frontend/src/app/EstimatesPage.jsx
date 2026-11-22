@@ -91,7 +91,7 @@ const EstimatesPage = () => {
     <div className="mx-auto max-w-3xl space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-h3 font-semibold text-ink-900">{tr('Estimates')}</h1>
+          <h1 className="font-display text-h3 font-semibold text-ink-900">{tr('Estimates')}</h1>
           <p className="text-small text-ink-500">{tr('Send a price before the sale. When the customer agrees, turn it into an invoice in one tap.')}</p>
         </div>
         <Button onClick={() => setForm(blank())}><Plus className="size-4" aria-hidden="true" /> {tr('New estimate')}</Button>

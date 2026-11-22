@@ -692,7 +692,7 @@ export const DashboardHeader = ({ title, lead, action }) => (
     <div aria-hidden="true" className="hero-stage absolute inset-0" />
     <div className="relative flex flex-wrap items-end justify-between gap-x-6 gap-y-4 px-5 py-6 sm:px-7 sm:py-7">
       <div className="min-w-0">
-        <h1 className="text-h3 font-semibold text-ink-900">{title}</h1>
+        <h1 className="font-display text-h3 font-semibold text-ink-900">{title}</h1>
         {lead && <p className="mt-1 max-w-2xl text-small text-ink-500">{lead}</p>}
       </div>
       {action && <div className="flex flex-wrap items-center gap-2">{action}</div>}

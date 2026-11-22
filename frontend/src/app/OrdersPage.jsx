@@ -763,7 +763,7 @@ const OrderPanel = ({ orderId, onChanged, onBack }) => {
           )}
           <div className="flex items-baseline justify-between border-t border-line pt-2">
             <span className="text-body font-semibold text-ink-900">{billedCount ? tr('Left to bill') : tr('Total')} <span className="text-caption font-normal text-ink-500">{tr('(estimate)')}</span></span>
-            <AnimatedNumber value={total} format={formatCurrency} className="text-[26px] font-semibold leading-none tracking-tight text-ink-900" />
+            <AnimatedNumber value={total} format={formatCurrency} className="font-display text-[26px] font-semibold leading-none tracking-tight text-ink-900" />
           </div>
 
           <div role="radiogroup" aria-label={tr('How is it paid?')} className="mt-3 grid grid-cols-3 gap-1.5">
@@ -898,7 +898,7 @@ const OrdersPage = () => {
       <section aria-label={tr('Open orders')} className={`min-w-0 flex-col p-4 sm:p-6 lg:flex lg:overflow-hidden ${selected ? 'hidden' : 'flex'}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-h3 font-semibold text-ink-900">{tr('Orders')}</h1>
+            <h1 className="font-display text-h3 font-semibold text-ink-900">{tr('Orders')}</h1>
             <p className="text-small text-ink-500">{tr('Open tabs, oldest first. Nothing is charged until you bill.')}</p>
           </div>
           <div className="flex gap-2">

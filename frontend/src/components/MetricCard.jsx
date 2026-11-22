@@ -43,7 +43,7 @@ const MetricCard = ({ icon: Icon, tone = 'brand', label, value, valueTone, now, 
         <span aria-hidden="true" className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${TONES[tone] || TONES.brand}`}><Icon className="h-[18px] w-[18px]" strokeWidth={2} /></span>
         <span className="text-small font-medium text-ink-500">{label}</span>
       </span>
-      <span className={`tabular mt-3 block text-[26px] font-semibold leading-none tracking-tight [overflow-wrap:anywhere] ${valueTone || 'text-ink-900'}`}>{value}</span>
+      <span className={`font-display tabular mt-3 block text-[26px] font-semibold leading-none tracking-tight [overflow-wrap:anywhere] ${valueTone || 'text-ink-900'}`}>{value}</span>
       <span className="mt-auto flex items-end justify-between gap-3 pt-3">
         <span className="min-w-0">{note !== undefined ? <span className="block text-caption text-ink-500">{note}</span> : now !== undefined ? <Delta now={now} before={before} against={against} /> : null}</span>
         {spark && spark.length > 1 && <span className="w-20 shrink-0 sm:w-24"><Sparkline values={spark} /></span>}

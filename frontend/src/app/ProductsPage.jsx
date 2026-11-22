@@ -886,7 +886,7 @@ const ProductsPage = () => {
       <section aria-label={tr('Product list')} className={`min-w-0 p-4 sm:p-6 lg:p-8 xl:block xl:overflow-y-auto ${selectedId ? 'hidden' : 'block'}`}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-h3 font-semibold text-ink-900">{isRestaurant ? tr('Menu and products') : tr('Products')}</h1>
+            <h1 className="font-display text-h3 font-semibold text-ink-900">{isRestaurant ? tr('Menu and products') : tr('Products')}</h1>
             <p className="tabular mt-1 text-small text-ink-500">
               {products ? <>{active.length} active{isRestaurant && ` · ${dishes.length} on the menu`}{thin > 0 && <> · <span className="font-medium text-warning">{tr('{{thin}} with a thin margin', { thin })}</span></>}</> : tr('What you sell and what you stock.')}
             </p>

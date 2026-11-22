@@ -99,7 +99,7 @@ const InvoicesPage = () => {
     <div className="mx-auto max-w-6xl">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-h3 font-semibold text-ink-900">{tr('Invoices')}</h1>
+          <h1 className="font-display text-h3 font-semibold text-ink-900">{tr('Invoices')}</h1>
           <p className="mt-1 text-small text-ink-500">{tr('Every bill raised, what has been paid, and what is still owed.')}</p>
         </div>
         <div className="flex gap-2">
