@@ -7,6 +7,9 @@ export const GYM_TYPES = ['GYM'];
 /* Gaming lounges (PS5 / console lounges, pool and snooker): the board, timed sessions and rates, on top of the restaurant screens (tables, kitchen, QR menu) used for food and drink. */
 export const GAMING_TYPES = ['GAMING_CAFE'];
 
+/* Zomato / Swiggy integration is not offered yet: while this is false the app hides Integrations, Settlements and the incoming-order alert. Set it to true to bring them back (same switch as the phone's PLATFORMS_ON). */
+export const PLATFORMS_ON = false;
+
 /* Delivery platforms as their own brands write them. */
 export const PLATFORM_LABEL = { ZOMATO: 'Zomato', SWIGGY: 'Swiggy', ONDC: 'ONDC', MAGICPIN: 'Magicpin' };
 export const platformName = (code) => PLATFORM_LABEL[code] || (code ? code.charAt(0) + code.slice(1).toLowerCase() : '');

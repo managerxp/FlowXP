@@ -33,7 +33,7 @@ import CommandPalette from '../components/CommandPalette.jsx';
 import GuideHelper from '../components/GuideHelper.jsx';
 import IncomingDeliveryAlert from '../components/IncomingDeliveryAlert.jsx';
 import KitchenPrintWarning from '../components/KitchenPrintWarning.jsx';
-import { AUTO_PARTS_TYPES, CLOTHING_TYPES, GAMING_TYPES, GYM_TYPES, PHARMACY_TYPES, RESTAURANT_TYPES, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
+import { AUTO_PARTS_TYPES, CLOTHING_TYPES, GAMING_TYPES, GYM_TYPES, PHARMACY_TYPES, RESTAURANT_TYPES, PLATFORMS_ON, RETAIL_TYPES, WHOLESALE_TYPES } from '../lib/business.js';
 import { useMode } from './books/mode.js';
 import { ScreenLockGate } from './ScreenLock.jsx';
 import { PinOffer } from './PinLogin.jsx';
@@ -509,7 +509,7 @@ const AppShell = () => {
     ? [{ items: [...GARAGE_NAV.map((to) => { const i = garageItems.find((x) => x.to === to); return i && to === '/app/messaging' ? { ...i, more: false, feature: undefined } : i; }),   // Messaging stays visible without the plan: its page explains the extra plan
        ...GARAGE_MORE.map((to) => { const i = garageItems.find((x) => x.to === to); return i && { ...i, more: true, types: undefined, notTypes: undefined }; })].filter((i) => i && allowed(i)) }].filter((g) => g.items.length > 0)
     : NAV_GROUPS.map(adapt).map((group) => ({ ...group, items: group.items.filter(allowed) })).filter((group) => group.items.length > 0);
-  const systemItems = SYSTEM_ITEMS.filter(allowed);
+  const systemItems = SYSTEM_ITEMS.filter((i) => PLATFORMS_ON || !['/app/integrations', '/app/settlements'].includes(i.to)).filter(allowed);
   /* The sidebar shows the daily screens; the rest sit under "More" (still one click away, and always in Ctrl K). */
   const mainGroups = groups.map((g) => ({ ...g, items: g.items.filter((i) => !i.more && !i.nested) })).filter((g) => g.items.length > 0);
   // under "More" the items keep their sections (Stock, Customers, Business...) instead of one long list
@@ -548,7 +548,7 @@ const AppShell = () => {
 
   return (
     <div className="flex min-h-full flex-col bg-page">
-      <IncomingDeliveryAlert />
+      {PLATFORMS_ON && <IncomingDeliveryAlert />}
       <KitchenPrintWarning />
       <div className="print:hidden"><SubscriptionBanner subscription={business.subscription} /></div>
       <OfflineStatus />

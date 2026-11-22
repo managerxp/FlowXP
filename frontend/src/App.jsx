@@ -109,6 +109,7 @@ const KitchenDisplay = lazy(() => import('./app/KitchenDisplay.jsx'));
 const KitchenPerformancePage = lazy(() => import('./app/KitchenPerformancePage.jsx'));
 const OrderReadyBoard = lazy(() => import('./app/OrderReadyBoard.jsx'));
 const TablesPage = lazy(() => import('./app/TablesPage.jsx'));
+import { PLATFORMS_ON } from './lib/business.js';
 const IntegrationsPage = lazy(() => import('./app/IntegrationsPage.jsx'));
 const BooksApp = lazy(() => import('./app/books/BooksApp.jsx'));
 const SettlementsPage = lazy(() => import('./app/SettlementsPage.jsx'));
@@ -354,10 +355,10 @@ const App = () => (
       <Route path="gst" element={<GstPage />} />
       <Route path="security" element={<SecurityPage />} />
       <Route path="stock-requests" element={<StockRequestsPage />} />
-      <Route path="integrations" element={<IntegrationsPage />} />
+      {PLATFORMS_ON && <Route path="integrations" element={<IntegrationsPage />} />}
       <Route path="books/*" element={<BooksApp />} />
       <Route path="flowbook" element={<Navigate to="/app/books" replace />} />   {/* the old address */}
-      <Route path="settlements" element={<SettlementsPage />} />
+      {PLATFORMS_ON && <Route path="settlements" element={<SettlementsPage />} />}
       <Route path="outlets" element={<OutletsPage />} />
       <Route path="loyalty" element={<LoyaltyPage />} />
       <Route path="member-desk" element={<MemberDesk />} />
