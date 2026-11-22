@@ -1,4 +1,6 @@
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Ionicons } from './icons.tsx';
+import { t } from './i18n.ts';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from './session.ts';
@@ -33,22 +35,19 @@ export function WholesaleHome() {
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
           <View style={{ paddingHorizontal: 16, gap: 8 }}>
             <Button title="New order" onPress={() => { fresh(); router.push('/wholesale-order-new'); }} />
-            {distributor ? (
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Button title="My route" kind="quiet" onPress={() => router.push('/field')} style={{ flex: 1 }} />
-                <Button title="My van" kind="quiet" onPress={() => router.push('/van')} style={{ flex: 1 }} />
-              </View>
-            ) : null}
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Button title="Warehouse" kind="quiet" onPress={() => router.push('/warehouse')} style={{ flex: 1 }} />
-              <Button title="Buying" kind="quiet" onPress={() => router.push('/purchasing')} style={{ flex: 1 }} />
-              <Button title="Returns" kind="quiet" onPress={() => router.push('/returns')} style={{ flex: 1 }} />
-            </View>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Button title="Collect payment" kind="quiet" onPress={() => { fresh(); router.push('/collect'); }} style={{ flex: 1 }} />
-              <Button title="Orders" kind="quiet" onPress={() => router.push('/wholesale-orders')} style={{ flex: 1 }} />
-              <Button title="Customers" kind="quiet" onPress={() => router.push('/wholesale-customers')} style={{ flex: 1 }} />
-            </View>
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingTop: 10 }}>
+            {([
+              ...(distributor ? [['My route', '/field', 'navigate-outline'], ['My van', '/van', 'bus-outline']] as const : []),
+              ['Warehouse', '/warehouse', 'business-outline'], ['Buying', '/purchasing', 'cart-outline'], ['Returns', '/returns', 'return-down-back-outline'],
+              ['Collect payment', '/collect', 'cash-outline'], ['Orders', '/wholesale-orders', 'clipboard-outline'], ['Customers', '/wholesale-customers', 'people-outline']
+            ] as const).map(([label, go, icon]) => (
+              <Pressable key={go} accessibilityRole="button" onPress={() => { if (go === '/collect') fresh(); router.push(go); }}
+                style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 22, backgroundColor: color.card, borderWidth: 1, borderColor: color.line }}>
+                <Ionicons name={icon} size={18} color={color.brand} />
+                <Text style={{ color: color.brand, fontWeight: '600' }}>{t(label)}</Text>
+              </Pressable>
+            ))}
           </View>
           <SavedNote at={dash.savedAt} />
           {dash.error && !d ? <Failed message={dash.error} onRetry={() => { void dash.refresh(); }} /> : null}

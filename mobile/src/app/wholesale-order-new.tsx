@@ -10,7 +10,7 @@ import { addLine, creditText, dropLine, orderBody, orderProblem, previewBody, se
 import { qty, rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
 import { SearchBox } from '../lib/SearchBox.tsx';
-import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
 import { display } from '../lib/theme.ts';
 
 const money = (n: number) => rupees(toPaise(n));
@@ -77,17 +77,17 @@ export default function NewWholesaleOrder() {
           <View style={{ padding: 16 }}>
             <SearchBox value={text} onChange={setText} placeholder="Search a product by name, code or barcode" label="Search a product" />
           </View>
-          {found.map((p) => (
+          {found.length ? <Group>{found.map((p) => (
             <Line key={p.product_id} left={p.name} sub={`${p.available != null ? `${qty(p.available)} ${p.unit ?? ''} free` : ''}${p.moq > 1 ? ` · minimum ${p.moq}` : ''}${p.pack_size ? ` · ${p.pack_size}` : ''}`.replace(/^ · /, '')} right={money(p.wholesale_price || p.selling_price)}
               onPress={() => { edit(addLine(lines, p)); setText(''); setFound([]); }} />
-          ))}
+          ))}</Group> : null}
 
           <SectionTitle>This order</SectionTitle>
           {lines.length === 0 ? <Empty>Search a product above and tap it to add it.</Empty> : null}
           {lines.map((l) => {
             const pl = preview?.lines.find((x) => x.product_id === l.product.product_id && x.is_free === false);
             return (
-              <View key={l.key} style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: color.line, backgroundColor: color.card }}>
+              <View key={l.key} style={[s.card, { marginHorizontal: 16, marginTop: 10, gap: 8 }]}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
                   <Text style={{ fontSize: 16, color: color.ink, flex: 1 }}>{l.product.name}</Text>
                   {pl ? <Text style={{ fontWeight: '600', color: color.ink }}>{money(pl.line_total)}</Text> : null}

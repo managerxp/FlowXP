@@ -1,6 +1,7 @@
 import { formatDate } from '../lib/display.ts';
 import { useEffect, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
+import { SearchBox } from '../lib/SearchBox.tsx';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, useSession } from '../lib/session.ts';
@@ -40,7 +41,7 @@ export default function Purchasing() {
             <Button title="New order" onPress={() => router.push('/purchase-order-new')} style={{ flex: 1 }} />
             <Button title="Receive without an order" kind="quiet" onPress={() => router.push('/goods-received')} style={{ flex: 1 }} />
           </View>
-          {show !== 'due' ? <TextInput style={s.input} value={text} onChangeText={setText} placeholder="Order number or supplier" autoCorrect={false} accessibilityLabel="Search orders" /> : null}
+          {show !== 'due' ? <SearchBox value={text} onChange={setText} placeholder="Order number or supplier" label="Search orders" /> : null}
         </View>
         <Chips<Show> items={[{ id: 'due', label: 'Due in' }, { id: 'draft', label: 'Drafts' }, { id: 'open', label: 'Ordered' }, { id: 'owed', label: 'Owed to suppliers' }, { id: 'done', label: 'Finished' }]} value={show} onChange={setShow} />
         <SavedNote at={(show === 'due' ? due : list).savedAt} />
