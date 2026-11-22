@@ -1,5 +1,5 @@
 /*
- * A restaurant or hotel's public reservation page (/reserve/<address>): how many people, which day, then every time of the day shown free or
+ * A restaurant or cafe's public reservation page (/reserve/<address>): how many people, which day, then every time of the day shown free or
  * booked for that group size. Pick a free time, leave a name and mobile number, and get a short code. No sign-in, and it works inside a frame on the
  * business's own website. The server decides what is free; this page only shows it.
  */

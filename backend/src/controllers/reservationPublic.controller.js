@@ -1,5 +1,5 @@
 /*
- * Online table reservations: the page a restaurant or hotel puts on its website (/reserve/<address>).
+ * Online table reservations: the page a restaurant or cafe puts on its website (/reserve/<address>).
  * No sign-in. The business is found by the address its owner chose, and nothing is open until they switch it on.
  *
  * The guest sees every time slot of the day marked free or booked for their party size, picks one, leaves a name and mobile

@@ -1,5 +1,5 @@
 /*
- * Public booking links. A restaurant or hotel gets a reservation page of its own (address, hours, slot length, an optional percentage offer),
+ * Public booking links. A restaurant or cafe gets a reservation page of its own (address, hours, slot length, an optional percentage offer),
  * and a reservation records where it came from, the offer it was booked with and a short code the guest can quote.
  * A salon's online booking gets an optional offer, and every online appointment gets a token number (1, 2, 3 ... per outlet per day).
  * Forward only. To undo by hand: DROP TABLE reservation_settings and drop the added columns.
