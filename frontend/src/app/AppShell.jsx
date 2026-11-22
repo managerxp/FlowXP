@@ -162,13 +162,15 @@ const NAV_GROUPS = [
     items: [
       { to: '/app/gym/reception', label: 'Front desk', icon: DoorOpen, types: GYM, permission: 'gym_desk', feature: 'gym_access' },
       { to: '/app/gym/members', label: 'Members', icon: UsersRound, types: GYM, anyPermission: ['gym_desk', 'gym_members', 'gym_setup', 'gym_trainer'] },
-      { to: '/app/gym/plans', label: 'Plans', icon: Tag, types: GYM, anyPermission: ['gym_desk', 'gym_setup'] },
-      { to: '/app/gym/classes', label: 'Classes', icon: Dumbbell, types: GYM, anyPermission: ['gym_desk', 'gym_trainer', 'gym_setup'], feature: 'gym_classes' },
-      { to: '/app/gym/shop', label: 'Shop', icon: ShoppingCart, types: GYM, anyPermission: ['gym_desk', 'gym_setup'], feature: 'gym_shop' },
-      { to: '/app/gym/dues', label: 'Dues', icon: Receipt, types: GYM, anyPermission: ['gym_desk', 'gym_members', 'gym_setup', 'reports'], feature: 'gym_dues' },
-      { to: '/app/gym/rewards', label: 'Rewards', icon: Gift, types: GYM, anyPermission: ['gym_desk', 'gym_setup'], feature: 'gym_rewards' },
-      { to: '/app/gym/reports', label: 'Reports', icon: ChartColumn, types: GYM, anyPermission: ['reports', 'gym_setup'], feature: 'gym_reports' },
+      { to: '/app/gym/plans', label: 'Memberships', icon: Tag, types: GYM, anyPermission: ['gym_desk', 'gym_setup'] },
       { to: '/app/gym/attendance', label: 'Attendance', icon: CalendarCheck, types: GYM, anyPermission: ['gym_desk', 'gym_setup', 'gym_trainer'], feature: 'gym_access' },
+      { to: '/app/gym/classes', label: 'Bookings & classes', icon: Dumbbell, types: GYM, anyPermission: ['gym_desk', 'gym_trainer', 'gym_setup'], feature: 'gym_classes' },
+      { to: '/app/gym/trainers', label: 'Trainers', icon: UserRound, types: GYM, anyPermission: ['gym_desk', 'gym_trainer', 'gym_setup'], feature: 'gym_classes' },
+      { to: '/app/gym/dues', label: 'Dues & payments', icon: Receipt, types: GYM, anyPermission: ['gym_desk', 'gym_members', 'gym_setup', 'reports'], feature: 'gym_dues' },
+      { to: '/app/gym/wallets', label: 'Wallet & credits', icon: Wallet, types: GYM, anyPermission: ['gym_desk', 'gym_members', 'gym_setup', 'reports'], feature: 'gym_wallet' },
+      { to: '/app/gym/shop', label: 'Supplements', icon: ShoppingCart, types: GYM, anyPermission: ['gym_desk', 'gym_setup'], feature: 'gym_shop' },
+      { to: '/app/gym/reports', label: 'Reports', icon: ChartColumn, types: GYM, anyPermission: ['reports', 'gym_setup'], feature: 'gym_reports' },
+      { to: '/app/gym/rewards', label: 'Rewards', icon: Gift, types: GYM, anyPermission: ['gym_desk', 'gym_setup'], feature: 'gym_rewards' },
       { to: '/app/gym/settings', label: 'Gym settings', icon: Settings, types: GYM, permission: 'gym_setup' }
     ]
   },

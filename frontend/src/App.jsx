@@ -185,6 +185,7 @@ const GymAttendance = lazy(() => import('./app/gym/GymAttendance.jsx'));
 const GymSettings = lazy(() => import('./app/gym/GymSettings.jsx'));
 const GymClasses = lazy(() => import('./app/gym/GymClasses.jsx'));
 const GymRewards = lazy(() => import('./app/gym/GymRewards.jsx'));
+const GymWallets = lazy(() => import('./app/gym/GymWallets.jsx'));
 const GymReports = lazy(() => import('./app/gym/GymReports.jsx'));
 const GymShop = lazy(() => import('./app/gym/GymShop.jsx'));
 const GymDues = lazy(() => import('./app/gym/GymDues.jsx'));
@@ -438,6 +439,8 @@ const App = () => (
       <Route path="gym/dues" element={<GymDues />} />
       <Route path="gym/shop" element={<GymShop />} />
       <Route path="gym/reports" element={<GymReports />} />
+      <Route path="gym/wallets" element={<GymWallets />} />
+      <Route path="gym/trainers" element={<GymClasses view="trainers" />} />
 
       <Route path="salon/pos" element={<SalonPos />} />
       <Route path="salon/appointments" element={<SalonAppointments />} />

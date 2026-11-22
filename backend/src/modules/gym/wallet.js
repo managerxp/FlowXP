@@ -8,6 +8,7 @@
  */
 import { GymError, money, oneOf, text, withRupees } from './common.js';
 import { onInvoicePaid } from './memberships.js';
+import { visibleTo } from './members.js';
 import { paymentStatus } from '../billing.js';
 
 const METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER'];
@@ -95,6 +96,21 @@ export const ledger = async (db, tenant, memberId, { limit = 50 } = {}) => {
        FROM gym_wallet_ledger w LEFT JOIN invoices i ON i.invoice_id = w.invoice_id LEFT JOIN users u ON u.user_id = w.created_by
       WHERE w.business_id = $1 AND w.member_id = $2 ORDER BY w.entry_id DESC LIMIT $3`, [tenant.businessId, memberId, Math.min(Number(limit) || 50, 200)])).rows;
   return withRupees({ balance_paise: await balanceOf(db, tenant.businessId, memberId), rows: rows.map((r) => ({ ...r, amount_paise: Number(r.amount_paise) })) });
+};
+
+/** Members who have money in the wallet, largest first, for the Wallet & Credits page. `q` narrows by name, phone or member number. */
+export const balances = async (db, tenant, { q = '' } = {}) => {
+  const p = [tenant.businessId];
+  const scope = visibleTo(tenant, p);
+  let where = '';
+  const like = String(q || '').trim();
+  if (like) { p.push(`%${like.replace(/[\\%_]/g, (c) => `\\${c}`)}%`); where = ` AND (c.name ILIKE $${p.length} OR c.phone ILIKE $${p.length} OR gm.member_code ILIKE $${p.length})`; }
+  const rows = (await db.query(
+    `SELECT gm.member_id, gm.member_code, c.name, c.phone, SUM(w.amount_paise)::bigint AS balance_paise, MAX(w.created_at) AS last_moved
+       FROM gym_wallet_ledger w JOIN gym_members gm ON gm.member_id = w.member_id JOIN customers c ON c.customer_id = gm.customer_id
+      WHERE w.business_id = $1${scope}${where} GROUP BY gm.member_id, c.name, c.phone HAVING SUM(w.amount_paise) > 0 ORDER BY SUM(w.amount_paise) DESC LIMIT 200`, p)).rows
+    .map((r) => ({ ...r, balance_paise: Number(r.balance_paise) }));
+  return withRupees({ held_paise: rows.reduce((a, r) => a + r.balance_paise, 0), members: rows.length, rows });
 };
 
 /** What the gym holds for members: the sum of all positive balances (a liability). */

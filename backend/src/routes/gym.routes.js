@@ -87,6 +87,7 @@ router.post('/attendance/:id/correct', ...write, can('gym_setup'), feature('gym_
 
 /* ── member wallet ────────────────────────────────────────────────────────── */
 const wl = feature('gym_wallet');
+router.get('/wallets', ...read, any('gym_desk', 'gym_members', 'gym_setup', 'reports'), wl, walletApi.list);
 router.get('/members/:id/wallet', ...read, any('gym_desk', 'gym_members', 'gym_setup', 'reports'), wl, walletApi.get);
 router.post('/members/:id/wallet/deposit', ...write, desk, wl, requireOutlet, idempotent(), walletApi.deposit);
 router.post('/members/:id/wallet/pay-invoice', ...write, desk, wl, idempotent(), walletApi.payInvoice);

@@ -74,3 +74,12 @@ test('cancelling a bill paid from the wallet returns the money once', { skip }, 
   assert.equal(await returnForCancelled(pool, { businessId: A.businessId, invoiceId: spent, userId: null }), 0);
   assert.ok(okBody(await A.call(walletApi.get, { params: { id: member } })).balance_paise > before);
 });
+
+test('the wallets list shows who holds money, narrowed by search, and only this gyms members', { skip }, async () => {
+  const all = okBody(await A.call(walletApi.list, { query: {} }));
+  assert.equal(all.members, 1);
+  assert.equal(all.rows[0].name, 'Ravi');
+  assert.equal(all.held_paise, all.rows[0].balance_paise);
+  assert.equal(okBody(await A.call(walletApi.list, { query: { q: 'zzz' } })).members, 0);
+  assert.equal(okBody(await B.call(walletApi.list, { query: {} })).members, 0);
+});

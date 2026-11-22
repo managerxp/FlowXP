@@ -12,6 +12,8 @@ const memberId = async (req) => {
   return n;
 };
 
+const list = async (req, res) => ok(res, await wallet.balances(pool, req.tenant, { q: req.query.q }));
+
 const get = async (req, res) => ok(res, await wallet.ledger(pool, req.tenant, await memberId(req), { limit: req.query.limit }));
 
 const deposit = async (req, res) => {
@@ -35,4 +37,4 @@ const refund = async (req, res) => {
   ok(res, out, 201);
 };
 
-export default wrapAll({ get, deposit, payInvoice, refund });
+export default wrapAll({ list, get, deposit, payInvoice, refund });

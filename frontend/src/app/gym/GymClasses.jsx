@@ -274,19 +274,22 @@ const ClassTypes = ({ canManage }) => {
   );
 };
 
-export default function GymClasses() {
+/* `view` 'trainers' shows the people side (trainers and one-to-one sessions); the default shows the timetable and kinds of class. */
+export default function GymClasses({ view = 'classes' }) {
   const tr = useT();
   const { can } = useAuth();
   const settings = useLoad('/gym/settings');
   const [params, setParams] = useSearchParams();
-  const tab = params.get('tab') || 'timetable';
   const manager = can('gym_setup');
   const tz = settings.data?.timezone || 'Asia/Kolkata';
   const tabs = [{ key: 'timetable', label: T('Timetable') }, ...(can('gym_desk') || can('gym_trainer') || manager ? [{ key: 'pt', label: T('Personal training') }] : []), { key: 'trainers', label: T('Trainers') }, ...(manager ? [{ key: 'types', label: T('Kinds of class') }] : [])];
+  const mine = tabs.filter((t) => (view === 'trainers' ? ['trainers', 'pt'].includes(t.key) : ['timetable', 'types'].includes(t.key)));
+  const wanted = params.get('tab');
+  const tab = mine.some((t) => t.key === wanted) ? wanted : mine[0].key;
   return (
     <div>
-      <PageHeader title={tr('Classes and training')} lead={tr('The timetable, who has booked, one-to-one sessions and the trainers.')} />
-      <Tabs tabs={tabs} value={tab} onChange={(t) => setParams({ tab: t }, { replace: true })} />
+      <PageHeader title={view === 'trainers' ? tr('Trainers') : tr('Bookings and classes')} lead={view === 'trainers' ? tr('Your trainers and one-to-one sessions.') : tr('The timetable, who has booked, and the kinds of class.')} />
+      <Tabs tabs={mine} value={tab} onChange={(t) => setParams({ tab: t }, { replace: true })} />
       {tab === 'timetable' && <Timetable canManage={manager} tz={tz} />}
       {tab === 'pt' && <PersonalTraining canManage={manager} />}
       {tab === 'trainers' && <Trainers canManage={manager} />}
