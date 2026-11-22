@@ -7,6 +7,7 @@ import { visibleTo } from '../modules/gym/members.js';
 import { addDays, isoDate, localParts, ok, wrapAll, withRupees } from '../modules/gym/common.js';
 import { branchFilter } from '../utils/scope.js';
 import { hasPermission } from '../middleware/auth.js';
+import * as rep from '../modules/gym/reports.js';
 import { moneyOverview, recentActivity, renewalsDue } from '../modules/gym/overview.js';
 
 const tzOf = async (businessId) => (await pool.query(`SELECT COALESCE(timezone, 'Asia/Kolkata') AS tz FROM businesses WHERE business_id = $1`, [businessId])).rows[0].tz;
@@ -116,4 +117,33 @@ const memberships = async (req, res) => {
   ok(res, withRupees({ from, to, members: counts, by_plan: byPlan, flow, money, expiring_soon: expiring }));
 };
 
-export default wrapAll({ dashboard, attendance, memberships });
+const asked = async (req) => {
+  const { date: today } = await localParts(pool, req.tenant.businessId);
+  return { ...rep.range(req.query, today), today, tz: await tzOf(req.tenant.businessId) };
+};
+const csv = (req, res, name, header, rows) => res.set('Content-Type', 'text/csv; charset=utf-8').set('Content-Disposition', `attachment; filename="${name}.csv"`).send(rep.toCsv(header, rows));
+const r2 = (paise) => (Number(paise) / 100).toFixed(2);
+
+const revenue = async (req, res) => {
+  const a = await asked(req);
+  const d = await rep.revenue(pool, req.tenant, a);
+  if (req.query.format !== 'csv') return ok(res, d);
+  const rows = [...Object.entries(d.billed).map(([k, v]) => ['Billed', k, v.bills, r2(v.billed_paise)]), ...d.collected_by_method.map((m) => ['Collected', m.method, m.payments, r2(m.amount_paise)]), ...d.top_products.map((p) => ['Top product', p.name, p.quantity, r2(p.spent_paise)])];
+  csv(req, res, `revenue-${a.from}-to-${a.to}`, ['Section', 'Item', 'Count or quantity', 'Amount'], rows);
+};
+
+const retention = async (req, res) => {
+  const a = await asked(req);
+  const d = await rep.retention(pool, req.tenant, { ...a, quietDays: req.query.quiet_days });
+  if (req.query.format !== 'csv') return ok(res, d);
+  csv(req, res, `not-renewed-${a.from}-to-${a.to}`, ['Member', 'Name', 'Phone', 'Plan', 'Ended on'], d.lapsed.map((m) => [m.member_code, m.name, m.phone, m.plan_name, m.ended_on]));
+};
+
+const wallet = async (req, res) => {
+  const a = await asked(req);
+  const d = await rep.walletReport(pool, req.tenant, a);
+  if (req.query.format !== 'csv') return ok(res, d);
+  csv(req, res, 'wallet-balances', ['Member', 'Name', 'Phone', 'Balance'], d.balances.map((m) => [m.member_code, m.name, m.phone, r2(m.balance_paise)]));
+};
+
+export default wrapAll({ revenue, retention, wallet, dashboard, attendance, memberships });

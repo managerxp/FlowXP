@@ -174,6 +174,10 @@ router.post('/members/:id/measurements', ...write, trainerOrManager, cls, traini
 /* ── dashboard and reports ────────────────────────────────────────────────── */
 router.get('/dashboard', ...read, staff, reports.dashboard);
 router.get('/reports/attendance', ...read, any('reports', 'gym_setup'), reports.attendance);
+const rp = feature('gym_reports');
+router.get('/reports/revenue', ...read, any('reports', 'gym_setup'), rp, reports.revenue);
+router.get('/reports/retention', ...read, any('reports', 'gym_setup'), rp, reports.retention);
+router.get('/reports/wallet', ...read, any('reports', 'gym_setup'), rp, reports.wallet);
 router.get('/reports/memberships', ...read, any('reports', 'gym_setup'), reports.memberships);
 
 export default router;
