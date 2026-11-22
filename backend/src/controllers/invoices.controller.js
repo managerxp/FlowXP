@@ -13,6 +13,7 @@
 import { OFFLINE_SQL, REVIEW_SQL } from '../utils/offlineNote.js';
 import { onInvoiceCancelled } from '../modules/salon/hooks.js';
 import { onInvoiceCancelled as onGymInvoiceCancelled, onInvoicePaid as onGymInvoicePaid } from '../modules/gym/memberships.js';
+import { returnForCancelled as returnGymWallet } from '../modules/gym/wallet.js';
 import { returnWalletForCancelled } from '../modules/gaming/wallet.js';
 import pool from '../config/database.js';
 import { placeOfSupply, taxName } from '../modules/gst/states.js';
@@ -486,6 +487,7 @@ export const cancel = async (req, res) => {
     await client.query(`UPDATE coupon_redemptions SET voided_at = CURRENT_TIMESTAMP WHERE business_id = $1 AND invoice_id = $2 AND voided_at IS NULL`, [req.tenant.businessId, req.params.id]);
     // a salon bill also hands back package visits and gift card money, and withdraws what it sold (or refuses if that was used)
     if (req.tenant.businessType === 'GYM') await onGymInvoiceCancelled(client, { businessId: req.tenant.businessId, invoiceId: Number(req.params.id), userId: req.auth.userId });
+    if (req.tenant.businessType === 'GYM') await returnGymWallet(client, { businessId: req.tenant.businessId, invoiceId: Number(req.params.id), userId: req.auth.userId });   // what the member's wallet paid goes back to it
     if (req.tenant.businessType === 'GAMING_CAFE') await returnWalletForCancelled(client, { businessId: req.tenant.businessId, invoiceId: Number(req.params.id), userId: req.auth.userId });   // what the wallet paid goes back to it
     if (req.tenant.businessType === 'SALON') await onInvoiceCancelled(client, { businessId: req.tenant.businessId, invoiceId: Number(req.params.id), userId: req.auth.userId });
     await client.query(`UPDATE invoices SET status = 'CANCELLED' WHERE invoice_id = $1`, [req.params.id]);

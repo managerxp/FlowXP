@@ -12,6 +12,7 @@ import * as members from '../modules/gym/members.js';
 import * as memberships from '../modules/gym/memberships.js';
 import * as credentials from '../modules/gym/credentials.js';
 import { memberFinance } from '../modules/gym/finance.js';
+import { balanceOf as walletBalance } from '../modules/gym/wallet.js';
 import { endMemberSessions } from '../modules/gym/portal.js';
 import { sendWelcome, sendSubscribed } from '../modules/gym/automation.js';
 import { GymError, audit, inTx, ok, page, wrapAll } from '../modules/gym/common.js';
@@ -44,7 +45,8 @@ const finance = async (req, res) => {
   await visible(req, memberId);
   const out = await memberFinance(pool, req.tenant, memberId, { limit: req.query.limit });
   if (!out) throw new GymError(404, 'Not found');
-  ok(res, out);
+  const w = await walletBalance(pool, req.tenant.businessId, memberId);
+  ok(res, { ...out, summary: { ...out.summary, wallet_paise: w, wallet: w / 100 } });
 };
 
 const create = async (req, res) => {

@@ -9,18 +9,19 @@ const METHOD = { CASH: 'Cash', UPI: 'UPI', CARD: 'Card', BANK_TRANSFER: 'Bank tr
 const kindOf = (i) => (i.is_membership ? 'Membership' : i.has_products ? 'Products' : 'Other');
 
 /* The strip: what is running, what they owe, what they have spent. `current` is the membership running now (or next to start); `upcoming` the next one waiting. */
-export const MemberSummary = ({ current, upcoming, fin }) => {
+export const MemberSummary = ({ current, upcoming, fin, wallet }) => {
   const tr = useT();
   const s = fin?.summary;
   const state = current ? MEMBERSHIP_STATE[current.state] : null;
   const next = upcoming && upcoming !== current ? upcoming : null;
   const when = current && current.end_date ? ` · ${current.state === 'UPCOMING' ? tr('starts') : tr('ends')} ${longDate(current.state === 'UPCOMING' ? current.start_date : current.end_date)}` : '';
   return (
-    <section aria-label={tr('Member at a glance')} className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+    <section aria-label={tr('Member at a glance')} className={`mb-5 grid grid-cols-2 gap-3 ${wallet ? 'lg:grid-cols-6' : 'lg:grid-cols-5'}`}>
       <StatCard label={tr('Membership')} value={current ? current.plan_name : tr('None')}
         note={current ? `${state?.label || ''}${when}${next ? ` · ${tr('next')}: ${next.plan_name} ${longDate(next.start_date)}` : ''}` : tr('Nothing running')} />
       <StatCard label={tr('Days left')} value={current && current.state !== 'UPCOMING' && current.days_left != null ? current.days_left : '–'} tone={current && current.days_left != null && current.days_left <= 7 ? 'warning' : undefined} />
       <StatCard label={tr('Owes')} value={s ? rs(s.due) : '…'} tone={s && s.due > 0 ? 'danger' : undefined} note={s ? (s.due > 0 ? tr('Unpaid on their bills') : tr('Nothing owed')) : undefined} />
+      {wallet && <StatCard label={tr('Wallet')} value={s ? rs(s.wallet) : '…'} tone={s && s.wallet > 0 ? 'success' : undefined} note={tr('Money left with you')} />}
       <StatCard label={tr('Spent in all')} value={s ? rs(s.billed) : '…'} note={s ? `${s.invoices} ${tr('bills')}, ${rs(s.paid)} ${tr('paid')}` : undefined} />
       <StatCard label={tr('Shop purchases')} value={s ? rs(s.purchase_spent) : '…'} note={s ? (s.purchases ? `${s.purchase_quantity} ${tr('items')}, ${s.purchases} ${tr('bills')}` : tr('Nothing bought yet')) : undefined} />
     </section>

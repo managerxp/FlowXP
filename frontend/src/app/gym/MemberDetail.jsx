@@ -8,6 +8,7 @@ import { MEMBERSHIP_STATE, MEMBER_STATUS, PAYMENT_STATE, dayTime, longDate, rs, 
 import { Alert, Avatar, Badge, Button, ListState, PageHeader, Select, useDialog, useToast } from '../../components/ui.jsx';
 import { Panel, Tabs, useAction } from '../salon/parts.jsx';
 import MemberForm from './MemberForm.jsx';
+import MemberWallet from './MemberWallet.jsx';
 import { MemberPayments, MemberPurchases, MemberSummary } from './MemberMoney.jsx';
 import { MemberPacks, MemberRewards, MemberTraining } from './MemberExtras.jsx';
 import { CancelDialog, ExtendDialog, FreezeDialog, HistoryDialog, SellDialog, TransferDialog } from './MemberDialogs.jsx';
@@ -88,10 +89,11 @@ export default function MemberDetail() {
       {member.status === 'SUSPENDED' && <div className="mb-4"><Alert>This account is on hold{member.status_reason ? `: ${member.status_reason}` : ''}. They cannot check in.</Alert></div>}
       {member.status === 'ARCHIVED' && <div className="mb-4"><Alert>This member is archived{member.merged_into ? tr('(merged into another member)') : ''}. Their cards stopped working.</Alert></div>}
 
-      <MemberSummary current={current} upcoming={memberships.find((x) => x.state === 'UPCOMING' && !x.shared_from)} fin={fin.data} />
-      {seeMoney && <Tabs tabs={[{ key: 'overview', label: tr('Overview') }, { key: 'payments', label: tr('Payments') }, { key: 'purchases', label: tr('Purchases') }]} value={tab} onChange={setTab} />}
+      <MemberSummary current={current} upcoming={memberships.find((x) => x.state === 'UPCOMING' && !x.shared_from)} fin={fin.data} wallet={seeMoney && hasFeature('gym_wallet')} />
+      {seeMoney && <Tabs tabs={[{ key: 'overview', label: tr('Overview') }, { key: 'payments', label: tr('Payments') }, { key: 'purchases', label: tr('Purchases') }, ...(hasFeature('gym_wallet') ? [{ key: 'wallet', label: tr('Wallet') }] : [])]} value={tab} onChange={setTab} />}
       {tab === 'payments' && seeMoney && <MemberPayments fin={fin} />}
       {tab === 'purchases' && seeMoney && <MemberPurchases fin={fin} />}
+      {tab === 'wallet' && seeMoney && <MemberWallet memberId={member.member_id} fin={fin.data} canAdd={desk} canRefund={manager} onChanged={reload} />}
 
       {tab === 'overview' && <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-5">

@@ -6,6 +6,7 @@
 import { branchFilter } from '../../utils/scope.js';
 import { visibleTo } from './members.js';
 import { addDays, withRupees } from './common.js';
+import { liability } from './wallet.js';
 
 /** Payments received today and this month, what is owed, where this month's billing came from, shop sales and low stock. */
 export const moneyOverview = async (db, tenant, { today, tz }) => {
@@ -47,7 +48,8 @@ export const moneyOverview = async (db, tenant, { today, tz }) => {
     received_today_paise: paid.today_paise, received_month_paise: paid.month_paise,
     owed_paise: owed.owed_paise, owed_bills: owed.bills,
     billed_month: { membership_paise: billed.membership, training_paise: billed.training, shop_paise: billed.shop, other_paise: billed.other },
-    low_stock: low
+    low_stock: low,
+    wallet_liability_paise: await liability(db, tenant.businessId)
   });
 };
 

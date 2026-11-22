@@ -19,6 +19,7 @@ import members from '../controllers/gymMembers.controller.js';
 import access from '../controllers/gymAccess.controller.js';
 import reports from '../controllers/gymReports.controller.js';
 import rewardsApi from '../controllers/gymRewards.controller.js';
+import walletApi from '../controllers/gymWallet.controller.js';
 import deviceApi from '../controllers/gymDevices.controller.js';
 import trainingApi from '../controllers/gymTraining.controller.js';
 
@@ -81,6 +82,13 @@ router.get('/access/events', ...read, desk, feature('gym_access'), access.events
 router.get('/attendance', ...read, any('gym_desk', 'gym_setup', 'gym_trainer'), feature('gym_access'), access.attendance);
 router.post('/attendance', ...write, can('gym_setup'), feature('gym_access'), requireOutlet, access.addVisit);
 router.post('/attendance/:id/correct', ...write, can('gym_setup'), feature('gym_access'), access.correct);
+
+/* ── member wallet ────────────────────────────────────────────────────────── */
+const wl = feature('gym_wallet');
+router.get('/members/:id/wallet', ...read, any('gym_desk', 'gym_members', 'gym_setup', 'reports'), wl, walletApi.get);
+router.post('/members/:id/wallet/deposit', ...write, desk, wl, requireOutlet, idempotent(), walletApi.deposit);
+router.post('/members/:id/wallet/pay-invoice', ...write, desk, wl, idempotent(), walletApi.payInvoice);
+router.post('/members/:id/wallet/refund', ...write, can('gym_setup'), wl, requireOutlet, idempotent(), walletApi.refund);
 
 /* ── rewards, referrals and reminders ─────────────────────────────────────── */
 const rw = feature('gym_rewards');
