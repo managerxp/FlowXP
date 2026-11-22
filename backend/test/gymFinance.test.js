@@ -59,3 +59,22 @@ test('another gym cannot read it, and an unknown member is not found', { skip },
   const none = await A.call(members.finance, { params: { id: 999999 } });
   assert.equal(none.code, 404);
 });
+
+test('the front page counts money in, money owed, renewals due and what just happened; a trainer sees none of the money', { skip }, async () => {
+  const reports = (await import('../src/controllers/gymReports.controller.js')).default;
+  const second = okBody(await A.call(members.create, { body: { name: 'Bina', phone: '9876500902' } }), 201).member_id;
+  okBody(await A.call(members.sell, { params: { id: second }, body: { plan_id: plan, payment: { method: 'UPI', amount: 300 } } }), 201);
+  const d = okBody(await A.call(reports.dashboard, {}));
+  assert.equal(d.money.received_today_paise, 118000 + 30000, 'every payment taken today, both members');
+  assert.equal(d.money.owed_paise, 88000, 'only Bina still owes: 1180 - 300');
+  assert.equal(d.money.owed_bills, 1);
+  assert.equal(d.money.billed_month.membership_paise, 236000);
+  assert.equal(d.money.billed_month.shop_paise, 0);
+  assert.equal(d.renewals.d7, 0);
+  assert.equal(d.renewals.d30, 2, 'both 30-day memberships end inside 30 days and have nothing queued');
+  assert.ok(d.activity.length >= 4 && d.activity.some((x) => x.kind === 'SOLD') && d.activity.some((x) => x.kind === 'PAYMENT' && x.amount_paise > 0), 'sales and payments are in the feed');
+  const t = okBody(await A.call(reports.dashboard, {}, A.tenantFor('TRAINER')));
+  assert.equal(t.money, undefined);
+  assert.equal(t.renewals, undefined);
+  assert.equal(t.activity, undefined);
+});

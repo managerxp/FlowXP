@@ -6,6 +6,8 @@ import pool from '../config/database.js';
 import { visibleTo } from '../modules/gym/members.js';
 import { addDays, isoDate, localParts, ok, wrapAll, withRupees } from '../modules/gym/common.js';
 import { branchFilter } from '../utils/scope.js';
+import { hasPermission } from '../middleware/auth.js';
+import { moneyOverview, recentActivity, renewalsDue } from '../modules/gym/overview.js';
 
 const tzOf = async (businessId) => (await pool.query(`SELECT COALESCE(timezone, 'Asia/Kolkata') AS tz FROM businesses WHERE business_id = $1`, [businessId])).rows[0].tz;
 
@@ -57,7 +59,10 @@ const dashboard = async (req, res) => {
     `SELECT d::date::text AS date, COALESCE(c.n, 0)::int AS visits FROM generate_series($2::date - 6, $2::date, interval '1 day') d
      LEFT JOIN (SELECT a.local_date, COUNT(*) AS n FROM gym_attendance a WHERE a.business_id = $1 AND a.status <> 'VOIDED' AND a.local_date > $2::date - 7${aScope} GROUP BY a.local_date) c ON c.local_date = d::date
      ORDER BY d`, [...a])).rows;
-  ok(res, withRupees({ today, members: counts, visits, denied_today: denied, joined_this_month: joined, sales_this_month: sales, last_7_days: week }));
+  // money, renewals and the activity feed are for the desk, managers and accountants; a trainer's dashboard stays about people and visits
+  const seesMoney = ['gym_desk', 'gym_members', 'gym_setup', 'reports'].some((p) => hasPermission(req.tenant, p));
+  const extra = seesMoney ? { money: await moneyOverview(pool, req.tenant, { today, tz }), renewals: await renewalsDue(pool, req.tenant, { today }), activity: await recentActivity(pool, req.tenant) } : {};
+  ok(res, withRupees({ today, members: counts, visits, denied_today: denied, joined_this_month: joined, sales_this_month: sales, last_7_days: week, ...extra }));
 };
 
 const attendance = async (req, res) => {
