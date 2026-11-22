@@ -65,7 +65,7 @@ const ShelfTile = ({ to, icon: Icon, label, value, note, tone = 'text-ink-900', 
   return (
   <Link to={to} className="lift flex flex-col gap-1 rounded-(--radius-card) border border-line bg-surface p-4 hover:border-brand-500">
     <span className="flex items-center gap-2 text-small text-ink-500"><span aria-hidden="true" className={`flex h-7 w-7 items-center justify-center rounded-lg ${bg}`}><Icon className="h-4 w-4" /></span>{tr(label)}</span>
-    <span className={`tabular text-h3 font-semibold ${tone}`}>{value}</span>
+    <span className={`font-display tabular text-h3 font-semibold ${tone}`}>{value}</span>
     <span className="text-caption text-ink-500">{note}</span>
   </Link>
 );
@@ -159,7 +159,7 @@ export const PlanStrip = () => {
         {left != null && !ended ? (
           <>
             <p className="flex items-baseline gap-1.5">
-              <span className={`tabular text-h3 font-semibold ${soon ? 'text-warning' : 'text-ink-900'}`}>{left}</span>
+              <span className={`font-display tabular text-h3 font-semibold ${soon ? 'text-warning' : 'text-ink-900'}`}>{left}</span>
               <span className="text-small text-ink-500">{left === 1 ? 'day' : 'days'} left{trial ? tr('in your trial') : tr('until renewal')}</span>
             </p>
             <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-3" role="presentation">
