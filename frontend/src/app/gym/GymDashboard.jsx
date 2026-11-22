@@ -39,7 +39,7 @@ export default function GymDashboard() {
                 <StatCard size="lg" label={tr('Owed to you')} value={rsPaise(data.money.owed_paise)} tone={data.money.owed_paise > 0 ? 'danger' : undefined} note={data.money.owed_bills ? `${data.money.owed_bills} ${tr('bills unpaid')}` : tr('Nothing owed')} to={hasFeature('gym_dues') ? '/app/gym/dues' : undefined} />
                 <StatCard size="lg" label={tr('Shop sales this month')} value={rsPaise(data.money.billed_month.shop_paise)} />
                 {data.money.wallet_liability_paise > 0 && <StatCard size="lg" label={tr('Held in wallets')} value={rsPaise(data.money.wallet_liability_paise)} note={tr('Members\' advance money')} />}
-                <StatCard size="lg" label={tr('Low on stock')} value={data.money.low_stock} tone={data.money.low_stock ? 'warning' : undefined} to={data.money.low_stock ? '/app/inventory' : undefined} />
+                <StatCard size="lg" label={tr('Low on stock')} value={data.money.low_stock} tone={data.money.low_stock ? 'warning' : undefined} to={data.money.low_stock ? (hasFeature('gym_shop') ? '/app/gym/shop' : '/app/inventory') : undefined} />
               </div>
               <Panel title={tr('Where this month\'s billing came from')} lead={tr('Billed after refunds, by what was sold')}>
                 {(() => {

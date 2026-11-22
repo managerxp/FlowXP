@@ -19,6 +19,7 @@ import members from '../controllers/gymMembers.controller.js';
 import access from '../controllers/gymAccess.controller.js';
 import reports from '../controllers/gymReports.controller.js';
 import rewardsApi from '../controllers/gymRewards.controller.js';
+import shopApi from '../controllers/gymShop.controller.js';
 import duesApi from '../controllers/gymDues.controller.js';
 import walletApi from '../controllers/gymWallet.controller.js';
 import deviceApi from '../controllers/gymDevices.controller.js';
@@ -96,6 +97,12 @@ const du = feature('gym_dues');
 router.get('/dues', ...read, any('gym_desk', 'gym_members', 'gym_setup', 'reports'), du, duesApi.list);
 router.put('/members/:id/credit-limit', ...write, can('gym_setup'), du, duesApi.setLimit);
 router.put('/members/:id/promise', ...write, desk, du, duesApi.setPromise);
+
+/* ── supplement desk ──────────────────────────────────────────────────────── */
+const sh = feature('gym_shop');
+router.get('/shop/products', ...read, desk, sh, shopApi.products);
+router.get('/shop/alerts', ...read, any('gym_desk', 'gym_setup', 'reports'), sh, shopApi.alerts);
+router.post('/shop/sale', ...write, desk, sh, requireOutlet, idempotent(), shopApi.sell);
 
 /* ── rewards, referrals and reminders ─────────────────────────────────────── */
 const rw = feature('gym_rewards');

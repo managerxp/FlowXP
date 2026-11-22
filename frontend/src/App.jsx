@@ -185,6 +185,7 @@ const GymAttendance = lazy(() => import('./app/gym/GymAttendance.jsx'));
 const GymSettings = lazy(() => import('./app/gym/GymSettings.jsx'));
 const GymClasses = lazy(() => import('./app/gym/GymClasses.jsx'));
 const GymRewards = lazy(() => import('./app/gym/GymRewards.jsx'));
+const GymShop = lazy(() => import('./app/gym/GymShop.jsx'));
 const GymDues = lazy(() => import('./app/gym/GymDues.jsx'));
 /* The spare parts module (business type AUTO_PARTS). Its screens live in app/autoparts/ and load only for a parts shop. */
 /* Clothing shops (business type CLOTHING): styles with size and colour variants. */
@@ -434,6 +435,7 @@ const App = () => (
       <Route path="gym/classes" element={<GymClasses />} />
       <Route path="gym/rewards" element={<GymRewards />} />
       <Route path="gym/dues" element={<GymDues />} />
+      <Route path="gym/shop" element={<GymShop />} />
 
       <Route path="salon/pos" element={<SalonPos />} />
       <Route path="salon/appointments" element={<SalonAppointments />} />

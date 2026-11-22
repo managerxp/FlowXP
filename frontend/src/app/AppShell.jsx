@@ -164,6 +164,7 @@ const NAV_GROUPS = [
       { to: '/app/gym/members', label: 'Members', icon: UsersRound, types: GYM, anyPermission: ['gym_desk', 'gym_members', 'gym_setup', 'gym_trainer'] },
       { to: '/app/gym/plans', label: 'Plans', icon: Tag, types: GYM, anyPermission: ['gym_desk', 'gym_setup'] },
       { to: '/app/gym/classes', label: 'Classes', icon: Dumbbell, types: GYM, anyPermission: ['gym_desk', 'gym_trainer', 'gym_setup'], feature: 'gym_classes' },
+      { to: '/app/gym/shop', label: 'Shop', icon: ShoppingCart, types: GYM, anyPermission: ['gym_desk', 'gym_setup'], feature: 'gym_shop' },
       { to: '/app/gym/dues', label: 'Dues', icon: Receipt, types: GYM, anyPermission: ['gym_desk', 'gym_members', 'gym_setup', 'reports'], feature: 'gym_dues' },
       { to: '/app/gym/rewards', label: 'Rewards', icon: Gift, types: GYM, anyPermission: ['gym_desk', 'gym_setup'], feature: 'gym_rewards' },
       { to: '/app/gym/attendance', label: 'Attendance', icon: CalendarCheck, types: GYM, anyPermission: ['gym_desk', 'gym_setup', 'gym_trainer'], feature: 'gym_access' },
