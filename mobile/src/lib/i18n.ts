@@ -88,6 +88,7 @@ export const HI: Record<string, string> = {
   'Update stock': 'स्टॉक अपडेट करें', 'Remove this product': 'यह प्रोडक्ट हटाएँ', 'Start a bill': 'बिल शुरू करें', 'Call': 'कॉल करें', 'Send now': 'अभी भेजें',
   'Send waiting bills now': 'इंतज़ार वाले बिल अभी भेजें', 'Print a test receipt': 'टेस्ट रसीद छापें', 'Print the bill': 'बिल छापें',
   'Share the bill': 'बिल शेयर करें', 'Sign out': 'साइन आउट', 'Allow the camera': 'कैमरा की अनुमति दें', 'Download now': 'अभी डाउनलोड करें', 'Takeaway order': 'टेकअवे ऑर्डर',
+  'Edit all details': 'सारी जानकारी बदलें', 'Take a photo': 'फोटो खींचें',
   'Back to the menu': 'मेन्यू पर वापस', 'Back to the bill': 'बिल पर वापस', 'Make my first bill': 'मेरा पहला बिल बनाएँ', 'Open flowxp.in': 'flowxp.in खोलें',
   'Watch the one-minute tour again': 'एक मिनट का टूर फिर देखें', 'Show the tips and checklist again': 'टिप्स और चेकलिस्ट फिर दिखाएँ', 'Next customer: new bill': 'अगला ग्राहक: नया बिल',
   "Clear this phone's data": 'इस फ़ोन का डेटा साफ़ करें', 'Send a test report to FlowXP': 'FlowXP को टेस्ट रिपोर्ट भेजें', 'Sign in': 'साइन इन', 'Continue': 'जारी रखें', 'Forgot your password?': 'पासवर्ड भूल गए?',

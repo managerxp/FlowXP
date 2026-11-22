@@ -83,6 +83,7 @@ const ProductTile = ({ product, inCart, onAdd, highlight = false }) => {
           {inCart}<span className="sr-only"> {tr('in the bill')}</span>
         </span>
       )}
+      {product.image_url && <img src={product.image_url} alt="" loading="lazy" className="mb-1.5 h-16 w-full rounded-md object-cover" />}
       <span className="line-clamp-2 pr-6 text-small font-medium leading-snug text-ink-900">{pname(product)}</span>
       {product.offer_label && <span className="mt-1 w-fit rounded-md bg-success/10 px-1.5 py-0.5 text-[11px] font-semibold text-success">{product.offer_label}</span>}
       <span className="mt-2 flex flex-wrap items-end justify-between gap-x-2 gap-y-0.5">

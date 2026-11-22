@@ -31,4 +31,5 @@ export type SalesReport = {
 export type ProductFull = {
   product_id: number; name: string; sku: string | null; barcode: string | null; unit: string | null; category_name: string | null; selling_price: number; mrp: number | null;
   purchase_price: number; tax_rate: number; cess_rate?: number; track_inventory: boolean; current_stock: number; min_stock: number; status: string; kind: string;
+  category_id?: number | null; description?: string | null; image_url?: string | null; price_includes_tax?: boolean; tax_rate_id?: number | null; shared_price?: number;
 };

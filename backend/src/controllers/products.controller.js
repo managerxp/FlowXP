@@ -411,7 +411,7 @@ const posShape = async (rows, tenant) => {
     const p = asProduct(r);
     const d = details.get(r.product_id);
     return {
-      product_id: p.product_id, name: p.name, name_i18n: p.name_i18n, sku: p.sku, barcodes: barcodes.get(r.product_id), unit: p.unit, selling_price: p.selling_price, mrp: p.mrp, tax_rate: p.tax_rate, cess_rate: p.cess_rate, price_includes_tax: p.price_includes_tax,
+      product_id: p.product_id, name: p.name, name_i18n: p.name_i18n, sku: p.sku, barcodes: barcodes.get(r.product_id), unit: p.unit, selling_price: p.selling_price, mrp: p.mrp, tax_rate: p.tax_rate, cess_rate: p.cess_rate, price_includes_tax: p.price_includes_tax, image_url: p.image_url,
       track_inventory: p.track_inventory, current_stock: p.current_stock, category_name: p.category_name, is_quick: p.is_quick, is_available: p.is_available, modifier_group_ids: p.modifier_group_ids,
       ...(['WHOLESALE', 'DISTRIBUTOR'].includes(tenant.businessType) ? { wholesale: wholesale.get(r.product_id) ?? null } : {}),
       ...(tenant.businessType === 'PHARMACY' ? {

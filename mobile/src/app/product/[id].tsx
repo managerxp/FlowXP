@@ -12,6 +12,7 @@ import { useLoad } from '../../lib/useLoad.ts';
 import type { ProductFull } from '../../lib/types.ts';
 import { qty, rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
+import ProductPhoto from '../../lib/ProductPhoto.tsx';
 import { Button, ErrorText, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
 
 const money = (r: number) => rupees(toPaise(r));
@@ -30,6 +31,7 @@ export default function ProductDetail() {
     void scope.catalog.byId(Number(id)).then((c) => { if (c) setFromPhone({ product_id: c.product_id, name: c.name, sku: c.sku, barcode: c.barcodes[0] ?? null, unit: c.unit, category_name: c.category_name, selling_price: c.selling_price, mrp: c.mrp, purchase_price: 0, tax_rate: c.tax_rate, track_inventory: c.track_inventory, current_stock: c.current_stock ?? 0, min_stock: 0, status: 'ACTIVE', kind: 'DISH' }); });
   }, [loaded.error, loaded.data, scope, id]);
   const p = loaded.data ?? fromPhone;
+  const [photo, setPhoto] = useState<string | null>(null);
   const [price, setPrice] = useState('');
   const [delta, setDelta] = useState('');
   const [reason, setReason] = useState('');
@@ -95,6 +97,10 @@ export default function ProductDetail() {
           {error && !p ? <Failed message={error} onRetry={() => { void refresh(); }} /> : null}
           {p ? (
             <>
+              <View style={{ paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
+                <ProductPhoto productId={p.product_id} url={photo ?? p.image_url} onChange={setPhoto} />
+                <Button title="Edit all details" onPress={() => router.push({ pathname: '/product/edit', params: { id: String(id) } })} />
+              </View>
               <Line left="Selling price" right={money(p.selling_price)} sub={`GST ${p.tax_rate}%${p.cess_rate ? ` · Cess ${p.cess_rate}%` : ""}${p.mrp ? ` · MRP ${money(p.mrp)}` : ''}`} />
               {p.purchase_price > 0 ? <Line left="Cost price" right={money(p.purchase_price)} /> : null}
               {p.track_inventory ? <Line left="In stock here" right={`${qty(p.current_stock)} ${p.unit ?? ''}`} sub={`Reorder level ${qty(p.min_stock)}`} /> : <Line left="Stock" right="Not counted" />}

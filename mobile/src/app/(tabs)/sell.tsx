@@ -1,8 +1,9 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Modal, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { api, currentBusiness, useSession } from '../../lib/session.ts';
+import { API_URL, api, currentBusiness, useSession } from '../../lib/session.ts';
+import { logoSrc } from '../../lib/logo.ts';
 import { isWholesale } from '../../lib/retail.ts';
 import { kvGet, kvSet, useScope } from '../../lib/local.ts';
 import { bump, parseUsage, popular, trim, type Usage } from '../../lib/billing.ts';
@@ -38,6 +39,7 @@ const MenuTile = memo(({ item, n, cols, offer, onPick }: { item: Product; n: num
   >
     {n ? <View style={{ position: 'absolute', top: 6, right: 6, minWidth: 26, height: 26, borderRadius: 13, paddingHorizontal: 6, backgroundColor: color.action, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: color.onAction, fontWeight: '800', fontSize: 13 }}>{qty(n)}</Text></View> : null}
     <View style={{ gap: 4 }}>
+      {item.image_url ? <Image source={{ uri: logoSrc(item.image_url, API_URL) ?? '' }} accessibilityIgnoresInvertColors style={{ height: 64, borderRadius: 8, backgroundColor: color.wash }} resizeMode="cover" /> : null}
       {offer ? <Text numberOfLines={1} style={{ alignSelf: 'flex-start', fontSize: 11, fontWeight: '800', color: color.onAction, backgroundColor: color.action, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6, overflow: 'hidden' }}>{offer}</Text> : null}
       <Text numberOfLines={2} style={{ fontSize: 15, fontWeight: '600', color: item.is_available ? color.ink : color.soft, paddingRight: n ? 28 : 0 }}>{pname(item)}</Text>
     </View>

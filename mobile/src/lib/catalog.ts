@@ -21,6 +21,8 @@ export type Product = {
   selling_price: number; mrp: number | null; tax_rate: number; /** compensation cess %, when the business charges it */ cess_rate?: number; track_inventory: boolean; current_stock: number | null;
   /** the price already includes GST (goods sold at the MRP on the pack): the bill takes the tax out of it instead of adding it */
   price_includes_tax?: boolean;
+  /** the product photo: a path on the server or a full address (show it with logoSrc) */
+  image_url?: string | null;
   category_name: string | null; is_available: boolean; modifier_group_ids: number[];
   /** A one-off line typed at the till (not in the catalogue): its product_id is a negative number made on the phone, and it is sent to the server as a description and a price. */
   custom?: boolean;
@@ -52,7 +54,7 @@ const putCustomer = (db: Db, c: LocalCustomer) => db.run(`INSERT OR REPLACE INTO
    the server prices the sale, so the bill is right either way. */
 /* Bump this when what the phone keeps changes shape (or what the server sends changes meaning): every phone then downloads the catalogue
    once more. 2 = ingredients and packaging are no longer in the product list. */
-const COPY_VERSION = '6';   // 3 = customers are kept on the phone too; 4 = a pharmacy's medicines carry their details; 5 = a wholesaler's products carry their wholesale details; 6 = products carry their cess rate
+const COPY_VERSION = '7';   // 3 = customers are kept on the phone too; 4 = a pharmacy's medicines carry their details; 5 = a wholesaler's products carry their wholesale details; 6 = products carry their cess rate; 7 = products carry their photo
 const GROUPS_FRESH_MS = 10 * 60 * 1000;
 
 const textOf = (p: Product) => `${p.name} ${p.sku || ''} ${(p.barcodes || []).join(' ')} ${p.category_name || ''} ${p.pharmacy?.salt_composition || ''} ${p.pharmacy?.manufacturer || ''}`.toLowerCase();
