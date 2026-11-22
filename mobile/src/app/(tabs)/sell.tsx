@@ -12,6 +12,7 @@ import { KITCHEN_TYPES, lineName, linePricePaise, totals, type Line } from '../.
 import { noOffers, previewOffers } from '../../lib/offers.ts';
 import { qty, rupees, toPaise } from '../../lib/money.ts';
 import { pname, type Product } from '../../lib/catalog.ts';
+import { cachedShelves, loadShelves, noShelves, type Shelves } from '../../lib/shelves.ts';
 import { SyncBadge } from '../../lib/SyncBadge.tsx';
 import { Hint, markDone } from '../../lib/learn.tsx';
 import { t } from '../../lib/i18n.ts';
@@ -30,18 +31,23 @@ import type { StyleRow } from '../../lib/clothing.ts';
 
 /* The till. On a phone: search or scan at the top, then the Menu (tap a tile) or the Bill, with the total and Take payment always at the bottom.
    On a tablet: the menu on the left and the bill on the right, so nothing is a screen away. */
-const MenuTile = memo(({ item, n, cols, onPick }: { item: Product; n: number; cols: number; onPick: (p: Product) => void }) => (
+const MenuTile = memo(({ item, n, cols, offer, onPick }: { item: Product; n: number; cols: number; offer?: string; onPick: (p: Product) => void }) => (
   <Pressable
-    accessibilityRole="button" accessibilityLabel={`${item.name}, ${rupees(toPaise(item.selling_price))}${n ? `, ${qty(n)} on the bill` : ''}`} onPress={() => onPick(item)}
+    accessibilityRole="button" accessibilityLabel={`${item.name}, ${rupees(toPaise(item.selling_price))}${offer ? `, offer: ${offer}` : ''}${n ? `, ${qty(n)} on the bill` : ''}`} onPress={() => onPick(item)}
     style={({ pressed }) => [{ flex: 1 / cols, minHeight: 96, padding: 14, borderRadius: radius.card - 2, borderCurve: 'continuous', boxShadow: n ? undefined : shadow.card, borderWidth: n ? 2 : 1, borderColor: n ? color.brand : color.line, backgroundColor: n ? color.tint : item.is_available ? color.card : color.wash, justifyContent: 'space-between' }, pressed && { backgroundColor: color.press }]}
   >
     {n ? <View style={{ position: 'absolute', top: 6, right: 6, minWidth: 26, height: 26, borderRadius: 13, paddingHorizontal: 6, backgroundColor: color.action, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: color.onAction, fontWeight: '800', fontSize: 13 }}>{qty(n)}</Text></View> : null}
-    <Text numberOfLines={2} style={{ fontSize: 15, fontWeight: '600', color: item.is_available ? color.ink : color.soft, paddingRight: n ? 28 : 0 }}>{pname(item)}</Text>
+    <View style={{ gap: 4 }}>
+      {offer ? <Text numberOfLines={1} style={{ alignSelf: 'flex-start', fontSize: 11, fontWeight: '800', color: color.onAction, backgroundColor: color.action, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6, overflow: 'hidden' }}>{offer}</Text> : null}
+      <Text numberOfLines={2} style={{ fontSize: 15, fontWeight: '600', color: item.is_available ? color.ink : color.soft, paddingRight: n ? 28 : 0 }}>{pname(item)}</Text>
+    </View>
     <Text style={{ color: item.is_available ? color.ink : color.soft, fontWeight: '600', fontVariant: ['tabular-nums'] }}>{item.is_available ? rupees(toPaise(item.selling_price)) : 'Not available'}{item.modifier_group_ids.length ? ' · options' : ''}</Text>
   </Pressable>
 ));
 
 const POPULAR = '__popular__';
+const OFFERS = '__offers__';
+const PAGE = 120;   // tiles / results shown at first; scrolling to the end shows the next page, so every product is reachable
 
 export default function Sell() {
   const session = useSession();
@@ -75,27 +81,46 @@ export default function Sell() {
   useEffect(() => (scope ? startAutoSync() : undefined), [scope?.key]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // the search runs on the phone's own copy, so it works with no signal; products arriving from a sync refresh the lists
+  const [resultLimit, setResultLimit] = useState(40);
+  useEffect(() => { setResultLimit(40); }, [text]);
   useEffect(() => {
     let alive = true;
     if (!scope || !text.trim()) { setResults([]); return; }
-    void scope.catalog.search(text).then((r) => { if (alive) setResults(r); });
+    void scope.catalog.search(text, resultLimit).then((r) => { if (alive) setResults(r); });
     return () => { alive = false; };
-  }, [scope, text, sync.products, sync.syncedAt]);
+  }, [scope, text, resultLimit, sync.products, sync.syncedAt]);
 
   useEffect(() => { if (scope) void scope.catalog.categories().then(setCategories); }, [scope, sync.products, sync.syncedAt]);
-  const hot = popular(usage);
+
+  // Popular and Offers come from the server (the same as the web till); the last answer is kept for when there is no signal
+  const [shelves, setShelves] = useState<Shelves>(noShelves());
+  const shelvesKey = `shelves:${session.businessId}:${session.branchId}`;
+  useEffect(() => {
+    let alive = true;
+    void cachedShelves(shelvesKey).then((c) => { if (alive) setShelves((cur) => (cur.popular.length || cur.offers.size ? cur : c)); });
+    void loadShelves(shelvesKey).then((fresh) => { if (alive && fresh) setShelves(fresh); });
+    return () => { alive = false; };
+  }, [shelvesKey, sync.syncedAt]);
+  const localHot = popular(usage);
+  const hot = shelves.popular.length ? shelves.popular : localHot;   // until the shop has enough sales, what this phone sells most
   const hasPopular = hot.length > 0;
-  const chosen = category === '__first__' ? (hasPopular ? POPULAR : categories[0]?.name) : category;
+  const hasOffers = shelves.offers.size > 0;
+  const offerIds = useMemo(() => [...shelves.offers.keys()], [shelves.offers]);
+  const chosen = category === '__first__' ? (hasOffers ? OFFERS : hasPopular ? POPULAR : categories[0]?.name) : category;
+  const [limit, setLimit] = useState(PAGE);
+  useEffect(() => { setLimit(PAGE); }, [chosen]);
+  const [more, setMore] = useState(false);   // the last page came back full, so there may be more
   useEffect(() => {
     let alive = true;
     if (!scope || chosen === undefined) { setTiles([]); return; }
-    if (chosen === POPULAR) {
-      void Promise.all(hot.map((id) => scope.catalog.byId(id))).then((r) => { if (alive) setTiles(r.filter((x): x is Product => Boolean(x))); });
+    if (chosen === POPULAR || chosen === OFFERS) {
+      const ids = chosen === POPULAR ? hot : offerIds;
+      void Promise.all(ids.map((id) => scope.catalog.byId(id))).then((r) => { if (alive) { setTiles(r.filter((x): x is Product => Boolean(x))); setMore(false); } });
       return () => { alive = false; };
     }
-    void scope.catalog.search('', 120, chosen).then((r) => { if (alive) setTiles(r); });
+    void scope.catalog.search('', limit, chosen).then((r) => { if (alive) { setTiles(r); setMore(r.length >= limit); } });
     return () => { alive = false; };
-  }, [scope, chosen, sync.products, sync.syncedAt, hasPopular && chosen === POPULAR ? hot.join(',') : '']);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [scope, chosen, limit, sync.products, sync.syncedAt, chosen === POPULAR ? hot.join(',') : '', chosen === OFFERS ? offerIds.join(',') : '']);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // the server owns the offers: ask what they save on this bill (online only; with no signal the total stays "about")
   useEffect(() => {
@@ -198,6 +223,7 @@ export default function Sell() {
   const SearchResults = (
     <FlatList
       style={{ flex: 1 }} keyboardShouldPersistTaps="handled" data={results} keyExtractor={(p) => String(p.product_id)}
+      onEndReachedThreshold={0.5} onEndReached={() => { if (results.length >= resultLimit) setResultLimit((n) => n + 40); }}
       ListEmptyComponent={<Soft style={{ padding: 16 }}>{empty ? 'No products yet.' : 'No product matches.'}</Soft>}
       renderItem={({ item }) => (
         <Pressable accessibilityRole="button" accessibilityLabel={`${item.name}, ${rupees(toPaise(item.selling_price))}`} onPress={() => pick(item)} style={{ minHeight: 56, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: inBill.get(item.product_id) ? color.tint : color.card, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -214,17 +240,18 @@ export default function Sell() {
   const cols = wide ? 3 : 2;
   const pickRef = useRef(pick); pickRef.current = pick;
   const onPick = useCallback((p: Product) => pickRef.current(p), []);
-  const renderTile = useCallback(({ item }: { item: Product }) => <MenuTile item={item} n={inBill.get(item.product_id) ?? 0} cols={cols} onPick={onPick} />, [inBill, cols, onPick]);
+  const renderTile = useCallback(({ item }: { item: Product }) => <MenuTile item={item} n={inBill.get(item.product_id) ?? 0} cols={cols} offer={shelves.offers.get(item.product_id)} onPick={onPick} />, [inBill, cols, onPick, shelves.offers]);
   const CategoryMenu = (
     <View style={{ flex: 1 }}>
-      {categories.length > 1 || hasPopular ? (
-        <Chips items={[...(hasPopular ? [{ id: POPULAR, label: 'Popular' }] : []), ...categories.map((c) => ({ id: c.name, label: c.name || 'Other' }))]} value={chosen ?? ''} onChange={setCategory} />
+      {categories.length > 1 || hasPopular || hasOffers ? (
+        <Chips items={[...(hasOffers ? [{ id: OFFERS, label: `Offers (${offerIds.length})` }] : []), ...(hasPopular ? [{ id: POPULAR, label: 'Popular' }] : []), ...categories.map((c) => ({ id: c.name, label: c.name || 'Other' }))]} value={chosen ?? ''} onChange={setCategory} />
       ) : null}
       <FlatList
         key={cols} numColumns={cols} data={tiles} keyExtractor={(p) => String(p.product_id)} initialNumToRender={16} maxToRenderPerBatch={12} windowSize={7} removeClippedSubviews={Platform.OS === 'android'}
+        onEndReachedThreshold={0.6} onEndReached={() => { if (more) setLimit((n) => n + PAGE); }}
         contentContainerStyle={{ padding: 8 }} columnWrapperStyle={{ gap: 8 }} ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         ListEmptyComponent={<Soft style={{ padding: 16 }}>{empty ? '' : 'Nothing in this category.'}</Soft>}
-        renderItem={renderTile} extraData={inBill}
+        renderItem={renderTile} extraData={[inBill, shelves.offers]}
       />
     </View>
   );

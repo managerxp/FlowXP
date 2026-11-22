@@ -54,6 +54,9 @@ const METHODS = [
 ];
 const SPLIT_METHODS = METHODS.filter(([value]) => value !== 'LATER');
 const TILE_LIMIT = 60;
+/* Two shelves beside the categories, filled by the server: what really sells here, and what an offer is running on today. */
+const POPULAR = '__popular__';
+const OFFERS = '__offers__';
 const clock = (ts) => new Date(ts).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
 
 let keySeq = 0;
@@ -81,6 +84,7 @@ const ProductTile = ({ product, inCart, onAdd, highlight = false }) => {
         </span>
       )}
       <span className="line-clamp-2 pr-6 text-small font-medium leading-snug text-ink-900">{pname(product)}</span>
+      {product.offer_label && <span className="mt-1 w-fit rounded-md bg-success/10 px-1.5 py-0.5 text-[11px] font-semibold text-success">{product.offer_label}</span>}
       <span className="mt-2 flex flex-wrap items-end justify-between gap-x-2 gap-y-0.5">
         <span className="tabular shrink-0 text-small font-semibold text-ink-900">{formatCurrency(product.selling_price)}</span>
         <span className="ml-auto text-right text-[11px] leading-tight text-ink-500">
@@ -355,6 +359,8 @@ const BillingPage = () => {
 
   const [products, setProducts] = useState(null);
   const [category, setCategory] = useState('');
+  const [limitN, setLimitN] = useState(TILE_LIMIT);          // how many tiles to show; "Show more" raises it
+  const [shelves, setShelves] = useState({ popular: [], offers: [] });
   const [query, setQuery] = useState('');
   const [cart, setCart] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -472,17 +478,21 @@ const BillingPage = () => {
   useEffect(() => {
     if (!retail) return undefined;
     const timer = setTimeout(async () => {
-      const params = new URLSearchParams({ kind: 'DISH', limit: '60' });
+      const params = new URLSearchParams({ kind: 'DISH', limit: String(limitN) });
       if (query.trim()) params.set('search', query.trim());
       const picked = category && cats.find((c) => c.name === category);
-      if (picked) params.set('category_id', picked.category_id);
+      if (category === POPULAR) params.set('shelf', 'popular');
+      else if (category === OFFERS) params.set('shelf', 'offers');
+      else if (picked) params.set('category_id', picked.category_id);
       if (clothing) { params.delete('kind'); try { setStyles(await api(`/clothing/styles?${params}`)); } catch { setStyles([]); } return; }
       try { setProducts(await api(`/products?${params}`)); }
       catch (caught) { setProducts(caught instanceof NetworkError ? localSearch(query, 60, category) : []); }
       setHi(0);
     }, query ? 200 : 0);
     return () => clearTimeout(timer);
-  }, [retail, clothing, query, category, cats, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [retail, clothing, query, category, cats, scope, limitN]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setLimitN(TILE_LIMIT); }, [query, category]);
+  useEffect(() => { api('/products/shelves').then(setShelves).catch(() => {}); }, [scope]);
 
   useEffect(() => {
     if (!retail) return undefined;
@@ -512,11 +522,11 @@ const BillingPage = () => {
     api(`/loyalty/customers/${customerId}`).then((d) => { setCard(d.loyalty); setPointsInfo(d.points); }).catch(() => { setCard(null); setPointsInfo(null); });
   }, [customerId]);
 
-  const categories = useMemo(() => (retail ? cats.map((c) => c.name) : [...new Set((products || []).map((p) => p.category_name).filter(Boolean))].sort()), [products, retail, cats]);
+  const categories = useMemo(() => [...(shelves.popular.length ? [POPULAR] : []), ...(shelves.offers.length ? [OFFERS] : []), ...(retail ? cats.map((c) => c.name) : [...new Set((products || []).map((p) => p.category_name).filter(Boolean))].sort())], [products, retail, cats, shelves]);
   const q = query.trim().toLowerCase();
   // a shop's list is already what the server matched; a restaurant's small menu is filtered here
   const shown = useMemo(() => (retail ? (products || []) : (products || [])
-    .filter((p) => (!category || p.category_name === category) && (!q || matches(p, q)))), [products, category, q, retail]);
+    .filter((p) => (!category || (category === POPULAR ? shelves.popular.includes(p.product_id) : category === OFFERS ? Boolean(p.offer_label) : p.category_name === category)) && (!q || matches(p, q)))), [products, category, q, retail, shelves]);
   const billLines = orderMode ? orderLines : cart;
   cartRef.current = cart;
   // keep one bill line selected (the last added) so + / − / Delete always have a target
@@ -980,7 +990,7 @@ const BillingPage = () => {
             {['', ...categories].map((c) => (
               <button key={c || 'all'} type="button" onClick={() => setCategory(c)} aria-pressed={category === c}
                       className={`shrink-0 rounded-lg border px-3 py-1.5 text-small font-medium transition-colors duration-(--duration-fast) pointer-coarse:min-h-11 pointer-coarse:px-4 ${category === c ? 'border-brand-500 bg-brand-500 text-white' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400'}`}>
-                {c || 'All'}
+                {c === POPULAR ? tr('Popular') : c === OFFERS ? tr('Offers') : c || 'All'}
               </button>
             ))}
           </div>
@@ -1006,9 +1016,9 @@ const BillingPage = () => {
           ) : (
             <>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(8.25rem,1fr))] gap-2">
-                {shown.slice(0, TILE_LIMIT).map((p, i) => <ProductTile key={p.product_id} product={p} inCart={inCart.get(p.product_id) || 0} onAdd={choose} highlight={retail && Boolean(query) && i === hi} />)}
+                {shown.slice(0, retail ? shown.length : limitN).map((p, i) => <ProductTile key={p.product_id} product={p} inCart={inCart.get(p.product_id) || 0} onAdd={choose} highlight={retail && Boolean(query) && i === hi} />)}
               </div>
-              {shown.length > TILE_LIMIT && <p className="mt-3 text-center text-caption text-ink-500">{tr('Showing {{TILE_LIMIT}} of {{shown_length}}. Search to narrow it down.', { TILE_LIMIT, shown_length: shown.length })}</p>}
+              {(retail ? shown.length >= limitN && limitN < 500 : shown.length > limitN) && <div className="mt-3 text-center"><button type="button" onClick={() => setLimitN((n) => n + TILE_LIMIT)} className="rounded-lg border border-line px-4 py-2 text-small font-medium text-brand-600 hover:bg-surface-2 pointer-coarse:min-h-11">{tr('Show more')}</button></div>}
             </>
           )}
         </div>

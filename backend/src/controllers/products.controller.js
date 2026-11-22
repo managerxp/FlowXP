@@ -22,6 +22,7 @@ import { generateSku } from '../modules/sku.js';
 import { addAlias, barcodeOwner, cleanBarcode, cleanCode, findByCode, IdentityError, searchClause } from '../modules/productIdentity.js';
 import { autoSkuOn, getRetailSettings, isRetail } from '../modules/retailSettings.js';
 import { pickRate } from '../modules/taxRates.js';
+import { offerMap, popularIds } from '../modules/shelves.js';
 
 const fail = (res, status, message, extra = {}) => res.status(status).json({ success: false, message, ...extra });
 
@@ -169,6 +170,10 @@ export const list = async (req, res) => {
   const searched = searchClause(search, values);
   if (searched) clauses.push(searched);
   if (req.query.quick === 'true') clauses.push('p.is_quick');
+  // the Popular and Offers shelves: the products that really sell here, and the ones an offer is running on today
+  const offers = await offerMap(req.tenant);
+  if (req.query.shelf === 'popular') { values.push(await popularIds(req.tenant)); clauses.push(`p.product_id = ANY($${values.length}::int[])`); }
+  else if (req.query.shelf === 'offers') { values.push([...offers.keys()]); clauses.push(`p.product_id = ANY($${values.length}::int[])`); }
   if (low_stock === 'true') {
     if (req.tenant.scopeBranchId != null) {
       values.push(req.tenant.scopeBranchId);
@@ -183,7 +188,14 @@ export const list = async (req, res) => {
     `${SELECT} ${clauses.map((c) => `AND ${c}`).join(' ')} ORDER BY p.name, p.product_id${limit ? ` LIMIT ${limit} OFFSET ${offset}` : ''}`,
     values
   );
-  res.json({ success: true, data: (await withCosts(await forOutlet(rows, req.tenant), req.tenant)).map(reading(req.tenant)) });
+  res.json({ success: true, data: (await withCosts(await forOutlet(rows, req.tenant), req.tenant)).map(reading(req.tenant)).map((p) => (offers.has(p.product_id) ? { ...p, offer_label: offers.get(p.product_id) } : p)) });
+};
+
+/* GET /api/products/shelves — the ids on the Popular shelf (best sellers first) and the products with an offer on today, each with its badge.
+   The phone keeps its own copy of the catalogue, so it asks for these two small lists and looks the products up on the device. */
+export const shelves = async (req, res) => {
+  const offers = await offerMap(req.tenant);
+  res.json({ success: true, data: { popular: await popularIds(req.tenant), offers: [...offers].map(([product_id, label]) => ({ product_id, label })) } });
 };
 
 /* One product by id or, given a barcode, by scan — the billing screen's two

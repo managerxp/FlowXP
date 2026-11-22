@@ -23,6 +23,7 @@ router.get('/products', ...authed, read, products.list);
 router.get('/products/barcode/:barcode', ...authed, read, products.findByBarcode);
 router.get('/products/lookup/:code', ...authed, read, products.lookup);
 // a field rep (sales_orders) keeps the catalogue on the phone too, to take an order with no signal; a warehouse worker (fulfilment) to scan items while picking
+router.get('/products/shelves', ...authed, requireAnyPermission('products', 'billing', 'sales_orders'), products.shelves);
 router.get('/products/pos-catalog', ...authed, requireAnyPermission('products', 'billing', 'sales_orders', 'fulfilment'), products.posCatalog);
 router.post('/products/quick', requireAuth, withBusiness({ requireActive: true }), requirePermission('billing'), requirePermission('product_quick_add'), requireOutlet, idempotent(), products.quickCreate);
 const floorSwitch = [requireAuth, withBusiness({ requireActive: true }), requireAnyPermission('products', 'billing')];
