@@ -1,4 +1,4 @@
-/* Staff of a spare parts shop and workshop on the phone: the people (mechanics, counter staff), who turned up today, and the monthly payroll sheet. The same engine a hotel uses
+/* Staff of a spare parts shop and workshop on the phone: the people (mechanics, counter staff), who turned up today, and the monthly payroll sheet.
    (/api/autoparts/staff); the server works out the pay. Pay is only sent or shown to someone with the payroll right. */
 import { t } from './i18n.ts';
 import { rupees } from './money.ts';
