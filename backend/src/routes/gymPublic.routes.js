@@ -20,6 +20,7 @@ router.use(requireAppHeader);
 router.get('/in/:token', readLimiter, gym.entrance);
 router.get('/me', readLimiter, memberSession, gym.me);
 router.get('/me/attendance', readLimiter, memberSession, gym.attendance);
+router.get('/me/account', readLimiter, memberSession, gym.myAccount);
 router.get('/me/classes', readLimiter, memberSession, gym.myClasses);
 router.post('/me/classes/:id/book', readLimiter, memberSession, gym.myBook);
 router.post('/me/bookings/:id/cancel', readLimiter, memberSession, gym.myCancel);

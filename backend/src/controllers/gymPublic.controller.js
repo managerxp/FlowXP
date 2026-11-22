@@ -15,6 +15,8 @@ import * as portal from '../modules/gym/portal.js';
 import * as rewards from '../modules/gym/rewards.js';
 import * as classes from '../modules/gym/classes.js';
 import * as training from '../modules/gym/training.js';
+import { memberFinance } from '../modules/gym/finance.js';
+import { ledger as walletLedger } from '../modules/gym/wallet.js';
 import { GymError, addDays, getSettings, inTx, isoDate, localParts, safeEqual, wrapAll } from '../modules/gym/common.js';
 
 export const MEMBER_COOKIE = 'flowxp_member';
@@ -211,6 +213,22 @@ const myTraining = async (req, res) => {
   });
 };
 
+/** GET /me/account  what the signed-in member owes, has paid and bought, and (when the gym has wallets) their wallet. Only their own record; no limits or staff notes. */
+const myAccount = async (req, res) => {
+  const { session } = req.member;
+  const tenant = { businessId: session.business_id };
+  const memberId = session.active_member_id;
+  const fin = await memberFinance(pool, tenant, memberId, { limit: 20 });
+  const row = await portal.gymById(session.business_id);
+  const wallet = row && await portal.portalEnabled(row, 'gym_wallet') ? await walletLedger(pool, tenant, memberId, { limit: 10 }) : null;
+  ok(res, {
+    owes: fin.summary.due, spent: fin.summary.billed,
+    bills: fin.invoices.map((i) => ({ invoice_number: i.invoice_number, date: i.invoice_date, total: i.total - i.credited, paid: i.amount_paid, owes: i.balance_due, kind: i.is_membership ? 'Membership' : i.has_products ? 'Shop' : 'Other' })),
+    purchases: fin.purchases.map((x) => ({ date: x.invoice_date, item: x.description, quantity: x.quantity, total: x.line_total })),
+    wallet: wallet && { balance: wallet.balance, recent: wallet.rows.map((r) => ({ kind: r.kind, amount: r.amount, at: r.created_at })) }
+  });
+};
+
 const attendance = async (req, res) => {
   const { session } = req.member;
   const rows = (await pool.query(
@@ -218,4 +236,4 @@ const attendance = async (req, res) => {
   ok(res, rows);
 };
 
-export default wrapAll({ myClasses, myBook, myCancel, myTraining, profile, info, entrance, requestOtp, verifyOtp, logout, me, pass, switchTo, checkin, attendance });
+export default wrapAll({ myAccount, myClasses, myBook, myCancel, myTraining, profile, info, entrance, requestOtp, verifyOtp, logout, me, pass, switchTo, checkin, attendance });

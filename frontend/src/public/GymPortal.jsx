@@ -231,6 +231,47 @@ const Training = () => {
   );
 };
 
+/* account: what the member owes, their bills and shop purchases, and their wallet. Read only; payments are taken at the front desk. */
+const rupees = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+const WALLET_KIND = { DEPOSIT: 'Money added', SPEND: 'Paid a bill', REFUND: 'Refunded', RETURN: 'Back from a cancelled bill' };
+const Account = () => {
+  const [a, setA] = useState(null);
+  const [error, setError] = useState('');
+  useEffect(() => { call('/me/account').then(setA).catch((e) => setError(e.message)); }, []);
+  if (error) return <Card><Err>{error}</Err></Card>;
+  if (!a) return <Card className="text-center text-small text-ink-500">Loading…</Card>;
+  return (
+    <div className="space-y-4">
+      <Card>
+        <div className={`grid gap-3 ${a.wallet ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          <div className="rounded-xl bg-surface-2 p-3"><p className="text-caption text-ink-500">You owe</p><p className={`tabular text-title font-bold ${a.owes > 0 ? 'text-danger' : 'text-ink-900'}`}>{rupees(a.owes)}</p>{a.owes > 0 && <p className="text-caption text-ink-500">Please pay at the front desk.</p>}</div>
+          {a.wallet && <div className="rounded-xl bg-brand-50 p-3"><p className="text-caption text-brand-700">Wallet</p><p className="tabular text-title font-bold text-brand-700">{rupees(a.wallet.balance)}</p></div>}
+        </div>
+      </Card>
+      <Card>
+        <h2 className="text-title font-semibold text-ink-900">Your bills</h2>
+        {a.bills.length === 0 ? <p className="mt-2 text-small text-ink-500">No bills yet.</p> : (
+          <ul className="mt-2 divide-y divide-line text-small">{a.bills.map((b) => (
+            <li key={b.invoice_number} className="flex items-center justify-between gap-3 py-2"><span><span className="font-medium text-ink-900">{b.invoice_number}</span><span className="block text-caption text-ink-500">{longDate(b.date)} · {b.kind}</span></span><span className="text-right"><span className="tabular block">{rupees(b.total)}</span>{b.owes > 0 ? <span className="tabular text-caption font-medium text-danger">owes {rupees(b.owes)}</span> : <span className="text-caption text-ink-500">paid</span>}</span></li>
+          ))}</ul>
+        )}
+      </Card>
+      {a.purchases.length > 0 && (
+        <Card>
+          <h2 className="text-title font-semibold text-ink-900">What you bought</h2>
+          <ul className="mt-2 divide-y divide-line text-small">{a.purchases.map((x, i) => <li key={i} className="flex justify-between gap-3 py-2"><span>{x.item} <span className="text-ink-500">× {x.quantity}</span><span className="block text-caption text-ink-500">{longDate(x.date)}</span></span><span className="tabular">{rupees(x.total)}</span></li>)}</ul>
+        </Card>
+      )}
+      {a.wallet && a.wallet.recent.length > 0 && (
+        <Card>
+          <h2 className="text-title font-semibold text-ink-900">Wallet activity</h2>
+          <ul className="mt-2 divide-y divide-line text-small">{a.wallet.recent.map((r, i) => <li key={i} className="flex justify-between gap-3 py-2"><span>{WALLET_KIND[r.kind] || r.kind}<span className="block text-caption text-ink-500">{dayTime(r.at)}</span></span><span className={`tabular ${r.amount < 0 ? 'text-danger' : 'text-success'}`}>{r.amount < 0 ? '-' : '+'}{rupees(Math.abs(r.amount))}</span></li>)}</ul>
+        </Card>
+      )}
+    </div>
+  );
+};
+
 const Member = ({ me, token, entrance, reload }) => {
   const [tab, setTab] = useState(token ? 'checkin' : 'pass');
   const classesOn = Boolean(me.features?.classes);
@@ -265,7 +306,7 @@ const Member = ({ me, token, entrance, reload }) => {
       </Card>
 
       <div role="tablist" aria-label="Sections" className="flex gap-1 rounded-xl bg-surface-3 p-1">
-        {[...(token ? [['checkin', 'Check in']] : []), ['pass', 'My pass'], ...(classesOn ? [['classes', 'Classes'], ['training', 'Training']] : []), ['visits', 'Visits']].map(([k, l]) => (
+        {[...(token ? [['checkin', 'Check in']] : []), ['pass', 'My pass'], ...(classesOn ? [['classes', 'Classes'], ['training', 'Training']] : []), ['account', 'Account'], ['visits', 'Visits']].map(([k, l]) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`min-h-10 flex-1 rounded-lg text-small font-medium ${tab === k ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500'}`}>{l}</button>
         ))}
       </div>
@@ -273,6 +314,7 @@ const Member = ({ me, token, entrance, reload }) => {
       {tab === 'pass' && <Pass active />}
       {tab === 'classes' && classesOn && <Classes />}
       {tab === 'training' && classesOn && <Training />}
+      {tab === 'account' && <Account />}
       {tab === 'visits' && (
         <Card>
           <h2 className="text-title font-semibold text-ink-900">Your visits</h2>

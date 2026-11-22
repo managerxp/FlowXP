@@ -461,3 +461,25 @@ test('a member books and cancels their own classes, sees only their own training
   assert.equal((await asMember(api.myTraining, cookie)).code, 404);
   await pool.query(`UPDATE plans SET feature_flags = feature_flags - 'gym_classes' WHERE plan_code = 'GROWTH'`);
 });
+
+/* ── the member's own money ───────────────────────────────────────────────── */
+
+test('a member sees their own bills, purchases and wallet, never another member\'s, and no wallet when the gym has none', { skip }, async () => {
+  const wallet = await import('../src/modules/gym/wallet.js');
+  const { inTx: tx } = await import('../src/modules/gym/common.js');
+  const G = await makeGym(pool, 'pmoney', { branches: 1, settings: { public_slug: 'moneygym', self_checkin_enabled: true } });
+  const me = await addMember(pool, G, { name: 'Money Me', phone: '9400000011' });
+  const other = await addMember(pool, G, { name: 'Money Other', phone: '9400000012' });
+  await addMembership(pool, G, me, { start: day(TODAY, -5), end: day(TODAY, 25) });
+  await tx((db) => wallet.deposit(db, G.tenantFor('owner'), G.userId, me, { amount: 250, method: 'CASH' }));
+  await tx((db) => wallet.deposit(db, G.tenantFor('owner'), G.userId, other, { amount: 999, method: 'CASH' }));
+  const cookie = await signIn('9400000011', 'moneygym');
+  const a = okBody(await asMember(api.myAccount, cookie));
+  assert.equal(a.wallet.balance, 250);
+  assert.ok(!JSON.stringify(a).includes('999'), 'not the other member\'s money');
+  assert.ok(!('credit_limit' in a) && !JSON.stringify(a).includes('promise'), 'no staff-only dues settings');
+  await pool.query(`UPDATE plans SET feature_flags = feature_flags || '{"gym_wallet": false}'::jsonb WHERE plan_code = 'GROWTH'`);
+  assert.equal(okBody(await asMember(api.myAccount, cookie)).wallet, null, 'the plan has no wallet');
+  await pool.query(`UPDATE plans SET feature_flags = feature_flags - 'gym_wallet' WHERE plan_code = 'GROWTH'`);
+  assert.equal((await asMember(api.myAccount, null)).code, 401);
+});
