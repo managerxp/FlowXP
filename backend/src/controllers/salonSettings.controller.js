@@ -4,6 +4,7 @@
  * per-outlet overrides. Name, address, GSTIN, logo, invoice prefix and receipt options stay where they
  * already are (PATCH /businesses/current, owner only) — one source of truth for each field.
  */
+import { suggestSlug } from '../modules/bookingSlug.js';
 import pool from '../config/database.js';
 import {
   SalonError, audit, clock, diff, int, oneOf, ok, text, wrapAll
@@ -25,6 +26,7 @@ const get = async (req, res) => {
     [req.tenant.businessId]
   )).rows.map((b) => ({ ...b, open_time: b.open_time?.slice(0, 5) ?? null, close_time: b.close_time?.slice(0, 5) ?? null }));
   ok(res, {
+    suggested_booking_slug: await suggestSlug(req.tenant.businessId, 'salon_settings', 'online_booking_slug'),
     settings: present(settings), branches,
     choices: { payment_methods: PAYMENT_METHODS, slot_minutes: SLOT_MINUTES, segment_defaults: segmentRulesForApi(DEFAULT_SEGMENT_RULES) }
   });

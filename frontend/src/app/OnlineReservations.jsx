@@ -16,7 +16,7 @@ export default function OnlineReservations({ onClose }) {
   const [saved, setSaved] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  useEffect(() => { api('/reservations/online-settings').then((d) => { setSaved(d); setF({ ...d, slug: d.slug || '', notice: d.notice || '', offer_pct: d.offer_pct ?? '', offer_text: d.offer_text || '' }); }).catch((e) => setError(e.message)); }, []);
+  useEffect(() => { api('/reservations/online-settings').then((d) => { setSaved(d); setF({ ...d, slug: d.slug || d.suggested_slug || '', notice: d.notice || '', offer_pct: d.offer_pct ?? '', offer_text: d.offer_text || '' }); }).catch((e) => setError(e.message)); }, []);
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
 
   const submit = async (e) => {
@@ -40,7 +40,7 @@ export default function OnlineReservations({ onClose }) {
           <label className="flex items-center gap-3 text-small font-medium text-ink-900">
             <input type="checkbox" className="h-5 w-5" checked={f.enabled} onChange={(e) => setF((x) => ({ ...x, enabled: e.target.checked }))} /> Let guests book online
           </label>
-          <Field id="or-slug" label="Your reservation address" hint="Letters, numbers and dashes. It becomes part of the link.">
+          <Field id="or-slug" label="Your reservation address" hint="Made from your name, change it if you like. It becomes part of the link.">
             <div className="flex items-center gap-2"><span className="text-small text-ink-500">/reserve/</span><div className="flex-1"><Input id="or-slug" value={f.slug} maxLength={40} onChange={(e) => setF((x) => ({ ...x, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))} /></div></div>
           </Field>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

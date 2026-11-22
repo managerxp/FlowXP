@@ -81,3 +81,11 @@ test('slots are free or booked for the party, and a booking takes the smallest t
 test('another business never sees this one', { skip }, async () => {
   assert.equal((await call(pub.info, { params: { slug: 'nobody-here' } })).code, 404);
 });
+
+test('the address is suggested from the business name, and made unique', { skip }, async () => {
+  const { suggestSlug } = await import('../src/modules/bookingSlug.js');
+  assert.equal(await suggestSlug(biz, 'reservation_settings', 'slug'), 'spice-hall', 'its own address is not taken by itself');
+  const user = (await pool.query(`INSERT INTO users (name, email, password_hash) VALUES ('p','p@rp.test','x') RETURNING user_id`)).rows[0];
+  const other = (await pool.query(`INSERT INTO businesses (name, owner_user_id, business_type) VALUES ('Spice Hall!',$1,'RESTAURANT') RETURNING business_id`, [user.user_id])).rows[0].business_id;
+  assert.equal(await suggestSlug(other, 'reservation_settings', 'slug'), 'spice-hall-2', 'taken by the first business');
+});

@@ -13,6 +13,7 @@ import pool from '../config/database.js';
 import { notify } from '../modules/notifications.js';
 import { effectiveFeatureFlags, hasPlanFeature } from '../modules/planFeatures.js';
 import { findCustomerByPhone, normalisePhone } from '../modules/phone.js';
+import { suggestSlug } from '../modules/bookingSlug.js';
 import { afterReservation } from '../modules/messaging/index.js';
 
 const fail = (res, status, message) => res.status(status).json({ success: false, message });
@@ -167,7 +168,7 @@ const present = (r) => ({ ...DEFAULTS, ...(r || {}), offer_pct: r?.offer_pct == 
 
 export const getSettings = async (req, res) => {
   const { rows } = await pool.query(`SELECT * FROM reservation_settings WHERE business_id = $1`, [req.tenant.businessId]);
-  res.json({ success: true, data: present(rows[0]) });
+  res.json({ success: true, data: { ...present(rows[0]), suggested_slug: await suggestSlug(req.tenant.businessId, 'reservation_settings', 'slug') } });
 };
 
 export const saveSettings = async (req, res) => {

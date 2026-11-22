@@ -182,7 +182,7 @@ const OnlineBooking = ({ s }) => {
   const tr = useT();
   const c = s.data.settings;
   const toast = useToast();
-  const [form, setForm] = useState({ enabled: Boolean(c.online_booking_enabled), slug: c.online_booking_slug || '', notice: c.online_booking_notice || '', offerPct: c.online_booking_offer_pct ?? '', offerText: c.online_booking_offer_text || '' });
+  const [form, setForm] = useState({ enabled: Boolean(c.online_booking_enabled), slug: c.online_booking_slug || s.data.suggested_booking_slug || '', notice: c.online_booking_notice || '', offerPct: c.online_booking_offer_pct ?? '', offerText: c.online_booking_offer_text || '' });
   const link = form.slug ? `${window.location.origin}/book/${form.slug}` : '';
   const submit = async (e) => {
     e.preventDefault();
