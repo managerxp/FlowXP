@@ -12,7 +12,7 @@ const TILES = [['ACTIVE', T('Active members'), 'success'], ['EXPIRING', T('Endin
 
 export default function GymDashboard() {
   const tr = useT();
-  const { can, business } = useAuth();
+  const { can, business, hasFeature } = useAuth();
   const d = useLoad('/gym/dashboard');
   const data = d.data;
   const [picked, setRange] = useState(null);   // null: show the shortest window that has anybody in it
@@ -36,7 +36,7 @@ export default function GymDashboard() {
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
                 <StatCard size="lg" label={tr('Received today')} value={rsPaise(data.money.received_today_paise)} />
                 <StatCard size="lg" label={tr('Received this month')} value={rsPaise(data.money.received_month_paise)} />
-                <StatCard size="lg" label={tr('Owed to you')} value={rsPaise(data.money.owed_paise)} tone={data.money.owed_paise > 0 ? 'danger' : undefined} note={data.money.owed_bills ? `${data.money.owed_bills} ${tr('bills unpaid')}` : tr('Nothing owed')} />
+                <StatCard size="lg" label={tr('Owed to you')} value={rsPaise(data.money.owed_paise)} tone={data.money.owed_paise > 0 ? 'danger' : undefined} note={data.money.owed_bills ? `${data.money.owed_bills} ${tr('bills unpaid')}` : tr('Nothing owed')} to={hasFeature('gym_dues') ? '/app/gym/dues' : undefined} />
                 <StatCard size="lg" label={tr('Shop sales this month')} value={rsPaise(data.money.billed_month.shop_paise)} />
                 {data.money.wallet_liability_paise > 0 && <StatCard size="lg" label={tr('Held in wallets')} value={rsPaise(data.money.wallet_liability_paise)} note={tr('Members\' advance money')} />}
                 <StatCard size="lg" label={tr('Low on stock')} value={data.money.low_stock} tone={data.money.low_stock ? 'warning' : undefined} to={data.money.low_stock ? '/app/inventory' : undefined} />

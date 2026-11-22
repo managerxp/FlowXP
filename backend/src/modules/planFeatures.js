@@ -56,6 +56,7 @@ export const PLAN_FEATURES = [
   ['gym_classes', 'Trainers and classes', 'Class timetable and booking, personal-training packs and workout plans'],
   ['gym_rewards', 'Gym rewards and referrals', 'Points for visits and renewals, referral rewards, reward catalogue'],
   ['gym_wallet', 'Gym member wallet', 'Advance deposits, paying bills from the balance and refunds, with a ledger for every movement'],
+  ['gym_dues', 'Gym dues control', 'Who owes what and for how long, credit limits, payment promises, and the door stopping members over their limit'],
   ['gym_devices', 'Gate and reader devices', 'QR readers and turnstile controllers that ask FlowXP whether to open'],
   // Gaming lounge module (PS5 / console lounges, pool and snooker). Separate switches so a plan can sell the timer and board without the wallet,
   // bookings or tournaments. Food and drink on a station's tab use the existing tables, kitchen and QR ordering features.

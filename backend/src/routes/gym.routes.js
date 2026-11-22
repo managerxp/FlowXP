@@ -19,6 +19,7 @@ import members from '../controllers/gymMembers.controller.js';
 import access from '../controllers/gymAccess.controller.js';
 import reports from '../controllers/gymReports.controller.js';
 import rewardsApi from '../controllers/gymRewards.controller.js';
+import duesApi from '../controllers/gymDues.controller.js';
 import walletApi from '../controllers/gymWallet.controller.js';
 import deviceApi from '../controllers/gymDevices.controller.js';
 import trainingApi from '../controllers/gymTraining.controller.js';
@@ -89,6 +90,12 @@ router.get('/members/:id/wallet', ...read, any('gym_desk', 'gym_members', 'gym_s
 router.post('/members/:id/wallet/deposit', ...write, desk, wl, requireOutlet, idempotent(), walletApi.deposit);
 router.post('/members/:id/wallet/pay-invoice', ...write, desk, wl, idempotent(), walletApi.payInvoice);
 router.post('/members/:id/wallet/refund', ...write, can('gym_setup'), wl, requireOutlet, idempotent(), walletApi.refund);
+
+/* ── dues control ─────────────────────────────────────────────────────────── */
+const du = feature('gym_dues');
+router.get('/dues', ...read, any('gym_desk', 'gym_members', 'gym_setup', 'reports'), du, duesApi.list);
+router.put('/members/:id/credit-limit', ...write, can('gym_setup'), du, duesApi.setLimit);
+router.put('/members/:id/promise', ...write, desk, du, duesApi.setPromise);
 
 /* ── rewards, referrals and reminders ─────────────────────────────────────── */
 const rw = feature('gym_rewards');

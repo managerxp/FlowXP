@@ -8,6 +8,7 @@ import { MEMBERSHIP_STATE, MEMBER_STATUS, PAYMENT_STATE, dayTime, longDate, rs, 
 import { Alert, Avatar, Badge, Button, ListState, PageHeader, Select, useDialog, useToast } from '../../components/ui.jsx';
 import { Panel, Tabs, useAction } from '../salon/parts.jsx';
 import MemberForm from './MemberForm.jsx';
+import MemberDues from './MemberDues.jsx';
 import MemberWallet from './MemberWallet.jsx';
 import { MemberPayments, MemberPurchases, MemberSummary } from './MemberMoney.jsx';
 import { MemberPacks, MemberRewards, MemberTraining } from './MemberExtras.jsx';
@@ -91,7 +92,7 @@ export default function MemberDetail() {
 
       <MemberSummary current={current} upcoming={memberships.find((x) => x.state === 'UPCOMING' && !x.shared_from)} fin={fin.data} wallet={seeMoney && hasFeature('gym_wallet')} />
       {seeMoney && <Tabs tabs={[{ key: 'overview', label: tr('Overview') }, { key: 'payments', label: tr('Payments') }, { key: 'purchases', label: tr('Purchases') }, ...(hasFeature('gym_wallet') ? [{ key: 'wallet', label: tr('Wallet') }] : [])]} value={tab} onChange={setTab} />}
-      {tab === 'payments' && seeMoney && <MemberPayments fin={fin} />}
+      {tab === 'payments' && seeMoney && <div className="space-y-5">{hasFeature('gym_dues') && fin.data && <MemberDues memberId={member.member_id} dues={fin.data.dues} owed={fin.data.summary.due} canLimit={manager} canPromise={desk} onChanged={reload} />}<MemberPayments fin={fin} /></div>}
       {tab === 'purchases' && seeMoney && <MemberPurchases fin={fin} />}
       {tab === 'wallet' && seeMoney && <MemberWallet memberId={member.member_id} fin={fin.data} canAdd={desk} canRefund={manager} onChanged={reload} />}
 

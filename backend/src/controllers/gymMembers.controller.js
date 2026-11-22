@@ -15,7 +15,7 @@ import { memberFinance } from '../modules/gym/finance.js';
 import { balanceOf as walletBalance } from '../modules/gym/wallet.js';
 import { endMemberSessions } from '../modules/gym/portal.js';
 import { sendWelcome, sendSubscribed } from '../modules/gym/automation.js';
-import { GymError, audit, inTx, ok, page, wrapAll } from '../modules/gym/common.js';
+import { GymError, audit, inTx, ok, page, withRupees, wrapAll } from '../modules/gym/common.js';
 
 const id = (req, name = 'id') => { const n = Number(req.params[name]); if (!Number.isInteger(n) || n <= 0) throw new GymError(404, 'Not found'); return n; };
 const health = (req) => members.canSeeHealth(hasPermission, req.tenant);
@@ -46,7 +46,8 @@ const finance = async (req, res) => {
   const out = await memberFinance(pool, req.tenant, memberId, { limit: req.query.limit });
   if (!out) throw new GymError(404, 'Not found');
   const w = await walletBalance(pool, req.tenant.businessId, memberId);
-  ok(res, { ...out, summary: { ...out.summary, wallet_paise: w, wallet: w / 100 } });
+  const d = (await pool.query(`SELECT credit_limit_paise, promise_on::text AS promise_on, promise_paise, promise_note FROM gym_members WHERE member_id = $1`, [memberId])).rows[0];
+  ok(res, { ...out, summary: { ...out.summary, wallet_paise: w, wallet: w / 100 }, dues: withRupees({ ...d, credit_limit_paise: d.credit_limit_paise == null ? null : Number(d.credit_limit_paise), promise_paise: d.promise_paise == null ? null : Number(d.promise_paise) }) });
 };
 
 const create = async (req, res) => {

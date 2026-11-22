@@ -18,6 +18,7 @@
 import pool from '../../config/database.js';
 import { awardVisit, safely } from './rewards.js';
 import { GymError, getBranchSettings, getSettings, inWindow, localParts, sha256, toMinutes } from './common.js';
+import { blockedByDues } from './dues.js';
 
 export const REASON = Object.freeze({
   APPROVED: 'APPROVED',
@@ -145,6 +146,7 @@ export const evaluate = ({ member, memberships, ctx }) => {
   if (!live.length) return { decision: 'DENIED', reason: memberships.some((m) => m.kind === 'MEMBERSHIP') ? REASON.MEMBERSHIP_EXPIRED : REASON.NO_MEMBERSHIP };
   const results = live.map((m) => ({ m, r: evaluateMembership(m, ctx) }));
   const yes = results.find((x) => x.r.ok);
+  if (yes && !asOf && blockedByDues(member, ctx.today)) return { decision: 'DENIED', reason: REASON.PAYMENT_REQUIRES_ATTENTION, membership: yes.m, why: 'OVER_CREDIT_LIMIT' };
   if (yes) return { decision: 'APPROVED', reason: REASON.APPROVED, membership: yes.m, inGrace: yes.r.inGrace };
   const best = results.map((x) => x.r.reason).filter(Boolean).sort((a, b) => CLOSENESS.indexOf(b) - CLOSENESS.indexOf(a))[0] || REASON.MEMBERSHIP_EXPIRED;
   const m = results.find((x) => x.r.reason === best)?.m;
@@ -154,7 +156,8 @@ export const evaluate = ({ member, memberships, ctx }) => {
 /* ── data loading ───────────────────────────────────────────────────────────────────────────── */
 
 const loadMember = async (db, businessId, memberId) => (await db.query(
-  `SELECT gm.member_id, gm.member_code, gm.status, gm.photo_url, c.name
+  `SELECT gm.member_id, gm.member_code, gm.status, gm.photo_url, c.name, gm.credit_limit_paise, gm.promise_on::text AS promise_on,
+          COALESCE((SELECT SUM(i.balance_due_paise) FROM invoices i WHERE i.business_id = gm.business_id AND i.customer_id = gm.customer_id AND i.status <> 'CANCELLED' AND i.balance_due_paise > 0), 0)::bigint AS owed_paise
    FROM gym_members gm JOIN customers c ON c.customer_id = gm.customer_id
    WHERE gm.member_id = $1 AND gm.business_id = $2`, [memberId, businessId])).rows[0] || null;
 
