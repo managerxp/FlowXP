@@ -616,7 +616,8 @@ test('every gym route is behind a permission, and each role gets only what it sh
     ['POST', '/attendance/:id/correct', { OWNER: true, GYM_RECEPTIONIST: false }],
     ['POST', '/credentials/:id/revoke', { OWNER: true, GYM_RECEPTIONIST: true, TRAINER: false }],
     ['GET', '/reports/attendance', { OWNER: true, GYM_RECEPTIONIST: false, ACCOUNTANT: true }],
-    ['GET', '/access/events', { OWNER: true, GYM_RECEPTIONIST: true, TRAINER: false }]
+    ['GET', '/access/events', { OWNER: true, GYM_RECEPTIONIST: true, TRAINER: false }],
+    ['GET', '/members/:id/finance', { OWNER: true, GYM_RECEPTIONIST: true, ACCOUNTANT: true, TRAINER: false, CASHIER: false }]
   ];
   for (const [method, path, roles] of table) for (const [role, want] of Object.entries(roles)) assert.equal(await can(role, method, path), want, `${role} ${method} ${path}`);
   // a per-person override wins both ways

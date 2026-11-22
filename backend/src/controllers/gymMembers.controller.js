@@ -11,6 +11,7 @@ import { recordAudit } from '../modules/events.js';
 import * as members from '../modules/gym/members.js';
 import * as memberships from '../modules/gym/memberships.js';
 import * as credentials from '../modules/gym/credentials.js';
+import { memberFinance } from '../modules/gym/finance.js';
 import { endMemberSessions } from '../modules/gym/portal.js';
 import { sendWelcome, sendSubscribed } from '../modules/gym/automation.js';
 import { GymError, audit, inTx, ok, page, wrapAll } from '../modules/gym/common.js';
@@ -36,6 +37,14 @@ const get = async (req, res) => {
   const m = await members.getMember(pool, req.tenant, id(req), { health: health(req) });
   if (!m) throw new GymError(404, 'Not found');
   ok(res, m);
+};
+
+const finance = async (req, res) => {
+  const memberId = id(req);
+  await visible(req, memberId);
+  const out = await memberFinance(pool, req.tenant, memberId, { limit: req.query.limit });
+  if (!out) throw new GymError(404, 'Not found');
+  ok(res, out);
 };
 
 const create = async (req, res) => {
@@ -209,4 +218,4 @@ const revokeAccess = async (req, res) => {
   ok(res, { revoked: n });
 };
 
-export default wrapAll({ revokeAccess, list, get, create, update, status, merge, photo, duplicates, importCheck, exportCsv, sell, renew, changePlan, freeze, unfreeze, extend, cancel, transfer, history, issueCard, revokeCredential });
+export default wrapAll({ revokeAccess, list, get, finance, create, update, status, merge, photo, duplicates, importCheck, exportCsv, sell, renew, changePlan, freeze, unfreeze, extend, cancel, transfer, history, issueCard, revokeCredential });

@@ -52,6 +52,7 @@ router.post('/members/import', ...write, importLimiter, can('gym_setup'), member
 router.post('/members/merge', ...write, can('gym_setup'), members.merge);
 router.post('/members', ...write, any('gym_members', 'gym_setup'), requireOutlet, members.create);
 router.get('/members/:id', ...read, staff, members.get);
+router.get('/members/:id/finance', ...read, any('gym_desk', 'gym_members', 'gym_setup', 'reports'), members.finance);
 router.put('/members/:id', ...write, any('gym_members', 'gym_setup'), members.update);
 router.post('/members/:id/status', ...write, any('gym_members', 'gym_setup'), members.status);
 router.post('/members/:id/photo', ...write, any('gym_members', 'gym_setup'), uploadProductImage, members.photo);

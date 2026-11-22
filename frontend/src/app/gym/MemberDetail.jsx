@@ -6,8 +6,9 @@ import { api } from '../../lib/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { MEMBERSHIP_STATE, MEMBER_STATUS, PAYMENT_STATE, dayTime, longDate, rs, useLoad } from '../../lib/gym.js';
 import { Alert, Avatar, Badge, Button, ListState, PageHeader, Select, useDialog, useToast } from '../../components/ui.jsx';
-import { Panel, useAction } from '../salon/parts.jsx';
+import { Panel, Tabs, useAction } from '../salon/parts.jsx';
 import MemberForm from './MemberForm.jsx';
+import { MemberPayments, MemberPurchases, MemberSummary } from './MemberMoney.jsx';
 import { MemberPacks, MemberRewards, MemberTraining } from './MemberExtras.jsx';
 import { CancelDialog, ExtendDialog, FreezeDialog, HistoryDialog, SellDialog, TransferDialog } from './MemberDialogs.jsx';
 import { useT } from '../../i18n/useT.js';
@@ -25,6 +26,10 @@ export default function MemberDetail() {
   const dialog = useDialog();
   const toast = useToast();
   const m = useLoad(`/gym/members/${id}`);
+  const seeMoney = can('gym_desk') || can('gym_members') || can('gym_setup') || can('reports');   // a trainer does not see the money
+  const fin = useLoad(seeMoney ? `/gym/members/${id}/finance` : null);
+  const [tab, setTab] = useState('overview');
+  const reload = () => { m.reload(); if (seeMoney) fin.reload(); };
   const [form, setForm] = useState(false);
   const [family, setFamily] = useState(false);
   const [sell, setSell] = useState(null);         // { mode, membership }
@@ -42,8 +47,8 @@ export default function MemberDetail() {
   if (m.error && !member) return <div><Button variant="ghost" onClick={() => navigate('/app/gym/members')}><ArrowLeft aria-hidden="true" className="h-4 w-4" />{tr('Members')}</Button><ListState error={m.error === 'Not found' ? 'This member is not here, or belongs to another outlet.' : m.error} /></div>;
   if (!member) return <ListState loading />;
 
-  const done = (message) => (out) => { setSell(null); setFreeze(null); setExtend(null); setCancel(null); setTransfer(null); if (message) toast.success(message); m.reload(); return out; };
-  const post = (path, body, success) => run(async () => { await api(path, { method: 'POST', body: body || {} }); m.reload(); }, success);
+  const done = (message) => (out) => { setSell(null); setFreeze(null); setExtend(null); setCancel(null); setTransfer(null); if (message) toast.success(message); reload(); return out; };
+  const post = (path, body, success) => run(async () => { await api(path, { method: 'POST', body: body || {} }); reload(); }, success);
 
   const setStatus = async (status) => {
     const labels = { SUSPENDED: 'Put on hold', ACTIVE: 'Make active', INACTIVE: 'Mark inactive', ARCHIVED: 'Archive' };
@@ -83,7 +88,12 @@ export default function MemberDetail() {
       {member.status === 'SUSPENDED' && <div className="mb-4"><Alert>This account is on hold{member.status_reason ? `: ${member.status_reason}` : ''}. They cannot check in.</Alert></div>}
       {member.status === 'ARCHIVED' && <div className="mb-4"><Alert>This member is archived{member.merged_into ? tr('(merged into another member)') : ''}. Their cards stopped working.</Alert></div>}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <MemberSummary current={current} upcoming={memberships.find((x) => x.state === 'UPCOMING' && !x.shared_from)} fin={fin.data} />
+      {seeMoney && <Tabs tabs={[{ key: 'overview', label: tr('Overview') }, { key: 'payments', label: tr('Payments') }, { key: 'purchases', label: tr('Purchases') }]} value={tab} onChange={setTab} />}
+      {tab === 'payments' && seeMoney && <MemberPayments fin={fin} />}
+      {tab === 'purchases' && seeMoney && <MemberPurchases fin={fin} />}
+
+      {tab === 'overview' && <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-5">
           <Panel title={tr('Memberships')} lead={current ? `${current.plan_name} · ${current.state === 'UPCOMING' ? 'starts' : 'ends'} ${longDate(current.state === 'UPCOMING' ? current.start_date : current.end_date)}` : tr('No membership running')}>
             {memberships.length === 0 ? <p className="text-small text-ink-500">{tr('Nothing sold yet.')}</p> : (
@@ -174,9 +184,9 @@ export default function MemberDetail() {
             </Panel>
           )}
 
-          {hasFeature('gym_rewards') && <MemberRewards memberId={member.member_id} canRedeem={desk} canAdjust={manager} canExclude={manager} excluded={member.rewards_excluded} onChanged={m.reload} />}
-          {hasFeature('gym_classes') && <MemberPacks memberId={member.member_id} memberName={member.name} canSell={desk} onChanged={m.reload} />}
-          {hasFeature('gym_classes') && (can('gym_trainer') || manager) && <MemberTraining memberId={member.member_id} trainerId={member.assigned_trainer_id} canAssign={manager} onChanged={m.reload} />}
+          {hasFeature('gym_rewards') && <MemberRewards memberId={member.member_id} canRedeem={desk} canAdjust={manager} canExclude={manager} excluded={member.rewards_excluded} onChanged={reload} />}
+          {hasFeature('gym_classes') && <MemberPacks memberId={member.member_id} memberName={member.name} canSell={desk} onChanged={reload} />}
+          {hasFeature('gym_classes') && (can('gym_trainer') || manager) && <MemberTraining memberId={member.member_id} trainerId={member.assigned_trainer_id} canAssign={manager} onChanged={reload} />}
           <Panel title={tr('Family')} lead={member.head ? `Part of ${member.head.name}'s group` : tr('People who share this membership')}>
             {member.head && <p className="text-small"><Link className="text-brand-600 hover:underline" to={`/app/gym/members/${member.head.member_id}`}>{member.head.name}</Link> {tr('pays for this member.')}</p>}
             {member.dependents.length > 0 && (
@@ -185,10 +195,10 @@ export default function MemberDetail() {
             {!member.head && (can('gym_members') || manager) && member.status !== 'ARCHIVED' && <Button className="mt-2" size="sm" variant="secondary" onClick={() => setFamily(true)}><UsersRound aria-hidden="true" className="h-4 w-4" />{tr('Add a family member')}</Button>}
           </Panel>
         </div>
-      </div>
+      </div>}
 
-      {form && <MemberForm member={member} canHealth={member.health_notes !== undefined} onClose={() => setForm(false)} onSaved={() => { setForm(false); toast.success(tr('Saved')); m.reload(); }} />}
-      {family && <MemberForm headId={member.member_id} headName={member.name} canHealth={member.health_notes !== undefined} onClose={() => setFamily(false)} onSaved={(d) => { setFamily(false); toast.success(tr('{{d_name}} added', { d_name: d.name })); m.reload(); }} />}
+      {form && <MemberForm member={member} canHealth={member.health_notes !== undefined} onClose={() => setForm(false)} onSaved={() => { setForm(false); toast.success(tr('Saved')); reload(); }} />}
+      {family && <MemberForm headId={member.member_id} headName={member.name} canHealth={member.health_notes !== undefined} onClose={() => setFamily(false)} onSaved={(d) => { setFamily(false); toast.success(tr('{{d_name}} added', { d_name: d.name })); reload(); }} />}
       {sell && <SellDialog mode={sell.mode} member={member} membership={sell.membership} canDiscount={manager} canComplimentary={manager} onClose={() => setSell(null)} onDone={done(sell.mode === 'change' ? 'Plan changed' : 'Membership sold')} />}
       {freeze && <FreezeDialog membership={freeze} onClose={() => setFreeze(null)} onDone={done('Frozen')} />}
       {extend && <ExtendDialog membership={extend} onClose={() => setExtend(null)} onDone={done('Days added')} />}
