@@ -18,6 +18,7 @@ import { WEEKDAYS, useLoad } from '../../lib/salon.js';
 import { Alert, Badge, Button, Field, Input, ListState, PageHeader, Select, StatCard, Textarea, useDialog, useToast } from '../../components/ui.jsx';
 import { NumberField, Panel, SelectField, Tabs, Toggle, useAction } from './parts.jsx';
 import { useT, T } from '../../i18n/useT.js';
+import ShareBox from '../../components/ShareBox.jsx';
 
 const METHOD_LABEL = { CASH: 'Cash', UPI: 'UPI', CARD: 'Card', BANK_TRANSFER: 'Bank transfer', WALLET: 'Wallet' };
 
@@ -181,11 +182,11 @@ const OnlineBooking = ({ s }) => {
   const tr = useT();
   const c = s.data.settings;
   const toast = useToast();
-  const [form, setForm] = useState({ enabled: Boolean(c.online_booking_enabled), slug: c.online_booking_slug || '', notice: c.online_booking_notice || '' });
+  const [form, setForm] = useState({ enabled: Boolean(c.online_booking_enabled), slug: c.online_booking_slug || '', notice: c.online_booking_notice || '', offerPct: c.online_booking_offer_pct ?? '', offerText: c.online_booking_offer_text || '' });
   const link = form.slug ? `${window.location.origin}/book/${form.slug}` : '';
   const submit = async (e) => {
     e.preventDefault();
-    await s.save({ online_booking_enabled: form.enabled, online_booking_slug: form.slug || null, online_booking_notice: form.notice || null }, form.enabled ? 'Online booking is on' : 'Saved');
+    await s.save({ online_booking_enabled: form.enabled, online_booking_slug: form.slug || null, online_booking_notice: form.notice || null, online_booking_offer_pct: form.offerPct === '' ? null : Number(form.offerPct), online_booking_offer_text: form.offerText || null }, form.enabled ? 'Online booking is on' : 'Saved');
   };
   return (
     <Panel title={tr('Online booking')} lead={tr('A page clients can use to book themselves, without calling. It follows your opening hours, team hours, leave and booking rules.')}>
@@ -195,12 +196,11 @@ const OnlineBooking = ({ s }) => {
           <div className="flex items-center gap-2"><span className="text-small text-ink-500">/book/</span><div className="flex-1"><Input id="ob-slug" value={form.slug} maxLength={40} onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))} /></div></div>
         </Field>
         <Field id="ob-notice" label={tr('Message at the top of the page')} hint={tr('Optional — parking, what to bring, a festive notice.')}><Input id="ob-notice" value={form.notice} maxLength={300} onChange={(e) => setForm((f) => ({ ...f, notice: e.target.value }))} /></Field>
-        {c.online_booking_enabled && link && (
-          <div className="flex flex-wrap items-center gap-2 rounded-(--radius-control) bg-surface-2 px-3.5 py-2.5 text-small">
-            <a href={link} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate font-medium text-brand-600 underline">{link}</a>
-            <Button type="button" variant="secondary" size="sm" onClick={() => navigator.clipboard?.writeText(link).then(() => toast.success(tr('Link copied')))}>{tr('Copy link')}</Button>
-          </div>
-        )}
+        {c.online_booking_enabled && link && <ShareBox link={link} buttonText="Book an appointment" />}
+        <div className="grid gap-4 sm:grid-cols-[1fr_2fr]">
+          <Field id="ob-off" label={tr('Offer %')} hint={tr('Leave empty for no offer')}><Input id="ob-off" type="number" min="0" max="100" step="0.5" value={form.offerPct} onChange={(e) => setForm((f) => ({ ...f, offerPct: e.target.value }))} /></Field>
+          <Field id="ob-offt" label={tr('Offer wording')} hint={tr('Shown on the page, e.g. 10% off when you book online')}><Input id="ob-offt" value={form.offerText} maxLength={120} onChange={(e) => setForm((f) => ({ ...f, offerText: e.target.value }))} /></Field>
+        </div>
         <p className="text-caption text-ink-500">{tr('Online bookings arrive as Booked appointments marked Online. One mobile number can hold up to three upcoming online bookings.')}</p>
         <SaveBar busy={s.busy} />
       </form>

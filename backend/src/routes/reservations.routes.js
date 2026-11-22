@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAuth, withBusiness, requirePermission, requirePlanFeature, requireOutlet } from '../middleware/auth.js';
 import * as r from '../controllers/reservations.controller.js';
+import * as online from '../controllers/reservationPublic.controller.js';
 
 const router = Router();
 const feature = requirePlanFeature('reservations');
@@ -13,6 +14,10 @@ router.post('/reservations', ...write, requireOutlet, r.create);
 router.patch('/reservations/:id', ...write, r.update);
 router.post('/reservations/:id/status', ...write, r.setStatus);
 router.post('/reservations/:id/seat', ...write, r.seat);
+
+/* the page guests book from: its address, hours, slot length and offer */
+router.get('/reservations/online-settings', ...read, online.getSettings);
+router.put('/reservations/online-settings', requireAuth, withBusiness({ requireActive: true }), feature, requirePermission('settings'), online.saveSettings);
 
 router.get('/waitlist', ...read, r.waitlist);
 router.post('/waitlist', ...write, requireOutlet, r.waitlistAdd);

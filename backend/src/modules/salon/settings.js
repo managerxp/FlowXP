@@ -143,6 +143,11 @@ export const cleanSettings = (body) => {
     out.online_booking_slug = v ? v.toLowerCase() : null;
   }
   if ('online_booking_notice' in body) out.online_booking_notice = text(body.online_booking_notice, 'Booking page message', { max: 300 });
+  if ('online_booking_offer_pct' in body) {
+    const v = body.online_booking_offer_pct;
+    out.online_booking_offer_pct = v === null || v === '' ? null : num(v, 'Offer percentage', { min: 0.01, max: 100, required: true });
+  }
+  if ('online_booking_offer_text' in body) out.online_booking_offer_text = text(body.online_booking_offer_text, 'Offer wording', { max: 120 });
   if ('payment_methods' in body) {
     const m = Array.isArray(body.payment_methods) ? [...new Set(body.payment_methods.map((x) => String(x).toUpperCase()))] : null;
     if (!m || !m.length || m.some((x) => !PAYMENT_METHODS.includes(x))) throw new SalonError(400, `Choose payment methods from: ${PAYMENT_METHODS.join(', ')}`);

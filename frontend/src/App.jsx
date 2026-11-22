@@ -234,6 +234,7 @@ const PharmacyGrn = lazy(() => import('./app/pharmacy/PharmacyGrn.jsx'));
    public/CustomerMenu.jsx's header comment. */
 const CustomerMenu = lazy(() => import('./public/CustomerMenu.jsx'));
 const SalonBooking = lazy(() => import('./public/SalonBooking.jsx'));
+const Reserve = lazy(() => import('./public/Reserve.jsx'));
 const BillPage = lazy(() => import('./public/BillPage.jsx'));
 const MessagingPage = lazy(() => import('./app/MessagingPage.jsx'));
 const ReviewsPage = lazy(() => import('./app/ReviewsPage.jsx'));
@@ -466,6 +467,7 @@ const App = () => (
         chrome at all. The first bare page in this app; see
         public/CustomerMenu.jsx. */}
     <Route path="book/:slug" element={<Suspense fallback={<PageLoader />}><SalonBooking /></Suspense>} />
+    <Route path="reserve/:slug" element={<Suspense fallback={<PageLoader />}><Reserve /></Suspense>} />
     <Route path="card/join/:code" element={<Suspense fallback={<PageLoader />}><LoyaltyCardPage /></Suspense>} />
     <Route path="card/bill/:token" element={<Suspense fallback={<PageLoader />}><LoyaltyCardPage /></Suspense>} />
     <Route path="card/:token" element={<Suspense fallback={<PageLoader />}><LoyaltyCardPage /></Suspense>} />

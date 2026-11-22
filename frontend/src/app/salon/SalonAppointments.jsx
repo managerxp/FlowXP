@@ -209,6 +209,8 @@ const DetailModal = ({ id, tz, onClose, onChanged }) => {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <StatusPill status={a.status} />
             <span className="text-small text-ink-500">{timeText(a.start_at, tz)} – {timeText(a.end_at, tz)}</span>
+            {a.token_no && <span className="rounded-md bg-brand-50 px-1.5 py-0.5 text-caption font-semibold text-brand-700">Token {a.token_no}</span>}
+            {a.offer_pct && <span className="rounded-md bg-success/10 px-1.5 py-0.5 text-caption font-semibold text-success">{Number(a.offer_pct)}% online offer: give it at billing</span>}
           </div>
           <p className="text-small text-ink-700">
             <UserRound aria-hidden="true" className="mr-1.5 inline h-4 w-4 text-ink-400" />{a.customer_name || 'Guest'}{a.customer_phone && ` · ${a.customer_phone}`}{a.is_guest && <Badge tone="neutral"> {tr('guest')}</Badge>}

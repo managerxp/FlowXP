@@ -21,7 +21,7 @@ const fail = (res, status, message) => res.status(status).json({ success: false,
 const resolve = async (slug) => {
   const { rows } = await pool.query(
     `SELECT b.business_id, b.name, b.status, b.timezone, b.business_type, b.phone, b.address, b.city, b.receipt_settings->>'logo_url' AS logo_url,
-            s.online_booking_enabled, s.online_booking_notice,
+            s.online_booking_enabled, s.online_booking_notice, s.online_booking_offer_pct, s.online_booking_offer_text,
             COALESCE(p.feature_flags, '{}'::jsonb) AS plan_feature_flags, btf.feature_flags AS type_feature_flags,
             COALESCE(bfo.overrides, '{}'::jsonb) AS feature_overrides
      FROM salon_settings s JOIN businesses b ON b.business_id = s.business_id
@@ -75,6 +75,7 @@ export const info = async (req, res) => {
     `SELECT s.staff_id, s.name, s.staff_role, COALESCE((SELECT json_agg(x.product_id) FROM salon_staff_services x WHERE x.staff_id = s.staff_id), '[]'::json) AS service_ids
      FROM salon_staff s WHERE s.business_id = $1 AND s.branch_id = $2 AND s.status = 'ACTIVE' AND s.is_bookable ORDER BY s.name`, [biz.business_id, outlet.branch_id])).rows;
   res.json({ success: true, data: {
+    offer: biz.online_booking_offer_pct ? { pct: Number(biz.online_booking_offer_pct), text: biz.online_booking_offer_text || `${Number(biz.online_booking_offer_pct)}% off when you book online` } : null,
     name: biz.name, logo_url: biz.logo_url, phone: biz.phone, address: [biz.address, biz.city].filter(Boolean).join(', ') || null, notice: biz.online_booking_notice,
     timezone: biz.timezone || 'Asia/Kolkata', max_advance_days: settings.max_advance_days, cancellation_policy: settings.cancellation_policy?.text || null,
     outlets: outlets.map((o) => ({ branch_id: o.branch_id, name: o.name, city: o.city })), outlet_id: outlet.branch_id,
@@ -89,6 +90,25 @@ export const availability = async (req, res) => {
   const out = capture();
   await appointments.availability(asFrontDesk(g.biz, g.outlet, { query: { date: req.query.date, service_ids: req.query.service_ids, staff_id: req.query.staff_id } }), out);
   res.status(out.code).json(out.body);
+};
+
+/* The next token for the day of this appointment at this outlet; the lock makes two bookings at once get two numbers. */
+const giveToken = async (biz, outlet, appointmentId, offer) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [`salon-token:${biz.business_id}:${outlet.branch_id}`]);
+    const tz = biz.timezone || 'Asia/Kolkata';
+    const { rows } = await client.query(
+      `UPDATE salon_appointments a SET token_no = (
+          SELECT COALESCE(MAX(x.token_no), 0) + 1 FROM salon_appointments x
+           WHERE x.business_id = a.business_id AND x.branch_id = a.branch_id AND (x.start_at AT TIME ZONE $3)::date = (a.start_at AT TIME ZONE $3)::date),
+          offer_pct = $4, offer_text = $5
+        WHERE a.appointment_id = $1 AND a.business_id = $2 RETURNING token_no`,
+      [appointmentId, biz.business_id, tz, offer?.pct ?? null, offer?.text ?? null]);
+    await client.query('COMMIT');
+    return rows[0]?.token_no ?? null;
+  } catch (error) { await client.query('ROLLBACK').catch(() => {}); console.error('[salon] token failed:', error.message); return null; } finally { client.release(); }
 };
 
 const MAX_OPEN_PER_PHONE = 3;
@@ -130,11 +150,14 @@ export const book = async (req, res) => {
   }), out);
   if (out.code >= 400) return res.status(out.code).json(out.body);
   const a = out.body.data;
+  // the token number: 1, 2, 3 ... for this outlet and this day, in the order they booked. The offer on the page is kept on the booking, so the desk knows to give it.
+  const offer = g.biz.online_booking_offer_pct ? { pct: Number(g.biz.online_booking_offer_pct), text: g.biz.online_booking_offer_text || `${Number(g.biz.online_booking_offer_pct)}% off when you book online` } : null;
+  const token = await giveToken(g.biz, g.outlet, a.appointment_id, offer);
   notify(g.biz.business_id, { category: 'bookings', type: 'online_booking', title: 'New online booking', body: `${name} · ${new Date(a.start_at).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: g.biz.timezone || 'Asia/Kolkata' })}`, branchId: g.outlet.branch_id, channels: { inApp: false, email: false }, route: '/appointments' })
     .catch((e) => console.error('[push] booking alert failed:', e.message));
   // only what the person who booked needs: never the name or details of a client the number happened to match
   res.status(201).json({ success: true, data: {
-    appointment_id: a.appointment_id, status: a.status, start_at: a.start_at, end_at: a.end_at, total: a.total,
+    token_no: token, offer, appointment_id: a.appointment_id, status: a.status, start_at: a.start_at, end_at: a.end_at, total: a.total,
     services: a.services.map((s) => ({ name: s.name, staff_name: s.staff_name, start_at: s.start_at, duration_min: s.duration_min }))
   } });
 };

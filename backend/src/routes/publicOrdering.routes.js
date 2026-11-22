@@ -11,6 +11,7 @@ import * as publicOrdering from '../controllers/publicOrdering.controller.js';
 import * as publicBill from '../controllers/publicBill.controller.js';
 import { idempotent } from '../middleware/idempotency.js';
 import * as publicSalon from '../controllers/salonPublic.controller.js';
+import * as publicReserve from '../controllers/reservationPublic.controller.js';
 
 const router = Router();
 
@@ -52,5 +53,11 @@ const salonBookLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 12, standard
 router.get('/salon/:slug', salonReadLimiter, publicSalon.info);
 router.get('/salon/:slug/availability', salonReadLimiter, publicSalon.availability);
 router.post('/salon/:slug/appointments', salonBookLimiter, publicSalon.book);
+
+/* Online table reservations: the same shape as the salon page. Reading is generous; booking is tight, since each one holds a table. */
+const reserveBookLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 12, standardHeaders: true, legacyHeaders: false, message: { success: false, message: 'Too many reservations from here. Please call the restaurant.' } });
+router.get('/reserve/:slug', salonReadLimiter, publicReserve.info);
+router.get('/reserve/:slug/slots', salonReadLimiter, publicReserve.slots);
+router.post('/reserve/:slug/book', reserveBookLimiter, publicReserve.book);
 
 export default router;

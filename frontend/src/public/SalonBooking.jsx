@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { CalendarCheck, Check, Clock, MapPin, Phone } from 'lucide-react';
+import { CalendarCheck, Check, Clock, MapPin, Phone, Tag } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { addDays, clockText, dateText, fromLocal, qs, timeText, todayIn, toMinutes } from '../lib/salon.js';
 import { Alert, Button, Field, Input, PageLoader, Select, Textarea } from '../components/ui.jsx';
@@ -72,6 +72,8 @@ const SalonBooking = () => {
         <div className="rounded-(--radius-card) border border-line bg-surface p-6 text-center">
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success text-white"><Check aria-hidden="true" className="h-6 w-6" /></span>
           <h1 className="mt-4 text-title font-semibold text-ink-900">You’re booked</h1>
+          {done.token_no && <><p className="mt-3 text-caption text-ink-500">Your token number</p><p className="tabular text-5xl font-bold text-brand-600">{done.token_no}</p><p className="text-caption text-ink-500">Show this when you arrive.</p></>}
+          {done.offer && <p className="mt-3 flex items-center justify-center gap-1.5 rounded-(--radius-control) bg-success/10 px-3 py-2 text-small font-medium text-success"><Tag aria-hidden="true" className="h-4 w-4" />{done.offer.text}</p>}
           {done.received && !done.appointment_id ? null : <>
             <p className="mt-1 text-small text-ink-700">{dateText(date, { weekday: 'long', day: 'numeric', month: 'long' })} at {timeText(done.start_at, info.timezone)}</p>
             <ul className="mt-4 divide-y divide-line rounded-(--radius-control) border border-line text-left text-small">
@@ -94,6 +96,7 @@ const SalonBooking = () => {
           {info.address && <span className="flex items-center gap-1.5"><MapPin aria-hidden="true" className="h-3.5 w-3.5" />{info.address}</span>}
           {info.phone && <span className="flex items-center gap-1.5"><Phone aria-hidden="true" className="h-3.5 w-3.5" />{info.phone}</span>}
         </p>
+        {info.offer && <p className="mt-3 flex items-center gap-2 rounded-(--radius-control) bg-success/10 px-3.5 py-2.5 text-small font-semibold text-success"><Tag aria-hidden="true" className="h-4 w-4" />{info.offer.text}</p>}
         {info.notice && <p className="mt-3 rounded-(--radius-control) bg-brand-50 px-3.5 py-2.5 text-small text-ink-900">{info.notice}</p>}
       </header>
 

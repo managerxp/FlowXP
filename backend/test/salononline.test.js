@@ -76,6 +76,24 @@ test('a booking is made as ONLINE, and a known number is the same client but rev
   assert.equal(r.body.data.services[0].staff_name, 'Ravi');
   const row = (await pool.query(`SELECT source, status, customer_id, created_by FROM salon_appointments WHERE business_id=$1`, [S.businessId])).rows[0];
   assert.equal(row.source, 'ONLINE'); assert.equal(row.status, 'BOOKED'); assert.ok(row.customer_id); assert.equal(row.created_by, null);
+  assert.equal(r.body.data.token_no, 1, 'the first booking of the day is token 1');
+  assert.equal(r.body.data.offer, null, 'no offer until the owner sets one');
+});
+
+test('the token numbers count up through the day, and the offer is shown and kept on the booking', { skip }, async () => {
+  const set = fakeRes(); await settingsApi.update(S.req({ body: { online_booking_offer_pct: 10, online_booking_offer_text: '10% off for online bookings' } }), set);
+  assert.equal(set.code, 200, JSON.stringify(set.body));
+  assert.equal((await call(pub.info)).body.data.offer.pct, 10);
+  const r = await call(pub.book, { body: { name: 'Priya', phone: '9876500077', start_at: at('15:00'), services: [{ service_id: cut }] } });
+  assert.equal(r.code, 201, JSON.stringify(r.body));
+  assert.equal(r.body.data.token_no, 2);
+  assert.equal(r.body.data.offer.pct, 10);
+  const row = (await pool.query(`SELECT token_no, offer_pct FROM salon_appointments WHERE appointment_id = $1`, [r.body.data.appointment_id])).rows[0];
+  assert.equal(row.token_no, 2); assert.equal(Number(row.offer_pct), 10);
+  const bad = fakeRes(); await settingsApi.update(S.req({ body: { online_booking_offer_pct: 120 } }), bad);
+  assert.equal(bad.code, 400);
+  const off = fakeRes(); await settingsApi.update(S.req({ body: { online_booking_offer_pct: null } }), off);
+  assert.equal(off.code, 200);
 });
 
 test('the same person cannot be booked twice at once, online either', { skip }, async () => {

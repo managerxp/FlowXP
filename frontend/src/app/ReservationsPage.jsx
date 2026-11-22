@@ -13,6 +13,7 @@ import { api } from '../lib/api.js';
 import { localISO } from '../lib/dates.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Button, Field, Input, Modal, Select, useToast, useDialog } from '../components/ui.jsx';
+import OnlineReservations from './OnlineReservations.jsx';
 
 const POLL_MS = 30000;
 const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -232,6 +233,8 @@ const BookingCard = ({ r, onSeat, onEdit, onStatus, onTakeOrder }) => {
           <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <span className="truncate text-body font-semibold text-ink-900">{r.guest_name}</span>
             <span className="flex items-center gap-1 text-small text-ink-500"><Users aria-hidden="true" className="h-3.5 w-3.5" />{r.party_size}</span>
+            {r.source === 'ONLINE' && <span className="rounded-md bg-brand-50 px-1.5 py-0.5 text-[11px] font-semibold text-brand-700">Online{r.code ? ` · ${r.code}` : ''}</span>}
+            {r.offer_pct && <span className="rounded-md bg-success/10 px-1.5 py-0.5 text-[11px] font-semibold text-success">{Number(r.offer_pct)}% offer</span>}
           </p>
           {!(seated && !r.phone) && (
             <p className="mt-0.5 text-caption text-ink-500">
@@ -422,6 +425,7 @@ const ReservationsPage = () => {
   const [queue, setQueue] = useState(null);
   const [queueError, setQueueError] = useState('');
   const [editing, setEditing] = useState(null);   // a booking, or {} for a new one
+  const [online, setOnline] = useState(false);     // the online reservation page's settings
 
   const loadRows = () => api(`/reservations?date=${date}`).then((r) => { setRows(r); setRowsError(''); }).catch((e) => setRowsError(e.message));
   const loadQueue = () => api('/waitlist').then((r) => { setQueue(r); setQueueError(''); }).catch((e) => setQueueError(e.message));
@@ -457,10 +461,12 @@ const ReservationsPage = () => {
             <button type="button" aria-label="Next day" onClick={() => setDate(shiftDay(date, 1))} className="flex h-10 w-9 items-center justify-center text-ink-500 hover:text-ink-900"><ChevronRight className="h-4 w-4" /></button>
           </div>
           {!today && <Button variant="ghost" onClick={() => setDate(localISO())}>Today</Button>}
+          <Button variant="secondary" onClick={() => setOnline(true)}>Online booking link</Button>
           <Button onClick={() => setEditing({})}>New booking</Button>
         </div>
       </div>
 
+      {online && <OnlineReservations onClose={() => setOnline(false)} />}
       <div role="tablist" aria-label="Show" className="mb-4 grid grid-cols-2 gap-1 rounded-lg border border-line bg-surface-2 p-1 xl:hidden">
         {[['bookings', 'Bookings', booked.length + seated.length], ['waitlist', 'Waitlist', queue?.length || 0]].map(([id, label, n]) => (
           <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => setView(id)}
