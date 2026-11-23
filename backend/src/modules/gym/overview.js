@@ -132,3 +132,36 @@ export const trends = async (db, tenant, { today, tz, months = 6 }) => {
   }
   return withRupees({ months: out });
 };
+
+const KIND_SQL = `CASE WHEN EXISTS (SELECT 1 FROM gym_memberships ms WHERE ms.invoice_id = i.invoice_id) THEN 'membership'
+                   WHEN EXISTS (SELECT 1 FROM gym_packs gp WHERE gp.invoice_id = i.invoice_id) THEN 'training'
+                   WHEN EXISTS (SELECT 1 FROM invoice_items it WHERE it.invoice_id = i.invoice_id AND it.product_id IS NOT NULL) THEN 'shop'
+                   ELSE 'other' END`;
+
+/** Money for a period (from..to, local days): collected by kind, what is still owed on bills raised in it, and expenses. For the phone's Payments tab. */
+export const collection = async (db, tenant, { from, to, tz }) => {
+  const p = [tenant.businessId, tz, from, to];
+  const pScope = branchFilter(tenant, 'pm.branch_id', p);
+  const got = (await db.query(
+    `SELECT ${KIND_SQL} AS kind, COALESCE(SUM(pm.amount_paise), 0)::bigint AS paise
+       FROM payments pm JOIN invoices i ON i.invoice_id = pm.invoice_id
+      WHERE pm.business_id = $1 AND i.status <> 'CANCELLED' AND (pm.created_at AT TIME ZONE $2::text)::date BETWEEN $3::date AND $4::date${pScope} GROUP BY 1`, p)).rows;
+  const d = [tenant.businessId, from, to];
+  const dScope = branchFilter(tenant, 'i.branch_id', d);
+  const owed = (await db.query(
+    `SELECT ${KIND_SQL} AS kind, COALESCE(SUM(i.balance_due_paise), 0)::bigint AS paise
+       FROM invoices i WHERE i.business_id = $1 AND i.status <> 'CANCELLED' AND i.balance_due_paise > 0 AND i.invoice_date BETWEEN $2::date AND $3::date${dScope} GROUP BY 1`, d)).rows;
+  const e = [tenant.businessId, from, to];
+  const eScope = branchFilter(tenant, 'x.branch_id', e);
+  const spent = (await db.query(`SELECT COALESCE(SUM(x.amount_paise), 0)::bigint AS paise FROM expenses x WHERE x.business_id = $1 AND x.expense_date BETWEEN $2::date AND $3::date${eScope}`, e)).rows[0].paise;
+  const by = (rows) => { const o = { membership: 0, training: 0, shop: 0, other: 0 }; for (const r of rows) o[r.kind] = Number(r.paise); return o; };
+  const c = by(got); const o = by(owed);
+  return withRupees({
+    from, to,
+    collected_paise: c.membership + c.training + c.shop + c.other,
+    collected_by: { membership_paise: c.membership, training_paise: c.training, shop_paise: c.shop, other_paise: c.other },
+    owed_by: { membership_paise: o.membership, training_paise: o.training, shop_paise: o.shop, other_paise: o.other },
+    owed_paise: o.membership + o.training + o.shop + o.other,
+    expense_paise: Number(spent)
+  });
+};

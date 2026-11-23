@@ -1,15 +1,26 @@
 import { useCallback, useState } from 'react';
-import { Linking, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, useSession } from '../../lib/session.ts';
 import { useLoad } from '../../lib/useLoad.ts';
 import { rupees } from '../../lib/money.ts';
-import { dmy, n, scaleBars, waNumber, type GymHome } from '../../lib/gymApp.ts';
+import { dmy, n, parseDmy, scaleBars, waNumber, type GymHome } from '../../lib/gymApp.ts';
 import { Page } from '../../lib/responsive.tsx';
 import { t } from '../../lib/i18n.ts';
 import { Chips, Empty, Failed, Line, Group, Loading, SectionTitle, Soft, Stat, Title, color, s } from '../../lib/ui.tsx';
 
+type Period = 'month' | 'last' | 'three' | 'custom';
+const PERIODS = [{ id: 'month' as Period, label: 'This Month' }, { id: 'last' as Period, label: 'Last Month' }, { id: 'three' as Period, label: 'Last 3 Months' }, { id: 'custom' as Period, label: 'Custom' }];
+type Collection = { from: string; to: string; collected_paise: number; owed_paise: number; expense_paise: number; collected_by: Record<string, number>; owed_by: Record<string, number> };
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+/** The first and last day of a period, counted from today on this phone. */
+const rangeOf = (p: Exclude<Period, 'custom'>, now = new Date()): [string, string] => {
+  const y = now.getFullYear(); const m = now.getMonth();
+  if (p === 'month') return [iso(new Date(y, m, 1)), iso(now)];
+  if (p === 'last') return [iso(new Date(y, m - 1, 1)), iso(new Date(y, m, 0))];
+  return [iso(new Date(y, m - 2, 1)), iso(now)];
+};
 type Tab = 'membership' | 'payments' | 'attendance';
 const TABS = [{ id: 'membership' as Tab, label: 'Membership' }, { id: 'payments' as Tab, label: 'Payments' }, { id: 'attendance' as Tab, label: 'Attendance' }];
 const Row = ({ children }: { children: React.ReactNode }) => <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 16 }}>{children}</View>;
@@ -21,6 +32,11 @@ export default function Dashboard() {
   const [tab, setTab] = useState<Tab>('membership');
   const d = useLoad<GymHome>(`gym-home:${session.businessId}:${session.branchId}`, () => api.get<GymHome>('/gym/dashboard'));
   useFocusEffect(useCallback(() => { void d.refresh(); }, [])); // eslint-disable-line react-hooks/exhaustive-deps
+  const [period, setPeriod] = useState<Period>('month');
+  const [cFrom, setCFrom] = useState('');
+  const [cTo, setCTo] = useState('');
+  const range: [string, string] | null = period === 'custom' ? (parseDmy(cFrom) && parseDmy(cTo) && parseDmy(cFrom) <= parseDmy(cTo) ? [parseDmy(cFrom), parseDmy(cTo)] : null) : rangeOf(period);
+  const col = useLoad<Collection>(`gym-collection:${session.businessId}:${session.branchId}:${range?.join('..')}`, () => api.get<Collection>(`/gym/reports/collection?from=${range![0]}&to=${range![1]}`), tab === 'payments' && range !== null);
   const x = d.data;
   const r = x?.renewals;
   const m = x?.money;
@@ -60,21 +76,42 @@ export default function Dashboard() {
             {r?.list.length ? <><SectionTitle>Renewals to chase</SectionTitle><Group>{r.list.slice(0, 10).map((c) => <Line key={c.member_id} left={c.name} sub={`${c.plan_name} · ${dmy(c.ends_on)}`} right={c.days_left === 0 ? t('Today') : t('{n} days', { n: c.days_left })} onPress={() => open(c.member_id)} />)}</Group></> : null}
           </> : null}
 
-          {x && tab === 'payments' ? (m ? <>
-            <SectionTitle>Collection</SectionTitle>
-            <Row>
-              <Stat label="Collected today" value={rupees(n(m.received_today_paise))} tone={color.ok} />
-              <Stat label="Collected this month" value={rupees(n(m.received_month_paise))} tone={color.ok} />
-              <Stat label="Dues pending" value={rupees(n(m.owed_paise))} note={t('{n} bills', { n: m.owed_bills })} tone={m.owed_paise ? color.danger : undefined} />
-            </Row>
-            <SectionTitle>Billed this month</SectionTitle>
-            <Row>
-              <Stat label="Memberships" value={rupees(n(m.billed_month.membership_paise))} />
-              <Stat label="Personal training" value={rupees(n(m.billed_month.training_paise))} />
-              <Stat label="Shop and supplements" value={rupees(n(m.billed_month.shop_paise))} />
-            </Row>
+          {tab === 'payments' ? <>
+            {m ? <>
+              <SectionTitle>Today</SectionTitle>
+              <Row><Stat label="Collected today" value={rupees(n(m.received_today_paise))} tone={color.ok} /><Stat label="Dues pending (all time)" value={rupees(n(m.owed_paise))} note={t('{n} bills', { n: m.owed_bills })} tone={m.owed_paise ? color.danger : undefined} /></Row>
+            </> : null}
+            <SectionTitle>Period</SectionTitle>
+            <Chips items={PERIODS} value={period} onChange={setPeriod} />
+            {period === 'custom' ? (
+              <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16 }}>
+                <TextInput style={[s.input, { flex: 1 }]} value={cFrom} onChangeText={setCFrom} placeholder="DD/MM/YYYY" maxLength={10} keyboardType="numbers-and-punctuation" accessibilityLabel={t('From')} />
+                <TextInput style={[s.input, { flex: 1 }]} value={cTo} onChangeText={setCTo} placeholder="DD/MM/YYYY" maxLength={10} keyboardType="numbers-and-punctuation" accessibilityLabel={t('To')} />
+              </View>
+            ) : null}
+            {range === null ? <Empty>Type both dates, like 01/11/2026.</Empty> : null}
+            {range ? <Soft style={{ paddingHorizontal: 16 }}>{`${dmy(range[0])} – ${dmy(range[1])}`}</Soft> : null}
+            {col.busy && !col.data && range ? <Loading /> : null}
+            {col.error && !col.data ? <Failed message={col.error} onRetry={() => { void col.refresh(); }} /> : null}
+            {col.data && range ? <>
+              <SectionTitle>Collected</SectionTitle>
+              <Row>
+                <Stat label="Total collected" value={rupees(n(col.data.collected_paise))} tone={color.ok} />
+                <Stat label="Memberships" value={rupees(n(col.data.collected_by.membership_paise))} />
+                <Stat label="Personal training" value={rupees(n(col.data.collected_by.training_paise))} />
+                <Stat label="Shop and supplements" value={rupees(n(col.data.collected_by.shop_paise))} />
+              </Row>
+              <SectionTitle>Still to collect</SectionTitle>
+              <Row>
+                <Stat label="Membership due" value={rupees(n(col.data.owed_by.membership_paise))} tone={col.data.owed_by.membership_paise ? color.danger : undefined} />
+                <Stat label="Personal training due" value={rupees(n(col.data.owed_by.training_paise))} tone={col.data.owed_by.training_paise ? color.danger : undefined} />
+                <Stat label="Shop due" value={rupees(n(col.data.owed_by.shop_paise))} />
+              </Row>
+              <SectionTitle>Spent</SectionTitle>
+              <Row><Stat label="Expenses" value={rupees(n(col.data.expense_paise))} /><Stat label="Collected less expenses" value={rupees(n(col.data.collected_paise) - n(col.data.expense_paise))} tone={n(col.data.collected_paise) - n(col.data.expense_paise) < 0 ? color.danger : color.ok} /></Row>
+            </> : null}
             <Group><Line left="See who owes money" icon="alert-circle-outline" onPress={() => router.push('/gym-members')} /></Group>
-          </> : <Empty>You do not have access to the money figures.</Empty>) : null}
+          </> : null}
 
           {x && tab === 'attendance' ? <>
             <SectionTitle>Last 7 days</SectionTitle>

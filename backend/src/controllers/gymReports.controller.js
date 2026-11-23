@@ -4,11 +4,11 @@
  */
 import pool from '../config/database.js';
 import { visibleTo } from '../modules/gym/members.js';
-import { addDays, isoDate, localParts, ok, wrapAll, withRupees } from '../modules/gym/common.js';
+import { GymError, addDays, isoDate, localParts, ok, wrapAll, withRupees } from '../modules/gym/common.js';
 import { branchFilter } from '../utils/scope.js';
 import { hasPermission } from '../middleware/auth.js';
 import * as rep from '../modules/gym/reports.js';
-import { birthdaysToday, moneyOverview, recentActivity, renewalsDue, trends } from '../modules/gym/overview.js';
+import { birthdaysToday, collection, moneyOverview, recentActivity, renewalsDue, trends } from '../modules/gym/overview.js';
 
 const tzOf = async (businessId) => (await pool.query(`SELECT COALESCE(timezone, 'Asia/Kolkata') AS tz FROM businesses WHERE business_id = $1`, [businessId])).rows[0].tz;
 
@@ -66,6 +66,12 @@ const dashboard = async (req, res) => {
   ok(res, withRupees({ today, members: counts, visits, denied_today: denied, joined_this_month: joined, sales_this_month: sales, last_7_days: week, ...extra }));
 };
 
+const collectionApi = async (req, res) => {
+  const { date: today } = await localParts(pool, req.tenant.businessId);
+  const from = isoDate(req.query.from, 'From') || `${today.slice(0, 7)}-01`; const to = isoDate(req.query.to, 'To') || today;
+  if (from > to) throw new GymError(400, 'The start date is after the end date');
+  ok(res, await collection(pool, req.tenant, { from, to, tz: await tzOf(req.tenant.businessId) }));
+};
 const trendsApi = async (req, res) => {
   const { date: today } = await localParts(pool, req.tenant.businessId);
   ok(res, await trends(pool, req.tenant, { today, tz: await tzOf(req.tenant.businessId), months: req.query.months }));
@@ -151,4 +157,4 @@ const wallet = async (req, res) => {
   csv(req, res, 'wallet-balances', ['Member', 'Name', 'Phone', 'Balance'], d.balances.map((m) => [m.member_code, m.name, m.phone, r2(m.balance_paise)]));
 };
 
-export default wrapAll({ trends: trendsApi, revenue, retention, wallet, dashboard, attendance, memberships });
+export default wrapAll({ trends: trendsApi, collection: collectionApi, revenue, retention, wallet, dashboard, attendance, memberships });

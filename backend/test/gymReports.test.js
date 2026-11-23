@@ -73,3 +73,17 @@ test('the phone dashboard: expiry buckets, birthdays today and the month-by-mont
   assert.equal(t.months[5].month, today.slice(0, 7));
   assert.ok(t.months.every((m) => typeof m.collected_paise === 'number' && typeof m.new_members === 'number'));
 });
+
+test('the payments tab: collected and owed by kind for a period, and expenses', { skip }, async () => {
+  const { collection } = await import('../src/modules/gym/overview.js');
+  const { localParts } = await import('../src/modules/gym/common.js');
+  const { date: today } = await localParts(pool, A.businessId);
+  const c = await collection(pool, A.tenantFor('OWNER'), { from: `${today.slice(0, 7)}-01`, to: today, tz: 'Asia/Kolkata' });
+  for (const k of ['membership_paise', 'training_paise', 'shop_paise', 'other_paise']) { assert.equal(typeof c.collected_by[k], 'number', k); assert.equal(typeof c.owed_by[k], 'number', k); }
+  assert.equal(c.collected_paise, c.collected_by.membership_paise + c.collected_by.training_paise + c.collected_by.shop_paise + c.collected_by.other_paise);
+  assert.equal(typeof c.expense_paise, 'number');
+  const api = okBody(await A.call(reports.collection, { query: {} }));
+  assert.ok(api.collected_paise >= 0);
+  const bad = await A.call(reports.collection, { query: { from: '2026-02-01', to: '2026-01-01' } });
+  assert.equal(bad.code, 400);
+});
