@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Image, View } from 'react-native';
 import { API_URL, sessionStore } from './session.ts';
 import { authHeaders } from './backup.ts';
+import { filePart } from './filePart.ts';
 import { LOGO_TYPES, logoFileName, logoSrc } from './logo.ts';
 import { Button, ErrorText, Soft, color } from './ui.tsx';
 
@@ -25,7 +26,7 @@ export default function ProductPhoto({ productId, url, onChange }: { productId: 
       if (a.fileSize != null && a.fileSize > 5 * 1024 * 1024) { setError('The photo must be 5 MB or smaller'); return; }
       setBusy(true);
       const form = new FormData();
-      form.append('image', { uri: a.uri, name: logoFileName(mime).replace('logo', 'photo'), type: mime } as never);
+      form.append('image', await filePart(a.uri));
       const res = await fetch(`${API_URL}/api/products/${productId}/image`, { method: 'POST', headers: authHeaders(sessionStore.get()), body: form });
       const json = (await res.json().catch(() => ({}))) as { data?: { image_url?: string }; message?: string };
       if (!res.ok || !json.data?.image_url) { setError(json.message || 'Could not save the photo. Check the connection and try again.'); return; }

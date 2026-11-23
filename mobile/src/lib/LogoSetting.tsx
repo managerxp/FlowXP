@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { filePart } from './filePart.ts';
 import { Image, Text, View } from 'react-native';
 import { API_URL, sessionStore } from './session.ts';
 import { authHeaders } from './backup.ts';
@@ -25,7 +26,7 @@ export default function LogoSetting({ url, onChange }: { url: string | null; onC
       if (bad) { setError(t(bad)); return; }
       setBusy(true);
       const form = new FormData();
-      form.append('logo', { uri: a.uri, name: logoFileName(mime), type: LOGO_TYPES.includes(mime.toLowerCase()) ? mime : 'image/jpeg' } as never);
+      form.append('logo', await filePart(a.uri));
       const res = await fetch(`${API_URL}/api/businesses/current/logo`, { method: 'POST', headers: authHeaders(sessionStore.get()), body: form });
       const json = (await res.json().catch(() => ({}))) as { data?: { logo_url?: string; thermal?: boolean }; message?: string };
       if (!res.ok || !json.data?.logo_url) { setError(json.message || t('Could not save the logo. Check the connection and try again.')); return; }

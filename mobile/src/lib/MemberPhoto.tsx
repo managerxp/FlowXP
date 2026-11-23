@@ -4,6 +4,7 @@ import { API_URL, sessionStore } from './session.ts';
 import { authHeaders } from './backup.ts';
 import { logoSrc } from './logo.ts';
 import { t } from './i18n.ts';
+import { filePart } from './filePart.ts';
 import { Button, ErrorText, color } from './ui.tsx';
 
 export type Picked = { uri: string; mime: string };
@@ -29,7 +30,7 @@ export const pickMemberPhoto = async (from: 'library' | 'camera'): Promise<Picke
 /** Send the picture to the member's profile; returns the saved address. */
 export const uploadMemberPhoto = async (memberId: number | string, pic: Picked): Promise<string> => {
   const form = new FormData();
-  form.append('image', { uri: pic.uri, name: `photo.${EXT[pic.mime] ?? 'jpg'}`, type: pic.mime } as never);
+  form.append('image', await filePart(pic.uri));
   const res = await fetch(`${API_URL}/api/gym/members/${memberId}/photo`, { method: 'POST', headers: authHeaders(sessionStore.get()), body: form });
   const json = (await res.json().catch(() => ({}))) as { data?: { photo_url?: string }; message?: string };
   if (!res.ok || !json.data?.photo_url) throw new Error(json.message || t('Could not save the photo. Check the connection and try again.'));

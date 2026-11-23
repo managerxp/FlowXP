@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { filePart } from './filePart.ts';
 import { API_URL, sessionStore } from './session.ts';
 import { authHeaders } from './backup.ts';
 import { t } from './i18n.ts';
@@ -36,7 +37,7 @@ export default function PlateScan({ onPlate }: { onPlate: (plate: string, read: 
       if (got.canceled || !got.assets?.[0]) return;
       const a = got.assets[0]; uri = a.uri; setBusy(true);
       const form = new FormData();
-      form.append('image', { uri, name: 'plate.jpg', type: 'image/jpeg' } as never);
+      form.append('image', await filePart(uri));
       const res = await fetch(`${API_URL}/api/autoparts/jobcards/plate-scan`, { method: 'POST', headers: authHeaders(sessionStore.get()), body: form });
       const json = (await res.json().catch(() => ({}))) as Reply;
       if (!res.ok) { setError(json.message ? t(json.message) : t('Could not reach the reader. Check the internet, or type the number.')); return; }
