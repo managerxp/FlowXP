@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
 import { api } from '../lib/session.ts';
 import { goBack } from '../lib/nav.ts';
+import { dmy, parseDmy } from '../lib/gymApp.ts';
 import { METHODS, newMemberBody, newMemberProblem, rowsOf, sellBody, sellProblem, todayISO, type Pay } from '../lib/gymMembers.ts';
 import { useLoad } from '../lib/useLoad.ts';
 import { useSession } from '../lib/session.ts';
@@ -29,7 +30,7 @@ export default function GymMemberNew() {
   const [gender, setGender] = useState('');
   const [dob, setDob] = useState('');
   const [planId, setPlanId] = useState<number | null>(null);
-  const [start, setStart] = useState(todayISO());
+  const [start, setStart] = useState(dmy(todayISO()));
   const [disc, setDisc] = useState('');
   const [pct, setPct] = useState(false);
   const [pay, setPay] = useState<Pay>('FULL');
@@ -45,15 +46,17 @@ export default function GymMemberNew() {
   const save = async (confirm = false) => {
     const bad = newMemberProblem(name, phone);
     if (bad) { setError(t(bad)); return; }
+    if (dob.trim() && !parseDmy(dob)) { setError(t('Type the date like 23/11/2026')); return; }
+    if (!parseDmy(start)) { setError(t('Type the date like 23/11/2026')); return; }
     setBusy(true); setError('');
     try {
-      const extra = { ...(gender ? { gender } : {}), ...(/^\d{4}-\d{2}-\d{2}$/.test(dob) ? { dob } : {}) };
-      const m = await api.post<{ member_id: number }>('/gym/members', { ...newMemberBody(name, phone, email, confirm), ...extra, joined_on: start }, { idempotencyKey: key });
+      const extra = { ...(gender ? { gender } : {}), ...(parseDmy(dob) ? { dob: parseDmy(dob) } : {}) };
+      const m = await api.post<{ member_id: number }>('/gym/members', { ...newMemberBody(name, phone, email, confirm), ...extra, joined_on: parseDmy(start) || todayISO() }, { idempotencyKey: key });
       if (planId) {
         const why = sellProblem(planId, pay, Number(part || 0));
         try {
           if (why) throw new Error(t(why));
-          await api.post(`/gym/members/${m.member_id}/memberships`, { ...sellBody(planId, pay, method, Number(part || 0)), start_date: start, ...(off > 0 ? { discount: off } : {}) }, { idempotencyKey: sellKey });
+          await api.post(`/gym/members/${m.member_id}/memberships`, { ...sellBody(planId, pay, method, Number(part || 0)), start_date: parseDmy(start) || todayISO(), ...(off > 0 ? { discount: off } : {}) }, { idempotencyKey: sellKey });
         } catch (e) { setError(`${t('The member was saved, but the plan was not sold')}: ${e instanceof Error ? e.message : ''}`); }
       }
       router.replace({ pathname: '/gym-member/[id]', params: { id: String(m.member_id) } });
@@ -78,12 +81,12 @@ export default function GymMemberNew() {
           {field('Email (optional)', email, setEmail, { keyboard: 'email-address', max: 120 })}
           <Text style={{ color: color.soft, fontSize: 13 }}>{t('Gender')}</Text>
           <Chips items={[{ id: 'FEMALE', label: 'Female' }, { id: 'MALE', label: 'Male' }, { id: 'OTHER', label: 'Other' }]} value={gender} onChange={setGender} />
-          {field('Date of birth (YYYY-MM-DD, optional)', dob, setDob, { keyboard: 'phone-pad', max: 10 })}
+          {field('Date of birth (DD/MM/YYYY, optional)', dob, setDob, { keyboard: 'phone-pad', max: 10 })}
           <SectionTitle>Membership plan (optional)</SectionTitle>
           {plans.busy && !plans.data ? <Soft>Loading</Soft> : null}
           <Group>{(plans.data ?? []).map((p) => <Line key={p.plan_id} left={p.name} sub={`${rupees(toPaise(p.price))} · ${p.duration_days} ${t('days')}`} selected={p.plan_id === planId} onPress={() => setPlanId(p.plan_id === planId ? null : p.plan_id)} />)}</Group>
           {plan ? <>
-            {field('Joining date (YYYY-MM-DD)', start, setStart, { keyboard: 'phone-pad', max: 10 })}
+            {field('Joining date (DD/MM/YYYY)', start, setStart, { keyboard: 'phone-pad', max: 10 })}
             <Chips items={[{ id: 'amt', label: 'Discount in ₹' }, { id: 'pct', label: 'Discount in %' }]} value={pct ? 'pct' : 'amt'} onChange={(v) => setPct(v === 'pct')} />
             {field(pct ? 'Discount %' : 'Discount ₹', disc, setDisc, { keyboard: 'phone-pad', max: 7 })}
             <Chips items={[{ id: 'FULL', label: 'Paid in full' }, { id: 'PART', label: 'Part paid' }, { id: 'LATER', label: 'Pay later' }]} value={pay} onChange={(v) => setPay(v as Pay)} />

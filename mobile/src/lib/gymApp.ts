@@ -19,3 +19,14 @@ export const monthLabel = (m: string): string => `${MONTHS[Number(m.slice(5, 7))
 export const scaleBars = (v: number[]): number[] => { const top = Math.max(1, ...v); return v.map((x) => x / top); };
 /** A phone number as the digits wa.me wants (India by default). */
 export const waNumber = (phone: string): string => { const d = phone.replace(/\D/g, ''); return d.length === 10 ? `91${d}` : d; };
+
+/** Dates are shown day first: 2026-11-23 -> "23/11/2026". */
+export const dmy = (iso: string | null | undefined): string => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso ?? '')); return m ? `${m[3]}/${m[2]}/${m[1]}` : String(iso ?? ''); };
+/** What a person types (23/11/2026, 23-11-2026 or 23.11.2026) -> "2026-11-23", or '' when it is not a real date. */
+export const parseDmy = (text: string): string => {
+  const m = /^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/.exec(text.trim());
+  if (!m) return '';
+  const [d, mo, y] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d ? `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}` : '';
+};

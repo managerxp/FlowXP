@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, useSession } from '../../lib/session.ts';
 import { useLoad } from '../../lib/useLoad.ts';
 import { rupees } from '../../lib/money.ts';
-import { n, scaleBars, waNumber, type GymHome } from '../../lib/gymApp.ts';
+import { dmy, n, scaleBars, waNumber, type GymHome } from '../../lib/gymApp.ts';
 import { Page } from '../../lib/responsive.tsx';
 import { t } from '../../lib/i18n.ts';
 import { Chips, Empty, Failed, Line, Group, Loading, SectionTitle, Soft, Stat, Title, color, s } from '../../lib/ui.tsx';
@@ -29,7 +29,7 @@ export default function Dashboard() {
   return (
     <SafeAreaView style={s.screen}>
       <Page>
-        <View style={{ padding: 16 }}><Title>Dashboard</Title><Soft>{x?.today ?? ''}</Soft></View>
+        <View style={{ padding: 16 }}><Title>Dashboard</Title><Soft>{dmy(x?.today)}</Soft></View>
         <Chips items={TABS} value={tab} onChange={setTab} />
         <ScrollView contentContainerStyle={{ paddingBottom: 60, gap: 8 }} refreshControl={<RefreshControl refreshing={d.busy && !!d.data} onRefresh={() => { void d.refresh(); }} />}>
           {d.busy && !x ? <Loading /> : null}
@@ -57,7 +57,7 @@ export default function Dashboard() {
               <Stat label="Frozen" value={String(n(x.members.FROZEN))} />
             </Row>
             {x.birthdays?.length ? <><SectionTitle>Birthdays today</SectionTitle><Group>{x.birthdays.map((b) => <Line key={b.member_id} left={b.name} sub={b.member_code} right={b.phone ? t('Wish') : ''} onPress={b.phone ? () => { void Linking.openURL(`https://wa.me/${waNumber(b.phone as string)}?text=${encodeURIComponent(`Happy birthday ${b.name}!`)}`); } : () => open(b.member_id)} />)}</Group></> : null}
-            {r?.list.length ? <><SectionTitle>Renewals to chase</SectionTitle><Group>{r.list.slice(0, 10).map((c) => <Line key={c.member_id} left={c.name} sub={`${c.plan_name} · ${c.ends_on}`} right={c.days_left === 0 ? t('Today') : t('{n} days', { n: c.days_left })} onPress={() => open(c.member_id)} />)}</Group></> : null}
+            {r?.list.length ? <><SectionTitle>Renewals to chase</SectionTitle><Group>{r.list.slice(0, 10).map((c) => <Line key={c.member_id} left={c.name} sub={`${c.plan_name} · ${dmy(c.ends_on)}`} right={c.days_left === 0 ? t('Today') : t('{n} days', { n: c.days_left })} onPress={() => open(c.member_id)} />)}</Group></> : null}
           </> : null}
 
           {x && tab === 'payments' ? (m ? <>
@@ -93,6 +93,7 @@ export default function Dashboard() {
               <Stat label="In the gym now" value={String(x.visits.open_now)} />
             </Row>
             <Group>
+              <Line left="Attendance calendar" sub="Each day's count, and add a missed visit" icon="calendar-outline" onPress={() => router.push('/gym-calendar')} />
               <Line left="Who came today" icon="time-outline" onPress={() => router.push('/gym-attendance')} />
               <Line left="Front desk: scan a pass" icon="qr-code-outline" onPress={() => router.push('/gym')} />
             </Group>
