@@ -123,7 +123,14 @@
     "money_in_and_out": "வந்த, போன பணம்",
     "menu_on_off": "மெனு ஆன் / ஆஃப்",
     "estimates": "மதிப்பீடுகள்",
-    "payroll": "ஊதியப் பட்டியல்"
+    "payroll": "ஊதியப் பட்டியல்",
+    "bookings_and_classes": "Bookings & classes",
+    "dues_and_payments": "Dues & payments",
+    "enquiries": "Enquiries",
+    "memberships": "Memberships",
+    "supplements": "Supplements",
+    "trainers": "Trainers",
+    "wallet_and_credits": "Wallet & credits"
   },
   "shell": {
     "yourAccount": "உங்கள் கணக்கு",

@@ -123,7 +123,14 @@
     "money_in_and_out": "টাকা এল ও গেল",
     "menu_on_off": "মেনু চালু / বন্ধ",
     "estimates": "এস্টিমেট",
-    "payroll": "পেরোল"
+    "payroll": "পেরোল",
+    "bookings_and_classes": "Bookings & classes",
+    "dues_and_payments": "Dues & payments",
+    "enquiries": "Enquiries",
+    "memberships": "Memberships",
+    "supplements": "Supplements",
+    "trainers": "Trainers",
+    "wallet_and_credits": "Wallet & credits"
   },
   "shell": {
     "yourAccount": "আপনার অ্যাকাউন্ট",

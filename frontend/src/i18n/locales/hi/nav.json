@@ -123,7 +123,14 @@
     "money_in_and_out": "पैसा आया और गया",
     "menu_on_off": "मेन्यू चालू / बंद",
     "estimates": "अनुमान (कोटेशन)",
-    "payroll": "पेरोल"
+    "payroll": "पेरोल",
+    "bookings_and_classes": "बुकिंग और क्लास",
+    "dues_and_payments": "बकाया और भुगतान",
+    "enquiries": "पूछताछ",
+    "memberships": "सदस्यताएँ",
+    "supplements": "सप्लीमेंट",
+    "trainers": "ट्रेनर",
+    "wallet_and_credits": "वॉलेट और क्रेडिट"
   },
   "shell": {
     "yourAccount": "आपका अकाउंट",
