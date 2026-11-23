@@ -20,7 +20,7 @@ type TaxRate = { tax_rate_id: number; name: string; rate: number; kind: string }
 /* A new product: the few things a till needs. More (brand, recipe, photos) is on the FlowXP website. */
 export default function NewProduct() {
   const captured = useCaptured();
-  const food = KITCHEN_TYPES.includes(currentBusiness(useSession())?.business_type ?? '');   // a menu item has no barcode to scan
+  const food = ['GYM', ...KITCHEN_TYPES].includes(currentBusiness(useSession())?.business_type ?? '');   // a menu item has no barcode to scan
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [mrp, setMrp] = useState('');

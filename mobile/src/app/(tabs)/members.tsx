@@ -10,6 +10,7 @@ import { STATE_LABEL, STATE_TONE, type Member } from '../../lib/gym.ts';
 import { dmy, waNumber } from '../../lib/gymApp.ts';
 import { Page } from '../../lib/responsive.tsx';
 import { t } from '../../lib/i18n.ts';
+import { Avatar } from '../../lib/MemberPhoto.tsx';
 import { Chips, Empty, Failed, Loading, Soft, Title, color, s } from '../../lib/ui.tsx';
 
 const FILTERS = [{ id: '', label: 'All' }, { id: 'ACTIVE', label: 'Active' }, { id: 'EXPIRING', label: 'Ends soon' }, { id: 'EXPIRED', label: 'Ended' }, { id: 'FROZEN', label: 'Frozen' }, { id: 'NONE', label: 'No membership' }];
@@ -52,13 +53,16 @@ export default function Members() {
           {list.data && list.data.length === 0 ? <Empty>{q || state ? t('No member matches that.') : t('No members yet. Add the first one above.')}</Empty> : null}
           {(list.data ?? []).map((m) => (
             <View key={m.member_id} style={[s.card, { gap: 10 }]}>
-              <Pressable accessibilityRole="button" onPress={() => open(m)} style={{ gap: 3 }}>
+              <Pressable accessibilityRole="button" onPress={() => open(m)} style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                <Avatar name={m.name} url={(m as { photo_url?: string | null }).photo_url} size={52} />
+                <View style={{ flex: 1, gap: 3 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
                   <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: color.ink }} numberOfLines={1}>{m.name}</Text>
                   <Text style={{ fontSize: 13, fontWeight: '700', color: tone(m.state) }}>{t(STATE_LABEL[m.state] ?? m.state)}</Text>
                 </View>
                 <Text style={{ color: color.soft, fontSize: 13 }}>{[m.member_code, m.phone].filter(Boolean).join(' · ')}</Text>
                 <Text style={{ color: color.soft, fontSize: 13 }}>{m.plan_name ? `${m.plan_name}${m.expires_on ? ` · ${t('ends')} ${dmy(m.expires_on)}` : ''}` : t('No membership')}</Text>
+                </View>
               </Pressable>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {m.phone ? <Act icon="call-outline" label="Call" go={() => { void Linking.openURL(`tel:${m.phone}`); }} /> : null}

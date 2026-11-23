@@ -102,7 +102,7 @@ export default function GymShop() {
           </View>
 
           <SectionTitle>Products</SectionTitle>
-          <View style={{ paddingHorizontal: 16 }}><SearchBox value={pText} onChange={setPText} placeholder="Search by name or barcode" label="Search products" /></View>
+          <View style={{ paddingHorizontal: 16 }}><SearchBox value={pText} onChange={setPText} placeholder="Search products" label="Search products" /></View>
           {products === null ? <Loading /> : null}
           {products && products.length === 0 ? <Soft style={{ padding: 16 }}>No product matches. Add products to your product list first, with their stock.</Soft> : null}
           <Group>{(products ?? []).map((p) => <Line key={p.product_id} left={p.name} sub={`${rupees(toPaise(p.selling_price))}${p.track_inventory ? ` · ${p.stock} ${t('in stock')}` : ''}`} right={cart[p.product_id] ? `× ${cart[p.product_id]!.qty}` : t('Add')} selected={Boolean(cart[p.product_id])} onPress={() => bump(p, 1)} />)}</Group>

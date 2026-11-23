@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Image, Text, View } from 'react-native';
 import { API_URL, sessionStore } from './session.ts';
 import { authHeaders } from './backup.ts';
-import { LOGO_TYPES, logoSrc } from './logo.ts';
+import { logoSrc } from './logo.ts';
 import { t } from './i18n.ts';
 import { Button, ErrorText, color } from './ui.tsx';
 
@@ -18,8 +18,9 @@ export const pickMemberPhoto = async (from: 'library' | 'camera'): Promise<Picke
     const got = from === 'camera' ? await Picker.launchCameraAsync(opts) : await Picker.launchImageLibraryAsync(opts);
     if (got.canceled || !got.assets?.[0]) return null;
     const a = got.assets[0];
-    const mime = (a.mimeType ?? 'image/jpeg').toLowerCase();
-    if (!LOGO_TYPES.includes(mime)) return { error: t('The photo must be a PNG, JPEG or WebP image') };
+    // The phone may call a JPEG "image/jpg", leave the type out, or hand back a HEIC original; an edited/re-encoded picture is a JPEG unless its file says PNG or WebP.
+    const ext = (a.uri.split('?')[0]!.split('.').pop() ?? '').toLowerCase();
+    const mime = ext === 'png' || a.mimeType === 'image/png' ? 'image/png' : ext === 'webp' || a.mimeType === 'image/webp' ? 'image/webp' : 'image/jpeg';
     if (a.fileSize != null && a.fileSize > 5 * 1024 * 1024) return { error: t('The photo must be 5 MB or smaller') };
     return { uri: a.uri, mime };
   } catch { return { error: t('Could not open the photos. Check the permission and try again.') }; }

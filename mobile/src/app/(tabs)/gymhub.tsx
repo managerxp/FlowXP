@@ -1,4 +1,4 @@
-import { Text, ScrollView, View } from 'react-native';
+import { Pressable, Text, ScrollView, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '../../lib/icons.tsx';
@@ -60,14 +60,15 @@ export default function GymHub() {
       <Page>
         <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
           <View style={{ padding: 16 }}>
-            <View style={[s.card, { flexDirection: 'row', alignItems: 'center', gap: 14 }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel={t('Open settings')} onPress={() => router.push('/settings' as Href)} style={[s.card, { flexDirection: 'row', alignItems: 'center', gap: 14 }]}>
               <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: color.navy, alignItems: 'center', justifyContent: 'center' }}><Ionicons name="barbell-outline" size={28} color={color.onNavy} /></View>
               <View style={{ flex: 1 }}>
                 <Title>{business?.name ?? 'My gym'}</Title>
                 <Soft>{[outlet?.name, session.user?.name].filter(Boolean).join(' · ')}</Soft>
                 {session.user?.email ? <Text selectable style={{ color: color.soft, fontSize: 13 }}>{session.user.email}</Text> : null}
               </View>
-            </View>
+            <Ionicons name="settings-outline" size={22} color={color.soft} />
+            </Pressable>
           </View>
           {groups.map((g) => {
             const items = g.items.filter((i) => i.show !== false);
