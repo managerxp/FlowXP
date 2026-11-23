@@ -13,7 +13,7 @@ const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', '
 export const pickMemberPhoto = async (from: 'library' | 'camera'): Promise<Picked | null | { error: string }> => {
   try {
     const Picker = await import('expo-image-picker');
-    const opts = { mediaTypes: ['images' as const], quality: 0.6, allowsEditing: true, aspect: [1, 1] as [number, number] };
+    const opts = { mediaTypes: ['images' as const], quality: 0.6 };
     if (from === 'camera') { const ok = await Picker.requestCameraPermissionsAsync(); if (!ok.granted) return { error: t('Allow the camera to take a photo, or choose one from your photos.') }; }
     const got = from === 'camera' ? await Picker.launchCameraAsync(opts) : await Picker.launchImageLibraryAsync(opts);
     if (got.canceled || !got.assets?.[0]) return null;
