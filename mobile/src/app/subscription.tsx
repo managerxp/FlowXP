@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Linking, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
 import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import { canSubscription, dateText, statusLabel, type Subscription } from '../lib/subscription.ts';
-import { Button, Empty, Failed, Line, Loading, Soft, Title, s } from '../lib/ui.tsx';
+import { rupees } from '../lib/money.ts';
+import { Button, Empty, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+
+const CONTACT = 'flowxp.manager@gmail.com';
+const contact = (subject: string) => { void Linking.openURL(`mailto:${CONTACT}?subject=${encodeURIComponent(subject)}`); };
 
 /* The subscription (owner): the plan, the trial and the date it runs to. Information only: no prices, no payment button and no link to pay, because Google Play requires in-app payments for features to go through Play Billing. */
 export default function SubscriptionScreen() {
@@ -14,10 +18,11 @@ export default function SubscriptionScreen() {
   const ok = canSubscription(me?.role);
   const [sub, setSub] = useState<Subscription | null>(null);
   const [error, setError] = useState('');
+  const [wallet, setWallet] = useState<{ balance_paise: number } | null>(null);
   const load = useCallback(async () => {
     try { setSub(await api.get<Subscription>('/businesses/current/subscription')); setError(''); } catch (e) { setError(e instanceof Error ? e.message : t('Could not load.')); }
   }, []);
-  useEffect(() => { if (ok) void load(); }, [load, ok]);
+  useEffect(() => { if (ok) { void load(); api.get<{ balance_paise: number }>('/messaging/wallet').then(setWallet).catch(() => {}); } }, [load, ok]);
 
   return (
     <SafeAreaView style={s.screen}>
@@ -30,6 +35,25 @@ export default function SubscriptionScreen() {
             {sub.status === 'TRIAL' ? <><Line left={t('Trial ends')} right={dateText(sub.trial_ends_at)} /><Line left={t('Days remaining')} right={String(sub.trial_days_remaining ?? 0)} /></> : null}
             {sub.next_billing_date ? <Line left={t('Next billing date')} right={dateText(sub.next_billing_date)} /> : null}
             {sub.status === 'EXPIRED' ? <Soft style={{ padding: 16 }}>{t('Your trial has ended. Everything you created is still here and still readable.')}</Soft> : null}
+            {wallet ? (
+              <>
+                <SectionTitle>WhatsApp credit</SectionTitle>
+                <Line left={t('Credit')} right={rupees(Number(wallet.balance_paise))} />
+                <View style={{ padding: 16, gap: 8 }}><Soft>To add credit, contact us and we will load it.</Soft><Button title="Contact us" kind="quiet" onPress={() => contact('FlowXP WhatsApp credit')} /></View>
+              </>
+            ) : null}
+            {sub.addons?.length ? (
+              <>
+                <SectionTitle>Add-ons</SectionTitle>
+                {sub.addons.map((a) => (
+                  <View key={a.addon_key} style={{ paddingHorizontal: 16, paddingVertical: 10, gap: 4, borderTopWidth: 1, borderColor: color.line }}>
+                    <Text style={{ fontSize: 16, fontWeight: '600', color: color.ink }}>{a.name}{a.owned ? `  ·  ${t('On')}` : ''}</Text>
+                    {a.description ? <Soft>{a.description}</Soft> : null}
+                    {!a.owned ? <Button title="Contact us" kind="quiet" onPress={() => contact(`FlowXP add-on: ${a.name}`)} style={{ minHeight: 44 }} /> : null}
+                  </View>
+                ))}
+              </>
+            ) : null}
           </ScrollView>
         )}
       </Page>

@@ -37,6 +37,7 @@ const Subscription = () => {
   const [cycle, setCycle] = useState('YEARLY');
   const [busy, setBusy] = useState('');
   const [notice, setNotice] = useState('');
+  const [wallet, setWallet] = useState(null);
 
   const upgrade = async (planCode) => {
     setBusy(planCode); setNotice('');
@@ -50,6 +51,7 @@ const Subscription = () => {
     Promise.all([api('/businesses/current/subscription'), api('/plans')])
       .then(([subscription, planList]) => { setData(subscription); setPlans(planList); })
       .catch((caught) => setError(caught.message));
+    api('/messaging/wallet').then(setWallet).catch(() => {});   // the WhatsApp credit, for every kind of business
   }, [business?.business_id]);
 
   if (error) return <p className="text-sm text-danger">{error}</p>;
@@ -97,6 +99,38 @@ const Subscription = () => {
           </div>
         )}
       </Card>
+
+      {wallet && (
+        <Card>
+          <h2 className="text-sm font-semibold text-ink-900">WhatsApp credit</h2>
+          <p className="mt-2 text-2xl font-semibold text-ink-900">{formatMoney(wallet.balance_paise)}</p>
+          <p className="mt-1 text-sm text-ink-500">
+            About {Math.floor(Number(wallet.balance_paise) / Math.max(1, Number(wallet.prices_paise?.UTILITY || 1))).toLocaleString('en-IN')} bill, points and update messages.
+            To add credit, contact us and we will load it.
+          </p>
+          <a className="mt-3 inline-block rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-700" href={`mailto:flowxp.manager@gmail.com?subject=${encodeURIComponent('FlowXP WhatsApp credit')}`}>Contact us</a>
+        </Card>
+      )}
+
+      {data.addons?.length > 0 && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold text-ink-900">Add-ons</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {data.addons.map((a) => (
+              <Card key={a.addon_key}>
+                <h3 className="text-sm font-bold text-ink-900">{a.name}{a.owned && <span className="ml-2 rounded bg-success/10 px-1.5 py-0.5 text-[10px] text-success">On</span>}</h3>
+                {a.description && <p className="mt-1.5 text-sm text-ink-500">{a.description}</p>}
+                {!a.owned && (
+                  <a className="mt-4 block w-full rounded-lg border border-line px-3 py-1.5 text-center text-sm font-medium text-ink-700"
+                     href={`mailto:flowxp.manager@gmail.com?subject=${encodeURIComponent(`FlowXP add-on: ${a.name}`)}`}>
+                    Contact us
+                  </a>
+                )}
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div>
         <div className="mb-4 flex items-center justify-between gap-3">

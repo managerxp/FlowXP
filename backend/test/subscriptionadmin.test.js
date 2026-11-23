@@ -287,3 +287,9 @@ test('trials ending within 2 days are listed by business name, soonest first', {
   assert.ok(res.body.data.trials_ending_soon_list.some((t) => t.business_id === soon.businessId));
   assert.ok(!res.body.data.trials_ending_soon_list.some((t) => t.business_id === later.businessId));
 });
+
+test('the business sees its add-ons by name only: no price fields', { skip }, async () => {
+  const sub = await getSubscription(growth.businessId);
+  assert.ok(Array.isArray(sub.addons));
+  for (const a of sub.addons) { assert.deepEqual(Object.keys(a).sort(), ['addon_key', 'description', 'name', 'owned']); assert.equal(typeof a.owned, 'boolean'); }
+});

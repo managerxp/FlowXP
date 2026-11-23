@@ -8,6 +8,7 @@ import { t } from './i18n.ts';
 export type Subscription = {
   status: 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | 'SUSPENDED'; plan_code: string; plan?: { name: string } | null; trial_ends_at: string | null; trial_days_remaining: number | null;
   next_billing_date: string | null;
+  addons?: { addon_key: string; name: string; description: string | null; owned: boolean }[];
 };
 
 export const canSubscription = (role: string | undefined): boolean => role === 'OWNER';

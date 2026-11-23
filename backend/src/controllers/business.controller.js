@@ -418,10 +418,19 @@ export const getSubscription = async (req, res) => {
       [req.tenant.businessId]
     )).rows[0];
 
+    // add-ons for this kind of business: name and what it does, never a price (the team agrees that on a call); `owned` when switched on for them
+    const addons = (await pool.query(
+      `SELECT a.addon_key, a.name, a.description,
+              COALESCE((SELECT o.enabled FROM business_feature_overrides o WHERE o.business_id = $1 AND o.feature_key = a.addon_key AND (o.expires_at IS NULL OR o.expires_at > CURRENT_TIMESTAMP) LIMIT 1), false) AS owned
+         FROM addons a WHERE a.is_active AND (a.business_types IS NULL OR $2 = ANY(a.business_types)) ORDER BY a.sort_order`,
+      [req.tenant.businessId, b.business_type]
+    )).rows;
+
     res.json({
       success: true,
       data: {
         ...subscriptionSummary(b),
+        addons,
         plan: {
           code: b.plan_code,
           name: b.plan_name,
