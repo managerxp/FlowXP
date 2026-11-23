@@ -173,6 +173,7 @@ const NAV_GROUPS = [
       { to: '/app/gym/shop', label: 'Supplements', icon: ShoppingCart, types: GYM, anyPermission: ['gym_desk', 'gym_setup'], feature: 'gym_shop' },
       { to: '/app/gym/reports', label: 'Reports', icon: ChartColumn, types: GYM, anyPermission: ['reports', 'gym_setup'], feature: 'gym_reports' },
       { to: '/app/gym/rewards', label: 'Rewards', icon: Gift, types: GYM, anyPermission: ['gym_desk', 'gym_setup'], feature: 'gym_rewards' },
+      { to: '/app/messaging', label: 'Messaging', icon: MessageSquare, types: GYM, roles: ['OWNER', 'ADMIN'], feature: 'messaging' },   // WhatsApp messages and the credit, one tap from the gym menu
       { to: '/app/gym/settings', label: 'Gym settings', icon: Settings, types: GYM, permission: 'gym_setup' }
     ]
   },
@@ -197,7 +198,7 @@ const NAV_GROUPS = [
   {
     label: 'Stock',
     items: [
-      { to: '/app/add-items', label: 'Add items', icon: PackagePlus, anyPermission: ['products', 'inventory'], notTypes: [...WHOLESALE, ...PHARMACY, ...CLOTHING] },
+      { to: '/app/add-items', label: 'Add items', icon: PackagePlus, anyPermission: ['products', 'inventory'], notTypes: [...WHOLESALE, ...PHARMACY, ...CLOTHING, ...GYM] },
       { to: '/app/products', label: 'Products', icon: Package, permission: 'products', notTypes: [...WHOLESALE, ...PHARMACY] },
       { to: '/app/barcodes', label: 'Barcodes', icon: Barcode, permission: 'products', feature: 'barcode_labels', nested: true },
       { to: '/app/modifiers', label: 'Options & add-ons', icon: SlidersHorizontal, types: RESTAURANT_TYPES, permission: 'products', nested: true },
@@ -221,7 +222,7 @@ const NAV_GROUPS = [
       { to: '/app/offers', label: 'Offers', icon: Tag, types: [...RETAIL, ...RESTAURANT_TYPES], anyPermission: ['products', 'settings'], more: true },
       { to: '/app/member-desk', label: 'Member desk', icon: Gift, anyPermission: ['billing'], feature: 'loyalty_programmes', more: true },
       { to: '/app/loyalty', label: 'Loyalty & coupons', icon: Gift, roles: ['OWNER', 'ADMIN'], feature: 'loyalty', more: true },
-      { to: '/app/messaging', label: 'Messaging', icon: MessageSquare, roles: ['OWNER', 'ADMIN'], feature: 'messaging', more: true },
+      { to: '/app/messaging', label: 'Messaging', icon: MessageSquare, roles: ['OWNER', 'ADMIN'], feature: 'messaging', notTypes: GYM, more: true },
       { to: '/app/reviews', label: 'Reviews', icon: Star, roles: ['OWNER', 'ADMIN'], permission: 'settings', feature: 'reviews', more: true }
     ]
   },

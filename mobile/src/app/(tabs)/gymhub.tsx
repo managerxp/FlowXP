@@ -3,9 +3,14 @@ import { router, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '../../lib/icons.tsx';
 import { currentBusiness, useSession } from '../../lib/session.ts';
-import { allowed } from '../../lib/access.ts';
+import { allowed, hasFeature } from '../../lib/access.ts';
+import { api } from '../../lib/session.ts';
+import { useLoad } from '../../lib/useLoad.ts';
+import { rupees } from '../../lib/money.ts';
+import { canMessaging } from '../../lib/messaging.ts';
 import { canGymSetup } from '../../lib/gymSetup.ts';
 import { canManageTeam } from '../../lib/team.ts';
+import { t } from '../../lib/i18n.ts';
 import { Page } from '../../lib/responsive.tsx';
 import { Group, Line, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
 
@@ -17,6 +22,8 @@ export default function GymHub() {
   const business = currentBusiness(session);
   const outlet = business?.outlets.find((o) => o.branch_id === session.branchId);
   const can = (...k: string[]) => allowed(business, ...k);
+  const wa = canMessaging(business?.role) && hasFeature(business, 'messaging');
+  const wallet = useLoad<{ required: boolean; balance_paise: number }>(`gym-wa-credit:${session.businessId}`, () => api.get('/messaging/wallet'), wa);
   const setup = canGymSetup((p) => allowed(business, p));
   const groups: { title: string; items: Item[] }[] = [
     { title: 'Manage plans', items: [
@@ -27,6 +34,9 @@ export default function GymHub() {
       { left: 'Front desk', sub: 'Let members in: scan a pass or find them', icon: 'qr-code-outline', go: '/gym', show: can('gym_desk') },
       { left: 'Who came today', sub: 'Visits so far, and who is still inside', icon: 'time-outline', go: '/gym-attendance', show: can('gym_desk', 'gym_members') },
       { left: 'Check-in rules and the entrance QR', sub: 'Hours, holidays and how members enter', icon: 'settings-outline', go: '/gym-settings', show: setup }
+    ] },
+    { title: 'WhatsApp', items: [
+      { left: 'WhatsApp messages and credit', sub: wallet.data ? `${t('Credit')}: ${rupees(Number(wallet.data.balance_paise))}` : 'Welcome, renewal and dues messages, and your credit', icon: 'chatbubbles-outline', go: '/messaging', show: wa }
     ] },
     { title: 'Account and billing', items: [
       { left: 'Staff logins', sub: 'Who can sign in, their role and outlet', icon: 'people-circle-outline', go: '/staff', show: canManageTeam(business?.role) },
