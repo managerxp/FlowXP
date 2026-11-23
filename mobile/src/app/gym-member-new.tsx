@@ -10,6 +10,7 @@ import { METHODS, newMemberBody, newMemberProblem, rowsOf, sellBody, sellProblem
 import { useLoad } from '../lib/useLoad.ts';
 import { useSession } from '../lib/session.ts';
 import { Chips, Group, Line, SectionTitle } from '../lib/ui.tsx';
+import { Avatar, pickMemberPhoto, uploadMemberPhoto, type Picked } from '../lib/MemberPhoto.tsx';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
@@ -28,6 +29,8 @@ export default function GymMemberNew() {
   const [sellKey] = useState(() => newKey());
   const session = useSession();
   const [gender, setGender] = useState('');
+  const [pic, setPic] = useState<Picked | null>(null);
+  const choosePhoto = async (from: 'library' | 'camera') => { const r = await pickMemberPhoto(from); if (!r) return; if ('error' in r) setError(r.error); else { setPic(r); setError(''); } };
   const [dob, setDob] = useState('');
   const [planId, setPlanId] = useState<number | null>(null);
   const [start, setStart] = useState(dmy(todayISO()));
@@ -52,6 +55,7 @@ export default function GymMemberNew() {
     try {
       const extra = { ...(gender ? { gender } : {}), ...(parseDmy(dob) ? { dob: parseDmy(dob) } : {}) };
       const m = await api.post<{ member_id: number }>('/gym/members', { ...newMemberBody(name, phone, email, confirm), ...extra, joined_on: parseDmy(start) || todayISO() }, { idempotencyKey: key });
+      if (pic) { try { await uploadMemberPhoto(m.member_id, pic); } catch { /* the member is saved; the photo can be added from their page */ } }
       if (planId) {
         const why = sellProblem(planId, pay, Number(part || 0));
         try {
@@ -76,6 +80,13 @@ export default function GymMemberNew() {
       <Page max={640}>
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Title>New member</Title><Button title="Cancel" kind="quiet" onPress={() => goBack()} /></View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            {pic ? <Avatar name={name || 'Member'} url={pic.uri} size={72} /> : <Avatar name={name || '+'} size={72} />}
+            <View style={{ flex: 1, gap: 8 }}>
+              <Button title={pic ? 'Change photo' : 'Add a photo'} kind="quiet" onPress={() => { void choosePhoto('library'); }} style={{ minHeight: 44 }} />
+              <Button title="Take a photo" kind="quiet" onPress={() => { void choosePhoto('camera'); }} style={{ minHeight: 44 }} />
+            </View>
+          </View>
           {field('Name', name, setName, { max: 80 })}
           {field('Mobile number', phone, setPhone, { keyboard: 'phone-pad', max: 16 })}
           {field('Email (optional)', email, setEmail, { keyboard: 'email-address', max: 120 })}

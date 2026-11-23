@@ -30,6 +30,12 @@ export default function GymHub() {
       { left: 'Membership plans', sub: 'What the gym sells, for how long and for how much', icon: 'pricetags-outline', go: '/gym-plans', show: setup },
       { left: 'Classes and trainers', sub: 'Today’s classes: who booked, who came', icon: 'calendar-outline', go: '/gym-classes', show: can('gym_desk', 'gym_trainer') }
     ] },
+    { title: 'Shop and supplements', items: [
+      { left: 'Sell supplements', sub: 'Protein, shakers and more, to a member or a walk-in', icon: 'cart-outline', go: '/gym-shop', show: can('gym_desk') },
+      { left: 'Products', sub: 'Your product list: prices, photos and what is in stock', icon: 'cube-outline', go: '/products', show: can('products', 'inventory') },
+      { left: 'Add a product', sub: 'Name, price and GST; then receive its stock', icon: 'add', go: '/product/new', show: can('products') },
+      { left: 'Receive stock', sub: 'Goods you bought, added to the shelf', icon: 'layers-outline', go: '/receive', show: can('purchases', 'inventory') }
+    ] },
     { title: 'Attendance', items: [
       { left: 'Front desk', sub: 'Let members in: scan a pass or find them', icon: 'qr-code-outline', go: '/gym', show: can('gym_desk') },
       { left: 'Who came today', sub: 'Visits so far, and who is still inside', icon: 'time-outline', go: '/gym-attendance', show: can('gym_desk', 'gym_members') },

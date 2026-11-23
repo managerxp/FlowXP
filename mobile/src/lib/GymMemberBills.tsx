@@ -47,6 +47,7 @@ export default function GymMemberBills({ memberId, onChange }: { memberId: strin
   return (
     <View>
       <SectionTitle>Bills and payments</SectionTitle>
+      {Number(d.summary.owing_paise) > 0 ? <View style={{ marginHorizontal: 16, padding: 14, borderRadius: 12, backgroundColor: color.dangerBg }}><Text style={{ color: color.danger, fontWeight: '700', fontSize: 16 }}>{t('Pending balance')}: {rupees(Number(d.summary.owing_paise))}</Text><Text style={{ color: color.danger, fontSize: 13 }}>{t('Memberships and shop purchases this member has not fully paid for.')}</Text></View> : null}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16 }}>
         <Stat label="Billed" value={rupees(Number(d.summary.billed_paise))} />
         <Stat label="Paid" value={rupees(Number(d.summary.paid_paise))} tone={color.ok} />

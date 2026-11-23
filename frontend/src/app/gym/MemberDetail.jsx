@@ -1,7 +1,7 @@
 /* One member: details, memberships and what can be done to them, cards and access, and recent visits. */
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Ban, CreditCard, History, Pencil, Plus, QrCode, RefreshCw, ShieldOff, Snowflake, UsersRound } from 'lucide-react';
+import { ArrowLeft, Ban, Camera, CreditCard, History, Pencil, Plus, QrCode, RefreshCw, ShieldOff, Snowflake, UsersRound } from 'lucide-react';
 import { api } from '../../lib/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { MEMBERSHIP_STATE, MEMBER_STATUS, PAYMENT_STATE, dayTime, longDate, rs, useLoad } from '../../lib/gym.js';
@@ -18,6 +18,28 @@ import { useT } from '../../i18n/useT.js';
 const Row = ({ label, children }) => {
   const tr = useT();
   return (children ? <div className="flex justify-between gap-4 py-1.5 text-small"><dt className="text-ink-500">{tr(label)}</dt><dd className="min-w-0 text-right text-ink-900">{children}</dd></div> : null);
+};
+
+/* The member's photo; click to choose a new one (saved at once). */
+const Photo = ({ member, id, onSaved }) => {
+  const tr = useT();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const pick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setBusy(true);
+    try { const body = new FormData(); body.append('image', file); await api(`/gym/members/${id}/photo`, { method: 'POST', body }); onSaved(); }
+    catch (err) { toast.error(err.message); } finally { setBusy(false); }
+  };
+  return (
+    <label className="group relative mb-4 inline-flex h-20 w-20 cursor-pointer overflow-hidden rounded-full border border-line">
+      {member.photo_url ? <img src={member.photo_url} alt={member.name} className="h-full w-full object-cover" /> : <span className="flex h-full w-full items-center justify-center bg-brand-500 text-xl font-bold text-white">{member.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('')}</span>}
+      <span className="absolute inset-x-0 bottom-0 flex justify-center bg-ink-900/60 py-1 text-white"><Camera aria-hidden="true" className="h-4 w-4" /></span>
+      <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={pick} disabled={busy} aria-label={member.photo_url ? tr('Change photo') : tr('Add a photo')} />
+    </label>
+  );
 };
 
 export default function MemberDetail() {
@@ -87,6 +109,7 @@ export default function MemberDetail() {
           {(can('gym_members') || manager) && member.status !== 'ARCHIVED' && <Button variant="secondary" onClick={() => setForm(true)}><Pencil aria-hidden="true" className="h-4 w-4" />{tr('Edit')}</Button>}
           {desk && member.status !== 'ARCHIVED' && <Button onClick={() => setSell({ mode: 'sell' })}><Plus aria-hidden="true" className="h-4 w-4" />{tr('Sell membership')}</Button>}
         </>} />
+      {member.status !== 'ARCHIVED' && (desk || can('gym_members')) && <Photo member={member} id={id} onSaved={() => { toast.success(tr('Photo saved')); m.reload(); }} />}
       {member.status === 'SUSPENDED' && <div className="mb-4"><Alert>This account is on hold{member.status_reason ? `: ${member.status_reason}` : ''}. They cannot check in.</Alert></div>}
       {member.status === 'ARCHIVED' && <div className="mb-4"><Alert>This member is archived{member.merged_into ? tr('(merged into another member)') : ''}. Their cards stopped working.</Alert></div>}
 

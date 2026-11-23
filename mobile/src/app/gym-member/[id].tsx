@@ -10,6 +10,8 @@ import { manualBody } from '../../lib/gym.ts';
 import type { Plan } from '../../lib/gymSetup.ts';
 import { METHODS, STATE_TEXT, currentMembership, freezeBody, freezeProblem, renewable, rowsOf, sellBody, sellProblem, timeOf, todayISO, type MemberFull, type Pay } from '../../lib/gymMembers.ts';
 import GymMemberBills from '../../lib/GymMemberBills.tsx';
+import MemberPhoto from '../../lib/MemberPhoto.tsx';
+import { router } from 'expo-router';
 import { Page } from '../../lib/responsive.tsx';
 import { t } from '../../lib/i18n.ts';
 import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../../lib/ui.tsx';
@@ -34,6 +36,7 @@ export default function GymMember() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
+  const [photo, setPhoto] = useState<string | null>(null);
 
   const d = m.data;
   const cur = d ? currentMembership(d) : null;
@@ -75,6 +78,7 @@ export default function GymMember() {
           {d ? (
             <>
               {note ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok, paddingHorizontal: 16, paddingBottom: 8, fontWeight: '600' }}>{note}</Text> : null}
+              <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}><MemberPhoto memberId={String(id)} name={d.name} url={photo ?? (d as { photo_url?: string | null }).photo_url} onChange={setPhoto} /></View>
               <View style={[s.card, { marginHorizontal: 16, gap: 4 }]}>
                 {cur ? (
                   <>
@@ -88,6 +92,7 @@ export default function GymMember() {
 
               <View style={{ padding: 16, gap: 8 }}>
                 <Button title="Check in" onPress={checkIn} disabled={busy} />
+                <Button title="Sell a product" kind="quiet" onPress={() => router.push({ pathname: '/gym-shop', params: { member_id: String(id), name: d.name } })} />
                 <Button title={ren ? 'Renew membership' : 'Sell a membership'} kind={ren ? 'quiet' : 'primary'} onPress={() => { setPanel(panel === 'sell' ? '' : 'sell'); setError(''); }} selected={panel === 'sell'} />
                 {cur && cur.state !== 'FROZEN' && cur.freeze_allowed ? <Button title="Freeze membership" kind="quiet" onPress={() => { setPanel(panel === 'freeze' ? '' : 'freeze'); setError(''); }} selected={panel === 'freeze'} /> : null}
                 {cur?.state === 'FROZEN' ? <Button title="End the freeze" kind="quiet" onPress={unfreeze} busy={busy} /> : null}
