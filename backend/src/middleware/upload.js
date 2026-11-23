@@ -60,3 +60,7 @@ export const looksLikeImage = (buffer, mimetype) => {
     'image/webp': buffer.subarray(0, 4).toString('latin1') === 'RIFF' && buffer.subarray(8, 12).toString('latin1') === 'WEBP' };
   return is[mimetype] === true;
 };
+
+/* A photo from a phone camera or gallery: the app may name the type wrongly (image/jpg, none), so the file is accepted and its real type is read from its bytes. */
+export const uploadPhotoFile = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }).single('image');
+export const sniffImageType = (buffer) => ['image/jpeg', 'image/png', 'image/webp'].find((m) => looksLikeImage(buffer, m)) || null;

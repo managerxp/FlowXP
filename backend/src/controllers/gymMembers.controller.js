@@ -5,7 +5,7 @@
 import pool from '../config/database.js';
 import { hasPermission } from '../middleware/auth.js';
 import { EXT_BY_MIME, putFile, removeFile } from '../modules/storage.js';
-import { looksLikeImage } from '../middleware/upload.js';
+import { sniffImageType } from '../middleware/upload.js';
 import { recordInvoiceCreated } from '../modules/billing.js';
 import { recordAudit } from '../modules/events.js';
 import * as members from '../modules/gym/members.js';
@@ -86,10 +86,11 @@ const photo = async (req, res) => {
   const memberId = id(req);
   await visible(req, memberId);
   if (!req.file) throw new GymError(400, 'Choose an image to upload');
-  if (!looksLikeImage(req.file.buffer, req.file.mimetype)) throw new GymError(400, 'That file is not a valid JPEG, PNG or WebP image');
+  const mime = sniffImageType(req.file.buffer);
+  if (!mime) throw new GymError(400, 'That photo is not a JPEG, PNG or WebP image. On an iPhone, choose Most Compatible in the camera settings.');
   const old = (await pool.query(`SELECT photo_url FROM gym_members WHERE member_id = $1 AND business_id = $2`, [memberId, req.tenant.businessId])).rows[0];
   let url;
-  try { url = await putFile({ key: `gym/${req.tenant.businessId}/${memberId}-${Date.now()}${EXT_BY_MIME[req.file.mimetype]}`, buffer: req.file.buffer, contentType: req.file.mimetype }); }
+  try { url = await putFile({ key: `gym/${req.tenant.businessId}/${memberId}-${Date.now()}${EXT_BY_MIME[mime]}`, buffer: req.file.buffer, contentType: mime }); }
   catch (error) { console.error('[gym] photo upload failed:', error.message); throw new GymError(502, 'Could not save the photo. Try again in a moment.'); }
   await pool.query(`UPDATE gym_members SET photo_url = $3 WHERE member_id = $1 AND business_id = $2`, [memberId, req.tenant.businessId, url]);
   if (old?.photo_url) removeFile(old.photo_url, req.tenant.businessId);

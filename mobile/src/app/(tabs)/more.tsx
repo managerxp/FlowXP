@@ -1,6 +1,6 @@
 import { canManageTeam } from '../../lib/team.ts';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '../../lib/icons.tsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,9 +26,7 @@ import { appVersion } from '../../lib/crash.ts';
 import { SyncBadge } from '../../lib/SyncBadge.tsx';
 import { Page, Rows } from '../../lib/responsive.tsx';
 import { Empty, Group as Card, Initials, Line, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
-import { display, radius, shadow } from '../../lib/theme.ts';
 import { t } from '../../lib/i18n.ts';
-import { FadeIn } from '../../lib/motion.tsx';
 
 type Icon = React.ComponentProps<typeof Ionicons>['name'];
 type Item = { left: string; sub: string; icon: Icon; go: string; show?: boolean; main?: boolean };
@@ -224,13 +222,9 @@ export default function More() {
   const shown = shown0.map((g) => ({ ...g, items: g.items.filter((i) => !onTop.has(i.go)) })).filter((g) => g.items.length);
   const TRADE = ['Restaurant', 'Salon', 'Clothing', 'Gym', 'Gaming', 'Spare parts', 'Pharmacy', 'Wholesale', 'Distributor'];
   shown.sort((a, b) => Number(TRADE.includes(b.title)) - Number(TRADE.includes(a.title)));   // stable: the owner's own trade first, the rest keep the laptop sidebar order
-  const [openTitle, setOpenTitle] = useState<string | null>(null);
   const [find, setFind] = useState('');
-  const { width } = useWindowDimensions();
-  const cols = width >= 900 ? 4 : width >= 560 ? 3 : 2;
   const words = find.trim().toLowerCase();
   const matches = words ? [...top, ...shown.flatMap((g) => g.items.map((i) => ({ ...i, sub: i.sub, left: i.left, _g: g.title }))), ...foot].filter((i) => `${t(i.left)} ${i.left} ${t(i.sub)} ${(i as { _g?: string })._g ?? ''}`.toLowerCase().includes(words)) : [];
-  const group = shown.find((g) => g.title === openTitle);
   const go = (i: Item) => (['/products', '/appointments', '/salon-clients'].includes(i.go) ? router.navigate(i.go as never) : router.push(i.go as never));
 
   return (
@@ -242,16 +236,8 @@ export default function More() {
             <Soft>{business?.name} · {outlet?.name}</Soft>
             <SyncBadge />
           </View>
-          {group ? (
-            <>
-              <Pressable accessibilityRole="button" accessibilityLabel={t('All menus')} onPress={() => setOpenTitle(null)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 12, minHeight: 48 }}>
-                <Ionicons name="chevron-back" size={22} color={color.brand} />
-                <Text style={{ color: color.brand, fontSize: 16, fontWeight: '600' }}>{t('All menus')}</Text>
-              </Pressable>
-              <SectionTitle>{group.title}</SectionTitle>
-              <Card><Rows>{group.items.map((i) => <Line key={i.left} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows></Card>
-            </>
-          ) : (
+          {(
+
             <>
               <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
                 <TextInput value={find} onChangeText={setFind} placeholder={t('Find a menu: bills, stock, staff…')} placeholderTextColor={color.soft} autoCapitalize="none" autoCorrect={false} returnKeyType="search" accessibilityLabel={t('Find a menu')} style={{ minHeight: 48, borderWidth: 1, borderColor: color.line, borderRadius: 12, paddingHorizontal: 14, fontSize: 16, color: color.ink, backgroundColor: color.card }} />
@@ -262,21 +248,7 @@ export default function More() {
                 <>
                 {top.length ? <SectionTitle>Quick access</SectionTitle> : null}
                 <Card><Rows>{top.map((i) => <Line key={i.go} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows></Card>
-                <SectionTitle>All features</SectionTitle>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10 }}>
-                  {shown.map((g, gi) => (
-                    <FadeIn key={g.title} index={gi} lift={8} style={{ width: `${100 / cols}%`, padding: 6 }}>
-                      <Pressable accessibilityRole="button" accessibilityLabel={`${t(g.title)}, ${g.items.length}`} onPress={() => setOpenTitle(g.title)} android_ripple={{ color: '#0b57ff22' }}
-                        style={{ minHeight: 104, borderRadius: radius.card, borderCurve: 'continuous', borderWidth: 1, borderColor: color.line, backgroundColor: color.card, padding: 14, gap: 10, justifyContent: 'space-between', boxShadow: shadow.card }}>
-                        <View style={{ width: 44, height: 44, borderRadius: 14, borderCurve: 'continuous', backgroundColor: color.wash, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={g.icon} size={22} color={color.ink} /></View>
-                        <View>
-                          <Text numberOfLines={1} style={{ fontSize: 15, fontFamily: display.bold, color: color.ink }}>{t(g.title)}</Text>
-                          <Text style={{ fontSize: 12, color: color.soft }}>{g.items.length === 1 ? t('1 thing') : t('{{n}} things', { n: g.items.length })}</Text>
-                        </View>
-                      </Pressable>
-                    </FadeIn>
-                  ))}
-                </View>
+                {shown.map((g) => <View key={g.title}><SectionTitle>{g.title}</SectionTitle><Card><Rows>{g.items.map((i) => <Line key={i.left + i.go} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows></Card></View>)}
                 <SectionTitle>Settings and help</SectionTitle><Card><Rows>{foot.map((i) => <Line key={i.go} icon={i.icon} left={i.left} sub={i.sub} onPress={() => go(i)} />)}</Rows></Card>
                 </>
               )}

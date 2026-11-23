@@ -12,7 +12,7 @@ import { Router } from 'express';
 import { requireAnyPermission, requireAuth, requireOutlet, requirePermission, requirePlanFeature, withBusiness } from '../middleware/auth.js';
 import { importLimiter } from '../middleware/limits.js';
 import { idempotent } from '../middleware/idempotency.js';
-import { uploadProductImage } from '../middleware/upload.js';
+import { uploadPhotoFile } from '../middleware/upload.js';
 import { gymOnly } from '../modules/gym/common.js';
 import setup from '../controllers/gymSetup.controller.js';
 import members from '../controllers/gymMembers.controller.js';
@@ -59,7 +59,7 @@ router.get('/members/:id', ...read, staff, members.get);
 router.get('/members/:id/finance', ...read, any('gym_desk', 'gym_members', 'gym_setup', 'reports'), members.finance);
 router.put('/members/:id', ...write, any('gym_members', 'gym_setup'), members.update);
 router.post('/members/:id/status', ...write, any('gym_members', 'gym_setup'), members.status);
-router.post('/members/:id/photo', ...write, any('gym_members', 'gym_setup'), uploadProductImage, members.photo);
+router.post('/members/:id/photo', ...write, any('gym_members', 'gym_setup'), uploadPhotoFile, members.photo);
 
 /* ── memberships ──────────────────────────────────────────────────────────── */
 router.post('/members/:id/memberships', ...write, desk, requireOutlet, idempotent(), members.sell);
