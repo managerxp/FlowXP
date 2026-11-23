@@ -64,6 +64,8 @@ export const renewalsDue = async (db, tenant, { today }) => {
         AND NOT EXISTS (SELECT 1 FROM gym_memberships n WHERE n.member_id = m.member_id AND n.status = 'ACTIVE' AND n.start_date > m.end_date)
       ORDER BY m.end_date, c.name`, p)).rows;
   return {
+    today: rows.filter((r) => r.days_left === 0).length, d3: rows.filter((r) => r.days_left >= 1 && r.days_left <= 3).length,
+    d4_7: rows.filter((r) => r.days_left >= 4 && r.days_left <= 7).length, d8_15: rows.filter((r) => r.days_left >= 8 && r.days_left <= 15).length,
     d7: rows.filter((r) => r.days_left <= 7).length, d15: rows.filter((r) => r.days_left <= 15).length, d30: rows.length,
     list: rows.slice(0, 30)
   };
@@ -92,4 +94,41 @@ export const recentActivity = async (db, tenant, { limit = 15 } = {}) => {
        FROM gym_attendance a JOIN gym_members gm ON gm.member_id = a.member_id JOIN customers c ON c.customer_id = gm.customer_id
       WHERE a.business_id = $1 AND a.status <> 'VOIDED'${aScope} ORDER BY a.check_in_at DESC LIMIT 5`, a)).rows;
   return [...joined, ...events, ...pays, ...visits].sort((x, y2) => new Date(y2.at) - new Date(x.at)).slice(0, cap);
+};
+
+/** Members whose birthday is today (month and day match). */
+export const birthdaysToday = async (db, tenant, { today }) => {
+  const p = [tenant.businessId, today];
+  const scope = visibleTo(tenant, p);
+  return (await db.query(
+    `SELECT gm.member_id, gm.member_code, c.name, c.phone, gm.dob::text AS dob FROM gym_members gm JOIN customers c ON c.customer_id = gm.customer_id
+      WHERE gm.business_id = $1 AND gm.status = 'ACTIVE' AND gm.dob IS NOT NULL AND to_char(gm.dob, 'MM-DD') = to_char($2::date, 'MM-DD')${scope} ORDER BY c.name LIMIT 50`, p)).rows;
+};
+
+/** Month by month for the last `months` months (oldest first): money received, new members and memberships sold or renewed. For the phone's Reports tab. */
+export const trends = async (db, tenant, { today, tz, months = 6 }) => {
+  const n = Math.min(Math.max(Math.floor(Number(months)) || 6, 2), 24);
+  const first = new Date(`${today.slice(0, 7)}-01T00:00:00Z`); first.setUTCMonth(first.getUTCMonth() - (n - 1));
+  const from = first.toISOString().slice(0, 10);
+  const p = [tenant.businessId, tz, from];
+  const pScope = branchFilter(tenant, 'pm.branch_id', p);
+  const paid = (await db.query(
+    `SELECT to_char(date_trunc('month', pm.created_at AT TIME ZONE $2::text), 'YYYY-MM') AS month, COALESCE(SUM(pm.amount_paise), 0)::bigint AS paise
+       FROM payments pm JOIN invoices i ON i.invoice_id = pm.invoice_id
+      WHERE pm.business_id = $1 AND i.status <> 'CANCELLED' AND (pm.created_at AT TIME ZONE $2::text)::date >= $3::date${pScope} GROUP BY 1`, p)).rows;
+  const m = [tenant.businessId, from]; const mScope = visibleTo(tenant, m);
+  const joined = (await db.query(
+    `SELECT to_char(gm.joined_on, 'YYYY-MM') AS month, COUNT(*)::int AS n FROM gym_members gm WHERE gm.business_id = $1 AND gm.joined_on >= $2::date AND gm.status <> 'ARCHIVED'${mScope} GROUP BY 1`, m)).rows;
+  const s = [tenant.businessId, from]; const sScope = visibleTo(tenant, s, 'gm');
+  const sold = (await db.query(
+    `SELECT to_char(ms.start_date, 'YYYY-MM') AS month, COUNT(*)::int AS n FROM gym_memberships ms JOIN gym_members gm ON gm.member_id = ms.member_id
+      WHERE ms.business_id = $1 AND ms.kind = 'MEMBERSHIP' AND ms.status <> 'CANCELLED' AND ms.start_date >= $2::date${sScope} GROUP BY 1`, s)).rows;
+  const pick = (rows, key, month) => Number(rows.find((r) => r.month === month)?.[key] ?? 0);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date(first); d.setUTCMonth(first.getUTCMonth() + i);
+    const month = d.toISOString().slice(0, 7);
+    out.push({ month, collected_paise: pick(paid, 'paise', month), new_members: pick(joined, 'n', month), memberships_started: pick(sold, 'n', month) });
+  }
+  return withRupees({ months: out });
 };

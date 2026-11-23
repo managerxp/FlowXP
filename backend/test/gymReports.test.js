@@ -60,3 +60,16 @@ test('the wallet report shows what is held; CSV downloads open in Excel', { skip
   const bad = await A.call(reports.revenue, { query: { from: '2026-02-01', to: '2026-01-01' } });
   assert.equal(bad.code, 400);
 });
+
+test('the phone dashboard: expiry buckets, birthdays today and the month-by-month trends', { skip }, async () => {
+  const { birthdaysToday, renewalsDue, trends } = await import('../src/modules/gym/overview.js');
+  const { localParts } = await import('../src/modules/gym/common.js');
+  const { date: today } = await localParts(pool, A.businessId);
+  const r = await renewalsDue(pool, A.tenantFor('OWNER'), { today });
+  for (const k of ['today', 'd3', 'd4_7', 'd8_15', 'd7', 'd15', 'd30']) assert.equal(typeof r[k], 'number', k);
+  assert.ok(Array.isArray(await birthdaysToday(pool, A.tenantFor('OWNER'), { today })));
+  const t = await trends(pool, A.tenantFor('OWNER'), { today, tz: 'Asia/Kolkata', months: 6 });
+  assert.equal(t.months.length, 6);
+  assert.equal(t.months[5].month, today.slice(0, 7));
+  assert.ok(t.months.every((m) => typeof m.collected_paise === 'number' && typeof m.new_members === 'number'));
+});

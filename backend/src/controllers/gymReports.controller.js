@@ -8,7 +8,7 @@ import { addDays, isoDate, localParts, ok, wrapAll, withRupees } from '../module
 import { branchFilter } from '../utils/scope.js';
 import { hasPermission } from '../middleware/auth.js';
 import * as rep from '../modules/gym/reports.js';
-import { moneyOverview, recentActivity, renewalsDue } from '../modules/gym/overview.js';
+import { birthdaysToday, moneyOverview, recentActivity, renewalsDue, trends } from '../modules/gym/overview.js';
 
 const tzOf = async (businessId) => (await pool.query(`SELECT COALESCE(timezone, 'Asia/Kolkata') AS tz FROM businesses WHERE business_id = $1`, [businessId])).rows[0].tz;
 
@@ -62,8 +62,13 @@ const dashboard = async (req, res) => {
      ORDER BY d`, [...a])).rows;
   // money, renewals and the activity feed are for the desk, managers and accountants; a trainer's dashboard stays about people and visits
   const seesMoney = ['gym_desk', 'gym_members', 'gym_setup', 'reports'].some((p) => hasPermission(req.tenant, p));
-  const extra = seesMoney ? { money: await moneyOverview(pool, req.tenant, { today, tz }), renewals: await renewalsDue(pool, req.tenant, { today }), activity: await recentActivity(pool, req.tenant) } : {};
+  const extra = seesMoney ? { birthdays: await birthdaysToday(pool, req.tenant, { today }),  money: await moneyOverview(pool, req.tenant, { today, tz }), renewals: await renewalsDue(pool, req.tenant, { today }), activity: await recentActivity(pool, req.tenant) } : {};
   ok(res, withRupees({ today, members: counts, visits, denied_today: denied, joined_this_month: joined, sales_this_month: sales, last_7_days: week, ...extra }));
+};
+
+const trendsApi = async (req, res) => {
+  const { date: today } = await localParts(pool, req.tenant.businessId);
+  ok(res, await trends(pool, req.tenant, { today, tz: await tzOf(req.tenant.businessId), months: req.query.months }));
 };
 
 const attendance = async (req, res) => {
@@ -146,4 +151,4 @@ const wallet = async (req, res) => {
   csv(req, res, 'wallet-balances', ['Member', 'Name', 'Phone', 'Balance'], d.balances.map((m) => [m.member_code, m.name, m.phone, r2(m.balance_paise)]));
 };
 
-export default wrapAll({ revenue, retention, wallet, dashboard, attendance, memberships });
+export default wrapAll({ trends: trendsApi, revenue, retention, wallet, dashboard, attendance, memberships });
