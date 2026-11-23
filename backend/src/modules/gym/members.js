@@ -218,8 +218,9 @@ export const listMembers = async (db, tenant, query) => {
   const status = query.status ? String(query.status).toUpperCase() : null;
   if (status && MEMBER_STATUSES.includes(status)) { params.push(status); inner += ` AND gm.status = $${params.length}`; }
   else if (!status || status === 'LIVE') inner += ` AND gm.status <> 'ARCHIVED'`;
-  if (query.q && String(query.q).trim()) {
-    params.push(like(String(query.q).trim().slice(0, 80)));
+  const text = query.q ?? query.search;   // the phone says `search`, the website `q`
+  if (text && String(text).trim()) {
+    params.push(like(String(text).trim().slice(0, 80)));
     const n = params.length;
     inner += ` AND (c.name ILIKE $${n} OR c.phone ILIKE $${n} OR c.email ILIKE $${n} OR gm.member_code ILIKE $${n})`;
   }

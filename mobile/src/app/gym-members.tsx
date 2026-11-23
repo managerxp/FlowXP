@@ -20,7 +20,7 @@ export default function GymMembers() {
   const [text, setText] = useState('');
   const [q, setQ] = useState('');
   useEffect(() => { const x = setTimeout(() => setQ(text.trim()), 300); return () => clearTimeout(x); }, [text]);
-  const list = useLoad<Member[]>(`gym-members:${scope}:${q}`, () => api.get<Member[]>(`/gym/members?limit=30${q.length >= 2 ? `&search=${encodeURIComponent(q)}` : ''}`));
+  const list = useLoad<Member[]>(`gym-members:${scope}:${q}`, () => api.get<Member[]>(`/gym/members?limit=30${q.length >= 1 ? `&search=${encodeURIComponent(q)}` : ''}`));
   useFocusEffect(useCallback(() => { void list.refresh(); }, [])); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

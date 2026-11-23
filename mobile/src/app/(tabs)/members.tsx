@@ -29,9 +29,9 @@ export default function Members() {
   const [text, setText] = useState('');
   const [q, setQ] = useState('');
   const [state, setState] = useState('');
-  useEffect(() => { const x = setTimeout(() => setQ(text.trim()), 300); return () => clearTimeout(x); }, [text]);
-  const list = useLoad<Member[]>(`gym-tab-members:${scope}:${state}:${q}`, () => api.get<Member[]>(`/gym/members?limit=60${state ? `&state=${state}` : ''}${q.length >= 2 ? `&search=${encodeURIComponent(q)}` : ''}`));
-  useFocusEffect(useCallback(() => { void list.refresh(); }, [])); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { const x = setTimeout(() => setQ(text.trim()), 150); return () => clearTimeout(x); }, [text]);
+  const list = useLoad<Member[]>(`gym-tab-members:${scope}:${state}:${q}`, () => api.get<Member[]>(`/gym/members?limit=60${state ? `&state=${state}` : ''}${q.length >= 1 ? `&search=${encodeURIComponent(q)}` : ''}`));
+  useFocusEffect(useCallback(() => { void list.refresh(); }, [list.refresh]));
   const open = (m: Member) => router.push({ pathname: '/gym-member/[id]', params: { id: String(m.member_id) } });
 
   return (
