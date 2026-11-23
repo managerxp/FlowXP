@@ -1712,3 +1712,4 @@ Flow: the receipt carries the bill's own QR (`/card/bill/<share_token>`). After 
 - Phone More menu for every business now shows its groups (Sell, Stock, Customers, Business, trade groups) as grouped lists on the front, like the Gym tab, instead of tiles to open. Member photo upload: server reads the real image type from the bytes (uploadPhotoFile + sniffImageType), so any phone type name works.
 - Phone uploads (member photo, product photo, logo, plate scan) attach the picture as an expo-file-system File (lib/filePart.ts): Expo's fetch rejects the old {uri,name,type} part with 'Unsupported FormData part implementation'.
 - Gym member search: backend list accepts `search` (phone) as well as `q` (web); phone Members/gym-members search filters from the first letter.
+- Member photo: crop (square) before upload restored; tap the photo to see it enlarged.

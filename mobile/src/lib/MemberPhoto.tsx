@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Image, Text, View } from 'react-native';
+import { Image, Modal, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { API_URL, sessionStore } from './session.ts';
 import { authHeaders } from './backup.ts';
 import { logoSrc } from './logo.ts';
@@ -14,7 +14,7 @@ const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', '
 export const pickMemberPhoto = async (from: 'library' | 'camera'): Promise<Picked | null | { error: string }> => {
   try {
     const Picker = await import('expo-image-picker');
-    const opts = { mediaTypes: ['images' as const], quality: 0.6 };
+    const opts = { mediaTypes: ['images' as const], quality: 0.6, allowsEditing: true, aspect: [1, 1] as [number, number] };
     if (from === 'camera') { const ok = await Picker.requestCameraPermissionsAsync(); if (!ok.granted) return { error: t('Allow the camera to take a photo, or choose one from your photos.') }; }
     const got = from === 'camera' ? await Picker.launchCameraAsync(opts) : await Picker.launchImageLibraryAsync(opts);
     if (got.canceled || !got.assets?.[0]) return null;
@@ -50,6 +50,8 @@ export const Avatar = ({ name, url, size = 72 }: { name: string; url?: string | 
 export default function MemberPhoto({ memberId, name, url, onChange }: { memberId: number | string; name: string; url?: string | null; onChange: (url: string) => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [big, setBig] = useState(false);
+  const { width } = useWindowDimensions();
   const send = async (from: 'library' | 'camera') => {
     setError('');
     const pic = await pickMemberPhoto(from);
@@ -61,13 +63,19 @@ export default function MemberPhoto({ memberId, name, url, onChange }: { memberI
   return (
     <View style={{ gap: 8 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-        <Avatar name={name} url={url} size={72} />
+        <Pressable accessibilityRole="button" accessibilityLabel={t('Enlarge the photo')} onPress={() => setBig(true)} disabled={!url}><Avatar name={name} url={url} size={72} /></Pressable>
         <View style={{ flex: 1, gap: 8 }}>
           <Button title={url ? 'Change photo' : 'Add a photo'} kind="quiet" onPress={() => { void send('library'); }} busy={busy} style={{ minHeight: 44 }} />
           <Button title="Take a photo" kind="quiet" onPress={() => { void send('camera'); }} disabled={busy} style={{ minHeight: 44 }} />
         </View>
       </View>
       <ErrorText>{error}</ErrorText>
+      <Modal visible={big} transparent animationType="fade" onRequestClose={() => setBig(false)}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('Close')} onPress={() => setBig(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', alignItems: 'center', justifyContent: 'center' }}>
+          <Avatar name={name} url={url} size={Math.min(width - 32, 520)} />
+          <Text style={{ color: '#fff', marginTop: 16, fontWeight: '600' }}>{name}</Text>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
