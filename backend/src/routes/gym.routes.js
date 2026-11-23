@@ -20,6 +20,7 @@ import access from '../controllers/gymAccess.controller.js';
 import reports from '../controllers/gymReports.controller.js';
 import rewardsApi from '../controllers/gymRewards.controller.js';
 import shopApi from '../controllers/gymShop.controller.js';
+import enquiryApi from '../controllers/gymEnquiries.controller.js';
 import duesApi from '../controllers/gymDues.controller.js';
 import walletApi from '../controllers/gymWallet.controller.js';
 import deviceApi from '../controllers/gymDevices.controller.js';
@@ -98,6 +99,16 @@ const du = feature('gym_dues');
 router.get('/dues', ...read, any('gym_desk', 'gym_members', 'gym_setup', 'reports'), du, duesApi.list);
 router.put('/members/:id/credit-limit', ...write, can('gym_setup'), du, duesApi.setLimit);
 router.put('/members/:id/promise', ...write, desk, du, duesApi.setPromise);
+
+/* ── enquiries and follow-ups ──────────────────────────────────────────────── */
+const en = feature('gym_enquiries');
+const deskOrMembers = any('gym_desk', 'gym_members', 'gym_setup');
+router.get('/enquiries', ...read, deskOrMembers, en, enquiryApi.list);
+router.post('/enquiries', ...write, deskOrMembers, en, enquiryApi.create);
+router.get('/enquiries/:id/notes', ...read, deskOrMembers, en, enquiryApi.notes);
+router.post('/enquiries/:id/notes', ...write, deskOrMembers, en, enquiryApi.note);
+router.post('/enquiries/:id/lost', ...write, deskOrMembers, en, enquiryApi.lost);
+router.post('/enquiries/:id/join', ...write, any('gym_members', 'gym_setup'), en, enquiryApi.join);
 
 /* ── supplement desk ──────────────────────────────────────────────────────── */
 const sh = feature('gym_shop');

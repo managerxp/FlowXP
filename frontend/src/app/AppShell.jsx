@@ -21,7 +21,8 @@ import {
   History, Landmark, LayoutDashboard, LayoutGrid, Lock, ToggleRight, LogOut, Barcode, Menu, MessageSquare, Package, PackagePlus, PanelLeftClose, PanelLeftOpen,
   Plug, Receipt, ReceiptText, Search, Settings, Shield, ShieldAlert, ShoppingCart, SlidersHorizontal, Sparkles, Star, Store,
   Scissors, TrendingUp, Truck, UserRound, Users, Wallet, X, Warehouse, PackageCheck, Undo2, HandCoins, ChartBar, ShoppingBag, Tags,
-  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass, BedDouble, Moon, DoorOpen, UsersRound, CalendarCheck, Dumbbell, Gamepad2, Timer, Trophy, Sun, Wrench, BookOpen, Shirt, LifeBuoy
+  Factory, MapPinned, Target, Percent, Container, Smartphone, Ellipsis, Compass, BedDouble, Moon, DoorOpen, UsersRound, CalendarCheck, Dumbbell, Gamepad2, Timer, Trophy, Sun, Wrench, BookOpen, Shirt, LifeBuoy,
+  PhoneCall
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Avatar, Button, EmptyState, Logo, PageLoader, useToast } from '../components/ui.jsx';
@@ -162,6 +163,7 @@ const NAV_GROUPS = [
     items: [
       { to: '/app/gym/reception', label: 'Front desk', icon: DoorOpen, types: GYM, permission: 'gym_desk', feature: 'gym_access' },
       { to: '/app/gym/members', label: 'Members', icon: UsersRound, types: GYM, anyPermission: ['gym_desk', 'gym_members', 'gym_setup', 'gym_trainer'] },
+      { to: '/app/gym/enquiries', label: 'Enquiries', icon: PhoneCall, types: GYM, anyPermission: ['gym_desk', 'gym_members', 'gym_setup'], feature: 'gym_enquiries' },
       { to: '/app/gym/plans', label: 'Memberships', icon: Tag, types: GYM, anyPermission: ['gym_desk', 'gym_setup'] },
       { to: '/app/gym/attendance', label: 'Attendance', icon: CalendarCheck, types: GYM, anyPermission: ['gym_desk', 'gym_setup', 'gym_trainer'], feature: 'gym_access' },
       { to: '/app/gym/classes', label: 'Bookings & classes', icon: Dumbbell, types: GYM, anyPermission: ['gym_desk', 'gym_trainer', 'gym_setup'], feature: 'gym_classes' },

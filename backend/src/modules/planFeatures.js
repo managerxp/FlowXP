@@ -56,6 +56,7 @@ export const PLAN_FEATURES = [
   ['gym_classes', 'Trainers and classes', 'Class timetable and booking, personal-training packs and workout plans'],
   ['gym_rewards', 'Gym rewards and referrals', 'Points for visits and renewals, referral rewards, reward catalogue'],
   ['gym_wallet', 'Gym member wallet', 'Advance deposits, paying bills from the balance and refunds, with a ledger for every movement'],
+  ['gym_enquiries', 'Gym enquiries and follow-ups', 'Write down who asked about joining, a call-today list with a note after each call, and one tap to make them a member'],
   ['gym_dues', 'Gym dues control', 'Who owes what and for how long, credit limits, payment promises, and the door stopping members over their limit'],
   ['gym_shop', 'Gym supplement desk', 'Sell supplements and other products to members or walk-ins, pay from the wallet, and see low stock and expiring batches'],
   ['gym_reports', 'Gym owner reports', 'Revenue split, renewal and churn, quiet members and wallet balances, with CSV downloads for Excel'],
