@@ -37,7 +37,12 @@ export default function Dashboard() {
   const [cTo, setCTo] = useState('');
   const range: [string, string] | null = period === 'custom' ? (parseDmy(cFrom) && parseDmy(cTo) && parseDmy(cFrom) <= parseDmy(cTo) ? [parseDmy(cFrom), parseDmy(cTo)] : null) : rangeOf(period);
   const col = useLoad<Collection>(`gym-collection:${session.businessId}:${session.branchId}:${range?.join('..')}`, () => api.get<Collection>(`/gym/reports/collection?from=${range![0]}&to=${range![1]}`), tab === 'payments' && range !== null);
+  const plansLoad = useLoad<unknown[]>(`gym-plans-count:${session.businessId}:${session.branchId}`, () => api.get<unknown[] | { rows: unknown[] }>('/gym/plans?kind=MEMBERSHIP').then((r) => (Array.isArray(r) ? r : r.rows ?? [])));
+  useFocusEffect(useCallback(() => { void plansLoad.refresh(); }, [])); // eslint-disable-line react-hooks/exhaustive-deps
   const x = d.data;
+  const memberTotal = Object.values(x?.members ?? {}).reduce((a, v) => a + n(v), 0);
+  const hasPlan = (plansLoad.data?.length ?? 0) > 0;
+  const setupDone = !x || !plansLoad.data || (hasPlan && memberTotal > 0);
   const r = x?.renewals;
   const m = x?.money;
   const bars = scaleBars((x?.last_7_days ?? []).map((v) => v.visits));
@@ -51,6 +56,21 @@ export default function Dashboard() {
           {d.busy && !x ? <Loading /> : null}
           {d.error && !x ? <Failed message={d.error} onRetry={() => { void d.refresh(); }} /> : null}
 
+          {!setupDone ? (
+            <View style={[s.card, { marginHorizontal: 16, gap: 10 }]}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: color.ink }}>{t('Set up your gym in 3 steps')}</Text>
+              {[
+                { done: hasPlan, title: '1. Add a plan', sub: 'Name, price and how long it lasts', go: '/gym-plan-edit' },
+                { done: memberTotal > 0, title: '2. Add your first member', sub: 'Name and mobile; sell the plan right away', go: '/gym-member-new' },
+                { done: false, title: '3. Come back here', sub: 'Your dashboard fills as members join and pay', go: '' }
+              ].map((st) => (
+                <Pressable key={st.title} accessibilityRole="button" disabled={!st.go || st.done} onPress={() => router.push(st.go as '/gym-plan-edit')} style={{ minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: st.done ? color.ok : color.wash }}><Text style={{ color: st.done ? color.onAction : color.soft, fontWeight: '700' }}>{st.done ? '✓' : ''}</Text></View>
+                  <View style={{ flex: 1 }}><Text style={{ color: color.ink, fontWeight: '600', fontSize: 15 }}>{t(st.title)}</Text><Text style={{ color: color.soft, fontSize: 13 }}>{t(st.sub)}</Text></View>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
           {x && tab === 'membership' ? <>
             <SectionTitle>Today</SectionTitle>
             <Row>
