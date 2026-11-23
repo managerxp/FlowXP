@@ -1,6 +1,6 @@
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '../../lib/icons.tsx';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from '../../lib/session.ts';
 import { useLoad } from '../../lib/useLoad.ts';
@@ -129,6 +129,7 @@ const Row = ({ title, sub, right, rightSub, tone, first, go }: { title: string; 
 /* A mechanic garage has its own home: the vehicles in the garage and the day's money. Every other business keeps the sales home. */
 export default function Home() {
   const business = currentBusiness(useSession());
+  if (business?.business_type === 'GYM') return <Redirect href="/dashboard" />;   // a gym's home is its dashboard
   return business?.business_type === 'MECHANIC' ? <GarageHome /> : <ShopHome />;
 }
 

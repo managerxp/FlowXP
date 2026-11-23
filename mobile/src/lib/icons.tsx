@@ -102,8 +102,15 @@ import UtensilsCrossed from 'lucide-react-native/icons/utensils-crossed';
 import Wallet from 'lucide-react-native/icons/wallet';
 import Wifi from 'lucide-react-native/icons/wifi';
 import Wrench from 'lucide-react-native/icons/wrench';
+import Phone from 'lucide-react-native/icons/phone';
+import RefreshCw from 'lucide-react-native/icons/refresh-cw';
+import Languages from 'lucide-react-native/icons/languages';
 
 const MAP = {
+  'call-outline': Phone,
+  'logo-whatsapp': MessageCircle,
+  'refresh-outline': RefreshCw,
+  'language-outline': Languages,
   'add': Plus,
   'alert': TriangleAlert,
   'alert-circle-outline': CircleAlert,

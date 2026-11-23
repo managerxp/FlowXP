@@ -6,6 +6,7 @@ import { useSyncState } from '../../lib/sync.ts';
 import { currentBusiness, useSession } from '../../lib/session.ts';
 import { allowed } from '../../lib/access.ts';
 import { KITCHEN_TYPES } from '../../lib/cart.ts';
+import { GYM_TYPES } from '../../lib/gym.ts';
 import { workshopOn } from '../../lib/workshopExtras.ts';
 import { Rail, type RailProps } from '../../lib/Rail.tsx';
 import { color } from '../../lib/ui.tsx';
@@ -26,15 +27,19 @@ export default function TabsLayout() {
   const business = currentBusiness(useSession());
   const food = KITCHEN_TYPES.includes(business?.business_type ?? '');
   const diningRoom = business?.business_type !== 'CLOUD_KITCHEN';   // a cloud kitchen has no tables: the same tab holds its takeaway and delivery orders
+  // a gym works from its members, a dashboard, reports and its own set-up: four places, and nothing for tills, tables or stock
+  const gym = GYM_TYPES.includes(business?.business_type ?? '');
   // only the places this person may use: someone who cannot make bills does not get Sell, Tables or Bills
-  const noSell = !allowed(business, 'billing', 'sales_orders', 'fulfilment', 'field_sales', 'collections', 'appointments', 'dispensing', 'vehicles');
+  const noSell = gym || !allowed(business, 'billing', 'sales_orders', 'fulfilment', 'field_sales', 'collections', 'appointments', 'dispensing', 'vehicles');
   // a salon works from its appointments and clients: both get a place in the sidebar; the phone's bar holds five, so there Clients stays in More and Products makes room
   const salon = business?.business_type === 'SALON';
   // a garage (a parts shop in mechanic mode) works from its job cards: they get a place on the bar next to Home, and Products moves into More to keep the bar to five
   const garage = (business?.business_type === 'MECHANIC' || (business?.business_type === 'AUTO_PARTS' && workshopOn(business))) && allowed(business, 'billing');
   // a mechanic garage bills from its job cards and keeps its money on the bar: no counter till, no product list
   const mechanic = business?.business_type === 'MECHANIC';
-  const hidden = [
+  const gymOnly = ['home', 'jobs', 'money', 'sell', 'tables', 'appointments', 'salon-clients', 'sales', 'products', 'more'];
+  const hidden = gym ? gymOnly : [
+    'members', 'dashboard', 'gymreports', 'gymhub',
     ...(garage ? [] : ['jobs']),   // the side rail reads this list, not each tab's href: without it a café on a tablet saw Jobs
     ...(mechanic ? ['sell'] : []), ...(mechanic && allowed(business, 'payments', 'expenses') ? [] : ['money']),
     ...(food || garage ? ['products'] : []), ...(food ? [] : ['tables']), ...(noSell ? ['sell', 'tables', 'sales'] : []), ...(!allowed(business, 'products', 'inventory') ? ['products'] : []),
@@ -54,7 +59,11 @@ export default function TabsLayout() {
         tabBarStyle: { backgroundColor: color.card, borderTopWidth: 1, borderColor: color.line, boxShadow: '0 -4px 20px rgba(17, 23, 47, 0.05)' }
       }}
     >
-      <Tabs.Screen name="home" options={tab('Home', 'home-outline', 'home')} />
+      <Tabs.Screen name="home" options={{ ...tab('Home', 'home-outline', 'home'), href: gym ? null : undefined }} />
+      <Tabs.Screen name="members" options={{ ...tab('Members', 'people-outline', 'people-outline'), href: gym ? undefined : null }} />
+      <Tabs.Screen name="dashboard" options={{ ...tab('Dashboard', 'grid-outline', 'grid'), href: gym ? undefined : null }} />
+      <Tabs.Screen name="gymreports" options={{ ...tab('Reports', 'stats-chart-outline', 'stats-chart-outline'), href: gym ? undefined : null }} />
+      <Tabs.Screen name="gymhub" options={{ ...tab('Gym', 'barbell-outline', 'barbell-outline'), href: gym ? undefined : null }} />
       <Tabs.Screen name="jobs" options={{ ...tab('Jobs', 'build-outline', 'build'), href: garage ? undefined : null }} />
       <Tabs.Screen name="money" options={{ ...tab('Money', 'wallet-outline', 'wallet'), href: hidden.includes('money') ? null : undefined }} />
       <Tabs.Screen name="sell" options={{ ...tab('Sell', 'cart-outline', 'cart'), href: noSell || mechanic ? null : undefined }} />
@@ -63,7 +72,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="salon-clients" options={{ ...tab('Clients', 'heart-outline', 'heart'), href: hidden.includes('salon-clients') ? null : undefined }} />
       <Tabs.Screen name="sales" options={{ ...tab('Bills', 'receipt-outline', 'receipt'), tabBarBadge: waiting > 0 ? waiting : undefined, href: noSell ? null : undefined }} />
       <Tabs.Screen name="products" options={{ ...tab('Products', 'cube-outline', 'cube'), href: hidden.includes('products') ? null : undefined }} />
-      <Tabs.Screen name="more" options={tab('More', 'menu-outline', 'menu')} />
+      <Tabs.Screen name="more" options={{ ...tab('More', 'menu-outline', 'menu'), href: gym ? null : undefined }} />
     </Tabs>
   );
 }
