@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Alert, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { goBack } from '../lib/nav.ts';
@@ -35,7 +36,8 @@ export default function Printers() {
   const [failed, setFailed] = useState<FailedJob[]>([]);
   const [more, setMore] = useState(false);   // the technical choices (how it prints, a Wi-Fi printer) stay folded away
 
-  useEffect(() => { void readFailed().then(setFailed); void readPrinters().then(setList); void readMode().then(setModeState); void printingAvailable().then((a) => { setAvailable(a); if (a) void pairedPrinters().then(setPaired).catch(() => {}); }); }, []);   // the paired printers are listed straight away: the owner only has to tap theirs
+  useEffect(() => { void readFailed().then(setFailed); void readPrinters().then(setList); void readMode().then(setModeState); void printingAvailable().then((has) => { const a = has && Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;   // Expo Go carries the library's script but not its native half
+    setAvailable(a); if (a) void pairedPrinters().then(setPaired).catch(() => {}); }); }, []);   // the paired printers are listed straight away: the owner only has to tap theirs
   const commit = useCallback((next: SavedPrinter[]) => {
     setList(next); void savePrinters(next);
     const receipt = next.find((p) => p.jobs.includes('receipt'));
@@ -133,6 +135,7 @@ export default function Printers() {
             <ErrorText>{error}</ErrorText>
             {note ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok }}>{note}</Text> : null}
 
+            {available ? (<>
             <SectionTitle>Add a Bluetooth printer</SectionTitle>
             <Soft>{t("Pair the printer first in the phone's Bluetooth settings (the code is usually 0000 or 1234), then come back and pick it here.")}</Soft>
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -150,7 +153,8 @@ export default function Printers() {
                 <TextInput style={s.input} value={port} onChangeText={(v) => setPort(v.replace(/\D/g, ''))} keyboardType="numeric" maxLength={5} accessibilityLabel={t('Port')} />
                 <Button title="Add this printer" onPress={addNetwork} />
               </>
-            ) : <Button title={t('More options')} kind="quiet" onPress={() => setMore(true)} />}
+            ) : <Button title={t('Add a Wi-Fi printer')} kind="quiet" onPress={() => setMore(true)} />}
+            </>) : null}
           </ScrollView>
         )}
       </Page>

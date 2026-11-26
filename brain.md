@@ -1713,3 +1713,4 @@ Flow: the receipt carries the bill's own QR (`/card/bill/<share_token>`). After 
 - Phone uploads (member photo, product photo, logo, plate scan) attach the picture as an expo-file-system File (lib/filePart.ts): Expo's fetch rejects the old {uri,name,type} part with 'Unsupported FormData part implementation'.
 - Gym member search: backend list accepts `search` (phone) as well as `q` (web); phone Members/gym-members search filters from the first letter.
 - Member photo: crop (square) before upload restored; tap the photo to see it enlarged.
+- Phone Printers screen: in Expo Go it now shows only the 'needs the FlowXP development app' note (no Bluetooth/Wi-Fi add buttons, which cannot work there); the fold-out button is named 'Add a Wi-Fi printer'.
