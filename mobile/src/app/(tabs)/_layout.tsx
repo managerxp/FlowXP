@@ -1,5 +1,6 @@
 import type { ColorValue } from 'react-native';
 import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '../../lib/icons.tsx';
 import { useWide } from '../../lib/responsive.tsx';
 import { useSyncState } from '../../lib/sync.ts';
@@ -21,6 +22,7 @@ const tab = (title: string, icon: IconName, iconOn: IconName) => ({
 /* The main places, always one tap away: a bar along the bottom on a phone, a rail down the left on a tablet or a phone turned sideways. */
 export default function TabsLayout() {
   const wide = useWide();
+  const bottom = useSafeAreaInsets().bottom + 12;   // room under the bar's labels, above the phone's own gesture line or buttons
   const sync = useSyncState();
   const waiting = sync.pending + sync.failed;
   // a restaurant or café works by the table: it gets a Tables tab, and Products moves into More to keep the bar to five
@@ -56,7 +58,7 @@ export default function TabsLayout() {
         tabBarActiveTintColor: color.brand,
         tabBarInactiveTintColor: color.soft,
         tabBarLabelStyle: { fontSize: 11.5, fontWeight: '600' },
-        tabBarStyle: { backgroundColor: color.card, borderTopWidth: 1, borderColor: color.line, boxShadow: '0 -4px 20px rgba(17, 23, 47, 0.05)' }
+        tabBarStyle: { backgroundColor: color.card, borderTopWidth: 1, borderColor: color.line, boxShadow: '0 -4px 20px rgba(17, 23, 47, 0.05)', ...(wide ? {} : { height: 58 + bottom, paddingBottom: bottom, paddingTop: 6 }) }
       }}
     >
       <Tabs.Screen name="home" options={{ ...tab('Home', 'home-outline', 'home'), href: gym ? null : undefined }} />
