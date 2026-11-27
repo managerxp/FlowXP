@@ -57,6 +57,7 @@ export default function Receipt() {
   const owed = invoice && invoice.balance_due > 0 ? toPaise(invoice.balance_due) : 0;
   // a bill with nothing owed carries the loyalty QR instead (scan it for the stamp), when the card has that switched on
   const qrLink = owed && business?.upi_vpa && invoice?.receipt?.show_upi_qr !== false ? upiPayLink(business.upi_vpa, business.name, owed) : invoice && !owed && invoice.loyalty_claim_url ? invoice.loyalty_claim_url : undefined;
+  const half = { flexGrow: 1, flexBasis: '45%' as const };   // the other choices sit two to a row, each the same size
   const token = invoice ? tokenText(invoice, name) : null;   // the daily token slip, printed after the bill
   const text = invoice ? receiptText(invoice, name, COLUMNS[paper]) : pending ? pendingReceiptText(pending, name, COLUMNS[paper]) : '';
   const waiting = !invoice && pending && pending.state !== 'sent';
@@ -100,27 +101,32 @@ export default function Receipt() {
             <Text style={{ color: color.ink, fontWeight: '600', textAlign: 'center' }}>{t('Customer: scan for your loyalty stamp')}</Text>
           </View>
         ) : null}
-        {text ? <View style={[s.card]}><Text selectable style={{ fontFamily: 'monospace', fontSize: 13, color: color.ink }}>{text}</Text></View> : null}
-        {printedNote ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok, fontWeight: '700', textAlign: 'center' }}>{t('Receipt printed')}</Text> : null}
-        <Button title={printedNote ? t('OK') : invoice?.table_name ? 'Back to the tables' : 'Next customer: new bill'} onPress={() => router.replace(invoice?.table_name ? '/tables' : '/sell')} />
-        {text ? <Button title="Print the bill" kind="quiet" onPress={() => { setPrintError(''); void kvGet('paper').then((p) => printReceipt(text, p === '80' ? '80' : '58', qrLink ? { qr: qrLink } : {})).then((how) => { if (how === 'fallback') setPrintError(t("Could not reach the printer, so the bill went to the phone's print screen instead.")); else if (token) return printReceipt(token, paper, { noDialog: true, big: true }).then(() => undefined); }).catch((e: Error) => setPrintError(e.message)); }} /> : null}
-        <ErrorText>{printError}</ErrorText>
-        {text ? <Button title="Send the bill" kind="quiet" onPress={() => { void Share.share({ message: text }); }} /> : null}
-        {invoice && canSendBill(invoice.customer_phone) ? <Button title="Send the bill from FlowXP" onPress={() => { setShareError(''); setSentNote(''); setSending(true); api.post<BillSent>('/messaging/send-bill', { invoice_id: invoice.invoice_id }).then((m) => setSentNote(billSentText(m))).catch((e: Error) => setShareError(e.message)).finally(() => setSending(false)); }} busy={sending} /> : null}
-        {sentNote ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok }}>{sentNote}</Text> : null}
-        {invoice && canEway(business?.role, Boolean(invoice.customer_gstin)) ? <Button title={invoice.eway_bill_no ? t('E-way bill {number}', { number: invoice.eway_bill_no }) : 'E-way bill'} kind="quiet" onPress={() => router.push({ pathname: '/eway-bill', params: { id: String(invoice.invoice_id) } })} /> : null}
-        {invoice ? <Button title="Send on WhatsApp (with link)" kind="quiet" onPress={() => { setShareError(''); shareBillOnWhatsApp(api, invoice.invoice_id).catch((e: Error) => setShareError(e.message)); }} /> : null}
-        {text ? <Button title="Share as PDF" kind="quiet" onPress={() => { setShareError(''); shareReceiptPdf(text, paper).catch((e: Error) => setShareError(e.message)); }} /> : null}
-        {invoice && usesTaxInvoice(invoice, business?.business_type) ? (
+        {text ? <View style={[s.card, { alignItems: 'center' }]}><Text selectable style={{ fontFamily: 'monospace', fontSize: 12.5, color: color.ink }}>{text}</Text></View> : null}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          {text ? <Button style={half} title="Send the bill" kind="quiet" onPress={() => { void Share.share({ message: text }); }} /> : null}
+          {invoice && canSendBill(invoice.customer_phone) ? <Button style={half} title="Send the bill from FlowXP" onPress={() => { setShareError(''); setSentNote(''); setSending(true); api.post<BillSent>('/messaging/send-bill', { invoice_id: invoice.invoice_id }).then((m) => setSentNote(billSentText(m))).catch((e: Error) => setShareError(e.message)).finally(() => setSending(false)); }} busy={sending} /> : null}
+          {text ? <Button style={half} title="Share as PDF" kind="quiet" onPress={() => { setShareError(''); shareReceiptPdf(text, paper).catch((e: Error) => setShareError(e.message)); }} /> : null}
+          {invoice && canEway(business?.role, Boolean(invoice.customer_gstin)) ? <Button style={half} title={invoice.eway_bill_no ? t('E-way bill {number}', { number: invoice.eway_bill_no }) : 'E-way bill'} kind="quiet" onPress={() => router.push({ pathname: '/eway-bill', params: { id: String(invoice.invoice_id) } })} /> : null}
+          {invoice && usesTaxInvoice(invoice, business?.business_type) ? (
           <>
-            <Button title="Share tax invoice (PDF)" kind="quiet" onPress={() => { setShareError(''); shareTaxInvoicePdf(api, invoice.invoice_id).catch((e: Error) => setShareError(e.message)); }} />
-            <Button title="Print tax invoice" kind="quiet" onPress={() => { setShareError(''); printTaxInvoice(api, invoice.invoice_id).catch((e: Error) => setShareError(e.message)); }} />
-            <Button title="Edit invoice details" kind="quiet" onPress={() => router.push({ pathname: '/invoice-details', params: { id: String(invoice.invoice_id) } })} />
+            <Button style={half} title="Share tax invoice (PDF)" kind="quiet" onPress={() => { setShareError(''); shareTaxInvoicePdf(api, invoice.invoice_id).catch((e: Error) => setShareError(e.message)); }} />
+            <Button style={half} title="Print tax invoice" kind="quiet" onPress={() => { setShareError(''); printTaxInvoice(api, invoice.invoice_id).catch((e: Error) => setShareError(e.message)); }} />
+            <Button style={half} title="Edit invoice details" kind="quiet" onPress={() => router.push({ pathname: '/invoice-details', params: { id: String(invoice.invoice_id) } })} />
           </>
         ) : null}
-        <ErrorText>{shareError}</ErrorText>
-        {invoice ? <Button title="Return items" kind="quiet" onPress={() => router.push(['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type ?? '') ? { pathname: '/return-sale', params: { invoice: String(invoiceId) } } : { pathname: '/return', params: { id: String(invoiceId) } })} /> : null}
+          {invoice ? <Button style={half} title="Return items" kind="quiet" onPress={() => router.push(['WHOLESALE', 'DISTRIBUTOR'].includes(business?.business_type ?? '') ? { pathname: '/return-sale', params: { invoice: String(invoiceId) } } : { pathname: '/return', params: { id: String(invoiceId) } })} /> : null}
+        </View>
+        {sentNote ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok }}>{sentNote}</Text> : null}
       </ScrollView>
+      <View style={{ padding: 16, paddingTop: 10, gap: 10, borderTopWidth: 1, borderColor: color.line, backgroundColor: color.card }}>
+        {printedNote ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok, fontWeight: '700', textAlign: 'center' }}>{t('Receipt printed')}</Text> : null}
+        <ErrorText>{printError || shareError}</ErrorText>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          {text ? <Button title="Print the bill" kind="quiet" style={{ flex: 1 }} onPress={() => { setPrintError(''); void kvGet('paper').then((p) => printReceipt(text, p === '80' ? '80' : '58', qrLink ? { qr: qrLink } : {})).then((how) => { if (how === 'fallback') setPrintError(t("Could not reach the printer, so the bill went to the phone's print screen instead.")); else if (token) return printReceipt(token, paper, { noDialog: true, big: true }).then(() => undefined); }).catch((e: Error) => setPrintError(e.message)); }} /> : null}
+          {invoice ? <Button title="WhatsApp" kind="quiet" style={{ flex: 1 }} onPress={() => { setShareError(''); shareBillOnWhatsApp(api, invoice.invoice_id).catch((e: Error) => setShareError(e.message)); }} /> : null}
+        </View>
+        <Button title={printedNote ? t('OK') : invoice?.table_name ? 'Back to the tables' : 'Next customer: new bill'} onPress={() => router.replace(invoice?.table_name ? '/tables' : '/sell')} />
+      </View>
       </Page>
     </SafeAreaView>
   );

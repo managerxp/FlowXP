@@ -37,7 +37,7 @@ const makeStyles = () => StyleSheet.create({
   primary: { backgroundColor: color.action },
   quiet: { backgroundColor: color.card, borderWidth: 1, borderColor: color.lineStrong },
   dangerBtn: { backgroundColor: color.dangerBg },
-  buttonText: { color: color.onAction, fontSize: 16, fontWeight: '600', letterSpacing: 0.1 },
+  buttonText: { textAlign: 'center', color: color.onAction, fontSize: 16, fontWeight: '600', letterSpacing: 0.1 },
   input: { minHeight: 52, borderWidth: 1, borderColor: color.lineStrong, borderRadius: radius.control, borderCurve: 'continuous', paddingHorizontal: 14, fontSize: 16, backgroundColor: color.card, color: color.ink },
   card: { backgroundColor: color.card, borderRadius: radius.card, borderCurve: 'continuous', borderWidth: 1, borderColor: color.line, padding: 16, boxShadow: shadow.card }
 });
