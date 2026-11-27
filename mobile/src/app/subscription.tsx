@@ -39,7 +39,7 @@ export default function SubscriptionScreen() {
               <>
                 <SectionTitle>WhatsApp credit</SectionTitle>
                 <Line left={t('Credit')} right={rupees(Number(wallet.balance_paise))} />
-                <View style={{ padding: 16, gap: 8 }}><Soft>To add credit, contact us and we will load it.</Soft><Button title="Contact us" kind="quiet" onPress={() => contact('FlowXP WhatsApp credit')} /></View>
+                <Soft style={{ paddingHorizontal: 16, paddingTop: 8 }}>We load credit for you.</Soft>
               </>
             ) : null}
             {sub.addons?.length ? (
@@ -49,11 +49,15 @@ export default function SubscriptionScreen() {
                   <View key={a.addon_key} style={{ paddingHorizontal: 16, paddingVertical: 10, gap: 4, borderTopWidth: 1, borderColor: color.line }}>
                     <Text style={{ fontSize: 16, fontWeight: '600', color: color.ink }}>{a.name}{a.owned ? `  ·  ${t('On')}` : ''}</Text>
                     {a.description ? <Soft>{a.description}</Soft> : null}
-                    {!a.owned ? <Button title="Contact us" kind="quiet" onPress={() => contact(`FlowXP add-on: ${a.name}`)} style={{ minHeight: 44 }} /> : null}
                   </View>
                 ))}
               </>
             ) : null}
+            {/* the one way to reach us: add-ons, WhatsApp credit, plan prices and questions */}
+            <View style={{ padding: 16, paddingTop: 24, gap: 10 }}>
+              <Soft style={{ textAlign: 'center' }}>For add-ons, WhatsApp credit, plan prices or any question, write to us.</Soft>
+              <Button title="Contact us" onPress={() => contact('FlowXP subscription')} />
+            </View>
           </ScrollView>
         )}
       </Page>

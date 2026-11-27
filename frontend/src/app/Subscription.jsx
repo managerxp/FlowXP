@@ -106,9 +106,8 @@ const Subscription = () => {
           <p className="mt-2 text-2xl font-semibold text-ink-900">{formatMoney(wallet.balance_paise)}</p>
           <p className="mt-1 text-sm text-ink-500">
             About {Math.floor(Number(wallet.balance_paise) / Math.max(1, Number(wallet.prices_paise?.UTILITY || 1))).toLocaleString('en-IN')} bill, points and update messages.
-            To add credit, contact us and we will load it.
+            We load credit for you.
           </p>
-          <a className="mt-3 inline-block rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-700" href={`mailto:flowxp.manager@gmail.com?subject=${encodeURIComponent('FlowXP WhatsApp credit')}`}>Contact us</a>
         </Card>
       )}
 
@@ -120,12 +119,6 @@ const Subscription = () => {
               <Card key={a.addon_key}>
                 <h3 className="text-sm font-bold text-ink-900">{a.name}{a.owned && <span className="ml-2 rounded bg-success/10 px-1.5 py-0.5 text-[10px] text-success">On</span>}</h3>
                 {a.description && <p className="mt-1.5 text-sm text-ink-500">{a.description}</p>}
-                {!a.owned && (
-                  <a className="mt-4 block w-full rounded-lg border border-line px-3 py-1.5 text-center text-sm font-medium text-ink-700"
-                     href={`mailto:flowxp.manager@gmail.com?subject=${encodeURIComponent(`FlowXP add-on: ${a.name}`)}`}>
-                    Contact us
-                  </a>
-                )}
               </Card>
             ))}
           </div>
@@ -156,12 +149,7 @@ const Subscription = () => {
                   <Button size="sm" className="mt-5 w-full" disabled={current || busy === plan.plan_code} onClick={() => upgrade(plan.plan_code)}>
                     {current ? 'Current plan' : busy === plan.plan_code ? 'Opening payment…' : data.status === 'ACTIVE' ? 'Switch to this plan' : 'Upgrade'}
                   </Button>
-                ) : (
-                  <a className="mt-5 block w-full rounded-lg border border-line px-3 py-1.5 text-center text-sm font-medium text-ink-700"
-                     href={`mailto:flowxp.manager@gmail.com?subject=${encodeURIComponent(`FlowXP ${plan.name} plan`)}`}>
-                    Ask for a price
-                  </a>
-                )}
+                ) : null}
               </Card>
             );
           })}
@@ -169,9 +157,14 @@ const Subscription = () => {
 
         <p className="mt-5 text-xs text-ink-400">
           You pay on Cashfree's secure page; we never see your card or UPI details. The plan switches on as soon as the payment goes through.
-          Questions: flowxp.manager@gmail.com.
         </p>
       </div>
+
+      {/* the one way to reach us: add-ons, WhatsApp credit, plan prices and questions */}
+      <Card className="text-center">
+        <p className="text-sm text-ink-500">For add-ons, WhatsApp credit, plan prices or any question, write to us.</p>
+        <a className="mt-3 inline-block rounded-lg border border-line px-6 py-2 text-sm font-medium text-ink-700" href={`mailto:flowxp.manager@gmail.com?subject=${encodeURIComponent('FlowXP subscription')}`}>Contact us</a>
+      </Card>
     </div>
   );
 };
