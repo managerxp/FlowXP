@@ -53,7 +53,7 @@ export default function Appointments() {
               <View key={a.appointment_id} style={{ marginHorizontal: 16, marginBottom: 10, padding: 16, gap: 8, borderRadius: radius.card, borderCurve: 'continuous', borderWidth: 1, borderColor: color.line, backgroundColor: color.card, boxShadow: shadow.card }}>
                 <Text style={{ fontSize: 16, fontWeight: '600', color: color.ink }}>{clock(a.start_at)} · {a.customer_name ?? 'Walk-in'}</Text>
                 <View style={{ flexDirection: 'row' }}><Pill label={APPOINTMENT_LABEL[a.status]} tone={TONE[a.status]} /></View>
-                <Soft>{a.services.map((x) => `${x.name} (${x.staff_name})`).join(', ')} · {rupees(toPaise(a.total))}</Soft>
+                <Soft>{a.services.map((x) => `${x.name} (${x.staff_name})`).join(', ')} · {rupees(toPaise(a.total_payable ?? a.total))}</Soft>
                 {a.notes ? <Soft>{a.notes}</Soft> : null}
                 <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
                   {next ? <Button title={next.label} kind="quiet" busy={busy === a.appointment_id} onPress={() => { void move(a, next.to); }} /> : null}

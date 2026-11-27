@@ -5520,5 +5520,7 @@
   "Leave empty for no offer": "অফার না চাইলে খালি রাখুন",
   "Offer wording": "অফারের শব্দ",
   "Shown on the page, e.g. 10% off when you book online": "পাতায় দেখানো হয়, যেমন অনলাইনে বুক করলে ১০% ছাড়",
-  "Print loyalty on receipts (stamp QR and card line)": "রসিদে লয়্যালটি ছাপুন (স্ট্যাম্প QR ও কার্ডের লাইন)"
+  "Print loyalty on receipts (stamp QR and card line)": "রসিদে লয়্যালটি ছাপুন (স্ট্যাম্প QR ও কার্ডের লাইন)",
+  "To pay with GST, before discounts": "GST সহ প্রদেয়, ছাড়ের আগে",
+  "Check-in and payment open on the day of the appointment. If the client is here now, reschedule it to today.": "অ্যাপয়েন্টমেন্টের দিনেই চেক-ইন ও পেমেন্ট চালু হয়। গ্রাহক এখনই এসে থাকলে এটি আজকের দিনে সরান।"
 }

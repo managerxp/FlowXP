@@ -29,6 +29,7 @@ import { businessToday } from '../../utils/dates.js';
 import { toRupees } from '../../utils/money.js';
 import { SalonError, int, isoDate, money } from './common.js';
 import { getSettings } from './settings.js';
+import { isLaterDay, notYetMessage } from './appointmentRules.js';
 import { accrueCommissions } from './commission.js';
 import {
   activeMembership, freeServiceBalance, issueGiftCard, lockUsableCard, redeemGiftCard, sellMembership, sellPackage, usePackage
@@ -342,9 +343,11 @@ export const createSalonInvoice = async (client, tenant, userId, input, { dryRun
   if (input.appointment_id) {
     const a = (await client.query(
       `UPDATE salon_appointments SET status = 'COMPLETED', invoice_id = $3, updated_at = CURRENT_TIMESTAMP
-       WHERE appointment_id = $1 AND business_id = $2 AND branch_id = $4 AND status IN ('BOOKED','CONFIRMED','CHECKED_IN','IN_SERVICE') RETURNING appointment_id`,
+       WHERE appointment_id = $1 AND business_id = $2 AND branch_id = $4 AND status IN ('BOOKED','CONFIRMED','CHECKED_IN','IN_SERVICE') RETURNING appointment_id, start_at,
+         (SELECT COALESCE(timezone, 'Asia/Kolkata') FROM businesses WHERE business_id = $2) AS tz`,
       [int(input.appointment_id, 'Appointment', { min: 1, required: true }), tenant.businessId, invoice.invoice_id, tenant.branchId])).rows[0];
     if (!a) throw new SalonError(409, 'That appointment is not open at this outlet');
+    if (isLaterDay(a.start_at, a.tz)) throw new SalonError(409, notYetMessage(a.start_at, a.tz));   // the whole bill is rolled back
   }
 
   return {

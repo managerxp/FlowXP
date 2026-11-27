@@ -35,7 +35,10 @@ const SalonBooking = () => {
   const byId = useMemo(() => new Map((info?.services || []).map((s) => [s.service_id, s])), [info]);
   const chosen = picked.map((id) => byId.get(id)).filter(Boolean);
   const minutes = chosen.reduce((s, x) => s + x.duration_min, 0);
-  const total = chosen.reduce((s, x) => s + x.price, 0);
+  // what the till will charge (with GST), not just the list prices; the till rounds the whole bill to a rupee when the salon has round-off on
+  const exact = chosen.reduce((s, x) => s + (x.payable ?? x.price), 0);
+  const total = info?.round_off ? Math.round(exact) : Math.round(exact * 100) / 100;
+  const taxExtra = Boolean(info?.services.some((s) => (s.payable ?? s.price) > s.price));
   const staff = (info?.staff || []).filter((s) => !s.service_ids.length || picked.every((id) => s.service_ids.includes(id)));
 
   useEffect(() => {
@@ -78,7 +81,7 @@ const SalonBooking = () => {
             <p className="mt-1 text-small text-ink-700">{dateText(date, { weekday: 'long', day: 'numeric', month: 'long' })} at {timeText(done.start_at, info.timezone)}</p>
             <ul className="mt-4 divide-y divide-line rounded-(--radius-control) border border-line text-left text-small">
               {done.services.map((s, i) => <li key={i} className="flex justify-between px-3.5 py-2"><span>{s.name}<span className="block text-caption text-ink-500">with {s.staff_name} · {timeText(s.start_at, info.timezone)}</span></span></li>)}
-              <li className="flex justify-between px-3.5 py-2 font-semibold"><span>Total at the salon</span><span className="tabular">{money(done.total)}</span></li>
+              <li className="flex justify-between px-3.5 py-2 font-semibold"><span>Total at the salon{taxExtra ? ' (including GST)' : ''}{done.offer ? ', before the offer' : ''}</span><span className="tabular">{money(done.total)}</span></li>
             </ul></>}
           <p className="mt-4 text-caption text-ink-500">{info.name}{info.phone && <> · call {info.phone} to change or cancel</>}</p>
           {info.cancellation_policy && <p className="mt-2 text-caption text-ink-500">{info.cancellation_policy}</p>}
@@ -105,6 +108,7 @@ const SalonBooking = () => {
 
         <section aria-labelledby="bk-services">
           <h2 id="bk-services" className="mb-3 text-body font-semibold text-ink-900">1. Choose services</h2>
+          {taxExtra && <p className="-mt-2 mb-3 text-caption text-ink-500">Prices are before GST. The amount to pay below includes it.</p>}
           {groups.map((g) => (
             <div key={g} className="mb-4">
               <p className="mb-1.5 text-caption font-semibold uppercase tracking-wide text-ink-400">{g}</p>
@@ -150,7 +154,7 @@ const SalonBooking = () => {
             <div aria-hidden="true" className="absolute -left-[9999px]"><label>Website<input tabIndex={-1} autoComplete="off" value={form.website} onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))} /></label></div>
             <Alert>{formError}</Alert>
             <div className="rounded-(--radius-control) bg-surface-2 px-3.5 py-3 text-small text-ink-700">
-              {chosen.map((s) => s.name).join(', ')} · {minutes} min · <strong className="font-semibold text-ink-900">{money(total)}</strong> to pay at the salon, on {dateText(date)} at {clockText(time)}.
+              {chosen.map((s) => s.name).join(', ')} · {minutes} min · <strong className="font-semibold text-ink-900">{money(total)}</strong> to pay at the salon{taxExtra ? ' (including GST)' : ''}{info.offer ? ', before the offer' : ''}, on {dateText(date)} at {clockText(time)}.
             </div>
             <Button type="submit" size="lg" className="w-full" loading={busy}><CalendarCheck aria-hidden="true" className="h-5 w-5" />Confirm booking</Button>
           </section>

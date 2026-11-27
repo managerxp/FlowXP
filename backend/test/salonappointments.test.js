@@ -31,6 +31,8 @@ const nextDay = (isoDay) => {
 };
 const at = (day, hhmm) => { const [h, m] = hhmm.split(':').map(Number); return fromLocal(day, h * 60 + m, TZ).toISOString(); };
 const book = (body, tenant) => S.call(appts.create, { body }, tenant);
+/* the client has arrived: check-in and billing are only allowed on the appointment's day */
+const today = (id) => pool.query(`UPDATE salon_appointments SET start_at = now() - interval '1 minute', end_at = now() + interval '29 minutes' WHERE appointment_id = $1`, [id]);
 const one = (start, staff, service = haircut, extra = {}) => ({ customer_id: asha, start_at: at(date, start), services: [{ service_id: service, staff_id: staff }], ...extra });
 
 test('setup', { skip }, async () => {
@@ -173,13 +175,20 @@ test('an appointment moves along booked, confirmed, checked in, in service; comp
   const a = (await book(one('11:45', meena))).body.data;
   const step = async (status, code = 200) => { const r = await S.call(appts.setStatus, { params: { id: a.appointment_id }, body: { status } }); assert.equal(r.code, code, `${status}: ${JSON.stringify(r.body)}`); return r; };
   await step('IN_SERVICE', 409);
-  await step('CONFIRMED'); await step('CHECKED_IN'); await step('IN_SERVICE');
+  await step('CONFIRMED');
+  assert.match((await step('CHECKED_IN', 409)).body.message, /on that day/, 'not days ahead');
+  await today(a.appointment_id);
+  await step('CHECKED_IN'); await step('IN_SERVICE');
   await step('COMPLETED', 409);
   await step('BOGUS', 400);
 });
 
 test('billing an appointment completes it, and cancelling the bill reopens it', { skip }, async () => {
   const a = (await book(one('13:15', meena))).body.data;
+  assert.equal((await S.call(appts.cart, { params: { id: a.appointment_id } })).code, 409, 'a later day is not billed');
+  await assert.rejects(() => sell(pool, createSalonInvoice, S, { appointment_id: a.appointment_id, items: [{ type: 'SERVICE', service_id: haircut, staff_id: meena }] }), /on that day/);
+  assert.equal((await S.call(appts.get, { params: { id: a.appointment_id } })).body.data.status, 'BOOKED', 'and nothing changed');
+  await today(a.appointment_id);
   const cart = await S.call(appts.cart, { params: { id: a.appointment_id } });
   assert.equal(cart.body.data.items[0].staff_id, meena);
   assert.equal(cart.body.data.customer_id, asha);

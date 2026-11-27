@@ -14,6 +14,7 @@ import { toRupees } from '../utils/money.js';
 import { effectiveFeatureFlags, hasPlanFeature } from '../modules/planFeatures.js';
 import { getSettings } from '../modules/salon/settings.js';
 import { SalonError, isoDate, phone as cleanPhone, text } from '../modules/salon/common.js';
+import { payablePaise, tillRules } from '../modules/salon/appointmentRules.js';
 import appointments from './salonAppointments.controller.js';
 
 const fail = (res, status, message) => res.status(status).json({ success: false, message });
@@ -66,7 +67,7 @@ export const info = async (req, res) => {
   const { biz, outlets, outlet } = g;
   const settings = await getSettings(pool, biz.business_id);
   const services = (await pool.query(
-    `SELECT p.product_id, p.name, p.description, c.name AS category, COALESCE(pbs.price_paise, p.selling_price_paise) AS price_paise, COALESCE(d.duration_min, 30) AS duration_min,
+    `SELECT p.product_id, p.name, p.description, c.name AS category, COALESCE(pbs.price_paise, p.selling_price_paise) AS price_paise, p.tax_rate, p.price_includes_tax, COALESCE(d.duration_min, 30) AS duration_min,
             COALESCE(d.gender, 'ANY') AS gender
      FROM products p LEFT JOIN salon_item_details d ON d.product_id = p.product_id LEFT JOIN categories c ON c.category_id = p.category_id
      LEFT JOIN product_branch_settings pbs ON pbs.product_id = p.product_id AND pbs.branch_id = $2
@@ -74,12 +75,14 @@ export const info = async (req, res) => {
   const staff = (await pool.query(
     `SELECT s.staff_id, s.name, s.staff_role, COALESCE((SELECT json_agg(x.product_id) FROM salon_staff_services x WHERE x.staff_id = s.staff_id), '[]'::json) AS service_ids
      FROM salon_staff s WHERE s.business_id = $1 AND s.branch_id = $2 AND s.status = 'ACTIVE' AND s.is_bookable ORDER BY s.name`, [biz.business_id, outlet.branch_id])).rows;
+  const till = await tillRules(pool, biz.business_id, settings);
   res.json({ success: true, data: {
+    round_off: Boolean(till.roundOff),
     offer: biz.online_booking_offer_pct ? { pct: Number(biz.online_booking_offer_pct), text: biz.online_booking_offer_text || `${Number(biz.online_booking_offer_pct)}% off when you book online` } : null,
     name: biz.name, logo_url: biz.logo_url, phone: biz.phone, address: [biz.address, biz.city].filter(Boolean).join(', ') || null, notice: biz.online_booking_notice,
     timezone: biz.timezone || 'Asia/Kolkata', max_advance_days: settings.max_advance_days, cancellation_policy: settings.cancellation_policy?.text || null,
     outlets: outlets.map((o) => ({ branch_id: o.branch_id, name: o.name, city: o.city })), outlet_id: outlet.branch_id,
-    services: services.map((s) => ({ service_id: s.product_id, name: s.name, description: s.description, category: s.category, price: toRupees(s.price_paise), duration_min: s.duration_min, gender: s.gender })),
+    services: services.map((s) => ({ service_id: s.product_id, name: s.name, description: s.description, category: s.category, price: toRupees(s.price_paise), payable: toRupees(payablePaise([s], { ...till, roundOff: false })), duration_min: s.duration_min, gender: s.gender })),
     staff: staff.map((s) => ({ staff_id: s.staff_id, name: s.name, role: s.staff_role, service_ids: s.service_ids }))
   } });
 };
@@ -157,7 +160,7 @@ export const book = async (req, res) => {
     .catch((e) => console.error('[push] booking alert failed:', e.message));
   // only what the person who booked needs: never the name or details of a client the number happened to match
   res.status(201).json({ success: true, data: {
-    token_no: token, offer, appointment_id: a.appointment_id, status: a.status, start_at: a.start_at, end_at: a.end_at, total: a.total,
+    token_no: token, offer, appointment_id: a.appointment_id, status: a.status, start_at: a.start_at, end_at: a.end_at, total: a.total_payable,
     services: a.services.map((s) => ({ name: s.name, staff_name: s.staff_name, start_at: s.start_at, duration_min: s.duration_min }))
   } });
 };

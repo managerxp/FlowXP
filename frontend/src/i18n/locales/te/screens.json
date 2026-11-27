@@ -5520,5 +5520,7 @@
   "Leave empty for no offer": "ఆఫర్ వద్దనుకుంటే ఖాళీగా వదలండి",
   "Offer wording": "ఆఫర్ పదాలు",
   "Shown on the page, e.g. 10% off when you book online": "పేజీలో చూపబడుతుంది, ఉదా. ఆన్‌లైన్‌లో బుక్ చేస్తే 10% తగ్గింపు",
-  "Print loyalty on receipts (stamp QR and card line)": "రసీదుపై లాయల్టీ ముద్రించండి (స్టాంప్ QR, కార్డ్ లైన్)"
+  "Print loyalty on receipts (stamp QR and card line)": "రసీదుపై లాయల్టీ ముద్రించండి (స్టాంప్ QR, కార్డ్ లైన్)",
+  "To pay with GST, before discounts": "GSTతో చెల్లించవలసింది, తగ్గింపుకు ముందు",
+  "Check-in and payment open on the day of the appointment. If the client is here now, reschedule it to today.": "అపాయింట్‌మెంట్ రోజునే చెక్-ఇన్ మరియు చెల్లింపు తెరుచుకుంటాయి. కస్టమర్ ఇప్పుడే వచ్చి ఉంటే, దాన్ని ఈ రోజుకు మార్చండి."
 }

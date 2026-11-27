@@ -19,7 +19,7 @@ export type Entitlements = {
 export type Appointment = {
   appointment_id: number; customer_id: number | null; customer_name: string | null; customer_phone: string | null; start_at: string; end_at: string;
   status: 'BOOKED' | 'CONFIRMED' | 'CHECKED_IN' | 'IN_SERVICE' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'; notes: string | null; invoice_id: number | null;
-  services: { line_id: number; service_id: number; name: string; staff_id: number; staff_name: string; duration_min: number; price: number }[]; total: number;
+  services: { line_id: number; service_id: number; name: string; staff_id: number; staff_name: string; duration_min: number; price: number }[]; total: number; total_payable?: number;
 };
 export type AppointmentCart = { appointment_id: number; customer_id: number | null; guest_name: string | null; items: { type: 'SERVICE'; service_id: number; staff_id: number; staff_name: string; name: string; price: number; quantity: number }[] };
 

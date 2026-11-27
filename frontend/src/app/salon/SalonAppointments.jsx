@@ -201,6 +201,9 @@ const DetailModal = ({ id, tz, onClose, onChanged }) => {
   };
 
   const live = a && LIVE.includes(a.status);
+  // an appointment on a later day cannot be checked in or billed (the server refuses too)
+  const later = Boolean(a) && localParts(a.start_at, tz).date > localParts(Date.now(), tz).date;
+  const nextSteps = a ? (NEXT[a.status] || []).filter(([to]) => !later || to === 'CONFIRMED') : [];
   return (
     <Modal title={a ? `${a.customer_name || 'Guest'} · ${dateText(localParts(a.start_at, tz).date)}` : tr('Appointment')} onClose={onClose}>
       <ListState loading={loading} error={error} />
@@ -228,6 +231,7 @@ const DetailModal = ({ id, tz, onClose, onChanged }) => {
               </li>
             ))}
             <li className="flex justify-between px-3.5 py-2.5 text-small font-semibold"><span>{tr('Total')}</span><span className="tabular">{money(a.total)}</span></li>
+            {a.total_payable != null && a.total_payable !== a.total && <li className="flex justify-between px-3.5 py-2.5 text-small text-ink-700"><span>{tr('To pay with GST, before discounts')}</span><span className="tabular">{money(a.total_payable)}</span></li>}
           </ul>
           {a.notes && <p className="rounded-(--radius-control) bg-surface-2 px-3 py-2 text-small text-ink-700">{a.notes}</p>}
           {a.cancel_reason && <p className="text-small text-ink-500">{tr('Cancelled: {{cancel_reason}}', { cancel_reason: a.cancel_reason })}</p>}
@@ -241,12 +245,13 @@ const DetailModal = ({ id, tz, onClose, onChanged }) => {
             </div>
           )}
 
+          {live && later && <p className="text-small text-ink-500">{tr('Check-in and payment open on the day of the appointment. If the client is here now, reschedule it to today.')}</p>}
           <div className="flex flex-wrap justify-end gap-2 border-t border-line pt-4">
-            {live && (NEXT[a.status] || []).map(([to, label]) => <Button key={to} variant="secondary" loading={busy} onClick={() => setStatus(to)}>{tr(label)}</Button>)}
+            {live && nextSteps.map(([to, label]) => <Button key={to} variant="secondary" loading={busy} onClick={() => setStatus(to)}>{tr(label)}</Button>)}
             {live && !stylist && <Button variant="secondary" onClick={() => setMoving((v) => !v)}><Clock aria-hidden="true" className="h-4 w-4" />{tr('Reschedule')}</Button>}
             {['BOOKED', 'CONFIRMED'].includes(a.status) && !stylist && <Button variant="ghost" onClick={() => setStatus('NO_SHOW')}>{tr('No-show')}</Button>}
             {live && !stylist && <Button variant="ghost" className="text-danger" onClick={cancel}>{tr('Cancel')}</Button>}
-            {live && can('billing') && <Button onClick={() => navigate(`/app/salon/pos?appointment=${a.appointment_id}`)}>{tr('Take payment')}</Button>}
+            {live && !later && can('billing') && <Button onClick={() => navigate(`/app/salon/pos?appointment=${a.appointment_id}`)}>{tr('Take payment')}</Button>}
             {a.status === 'COMPLETED' && a.invoice_id && <Button variant="secondary" onClick={() => navigate(`/app/billing/invoices/${a.invoice_id}`)}>{tr('View bill')}</Button>}
           </div>
         </div>

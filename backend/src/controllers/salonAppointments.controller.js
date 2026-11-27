@@ -14,6 +14,7 @@ import { businessToday } from '../utils/dates.js';
 import { branchFilter } from '../utils/scope.js';
 import { findCustomerByPhone } from '../modules/phone.js';
 import { ownStaffId } from '../modules/salon/access.js';
+import { isLaterDay, notYetMessage, payablePaise, tillRules } from '../modules/salon/appointmentRules.js';
 import {
   SalonError, audit, int, isoDate, ok, oneOf, phone, text, timestamp, wrapAll
 } from '../modules/salon/common.js';
@@ -38,10 +39,10 @@ const clockText = (instant, tz) => toClock(localParts(instant, tz).minutes);
 /* ── reading ──────────────────────────────────────────────────────────────────────────────── */
 
 const LINES = `
-  SELECT l.line_id, l.appointment_id, l.service_id, p.name AS service_name, l.staff_id, s.name AS staff_name, l.start_at, l.end_at, l.price_paise
+  SELECT l.line_id, l.appointment_id, l.service_id, p.name AS service_name, p.tax_rate, p.price_includes_tax, l.staff_id, s.name AS staff_name, l.start_at, l.end_at, l.price_paise
   FROM salon_appointment_services l JOIN products p ON p.product_id = l.service_id JOIN salon_staff s ON s.staff_id = l.staff_id`;
 
-const shape = (a, lines) => ({
+const shape = (a, lines, till) => ({
   appointment_id: a.appointment_id, branch_id: a.branch_id,
   customer_id: a.customer_id, customer_name: a.customer_name || a.guest_name, customer_phone: a.customer_phone || a.guest_phone, is_guest: !a.customer_id,
   start_at: a.start_at, end_at: a.end_at, status: a.status, source: a.source, notes: a.notes, cancel_reason: a.cancel_reason, invoice_id: a.invoice_id,
@@ -49,7 +50,8 @@ const shape = (a, lines) => ({
     line_id: l.line_id, service_id: l.service_id, name: l.service_name, staff_id: l.staff_id, staff_name: l.staff_name,
     start_at: l.start_at, end_at: l.end_at, duration_min: Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000), price: toRupees(l.price_paise)
   })),
-  total: toRupees(lines.reduce((s, l) => s + Number(l.price_paise), 0))
+  total: toRupees(lines.reduce((s, l) => s + Number(l.price_paise), 0)),
+  total_payable: toRupees(payablePaise(lines, till))   // with GST and round-off, before any discount: what a client should be told
 });
 
 const loadMany = async (db, rows) => {
@@ -57,7 +59,9 @@ const loadMany = async (db, rows) => {
   const lines = (await db.query(`${LINES} WHERE l.appointment_id = ANY($1::int[]) ORDER BY l.start_at, l.line_id`, [rows.map((r) => r.appointment_id)])).rows;
   const by = new Map();
   for (const l of lines) { if (!by.has(l.appointment_id)) by.set(l.appointment_id, []); by.get(l.appointment_id).push(l); }
-  return rows.map((r) => shape(r, by.get(r.appointment_id) || []));
+  const businessId = rows[0].business_id;
+  const till = await tillRules(db, businessId, await getSettings(db, businessId));
+  return rows.map((r) => shape(r, by.get(r.appointment_id) || [], till));
 };
 
 const HEADER = `
@@ -394,6 +398,10 @@ const setStatus = async (req, res) => {
   if (!TRANSITIONS[before.status].includes(to)) throw new SalonError(409, `A ${before.status.toLowerCase().replace('_', ' ')} appointment cannot be marked ${to.toLowerCase().replace('_', ' ')}`);
   if (to === 'COMPLETED') throw new SalonError(409, 'An appointment is completed when its bill is taken');
   if (to === 'NO_SHOW' && new Date(before.start_at).getTime() > Date.now()) throw new SalonError(409, 'It is not yet time for this appointment');
+  if (['CHECKED_IN', 'IN_SERVICE'].includes(to)) {
+    const tz = await tzOf(pool, req.tenant.businessId);
+    if (isLaterDay(before.start_at, tz)) throw new SalonError(409, notYetMessage(before.start_at, tz));
+  }
   // a stylist may only move their own clients along the service, not cancel or no-show
   if (req.tenant.role === 'STYLIST' && !['CHECKED_IN', 'IN_SERVICE'].includes(to)) throw new SalonError(403, 'Ask the front desk to do that');
 
@@ -414,6 +422,8 @@ const cart = async (req, res) => {
   const a = await loadOne(pool, req, req.params.id);
   if (!a) throw new SalonError(404, 'Not found');
   if (['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(a.status)) throw new SalonError(409, `This appointment is ${a.status.toLowerCase().replace('_', ' ')}`);
+  const tz = await tzOf(pool, req.tenant.businessId);
+  if (isLaterDay(a.start_at, tz)) throw new SalonError(409, notYetMessage(a.start_at, tz));
   ok(res, {
     appointment_id: a.appointment_id, customer_id: a.customer_id, guest_name: a.is_guest ? a.customer_name : null,
     items: a.services.map((s) => ({ type: 'SERVICE', service_id: s.service_id, name: s.name, staff_id: s.staff_id, staff_name: s.staff_name, price: s.price, quantity: 1 }))

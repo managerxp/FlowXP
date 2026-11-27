@@ -240,7 +240,7 @@ const REPORTS = {
       const rows = [
         { metric: `Customers in the previous ${days} days`, value: prev },
         { metric: 'Of those, came back in this period', value: kept },
-        { metric: 'Retention rate', value: prev ? Math.round((kept / prev) * 1000) / 10 : 0, unit: '%' },
+        { metric: 'Retention rate (%)', value: prev ? Math.round((kept / prev) * 1000) / 10 : 0, unit: '%' },
         { metric: 'Customers in this period', value: Number(r.cur_n) },
         { metric: 'New this period (not seen before)', value: Math.max(0, Number(r.cur_n) - kept) }
       ];

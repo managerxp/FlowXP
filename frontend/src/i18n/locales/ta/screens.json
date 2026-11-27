@@ -5520,5 +5520,7 @@
   "Leave empty for no offer": "சலுகை வேண்டாமெனில் காலியாக விடவும்",
   "Offer wording": "சலுகை வாசகம்",
   "Shown on the page, e.g. 10% off when you book online": "பக்கத்தில் காட்டப்படும், எ.கா. ஆன்லைனில் முன்பதிவு செய்தால் 10% தள்ளுபடி",
-  "Print loyalty on receipts (stamp QR and card line)": "ரசீதில் லாயல்டியை அச்சிடு (ஸ்டாம்ப் QR, கார்டு வரி)"
+  "Print loyalty on receipts (stamp QR and card line)": "ரசீதில் லாயல்டியை அச்சிடு (ஸ்டாம்ப் QR, கார்டு வரி)",
+  "To pay with GST, before discounts": "GST உடன் செலுத்த வேண்டியது, தள்ளுபடிக்கு முன்",
+  "Check-in and payment open on the day of the appointment. If the client is here now, reschedule it to today.": "செக்-இன் மற்றும் கட்டணம் சந்திப்பு நாளில் திறக்கும். வாடிக்கையாளர் இப்போதே வந்திருந்தால், அதை இன்றைக்கு மாற்றவும்."
 }
