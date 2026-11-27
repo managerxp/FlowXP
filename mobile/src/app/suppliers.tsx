@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
@@ -10,7 +10,7 @@ import type { Supplier } from '../lib/buying.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { WHOLESALE_TYPES } from '../lib/retail.ts';
 import { Page, ColumnList } from '../lib/responsive.tsx';
-import { Button, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 /* Who you buy from and what you owe them. Receive stock when a delivery arrives. */
 export default function Suppliers() {

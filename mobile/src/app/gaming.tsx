@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '../lib/icons.tsx';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,7 +12,7 @@ import { rupees, toPaise } from '../lib/money.ts';
 import { ALARMS, KIND_LABEL, STATE_LABEL, clock, countBy, duration, liveCharge, liveElapsed, liveRemaining, offersFor, startBody, startProblem, stations, stopBody, stopProblem, timeWarning, type Board, type Bundle, type How, type Station } from '../lib/gaming.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Chips, ErrorText, Failed, Loading, Pill, SavedNote, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Failed, Loading, Pill, SavedNote, SectionTitle, Soft, Stat, Title, color, s, TextInput } from '../lib/ui.tsx';
 import { display } from '../lib/theme.ts';
 
 const EDGE: Record<string, string> = { get RUNNING() { return color.brand; }, get PAUSED() { return color.warn; }, get TO_BILL() { return color.danger; }, get RESERVED() { return color.warn; }, get OUT_OF_SERVICE() { return color.line; }, get AVAILABLE() { return color.line; } };

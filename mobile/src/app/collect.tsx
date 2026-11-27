@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
@@ -14,7 +14,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { METHOD_LABEL, collectBody, collectProblem, needsReference, spread, type Method, type OpenInvoice } from '../lib/wholesale.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 const METHODS = (Object.keys(METHOD_LABEL) as Method[]).map((m) => ({ id: m, label: METHOD_LABEL[m] }));

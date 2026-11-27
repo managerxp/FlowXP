@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { newKey } from '../lib/api.ts';
 import { api, useSession } from '../lib/session.ts';
@@ -9,7 +9,7 @@ import { SearchBox } from '../lib/SearchBox.tsx';
 import { WALLET_METHODS, inr, newPlayerBody, newPlayerProblem, topupBody, topupProblem, type Player } from '../lib/gamingDesk.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 /* Players and their prepaid wallets: find one, add one, put money on the wallet. */
 export default function GamingPlayers() {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { ScrollView, Switch, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../../lib/api.ts';
@@ -11,7 +11,7 @@ import { syncAll } from '../../lib/sync.ts';
 import { goBack } from '../../lib/nav.ts';
 import { setCaptured, useCaptured } from '../../lib/capture.ts';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, Chips, ErrorText, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Button, Chips, ErrorText, Soft, Title, color, s, TextInput } from '../../lib/ui.tsx';
 
 const GST = ['0', '5', '12', '18', '28'];
 type Category = { category_id: number; name: string };

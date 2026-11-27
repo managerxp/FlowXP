@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { ScrollView, Switch, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/session.ts';
@@ -7,7 +7,7 @@ import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import { AUDIENCES, DAYS, DURATIONS, PAYMENT_POLICIES, branchOn, emptyPlan, planBody, planForm, planProblem, toggleBranch, toggleIn, type GymSettings, type Plan, type PlanForm } from '../lib/gymSetup.ts';
-import { Button, Chips, ErrorText, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Loading, SectionTitle, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 /* A new plan, or one changed. Changing a plan does not change memberships already sold. */
 export default function GymPlanEdit() {

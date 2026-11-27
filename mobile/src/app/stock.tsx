@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '../lib/icons.tsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,7 +16,7 @@ import { qty } from '../lib/money.ts';
 import { t } from '../lib/i18n.ts';
 import { Page, ColumnList } from '../lib/responsive.tsx';
 import { SearchBox } from '../lib/SearchBox.tsx';
-import { Button, Chips, Empty, ErrorText, Failed, Loading, SavedNote, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Loading, SavedNote, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 /* getters, so the colours follow the theme when it is switched */
 const LOOK: Record<Status, { icon: React.ComponentProps<typeof Ionicons>['name']; tone: string; bg: string }> = {

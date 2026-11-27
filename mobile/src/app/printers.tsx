@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import { Alert, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
@@ -15,7 +15,7 @@ import { checkPrinter, dropFailed, printBillDirect, printKitchenDirect, printRec
 import {
   DEFAULT_PORT, JOBS, MAX_PRINTERS, hostProblem, nameOf, newId, portProblem, printerLine, removePrinter, setJob, setPaper, upsertPrinter, type SavedPrinter
 } from '../lib/printerSetup.ts';
-import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 const testText = (p: SavedPrinter) => { const w = COLUMNS[p.paper]; return ['FlowXP', p.name, 'Test receipt', '-'.repeat(w), '1234567890'.repeat(5).slice(0, w), 'Total'.padEnd(w - 7) + 'Rs.1.00', '-'.repeat(w), 'If this lines up, the printer is set.'].join('\n'); };
 

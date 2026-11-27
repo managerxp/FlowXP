@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, NetworkError, newKey } from '../../lib/api.ts';
@@ -13,7 +13,7 @@ import type { ProductFull } from '../../lib/types.ts';
 import { qty, rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
 import ProductPhoto from '../../lib/ProductPhoto.tsx';
-import { Button, ErrorText, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Button, ErrorText, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Title, color, s, TextInput } from '../../lib/ui.tsx';
 
 const money = (r: number) => rupees(toPaise(r));
 

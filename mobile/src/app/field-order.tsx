@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
@@ -16,7 +16,7 @@ import { qty, rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
 import { SearchBox } from '../lib/SearchBox.tsx';
 import { Offers } from '../lib/Offers.tsx';
-import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 import { display } from '../lib/theme.ts';
 
 const money = (n: number) => rupees(toPaise(n));

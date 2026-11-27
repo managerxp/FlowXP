@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { ScrollView, Switch, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
@@ -9,7 +9,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { REFUND_LABEL, returnBody, returnEstimatePaise, returnProblem, type Refund, type ReturnOptions } from '../lib/buying.ts';
 import { qty, rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Failed, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Loading, SectionTitle, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 const REASONS = ['Wrong item', 'Damaged', 'Customer changed mind', 'Not as expected'];
 

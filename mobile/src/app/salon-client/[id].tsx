@@ -1,6 +1,6 @@
 import { formatDate } from '../../lib/display.ts';
 import { useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../../lib/api.ts';
@@ -11,7 +11,7 @@ import { useLoad } from '../../lib/useLoad.ts';
 import { timelineText, type ClientDetail, type TimelineRow } from '../../lib/salon.ts';
 import { rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../../lib/ui.tsx';
+import { Button, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../../lib/ui.tsx';
 
 /* One client: what they have (membership, packages, gift cards, points), a note for the team, and everything that has happened, newest first. */
 export default function SalonClient() {

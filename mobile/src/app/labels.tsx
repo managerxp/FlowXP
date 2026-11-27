@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useScope } from '../lib/local.ts';
 import { goBack } from '../lib/nav.ts';
@@ -7,7 +7,7 @@ import { pname, type Product } from '../lib/catalog.ts';
 import { clampCopies, codeOf, labelsHtml, totalLabels, type LabelLine, type LabelSize } from '../lib/labels.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Chips, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 /* Print labels: search a product, say how many labels, print them (or save as a PDF to share). The barcode is the product's own, or its SKU. */
 export default function Labels() {

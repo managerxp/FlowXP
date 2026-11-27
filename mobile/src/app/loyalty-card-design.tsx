@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -10,7 +10,7 @@ import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import { ACCENTS, ICONS, THEMES, canDesign, cardBody, isHex, lookOf, readableOn, suggestedIcons, type CardLook, type Programme } from '../lib/cardDesign.ts';
 import CardFace from '../lib/CardFace.tsx';
-import { Button, Empty, ErrorText, Loading, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Empty, ErrorText, Loading, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 const Swatch = ({ hex, on, label, onPress }: { hex: string; on: boolean; label: string; onPress: () => void }) => (
   <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: on }} onPress={onPress} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: hex, borderWidth: 3, borderColor: on ? color.ink : color.line }} />

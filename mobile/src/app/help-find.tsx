@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { TextInput } from 'react-native';
+import {  } from 'react-native';
 import { router } from 'expo-router';
 import { currentBusiness, useSession } from '../lib/session.ts';
 import { t } from '../lib/i18n.ts';
 import { Panel, SetupShell } from '../lib/formKit.tsx';
 import { findTasks, workshopOn } from '../lib/workshopExtras.ts';
-import { Line, Soft, s, Group } from '../lib/ui.tsx';
+import { Line, Soft, s, Group, TextInput } from '../lib/ui.tsx';
 
 /* "Help me find": say what you want to do in your own words and tap the screen that does it. Only what this person can open is listed. */
 export default function HelpFindScreen() {

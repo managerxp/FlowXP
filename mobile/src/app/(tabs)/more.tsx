@@ -1,6 +1,6 @@
 import { canManageTeam } from '../../lib/team.ts';
 import { useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '../../lib/icons.tsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,7 +25,7 @@ import { useSyncState } from '../../lib/sync.ts';
 import { appVersion } from '../../lib/crash.ts';
 import { SyncBadge } from '../../lib/SyncBadge.tsx';
 import { Page, Rows } from '../../lib/responsive.tsx';
-import { Empty, Group as Card, Initials, Line, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Empty, Group as Card, Initials, Line, SectionTitle, Soft, Title, color, s, TextInput } from '../../lib/ui.tsx';
 import { t } from '../../lib/i18n.ts';
 
 type Icon = React.ComponentProps<typeof Ionicons>['name'];

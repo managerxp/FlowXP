@@ -1,6 +1,6 @@
 import { formatDate } from '../../lib/display.ts';
 import { useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../lib/session.ts';
@@ -13,7 +13,7 @@ import { useLoad } from '../../lib/useLoad.ts';
 import { NO_SALE_OUTCOMES, OUTCOME_LABEL, ensureVisit, type FieldShop, type Outcome } from '../../lib/field.ts';
 import { rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, Chips, ErrorText, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Stat, Title, color, s, Group } from '../../lib/ui.tsx';
+import { Button, Chips, ErrorText, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Stat, Title, color, s, Group, TextInput } from '../../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 

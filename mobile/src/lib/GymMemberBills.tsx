@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { newKey } from './api.ts';
 import { api, useSession } from './session.ts';
 import { useLoad } from './useLoad.ts';
@@ -8,7 +8,7 @@ import { dmy } from './gymApp.ts';
 import { paymentBody, paymentProblem, type PayMethod } from './customers.ts';
 import { shareTaxInvoicePdf } from './share.ts';
 import { t } from './i18n.ts';
-import { Button, Chips, ErrorText, Group, Line, SectionTitle, Soft, Stat, color, s } from './ui.tsx';
+import { Button, Chips, ErrorText, Group, Line, SectionTitle, Soft, Stat, color, s, TextInput } from './ui.tsx';
 
 type Bill = { invoice_id: number; invoice_number: string; invoice_date: string; total_paise: number; credited_paise: number; amount_paid_paise: number; balance_due_paise: number; is_membership: boolean };
 type Pay = { payment_id: number; payment_method: string; amount_paise: number; created_at: string; invoice_number: string };

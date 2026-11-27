@@ -1,6 +1,6 @@
 import { formatDate } from '../../lib/display.ts';
 import { useRef, useState } from 'react';
-import { Linking, ScrollView, Text, TextInput, View } from 'react-native';
+import { Linking, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../../lib/api.ts';
@@ -15,7 +15,7 @@ import { rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
 import { canRemind, reminderSentText, type BillSent } from '../../lib/messaging.ts';
 import { remindOnWhatsApp, sendStatementOnWhatsApp } from '../../lib/share.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Initials, Line, SavedNote, SectionTitle, Soft, Stat, Title, color, s, Group } from '../../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Initials, Line, SavedNote, SectionTitle, Soft, Stat, Title, color, s, Group, TextInput } from '../../lib/ui.tsx';
 
 const money = (r: number) => rupees(toPaise(r));
 type Bill = { invoice_id: number; invoice_number: string; invoice_date: string; total: number; balance_due: number; payment_status: string; status: string };

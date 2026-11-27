@@ -1,8 +1,8 @@
-import { Text, TextInput, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { mostPoints, pointsOffPaise, type Points } from './points.ts';
 import { rupees } from './money.ts';
 import { t } from './i18n.ts';
-import { Button, Soft, color, s } from './ui.tsx';
+import { Button, Soft, color, s, TextInput } from './ui.tsx';
 
 /** The customer's points on the pay screen: what they have, and how many to use on this bill. */
 export const PointsBox = ({ points, totalPaise, value, onChange }: { points: Points; totalPaise: number; value: string; onChange: (v: string) => void }) => {

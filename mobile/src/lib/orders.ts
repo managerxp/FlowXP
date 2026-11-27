@@ -51,6 +51,17 @@ export const orderTotals = (o: Order): OrderTotals => {
 
 export const itemName = (i: OrderItem) => (i.modifiers.length ? `${i.description} (${i.modifiers.map((m) => m.name).join(', ')})` : i.description);
 
+/** The lines as a waiter reads them out: the same dish, choices, note and kitchen state said once with the quantities added. Order of first appearance. */
+export const spoken = (items: OrderItem[]): OrderItem[] => {
+  const seen = new Map<string, OrderItem>();
+  for (const i of items) {
+    const key = JSON.stringify([i.product_id, itemName(i), i.kitchen_notes ?? '', i.status, i.unit_price]);
+    const have = seen.get(key);
+    seen.set(key, have ? { ...have, quantity: Number(have.quantity) + Number(i.quantity), line_total: Number(have.line_total) + Number(i.line_total) } : i);
+  }
+  return [...seen.values()];
+};
+
 /** Group the tables by zone for the floor; tables with no zone come first. */
 export const byZone = (tables: TableRow[]): { zone: string; tables: TableRow[] }[] => {
   const groups = new Map<string, TableRow[]>();

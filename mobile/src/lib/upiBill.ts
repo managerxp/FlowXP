@@ -23,8 +23,7 @@ export const payRequestLines = (a: { businessName: string; title?: string | null
   out.push(two('Subtotal', rupees(a.summary.subtotalPaise)));
   if (a.summary.offersPaise > 0) out.push(two('Offer', `-${rupees(a.summary.offersPaise)}`));
   if (a.summary.taxPaise > 0) out.push(two('GST', rupees(a.summary.taxPaise)));
-  out.push(two('TOTAL', rupees(a.totalPaise)));
-  if (now < a.totalPaise) { out.push(two('TO PAY NOW', rupees(now))); out.push(two('BALANCE LATER', rupees(a.totalPaise - now))); }
+  if (now < a.totalPaise) { out.push(two('TOTAL', rupees(a.totalPaise))); out.push(two('BALANCE LATER', rupees(a.totalPaise - now))); out.push(two('TO PAY NOW', rupees(now))); }
   else out.push(two('TO PAY', rupees(a.totalPaise)));
   out.push('-'.repeat(WIDTH_));
   out.push(`Scan to pay ${rupees(now)} by UPI`);

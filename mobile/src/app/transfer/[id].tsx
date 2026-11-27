@@ -1,6 +1,6 @@
 import { formatDate } from '../../lib/display.ts';
 import { useRef, useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../../lib/api.ts';
@@ -10,7 +10,7 @@ import { useLoad } from '../../lib/useLoad.ts';
 import { STATUS_LABEL, receiveBody, receiveProblem, receiveSummary, setDamaged, setGood, shortBy, startReceive, transferActions, type RLine, type TransferDetail } from '../../lib/transfers.ts';
 import { qty } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Button, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, TextInput } from '../../lib/ui.tsx';
 
 /* One transfer: what is moving and where, with the buttons that fit where it is: send it, mark it received (and say what was short or damaged), or cancel it. */
 export default function TransferScreen() {

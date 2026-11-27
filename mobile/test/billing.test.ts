@@ -89,7 +89,7 @@ test('a part-paid sale waiting on the phone shows what was paid and what is stil
   const whole = pendingReceiptLines(entry(), 'Shop').join('\n');
   assert.ok(!/BALANCE DUE/.test(whole), 'paid in full: no balance');
   const part = pendingReceiptLines(entry(5000), 'Shop').join('\n');
-  assert.match(part, /CASH\s+₹50\.00/); assert.match(part, /BALANCE DUE\s+₹/);
+  assert.match(part, /Paid by Cash +₹50[.]00/); assert.match(part, /BALANCE DUE\s+₹/);
   const later = pendingReceiptLines(entry(0), 'Shop').join('\n');
   assert.ok(!/CASH\s+₹/.test(later), 'nothing paid: no payment line'); assert.match(later, /BALANCE DUE/);
 });

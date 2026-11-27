@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { newKey } from '../lib/api.ts';
@@ -11,7 +11,7 @@ import { METHODS, rowsOf, type Pay } from '../lib/gymMembers.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Chips, ErrorText, Group, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Group, Line, Loading, SectionTitle, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 type Product = { product_id: number; name: string; sku: string | null; selling_price: number | string; stock: number; track_inventory: boolean };
 type Found = { member_id: number; name: string; member_code: string; phone: string | null };

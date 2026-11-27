@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Switch, Text, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
@@ -12,7 +12,7 @@ import {
   DAYS, INT_RULES, canGymSetup, defaultHours, hoursBody, hoursProblem, portalText, setDayHours, settingsBody, settingsForm, settingsProblem,
   type GymSettings, type Hours, type SettingsForm
 } from '../lib/gymSetup.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Loading, SectionTitle, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 const why = (e: unknown) => (e instanceof Error ? e.message : t('Could not save. Check the connection and try again.'));
 const Row = ({ label, hint, value, onChange }: { label: string; hint?: string; value: boolean; onChange: (v: boolean) => void }) => (

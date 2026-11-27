@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Modal, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Modal, Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_URL, api, currentBusiness, useSession } from '../../lib/session.ts';
@@ -21,7 +21,7 @@ import { ApiError, newKey } from '../../lib/api.ts';
 import { estimateOf, holdBill, toSnapshot, type HeldRow } from '../../lib/held.ts';
 import { useWide } from '../../lib/responsive.tsx';
 import { Ionicons } from '../../lib/icons.tsx';
-import { Button, Chips, ErrorText, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Button, Chips, ErrorText, Soft, Title, color, s, TextInput } from '../../lib/ui.tsx';
 import { display, radius, shadow } from '../../lib/theme.ts';
 import CustomItem from '../../lib/CustomItem.tsx';
 import { WholesaleHome } from '../../lib/WholesaleHome.tsx';

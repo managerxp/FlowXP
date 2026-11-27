@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api.ts';
@@ -8,7 +8,7 @@ import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import { GROUP_ROLES, ROLES, ROLE_HELP, addPersonBody, canEditPerson, editPersonBody, needsOutlet, rolesFor, type Person } from '../lib/team.ts';
-import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 /* Add a person (they get an e-mail to set their own password), or change a person's role, outlet and access. */
 export default function StaffPerson() {

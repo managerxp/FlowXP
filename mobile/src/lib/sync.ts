@@ -37,6 +37,10 @@ export const syncAll = (): Promise<void> => {
     syncStore.set({ busy: true, error: '' });
     try {
       const flushed = await scope.outbox.flush(sendEntry(api));
+      // once, while online: this phone's own bill numbers for sales made with no connection (a server without them just leaves the P- numbers)
+      if (flushed.stopped === null && !(await scope.outbox.series())) {
+        try { const got = await api.post<{ code: string; next: number }>('/invoices/offline-series', { device: await scope.outbox.deviceId() }); await scope.outbox.setSeries(got.code, got.next); } catch { /* asked again next time */ }
+      }
       // then the price and stock changes made offline (bills first: a bill must see the stock as it was when it was made)
       const changed = flushed.stopped === null ? await scope.actions.flush(async (a) => { if ((await guard(api, a)) === 'skip') return; await api.call(a.path, { method: a.method, body: split(a.body).clean, idempotencyKey: a.id, ...(/^\/wholesale\/(orders|receipts)/.test(a.path) ? { headers: { 'X-Offline-Sale': '1' } } : /^\/distributor\/vehicles\/\d+\/sell$/.test(a.path) ? { headers: { 'X-Offline-Sale': '1', 'X-Sale-Date': dayOf(a.created_at) } } : {}) }); }) : null;
       syncStore.set({ stopped: flushed.stopped ?? changed?.stopped ?? null });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/session.ts';
@@ -9,7 +9,7 @@ import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import { OFFER_DAYS, OFFER_KINDS, emptyOffer, offerBody, offerProblem, type OfferForm, type OfferKind, type PickedProduct } from '../lib/offerList.ts';
 import { rupees, toPaise } from '../lib/money.ts';
-import { Button, Chips, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 type Category = { category_id: number; name: string };
 type Hit = PickedProduct & { selling_price: number };

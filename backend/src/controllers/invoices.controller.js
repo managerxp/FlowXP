@@ -10,6 +10,7 @@
  * for a sale where the stock update failed, or lose stock for an invoice that
  * was never actually created.
  */
+import { offlineSeriesFor } from '../modules/offlineNumbers.js';
 import { OFFLINE_SQL, REVIEW_SQL } from '../utils/offlineNote.js';
 import { onInvoiceCancelled } from '../modules/salon/hooks.js';
 import { onInvoiceCancelled as onGymInvoiceCancelled, onInvoicePaid as onGymInvoicePaid } from '../modules/gym/memberships.js';
@@ -68,6 +69,43 @@ const offlineDate = async (businessId, day) => {
 };
 const sendReplay = (res, invoice) => { res.set('Idempotent-Replay', 'true'); return res.status(201).json({ success: true, data: invoice }); };
 
+/* The number the phone printed on a bill it made with no connection. */
+const printedNumber = (req) => (isOffline(req) ? req.get?.('X-Offline-Number') || req.headers?.['x-offline-number'] || null : null);
+
+/* If the bill ended up under another number (the first attempt reached the server but its answer was lost, so it was numbered online), the number on the
+   customer's paper is written on the bill. A step of its own in front of the duplicate guard, so it also sees the answers that guard replays. */
+export const keepPrintedNumber = (req, res, next) => {
+  const printed = printedNumber(req); const key = keyOf(req);
+  if (printed && key && /^[A-Z0-9-]{4,16}$/.test(printed)) res.on('finish', () => {
+    if (res.statusCode !== 201) return;
+    pool.query(
+      `UPDATE invoices SET notes = concat_ws(' | ', NULLIF(notes, ''), 'Printed offline as ' || $3::text)
+       WHERE business_id = $1 AND client_key = $2 AND invoice_number <> $3::text AND position($3::text IN COALESCE(notes, '')) = 0`, [req.tenant.businessId, key, printed]
+    ).catch((error) => console.error('[invoices] could not keep the printed number:', error.message));
+  });
+  next();
+};
+
+/* POST /api/invoices/offline-series { device } -> { code, next }: this phone's own numbers for bills made with no connection. */
+export const offlineSeries = async (req, res) => {
+  const device = String(req.body?.device ?? '');
+  if (!/^[A-Za-z0-9-]{12,64}$/.test(device)) return res.status(400).json({ success: false, message: 'Send the device id' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const series = await offlineSeriesFor(client, req.tenant.businessId, device, req.auth.userId);
+    await client.query('COMMIT');
+    if (!series) return res.status(409).json({ success: false, message: 'No offline series is left for this business' });
+    res.json({ success: true, data: series });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('[invoices] offline series failed:', error.message);
+    res.status(500).json({ success: false, message: 'Could not set up offline bill numbers' });
+  } finally {
+    client.release();
+  }
+};
+
 export const create = async (req, res) => {
   const body = req.body || {};
   const earlier = await replayOf(req).catch(() => null);
@@ -118,6 +156,7 @@ export const create = async (req, res) => {
       exchangeCreditNoteId: body.exchange_credit_note_id ? Number(body.exchange_credit_note_id) : undefined,
       invoiceDate: isOffline(req) ? await offlineDate(req.tenant.businessId, saleDay(req)) : body.invoice_date,
       clientKey: keyOf(req) || undefined,
+      offlineNumber: printedNumber(req) || undefined,
       // a sale the phone already made at the counter is never refused for stock: the goods have gone, so it is recorded and the shelf shows the shortfall
       allowNegativeStock: isOffline(req)
     });

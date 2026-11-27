@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api.ts';
@@ -8,7 +8,7 @@ import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { DETAIL_FIELDS, type TaxInvoice } from '../lib/taxInvoice.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, ErrorText, Loading, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, ErrorText, Loading, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 /* The consignee, delivery, dispatch and payment-terms details printed on this bill's GST tax invoice (the website's "Edit invoice details").
    Blank buyer fields fall back to the customer's record; a blank consignee means the same as the buyer. Saved on the bill, so a reprint matches. */

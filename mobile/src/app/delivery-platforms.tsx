@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
 import { allowed } from '../lib/access.ts';
@@ -11,7 +11,7 @@ import {
   COLUMNS, PLATFORMS, PLATFORM_LABEL, STATEMENT_EXAMPLE, STATUS_LABEL, canDelivery, connectBody, disconnectBody, lineSub, missingText, parseRows, statementProblem, summaryText, syncedText, testOrderText,
   type Integration, type Missing, type Settlements
 } from '../lib/platforms.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 const why = (e: unknown) => (e instanceof Error ? e.message : t('Could not save. Check the connection and try again.'));

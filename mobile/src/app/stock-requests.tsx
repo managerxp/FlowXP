@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { newKey } from '../lib/api.ts';
@@ -9,7 +9,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { isOpen, sendBody, type StockRequest } from '../lib/stockRequests.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Loading, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Loading, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 const when = (iso: string) => new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short' });
 const STATUS: Record<StockRequest['status'], string> = { PENDING: 'Waiting', PARTIAL: 'Part sent', FULFILLED: 'Sent', REJECTED: 'Turned down', CANCELLED: 'Called off', CLOSED: 'Closed' };

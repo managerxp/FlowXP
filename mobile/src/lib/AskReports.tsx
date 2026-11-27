@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { api, currentBusiness, useSession } from './session.ts';
 import { allowed } from './access.ts';
@@ -8,7 +8,7 @@ import { friendlyError, type AiChat, type AiStatus } from './flowai.ts';
 import { REPORT_EXAMPLES, cleanQuestion } from './askReports.ts';
 import AiAnswer from './AiAnswer.tsx';
 import { t } from './i18n.ts';
-import { Button, ErrorText, Soft, color, s } from './ui.tsx';
+import { Button, ErrorText, Soft, color, s, TextInput } from './ui.tsx';
 
 /* "Ask your reports": a question box above the reports. Shown only when this person may ask Flow AI (on, set up, questions left); otherwise the reports stand alone. `suggested` is a question about the report on screen. */
 export default function AskReports({ suggested }: { suggested?: string }) {

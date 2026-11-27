@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/session.ts';
@@ -8,7 +8,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { rupees } from '../lib/money.ts';
 import { FIT_LABEL, stockText, vehiclePartsPath, type VehicleMake, type VehiclePart } from '../lib/parts.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 /* Parts for a vehicle: only parts with a fitment record are listed, each labelled verified or not verified. A part recorded as not fitting is left out. */
 export default function PartsVehicle() {

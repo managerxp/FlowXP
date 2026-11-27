@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SearchBox } from '../lib/SearchBox.tsx';
 import { Ionicons } from '../lib/icons.tsx';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -16,7 +16,7 @@ import { Page, ColumnList } from '../lib/responsive.tsx';
 import { arrange, headline, sub, totalDuePaise, owes, type Show } from '../lib/customers.ts';
 import { t } from '../lib/i18n.ts';
 import { Field } from '../lib/formKit.tsx';
-import { Button, Chips, Empty, ErrorText, Failed, ListRow, Loading, SavedNote, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, ListRow, Loading, SavedNote, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 const CustomerRow = memo(({ c, offline, onChoose }: { c: Customer; offline: boolean; onChoose: (c: Customer) => void }) => (
   <ListRow avatar={c.name} title={c.name} right={headline(c, (n) => rupees(toPaise(n)))?.text} rightTone={owes(c) ? color.warn : undefined} sub={offline ? c.phone ?? undefined : sub(c)} onPress={() => onChoose(c)} />

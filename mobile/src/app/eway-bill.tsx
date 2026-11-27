@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
@@ -8,7 +8,7 @@ import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import { shareTextFile } from '../lib/share.ts';
 import { MODES, canEway, cleanNumber, emptyEway, ewayBody, fileName, fileText, formProblem, numberProblem, recordBody, savedText, type EwayForm, type EwayResult, type Mode } from '../lib/ewayBill.ts';
-import { Button, Chips, Empty, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 

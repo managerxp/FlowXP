@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/session.ts';
 import { goBack } from '../lib/nav.ts';
@@ -7,7 +7,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { pname } from '../lib/catalog.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Empty, ErrorText, Failed, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Empty, ErrorText, Failed, Loading, SectionTitle, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 type Item = { product_id: number; name: string; name_i18n?: Record<string, string>; category_name: string | null; is_available: boolean };
 

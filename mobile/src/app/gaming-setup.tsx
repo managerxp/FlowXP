@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
 import { allowed } from '../lib/access.ts';
@@ -11,7 +11,7 @@ import {
   rateBody, rateForm, rateProblem, rateSummary, scopeName, stationBody, stationForm, stationProblem, stationSub, zoneProblem,
   type GSettings, type GSettingsForm, type GStation, type Offer, type OfferForm, type Rate, type RateForm, type StationForm, type Zone
 } from '../lib/gamingSetup.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 const why = (e: unknown) => (e instanceof Error ? e.message : t('Could not save. Check the connection and try again.'));
 const tr = (items: { id: string; label: string }[]) => items.map((x) => ({ id: x.id, label: t(x.label) }));

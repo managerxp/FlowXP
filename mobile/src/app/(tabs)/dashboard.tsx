@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Linking, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
+import { Linking, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, useSession } from '../../lib/session.ts';
@@ -8,7 +8,7 @@ import { rupees } from '../../lib/money.ts';
 import { dmy, n, parseDmy, scaleBars, waNumber, type GymHome } from '../../lib/gymApp.ts';
 import { Page } from '../../lib/responsive.tsx';
 import { t } from '../../lib/i18n.ts';
-import { Chips, Empty, Failed, Line, Group, Loading, SectionTitle, Soft, Stat, Title, color, s } from '../../lib/ui.tsx';
+import { Chips, Empty, Failed, Line, Group, Loading, SectionTitle, Soft, Stat, Title, color, s, TextInput } from '../../lib/ui.tsx';
 
 type Period = 'month' | 'last' | 'three' | 'custom';
 const PERIODS = [{ id: 'month' as Period, label: 'This Month' }, { id: 'last' as Period, label: 'Last Month' }, { id: 'three' as Period, label: 'Last 3 Months' }, { id: 'custom' as Period, label: 'Custom' }];

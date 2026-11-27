@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Button, ErrorText, Soft, color, s } from './ui.tsx';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Button, ErrorText, Soft, color, s, TextInput } from './ui.tsx';
+import { Field } from './formKit.tsx';
 import { display } from './theme.ts';
 import { customPresets, GST_RATES, presetRate, type Preset } from './customItems.ts';
 import { toPaise } from './money.ts';
@@ -40,8 +41,8 @@ export default function CustomItem({ open, businessType, gstOn, onAdd, onClose }
               ))}
             </ScrollView>
           ) : null}
-          <TextInput style={s.input} value={name} onChangeText={(v) => { setName(v); setPick(null); }} placeholder={t('What is it? (you can leave this empty)')} maxLength={80} accessibilityLabel={t('What is it?')} />
-          <TextInput style={[s.input, { fontSize: 24, fontWeight: '700' }]} value={price} onChangeText={(v) => { setPrice(v.replace(/[^0-9.]/g, '')); setError(''); }} placeholder="₹ 0" keyboardType="decimal-pad" autoFocus accessibilityLabel={t('Price')} />
+          <Field label="What is it?"><TextInput style={s.input} value={name} onChangeText={(v) => { setName(v); setPick(null); }} placeholder={t('You can leave this empty')} maxLength={80} accessibilityLabel={t('What is it?')} /></Field>
+          <Field label="Price"><TextInput style={[s.input, { fontSize: 24, fontWeight: '700' }]} value={price} onChangeText={(v) => { setPrice(v.replace(/[^0-9.]/g, '')); setError(''); }} placeholder="₹ 0" keyboardType="decimal-pad" autoFocus accessibilityLabel={t('Price')} /></Field>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Text style={{ fontWeight: '700', color: color.ink }}>{t('How many')}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>

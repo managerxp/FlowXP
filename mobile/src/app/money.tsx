@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { currentBusiness, useSession, api } from '../lib/session.ts';
 import { allowed } from '../lib/access.ts';
 import { t } from '../lib/i18n.ts';
 import { rupees } from '../lib/money.ts';
 import { Card, Field, Input, Msg, Panel, SetupShell, useAct, useList } from '../lib/formKit.tsx';
 import { IN_KINDS, MONEY_METHODS, OUT_KINDS, PERIODS, emptyMoney, entryAmount, entrySub, moneyProblem, moneyRequest, rangeFor, type MoneyBook, type MoneyEntry, type MoneyForm } from '../lib/garage.ts';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, Stat, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, Stat, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 type Cust = { customer_id: number; name: string; phone: string | null };
 

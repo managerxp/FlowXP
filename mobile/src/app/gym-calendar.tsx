@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, useSession } from '../lib/session.ts';
 import { newKey } from '../lib/api.ts';
@@ -11,7 +11,7 @@ import { dmy } from '../lib/gymApp.ts';
 import { rowsOf, timeOf, todayISO, type DayVisit } from '../lib/gymMembers.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Empty, ErrorText, Group, Line, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Empty, ErrorText, Group, Line, Loading, SectionTitle, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 type Day = { date: string; visits: number };
 type Found = { member_id: number; name: string; member_code: string };

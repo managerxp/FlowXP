@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api.ts';
@@ -8,7 +8,7 @@ import { sendReport } from '../lib/bugsend.ts';
 import { appVersion } from '../lib/crash.ts';
 import { CATEGORIES, reportProblem } from '../lib/bugreport.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 /* Tell FlowXP when something went wrong. The note goes to the FlowXP team with the app version and the kind of phone, and with your name and business so they can write back. */
 export default function Report() {

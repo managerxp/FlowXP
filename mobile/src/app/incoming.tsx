@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, Vibration, View } from 'react-native';
+import { Alert, ScrollView, Text, Vibration, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
@@ -9,7 +9,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { hasNewOrders, platformLabel, pendingTotal, rejectBody, waitedText, type PendingOrder } from '../lib/delivery.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Empty, ErrorText, Failed, Loading, SavedNote, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Empty, ErrorText, Failed, Loading, SavedNote, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 /* Orders waiting to be accepted: from Zomato, Swiggy, ONDC, Magicpin, and QR or website orders. Accept sends it to the kitchen; turn it down with a reason if the kitchen cannot make it.
    Checks every few seconds while open and buzzes when a new one arrives. */

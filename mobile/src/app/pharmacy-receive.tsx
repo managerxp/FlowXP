@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
 import { api } from '../lib/session.ts';
@@ -8,7 +8,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { grnBody, grnLineProblem, grnProblem, newGrnLine, type GrnLine, type Medicine } from '../lib/pharmacy.ts';
 import type { Supplier } from '../lib/buying.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 

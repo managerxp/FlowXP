@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
@@ -9,7 +9,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { setCaptured, useCaptured } from '../lib/capture.ts';
 import { binByCode, moveBody, moveProblem, partSub, pickOrder, placePath, putAwayBody, putAwayProblem, stockText, storingBins, type PartLocations, type PartRow, type Place, type StorePlace, type Waiting } from '../lib/parts.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 type Tab = 'bin' | 'putaway' | 'move';
 

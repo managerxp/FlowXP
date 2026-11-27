@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RefreshControl, ScrollView, TextInput, View } from 'react-native';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, useSession } from '../lib/session.ts';
@@ -8,7 +8,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { grouped, rowText, type MenuService } from '../lib/salonMenu.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page, Rows } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Title, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Title, s, TextInput } from '../lib/ui.tsx';
 
 type Show = 'ACTIVE' | 'ARCHIVED';
 

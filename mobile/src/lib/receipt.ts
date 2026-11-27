@@ -1,6 +1,6 @@
 /* A receipt as plain text from the server's own invoice (GET /invoices/:id), for the screen and for sharing. Printing comes later. */
 import { rupeesExact as rupees, toPaise, qty } from './money.ts';
-import type { Preview } from './outbox.ts';
+import { isBillNumber, type Preview } from './outbox.ts';
 import { wholeInWords } from './taxInvoice.ts';
 
 /** 2120.34 becomes "Two Thousand One Hundred Twenty Rupees and Thirty Four Paise Only", the same wording as the thermal printer's receipt. */
@@ -83,7 +83,9 @@ export const receiptLines = (inv: Invoice, businessName: string, width = WIDTH):
   out.splice(0, out.length, ...out.flatMap((l) => wordWrap(l, width)).map((l) => ' '.repeat(Math.floor((width - l.length) / 2)) + l));
   out.push('-'.repeat(width));
   out.push(row(inv.invoice_number, String(inv.invoice_date).slice(0, 10) + clock(inv.created_at)));
-  if (inv.order_number) out.push(`TOKEN ${inv.order_number}`);
+  // a table's bill says which table, plainly; only a counter order has a token to call out
+  if (inv.table_name) { out.push(...wordWrap(`TABLE: ${inv.table_name.replace(/^table\s*/i, '')}`, width)); if (inv.order_number) out.push(`Order ${inv.order_number}`); }
+  else if (inv.order_number) out.push(`TOKEN ${inv.order_number}`);
   if (inv.cashier) out.push(...wordWrap(`Biller: ${inv.cashier}`, width));   // who made the bill; the customer's name is left off the slip
   out.push('-'.repeat(width));
   // Item / Qty / Rate / Amount, as on the website's receipt: the name wraps inside its own column and the numbers sit on its last row.
@@ -119,7 +121,7 @@ export const receiptLines = (inv: Invoice, businessName: string, width = WIDTH):
   if (lineSaved + inv.discount > 0) out.push(`You saved Rs ${plain(lineSaved + inv.discount)}`);
   if (inv.tds) out.push(row('TDS held back', money(inv.tds)));
   if (inv.reverse_charge) out.push('Tax payable on reverse charge');
-  for (const p of inv.payments) out.push(row(p.method, money(p.amount)));
+  out.push(...paidRows(inv.payments, inv.balance_due, width));
   if (inv.balance_due > 0) out.push(row('Balance due', money(inv.balance_due)));
   out.push('-'.repeat(width));
   if (inv.loyalty_claim_url && !(inv.balance_due > 0)) { out.push(...wordWrap('Scan the code at the end for your loyalty stamp', width)); out.push('-'.repeat(width)); }
@@ -131,11 +133,20 @@ export const receiptLines = (inv: Invoice, businessName: string, width = WIDTH):
 export const receiptText = (inv: Invoice, businessName: string, width = WIDTH): string => receiptLines(inv, businessName, width).join('\n');
 
 /** The receipt for a sale still waiting to reach FlowXP: what the till worked out, and plainly NOT the final bill. */
-export const pendingReceiptLines = (e: { local_no: string; taken_at: number; preview: Preview }, businessName: string, width = WIDTH): string[] => {
+/** "Paid by Cash". The amount is only repeated when it says something the total does not: a split, or a bill partly paid. */
+const paidRows = (payments: { method: string; amount: number }[], due: number, width: number): string[] => {
+  const name = (m: string) => (m === 'UPI' ? m : m.charAt(0) + m.slice(1).toLowerCase().replace(/_/g, ' '));
+  return payments.map((p) => (payments.length === 1 && due <= 0 ? `Paid by ${name(p.method)}` : two(`Paid by ${name(p.method)}`, money(p.amount), width)));
+};
+
+export const pendingReceiptLines = (e: { local_no: string; taken_at: number; preview: Preview }, businessName: string, width = WIDTH, biller?: string | null): string[] => {
   const row = (l: string, r: string) => two(l, r, width);
   const centred = (l: string) => wordWrap(l, width).map((r) => ' '.repeat(Math.floor((width - r.length) / 2)) + r);
-  const out: string[] = [...[businessName, '*** PENDING BILL ***', 'Not final. The real bill number and GST come when it reaches FlowXP.', 'No kitchen ticket was made: tell them.'].flatMap(centred), '-'.repeat(width)];
+  // with this phone's own series the number below IS the bill number; without one it is provisional and the amounts are the phone's working
+  const numbered = isBillNumber(e); const about = numbered ? '' : ' (about)';
+  const out: string[] = [...[businessName, '*** PENDING BILL ***', numbered ? 'Made offline. It reaches FlowXP when the connection is back.' : 'Not final. The real bill number and GST come when it reaches FlowXP.', 'No kitchen ticket was made: tell them.'].flatMap(centred), '-'.repeat(width)];
   out.push(row(e.local_no, new Date(e.taken_at).toISOString().slice(0, 10) + clock(e.taken_at)));
+  if (biller) out.push(...wordWrap(`Biller: ${biller}`, width));
   out.push('-'.repeat(width));
   // the same Item / Qty / Rate / Amount table as the real bill (amounts before tax, as worked out on this phone)
   const numbersOf = e.preview.lines.map((l): Cells => [qty(l.quantity), plain(l.unitPricePaise / 100), plain(Math.round(l.unitPricePaise * l.quantity) / 100)]);
@@ -150,16 +161,16 @@ export const pendingReceiptLines = (e: { local_no: string; taken_at: number; pre
   out.push('-'.repeat(width));
   out.push(row(`Items: ${e.preview.lines.length}`, `Total Qty: ${qty(totalQty)}`));
   out.push(row('Subtotal', rupees(e.preview.subtotalPaise)));
-  out.push(row('GST (about)', rupees(e.preview.taxPaise)));
-  if (e.preview.cessPaise) out.push(row('Cess (about)', rupees(e.preview.cessPaise)));
-  if (e.preview.tcsPaise) out.push(row('TCS (about)', rupees(e.preview.tcsPaise)));
-  out.push(row('TOTAL (about)', rupees(e.preview.totalPaise)));
-  if (e.preview.tdsPaise) out.push(row('TDS held back (about)', rupees(e.preview.tdsPaise)));
+  out.push(row(`GST${about}`, rupees(e.preview.taxPaise)));
+  if (e.preview.cessPaise) out.push(row(`Cess${about}`, rupees(e.preview.cessPaise)));
+  if (e.preview.tcsPaise) out.push(row(`TCS${about}`, rupees(e.preview.tcsPaise)));
+  out.push(row(`TOTAL${about}`, rupees(e.preview.totalPaise)));
+  if (e.preview.tdsPaise) out.push(row(`TDS held back${about}`, rupees(e.preview.tdsPaise)));
   const paid = e.preview.paidPaise ?? e.preview.totalPaise - (e.preview.tdsPaise ?? 0);   // not recorded = the whole bill
-  if (paid > 0) out.push(row(e.preview.method, rupees(Math.min(paid, e.preview.totalPaise))));
+  if (paid > 0) out.push(...paidRows([{ method: e.preview.method, amount: Math.min(paid, e.preview.totalPaise) / 100 }], (e.preview.totalPaise - paid) / 100, width));
   if (paid < e.preview.totalPaise) out.push(row('BALANCE DUE', rupees(e.preview.totalPaise - paid)));
   out.push('-'.repeat(width));
   out.push(...footerRows('', width));
   return out;
 };
-export const pendingReceiptText = (e: { local_no: string; taken_at: number; preview: Preview }, businessName: string, width = WIDTH): string => pendingReceiptLines(e, businessName, width).join('\n');
+export const pendingReceiptText = (e: { local_no: string; taken_at: number; preview: Preview }, businessName: string, width = WIDTH, biller?: string | null): string => pendingReceiptLines(e, businessName, width, biller).join('\n');

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { TextInput } from 'react-native';
+import {  } from 'react-native';
 import { currentBusiness, useSession, api } from '../lib/session.ts';
 import { allowed } from '../lib/access.ts';
 import { t } from '../lib/i18n.ts';
@@ -10,7 +10,7 @@ import {
   profileBody, profileForm, profileProblem, sortPlaces, type NewPart, type PartFull, type Place, type PlaceForm, type ProfileForm, type VMake
 } from '../lib/partsAdmin.ts';
 import { type PartRow } from '../lib/parts.ts';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, s, Group, TextInput } from '../lib/ui.tsx';
 
 const tr = (items: { id: string; label: string }[]) => items.map((x) => ({ id: x.id, label: t(x.label) }));
 

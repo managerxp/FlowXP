@@ -10,7 +10,8 @@ const write = [requireAuth, withBusiness({ requireActive: true }), requirePermis
 router.get('/', ...authed, invoices.list);
 router.get('/summary', ...authed, invoices.summary);
 router.get('/:id', ...authed, invoices.get);
-router.post('/', ...write, requireOutlet, idempotent(), invoices.create);
+router.post('/offline-series', ...write, invoices.offlineSeries);
+router.post('/', ...write, requireOutlet, invoices.keepPrintedNumber, idempotent(), invoices.create);
 router.post('/:id/payments', ...write, idempotent(), invoices.addPayment);
 router.post('/:id/refund', requireAuth, withBusiness({ requireActive: true }), requirePermission('refunds'), idempotent(), invoices.refund);
 router.patch('/:id/print-details', ...write, invoices.updatePrintDetails);

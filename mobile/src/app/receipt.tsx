@@ -61,7 +61,7 @@ export default function Receipt() {
   const qrLink = owed && business?.upi_vpa && invoice?.receipt?.show_upi_qr !== false ? upiPayLink(business.upi_vpa, business.name, owed) : invoice && !owed && invoice.loyalty_claim_url ? invoice.loyalty_claim_url : undefined;
   const half = { flexGrow: 1, flexBasis: '45%' as const };   // the other choices sit two to a row, each the same size
   const token = invoice ? tokenText(invoice, name) : null;   // the daily token slip, printed after the bill
-  const text = invoice ? receiptText(invoice, name, COLUMNS[paper]) : pending ? pendingReceiptText(pending, name, COLUMNS[paper]) : '';
+  const text = invoice ? receiptText(invoice, name, COLUMNS[paper]) : pending ? pendingReceiptText(pending, name, COLUMNS[paper], session.user?.name) : '';
   const waiting = !invoice && pending && pending.state !== 'sent';
   // A sale just charged prints by itself when a thermal printer is saved on this phone: no button, no phone print screen. "Receipt printed" and OK is all the till sees.
   const [printedNote, setPrintedNote] = useState(false);

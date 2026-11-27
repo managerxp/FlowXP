@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from './api.ts';
@@ -16,7 +16,7 @@ import PayHowPicker from './PayHowPicker.tsx';
 import { t } from './i18n.ts';
 import { payPlan, type PayHow } from './billing.ts';
 import { display } from './theme.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s } from './ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, TextInput } from './ui.tsx';
 
 type Quote = { subtotal: number; discount: number; tax: number; round_off: number; total: number; offers: { name: string }[]; membership_discount_pct: number };
 type Tab = 'services' | 'products' | 'packages' | 'plans' | 'gift';

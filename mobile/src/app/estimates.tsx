@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Share, TextInput, View } from 'react-native';
+import { Alert, Share, View } from 'react-native';
 import { useScope } from '../lib/local.ts';
 import { pname, type Product } from '../lib/catalog.ts';
 import { SearchBox } from '../lib/SearchBox.tsx';
@@ -12,9 +12,10 @@ import { rupees, toPaise } from '../lib/money.ts';
 import { t } from '../lib/i18n.ts';
 import { Page, ColumnList } from '../lib/responsive.tsx';
 import { addProduct, blankLine, draftTotalPaise, estimateBody, estimateHtml, estimateProblem, estimateText, productLine, type DraftLine, type Estimate, type EstimateBusiness } from '../lib/estimates.ts';
-import { Button, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Title, s, Group } from '../lib/ui.tsx';
+import { Button, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Title, s, Group, TextInput } from '../lib/ui.tsx';
 
 /* Estimates (quotations): a price sent before the sale. Share it, and when the customer agrees, turn it into an invoice in one tap. */
+import { Field } from '../lib/formKit.tsx';
 export default function Estimates() {
   const session = useSession();
   const shop = currentBusiness(session)?.name ?? '';
@@ -84,22 +85,22 @@ export default function Estimates() {
           <ErrorText>{problem}</ErrorText>
           {!adding ? <Button title="New estimate" onPress={() => { setAdding(true); setProblem(''); }} /> : (
             <View style={{ gap: 10 }}>
-              <TextInput style={s.input} value={name} onChangeText={setName} placeholder={t('Customer name (optional)')} accessibilityLabel={t('Customer name')} />
+              <Field label="Customer name"><TextInput style={s.input} value={name} onChangeText={setName} placeholder={t('Customer name (optional)')} accessibilityLabel={t('Customer name')} /></Field>
               <SearchBox value={search} onChange={setSearch} placeholder={t('Search your items to add')} label={t('Search your items to add')} />
               <Group>{found.map((p) => <Line key={p.product_id} left={pname(p)} right={rupees(toPaise(p.selling_price))} onPress={() => pick(p)} />)}</Group>
               {lines.map((l, i) => (
                 <View key={i} style={{ gap: 6 }}>
                   {l.product_id
                     ? <Line left={l.description} sub={t('From your items')} />
-                    : <TextInput style={s.input} value={l.description} onChangeText={(v) => setLine(i, { description: v })} placeholder={t('Or type an item or service')} accessibilityLabel={t('Item or service')} />}
+                    : <Field label="Item or service"><TextInput style={s.input} value={l.description} onChangeText={(v) => setLine(i, { description: v })} placeholder={t('Or type an item or service')} accessibilityLabel={t('Item or service')} /></Field>}
                   <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TextInput style={[s.input, { flex: 1 }]} value={l.quantity} onChangeText={(v) => setLine(i, { quantity: v.replace(/[^\d.]/g, '') })} keyboardType="decimal-pad" placeholder={t('Qty')} accessibilityLabel={t('Qty')} />
-                    <TextInput style={[s.input, { flex: 1 }]} value={l.price} onChangeText={(v) => setLine(i, { price: v.replace(/[^\d.]/g, '') })} keyboardType="decimal-pad" placeholder={t('Price')} accessibilityLabel={t('Price')} />
+                    <View style={{ flex: 1 }}><Field label="Qty"><TextInput style={s.input} value={l.quantity} onChangeText={(v) => setLine(i, { quantity: v.replace(/[^\d.]/g, '') })} keyboardType="decimal-pad" placeholder={t('Qty')} accessibilityLabel={t('Qty')} /></Field></View>
+                    <View style={{ flex: 1 }}><Field label="Price"><TextInput style={s.input} value={l.price} onChangeText={(v) => setLine(i, { price: v.replace(/[^\d.]/g, '') })} keyboardType="decimal-pad" placeholder={t('Price')} accessibilityLabel={t('Price')} /></Field></View>
                   </View>
                 </View>
               ))}
               <Button title="Add another item" kind="quiet" onPress={() => setLines((ls) => [...ls, blankLine()])} />
-              <TextInput style={s.input} value={discount} onChangeText={(v) => setDiscount(v.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" placeholder={t('Discount (optional)')} accessibilityLabel={t('Discount')} />
+              <Field label="Discount"><TextInput style={s.input} value={discount} onChangeText={(v) => setDiscount(v.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" placeholder={t('Discount (optional)')} accessibilityLabel={t('Discount')} /></Field>
               <Soft>{`${t('Total before GST')}: ${rupees(draftTotalPaise(lines, discount))}`}</Soft>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Button title="Save" onPress={() => { void save(); }} busy={busy} style={{ flex: 1 }} />

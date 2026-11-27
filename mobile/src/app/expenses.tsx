@@ -1,6 +1,6 @@
 import { formatDate } from '../lib/display.ts';
 import { useState } from 'react';
-import { Alert, TextInput, View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
 import { api, useSession } from '../lib/session.ts';
@@ -10,7 +10,7 @@ import { ranges } from '../lib/ranges.ts';
 import { EXPENSE_CATEGORIES, EXPENSE_METHODS, expenseProblem, type Expense } from '../lib/buying.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page, ColumnList } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Stat, Title, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Stat, Title, s, TextInput } from '../lib/ui.tsx';
 
 /* Money the shop spent that is not stock: rent, salary, electricity. Written down here, it shows in the profit on the website. */
 export default function Expenses() {

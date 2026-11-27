@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, ScrollView, TextInput, View } from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, useSession } from '../lib/session.ts';
 import { goBack } from '../lib/nav.ts';
@@ -7,7 +7,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { priceListBody, priceListProblem, type PriceList, type Reservation } from '../lib/shopExtras.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Soft, Title, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Soft, Title, s, Group, TextInput } from '../lib/ui.tsx';
 
 /* Trade prices and held parts: a price list gives a group of customers a discount on everything; a hold keeps parts back for a customer until they are sold or released. */
 export default function PartsTrade() {

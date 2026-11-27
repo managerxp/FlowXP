@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api.ts';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
@@ -8,7 +8,7 @@ import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import { RATING_FILTERS, averageRating, replyBody, replyProblem, reviewsUrl, stars, type Review } from '../lib/reviews.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Loading, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Loading, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 const ReviewCard = ({ row, onSent }: { row: Review; onSent: () => void }) => {
   const [reply, setReply] = useState(row.reply_text ?? '');

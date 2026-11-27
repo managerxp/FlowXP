@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from 'react';
-import { Linking, Text, TextInput } from 'react-native';
+import { Linking, Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { currentBusiness, useSession, api } from '../../lib/session.ts';
 import { ApiError } from '../../lib/api.ts';
@@ -15,7 +15,7 @@ import { serviceLabourBody, shareFor, type Service } from '../../lib/workshopExt
 import { FUEL_LEVELS, isGarage } from '../../lib/garage.ts';
 import { PointsBox } from '../../lib/PointsBox.tsx';
 import { type Points } from '../../lib/points.ts';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, s, Group } from '../../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, s, Group, TextInput } from '../../lib/ui.tsx';
 
 type Found = { product_id: number; name: string; sku: string | null; selling_price_paise: number; stock?: number };
 

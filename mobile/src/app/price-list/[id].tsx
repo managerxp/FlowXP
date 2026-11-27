@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../../lib/api.ts';
@@ -10,7 +10,7 @@ import type { WProduct } from '../../lib/wholesale.ts';
 import { KIND_LABEL, listSummary, ruleBody, ruleProblem, ruleText, type PriceList, type PriceRule, type RuleDraft } from '../../lib/pricing.ts';
 import { rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../../lib/ui.tsx';
+import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { ScrollView, Switch, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from './api.ts';
@@ -19,7 +19,7 @@ import PayHowPicker from './PayHowPicker.tsx';
 import { t } from './i18n.ts';
 import { payPlan, type PayHow } from './billing.ts';
 import { SearchBox } from './SearchBox.tsx';
-import { Button, Chips, Empty, ErrorText, Group, Line, SectionTitle, Soft, Title, color, s } from './ui.tsx';
+import { Button, Chips, Empty, ErrorText, Group, Line, SectionTitle, Soft, Title, color, s, TextInput } from './ui.tsx';
 import { display } from './theme.ts';
 import { PointsBox } from './PointsBox.tsx';
 import { pointsOffPaise, type Points } from './points.ts';

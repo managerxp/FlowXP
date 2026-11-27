@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from './api.ts';
 import { api } from './session.ts';
@@ -7,7 +7,7 @@ import { goBack } from './nav.ts';
 import { useLoad } from './useLoad.ts';
 import { GST, MINUTES, WHO, blank, changedBody, fromService, serviceBody, serviceProblem, durationText, type MenuService, type ServiceDraft } from './salonMenu.ts';
 import { Page } from './responsive.tsx';
-import { Button, Chips, ErrorText, Failed, Loading, Soft, Title, color, s } from './ui.tsx';
+import { Button, Chips, ErrorText, Failed, Loading, Soft, Title, color, s, TextInput } from './ui.tsx';
 
 type Category = { category_id: number; name: string };
 

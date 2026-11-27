@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api.ts';
 import { API_URL, api, currentBusiness, sessionStore, useSession } from '../lib/session.ts';
@@ -9,7 +9,7 @@ import { Page } from '../lib/responsive.tsx';
 import { shareDownload } from '../lib/share.ts';
 import { activityCsvRequest, activityQuery, canSeeTeamSecurity, lastDays, roleText, whenText, type ActivityFilters, type ActivityPage } from '../lib/security.ts';
 import type { Person } from '../lib/team.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 const RANGES = [{ id: '1', label: 'Today' }, { id: '7', label: '7 days' }, { id: '30', label: '30 days' }];
 

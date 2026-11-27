@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Linking, ScrollView, Text, TextInput } from 'react-native';
+import { Alert, Linking, ScrollView, Text } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, NetworkError } from '../lib/api.ts';
@@ -7,7 +7,7 @@ import { api, signOut } from '../lib/session.ts';
 import { goBack } from '../lib/nav.ts';
 import { DELETE_URL, deleteBody, deleteProblem } from '../lib/account.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, ErrorText, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 /* Delete the account from inside the app. The password confirms it is the owner of the account; the sign-in code too if two-step sign-in is on. A business keeps its bills: only the person goes. */
 export default function DeleteAccount() {

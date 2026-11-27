@@ -1,6 +1,6 @@
 import { formatDate } from '../lib/display.ts';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '../lib/icons.tsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, useSession } from '../lib/session.ts';
@@ -10,7 +10,7 @@ import { askProblem, friendlyError, questionsFor, unavailable, type AiChat, type
 import { Page } from '../lib/responsive.tsx';
 import AiAnswer from '../lib/AiAnswer.tsx';
 import { useLocalSearchParams } from 'expo-router';
-import { Button, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 /* Ask about the business in plain words. The server works the answer out from the business's own records and only from what this person may already see. It needs the internet. */
 export default function FlowAi() {

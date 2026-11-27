@@ -1,6 +1,6 @@
 import { formatDate } from '../lib/display.ts';
 import { useState } from 'react';
-import { Alert, TextInput, View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
 import { api, useSession } from '../lib/session.ts';
@@ -11,7 +11,7 @@ import { ranges } from '../lib/ranges.ts';
 import { INCOME_CATEGORIES, INCOME_METHODS, incomeBody, incomeProblem, incomeUrl, type Income, type IncomeList } from '../lib/otherIncome.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page, ColumnList } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Stat, Title, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Stat, Title, s, TextInput } from '../lib/ui.tsx';
 
 /* Money received that is not a sale: interest, rent received, scrap. It is added to the income in the profit report on the website. */
 export default function OtherIncome() {

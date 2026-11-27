@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { goBack } from '../lib/nav.ts';
 import { router, useLocalSearchParams } from 'expo-router';
 import { payRequestLines, upiPayLink } from '../lib/upiBill.ts';
@@ -25,7 +25,7 @@ import { DETAIL_FIELDS, detailsBody } from '../lib/taxInvoice.ts';
 import { PointsBox } from '../lib/PointsBox.tsx';
 import { pointsOffPaise, type Points } from '../lib/points.ts';
 import { Page, useWide } from '../lib/responsive.tsx';
-import { Button, ErrorText, Loading, Soft, color, s } from '../lib/ui.tsx';
+import { Button, ErrorText, Loading, Soft, color, s, TextInput } from '../lib/ui.tsx';
 import { display, radius } from '../lib/theme.ts';
 
 type Method = 'CASH' | 'UPI' | 'CARD';

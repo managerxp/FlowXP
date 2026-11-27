@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { newKey } from '../lib/api.ts';
@@ -9,7 +9,7 @@ import { t } from '../lib/i18n.ts';
 import { qty, rupees } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
 import { canRaise, debitBody, debitEstimate, debitProblem, emptyDebit, maxFor, type DebitForm, type DebitKind, type DebitOptions } from '../lib/notes.ts';
-import { Button, Chips, ErrorText, Failed, Loading, SectionTitle, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Failed, Loading, SectionTitle, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 /* Raise a debit note against an order that has arrived: goods sent back (at the price paid) or a price correction (the overcharge per unit). */
 export default function DebitNoteNew() {

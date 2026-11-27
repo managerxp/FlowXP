@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
 import { allowed } from '../lib/access.ts';
@@ -11,7 +11,7 @@ import {
   COMMISSION_KEYS, FEE_KEYS, FEE_LABEL, CHANNEL_LABEL, ITEM_SORTS, PARTS, PROFIT_RANGES, assumptionsBody, assumptionsForm, assumptionsProblem, canInsights, channelSub, deltaGood, deltaText, expensesSub, itemSub, pctText, rangeQuery, share, sortItems,
   type Assumptions, type AssumptionsForm, type Profit
 } from '../lib/insights.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 const tone = (v: number | null | undefined, upIsGood = true) => { const g = deltaGood(v, upIsGood); return g == null ? undefined : g ? color.ok : color.danger; };

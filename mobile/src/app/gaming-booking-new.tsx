@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, useSession } from '../lib/session.ts';
@@ -8,7 +8,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import { DURATIONS, addDays, bookingBody, bookingProblem, slotsFor, type StationLite } from '../lib/gamingDesk.ts';
 import { Page } from '../lib/responsive.tsx';
 import { t } from '../lib/i18n.ts';
-import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 /* A new booking: pick the station, the day and start time, how long, and who it is for. The server refuses a clash and says who has the slot. */
 export default function GamingBookingNew() {

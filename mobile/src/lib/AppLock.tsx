@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { AppState, Switch, Text, TextInput, View } from 'react-native';
+import { AppState, Switch, Text, View } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import { Button, ErrorText, Soft, color } from './ui.tsx';
+import { Button, ErrorText, Soft, color, TextInput } from './ui.tsx';
 import { Logo } from './Logo.tsx';
 import { clearPin, loadLock, lockStore, setBio, setPin, shouldLock, tryUnlock, unlockByBio, useLock, validPin, type SecretStore } from './appLock.ts';
 import { onSignOut, signOut } from './session.ts';

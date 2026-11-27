@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
@@ -9,7 +9,7 @@ import { dmy, parseDmy } from '../lib/gymApp.ts';
 import { METHODS, newMemberBody, newMemberProblem, rowsOf, sellBody, sellProblem, todayISO, type Pay } from '../lib/gymMembers.ts';
 import { useLoad } from '../lib/useLoad.ts';
 import { useSession } from '../lib/session.ts';
-import { Chips, Group, Line, SectionTitle } from '../lib/ui.tsx';
+import { Chips, Group, Line, SectionTitle, TextInput } from '../lib/ui.tsx';
 import { Avatar, pickMemberPhoto, uploadMemberPhoto, type Picked } from '../lib/MemberPhoto.tsx';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';

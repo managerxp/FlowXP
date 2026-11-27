@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { ScrollView, Switch, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../../lib/api.ts';
@@ -11,7 +11,7 @@ import { useLoad } from '../../lib/useLoad.ts';
 import type { ProductFull } from '../../lib/types.ts';
 import ProductPhoto from '../../lib/ProductPhoto.tsx';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, Chips, ErrorText, Failed, Loading, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Button, Chips, ErrorText, Failed, Loading, SectionTitle, Soft, Title, color, s, TextInput } from '../../lib/ui.tsx';
 
 type Category = { category_id: number; name: string };
 type TaxRate = { tax_rate_id: number; name: string; rate: number; kind: string };

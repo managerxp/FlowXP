@@ -182,7 +182,10 @@ const oneReceipt = ({ business, settings = {}, invoice }, { cols = 48, drawer = 
   // everything the customer was given off, in one line: discounts on the lines (promos and free loyalty items are in these) plus the bill's own discount (which already holds the coupon and points)
   const saved = lineSaved + Number(invoice.discount || 0);
   if (saved > 0) j.align('center').bold(true).line(`You saved Rs ${money(saved)}`).bold(false).align('left');
-  for (const p of invoice.payments || []) j.pair(`Paid (${String(p.method).replace('_', ' ')})`, money(p.amount));
+  // "Paid by Cash": the amount is repeated only for a split or a part-paid bill
+  const payments = invoice.payments || [];
+  const paidBy = (m) => `Paid by ${m === 'UPI' ? m : String(m).charAt(0) + String(m).slice(1).toLowerCase().replace(/_/g, ' ')}`;
+  for (const p of payments) { if (payments.length === 1 && !(invoice.balance_due > 0) && !(invoice.refunded > 0)) j.line(paidBy(p.method)); else j.pair(paidBy(p.method), money(p.amount)); }
   if (invoice.refunded > 0) j.pair('Refunded', `-${money(invoice.refunded)}`);
   const due = invoice.status === 'ISSUED' && invoice.balance_due > 0;
   if (due) j.bold(true).pair('BALANCE DUE', money(invoice.balance_due)).bold(false);
@@ -252,7 +255,10 @@ export const prebillBytes = ({ business, settings = {}, order, gstOn = false }, 
   if (address) j.wrap(address);
   if (business.phone) j.line(`Ph: ${business.phone}`);
   if (settings.show_gstin !== false && business.gst_enabled && business.gstin) j.line(`GSTIN: ${business.gstin}`);
-  j.bold(true).line('BILL (NOT YET PAID)').bold(false).align('left').rule();
+  j.bold(true).line('BILL (NOT YET PAID)').bold(false);
+  const table = order.order_type === 'DINE_IN' && order.table_name ? `TABLE ${String(order.table_name).replace(/^table\s*/i, '')}` : '';
+  if (table) j.bold(true).big(true).half(() => j.wrap(table)).big(false).bold(false);
+  j.align('left').rule();
   const where = order.order_type === 'DINE_IN' ? (order.table_name ? `Table ${order.table_name}` : 'Dine-in') : order.order_type === 'DELIVERY' ? 'Delivery' : 'Takeaway';
   j.pair(`Order ${order.order_number}`, where);
   j.line(stamp(order.created_at, business.timezone || undefined));
@@ -269,9 +275,10 @@ export const prebillBytes = ({ business, settings = {}, order, gstOn = false }, 
   }
   j.rule().pair(`Items: ${order.items.length}`, `Total Qty: ${String(Number(qtyTotal.toFixed(3)))}`);
   if (gstOn && gst > 0) { j.pair('Subtotal', money(subtotal)); j.pair('GST', money(gst)); }
-  j.rule().bold(true).big(true).half(() => j.pair('TOTAL', money(Math.round(subtotal + gst)))).big(false).bold(false);
-  j.align('center').feed(1).line('Pay at the counter. Thank you!').align('left');
+  // the amount the guest has to pay comes once, at the very end of the bill
+  j.align('center').line('Pay at the counter. Thank you!');
   if (settings.show_powered_by !== false) j.powered();
+  j.align('left').rule().bold(true).big(true).half(() => j.pair('TO PAY', `Rs.${money(Math.round(subtotal + gst))}`)).big(false).bold(false);
   const blank = Number.isInteger(settings.extra_lines) ? settings.extra_lines : 3;
   return (cut && settings.auto_cut !== false ? j.cut(blank) : j.feed(Math.max(blank, 2))).bytes();
 };

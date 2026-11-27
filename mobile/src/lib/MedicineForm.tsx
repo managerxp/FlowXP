@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Switch, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from './api.ts';
@@ -9,7 +9,7 @@ import { setCaptured, useCaptured } from './capture.ts';
 import { useLoad } from './useLoad.ts';
 import { FORMS, GST, SCHEDULES, blank, changedBody, fromMedicine, medicineBody, medicineProblem, trackingLocked, withTracking, type MedicineDraft, type MedicineFull } from './medicine.ts';
 import { Page } from './responsive.tsx';
-import { Button, Chips, ErrorText, Failed, Loading, SectionTitle, Soft, Title, color, s } from './ui.tsx';
+import { Button, Chips, ErrorText, Failed, Loading, SectionTitle, Soft, Title, color, s, TextInput } from './ui.tsx';
 
 type Category = { category_id: number; name: string };
 

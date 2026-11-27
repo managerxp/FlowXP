@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
-import { Button, ErrorText, Soft, color, s } from './ui.tsx';
+import { Text, View } from 'react-native';
+import { Button, ErrorText, Soft, color, s, TextInput } from './ui.tsx';
 import { api } from './session.ts';
 import { t } from './i18n.ts';
 

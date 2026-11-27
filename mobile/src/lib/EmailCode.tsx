@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { ApiError, NetworkError } from './api.ts';
 import { api } from './session.ts';
 import { codeProblem, resendWait, verifyBody } from './account.ts';
-import { Button, ErrorText, Soft, color, s } from './ui.tsx';
+import { Button, ErrorText, Soft, color, s, TextInput } from './ui.tsx';
 
 /* The step after creating an account (or signing in to one whose email is not confirmed yet): a 6-digit code was emailed. Typing it confirms the email and signs the person in. */
 export function EmailCode({ challenge, email, onVerified, onBack }: { challenge: string; email: string; onVerified: (token: string) => void | Promise<void>; onBack: () => void }) {

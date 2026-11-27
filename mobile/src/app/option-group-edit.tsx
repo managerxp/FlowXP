@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/session.ts';
@@ -7,7 +7,7 @@ import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import { blankOption, emptyGroup, groupBody, groupForm, groupProblem, previewRule, ruleOf, type Group, type GroupForm, type Ingredient, type OptionForm } from '../lib/menuOptions.ts';
-import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, Title, color, s, Group as UiGroup } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Line, Loading, SectionTitle, Soft, Title, color, s, Group as UiGroup, TextInput } from '../lib/ui.tsx';
 
 /* A new option group, or one changed: its name, how customers choose, and its options (price change, and an ingredient an option uses up). */
 export default function OptionGroupEdit() {

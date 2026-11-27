@@ -9,7 +9,8 @@ import { t as tr } from '../../lib/i18n.ts';
 import { readMode } from '../../lib/thermal.ts';
 import { printRunningBill } from '../../lib/printBill.ts';
 import { useLoad } from '../../lib/useLoad.ts';
-import { ITEM_LABEL, itemName, orderTotals, type Order, type OrderItem } from '../../lib/orders.ts';
+import ReadBack from '../../lib/ReadBack.tsx';
+import { ITEM_LABEL, itemName, liveItems, orderTotals, type Order, type OrderItem } from '../../lib/orders.ts';
 import { qty, rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
 import { Hint } from '../../lib/learn.tsx';
@@ -26,6 +27,7 @@ export default function OrderScreen() {
   const [busy, setBusy] = useState('');
   const [problem, setProblem] = useState('');
   const [note, setNote] = useState('');
+  const [readBack, setReadBack] = useState(false);
   const o = order.data;
   const t = o ? orderTotals(o) : null;
 
@@ -132,7 +134,7 @@ export default function OrderScreen() {
             {note ? <Text accessibilityLiveRegion="polite" style={{ color: color.ok, fontWeight: '600' }}>{note}</Text> : null}
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <Button title="Add items" kind="quiet" onPress={() => router.push({ pathname: '/order/add', params: { id: String(id) } })} style={{ flex: 1 }} />
-              <Button title={t.notSent ? `Send ${t.notSent} to kitchen` : 'Sent'} kind={t.notSent ? 'primary' : 'quiet'} onPress={send} busy={busy === 'send'} disabled={!t.notSent} style={{ flex: 1 }} />
+              <Button title={t.notSent ? `Send ${t.notSent} to kitchen` : 'Sent'} kind={t.notSent ? 'primary' : 'quiet'} onPress={() => setReadBack(true)} busy={busy === 'send'} disabled={!t.notSent} style={{ flex: 1 }} />
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <Button title="Customer" kind="quiet" onPress={() => router.push({ pathname: '/customers', params: { pick: `order-${id}` } })} />
@@ -146,6 +148,7 @@ export default function OrderScreen() {
           </View>
         ) : null}
       </Page>
+      {o ? <ReadBack open={readBack} where={title} items={liveItems(o).filter((i) => i.status === 'PENDING')} onSend={() => { setReadBack(false); void send(); }} onClose={() => setReadBack(false)} /> : null}
     </SafeAreaView>
   );
 }

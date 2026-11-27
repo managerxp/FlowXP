@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
@@ -11,7 +11,7 @@ import {
   CHANNELS, LAPSED_DAYS, MAX_OFFER, STATUS_FILTERS, TOGGLES, campaignBody, canMessaging, canRetry, canSend, messageSub, messageTitle, messagesPath, previewText, progressText, resendText, statusLabel,
   type Channel, type Message, type MessagingSettings, type Preview, type Progress, type SettingsData, type Template
 } from '../lib/messaging.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 import { display } from '../lib/theme.ts';
 
 const why = (e: unknown) => (e instanceof Error ? e.message : t('Could not save. Check the connection and try again.'));

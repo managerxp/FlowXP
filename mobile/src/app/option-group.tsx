@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/session.ts';
 import { goBack } from '../lib/nav.ts';
@@ -8,7 +8,7 @@ import { t } from '../lib/i18n.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
 import { activeOptions, chosenText, dishesByCategory, ingredientLine, priceText, productsBody, ruleOf, toggleBody, toggleIds, type Dish, type Group, type Ingredient } from '../lib/menuOptions.ts';
-import { Button, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group as UiGroup } from '../lib/ui.tsx';
+import { Button, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group as UiGroup, TextInput } from '../lib/ui.tsx';
 
 /* One option group: its rule, options and the dishes that offer it. Edit it, turn it off, or choose its dishes. */
 export default function OptionGroup() {

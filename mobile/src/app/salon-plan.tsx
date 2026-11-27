@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { ScrollView, Switch, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
@@ -12,7 +12,7 @@ import {
 } from '../lib/salonPlans.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 type Row = { service_id: number; qty: string };

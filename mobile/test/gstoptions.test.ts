@@ -65,5 +65,5 @@ test('a bill waiting to sync keeps the same figures, and what was paid excludes 
   assert.deepEqual([preview.cessPaise, preview.tcsPaise, preview.tdsPaise, preview.totalPaise], [12000, 1000, 2000, 141000]);
   const text = pendingReceiptLines({ local_no: 'L-1', taken_at: Date.UTC(2026, 9, 15), preview }, 'Raj Auto').join('\n');
   assert.match(text, /Cess \(about\)/); assert.match(text, /TDS held back \(about\)/);
-  assert.match(text, /CASH\s+₹1,390\.00/, 'the customer pays the total less TDS');
+  assert.match(text, /Paid by Cash +₹1,390[.]00/, 'the customer pays the total less TDS');
 });

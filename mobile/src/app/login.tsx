@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, NetworkError } from '../lib/api.ts';
 import { api, signedIn } from '../lib/session.ts';
 import { kvGet, kvSet } from '../lib/local.ts';
-import { Button, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, ErrorText, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 import { EmailCode } from '../lib/EmailCode.tsx';
 import { Logo } from '../lib/Logo.tsx';
 import { PRIVACY_URL, TERMS_URL } from '../lib/account.ts';

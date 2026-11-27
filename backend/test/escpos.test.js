@@ -41,7 +41,7 @@ const business1 = { name: 'Spice Hub', gstin: '29ABCDE1234F1Z5', gst_enabled: tr
 test('a receipt has the shop, the lines, the totals, the payments and a cut', () => {
   const out = receiptBytes({ business: business1, settings: { footer: 'Thank you!' }, invoice: invoice() }, { cols: 32 });
   const text = textOf(out);
-  for (const want of ['Spice Hub', 'MG Road', 'GSTIN: 29ABCDE1234F1Z5', 'Bill INV-0042', 'Table T4', 'Served by Sneha', 'Naan', 'CGST', 'Round off', 'TOTAL', '875.00', 'Paid (CASH)', 'BALANCE DUE', 'Thank you!', 'Points earned: 40']) {
+  for (const want of ['Spice Hub', 'MG Road', 'GSTIN: 29ABCDE1234F1Z5', 'Bill INV-0042', 'Table T4', 'Served by Sneha', 'Naan', 'CGST', 'Round off', 'TOTAL', '875.00', 'Paid by Cash', 'BALANCE DUE', 'Thank you!', 'Points earned: 40']) {
     assert.ok(text.includes(want), `missing ${want}`);
   }
   assert.deepEqual([...out.subarray(0, 2)], [0x1b, 0x40]);                       // starts with a reset

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
@@ -8,7 +8,7 @@ import { goBack } from '../lib/nav.ts';
 import { useLoad } from '../lib/useLoad.ts';
 import { KIND_LABEL, listSummary, newListBody, newListProblem, type PriceList } from '../lib/pricing.ts';
 import { Page, ColumnList } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Title, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SavedNote, Soft, Title, s, TextInput } from '../lib/ui.tsx';
 
 /* The price lists: everyday prices for a kind of customer, and offer prices for a time. Tap one to see and change its prices. */
 export default function PriceLists() {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, Share, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Share, Switch, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_URL, api, currentBusiness, useSession } from '../lib/session.ts';
@@ -11,7 +11,7 @@ import {
   outletLine, outletOffBody, outletOnBody, ownHours, profileBody, profileForm, profileProblem, segmentBody, segmentForm, segmentProblem, taxBody, taxForm, taxProblem, toggleDay, toggleMethod,
   type Automation, type Automations, type HoursForm, type OnlineForm, type ProfileForm, type SalonBranch, type SegmentForm, type SettingsData, type TaxForm
 } from '../lib/salonSetup.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 const why = (e: unknown) => (e instanceof Error ? e.message : t('Could not save. Check the connection and try again.'));
 

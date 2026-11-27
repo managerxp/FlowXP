@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Switch, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,7 +17,7 @@ import {
   type CountDetail, type CountEntry, type CountedBack, type CountItem, type QuickForm
 } from '../lib/stockCount.ts';
 import { syncAll } from '../lib/sync.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Screen, Soft, Stat, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Screen, Soft, Stat, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 /* One stock count: scan or search to count, correct a number by typing it, see the differences, then apply or cancel. */
 export default function StockCount() {

@@ -1,6 +1,6 @@
 import { formatDate } from '../../lib/display.ts';
 import { useRef, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../../lib/api.ts';
@@ -10,7 +10,7 @@ import { useLoad } from '../../lib/useLoad.ts';
 import { DELIVERY_LABEL, deliveryActions, deliveryBody, deliveryProblem, type Delivery, type DeliveryAction } from '../../lib/warehouse.ts';
 import { rupees, toPaise } from '../../lib/money.ts';
 import { Page } from '../../lib/responsive.tsx';
-import { Button, ErrorText, Failed, Loading, SectionTitle, Soft, Title, color, s } from '../../lib/ui.tsx';
+import { Button, ErrorText, Failed, Loading, SectionTitle, Soft, Title, color, s, TextInput } from '../../lib/ui.tsx';
 
 /* A delivery on the road: out for delivery, then delivered (who received it) or could not deliver (why). A shop that refused some of the goods is handled on the website, which makes the credit note. */
 export default function DeliveryScreen() {

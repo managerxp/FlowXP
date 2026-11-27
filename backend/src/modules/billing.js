@@ -15,6 +15,7 @@
  * with the HTTP status already attached, so either caller can translate them
  * the same way.
  */
+import { claimOfflineNumber } from './offlineNumbers.js';
 import { cessOn, levyOn, withGstDefaults } from './gstOptions.js';
 import { offlineInfo } from '../utils/offlineNote.js';
 import { recordAudit, recordEvent } from './events.js';
@@ -473,7 +474,8 @@ export const createInvoiceInTransaction = async (client, tenant, userId, input) 
     if (credit.level === 'BLOCK' && !input.creditOverride) throw new BillingError(409, credit.reasons[0], { code: 'CREDIT_LIMIT' });
   }
 
-  const invoiceNumber = await nextInvoiceNumber(client, tenant.businessId, tenant.branchId);
+  // a bill the phone numbered with no connection keeps the number on the customer's paper (modules/offlineNumbers.js)
+  const invoiceNumber = (input.offlineNumber ? await claimOfflineNumber(client, tenant.businessId, input.offlineNumber) : null) || await nextInvoiceNumber(client, tenant.businessId, tenant.branchId);
 
   const invoice = (await client.query(
     `INSERT INTO invoices

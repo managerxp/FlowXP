@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, NetworkError } from '../lib/api.ts';
@@ -9,7 +9,7 @@ import { kvSet } from '../lib/local.ts';
 import { BUSINESS_TYPES, PRIVACY_URL, TERMS_URL, emptySignup, signupBody, signupProblem, suggestEmail, type SignupForm } from '../lib/account.ts';
 import { EmailCode } from '../lib/EmailCode.tsx';
 import { Logo } from '../lib/Logo.tsx';
-import { Button, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, ErrorText, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 /* Start the 7-day free trial from the phone: about you, your business, agree to the terms, then confirm the email with a 6-digit code. No card, no sales call. */
 export default function Signup() {

@@ -162,7 +162,7 @@ export const ReceiptPage = () => {
         <div className="text-sm"><Row left="TOTAL" right={formatCurrency(invoice.total)} bold /></div>
         {s.show_amount_words === true && <p className="mt-1">{rupeesInWords(invoice.total)}</p>}
         {saved > 0 && <p className="mt-1">You saved Rs {saved.toFixed(2)}</p>}
-        {invoice.payments.map((p) => <Row key={p.payment_id} left={`Paid (${humanize(p.method)})`} right={p.amount.toFixed(2)} />)}
+        {invoice.payments.map((p) => <Row key={p.payment_id} left={`Paid by ${humanize(p.method)}`} right={invoice.payments.length === 1 && !(invoice.balance_due > 0) && !(invoice.refunded > 0) ? '' : p.amount.toFixed(2)} />)}
         {invoice.refunded > 0 && <Row left="Refunded" right={`-${invoice.refunded.toFixed(2)}`} />}
         {unpaid && <Row left="BALANCE DUE" right={invoice.balance_due.toFixed(2)} bold />}
         {qr && (

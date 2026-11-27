@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/session.ts';
@@ -7,7 +7,7 @@ import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import { couponBody, couponForm, couponProblem, emptyCoupon, type Coupon, type CouponForm } from '../lib/loyalty.ts';
-import { Button, Chips, ErrorText, Loading, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, ErrorText, Loading, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 /* A new coupon, or one changed. A blank limit means no limit. */
 export default function CouponEdit() {

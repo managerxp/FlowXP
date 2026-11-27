@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, TextInput, View } from 'react-native';
+import { Modal, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { goBack } from '../lib/nav.ts';
 import { rupees } from '../lib/money.ts';
@@ -7,7 +7,7 @@ import { t } from '../lib/i18n.ts';
 import { priceText, type StyleRow } from '../lib/clothing.ts';
 import { StyleGrid, useStyles } from '../lib/ClothingMenu.tsx';
 import { Page, ColumnList } from '../lib/responsive.tsx';
-import { Button, Empty, Failed, Line, Loading, SavedNote, Soft, Title, s } from '../lib/ui.tsx';
+import { Button, Empty, Failed, Line, Loading, SavedNote, Soft, Title, s, TextInput } from '../lib/ui.tsx';
 
 /* Styles and sizes: every style with its stock, and a tap shows the size x colour grid. Making styles, prices, barcodes and price tags are on the website. */
 export default function Clothing() {

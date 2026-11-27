@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { currentBusiness, useSession, api } from '../lib/session.ts';
 import { allowed } from '../lib/access.ts';
 import { t } from '../lib/i18n.ts';
@@ -7,7 +7,7 @@ import { Card, Field, Input, Msg, Multi, Panel, Row, SetupShell, confirm, useAct
 import {
   CUSTOMER_TYPE_CHOICES, SCHEME_KIND_LABEL, SCOPE_LABEL, announceText, emptyScheme, schemeBody, schemeForm, schemeProblem, schemeSub, type SchemeForm, type SchemeFull, type SchemeRow
 } from '../lib/distributorSales.ts';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 type Found = { product_id: number; name: string };
 

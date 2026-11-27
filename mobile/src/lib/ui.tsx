@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, Pressable as P2, ScrollView as S2, StyleSheet, Text, Text as T2, View, View as V2, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, Pressable as P2, ScrollView as S2, StyleSheet, Text, TextInput as NativeInput, Text as T2, View, View as V2, type ViewStyle } from 'react-native';
 import { ago } from './ranges.ts';
 import { isOfflineMessage } from './net.ts';
 import { t, tx } from './i18n.ts';
@@ -27,6 +27,11 @@ export const Screen = ({ children, pad = true }: { children: ReactNode; pad?: bo
 export const Title = ({ children }: { children: ReactNode }) => <Text accessibilityRole="header" style={s.title}>{tx(children)}</Text>;
 export const Soft = ({ children, style }: { children: ReactNode; style?: object }) => <Text style={[s.soft, style]}>{tx(children)}</Text>;
 export const ErrorText = ({ children }: { children: ReactNode }) => (children ? <Text accessibilityRole="alert" style={s.error}>{children}</Text> : null);
+
+/* Every text box in the app is this one. Android's own hint colour follows the device's theme and came out white on a white box on a dark-mode tablet,
+   which left whole forms as blank boxes; the hint colour is therefore always set here. The guard is test/textboxes.test.ts. */
+export type TextInput = NativeInput;
+export const TextInput = (props: React.ComponentProps<typeof NativeInput> & { ref?: React.Ref<NativeInput> }) => <NativeInput placeholderTextColor={color.soft} {...props} />;
 
 const makeStyles = () => StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },

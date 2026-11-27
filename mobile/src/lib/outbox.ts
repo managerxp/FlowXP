@@ -1,7 +1,7 @@
 /*
  * Sales waiting to reach the server. A sale made with no connection is kept here, on the phone, and sent when it can be.
  *
- * Nothing is decided offline: the server numbers the invoice, checks the price and applies offers when the sale arrives, exactly as if it
+ * An ordinary sale is numbered from the phone's own series (see setSeries), so two phones offline never print the same bill number. The server still checks the price and applies offers when the sale arrives, exactly as if it
  * had been billed on the spot. What makes sending safe is the Idempotency-Key each sale carries (its `id`): if an earlier attempt did reach
  * the server before the signal dropped, sending it again returns that same invoice instead of billing twice.
  *
@@ -45,6 +45,9 @@ export type Entry = {
 type Row = Omit<Entry, 'body' | 'preview'> & { body: string; preview: string };
 const entry = (r: Row): Entry => ({ ...r, body: JSON.parse(r.body), preview: JSON.parse(r.preview) });
 
+/** Whether the number on this kept sale is its real bill number (from the phone's series), not a provisional P- one. */
+export const isBillNumber = (e: { local_no: string }) => /^M[0-9]{1,3}-[0-9]{4,}$/.test(e.local_no);
+
 export type Sent = { invoice_id: number; invoice_number: string; review?: string | null };
 export type Flushed = { sent: number; failed: number; stopped: null | 'offline' | 'server' | 'auth' };
 
@@ -56,13 +59,22 @@ export const createOutbox = (db: Db, { now = () => Date.now() }: { now?: () => n
   const meta = async (k: string) => (await db.all<{ v: string }>(`SELECT v FROM meta WHERE k = ?`, [k]))[0]?.v ?? null;
   const setMeta = (k: string, v: string) => db.run(`INSERT OR REPLACE INTO meta (k, v) VALUES (?,?)`, [k, v]);
 
-  /** P-<this phone's 3 letters>-<counter>: provisional, and different on every phone, so two offline phones never show the same number. */
+  /** This phone's 3 random letters, used in provisional numbers: P-<letters>-<counter>. */
   const deviceCode = async () => {
     let device = await meta('device');
     if (!device) { device = Array.from({ length: 3 }, () => letters[Math.floor(Math.random() * letters.length)]).join(''); await setMeta('device', device); }
     return device;
   };
-  const nextLocalNo = async () => {
+  /** This phone's own series from the server (M1, M2, ...), or null until it has been online once. */
+  const series = () => meta('series');
+  /** The number for a sale kept on the phone: the real bill number from this phone's series for an ordinary sale, else a provisional P- one. */
+  const nextLocalNo = async (ordinary: boolean) => {
+    const code = ordinary ? await series() : null;
+    if (code) {
+      const next = Number((await meta('series_next')) ?? 1);
+      await setMeta('series_next', String(next + 1));
+      return `${code}-${String(next).padStart(4, '0')}`;
+    }
     const device = await deviceCode();
     const n = Number((await meta('local_seq')) ?? 0) + 1;
     await setMeta('local_seq', String(n));
@@ -77,11 +89,24 @@ export const createOutbox = (db: Db, { now = () => Date.now() }: { now?: () => n
       const existing = (await db.all<Row>(`SELECT * FROM outbox WHERE id = ?`, [id]))[0];
       if (existing) return entry(existing);
       if ((await unsent()) >= MAX_UNSENT) return null;
-      const localNo = await nextLocalNo();
+      const localNo = await nextLocalNo(!path);
       await db.run(`INSERT INTO outbox (id, local_no, body, preview, taken_at, path) VALUES (?,?,?,?,?,?)`, [id, localNo, JSON.stringify(body), JSON.stringify(preview), now(), path]);
       return entry((await db.all<Row>(`SELECT * FROM outbox WHERE id = ?`, [id]))[0]);
     },
 
+    series,
+    /** Keep the series the server gave. The counter never goes backwards, so a number is never printed twice. */
+    setSeries: async (code: string, next: number) => {
+      const same = (await series()) === code;
+      await setMeta('series_next', String(Math.max(next, same ? Number((await meta('series_next')) ?? 1) : 1)));
+      await setMeta('series', code);
+    },
+    /** A long random name for this phone's copy of the outbox, which the server ties the series to. */
+    deviceId: async () => {
+      let id = await meta('device_id');
+      if (!id) { id = Array.from({ length: 20 }, () => letters[Math.floor(Math.random() * letters.length)]).join(''); await setMeta('device_id', id); }
+      return id;
+    },
     /** This phone's 3-letter code (also in its provisional bill numbers). */
     device: deviceCode,
     /** Forget the sales already sent. Only for clearing this phone's data: it never touches a sale still waiting or refused. */

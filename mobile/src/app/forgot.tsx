@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, NetworkError } from '../lib/api.ts';
 import { api } from '../lib/session.ts';
 import { Logo } from '../lib/Logo.tsx';
 import { emailLooksRight, resetBody, resetProblem } from '../lib/account.ts';
-import { Button, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, ErrorText, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 /* A password forgotten: ask for a code by email, then type it with a new password. The same answer is given whether or not the address has an account. */
 export default function Forgot() {

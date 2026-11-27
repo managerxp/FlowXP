@@ -1,12 +1,12 @@
 /* Small form pieces shared by the set-up screens that follow the same pattern: labelled inputs, switches, lists loaded from the server, and a save/remove runner that never throws. */
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from './session.ts';
 import { goBack } from './nav.ts';
 import { t } from './i18n.ts';
 import { Page } from './responsive.tsx';
-import { Button, Empty, ErrorText, InsetContext, Soft, Title, color, s } from './ui.tsx';
+import { Button, Empty, ErrorText, InsetContext, Soft, Title, color, s, TextInput } from './ui.tsx';
 
 const why = (e: unknown) => (e instanceof Error ? e.message : t('Could not save. Check the connection and try again.'));
 

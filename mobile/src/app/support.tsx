@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/session.ts';
 import { goBack } from '../lib/nav.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Loading, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Loading, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 /* Help and support: ask FlowXP a question, read the answer, write back. The same tickets as the website's Help and support page. */
 type Ticket = { ticket_id: number; subject: string; status: 'OPEN' | 'ANSWERED' | 'CLOSED'; unread_client: boolean; last_message_at: string };

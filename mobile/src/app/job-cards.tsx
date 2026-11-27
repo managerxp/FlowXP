@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
 import { SearchBox } from '../lib/SearchBox.tsx';
 import { router, useLocalSearchParams } from 'expo-router';
 import { currentBusiness, useSession, api } from '../lib/session.ts';
@@ -9,7 +9,7 @@ import { Card, Field, Input, Msg, Panel, SetupShell, useAct, useList } from '../
 import { canJobCards, customerProblem, dueLine, emptyJob, jobSub, newJobBody, newJobProblem, promiseDays, suggestMakes, suggestModels, vehicleOf, type JobRow, type NewJobForm, type VehicleTree } from '../lib/jobCards.ts';
 import { garageTypes, isGarage, mergeNames, suggestNames, type MasterBrands, type MasterModels } from '../lib/garage.ts';
 import PlateScan from '../lib/PlateScan.tsx';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, s, Group, TextInput } from '../lib/ui.tsx';
 
 type Cust = { customer_id: number; name: string; phone: string | null };
 const TYPES = [{ id: 'CAR', label: 'Car' }, { id: 'BIKE', label: 'Bike' }, { id: 'SCOOTER', label: 'Scooter' }, { id: 'TRUCK', label: 'Truck' }, { id: 'BUS', label: 'Bus' }, { id: 'COMMERCIAL', label: 'Commercial' }, { id: 'OTHER', label: 'Other' }];

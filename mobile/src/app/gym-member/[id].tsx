@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { newKey } from '../../lib/api.ts';
@@ -14,7 +14,7 @@ import MemberPhoto from '../../lib/MemberPhoto.tsx';
 import { router } from 'expo-router';
 import { Page } from '../../lib/responsive.tsx';
 import { t } from '../../lib/i18n.ts';
-import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../../lib/ui.tsx';
+import { Button, Chips, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../../lib/ui.tsx';
 
 const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 const left = (c: { state: string; days_left: number | null }) => (c.state !== 'ACTIVE' || c.days_left == null ? '' : ` · ${c.days_left <= 0 ? t('Ends today') : t(c.days_left === 1 ? '1 day left' : '{n} days left', { n: c.days_left })}`);

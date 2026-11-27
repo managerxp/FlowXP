@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api.ts';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
@@ -9,7 +9,7 @@ import { t } from '../lib/i18n.ts';
 import { rupees, toPaise } from '../lib/money.ts';
 import { Page } from '../lib/responsive.tsx';
 import { LEAK_CATEGORY, LEAK_RANGES, SEVERITY, canInsights, evidenceCell, findingCounts, rangeQuery, reviewBody, reviewedText, showValue, type Finding, type Leakage } from '../lib/insights.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 import { display } from '../lib/theme.ts';
 
 const money = (n: number) => rupees(toPaise(n));

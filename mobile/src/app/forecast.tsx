@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
 import { allowed } from '../lib/access.ts';
@@ -12,7 +12,7 @@ import {
   STOCK_STATUS, accuracyText, canInsights, dayLine, draftNote, emptyEvent, eventBody, eventLine, eventProblem, hourLabel, rangeText, shortDate, stockSub,
   type EventForm, type Forecast, type StockForecast
 } from '../lib/insights.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SectionTitle, Soft, Stat, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 const money = (n: number) => rupees(toPaise(n));
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { api, currentBusiness, loadMe, useSession } from './session.ts';
-import { Button, ErrorText, Soft, color, s } from './ui.tsx';
+import { Button, ErrorText, Soft, color, s, TextInput } from './ui.tsx';
 import { t } from './i18n.ts';
 import { cleanUpi, upiLabel, upiProblem } from './upi.ts';
 

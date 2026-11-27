@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
@@ -9,7 +9,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import type { WProduct } from '../lib/wholesale.ts';
 import { addTLine, dropTLine, setTQty, setTUnit, transferBody, transferProblem, type TLine, type Transfer, type Warehouse } from '../lib/transfers.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Line, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 /* Move goods from one warehouse to another. Choose where they leave from and go to, add the items and how many. It can be sent straight away, or kept until the van is ready. */
 export default function TransferNew() {

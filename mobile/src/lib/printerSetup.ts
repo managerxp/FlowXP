@@ -86,6 +86,12 @@ export const inLane = <T>(lane: string, job: () => Promise<T>): Promise<T> => {
 };
 export const laneOf = (p: { kind: PrinterKind; address: string; port: number }): string => (p.kind === 'bluetooth' ? 'bluetooth' : `net:${p.address.toLowerCase()}:${p.port}`);
 
+/* A hand-held Bluetooth printer has no cutter, and its tear edge sits further from the print head than a slip's own blank lines reach: the last lines of one
+   slip stayed inside and came out on top of the next (a bill's "Thank you" on a kitchen ticket, seen on a 58 mm printer). So every slip sent over Bluetooth
+   is pushed out by this many more lines. Raise it if a printer still holds text back. */
+const TEAR_LINES = 6;
+export const pushedOut = (kind: PrinterKind, bytes: Uint8Array): Uint8Array => (kind === 'bluetooth' ? Uint8Array.from([...bytes, 0x1b, 0x64, TEAR_LINES]) : bytes);
+
 /** The paper width the server's kitchen ticket is asked for. */
 export const colsFor = (paper: Paper): number => (paper === '80' ? 48 : 32);
 

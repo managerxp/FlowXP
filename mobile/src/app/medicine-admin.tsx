@@ -4,8 +4,8 @@ import { allowed } from '../lib/access.ts';
 import { t } from '../lib/i18n.ts';
 import { Card, Field, Input, Msg, Panel, Row, SetupShell, useAct, useList } from '../lib/formKit.tsx';
 import { TYPE_CHOICES, canMedicineAdmin, categoryProblem, emptyItem, itemBody, itemForm, itemProblem, itemSub, withExpiry, type Item, type ItemForm } from '../lib/medicineAdmin.ts';
-import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, s, Group } from '../lib/ui.tsx';
-import { TextInput } from 'react-native';
+import { Button, Chips, Failed, Line, Loading, SectionTitle, Soft, s, Group, TextInput } from '../lib/ui.tsx';
+import {  } from 'react-native';
 
 
 /* Medicines and items: the product master of a pharmacy, with prices and the rules each item follows. */

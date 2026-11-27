@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api.ts';
 import { API_URL, api, currentBusiness, sessionStore, useSession } from '../lib/session.ts';
@@ -10,7 +10,7 @@ import { Page } from '../lib/responsive.tsx';
 import { shareDownload } from '../lib/share.ts';
 import { SPAN_LIMIT_DAYS, emailBody, emailProblem, packPeriods, packRequest, spanDays } from '../lib/accountantPack.ts';
 import { formatDate } from '../lib/display.ts';
-import { Button, Chips, Empty, ErrorText, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 /* The accountant pack: one ZIP of CSV files for a period, downloaded and shared from the phone, or e-mailed to the accountant by the server (needs the export permission). */
 export default function AccountantPack() {

@@ -101,7 +101,7 @@ test('the receipt is built from the server\'s invoice: lines, GST, round-off, pa
     payments: [{ method: 'CASH', amount: 200 }]
   };
   const text = receiptText(inv, 'Shop');
-  for (const want of ['Shop', 'MG Road', '12 MG Road, Bengaluru', 'GSTIN 29ABCDE1234F1Z5', 'INV-0042', '2026-10-07', 'Biller: Ravi', 'Parle-G', 'Biscuit', 'Item', 'Qty', 'Rate', 'Amount', '10.00', '120.00', 'Items: 2', 'Total Qty: 3.5', 'You saved Rs 10.00', 'Discount', '-₹10.00', 'GST', '₹9.50', 'Round off', 'TOTAL', '₹200.00', 'CASH', 'Thank you']) assert.ok(text.includes(want), `missing ${want}`);
+  for (const want of ['Shop', 'MG Road', '12 MG Road, Bengaluru', 'GSTIN 29ABCDE1234F1Z5', 'INV-0042', '2026-10-07', 'Biller: Ravi', 'Parle-G', 'Biscuit', 'Item', 'Qty', 'Rate', 'Amount', '10.00', '120.00', 'Items: 2', 'Total Qty: 3.5', 'You saved Rs 10.00', 'Discount', '-₹10.00', 'GST', '₹9.50', 'Round off', 'TOTAL', '₹200.00', 'Paid by Cash', 'Thank you']) assert.ok(text.includes(want), `missing ${want}`);
   assert.ok(!text.includes('Asha'), 'the customer name is left off the slip');
   assert.equal(text.includes('Balance due'), false);
   for (const line of text.split('\n')) if (!line.includes('Tata Tea')) assert.ok(line.length <= 32, `too wide: ${line}`);

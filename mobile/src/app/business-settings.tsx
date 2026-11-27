@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '../lib/icons.tsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,7 +16,7 @@ import {
 } from '../lib/bizSettings.ts';
 import type { GstOptions } from '../lib/gst.ts';
 import type { PrintSettings } from '../lib/taxInvoice.ts';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 import LogoSetting from '../lib/LogoSetting.tsx';
 import { logoUrlOf } from '../lib/logo.ts';
 

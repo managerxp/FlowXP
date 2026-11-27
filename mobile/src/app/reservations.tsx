@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from '../lib/api.ts';
 import { api, useSession } from '../lib/session.ts';
@@ -8,7 +8,7 @@ import { useLoad } from '../lib/useLoad.ts';
 import type { TableRow } from '../lib/orders.ts';
 import { RESERVATION_LABEL, clock, clockToday, freeTables, guestProblem, inMinutes, type Reservation, type WaitEntry } from '../lib/floor.ts';
 import { Page } from '../lib/responsive.tsx';
-import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, Chips, Empty, ErrorText, Failed, Line, Loading, SavedNote, SectionTitle, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 type Tab = 'book' | 'wait';
 

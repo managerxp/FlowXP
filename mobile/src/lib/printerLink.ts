@@ -8,7 +8,7 @@ import { PermissionsAndroid, Platform } from 'react-native';
 import { kvGet, kvSet } from './local.ts';
 import { escposBytes, toBase64, type EscposOptions } from './escpos.ts';
 import { addJob, cleanJobs, newJobId, removeJob, type FailedJob } from './printQueue.ts';
-import { chunks, cleanPrinters, colsFor, inLane, laneOf, linkProblem, printerFor, type SavedPrinter } from './printerSetup.ts';
+import { chunks, cleanPrinters, colsFor, inLane, laneOf, linkProblem, printerFor, pushedOut, type SavedPrinter } from './printerSetup.ts';
 
 export const readPrinters = async (): Promise<SavedPrinter[]> => { try { return cleanPrinters(JSON.parse((await kvGet('printers_list')) || '[]')); } catch { return []; } };
 export const savePrinters = async (list: SavedPrinter[]): Promise<void> => { await kvSet('printers_list', JSON.stringify(list)).catch(() => {}); };
@@ -128,7 +128,7 @@ export const checkPrinter = (printer: SavedPrinter): Promise<void> => inLane(lan
 
 /** Send bytes to a saved printer. Throws a sentence a person can act on. Jobs to the same printer (and all Bluetooth ones) go one after another. */
 export const sendToPrinter = (printer: SavedPrinter, bytes: Uint8Array): Promise<void> => inLane(laneOf(printer), async () => {
-  try { if (printer.kind === 'bluetooth') await sendBluetooth(printer.address, bytes); else await sendNetwork(printer.address, printer.port, bytes); }
+  try { if (printer.kind === 'bluetooth') await sendBluetooth(printer.address, pushedOut(printer.kind, bytes)); else await sendNetwork(printer.address, printer.port, bytes); }
   catch (e) { throw new Error(linkProblem(printer.kind, e)); }
 });
 

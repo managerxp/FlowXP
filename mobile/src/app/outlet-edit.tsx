@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api.ts';
@@ -8,7 +8,7 @@ import { goBack } from '../lib/nav.ts';
 import { t } from '../lib/i18n.ts';
 import { Page } from '../lib/responsive.tsx';
 import { emptyOutlet, outletBody, outletForm, type Outlet, type OutletForm } from '../lib/team.ts';
-import { Button, ErrorText, Loading, Soft, Title, color, s } from '../lib/ui.tsx';
+import { Button, ErrorText, Loading, Soft, Title, color, s, TextInput } from '../lib/ui.tsx';
 
 const LABEL: Record<keyof OutletForm, string> = { name: 'Outlet name', code: 'Short code', city: 'City', state: 'State', phone: 'Phone', address: 'Address', pincode: 'Pincode', gstin: 'GSTIN', invoice_prefix: 'Invoice prefix', invoice_next_number: 'Next number' };
 const HINT: Partial<Record<keyof OutletForm, string>> = {

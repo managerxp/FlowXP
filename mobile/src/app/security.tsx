@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Linking, ScrollView, Share, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Linking, ScrollView, Share, Switch, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api.ts';
@@ -11,7 +11,7 @@ import {
   OUTCOME, canSeeTeamSecurity, capProblem, changePasswordBody, cleanCode, codesLow, deviceName, disableBody, enableBody, looksLikeCode, passwordProblem, pinProblem, recoveryText, roleText, whenText,
   type ApprovalRules, type LoginEvent, type TeamSecurity, type TwoFactorSetup, type TwoFactorStatus
 } from '../lib/security.ts';
-import { Button, ErrorText, Failed, Line, Loading, Soft, Title, color, s, Group } from '../lib/ui.tsx';
+import { Button, ErrorText, Failed, Line, Loading, Soft, Title, color, s, Group, TextInput } from '../lib/ui.tsx';
 
 const failText = (e: unknown) => (e instanceof ApiError ? e.message : t('Could not save. Check the connection and try again.'));
 
