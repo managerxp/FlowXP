@@ -15,6 +15,7 @@ import { rupees, toPaise } from '../lib/money.ts';
 import { Page, ColumnList } from '../lib/responsive.tsx';
 import { arrange, headline, sub, totalDuePaise, owes, type Show } from '../lib/customers.ts';
 import { t } from '../lib/i18n.ts';
+import { Field } from '../lib/formKit.tsx';
 import { Button, Chips, Empty, ErrorText, Failed, ListRow, Loading, SavedNote, Soft, Title, color, s } from '../lib/ui.tsx';
 
 const CustomerRow = memo(({ c, offline, onChoose }: { c: Customer; offline: boolean; onChoose: (c: Customer) => void }) => (
@@ -122,9 +123,15 @@ const AddCustomer = ({ onDone }: { onDone: (c?: Customer) => void }) => {
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }} keyboardShouldPersistTaps="handled">
           <Title>New customer</Title>
           <Soft>A phone number lets the visit card and their bills find them next time.</Soft>
-          <TextInput style={s.input} value={name} onChangeText={setName} placeholder="Name" accessibilityLabel="Name" autoFocus />
-          <TextInput style={s.input} value={phone} onChangeText={setPhone} placeholder="Mobile number" keyboardType="phone-pad" accessibilityLabel="Mobile number" />
-          <TextInput style={s.input} value={email} onChangeText={setEmail} placeholder="Email (optional)" keyboardType="email-address" autoCapitalize="none" accessibilityLabel="Email" />
+          <Field label="Name">
+            <TextInput style={s.input} value={name} onChangeText={setName} placeholder="Name" accessibilityLabel="Name" autoFocus />
+          </Field>
+          <Field label="Mobile number">
+            <TextInput style={s.input} value={phone} onChangeText={setPhone} placeholder="Mobile number" keyboardType="phone-pad" accessibilityLabel="Mobile number" />
+          </Field>
+          <Field label="Email (optional)">
+            <TextInput style={s.input} value={email} onChangeText={setEmail} placeholder="Email (optional)" keyboardType="email-address" autoCapitalize="none" accessibilityLabel="Email" />
+          </Field>
           <ErrorText>{error}</ErrorText>
           <Button title="Save customer" onPress={save} busy={busy} />
           <Button title="Cancel" kind="quiet" onPress={() => onDone()} disabled={busy} />

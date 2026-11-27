@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Text, View, useColorScheme } from 'react-native';
+import { Appearance, Text, View, useColorScheme } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
@@ -44,6 +44,8 @@ export default function Layout() {
   const theme = resolveTheme(display.theme, useColorScheme());
   const applied = useRef('');
   if (applied.current !== theme) { applyPalette(theme); rebuildStyles(); applied.current = theme; }
+  // Android's own parts (the grey hint inside an empty box, the keyboard, pop-ups) follow the app's theme, not the phone's: on a phone in dark mode the hints were unreadable on the light app
+  useEffect(() => { Appearance.setColorScheme(display.theme === 'system' ? 'unspecified' : display.theme); }, [display.theme]);
   // Satoshi for headings and figures (see theme.ts). Its files are tiny; if they ever fail to load the app carries on with the phone's own font.
   const [fontsReady, fontError] = useFonts({
     'Satoshi-Regular': require('../../assets/fonts/Satoshi-Regular.otf'),

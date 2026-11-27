@@ -84,7 +84,7 @@ export const receiptLines = (inv: Invoice, businessName: string, width = WIDTH):
   out.push('-'.repeat(width));
   out.push(row(inv.invoice_number, String(inv.invoice_date).slice(0, 10) + clock(inv.created_at)));
   if (inv.order_number) out.push(`TOKEN ${inv.order_number}`);
-  if (inv.customer_name) out.push(...wordWrap(`Customer: ${inv.customer_name}`, width));
+  if (inv.cashier) out.push(...wordWrap(`Biller: ${inv.cashier}`, width));   // who made the bill; the customer's name is left off the slip
   out.push('-'.repeat(width));
   // Item / Qty / Rate / Amount, as on the website's receipt: the name wraps inside its own column and the numbers sit on its last row.
   // The amount is before tax while the tax lines are shown (rows add up to the Subtotal), and with tax when they are hidden (rows add up to the Total).
@@ -133,7 +133,8 @@ export const receiptText = (inv: Invoice, businessName: string, width = WIDTH): 
 /** The receipt for a sale still waiting to reach FlowXP: what the till worked out, and plainly NOT the final bill. */
 export const pendingReceiptLines = (e: { local_no: string; taken_at: number; preview: Preview }, businessName: string, width = WIDTH): string[] => {
   const row = (l: string, r: string) => two(l, r, width);
-  const out: string[] = [businessName, '*** PENDING BILL ***', 'Not final. The real bill number and GST', 'come when it reaches FlowXP.', 'No kitchen ticket was made: tell them.', '-'.repeat(width)];
+  const centred = (l: string) => wordWrap(l, width).map((r) => ' '.repeat(Math.floor((width - r.length) / 2)) + r);
+  const out: string[] = [...[businessName, '*** PENDING BILL ***', 'Not final. The real bill number and GST come when it reaches FlowXP.', 'No kitchen ticket was made: tell them.'].flatMap(centred), '-'.repeat(width)];
   out.push(row(e.local_no, new Date(e.taken_at).toISOString().slice(0, 10) + clock(e.taken_at)));
   out.push('-'.repeat(width));
   // the same Item / Qty / Rate / Amount table as the real bill (amounts before tax, as worked out on this phone)
