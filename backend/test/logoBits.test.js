@@ -9,7 +9,7 @@ test('a bright colour prints black, the white around it is cut off, and the resu
   const png = await sharp({ create: { width: 800, height: 600, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite([{ input: cyan, left: 200, top: 100 }]).png().toBuffer();
   const bits = await logoBitsFrom(png);
   assert.ok(validLogoBits(bits));
-  assert.equal(bits.h, 200);   // trimmed to the square, then as tall as a logo may be
+  assert.equal(bits.h, 96);   // trimmed to the square, then as tall as a printed logo is
   const black = [...Buffer.from(bits.data, 'base64')].reduce((n, b) => n + b.toString(2).split('1').length - 1, 0);
-  assert.ok(black >= 200 * 200 * 0.98, `black dots ${black}`);
+  assert.ok(black >= 96 * 96 * 0.98, `black dots ${black}`);
 });
