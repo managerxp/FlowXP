@@ -89,3 +89,24 @@ test('the address is suggested from the business name, and made unique', { skip 
   const other = (await pool.query(`INSERT INTO businesses (name, owner_user_id, business_type) VALUES ('Spice Hall!',$1,'RESTAURANT') RETURNING business_id`, [user.user_id])).rows[0].business_id;
   assert.equal(await suggestSlug(other, 'reservation_settings', 'slug'), 'spice-hall-2', 'taken by the first business');
 });
+
+test('guests choose from the owner\'s lists and a seating area, and the choice is on the booking', { skip }, async () => {
+  await pool.query(`UPDATE dining_tables SET zone = CASE WHEN table_id = $1 THEN 'Patio' ELSE 'Indoor' END WHERE business_id = $2`, [big, biz]);
+  const saved = await call(pub.saveSettings, { tenant, body: { services: ['Lunch', ' Birthday ', 'Lunch', ''], extras: ['Cake'] } });
+  assert.equal(saved.code, 200, JSON.stringify(saved.body));
+  assert.deepEqual(saved.body.data.services, ['Lunch', 'Birthday']);
+  assert.equal((await call(pub.saveSettings, { tenant, body: { services: ['x'.repeat(41)] } })).code, 400);
+  await pool.query(`DELETE FROM reservations WHERE business_id = $1`, [biz]);
+  await pool.query(`INSERT INTO business_feature_overrides (business_id, feature_key, enabled) VALUES ($1, 'reservations', TRUE)`, [biz]);
+  const info = await call(pub.info, { params: { slug: 'spice-hall' } });
+  assert.equal(info.code, 200, JSON.stringify(info.body));
+  assert.deepEqual([info.body.data.areas, info.body.data.services], [['Indoor', 'Patio'], ['Lunch', 'Birthday']]);
+  const body = { name: 'Asha', phone: '9000000011', party: 2, date: tomorrow(), time: '12:00', extras: ['Cake', 'Fireworks'], area: 'Patio' };
+  assert.equal((await call(pub.book, { params: { slug: 'spice-hall' }, body })).code, 400, 'nothing chosen');
+  assert.equal((await call(pub.book, { params: { slug: 'spice-hall' }, body: { ...body, service: 'Birthday', area: 'Roof' } })).code, 400);
+  const ok = await call(pub.book, { params: { slug: 'spice-hall' }, body: { ...body, service: 'Birthday', notes: 'Window please' } });
+  assert.equal(ok.code, 201, JSON.stringify(ok.body));
+  const row = (await pool.query(`SELECT notes, table_id FROM reservations WHERE business_id = $1`, [biz])).rows[0];
+  assert.equal(row.notes, 'Birthday · Extras: Cake · Seating: Patio · Window please');
+  assert.equal(row.table_id, big, 'seated where they asked');
+});

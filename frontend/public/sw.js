@@ -106,7 +106,8 @@ self.addEventListener('fetch', (event) => {
     event.respondWith((async () => {
       try {
         const response = await fetch(request);
-        if (response.ok) (await caches.open(SHELL)).put('/', response.clone());
+        // a booking page carries one business's link preview, so it is not kept as the app's offline copy
+        if (response.ok && !/^\/(book|reserve)\//.test(url.pathname)) (await caches.open(SHELL)).put('/', response.clone());
         return response;
       } catch {
         return (await caches.match('/', { ignoreVary: true })) || Response.error();

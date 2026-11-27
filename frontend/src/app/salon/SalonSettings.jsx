@@ -196,6 +196,7 @@ const OnlineBooking = ({ s }) => {
           <div className="flex items-center gap-2"><span className="text-small text-ink-500">/book/</span><div className="flex-1"><Input id="ob-slug" value={form.slug} maxLength={40} onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))} /></div></div>
         </Field>
         <Field id="ob-notice" label={tr('Message at the top of the page')} hint={tr('Optional — parking, what to bring, a festive notice.')}><Input id="ob-notice" value={form.notice} maxLength={300} onChange={(e) => setForm((f) => ({ ...f, notice: e.target.value }))} /></Field>
+        <p className="text-caption text-ink-500">{tr('Your Google review link from Business settings also appears on this page.')}</p>
         {c.online_booking_enabled && link && <ShareBox link={link} buttonText="Book an appointment" />}
         <div className="grid gap-4 sm:grid-cols-[1fr_2fr]">
           <Field id="ob-off" label={tr('Offer %')} hint={tr('Leave empty for no offer')}><Input id="ob-off" type="number" min="0" max="100" step="0.5" value={form.offerPct} onChange={(e) => setForm((f) => ({ ...f, offerPct: e.target.value }))} /></Field>

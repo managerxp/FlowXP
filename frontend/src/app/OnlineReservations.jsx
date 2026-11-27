@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { Alert, Button, Field, Input, Modal, Select, useToast } from '../components/ui.jsx';
 import ShareBox from '../components/ShareBox.jsx';
+import ChoiceList from '../components/ChoiceList.jsx';
 
 const SLOTS = [15, 30, 45, 60, 90, 120];
 const STAYS = [45, 60, 90, 120, 150, 180];
@@ -24,7 +25,7 @@ export default function OnlineReservations({ onClose }) {
     try {
       const d = await api('/reservations/online-settings', { method: 'PUT', body: {
         enabled: f.enabled, slug: f.slug, notice: f.notice, open_time: f.open_time, close_time: f.close_time, slot_min: Number(f.slot_min), stay_min: Number(f.stay_min),
-        max_party: Number(f.max_party), max_advance_days: Number(f.max_advance_days), offer_pct: f.offer_pct === '' ? null : Number(f.offer_pct), offer_text: f.offer_text
+        max_party: Number(f.max_party), max_advance_days: Number(f.max_advance_days), offer_pct: f.offer_pct === '' ? null : Number(f.offer_pct), offer_text: f.offer_text, services: f.services, extras: f.extras
       } });
       setSaved(d); toast.success(d.enabled ? 'Online reservations are on' : 'Saved');
     } catch (caught) { setError(caught.message); } finally { setBusy(false); }
@@ -58,6 +59,11 @@ export default function OnlineReservations({ onClose }) {
             <Field id="or-offt" label="Offer wording" hint="Shown on the page, e.g. 10% off for online bookings"><Input id="or-offt" value={f.offer_text} maxLength={120} onChange={set('offer_text')} /></Field>
           </div>
           <Field id="or-notice" label="Message at the top of the page" hint="Optional: dress code, parking, a festive notice."><Input id="or-notice" value={f.notice} maxLength={300} onChange={set('notice')} /></Field>
+          <ChoiceList id="or-services" label="What can guests book?" hint="Guests must pick one. Leave all off to skip this question." max={12} value={f.services} suggestions={['Breakfast', 'Lunch', 'Dinner', 'Birthday', 'Anniversary', 'Family get-together', 'Business meeting']} onChange={(v) => setF((x) => ({ ...x, services: v }))} />
+          <ChoiceList id="or-extras" label="Extras guests can add" hint="Optional for guests: they can pick any number." max={8} value={f.extras} suggestions={['Cake', 'Decoration', 'High chair', 'Wheelchair access', 'Window table']} onChange={(v) => setF((x) => ({ ...x, extras: v }))} />
+          <p className="text-caption text-ink-500">
+            Seating areas come from your table areas. {f.google_review_link ? 'Your Google review link is shown on the page.' : <>To show Google reviews on the page, add your Google review link in <a className="font-medium text-brand-600 underline" href="/app/settings">Settings</a>.</>}
+          </p>
           <ShareBox link={link} buttonText="Reserve a table" />
           <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={onClose}>Close</Button><Button type="submit" loading={busy}>Save</Button></div>
         </form>

@@ -19,9 +19,9 @@ import appointments from './salonAppointments.controller.js';
 
 const fail = (res, status, message) => res.status(status).json({ success: false, message });
 
-const resolve = async (slug) => {
+export const resolve = async (slug) => {
   const { rows } = await pool.query(
-    `SELECT b.business_id, b.name, b.status, b.timezone, b.business_type, b.phone, b.address, b.city, b.receipt_settings->>'logo_url' AS logo_url,
+    `SELECT b.business_id, b.name, b.status, b.timezone, b.business_type, b.phone, b.address, b.city, b.google_review_link, b.receipt_settings->>'logo_url' AS logo_url,
             s.online_booking_enabled, s.online_booking_notice, s.online_booking_offer_pct, s.online_booking_offer_text,
             COALESCE(p.feature_flags, '{}'::jsonb) AS plan_feature_flags, btf.feature_flags AS type_feature_flags,
             COALESCE(bfo.overrides, '{}'::jsonb) AS feature_overrides
@@ -79,7 +79,7 @@ export const info = async (req, res) => {
   res.json({ success: true, data: {
     round_off: Boolean(till.roundOff),
     offer: biz.online_booking_offer_pct ? { pct: Number(biz.online_booking_offer_pct), text: biz.online_booking_offer_text || `${Number(biz.online_booking_offer_pct)}% off when you book online` } : null,
-    name: biz.name, logo_url: biz.logo_url, phone: biz.phone, address: [biz.address, biz.city].filter(Boolean).join(', ') || null, notice: biz.online_booking_notice,
+    name: biz.name, logo_url: biz.logo_url, google_review_link: biz.google_review_link || null, phone: biz.phone, address: [biz.address, biz.city].filter(Boolean).join(', ') || null, notice: biz.online_booking_notice,
     timezone: biz.timezone || 'Asia/Kolkata', max_advance_days: settings.max_advance_days, cancellation_policy: settings.cancellation_policy?.text || null,
     outlets: outlets.map((o) => ({ branch_id: o.branch_id, name: o.name, city: o.city })), outlet_id: outlet.branch_id,
     services: services.map((s) => ({ service_id: s.product_id, name: s.name, description: s.description, category: s.category, price: toRupees(s.price_paise), payable: toRupees(payablePaise([s], { ...till, roundOff: false })), duration_min: s.duration_min, gender: s.gender })),

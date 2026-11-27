@@ -8,10 +8,12 @@ import { useParams } from 'react-router-dom';
 import { Check, MapPin, Minus, Phone, Plus, Tag } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { Alert, Button, Field, Input, PageLoader, Select, Textarea } from '../components/ui.jsx';
+import BusinessLinks from './BusinessLinks.jsx';
 
 const iso = (d) => d.toLocaleDateString('en-CA');
 const clock = (t) => { const [h, m] = t.split(':').map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`; };
 const dayText = (d) => new Date(`${d}T00:00`).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
+const chip = (on) => `rounded-full border px-4 py-2 text-small font-medium ${on ? 'border-brand-500 bg-brand-500 text-white' : 'border-line-strong bg-surface text-ink-900 hover:border-brand-500'}`;
 
 export default function Reserve() {
   const { slug } = useParams();
@@ -26,6 +28,9 @@ export default function Reserve() {
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState('');
   const [done, setDone] = useState(null);
+  const [service, setService] = useState('');
+  const [extras, setExtras] = useState([]);
+  const [area, setArea] = useState('');
 
   useEffect(() => { api(`/public/reserve/${encodeURIComponent(slug)}${outlet ? `?branch_id=${outlet}` : ''}`).then(setInfo).catch((e) => setError(e.message)); }, [slug, outlet]);
 
@@ -33,11 +38,11 @@ export default function Reserve() {
     if (!info) return () => {};
     let live = true;
     setSlots(null); setTime(''); setFormError('');
-    api(`/public/reserve/${encodeURIComponent(slug)}/slots?date=${date}&party=${party}&branch_id=${info.outlet_id}`)
+    api(`/public/reserve/${encodeURIComponent(slug)}/slots?date=${date}&party=${party}&branch_id=${info.outlet_id}${area ? `&area=${encodeURIComponent(area)}` : ''}`)
       .then((r) => live && setSlots(r.slots)).catch((e) => { if (live) { setSlots([]); setFormError(e.message); } });
     return () => { live = false; };
   };
-  useEffect(load, [info, date, party, slug]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(load, [info, date, party, slug, area]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) return <div className="mx-auto max-w-md px-5 py-20 text-center"><p className="text-title font-semibold text-ink-900">Online reservations aren’t available</p><p className="mt-2 text-small text-ink-500">{error}</p></div>;
   if (!info) return <PageLoader label="Loading…" />;
@@ -45,7 +50,7 @@ export default function Reserve() {
   const submit = async (e) => {
     e.preventDefault(); setFormError(''); setBusy(true);
     try {
-      setDone(await api(`/public/reserve/${encodeURIComponent(slug)}/book`, { method: 'POST', body: { name: form.name, phone: form.phone, notes: form.notes || undefined, website: form.website, party, date, time, branch_id: info.outlet_id } }));
+      setDone(await api(`/public/reserve/${encodeURIComponent(slug)}/book`, { method: 'POST', body: { name: form.name, phone: form.phone, notes: form.notes || undefined, website: form.website, party, date, time, branch_id: info.outlet_id, service: service || undefined, extras, area: area || undefined } }));
     } catch (caught) { setFormError(caught.message); load(); }   // a time just taken: show the list again
     finally { setBusy(false); }
   };
@@ -58,11 +63,13 @@ export default function Reserve() {
           <h1 className="mt-4 text-title font-semibold text-ink-900">Your table is booked</h1>
           {done.code && <>
             <p className="mt-1 text-small text-ink-700">{dayText(done.date)} at {clock(done.time)} · table for {done.party}</p>
+            {[done.service, ...(done.extras || []), done.area].filter(Boolean).length > 0 && <p className="mt-1 text-small text-ink-500">{[done.service, ...(done.extras || []), done.area].filter(Boolean).join(' · ')}</p>}
             <p className="mt-4 text-caption text-ink-500">Your booking code</p>
             <p className="tabular text-3xl font-bold tracking-[0.2em] text-ink-900">{done.code}</p>
             {done.offer && <p className="mt-4 flex items-center justify-center gap-1.5 rounded-(--radius-control) bg-success/10 px-3 py-2 text-small font-medium text-success"><Tag aria-hidden="true" className="h-4 w-4" />{done.offer.text}</p>}
           </>}
           <p className="mt-4 text-caption text-ink-500">{info.name}{info.phone && <> · call {info.phone} to change or cancel</>}</p>
+          <BusinessLinks info={info} className="mt-4 justify-center" />
         </div>
       </div>
     );
@@ -70,6 +77,9 @@ export default function Reserve() {
 
   const today = iso(new Date());
   const last = iso(new Date(Date.now() + info.max_advance_days * 86400000));
+  const needsService = info.services.length > 0 && !service;
+  // the steps are numbered by what this business asks
+  const first = info.services.length > 0 ? 1 : 0;
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:py-10">
       <header className="mb-6">
@@ -81,14 +91,27 @@ export default function Reserve() {
         </p>
         {info.offer && <p className="mt-3 flex items-center gap-2 rounded-(--radius-control) bg-success/10 px-3.5 py-2.5 text-small font-semibold text-success"><Tag aria-hidden="true" className="h-4 w-4" />{info.offer.text}</p>}
         {info.notice && <p className="mt-3 rounded-(--radius-control) bg-brand-50 px-3.5 py-2.5 text-small text-ink-900">{info.notice}</p>}
+        <BusinessLinks info={info} className="mt-3" />
       </header>
 
       {!info.has_tables ? <p className="text-small text-ink-500">Online reservations are not open yet. Please call to book.</p> : (
         <form onSubmit={submit} className="space-y-8">
-          {info.outlets.length > 1 && <Field id="rs-outlet" label="Where"><Select id="rs-outlet" value={info.outlet_id} onChange={(e) => setOutlet(e.target.value)}>{info.outlets.map((o) => <option key={o.branch_id} value={o.branch_id}>{o.name}{o.city ? ` · ${o.city}` : ''}</option>)}</Select></Field>}
+          {info.outlets.length > 1 && <Field id="rs-outlet" label="Where"><Select id="rs-outlet" value={info.outlet_id} onChange={(e) => { setArea(''); setOutlet(e.target.value); }}>{info.outlets.map((o) => <option key={o.branch_id} value={o.branch_id}>{o.name}{o.city ? ` · ${o.city}` : ''}</option>)}</Select></Field>}
+
+          {info.services.length > 0 && (
+            <section aria-labelledby="rs-what" className="space-y-3">
+              <h2 id="rs-what" className="text-body font-semibold text-ink-900">1. What are you booking?</h2>
+              <div role="radiogroup" aria-labelledby="rs-what" className="flex flex-wrap gap-2">
+                {info.services.map((name) => <button key={name} type="button" role="radio" aria-checked={service === name} onClick={() => setService(name)} className={chip(service === name)}>{name}</button>)}
+              </div>
+            </section>
+          )}
 
           <section aria-labelledby="rs-when" className="space-y-4">
-            <h2 id="rs-when" className="text-body font-semibold text-ink-900">1. How many, and when</h2>
+            <h2 id="rs-when" className="text-body font-semibold text-ink-900">{first + 1}. How many, and when</h2>
+            {info.areas.length > 1 && (
+              <Field id="rs-area" label="Where would you like to sit?"><Select id="rs-area" value={area} onChange={(e) => setArea(e.target.value)}><option value="">Any table</option>{info.areas.map((a) => <option key={a} value={a}>{a}</option>)}</Select></Field>
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               <Field id="rs-party" label="People">
                 <div className="flex items-center gap-3">
@@ -118,7 +141,15 @@ export default function Reserve() {
 
           {time && (
             <section aria-labelledby="rs-you" className="space-y-4">
-              <h2 id="rs-you" className="text-body font-semibold text-ink-900">2. Your details</h2>
+              <h2 id="rs-you" className="text-body font-semibold text-ink-900">{first + 2}. Your details</h2>
+              {info.extras.length > 0 && (
+                <fieldset>
+                  <legend className="mb-2 text-small font-medium text-ink-900">Add anything? (optional)</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {info.extras.map((name) => <button key={name} type="button" aria-pressed={extras.includes(name)} onClick={() => setExtras((x) => (x.includes(name) ? x.filter((v) => v !== name) : [...x, name]))} className={chip(extras.includes(name))}>{name}</button>)}
+                  </div>
+                </fieldset>
+              )}
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field id="rs-name" label="Your name"><Input id="rs-name" value={form.name} onChange={(e) => setForm((x) => ({ ...x, name: e.target.value }))} required autoComplete="name" /></Field>
                 <Field id="rs-phone" label="Mobile number"><Input id="rs-phone" type="tel" inputMode="tel" value={form.phone} onChange={(e) => setForm((x) => ({ ...x, phone: e.target.value }))} required autoComplete="tel" /></Field>
@@ -126,8 +157,9 @@ export default function Reserve() {
               <Field id="rs-notes" label="Anything we should know? (optional)"><Textarea id="rs-notes" rows={2} maxLength={300} value={form.notes} onChange={(e) => setForm((x) => ({ ...x, notes: e.target.value }))} /></Field>
               <div aria-hidden="true" className="absolute -left-[9999px]"><label>Website<input tabIndex={-1} autoComplete="off" value={form.website} onChange={(e) => setForm((x) => ({ ...x, website: e.target.value }))} /></label></div>
               <Alert>{formError}</Alert>
-              <p className="rounded-(--radius-control) bg-surface-2 px-3.5 py-3 text-small text-ink-700">Table for <strong className="text-ink-900">{party}</strong> on {dayText(date)} at <strong className="text-ink-900">{clock(time)}</strong>{info.offer ? ` · ${info.offer.text}` : ''}.</p>
-              <Button type="submit" size="lg" className="w-full" loading={busy}>Confirm reservation</Button>
+              <p className="rounded-(--radius-control) bg-surface-2 px-3.5 py-3 text-small text-ink-700">Table for <strong className="text-ink-900">{party}</strong> on {dayText(date)} at <strong className="text-ink-900">{clock(time)}</strong>{[service, ...extras, area].filter(Boolean).map((v) => ` · ${v}`)}{info.offer ? ` · ${info.offer.text}` : ''}.</p>
+              {needsService && <p className="text-small text-warning">Choose what you are booking, at the top of the page.</p>}
+              <Button type="submit" size="lg" className="w-full" loading={busy} disabled={needsService}>Confirm reservation</Button>
             </section>
           )}
           {!time && formError && <Alert>{formError}</Alert>}

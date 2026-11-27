@@ -18,6 +18,7 @@ import config from './src/config/env.js';
 import pool, { initializeDatabase } from './src/config/database.js';
 import { ensureSuperAdmin } from './src/config/seedSuperAdmin.js';
 import routes from './src/routes/index.js';
+import * as share from './src/controllers/sharePreview.controller.js';
 import { apiLimiter } from './src/middleware/limits.js';
 import { requireAuth, withBusiness } from './src/middleware/auth.js';
 import './src/modules/scans.js';
@@ -32,6 +33,10 @@ const app = express();
    whole internet and locks everybody out together. */
 // A server not marked production (NODE_ENV unset) behind nginx hit the same error, so this is on unless TRUST_PROXY=0 says the API is exposed directly.
 if (config.isProduction || process.env.TRUST_PROXY !== '0') app.set('trust proxy', 1);
+
+/* The two booking pages with the business's own link preview. They are real pages, so they come before the API's headers; nginx adds the page's security headers. */
+app.get('/share/:kind(book|reserve)/:slug', apiLimiter, share.page);
+app.get('/share/:kind(book|reserve)/:slug/image.jpg', apiLimiter, share.image);
 
 // the API only ever answers with JSON or a file, never a page, so nothing it sends may be run or framed. (The web app's own CSP is set at the edge: deploy/nginx-security-headers.conf.)
 app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } } }));

@@ -10,6 +10,7 @@ import { CalendarCheck, Check, Clock, MapPin, Phone, Tag } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { addDays, clockText, dateText, fromLocal, qs, timeText, todayIn, toMinutes } from '../lib/salon.js';
 import { Alert, Button, Field, Input, PageLoader, Select, Textarea } from '../components/ui.jsx';
+import BusinessLinks from './BusinessLinks.jsx';
 
 const money = (n) => formatCurrency(n);
 
@@ -85,6 +86,7 @@ const SalonBooking = () => {
             </ul></>}
           <p className="mt-4 text-caption text-ink-500">{info.name}{info.phone && <> · call {info.phone} to change or cancel</>}</p>
           {info.cancellation_policy && <p className="mt-2 text-caption text-ink-500">{info.cancellation_policy}</p>}
+          <BusinessLinks info={info} className="mt-4 justify-center" />
         </div>
       </div>
     );
@@ -101,6 +103,7 @@ const SalonBooking = () => {
         </p>
         {info.offer && <p className="mt-3 flex items-center gap-2 rounded-(--radius-control) bg-success/10 px-3.5 py-2.5 text-small font-semibold text-success"><Tag aria-hidden="true" className="h-4 w-4" />{info.offer.text}</p>}
         {info.notice && <p className="mt-3 rounded-(--radius-control) bg-brand-50 px-3.5 py-2.5 text-small text-ink-900">{info.notice}</p>}
+        <BusinessLinks info={info} className="mt-3" />
       </header>
 
       <form onSubmit={submit} className="space-y-8">
