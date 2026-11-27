@@ -5,7 +5,7 @@ import { validLogo, type LogoBits } from './escpos.ts';
    printing works with no internet and never waits for the network. Nothing here can stop a receipt: any trouble means the receipt prints without the logo. */
 const KEY = 'print_logo';
 const STAMP = 'print_logo_at';
-const FRESH_MS = 24 * 60 * 60 * 1000;   // a changed logo reaches the phone within a day, or at once on the first print
+const FRESH_MS = 60 * 1000;   // after a minute the server is asked again in the background (opening a receipt does this), so a logo changed on the website, or a saved "no logo", does not stick
 let refreshing = false;
 
 /** The dots to print from a business's receipt settings, or null when there is no logo, it is switched off, or the dots are not valid. */
@@ -26,7 +26,7 @@ const refresh = async (api: { get: <T>(path: string) => Promise<T> }): Promise<L
   return logo;
 };
 
-/** The logo to print. The kept copy is used at once; it is refreshed from the server in the background when it is older than a day. With no copy yet, the server is asked (at most 2 seconds). */
+/** The logo to print. The kept copy is used at once; it is refreshed from the server in the background when it is older than a minute. With no copy yet, the server is asked (at most 2 seconds). */
 export const printLogo = async (api: { get: <T>(path: string) => Promise<T> }): Promise<LogoBits | null> => {
   let kept: LogoBits | null = null; let age = Infinity;
   try {
