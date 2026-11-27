@@ -50,7 +50,8 @@ export const rebuildStyles = () => { Object.assign(s, makeStyles()); };
 
 /** A row of filter chips (a date range, a category). The chosen one is filled. */
 export const Chips = <T extends string>({ items, value, onChange }: { items: { id: T; label: string }[]; value: T; onChange: (id: T) => void }) => (
-  <S2 horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 4 }} style={{ flexGrow: 0, flexShrink: 0 }}>   {/* a ScrollView shrinks by default, which cut the chips off at the bottom when the screen was full */}
+  <S2 horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 4 }} style={{ flexGrow: 0, flexShrink: 0 }}>
+    {/* a ScrollView shrinks by default, which cut the chips off at the bottom when the screen was full */}
     {items.map((i) => (
       <P2 key={i.id} accessibilityRole="button" accessibilityState={{ selected: value === i.id }} onPress={() => onChange(i.id)}
         style={{ minHeight: 48, paddingHorizontal: 16, justifyContent: 'center', borderRadius: radius.pill, backgroundColor: value === i.id ? color.action : color.card, borderWidth: 1, borderColor: value === i.id ? color.action : color.lineStrong }}>
