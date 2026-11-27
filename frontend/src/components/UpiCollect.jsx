@@ -10,7 +10,7 @@
  */
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { Printer, Smartphone } from 'lucide-react';
+import { MessageCircle, Printer, Smartphone } from 'lucide-react';
 import { api, formatCurrency } from '../lib/api.js';
 import { useIdempotencyKey } from '../lib/idempotency.js';
 import { printReceipt, silentPrinting } from '../lib/printing.js';
@@ -32,6 +32,18 @@ const UpiCollect = ({ invoice, amount, vpa, payee, onPaid, onLater }) => {
   useEffect(() => { if (silentPrinting()) printReceipt(invoice.invoice_id, { upi: due }); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { QRCode.toDataURL(link, { width: 480, margin: 1, errorCorrectionLevel: 'M' }).then(setQr).catch(() => setQr('')); }, [link]);
 
+  // the message and link go from the shop's own WhatsApp; the window opens first so the browser does not block it
+  const sendLink = async () => {
+    setError('');
+    const win = window.open('', '_blank');
+    try {
+      const r = await api('/messaging/bill-share', { method: 'POST', body: { invoice_id: invoice.invoice_id } });
+      if (win) { win.opener = null; win.location.href = r.wa_url; } else window.location.href = r.wa_url;
+    } catch (caught) { win?.close(); setError(caught.message); }
+  };
+  // the link's page asks for the bill's whole balance, so it is not offered while only part of it is being collected
+  const wholeBalance = Math.abs(due - Number(invoice.balance_due ?? invoice.total)) < 0.005;
+
   const received = async () => {
     setBusy(true); setError('');
     try {
@@ -45,7 +57,7 @@ const UpiCollect = ({ invoice, amount, vpa, payee, onPaid, onLater }) => {
   };
 
   return (
-    <Modal title="Scan to pay with UPI" onClose={onLater}>
+    <Modal title="Collect by UPI" onClose={onLater}>
       <div className="text-center">
         <p className="-mt-2 text-small text-ink-500">{invoice.invoice_number} · {payee}</p>
         <p className="tabular mt-3 text-[40px] font-semibold leading-none tracking-tight text-ink-900">{formatCurrency(due)}</p>
@@ -54,12 +66,13 @@ const UpiCollect = ({ invoice, amount, vpa, payee, onPaid, onLater }) => {
         </div>
         <p className="mt-3 text-small text-ink-700">Paying <span className="font-semibold text-ink-900">{vpa}</span></p>
         <p className="mt-1 flex items-center justify-center gap-1.5 text-caption text-ink-500"><Smartphone aria-hidden="true" className="h-3.5 w-3.5" />Any UPI app: GPay, PhonePe, Paytm, BHIM or a bank app</p>
+        {wholeBalance && <Button size="lg" className="mt-3 w-full" onClick={sendLink}><MessageCircle aria-hidden="true" className="h-5 w-5" />Send payment link on WhatsApp</Button>}
         {/* The bill is saved and unpaid, so the printed copy carries this same QR for the exact amount due. */}
         <Button variant={silentPrinting() ? 'secondary' : 'primary'} size="sm" className="mt-3" onClick={() => printReceipt(invoice.invoice_id, { upi: due })}><Printer aria-hidden="true" className="h-4 w-4" />Print bill with this QR</Button>
       </div>
 
       <div className="mt-5 rounded-lg bg-surface-2 px-3.5 py-3 text-small text-ink-700">
-        FlowXP can’t see UPI payments by itself. Check the customer’s phone shows <strong>paid</strong> to {vpa} for {formatCurrency(due)}, then tap Payment received.
+        FlowXP can’t see UPI payments by itself. Check that {formatCurrency(due)} has <strong>reached</strong> {vpa} in your UPI app (or see the paid screen on the customer’s phone), then tap Payment received.
       </div>
       <div className="mt-4">
         <Field id="upi-ref" label="UPI reference (optional)" hint="The 12-digit UTR from their screen, if you want it on record">

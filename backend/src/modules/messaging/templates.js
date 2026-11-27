@@ -37,6 +37,26 @@ export const TEMPLATES = {
     body: (p) => `Hi ${p.name},\n\nThank you for your order at *_${p.business}_*.\n\nYour bill of *_${p.total}_* is ready.\n\n*Invoice No.:* ${p.number}\n*Date & Time:* ${p.when}\n*Payment Status:* ${p.status}\n\nTap View Invoice below to see every item and the GST.\n\n${p.closing}\n\nThank you for choosing us.`,
     text: (p) => `Hi ${p.name}, thank you for your order at ${p.business}. Your bill of ${p.total} is ready. Invoice ${p.number}, ${p.when}. Payment status: ${p.status}. View it here: ${p.link} ${p.closing} Thank you for choosing us.`
   },
+  /* A bill waiting for UPI money: the amount, what it is for, and a button to the bill page, whose "Pay with UPI" button opens the customer's own UPI app. It is not a payment gateway: the shop confirms the money.
+     Sent in place of the receipt when money is due and the shop has a UPI ID (sendBill in index.js). */
+  UPI_PAYMENT: {
+    name: 'flowxp_upi_payment', promo: false,
+    vars: ['name', 'business', 'amount', 'number', 'services'],
+    urlButtons: ['token'],
+    also: ['link'],
+    body: (p) => `Hi ${p.name},
+
+Thank you for visiting *_${p.business}_*.
+
+*Amount to pay:* ${p.amount}
+*Invoice No.:* ${p.number}
+*For:* ${p.services}
+
+Tap Pay by UPI below to pay from any UPI app. We will confirm once the payment reaches us.
+
+Thank you for choosing us.`,
+    text: (p) => `Hi ${p.name}, thank you for visiting ${p.business}. Amount to pay: ${p.amount} on invoice ${p.number}, for ${p.services}. Pay by any UPI app here: ${p.link} We will confirm once the payment reaches us.`
+  },
   RESERVATION: {
     name: 'flowxp_booking', promo: false,
     vars: ['name', 'business', 'when', 'party'],

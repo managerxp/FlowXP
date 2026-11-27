@@ -14,13 +14,13 @@ const OWN = { name: 'Asha', business: 'Red Oven Pizza House', total: '₹460.00'
 const GYM = { business: 'Iron House Fitness', plan: 'Quarterly Plan', date: '30 Nov 2026', amount: '₹4,500', start: '01 Sep 2026', end: '30 Nov 2026' };   // gym wording needs gym-like samples for Meta's review
 const sampleOf = (kind, v) => (kind.startsWith('GYM_') && v in GYM ? GYM[v] : ['BILL'].includes(kind) && v in OWN ? OWN[v] : SAMPLE[v] ?? 'Sample');
 const GROUPS = [
-  ['Common to every kind of business (bills, sign-in code, balances, loyalty)', (k) => ['BILL', 'OTP', 'BALANCE_DUE', 'REVIEW_REPLY', 'LOYALTY_NEXT', 'LOYALTY_POINTS', 'OFFER'].includes(k)],
+  ['Common to every kind of business (bills, sign-in code, balances, loyalty)', (k) => ['BILL', 'UPI_PAYMENT', 'OTP', 'BALANCE_DUE', 'REVIEW_REPLY', 'LOYALTY_NEXT', 'LOYALTY_POINTS', 'OFFER'].includes(k)],
   ['Restaurants and cafés', (k) => k.startsWith('RESERVATION') || k.startsWith('WAITLIST')],
   ['Salons', (k) => k.startsWith('SALON_')],
   ['Gyms', (k) => k.startsWith('GYM_')],
   ['Auto parts and garages', (k) => k.startsWith('JOB_') || k === 'SERVICE_DUE'],
   ['Wholesale and distribution', (k) => k.startsWith('WS_')],
-  ["FlowXP's own invoices and quotations (sent from the Super Admin)", (k) => k === 'ADMIN_DOCUMENT']
+  ["FlowXP's own invoices and quotations (sent from the Super Admin)", (k) => k === 'ADMIN_RECEIPT']
 ];
 const lines = [];
 lines.push('# WhatsApp templates FlowXP sends', '',
@@ -39,12 +39,14 @@ for (const [title, test] of GROUPS) {
     if (kind === 'OTP') lines.push('Created with named variables ({{code}}, {{text}}): FlowXP sends them by name, so keep those two names exactly.', '');
     else if (t.urlButtons) {
       lines.push('**Buttons (Call to action, Visit website, URL type Dynamic):**', '');
-      lines.push(`- \`View Invoice\`: \`https://YOUR-DOMAIN/bill/{{1}}\`, sample \`https://YOUR-DOMAIN/bill/abc123\``);
+      lines.push(`- \`${kind === 'UPI_PAYMENT' ? 'Pay by UPI' : 'View Invoice'}\`: \`https://YOUR-DOMAIN/bill/{{1}}\`, sample \`https://YOUR-DOMAIN/bill/abc123\``);
       if (t.urlButtons.length > 1) lines.push('- `Rate Us`: `https://YOUR-DOMAIN/r/{{1}}`, sample `https://YOUR-DOMAIN/r/abc123` (the Google review page of the shop; the bill when the shop has no review link)');
       lines.push('');
     }
     if (['JOB_RECEIVED', 'JOB_READY', 'SERVICE_DUE', 'LOYALTY_POINTS', 'LOYALTY_NEXT', 'REVIEW_REPLY', 'GYM_SUBSCRIBED', 'GYM_EXPIRY', 'GYM_MONTH_START', 'GYM_EXPIRED', 'GYM_PAYMENT_DUE'].includes(kind)) lines.push('**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The business name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Label:*`.', '');
     if (['BILL'].includes(kind)) lines.push('**Header:** none. **Footer:** `Billing powered by FlowXP`. Button texts are free: `View Bill` / `Rate Us` or `View Invoice` / `Rate Your Experience`.', '');
+    if (kind === 'ADMIN_RECEIPT') lines.push('**Header:** Document (FlowXP attaches the PDF). **Buttons:** none.', '');
+    if (kind === 'UPI_PAYMENT') lines.push('**Header:** none. **Footer:** `Billing powered by FlowXP`. Sent in place of `flowxp_bill` when money is due and the shop has saved its UPI ID. The button opens the bill, which has the Pay with UPI button. Until Meta approves it, `flowxp_bill` goes instead.', '');
     if (kind === 'BILL') lines.push('One template for every shop. The Rate Us button opens the Google review page the shop saved (Settings, Business details, Google review link), or the bill when there is none.', '');
   }
 }

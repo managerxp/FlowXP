@@ -13,7 +13,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Check, ChevronDown, Crown, Gift, Minus, PackagePlus, Plus, Printer, Scissors, Search, ShoppingBag, Tag, Trash2, Wallet } from 'lucide-react';
+import { Check, ChevronDown, Crown, Gift, MessageCircle, Minus, PackagePlus, Plus, Printer, Scissors, Search, ShoppingBag, Tag, Trash2, Wallet } from 'lucide-react';
 import { api, formatCurrency } from '../../lib/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useIdempotencyKey } from '../../lib/idempotency.js';
@@ -22,6 +22,7 @@ import { queueSale, useOnline } from '../../lib/offline.js';
 import { autoReceipt, getDevicePrefs, printReceipt } from '../../lib/printing.js';
 import { PAYMENT_LABEL, dateText, useDebounced, useLoad } from '../../lib/salon.js';
 import { readOffline, saveOffline } from '../../lib/salonOffline.js';
+import UpiCollect from '../../components/UpiCollect.jsx';
 import { Alert, Badge, Button, EmptyState, Field, Input, Modal, PageHeader, PageLoader, Select, Textarea, useToast, useDialog } from '../../components/ui.jsx';
 import ClientPicker from './ClientPicker.jsx';
 import { Chips } from './parts.jsx';
@@ -316,6 +317,7 @@ const PaymentRows = ({ methods, rows, setRows, total, payLater, setPayLater, has
 
 const Done = ({ result, queued, onNew, onClose }) => {
   const tr = useT();
+  const toast = useToast();
   const navigate = useNavigate();
   if (queued) {
     return (
@@ -327,6 +329,15 @@ const Done = ({ result, queued, onNew, onClose }) => {
   }
   const inv = result.invoice;
   const due = num(inv.balance_due);
+  // the shop's own WhatsApp, with the services, the amount and the payment link ready to send; the window opens first so the browser does not block it
+  const sendOnWhatsApp = async () => {
+    const win = window.open('', '_blank');
+    try {
+      const r = await api('/messaging/bill-share', { method: 'POST', body: { invoice_id: inv.invoice_id } });
+      if (due > 0 && !r.pay) toast.error(tr('Add your UPI ID in business settings so the link can take a UPI payment.'));
+      if (win) { win.opener = null; win.location.href = r.wa_url; } else window.location.href = r.wa_url;
+    } catch (caught) { win?.close(); toast.error(caught.message); }
+  };
   return (
     <Modal title={tr('Bill {{invoice_number}}', { invoice_number: inv.invoice_number })} onClose={onClose}>
       <div className="flex items-center gap-3 rounded-(--radius-card) bg-success/10 p-4">
@@ -349,7 +360,9 @@ const Done = ({ result, queued, onNew, onClose }) => {
       )}
       {result.issued.memberships.map((m) => <p key={m.membership_id} className="mt-3 text-small text-ink-700"><Crown aria-hidden="true" className="mr-1.5 inline h-4 w-4 text-warning" />Membership {m.renewed ? 'renewed' : 'started'} — runs to {dateText(String(m.expiry_date).slice(0, 10), { day: 'numeric', month: 'short', year: 'numeric' })}.</p>)}
       {result.issued.packages.map((p) => <p key={p.cp_id} className="mt-3 text-small text-ink-700"><PackagePlus aria-hidden="true" className="mr-1.5 inline h-4 w-4 text-brand-600" />Package added — valid until {dateText(String(p.expiry_date).slice(0, 10), { day: 'numeric', month: 'short', year: 'numeric' })}.</p>)}
+      {due > 0 && <p className="mt-4 text-caption text-ink-500">{tr('FlowXP cannot see UPI payments by itself. When the money reaches you, open View bill and record the payment.')}</p>}
       <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <Button variant="secondary" onClick={sendOnWhatsApp}><MessageCircle aria-hidden="true" className="h-4 w-4" />{due > 0 ? tr('Send payment link on WhatsApp') : tr('Send bill on WhatsApp')}</Button>
         <Button variant="secondary" onClick={() => printReceipt(inv.invoice_id)}><Printer aria-hidden="true" className="h-4 w-4" />{tr('Print receipt')}</Button>
         <Button variant="secondary" onClick={() => navigate(`/app/billing/invoices/${inv.invoice_id}`)}>{tr('View bill')}</Button>
         <Button onClick={onNew}>{tr('Next bill')}</Button>
@@ -481,6 +494,11 @@ const SalonPos = () => {
   const points = ent.data?.points;
   const needsStaffLine = cart.find((l) => l.type === 'SERVICE' && !l.staff_id);
   const methods = catalog?.payment_methods || ['CASH'];
+  const { business } = useAuth();
+  const [collecting, setCollecting] = useState(null);   // a saved bill waiting for the client's UPI payment
+  // UPI alone, with the salon's UPI ID set and a client chosen: the bill is saved, the link or QR goes to the client, and the desk confirms the money.
+  // Not with a gift card, sold or spent (those bills must be paid in full when made).
+  const upiCollect = !payLater && rows.length === 1 && rows[0].method === 'UPI' && Boolean(business?.upi_vpa) && Boolean(client) && !cart.some((l) => l.type === 'GIFT_CARD');
 
   const reset = () => {
     setCart([]); setClient(null); setInvDiscount(''); setOfferCode(''); setOfferIds([]); setSkipAuto(false); setUsePoints(''); setNotes('');
@@ -503,10 +521,17 @@ const SalonPos = () => {
     if (needsStaffLine) { toast.error(tr('Choose who did {{needsStaffLine_name}}', { needsStaffLine_name: needsStaffLine.name })); return; }
     let body;
     try { body = { ...buildBody(), payments: payments() }; } catch (error) { toast.error(error.message); return; }
+    // the UPI payment is recorded when the desk confirms it; a sale kept offline below still carries it, as before
+    const sent = upiCollect ? { ...body, payments: undefined } : body;
     setSaving(true);
     try {
-      const result = await withApproval(dialog, (approval) => api('/salon/pos/invoices', { method: 'POST', body: approval ? { ...body, approval } : body, idempotencyKey: idem.get() }), idem.settle);
+      const result = await withApproval(dialog, (approval) => api('/salon/pos/invoices', { method: 'POST', body: approval ? { ...sent, approval } : sent, idempotencyKey: idem.get() }), idem.settle);
       idem.settle(null);
+      if (upiCollect) {
+        const typed = rows[0].amount === '' ? null : num(rows[0].amount);
+        setCollecting({ result, amount: typed != null && typed < num(result.invoice.balance_due) ? typed : undefined });
+        return;
+      }
       if (autoReceipt()) printReceipt(result.invoice.invoice_id);
       setDone({ result });
     } catch (error) {
@@ -517,15 +542,15 @@ const SalonPos = () => {
         else toast.error(tr('Too many sales are waiting to be sent. Reconnect and try again.'));
       } else toast.error(error.message);
     } finally { setSaving(false); }
-  }, [saving, cart, needsStaffLine, buildBody, idem, total, rows, payLater]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [saving, cart, needsStaffLine, buildBody, idem, total, rows, payLater, upiCollect]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* keyboard: / search, F2 client, F9 or Ctrl+Enter charge */
   useEffect(() => {
     const onKey = (e) => {
       const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName);
-      if (e.key === '/' && !typing && !done) { e.preventDefault(); searchRef.current?.focus(); }
+      if (e.key === '/' && !typing && !done && !collecting) { e.preventDefault(); searchRef.current?.focus(); }
       else if (e.key === 'F2') { e.preventDefault(); clientRef.current?.focus(); }
-      else if (e.key === 'F9' || ((e.ctrlKey || e.metaKey) && e.key === 'Enter')) { e.preventDefault(); if (!done) charge(); }
+      else if (e.key === 'F9' || ((e.ctrlKey || e.metaKey) && e.key === 'Enter')) { e.preventDefault(); if (!done && !collecting) charge(); }
       else if (e.key === 'Escape' && document.activeElement === searchRef.current) setSearch('');
     };
     document.addEventListener('keydown', onKey);
@@ -618,7 +643,7 @@ const SalonPos = () => {
               </details>
 
               <Button size="lg" className="mt-4 w-full" loading={saving} disabled={!cart.length || Boolean(quoteError) || quoting} onClick={charge}>
-                <Wallet aria-hidden="true" className="h-5 w-5" />{payLater ? tr('Save the bill') : `Take payment · ${money(total)}`}
+                <Wallet aria-hidden="true" className="h-5 w-5" />{payLater ? tr('Save the bill') : upiCollect ? tr('Collect by UPI · {{money}}', { money: money(total) }) : `Take payment · ${money(total)}`}
               </Button>
               {needsStaffLine && <p className="mt-2 text-center text-caption text-warning">{tr('Choose who did {{needsStaffLine_name}}.', { needsStaffLine_name: needsStaffLine.name })}</p>}
               <button type="button" onClick={reset} className="mt-2 w-full text-center text-caption text-ink-500 hover:text-danger">{tr('Clear the bill')}</button>
@@ -627,6 +652,11 @@ const SalonPos = () => {
         </aside>
       </div>
 
+      {collecting && (
+        <UpiCollect invoice={collecting.result.invoice} amount={collecting.amount} vpa={business.upi_vpa} payee={business.name}
+                    onPaid={(invoice) => { setCollecting(null); setDone({ result: { ...collecting.result, invoice: { ...collecting.result.invoice, ...invoice } } }); }}
+                    onLater={() => { setCollecting(null); setDone({ result: collecting.result }); }} />
+      )}
       {done && <Done result={done.result} queued={done.queued} onNew={reset} onClose={reset} />}
     </div>
   );

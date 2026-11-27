@@ -43,6 +43,34 @@ Thank you for choosing us.
 
 One template for every shop. The Rate Us button opens the Google review page the shop saved (Settings, Business details, Google review link), or the bill when there is none.
 
+### `flowxp_upi_payment` (UPI_PAYMENT)
+
+**Category:** Utility
+
+**Body:**
+
+```
+Hi {{1}},
+
+Thank you for visiting *_{{2}}_*.
+
+*Amount to pay:* {{3}}
+*Invoice No.:* {{4}}
+*For:* {{5}}
+
+Tap Pay by UPI below to pay from any UPI app. We will confirm once the payment reaches us.
+
+Thank you for choosing us.
+```
+
+**Samples:** {{1}} name = `Asha`, {{2}} business = `Red Oven Pizza House`, {{3}} amount = `₹1,500`, {{4}} number = `INV-2026-00125`, {{5}} services = `Haircut`
+
+**Buttons (Call to action, Visit website, URL type Dynamic):**
+
+- `Pay by UPI`: `https://YOUR-DOMAIN/bill/{{1}}`, sample `https://YOUR-DOMAIN/bill/abc123`
+
+**Header:** none. **Footer:** `Billing powered by FlowXP`. Sent in place of `flowxp_bill` when money is due and the shop has saved its UPI ID. The button opens the bill, which has the Pay with UPI button. Until Meta approves it, `flowxp_bill` goes instead.
+
 ### `flowxp_loyalty_next` (LOYALTY_NEXT)
 
 **Category:** Marketing
@@ -625,7 +653,7 @@ Hi {{1}}, update on your order {{3}} from {{2}}: {{4}}. Thank you.
 
 ## FlowXP's own invoices and quotations (sent from the Super Admin)
 
-### `flowxp_document` (ADMIN_DOCUMENT)
+### `flowxp_receipt` (ADMIN_RECEIPT)
 
 **Category:** Utility
 
@@ -634,17 +662,21 @@ Hi {{1}}, update on your order {{3}} from {{2}}: {{4}}. Thank you.
 ```
 Hi {{1}},
 
-Your {{3}} from *_{{2}}_* is ready.
+Your invoice is attached to this message, and the details are below.
 
-*Number:* {{4}}
-*Amount:* {{5}}
+*Package:* {{2}}
+*Amount:* {{3}}
+*Start date:* {{4}}
+*End date:* {{5}}
 
-{{6}}
+If you face any issue, contact us through the Support section in your FlowXP app.
 
-Thank you.
+Thank you for your purchase, and thank you for trusting FlowXP.
 ```
 
-**Samples:** {{1}} name = `Asha`, {{2}} seller = `FlowXP`, {{3}} what = `invoice`, {{4}} number = `INV-2026-00125`, {{5}} total = `₹460.00`, {{6}} next = `Pay here: https://pay.example/abc`
+**Samples:** {{1}} name = `Asha`, {{2}} package = `Sample`, {{3}} amount = `₹1,500`, {{4}} start = `Sample`, {{5}} end = `Sample`
+
+**Header:** Document (FlowXP attaches the PDF). **Buttons:** none.
 
 ## The closing line of the bill (variable {{7}})
 

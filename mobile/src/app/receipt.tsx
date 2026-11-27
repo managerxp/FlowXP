@@ -2,11 +2,12 @@ import { SvgXml } from 'react-native-svg';
 import { display } from '../lib/theme.ts';
 import { qrSvg } from '../lib/qr.ts';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, Share, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, Share, Text, View } from 'react-native';
 import { Ionicons } from '../lib/icons.tsx';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, currentBusiness, useSession } from '../lib/session.ts';
+import { newKey } from '../lib/api.ts';
 import { kvGet, useScope } from '../lib/local.ts';
 import { printReceipt, type Paper } from '../lib/print.ts';
 import { canEway } from '../lib/ewayBill.ts';
@@ -65,6 +66,19 @@ export default function Receipt() {
   const waiting = !invoice && pending && pending.state !== 'sent';
   // A sale just charged prints by itself when a thermal printer is saved on this phone: no button, no phone print screen. "Receipt printed" and OK is all the till sees.
   const [printedNote, setPrintedNote] = useState(false);
+  const payKey = useRef(newKey());   // one key for this payment: a double tap records it once
+  const [confirming, setConfirming] = useState(false);
+  const confirmUpi = () => {
+    if (!invoice) return;
+    Alert.alert(t('Payment received?'), t('Check that the money has reached your UPI app before you confirm.'), [
+      { text: t('Not yet'), style: 'cancel' },
+      { text: t('Yes, received'), onPress: () => {
+        setShareError(''); setConfirming(true);
+        api.post(`/invoices/${invoice.invoice_id}/payments`, { amount: invoice.balance_due, method: 'UPI' }, { idempotencyKey: payKey.current })
+          .then(() => { payKey.current = newKey(); load(); }).catch((e: Error) => setShareError(e.message)).finally(() => setConfirming(false));
+      } }
+    ]);
+  };
   const auto = useRef(false);
   useEffect(() => {
     if (!fresh || !paperReady || !text || auto.current || (!invoice && !pending)) return;
@@ -97,6 +111,14 @@ export default function Receipt() {
         {!invoice && !pending && !error ? <ActivityIndicator /> : null}
         <ErrorText>{error}</ErrorText>
         {error ? <Button title="Try again" kind="quiet" onPress={load} /> : null}
+        {invoice && owed && business?.upi_vpa && invoice.status !== 'CANCELLED' ? (
+          <View style={[s.card, { gap: 8 }]}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: color.ink }}>{t('To collect by UPI')}: {rupees(owed)}</Text>
+            <Soft>{t('Send the link, wait for the money, then confirm it here. The customer can pay with any UPI app.')}</Soft>
+            <Button title={t('Send payment link on WhatsApp')} onPress={() => { setShareError(''); shareBillOnWhatsApp(api, invoice.invoice_id).catch((e: Error) => setShareError(e.message)); }} />
+            <Button title={t('Payment received')} kind="quiet" busy={confirming} onPress={confirmUpi} />
+          </View>
+        ) : null}
         {invoice && !owed && invoice.loyalty_claim_url ? (
           <View style={[s.card, { alignItems: 'center', gap: 6 }]}>
             <SvgXml xml={qrSvg(invoice.loyalty_claim_url, 180)} width={180} height={180} />

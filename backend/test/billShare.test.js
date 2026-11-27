@@ -9,7 +9,8 @@ import { setupTestDb } from './helpers/db.js';
 const { pool, skip, cleanup } = await setupTestDb();
 const { runMigrations } = await import('../src/config/migrate.js');
 // imported after setupTestDb so the app's pool points at the throwaway database, not the dev one
-const { balanceShare, billShare, sendBalance } = await import('../src/modules/messaging/index.js');
+const { balanceShare, billShare, sendBalance, sendBill } = await import('../src/modules/messaging/index.js');
+const { setProvider } = await import('../src/modules/messaging/provider.js');
 const { createInvoiceInTransaction } = await import('../src/modules/billing.js');
 
 test.after(cleanup);
@@ -34,6 +35,16 @@ test('the share message says what is due, and the WhatsApp link goes to the cust
   assert.match(a.text, /Total due on your account: ₹350\./);
   assert.match(a.text, new RegExp(`View it here: ${a.link.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}$`));
   assert.equal(a.phone, '919876543210', 'ten digits, the country code added');
+  assert.match(a.text, /Your items:\n• .+: ₹200\n/, 'what was bought is listed');
+  assert.equal(a.pay, false, 'no UPI ID yet, so no payment is offered');
+  await pool.query(`UPDATE businesses SET upi_vpa = 'spice@upi', business_type = 'SALON' WHERE business_id = $1`, [biz]);
+  const u = await billShare(pool, { businessId: biz, invoiceId: second });
+  assert.equal(u.pay, true);
+  assert.equal(u.due, 150);
+  assert.match(u.text, /Your services:\n/);
+  assert.match(u.text, /Amount to pay: ₹150\n/);
+  assert.ok(u.text.endsWith(`Pay by any UPI app here: ${u.link}`), u.text);
+  assert.ok(!u.text.includes('upi://'), 'WhatsApp could not open it; the bill page has the button');
   assert.ok(a.wa_url.startsWith('https://wa.me/919876543210?text='));
   assert.equal(decodeURIComponent(a.wa_url.split('?text=')[1]), a.text);
   assert.equal((await billShare(pool, { businessId: biz, invoiceId: second })).link, a.link, 'the same link every time');
@@ -76,4 +87,17 @@ test('the share message says what is due, and the WhatsApp link goes to the cust
   assert.equal(sent.body, rem.text, 'the message is word for word the one the shop would send by hand');
   assert.equal((await sendBalance(pool, { businessId: biz, customerId: clear })).code, 409);
   assert.equal((await sendBalance(pool, { businessId: biz, customerId: 999999 })).code, 404);
+
+  // the automatic bill message: the UPI payment template when money is due and there is a UPI ID, the receipt when Meta refuses it or the bill is paid
+  assert.equal((await sendBill(pool, { businessId: biz, invoiceId: second })).kind, 'UPI_PAYMENT');
+  const asked = [];
+  setProvider(async (m) => { asked.push(m.template); if (m.kind === 'UPI_PAYMENT' && asked.length > 1) throw new Error('template not approved'); return { status: 'SENT', providerId: `t${asked.length}` }; });
+  try {
+    assert.equal((await sendBill(pool, { businessId: biz, invoiceId: second })).kind, 'UPI_PAYMENT');
+    assert.equal(asked[0].name, 'flowxp_upi_payment');
+    assert.deepEqual(asked[0].params.slice(2), ['₹150', asked[0].params[3], 'Bolt']);
+    assert.equal(asked[0].buttons.length, 1);
+    assert.equal((await sendBill(pool, { businessId: biz, invoiceId: second })).kind, 'BILL', 'refused template: the receipt still goes');
+    assert.equal((await sendBill(pool, { businessId: biz, invoiceId: paid, phone: '9000011111' })).kind, 'BILL', 'nothing due: the receipt');
+  } finally { setProvider(null); }
 });

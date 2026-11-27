@@ -7,7 +7,7 @@ import { wholeInWords } from './taxInvoice.ts';
 export const rupeesInWords = (amount: number): string => { const paise = Math.round(Math.abs(amount) * 100); const p = paise % 100; return `${wholeInWords(Math.floor(paise / 100))} Rupees${p ? ` and ${wholeInWords(p)} Paise` : ''} Only`; };
 
 export type InvoiceLine = { description: string; quantity: number; unit_price: number; discount: number; tax_rate: number; line_total: number; tax_amount?: number; cess?: number; unit?: string | null; hsn?: string | null };
-export type Invoice = {
+export type Invoice = { status?: string;
   invoice_id: number; invoice_number: string; invoice_date: string; created_at?: string | null; customer_name?: string | null; customer_phone?: string | null; customer_gstin?: string | null; eway_bill_no?: string | null; cashier?: string | null;
   /** the website's receipt: tax split by name (UTGST in a union territory) and the Show-the-tax-lines switch */ cgst?: number; sgst?: number; igst?: number; tax_name?: string; receipt?: { print_token?: boolean; footer?: string; show_tax_lines?: boolean; show_upi_qr?: boolean; show_hsn?: boolean; header_text?: string; show_phone?: boolean; show_total_qty?: boolean; show_amount_words?: boolean; show_powered_by?: boolean; show_terms?: boolean; terms?: string };
   subtotal: number; discount: number; tax: number; /** GST options (website: GST options): cess and TCS are inside the total, TDS is held back by the customer */ cess?: number; tcs?: number; tds?: number; reverse_charge?: boolean; bill_of_supply?: boolean; round_off: number; total: number; amount_paid: number; balance_due: number;

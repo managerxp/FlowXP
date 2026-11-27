@@ -133,7 +133,7 @@ import { closingLine } from './templates.js';
 export const sendBill = async (db, { businessId, invoiceId, phone = null, createdBy = null }) => {
   const inv = (await db.query(
     `SELECT i.invoice_id, i.invoice_number, i.invoice_date, to_char(i.created_at AT TIME ZONE COALESCE(b.timezone, 'Asia/Kolkata'), 'DD Mon YYYY, FMHH12:MI am') AS bill_time, i.total_paise, i.balance_due_paise, i.branch_id, i.customer_id, c.name AS customer_name, c.phone AS customer_phone,
-            b.name AS business_name, b.google_review_link
+            b.name AS business_name, b.google_review_link, b.upi_vpa, b.business_type, b.receipt_settings->>'footer' AS shop_footer
      FROM invoices i JOIN businesses b ON b.business_id = i.business_id LEFT JOIN customers c ON c.customer_id = i.customer_id
      WHERE i.invoice_id = $1 AND i.business_id = $2 AND i.status = 'ISSUED'`, [invoiceId, businessId])).rows[0];
   if (!inv) return { problem: 'Invoice not found', code: 404 };
@@ -142,12 +142,26 @@ export const sendBill = async (db, { businessId, invoiceId, phone = null, create
   const link = await shareLink(db, inv.invoice_id);
   const paid = Number(inv.total_paise) - Number(inv.balance_due_paise);
   const status = Number(inv.balance_due_paise) <= 0 ? 'Paid in full' : paid > 0 ? `Part paid, ${money(inv.balance_due_paise)} due` : `${money(inv.balance_due_paise)} due`;
+  if (Number(inv.balance_due_paise) > 0 && inv.upi_vpa) {
+    const names = (await db.query(`SELECT description FROM invoice_items WHERE invoice_id = $1 ORDER BY item_id`, [inv.invoice_id])).rows.map((i) => i.description);
+    // WhatsApp allows no line breaks in a variable, and the whole message has a length limit
+    const services = `${names.slice(0, 8).join(', ')}${names.length > 8 ? ` and ${names.length - 8} more` : ''}`.replace(/\s+/g, ' ').slice(0, 300) || 'your bill';
+    const ask = await send(db, {
+      businessId, branchId: inv.branch_id, customerId: inv.customer_id, phone: to, kind: 'UPI_PAYMENT', createdBy,
+      values: { name: inv.customer_name || 'there', business: inv.business_name, amount: money(inv.balance_due_paise), number: inv.invoice_number, services, link, token: link.split('/').pop() },
+      related: { type: 'invoice', id: inv.invoice_id }
+    });
+    // until the shop's template is approved in Meta the provider refuses it; the ordinary bill message still goes
+    if (ask.status !== 'FAILED') return ask;
+  }
   return send(db, {
     businessId, branchId: inv.branch_id, customerId: inv.customer_id, phone: to, kind: 'BILL', createdBy,
     values: { name: inv.customer_name || 'there', business: inv.business_name, number: inv.invoice_number, when: inv.bill_time, total: money(inv.total_paise), status, closing: closingLine(inv.business_type, inv.shop_footer), link, token: link.split('/').pop() },
     related: { type: 'invoice', id: inv.invoice_id }
   });
 };
+
+const MAX_SHARED_LINES = 15;   // a longer message is cut off by some phones; the link has every line
 
 /**
  * What to hand to a share sheet or WhatsApp's own "click to chat" for a bill: the message (with what is still due on the bill and on the
@@ -156,7 +170,8 @@ export const sendBill = async (db, { businessId, invoiceId, phone = null, create
  */
 export const billShare = async (db, { businessId, invoiceId, phone = null }) => {
   const inv = (await db.query(
-    `SELECT i.invoice_id, i.invoice_number, i.total_paise, i.balance_due_paise, i.customer_id, c.name AS customer_name, c.phone AS customer_phone, b.name AS business_name
+    `SELECT i.invoice_id, i.invoice_number, i.total_paise, i.balance_due_paise, i.customer_id, c.name AS customer_name, c.phone AS customer_phone, b.name AS business_name,
+            b.business_type, b.upi_vpa
      FROM invoices i JOIN businesses b ON b.business_id = i.business_id LEFT JOIN customers c ON c.customer_id = i.customer_id
      WHERE i.invoice_id = $1 AND i.business_id = $2 AND i.status = 'ISSUED'`, [invoiceId, businessId])).rows[0];
   if (!inv) return { problem: 'Invoice not found', code: 404 };
@@ -165,15 +180,21 @@ export const billShare = async (db, { businessId, invoiceId, phone = null }) => 
     : 0;
   const link = await shareLink(db, inv.invoice_id);
   const billDue = Number(inv.balance_due_paise);
+  const items = (await db.query(`SELECT description, quantity, line_total_paise FROM invoice_items WHERE invoice_id = $1 ORDER BY item_id`, [inv.invoice_id])).rows;
+  const listed = items.slice(0, MAX_SHARED_LINES).map((i) => `• ${i.description}${Number(i.quantity) === 1 ? '' : ` × ${Number(i.quantity)}`}: ${money(i.line_total_paise)}`);
+  if (items.length > listed.length) listed.push(`• and ${items.length - listed.length} more on the bill`);
+  // WhatsApp does not make a upi:// address tappable, so the message carries the bill's web link, whose "Pay with UPI" button opens the customer's UPI app with the amount filled in
+  const pay = billDue > 0 && Boolean(inv.upi_vpa);
   const text = [
     `Hi ${inv.customer_name || 'there'}, thank you for visiting ${inv.business_name}! Your bill ${inv.invoice_number} is ${money(inv.total_paise)}.`,
-    billDue > 0 ? `${money(billDue)} is still due on this bill.` : null,
+    listed.length ? `\n${inv.business_type === 'SALON' ? 'Your services' : 'Your items'}:\n${listed.join('\n')}\n` : null,
+    billDue > 0 ? (pay ? `Amount to pay: ${money(billDue)}` : `${money(billDue)} is still due on this bill.`) : null,
     accountDue > billDue ? `Total due on your account: ${money(accountDue)}.` : null,
-    `View it here: ${link}`
-  ].filter(Boolean).join(' ');
+    pay ? `\nPay by any UPI app here: ${link}` : `View it here: ${link}`
+  ].filter(Boolean).join('\n');
   const digits = normalisePhone(phone || inv.customer_phone);
   const to = digits ? (digits.length === 10 ? `${config.messaging.countryCode}${digits}` : digits) : null;
-  return { link, text, phone: to, wa_url: `https://wa.me/${to || ''}?text=${encodeURIComponent(text)}` };
+  return { link, text, pay, due: toRupees(billDue), phone: to, wa_url: `https://wa.me/${to || ''}?text=${encodeURIComponent(text)}` };
 };
 
 /**

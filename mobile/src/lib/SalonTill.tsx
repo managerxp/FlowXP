@@ -3,7 +3,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, newKey } from './api.ts';
-import { api, useSession } from './session.ts';
+import { api, currentBusiness, useSession } from './session.ts';
 import { clearSale, setCustomer, useSale } from './sale.ts';
 import { useLoad } from './useLoad.ts';
 import {
@@ -110,6 +110,8 @@ export function SalonTill() {
   const howNow: PayHow = mayOwe ? how : 'FULL';
   const billPaise = quote ? toPaise(quote.total) : 0;
   const plan = payPlan({ how: howNow, totalPaise: billPaise, now: nowText, hasCustomer: Boolean(customer) });
+  // UPI for the whole bill, with the salon's UPI ID set and a client chosen: the bill is saved unpaid, and the next screen sends the link and takes the desk's confirmation
+  const upiCollect = mayOwe && howNow === 'FULL' && method === 'UPI' && Boolean(customer) && Boolean(currentBusiness(session)?.upi_vpa);
 
   const pay = async () => {
     if (bad) return setProblem(bad);
@@ -117,7 +119,7 @@ export function SalonTill() {
     if (!plan.ok) return setProblem(plan.problem ? t(plan.problem) : t('Enter how much is being paid now.'));
     setBusy(true); setProblem('');
     try {
-      const out = await api.post<{ invoice: { invoice_id: number } }>('/salon/pos/invoices', saleBody(lines, customer?.id ?? null, apptId, quote.total, method, reference, extras, plan.payNowPaise), { idempotencyKey: key.current });
+      const out = await api.post<{ invoice: { invoice_id: number } }>('/salon/pos/invoices', saleBody(lines, customer?.id ?? null, apptId, quote.total, method, reference, extras, upiCollect ? 0 : plan.payNowPaise), { idempotencyKey: key.current });
       clearSale(); setLines([]); setApptId(null); setOfferCode(''); setPoints(''); setGift(null); setGiftCode(''); setHow('FULL'); setNowText(''); key.current = newKey();
       router.replace({ pathname: '/receipt', params: { fresh: '1', id: String(out.invoice.invoice_id) } });
     } catch (e) { setProblem(e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'Could not take the payment'); }
@@ -231,9 +233,9 @@ export function SalonTill() {
               {mayOwe ? <PayHowPicker how={how} onHow={(h) => { setHow(h); setProblem(''); }} nowText={nowText} onNow={setNowText} plan={plan} owes={customer?.name || t('the customer')} totalPaise={billPaise} /> : null}
               {howNow !== 'LATER' ? <Soft>How is the client paying?</Soft> : null}
               {howNow !== 'LATER' ? <Chips items={methods.map((m) => ({ id: m, label: METHOD_LABEL[m] ?? (m.charAt(0) + m.slice(1).toLowerCase().replace('_', ' ')) }))} value={method} onChange={setMethod} /> : null}
-              {howNow !== 'LATER' && (method === 'UPI' || method === 'CARD') ? <TextInput style={s.input} value={reference} onChangeText={setReference} placeholder="Reference number (optional)" accessibilityLabel="Reference number" /> : null}
+              {howNow !== 'LATER' && !upiCollect && (method === 'UPI' || method === 'CARD') ? <TextInput style={s.input} value={reference} onChangeText={setReference} placeholder="Reference number (optional)" accessibilityLabel="Reference number" /> : null}
               <ErrorText>{problem}</ErrorText>
-              <Button title={howNow === 'LATER' ? t('Save the bill, {amount} unpaid', { amount: rupees(billPaise) }) : howNow === 'PART' && plan.ok ? t('Take {now} now, {rest} stays due', { now: rupees(plan.payNowPaise ?? 0), rest: rupees(plan.balancePaise) }) : 'Take payment'} onPress={() => { void pay(); }} busy={busy} disabled={!quote || Boolean(bad)} />
+              <Button title={howNow === 'LATER' ? t('Save the bill, {amount} unpaid', { amount: rupees(billPaise) }) : howNow === 'PART' && plan.ok ? t('Take {now} now, {rest} stays due', { now: rupees(plan.payNowPaise ?? 0), rest: rupees(plan.balancePaise) }) : upiCollect ? t('Collect by UPI') : 'Take payment'} onPress={() => { void pay(); }} busy={busy} disabled={!quote || Boolean(bad)} />
             </View>
           ) : <View style={{ paddingHorizontal: 16 }}><ErrorText>{problem}</ErrorText></View>}
         </ScrollView>
