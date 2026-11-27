@@ -41,6 +41,8 @@ export default function Receipt() {
   const [sending, setSending] = useState(false);
   const [paper, setPaper] = useState<Paper>('58');
   const [paperReady, setPaperReady] = useState(false);
+  // the printer is connected and the logo fetched while the bill is on screen, so Print starts at once
+  useEffect(() => { void (async () => { if ((await (await import('../lib/thermal.ts')).readMode()) !== 'direct') return; void (await import('../lib/printLogo.ts')).printLogo(api).catch(() => {}); await (await import('../lib/printerLink.ts')).warmPrinter(); })().catch(() => {}); }, []);
   useEffect(() => { void kvGet('paper').then((p) => { setPaper(p === '80' ? '80' : '58'); setPaperReady(true); }); }, []);
 
   // a queued sale: read it from the phone; once it has been sent it has an invoice, and we show that instead

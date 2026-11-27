@@ -59,11 +59,42 @@ export const scanPrinters = async (): Promise<Found[]> => {
   } catch (e) { throw new Error(linkProblem('bluetooth', e)); }
 };
 
+/* Connecting takes a second or more, so the connection is kept after a print and the next one starts at once. It is let go after a quiet minute,
+   because a receipt printer takes one connection at a time and another phone (or app) may want it. */
+const KEEP_MS = 60_000;
+const idle = new Map<string, ReturnType<typeof setTimeout>>();
+const stayAwhile = (address: string, device: { disconnect: () => Promise<unknown> }) => {
+  clearTimeout(idle.get(address));
+  idle.set(address, setTimeout(() => { void inLane('bluetooth', async () => { await device.disconnect().catch(() => {}); }); }, KEEP_MS));
+};
+const link = async (RN: Awaited<ReturnType<typeof bt>>, address: string) => {
+  clearTimeout(idle.get(address));
+  return (await RN.isDeviceConnected(address).catch(() => false)) ? RN.getConnectedDevice(address) : RN.connectToDevice(address, BT_OPTIONS);
+};
+
 const sendBluetooth = async (address: string, bytes: Uint8Array): Promise<void> => {
   const RN = await bt();
-  const device = (await RN.isDeviceConnected(address).catch(() => false)) ? await RN.getConnectedDevice(address) : await RN.connectToDevice(address, BT_OPTIONS);
-  try { for (const part of chunks(bytes)) await device.write(toBase64(part), 'base64'); await new Promise((r) => setTimeout(r, 400)); }
-  finally { await device.disconnect().catch(() => {}); }
+  const parts = chunks(bytes);
+  for (let attempt = 0; ; attempt++) {
+    const device = await link(RN, address);
+    let sent = 0;
+    try { for (const part of parts) { await device.write(toBase64(part), 'base64'); sent++; } stayAwhile(address, device); return; }
+    catch (e) {
+      await device.disconnect().catch(() => {});
+      if (sent > 0 || attempt > 0) throw e;   // a kept connection that had gone stale gets one fresh try, but never after part of the slip is on paper
+    }
+  }
+};
+
+/** Connect to the receipt printer ahead of the print, so tapping Print is instant. Silent: it never asks for anything, and a real print reports any trouble. */
+export const warmPrinter = async (): Promise<void> => {
+  const printer = printerFor(await readPrinters(), 'receipt');
+  if (!printer || printer.kind !== 'bluetooth' || (await kvGet('print_mode').catch(() => null)) === 'rawbt' || !(await printingAvailable())) return;
+  await inLane(laneOf(printer), async () => {
+    const RN = (await import('react-native-bluetooth-classic')).default;
+    if (!(await RN.isBluetoothEnabled())) return;
+    stayAwhile(printer.address, await link(RN, printer.address));
+  }).catch(() => {});
 };
 
 const sendNetwork = async (host: string, port: number, bytes: Uint8Array): Promise<void> => {
@@ -90,7 +121,7 @@ const connectNetwork = (host: string, port: number): Promise<void> => import('re
 /** Whether a saved printer can be reached right now, without printing anything. Throws a sentence a person can act on. */
 export const checkPrinter = (printer: SavedPrinter): Promise<void> => inLane(laneOf(printer), async () => {
   try {
-    if (printer.kind === 'bluetooth') { const RN = await bt(); const d = await RN.connectToDevice(printer.address, BT_OPTIONS); await d.disconnect().catch(() => {}); }
+    if (printer.kind === 'bluetooth') { const RN = await bt(); stayAwhile(printer.address, await link(RN, printer.address)); }
     else await connectNetwork(printer.address, printer.port);
   } catch (e) { throw new Error(linkProblem(printer.kind, e)); }
 });
