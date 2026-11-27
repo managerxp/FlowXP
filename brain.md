@@ -1733,3 +1733,4 @@ Flow: the receipt carries the bill's own QR (`/card/bill/<share_token>`). After 
 - 2026-11-27 Manual-cut Bluetooth printers kept the last lines inside: every Bluetooth slip now feeds 6 extra lines (TEAR_LINES in mobile/src/lib/printerSetup.ts).
 - 2026-11-27 Phone text boxes: hint text came out white on a dark-mode tablet; every screen now imports TextInput from lib/ui.tsx, which sets the hint colour (guard: test/textboxes.test.ts). Custom item and estimate boxes also have labels.
 - 2026-11-27 Table orders on the phone: Add items has All and Popular chips (All first), the order shows as a list under the menu with identical lines merged, and Send to kitchen first opens a read-back screen (lib/ReadBack.tsx) to confirm. Not yet tried on a device.
+- 2026-11-27 The floating help button now reads just 'Help' (smaller); screen readers still hear 'Help me find'.

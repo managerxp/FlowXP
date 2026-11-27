@@ -18,7 +18,7 @@ export const HelpButton = () => {
   const { token, ready } = useSession();
   const screen = useWindowDimensions();
   const [at, setAt] = useState(START);
-  const size = useRef({ width: 150, height: 48 });
+  const size = useRef({ width: 84, height: 48 });
   const from = useRef(START);
   const now = useRef(START); now.current = at;
   const bounds = useRef(screen); bounds.current = screen;
@@ -36,9 +36,9 @@ export const HelpButton = () => {
   return (
     <View {...drag.panHandlers} onLayout={(e) => { size.current = e.nativeEvent.layout; }} style={{ position: 'absolute', ...inside(at) }}>
       <Pressable onPress={() => router.push('/help-find')} accessibilityRole="button" accessibilityLabel={t('Help me find')}
-        style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, borderRadius: 24, backgroundColor: color.brand, elevation: 6, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }}>
+        style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, borderRadius: 24, backgroundColor: color.brand, elevation: 6, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }}>
         <Ionicons name="help-buoy-outline" size={20} color={color.onAction} />
-        <Text style={{ color: color.onAction, fontWeight: '700' }}>{t('Help me find')}</Text>
+        <Text style={{ color: color.onAction, fontWeight: '700' }}>{t('Help')}</Text>
       </Pressable>
     </View>
   );
