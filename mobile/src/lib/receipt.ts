@@ -9,7 +9,7 @@ export const rupeesInWords = (amount: number): string => { const paise = Math.ro
 export type InvoiceLine = { description: string; quantity: number; unit_price: number; discount: number; tax_rate: number; line_total: number; tax_amount?: number; cess?: number; unit?: string | null; hsn?: string | null };
 export type Invoice = {
   invoice_id: number; invoice_number: string; invoice_date: string; customer_name?: string | null; customer_phone?: string | null; customer_gstin?: string | null; eway_bill_no?: string | null; cashier?: string | null;
-  /** the website's receipt: tax split by name (UTGST in a union territory) and the Show-the-tax-lines switch */ cgst?: number; sgst?: number; igst?: number; tax_name?: string; receipt?: { print_token?: boolean; footer?: string; show_tax_lines?: boolean; show_hsn?: boolean; header_text?: string; show_phone?: boolean; show_total_qty?: boolean; show_amount_words?: boolean; show_powered_by?: boolean; show_terms?: boolean; terms?: string };
+  /** the website's receipt: tax split by name (UTGST in a union territory) and the Show-the-tax-lines switch */ cgst?: number; sgst?: number; igst?: number; tax_name?: string; receipt?: { print_token?: boolean; footer?: string; show_tax_lines?: boolean; show_upi_qr?: boolean; show_hsn?: boolean; header_text?: string; show_phone?: boolean; show_total_qty?: boolean; show_amount_words?: boolean; show_powered_by?: boolean; show_terms?: boolean; terms?: string };
   subtotal: number; discount: number; tax: number; /** GST options (website: GST options): cess and TCS are inside the total, TDS is held back by the customer */ cess?: number; tcs?: number; tds?: number; reverse_charge?: boolean; bill_of_supply?: boolean; round_off: number; total: number; amount_paid: number; balance_due: number;
   order_number?: string | null; table_name?: string | null; /** today's counter token (an order with no table), when the business prints one */ token?: number | null;
   outlet?: { name: string; address?: string | null; phone?: string | null; gstin?: string | null; city?: string | null } | null;
@@ -61,6 +61,8 @@ export const receiptLines = (inv: Invoice, businessName: string, width = WIDTH):
   if (phone && inv.receipt?.show_phone !== false) out.push(`Ph: ${phone}`);
   const gstin = inv.outlet?.gstin || inv.seller?.gstin;
   if (gstin) out.push(`GSTIN ${gstin}`);
+  // the shop's own details sit in the middle of the paper, each wrapped to it
+  out.splice(0, out.length, ...out.flatMap((l) => wordWrap(l, width)).map((l) => ' '.repeat(Math.floor((width - l.length) / 2)) + l));
   out.push('-'.repeat(width));
   out.push(row(inv.invoice_number, String(inv.invoice_date).slice(0, 10)));
   if (inv.order_number) out.push(`TOKEN ${inv.order_number}`);
@@ -77,7 +79,8 @@ export const receiptLines = (inv: Invoice, businessName: string, width = WIDTH):
   for (const l of inv.items) {
     const amount = showTax ? l.line_total - (l.tax_amount || 0) - (l.cess || 0) : l.line_total;
     totalQty += l.quantity; lineSaved += l.discount || 0;
-    const names = wordWrap(l.description, leftW);
+    // a name that does not fit its column (usual for long names on 58 mm) takes whole lines of its own, with the numbers on the row under it
+    const names = l.description.length <= leftW ? [l.description] : [...wordWrap(l.description, width), ''];
     const last = names.pop() ?? '';
     for (const n of names) out.push(n);
     const showHsn = inv.receipt?.show_hsn === true && l.hsn;
@@ -128,7 +131,7 @@ export const pendingReceiptLines = (e: { local_no: string; taken_at: number; pre
   let totalQty = 0;
   for (const l of e.preview.lines) {
     totalQty += l.quantity;
-    const names = wordWrap(l.name, leftW); const last = names.pop() ?? '';
+    const names = l.name.length <= leftW ? [l.name] : [...wordWrap(l.name, width), '']; const last = names.pop() ?? '';
     for (const n of names) out.push(n);
     out.push(cells(last, qty(l.quantity), plain(l.unitPricePaise / 100), plain(Math.round(l.unitPricePaise * l.quantity) / 100)));
   }

@@ -56,7 +56,7 @@ export default function Receipt() {
   // a bill with money still owed carries a UPI QR code for exactly that amount, so the customer can settle it by scanning the paper
   const owed = invoice && invoice.balance_due > 0 ? toPaise(invoice.balance_due) : 0;
   // a bill with nothing owed carries the loyalty QR instead (scan it for the stamp), when the card has that switched on
-  const qrLink = owed && business?.upi_vpa ? upiPayLink(business.upi_vpa, business.name, owed) : invoice && !owed && invoice.loyalty_claim_url ? invoice.loyalty_claim_url : undefined;
+  const qrLink = owed && business?.upi_vpa && invoice?.receipt?.show_upi_qr !== false ? upiPayLink(business.upi_vpa, business.name, owed) : invoice && !owed && invoice.loyalty_claim_url ? invoice.loyalty_claim_url : undefined;
   const token = invoice ? tokenText(invoice, name) : null;   // the daily token slip, printed after the bill
   const text = invoice ? receiptText(invoice, name, COLUMNS[paper]) : pending ? pendingReceiptText(pending, name, COLUMNS[paper]) : '';
   const waiting = !invoice && pending && pending.state !== 'sent';

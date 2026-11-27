@@ -608,7 +608,7 @@ export const HI: Record<string, string> = {
 
   'Show the tax lines (CGST and SGST, UTGST or IGST) on receipts': 'रसीद पर टैक्स की पंक्तियाँ दिखाएँ (CGST और SGST, UTGST या IGST)',
   'Show a UPI QR for any unpaid balance': 'बकाया राशि के लिए UPI QR दिखाएँ',
-  'Show the customer\'s loyalty card line': 'ग्राहक की लॉयल्टी कार्ड लाइन दिखाएँ',
+  'Print loyalty on receipts (stamp QR and card line)': 'रसीद पर लॉयल्टी छापें (स्टैम्प QR और कार्ड की पंक्ति)',
   // staff and outlets
   'Staff': 'स्टाफ़',
   'Outlets': 'आउटलेट',

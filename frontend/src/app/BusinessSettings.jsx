@@ -300,7 +300,7 @@ const ReceiptSettings = ({ initial, biz }) => {
         {[
           [tr('Top of the bill'), [flag('show_logo', 'Print the logo at the top of receipts'), flag('show_phone', T('Show the phone number on receipts')), flag('show_gstin', 'Show the GSTIN on receipts')]],
           [tr('Items and totals'), [flag('show_total_qty', T('Show the total quantity on receipts')), flag('show_tax_lines', T('Show the tax lines (CGST and SGST, UTGST or IGST) on receipts')), flag('show_amount_words', T('Print the amount in words under the total'))]],
-          [tr('Payment and customer'), [flag('show_upi_qr', 'Show a UPI QR for any unpaid balance')]],
+          [tr('Payment and customer'), [flag('show_upi_qr', 'Show a UPI QR for any unpaid balance'), flag('show_loyalty', T('Print loyalty on receipts (stamp QR and card line)'))]],
           [tr('Bottom of the bill'), [!kitchen && flag('show_terms', T('Print the terms and conditions at the bottom')), flag('show_powered_by', 'Print “Powered by FlowXP” at the bottom')]],
           [tr('Printer'), [flag('auto_cut', T('Cut the paper after each receipt')), kitchen && hasFeature('counter_token') && flag('print_token', 'Print a daily token slip after the bill for orders without a table'), kitchen && flag('kitchen_screen', T('The kitchen uses the kitchen screen (switch off if it only uses printed tickets)'))]]
         ].map(([title, items]) => { const shown = items.filter(Boolean); return shown.length ? (

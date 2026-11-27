@@ -53,7 +53,7 @@ export const RECEIPT_DEFAULTS: Receipt = {
 };
 export const TOGGLES: [keyof Receipt, string][] = [
   ['show_logo', 'Print the logo at the top of receipts'], ['show_gstin', 'Show the GSTIN on receipts'], ['show_tax_lines', 'Show the tax lines (CGST and SGST, UTGST or IGST) on receipts'], ['show_upi_qr', 'Show a UPI QR for any unpaid balance'],
-  ['show_loyalty', "Show the customer's loyalty card line"], ['auto_cut', 'Cut the paper after each receipt'],
+  ['show_loyalty', 'Print loyalty on receipts (stamp QR and card line)'], ['auto_cut', 'Cut the paper after each receipt'],
   ['show_phone', 'Show the phone number on receipts'], ['show_total_qty', 'Show the total quantity on receipts'], ['show_amount_words', 'Print the amount in words under the total'], ['show_powered_by', 'Print "Powered by FlowXP" at the bottom']
 ];
 /** Only for businesses that are not a restaurant, cafe or cloud kitchen: the terms printed on the receipt come from the tax-invoice details. */

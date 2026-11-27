@@ -5519,5 +5519,6 @@
   "Offer %": "ऑफ़र %",
   "Leave empty for no offer": "ऑफ़र न हो तो खाली छोड़ें",
   "Offer wording": "ऑफ़र का शब्द",
-  "Shown on the page, e.g. 10% off when you book online": "पेज पर दिखता है, जैसे ऑनलाइन बुक करने पर 10% छूट"
+  "Shown on the page, e.g. 10% off when you book online": "पेज पर दिखता है, जैसे ऑनलाइन बुक करने पर 10% छूट",
+  "Print loyalty on receipts (stamp QR and card line)": "रसीद पर लॉयल्टी छापें (स्टैम्प QR और कार्ड की पंक्ति)"
 }

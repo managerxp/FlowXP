@@ -369,7 +369,7 @@ export const ML: Record<string, string> = {
 
   'Show the tax lines (CGST and SGST, UTGST or IGST) on receipts': 'രസീതുകളിൽ നികുതി വരികൾ കാണിക്കുക (CGST, SGST, UTGST അല്ലെങ്കിൽ IGST)',
   'Show a UPI QR for any unpaid balance': 'ബാക്കി തുകയ്ക്ക് UPI QR കാണിക്കുക',
-  'Show the customer\'s loyalty card line': 'ഉപഭോക്താവിന്റെ ലോയൽറ്റി കാർഡ് വരി കാണിക്കുക',
+  'Print loyalty on receipts (stamp QR and card line)': 'രസീതിൽ ലോയൽറ്റി പ്രിന്റ് ചെയ്യുക (സ്റ്റാമ്പ് QR, കാർഡ് വരി)',
   // staff and outlets
   'Staff': 'ജീവനക്കാർ',
   'Outlets': 'ഔട്ട്‌ലെറ്റുകൾ',
@@ -3938,7 +3938,7 @@ export const TA: Record<string, string> = {
 
   'Show the tax lines (CGST and SGST, UTGST or IGST) on receipts': 'ரசீதுகளில் வரி வரிகளைக் காட்டு (CGST மற்றும் SGST, UTGST அல்லது IGST)',
   'Show a UPI QR for any unpaid balance': 'நிலுவைத் தொகைக்கு UPI QR ஐக் காட்டு',
-  'Show the customer\'s loyalty card line': 'வாடிக்கையாளரின் லாயல்டி அட்டை வரியைக் காட்டு',
+  'Print loyalty on receipts (stamp QR and card line)': 'ரசீதில் லாயல்டியை அச்சிடு (ஸ்டாம்ப் QR, கார்டு வரி)',
   // staff and outlets
   'Staff': 'ஊழியர்கள்',
   'Outlets': 'கிளைகள்',
@@ -7507,7 +7507,7 @@ export const BN: Record<string, string> = {
 
   'Show the tax lines (CGST and SGST, UTGST or IGST) on receipts': 'রসিদে ট্যাক্সের লাইনগুলো দেখান (CGST ও SGST, UTGST বা IGST)',
   'Show a UPI QR for any unpaid balance': 'বকেয়ার জন্য UPI QR দেখান',
-  'Show the customer\'s loyalty card line': 'গ্রাহকের লয়্যালটি কার্ড লাইন দেখান',
+  'Print loyalty on receipts (stamp QR and card line)': 'রসিদে লয়্যালটি ছাপুন (স্ট্যাম্প QR ও কার্ডের লাইন)',
   // staff and outlets
   'Staff': 'কর্মী',
   'Outlets': 'আউটলেট',
@@ -11076,7 +11076,7 @@ export const TE: Record<string, string> = {
 
   'Show the tax lines (CGST and SGST, UTGST or IGST) on receipts': 'రసీదులపై పన్ను వరుసలను చూపించండి (CGST మరియు SGST, UTGST లేదా IGST)',
   'Show a UPI QR for any unpaid balance': 'బాకీ మొత్తానికి UPI QR చూపించండి',
-  'Show the customer\'s loyalty card line': 'కస్టమర్ లాయల్టీ కార్డ్ లైన్ చూపించండి',
+  'Print loyalty on receipts (stamp QR and card line)': 'రసీదుపై లాయల్టీ ముద్రించండి (స్టాంప్ QR, కార్డ్ లైన్)',
   // staff and outlets
   'Staff': 'సిబ్బంది',
   'Outlets': 'అవుట్‌లెట్లు',
@@ -14645,7 +14645,7 @@ export const KN: Record<string, string> = {
 
   'Show the tax lines (CGST and SGST, UTGST or IGST) on receipts': 'ರಸೀದಿಗಳಲ್ಲಿ ತೆರಿಗೆ ಸಾಲುಗಳನ್ನು ತೋರಿಸಿ (CGST ಮತ್ತು SGST, UTGST ಅಥವಾ IGST)',
   'Show a UPI QR for any unpaid balance': 'ಬಾಕಿ ಮೊತ್ತಕ್ಕೆ UPI QR ತೋರಿಸಿ',
-  'Show the customer\'s loyalty card line': 'ಗ್ರಾಹಕರ ಲಾಯಲ್ಟಿ ಕಾರ್ಡ್ ಸಾಲು ತೋರಿಸಿ',
+  'Print loyalty on receipts (stamp QR and card line)': 'ರಸೀದಿಯಲ್ಲಿ ಲಾಯಲ್ಟಿ ಮುದ್ರಿಸಿ (ಸ್ಟ್ಯಾಂಪ್ QR ಮತ್ತು ಕಾರ್ಡ್ ಸಾಲು)',
   // staff and outlets
   'Staff': 'ಸಿಬ್ಬಂದಿ',
   'Outlets': 'ಔಟ್‌ಲೆಟ್‌ಗಳು',

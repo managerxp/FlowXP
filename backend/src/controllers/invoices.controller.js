@@ -311,12 +311,13 @@ export const get = async (req, res) => {
       customer_address: rows[0].customer_address, customer_email: rows[0].customer_email, customer_state: rows[0].customer_state,
       customer_state_code: placeOfSupply(rows[0].customer_gstin, rows[0].print_extra?.buyer_state ?? rows[0].customer_state),
       consignee_state_code: placeOfSupply(null, rows[0].print_extra?.consignee_state),
-      loyalty_message: loyaltyCard,
+      loyalty_message: rows[0].business_receipt?.show_loyalty !== false ? loyaltyCard : null,
       // the QR for "scan the bill, get your stamp" (only when a card has it on, the plan includes it, and this bill has no customer yet)
-      loyalty_claim_url: hasPlanFeature(req.tenant, 'loyalty_programmes') && hasPlanFeature(req.tenant, 'loyalty_bill_qr') ? await claimLink(pool, rows[0].invoice_id, req.tenant.businessId).catch(() => null) : null,
+      loyalty_claim_url: rows[0].business_receipt?.show_loyalty !== false && hasPlanFeature(req.tenant, 'loyalty_programmes') && hasPlanFeature(req.tenant, 'loyalty_bill_qr') ? await claimLink(pool, rows[0].invoice_id, req.tenant.businessId).catch(() => null) : null,
       // how the receipt names the state tax (UTGST in a union territory) and whether it lists the tax lines, so the phone prints the same bill as the website
       tax_name: taxName(rows[0].business_state),
       receipt: {
+        show_upi_qr: rows[0].business_receipt?.show_upi_qr !== false,
         show_tax_lines: rows[0].business_receipt?.show_tax_lines !== false, show_hsn: rows[0].business_receipt?.show_hsn === true,
         // the extra receipt options (Business settings > Receipts), so the phone prints the same bill as the website and the thermal printer
         header_text: rows[0].business_receipt?.header_text || '', show_phone: rows[0].business_receipt?.show_phone !== false, show_total_qty: rows[0].business_receipt?.show_total_qty !== false,
