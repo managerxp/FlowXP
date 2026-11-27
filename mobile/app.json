@@ -20,8 +20,12 @@
       "package": "com.flowxp.app",
       "versionCode": 1,
       "permissions": [
-        "CAMERA",
-        "POST_NOTIFICATIONS"
+        "android.permission.CAMERA",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
@@ -39,7 +43,12 @@
       "expo-router",
       "expo-secure-store",
       "expo-sqlite",
-      ["expo-local-authentication", { "faceIDPermission": "FlowXP uses Face ID to open the app when App lock is on." }],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "FlowXP uses Face ID to open the app when App lock is on."
+        }
+      ],
       [
         "expo-location",
         {
@@ -79,7 +88,8 @@
             "enableShrinkResourcesInReleaseBuilds": true,
             "compileSdkVersion": 36,
             "targetSdkVersion": 36,
-            "usesCleartextTraffic": false
+            "usesCleartextTraffic": false,
+            "enableMinifyInReleaseBuilds": true
           }
         }
       ],
@@ -99,6 +109,13 @@
     "updates": {
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "fdc7a8f8-c389-4a9e-9c86-937b199f76b4"
+      }
+    },
+    "owner": "managerxp"
   }
 }

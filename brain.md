@@ -1715,3 +1715,4 @@ Flow: the receipt carries the bill's own QR (`/card/bill/<share_token>`). After 
 - Member photo: crop (square) before upload restored; tap the photo to see it enlarged.
 - Phone Printers screen: in Expo Go it now shows only the 'needs the FlowXP development app' note (no Bluetooth/Wi-Fi add buttons, which cannot work there); the fold-out button is named 'Add a Wi-Fi printer'.
 - Phone bottom tab bar: 12px extra space under the labels above the phone's gesture line/buttons (safe-area aware; not on the tablet side rail).
+- EAS project linked under the Expo account managerxp (projectId in mobile/app.json; Android keystore generated and kept on Expo). First Android development build started 2026-11-27 for direct Bluetooth/Wi-Fi printing.
