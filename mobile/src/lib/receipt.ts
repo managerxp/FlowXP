@@ -8,7 +8,7 @@ export const rupeesInWords = (amount: number): string => { const paise = Math.ro
 
 export type InvoiceLine = { description: string; quantity: number; unit_price: number; discount: number; tax_rate: number; line_total: number; tax_amount?: number; cess?: number; unit?: string | null; hsn?: string | null };
 export type Invoice = {
-  invoice_id: number; invoice_number: string; invoice_date: string; customer_name?: string | null; customer_phone?: string | null; customer_gstin?: string | null; eway_bill_no?: string | null; cashier?: string | null;
+  invoice_id: number; invoice_number: string; invoice_date: string; created_at?: string | null; customer_name?: string | null; customer_phone?: string | null; customer_gstin?: string | null; eway_bill_no?: string | null; cashier?: string | null;
   /** the website's receipt: tax split by name (UTGST in a union territory) and the Show-the-tax-lines switch */ cgst?: number; sgst?: number; igst?: number; tax_name?: string; receipt?: { print_token?: boolean; footer?: string; show_tax_lines?: boolean; show_upi_qr?: boolean; show_hsn?: boolean; header_text?: string; show_phone?: boolean; show_total_qty?: boolean; show_amount_words?: boolean; show_powered_by?: boolean; show_terms?: boolean; terms?: string };
   subtotal: number; discount: number; tax: number; /** GST options (website: GST options): cess and TCS are inside the total, TDS is held back by the customer */ cess?: number; tcs?: number; tds?: number; reverse_charge?: boolean; bill_of_supply?: boolean; round_off: number; total: number; amount_paid: number; balance_due: number;
   order_number?: string | null; table_name?: string | null; /** today's counter token (an order with no table), when the business prints one */ token?: number | null;
@@ -23,11 +23,29 @@ export const WIDTH = 32;
 export const two = (left: string, right: string, width = WIDTH) => (left.length + right.length + 1 > width ? `${left}\n${' '.repeat(Math.max(1, width - right.length))}${right}` : `${left}${' '.repeat(width - left.length - right.length)}${right}`);
 const money = (r: number) => rupees(toPaise(r));
 
-/** Column widths of the item table: Qty, Rate, Amount on the right, the name column gets the rest (the same as the website's receipt). */
-const tableWidths = (width: number) => { const w = width >= 48 ? [7, 9, 10] : [7, 8, 9]; return { w, leftW: width - w[0] - w[1] - w[2] }; };
 const plain = (r: number) => (Math.round(r * 100) / 100).toFixed(2);
-/** One row of the item table: name column, then Qty, Rate and Amount right-aligned. */
-const tableRow = (width: number) => { const { w, leftW } = tableWidths(width); return (left: string, q: string, rate: string, amount: string) => left.slice(0, leftW).padEnd(leftW) + q.slice(0, w[0]).padStart(w[0]) + rate.slice(0, w[1]).padStart(w[1]) + amount.slice(0, w[2]).padStart(w[2]); };
+type Cells = [qty: string, rate: string, amount: string];
+/** The item table fits itself to the bill: Qty, Rate and Amount are each only as wide as their longest entry, and the name gets all the rest. */
+const itemTable = (width: number, all: Cells[]) => {
+  const w = ['Qty', 'Rate', 'Amount'].map((head, i) => Math.max(head.length, ...all.map((c) => c[i]!.length)) + (width >= 48 ? 3 : 1));
+  const leftW = width - w[0]! - w[1]! - w[2]!;
+  const numbers = (c: Cells) => c.map((v, i) => v.padStart(w[i]!)).join('');
+  return {
+    head: 'Item'.padEnd(Math.max(leftW, 0)) + numbers(['Qty', 'Rate', 'Amount']),
+    /** The numbers sit on the item's first line; a long name carries on underneath, inside its own column. Only when huge figures leave no room does the name take lines of its own. */
+    rows: (name: string, c: Cells): string[] => {
+      if (leftW < 8) return [...wordWrap(name, width), ' '.repeat(Math.max(leftW, 0)) + numbers(c)];
+      const [first = '', ...rest] = wordWrap(name, leftW);
+      return [first.padEnd(leftW) + numbers(c), ...rest];
+    }
+  };
+};
+/** " 2:35 PM", on the phone's own clock (the shop's); nothing when the bill came without a time. */
+const clock = (at?: string | number | null): string => {
+  const d = new Date(at ?? NaN);
+  if (Number.isNaN(d.getTime())) return '';
+  return ` ${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')} ${d.getHours() < 12 ? 'AM' : 'PM'}`;
+};
 /** The end of every bill: the shop's footer (its own lines kept, centred) and Powered by FlowXP unless the business switched it off. */
 export const footerRows = (footer: string | undefined, width: number, powered = true): string[] => {
   const centre = (s: string) => ' '.repeat(Math.max(0, Math.floor((width - s.length) / 2))) + s;
@@ -64,28 +82,22 @@ export const receiptLines = (inv: Invoice, businessName: string, width = WIDTH):
   // the shop's own details sit in the middle of the paper, each wrapped to it
   out.splice(0, out.length, ...out.flatMap((l) => wordWrap(l, width)).map((l) => ' '.repeat(Math.floor((width - l.length) / 2)) + l));
   out.push('-'.repeat(width));
-  out.push(row(inv.invoice_number, String(inv.invoice_date).slice(0, 10)));
+  out.push(row(inv.invoice_number, String(inv.invoice_date).slice(0, 10) + clock(inv.created_at)));
   if (inv.order_number) out.push(`TOKEN ${inv.order_number}`);
-  if (inv.customer_name) out.push(inv.customer_name);
+  if (inv.customer_name) out.push(...wordWrap(`Customer: ${inv.customer_name}`, width));
   out.push('-'.repeat(width));
   // Item / Qty / Rate / Amount, as on the website's receipt: the name wraps inside its own column and the numbers sit on its last row.
   // The amount is before tax while the tax lines are shown (rows add up to the Subtotal), and with tax when they are hidden (rows add up to the Total).
   const showTax = inv.receipt?.show_tax_lines !== false;
-  const { leftW } = tableWidths(width);
-  const cells = tableRow(width);
-  out.push(cells('Item', 'Qty', 'Rate', 'Amount'));
+  const numbersOf = inv.items.map((l): Cells => [`${qty(l.quantity)}${l.unit && l.unit.length <= 3 ? ` ${l.unit}` : ''}`, plain(l.unit_price), plain(showTax ? l.line_total - (l.tax_amount || 0) - (l.cess || 0) : l.line_total)]);
+  const table = itemTable(width, numbersOf);
+  out.push(table.head);
   out.push('-'.repeat(width));
   let totalQty = 0; let lineSaved = 0;
-  for (const l of inv.items) {
-    const amount = showTax ? l.line_total - (l.tax_amount || 0) - (l.cess || 0) : l.line_total;
+  for (const [i, l] of inv.items.entries()) {
     totalQty += l.quantity; lineSaved += l.discount || 0;
-    // a name that does not fit its column (usual for long names on 58 mm) takes whole lines of its own, with the numbers on the row under it
-    const names = l.description.length <= leftW ? [l.description] : [...wordWrap(l.description, width), ''];
-    const last = names.pop() ?? '';
-    for (const n of names) out.push(n);
-    const showHsn = inv.receipt?.show_hsn === true && l.hsn;
-    if (showHsn) { if (last) out.push(last); out.push(`  HSN ${l.hsn}`); }
-    out.push(cells(showHsn ? '' : last, `${qty(l.quantity)}${l.unit && l.unit.length <= 3 ? ` ${l.unit}` : ''}`, plain(l.unit_price), plain(amount)));
+    out.push(...table.rows(l.description, numbersOf[i]!));
+    if (inv.receipt?.show_hsn === true && l.hsn) out.push(`  HSN ${l.hsn}`);
     if (l.discount > 0) out.push(row('  Discount', `-${plain(l.discount)}`));
   }
   out.push('-'.repeat(width));
@@ -122,18 +134,17 @@ export const receiptText = (inv: Invoice, businessName: string, width = WIDTH): 
 export const pendingReceiptLines = (e: { local_no: string; taken_at: number; preview: Preview }, businessName: string, width = WIDTH): string[] => {
   const row = (l: string, r: string) => two(l, r, width);
   const out: string[] = [businessName, '*** PENDING BILL ***', 'Not final. The real bill number and GST', 'come when it reaches FlowXP.', 'No kitchen ticket was made: tell them.', '-'.repeat(width)];
-  out.push(row(e.local_no, new Date(e.taken_at).toISOString().slice(0, 10)));
+  out.push(row(e.local_no, new Date(e.taken_at).toISOString().slice(0, 10) + clock(e.taken_at)));
   out.push('-'.repeat(width));
   // the same Item / Qty / Rate / Amount table as the real bill (amounts before tax, as worked out on this phone)
-  const cells = tableRow(width); const leftW = tableWidths(width).leftW;
-  out.push(cells('Item', 'Qty', 'Rate', 'Amount'));
+  const numbersOf = e.preview.lines.map((l): Cells => [qty(l.quantity), plain(l.unitPricePaise / 100), plain(Math.round(l.unitPricePaise * l.quantity) / 100)]);
+  const table = itemTable(width, numbersOf);
+  out.push(table.head);
   out.push('-'.repeat(width));
   let totalQty = 0;
-  for (const l of e.preview.lines) {
+  for (const [i, l] of e.preview.lines.entries()) {
     totalQty += l.quantity;
-    const names = l.name.length <= leftW ? [l.name] : [...wordWrap(l.name, width), '']; const last = names.pop() ?? '';
-    for (const n of names) out.push(n);
-    out.push(cells(last, qty(l.quantity), plain(l.unitPricePaise / 100), plain(Math.round(l.unitPricePaise * l.quantity) / 100)));
+    out.push(...table.rows(l.name, numbersOf[i]!));
   }
   out.push('-'.repeat(width));
   out.push(row(`Items: ${e.preview.lines.length}`, `Total Qty: ${qty(totalQty)}`));
