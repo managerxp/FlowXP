@@ -8,6 +8,7 @@
  * level — the wizard asks for them, it does not withhold the product.
  */
 import { validLogoBits } from '../modules/escpos.js';
+import { logoBitsFrom } from '../modules/logoBits.js';
 import { GARAGE_KINDS } from '../modules/mechanic/types.js';
 import { cleanGstSettings, withGstDefaults } from '../modules/gstOptions.js';
 import { cleanInvoicePrint, withDefaults } from '../modules/invoicePrint.js';
@@ -501,10 +502,10 @@ export const uploadLogo = async (req, res) => {
     console.error('[business] logo upload failed:', error.message);
     return res.status(502).json({ success: false, message: 'Could not save the logo. Try again in a moment.' });
   }
-  // The black and white dots for thermal printers come with the picture (the website makes them in the browser) and are saved in the same write. A picture without valid dots
+  // The black and white dots for thermal printers are made here from the picture (the website's own are the fallback) and saved in the same write. A picture without valid dots
   // replaces the old ones with nothing, because the old dots would print the previous logo; the answer says so (`thermal: false`) so the screen can tell the person.
-  let bits = null;
-  try { const sent = typeof req.body?.bits === 'string' ? JSON.parse(req.body.bits) : null; if (validLogoBits(sent)) bits = { w: sent.w, h: sent.h, data: sent.data }; } catch { /* no dots */ }
+  let bits = await logoBitsFrom(req.file.buffer).catch((error) => { console.error('[business] logo dots failed:', error.message); return null; });
+  if (!bits) try { const sent = typeof req.body?.bits === 'string' ? JSON.parse(req.body.bits) : null; if (validLogoBits(sent)) bits = { w: sent.w, h: sent.h, data: sent.data }; } catch { /* no dots */ }
   await pool.query("UPDATE businesses SET receipt_settings = (receipt_settings - 'logo_bits') || $1::jsonb, updated_at = CURRENT_TIMESTAMP WHERE business_id = $2", [JSON.stringify({ logo_url: url, ...(bits ? { logo_bits: bits } : {}) }), req.tenant.businessId]);
   if (old) removeFile(old, req.tenant.businessId);
   recordAudit(req, { action: 'business.logo_uploaded', resource_type: 'business', resource_id: req.tenant.businessId });

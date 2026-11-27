@@ -48,6 +48,7 @@ const MenuTile = memo(({ item, n, cols, offer, onPick }: { item: Product; n: num
 ));
 
 const POPULAR = '__popular__';
+const ALL = '__all__';   // the whole menu at once
 const OFFERS = '__offers__';
 const PAGE = 120;   // tiles / results shown at first; scrolling to the end shows the next page, so every product is reachable
 
@@ -108,7 +109,7 @@ export default function Sell() {
   const hasPopular = hot.length > 0;
   const hasOffers = shelves.offers.size > 0;
   const offerIds = useMemo(() => [...shelves.offers.keys()], [shelves.offers]);
-  const chosen = category === '__first__' ? (hasOffers ? OFFERS : hasPopular ? POPULAR : categories[0]?.name) : category;
+  const chosen = category === '__first__' ? ALL : category;
   const [limit, setLimit] = useState(PAGE);
   useEffect(() => { setLimit(PAGE); }, [chosen]);
   const [more, setMore] = useState(false);   // the last page came back full, so there may be more
@@ -120,7 +121,7 @@ export default function Sell() {
       void Promise.all(ids.map((id) => scope.catalog.byId(id))).then((r) => { if (alive) { setTiles(r.filter((x): x is Product => Boolean(x))); setMore(false); } });
       return () => { alive = false; };
     }
-    void scope.catalog.search('', limit, chosen).then((r) => { if (alive) { setTiles(r); setMore(r.length >= limit); } });
+    void scope.catalog.search('', limit, chosen === ALL ? undefined : chosen).then((r) => { if (alive) { setTiles(r); setMore(r.length >= limit); } });
     return () => { alive = false; };
   }, [scope, chosen, limit, sync.products, sync.syncedAt, chosen === POPULAR ? hot.join(',') : '', chosen === OFFERS ? offerIds.join(',') : '']);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -246,7 +247,7 @@ export default function Sell() {
   const CategoryMenu = (
     <View style={{ flex: 1 }}>
       {categories.length > 1 || hasPopular || hasOffers ? (
-        <Chips items={[...(hasOffers ? [{ id: OFFERS, label: `Offers (${offerIds.length})` }] : []), ...(hasPopular ? [{ id: POPULAR, label: 'Popular' }] : []), ...categories.map((c) => ({ id: c.name, label: c.name || 'Other' }))]} value={chosen ?? ''} onChange={setCategory} />
+        <Chips items={[{ id: ALL, label: 'All' }, ...(hasOffers ? [{ id: OFFERS, label: `Offers (${offerIds.length})` }] : []), ...(hasPopular ? [{ id: POPULAR, label: 'Popular' }] : []), ...categories.map((c) => ({ id: c.name, label: c.name || 'Other' }))]} value={chosen ?? ''} onChange={setCategory} />
       ) : null}
       <FlatList
         key={cols} numColumns={cols} data={tiles} keyExtractor={(p) => String(p.product_id)} initialNumToRender={16} maxToRenderPerBatch={12} windowSize={7} removeClippedSubviews={Platform.OS === 'android'}

@@ -15,6 +15,9 @@ export const logoFrom = (receiptSettings: Record<string, unknown> | undefined | 
   return validLogo(bits) ? bits : null;
 };
 
+/** The logo was changed on this phone: the next print asks the server for it instead of using the kept copy. */
+export const forgetLogo = (): Promise<void> => kvSet(KEY, '').catch(() => {});
+
 const refresh = async (api: { get: <T>(path: string) => Promise<T> }): Promise<LogoBits | null> => {
   const rec = await api.get<{ receipt_settings?: Record<string, unknown> }>('/businesses/current');
   const logo = logoFrom(rec.receipt_settings);

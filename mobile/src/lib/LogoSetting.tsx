@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { forgetLogo } from './printLogo.ts';
 import { filePart } from './filePart.ts';
 import { Image, Text, View } from 'react-native';
 import { API_URL, sessionStore } from './session.ts';
@@ -30,6 +31,7 @@ export default function LogoSetting({ url, onChange }: { url: string | null; onC
       const res = await fetch(`${API_URL}/api/businesses/current/logo`, { method: 'POST', headers: authHeaders(sessionStore.get()), body: form });
       const json = (await res.json().catch(() => ({}))) as { data?: { logo_url?: string; thermal?: boolean }; message?: string };
       if (!res.ok || !json.data?.logo_url) { setError(json.message || t('Could not save the logo. Check the connection and try again.')); return; }
+      await forgetLogo();
       onChange(json.data.logo_url); setNote(t(json.data.thermal === false ? 'Logo saved. To print it on thermal receipts, upload it once from the website.' : 'Logo saved'));
     } catch { setError(t('Could not save the logo. Check the connection and try again.')); } finally { setBusy(false); }
   };
@@ -37,6 +39,7 @@ export default function LogoSetting({ url, onChange }: { url: string | null; onC
     setError(''); setNote(''); setBusy(true);
     try {
       const res = await fetch(`${API_URL}/api/businesses/current/logo`, { method: 'DELETE', headers: authHeaders(sessionStore.get()) });
+      await forgetLogo();
       if (!res.ok) { setError(t('Could not save the logo. Check the connection and try again.')); return; }
       onChange(null); setNote(t('Logo removed'));
     } catch { setError(t('Could not save the logo. Check the connection and try again.')); } finally { setBusy(false); }
