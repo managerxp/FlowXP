@@ -36,6 +36,10 @@ export const printingAvailable = async (): Promise<boolean> => {
   try { const m = (await import('react-native-bluetooth-classic')).default; return typeof m?.getBondedDevices === 'function'; } catch { return false; }
 };
 
+/* The library turns `charset` into an Android Charset: a name Android does not know ("binary") makes the connection fail just after the printer accepts it.
+   It only decodes what a printer sends back; what we print goes as base64 bytes, unchanged. */
+const BT_OPTIONS = { charset: 'ISO-8859-1' } as never;
+
 const bt = async () => {
   await allowBluetooth();
   const RN = (await import('react-native-bluetooth-classic')).default;
@@ -57,7 +61,7 @@ export const scanPrinters = async (): Promise<Found[]> => {
 
 const sendBluetooth = async (address: string, bytes: Uint8Array): Promise<void> => {
   const RN = await bt();
-  const device = (await RN.isDeviceConnected(address).catch(() => false)) ? await RN.getConnectedDevice(address) : await RN.connectToDevice(address, { delimiter: '', charset: 'binary' } as never);
+  const device = (await RN.isDeviceConnected(address).catch(() => false)) ? await RN.getConnectedDevice(address) : await RN.connectToDevice(address, BT_OPTIONS);
   try { for (const part of chunks(bytes)) await device.write(toBase64(part), 'base64'); await new Promise((r) => setTimeout(r, 400)); }
   finally { await device.disconnect().catch(() => {}); }
 };
@@ -86,7 +90,7 @@ const connectNetwork = (host: string, port: number): Promise<void> => import('re
 /** Whether a saved printer can be reached right now, without printing anything. Throws a sentence a person can act on. */
 export const checkPrinter = (printer: SavedPrinter): Promise<void> => inLane(laneOf(printer), async () => {
   try {
-    if (printer.kind === 'bluetooth') { const RN = await bt(); const d = await RN.connectToDevice(printer.address, { delimiter: '', charset: 'binary' } as never); await d.disconnect().catch(() => {}); }
+    if (printer.kind === 'bluetooth') { const RN = await bt(); const d = await RN.connectToDevice(printer.address, BT_OPTIONS); await d.disconnect().catch(() => {}); }
     else await connectNetwork(printer.address, printer.port);
   } catch (e) { throw new Error(linkProblem(printer.kind, e)); }
 });

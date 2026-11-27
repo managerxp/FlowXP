@@ -92,6 +92,7 @@ export const colsFor = (paper: Paper): number => (paper === '80' ? 48 : 32);
 /** The words behind a failed connection, for a person: what to check. */
 export const linkProblem = (kind: PrinterKind, error: unknown): string => {
   const m = error instanceof Error ? error.message : String(error ?? '');
+  if (m) console.warn(`[printer] ${kind}: ${m}`);   // the real reason, in the phone server's log; the screen shows a sentence a person can act on
   if (/permission/i.test(m)) return 'Allow FlowXP to use Bluetooth (nearby devices) in the phone settings, then try again.';
   if (kind === 'bluetooth') return /not.*enabled|disabled|turn.*on/i.test(m) ? 'Switch Bluetooth on, then try again.' : 'Could not reach the printer. Check that it is switched on, in range, and paired in the phone\'s Bluetooth settings.';
   return 'Could not reach the printer. Check that it is switched on, on the same Wi-Fi as this phone, and that the address is right.';
