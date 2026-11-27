@@ -32,6 +32,7 @@ export default function Appointments() {
   };
   const sure = (title: string, text: string, go: () => void) => Alert.alert(title, text, [{ text: 'No', style: 'cancel' }, { text: 'Yes', style: 'destructive', onPress: go }]);
   const rows = list.data ?? [];
+  const later = day === 'tomorrow'; // the server refuses check-in and billing before the day
 
   return (
     <SafeAreaView style={s.screen}>
@@ -41,6 +42,7 @@ export default function Appointments() {
           <Button title="New" onPress={() => router.push('/appointment-new')} />
         </View>
         <Chips<Day> items={[{ id: 'today', label: 'Today' }, { id: 'tomorrow', label: 'Tomorrow' }]} value={day} onChange={setDay} />
+        {later ? <View style={{ paddingHorizontal: 16, paddingTop: 8 }}><Soft>Check-in and billing open on the day. If the client is here now, move the booking to today.</Soft></View> : null}
         <SavedNote at={list.savedAt} />
         <View style={{ paddingHorizontal: 16, paddingTop: 8 }}><ErrorText>{problem}</ErrorText></View>
         {list.error && !list.data ? <Failed message={list.error} onRetry={() => { void list.refresh(); }} /> : null}
@@ -56,8 +58,8 @@ export default function Appointments() {
                 <Soft>{a.services.map((x) => `${x.name} (${x.staff_name})`).join(', ')} · {rupees(toPaise(a.total_payable ?? a.total))}</Soft>
                 {a.notes ? <Soft>{a.notes}</Soft> : null}
                 <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                  {next ? <Button title={next.label} kind="quiet" busy={busy === a.appointment_id} onPress={() => { void move(a, next.to); }} /> : null}
-                  {canBill(a) ? <Button title="Bill this visit" onPress={() => router.navigate({ pathname: '/sell', params: { appointment: String(a.appointment_id) } })} /> : null}
+                  {next && !later ? <Button title={next.label} kind="quiet" busy={busy === a.appointment_id} onPress={() => { void move(a, next.to); }} /> : null}
+                  {canBill(a) && !later ? <Button title="Bill this visit" onPress={() => router.navigate({ pathname: '/sell', params: { appointment: String(a.appointment_id) } })} /> : null}
                   {canNoShow(a) ? <Button title="Did not come" kind="quiet" onPress={() => sure('Mark as did not come?', `${a.customer_name ?? 'The client'} will be marked as a no-show.`, () => { void move(a, 'NO_SHOW'); })} /> : null}
                   {['BOOKED', 'CONFIRMED'].includes(a.status) ? <Button title="Move" kind="quiet" onPress={() => router.push({ pathname: '/appointment-new', params: { move: String(a.appointment_id) } })} /> : null}
                   {canCancel(a) ? <Button title="Cancel" kind="quiet" onPress={() => sure('Cancel this appointment?', `${a.customer_name ?? 'The client'} at ${clock(a.start_at)}.`, () => { void move(a, 'CANCELLED', 'Cancelled at the front desk'); })} /> : null}
