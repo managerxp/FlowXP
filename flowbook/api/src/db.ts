@@ -14,7 +14,12 @@ const types = { getTypeParser: (oid: number, format?: 'text' | 'binary') => (oid
 /** The role every request runs as, so row level security and the table grants apply. null when the database user may not create or use that role (a plain user on a shared FlowXP database): requests then run as that user itself, and row level security still applies because the tables force it. */
 let appRole: string | null = 'flowbook_app';
 
-export const createPool = (connectionString: string): pg.Pool => new pg.Pool({ connectionString, options: `-c search_path=${SCHEMA},public`, types: types as never });
+export const createPool = (connectionString: string): pg.Pool => {
+  const pool = new pg.Pool({ connectionString, options: `-c search_path=${SCHEMA},public`, types: types as never });
+  /* PostgreSQL restarting drops idle connections. Without a listener that 'error' is an uncaught exception, which stops the whole FlowXP server; the pool opens a new connection by itself. */
+  pool.on('error', (error) => console.error('[flowbook] idle database connection lost:', error.message));
+  return pool;
+};
 
 /**
  * Run `fn` as one organization: one transaction, the application role (so row level security applies),
