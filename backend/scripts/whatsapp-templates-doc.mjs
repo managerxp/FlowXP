@@ -46,7 +46,7 @@ for (const [title, test] of GROUPS) {
     if (['JOB_RECEIVED', 'JOB_READY', 'SERVICE_DUE', 'LOYALTY_POINTS', 'LOYALTY_NEXT', 'REVIEW_REPLY', 'GYM_SUBSCRIBED', 'GYM_EXPIRY', 'GYM_MONTH_START', 'GYM_EXPIRED', 'GYM_PAYMENT_DUE'].includes(kind)) lines.push('**Header:** none. **Footer:** `Powered by FlowXP`. **Buttons:** none. The business name is in bold italics and the labels are bold, written `*_{{2}}_*` and `*Label:*`.', '');
     if (['BILL'].includes(kind)) lines.push('**Header:** none. **Footer:** `Billing powered by FlowXP`. Button texts are free: `View Bill` / `Rate Us` or `View Invoice` / `Rate Your Experience`.', '');
     if (kind === 'ADMIN_RECEIPT') lines.push('**Header:** Document (FlowXP attaches the PDF). **Buttons:** none.', '');
-    if (kind === 'UPI_PAYMENT') lines.push('**Header:** none. **Footer:** `Billing powered by FlowXP`. Sent in place of `flowxp_bill` when money is due and the shop has saved its UPI ID. The button opens the bill, which has the Pay with UPI button. Until Meta approves it, `flowxp_bill` goes instead.', '');
+    if (kind === 'UPI_PAYMENT') lines.push('**Header:** none. **Footer:** `Billing powered by FlowXP`. Sent in place of `flowxp_bill` when money is due and the shop has saved its UPI ID. Pay by UPI opens the bill, which has the Pay with UPI button; Rate Us works as on `flowxp_bill`. Until Meta approves it, `flowxp_bill` goes instead.', '');
     if (kind === 'BILL') lines.push('One template for every shop. The Rate Us button opens the Google review page the shop saved (Settings, Business details, Google review link), or the bill when there is none.', '');
   }
 }

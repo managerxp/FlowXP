@@ -45,6 +45,9 @@ test('the share message says what is due, and the WhatsApp link goes to the cust
   assert.match(u.text, /Amount to pay: ₹150\n/);
   assert.ok(u.text.endsWith(`Pay by any UPI app here: ${u.link}`), u.text);
   assert.ok(!u.text.includes('upi://'), 'WhatsApp could not open it; the bill page has the button');
+  assert.ok(!u.text.includes('Rate us'), 'no review link saved, none shared');
+  await pool.query(`UPDATE businesses SET google_review_link = 'https://g.page/r/CabcDEF123/review' WHERE business_id = $1`, [biz]);
+  assert.ok((await billShare(pool, { businessId: biz, invoiceId: second })).text.endsWith('\nRate us on Google: https://g.page/r/CabcDEF123/review'));
   assert.ok(a.wa_url.startsWith('https://wa.me/919876543210?text='));
   assert.equal(decodeURIComponent(a.wa_url.split('?text=')[1]), a.text);
   assert.equal((await billShare(pool, { businessId: biz, invoiceId: second })).link, a.link, 'the same link every time');
@@ -96,7 +99,7 @@ test('the share message says what is due, and the WhatsApp link goes to the cust
     assert.equal((await sendBill(pool, { businessId: biz, invoiceId: second })).kind, 'UPI_PAYMENT');
     assert.equal(asked[0].name, 'flowxp_upi_payment');
     assert.deepEqual(asked[0].params.slice(2), ['₹150', asked[0].params[3], 'Bolt']);
-    assert.equal(asked[0].buttons.length, 1);
+    assert.equal(asked[0].buttons.length, 2, 'Pay by UPI and Rate Us');
     assert.equal((await sendBill(pool, { businessId: biz, invoiceId: second })).kind, 'BILL', 'refused template: the receipt still goes');
     assert.equal((await sendBill(pool, { businessId: biz, invoiceId: paid, phone: '9000011111' })).kind, 'BILL', 'nothing due: the receipt');
   } finally { setProvider(null); }

@@ -68,8 +68,9 @@ Thank you for choosing us.
 **Buttons (Call to action, Visit website, URL type Dynamic):**
 
 - `Pay by UPI`: `https://YOUR-DOMAIN/bill/{{1}}`, sample `https://YOUR-DOMAIN/bill/abc123`
+- `Rate Us`: `https://YOUR-DOMAIN/r/{{1}}`, sample `https://YOUR-DOMAIN/r/abc123` (the Google review page of the shop; the bill when the shop has no review link)
 
-**Header:** none. **Footer:** `Billing powered by FlowXP`. Sent in place of `flowxp_bill` when money is due and the shop has saved its UPI ID. The button opens the bill, which has the Pay with UPI button. Until Meta approves it, `flowxp_bill` goes instead.
+**Header:** none. **Footer:** `Billing powered by FlowXP`. Sent in place of `flowxp_bill` when money is due and the shop has saved its UPI ID. Pay by UPI opens the bill, which has the Pay with UPI button; Rate Us works as on `flowxp_bill`. Until Meta approves it, `flowxp_bill` goes instead.
 
 ### `flowxp_loyalty_next` (LOYALTY_NEXT)
 

@@ -42,7 +42,7 @@ export const TEMPLATES = {
   UPI_PAYMENT: {
     name: 'flowxp_upi_payment', promo: false,
     vars: ['name', 'business', 'amount', 'number', 'services'],
-    urlButtons: ['token'],
+    urlButtons: ['token', 'token'],                                    // Pay by UPI (/bill/), then Rate Us (/r/), as on the receipt
     also: ['link'],
     body: (p) => `Hi ${p.name},
 

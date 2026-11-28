@@ -171,7 +171,7 @@ const MAX_SHARED_LINES = 15;   // a longer message is cut off by some phones; th
 export const billShare = async (db, { businessId, invoiceId, phone = null }) => {
   const inv = (await db.query(
     `SELECT i.invoice_id, i.invoice_number, i.total_paise, i.balance_due_paise, i.customer_id, c.name AS customer_name, c.phone AS customer_phone, b.name AS business_name,
-            b.business_type, b.upi_vpa
+            b.business_type, b.upi_vpa, b.google_review_link
      FROM invoices i JOIN businesses b ON b.business_id = i.business_id LEFT JOIN customers c ON c.customer_id = i.customer_id
      WHERE i.invoice_id = $1 AND i.business_id = $2 AND i.status = 'ISSUED'`, [invoiceId, businessId])).rows[0];
   if (!inv) return { problem: 'Invoice not found', code: 404 };
@@ -190,7 +190,8 @@ export const billShare = async (db, { businessId, invoiceId, phone = null }) => 
     listed.length ? `\n${inv.business_type === 'SALON' ? 'Your services' : 'Your items'}:\n${listed.join('\n')}\n` : null,
     billDue > 0 ? (pay ? `Amount to pay: ${money(billDue)}` : `${money(billDue)} is still due on this bill.`) : null,
     accountDue > billDue ? `Total due on your account: ${money(accountDue)}.` : null,
-    pay ? `\nPay by any UPI app here: ${link}` : `View it here: ${link}`
+    pay ? `\nPay by any UPI app here: ${link}` : `View it here: ${link}`,
+    inv.google_review_link ? `\nRate us on Google: ${inv.google_review_link}` : null
   ].filter(Boolean).join('\n');
   const digits = normalisePhone(phone || inv.customer_phone);
   const to = digits ? (digits.length === 10 ? `${config.messaging.countryCode}${digits}` : digits) : null;
